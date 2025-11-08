@@ -66,6 +66,13 @@ class CmdAttack(Command):
             caller.msg(MSG_ATTACK_WHO)
             return
 
+        # --- SELF-TARGET CHECK (early) ---
+        # Check if player is trying to target themselves with "me", "self", or "myself"
+        if args.lower() in ["me", "myself", "self"]:
+            caller.msg(MSG_SELF_TARGET)
+            return
+        # --- END SELF-TARGET CHECK ---
+
         # --- WEAPON IDENTIFICATION (early) ---
         hands = getattr(caller, "hands", {})
         weapon_obj = next((item for hand, item in hands.items() if item), None)
