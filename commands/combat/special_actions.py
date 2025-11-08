@@ -60,6 +60,13 @@ class CmdGrapple(Command):
             caller.msg(MSG_GRAPPLE_WHO)
             return
 
+        # --- SELF-TARGET CHECK (early) ---
+        # Check if player is trying to target themselves with "me", "self", or "myself"
+        if self.args.strip().lower() in ["me", "myself", "self"]:
+            caller.msg(MSG_CANNOT_GRAPPLE_SELF)
+            return
+        # --- END SELF-TARGET CHECK ---
+
         # --- Target searching (similar to CmdAttack) ---
         search_name = self.args.strip().lower()
         candidates = caller.location.contents
