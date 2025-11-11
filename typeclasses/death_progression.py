@@ -90,6 +90,25 @@ class DeathProgressionScript(DefaultScript):
     Provides a window for medical intervention and creates dramatic tension.
     """
     
+    def at_msg_send(self, msg, to_obj=None, **kwargs):
+        """
+        Called when this script sends a message to someone via msg().
+        
+        This hook is required for scripts that are passed as from_obj to character.msg().
+        Since we send death progression messages with from_obj=self, Evennia calls this
+        method to allow the script to intercept or modify outgoing messages.
+        
+        Args:
+            msg: The message being sent
+            to_obj: The object receiving the message
+            **kwargs: Additional message parameters
+            
+        Returns:
+            None - allows message to be sent normally
+        """
+        # We don't need to intercept or modify messages, just allow them to pass through
+        pass
+    
     def at_script_creation(self):
         """Initialize the death progression script."""
         self.key = "death_progression"
