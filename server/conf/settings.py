@@ -39,7 +39,7 @@ GAME_SLOGAN = "An abomination to behold"
 # The url address to your server, like mymudgame.com. This should be the publicly
 # visible location. This is used e.g. on the web site to show how you connect to the
 # game over telnet. Default is localhost (only on your machine).
-SERVER_HOSTNAME = "play.gel.monster"
+SERVER_HOSTNAME = "localhost"  # Override in secret_settings.py for production
 # Lockdown mode will cut off the game from any external connections
 # and only allow connections from localhost. Requires a cold reboot.
 LOCKDOWN_MODE = False
@@ -53,17 +53,16 @@ TELNET_PORTS = [23]
 # This is a security setting protecting against host poisoning
 # attacks.  It defaults to allowing all. In production, make
 # sure to change this to your actual host addresses/IPs.
-ALLOWED_HOSTS = ["play.gel.monster", "gel.monster", "gelatinous.org", "gelatinous.monster", "96d01c0600eef9c99db924a15939abf3-578402624.us-west-2.elb.amazonaws.com", "35.165.102.12"]
-# This is a security setting protecting against DJANGO CSRF nonsense
-CSRF_TRUSTED_ORIGINS = ['https://gel.monster', 'https://play.gel.monster', 'https://gelatinous.monster', 'https://gelatinous.org', 'https://96d01c0600eef9c99db924a15939abf3-578402624.us-west-2.elb.amazonaws.com', 'https://35.165.102.12']
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]  # Override in secret_settings.py for production
+# This is a security setting protecting against DJANGO CSRF attacks
+CSRF_TRUSTED_ORIGINS = ['http://localhost:4001']  # Override in secret_settings.py for production
 # Start the evennia webclient. This requires the webserver to be running and
 # offers the fallback ajax-based webclient backbone for browsers not supporting
 # the websocket one.
 WEBCLIENT_ENABLED = True
 
-# Use secure websocket on port 8443 (CloudFlare-proxied port)
-# CloudFlare handles SSL termination and proxies to backend port 4002
-WEBSOCKET_CLIENT_URL = "wss://gel.monster:8443"
+# Use secure websocket - override in secret_settings.py for production
+WEBSOCKET_CLIENT_URL = "wss://localhost/ws"
 
 # Custom WebSocket protocol handler that speaks GMCP wire format when the
 # client negotiates the gmcp.mudstandards.org subprotocol, and falls back
