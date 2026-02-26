@@ -70,6 +70,27 @@ def example_function(param1: str, param2: int) -> bool:
 - Use `Optional` for parameters that can be None
 - Document complex types clearly
 
+### Diagrams in Specs
+
+Use [Mermaid](https://mermaid.js.org/) (`\`\`\`mermaid` code fences) for all architectural, flow, sequence, and state diagrams. GitHub renders these natively.
+
+**Use Mermaid for:**
+- Architecture overviews, system flowcharts, state machines
+- Data flow diagrams, dependency graphs, timelines/Gantt charts
+- Sequence diagrams showing component interactions
+
+**Keep plain code fences for:**
+- In-game UI mockups (terminal output, ASCII art the player sees)
+- Object hierarchy / data structure illustrations with attribute annotations
+- Directory tree listings
+
+```mermaid
+graph LR
+    A["Source System"] --> B{"Signal Bus"}
+    B --> C["Layer"]
+    C --> D[/"Score"\]
+```
+
 ### Constants and Magic Numbers
 
 **Constants System**

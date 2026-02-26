@@ -1063,64 +1063,20 @@ You see:
 
 ### Armor Removal Flow Diagram
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ INITIAL STATE: Grenade Stuck to Jacket on Character        │
-├─────────────────────────────────────────────────────────────┤
-│ Character.contents: [jacket, knife]                         │
-│ jacket.contents: [grenade]                                  │
-│ jacket.db.stuck_grenade = grenade                           │
-│ grenade.db.stuck_to_armor = jacket                          │
-│ grenade.location = jacket (magnetically bonded!)            │
-│ jacket.location = Character (worn)                          │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-                    > remove jacket
-                            │
-┌─────────────────────────────────────────────────────────────┐
-│ REMOVE COMMAND PROCESSING                                   │
-├─────────────────────────────────────────────────────────────┤
-│ 1. Detect jacket.db.stuck_grenade exists (LIVE GRENADE!)    │
-│ 2. Remove jacket from character (standard remove logic)     │
-│    - jacket.location = Character.location (Room)            │
-│ 3. Grenade STAYS stuck to jacket (magnetic bond intact!)    │
-│    - grenade.location = jacket (NO CHANGE)                  │
-│    - grenade.db.stuck_to_armor = jacket (NO CHANGE)         │
-│    - jacket.db.stuck_grenade = grenade (NO CHANGE)          │
-│ 4. Both now on ground, still bonded                         │
-│ 5. Character STILL IN PROXIMITY to grenade!                 │
-│ 6. Send dramatic messages                                   │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│ STATE AFTER REMOVE: Jacket on Ground, Grenade Still Stuck  │
-├─────────────────────────────────────────────────────────────┤
-│ Room.contents: [Character, jacket]                          │
-│ Character.contents: [knife]                                 │
-│ jacket.contents: [grenade]                                  │
-│ jacket.db.stuck_grenade = grenade (STILL STUCK!)            │
-│ grenade.db.stuck_to_armor = jacket (STILL STUCK!)           │
-│ grenade.location = jacket (magnetic bond intact)            │
-│ jacket.location = Room                                      │
-│ Character STILL IN PROXIMITY - DANGER!                      │
-│ grenade countdown continues (will explode and hit char!)    │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-        ┌───────────────────┴───────────────────┐
-        │                                       │
-        ▼                                       ▼
-┌──────────────────┐                  ┌──────────────────┐
-│ > get jacket     │                  │ > north (FLEE!)  │
-│                  │                  │                  │
-│ BAD IDEA!        │                  │ Character flees  │
-│ Grenade still    │                  │ Grenade+jacket   │
-│ stuck to jacket  │                  │ stay in old room │
-│ Now in YOUR inv! │                  │ Explodes there   │
-│ Double damage!   │                  │ You're SAFE!     │
-└──────────────────┘                  └──────────────────┘
+```mermaid
+graph TD
+    INIT["INITIAL STATE\nGrenade stuck to jacket on Character"]
+    INIT -->|"> remove jacket"| PROC
+
+    PROC["REMOVE COMMAND PROCESSING\n1. Detect jacket.db.stuck_grenade\n2. Remove jacket from character\n3. Grenade STAYS stuck (magnetic bond)\n4. Both now on ground, still bonded\n5. Character STILL IN PROXIMITY"]
+    PROC --> AFTER
+
+    AFTER["AFTER REMOVE\nJacket on ground, grenade still stuck\nCharacter still in proximity — DANGER"]
+    AFTER --> GET
+    AFTER --> FLEE
+
+    GET["&gt; get jacket\nBAD IDEA\nGrenade still stuck\nNow in YOUR inventory\nDouble damage"]
+    FLEE["&gt; north (FLEE)\nCharacter flees\nGrenade + jacket stay in old room\nExplodes there — you are SAFE"]
 ```
 
 ### No Special "Remove Grenade" Command Needed

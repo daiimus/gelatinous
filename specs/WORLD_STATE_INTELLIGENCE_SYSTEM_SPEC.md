@@ -51,46 +51,44 @@ Starting scope: a single offworld colony on a planetary body. The zone abstracti
 
 ## Architecture
 
-```
-+-------------------------------------------------------+
-|                    SIMULATION LAYER                     |
-|                                                         |
-|  +-----------+  +-----------+  +-----------+            |
-|  | Security  |  | Infra     |  | Economy   |  ...layers |
-|  | Layer     |  | Layer     |  | Layer     |            |
-|  +-----+-----+  +-----+-----+  +-----+-----+            |
-|        |              |              |                    |
-|        v              v              v                    |
-|  +-------------------------------------------+          |
-|  |           Signal Aggregator                |          |
-|  |    (event bus + temporal baselines)         |          |
-|  +---------------------+---------------------+          |
-|                        |                                 |
-|                        v                                 |
-|  +-------------------------------------------+          |
-|  |        Zone Threat Index (ZTI)             |          |
-|  |     (composite score per zone, 0-100)      |          |
-|  +---------------------+---------------------+          |
-|                        |                                 |
-|  +---------------------+---------------------+          |
-|  |         Anomaly Detector                   |          |
-|  |   (Welford's streaming mean/variance)      |          |
-|  +---------------------+---------------------+          |
-|                        |                                 |
-|  +---------------------+---------------------+          |
-|  |        Convergence Detector                |          |
-|  |   (multi-signal spikes in same zone)       |          |
-|  +-------------------------------------------+          |
-|                                                         |
-+---------------------------------------------------------+
-|                   PRESENTATION LAYER                     |
-|                                                          |
-|  +-----------+  +-----------+  +-----------+             |
-|  | Terminal  |  | NPC       |  | Room      |             |
-|  | Commands  |  | Intel     |  | Atmo      |             |
-|  | (player)  |  | Officers  |  | Effects   |             |
-|  +-----------+  +-----------+  +-----------+             |
-+----------------------------------------------------------+
+```mermaid
+graph TB
+    subgraph SIM["SIMULATION LAYER"]
+        direction TB
+
+        subgraph LAYERS[" "]
+            direction LR
+            SEC(["Security · 0.25"])
+            INF(["Infrastructure · 0.20"])
+            FAC(["Faction · 0.15"])
+            ENV(["Environment · 0.15"])
+            ECO(["Economy · 0.10"])
+            POP(["Population · 0.10"])
+            CYB(["Cyber · 0.05"])
+        end
+
+        AGG["Signal Aggregator"]
+        ZTI[/"Zone Threat Index (0–100)"\]
+
+        subgraph DETECT[" "]
+            direction LR
+            ANOM["Anomaly Detector"]
+            CONV["Convergence Detector"]
+        end
+
+        SEC & INF & FAC & ENV & ECO & POP & CYB --> AGG
+        AGG --> ZTI
+        ZTI --> ANOM & CONV
+    end
+
+    subgraph PRES["PRESENTATION LAYER"]
+        direction LR
+        TERM["Terminal Commands"]
+        NPC["NPC Intel Officers"]
+        ROOM["Room Atmo Effects"]
+    end
+
+    ANOM & CONV --> TERM & NPC & ROOM
 ```
 
 ### Module Structure
@@ -187,6 +185,28 @@ ZTI = sum(layer_score * weight) * convergence_multiplier
 ```
 
 Where `convergence_multiplier` increases when multiple layers spike simultaneously (1.0 normal, up to 1.5 for 4+ layers elevated).
+
+```mermaid
+graph LR
+    subgraph Layers["Layer Scores"]
+        direction TB
+        S["Security · 0.25"]
+        I["Infrastructure · 0.20"]
+        F["Faction · 0.15"]
+        E["Environment · 0.15"]
+        Ec["Economy · 0.10"]
+        P["Population · 0.10"]
+        C["Cyber · 0.05"]
+    end
+
+    W["Weighted Sum"]
+    CM{"Convergence\nMultiplier"}
+    ZTI[/"ZTI Score\n0–100"\]
+
+    S & I & F & E & Ec & P & C --> W
+    W --> CM
+    CM -->|"1.0x – 1.5x"| ZTI
+```
 
 ### Escalation Tiers
 
@@ -314,6 +334,47 @@ class SignalBus:
 
 Hooks into existing Gelatinous systems with minimal changes -- add `signal_bus.emit()` calls at natural hook points:
 
+```mermaid
+graph LR
+    subgraph Sources["Game Systems"]
+        direction TB
+        CH["CombatHandler"]
+        CHAR["Character"]
+        DEATH["DeathProgressionScript"]
+        CROWD["crowd_system"]
+        WX["weather_system"]
+        SHOP["CmdBuy"]
+        INFRA["Infrastructure"]
+        PATROL["Faction Patrols"]
+        HACK["Hacking Commands"]
+    end
+
+    BUS{{"Signal Bus"}}
+
+    subgraph Layers["Signal Layers"]
+        direction TB
+        SEC["Security"]
+        INF["Infrastructure"]
+        ECO["Economy"]
+        FAC["Faction"]
+        ENV["Environment"]
+        POP["Population"]
+        CYB["Cyber"]
+    end
+
+    CH -->|"combat_start / combat_end"| BUS
+    CHAR -->|"death"| BUS
+    DEATH -->|"corpse_created"| BUS
+    CROWD -->|"crowd_shift"| BUS
+    WX -->|"weather_change"| BUS
+    SHOP -->|"trade"| BUS
+    INFRA -->|"infra_damage / infra_repair"| BUS
+    PATROL -->|"faction_patrol"| BUS
+    HACK -->|"cyber_intrusion"| BUS
+
+    BUS --> SEC & INF & ECO & FAC & ENV & POP & CYB
+```
+
 | Existing System | Hook Point | Signal Emitted |
 |---|---|---|
 | `CombatHandler` | `start_combat()` | `combat_start` |
@@ -360,6 +421,32 @@ Hybrid event-driven + periodic tick, following WorldMonitor's architecture (even
   5. Update trends (rising/stable/falling based on score delta)
   6. Trigger NPC reactions to ZTI changes (patrol reinforcements, civilian flight, lockdowns)
   7. Generate news items for significant state changes
+
+```mermaid
+graph TD
+    subgraph EVENT["Event-Driven Path"]
+        direction TB
+        GE["Game Event"]
+        SB["signal_bus.emit()"]
+        LS["Layer Score Update"]
+        GE --> SB --> LS
+    end
+
+    subgraph TICK["Periodic Tick (every 5 min)"]
+        direction TB
+        DECAY["1. Decay Old Signals"]
+        ZTI["2. Recompute ZTI"]
+        ANOM["3. Anomaly Detection"]
+        CONVERGENCE["4. Convergence Detection"]
+        TREND["5. Update Trends"]
+        NPC["6. NPC Reactions"]
+        NEWS["7. Generate News"]
+        DECAY --> ZTI --> ANOM --> CONVERGENCE --> TREND --> NPC --> NEWS
+    end
+
+    LS --> TICK
+    NEWS --> EVENT
+```
 
 ---
 
@@ -581,6 +668,23 @@ NPCs stationed at command posts who deliver zone briefs verbally with personalit
 
 WorldMonitor observes real-world feedback loops passively. WSIS actively simulates them -- the world reacts to its own state:
 
+```mermaid
+graph LR
+    SEC["High Security Score"] -->|"deploy patrols"| PATROL["NPC Patrols"]
+    PATROL -->|"faction_patrol signal"| FAC["Faction Tension"]
+
+    INFRA["Infrastructure Failure"] -->|"displacement"| POP["Population Shift"]
+    INFRA -->|"supply disruption"| ECO["Economy Drop"]
+
+    ECO -->|"scarcity"| BM["Black Market Rise"]
+    BM -->|"crime signal"| SEC
+
+    POP -->|"pressure on receiving zone"| ZTI2["Receiving Zone ZTI"]
+    ZTI2 -->|"cascade"| INFRA
+
+    ZTI["Sustained High ZTI"] -->|"neglect"| INFRA
+```
+
 | Trigger | Effect | WorldMonitor Parallel |
 |---|---|---|
 | High security score | NPC faction patrols increase in zone | Military deployment to conflict zones |
@@ -739,5 +843,26 @@ These are future phases or separate specs:
 | **Phase 6** | NPC faction reactions (patrol deployment, displacement) | Large | Phase 1-3, faction system design |
 | **Phase 7** | Infrastructure simulation (power, life support, comms) | Large | Phase 1-2 |
 | **Phase 8** | Economy layer (trade routes, supply, black market) | Large | Phase 1-2, shop system |
+
+```mermaid
+gantt
+    title WSIS Implementation Phases
+    dateFormat X
+    axisFormat %s
+
+    section Core Engine
+    Phase 1 · Zones + ZTI + Terminal     :p1, 0, 3
+    Phase 2 · Signal Bus + Hooks         :p2, after p1, 3
+    Phase 3 · Anomaly + Convergence      :p3, after p2, 2
+
+    section Player-Facing
+    Phase 4 · Colony News Network        :p4, after p2, 3
+    Phase 5 · Room Atmospherics          :p5, after p1, 2
+
+    section Depth
+    Phase 6 · NPC Faction Reactions      :p6, after p3, 4
+    Phase 7 · Infrastructure Sim         :p7, after p2, 4
+    Phase 8 · Economy Layer              :p8, after p2, 4
+```
 
 Phase 1-3 form the core simulation engine. Phase 4-5 make it player-visible. Phase 6-8 add depth.

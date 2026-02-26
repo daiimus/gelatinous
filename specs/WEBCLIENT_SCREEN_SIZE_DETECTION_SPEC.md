@@ -281,45 +281,39 @@ Create a new webclient plugin (`screensize.js`) that:
 
 ### Architecture Diagram
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Browser Window                         │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │              GoldenLayout Container                 │   │
-│  │  ┌─────────────────────────────────────────────┐   │   │
-│  │  │         .content div (Main Pane)            │   │   │
-│  │  │  ┌────────────────────────────────────┐    │   │   │
-│  │  │  │   Visible Text Area                │    │   │   │
-│  │  │  │   (Calculate character dimensions) │    │   │   │
-│  │  │  └────────────────────────────────────┘    │   │   │
-│  │  └─────────────────────────────────────────────┘   │   │
-│  └─────────────────────────────────────────────────────┘   │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │         Hidden Test Element                         │   │
-│  │  <span id="screensize-tester">M</span>             │   │
-│  │  (Measure monospace character width/height)        │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-         │                                      │
-         │ Window Resize Event                 │ Font Change Event
-         ↓                                      ↓
-┌─────────────────────────────────────────────────────────────┐
-│              screensize.js Plugin                           │
-│  • measureCharacterDimensions()                             │
-│  • calculateScreenSize()                                    │
-│  • sendDimensionsToServer()                                 │
-│  • handleResize() [debounced]                               │
-│  • handleFontChange()                                       │
-└─────────────────────────────────────────────────────────────┘
-         │
-         │ Evennia.msg("client_options", [], {screenwidth, screenheight})
-         ↓
-┌─────────────────────────────────────────────────────────────┐
-│                  Evennia Server                             │
-│  • inputfuncs.client_options()                              │
-│  • session.protocol_flags["SCREENWIDTH"] = {0: width}       │
-│  • Command.client_width() returns actual width              │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph BROWSER["Browser Window"]
+        subgraph GL["GoldenLayout Container"]
+            subgraph CONTENT[".content div (Main Pane)"]
+                VTA["Visible Text Area\n(calculate character dimensions)"]
+            end
+        end
+        HIDDEN["Hidden Test Element\n#screensize-tester\n(measure monospace char width/height)"]
+    end
+
+    RESIZE["Window Resize Event"]
+    FONT["Font Change Event"]
+
+    subgraph PLUGIN["screensize.js Plugin"]
+        MEASURE["measureCharacterDimensions()"]
+        CALC["calculateScreenSize()"]
+        SEND["sendDimensionsToServer()"]
+        HANDLE["handleResize() — debounced"]
+        FONTCHANGE["handleFontChange()"]
+    end
+
+    subgraph SERVER["Evennia Server"]
+        INPUT["inputfuncs.client_options()"]
+        PROTO["session.protocol_flags\nSCREENWIDTH / SCREENHEIGHT"]
+        CMD["Command.client_width()"]
+    end
+
+    BROWSER --> RESIZE & FONT
+    RESIZE --> HANDLE
+    FONT --> FONTCHANGE
+    HANDLE & FONTCHANGE --> MEASURE --> CALC --> SEND
+    SEND -->|"client_options msg"| INPUT --> PROTO --> CMD
 ```
 
 ### Component Design
