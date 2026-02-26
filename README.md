@@ -2,8 +2,7 @@
 
 A text-based multiplayer game built on the [Evennia](https://www.evennia.com/) MUD framework. Gelatinous implements a tactical turn-based combat system with proximity mechanics, grappling, medical trauma simulation, and messaging systems designed to prioritize storytelling.
 
-**Live Instance**: [https://gel.monster](https://gel.monster)  
-**Telnet**: play.gel.monster:23
+**Live Instance**: [https://gel.monster](https://gel.monster)
 
 ## Overview
 
@@ -37,7 +36,7 @@ These attributes drive contested rolls, skill checks, and combat resolution thro
 
 ## Quick Start
 
-**Connect**: [https://gel.monster](https://gel.monster) or `telnet play.gel.monster 23`
+**Connect**: [https://gel.monster](https://gel.monster)
 
 **Local Development**: Requires [Evennia](https://www.evennia.com/docs/latest/Setup/Installation.html). Standard `evennia migrate` and `evennia start` workflow. (Gelatinous does currently make extensive use of a channel called Splattercast which requires manual creation at this time.)
 

@@ -18,6 +18,9 @@ These specs document core game systems that are always active:
 - `THROW_COMMAND_SPEC.md` - Throwing items/characters
 - `WREST_COMMAND_SPEC.md` - Taking items by force
 
+### World Simulation
+- `WORLD_STATE_INTELLIGENCE_SYSTEM_SPEC.md` - Zone-level world state simulation, threat scoring, anomaly detection, and player-facing intelligence terminals (design phase)
+
 ---
 
 ## Optional Specifications (Forum Integration)
@@ -98,7 +101,8 @@ Core Specs (always relevant):
 ├── COMBAT_MESSAGE_FORMAT_SPEC.md
 ├── JUMP_COMMAND_SPEC.md
 ├── THROW_COMMAND_SPEC.md
-└── WREST_COMMAND_SPEC.md
+├── WREST_COMMAND_SPEC.md
+└── WORLD_STATE_INTELLIGENCE_SYSTEM_SPEC.md  ← World simulation & intel (design phase)
 
 Forum Specs (optional - only if using Discourse):
 ├── FORUM_INTEGRATION_GUIDE.md    ← Overview & decision guide
