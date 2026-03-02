@@ -13,6 +13,18 @@ Wire format (GMCP mode):
 
 Each BINARY frame represents one complete output cycle, acting as an
 implicit GA/EOR signal for clients.
+
+Standard GMCP packages handled:
+    Core.Hello          Client identification (name, version)
+    Core.Ping           Latency measurement (echo back)
+    Core.KeepAlive      Reset idle timeout (no response)
+    Core.Supports.Set   Declare supported GMCP modules
+    Core.Supports.Add   Append to supported module list
+    Core.Supports.Remove  Remove from supported module list
+
+Gelatinous-specific packages:
+    Client.Options      Screen dimensions and client capabilities,
+                        translated to Evennia's client_options inputfunc
 """
 
 import json
@@ -54,6 +66,7 @@ class GmcpWebSocketClient(WebSocketClient):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.gmcp_mode = False
+        self.gmcp_supported = {}  # {"Module": version_int, ...}
 
     def onConnect(self, request):
         """
@@ -99,6 +112,11 @@ class GmcpWebSocketClient(WebSocketClient):
             BINARY frames = player command input (UTF-8 text)
             TEXT frames = GMCP messages ("Package.Name json")
 
+        Standard GMCP Core packages are handled directly by this handler.
+        Game-specific GMCP packages are routed through Evennia's inputfunc
+        system. Client.Options is translated to Evennia's client_options
+        inputfunc with flat kwargs for screen size and capability reporting.
+
         In standard mode:
             Delegates to parent (expects JSON ["inputfunc", [args], {kwargs}]).
 
@@ -135,8 +153,103 @@ class GmcpWebSocketClient(WebSocketClient):
             except (json.JSONDecodeError, IndexError):
                 data = {}
 
-            # Route through Evennia's OOB/inputfunc system
+            # Handle standard GMCP Core packages directly
+            if self._handle_gmcp_core(package, data):
+                return
+
+            # Translate Client.Options to Evennia's client_options inputfunc
+            if package == "Client.Options":
+                if isinstance(data, dict):
+                    self.data_in(client_options=[[], data])
+                return
+
+            # Route all other GMCP packages through Evennia's OOB system
             self.data_in(**{package: [[], {"data": data}]})
+
+    def _handle_gmcp_core(self, package, data):
+        """
+        Handle standard GMCP Core.* packages.
+
+        These are protocol-level messages defined by the GMCP standard
+        (IRE/Gammon specs) and are handled directly by the transport
+        layer rather than routed to Evennia's inputfunc system.
+
+        Args:
+            package (str): The GMCP package name (e.g. "Core.Hello").
+            data: The parsed JSON payload.
+
+        Returns:
+            True if the package was handled, False otherwise.
+        """
+        pkg = package.lower()
+
+        if pkg == "core.hello":
+            # Client identification: {"client": "Name", "version": "1.0"}
+            if isinstance(data, dict):
+                client = data.get("client", "Unknown")
+                version = data.get("version", "")
+                name = "{} {}".format(client, version).strip()
+                self.protocol_flags["CLIENTNAME"] = name
+            return True
+
+        if pkg == "core.ping":
+            # Latency measurement: echo back Core.Ping
+            try:
+                self.sendMessage(b"Core.Ping", isBinary=False)
+            except Disconnected:
+                pass
+            return True
+
+        if pkg == "core.keepalive":
+            # Idle timeout reset: no response needed, the message
+            # receipt itself resets the connection timeout
+            return True
+
+        if pkg == "core.supports.set":
+            # Replace supported module list
+            self.gmcp_supported = self._parse_supports(data)
+            return True
+
+        if pkg == "core.supports.add":
+            # Append to supported module list
+            self.gmcp_supported.update(self._parse_supports(data))
+            return True
+
+        if pkg == "core.supports.remove":
+            # Remove from supported module list
+            for entry in (data if isinstance(data, list) else []):
+                if isinstance(entry, str):
+                    module = entry.split()[0]
+                    self.gmcp_supported.pop(module, None)
+            return True
+
+        return False
+
+    @staticmethod
+    def _parse_supports(data):
+        """
+        Parse a Core.Supports.Set/Add payload into a dict.
+
+        The payload is an array of strings like ["Char 1", "Room 1"].
+        Each string is a module name followed by a version number.
+
+        Args:
+            data: The parsed JSON payload (expected to be a list).
+
+        Returns:
+            dict: Mapping of module name to version integer.
+        """
+        result = {}
+        for entry in (data if isinstance(data, list) else []):
+            if isinstance(entry, str):
+                parts = entry.split()
+                module = parts[0]
+                try:
+                    version = int(parts[1]) if len(parts) > 1 else 1
+                except (ValueError, IndexError):
+                    version = 1
+                result[module] = version
+        return result
 
     def send_text(self, *args, **kwargs):
         """

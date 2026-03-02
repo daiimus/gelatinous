@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+    <title>{{ game_name }}</title>
+
+    <link rel="stylesheet" href="{% static 'webclient/css/webclient.css' %}">
+    <link rel="icon" type="image/x-icon" href="{% static 'website/images/evennia_logo.png' %}">
+
+    <script>
+        // Template variables injected by Django
+        {% if websocket_url %}
+            var wsurl = "{{ websocket_url }}";
+        {% else %}
+            var wsurl = "ws://" + location.hostname + ":{{ websocket_port }}";
+        {% endif %}
+
+        {% if browser_sessid %}
+            var csessid = "{{ browser_sessid }}";
+        {% else %}
+            var csessid = false;
+        {% endif %}
+
+        // Generate a low-quality UID to uniquely identify client tabs
+        var cuid = Math.random().toString(36).substring(2, 15)
+                 + Math.random().toString(36).substring(2, 15);
+    </script>
+
+    <!-- ansi_up v6.0.6: ANSI escape code to HTML renderer (self-hosted).
+         v6 uses ES module export, so we import it and expose as a global. -->
+    <script type="module">
+        import { AnsiUp } from "{% static 'webclient/js/ansi_up.js' %}";
+        window.AnsiUp = AnsiUp;
+        window.dispatchEvent(new Event("ansi_up_ready"));
+    </script>
+
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    {% block body %}{% endblock %}
+</body>
+</html>

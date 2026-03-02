@@ -1,0 +1,45 @@
+{% extends "webclient/base.html" %}
+{% load static %}
+
+{% block body %}
+
+<div id="app">
+    <!-- Status bar -->
+    <div id="status-bar">
+        <span class="game-name">{{ game_name }}</span>
+        <div class="connection-state">
+            <span id="latency" class="latency"></span>
+            <span id="state-text">Disconnected</span>
+            <span id="state-dot" class="state-dot disconnected"></span>
+        </div>
+    </div>
+
+    <!-- Output area -->
+    <div id="output">
+        <div id="output-inner"></div>
+        <div id="scroll-sentinel"></div>
+        <div id="more-indicator">-- MORE --</div>
+    </div>
+
+    <!-- Input area -->
+    <div id="input-area">
+        <textarea id="input-field"
+                  rows="1"
+                  placeholder="Enter command..."
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"></textarea>
+        <button id="send-btn" type="button" aria-label="Send">&gt;</button>
+    </div>
+</div>
+
+<!-- Reconnect overlay -->
+<div id="reconnect-overlay">
+    <span id="reconnect-msg" class="reconnect-msg"></span>
+    <span id="reconnect-detail" class="reconnect-detail"></span>
+</div>
+
+<script src="{% static 'webclient/js/gel.js' %}"></script>
+
+{% endblock %}

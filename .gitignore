@@ -5,7 +5,9 @@ server/*.pid
 server/logs/*
 !server/logs/.gitkeep
 server/.static/
-web/static/
+# Ignore collected/third-party static files but track our webclient source
+web/static/*
+!web/static/webclient/
 world/__pycache__/
 typeclasses/__pycache__/
 commands/__pycache__/

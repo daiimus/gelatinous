@@ -1,0 +1,335 @@
+/*
+ * Gelatinous Web Client -- Terminal/Brutalist Corporate theme
+ *
+ * Mobile-first layout using CSS grid and 100dvh.
+ * Color palette from the Gelatinous website design language.
+ * No Bootstrap, no jQuery, no frameworks.
+ */
+
+/* ----------------------------------------------------------------
+   Custom properties
+   ---------------------------------------------------------------- */
+:root {
+    --bg-dark: #1a1a1a;
+    --bg-medium: #2a2a2a;
+    --bg-light: #3a3a3a;
+    --green: #5fd38d;
+    --green-dim: #4a9d6d;
+    --text: #e0e0e0;
+    --text-muted: #999999;
+    --yellow: #e6c547;
+    --red: #e85555;
+    --border: #404040;
+    --glow: rgba(95, 211, 141, 0.3);
+
+    --font-mono: "Courier New", Consolas, "Liberation Mono", monospace;
+    --font-size: 14px;
+    --line-height: 1.4;
+}
+
+/* ----------------------------------------------------------------
+   Reset & base
+   ---------------------------------------------------------------- */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--bg-dark);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+    -webkit-text-size-adjust: 100%;
+}
+
+/* ----------------------------------------------------------------
+   App shell -- 3-row CSS grid
+   ---------------------------------------------------------------- */
+#app {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+/* ----------------------------------------------------------------
+   Status bar (top)
+   ---------------------------------------------------------------- */
+#status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 10px;
+    background: var(--bg-medium);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+    user-select: none;
+    -webkit-user-select: none;
+    min-height: 28px;
+    flex-shrink: 0;
+}
+
+#status-bar .game-name {
+    font-weight: bold;
+    color: var(--green);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+#status-bar .connection-state {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#status-bar .state-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: background 0.3s ease;
+}
+
+#status-bar .state-dot.connected {
+    background: var(--green);
+    box-shadow: 0 0 4px var(--glow);
+}
+
+#status-bar .state-dot.connecting {
+    background: var(--yellow);
+    animation: pulse 1.2s ease-in-out infinite;
+}
+
+#status-bar .state-dot.disconnected {
+    background: var(--red);
+}
+
+#status-bar .latency {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* ----------------------------------------------------------------
+   Output area (middle)
+   ---------------------------------------------------------------- */
+#output {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 10px;
+    background: var(--bg-dark);
+    scroll-behavior: auto;
+    /* overscroll-behavior prevents pull-to-refresh on mobile */
+    overscroll-behavior: contain;
+}
+
+#output-inner {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    font-family: var(--font-mono);
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+    color: var(--text);
+}
+
+/* Auto-scroll sentinel -- invisible element at the bottom */
+#scroll-sentinel {
+    height: 1px;
+    width: 1px;
+}
+
+/* MORE indicator when scrolled up */
+#more-indicator {
+    position: sticky;
+    bottom: 0;
+    display: none;
+    text-align: center;
+    padding: 2px 0;
+    background: linear-gradient(transparent, var(--bg-dark) 40%);
+    color: var(--yellow);
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#more-indicator.visible {
+    display: block;
+}
+
+/* Custom scrollbar (Firefox + WebKit) */
+#output {
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-light) var(--bg-dark);
+}
+#output::-webkit-scrollbar {
+    width: 6px;
+}
+#output::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+}
+#output::-webkit-scrollbar-thumb {
+    background: var(--bg-light);
+    border-radius: 3px;
+}
+#output::-webkit-scrollbar-thumb:hover {
+    background: var(--border);
+}
+
+/* ----------------------------------------------------------------
+   Reconnect overlay
+   ---------------------------------------------------------------- */
+#reconnect-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--text);
+    font-size: 14px;
+}
+
+#reconnect-overlay.visible {
+    display: flex;
+}
+
+#reconnect-overlay .reconnect-msg {
+    color: var(--yellow);
+    font-weight: bold;
+}
+
+#reconnect-overlay .reconnect-detail {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+/* ----------------------------------------------------------------
+   Input area (bottom)
+   ---------------------------------------------------------------- */
+#input-area {
+    display: flex;
+    align-items: flex-end;
+    gap: 0;
+    padding: 6px 8px;
+    background: var(--bg-medium);
+    border-top: 1px solid var(--border);
+    /* Safe area for notched phones */
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    flex-shrink: 0;
+}
+
+#input-field {
+    flex: 1;
+    resize: none;
+    overflow-y: auto;
+    min-height: 36px;
+    max-height: 120px;   /* ~4 lines */
+    padding: 7px 10px;
+    background: var(--bg-light);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    /* Use max() to prevent iOS zoom on focus (needs >= 16px) */
+    font-size: max(var(--font-size), 16px);
+    line-height: var(--line-height);
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+#input-field:focus {
+    border-color: var(--green-dim);
+}
+
+#input-field::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+#send-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    margin-left: 6px;
+    background: transparent;
+    color: var(--green-dim);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#send-btn:hover,
+#send-btn:active {
+    color: var(--green);
+    border-color: var(--green-dim);
+}
+
+/* ----------------------------------------------------------------
+   Mobile adjustments
+   ---------------------------------------------------------------- */
+@media (max-width: 600px) {
+    :root {
+        --font-size: 13px;
+    }
+
+    #status-bar {
+        padding: 3px 8px;
+        font-size: 11px;
+    }
+
+    #output {
+        padding: 6px 8px;
+    }
+
+    #input-area {
+        padding: 4px 6px;
+        padding-bottom: max(4px, env(safe-area-inset-bottom));
+    }
+}
+
+/* ----------------------------------------------------------------
+   System messages (connection info, errors)
+   ---------------------------------------------------------------- */
+.sys-msg {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.sys-msg.error {
+    color: var(--red);
+}
+
+.sys-msg.success {
+    color: var(--green);
+}
+
+.sys-msg.warning {
+    color: var(--yellow);
+}
