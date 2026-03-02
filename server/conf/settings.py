@@ -65,6 +65,11 @@ WEBCLIENT_ENABLED = True
 # CloudFlare handles SSL termination and proxies to backend port 4002
 WEBSOCKET_CLIENT_URL = "wss://gel.monster:8443"
 
+# Custom WebSocket protocol handler that speaks GMCP wire format when the
+# client negotiates the gmcp.mudstandards.org subprotocol, and falls back
+# to standard Evennia JSON protocol for browser webclient connections.
+WEBSOCKET_PROTOCOL_CLASS = "server.conf.gmcp_websocket.GmcpWebSocketClient"
+
 # Default exit typeclass
 DEFAULT_EXIT_TYPECLASS = "typeclasses.exits.Exit"
 
