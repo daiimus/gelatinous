@@ -56,8 +56,7 @@
     var connected = false;
     var reconnectAttempts = 0;
     var reconnectTimer = null;
-    var keepAliveTimer = null;
-    var pingTimer = null;
+    var timerWorker = null;    // Web Worker for throttle-proof timers
     var pingTimestamp = 0;
     var resizeTimer = null;
 
@@ -278,30 +277,61 @@
     };
 
     // ----------------------------------------------------------------
-    // Keep-alive & ping
+    // Keep-alive & ping via Web Worker
+    //
+    // Browsers aggressively throttle setInterval in background tabs
+    // (Firefox/Safari clamp to >= 1min, may suspend entirely).
+    // A Web Worker's timers run unthrottled regardless of tab visibility,
+    // so we use one as a reliable clock and handle the sends on the
+    // main thread where the WebSocket lives.
     // ----------------------------------------------------------------
 
+    function createTimerWorker() {
+        var code =
+            "var timers = {};" +
+            "onmessage = function(e) {" +
+            "  if (e.data.cmd === 'start') {" +
+            "    if (timers[e.data.id]) clearInterval(timers[e.data.id]);" +
+            "    timers[e.data.id] = setInterval(function() {" +
+            "      postMessage({ id: e.data.id });" +
+            "    }, e.data.ms);" +
+            "  } else if (e.data.cmd === 'stop') {" +
+            "    clearInterval(timers[e.data.id]);" +
+            "    delete timers[e.data.id];" +
+            "  } else if (e.data.cmd === 'stopall') {" +
+            "    for (var k in timers) clearInterval(timers[k]);" +
+            "    timers = {};" +
+            "  }" +
+            "};";
+        var blob = new Blob([code], { type: "application/javascript" });
+        var worker = new Worker(URL.createObjectURL(blob));
+        worker.onmessage = function (e) {
+            if (e.data.id === "keepalive") {
+                sendGMCP("Core.KeepAlive");
+            } else if (e.data.id === "ping") {
+                doPing();
+            }
+        };
+        return worker;
+    }
+
     function startKeepAlive() {
-        stopKeepAlive();
-        keepAliveTimer = setInterval(function () {
-            sendGMCP("Core.KeepAlive");
-        }, KEEPALIVE_MS);
+        if (!timerWorker) return;
+        timerWorker.postMessage({ cmd: "start", id: "keepalive", ms: KEEPALIVE_MS });
     }
 
     function stopKeepAlive() {
-        if (keepAliveTimer) {
-            clearInterval(keepAliveTimer);
-            keepAliveTimer = null;
-        }
+        if (!timerWorker) return;
+        timerWorker.postMessage({ cmd: "stop", id: "keepalive" });
     }
 
     function startPingProbe() {
-        stopPingProbe();
+        if (!timerWorker) return;
         // Initial ping after short delay
         setTimeout(function () {
             doPing();
         }, 3000);
-        pingTimer = setInterval(doPing, PING_INTERVAL_MS);
+        timerWorker.postMessage({ cmd: "start", id: "ping", ms: PING_INTERVAL_MS });
     }
 
     function doPing() {
@@ -311,16 +341,40 @@
     }
 
     function stopPingProbe() {
-        if (pingTimer) {
-            clearInterval(pingTimer);
-            pingTimer = null;
+        if (timerWorker) {
+            timerWorker.postMessage({ cmd: "stop", id: "ping" });
         }
         pingTimestamp = 0;
     }
 
     function stopTimers() {
-        stopKeepAlive();
-        stopPingProbe();
+        if (timerWorker) {
+            timerWorker.postMessage({ cmd: "stopall" });
+        }
+        pingTimestamp = 0;
+    }
+
+    // Fallback when Web Workers are unavailable: same interface, main-thread timers
+    function createFallbackTimers() {
+        var timers = {};
+        var handlers = {
+            keepalive: function () { sendGMCP("Core.KeepAlive"); },
+            ping: function () { doPing(); }
+        };
+        return {
+            postMessage: function (msg) {
+                if (msg.cmd === "start") {
+                    if (timers[msg.id]) clearInterval(timers[msg.id]);
+                    timers[msg.id] = setInterval(handlers[msg.id], msg.ms);
+                } else if (msg.cmd === "stop") {
+                    clearInterval(timers[msg.id]);
+                    delete timers[msg.id];
+                } else if (msg.cmd === "stopall") {
+                    for (var k in timers) clearInterval(timers[k]);
+                    timers = {};
+                }
+            }
+        };
     }
 
     // ----------------------------------------------------------------
@@ -567,6 +621,20 @@
         ansi = new AnsiUp();
         ansi.use_classes = false;  // inline styles, zero-maintenance xterm-256
         ansi.escape_html = true;   // XSS trust boundary: escape HTML in game text
+
+        // Create Web Worker for throttle-proof timers (keepalive, ping).
+        // Falls back to main-thread setInterval if Workers are unavailable.
+        if (typeof Worker !== "undefined") {
+            try {
+                timerWorker = createTimerWorker();
+            } catch (_) {
+                timerWorker = null;
+            }
+        }
+        if (!timerWorker) {
+            // Fallback: main-thread timers (will be throttled in background tabs)
+            timerWorker = createFallbackTimers();
+        }
 
         setupScrollObserver();
         setConnectionState("disconnected");

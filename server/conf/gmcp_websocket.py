@@ -63,6 +63,14 @@ class GmcpWebSocketClient(WebSocketClient):
     Standard mode delegates entirely to the parent WebSocketClient.
     """
 
+    # WebSocket-level auto-ping: keeps connections alive through proxies
+    # and detects dead links. These class-level attributes are read by
+    # autobahn's _connectionMade() before the factory defaults are applied
+    # (autobahn skips factory copy when the attribute already exists).
+    # The ping timer starts in succeedHandshake(), before onOpen().
+    autoPingInterval = 30   # send WebSocket PING frame every 30s
+    autoPingTimeout = 10    # drop connection if no PONG within 10s
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.gmcp_mode = False
