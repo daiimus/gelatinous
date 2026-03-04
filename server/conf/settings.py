@@ -138,6 +138,73 @@ DISCOURSE_SSO_SECRET = ""
 DEBUG = False
 
 ######################################################################
+# Logging Configuration
+######################################################################
+
+import os as _os
+
+# Django LOGGING dict for the web layer (SSO, character views, API, etc.)
+# Evennia's core server/portal logs use Twisted's logging system and are
+# unaffected by this configuration.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": "django.utils.log.ServerFormatter",
+            "format": "{levelname} {name} {message}",
+            "style": "{",
+        },
+        "verbose": {
+            "format": "{asctime} {levelname} {name} {module}.{funcName}:{lineno} {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "django_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": _os.path.join(GAME_DIR, "server", "logs", "django.log"),
+            "maxBytes": 5 * 1024 * 1024,  # 5 MB
+            "backupCount": 3,
+            "formatter": "verbose",
+        },
+        "console": {
+            "level": "WARNING",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        # Django framework logs
+        "django": {
+            "handlers": ["django_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Django request handling (4xx/5xx errors)
+        "django.request": {
+            "handlers": ["django_file", "console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # Game web views (SSO, character API, etc.)
+        "web": {
+            "handlers": ["django_file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Evennia's own Python logging (some modules use stdlib logging)
+        "evennia": {
+            "handlers": ["django_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
+######################################################################
 # Settings given in secret_settings.py override those in this file.
 ######################################################################
 try:

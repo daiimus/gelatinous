@@ -12,7 +12,7 @@ from django.shortcuts import render
 from django.views.decorators.cache import cache_control
 
 
-@cache_control(max_age=300, public=True)  # Cache for 5 minutes
+@cache_control(max_age=300, private=True)  # Cache for 5 minutes, private to prevent shared cache leaking auth state
 def header_only(request):
     """
     Render just the navbar for iframe embedding on external sites.

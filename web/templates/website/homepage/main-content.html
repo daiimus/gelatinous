@@ -6,18 +6,6 @@
     in a place where resurrection is just another service industry.
 </p>
 
-{% if telnet_enabled %}
-<p>
-    <strong>Connect via Telnet:</strong> {{ server_hostname }}, port
-    {% for port in telnet_ports %}
-    {% if not forloop.first and forloop.last %} or
-    {% elif forloop.counter != 1 %},
-    {% endif %}
-    {{ port }}
-    {% endfor %}
-</p>
-{% endif %}
-
 <hr/>
 
 <p>

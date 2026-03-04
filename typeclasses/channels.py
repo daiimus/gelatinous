@@ -33,7 +33,7 @@ class Channel(DefaultChannel):
       in front of every channel message; use `{channelmessage}` token to insert the
       name of the current channel. Set to `None` if you want no prefix (or want to
       handle it in a hook during message generation instead.
-    - `channel_msg_nick_pattern`(str, default `"{alias}\s*?|{alias}\s+?(?P<arg1>.+?)") -
+    - `channel_msg_nick_pattern`(str, default `"{alias}\\s*?|{alias}\\s+?(?P<arg1>.+?)") -
       this is what used when a channel subscriber gets a channel nick assigned to this
       channel. The nickhandler uses the pattern to pick out this channel's name from user
       input. The `{alias}` token will get both the channel's key and any set/custom aliases
