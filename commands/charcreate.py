@@ -321,16 +321,10 @@ def create_flash_clone(account, old_character):
     # Build name using death_count as Roman numeral source
     new_name = build_name_from_death_count(old_character.key, old_death_count)
     
-    # CRITICAL: Remove the old archived character from account.characters
-    # This is necessary because MAX_NR_CHARACTERS=1, and we need to replace the old char
-    if old_character in account.characters:
-        account.characters.remove(old_character)
-        try:
-            from evennia.comms.models import ChannelDB
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
-            splattercast.msg(f"FLASH_CLONE: Removed {old_character.key} from {account.key}'s characters")
-        except:
-            pass
+    # NOTE: We do NOT remove old_character from account.characters here.
+    # check_available_slots() excludes archived characters from the count,
+    # so the slot check passes with the archived char still in the list.
+    # Keeping it ensures archived characters appear on the manage sleeves page.
     
     # Use Evennia's proper character creation method
     char, errors = account.create_character(
