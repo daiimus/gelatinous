@@ -1,6 +1,7 @@
 *.pyc
 __pycache__/
 server/*.db3
+server/*.db3.backup-*
 server/*.pid
 server/logs/*
 !server/logs/.gitkeep
