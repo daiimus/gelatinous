@@ -7,7 +7,7 @@ so it can reroute to all website pages.
 """
 
 from django.urls import path
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
 
 from evennia.web.website.urls import urlpatterns as evennia_website_urlpatterns
 from web.website.views.characters import (
@@ -27,6 +27,9 @@ from web.website.views.header_only import header_only
 
 # Override default character creation, account registration, and other views
 urlpatterns = [
+    # robots.txt - served as plain text for search engine crawlers
+    path("robots.txt", TemplateView.as_view(template_name="robots.txt", content_type="text/plain"), name="robots-txt"),
+
     # Forum redirect - gel.monster/forum/ -> forum.gel.monster
     path("forum/", RedirectView.as_view(url="https://forum.gel.monster", permanent=False), name="forum-redirect"),
     

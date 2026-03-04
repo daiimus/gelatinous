@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Allow: /help/
+
+Disallow: /admin/
+Disallow: /webclient/
+Disallow: /characters/
+Disallow: /channels/
+Disallow: /sso/
+Disallow: /header-only/
+Disallow: /auth/logout/
+Disallow: /auth/password_change/
+Disallow: /auth/reset/
+Disallow: /tbi/
+Disallow: /forum/
