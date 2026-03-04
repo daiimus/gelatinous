@@ -508,8 +508,10 @@
     function submitInput() {
         var text = elInput.value;
         if (text === "") {
-            // Send empty command (some MUDs use this to repeat or confirm)
-            sendCommand("");
+            // Send newline for blank Enter -- a zero-length binary frame may be
+            // silently dropped by the WebSocket transport.  A newline matches
+            // what telnet sends; the server strips it to "" before forwarding.
+            sendCommand("\n");
             return;
         }
 
