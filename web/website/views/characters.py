@@ -46,7 +46,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         
         # Check for respawn scenario FIRST (before max character check)
         # This allows respawn even when at 0 active characters
-        if hasattr(account, 'db') and hasattr(account.db, 'last_character') and account.db.last_character:
+        if hasattr(account, 'db') and account.db.last_character:
             old_char = account.db.last_character
             
             # Validate that last_character is actually dead/archived and eligible for respawn
@@ -56,7 +56,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 _ = old_char.key
                 
                 # Check if character is actually archived/dead (default False for legacy)
-                is_archived = getattr(old_char.db, 'archived', False)
+                is_archived = old_char.db.archived or False
                 
                 # If not archived, they're alive - clear last_character and proceed to normal creation
                 if not is_archived:
@@ -75,7 +75,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             # Defensive check - ensure character and db are accessible
             if not char or not hasattr(char, 'db'):
                 continue
-            archived = getattr(char.db, 'archived', False)
+            archived = char.db.archived or False
             if not archived:
                 active_characters.append(char)
         
@@ -125,28 +125,11 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 # Test if we can access the character (it might be deleted/invalid)
                 _ = old_character.key
                 
-                # Safely check GRIM stats (with defaults for legacy characters)
-                grit = getattr(old_character, 'grit', 75)
-                resonance = getattr(old_character, 'resonance', 75)
-                intellect = getattr(old_character, 'intellect', 75)
-                motorics = getattr(old_character, 'motorics', 75)
+                # GRIM stats and sex are AttributeProperty with autocreate=True,
+                # so they always exist on Character instances - no need to check/set.
                 
-                # Set attributes if they don't exist (legacy character fix)
-                if not hasattr(old_character, 'grit'):
-                    old_character.grit = grit
-                if not hasattr(old_character, 'resonance'):
-                    old_character.resonance = resonance
-                if not hasattr(old_character, 'intellect'):
-                    old_character.intellect = intellect
-                if not hasattr(old_character, 'motorics'):
-                    old_character.motorics = motorics
-                
-                # Ensure old character has sex attribute (legacy data fix)
-                if not hasattr(old_character, 'sex'):
-                    old_character.sex = 'ambiguous'
-                
-                # Ensure archived attribute exists
-                if not hasattr(old_character.db, 'archived'):
+                # Ensure archived attribute exists (db attribute, not AttributeProperty)
+                if old_character.db.archived is None:
                     old_character.db.archived = False  # Legacy characters were active when they died
                     
             except (AttributeError, TypeError, Exception) as e:
@@ -161,6 +144,10 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             'templates': templates,
             'old_character': old_character,
         }
+        
+        # Persist templates in Django session so POST receives the same ones
+        # Templates are dicts of basic types (str, int), so JSON-serializable
+        request.session['respawn_templates'] = templates
         
         return render(request, 'website/character_respawn_create.html', context)
     
@@ -201,9 +188,11 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 
             else:
                 # Create from template
-                # Regenerate templates (they're not persisted between requests)
-                from commands.charcreate import generate_random_template
-                templates = [generate_random_template() for _ in range(3)]
+                # Retrieve templates from session (persisted during GET)
+                templates = request.session.get('respawn_templates')
+                if not templates:
+                    messages.error(request, "Session expired. Please try again.")
+                    return HttpResponseRedirect(reverse_lazy('character-create'))
                 
                 template_idx = int(choice.split('_')[1])
                 if template_idx >= len(templates):
@@ -225,8 +214,13 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             # WEB-CREATED CHARACTERS: Make invisible until puppeted
             # Set location to None (standard Evennia unpuppet behavior)
             # This makes them invisible in room until first puppet/login
-            # Save current location for restoration during at_pre_puppet
-            character.db.prelogout_location = character.location
+            # Save spawn location for restoration during at_pre_puppet
+            from evennia.objects.models import ObjectDB
+            from django.conf import settings as django_settings
+            spawn_location = ObjectDB.objects.get_id(django_settings.START_LOCATION)
+            if not spawn_location:
+                spawn_location = character.location  # Fallback to creation location
+            character.db.prelogout_location = spawn_location
             character.location = None
             
             # Debug logging
@@ -244,6 +238,9 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             # Clear last_character after successful respawn
             # (archive_character() will set it again when this character is archived)
             account.db.last_character = None
+            
+            # Clean up session data
+            request.session.pop('respawn_templates', None)
             
             return HttpResponseRedirect(self.success_url)
             
@@ -266,8 +263,8 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         # user-friendly validation before the character creation attempt.
         active_characters = []
         for char in account.characters:
-            # Access archived status via db.archived (shorthand for attributes)
-            archived = char.db.archived if hasattr(char.db, 'archived') else False
+            # Access archived status via db.archived (returns None if unset)
+            archived = char.db.archived or False
             if not archived:
                 active_characters.append(char)
         
@@ -289,14 +286,25 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         description = form.cleaned_data.get('desc', '')
         sex = form.cleaned_data['sex']
         
-        # Get START_LOCATION for character spawn point
+        # Get locations: create at Limbo (#2) staging area, spawn at START_LOCATION
         from django.conf import settings
         from evennia.objects.models import ObjectDB
-        start_location = ObjectDB.objects.get_id(settings.START_LOCATION)
+        from evennia import search_object
+        
+        # Creation location: Limbo (#2) as safe staging area
+        try:
+            creation_location = search_object("#2")[0]
+        except (IndexError, AttributeError):
+            creation_location = None
+        
+        # Spawn location: where the character will appear on first puppet
+        spawn_location = ObjectDB.objects.get_id(settings.START_LOCATION)
+        if not spawn_location:
+            spawn_location = creation_location  # Fallback to Limbo
         
         # Create character using typeclass.create() - returns (character, errors)
         character, errors = self.typeclass.create(
-            charname, account, description=description, location=start_location, home=start_location
+            charname, account, description=description, location=creation_location, home=creation_location
         )
         
         if errors:
@@ -328,8 +336,8 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             # WEB-CREATED CHARACTERS: Make invisible until puppeted
             # Set location to None (standard Evennia unpuppet behavior)
             # This makes them invisible in room until first puppet/login
-            # Save current location for restoration during at_pre_puppet
-            character.db.prelogout_location = character.location
+            # Save spawn location for restoration during at_pre_puppet
+            character.db.prelogout_location = spawn_location
             character.location = None
             
             # Debug logging
@@ -485,11 +493,11 @@ class OwnerOnlyCharacterDetailView(EvenniaCharacterDetailView):
         # Import the descriptor function
         from commands.CmdCharacter import get_stat_descriptor
         
-        # Get stat descriptors
-        grit = getattr(character, 'grit', 0)
-        resonance = getattr(character, 'resonance', 0)
-        intellect = getattr(character, 'intellect', 0)
-        motorics = getattr(character, 'motorics', 0)
+        # Get stat descriptors (AttributeProperty with autocreate=True, always exist)
+        grit = character.grit
+        resonance = character.resonance
+        intellect = character.intellect
+        motorics = character.motorics
         
         context['grit_descriptor'] = get_stat_descriptor('grit', grit)
         context['resonance_descriptor'] = get_stat_descriptor('resonance', resonance)

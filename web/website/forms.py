@@ -152,12 +152,23 @@ class CharacterForm(EvenniaCharacterForm):
     
     def clean(self):
         """
-        Validate that GRIM stats total exactly 300 points.
+        Validate that GRIM stats total exactly 300 points and name is unique.
         
         IntegerField automatically converts values to int during field cleaning,
         so by the time we get here, values should already be integers.
         """
         cleaned_data = super().clean()
+        
+        # Check name uniqueness (matching MUD path's validate_name() logic)
+        first_name = cleaned_data.get('first_name')
+        last_name = cleaned_data.get('last_name')
+        if first_name and last_name:
+            full_name = f"{first_name} {last_name}"
+            from typeclasses.characters import Character
+            if Character.objects.filter(db_key__iexact=full_name).exists():
+                raise forms.ValidationError(
+                    f"The name '{full_name}' is already taken. Please choose a different name."
+                )
         
         # IntegerField should have already converted these to int
         # If a field failed validation, it won't be in cleaned_data

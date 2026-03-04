@@ -352,12 +352,12 @@ def create_flash_clone(account, old_character):
     
     # INHERIT: Appearance
     char.db.desc = old_character.db.desc
-    if hasattr(old_character, 'longdesc') and old_character.longdesc:
+    if old_character.longdesc:
         char.longdesc = dict(old_character.longdesc)  # Copy dictionary
     
     # INHERIT: Biology
     char.sex = old_character.sex
-    if hasattr(old_character.db, 'skintone'):
+    if old_character.db.skintone is not None:
         char.db.skintone = old_character.db.skintone
     
     # Debug: Verify sex was inherited correctly
@@ -378,8 +378,8 @@ def create_flash_clone(account, old_character):
     char.db.previous_clone_dbref = old_character.dbref
     
     # Stack ID (consciousness identifier)
-    old_stack_id = getattr(old_character.db, 'stack_id', None)
-    if old_stack_id:
+    old_stack_id = old_character.db.stack_id
+    if old_stack_id is not None:
         char.db.stack_id = old_stack_id
     else:
         # Create new stack ID if old char didn't have one
@@ -395,27 +395,45 @@ def create_flash_clone(account, old_character):
 
 def get_start_location():
     """
-    Get the starting location for new characters.
+    Get the staging location where characters are initially created.
+    
+    Characters are created in Limbo (#2) as a safe staging area,
+    then teleported to the spawn location on creation completion.
     
     Returns:
-        Room: Starting location object
+        Room: Limbo (#2) or None as last resort
     """
     from evennia import search_object
     
-    # Try START_LOCATION from settings
-    start_location_id = getattr(settings, 'START_LOCATION', None)
-    if start_location_id:
-        try:
-            start_location = search_object(f"#{start_location_id}")[0]
-            return start_location
-        except (IndexError, AttributeError):
-            pass
-    
-    # Fallback to Limbo (#2)
     try:
         return search_object("#2")[0]
     except (IndexError, AttributeError):
-        # Last resort - just return None and let Evennia handle it
+        return None
+
+
+def get_spawn_location():
+    """
+    Get the in-game spawn location where characters appear after creation.
+    
+    Uses START_LOCATION from settings (e.g. "#1989" for Thawn-Harrison
+    Cryogenics). Falls back to Limbo (#2) if not configured or not found.
+    
+    Returns:
+        Room: Spawn location object
+    """
+    from evennia.objects.models import ObjectDB
+    
+    start_location_setting = getattr(settings, 'START_LOCATION', None)
+    if start_location_setting:
+        spawn = ObjectDB.objects.get_id(start_location_setting)
+        if spawn:
+            return spawn
+    
+    # Fallback to Limbo (#2)
+    from evennia import search_object
+    try:
+        return search_object("#2")[0]
+    except (IndexError, AttributeError):
         return None
 
 
@@ -437,7 +455,11 @@ def _charcreate_exit_callback(caller, menu):
     
     # No active characters - they exited without completing
     # Disconnect them so they restart character creation on reconnect
-    caller.sessions.all()[0].sessionhandler.disconnect(caller.sessions.all()[0], reason="|ySleeve decantation incomplete. Please reconnect to try again.|n")
+    sessions = caller.sessions.all()
+    if not sessions:
+        # Already disconnected (e.g. connection dropped during menu)
+        return
+    sessions[0].sessionhandler.disconnect(sessions[0], reason="|ySleeve decantation incomplete. Please reconnect to try again.|n")
 
 
 def start_character_creation(account, is_respawn=False, old_character=None):
@@ -634,6 +656,11 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
         # Puppet the new character
         caller.puppet_object(caller.sessions.all()[0], char)
         
+        # Teleport from Limbo staging area to spawn location
+        spawn_location = get_spawn_location()
+        if spawn_location and spawn_location != char.location:
+            char.move_to(spawn_location, quiet=True)
+        
         # Send welcome message
         char.msg("|g╔════════════════════════════════════════════════════════════════╗")
         char.msg("|g║  CONSCIOUSNESS TRANSFER COMPLETE                               ║")
@@ -645,6 +672,9 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
         char.msg("|yYou open your eyes in an unfamiliar body.|n")
         char.msg("|yThe memories feel... borrowed. But they're yours now.|n")
         char.msg("")
+        
+        # Clear last_character after successful respawn (matches web path behavior)
+        caller.db.last_character = None
         
         # Clean up
         _cleanup_charcreate_ndb(caller)
@@ -679,6 +709,11 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
         # Puppet the new character
         caller.puppet_object(caller.sessions.all()[0], char)
         
+        # Teleport from Limbo staging area to spawn location
+        spawn_location = get_spawn_location()
+        if spawn_location and spawn_location != char.location:
+            char.move_to(spawn_location, quiet=True)
+        
         # Send welcome message
         # Use AttributeProperty to access the correct categorized attribute
         death_count = char.death_count
@@ -707,6 +742,9 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
         char.msg("")
         char.msg(f"|wPrevious cause of death:|n |r{old_char.db.death_cause or 'Unknown'}|n")
         char.msg("")
+        
+        # Clear last_character after successful respawn (matches web path behavior)
+        caller.db.last_character = None
         
         # Clean up
         _cleanup_charcreate_ndb(caller)
@@ -1131,6 +1169,11 @@ def first_char_finalize(caller, raw_string, **kwargs):
         
         # Puppet the character
         caller.puppet_object(caller.sessions.all()[0], char)
+        
+        # Teleport from Limbo staging area to spawn location
+        spawn_location = get_spawn_location()
+        if spawn_location and spawn_location != char.location:
+            char.move_to(spawn_location, quiet=True)
         
         # Send welcome message
         char.msg("|g╔════════════════════════════════════════════════════════════════╗")
