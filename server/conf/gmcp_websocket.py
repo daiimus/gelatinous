@@ -142,8 +142,7 @@ class GmcpWebSocketClient(WebSocketClient):
                 text = payload.decode("utf-8").strip()
             except UnicodeDecodeError:
                 return
-            if text:
-                self.data_in(text=[[text], {}])
+            self.data_in(text=[[text], {}])
         else:
             # GMCP message from client: "Package.Name optional_json"
             try:
