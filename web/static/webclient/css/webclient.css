@@ -22,7 +22,7 @@
     --border: #404040;
     --glow: rgba(95, 211, 141, 0.3);
 
-    --font-mono: "Courier New", Consolas, "Liberation Mono", monospace;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     --font-size: 14px;
     --line-height: 1.4;
 }
@@ -49,48 +49,37 @@ html, body {
 }
 
 /* ----------------------------------------------------------------
-   App shell -- 3-row CSS grid
+   App shell -- 2-row CSS grid
    ---------------------------------------------------------------- */
 #app {
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: 1fr auto;
     height: 100vh;
     height: 100dvh;
     overflow: hidden;
 }
 
 /* ----------------------------------------------------------------
-   Status bar (top)
+   Connection state (floating in output area)
    ---------------------------------------------------------------- */
-#status-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 4px 10px;
-    background: var(--bg-medium);
-    border-bottom: 1px solid var(--border);
-    font-size: 12px;
-    color: var(--text-muted);
-    user-select: none;
-    -webkit-user-select: none;
-    min-height: 28px;
-    flex-shrink: 0;
-}
-
-#status-bar .game-name {
-    font-weight: bold;
-    color: var(--green);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-}
-
-#status-bar .connection-state {
+#connection-state {
+    position: sticky;
+    top: 0;
+    float: right;
     display: flex;
     align-items: center;
     gap: 6px;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-dark);
+    border-radius: 0 0 0 3px;
+    user-select: none;
+    -webkit-user-select: none;
+    z-index: 1;
 }
 
-#status-bar .state-dot {
+#connection-state .state-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
@@ -98,21 +87,21 @@ html, body {
     transition: background 0.3s ease;
 }
 
-#status-bar .state-dot.connected {
+#connection-state .state-dot.connected {
     background: var(--green);
     box-shadow: 0 0 4px var(--glow);
 }
 
-#status-bar .state-dot.connecting {
+#connection-state .state-dot.connecting {
     background: var(--yellow);
     animation: pulse 1.2s ease-in-out infinite;
 }
 
-#status-bar .state-dot.disconnected {
+#connection-state .state-dot.disconnected {
     background: var(--red);
 }
 
-#status-bar .latency {
+#connection-state .latency {
     font-size: 11px;
     color: var(--text-muted);
 }
@@ -331,5 +320,9 @@ html, body {
 }
 
 .sys-msg.warning {
+    color: var(--yellow);
+}
+
+.sys-echo {
     color: var(--yellow);
 }

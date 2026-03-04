@@ -4,18 +4,13 @@
 {% block body %}
 
 <div id="app">
-    <!-- Status bar -->
-    <div id="status-bar">
-        <span class="game-name">{{ game_name }}</span>
-        <div class="connection-state">
+    <!-- Output area -->
+    <div id="output">
+        <div id="connection-state">
             <span id="latency" class="latency"></span>
             <span id="state-text">Disconnected</span>
             <span id="state-dot" class="state-dot disconnected"></span>
         </div>
-    </div>
-
-    <!-- Output area -->
-    <div id="output">
         <div id="output-inner"></div>
         <div id="scroll-sentinel"></div>
         <div id="more-indicator">-- MORE --</div>
@@ -24,7 +19,7 @@
     <!-- Input area -->
     <div id="input-area">
         <textarea id="input-field"
-                  rows="1"
+                  rows="2"
                   placeholder="Enter command..."
                   autocomplete="off"
                   autocorrect="off"
@@ -40,6 +35,6 @@
     <span id="reconnect-detail" class="reconnect-detail"></span>
 </div>
 
-<script src="{% static 'webclient/js/gel.js' %}"></script>
+<script src="{% static 'webclient/js/gel.js' %}?v=3"></script>
 
 {% endblock %}

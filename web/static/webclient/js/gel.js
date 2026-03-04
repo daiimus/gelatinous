@@ -194,6 +194,14 @@
                 // BINARY frame: ANSI game text
                 var text = new TextDecoder("utf-8").decode(event.data);
                 var html = ansi.ansi_to_html(text);
+                // ansi_up preserves literal \n in its output; convert to <br>
+                // so line breaks render in any HTML container context.
+                html = html.replace(/\n/g, "<br>");
+                // Ensure each frame ends with a line break so the next
+                // frame's content doesn't join the last line of this one.
+                if (!html.endsWith("<br>")) {
+                    html += "<br>";
+                }
                 appendOutput(html);
             } else {
                 // TEXT frame: GMCP message
@@ -505,6 +513,10 @@
             return;
         }
 
+        // Local echo -- MUD servers don't echo input back over the wire
+        appendOutput("<br><span class=\"sys-echo\">&gt; " +
+            text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+            "</span><br>");
         sendCommand(text);
         addToHistory(text);
         elInput.value = "";
