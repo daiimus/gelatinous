@@ -85,11 +85,6 @@ class CmdFixCharacterOwnership(Command):
             else:
                 caller.msg(f"|gFixed {fixed_count} character(s).|n")
             
-            if fixed_count == 0:
-                caller.msg("|yNo characters needed fixing.|n")
-            else:
-                caller.msg(f"|gFixed {fixed_count} character(s).|n")
-            
             # Show verification
             all_playable = account.characters.all()
             caller.msg(f"|yaccount.characters now returns {len(all_playable)} character(s):|n")
