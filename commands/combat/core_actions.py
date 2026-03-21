@@ -81,12 +81,12 @@ class CmdAttack(Command):
         splattercast.msg(f"WEAPON_DETECT: {caller.key} hands={hands}, weapon_obj={weapon_obj.key if weapon_obj else 'None'}")
         if weapon_obj:
             splattercast.msg(f"WEAPON_DETECT: {weapon_obj.key} has db={hasattr(weapon_obj, 'db')}, "
-                           f"db.is_ranged={getattr(weapon_obj.db, 'is_ranged', 'MISSING') if hasattr(weapon_obj, 'db') else 'NO_DB'}, "
-                           f"db.weapon_type={getattr(weapon_obj.db, 'weapon_type', 'MISSING') if hasattr(weapon_obj, 'db') else 'NO_DB'}")
+                           f"db.is_ranged={weapon_obj.db.is_ranged if weapon_obj.db.is_ranged is not None else 'MISSING' if hasattr(weapon_obj, 'db') else 'NO_DB'}, "
+                           f"db.weapon_type={weapon_obj.db.weapon_type if weapon_obj.db.weapon_type is not None else 'MISSING' if hasattr(weapon_obj, 'db') else 'NO_DB'}")
         
-        is_ranged_weapon = weapon_obj and hasattr(weapon_obj, "db") and getattr(weapon_obj.db, "is_ranged", False)
+        is_ranged_weapon = weapon_obj and hasattr(weapon_obj, "db") and weapon_obj.db.is_ranged
         weapon_name_for_msg = weapon_obj.key if weapon_obj else "your fists"
-        weapon_type_for_msg = (str(weapon_obj.db.weapon_type).lower() if weapon_obj and hasattr(weapon_obj, "db") and hasattr(weapon_obj.db, "weapon_type") and weapon_obj.db.weapon_type else "unarmed")
+        weapon_type_for_msg = (str(weapon_obj.db.weapon_type).lower() if weapon_obj and hasattr(weapon_obj, "db") and weapon_obj.db.weapon_type else "unarmed")
         
         splattercast.msg(f"WEAPON_FINAL: {caller.key} is_ranged={is_ranged_weapon}, weapon_type={weapon_type_for_msg}")
         # --- END WEAPON IDENTIFICATION ---
@@ -136,7 +136,7 @@ class CmdAttack(Command):
             validation_error = target.validate_attack_target()
             if validation_error:
                 # Target is invalid - show glitch effect for holographic
-                if getattr(target.db, 'is_holographic', False):
+                if target.db.is_holographic:
                     caller.msg(f"|yYour attack passes through {target.key}'s holographic form with a shimmer of static.|n")
                     target.location.msg_contents(
                         f"|y{caller.key}'s attack passes through {target.key}'s flickering projection.|n",
@@ -151,7 +151,7 @@ class CmdAttack(Command):
         # Check if caller is grappled and trying to attack their grappler
         caller_handler = getattr(caller.ndb, "combat_handler", None)
         if caller_handler:
-            combatants_list = getattr(caller_handler.db, "combatants", None)
+            combatants_list = caller_handler.db.combatants
             if combatants_list:  # Add None check to prevent iteration errors
                 caller_entry = next((e for e in combatants_list if e["char"] == caller), None)
                 if caller_entry:
@@ -276,7 +276,7 @@ class CmdAttack(Command):
                 
                 # Clear any existing combat action when attacking (prevents stuck charge actions)
                 # Use copy-modify-save pattern to ensure changes persist
-                combatants_copy = getattr(final_handler.db, "combatants", [])
+                combatants_copy = final_handler.db.combatants or []
                 caller_entry_copy = next((e for e in combatants_copy if e.get("char") == caller), None)
                 if caller_entry_copy:
                     caller_entry_copy["combat_action"] = None
@@ -287,7 +287,7 @@ class CmdAttack(Command):
                     caller_entry_copy["is_yielding"] = False
                     
                     # Save the modified combatants list back
-                    setattr(final_handler.db, "combatants", combatants_copy)
+                    final_handler.db.combatants = combatants_copy
                     
                     if was_yielding:
                         # Check if caller is grappled (being grappled by someone)
@@ -403,7 +403,7 @@ class CmdAttack(Command):
                 # Get target's weapon for their defensive initiate message
                 target_weapon = get_wielded_weapon(target)
                 target_weapon_type = "unarmed"
-                if target_weapon and hasattr(target_weapon, 'db') and hasattr(target_weapon.db, 'weapon_type'):
+                if target_weapon and hasattr(target_weapon, 'db') and target_weapon.db.weapon_type is not None:
                     target_weapon_type = target_weapon.db.weapon_type
                 
                 # Get target's initiate message (defensive reaction)

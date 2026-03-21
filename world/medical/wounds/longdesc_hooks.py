@@ -195,7 +195,7 @@ def _create_compound_wound_description_for_location(location, wounds, character=
     # Determine if we need skintone coloring
     skintone_color = ""
     if character and fresh_count == 0:  # No fresh wounds, use skintone
-        skintone = getattr(character.db, 'skintone', None)
+        skintone = character.db.skintone
         if skintone:
             try:
                 from world.combat.constants import SKINTONE_PALETTE

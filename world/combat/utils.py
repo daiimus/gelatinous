@@ -285,7 +285,7 @@ def is_wielding_ranged_weapon(character):
     # Use the same hands detection logic as core_actions.py
     hands = getattr(character, "hands", {})
     for hand, weapon in hands.items():
-        if weapon and hasattr(weapon, 'db') and getattr(weapon.db, 'is_ranged', False):
+        if weapon and hasattr(weapon, 'db') and weapon.db.is_ranged:
             return True
     
     return False
@@ -325,11 +325,7 @@ def get_weapon_damage(weapon, default=0):
     if not weapon or not hasattr(weapon, 'db'):
         return default
     
-    damage = getattr(weapon.db, "damage", default)
-    
-    # Handle None explicitly since some weapons might have damage=None
-    if damage is None:
-        return default
+    damage = weapon.db.damage if weapon.db.damage is not None else default
     
     # Ensure it's numeric and non-negative
     if not isinstance(damage, (int, float)) or damage < 0:
@@ -594,7 +590,7 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
         target = None
     
     # Check if already in combat
-    combatants = getattr(handler.db, DB_COMBATANTS, [])
+    combatants = handler.db.combatants or []
     for entry in combatants:
         if entry.get(DB_CHAR) == char:
             splattercast.msg(f"ADD_COMB: {char.key} is already in combat.")
@@ -620,7 +616,7 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
     splattercast.msg(f"ADD_COMBATANT_ENTRY: {char.key} -> target_dbref={target_dbref}, initiative={entry['initiative']}")
     
     combatants.append(entry)
-    setattr(handler.db, DB_COMBATANTS, combatants)
+    handler.db.combatants = combatants
     
     # Set the character's handler reference
     setattr(char.ndb, NDB_COMBAT_HANDLER, handler)
@@ -644,7 +640,7 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
         splattercast.msg(f"ADD_COMB: Established proximity between {char.key} and grappler {initial_grappled_by.key}.")
     
     # Start combat if not already running
-    if not getattr(handler.db, DB_COMBAT_RUNNING, False):
+    if not handler.db.combat_is_running:
         handler.start()
     
     # Validate grapple state after adding new combatant
@@ -673,7 +669,7 @@ def remove_combatant(handler, char):
         combatants = active_list
         splattercast.msg(f"RMV_COMB: Using active working list with {len(combatants)} entries")
     else:
-        combatants = getattr(handler.db, DB_COMBATANTS, [])
+        combatants = handler.db.combatants or []
         splattercast.msg(f"RMV_COMB: Using database list with {len(combatants)} entries")
         
     entry = next((e for e in combatants if e.get(DB_CHAR) == char), None)
@@ -695,7 +691,7 @@ def remove_combatant(handler, char):
             # Attempt smart auto-retargeting: find someone who is actively attacking this character
             # For melee weapons, prioritize targets in proximity; for ranged weapons, any attacker is fine
             other_char_weapon = get_wielded_weapon(other_char)
-            other_char_is_ranged = other_char_weapon and hasattr(other_char_weapon, "db") and getattr(other_char_weapon.db, "is_ranged", False)
+            other_char_is_ranged = other_char_weapon and hasattr(other_char_weapon, "db") and other_char_weapon.db.is_ranged
             
             new_target = None
             proximity_attackers = []  # Attackers in proximity (for melee priority)
@@ -776,7 +772,7 @@ def remove_combatant(handler, char):
                     splattercast.msg(f"RMV_COMB: Updated working list for {other_char.key} -> target_dbref={other_char_entry_working['target_dbref']}")
                 
                 # Also update database to ensure persistence (same as attack command)
-                combatants_copy = getattr(handler.db, "combatants", [])
+                combatants_copy = handler.db.combatants or []
                 other_char_entry_copy = next((e for e in combatants_copy if e.get("char") == other_char), None)
                 if other_char_entry_copy:
                     other_char_entry_copy["target_dbref"] = get_character_dbref(new_target)
@@ -785,14 +781,14 @@ def remove_combatant(handler, char):
                     other_char_entry_copy["is_yielding"] = False
                     
                     # Save the modified combatants list back (same as attack command)
-                    setattr(handler.db, "combatants", combatants_copy)
+                    handler.db.combatants = combatants_copy
                     splattercast.msg(f"RMV_COMB: Updated database using attack command pattern for {other_char.key}")
                 
                 # Get weapon info for initiate message
                 from .messages import get_combat_message
                 weapon_obj = get_wielded_weapon(other_char)
                 weapon_type = "unarmed"
-                if weapon_obj and hasattr(weapon_obj, 'db') and hasattr(weapon_obj.db, 'weapon_type'):
+                if weapon_obj and hasattr(weapon_obj, 'db') and weapon_obj.db.weapon_type is not None:
                     weapon_type = weapon_obj.db.weapon_type
                 
                 # Send initiate messages (same as attack command)
@@ -832,7 +828,7 @@ def remove_combatant(handler, char):
     combatants[:] = [e for e in combatants if e.get(DB_CHAR) != char]
     
     # Always persist to database
-    setattr(handler.db, DB_COMBATANTS, combatants)
+    handler.db.combatants = combatants
     if active_list:
         splattercast.msg(f"RMV_COMB: Mutated active list in-place and synced to database")
     else:
@@ -913,7 +909,7 @@ def cleanup_all_combatants(handler):
     from .constants import DB_COMBATANTS, DB_CHAR, DEBUG_PREFIX_HANDLER, DEBUG_CLEANUP
     
     splattercast = get_splattercast()
-    combatants = getattr(handler.db, DB_COMBATANTS, [])
+    combatants = handler.db.combatants or []
     
     for entry in combatants:
         char = entry.get(DB_CHAR)
@@ -921,7 +917,7 @@ def cleanup_all_combatants(handler):
             cleanup_combatant_state(char, entry, handler)
     
     # Clear the combatants list
-    setattr(handler.db, DB_COMBATANTS, [])
+    handler.db.combatants = []
     splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_{DEBUG_CLEANUP}: All combatants cleaned up for {handler.key}.")
 
 
@@ -959,7 +955,7 @@ def update_all_combatant_handler_references(handler):
     from .constants import SPLATTERCAST_CHANNEL, DB_COMBATANTS, DB_CHAR, NDB_COMBAT_HANDLER
     
     splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-    combatants = getattr(handler.db, DB_COMBATANTS, [])
+    combatants = handler.db.combatants or []
     
     updated_count = 0
     for entry in combatants:
@@ -991,11 +987,11 @@ def validate_character_handler_reference(char):
     # Check if handler still exists and is valid
     try:
         # Try to access handler attributes to verify it's still valid
-        if not hasattr(handler, 'db') or not hasattr(handler.db, 'combatants'):
+        if not hasattr(handler, 'db') or handler.db.combatants is None:
             return False, None, "Handler missing required attributes"
         
         # Check if character is actually in the handler's combatants list
-        combatants = getattr(handler.db, 'combatants', [])
+        combatants = handler.db.combatants or []
         char_in_handler = any(entry.get('char') == char for entry in combatants)
         
         if not char_in_handler:
@@ -1035,7 +1031,7 @@ def get_combatants_safe(handler):
     """
     from .constants import DB_COMBATANTS, SPLATTERCAST_CHANNEL, DEBUG_PREFIX_HANDLER
     
-    combatants = getattr(handler.db, DB_COMBATANTS, [])
+    combatants = handler.db.combatants
     if combatants is None:
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_WARNING: {DB_COMBATANTS} was None for handler {handler.key}, initializing to empty list.")
@@ -1043,7 +1039,7 @@ def get_combatants_safe(handler):
         # Only set the attribute if the handler has been saved to the database
         # Otherwise we get "needs to have a value for field 'id'" errors
         if hasattr(handler, 'id') and handler.id:
-            setattr(handler.db, DB_COMBATANTS, combatants)
+            handler.db.combatants = combatants
         else:
             splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_WARNING: Handler {handler.key} not yet saved to DB, cannot set {DB_COMBATANTS}.")
     return combatants
@@ -1097,7 +1093,7 @@ def detect_and_remove_orphaned_combatants(handler):
     )
     
     splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-    combatants = getattr(handler.db, DB_COMBATANTS, [])
+    combatants = handler.db.combatants or []
     orphaned_chars = []
     
     if not combatants:
@@ -1162,7 +1158,7 @@ def resolve_bonus_attack(handler, attacker, target):
     splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
     
     # Find the attacker's combat entry
-    combatants_list = getattr(handler.db, DB_COMBATANTS, [])
+    combatants_list = handler.db.combatants or []
     attacker_entry = next((e for e in combatants_list if e.get(DB_CHAR) == attacker), None)
     
     if not attacker_entry:
@@ -1215,7 +1211,7 @@ def check_grenade_human_shield(proximity_list, combat_handler=None):
         return damage_modifiers
     
     # Get current combatants list for grapple state checking
-    combatants_list = getattr(combat_handler.db, DB_COMBATANTS, [])
+    combatants_list = combat_handler.db.combatants or []
     
     for char in proximity_list:
         # Find this character's combat entry
@@ -1303,23 +1299,23 @@ def calculate_stick_chance(grenade, armor):
         return 0
     
     # Get grenade magnetic strength (default 5 if not set)
-    magnetic_strength = getattr(grenade.db, 'magnetic_strength', 5)
+    magnetic_strength = grenade.db.magnetic_strength if grenade.db.magnetic_strength is not None else 5
     
     # Get armor base properties (default 0 if not set)
-    metal_level = getattr(armor.db, 'metal_level', 0)
-    magnetic_level = getattr(armor.db, 'magnetic_level', 0)
+    metal_level = armor.db.metal_level if armor.db.metal_level is not None else 0
+    magnetic_level = armor.db.magnetic_level if armor.db.magnetic_level is not None else 0
     
     # PLATE CARRIER CHECK: If this is a plate carrier, check installed plates
-    is_plate_carrier = getattr(armor.db, 'is_plate_carrier', False)
+    is_plate_carrier = armor.db.is_plate_carrier
     if is_plate_carrier:
-        installed_plates = getattr(armor.db, 'installed_plates', {})
+        installed_plates = armor.db.installed_plates or {}
         
         # Check all installed plates and use highest metal/magnetic values
         for slot, plate_ref in installed_plates.items():
             if plate_ref:
                 # Get plate properties
-                plate_metal = getattr(plate_ref.db, 'metal_level', 0)
-                plate_magnetic = getattr(plate_ref.db, 'magnetic_level', 0)
+                plate_metal = plate_ref.db.metal_level if plate_ref.db.metal_level is not None else 0
+                plate_magnetic = plate_ref.db.magnetic_level if plate_ref.db.magnetic_level is not None else 0
                 
                 # Use highest values between carrier and plates
                 metal_level = max(metal_level, plate_metal)
@@ -1475,9 +1471,9 @@ def establish_stick(grenade, armor, hit_location):
         return False
     
     # Break any existing stick first
-    if hasattr(grenade.db, 'stuck_to_armor') and grenade.db.stuck_to_armor:
+    if grenade.db.stuck_to_armor:
         old_armor = grenade.db.stuck_to_armor
-        if old_armor and hasattr(old_armor.db, 'stuck_grenade'):
+        if old_armor and old_armor.db.stuck_grenade is not None:
             old_armor.db.stuck_grenade = None
     
     # Establish new stick - grenade moves to armor
@@ -1530,9 +1526,9 @@ def get_stuck_grenades_on_character(character):
             continue
         
         # Check if this item has a stuck grenade
-        if hasattr(item.db, 'stuck_grenade') and item.db.stuck_grenade:
+        if item.db.stuck_grenade:
             grenade = item.db.stuck_grenade
-            location = getattr(grenade.db, 'stuck_to_location', 'unknown')
+            location = grenade.db.stuck_to_location if grenade.db.stuck_to_location is not None else 'unknown'
             stuck_grenades.append((grenade, item, location))
             
             debug_broadcast(
@@ -1577,12 +1573,12 @@ def get_outermost_armor_at_location(character, hit_location):
             continue
         
         # Check if item covers this location
-        coverage = getattr(item.db, 'coverage', [])
+        coverage = item.db.coverage or []
         if not coverage or hit_location not in coverage:
             continue
         
         # Check layer
-        layer = getattr(item.db, 'layer', 0)
+        layer = item.db.layer if item.db.layer is not None else 0
         if layer > highest_layer:
             highest_layer = layer
             outermost_armor = item
@@ -1625,14 +1621,14 @@ def break_stick(grenade):
         return False
     
     # Check if grenade is stuck
-    if not hasattr(grenade.db, 'stuck_to_armor') or not grenade.db.stuck_to_armor:
+    if not grenade.db.stuck_to_armor:
         return False
     
     armor = grenade.db.stuck_to_armor
-    location = getattr(grenade.db, 'stuck_to_location', 'unknown')
+    location = grenade.db.stuck_to_location if grenade.db.stuck_to_location is not None else 'unknown'
     
     # Clear armor's reference to grenade
-    if armor and hasattr(armor.db, 'stuck_grenade'):
+    if armor and armor.db.stuck_grenade is not None:
         armor.db.stuck_grenade = None
     
     # Clear grenade's references

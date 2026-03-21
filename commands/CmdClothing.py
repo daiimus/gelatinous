@@ -140,12 +140,12 @@ class CmdRemove(Command):
             return
         
         # STICKY GRENADE WARNING - Check for stuck grenades before removal
-        if hasattr(item.db, 'stuck_grenade') and item.db.stuck_grenade:
+        if item.db.stuck_grenade:
             grenade = item.db.stuck_grenade
             
             # Get remaining countdown time if any
             remaining = getattr(grenade.ndb, 'countdown_remaining', 0) if hasattr(grenade, 'ndb') else 0
-            stuck_location = getattr(grenade.db, 'stuck_to_location', 'unknown')
+            stuck_location = grenade.db.stuck_to_location if grenade.db.stuck_to_location is not None else 'unknown'
             
             # Send dramatic warning
             if remaining > 0:
@@ -185,7 +185,7 @@ class CmdRemove(Command):
         
         if success:
             # Message to room (only if no grenade warning was sent)
-            if not (hasattr(item.db, 'stuck_grenade') and item.db.stuck_grenade):
+            if not item.db.stuck_grenade:
                 caller.location.msg_contents(
                     f"{caller.get_display_name(None)} removes {item.key}.",
                     exclude=caller

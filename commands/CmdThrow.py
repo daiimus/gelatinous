@@ -119,7 +119,7 @@ class CmdThrow(Command):
         self.obj_to_throw = obj
         
         # Check if this is a dedicated throwing weapon that should use attack command
-        if getattr(obj.db, DB_IS_THROWING_WEAPON, False):
+        if obj.db.is_throwing_weapon:
             # If targeting someone, invoke attack command instead
             if self.target_name:
                 self.caller.msg(f"You ready your {obj.key} to attack...")
@@ -188,7 +188,7 @@ class CmdThrow(Command):
         if hasattr(self.caller, 'ndb') and hasattr(self.caller.ndb, NDB_COMBAT_HANDLER):
             handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER)
             if handler:
-                combatants_list = getattr(handler.db, DB_COMBATANTS, [])
+                combatants_list = handler.db.combatants or []
                 combat_entry = next((e for e in combatants_list if e.get(DB_CHAR) == self.caller), None)
                 if combat_entry and combat_entry.get(DB_GRAPPLED_BY_DBREF):
                     self.caller.msg(MSG_THROW_GRAPPLED)
@@ -207,8 +207,8 @@ class CmdThrow(Command):
             if remaining is not None and remaining <= 0:
                 self.caller.msg(MSG_THROW_TIMER_EXPIRED)
                 # Apply damage to caller using medical system
-                blast_damage = getattr(obj.db, DB_BLAST_DAMAGE, 10)
-                damage_type = getattr(obj.db, 'damage_type', 'blast')  # Changed to 'blast' for explosive damage
+                blast_damage = obj.db.blast_damage if obj.db.blast_damage is not None else 10
+                damage_type = obj.db.damage_type if obj.db.damage_type is not None else 'blast'  # Changed to 'blast' for explosive damage
                 self.caller.take_damage(blast_damage, location="chest", injury_type=damage_type)
                 obj.delete()
                 return False
@@ -234,7 +234,7 @@ class CmdThrow(Command):
             if not destination:
                 return None, None
             # For sticky grenades, prefer most magnetic character, fallback to random
-            if hasattr(self, 'obj_to_throw') and getattr(self.obj_to_throw.db, 'is_sticky', False):
+            if hasattr(self, 'obj_to_throw') and self.obj_to_throw.db.is_sticky:
                 target = self.select_most_magnetic_target_in_room(destination, self.obj_to_throw)
                 if not target:  # No viable magnetic targets, select random
                     target = self.select_random_target_in_room(destination)
@@ -249,7 +249,7 @@ class CmdThrow(Command):
                 destination = self.get_destination_room(aim_direction)
                 if destination:
                     # For sticky grenades, prefer most magnetic character, fallback to random
-                    if hasattr(self, 'obj_to_throw') and getattr(self.obj_to_throw.db, 'is_sticky', False):
+                    if hasattr(self, 'obj_to_throw') and self.obj_to_throw.db.is_sticky:
                         target = self.select_most_magnetic_target_in_room(destination, self.obj_to_throw)
                         if not target:  # No viable magnetic targets, select random
                             target = self.select_random_target_in_room(destination)
@@ -259,7 +259,7 @@ class CmdThrow(Command):
             
             # Fallback to current room
             # For sticky grenades in current room, prefer most magnetic character, fallback to random
-            if hasattr(self, 'obj_to_throw') and getattr(self.obj_to_throw.db, 'is_sticky', False):
+            if hasattr(self, 'obj_to_throw') and self.obj_to_throw.db.is_sticky:
                 target = self.select_most_magnetic_target_in_room(self.caller.location, self.obj_to_throw)
                 if not target:  # No viable magnetic targets, select random
                     target = self.select_random_target_in_room(self.caller.location)
@@ -410,7 +410,7 @@ class CmdThrow(Command):
             return None
         
         # Get grenade magnetic strength for threshold checks
-        magnetic_strength = getattr(grenade.db, 'magnetic_strength', 5)
+        magnetic_strength = grenade.db.magnetic_strength if grenade.db.magnetic_strength is not None else 5
         magnetic_threshold = magnetic_strength - 3
         metal_threshold = magnetic_strength - 5
         
@@ -426,17 +426,17 @@ class CmdThrow(Command):
                 continue
             
             # Get armor properties (including plate carrier check)
-            metal_level = getattr(armor.db, 'metal_level', 0) or 0
-            magnetic_level = getattr(armor.db, 'magnetic_level', 0) or 0
+            metal_level = armor.db.metal_level or 0
+            magnetic_level = armor.db.magnetic_level or 0
             
             # Check if plate carrier - use installed plates' values
-            is_plate_carrier = getattr(armor.db, 'is_plate_carrier', False)
+            is_plate_carrier = bool(armor.db.is_plate_carrier)
             if is_plate_carrier:
-                installed_plates = getattr(armor.db, 'installed_plates', {})
+                installed_plates = armor.db.installed_plates or {}
                 for slot, plate_ref in installed_plates.items():
                     if plate_ref:
-                        plate_metal = getattr(plate_ref.db, 'metal_level', 0) or 0
-                        plate_magnetic = getattr(plate_ref.db, 'magnetic_level', 0) or 0
+                        plate_metal = plate_ref.db.metal_level or 0
+                        plate_magnetic = plate_ref.db.magnetic_level or 0
                         metal_level = max(metal_level, plate_metal)
                         magnetic_level = max(magnetic_level, plate_magnetic)
             
@@ -457,11 +457,11 @@ class CmdThrow(Command):
     
     def is_throwing_weapon(self, obj):
         """Check if object is a throwing weapon."""
-        return getattr(obj.db, DB_IS_THROWING_WEAPON, False)
+        return bool(obj.db.is_throwing_weapon)
     
     def is_explosive(self, obj):
         """Check if object is explosive."""
-        return getattr(obj.db, DB_IS_EXPLOSIVE, False)
+        return bool(obj.db.is_explosive)
     
     def handle_weapon_throw(self, obj, target, destination):
         """Handle throwing weapon combat mechanics."""
@@ -739,7 +739,7 @@ class CmdThrow(Command):
                     # Continue with landing even if weapon hit fails
             
             # Sticky grenade resolution (even for utility throws)
-            elif target and not is_weapon and getattr(obj.db, 'is_sticky', False):
+            elif target and not is_weapon and obj.db.is_sticky:
                 try:
                     splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Sticky grenade utility throw - routing to weapon hit logic")
                     self.resolve_weapon_hit(obj, target, thrower)
@@ -824,7 +824,7 @@ class CmdThrow(Command):
                 )
                 
                 # Check if this is a sticky grenade
-                is_sticky = getattr(weapon.db, 'is_sticky', False)
+                is_sticky = bool(weapon.db.is_sticky)
                 hit_location = "chest"  # Default hit location for throws
                 
                 if is_sticky:
@@ -880,9 +880,9 @@ class CmdThrow(Command):
                         # Continue to normal landing
                 
                 # Hit - apply damage (only for non-sticky or failed-stick weapons)
-                base_damage = getattr(weapon.db, 'damage', 1)
+                base_damage = weapon.db.damage if weapon.db.damage is not None else 1
                 total_damage = random.randint(1, 6) + base_damage
-                damage_type = getattr(weapon.db, 'damage_type', 'blunt')  # Get weapon damage type
+                damage_type = weapon.db.damage_type if weapon.db.damage_type is not None else 'blunt'  # Get weapon damage type
                 
                 target.take_damage(total_damage, location="chest", injury_type=damage_type)
                 
@@ -1027,7 +1027,7 @@ class CmdThrow(Command):
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: check_grenade_deflection called for {grenade} in {destination}")
             
             # Future-proofing: Skip deflection for impact grenades (explode on contact)
-            if getattr(grenade.db, 'impact_detonation', False):
+            if grenade.db.impact_detonation:
                 splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Impact grenade {grenade} cannot be deflected")
                 return False
             
@@ -1046,7 +1046,7 @@ class CmdThrow(Command):
             if hasattr(target, 'ndb') and hasattr(target.ndb, NDB_COMBAT_HANDLER):
                 handler = getattr(target.ndb, NDB_COMBAT_HANDLER)
                 if handler:
-                    combatants_list = getattr(handler.db, DB_COMBATANTS, [])
+                    combatants_list = handler.db.combatants or []
                     combat_entry = next((e for e in combatants_list if e.get(DB_CHAR) == target), None)
                     if combat_entry:
                         grappled_by = combat_entry.get(DB_GRAPPLED_BY_DBREF)
@@ -1080,7 +1080,7 @@ class CmdThrow(Command):
             
             # Base difficulty threshold (higher = easier)
             base_threshold = 10  # Moderate difficulty
-            weapon_bonus = getattr(melee_weapon.db, 'deflection_bonus', 0.0)  # Optional weapon property
+            weapon_bonus = melee_weapon.db.deflection_bonus if melee_weapon.db.deflection_bonus is not None else 0.0  # Optional weapon property
             
             # Convert weapon bonus to threshold modifier (0.30 bonus = +6 to threshold)
             threshold_modifier = int(weapon_bonus * 20)
@@ -1109,7 +1109,7 @@ class CmdThrow(Command):
     def is_melee_weapon(self, obj):
         """Check if object is a melee weapon suitable for deflection."""
         # Melee weapons are those that are NOT ranged (default is melee)
-        is_ranged = getattr(obj.db, 'is_ranged', False)
+        is_ranged = bool(obj.db.is_ranged)
         return not is_ranged
     
     def perform_grenade_deflection(self, grenade, deflector, weapon, original_thrower, current_location):
@@ -1278,17 +1278,18 @@ class CmdPull(Command):
                 return
         
         # Validate explosive
-        if not getattr(grenade.db, DB_IS_EXPLOSIVE, False):
+        if not grenade.db.is_explosive:
             self.caller.msg(MSG_PULL_NOT_EXPLOSIVE.format(object=grenade.key))
             return
         
         # Check if requires pin
-        if not getattr(grenade.db, DB_REQUIRES_PIN, True):
+        requires_pin = grenade.db.requires_pin if grenade.db.requires_pin is not None else True
+        if not requires_pin:
             self.caller.msg(MSG_PULL_NO_PIN_REQUIRED.format(object=grenade.key))
             return
         
         # Check if already pulled
-        if getattr(grenade.db, DB_PIN_PULLED, False):
+        if grenade.db.pin_pulled:
             self.caller.msg(MSG_PULL_ALREADY_PULLED.format(object=grenade.key))
             return
         
@@ -1298,10 +1299,10 @@ class CmdPull(Command):
     def pull_pin(self, grenade):
         """Pull the pin and start countdown."""
         # Set pin pulled flag
-        setattr(grenade.db, DB_PIN_PULLED, True)
+        grenade.db.pin_pulled = True
         
         # Get fuse time
-        fuse_time = getattr(grenade.db, DB_FUSE_TIME, 8)
+        fuse_time = grenade.db.fuse_time if grenade.db.fuse_time is not None else 8
         
         # Start countdown with robust ticker system
         setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
@@ -1345,12 +1346,12 @@ class CmdPull(Command):
                     from typeclasses.characters import Character
                     
                     # Check if grenade is stuck to armor
-                    is_stuck = isinstance(grenade.location, Item) and hasattr(grenade.db, 'stuck_to_armor')
+                    is_stuck = isinstance(grenade.location, Item) and grenade.db.stuck_to_armor is not None
                     
                     if is_stuck:
                         # Grenade stuck to armor - send dramatic warnings
                         armor = grenade.location
-                        stuck_location = getattr(grenade.db, 'stuck_to_location', 'unknown')
+                        stuck_location = grenade.db.stuck_to_location or 'unknown'
                         
                         # Check if armor is worn
                         if armor.location and isinstance(armor.location, Character):
@@ -1422,13 +1423,13 @@ class CmdPull(Command):
         """Handle grenade explosion."""
         try:
             # Check dud chance
-            dud_chance = getattr(grenade.db, DB_DUD_CHANCE, 0.0)
+            dud_chance = grenade.db.dud_chance if grenade.db.dud_chance is not None else 0.0
             if random.random() < dud_chance:
                 self.handle_dud(grenade)
                 return
             
             # Get blast damage
-            blast_damage = getattr(grenade.db, DB_BLAST_DAMAGE, 10)
+            blast_damage = grenade.db.blast_damage if grenade.db.blast_damage is not None else 10
             
             # Check if grenade is in someone's inventory when it explodes
             # Use typeclass check to distinguish characters (PCs and NPCs) from rooms
@@ -1448,7 +1449,7 @@ class CmdPull(Command):
             if holder:
                 # Explosion in hands - double damage and guaranteed hit
                 holder_damage = blast_damage * 2
-                damage_type = getattr(grenade.db, 'damage_type', 'blast')  # Explosive damage type
+                damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'  # Explosive damage type
                 holder.take_damage(holder_damage, location="chest", injury_type=damage_type)
                 holder.msg(f"|rThe {grenade.key} EXPLODES IN YOUR HANDS!|n You take {holder_damage} damage!")
                 
@@ -1463,7 +1464,7 @@ class CmdPull(Command):
                 for character in proximity_list:
                     if character != holder and hasattr(character, 'msg'):
                         reduced_damage = blast_damage // 2  # Half damage due to body shielding
-                        damage_type = getattr(grenade.db, 'damage_type', 'blast')
+                        damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'
                         character.take_damage(reduced_damage, location="chest", injury_type=damage_type)
                         character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
                         
@@ -1493,7 +1494,7 @@ class CmdPull(Command):
                         final_damage = int(blast_damage * modifier)
                         
                         if final_damage > 0:
-                            damage_type = getattr(grenade.db, 'damage_type', 'blast')
+                            damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'
                             character.take_damage(final_damage, location="chest", injury_type=damage_type)
                             character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
                             if character.location:
@@ -1525,7 +1526,7 @@ class CmdPull(Command):
     
     def handle_chain_reactions(self, exploding_grenade):
         """Handle chain reactions with other explosives."""
-        if not getattr(exploding_grenade.db, DB_CHAIN_TRIGGER, False):
+        if not exploding_grenade.db.chain_trigger:
             return
         
         # Find other explosives in proximity
@@ -1535,7 +1536,7 @@ class CmdPull(Command):
         
         for obj in proximity_list:
             if (hasattr(obj, 'db') and 
-                getattr(obj.db, DB_IS_EXPLOSIVE, False) and 
+                obj.db.is_explosive and 
                 obj != exploding_grenade):
                 
                         # Trigger chain explosion with new ticker system
@@ -1544,7 +1545,7 @@ class CmdPull(Command):
                                 MSG_GRENADE_CHAIN_TRIGGER.format(grenade=obj.key))
                         
                         # Set short timer and start ticker
-                        setattr(obj.db, DB_PIN_PULLED, True)
+                        obj.db.pin_pulled = True
                         setattr(obj.ndb, NDB_COUNTDOWN_REMAINING, 1)  # 1 second for chain reaction
                         self.start_grenade_ticker(obj)
 class CmdCatch(Command):
@@ -1734,12 +1735,12 @@ class CmdRig(Command):
                 return
         
         # Validate explosive
-        if not getattr(grenade.db, DB_IS_EXPLOSIVE, False):
+        if not grenade.db.is_explosive:
             self.caller.msg(MSG_RIG_NOT_EXPLOSIVE.format(object=grenade.key))
             return
         
         # Check if pin is NOT pulled (should be unpinned for rigging)
-        if getattr(grenade.db, DB_PIN_PULLED, False):
+        if grenade.db.pin_pulled:
             self.caller.msg(MSG_RIG_ALREADY_PINNED)
             return
         
@@ -1751,14 +1752,14 @@ class CmdRig(Command):
             return
         
         # Check if exit already rigged
-        existing_rigged = getattr(exit_obj.db, 'rigged_grenade', None)
+        existing_rigged = exit_obj.db.rigged_grenade
         if existing_rigged:
             self.caller.msg(MSG_RIG_EXIT_ALREADY_RIGGED)
             return
         
         # Check if return exit is already rigged too
         return_exit = self.find_return_exit_for_check(exit_obj)
-        if return_exit and getattr(return_exit.db, 'rigged_grenade', None):
+        if return_exit and return_exit.db.rigged_grenade:
             self.caller.msg(MSG_RIG_EXIT_ALREADY_RIGGED)
             return
         
@@ -1795,18 +1796,18 @@ class CmdRig(Command):
         grenade.move_to(self.caller.location, quiet=True)
         
         # Set up rigging on the main exit
-        setattr(exit_obj.db, 'rigged_grenade', grenade)
-        setattr(grenade.db, 'rigged_to_exit', exit_obj)
-        setattr(grenade.db, 'rigged_by', self.caller)  # Store who rigged it for immunity
+        exit_obj.db.rigged_grenade = grenade
+        grenade.db.rigged_to_exit = exit_obj
+        grenade.db.rigged_by = self.caller  # Store who rigged it for immunity
         
         # Add integration description for rigged grenade
         # Store original integration state if not already stored
-        if not hasattr(grenade.db, 'original_integrate'):
-            grenade.db.original_integrate = getattr(grenade.db, 'integrate', False)
-        if not hasattr(grenade.db, 'original_integration_desc'):
-            grenade.db.original_integration_desc = getattr(grenade.db, 'integration_desc', None)
-        if not hasattr(grenade.db, 'original_integration_priority'):
-            grenade.db.original_integration_priority = getattr(grenade.db, 'integration_priority', None)
+        if grenade.db.original_integrate is None:
+            grenade.db.original_integrate = grenade.db.integrate or False
+        if grenade.db.original_integration_desc is None:
+            grenade.db.original_integration_desc = grenade.db.integration_desc
+        if grenade.db.original_integration_priority is None:
+            grenade.db.original_integration_priority = grenade.db.integration_priority
         
         # Enable integration and set rigging description with priority
         grenade.db.integrate = True
@@ -1816,7 +1817,7 @@ class CmdRig(Command):
         # Find and rig the return exit too
         return_exit = self.find_return_exit(exit_obj)
         if return_exit:
-            setattr(return_exit.db, 'rigged_grenade', grenade)
+            return_exit.db.rigged_grenade = grenade
             splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: Also rigged return exit {return_exit} in {return_exit.location}")
         
@@ -1898,13 +1899,13 @@ def check_rigged_grenade(character, exit_obj):
     splattercast = ChannelDB.objects.get_channel("Splattercast")
     
     # Check if there's a rigged grenade on this exit
-    rigged_grenade = getattr(exit_obj.db, 'rigged_grenade', None)
+    rigged_grenade = exit_obj.db.rigged_grenade
     
     if not rigged_grenade:
         return False
     
     # Check if this character is the rigger (immunity)
-    rigger = getattr(rigged_grenade.db, 'rigged_by', None)
+    rigger = rigged_grenade.db.rigged_by
     
     if rigger and character == rigger:
         return False  # Rigger is immune to their own trap
@@ -1917,7 +1918,7 @@ def check_rigged_grenade(character, exit_obj):
     )
     
     # Pull the pin and start countdown timer when triggered
-    setattr(rigged_grenade.db, DB_PIN_PULLED, True)
+    rigged_grenade.db.pin_pulled = True
     fuse_time = 1  # Rigged grenades explode almost immediately
     setattr(rigged_grenade.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
     
@@ -1926,7 +1927,7 @@ def check_rigged_grenade(character, exit_obj):
     
     # FOR STICKY GRENADES: Find most magnetic target and attempt to stick
     # FOR REGULAR GRENADES: Just establish proximity with trigger character
-    is_sticky = getattr(rigged_grenade.db, 'is_sticky', False)
+    is_sticky = bool(rigged_grenade.db.is_sticky)
     sticky_target = None
     
     if is_sticky:
@@ -1969,14 +1970,14 @@ def check_rigged_grenade(character, exit_obj):
         """Handle rigged grenade explosion after timer."""
         try:
             # Check dud chance
-            dud_chance = getattr(rigged_grenade.db, DB_DUD_CHANCE, 0.0)
+            dud_chance = rigged_grenade.db.dud_chance if rigged_grenade.db.dud_chance is not None else 0.0
             if random.random() < dud_chance:
                 if rigged_grenade.location:
                     rigged_grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=rigged_grenade.key))
                 return
             
             # Get blast damage
-            blast_damage = getattr(rigged_grenade.db, DB_BLAST_DAMAGE, 10)
+            blast_damage = rigged_grenade.db.blast_damage if rigged_grenade.db.blast_damage is not None else 10
             
             # Room explosion
             if rigged_grenade.location:
@@ -1999,7 +2000,7 @@ def check_rigged_grenade(character, exit_obj):
                     final_damage = int(blast_damage * modifier)
                     
                     if final_damage > 0:
-                        damage_type = getattr(rigged_grenade.db, 'damage_type', 'blast')
+                        damage_type = rigged_grenade.db.damage_type if rigged_grenade.db.damage_type is not None else 'blast'
                         other_character.take_damage(final_damage, location="chest", injury_type=damage_type)
                         other_character.msg(MSG_GRENADE_DAMAGE.format(grenade=rigged_grenade.key))
                         if other_character.location:
@@ -2010,10 +2011,10 @@ def check_rigged_grenade(character, exit_obj):
                     # Note: Characters with 0.0 modifier (grapplers) take no damage and get no damage messages
             
             # Handle chain reactions if enabled
-            if getattr(rigged_grenade.db, DB_CHAIN_TRIGGER, False):
+            if rigged_grenade.db.chain_trigger:
                 for obj in proximity_list:
                     if (hasattr(obj, 'db') and 
-                        getattr(obj.db, DB_IS_EXPLOSIVE, False) and 
+                        obj.db.is_explosive and 
                         obj != rigged_grenade):
                         
                         # Trigger chain explosion
@@ -2022,7 +2023,7 @@ def check_rigged_grenade(character, exit_obj):
                                 MSG_GRENADE_CHAIN_TRIGGER.format(grenade=obj.key))
                         
                         # Start immediate explosion timer with new ticker system
-                        setattr(obj.db, DB_PIN_PULLED, True)
+                        obj.db.pin_pulled = True
                         setattr(obj.ndb, NDB_COUNTDOWN_REMAINING, 1)
                         start_standalone_grenade_ticker(obj)
             
@@ -2037,10 +2038,10 @@ def check_rigged_grenade(character, exit_obj):
     start_standalone_grenade_ticker(rigged_grenade, explode_rigged_grenade)
     
     # Clean up rigging from both exits
-    delattr(exit_obj.db, 'rigged_grenade')
+    exit_obj.db.rigged_grenade = None
     
     # Find and clean up return exit too
-    original_exit = getattr(rigged_grenade.db, 'rigged_to_exit', None)
+    original_exit = rigged_grenade.db.rigged_to_exit
     if original_exit and original_exit.destination:
         destination_room = original_exit.destination
         character_room = character.location
@@ -2049,9 +2050,8 @@ def check_rigged_grenade(character, exit_obj):
         for obj in destination_room.contents:
             if (hasattr(obj, 'destination') and 
                 obj.destination == character_room and
-                hasattr(obj.db, 'rigged_grenade') and
-                getattr(obj.db, 'rigged_grenade') == rigged_grenade):
-                delattr(obj.db, 'rigged_grenade')
+                obj.db.rigged_grenade == rigged_grenade):
+                obj.db.rigged_grenade = None
                 splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: Cleaned up return exit rigging on {obj}")
                 break
@@ -2188,7 +2188,7 @@ def explode_standalone_grenade(grenade):
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: explode_standalone_grenade called for {grenade}")
         
         # Debug: Check dud chance
-        dud_chance = getattr(grenade.db, DB_DUD_CHANCE, 0.0)
+        dud_chance = grenade.db.dud_chance if grenade.db.dud_chance is not None else 0.0
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Dud chance: {dud_chance}")
         if random.random() < dud_chance:
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Grenade {grenade} is a dud")
@@ -2201,7 +2201,7 @@ def explode_standalone_grenade(grenade):
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Grenade {grenade} is not a dud, proceeding with explosion")
         
         # Get blast damage
-        blast_damage = getattr(grenade.db, DB_BLAST_DAMAGE, 10)
+        blast_damage = grenade.db.blast_damage if grenade.db.blast_damage is not None else 10
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Blast damage: {blast_damage}")
         
         # Check if grenade is in someone's inventory when it explodes
@@ -2250,13 +2250,13 @@ def explode_standalone_grenade(grenade):
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Handling explosion in holder's hands: {holder}")
             # Explosion in hands - double damage and guaranteed hit
             holder_damage = blast_damage * 2
-            damage_type = getattr(grenade.db, 'damage_type', 'blast')  # Explosive damage type
+            damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'  # Explosive damage type
             holder.take_damage(holder_damage, location="chest", injury_type=damage_type)
             
             # Different messages for sticky vs normal grenades
             if stuck_to_armor:
                 # Sticky grenade stuck to armor they're wearing
-                stuck_location = getattr(grenade.db, 'stuck_to_location', 'body')
+                stuck_location = grenade.db.stuck_to_location or 'body'
                 holder.msg(f"|R*** CATASTROPHIC EXPLOSION! ***|n\nThe {grenade.key} magnetically clamped to your {stuck_to_armor.key} DETONATES against your {stuck_location}!\nYou take {holder_damage} damage!")
                 
                 # Announce to the room
@@ -2280,7 +2280,7 @@ def explode_standalone_grenade(grenade):
             for character in proximity_list:
                 if character != holder and hasattr(character, 'msg'):
                     reduced_damage = blast_damage // 2  # Half damage due to body shielding
-                    damage_type = getattr(grenade.db, 'damage_type', 'blast')
+                    damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'
                     character.take_damage(reduced_damage, location="chest", injury_type=damage_type)
                     character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
                     
@@ -2317,7 +2317,7 @@ def explode_standalone_grenade(grenade):
                     final_damage = int(blast_damage * modifier)
                     
                     if final_damage > 0:
-                        damage_type = getattr(grenade.db, 'damage_type', 'blast')
+                        damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'
                         character.take_damage(final_damage, location="chest", injury_type=damage_type)
                         character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
                         if character.location:
@@ -2328,10 +2328,10 @@ def explode_standalone_grenade(grenade):
                     # Note: Characters with 0.0 modifier (grapplers) take no damage and get no damage messages
         
         # Handle chain reactions
-        if getattr(grenade.db, DB_CHAIN_TRIGGER, False):
+        if grenade.db.chain_trigger:
             for obj in proximity_list:
                 if (hasattr(obj, 'db') and 
-                    getattr(obj.db, DB_IS_EXPLOSIVE, False) and 
+                    obj.db.is_explosive and 
                     obj != grenade):
                     
                     # Trigger chain explosion
@@ -2340,7 +2340,7 @@ def explode_standalone_grenade(grenade):
                             MSG_GRENADE_CHAIN_TRIGGER.format(grenade=obj.key))
                     
                     # Start chain reaction with new ticker system
-                    setattr(obj.db, DB_PIN_PULLED, True)
+                    obj.db.pin_pulled = True
                     setattr(obj.ndb, NDB_COUNTDOWN_REMAINING, 1)
                     start_standalone_grenade_ticker(obj)
         
@@ -2360,11 +2360,11 @@ def check_auto_defuse(character):
         
         for obj in character.location.contents:
             # Check if object is an explosive
-            if not getattr(obj.db, DB_IS_EXPLOSIVE, False):
+            if not obj.db.is_explosive:
                 continue
                 
             # Check if grenade is live (pin pulled and timer active)
-            pin_pulled = getattr(obj.db, DB_PIN_PULLED, False)
+            pin_pulled = obj.db.pin_pulled
             if not pin_pulled:
                 continue
                 
@@ -2460,7 +2460,7 @@ def handle_auto_defuse_success(character, grenade):
         
         # Clear countdown state
         setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
-        setattr(grenade.db, DB_PIN_PULLED, False)  # Grenade is now safe
+        grenade.db.pin_pulled = False  # Grenade is now safe
         
         # Success messages (more dramatic than manual defuse)
         character.msg(f"SUCCESS! You instinctively defuse the {grenade.key} just in time!")
@@ -2526,14 +2526,14 @@ def trigger_auto_defuse_explosion(grenade):
     
     try:
         # Check dud chance
-        dud_chance = getattr(grenade.db, DB_DUD_CHANCE, 0.0)
+        dud_chance = grenade.db.dud_chance if grenade.db.dud_chance is not None else 0.0
         if random.random() < dud_chance:
             if grenade.location:
                 grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=grenade.key))
             return
         
         # Get blast damage
-        blast_damage = getattr(grenade.db, DB_BLAST_DAMAGE, 10)
+        blast_damage = grenade.db.blast_damage if grenade.db.blast_damage is not None else 10
         
         # Room explosion
         if grenade.location:
@@ -2556,7 +2556,7 @@ def trigger_auto_defuse_explosion(grenade):
                 final_damage = int(blast_damage * modifier)
                 
                 if final_damage > 0:
-                    damage_type = getattr(grenade.db, 'damage_type', 'blast')
+                    damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'
                     character.take_damage(final_damage, location="chest", injury_type=damage_type)
                     character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
                     if character.location:
@@ -2567,10 +2567,10 @@ def trigger_auto_defuse_explosion(grenade):
                 # Note: Characters with 0.0 modifier (grapplers) take no damage and get no damage messages
         
         # Handle chain reactions if enabled
-        if getattr(grenade.db, DB_CHAIN_TRIGGER, False):
+        if grenade.db.chain_trigger:
             for obj in proximity_list:
                 if (hasattr(obj, 'db') and 
-                    getattr(obj.db, DB_IS_EXPLOSIVE, False) and 
+                    obj.db.is_explosive and 
                     obj != grenade):
                     
                     # Trigger chain explosion
@@ -2648,7 +2648,7 @@ class CmdDefuse(Command):
         
         for obj in all_candidates:
             if (grenade_name.lower() in obj.key.lower() and 
-                getattr(obj.db, DB_IS_EXPLOSIVE, False)):
+                obj.db.is_explosive):
                 
                 # Check if caller is already in this object's proximity
                 obj_proximity = getattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, [])
@@ -2668,11 +2668,11 @@ class CmdDefuse(Command):
         # Check both room contents AND character inventory for physical candidates
         for obj in all_candidates:
             if (grenade_name.lower() in obj.key.lower() and 
-                getattr(obj.db, DB_IS_EXPLOSIVE, False)):
+                obj.db.is_explosive):
                 
                 # Check if grenade is live (either pin pulled OR rigged to exit)
-                pin_pulled = getattr(obj.db, DB_PIN_PULLED, False)
-                is_rigged = getattr(obj.db, 'rigged_to_exit', None) is not None
+                pin_pulled = obj.db.pin_pulled
+                is_rigged = obj.db.rigged_to_exit is not None
                 
                 if pin_pulled or is_rigged:
                     physical_candidates.append(obj)
@@ -2743,13 +2743,13 @@ class CmdDefuse(Command):
     def validate_grenade_for_defuse(self, grenade):
         """Validate that grenade can be defused."""
         # Must be explosive
-        if not getattr(grenade.db, DB_IS_EXPLOSIVE, False):
+        if not grenade.db.is_explosive:
             self.caller.msg(f"The {grenade.key} is not an explosive device.")
             return False
         
         # Must be live (pin pulled OR rigged)
-        pin_pulled = getattr(grenade.db, DB_PIN_PULLED, False)
-        is_rigged = getattr(grenade.db, 'rigged_to_exit', None) is not None
+        pin_pulled = grenade.db.pin_pulled
+        is_rigged = grenade.db.rigged_to_exit is not None
         
         if not (pin_pulled or is_rigged):
             self.caller.msg(f"The {grenade.key} is not armed - no need to defuse it.")
@@ -2786,7 +2786,7 @@ class CmdDefuse(Command):
         setattr(grenade.ndb, 'defuse_attempted_by', attempted_by)
         
         # Check if this is a rigged grenade (different difficulty calculation)
-        is_rigged = getattr(grenade.db, 'rigged_to_exit', None) is not None
+        is_rigged = grenade.db.rigged_to_exit is not None
         
         if is_rigged:
             # Rigged grenades: base difficulty only (no time pressure)
@@ -2853,7 +2853,7 @@ class CmdDefuse(Command):
         
         # Clear countdown state
         setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
-        setattr(grenade.db, DB_PIN_PULLED, False)  # Grenade is now safe
+        grenade.db.pin_pulled = False  # Grenade is now safe
         
         # Clean up rigging if this was a rigged grenade
         self.cleanup_rigging(grenade)
@@ -2898,13 +2898,13 @@ class CmdDefuse(Command):
     
     def cleanup_rigging(self, grenade):
         """Clean up rigging references when grenade is defused."""
-        rigged_to_exit = getattr(grenade.db, 'rigged_to_exit', None)
+        rigged_to_exit = grenade.db.rigged_to_exit
         if rigged_to_exit:
             splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             
             # Clean up main exit
-            if hasattr(rigged_to_exit.db, 'rigged_grenade'):
-                delattr(rigged_to_exit.db, 'rigged_grenade')
+            if rigged_to_exit.db.rigged_grenade is not None:
+                rigged_to_exit.db.rigged_grenade = None
                 if splattercast:
                     splattercast.msg(f"DEFUSE_CLEANUP: Removed rigging from {rigged_to_exit}")
             
@@ -2916,43 +2916,39 @@ class CmdDefuse(Command):
                 for obj in destination_room.contents:
                     if (hasattr(obj, 'destination') and 
                         obj.destination == grenade_room and
-                        hasattr(obj.db, 'rigged_grenade') and
-                        getattr(obj.db, 'rigged_grenade') == grenade):
-                        delattr(obj.db, 'rigged_grenade')
+                        obj.db.rigged_grenade is not None and
+                        obj.db.rigged_grenade == grenade):
+                        obj.db.rigged_grenade = None
                         if splattercast:
                             splattercast.msg(f"DEFUSE_CLEANUP: Removed rigging from return exit {obj}")
                         break
             
             # Clean up grenade's rigging reference
-            delattr(grenade.db, 'rigged_to_exit')
-            if hasattr(grenade.db, 'rigged_by'):
-                delattr(grenade.db, 'rigged_by')
+            grenade.db.rigged_to_exit = None
+            if grenade.db.rigged_by is not None:
+                grenade.db.rigged_by = None
             
             # Restore original integration state
-            if hasattr(grenade.db, 'original_integrate'):
+            if grenade.db.original_integrate is not None:
                 grenade.db.integrate = grenade.db.original_integrate
-                delattr(grenade.db, 'original_integrate')
+                grenade.db.original_integrate = None
             else:
                 # Default: disable integration for regular grenades
                 grenade.db.integrate = False
                 
-            if hasattr(grenade.db, 'original_integration_desc'):
-                if grenade.db.original_integration_desc is not None:
-                    grenade.db.integration_desc = grenade.db.original_integration_desc
-                else:
-                    # Remove integration_desc if it wasn't set originally
-                    if hasattr(grenade.db, 'integration_desc'):
-                        delattr(grenade.db, 'integration_desc')
-                delattr(grenade.db, 'original_integration_desc')
+            if grenade.db.original_integration_desc is not None:
+                grenade.db.integration_desc = grenade.db.original_integration_desc
+                grenade.db.original_integration_desc = None
+            else:
+                # Remove integration_desc if it wasn't set originally
+                grenade.db.integration_desc = None
                 
-            if hasattr(grenade.db, 'original_integration_priority'):
-                if grenade.db.original_integration_priority is not None:
-                    grenade.db.integration_priority = grenade.db.original_integration_priority
-                else:
-                    # Remove integration_priority if it wasn't set originally
-                    if hasattr(grenade.db, 'integration_priority'):
-                        delattr(grenade.db, 'integration_priority')
-                delattr(grenade.db, 'original_integration_priority')
+            if grenade.db.original_integration_priority is not None:
+                grenade.db.integration_priority = grenade.db.original_integration_priority
+                grenade.db.original_integration_priority = None
+            else:
+                # Remove integration_priority if it wasn't set originally
+                grenade.db.integration_priority = None
             
             # Announce trap disarmament
             self.caller.msg("You also disarm the trap rigging mechanism.")
@@ -3009,14 +3005,14 @@ class CmdDefuse(Command):
         
         try:
             # Check dud chance
-            dud_chance = getattr(grenade.db, DB_DUD_CHANCE, 0.0)
+            dud_chance = grenade.db.dud_chance if grenade.db.dud_chance is not None else 0.0
             if random.random() < dud_chance:
                 if grenade.location:
                     grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=grenade.key))
                 return
             
             # Get blast damage
-            blast_damage = getattr(grenade.db, DB_BLAST_DAMAGE, 10)
+            blast_damage = grenade.db.blast_damage if grenade.db.blast_damage is not None else 10
             
             # Room explosion
             if grenade.location:
@@ -3039,7 +3035,7 @@ class CmdDefuse(Command):
                     final_damage = int(blast_damage * modifier)
                     
                     if final_damage > 0:
-                        damage_type = getattr(grenade.db, 'damage_type', 'blast')
+                        damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'
                         character.take_damage(final_damage, location="chest", injury_type=damage_type)
                         character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
                         if character.location:
@@ -3050,10 +3046,10 @@ class CmdDefuse(Command):
                     # Note: Characters with 0.0 modifier (grapplers) take no damage and get no damage messages
             
             # Handle chain reactions if enabled
-            if getattr(grenade.db, DB_CHAIN_TRIGGER, False):
+            if grenade.db.chain_trigger:
                 for obj in proximity_list:
                     if (hasattr(obj, 'db') and 
-                        getattr(obj.db, DB_IS_EXPLOSIVE, False) and 
+                        obj.db.is_explosive and 
                         obj != grenade):
                         
                         # Trigger chain explosion
@@ -3121,7 +3117,7 @@ class CmdScan(Command):
             return
         
         # Validate explosive
-        if not getattr(explosive.db, DB_IS_EXPLOSIVE, False):
+        if not explosive.db.is_explosive:
             caller.msg(f"{explosive.key} is not an explosive device.")
             return
         
@@ -3131,7 +3127,7 @@ class CmdScan(Command):
             return
         
         # Validate detonator type
-        if not hasattr(detonator.db, 'device_type') or detonator.db.device_type != "remote_detonator":
+        if not detonator.db.device_type or detonator.db.device_type != "remote_detonator":
             caller.msg(f"{detonator.key} is not a remote detonator.")
             return
         
@@ -3219,7 +3215,7 @@ class CmdDetonate(Command):
             return
         
         # Validate detonator type
-        if not hasattr(detonator.db, 'device_type') or detonator.db.device_type != "remote_detonator":
+        if not detonator.db.device_type or detonator.db.device_type != "remote_detonator":
             caller.msg(f"{detonator.key} is not a remote detonator.")
             return
         
@@ -3271,13 +3267,13 @@ class CmdDetonate(Command):
         explosive = explosive[0]
         
         # Check if already detonating
-        if getattr(explosive.db, DB_PIN_PULLED, False):
+        if explosive.db.pin_pulled:
             caller.msg(f"|y{explosive.key} is already detonating!|n")
             return
         
         # Pull the pin remotely
-        setattr(explosive.db, DB_PIN_PULLED, True)
-        fuse_time = getattr(explosive.db, DB_FUSE_TIME, 8)
+        explosive.db.pin_pulled = True
+        fuse_time = explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
         setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
         
         # Start countdown using CmdPull's grenade ticker system
@@ -3344,13 +3340,13 @@ class CmdDetonate(Command):
             explosive = explosive[0]
             
             # Skip if already detonating
-            if getattr(explosive.db, DB_PIN_PULLED, False):
+            if explosive.db.pin_pulled:
                 already_active_count += 1
                 continue
             
             # Pull the pin remotely
-            setattr(explosive.db, DB_PIN_PULLED, True)
-            fuse_time = getattr(explosive.db, DB_FUSE_TIME, 8)
+            explosive.db.pin_pulled = True
+            fuse_time = explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
             setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
             
             # Start countdown
@@ -3444,7 +3440,7 @@ class CmdDetonateList(Command):
             # Find wielded detonator
             if hasattr(caller, 'hands') and caller.hands:
                 for held_item in caller.hands.values():
-                    if (held_item and hasattr(held_item.db, 'device_type') and 
+                    if (held_item and held_item.db.device_type and 
                         held_item.db.device_type == "remote_detonator"):
                         detonator = held_item
                         break
@@ -3469,7 +3465,7 @@ class CmdDetonateList(Command):
                 return
         
         # Validate detonator type
-        if not hasattr(detonator.db, 'device_type') or detonator.db.device_type != "remote_detonator":
+        if not detonator.db.device_type or detonator.db.device_type != "remote_detonator":
             caller.msg(f"{detonator.key} is not a remote detonator.")
             return
         
@@ -3508,20 +3504,20 @@ class CmdDetonateList(Command):
             explosive = explosive[0]
             
             # Get status
-            if getattr(explosive.db, DB_PIN_PULLED, False):
+            if explosive.db.pin_pulled:
                 countdown = getattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, 0)
-                if getattr(explosive.db, 'stuck_to_armor', None):
+                if explosive.db.stuck_to_armor is not None:
                     status = f"|RSTUCK|n"
                 else:
                     status = f"|YACTIVE|n"
                 fuse_str = f"|R{countdown}s left!|n"
-            elif getattr(explosive.db, 'rigged_to_exit', None) is not None:
+            elif explosive.db.rigged_to_exit is not None:
                 status = f"|yTRAP|n"
-                fuse_time = getattr(explosive.db, DB_FUSE_TIME, 8)
+                fuse_time = explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
                 fuse_str = f"{fuse_time}s (trap)"
             else:
                 status = f"|gREADY|n"
-                fuse_time = getattr(explosive.db, DB_FUSE_TIME, 8)
+                fuse_time = explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
                 fuse_str = f"{fuse_time}s"
             
             # Get location
@@ -3531,7 +3527,7 @@ class CmdDetonateList(Command):
                 loc_str = "Your inventory"
             elif hasattr(explosive.location, 'key'):
                 # Check if stuck to armor
-                if getattr(explosive.db, 'stuck_to_armor', None):
+                if explosive.db.stuck_to_armor is not None:
                     stuck_to = explosive.db.stuck_to_armor
                     if hasattr(stuck_to, 'location') and hasattr(stuck_to.location, 'key'):
                         loc_str = f"On {stuck_to.location.key}"
@@ -3602,7 +3598,7 @@ class CmdClearDetonator(Command):
             
             detonator = None
             for held_item in caller.hands.values():
-                if (held_item and hasattr(held_item.db, 'device_type') and 
+                if (held_item and held_item.db.device_type and 
                     held_item.db.device_type == "remote_detonator"):
                     detonator = held_item
                     break
@@ -3633,7 +3629,7 @@ class CmdClearDetonator(Command):
             return
         
         # Validate detonator type
-        if not hasattr(detonator.db, 'device_type') or detonator.db.device_type != "remote_detonator":
+        if not detonator.db.device_type or detonator.db.device_type != "remote_detonator":
             caller.msg(f"{detonator.key} is not a remote detonator.")
             return
         
@@ -3704,9 +3700,9 @@ class CmdClearDetonator(Command):
         from evennia.utils.search import search_object
         for explosive_dbref in list(detonator.db.scanned_explosives):
             explosive = search_object(f"#{explosive_dbref}")
-            if explosive and len(explosive) > 0:
+                if explosive and len(explosive) > 0:
                 explosive_obj = explosive[0]
-                if hasattr(explosive_obj.db, 'scanned_by_detonator'):
+                if explosive_obj.db.scanned_by_detonator is not None:
                     explosive_obj.db.scanned_by_detonator = None
         
         # Clear detonator list

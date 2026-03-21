@@ -272,7 +272,7 @@ class DeathCurtain:
         """Called when the animation completes."""
         # Send a single, vivid death message that incorporates the cause
         if self.location:
-            death_cause = getattr(self.character.db, 'death_cause', None)
+            death_cause = self.character.db.death_cause
             
             if death_cause:
                 # Create vivid death descriptions based on cause

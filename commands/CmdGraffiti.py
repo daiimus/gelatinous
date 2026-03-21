@@ -102,7 +102,7 @@ class CmdGraffiti(Command):
         can = can[0]  # Get first match
         
         # Check what type of aerosol contents the can has
-        aerosol_contents = getattr(can.db, 'aerosol_contents', None)
+        aerosol_contents = can.db.aerosol_contents
         if not aerosol_contents:
             self.caller.msg(f"You can't use {can.get_display_name(self.caller)} for spraying.")
             return
@@ -212,7 +212,7 @@ class CmdGraffiti(Command):
         for obj in self.caller.location.contents:
             if isinstance(obj, GraffitiObject):
                 graffiti_obj = obj
-            elif isinstance(obj, BloodPool) or (hasattr(obj.db, 'is_blood_pool') and obj.db.is_blood_pool):
+            elif isinstance(obj, BloodPool) or obj.db.is_blood_pool:
                 blood_pools.append(obj)
         
         # Check if there's anything to clean
@@ -245,7 +245,7 @@ class CmdGraffiti(Command):
                 if blood_pool.db.bleeding_incidents:
                     # Determine tool quality based on solvent can type
                     tool_quality = "basic"  # Default for spray cans
-                    if hasattr(solvent_can.db, 'quality'):
+                    if solvent_can.db.quality is not None:
                         tool_quality = solvent_can.db.quality
                     
                     cleaned_volume, clean_result = blood_pool.clean_with_solvent(self.caller, tool_quality)
@@ -362,7 +362,7 @@ class CmdPress(Command):
         spray_can = spray_can[0]  # Get first match
         
         # Check if it's an aerosol can with color-changing capability (spraypaint)
-        aerosol_contents = getattr(spray_can.db, 'aerosol_contents', None)
+        aerosol_contents = spray_can.db.aerosol_contents
         if not aerosol_contents:
             self.caller.msg(f"You can't press colors on {spray_can.get_display_name(self.caller)}.")
             return

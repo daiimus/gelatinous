@@ -61,7 +61,7 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
     
     # Add skintone if character provided and stage requires it
     if character and stage in ["treated", "healing", "scarred"]:
-        skintone = getattr(character.db, 'skintone', None)
+        skintone = character.db.skintone
         if skintone:
             try:
                 from world.combat.constants import SKINTONE_PALETTE

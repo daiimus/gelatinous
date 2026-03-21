@@ -183,9 +183,9 @@ class CmdHeal(Command):
                     target.ndb.unconsciousness_processed = False
                 
                 # Clear old test flags (backward compatibility)
-                if hasattr(target.db, '_test_death_state'):
+                if target.db._test_death_state is not None:
                     del target.db._test_death_state
-                if hasattr(target.db, '_test_unconscious_state'):
+                if target.db._test_unconscious_state is not None:
                     del target.db._test_unconscious_state
                 
                 # Remove any medical state restrictions (death/unconscious cmdsets)

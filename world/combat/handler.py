@@ -69,8 +69,8 @@ def get_or_create_combat(location):
 
     for handler_script in active_handlers:
         # Ensure it's our CombatHandler type and has managed_rooms
-        if hasattr(handler_script, "db") and hasattr(handler_script.db, DB_MANAGED_ROOMS):
-            if location in getattr(handler_script.db, DB_MANAGED_ROOMS, []):
+        if hasattr(handler_script, "db") and handler_script.db.managed_rooms is not None:
+            if location in (handler_script.db.managed_rooms or []):
                 splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_GET: Location {location.key} is already managed by active handler {handler_script.key} (on {handler_script.obj.key}). Returning it.")
                 return handler_script
     
@@ -81,10 +81,10 @@ def get_or_create_combat(location):
             if script.is_active: # Should have been caught by the loop above if it managed this location
                 splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_GET: Found active handler {script.key} directly on {location.key} (missed by global check or manages only self). Returning it.")
                 # Ensure it knows it manages this location
-                managed_rooms = getattr(script.db, DB_MANAGED_ROOMS, [])
+                managed_rooms = script.db.managed_rooms or []
                 if location not in managed_rooms:
                     managed_rooms.append(location)
-                    setattr(script.db, DB_MANAGED_ROOMS, managed_rooms)
+                    script.db.managed_rooms = managed_rooms
                 return script
             else:
                 splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_GET: Found inactive handler {script.key} on {location.key}. Attempting cleanup.")
@@ -150,13 +150,13 @@ class CombatHandler(DefaultScript):
         self.persistent = True
         
         # Initialize database attributes using constants
-        setattr(self.db, DB_COMBATANTS, [])
-        setattr(self.db, "round", 0)
-        setattr(self.db, DB_MANAGED_ROOMS, [self.obj])  # Initially manages only its host room
-        setattr(self.db, DB_COMBAT_RUNNING, False)
+        self.db.combatants = []
+        self.db.round = 0
+        self.db.managed_rooms = [self.obj]  # Initially manages only its host room
+        self.db.combat_is_running = False
         
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        managed_rooms = getattr(self.db, DB_MANAGED_ROOMS, [])
+        managed_rooms = self.db.managed_rooms or []
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CREATE: New handler {self.key} created on {self.obj.key}, initially managing: {[r.key for r in managed_rooms]}. Combat logic initially not running.")
 
     def start(self):
@@ -171,18 +171,18 @@ class CombatHandler(DefaultScript):
 
         # Use super().is_active to check Evennia's ticker status
         evennia_ticker_is_active = super().is_active
-        combat_is_running = getattr(self.db, DB_COMBAT_RUNNING, False)
+        combat_is_running = self.db.combat_is_running
 
         if combat_is_running and evennia_ticker_is_active:
             splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_START: Handler {self.key} on {self.obj.key} - combat logic and Evennia ticker are already active. Skipping redundant start.")
             return
 
-        managed_rooms = getattr(self.db, DB_MANAGED_ROOMS, [])
+        managed_rooms = self.db.managed_rooms or []
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_START: Handler {self.key} on {self.obj.key} (managing {[r.key for r in managed_rooms]}) - ensuring combat logic is running and ticker is scheduled.")
         
         if not combat_is_running:
             splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_START_DETAIL: Setting {DB_COMBAT_RUNNING} = True for {self.key}.")
-            setattr(self.db, DB_COMBAT_RUNNING, True)
+            self.db.combat_is_running = True
         
         if not evennia_ticker_is_active:
             splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_START_DETAIL: Evennia ticker for {self.key} is not active (super().is_active=False). Calling force_repeat().")
@@ -210,7 +210,7 @@ class CombatHandler(DefaultScript):
         
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         
-        combat_was_running = getattr(self.db, DB_COMBAT_RUNNING, False)
+        combat_was_running = self.db.combat_is_running
         
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_{DEBUG_CLEANUP}: Handler {self.key} stopping combat logic. Was running: {combat_was_running}, cleanup_combatants: {cleanup_combatants}")
 
@@ -218,7 +218,7 @@ class CombatHandler(DefaultScript):
             self._cleanup_all_combatants()
         
         # Determine if we should delete the script BEFORE modifying db attributes
-        combatants = getattr(self.db, DB_COMBATANTS, [])
+        combatants = self.db.combatants or []
         should_delete_script = False
         if not combatants and self.pk:
             splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_{DEBUG_CLEANUP}: Handler {self.key} is empty and persistent. Marking for deletion.")
@@ -251,7 +251,7 @@ class CombatHandler(DefaultScript):
         
         # Only reach here if handler was NOT deleted
         # Now it's safe to modify db attributes (self.pk is still valid)
-        setattr(self.db, DB_COMBAT_RUNNING, False)
+        self.db.combat_is_running = False
         self.db.round = 0
         
         # Stop the ticker if the script is saved to the database
@@ -304,10 +304,10 @@ class CombatHandler(DefaultScript):
         Args:
             room_to_add: The room to add to managed rooms
         """
-        managed_rooms = getattr(self.db, DB_MANAGED_ROOMS, [])
+        managed_rooms = self.db.managed_rooms or []
         if room_to_add not in managed_rooms:
             managed_rooms.append(room_to_add)
-            setattr(self.db, DB_MANAGED_ROOMS, managed_rooms)
+            self.db.managed_rooms = managed_rooms
 
     def merge_handler(self, other_handler):
         """
@@ -332,8 +332,8 @@ class CombatHandler(DefaultScript):
             return
         
         # Get combatants from both handlers
-        our_combatants = getattr(self.db, DB_COMBATANTS, [])
-        their_combatants = getattr(other_handler.db, DB_COMBATANTS, [])
+        our_combatants = self.db.combatants or []
+        their_combatants = other_handler.db.combatants or []
         
         # Merge combatants lists
         for entry in their_combatants:
@@ -342,15 +342,15 @@ class CombatHandler(DefaultScript):
                 our_combatants.append(entry)
         
         # Merge managed rooms
-        our_rooms = getattr(self.db, DB_MANAGED_ROOMS, [])
-        their_rooms = getattr(other_handler.db, DB_MANAGED_ROOMS, [])
+        our_rooms = self.db.managed_rooms or []
+        their_rooms = other_handler.db.managed_rooms or []
         for room in their_rooms:
             if room not in our_rooms:
                 our_rooms.append(room)
         
         # Update our state
-        setattr(self.db, DB_COMBATANTS, our_combatants)
-        setattr(self.db, DB_MANAGED_ROOMS, our_rooms)
+        self.db.combatants = our_combatants
+        self.db.managed_rooms = our_rooms
         
         # CRITICAL FIX: Update ALL combatants' handler references after merge
         # This ensures both existing and newly merged combatants point to the correct handler
@@ -433,13 +433,13 @@ class CombatHandler(DefaultScript):
         Handles attacks, misses, deaths, and round progression across managed rooms.
         """
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        if not getattr(self.db, DB_COMBAT_RUNNING, False):
+        if not self.db.combat_is_running:
             splattercast.msg(f"AT_REPEAT: Handler {self.key} on {self.obj.key} combat logic is not running ({DB_COMBAT_RUNNING}=False). Returning.")
             return
 
         if not super().is_active:
              splattercast.msg(f"AT_REPEAT: Handler {self.key} on {self.obj.key} Evennia script.is_active=False. Marking {DB_COMBAT_RUNNING}=False and returning.")
-             setattr(self.db, DB_COMBAT_RUNNING, False)
+             self.db.combat_is_running = False
              return
 
         # Convert SaverList to regular list to avoid corruption during modifications
@@ -486,7 +486,7 @@ class CombatHandler(DefaultScript):
             self._active_combatants_list = combatants_list
 
         valid_combatants_entries = []
-        managed_rooms = getattr(self.db, DB_MANAGED_ROOMS, [])
+        managed_rooms = self.db.managed_rooms or []
         for entry in combatants_list:
             char = entry.get(DB_CHAR)
             if not char:
@@ -522,7 +522,7 @@ class CombatHandler(DefaultScript):
             else:
                 splattercast.msg(f"AT_REPEAT: Handler {self.key}. Waiting for combatants to join...")
                 # Save the list back before returning
-                setattr(self.db, DB_COMBATANTS, combatants_list)
+                self.db.combatants = combatants_list
                 self._active_combatants_list = None  # Clear active list tracking
                 return
 
@@ -756,7 +756,7 @@ class CombatHandler(DefaultScript):
                     # Validate target
                     is_action_target_valid = False
                     if action_target_char and any(e[DB_CHAR] == action_target_char for e in combatants_list):
-                        if action_target_char.location and action_target_char.location in getattr(self.db, DB_MANAGED_ROOMS, []):
+                        if action_target_char.location and action_target_char.location in (self.db.managed_rooms or []):
                             is_action_target_valid = True
                     
                     if not is_action_target_valid and action_target_char:
@@ -873,7 +873,7 @@ class CombatHandler(DefaultScript):
 
         # Check for dead or unconscious combatants after all attacks are processed
         # NOTE: Keep _active_combatants_list alive so remove_combatant can use it for auto-retargeting
-        remaining_combatants = getattr(self.db, DB_COMBATANTS, [])
+        remaining_combatants = self.db.combatants or []
         incapacitated_combatants = []
         
         for entry in remaining_combatants:
@@ -894,7 +894,7 @@ class CombatHandler(DefaultScript):
         self._active_combatants_list = None
 
         # Check if combat should continue
-        remaining_combatants = getattr(self.db, DB_COMBATANTS, [])
+        remaining_combatants = self.db.combatants or []
         if not remaining_combatants:
             splattercast.msg(f"AT_REPEAT: No combatants remain in handler {self.key}. Stopping.")
             self._active_combatants_list = None  # Clear active list tracking
@@ -920,7 +920,7 @@ class CombatHandler(DefaultScript):
         if active_list:
             combatants_list = active_list
         else:
-            combatants_list = getattr(self.db, DB_COMBATANTS, [])
+            combatants_list = self.db.combatants or []
         
         entry = next((e for e in combatants_list if e.get(DB_CHAR) == char), None)
         if entry:
@@ -935,7 +935,7 @@ class CombatHandler(DefaultScript):
         # 1. Get a copy of the combatants list
         # 2. Modify the copy
         # 3. Save the entire modified copy back
-        combatants = getattr(self.db, DB_COMBATANTS, [])
+        combatants = self.db.combatants or []
         db_entry = next((e for e in combatants if e.get(DB_CHAR) == char), None)
         
         if db_entry:
@@ -955,12 +955,12 @@ class CombatHandler(DefaultScript):
                     splattercast.msg(f"SET_TARGET: Updated both DB and active list for {char.key}")
             
             # Save the modified copy back (following utils.py pattern)
-            setattr(self.db, DB_COMBATANTS, combatants)
+            self.db.combatants = combatants
             
             if target:
                 splattercast.msg(f"SET_TARGET: {char.key} target changed from {old_target_dbref} to {new_target_dbref} ({target.key})")
                 # Verify the change was saved
-                verification_list = getattr(self.db, DB_COMBATANTS, [])
+                verification_list = self.db.combatants or []
                 verification_entry = next((e for e in verification_list if e.get(DB_CHAR) == char), None)
                 if verification_entry:
                     actual_dbref = verification_entry.get(DB_TARGET_DBREF)
@@ -997,7 +997,7 @@ class CombatHandler(DefaultScript):
         Check if two characters are targeting each other in active combat.
         Used to restore proximity after server reloads.
         """
-        combatants_list = getattr(self.db, DB_COMBATANTS, [])
+        combatants_list = self.db.combatants or []
         char1_entry = None
         char2_entry = None
         
@@ -1058,12 +1058,12 @@ class CombatHandler(DefaultScript):
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         
         # Validate that combat is still active
-        if not getattr(self.db, DB_COMBAT_RUNNING, False):
+        if not self.db.combat_is_running:
             splattercast.msg(f"DELAYED_ATTACK: Combat ended before {attacker.key}'s attack on {target.key} could execute.")
             return
             
         # Validate that both characters are still in combat
-        current_combatants = getattr(self.db, DB_COMBATANTS, [])
+        current_combatants = self.db.combatants or []
         attacker_still_in_combat = any(e.get(DB_CHAR) == attacker for e in current_combatants)
         target_still_in_combat = any(e.get(DB_CHAR) == target for e in current_combatants)
         
@@ -1115,7 +1115,7 @@ class CombatHandler(DefaultScript):
             return "blunt"  # Unarmed attacks are blunt trauma
         
         # Get damage_type from weapon, default to "blunt" if not specified
-        damage_type = getattr(weapon.db, 'damage_type', 'blunt')
+        damage_type = weapon.db.damage_type if weapon.db.damage_type is not None else 'blunt'
         return damage_type
 
     def _process_attack(self, attacker, target, attacker_entry, combatants_list):
@@ -1259,7 +1259,7 @@ class CombatHandler(DefaultScript):
             
             # Determine weapon type for messages
             weapon_type = "unarmed"
-            if weapon and hasattr(weapon, 'db') and hasattr(weapon.db, 'weapon_type'):
+            if weapon and hasattr(weapon, 'db') and weapon.db.weapon_type:
                 weapon_type = weapon.db.weapon_type
             
             # Apply damage first to determine if this is a killing blow
@@ -1331,7 +1331,7 @@ class CombatHandler(DefaultScript):
         else:
             # Miss - get miss messages from the message system
             weapon_type = "unarmed"
-            if weapon and hasattr(weapon, 'db') and hasattr(weapon.db, 'weapon_type'):
+            if weapon and hasattr(weapon, 'db') and weapon.db.weapon_type:
                 weapon_type = weapon.db.weapon_type
                 
             miss_messages = get_combat_message(weapon_type, "miss", attacker=attacker, target=target, item=weapon)
@@ -1540,7 +1540,7 @@ class CombatHandler(DefaultScript):
             return
         
         # Check if target is still in combat
-        combatants_list = getattr(self.db, DB_COMBATANTS, [])
+        combatants_list = self.db.combatants or []
         if not any(e[DB_CHAR] == target for e in combatants_list):
             char.msg(f"|r{target.key} is no longer in combat.|n")
             return
@@ -1581,7 +1581,7 @@ class CombatHandler(DefaultScript):
                 splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE: {char.key} failed to advance on {target.key}.")
         else:
             # Different room - check if it's a managed room and try to move there
-            managed_rooms = getattr(self.db, DB_MANAGED_ROOMS, [])
+            managed_rooms = self.db.managed_rooms or []
             target_room = target.location
             
             if target_room not in managed_rooms:
@@ -1810,7 +1810,7 @@ class CombatHandler(DefaultScript):
                 splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed charge on {target.key}, penalty applied.")
         else:
             # Different room charge - move to target's room
-            managed_rooms = getattr(self.db, DB_MANAGED_ROOMS, [])
+            managed_rooms = self.db.managed_rooms or []
             if target.location not in managed_rooms:
                 char.msg(f"|r{target.key} is not in a room you can charge to.|n")
                 return
@@ -1924,7 +1924,7 @@ class CombatHandler(DefaultScript):
             char.msg(f"|r{target.key} is no longer in the same room.|n")
             return
         
-        combatants_list = getattr(self.db, "combatants", [])
+        combatants_list = self.db.combatants or []
         if not any(e["char"] == target for e in combatants_list):
             char.msg(f"|r{target.key} is no longer in combat.|n")
             return
@@ -1947,7 +1947,7 @@ class CombatHandler(DefaultScript):
         # Find weapon to disarm (prioritize weapons, then any held item)
         weapon_hand = None
         for hand, item in hands.items():
-            if item and hasattr(item.db, "weapon_type") and item.db.weapon_type:
+            if item and item.db.weapon_type:
                 weapon_hand = hand
                 break
         

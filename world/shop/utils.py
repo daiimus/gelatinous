@@ -130,7 +130,7 @@ def validate_purchase(buyer, price):
         ...     character.msg(msg)
         ...     return
     """
-    buyer_tokens = getattr(buyer.db, "tokens", 0)
+    buyer_tokens = buyer.db.tokens if buyer.db.tokens is not None else 0
     
     if buyer_tokens < price:
         shortage = price - buyer_tokens
@@ -150,7 +150,7 @@ def deduct_tokens(character, amount):
     Returns:
         bool: True if successful, False if insufficient funds
     """
-    current = getattr(character.db, "tokens", 0)
+    current = character.db.tokens if character.db.tokens is not None else 0
     if current < amount:
         return False
     character.db.tokens = current - amount
@@ -165,5 +165,5 @@ def add_tokens(character, amount):
         character: Character object
         amount (int): Amount to add
     """
-    current = getattr(character.db, "tokens", 0)
+    current = character.db.tokens if character.db.tokens is not None else 0
     character.db.tokens = current + amount
