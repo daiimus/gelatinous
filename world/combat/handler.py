@@ -19,7 +19,6 @@ from evennia.utils.utils import delay
 from world.combat.messages import get_combat_message
 from world.medical.utils import select_hit_location, select_target_organ
 from evennia.comms.models import ChannelDB
-import traceback
 
 from .constants import (
     COMBAT_SCRIPT_KEY, SPLATTERCAST_CHANNEL,
@@ -516,15 +515,9 @@ class CombatHandler(DefaultScript):
             return
 
         if self.db.round == 0:
-            if len(combatants_list) > 0:
-                splattercast.msg(f"AT_REPEAT: Handler {self.key}. Combatants present. Starting combat in round 1.")
-                self.db.round = 1
-            else:
-                splattercast.msg(f"AT_REPEAT: Handler {self.key}. Waiting for combatants to join...")
-                # Save the list back before returning
-                self.db.combatants = combatants_list
-                self._active_combatants_list = None  # Clear active list tracking
-                return
+            # combatants_list is guaranteed non-empty here (empty case handled above)
+            splattercast.msg(f"AT_REPEAT: Handler {self.key}. Combatants present. Starting combat in round 1.")
+            self.db.round = 1
 
         splattercast.msg(f"AT_REPEAT: Handler {self.key} (managing {[r.key for r in managed_rooms]}). Round {self.db.round} begins.")
         
@@ -565,6 +558,9 @@ class CombatHandler(DefaultScript):
         
         for combat_entry in initiative_order:
             char = combat_entry.get(DB_CHAR)
+            if not char:
+                splattercast.msg(f"DEBUG_LOOP_ITERATION: Skipping entry with missing character.")
+                continue
             splattercast.msg(f"DEBUG_LOOP_ITERATION: Starting processing for {char.key}, combat_entry: {combat_entry}")
 
             # Always get a fresh reference to ensure we have current data
@@ -825,6 +821,7 @@ class CombatHandler(DefaultScript):
                             splattercast.msg(f"GRAPPLE FAIL (REACH): {char.key} cannot reach {action_target_char.key}.")
                         
                         current_char_combat_entry["combat_action"] = None
+                        current_char_combat_entry["combat_action_target"] = None
                         continue
                     elif intent_type == "escape_grapple":
                         grappler = self.get_grappled_by_obj(current_char_combat_entry)
@@ -852,6 +849,7 @@ class CombatHandler(DefaultScript):
                                 char.location.msg_contents(obs_msg, exclude=[char, grappler])
                                 splattercast.msg(f"ESCAPE FAIL: {char.key} failed to escape {grappler.key}.")
                         current_char_combat_entry["combat_action"] = None
+                        current_char_combat_entry["combat_action_target"] = None
                         continue
 
             # Standard attack processing - get target and schedule attack with staggered timing
@@ -871,8 +869,19 @@ class CombatHandler(DefaultScript):
             # Clear the combat action after processing
             current_char_combat_entry["combat_action"] = None
 
+        # Save the modified combatants list to the database FIRST to persist
+        # combat_action changes and grapple state from round processing.
+        # This must happen BEFORE the death check so that remove_combatant()
+        # operates on the already-persisted state and its changes aren't
+        # overwritten by a stale snapshot save afterward.
+        self.db.combatants = combatants_list
+        splattercast.msg(f"AT_REPEAT_SAVE: Saved modified combatants list back to database.")
+
+        # Clear active list tracking BEFORE death check so remove_combatant()
+        # operates directly on self.db.combatants rather than a stale snapshot.
+        self._active_combatants_list = None
+
         # Check for dead or unconscious combatants after all attacks are processed
-        # NOTE: Keep _active_combatants_list alive so remove_combatant can use it for auto-retargeting
         remaining_combatants = self.db.combatants or []
         incapacitated_combatants = []
         
@@ -885,31 +894,22 @@ class CombatHandler(DefaultScript):
                 incapacitated_combatants.append(char)
                 splattercast.msg(f"POST_ROUND_UNCONSCIOUS_CHECK: {char.key} is unconscious, removing from combat.")
                 
-        # Remove dead and unconscious combatants
+        # Remove dead and unconscious combatants — remove_combatant() persists
+        # its changes directly to self.db.combatants, no second save needed.
         for incapacitated_char in incapacitated_combatants:
             self.remove_combatant(incapacitated_char)
-
-        # Now clear active list tracking since death/unconscious processing is complete
-        # and any auto-retargeting has been handled
-        self._active_combatants_list = None
 
         # Check if combat should continue
         remaining_combatants = self.db.combatants or []
         if not remaining_combatants:
             splattercast.msg(f"AT_REPEAT: No combatants remain in handler {self.key}. Stopping.")
-            self._active_combatants_list = None  # Clear active list tracking
             self.stop_combat_logic()
             return
         elif len(remaining_combatants) <= 1:
             splattercast.msg(f"AT_REPEAT: Only {len(remaining_combatants)} combatant(s) remain in handler {self.key}. Ending combat.")
-            self._active_combatants_list = None  # Clear active list tracking
             self.stop_combat_logic()
             return
 
-        # Save the modified combatants list back to the database to persist combat_action changes
-        self.db.combatants = combatants_list
-        splattercast.msg(f"AT_REPEAT_SAVE: Saved modified combatants list back to database.")
-        
         self.db.round += 1
         splattercast.msg(f"AT_REPEAT: Handler {self.key}. Round {self.db.round} scheduled for next interval.")
 
@@ -1800,9 +1800,8 @@ class CombatHandler(DefaultScript):
                 
                 # Check if target has ranged weapon for bonus attack
                 if is_wielding_ranged_weapon(target):
-                    if hasattr(self, 'resolve_bonus_attack'):
-                        self.resolve_bonus_attack(target, char)
-                        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed charge against ranged weapon user {target.key}, bonus attack triggered.")
+                    self.resolve_bonus_attack(target, char)
+                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed charge against ranged weapon user {target.key}, bonus attack triggered.")
                 
                 # Apply charge failure penalty
                 char.ndb.charge_penalty = True
@@ -1888,10 +1887,9 @@ class CombatHandler(DefaultScript):
                     char.msg(f"|r{target.key} stops your reckless charge with covering fire!|n")
                     target.msg(f"|gYou stop {char.key}'s reckless charge with your ranged weapon!|n")
                     
-                    # Trigger bonus attack if available
-                    if hasattr(self, 'resolve_bonus_attack'):
-                        self.resolve_bonus_attack(target, char)
-                        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed cross-room charge against ranged weapon user {target.key}, bonus attack triggered.")
+                    # Trigger bonus attack
+                    self.resolve_bonus_attack(target, char)
+                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed cross-room charge against ranged weapon user {target.key}, bonus attack triggered.")
                 else:
                     char.msg(f"|rYour reckless charge at {target.key} fails as you stumble at the entrance!|n")
                     target.msg(f"|y{char.key} attempts to charge at you but stumbles at the entrance!|n")
@@ -1937,8 +1935,8 @@ class CombatHandler(DefaultScript):
             char.msg(f"|rYou must be in melee proximity with {target.key} to disarm them.|n")
             return
         
-        # Check target's hands
-        hands = getattr(target, "hands", {})
+        # Check target's hands (hands is an AttributeProperty on Character)
+        hands = target.hands if target.hands is not None else {}
         if not hands:
             char.msg(MSG_DISARM_TARGET_EMPTY_HANDS.format(target=target.key))
             log_combat_action(char, "disarm_fail", target, details="target has nothing in their hands")
