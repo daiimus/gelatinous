@@ -8,6 +8,7 @@ so it can reroute to all website pages.
 
 from django.urls import path
 from django.views.generic import RedirectView, TemplateView
+from django.conf import settings
 
 from evennia.web.website.urls import urlpatterns as evennia_website_urlpatterns
 from web.website.views.characters import (
@@ -30,8 +31,11 @@ urlpatterns = [
     # robots.txt - served as plain text for search engine crawlers
     path("robots.txt", TemplateView.as_view(template_name="robots.txt", content_type="text/plain"), name="robots-txt"),
 
-    # Forum redirect - gel.monster/forum/ -> forum.gel.monster
-    path("forum/", RedirectView.as_view(url="https://forum.gel.monster", permanent=False), name="forum-redirect"),
+    # Forum redirect - uses DISCOURSE_URL from settings, falls back to homepage
+    path("forum/", RedirectView.as_view(
+        url=getattr(settings, 'DISCOURSE_URL', '') or '/',
+        permanent=False,
+    ), name="forum-redirect"),
     
     # Header-only endpoint for iframe embedding (optional - for forum integration)
     path("header-only/", header_only, name="header-only"),

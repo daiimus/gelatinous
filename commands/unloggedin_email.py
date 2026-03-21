@@ -37,20 +37,16 @@ class CmdEmailConnect(MuxCommand):
         email = arglist[0].lower().strip()
         password = arglist[1]
 
-        # Look up account by email
+        # Look up account by email and verify password.
+        # Use a generic error message for both "no account" and "wrong password"
+        # to prevent user enumeration attacks.
         try:
             account = AccountDB.objects.filter(email__iexact=email).first()
         except AccountDB.DoesNotExist:
             account = None
-        
-        if not account:
-            session.msg(f"No account found with email '{email}'.")
-            session.msg("Use 'create' to make a new account.")
-            return
-            
-        # Verify password
-        if not account.check_password(password):
-            session.msg("Incorrect password.")
+
+        if not account or not account.check_password(password):
+            session.msg("Invalid email or password.")
             return
 
         # Check IP and/or name bans
