@@ -280,7 +280,7 @@ def create_character_from_template(account, template, sex="ambiguous"):
     try:
         splattercast = ChannelDB.objects.get_channel("Splattercast")
         splattercast.msg(f"CHARCREATE_SEX_SET: {char.key} sex set to '{sex}', current value: '{char.sex}', gender property: '{char.gender}'")
-    except:
+    except Exception:
         pass
     
     # Set defaults
@@ -359,7 +359,7 @@ def create_flash_clone(account, old_character):
     try:
         splattercast = ChannelDB.objects.get_channel("Splattercast")
         splattercast.msg(f"FLASH_CLONE_SEX_INHERIT: {char.key} inherited sex '{old_character.sex}' from {old_character.key}, current value: '{char.sex}', gender property: '{char.gender}'")
-    except:
+    except Exception:
         pass
     
     # INHERIT: death_count from old character
@@ -683,7 +683,7 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
         try:
             splattercast = ChannelDB.objects.get_channel("Splattercast")
             splattercast.msg(f"CHARCREATE_ERROR: {e}")
-        except:
+        except Exception:
             pass
         return "respawn_welcome"
 
@@ -753,7 +753,7 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
         try:
             splattercast = ChannelDB.objects.get_channel("Splattercast")
             splattercast.msg(f"FLASH_CLONE_ERROR: {e}")
-        except:
+        except Exception:
             pass
         return "respawn_welcome"
 
@@ -964,11 +964,11 @@ def first_char_grim(caller, raw_string, **kwargs):
         # Commands: grit, resonance, intellect, motorics, reset, done
         # Ignore: single digits (from sex selection) or other garbage
         valid_commands = ['grit', 'g', 'resonance', 'r', 'res', 'intellect', 'i', 'int', 
-                         'motorics', 'm', 'mot', 'reset', 'done', 'd', 'finish', 'finalize']
+                         'motorics', 'm', 'mot', 'reset', 're', 'done', 'd', 'finish', 'finalize']
         
         if command in valid_commands:
             # Reset command
-            if command in ["reset", "r"]:
+            if command in ["reset", "re"]:
                 caller.ndb.charcreate_data['grit'] = 75
                 caller.ndb.charcreate_data['resonance'] = 75
                 caller.ndb.charcreate_data['intellect'] = 75
@@ -1197,7 +1197,7 @@ def first_char_finalize(caller, raw_string, **kwargs):
         try:
             splattercast = ChannelDB.objects.get_channel("Splattercast")
             splattercast.msg(f"CHARCREATE_ERROR: {e}")
-        except:
+        except Exception:
             pass
         return "first_char_confirm"
 

@@ -232,7 +232,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                     f"location set to None for invisibility. "
                     f"Will be restored to {character.db.prelogout_location.key} on telnet login."
                 )
-            except:
+            except Exception:
                 pass
             
             # Clear last_character after successful respawn
@@ -349,7 +349,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                     f"location set to None for invisibility. "
                     f"Will be restored to {character.db.prelogout_location.key} on telnet login."
                 )
-            except:
+            except Exception:
                 pass
             
             messages.success(

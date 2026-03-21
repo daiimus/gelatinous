@@ -1,24 +1,7 @@
 """
 Spray Commands
 
-Unified spray command that         # Parse command patterns to determine intent
-        args_stripped = self.args.strip()
-        args_lower = args_stripped.lower()
-        
-        if args_lower.startswith("here with "):
-            # User wants to clean - get the can name
-            can_name = args_stripped[10:].strip()
-            intent = "clean"
-            message = None
-        elif " with " in args_stripped:
-            # User wants to spray paint - parse message and can name
-            message_part, can_part = args_stripped.rsplit(" with ", 1)
-            message = message_part.strip().strip('"'')  # Remove quotes if present
-            can_name = can_part.strip()
-            intent = "spraypaint"
-        else:
-            self.caller.msg("Usage: spray "<message>" with <can> OR spray here with <can>")
-            return painting and solvent cleaning
+Unified spray command for spray painting and solvent cleaning
 based on the type of can used and syntax provided.
 """
 

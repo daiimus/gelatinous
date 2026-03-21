@@ -1,5 +1,6 @@
 from evennia import Command
 from evennia.utils.search import search_object
+from evennia.utils import delay
 from world.combat.messages import get_combat_message
 from evennia.comms.models import ChannelDB
 from world.weather import weather_system
@@ -397,16 +398,7 @@ class CmdTestDeath(Command):
                 # Import condition classes
                 from world.medical.conditions import ConsciousnessSuppressionCondition, PainCondition, BleedingCondition
                 
-                def delayed_message(func, delay_time):
-                    """Helper to delay message functions"""
-                    import time
-                    import threading
-                    def delayed_func():
-                        time.sleep(delay_time)
-                        func()
-                    thread = threading.Thread(target=delayed_func)
-                    thread.daemon = True
-                    thread.start()
+                # Use Evennia's delay() for Twisted-safe deferred execution
                 
                 # Create a fatal combination using consciousness suppression and moderate damage
                 # This simulates a more controlled death like drug overdose or poisoning
@@ -470,7 +462,7 @@ class CmdTestDeath(Command):
                         target.location.msg_contents(f"|R{target.key} begins bleeding from everywhere at once - eyes weeping blood, crimson pouring from nose and mouth as their skin becomes a canvas of seeping red.|n", exclude=[target])
                 
                 # Schedule the dramatic message - only one needed
-                delayed_message(show_bleeding_onset, 3)
+                delay(3, show_bleeding_onset)
                 
                 # Multiple severe arterial bleeding conditions will cause rapid death
                 # 5 x 10% blood loss per tick = 50% blood loss per tick = death in 2 ticks

@@ -99,7 +99,7 @@ class Room(ObjectParent, DefaultRoom):
                     for item in list(corpse.contents):
                         try:
                             item.move_to(self, quiet=True)
-                        except:
+                        except Exception:
                             pass
                     
                     # Log and delete
@@ -107,11 +107,11 @@ class Room(ObjectParent, DefaultRoom):
                         from evennia.comms.models import ChannelDB
                         splattercast = ChannelDB.objects.get_channel("Splattercast")
                         splattercast.msg(f"CORPSE_DECAY_JIT: {corpse.key} decayed on room entry to {self.key}")
-                    except:
+                    except Exception:
                         pass
                     
                     corpse.delete()
-            except:
+            except Exception:
                 pass  # Corpse may have been deleted or be in invalid state
     
     # Override the appearance template to use our custom footer for exits

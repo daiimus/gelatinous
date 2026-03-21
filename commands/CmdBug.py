@@ -170,7 +170,7 @@ class CmdBug(MuxCommand):
             try:
                 git_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 possible_paths.append(os.path.join(git_dir, '.git', 'refs', 'heads', 'master'))
-            except:
+            except Exception:
                 pass
             
             # Try each possible path

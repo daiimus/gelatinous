@@ -204,7 +204,7 @@ class Corpse(Item):
                     from evennia.comms.models import ChannelDB
                     splattercast = ChannelDB.objects.get_channel("Splattercast")
                     splattercast.msg(f"CORPSE_WOUND_ERROR: Failed to generate wound description for {self.key}: {e}")
-                except:
+                except Exception:
                     pass
                 continue
         
@@ -681,7 +681,7 @@ class Corpse(Item):
             from evennia.comms.models import ChannelDB
             splattercast = ChannelDB.objects.get_channel("Splattercast")
             splattercast.msg(f"CORPSE_DECAY: {self.key} completely decayed and removed from {self.location}")
-        except:
+        except Exception:
             pass
             
         # Remove the corpse

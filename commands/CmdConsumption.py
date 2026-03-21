@@ -211,7 +211,7 @@ class ConsumptionCommand(Command):
                 has_bleeding = any(condition.condition_type == "minor_bleeding" 
                                  for condition in getattr(target.medical_state, 'conditions', []))
                 return blood_level < 100 or has_bleeding
-            except:
+            except Exception:
                 return False
                 
         elif medical_type == "wound_care":
@@ -221,7 +221,7 @@ class ConsumptionCommand(Command):
                 has_bleeding = any(condition.condition_type == "minor_bleeding" 
                                  for condition in getattr(target.medical_state, 'conditions', []))
                 return has_bleeding
-            except:
+            except Exception:
                 return False
                 
         elif medical_type in ["pain_relief", "antiseptic"]:
