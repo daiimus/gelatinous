@@ -183,8 +183,8 @@ class CmdMedicalInfo(Command):
             if len(parts) == 1:
                 # Could be either target or info type
                 search_result = caller.search(parts[0], quiet=True)
-                if search_result and not isinstance(search_result, list):
-                    target = search_result
+                if search_result and len(search_result) == 1:
+                    target = search_result[0]
                     info_type = "summary"
                 else:
                     # Not a valid target, treat as info type

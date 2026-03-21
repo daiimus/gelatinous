@@ -62,7 +62,5 @@ class CmdSpawnMob(Command):
         mob.intellect = roll_stat()
         mob.motorics = roll_stat()
 
-        mob.at_object_creation()
-
         caller.msg(f"You manifest {mob_name} into the world.")
         caller.location.msg_contents(f"{mob_name} flickers into existence, vacant and twitching.", exclude=caller)
