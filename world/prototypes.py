@@ -1088,9 +1088,21 @@ CERAMIC_PLATES = {
 # LEGACY ARMOR (Updated with Weight)
 # =============================================================================
 
+# Base prototype for armor items (avoids inheriting weapon tags)
+ARMOR_BASE = {
+    "prototype_key": "armor_base",
+    "key": "armor",
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A piece of protective armor.",
+    "tags": [
+        ("armor", "type"),
+        ("item", "general")
+    ],
+}
+
 # Tactical Kevlar Vest - Excellent bullet protection
 KEVLAR_VEST = {
-    "prototype_parent": "MELEE_WEAPON_BASE",  # Base item properties
+    "prototype_parent": "ARMOR_BASE",
     "key": "kevlar vest",
     "aliases": ["vest", "body armor", "bulletproof vest"],
     "typeclass": "typeclasses.items.Item",
@@ -1217,7 +1229,7 @@ BEE_HIVE_COVERALL = {
 
 # Steel Plate Armor - Medieval style, excellent all-around protection
 PLATE_MAIL = {
-    "prototype_parent": "MELEE_WEAPON_BASE",
+    "prototype_parent": "ARMOR_BASE",
     "key": "plate mail",
     "aliases": ["steel plate mail", "steel plate armor", "plate armor", "steel armor"],
     "typeclass": "typeclasses.items.Item", 
@@ -1249,7 +1261,7 @@ PLATE_MAIL = {
 
 # Leather Jacket - Light armor, good vs cuts
 ARMORED_LEATHER_JACKET = {
-    "prototype_parent": "MELEE_WEAPON_BASE",
+    "prototype_parent": "ARMOR_BASE",
     "key": "armored leather jacket",
     "aliases": ["jacket", "leather armor", "biker jacket"],
     "typeclass": "typeclasses.items.Item",
@@ -1296,7 +1308,7 @@ ARMORED_LEATHER_JACKET = {
 
 # Combat Helmet - Head protection (skull/crown only, face exposed)
 COMBAT_HELMET = {
-    "prototype_parent": "MELEE_WEAPON_BASE",
+    "prototype_parent": "ARMOR_BASE",
     "key": "combat helmet",
     "aliases": ["helmet", "tactical helmet"],
     "typeclass": "typeclasses.items.Item",
@@ -1320,30 +1332,6 @@ COMBAT_HELMET = {
         # Sticky grenade properties (kevlar with composite shell)
         ("metal_level", 3),      # Low metal (mounting hardware)
         ("magnetic_level", 2),   # Low magnetic (minimal steel clips)
-    ],
-}
-
-# Ceramic Trauma Plates - Insert armor for vests
-CERAMIC_PLATES = {
-    "key": "ceramic trauma plates",
-    "aliases": ["plates", "trauma plates", "ceramic insert", "ceramic plate"],
-    "typeclass": "typeclasses.items.Item",
-    "desc": "Advanced ceramic trauma plates designed to be inserted into tactical vests. Extremely effective against high-velocity rounds but brittle.",
-    "attrs": [
-        # Not worn directly - installed in carriers
-        ("coverage", []),
-        ("layer", 0),  # Not a clothing layer
-        ("weight", 4.0),  # Heavy ceramic
-        ("material", "ceramic"),
-        
-        # Plate properties
-        ("is_armor_plate", True),
-        ("plate_size", "medium"),
-        ("armor_rating", 10),       # Maximum protection
-        ("armor_type", "ceramic"),  # Excellent vs bullets, degrades quickly
-        ("armor_durability", 50),   # Low durability - shatters after absorbing damage
-        ("max_armor_durability", 50),
-        ("base_armor_rating", 10),
     ],
 }
 
@@ -1924,9 +1912,8 @@ FIREARMS_LOCKER = {
         ("container_type", "locker"),
         ("markup_percent", 20),  # 20% markup on firearms
         ("prototype_inventory", {
-            "PISTOL": 300,
-            "SHOTGUN": 500,
-            "SNIPER_RIFLE": 1200,
+            "LIGHT_PISTOL": 300,
+            "PUMP_SHOTGUN": 500,
             "BOLT_RIFLE": 800,
             "ANTI_MATERIAL_RIFLE": 2500,
             "ASSAULT_RIFLE": 900,
