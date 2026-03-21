@@ -545,10 +545,6 @@ class CmdGet(Command):
         caller.msg(f"You don't see a '{itemname}' here.")
         return None
 
-        # Edge case fallback — just add to inventory
-        item.location = caller
-        caller.msg(f"You pick up {item.key} and stow it.")
-
 
 class CmdGive(Command):
     """

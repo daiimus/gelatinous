@@ -307,80 +307,6 @@ class MedicalState:
             self.organs[organ_name] = Organ(organ_name)
         return self.organs[organ_name]
         
-    def add_condition(self, condition_type, location=None, severity="minor", **kwargs):
-        """
-        Add a new medical condition using the ticker-based system.
-        
-        Args:
-            condition_type (str): Type of condition
-            location (str, optional): Affected body location
-            severity (str): Condition severity
-            **kwargs: Additional condition properties
-            
-        Returns:
-            MedicalCondition: The created condition
-        """
-        # Import the new condition creation function
-        from .conditions import create_condition_from_damage
-        
-        # Map condition types to injury types for new system
-        injury_type_map = {
-            "bleeding": "bullet",  # Bleeding usually from trauma
-            "fracture": "blunt",   # Fractures from blunt trauma
-            "burn": "burn",        # Burns
-            "infection": "generic" # Infections (generic for now)
-        }
-        injury_type = injury_type_map.get(condition_type, "bullet")
-        
-        # Convert string severities to numeric damage for new system
-        if isinstance(severity, str):
-            severity_map = {"minor": 3, "moderate": 6, "severe": 12, "critical": 20}
-            numeric_severity = severity_map.get(severity.lower(), 3)
-        else:
-            numeric_severity = severity
-        
-        # Create conditions using new ticker-based system
-        new_conditions = create_condition_from_damage(
-            damage_amount=numeric_severity * 5,  # Scale to match damage amounts
-            injury_type=injury_type,
-            location=location or "chest"
-        )
-        
-        # Add created conditions and start their tickers
-        created_condition = None
-        for condition in new_conditions:
-            self.conditions.append(condition)
-            # Start ticker if character is available
-            if hasattr(self, 'character') and self.character:
-                try:
-                    from world.combat.constants import SPLATTERCAST_CHANNEL
-                    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-                    splattercast.msg(f"CONDITION_CREATE: Starting {condition.condition_type} for {self.character.key}")
-                    condition.start_condition(self.character)
-                except:
-                    pass
-            else:
-                try:
-                    from world.combat.constants import SPLATTERCAST_CHANNEL
-                    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-                    splattercast.msg(f"CONDITION_CREATE: No character reference available for {condition.condition_type}")
-                except:
-                    pass
-            created_condition = condition  # Return the last created condition
-            
-        self._cache_dirty = True
-        return created_condition
-        
-    def remove_condition(self, condition):
-        """Remove a medical condition."""
-        if condition in self.conditions:
-            self.conditions.remove(condition)
-            self._cache_dirty = True
-            
-    def get_conditions_by_type(self, condition_type):
-        """Get all conditions of a specific type."""
-        return [c for c in self.conditions if hasattr(c, 'condition_type') and c.condition_type == condition_type]
-        
     def get_conditions_by_location(self, location):
         """Get all conditions affecting a specific body location."""
         return [c for c in self.conditions if c.location == location]
@@ -590,7 +516,7 @@ class MedicalState:
                 splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 char_name = character.key if character else "unknown"
                 splattercast.msg(f"ADD_CONDITION: {char_name} is archived, not adding {condition.condition_type}")
-            except:
+            except Exception:
                 pass
             return
             
@@ -601,7 +527,7 @@ class MedicalState:
                 from world.combat.constants import SPLATTERCAST_CHANNEL
                 splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"ADD_CONDITION: Added {condition.condition_type} severity {condition.severity}")
-            except:
+            except Exception:
                 pass
             
             # Start ticker if condition requires it
@@ -614,7 +540,7 @@ class MedicalState:
                         from world.combat.constants import SPLATTERCAST_CHANNEL
                         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                         splattercast.msg(f"ADD_CONDITION: Starting ticker for {condition.condition_type} on {character.key}")
-                    except:
+                    except Exception:
                         pass
                     condition.start_condition(character)
                 else:
@@ -622,7 +548,7 @@ class MedicalState:
                         from world.combat.constants import SPLATTERCAST_CHANNEL
                         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                         splattercast.msg(f"ADD_CONDITION: No character reference found for {condition.condition_type}")
-                    except:
+                    except Exception:
                         pass
             
             # Save medical state after adding condition to ensure persistence

@@ -302,7 +302,7 @@ class Character(ObjectParent, DefaultCharacter):
                             installed = getattr(item, 'installed_plates', {})
                             debug_broadcast(f"PLATE_CARRIER detected: {item.key} for {location}, installed_plates={list(installed.keys())}", 
                                            "ARMOR_CALC", "DEBUG")
-                        except:
+                        except Exception:
                             pass
                         # Expand plate carrier into multiple sequential layers
                         carrier_layers = self._expand_plate_carrier_layers(item, location)
@@ -314,7 +314,7 @@ class Character(ObjectParent, DefaultCharacter):
                             for layer in carrier_layers:
                                 debug_broadcast(f"  Layer {layer['layer']}: {layer['item'].key} ({layer['armor_type']}, rating={layer['armor_rating']})", 
                                                "ARMOR_CALC", "DEBUG")
-                        except:
+                        except Exception:
                             pass
                         armor_layers.extend(carrier_layers)
                     else:
@@ -431,7 +431,7 @@ class Character(ObjectParent, DefaultCharacter):
                                "ARMOR_CALC", "DEBUG")
                 debug_broadcast(f"PLATE_LOOP: slot_coverage={slot_coverage}", 
                                "ARMOR_CALC", "DEBUG")
-            except:
+            except Exception:
                 pass
             
             for slot_name, plate in installed_plates.items():
@@ -458,7 +458,7 @@ class Character(ObjectParent, DefaultCharacter):
                     from world.combat.utils import debug_broadcast
                     debug_broadcast(f"PLATE_COVERAGE: slot={slot_name}, protects={protected_locations}, location={location}, match={location in protected_locations}", 
                                    "ARMOR_CALC", "DEBUG")
-                except:
+                except Exception:
                     pass
                 if location not in protected_locations:
                     continue
@@ -627,7 +627,7 @@ class Character(ObjectParent, DefaultCharacter):
             try:
                 splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"UNCONSCIOUS_SKIP: {self.key} already processed unconsciousness, skipping")
-            except:
+            except Exception:
                 pass
             return
             
@@ -646,7 +646,7 @@ class Character(ObjectParent, DefaultCharacter):
             try:
                 splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"UNCONSCIOUS_COMBAT: {self.key} unconsciousness message deferred - in active combat")
-            except:
+            except Exception:
                 pass
             
             # Safety fallback - trigger message after 5 seconds if combat doesn't handle it
@@ -655,7 +655,7 @@ class Character(ObjectParent, DefaultCharacter):
                     try:
                         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                         splattercast.msg(f"UNCONSCIOUS_FALLBACK: {self.key} triggering fallback unconsciousness message")
-                    except:
+                    except Exception:
                         pass
                     self._show_unconsciousness_message()
                     self.ndb.unconsciousness_pending = False
@@ -776,7 +776,7 @@ class Character(ObjectParent, DefaultCharacter):
             try:
                 splattercast = ChannelDB.objects.get_channel("Splattercast")
                 splattercast.msg(f"WARNING: Archiving staff character {self.key} (Account: {self.account.key}, Reason: {reason})")
-            except:
+            except Exception:
                 pass
         
         # Set account's last_character for respawn flow
@@ -804,7 +804,7 @@ class Character(ObjectParent, DefaultCharacter):
             try:
                 splattercast = ChannelDB.objects.get_channel("Splattercast")
                 splattercast.msg(f"ARCHIVE: Moved {self.key} from {current_location.key if current_location else 'None'} to Limbo")
-            except:
+            except Exception:
                 pass
         
         # Disconnect any active sessions
@@ -939,7 +939,7 @@ class Character(ObjectParent, DefaultCharacter):
             try:
                 splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"AT_DEATH_SKIP: {self.key} already processed death (db flag), skipping")
-            except:
+            except Exception:
                 pass
             return
             
@@ -981,7 +981,7 @@ class Character(ObjectParent, DefaultCharacter):
             try:
                 splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"AT_DEATH_COMBAT: {self.key} death curtain deferred - in active combat")
-            except:
+            except Exception:
                 pass
             
             # Safety fallback - trigger curtain after 5 seconds if combat doesn't handle it
@@ -990,7 +990,7 @@ class Character(ObjectParent, DefaultCharacter):
                     try:
                         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                         splattercast.msg(f"AT_DEATH_FALLBACK: {self.key} triggering fallback death curtain")
-                    except:
+                    except Exception:
                         pass
                     show_death_curtain(self)
                     self.ndb.death_curtain_pending = False
@@ -1143,7 +1143,7 @@ class Character(ObjectParent, DefaultCharacter):
             except Exception as e:
                 try:
                     splattercast.msg(f"REVIVAL_ERROR: Failed to restart medical script for {self.key}: {e}")
-                except:
+                except Exception:
                     pass
         
         # Clear death processing flags (both ndb and db)
@@ -1177,7 +1177,7 @@ class Character(ObjectParent, DefaultCharacter):
         try:
             splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             splattercast.msg(f"FINAL_DEATH: {self.key} has entered permanent death state")
-        except:
+        except Exception:
             pass
 
     def validate_attack_target(self):

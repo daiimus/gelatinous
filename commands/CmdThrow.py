@@ -673,7 +673,7 @@ class CmdThrow(Command):
                         try:
                             obj.move_to(origin)
                             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Moved {obj} back to origin {origin} as fallback")
-                        except:
+                        except Exception:
                             pass  # If even fallback fails, give up gracefully
             
             # Clean up flight data with defensive checks
@@ -710,7 +710,7 @@ class CmdThrow(Command):
                         obj.move_to(flight_origin)
                         if splattercast:
                             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Emergency moved {obj} back to origin {flight_origin}")
-            except:
+            except Exception:
                 pass  # If all else fails, give up gracefully
     
     def get_arrival_direction(self, origin, destination):
@@ -1413,7 +1413,7 @@ class CmdPull(Command):
                     splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER_ERROR: Ticker error for {grenade.key}: {e} - triggering explosion")
                 try:
                     explode_standalone_grenade(grenade)
-                except:
+                except Exception:
                     pass  # If even explosion fails, give up gracefully
         
         # Start the ticker
@@ -2125,7 +2125,7 @@ def start_standalone_grenade_ticker(grenade, explosion_callback=None):
                     explosion_callback()
                 else:
                     explode_standalone_grenade(grenade)
-            except:
+            except Exception:
                 pass  # If even explosion fails, give up gracefully
     
     # Start the ticker

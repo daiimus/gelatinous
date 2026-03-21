@@ -14,6 +14,9 @@ from evennia.web.website.views.accounts import (
 )
 from web.website.forms import TurnstileAccountForm
 
+import logging
+logger = logging.getLogger("web")
+
 
 class TurnstileAccountCreateView(EvenniaAccountCreateView):
     """
@@ -99,7 +102,7 @@ class TurnstileAccountCreateView(EvenniaAccountCreateView):
             # If no secret key configured, log warning
             # This shouldn't happen as we check before calling this method,
             # but handle gracefully just in case
-            print("WARNING: TURNSTILE_SECRET_KEY not configured - skipping verification")
+            logger.warning("TURNSTILE_SECRET_KEY not configured - skipping verification")
             return True  # Allow registration to proceed
         
         # Cloudflare Turnstile verification endpoint
@@ -122,7 +125,7 @@ class TurnstileAccountCreateView(EvenniaAccountCreateView):
             
         except Exception as e:
             # Log error and fail verification
-            print(f"Turnstile verification error: {e}")
+            logger.error("Turnstile verification error: %s", e)
             return False
     
     def get_client_ip(self):

@@ -966,7 +966,7 @@ def apply_medical_effects(item, user, target, **kwargs):
             splattercast.msg(f"REVIVAL_DEBUG: {target.key} blood_level={blood_level:.1f}%, is_dead={is_dead}")
         else:
             splattercast.msg(f"REVIVAL_DEBUG: {target.key} has no medical_state")
-    except:
+    except Exception:
         pass
     
     if death_scripts:
@@ -980,7 +980,7 @@ def apply_medical_effects(item, user, target, **kwargs):
                         from evennia.comms.models import ChannelDB
                         splattercast = ChannelDB.objects.get_channel("Splattercast")
                         splattercast.msg(f"REVIVAL_DEBUG: Checking revival conditions for {target.key}")
-                    except:
+                    except Exception:
                         pass
                     
                     if script._check_medical_revival_conditions(target):
@@ -994,7 +994,7 @@ def apply_medical_effects(item, user, target, **kwargs):
                             from evennia.comms.models import ChannelDB
                             splattercast = ChannelDB.objects.get_channel("Splattercast")
                             splattercast.msg(f"REVIVAL_DEBUG: {target.key} does not meet revival conditions")
-                        except:
+                        except Exception:
                             pass
         except Exception as e:
             # Don't let revival check errors break medical treatment
@@ -1002,7 +1002,7 @@ def apply_medical_effects(item, user, target, **kwargs):
                 from evennia.comms.models import ChannelDB
                 splattercast = ChannelDB.objects.get_channel("Splattercast")
                 splattercast.msg(f"REVIVAL_CHECK_ERROR: {target.key}: {e}")
-            except:
+            except Exception:
                 pass
     
     return result_msg

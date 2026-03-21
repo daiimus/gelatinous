@@ -929,7 +929,7 @@ class CmdJump(Command):
                     try:
                         timer.cancel()  # Cancel the utils.delay timer
                         splattercast.msg(f"JUMP_SACRIFICE: Cancelled original grenade timer on {explosive.key}")
-                    except:
+                    except Exception:
                         splattercast.msg(f"JUMP_SACRIFICE: Failed to cancel original grenade timer on {explosive.key}")
                 delattr(explosive.ndb, "grenade_timer")
             

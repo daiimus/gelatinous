@@ -720,7 +720,7 @@ def remove_combatant(handler, char):
                     try:
                         target_obj = next((e.get(DB_CHAR) for e in combatants if get_character_dbref(e.get(DB_CHAR)) == potential_target_dbref), None)
                         target_name = target_obj.key if target_obj else f"dbref#{potential_target_dbref}"
-                    except:
+                    except Exception:
                         target_name = f"dbref#{potential_target_dbref}"
                     splattercast.msg(f"RMV_COMB: Skipping {potential_target_char.key} for auto-retarget - attacking {target_name}, not {other_char.key} (friendly fire prevention)")
                     continue

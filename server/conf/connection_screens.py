@@ -61,37 +61,3 @@ Enter |whelp|n for more info. |wlook|n will re-show this screen.
 
 |b█▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█|n
 """
-
-
-# Keep the old static version as fallback (though the function above will take precedence)
-CONNECTION_SCREEN = """
-
-|b█▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█
-█▒▒▒▒▒▒▒▒▒ |g{} SYSTEM |n :::: SIGNAL {} |b▒▒▒▒▒▒▒▒▒▒█
-█▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█|n
-
-[ WARNING: Signal instability detected. ]
-[ Color bars desaturated. ]
-[ Anomalous resonance detected at 7.8Hz. ] 
-
-YEAR: 198|u█|n (ENDLESS BROADCAST)
-LOCATION: PARTS UNKNOWN
- 
->> Streets: Flowing.
->> Airwaves: Distorted.
->> Flesh: Grainy.
->> Memory: OFFLINE.
-
-__ Connect : |wconnect <email@address.com> <password>|n
-__ Create  : |wcreate <email@address.com> <password>|n
-
-Use your email address to connect or create a new account.
-Character creation happens after login.
-Enter |whelp|n for more info. |wlook|n will re-show this screen.
-
-|w>>> END OF TE▒T PATTERN. BROADCAST WI▒L NOT RESUME WITHOUT PROMPT.|n
-
-|b█▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█|n
-""".format(
-    settings.SERVERNAME, utils.get_evennia_version("short")
-)

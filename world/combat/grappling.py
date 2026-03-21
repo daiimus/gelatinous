@@ -633,13 +633,6 @@ def resolve_release_grapple(char_entry, combatants_list, handler):
     # The yielding state reflects the original intent when combat/grapple was initiated
     # If they want to become violent again, they need to explicitly take a hostile action
     
-    # Check if target is still grappled by someone else for validation
-    still_grappled = any(
-        e.get(DB_GRAPPLING_DBREF) == get_character_dbref(grappling_target)
-        for e in combatants_list
-        if e.get(DB_CHAR) != char
-    )
-    
     char.msg(f"|gYou release your grapple on {grappling_target.key}.|n")
     grappling_target.msg(f"|g{char.key} releases their grapple on you.|n")
     
