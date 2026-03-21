@@ -512,12 +512,12 @@ class Item(DefaultObject):
         Handles cleanup for remote detonator explosive tracking.
         """
         # If this item is an explosive scanned by a detonator, remove it from the detonator's list
-        if hasattr(self.db, 'scanned_by_detonator') and self.db.scanned_by_detonator:
+        if self.db.scanned_by_detonator:
             from evennia.utils.search import search_object
             detonator = search_object(f"#{self.db.scanned_by_detonator}")
             if detonator and len(detonator) > 0:
                 detonator_obj = detonator[0]
-                if hasattr(detonator_obj.db, 'scanned_explosives'):
+                if detonator_obj.db.scanned_explosives is not None:
                     try:
                         detonator_obj.db.scanned_explosives.remove(self.id)
                     except ValueError:
@@ -809,14 +809,14 @@ class RemoteDetonator(Item):
             return False, f"{explosive.key} is already scanned by this detonator."
         
         # Handle override: remove from previous detonator if any
-        if hasattr(explosive.db, 'scanned_by_detonator') and explosive.db.scanned_by_detonator:
+        if explosive.db.scanned_by_detonator:
             old_detonator_dbref = explosive.db.scanned_by_detonator
             from evennia.utils.search import search_object
             old_detonator = search_object(f"#{old_detonator_dbref}")
             
             if old_detonator and len(old_detonator) > 0:
                 old_det = old_detonator[0]
-                if hasattr(old_det.db, 'scanned_explosives'):
+                if old_det.db.scanned_explosives is not None:
                     try:
                         old_det.db.scanned_explosives.remove(explosive.id)
                     except ValueError:
@@ -852,7 +852,7 @@ class RemoteDetonator(Item):
         explosive = search_object(f"#{explosive_dbref}")
         if explosive and len(explosive) > 0:
             explosive_obj = explosive[0]
-            if hasattr(explosive_obj.db, 'scanned_by_detonator'):
+            if explosive_obj.db.scanned_by_detonator is not None:
                 explosive_obj.db.scanned_by_detonator = None
         
         return True
@@ -880,7 +880,7 @@ class RemoteDetonator(Item):
                 explosive = search_object(f"#{explosive_dbref}")
                 if explosive and len(explosive) > 0:
                     explosive_obj = explosive[0]
-                    if hasattr(explosive_obj.db, 'scanned_by_detonator'):
+                    if explosive_obj.db.scanned_by_detonator is not None:
                         explosive_obj.db.scanned_by_detonator = None
         
         super().at_delete()

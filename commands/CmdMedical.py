@@ -135,7 +135,7 @@ class CmdDamageTest(Command):
                         caller.msg(f"  - {organ_info}")
         except AttributeError:
             # Fallback to old db.medical_state format if property doesn't work
-            medical_state = getattr(caller.db, 'medical_state', {})
+            medical_state = caller.db.medical_state or {}
             if medical_state:
                 # Show current wounds
                 total_wounds = sum(len(wounds) for wounds in medical_state.get('wounds', {}).values())

@@ -497,17 +497,17 @@ class DeathProgressionScript(DefaultScript):
         corpse.db.original_character_dbref = character.dbref
         corpse.db.original_account_dbref = character.account.dbref if character.account else None
         corpse.db.death_time = time.time()
-        corpse.db.physical_description = getattr(character.db, 'desc', 'A person.')
+        corpse.db.physical_description = character.db.desc if character.db.desc is not None else 'A person.'
         
         # Preserve character appearance data for proper corpse display
         corpse.db.original_gender = getattr(character, 'gender', 'neutral')
-        corpse.db.original_skintone = getattr(character.db, 'skintone', None)
+        corpse.db.original_skintone = character.db.skintone
         
         # Transfer medical/death data if available
         if hasattr(character, 'medical_state') and character.medical_state:
             corpse.db.death_cause = character.get_death_cause()
             corpse.db.medical_conditions = character.medical_state.get_condition_summary()
-            corpse.db.blood_type = getattr(character.db, 'blood_type', 'unknown')
+            corpse.db.blood_type = character.db.blood_type if character.db.blood_type is not None else 'unknown'
             
             # Transfer wound data for corpse wound descriptions
             try:
@@ -690,7 +690,7 @@ class DeathProgressionScript(DefaultScript):
         
         # Archive the dead character (also handles any lingering sessions)
         character.archive_character(reason="death")
-        character.db.death_cause = getattr(character.db, 'death_cause', 'unknown')
+        character.db.death_cause = character.db.death_cause if character.db.death_cause is not None else 'unknown'
 
     def _initiate_new_character_creation(self, account, old_character, session):
         """Start the character creation process for the account after death."""

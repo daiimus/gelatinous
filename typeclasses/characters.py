@@ -1149,7 +1149,7 @@ class Character(ObjectParent, DefaultCharacter):
         # Clear death processing flags (both ndb and db)
         if hasattr(self.ndb, 'death_processed'):
             self.ndb.death_processed = False
-        if hasattr(self.db, 'death_processed'):
+        if self.db.death_processed is not None:
             del self.db.death_processed
         
         # Notify revival
@@ -1191,7 +1191,7 @@ class Character(ObjectParent, DefaultCharacter):
             None if valid target, or str with error message if invalid
         """
         # Holographic merchants cannot be attacked
-        if getattr(self.db, 'is_holographic', False):
+        if self.db.is_holographic:
             return "A holographic merchant cannot be attacked - target validation failed"
         
         # Character is a valid attack target
@@ -2066,7 +2066,7 @@ class Character(ObjectParent, DefaultCharacter):
             
         # Apply skintone coloring only if requested (for longdescs only)
         if apply_skintone:
-            skintone = getattr(self.db, 'skintone', None)
+            skintone = self.db.skintone
             if skintone:
                 from world.combat.constants import SKINTONE_PALETTE
                 color_code = SKINTONE_PALETTE.get(skintone)

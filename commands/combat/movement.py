@@ -105,7 +105,7 @@ class CmdFlee(Command):
         all_exits = [ex for ex in caller.location.exits if ex.access(caller, 'traverse')]
         available_exits = [
             ex for ex in all_exits 
-            if ex.destination and not getattr(ex.destination.db, "is_sky_room", False)
+            if ex.destination and not ex.destination.db.is_sky_room
         ]
         
         # Debug log if sky rooms were filtered out
@@ -142,7 +142,7 @@ class CmdFlee(Command):
                             if other_entry and other_h.get_target_obj(other_entry) == caller:
                                 other_hands = getattr(char_in_dest, "hands", {})
                                 other_weapon_obj = next((item for hand, item in other_hands.items() if item), None)
-                                other_is_ranged = other_weapon_obj and hasattr(other_weapon_obj.db, "is_ranged") and other_weapon_obj.db.is_ranged
+                                other_is_ranged = other_weapon_obj and other_weapon_obj.db.is_ranged
                                 if other_is_ranged:
                                     is_this_exit_safe_from_ranged_targeters = False
                                     splattercast.msg(f"{DEBUG_PREFIX_FLEE}_PRE_CHECK_UNSAFE_EXIT: {caller.key} - exit {potential_exit.key} to {destination_room.key} is unsafe. Reason: {char_in_dest.key} is a ranged targeter in combat handler {other_h.key}.")
@@ -289,7 +289,7 @@ class CmdFlee(Command):
             # Attempt to disengage from combat
             # Get all opponents targeting the caller
             opponents_targeting_caller = []
-            combatants_list = getattr(original_handler_at_flee_start.db, "combatants", [])
+            combatants_list = original_handler_at_flee_start.db.combatants or []
             if combatants_list:
                 for entry in combatants_list:
                     if entry["char"] != caller:
@@ -335,12 +335,12 @@ class CmdFlee(Command):
                         if char_in_dest == caller or not hasattr(char_in_dest, "ndb"):
                             continue
                         other_handler = getattr(char_in_dest.ndb, "combat_handler", None)
-                        if other_handler and getattr(other_handler.db, "combat_is_running", False):
-                            other_entry = next((e for e in getattr(other_handler.db, "combatants", []) if e["char"] == char_in_dest), None)
+                        if other_handler and other_handler.db.combat_is_running:
+                            other_entry = next((e for e in (other_handler.db.combatants or []) if e["char"] == char_in_dest), None)
                             if other_entry and original_handler_at_flee_start.get_target_obj(other_entry) == caller:
                                 other_hands = getattr(char_in_dest, "hands", {})
                                 other_weapon = next((item for hand, item in other_hands.items() if item), None)
-                                if other_weapon and getattr(other_weapon.db, "is_ranged", False):
+                                if other_weapon and other_weapon.db.is_ranged:
                                     is_safe = False
                                     break
                     if is_safe:
@@ -548,7 +548,7 @@ class CmdAdvance(Command):
                     
             if not target:
                 # Try searching in adjacent combat rooms
-                managed_rooms = getattr(handler.db, "managed_rooms", [])
+                managed_rooms = handler.db.managed_rooms or []
                 for room in managed_rooms:
                     if room != caller.location:
                         potential_target = caller.search(args, location=room, quiet=True)
@@ -661,7 +661,7 @@ class CmdCharge(Command):
                         
                 if not target_search:
                     # Try searching in adjacent combat rooms
-                    managed_rooms = getattr(handler.db, "managed_rooms", [])
+                    managed_rooms = handler.db.managed_rooms or []
                     for room in managed_rooms:
                         if room != caller.location:
                             potential_target = caller.search(args, location=room, quiet=True)
@@ -713,7 +713,7 @@ class CmdCharge(Command):
                     
             if not target:
                 # Try searching in adjacent combat rooms
-                managed_rooms = getattr(handler.db, "managed_rooms", [])
+                managed_rooms = handler.db.managed_rooms or []
                 for room in managed_rooms:
                     if room != caller.location:
                         potential_target = caller.search(args, location=room, quiet=True)
@@ -854,7 +854,7 @@ class CmdJump(Command):
         # Check if caller is being grappled (can't sacrifice while restrained)
         handler = getattr(self.caller.ndb, "combat_handler", None)
         if handler:
-            combatants_list = getattr(handler.db, "combatants", [])
+            combatants_list = handler.db.combatants or []
             caller_entry = next((e for e in combatants_list if e.get("char") == self.caller), None)
             if caller_entry:
                 from world.combat.grappling import get_grappled_by
@@ -877,7 +877,7 @@ class CmdJump(Command):
         explosive = explosive[0]  # Take first match
         
         # Validate it's an explosive
-        if not getattr(explosive.db, "is_explosive", False):
+        if not explosive.db.is_explosive:
             self.caller.msg(f"{explosive.key} is not an explosive device.")
             return
         
@@ -896,7 +896,7 @@ class CmdJump(Command):
         explosive.ndb.current_hero = self.caller
         
         # Determine explosive state for delayed revelation
-        is_armed = getattr(explosive.db, "pin_pulled", False)
+        is_armed = explosive.db.pin_pulled
         remaining_time = getattr(explosive.ndb, "countdown_remaining", None)
         has_active_countdown = remaining_time is not None and remaining_time > 0
         
@@ -946,7 +946,7 @@ class CmdJump(Command):
         handler = getattr(self.caller.ndb, "combat_handler", None)
         grappled_victim_preview = None
         if handler:
-            combatants_list = getattr(handler.db, "combatants", [])
+            combatants_list = handler.db.combatants or []
             caller_entry = next((e for e in combatants_list if e.get("char") == self.caller), None)
             if caller_entry:
                 from world.combat.grappling import get_grappling_target
@@ -963,7 +963,7 @@ class CmdJump(Command):
             )
         
         # Get blast damage for real explosions
-        blast_damage = getattr(explosive.db, "blast_damage", 10)
+        blast_damage = explosive.db.blast_damage if explosive.db.blast_damage is not None else 10
         
         # Delayed revelation function
         def reveal_outcome():
@@ -984,7 +984,7 @@ class CmdJump(Command):
                 shield_used = False
                 
                 if handler:
-                    combatants_list = getattr(handler.db, "combatants", [])
+                    combatants_list = handler.db.combatants or []
                     caller_entry = next((e for e in combatants_list if e.get("char") == self.caller), None)
                     if caller_entry:
                         from world.combat.grappling import get_grappling_target
@@ -1002,7 +1002,7 @@ class CmdJump(Command):
                     
                     # Cruel damage distribution using medical system
                     victim_alive_before = not grappled_victim.is_dead()
-                    explosive_damage_type = getattr(explosive.db, "damage_type", "blast")
+                    explosive_damage_type = explosive.db.damage_type if explosive.db.damage_type is not None else "blast"
                     grappled_victim.take_damage(blast_damage * 2, location="chest", injury_type=explosive_damage_type)  # Victim takes double damage from shrapnel
                     victim_alive_after = not grappled_victim.is_dead()
                     
@@ -1020,7 +1020,7 @@ class CmdJump(Command):
                     splattercast.msg(f"JUMP_SACRIFICE_CRUEL: {self.caller.key} used {grappled_victim.key} as blast shield - victim took {blast_damage * 2}, hero took {hero_damage}")
                 else:
                     # Standard heroic sacrifice: hero takes ALL damage, others protected
-                    explosive_damage_type = getattr(explosive.db, "damage_type", "blast")
+                    explosive_damage_type = explosive.db.damage_type if explosive.db.damage_type is not None else "blast"
                     self.caller.take_damage(blast_damage, location="chest", injury_type=explosive_damage_type)
                     splattercast.msg(f"JUMP_SACRIFICE_HEROIC: {self.caller.key} absorbed {blast_damage} damage, protecting all others")
                 
@@ -1102,7 +1102,7 @@ class CmdJump(Command):
         # Check if caller is being grappled (can't jump while restrained)
         handler = getattr(self.caller.ndb, "combat_handler", None)
         if handler:
-            combatants_list = getattr(handler.db, "combatants", [])
+            combatants_list = handler.db.combatants or []
             caller_entry = next((e for e in combatants_list if e.get("char") == self.caller), None)
             if caller_entry:
                 from world.combat.grappling import get_grappled_by, get_grappling_target
@@ -1128,7 +1128,7 @@ class CmdJump(Command):
             return
         
         # Validate it's an edge
-        if not getattr(exit_obj.db, "is_edge", False):
+        if not exit_obj.db.is_edge:
             self.caller.msg(f"The {self.direction} exit is not an edge you can jump from.")
             return
         
@@ -1140,7 +1140,7 @@ class CmdJump(Command):
         # Check if caller is grappled (can't jump while grappled)
         handler = getattr(self.caller.ndb, "combat_handler", None)
         if handler:
-            caller_entry = next((e for e in getattr(handler.db, "combatants", []) if e.get("char") == self.caller), None)
+            caller_entry = next((e for e in (handler.db.combatants or []) if e.get("char") == self.caller), None)
             if caller_entry:
                 grappler_obj = handler.get_grappled_by_obj(caller_entry)
                 if grappler_obj:
@@ -1174,7 +1174,7 @@ class CmdJump(Command):
                 grappled_victim.msg(f"|r{self.caller.key} drags you off the {self.direction} edge!|n")
                 
                 # Apply bodyshield damage even without sky room using medical system
-                base_damage = getattr(exit_obj.db, "fall_damage", 8)
+                base_damage = exit_obj.db.fall_damage if exit_obj.db.fall_damage is not None else 8
                 victim_damage = max(1, int(base_damage * 1.2))  # Victim takes 120% damage
                 grappler_damage = max(1, int(base_damage * 0.3))  # Grappler takes 30% due to bodyshield
                 
@@ -1186,7 +1186,7 @@ class CmdJump(Command):
                 splattercast.msg(f"JUMP_EDGE_BODYSHIELD_DIRECT: {self.caller.key} used {grappled_victim.key} as bodyshield in direct fall - victim took {victim_damage}, grappler took {grappler_damage}")
             else:
                 # Normal fall damage without bodyshield using medical system
-                base_damage = getattr(exit_obj.db, "fall_damage", 8)
+                base_damage = exit_obj.db.fall_damage if exit_obj.db.fall_damage is not None else 8
                 self.caller.take_damage(base_damage, location="chest", injury_type="blunt")
                 self.caller.msg(f"|rYou land hard and take {base_damage} damage from the fall!|n")
             
@@ -1259,7 +1259,7 @@ class CmdJump(Command):
         # Check if caller is being grappled (can't jump while restrained)
         handler = getattr(self.caller.ndb, "combat_handler", None)
         if handler:
-            combatants_list = getattr(handler.db, "combatants", [])
+            combatants_list = handler.db.combatants or []
             caller_entry = next((e for e in combatants_list if e.get("char") == self.caller), None)
             if caller_entry:
                 from world.combat.grappling import get_grappled_by, get_grappling_target
@@ -1291,12 +1291,12 @@ class CmdJump(Command):
             return
         
         # Validate it's a gap
-        if not getattr(exit_obj.db, "is_gap", False):
+        if not exit_obj.db.is_gap:
             self.caller.msg(f"The {self.direction} exit is not a gap you can jump across.")
             return
         
         # Determine destination - use gap_destination if set, otherwise use exit destination
-        gap_destination_id = getattr(exit_obj.db, "gap_destination", None)
+        gap_destination_id = exit_obj.db.gap_destination
         if gap_destination_id:
             # Convert gap_destination ID to actual room object
             if isinstance(gap_destination_id, (str, int)):
@@ -1314,7 +1314,7 @@ class CmdJump(Command):
         # Check if caller is grappled (can't jump while grappled)
         handler = getattr(self.caller.ndb, "combat_handler", None)
         if handler:
-            caller_entry = next((e for e in getattr(handler.db, "combatants", []) if e.get("char") == self.caller), None)
+            caller_entry = next((e for e in (handler.db.combatants or []) if e.get("char") == self.caller), None)
             if caller_entry:
                 grappler_obj = handler.get_grappled_by_obj(caller_entry)
                 if grappler_obj:
@@ -1323,7 +1323,7 @@ class CmdJump(Command):
         
         # Gap jumping requires Motorics check vs gap difficulty
         caller_motorics = get_numeric_stat(self.caller, "motorics")
-        gap_difficulty = getattr(exit_obj.db, "gap_difficulty", 10)  # Default hard difficulty
+        gap_difficulty = exit_obj.db.gap_difficulty if exit_obj.db.gap_difficulty is not None else 10  # Default hard difficulty
         
         motorics_roll, _, _ = standard_roll(caller_motorics)
         success = motorics_roll >= gap_difficulty
@@ -1439,10 +1439,10 @@ class CmdJump(Command):
                         aliases_match = any(alias.lower() == opposite_direction for alias in obj.aliases.all())
                     direction_matches = key_matches or aliases_match
                     splattercast.msg(f"JUMP_GAP_DEBUG: Object {obj} direction matches check: {direction_matches} (key: {key_matches}, aliases: {aliases_match})")
-                    if hasattr(obj.db, 'is_edge'):
-                        splattercast.msg(f"JUMP_GAP_DEBUG: Object {obj} is_edge: {getattr(obj.db, 'is_edge', False)}")
+                    if obj.db.is_edge is not None:
+                        splattercast.msg(f"JUMP_GAP_DEBUG: Object {obj} is_edge: {obj.db.is_edge}")
                 if (hasattr(obj, 'key') and hasattr(obj, 'destination') and
-                    hasattr(obj.db, 'is_edge') and getattr(obj.db, 'is_edge', False)):
+                    obj.db.is_edge):
                     # Check if direction matches
                     key_matches = obj.key.lower() == opposite_direction
                     aliases_match = False
@@ -1510,7 +1510,7 @@ class CmdJump(Command):
         self.caller.msg(f"|rYou leap for the {self.direction} gap but don't make it far enough... you're falling!|n")
         
         # Calculate fall damage
-        fall_distance = getattr(exit_obj.db, "fall_distance", None)
+        fall_distance = exit_obj.db.fall_distance
         if fall_distance is None:
             # If no fall_distance configured, use gravity system's result
             fall_distance = 1  # Default fallback, will be updated by gravity system
@@ -1555,7 +1555,7 @@ class CmdJump(Command):
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         
         # For edge descent failure, apply damage but stay in current room
-        fall_damage = getattr(exit_obj.db, "fall_damage", 8)  # Default moderate damage
+        fall_damage = exit_obj.db.fall_damage if exit_obj.db.fall_damage is not None else 8  # Default moderate damage
         
         self.caller.take_damage(fall_damage, location="chest", injury_type="blunt")
         
@@ -1577,7 +1577,7 @@ class CmdJump(Command):
         splattercast.msg(f"SKY_ROOM_DEBUG: Looking for exit '{direction}' from {origin.key}, found: {exit_obj}")
         
         if exit_obj:
-            sky_room_id = getattr(exit_obj[0].db, "sky_room", None)
+            sky_room_id = exit_obj[0].db.sky_room
             splattercast.msg(f"SKY_ROOM_DEBUG: Exit {exit_obj[0].key} has sky_room: {sky_room_id}")
             
             if sky_room_id:
@@ -1614,7 +1614,7 @@ class CmdJump(Command):
             splattercast.msg(f"SKY_ROOM_DEBUG: Found reverse exit: {reverse_exit}")
             
             if reverse_exit:
-                sky_room_id = getattr(reverse_exit[0].db, "sky_room", None)
+                sky_room_id = reverse_exit[0].db.sky_room
                 splattercast.msg(f"SKY_ROOM_DEBUG: Reverse exit {reverse_exit[0].key} has sky_room: {sky_room_id}")
                 
                 if sky_room_id:
@@ -1639,7 +1639,7 @@ class CmdJump(Command):
     def get_fall_room_for_gap(self, intended_destination, exit_obj):
         """Get the fall room for a failed gap jump."""
         # Check if exit specifies a fall room
-        fall_room_id = getattr(exit_obj.db, "fall_room", None)
+        fall_room_id = exit_obj.db.fall_room
         if fall_room_id:
             # Convert string/int ID to actual room object
             if isinstance(fall_room_id, (str, int)):
@@ -1665,18 +1665,18 @@ class CmdJump(Command):
             splattercast.msg(f"JUMP_EDGE_BODYSHIELD_RESTORE: Restored bodyshield victim {grappled_victim.key} for fall damage calculation")
         
         # Get fall distance for story counting (stories = fall difficulty multiplier)
-        fall_distance = getattr(exit_obj.db, "fall_distance", None)
+        fall_distance = exit_obj.db.fall_distance
         if fall_distance is None:
             # If no fall_distance configured, use default
             fall_distance = 1  # Default 1 story
-        base_edge_difficulty = getattr(exit_obj.db, "edge_difficulty", 8)  # Base difficulty
+        base_edge_difficulty = exit_obj.db.edge_difficulty if exit_obj.db.edge_difficulty is not None else 8  # Base difficulty
         
         # Calculate landing difficulty based on fall distance
         # Each story adds difficulty - falling farther = harder to land safely
         landing_difficulty = base_edge_difficulty + (fall_distance * 2)  # +2 per story
         
         # Get fall damage (scaled by fall distance)
-        base_fall_damage = getattr(exit_obj.db, "fall_damage", 8)  # Base damage
+        base_fall_damage = exit_obj.db.fall_damage if exit_obj.db.fall_damage is not None else 8  # Base damage
         fall_damage = base_fall_damage * fall_distance  # Scale with distance
         
         splattercast.msg(f"JUMP_EDGE_FALL: {self.caller.key} falling {fall_distance} stories, landing difficulty:{landing_difficulty}, potential damage:{fall_damage}")
@@ -1708,7 +1708,7 @@ class CmdJump(Command):
             # Update fall damage based on actual distance fallen
             actual_fall_damage = base_fall_damage * actual_fall_distance
             if not success:
-                fall_room_id = getattr(exit_obj.db, "fall_room", None)
+                fall_room_id = exit_obj.db.fall_room
                 if fall_room_id:
                     if isinstance(fall_room_id, (str, int)):
                         fall_rooms = search_object(f"#{fall_room_id}")
@@ -1877,7 +1877,7 @@ class CmdJump(Command):
         
         while rooms_fallen < max_depth:
             # Check if this room is marked as ground level
-            if getattr(current_room.db, "is_ground", False):
+            if current_room.db.is_ground:
                 splattercast.msg(f"GRAVITY_GROUND: Found ground room {current_room.key} after {rooms_fallen} rooms")
                 return current_room, rooms_fallen
             
@@ -1924,7 +1924,7 @@ def apply_gravity_to_items(room):
     splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
     
     # Check if this is a sky room
-    is_sky_room = getattr(room.db, "is_sky_room", False)
+    is_sky_room = room.db.is_sky_room
     if not is_sky_room:
         splattercast.msg(f"GRAVITY_ITEMS: {room.key} is not a sky room, skipping gravity check")
         return  # Nothing to do if not a sky room

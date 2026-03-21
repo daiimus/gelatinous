@@ -56,8 +56,8 @@ class Exit(DefaultExit):
         # --- SKY ROOM RESTRICTION CHECK ---
         # Block normal traversal to/from sky rooms - these are transit-only spaces
         # Exception: Allow jump command system to use sky rooms for aerial transit
-        current_room_is_sky = getattr(traversing_object.location.db, "is_sky_room", False)
-        target_room_is_sky = getattr(target_location.db, "is_sky_room", False)
+        current_room_is_sky = traversing_object.location.db.is_sky_room
+        target_room_is_sky = target_location.db.is_sky_room
         is_jump_movement = getattr(traversing_object.ndb, "jump_movement_allowed", False)
         
         if (current_room_is_sky or target_room_is_sky) and not is_jump_movement:
@@ -74,8 +74,8 @@ class Exit(DefaultExit):
         
         # --- EDGE/GAP RESTRICTION CHECK ---
         # Block normal traversal of edge and gap exits - these require jump command
-        is_edge = getattr(self.db, "is_edge", False)
-        is_gap = getattr(self.db, "is_gap", False)
+        is_edge = self.db.is_edge
+        is_gap = self.db.is_gap
         
         if is_edge or is_gap:
             if is_edge and is_gap:
@@ -179,7 +179,7 @@ class Exit(DefaultExit):
         handler = getattr(traversing_object.ndb, "combat_handler", None)
         is_being_dragged = False
         if handler:
-            combatants = getattr(handler.db, "combatants", None)
+            combatants = handler.db.combatants
             if combatants:
                 try:
                     is_being_dragged = any(e.get(DB_CHAR) == traversing_object and 
@@ -225,7 +225,7 @@ class Exit(DefaultExit):
 
         if handler:
             # Character is in combat - check if handler is still valid
-            combatants_list = getattr(handler.db, "combatants", None)
+            combatants_list = handler.db.combatants
             if combatants_list is None:
                 # Handler has been cleaned up but character still has reference
                 splattercast.msg(f"TRAVERSAL: {traversing_object.key} has stale combat_handler reference. Clearing and allowing move.")
@@ -359,7 +359,7 @@ class Exit(DefaultExit):
 
                 # No longer need to manually find and update entries here, as add_combatant handles it.
                 
-                new_handler_combatants = getattr(new_handler.db, "combatants", None)
+                new_handler_combatants = new_handler.db.combatants
                 if new_handler_combatants and len(new_handler_combatants) > 1 and not new_handler.is_active:
                     splattercast.msg(f"DRAG: New handler {new_handler.key} has {len(new_handler_combatants)} combatants, ensuring it starts if not already active.")
                     new_handler.start()
@@ -452,8 +452,8 @@ class Exit(DefaultExit):
             str: Atmospheric description or empty string
         """
         # Check for edge/gap exits first (specialized descriptions)
-        is_edge = getattr(self.db, "is_edge", False)
-        is_gap = getattr(self.db, "is_gap", False)
+        is_edge = self.db.is_edge
+        is_gap = self.db.is_gap
         
         if is_edge and is_gap:
             return "A jagged gap torn in reality, requiring a leap of faith to cross."

@@ -44,7 +44,7 @@ class MedicalCondition:
         
         # Don't add conditions to archived characters (permanently dead)
         # Dying characters can still be resuscitated, so they should keep conditions
-        if getattr(character.db, 'archived', False):
+        if character.db.archived:
             splattercast.msg(f"CONDITION_START: {character.key} is archived, not adding {self.condition_type}")
             return
         

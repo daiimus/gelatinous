@@ -190,7 +190,7 @@ class CmdBuy(Command):
         """
         # Check for merchant NPCs in the room
         for obj in buyer.location.contents:
-            if hasattr(obj, 'db') and getattr(obj.db, 'is_merchant', False):
+            if hasattr(obj, 'db') and obj.db.is_merchant:
                 # Found a merchant - send them a message
                 from world.shop.utils import format_currency
                 obj.msg(f"{buyer.get_display_name(obj)} purchases {item.get_display_name(obj)} for {format_currency(price)}.")

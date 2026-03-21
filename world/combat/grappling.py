@@ -674,7 +674,7 @@ def validate_and_cleanup_grapple_state(handler):
     )
     
     splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-    combatants_list = list(getattr(handler.db, "combatants", []))
+    combatants_list = list(handler.db.combatants or [])
     cleanup_needed = False
     
     splattercast.msg(f"GRAPPLE_VALIDATE: Starting grapple state validation for handler {handler.key}")
@@ -778,7 +778,7 @@ def validate_and_cleanup_grapple_state(handler):
     if cleanup_needed:
         # Use the same pattern as set_target(): get fresh copy, apply changes, save back
         # Don't overwrite the entire list as it may contain mid-round target changes
-        fresh_combatants = getattr(handler.db, "combatants", [])
+        fresh_combatants = handler.db.combatants or []
         
         # Apply grapple cleanup changes to the fresh copy
         for modified_entry in combatants_list:
@@ -791,7 +791,7 @@ def validate_and_cleanup_grapple_state(handler):
                     fresh_entry[DB_GRAPPLING_DBREF] = modified_entry.get(DB_GRAPPLING_DBREF)
                     fresh_entry[DB_GRAPPLED_BY_DBREF] = modified_entry.get(DB_GRAPPLED_BY_DBREF)
         
-        setattr(handler.db, "combatants", fresh_combatants)
+        handler.db.combatants = fresh_combatants
         splattercast.msg(f"GRAPPLE_CLEANUP: Grapple state cleanup completed for handler {handler.key}. Changes saved.")
     else:
         splattercast.msg(f"GRAPPLE_VALIDATE: All grapple states valid for handler {handler.key}.")

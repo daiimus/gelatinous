@@ -294,11 +294,11 @@ class Room(ObjectParent, DefaultRoom):
                 continue
             
             # Check if item should be integrated
-            is_integrate = getattr(obj.db, "integrate", False)
+            is_integrate = obj.db.integrate
             
             if is_integrate:
                 # Regular @integrate objects use their configured priority
-                priority = getattr(obj.db, "integration_priority", 5)
+                priority = obj.db.integration_priority if obj.db.integration_priority is not None else 5
                 # Safety check: ensure priority is not None
                 if priority is None:
                     priority = 5
@@ -344,7 +344,7 @@ class Room(ObjectParent, DefaultRoom):
             str: Integration content for this object
         """
         # Check for sensory contributions (primary content source)
-        sensory_contributions = getattr(obj.db, "sensory_contributions", {})
+        sensory_contributions = obj.db.sensory_contributions or {}
         
         if sensory_contributions:
             # Collect available sensory content
@@ -367,12 +367,12 @@ class Room(ObjectParent, DefaultRoom):
                 return " ".join(content_parts)
         
         # Fall back to basic integration description if no sensory data
-        integration_desc = getattr(obj.db, "integration_desc", "")
+        integration_desc = obj.db.integration_desc if obj.db.integration_desc is not None else ""
         if integration_desc:
             return integration_desc
         
         # Last resort: use the object's short_desc or key
-        return getattr(obj.db, "integration_fallback", f"{obj.key} is here")
+        return obj.db.integration_fallback if obj.db.integration_fallback is not None else f"{obj.key} is here"
     
     def get_display_characters(self, looker, **kwargs):
         """
@@ -514,7 +514,7 @@ class Room(ObjectParent, DefaultRoom):
                  obj.is_typeclass("typeclasses.objects.GraffitiObject") or 
                  obj.is_typeclass("typeclasses.objects.BloodPool") or
                  obj.is_typeclass("typeclasses.shopkeeper.ShopContainer")) and 
-                getattr(obj.db, "integrate", False)):
+                obj.db.integrate):
                 continue
             
             # Skip objects the looker can't see
@@ -689,13 +689,13 @@ class Room(ObjectParent, DefaultRoom):
             if destination:
                 destination_is_sky = destination.is_sky_room
             
-            if destination_is_sky and not (getattr(exit_obj.db, "is_edge", False) or getattr(exit_obj.db, "is_gap", False)):
+            if destination_is_sky and not (exit_obj.db.is_edge or exit_obj.db.is_gap):
                 continue  # Skip pure sky rooms
             
             # Check for edge/gap first (highest priority)
-            if getattr(exit_obj.db, "is_edge", False):
+            if exit_obj.db.is_edge:
                 exit_groups['edges'].append((direction, alias))
-            elif getattr(exit_obj.db, "is_gap", False):
+            elif exit_obj.db.is_gap:
                 exit_groups['gaps'].append((direction, alias))
             # Check destination type
             elif destination and hasattr(destination, 'type') and destination.type:

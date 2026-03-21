@@ -820,7 +820,7 @@ class CmdWrest(Command):
         combat_handler = getattr(self.caller.ndb, "combat_handler", None)
         if combat_handler:
             # Verify handler is still active
-            combatants = getattr(combat_handler.db, "combatants", None)
+            combatants = combat_handler.db.combatants
             if combatants:
                 # Check if caller is in the combatants list using correct field name
                 return any(entry.get(DB_CHAR) == self.caller for entry in combatants)
@@ -858,7 +858,7 @@ class CmdWrest(Command):
         # Check if target has a combat handler with grapple status
         combat_handler = getattr(target.ndb, "combat_handler", None)
         if combat_handler:
-            combatants = getattr(combat_handler.db, "combatants", None)
+            combatants = combat_handler.db.combatants
             if combatants:
                 # Find target's entry in combatants list
                 target_entry = next((entry for entry in combatants if entry.get(DB_CHAR) == target), None)
@@ -1040,10 +1040,10 @@ class CmdFrisk(Command):
             return
         
         # Get target's gender for pronouns
-        gender = getattr(target.db, 'gender', 'neutral')
+        gender = target.db.gender if target.db.gender is not None else 'neutral'
         # For corpses, try to get original gender
         if frisk_reason == "corpse":
-            gender = getattr(target.db, 'original_gender', gender)
+            gender = target.db.original_gender if target.db.original_gender is not None else gender
             
         pronoun_map = {
             'male': {'them': 'him', 'their': 'his', 'they': 'he'},
@@ -1096,12 +1096,12 @@ class CmdFrisk(Command):
         
         for item in all_items:
             # Check if item is worn (common patterns for worn items)
-            if hasattr(item.db, 'worn') and item.db.worn:
+            if item.db.worn:
                 worn_items.append(item)
             elif hasattr(item, 'worn') and item.worn:
                 worn_items.append(item)
             # Check if it's in a wear location
-            elif hasattr(item.db, 'wear_location') and item.db.wear_location:
+            elif item.db.wear_location:
                 worn_items.append(item)
             else:
                 carried_items.append(item)

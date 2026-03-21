@@ -198,7 +198,7 @@ def update_character_longdesc_with_wounds(character):
     # 5. Preserve other longdesc content
     
     # For now, store wound display for testing
-    if hasattr(character.db, 'wound_display'):
+    if character.db.wound_display is not None:
         character.db.wound_display = wound_display
     
     return True
@@ -219,7 +219,7 @@ def remove_all_wound_descriptions(character):
     # This would remove all wound-related text from the longdesc
     
     # For now, clear stored wound display
-    if hasattr(character.db, 'wound_display'):
+    if character.db.wound_display is not None:
         character.db.wound_display = ""
     
     return True

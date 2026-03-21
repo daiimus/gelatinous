@@ -996,7 +996,7 @@ class CmdSkintone(Command):
 
     def _show_current_skintone(self, caller):
         """Show the caller's current skintone setting"""
-        skintone = getattr(caller.db, 'skintone', None)
+        skintone = caller.db.skintone
         if skintone:
             color_code = SKINTONE_PALETTE.get(skintone, "")
             if color_code:
@@ -1040,7 +1040,7 @@ class CmdSkintone(Command):
 
     def _clear_skintone(self, caller, target):
         """Clear skintone from target character"""
-        if hasattr(target.db, 'skintone'):
+        if target.db.skintone is not None:
             del target.db.skintone
             
         if target == caller:

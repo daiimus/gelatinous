@@ -21,7 +21,7 @@ class Corpse(Item):
         self.db.creation_time = time.time()
         
         # Preserve original descriptions for decay calculations
-        self.db.base_description = getattr(self.db, 'desc', '')
+        self.db.base_description = self.db.desc if self.db.desc is not None else ''
         self.db.base_longdesc = {}
         
         # Forensic data (set by death progression script)
@@ -146,12 +146,12 @@ class Corpse(Item):
         clothing_items = []
         for item in self.contents:
             # Check if item appears to be clothing (has coverage attribute)
-            if hasattr(item.db, 'coverage') and item.db.coverage:
+            if item.db.coverage:
                 clothing_items.append(item)
         
         # For each clothing item, map its coverage to body locations
         for item in clothing_items:
-            coverage = getattr(item.db, 'coverage', [])
+            coverage = item.db.coverage or []
             for location in coverage:
                 # Use outermost item (last one wins for now - could be enhanced)
                 coverage_map[location] = item
@@ -171,7 +171,7 @@ class Corpse(Item):
         wound_descriptions = []
         
         # Get preserved wound data
-        wounds_at_death = getattr(self.db, 'wounds_at_death', [])
+        wounds_at_death = self.db.wounds_at_death or []
         if not wounds_at_death:
             return wound_descriptions
         
@@ -216,7 +216,7 @@ class Corpse(Item):
         self._current_item_context = clothing_item
         
         # Try to get worn description first
-        worn_desc = getattr(clothing_item.db, 'worn_desc', None)
+        worn_desc = clothing_item.db.worn_desc
         if worn_desc:
             # Process template variables like living characters do
             processed_desc = self._process_corpse_description_variables(worn_desc)
@@ -240,7 +240,7 @@ class Corpse(Item):
             return self._apply_decay_to_description(corpse_desc)
         
         # Fallback to item description
-        item_desc = getattr(clothing_item.db, 'desc', None)
+        item_desc = clothing_item.db.desc
         if item_desc:
             # Process template variables
             processed_desc = self._process_corpse_description_variables(item_desc)
@@ -352,14 +352,14 @@ class Corpse(Item):
         processed_desc = description
         
         # Get preserved character data
-        original_gender = getattr(self.db, 'original_gender', 'neutral')
-        original_skintone = getattr(self.db, 'original_skintone', None)
+        original_gender = self.db.original_gender if self.db.original_gender is not None else 'neutral'
+        original_skintone = self.db.original_skintone
         
         # Process color templates FIRST (before other processing)
         if hasattr(self, '_current_item_context'):
             # If we have item context, use the item's color
             item = getattr(self, '_current_item_context', None)
-            if item and hasattr(item.db, 'color') and item.db.color:
+            if item and item.db.color:
                 # Get the proper color code from COLOR_DEFINITIONS
                 try:
                     from typeclasses.items import COLOR_DEFINITIONS
