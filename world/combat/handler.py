@@ -27,7 +27,7 @@ from .constants import (
     DB_CHAR, DB_TARGET_DBREF, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, DB_IS_YIELDING,
     NDB_COMBAT_HANDLER, NDB_PROXIMITY, NDB_SKIP_ROUND,
     DEBUG_PREFIX_HANDLER, DEBUG_SUCCESS, DEBUG_FAIL, DEBUG_ERROR, DEBUG_CLEANUP,
-    MSG_GRAPPLE_AUTO_ESCAPE_VIOLENT, MSG_GRAPPLE_AUTO_YIELD,
+    MSG_GRAPPLE_AUTO_ESCAPE_VIOLENT,
     COMBAT_ACTION_RETREAT, COMBAT_ACTION_ADVANCE, COMBAT_ACTION_CHARGE, COMBAT_ACTION_DISARM,
     COMBAT_ROUND_INTERVAL, STAGGER_DELAY_INTERVAL, MAX_STAGGER_DELAY
 )
@@ -762,6 +762,7 @@ class CombatHandler(DefaultScript):
                     if not is_action_target_valid and action_target_char:
                         char.msg(f"The target of your planned action ({action_target_char.key}) is no longer valid.")
                         splattercast.msg(f"{char.key}'s action_intent target {action_target_char.key} is invalid. Intent cleared, falling through.")
+                        current_char_combat_entry["combat_action"] = None
                     elif intent_type == "grapple" and is_action_target_valid:
                         # Handle grapple intent
                         can_grapple_target = (char.location == action_target_char.location)
@@ -785,6 +786,7 @@ class CombatHandler(DefaultScript):
                             if action_target_char not in proximity_set:
                                 char.msg(f"You need to be in melee proximity with {action_target_char.key} to grapple them. Try advancing or charging.")
                                 splattercast.msg(f"GRAPPLE FAIL (PROXIMITY): {char.key} not in proximity with {action_target_char.key}.")
+                                current_char_combat_entry["combat_action"] = None
                                 continue
 
                             attacker_roll = randint(1, max(1, get_numeric_stat(char, "motorics", 1)))
@@ -798,13 +800,9 @@ class CombatHandler(DefaultScript):
                                 if target_entry:
                                     target_entry[DB_GRAPPLED_BY_DBREF] = self._get_dbref(char)
                                 
-                                # Auto-yield both parties on successful grapple (restraint mode)
+                                # Auto-yield only the grappler (restraint intent)
+                                # Victim stays non-yielding so they auto-resist each turn
                                 current_char_combat_entry[DB_IS_YIELDING] = True
-                                if target_entry:
-                                    target_entry[DB_IS_YIELDING] = True
-                                
-                                # Notify victim they're auto-yielding
-                                action_target_char.msg(MSG_GRAPPLE_AUTO_YIELD)
                                 
                                 grapple_messages = get_combat_message("grapple", "hit", attacker=char, target=action_target_char)
                                 char.msg(grapple_messages.get("attacker_msg"))
@@ -826,6 +824,7 @@ class CombatHandler(DefaultScript):
                             char.msg(f"You can't reach {action_target_char.key} to grapple them from here.")
                             splattercast.msg(f"GRAPPLE FAIL (REACH): {char.key} cannot reach {action_target_char.key}.")
                         
+                        current_char_combat_entry["combat_action"] = None
                         continue
                     elif intent_type == "escape_grapple":
                         grappler = self.get_grappled_by_obj(current_char_combat_entry)
@@ -852,6 +851,7 @@ class CombatHandler(DefaultScript):
                                 obs_msg = escape_messages.get("observer_msg")
                                 char.location.msg_contents(obs_msg, exclude=[char, grappler])
                                 splattercast.msg(f"ESCAPE FAIL: {char.key} failed to escape {grappler.key}.")
+                        current_char_combat_entry["combat_action"] = None
                         continue
 
             # Standard attack processing - get target and schedule attack with staggered timing
@@ -1275,7 +1275,22 @@ class CombatHandler(DefaultScript):
                     attacker.msg(kill_messages["attacker_msg"])
                 if "victim_msg" in kill_messages:
                     target.msg(kill_messages["victim_msg"])
-                attacker.location.msg_contents(kill_messages["observer_msg"], exclude=[attacker, target])
+                if "observer_msg" in kill_messages:
+                    # Send to attacker's room
+                    if attacker.location:
+                        attacker.location.msg_contents(
+                            kill_messages["observer_msg"],
+                            exclude=[attacker, target],
+                        )
+                    # Also send to target's room if it differs (cross-room combat)
+                    if (
+                        target.location
+                        and target.location != attacker.location
+                    ):
+                        target.location.msg_contents(
+                            kill_messages["observer_msg"],
+                            exclude=[attacker, target],
+                        )
                 
                 splattercast.msg(f"KILLING_BLOW: {attacker.key} delivered killing blow to {target.key} for {actual_damage} damage.")
                 

@@ -1652,10 +1652,17 @@ class CmdCatch(Command):
         if hasattr(obj.ndb, 'flight_thrower'):
             del obj.ndb.flight_thrower
         if hasattr(obj.ndb, 'flight_timer'):
+            # Cancel the pending flight timer so the object doesn't
+            # "arrive" or explode after being caught
+            try:
+                obj.ndb.flight_timer.cancel()
+            except Exception:
+                pass  # Timer may have already fired
             del obj.ndb.flight_timer
         
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: {self.caller} caught {obj} mid-flight")
+        if splattercast:
+            splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: {self.caller} caught {obj} mid-flight")
 
 
 class CmdRig(Command):
