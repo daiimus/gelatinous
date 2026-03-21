@@ -302,7 +302,7 @@ class InfectionCondition(MedicalCondition):
         self.severity = max(0, self.severity - severity_reduction)
         
         # Stop progression when treated
-        self.progression_chance = 0
+        self.base_progression_chance = 0
 
 
 def create_condition_from_damage(damage_amount, damage_type, location=None):
