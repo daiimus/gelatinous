@@ -21,6 +21,7 @@ import requests
 import hmac
 import hashlib
 import base64
+import logging
 from urllib.parse import urlencode, parse_qs
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
@@ -28,13 +29,20 @@ from django.views.decorators.http import require_http_methods
 from django.http import HttpResponseRedirect
 from django.conf import settings
 
+logger = logging.getLogger(__name__)
+
 
 def get_discourse_user_id(user):
     """
     Get Discourse user ID for a Django user.
     For DiscourseConnect, this is the external_id which is the Django user ID.
     """
-    discourse_url = getattr(settings, 'DISCOURSE_URL', '')
+    # Use internal URL for server-to-server API calls (stays on Docker network,
+    # avoids Cloudflare WAF/challenge issues). Falls back to public URL.
+    discourse_url = (
+        getattr(settings, 'DISCOURSE_INTERNAL_URL', None)
+        or getattr(settings, 'DISCOURSE_URL', 'https://forum.gel.monster')
+    )
     api_key = getattr(settings, 'DISCOURSE_API_KEY', None)
 
     if not discourse_url or not api_key:
@@ -52,8 +60,13 @@ def get_discourse_user_id(user):
         if response.status_code == 200:
             user_data = response.json()
             return user_data.get('user', {}).get('id')
+        else:
+            logger.warning(
+                "Discourse user lookup failed: HTTP %s for external_id=%s at %s",
+                response.status_code, user.id, url,
+            )
     except Exception:
-        pass
+        logger.exception("Discourse user lookup error for external_id=%s", user.id)
     
     return None
 
@@ -66,7 +79,12 @@ def logout_discourse_user(discourse_user_id):
     if not discourse_user_id:
         return False
     
-    discourse_url = getattr(settings, 'DISCOURSE_URL', '')
+    # Use internal URL for server-to-server API calls (stays on Docker network,
+    # avoids Cloudflare WAF/challenge issues). Falls back to public URL.
+    discourse_url = (
+        getattr(settings, 'DISCOURSE_INTERNAL_URL', None)
+        or getattr(settings, 'DISCOURSE_URL', 'https://forum.gel.monster')
+    )
     api_key = getattr(settings, 'DISCOURSE_API_KEY', None)
 
     if not discourse_url or not api_key:
@@ -81,8 +99,17 @@ def logout_discourse_user(discourse_user_id):
     
     try:
         response = requests.post(url, headers=headers, timeout=5)
-        return response.status_code == 200
+        if response.status_code == 200:
+            logger.info("Discourse logout succeeded for discourse_user_id=%s", discourse_user_id)
+            return True
+        else:
+            logger.warning(
+                "Discourse logout failed: HTTP %s for discourse_user_id=%s at %s",
+                response.status_code, discourse_user_id, url,
+            )
+            return False
     except Exception:
+        logger.exception("Discourse logout error for discourse_user_id=%s", discourse_user_id)
         return False
 
 

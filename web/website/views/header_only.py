@@ -10,10 +10,12 @@ This endpoint is optional and only useful if you're embedding the header elsewhe
 
 from django.shortcuts import render
 from django.views.decorators.cache import cache_control
+from django.views.decorators.clickjacking import xframe_options_exempt
 from django.conf import settings
 
 
 @cache_control(max_age=300, private=True)  # Cache for 5 minutes, private to prevent shared cache leaking auth state
+@xframe_options_exempt  # This view is embedded in a Discourse iframe; CSP frame-ancestors handles security
 def header_only(request):
     """
     Render just the navbar for iframe embedding on external sites.
