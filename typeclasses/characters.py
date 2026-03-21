@@ -40,7 +40,7 @@ class Character(ObjectParent, DefaultCharacter):
     tokens = AttributeProperty(0, category="shop", autocreate=True)
     
     # Death tracking system
-    death_count = AttributeProperty(1, category='mortality', autocreate=True)
+    death_count = AttributeProperty(0, category='mortality', autocreate=True)
     
     # Appearance attributes - stored in db but no auto-creation for optional features
     # skintone is set via @skintone command and stored as db.skintone
@@ -632,8 +632,6 @@ class Character(ObjectParent, DefaultCharacter):
             return
             
         # Mark unconsciousness as processed
-        if not hasattr(self, 'ndb'):
-            self.ndb = {}
         self.ndb.unconsciousness_processed = True
         
         # Set unconscious placement description

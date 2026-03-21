@@ -539,7 +539,6 @@ class CmdTempPlace(Command):
         # Ensure description ends with proper punctuation
         if not description.endswith(('.', '!', '?')):
             description += '.'
-            description += '.'
         
         # Set the temp_place
         caller.temp_place = description

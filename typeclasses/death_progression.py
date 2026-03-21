@@ -532,12 +532,17 @@ class DeathProgressionScript(DefaultScript):
                         }
                         corpse.db.wounds_at_death.append(wound_record)
                     
-                    splattercast.msg(f"DEATH_WOUNDS_PRESERVED: {len(wound_data)} wounds preserved on corpse for {character.key}")
+                    try:
+                        splattercast = ChannelDB.objects.get_channel("Splattercast")
+                        splattercast.msg(f"DEATH_WOUNDS_PRESERVED: {len(wound_data)} wounds preserved on corpse for {character.key}")
+                    except Exception:
+                        pass
             except Exception as e:
                 # Don't fail death progression if wound preservation fails
                 try:
+                    splattercast = ChannelDB.objects.get_channel("Splattercast")
                     splattercast.msg(f"DEATH_WOUNDS_ERROR: Failed to preserve wounds for {character.key}: {e}")
-                except:
+                except Exception:
                     pass
         
         # Transfer character description data
