@@ -210,14 +210,14 @@ class TurnstileAccountForm(EvenniaAccountForm):
     # This is populated by the Turnstile JavaScript widget
     cf_turnstile_response = forms.CharField(
         widget=forms.HiddenInput(),
-        required=True,
+        required=False,
         error_messages={
             'required': 'CAPTCHA verification is required. Please complete the verification.'
         }
     )
     
     def __init__(self, *args, **kwargs):
-        """Override email field to make it required."""
+        """Override email field to make it required, conditionally require Turnstile."""
         super().__init__(*args, **kwargs)
         # Make email required and update help text
         self.fields['email'].required = True
