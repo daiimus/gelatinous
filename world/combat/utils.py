@@ -45,6 +45,24 @@ def debug_broadcast(message, prefix="DEBUG", status="INFO"):
         pass
 
 
+class _NullChannel:
+    """No-op channel stand-in when Splattercast is unavailable."""
+
+    def msg(self, *args, **kwargs):
+        pass
+
+
+def get_splattercast():
+    """
+    Safely retrieve the Splattercast debug channel.
+
+    Returns:
+        The channel object, or a no-op stand-in if unavailable.
+    """
+    channel = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    return channel if channel else _NullChannel()
+
+
 # ===================================================================
 # DICE & STATS
 # ===================================================================
@@ -565,7 +583,7 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
     )
     from random import randint
     
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     
     # Debug: Show what parameters were passed
     splattercast.msg(f"ADD_COMBATANT_PARAMS: char={char.key if char else None}, target={target.key if target else None}")
@@ -647,7 +665,7 @@ def remove_combatant(handler, char):
         NDB_COMBAT_HANDLER
     )
     
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     
     # Use the active working list if available (during round processing), otherwise use database
     active_list = getattr(handler, '_active_combatants_list', None)
@@ -809,18 +827,15 @@ def remove_combatant(handler, char):
                 if hasattr(other_char, 'msg'):
                     other_char.msg(f"|yYour target {char.get_display_name(other_char) if hasattr(char, 'get_display_name') else char.key} has left combat. Choose a new target if you wish to continue fighting.|n")
     
-    # Remove from combatants list
-    combatants = [e for e in combatants if e.get(DB_CHAR) != char]
+    # Remove from combatants list using in-place mutation so the active
+    # working list (handler._active_combatants_list) stays in sync.
+    combatants[:] = [e for e in combatants if e.get(DB_CHAR) != char]
     
-    # Update the appropriate list(s)
+    # Always persist to database
+    setattr(handler.db, DB_COMBATANTS, combatants)
     if active_list:
-        # Working with active list - it will be saved back at end of round
-        # But also update database in case something else queries it
-        setattr(handler.db, DB_COMBATANTS, combatants)
-        splattercast.msg(f"RMV_COMB: Updated both active list and database (active list will be saved at round end)")
+        splattercast.msg(f"RMV_COMB: Mutated active list in-place and synced to database")
     else:
-        # Working with database directly
-        setattr(handler.db, DB_COMBATANTS, combatants)
         splattercast.msg(f"RMV_COMB: Updated database directly")
     
     # Remove handler reference
@@ -878,8 +893,7 @@ def cleanup_combatant_state(char, entry, handler):
     if (hasattr(char, 'override_place') and 
         char.override_place == "locked in combat."):
         char.override_place = ""
-        from .constants import SPLATTERCAST_CHANNEL
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"CLEANUP_COMB: Cleared combat override_place for {char.key}")
     
     # No need to set charge flags to False after deletion - this was causing race conditions
@@ -896,9 +910,9 @@ def cleanup_all_combatants(handler):
     Args:
         handler: The combat handler instance
     """
-    from .constants import SPLATTERCAST_CHANNEL, DB_COMBATANTS, DB_CHAR, DEBUG_PREFIX_HANDLER, DEBUG_CLEANUP
+    from .constants import DB_COMBATANTS, DB_CHAR, DEBUG_PREFIX_HANDLER, DEBUG_CLEANUP
     
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     combatants = getattr(handler.db, DB_COMBATANTS, [])
     
     for entry in combatants:
