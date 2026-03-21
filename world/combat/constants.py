@@ -297,6 +297,9 @@ DB_TARGET_DBREF = "target_dbref"
 DB_GRAPPLING_DBREF = "grappling_dbref"
 DB_GRAPPLED_BY_DBREF = "grappled_by_dbref"
 DB_IS_YIELDING = "is_yielding"
+DB_COMBAT_ACTION = "combat_action"
+DB_COMBAT_ACTION_TARGET = "combat_action_target"
+DB_INITIATIVE = "initiative"
 
 # Explosive/throwing weapon properties
 DB_IS_THROWING_WEAPON = "is_throwing_weapon"
@@ -400,6 +403,7 @@ COMBAT_ACTION_DISARM = "disarm"
 # Existing combat actions (for reference)
 COMBAT_ACTION_GRAPPLE_INITIATE = "grapple_initiate"
 COMBAT_ACTION_GRAPPLE_JOIN = "grapple_join"
+COMBAT_ACTION_GRAPPLE_TAKEOVER = "grapple_takeover"
 COMBAT_ACTION_RELEASE_GRAPPLE = "release_grapple"
 COMBAT_ACTION_ESCAPE_GRAPPLE = "escape_grapple"
 
