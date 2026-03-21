@@ -74,13 +74,17 @@ Uses iframe-specific menu that removes Forum link to prevent double headers.
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct" crossorigin="anonymous"></script>
     
     <script>
-        // Send height updates to parent iframe for responsive sizing
+        // Send height updates to parent iframe for responsive sizing.
+        // Target origin is restricted to the configured Discourse URL
+        // to prevent leaking auth state to arbitrary embedding domains.
+        const TARGET_ORIGIN = '{{ discourse_url|default:"" }}';
         function updateHeight() {
+            if (!TARGET_ORIGIN) return;  // Don't post if no origin configured
             const height = document.body.scrollHeight;
             window.parent.postMessage({
                 type: 'gel-header-height',
                 height: height
-            }, '*');
+            }, TARGET_ORIGIN);
         }
         
         // Send height on load and when window resizes

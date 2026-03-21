@@ -77,8 +77,8 @@ def sign_payload(payload):
     ).hexdigest()
 
 
-@require_http_methods(["GET"])
 @login_required
+@require_http_methods(["GET"])
 def discourse_sso(request):
     """
     Handle SSO authentication request from Discourse.

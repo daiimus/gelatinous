@@ -34,10 +34,10 @@ def get_discourse_user_id(user):
     Get Discourse user ID for a Django user.
     For DiscourseConnect, this is the external_id which is the Django user ID.
     """
-    discourse_url = getattr(settings, 'DISCOURSE_URL', 'https://forum.gel.monster')
+    discourse_url = getattr(settings, 'DISCOURSE_URL', '')
     api_key = getattr(settings, 'DISCOURSE_API_KEY', None)
-    
-    if not api_key:
+
+    if not discourse_url or not api_key:
         return None
     
     # Use the by-external endpoint to find user by Django user ID
@@ -66,12 +66,12 @@ def logout_discourse_user(discourse_user_id):
     if not discourse_user_id:
         return False
     
-    discourse_url = getattr(settings, 'DISCOURSE_URL', 'https://forum.gel.monster')
+    discourse_url = getattr(settings, 'DISCOURSE_URL', '')
     api_key = getattr(settings, 'DISCOURSE_API_KEY', None)
-    
-    if not api_key:
+
+    if not discourse_url or not api_key:
         return False
-    
+
     url = f"{discourse_url}/admin/users/{discourse_user_id}/log_out"
     headers = {
         'Api-Key': api_key,
@@ -86,8 +86,8 @@ def logout_discourse_user(discourse_user_id):
         return False
 
 
-@require_http_methods(["GET", "POST"])
 @login_required
+@require_http_methods(["GET", "POST"])
 def logout_with_discourse(request):
     """
     Log out from Django and optionally from Discourse.

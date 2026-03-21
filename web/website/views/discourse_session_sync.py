@@ -30,8 +30,8 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 
 
-@require_http_methods(["GET"])
 @login_required
+@require_http_methods(["GET"])
 def discourse_session_sync(request):
     """
     Redirect logged-in Django user to Discourse to establish session.
@@ -47,8 +47,13 @@ def discourse_session_sync(request):
     Returns:
         HttpResponseRedirect: Redirect to Discourse SSO endpoint
     """
-    discourse_url = getattr(settings, 'DISCOURSE_URL', 'https://forum.gel.monster')
-    
+    discourse_url = getattr(settings, 'DISCOURSE_URL', '')
+
+    if not discourse_url:
+        # DISCOURSE_URL not configured — redirect home instead of to a
+        # hardcoded external domain.
+        return HttpResponseRedirect('/')
+
     # Redirect to Discourse's SSO endpoint
     # Discourse will then initiate the SSO flow back to our discourse_sso view
     sso_url = f"{discourse_url}/session/sso"

@@ -15,7 +15,9 @@ SETUP INSTRUCTIONS:
    https://yoursite.com/sso/discourse/logout/
 
 SECURITY:
+- Requires authentication (anonymous requests are ignored)
 - Validates Referer header to prevent logout CSRF attacks
+- Rejects requests with missing Referer when DISCOURSE_URL is configured
 - CSRF-exempt is required per DiscourseConnect spec (simple GET redirect)
 - Only logs out current session (non-destructive)
 
@@ -37,44 +39,61 @@ from django.conf import settings
 def discourse_logout(request):
     """
     Official DiscourseConnect logout endpoint.
-    
+
     Called by Discourse's logout_redirect setting when a user logs out.
     Logs out the Django session and redirects to configured landing page.
-    
+
     This follows the standard DiscourseConnect logout flow as documented
     in the official Discourse SSO documentation.
-    
-    Security: Checks Referer header to prevent logout CSRF attacks.
-    
+
+    Security:
+        - Only processes logout for authenticated users
+        - Validates Referer header against DISCOURSE_URL
+        - Rejects requests with missing or mismatched Referer
+
     Configuration:
         DISCOURSE_URL (required): Your Discourse forum URL
         DISCOURSE_LOGOUT_REDIRECT (optional): Where to redirect after logout
     """
+    redirect_url = getattr(settings, 'DISCOURSE_LOGOUT_REDIRECT', '/')
+
+    # If user is not authenticated, just redirect — nothing to log out
+    if not request.user.is_authenticated:
+        return redirect(redirect_url)
+
     # Verify request is coming from configured Discourse forum
     # This prevents malicious sites from forcing users to logout via embedded links
     referer = request.META.get('HTTP_REFERER', '')
-    discourse_url = getattr(settings, 'DISCOURSE_URL', None)
-    
-    if not discourse_url:
-        # If DISCOURSE_URL is not configured, log a warning but allow logout
-        # This makes the endpoint fail-safe rather than fail-closed
+    discourse_url = getattr(settings, 'DISCOURSE_URL', '')
+
+    if discourse_url:
+        # Require a valid Referer from the configured Discourse instance.
+        # A missing Referer is rejected because attackers can trivially strip
+        # it (e.g. <meta name="referrer" content="no-referrer">).
+        if not referer or not referer.startswith(discourse_url):
+            return HttpResponseForbidden(
+                "Invalid logout request. "
+                "Please log out through your account page."
+            )
+    else:
+        # DISCOURSE_URL not configured — refuse to process the logout.
+        # Fail-closed: without a URL to validate against, we can't verify
+        # the request origin.
         try:
             from evennia.utils import logger
             logger.log_warn(
                 "DISCOURSE_URL not configured in settings. "
-                "Set DISCOURSE_URL in your Django settings for Referer validation."
+                "Discourse logout endpoint is non-functional until configured."
             )
         except ImportError:
-            pass  # Not in an Evennia environment
-    elif referer and not referer.startswith(discourse_url):
-        # Referer exists but doesn't match our Discourse forum
+            pass
         return HttpResponseForbidden(
-            "Invalid logout request. Please log out through your account page."
+            "Discourse logout is not configured. "
+            "Please log out through your account page."
         )
-    
+
     # Log the user out of Django
     logout(request)
-    
+
     # Redirect to configured landing page (default: home page)
-    redirect_url = getattr(settings, 'DISCOURSE_LOGOUT_REDIRECT', '/')
     return redirect(redirect_url)
