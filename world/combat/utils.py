@@ -18,7 +18,9 @@ from random import randint
 from evennia.comms.models import ChannelDB
 from .constants import (
     DEFAULT_MOTORICS, MIN_DICE_VALUE, SPLATTERCAST_CHANNEL,
-    DEBUG_TEMPLATE, NDB_PROXIMITY, COLOR_NORMAL
+    DEBUG_TEMPLATE, NDB_PROXIMITY, COLOR_NORMAL,
+    DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_INITIATIVE,
+    WEAPON_TYPE_UNARMED, DB_CHAR, DB_TARGET_DBREF, DB_IS_YIELDING
 )
 
 
@@ -605,15 +607,15 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
     target_dbref = get_character_dbref(target)
     entry = {
         DB_CHAR: char,
-        "initiative": randint(1, 20) + get_numeric_stat(char, "motorics", 0),
+        DB_INITIATIVE: randint(1, 20) + get_numeric_stat(char, "motorics", 0),
         DB_TARGET_DBREF: target_dbref,
         DB_GRAPPLING_DBREF: get_character_dbref(initial_grappling),
         DB_GRAPPLED_BY_DBREF: get_character_dbref(initial_grappled_by),
         DB_IS_YIELDING: initial_is_yielding,
-        "combat_action": None
+        DB_COMBAT_ACTION: None
     }
     
-    splattercast.msg(f"ADD_COMBATANT_ENTRY: {char.key} -> target_dbref={target_dbref}, initiative={entry['initiative']}")
+    splattercast.msg(f"ADD_COMBATANT_ENTRY: {char.key} -> target_dbref={target_dbref}, initiative={entry[DB_INITIATIVE]}")
     
     combatants.append(entry)
     handler.db.combatants = combatants
@@ -628,7 +630,7 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
     else:
         splattercast.msg(f"ADD_COMB: {char.key} already has override_place: '{char.override_place}' - not overriding")
     
-    splattercast.msg(f"ADD_COMB: {char.key} added to combat in {handler.key} with initiative {entry['initiative']}.")
+    splattercast.msg(f"ADD_COMB: {char.key} added to combat in {handler.key} with initiative {entry[DB_INITIATIVE]}.")
     
     # Establish proximity for grappled pairs when adding to new handler
     from .proximity import establish_proximity
@@ -764,22 +766,22 @@ def remove_combatant(handler, char):
                 handler.set_target(other_char, new_target)
                 
                 # CRITICAL: Update the working list (combatants parameter) if we're using it
-                other_char_entry_working = next((e for e in combatants if e.get("char") == other_char), None)
+                other_char_entry_working = next((e for e in combatants if e.get(DB_CHAR) == other_char), None)
                 if other_char_entry_working:
-                    other_char_entry_working["target_dbref"] = get_character_dbref(new_target)
-                    other_char_entry_working["combat_action"] = None
-                    other_char_entry_working["combat_action_target"] = None 
-                    other_char_entry_working["is_yielding"] = False
-                    splattercast.msg(f"RMV_COMB: Updated working list for {other_char.key} -> target_dbref={other_char_entry_working['target_dbref']}")
+                    other_char_entry_working[DB_TARGET_DBREF] = get_character_dbref(new_target)
+                    other_char_entry_working[DB_COMBAT_ACTION] = None
+                    other_char_entry_working[DB_COMBAT_ACTION_TARGET] = None 
+                    other_char_entry_working[DB_IS_YIELDING] = False
+                    splattercast.msg(f"RMV_COMB: Updated working list for {other_char.key} -> target_dbref={other_char_entry_working[DB_TARGET_DBREF]}")
                 
                 # Also update database to ensure persistence (same as attack command)
                 combatants_copy = handler.db.combatants or []
-                other_char_entry_copy = next((e for e in combatants_copy if e.get("char") == other_char), None)
+                other_char_entry_copy = next((e for e in combatants_copy if e.get(DB_CHAR) == other_char), None)
                 if other_char_entry_copy:
-                    other_char_entry_copy["target_dbref"] = get_character_dbref(new_target)
-                    other_char_entry_copy["combat_action"] = None
-                    other_char_entry_copy["combat_action_target"] = None 
-                    other_char_entry_copy["is_yielding"] = False
+                    other_char_entry_copy[DB_TARGET_DBREF] = get_character_dbref(new_target)
+                    other_char_entry_copy[DB_COMBAT_ACTION] = None
+                    other_char_entry_copy[DB_COMBAT_ACTION_TARGET] = None 
+                    other_char_entry_copy[DB_IS_YIELDING] = False
                     
                     # Save the modified combatants list back (same as attack command)
                     handler.db.combatants = combatants_copy
@@ -788,7 +790,7 @@ def remove_combatant(handler, char):
                 # Get weapon info for initiate message
                 from .messages import get_combat_message
                 weapon_obj = get_wielded_weapon(other_char)
-                weapon_type = "unarmed"
+                weapon_type = WEAPON_TYPE_UNARMED
                 if weapon_obj and hasattr(weapon_obj, 'db') and weapon_obj.db.weapon_type is not None:
                     weapon_type = weapon_obj.db.weapon_type
                 
@@ -933,7 +935,7 @@ def cleanup_all_combatants(handler):
 
 def get_combatant_target(entry, handler):
     """Get the target object for a combatant entry."""
-    target_dbref = entry.get("target_dbref")
+    target_dbref = entry.get(DB_TARGET_DBREF)
     return get_character_by_dbref(target_dbref)
 
 
@@ -998,7 +1000,7 @@ def validate_character_handler_reference(char):
         
         # Check if character is actually in the handler's combatants list
         combatants = handler.db.combatants or []
-        char_in_handler = any(entry.get('char') == char for entry in combatants)
+        char_in_handler = any(entry.get(DB_CHAR) == char for entry in combatants)
         
         if not char_in_handler:
             return False, handler, "Character not found in handler's combatants list"

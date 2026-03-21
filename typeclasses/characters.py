@@ -774,7 +774,8 @@ class Character(ObjectParent, DefaultCharacter):
         # Log warning if archiving a staff character (shouldn't happen normally)
         if self.account and self.account.is_superuser:
             try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                from world.combat.constants import SPLATTERCAST_CHANNEL
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"WARNING: Archiving staff character {self.key} (Account: {self.account.key}, Reason: {reason})")
             except Exception:
                 pass
@@ -802,7 +803,8 @@ class Character(ObjectParent, DefaultCharacter):
             
             # Log the move
             try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                from world.combat.constants import SPLATTERCAST_CHANNEL
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"ARCHIVE: Moved {self.key} from {current_location.key if current_location else 'None'} to Limbo")
             except Exception:
                 pass
@@ -1113,7 +1115,8 @@ class Character(ObjectParent, DefaultCharacter):
             self.medical_state.conditions):
             try:
                 from evennia.comms.models import ChannelDB
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                from world.combat.constants import SPLATTERCAST_CHANNEL
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 
                 # Find stopped medical script and restart it
                 medical_scripts = self.scripts.get("medical_script")
@@ -1283,7 +1286,8 @@ class Character(ObjectParent, DefaultCharacter):
         Returns:
             bool: True if an aim state was actually cleared, False otherwise.
         """
-        splattercast = ChannelDB.objects.get_channel("Splattercast")
+        from world.combat.constants import SPLATTERCAST_CHANNEL
+        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         stopped_aiming_message_parts = []
         log_message_parts = []
         action_taken = False

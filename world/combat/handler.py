@@ -24,10 +24,14 @@ from .constants import (
     COMBAT_SCRIPT_KEY, SPLATTERCAST_CHANNEL,
     DB_COMBATANTS, DB_COMBAT_RUNNING, DB_MANAGED_ROOMS,
     DB_CHAR, DB_TARGET_DBREF, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, DB_IS_YIELDING,
+    DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_INITIATIVE,
     NDB_COMBAT_HANDLER, NDB_PROXIMITY, NDB_SKIP_ROUND,
     DEBUG_PREFIX_HANDLER, DEBUG_SUCCESS, DEBUG_FAIL, DEBUG_ERROR, DEBUG_CLEANUP,
     MSG_GRAPPLE_AUTO_ESCAPE_VIOLENT,
     COMBAT_ACTION_RETREAT, COMBAT_ACTION_ADVANCE, COMBAT_ACTION_CHARGE, COMBAT_ACTION_DISARM,
+    COMBAT_ACTION_GRAPPLE_INITIATE, COMBAT_ACTION_GRAPPLE_JOIN, COMBAT_ACTION_GRAPPLE_TAKEOVER,
+    COMBAT_ACTION_RELEASE_GRAPPLE, COMBAT_ACTION_ESCAPE_GRAPPLE,
+    WEAPON_TYPE_UNARMED,
     COMBAT_ROUND_INTERVAL, STAGGER_DELAY_INTERVAL, MAX_STAGGER_DELAY
 )
 from .utils import (
@@ -554,7 +558,7 @@ class CombatHandler(DefaultScript):
             splattercast.msg(f"AT_REPEAT: Handler {self.key}. All combatants yielding but active grapples present. Combat continues in restraint mode.")
 
         # Sort combatants by initiative for processing
-        initiative_order = sorted(combatants_list, key=lambda e: e.get("initiative", 0), reverse=True)
+        initiative_order = sorted(combatants_list, key=lambda e: e.get(DB_INITIATIVE, 0), reverse=True)
         
         for combat_entry in initiative_order:
             char = combat_entry.get(DB_CHAR)
@@ -609,13 +613,13 @@ class CombatHandler(DefaultScript):
                     splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: {char.key} has charge_attack_bonus_active - will be consumed during attack.")
 
             # Get combat action for this character
-            combat_action = current_char_combat_entry.get("combat_action")
+            combat_action = current_char_combat_entry.get(DB_COMBAT_ACTION)
             splattercast.msg(f"AT_REPEAT: {char.key} combat_action: {combat_action}")
 
             # Check if character is yielding first
             if current_char_combat_entry.get(DB_IS_YIELDING, False):
                 # Exception: Allow certain actions even when yielding
-                if combat_action in ["release_grapple", COMBAT_ACTION_ADVANCE, COMBAT_ACTION_RETREAT, COMBAT_ACTION_CHARGE]:
+                if combat_action in [COMBAT_ACTION_RELEASE_GRAPPLE, COMBAT_ACTION_ADVANCE, COMBAT_ACTION_RETREAT, COMBAT_ACTION_CHARGE]:
                     splattercast.msg(f"{char.key} is yielding but can still perform {combat_action} action.")
                     # Fall through to normal action processing
                 else:
@@ -667,6 +671,7 @@ class CombatHandler(DefaultScript):
 
                 if escaper_roll > grappler_roll:
                     # Success - clear grapple
+                    # NOTE: Strict > means ties favor the grappler (defender). This is intentional.
                     current_char_combat_entry[DB_GRAPPLED_BY_DBREF] = None
                     grappler_entry = next((e for e in combatants_list if e.get(DB_CHAR) == grappler), None)
                     if grappler_entry:
@@ -709,41 +714,41 @@ class CombatHandler(DefaultScript):
                 splattercast.msg(f"AT_REPEAT: {char.key} has action_intent: {combat_action}")
                 
                 if isinstance(combat_action, str):
-                    if combat_action == "grapple_initiate":
+                    if combat_action == COMBAT_ACTION_GRAPPLE_INITIATE:
                         self._resolve_grapple_initiate(current_char_combat_entry, combatants_list)
-                        current_char_combat_entry["combat_action"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
                         continue
-                    elif combat_action == "grapple_join":
+                    elif combat_action == COMBAT_ACTION_GRAPPLE_JOIN:
                         self._resolve_grapple_join(current_char_combat_entry, combatants_list)
-                        current_char_combat_entry["combat_action"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
                         continue
-                    elif combat_action == "grapple_takeover":
+                    elif combat_action == COMBAT_ACTION_GRAPPLE_TAKEOVER:
                         self._resolve_grapple_takeover(current_char_combat_entry, combatants_list)
-                        current_char_combat_entry["combat_action"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
                         continue
-                    elif combat_action == "release_grapple":
+                    elif combat_action == COMBAT_ACTION_RELEASE_GRAPPLE:
                         self._resolve_release_grapple(current_char_combat_entry, combatants_list)
-                        current_char_combat_entry["combat_action"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
                         continue
                     elif combat_action == COMBAT_ACTION_RETREAT:
                         self._resolve_retreat(char, current_char_combat_entry)
-                        current_char_combat_entry["combat_action"] = None
-                        current_char_combat_entry["combat_action_target"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
                         continue
                     elif combat_action == COMBAT_ACTION_ADVANCE:
                         self._resolve_advance(char, current_char_combat_entry)
-                        current_char_combat_entry["combat_action"] = None
-                        current_char_combat_entry["combat_action_target"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
                         continue
                     elif combat_action == COMBAT_ACTION_CHARGE:
                         self._resolve_charge(char, current_char_combat_entry, combatants_list)
-                        current_char_combat_entry["combat_action"] = None
-                        current_char_combat_entry["combat_action_target"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
                         continue
                     elif combat_action == COMBAT_ACTION_DISARM:
                         self._resolve_disarm(char, current_char_combat_entry)
-                        current_char_combat_entry["combat_action"] = None
-                        current_char_combat_entry["combat_action_target"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
                         continue
                 elif isinstance(combat_action, dict):
                     intent_type = combat_action.get("type")
@@ -758,7 +763,7 @@ class CombatHandler(DefaultScript):
                     if not is_action_target_valid and action_target_char:
                         char.msg(f"The target of your planned action ({action_target_char.key}) is no longer valid.")
                         splattercast.msg(f"{char.key}'s action_intent target {action_target_char.key} is invalid. Intent cleared, falling through.")
-                        current_char_combat_entry["combat_action"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
                     elif intent_type == "grapple" and is_action_target_valid:
                         # Handle grapple intent
                         can_grapple_target = (char.location == action_target_char.location)
@@ -782,7 +787,7 @@ class CombatHandler(DefaultScript):
                             if action_target_char not in proximity_set:
                                 char.msg(f"You need to be in melee proximity with {action_target_char.key} to grapple them. Try advancing or charging.")
                                 splattercast.msg(f"GRAPPLE FAIL (PROXIMITY): {char.key} not in proximity with {action_target_char.key}.")
-                                current_char_combat_entry["combat_action"] = None
+                                current_char_combat_entry[DB_COMBAT_ACTION] = None
                                 continue
 
                             attacker_roll = randint(1, max(1, get_numeric_stat(char, "motorics", 1)))
@@ -791,6 +796,7 @@ class CombatHandler(DefaultScript):
 
                             if attacker_roll > defender_roll:
                                 # Store dbrefs for persistence
+                                # NOTE: Strict > means ties favor the defender. This is intentional.
                                 current_char_combat_entry[DB_GRAPPLING_DBREF] = self._get_dbref(action_target_char)
                                 target_entry = next((e for e in combatants_list if e.get(DB_CHAR) == action_target_char), None)
                                 if target_entry:
@@ -820,10 +826,10 @@ class CombatHandler(DefaultScript):
                             char.msg(f"You can't reach {action_target_char.key} to grapple them from here.")
                             splattercast.msg(f"GRAPPLE FAIL (REACH): {char.key} cannot reach {action_target_char.key}.")
                         
-                        current_char_combat_entry["combat_action"] = None
-                        current_char_combat_entry["combat_action_target"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
                         continue
-                    elif intent_type == "escape_grapple":
+                    elif intent_type == COMBAT_ACTION_ESCAPE_GRAPPLE:
                         grappler = self.get_grappled_by_obj(current_char_combat_entry)
                         if grappler and any(e.get(DB_CHAR) == grappler for e in combatants_list):
                             escaper_roll = randint(1, max(1, get_numeric_stat(char, "motorics", 1)))
@@ -832,6 +838,7 @@ class CombatHandler(DefaultScript):
 
                             if escaper_roll > grappler_roll:
                                 current_char_combat_entry[DB_GRAPPLED_BY_DBREF] = None
+                                # NOTE: Strict > means ties favor the grappler (defender). This is intentional.
                                 grappler_entry = next((e for e in combatants_list if e.get(DB_CHAR) == grappler), None)
                                 if grappler_entry:
                                     grappler_entry[DB_GRAPPLING_DBREF] = None
@@ -848,8 +855,8 @@ class CombatHandler(DefaultScript):
                                 obs_msg = escape_messages.get("observer_msg")
                                 char.location.msg_contents(obs_msg, exclude=[char, grappler])
                                 splattercast.msg(f"ESCAPE FAIL: {char.key} failed to escape {grappler.key}.")
-                        current_char_combat_entry["combat_action"] = None
-                        current_char_combat_entry["combat_action_target"] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION] = None
+                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
                         continue
 
             # Standard attack processing - get target and schedule attack with staggered timing
@@ -867,7 +874,7 @@ class CombatHandler(DefaultScript):
                 splattercast.msg(f"AT_REPEAT: {char.key} has no valid target for attack.")
 
             # Clear the combat action after processing
-            current_char_combat_entry["combat_action"] = None
+            current_char_combat_entry[DB_COMBAT_ACTION] = None
 
         # Save the modified combatants list to the database FIRST to persist
         # combat_action changes and grapple state from round processing.
@@ -1003,15 +1010,15 @@ class CombatHandler(DefaultScript):
         
         # Find both characters in combatants list
         for entry in combatants_list:
-            if entry["char"] == char1:
+            if entry[DB_CHAR] == char1:
                 char1_entry = entry
-            elif entry["char"] == char2:
+            elif entry[DB_CHAR] == char2:
                 char2_entry = entry
         
         # Both must be in combat and targeting each other
         if char1_entry and char2_entry:
-            char1_target_dbref = char1_entry.get("target_dbref")
-            char2_target_dbref = char2_entry.get("target_dbref") 
+            char1_target_dbref = char1_entry.get(DB_TARGET_DBREF)
+            char2_target_dbref = char2_entry.get(DB_TARGET_DBREF) 
             char1_dbref = self._get_dbref(char1)
             char2_dbref = self._get_dbref(char2)
             
@@ -1229,6 +1236,7 @@ class CombatHandler(DefaultScript):
         
         if attacker_roll > target_roll:
             # Hit - calculate damage
+            # NOTE: Strict > means ties favor the defender. This is intentional.
             damage = randint(1, 6)  # Base damage
             if weapon:
                 # Add weapon damage if applicable
@@ -1258,7 +1266,7 @@ class CombatHandler(DefaultScript):
             splattercast.msg(f"PRECISION_TARGET: {attacker.key} margin={success_margin}, precision={precision_roll + precision_skill}, hit {hit_location}:{target_organ}")
             
             # Determine weapon type for messages
-            weapon_type = "unarmed"
+            weapon_type = WEAPON_TYPE_UNARMED
             if weapon and hasattr(weapon, 'db') and weapon.db.weapon_type:
                 weapon_type = weapon.db.weapon_type
             
@@ -1330,7 +1338,7 @@ class CombatHandler(DefaultScript):
                 
         else:
             # Miss - get miss messages from the message system
-            weapon_type = "unarmed"
+            weapon_type = WEAPON_TYPE_UNARMED
             if weapon and hasattr(weapon, 'db') and weapon.db.weapon_type:
                 weapon_type = weapon.db.weapon_type
                 
@@ -1506,6 +1514,7 @@ class CombatHandler(DefaultScript):
         
         if char_roll > opponent_roll:
             # Success - break proximity with opponents but maintain with grappled victim
+            # NOTE: Strict > means ties favor the opponent (defender). This is intentional.
             for opponent in opponents:
                 if is_in_proximity(char, opponent):
                     break_proximity(char, opponent)
@@ -1533,7 +1542,7 @@ class CombatHandler(DefaultScript):
         from .constants import SPLATTERCAST_CHANNEL, DEBUG_PREFIX_HANDLER, DB_COMBATANTS, DB_IS_YIELDING
         
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        target = entry.get("combat_action_target")
+        target = entry.get(DB_COMBAT_ACTION_TARGET)
         
         if not target:
             char.msg("|rNo target specified for advance action.|n")
@@ -1567,6 +1576,7 @@ class CombatHandler(DefaultScript):
             
             if char_roll > target_roll:
                 # Success - establish proximity
+                # NOTE: Strict > means ties favor the target (defender). This is intentional.
                 establish_proximity(char, target)
                 
                 char.msg(f"|gYou successfully advance to melee range with {target.key}.|n")
@@ -1639,6 +1649,7 @@ class CombatHandler(DefaultScript):
             
             if char_roll > target_roll:
                 # Success - move to target's room
+                # NOTE: Strict > means ties favor the target (defender). This is intentional.
                 old_location = char.location
                 
                 # Clear aim states before moving (consistent with traversal)
@@ -1710,14 +1721,14 @@ class CombatHandler(DefaultScript):
         from .constants import SPLATTERCAST_CHANNEL, DEBUG_PREFIX_HANDLER
         
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        target = entry.get("combat_action_target")
+        target = entry.get(DB_COMBAT_ACTION_TARGET)
         
         if not target:
             char.msg("|rNo target specified for charge action.|n")
             return
         
         # Validate target is still in combat
-        if not any(e["char"] == target for e in combatants_list):
+        if not any(e[DB_CHAR] == target for e in combatants_list):
             char.msg(f"|r{target.key} is no longer in combat.|n")
             return
         
@@ -1733,9 +1744,9 @@ class CombatHandler(DefaultScript):
             # Clear the charge action since it's not needed
             combatants_list = list(self.db.combatants)
             for combat_entry in combatants_list:
-                if combat_entry["char"] == char:
-                    combat_entry["combat_action"] = None
-                    combat_entry["combat_action_target"] = None
+                if combat_entry[DB_CHAR] == char:
+                    combat_entry[DB_COMBAT_ACTION] = None
+                    combat_entry[DB_COMBAT_ACTION_TARGET] = None
                     break
             self.db.combatants = combatants_list
             
@@ -1758,6 +1769,7 @@ class CombatHandler(DefaultScript):
             
             if charge_roll > resist_roll:
                 # Success - establish proximity and charge bonus
+                # NOTE: Strict > means ties favor the target (defender). This is intentional.
                 
                 # Check if charger is grappling someone and release them
                 if entry.get(DB_GRAPPLING_DBREF):
@@ -1840,6 +1852,7 @@ class CombatHandler(DefaultScript):
             
             if charge_roll > resist_roll:
                 # Success - move and establish proximity
+                # NOTE: Strict > means ties favor the target (defender). This is intentional.
                 exit_to_use = exits_to_target[0]
                 char.move_to(target_room)
                 
@@ -1917,7 +1930,7 @@ class CombatHandler(DefaultScript):
         )
         
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        target = entry.get("combat_action_target")
+        target = entry.get(DB_COMBAT_ACTION_TARGET)
         
         if not target:
             char.msg("|rNo target specified for disarm action.|n")
@@ -1929,7 +1942,7 @@ class CombatHandler(DefaultScript):
             return
         
         combatants_list = self.db.combatants or []
-        if not any(e["char"] == target for e in combatants_list):
+        if not any(e[DB_CHAR] == target for e in combatants_list):
             char.msg(f"|r{target.key} is no longer in combat.|n")
             return
         

@@ -13,6 +13,7 @@ Functions:
 """
 
 from .constants import (
+    DB_CHAR, DB_IS_YIELDING,
     DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, 
     MSG_CANNOT_WHILE_GRAPPLED, MSG_CANNOT_GRAPPLE_SELF, MSG_ALREADY_GRAPPLING,
 )
@@ -71,9 +72,9 @@ def establish_grapple(combat_handler, grappler, victim):
     
     combatants_list = list(combat_handler.db.combatants)
     for entry in combatants_list:
-        if entry.get("char") == grappler:
+        if entry.get(DB_CHAR) == grappler:
             grappler_entry = entry
-        elif entry.get("char") == victim:
+        elif entry.get(DB_CHAR) == victim:
             victim_entry = entry
     
     if not grappler_entry or not victim_entry:
@@ -93,11 +94,11 @@ def establish_grapple(combat_handler, grappler, victim):
     
     # Establish the grapple
     for i, entry in enumerate(combatants_list):
-        if entry.get("char") == grappler:
+        if entry.get(DB_CHAR) == grappler:
             combatants_list[i][DB_GRAPPLING_DBREF] = get_character_dbref(victim)
             # Grappler starts in restraint mode (yielding)
-            combatants_list[i]["is_yielding"] = True
-        elif entry.get("char") == victim:
+            combatants_list[i][DB_IS_YIELDING] = True
+        elif entry.get(DB_CHAR) == victim:
             combatants_list[i][DB_GRAPPLED_BY_DBREF] = get_character_dbref(grappler)
             # Victim stays non-yielding so they auto-resist each turn
             # (consistent with resolve_grapple_initiate behavior)
@@ -137,18 +138,18 @@ def break_grapple(combat_handler, grappler=None, victim=None):
     # --- Infer the missing side so both are always cleared ---
     if grappler and not victim:
         for entry in combatants_list:
-            if entry.get("char") == grappler and entry.get(DB_GRAPPLING_DBREF):
+            if entry.get(DB_CHAR) == grappler and entry.get(DB_GRAPPLING_DBREF):
                 victim = get_character_by_dbref(entry.get(DB_GRAPPLING_DBREF))
                 break
     elif victim and not grappler:
         for entry in combatants_list:
-            if entry.get("char") == victim and entry.get(DB_GRAPPLED_BY_DBREF):
+            if entry.get(DB_CHAR) == victim and entry.get(DB_GRAPPLED_BY_DBREF):
                 grappler = get_character_by_dbref(entry.get(DB_GRAPPLED_BY_DBREF))
                 break
     
     # Clear both sides of the grapple
     for i, entry in enumerate(combatants_list):
-        char = entry.get("char")
+        char = entry.get(DB_CHAR)
         
         if grappler and char == grappler:
             if entry.get(DB_GRAPPLING_DBREF):
@@ -186,7 +187,7 @@ def is_grappling(combat_handler, character):
         bool: True if character is grappling someone
     """
     for entry in combat_handler.db.combatants:
-        if entry.get("char") == character:
+        if entry.get(DB_CHAR) == character:
             return bool(entry.get(DB_GRAPPLING_DBREF))
     return False
 
@@ -203,7 +204,7 @@ def is_grappled(combat_handler, character):
         bool: True if character is being grappled
     """
     for entry in combat_handler.db.combatants:
-        if entry.get("char") == character:
+        if entry.get(DB_CHAR) == character:
             return bool(entry.get(DB_GRAPPLED_BY_DBREF))
     return False
 
@@ -222,7 +223,7 @@ def validate_grapple_action(combat_handler, character, action_name):
     """
     # Check if being grappled
     for entry in combat_handler.db.combatants:
-        if entry.get("char") == character:
+        if entry.get(DB_CHAR) == character:
             grappled_by_dbref = entry.get(DB_GRAPPLED_BY_DBREF)
             if grappled_by_dbref:
                 grappler = get_grappled_by(combat_handler, entry)
@@ -281,6 +282,7 @@ def resolve_grapple_initiate(char_entry, combatants_list, handler):
     
     if attacker_roll > defender_roll:
         # Success
+        # NOTE: Strict > means ties favor the defender. This is intentional.
         char_entry[DB_GRAPPLING_DBREF] = get_character_dbref(target)
         target_entry[DB_GRAPPLED_BY_DBREF] = get_character_dbref(char)
         
@@ -406,6 +408,7 @@ def resolve_grapple_join(char_entry, combatants_list, handler):
     
     if new_grappler_roll > current_grappler_roll:
         # New grappler wins - they take over the grapple
+        # NOTE: Strict > means ties favor the current grappler (defender). This is intentional.
         char_entry[DB_GRAPPLING_DBREF] = get_character_dbref(target)
         char_entry[DB_IS_YIELDING] = True
         
@@ -510,6 +513,7 @@ def resolve_grapple_takeover(char_entry, combatants_list, handler):
     
     if new_grappler_roll > current_grappler_roll:
         # Success: Force target to release victim, then establish new grapple
+        # NOTE: Strict > means ties favor the current grappler (defender). This is intentional.
         
         # Step 1: Break the existing grapple (A releases B)
         target_entry[DB_GRAPPLING_DBREF] = None
