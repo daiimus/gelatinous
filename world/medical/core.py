@@ -238,7 +238,10 @@ class Organ:
             "current_hp": self.current_hp,
             "max_hp": self.max_hp,
             "conditions": self.conditions.copy(),
-            "container": self.container
+            "container": self.container,
+            "wound_stage": self.wound_stage,
+            "injury_type": self.injury_type,
+            "wound_timestamp": self.wound_timestamp
         }
         
     @classmethod
@@ -256,6 +259,9 @@ class Organ:
         organ.current_hp = data.get("current_hp", organ.max_hp)
         organ.max_hp = data.get("max_hp", organ.max_hp)
         organ.conditions = data.get("conditions", [])
+        organ.wound_stage = data.get("wound_stage")
+        organ.injury_type = data.get("injury_type")
+        organ.wound_timestamp = data.get("wound_timestamp")
         return organ
 
 

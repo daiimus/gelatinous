@@ -886,7 +886,7 @@ def apply_medical_effects(item, user, target, **kwargs):
     
     elif medical_type == "oxygen":
         # Oxygen therapy - improves consciousness and breathing
-        medical_state.consciousness = min(100, medical_state.consciousness + 15)
+        medical_state.consciousness = min(1.0, medical_state.consciousness + 0.15)
         breathing_conditions = [c for c in medical_state.conditions 
                                if hasattr(c, 'condition_type') and c.condition_type in ["breathing_difficulty", "suffocation"]]
         for condition in breathing_conditions[:2]:
@@ -899,7 +899,7 @@ def apply_medical_effects(item, user, target, **kwargs):
     elif medical_type == "anesthetic":
         # Anesthetic gas - reduces pain and consciousness
         medical_state.pain_level = max(0, medical_state.pain_level - 25)
-        medical_state.consciousness = max(0, medical_state.consciousness - 10)
+        medical_state.consciousness = max(0.0, medical_state.consciousness - 0.10)
         
         result_msg = "Anesthetic inhaled. Pain reduced but consciousness lowered."
     
@@ -916,7 +916,7 @@ def apply_medical_effects(item, user, target, **kwargs):
     
     elif medical_type == "gas":
         # Medical gas treatment - various effects
-        medical_state.consciousness = min(100, medical_state.consciousness + 5)
+        medical_state.consciousness = min(1.0, medical_state.consciousness + 0.05)
         result_msg = "Medical gas inhaled. Minor therapeutic effects applied."
     
     elif medical_type == "vapor":
@@ -946,7 +946,7 @@ def apply_medical_effects(item, user, target, **kwargs):
     elif medical_type in ["medicinal_plant", "dried_medicine"]:
         # Dried medicinal substances - concentrated effects
         medical_state.pain_level = max(0, medical_state.pain_level - 12)
-        medical_state.consciousness = min(100, medical_state.consciousness + 3)
+        medical_state.consciousness = min(1.0, medical_state.consciousness + 0.03)
         
         result_msg = "Dried medicine smoked. Concentrated therapeutic effects applied."
     else:
