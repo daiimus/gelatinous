@@ -642,7 +642,7 @@ class CombatHandler(DefaultScript):
                     splattercast.msg(f"GRAPPLE_ERROR: {char.key} is grappled by themselves! Clearing invalid state.")
                     current_char_combat_entry[DB_GRAPPLED_BY_DBREF] = None
                     grappler = None
-                elif not any(e[DB_CHAR] == grappler for e in combatants_list):
+                elif not any(e.get(DB_CHAR) == grappler for e in combatants_list):
                     splattercast.msg(f"GRAPPLE_ERROR: {char.key} is grappled by {grappler.key} who is not in combat! Clearing invalid state.")
                     current_char_combat_entry[DB_GRAPPLED_BY_DBREF] = None
                     grappler = None
@@ -668,7 +668,7 @@ class CombatHandler(DefaultScript):
                 if escaper_roll > grappler_roll:
                     # Success - clear grapple
                     current_char_combat_entry[DB_GRAPPLED_BY_DBREF] = None
-                    grappler_entry = next((e for e in combatants_list if e[DB_CHAR] == grappler), None)
+                    grappler_entry = next((e for e in combatants_list if e.get(DB_CHAR) == grappler), None)
                     if grappler_entry:
                         grappler_entry[DB_GRAPPLING_DBREF] = None
                     
@@ -751,7 +751,7 @@ class CombatHandler(DefaultScript):
                     
                     # Validate target
                     is_action_target_valid = False
-                    if action_target_char and any(e[DB_CHAR] == action_target_char for e in combatants_list):
+                    if action_target_char and any(e.get(DB_CHAR) == action_target_char for e in combatants_list):
                         if action_target_char.location and action_target_char.location in (self.db.managed_rooms or []):
                             is_action_target_valid = True
                     
@@ -792,7 +792,7 @@ class CombatHandler(DefaultScript):
                             if attacker_roll > defender_roll:
                                 # Store dbrefs for persistence
                                 current_char_combat_entry[DB_GRAPPLING_DBREF] = self._get_dbref(action_target_char)
-                                target_entry = next((e for e in combatants_list if e[DB_CHAR] == action_target_char), None)
+                                target_entry = next((e for e in combatants_list if e.get(DB_CHAR) == action_target_char), None)
                                 if target_entry:
                                     target_entry[DB_GRAPPLED_BY_DBREF] = self._get_dbref(char)
                                 
@@ -825,14 +825,14 @@ class CombatHandler(DefaultScript):
                         continue
                     elif intent_type == "escape_grapple":
                         grappler = self.get_grappled_by_obj(current_char_combat_entry)
-                        if grappler and any(e[DB_CHAR] == grappler for e in combatants_list):
+                        if grappler and any(e.get(DB_CHAR) == grappler for e in combatants_list):
                             escaper_roll = randint(1, max(1, get_numeric_stat(char, "motorics", 1)))
                             grappler_roll = randint(1, max(1, get_numeric_stat(grappler, "motorics", 1)))
                             splattercast.msg(f"ESCAPE ATTEMPT: {char.key} (roll {escaper_roll}) vs {grappler.key} (roll {grappler_roll}).")
 
                             if escaper_roll > grappler_roll:
                                 current_char_combat_entry[DB_GRAPPLED_BY_DBREF] = None
-                                grappler_entry = next((e for e in combatants_list if e[DB_CHAR] == grappler), None)
+                                grappler_entry = next((e for e in combatants_list if e.get(DB_CHAR) == grappler), None)
                                 if grappler_entry:
                                     grappler_entry[DB_GRAPPLING_DBREF] = None
                                 escape_messages = get_combat_message("grapple", "escape_hit", attacker=char, target=grappler)
@@ -1541,7 +1541,7 @@ class CombatHandler(DefaultScript):
         
         # Check if target is still in combat
         combatants_list = self.db.combatants or []
-        if not any(e[DB_CHAR] == target for e in combatants_list):
+        if not any(e.get(DB_CHAR) == target for e in combatants_list):
             char.msg(f"|r{target.key} is no longer in combat.|n")
             return
         
@@ -1599,7 +1599,9 @@ class CombatHandler(DefaultScript):
                 # Check if targeted by others in the same room (excluding the victim and the advance target)
                 is_targeted_by_others_not_victim = False
                 for e in combatants_list:
-                    other_char = e[DB_CHAR]
+                    other_char = e.get(DB_CHAR)
+                    if not other_char:
+                        continue
                     if (other_char != char and other_char != grappled_victim and other_char != target and
                         other_char.location == char.location):  # Only check same-room combatants
                         if self.get_target_obj(e) == char:
@@ -1764,9 +1766,9 @@ class CombatHandler(DefaultScript):
                     if grappled_victim:
                         # Release the grapple - update the actual combatants list
                         for combatant_entry in combatants_list:
-                            if combatant_entry[DB_CHAR] == char:
+                            if combatant_entry.get(DB_CHAR) == char:
                                 combatant_entry[DB_GRAPPLING_DBREF] = None
-                            elif combatant_entry[DB_CHAR] == grappled_victim:
+                            elif combatant_entry.get(DB_CHAR) == grappled_victim:
                                 combatant_entry[DB_GRAPPLED_BY_DBREF] = None
                         
                         # Announce grapple release
@@ -1804,6 +1806,8 @@ class CombatHandler(DefaultScript):
                     splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed charge against ranged weapon user {target.key}, bonus attack triggered.")
                 
                 # Apply charge failure penalty
+                # TODO: charge_penalty is set but never read — implement penalty
+                # mechanic (e.g., reduced dodge or accuracy next round) or remove
                 char.ndb.charge_penalty = True
                 char.msg("|rYour failed charge leaves you off-balance!|n")
                 splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed charge on {target.key}, penalty applied.")
@@ -1846,9 +1850,9 @@ class CombatHandler(DefaultScript):
                     if grappled_victim:
                         # Release the grapple - update the actual combatants list
                         for combatant_entry in combatants_list:
-                            if combatant_entry[DB_CHAR] == char:
+                            if combatant_entry.get(DB_CHAR) == char:
                                 combatant_entry[DB_GRAPPLING_DBREF] = None
-                            elif combatant_entry[DB_CHAR] == grappled_victim:
+                            elif combatant_entry.get(DB_CHAR) == grappled_victim:
                                 combatant_entry[DB_GRAPPLED_BY_DBREF] = None
                         
                         # Announce grapple release (victim might be in different room now)
@@ -1896,6 +1900,8 @@ class CombatHandler(DefaultScript):
                     splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed cross-room charge on {target.key}.")
                 
                 # Apply charge failure penalty
+                # TODO: charge_penalty is set but never read — implement penalty
+                # mechanic (e.g., reduced dodge or accuracy next round) or remove
                 char.ndb.charge_penalty = True
                 char.msg("|rYour failed charge leaves you off-balance!|n")
 
