@@ -28,6 +28,24 @@ put secret game- or server-specific settings in secret_settings.py.
 from evennia.settings_default import *
 
 ######################################################################
+# Security Middleware
+######################################################################
+
+# Prepend Django's SecurityMiddleware (must be near top of chain) and
+# append XFrameOptionsMiddleware + our custom CSP middleware.
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+] + MIDDLEWARE + [
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "web.utils.security_middleware.ContentSecurityPolicyMiddleware",
+]
+
+# X-Frame-Options: SAMEORIGIN prevents clickjacking.
+# The header_only view is exempted via @xframe_options_exempt since
+# it's designed to be embedded in a Discourse iframe.
+X_FRAME_OPTIONS = "SAMEORIGIN"
+
+######################################################################
 # Evennia base server config
 ######################################################################
 
