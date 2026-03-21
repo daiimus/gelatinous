@@ -275,7 +275,8 @@ class CmdFlee(Command):
                 # This shouldn't happen if ndb.combat_handler is properly managed
                 caller.msg("Your combat state seems confused. Moving freely.")
                 splattercast.msg(f"{DEBUG_PREFIX_FLEE}_ERROR: {caller.key} has combat handler but no entry.")
-                super().at_traverse(caller, choice(available_exits).destination)
+                destination = choice(available_exits).destination
+                caller.move_to(destination)
                 return
                 
             # Check if grappled - can't flee while grappled
@@ -360,6 +361,9 @@ class CmdFlee(Command):
             else:
                 clear_aim_state(caller)
             
+            # Capture old location before moving for departure message
+            old_location = caller.location
+            
             # Move to the chosen exit
             caller.move_to(destination, quiet=True)
             
@@ -375,8 +379,7 @@ class CmdFlee(Command):
             caller.location.msg_contents(f"|y{caller.get_display_name(caller.location)} has arrived, fleeing from combat.|n", exclude=[caller])
             
             # Message the room they left
-            if caller.location != destination:  # Safety check
-                old_location = caller.location
+            if old_location and old_location != destination:
                 old_location.msg_contents(f"|y{caller.get_display_name(old_location)} flees {chosen_exit.key}!|n")
             
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_SUCCESS: {caller.key} successfully fled via {chosen_exit.key} to {destination.key}.")

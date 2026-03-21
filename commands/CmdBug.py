@@ -8,7 +8,7 @@ input validation, and privacy-conscious reporting.
 
 from evennia.commands.default.muxcommand import MuxCommand
 from django.conf import settings
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import requests
 import json
 
@@ -120,8 +120,7 @@ class CmdBug(MuxCommand):
     def get_time_until_reset(self, account):
         """Get human-readable time until rate limit resets."""
         now = datetime.now(timezone.utc)
-        tomorrow = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
-        tomorrow = tomorrow.replace(day=tomorrow.day + 1)
+        tomorrow = datetime(now.year, now.month, now.day, tzinfo=timezone.utc) + timedelta(days=1)
         
         delta = tomorrow - now
         hours = delta.seconds // 3600

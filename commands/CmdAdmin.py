@@ -221,7 +221,8 @@ class CmdHeal(Command):
                 for i in range(conditions_to_heal):
                     if matching_conditions:
                         condition_key = matching_conditions.pop(0)
-                        medical_state.conditions.pop(condition_key, None)
+                        if condition_key in medical_state.conditions:
+                            medical_state.conditions.remove(condition_key)
                 
                 # Stop medical script if no conditions remain
                 if not medical_state.conditions:
