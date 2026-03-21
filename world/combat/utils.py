@@ -657,8 +657,7 @@ def remove_combatant(handler, char):
         char: The character to remove from combat
     """
     from .constants import (
-        SPLATTERCAST_CHANNEL, DB_COMBATANTS, DB_CHAR, DB_TARGET_DBREF, 
-        NDB_COMBAT_HANDLER
+        DB_COMBATANTS, DB_CHAR, DB_TARGET_DBREF
     )
     
     splattercast = get_splattercast()
@@ -685,7 +684,9 @@ def remove_combatant(handler, char):
     for other_entry in combatants:
         if other_entry.get(DB_TARGET_DBREF) == get_character_dbref(char):
             other_entry[DB_TARGET_DBREF] = None
-            other_char = other_entry[DB_CHAR]
+            other_char = other_entry.get(DB_CHAR)
+            if not other_char:
+                continue
             splattercast.msg(f"RMV_COMB: Cleared {other_char.key}'s target_dbref (was {char.key})")
             
             # Attempt smart auto-retargeting: find someone who is actively attacking this character
@@ -834,10 +835,6 @@ def remove_combatant(handler, char):
     else:
         splattercast.msg(f"RMV_COMB: Updated database directly")
     
-    # Remove handler reference
-    if hasattr(char.ndb, NDB_COMBAT_HANDLER) and getattr(char.ndb, NDB_COMBAT_HANDLER) == handler:
-        delattr(char.ndb, NDB_COMBAT_HANDLER)
-    
     splattercast.msg(f"{char.key} removed from combat.")
     # TODO: Add narrative combat exit message (weapon lowering, stepping back, etc.)
     
@@ -863,6 +860,9 @@ def cleanup_combatant_state(char, entry, handler):
     # Clear proximity relationships
     clear_all_proximity(char)
     
+    # Clear aim state (aiming_at, aimed_at_by, aiming_direction)
+    clear_aim_state(char)
+    
     # Break grapples
     grappling = get_combatant_grappling_target(entry, handler)
     grappled_by = get_combatant_grappled_by(entry, handler)
@@ -885,12 +885,18 @@ def cleanup_combatant_state(char, entry, handler):
     if hasattr(char.ndb, NDB_COMBAT_HANDLER):
         delattr(char.ndb, NDB_COMBAT_HANDLER)
     
-    # Clear combat override_place (only if it's the generic combat state)
+    # Clear combat-related override_place values.
+    # Combat sets several variants: "locked in combat.", "locked in a deadly showdown.",
+    # "aiming carefully at {name}.", "aiming carefully to the {direction}."
+    # We must NOT clear non-combat overrides like "unconscious and motionless." or
+    # "lying motionless and deceased." which belong to the medical/death systems.
+    combat_override_prefixes = ("locked in combat", "locked in a deadly showdown", "aiming carefully")
     if (hasattr(char, 'override_place') and 
-        char.override_place == "locked in combat."):
-        char.override_place = ""
+        char.override_place and
+        any(char.override_place.startswith(prefix) for prefix in combat_override_prefixes)):
         splattercast = get_splattercast()
-        splattercast.msg(f"CLEANUP_COMB: Cleared combat override_place for {char.key}")
+        splattercast.msg(f"CLEANUP_COMB: Cleared combat override_place '{char.override_place}' for {char.key}")
+        char.override_place = ""
     
     # No need to set charge flags to False after deletion - this was causing race conditions
     # The delattr above already removed them, setting them to False recreates them
@@ -952,9 +958,9 @@ def update_all_combatant_handler_references(handler):
     Args:
         handler: The combat handler instance all combatants should reference
     """
-    from .constants import SPLATTERCAST_CHANNEL, DB_COMBATANTS, DB_CHAR, NDB_COMBAT_HANDLER
+    from .constants import DB_COMBATANTS, DB_CHAR, NDB_COMBAT_HANDLER
     
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     combatants = handler.db.combatants or []
     
     updated_count = 0
@@ -1029,11 +1035,11 @@ def get_combatants_safe(handler):
     Returns:
         list: The combatants list, or an empty list if None/missing
     """
-    from .constants import DB_COMBATANTS, SPLATTERCAST_CHANNEL, DEBUG_PREFIX_HANDLER
+    from .constants import DB_COMBATANTS, DEBUG_PREFIX_HANDLER
     
     combatants = handler.db.combatants
     if combatants is None:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_WARNING: {DB_COMBATANTS} was None for handler {handler.key}, initializing to empty list.")
         combatants = []
         # Only set the attribute if the handler has been saved to the database
@@ -1088,11 +1094,11 @@ def detect_and_remove_orphaned_combatants(handler):
         list: List of orphaned combatants that were removed
     """
     from .constants import (
-        SPLATTERCAST_CHANNEL, DB_COMBATANTS, DB_CHAR, DB_TARGET_DBREF,
+        DB_COMBATANTS, DB_CHAR, DB_TARGET_DBREF,
         DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, DB_IS_YIELDING
     )
     
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     combatants = handler.db.combatants or []
     orphaned_chars = []
     
@@ -1153,9 +1159,9 @@ def resolve_bonus_attack(handler, attacker, target):
         attacker: The character making the bonus attack
         target: The target of the bonus attack
     """
-    from .constants import SPLATTERCAST_CHANNEL, DB_COMBATANTS, DB_CHAR
+    from .constants import DB_COMBATANTS, DB_CHAR
     
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     
     # Find the attacker's combat entry
     combatants_list = handler.db.combatants or []
@@ -1194,9 +1200,9 @@ def check_grenade_human_shield(proximity_list, combat_handler=None):
         dict: Modified damage assignments {char: damage_multiplier}
              where damage_multiplier is 0.0 for grapplers, 2.0 for victims
     """
-    from .constants import SPLATTERCAST_CHANNEL, DB_CHAR, DB_GRAPPLING_DBREF, DB_COMBATANTS, NDB_COMBAT_HANDLER
+    from .constants import DB_CHAR, DB_GRAPPLING_DBREF, DB_COMBATANTS, NDB_COMBAT_HANDLER
     
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     damage_modifiers = {}
     
     # If no combat handler provided, try to find one from the characters

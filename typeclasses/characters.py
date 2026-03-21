@@ -947,8 +947,6 @@ class Character(ObjectParent, DefaultCharacter):
         self.db.death_processed = True
         
         # Also set NDB flag for backwards compatibility
-        if not hasattr(self, 'ndb'):
-            self.ndb = {}
         self.ndb.death_processed = True
         
         # Note: death_count is NOT incremented here - it will be incremented in the 
