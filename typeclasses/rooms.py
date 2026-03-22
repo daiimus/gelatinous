@@ -18,19 +18,7 @@ class Room(ObjectParent, DefaultRoom):
     """
     Rooms are like any Object, except their location is None
     (which is default). They also use basetype_setup() to
-                      if street_exit_count <= 1:
-                        street_descriptions.append(f"There is a dead-end to the {dir_text}.")
-                    elif street_exit_count == 2:
-                        street_descriptions.append(f"The street continues to the {dir_text}.")
-                    else:
-                        street_descriptions.append(f"There is an intersection to the {dir_text}.")
-                else:
-                    # Fallback if we can't analyze destination
-                    street_descriptions.append(f"The street continues to the {dir_text}.")
-            
-            # Join all street descriptions
-            for desc in street_descriptions:
-                descriptions.append(desc)o they cannot be puppeted or picked up.
+    add locks so they cannot be puppeted or picked up.
     (to change that, use at_object_creation instead)
 
     See mygame/typeclasses/objects.py for a list of

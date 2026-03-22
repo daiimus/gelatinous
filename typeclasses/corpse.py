@@ -202,7 +202,8 @@ class Corpse(Item):
                 # Don't break corpse display if wound description fails
                 try:
                     from evennia.comms.models import ChannelDB
-                    splattercast = ChannelDB.objects.get_channel("Splattercast")
+                    from world.combat.constants import SPLATTERCAST_CHANNEL
+                    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                     splattercast.msg(f"CORPSE_WOUND_ERROR: Failed to generate wound description for {self.key}: {e}")
                 except Exception:
                     pass
@@ -679,7 +680,8 @@ class Corpse(Item):
         # Log the decay completion
         try:
             from evennia.comms.models import ChannelDB
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            from world.combat.constants import SPLATTERCAST_CHANNEL
+            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             splattercast.msg(f"CORPSE_DECAY: {self.key} completely decayed and removed from {self.location}")
         except Exception:
             pass

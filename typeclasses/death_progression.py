@@ -23,7 +23,8 @@ from evennia.comms.models import ChannelDB
 from world.combat.constants import (
     DEATH_PROGRESSION_DURATION,
     DEATH_PROGRESSION_CHECK_INTERVAL,
-    DEATH_PROGRESSION_MESSAGE_COUNT
+    DEATH_PROGRESSION_MESSAGE_COUNT,
+    SPLATTERCAST_CHANNEL,
 )
 import random
 import time
@@ -135,7 +136,7 @@ class DeathProgressionScript(DefaultScript):
         
         # Debug logging
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             splattercast.msg(
                 f"DEATH_PROGRESSION: Script at_script_creation for {self.obj.key} "
                 f"(duration: {DEATH_PROGRESSION_DURATION}s, "
@@ -154,7 +155,7 @@ class DeathProgressionScript(DefaultScript):
             
         # Log start of death progression with configurable duration
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             duration_minutes = DEATH_PROGRESSION_DURATION / 60
             splattercast.msg(
                 f"DEATH_PROGRESSION: Started for {character.key} - "
@@ -172,7 +173,7 @@ class DeathProgressionScript(DefaultScript):
         if not character:
             # Log cleanup for invalid character
             try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"DEATH_SCRIPT_CLEANUP: Stopping and deleting death progression script (invalid character)")
             except Exception:
                 pass
@@ -185,7 +186,7 @@ class DeathProgressionScript(DefaultScript):
         
         # Debug logging
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             splattercast.msg(f"DEATH_PROGRESSION: at_repeat for {character.key}, elapsed: {elapsed:.1f}s")
         except Exception:
             pass
@@ -239,7 +240,7 @@ class DeathProgressionScript(DefaultScript):
             
         # Log medical revival
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             elapsed = time.time() - self.db.start_time
             splattercast.msg(f"MEDICAL_REVIVAL: {character.key} revived by medical treatment after {elapsed:.1f}s")
             splattercast.msg(f"DEATH_SCRIPT_CLEANUP: Stopping and deleting death progression script for {character.key} (medical revival)")
@@ -327,7 +328,7 @@ class DeathProgressionScript(DefaultScript):
             
         # Log progression
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             splattercast.msg(f"DEATH_PROGRESSION: {character.key} at {interval}s (msg {message_index + 1}/{len(messages_list)}) - {minutes_remaining}m remaining")
         except Exception:
             pass
@@ -430,7 +431,7 @@ class DeathProgressionScript(DefaultScript):
             
         # Log completion
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             splattercast.msg(f"DEATH_PROGRESSION: {character.key} completed - corpse created, character transitioned")
             splattercast.msg(f"DEATH_SCRIPT_CLEANUP: Stopping and deleting death progression script for {character.key}")
         except Exception:
@@ -464,7 +465,7 @@ class DeathProgressionScript(DefaultScript):
                 
             # 5. Log the transition
             try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"DEATH_COMPLETION: {character.key} -> Corpse created, character transitioned")
             except Exception:
                 pass
@@ -472,7 +473,7 @@ class DeathProgressionScript(DefaultScript):
         except Exception as e:
             # Fallback - log error but don't crash the death progression
             try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"DEATH_COMPLETION_ERROR: {character.key} - {e}")
             except Exception:
                 pass
@@ -525,22 +526,22 @@ class DeathProgressionScript(DefaultScript):
                             'organ': wound.get('organ'),
                             # Store organ state for potential forensic analysis
                             'organ_damage': {
-                                'current_hp': wound.get('organ_obj', {}).current_hp if wound.get('organ_obj') else 0,
-                                'max_hp': wound.get('organ_obj', {}).max_hp if wound.get('organ_obj') else 100,
-                                'container': wound.get('organ_obj', {}).container if wound.get('organ_obj') else wound['location']
+                                'current_hp': wound['organ_obj'].current_hp if wound.get('organ_obj') else 0,
+                                'max_hp': wound['organ_obj'].max_hp if wound.get('organ_obj') else 100,
+                                'container': wound['organ_obj'].container if wound.get('organ_obj') else wound['location']
                             }
                         }
                         corpse.db.wounds_at_death.append(wound_record)
                     
                     try:
-                        splattercast = ChannelDB.objects.get_channel("Splattercast")
+                        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                         splattercast.msg(f"DEATH_WOUNDS_PRESERVED: {len(wound_data)} wounds preserved on corpse for {character.key}")
                     except Exception:
                         pass
             except Exception as e:
                 # Don't fail death progression if wound preservation fails
                 try:
-                    splattercast = ChannelDB.objects.get_channel("Splattercast")
+                    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                     splattercast.msg(f"DEATH_WOUNDS_ERROR: Failed to preserve wounds for {character.key}: {e}")
                 except Exception:
                     pass
@@ -575,7 +576,7 @@ class DeathProgressionScript(DefaultScript):
         
         # Debug logging for item transfer
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             if transferred_items:
                 splattercast.msg(f"DEATH_ITEMS_TRANSFERRED: {len(transferred_items)} items moved to corpse: {', '.join(transferred_items)}")
             else:
@@ -608,7 +609,7 @@ class DeathProgressionScript(DefaultScript):
             
             script_count = medical_scripts.count()
             try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"DEATH_MEDICAL_CLEANUP: Found {script_count} medical scripts for {character.key}")
             except Exception:
                 pass
@@ -625,7 +626,7 @@ class DeathProgressionScript(DefaultScript):
                     still_exists = ScriptDB.objects.filter(id=script_id).exists()
                     
                     try:
-                        splattercast = ChannelDB.objects.get_channel("Splattercast")
+                        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                         if still_exists:
                             splattercast.msg(f"DEATH_MEDICAL_CLEANUP_FAIL: Script #{script_id} for {character.key} still exists after delete!")
                         else:
@@ -634,7 +635,7 @@ class DeathProgressionScript(DefaultScript):
                         pass
                 except Exception as e:
                     try:
-                        splattercast = ChannelDB.objects.get_channel("Splattercast")
+                        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                         splattercast.msg(f"DEATH_MEDICAL_CLEANUP_ERROR: {character.key} - {e}")
                         import traceback
                         splattercast.msg(f"DEATH_MEDICAL_CLEANUP_TRACE: {traceback.format_exc()}")
@@ -642,7 +643,7 @@ class DeathProgressionScript(DefaultScript):
                         pass
         except Exception as e:
             try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"DEATH_MEDICAL_CLEANUP_FAIL: {character.key} - {e}")
                 import traceback
                 splattercast.msg(f"DEATH_MEDICAL_CLEANUP_TRACE: {traceback.format_exc()}")
@@ -658,7 +659,7 @@ class DeathProgressionScript(DefaultScript):
             
             # Debug logging for successful teleportation
             try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"DEATH_TELEPORT_SUCCESS: {character.key} moved from {old_location} to {limbo_room}")
             except Exception:
                 pass
@@ -666,7 +667,7 @@ class DeathProgressionScript(DefaultScript):
         except Exception as e:
             # Log the specific error instead of silently failing
             try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"DEATH_TELEPORT_ERROR: {character.key} - {e}")
             except Exception:
                 pass
@@ -683,7 +684,7 @@ class DeathProgressionScript(DefaultScript):
                 account.unpuppet_object(session)
                 
                 try:
-                    splattercast = ChannelDB.objects.get_channel("Splattercast")
+                    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                     splattercast.msg(f"DEATH_UNPUPPET: {character.key} unpuppeted from {account.key}")
                 except Exception:
                     pass
@@ -711,7 +712,7 @@ class DeathProgressionScript(DefaultScript):
             account.msg("|yPlease contact staff for assistance creating a new character.|n")
             
             try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
                 splattercast.msg(f"CHARCREATE_IMPORT_ERROR: {e}")
             except Exception:
                 pass
@@ -738,7 +739,7 @@ def start_death_progression(character):
     existing_script = character.scripts.get("death_progression")
     if existing_script:
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             splattercast.msg(f"DEATH_PROGRESSION: Existing script found for {character.key}")
         except Exception:
             pass
@@ -746,7 +747,7 @@ def start_death_progression(character):
         
     # Create new death progression script
     try:
-        splattercast = ChannelDB.objects.get_channel("Splattercast")
+        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         splattercast.msg(f"DEATH_PROGRESSION: Creating new script for {character.key}")
     except Exception:
         pass
@@ -755,7 +756,7 @@ def start_death_progression(character):
     script = character.scripts.add(DeathProgressionScript)
     
     try:
-        splattercast = ChannelDB.objects.get_channel("Splattercast")
+        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         splattercast.msg(f"DEATH_PROGRESSION: Script created and started: {script} for {character.key}")
     except Exception:
         pass
