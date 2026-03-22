@@ -13,7 +13,8 @@ from evennia import CmdSet
 
 # Import commands from our organized modules
 from .core_actions import CmdAttack, CmdStop
-from .movement import CmdFlee, CmdRetreat, CmdAdvance, CmdCharge, CmdJump
+from .movement import CmdFlee, CmdRetreat, CmdAdvance, CmdCharge
+from .jump import CmdJump
 from .special_actions import CmdEscapeGrapple, CmdReleaseGrapple, CmdDisarm
 # Note: CmdLook moved to main character cmdset to be available outside combat
 
