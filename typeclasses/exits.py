@@ -10,7 +10,13 @@ for allowing Characters to traverse the exit to its destination.
 from evennia.objects.objects import DefaultExit
 from evennia.comms.models import ChannelDB
 from world.combat.handler import get_or_create_combat 
-from world.combat.constants import SPLATTERCAST_CHANNEL, DB_CHAR, NDB_PROXIMITY_UNIVERSAL 
+from world.combat.constants import (
+    DB_CHAR,
+    NDB_COMBAT_HANDLER,
+    NDB_PROXIMITY,
+    NDB_PROXIMITY_UNIVERSAL,
+    SPLATTERCAST_CHANNEL,
+)
 
 
 from .objects import ObjectParent
@@ -176,7 +182,7 @@ class Exit(DefaultExit):
 
         # --- PROXIMITY CLEANUP ON ROOM CHANGE ---
         # Clear proximity relationships when moving between rooms (except during combat dragging)
-        handler = getattr(traversing_object.ndb, "combat_handler", None)
+        handler = getattr(traversing_object.ndb, NDB_COMBAT_HANDLER, None)
         is_being_dragged = False
         if handler:
             combatants = handler.db.combatants
@@ -189,13 +195,13 @@ class Exit(DefaultExit):
                     splattercast.msg(f"TRAVERSE_ERROR: Error checking grapple status for {traversing_object.key}: {ex}")
                     is_being_dragged = False
         
-        if not is_being_dragged and hasattr(traversing_object.ndb, "in_proximity_with"):
+        if not is_being_dragged and hasattr(traversing_object.ndb, NDB_PROXIMITY):
             if isinstance(traversing_object.ndb.in_proximity_with, set) and traversing_object.ndb.in_proximity_with:
                 splattercast.msg(f"PROXIMITY_CLEANUP_ON_MOVE: {traversing_object.key} moving from {traversing_object.location.key} to {target_location.key}. Clearing proximity with: {[o.key for o in traversing_object.ndb.in_proximity_with]}")
                 
                 # Remove traversing_object from others' proximity sets
                 for other_char in list(traversing_object.ndb.in_proximity_with):
-                    if hasattr(other_char.ndb, "in_proximity_with") and isinstance(other_char.ndb.in_proximity_with, set):
+                    if hasattr(other_char.ndb, NDB_PROXIMITY) and isinstance(other_char.ndb.in_proximity_with, set):
                         other_char.ndb.in_proximity_with.discard(traversing_object)
                         splattercast.msg(f"PROXIMITY_CLEANUP_ON_MOVE: Removed {traversing_object.key} from {other_char.key}'s proximity list.")
                 
@@ -221,7 +227,7 @@ class Exit(DefaultExit):
                 setattr(traversing_object.ndb, NDB_PROXIMITY_UNIVERSAL, [])
         # --- END UNIVERSAL PROXIMITY CLEANUP ---
 
-        handler = getattr(traversing_object.ndb, "combat_handler", None)
+        handler = getattr(traversing_object.ndb, NDB_COMBAT_HANDLER, None)
 
         if handler:
             # Character is in combat - check if handler is still valid
@@ -229,7 +235,7 @@ class Exit(DefaultExit):
             if combatants_list is None:
                 # Handler has been cleaned up but character still has reference
                 splattercast.msg(f"TRAVERSAL: {traversing_object.key} has stale combat_handler reference. Clearing and allowing move.")
-                setattr(traversing_object.ndb, "combat_handler", None)
+                setattr(traversing_object.ndb, NDB_COMBAT_HANDLER, None)
                 super().at_traverse(traversing_object, target_location)
                 return
                 

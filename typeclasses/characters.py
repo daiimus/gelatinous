@@ -12,6 +12,8 @@ from evennia.objects.objects import DefaultCharacter
 from evennia.typeclasses.attributes import AttributeProperty
 from evennia.comms.models import ChannelDB  # Ensure this is imported
 
+from world.combat.constants import NDB_COMBAT_HANDLER
+
 from .objects import ObjectParent
 from .armor_mixin import ArmorMixin
 from .clothing_mixin import ClothingMixin
@@ -307,7 +309,7 @@ class Character(
         #     )
         
         # Check if character is in combat and remove them
-        combat_handler = getattr(self.ndb, "combat_handler", None)
+        combat_handler = getattr(self.ndb, NDB_COMBAT_HANDLER, None)
         if combat_handler:
             try:
                 combat_handler.remove_combatant(self)
@@ -894,7 +896,7 @@ class Character(
         if not item:
             return f"You're not holding anything in your {hand} hand."
 
-        item.location = self
+        item.move_to(self, quiet=True)
         hands[hand] = None
         self.hands = hands
         return f"You unwield {item.get_display_name(self)} from your {hand} hand."
