@@ -212,8 +212,8 @@ class DeathCurtain:
         
         # Get session for width detection
         self.session = None
-        if character and hasattr(character, 'sessions') and character.sessions.get():
-            self.session = character.sessions.get()[0]
+        if character and hasattr(character, 'sessions') and character.sessions.all():
+            self.session = character.sessions.all()[0]
         
         # Get terminal width for this character's session
         self.width = _get_terminal_width(self.session)
