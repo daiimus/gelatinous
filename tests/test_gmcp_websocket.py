@@ -101,8 +101,8 @@ async def run_tests(url):
             print("\n  Waiting for login screen frames...")
             binary_frames = []
             text_frames = []
-            deadline = asyncio.get_event_loop().time() + 5
-            while asyncio.get_event_loop().time() < deadline:
+            deadline = asyncio.get_running_loop().time() + 5
+            while asyncio.get_running_loop().time() < deadline:
                 try:
                     msg = await asyncio.wait_for(ws.recv(), timeout=2.0)
                     if isinstance(msg, bytes):
@@ -165,8 +165,8 @@ async def run_tests(url):
             # Collect response frames
             response_binary = []
             response_text = []
-            deadline = asyncio.get_event_loop().time() + 5
-            while asyncio.get_event_loop().time() < deadline:
+            deadline = asyncio.get_running_loop().time() + 5
+            while asyncio.get_running_loop().time() < deadline:
                 try:
                     msg = await asyncio.wait_for(ws.recv(), timeout=2.0)
                     if isinstance(msg, bytes):

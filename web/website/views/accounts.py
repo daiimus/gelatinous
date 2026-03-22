@@ -137,7 +137,7 @@ class TurnstileAccountCreateView(EvenniaAccountCreateView):
         """
         x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            ip = x_forwarded_for.split(',')[0].strip()
         else:
             ip = self.request.META.get('REMOTE_ADDR')
         return ip
