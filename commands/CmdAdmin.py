@@ -672,7 +672,9 @@ class CmdPeace(Command):
             return
 
         # Find all combat handlers on this location
-        handlers = [script for script in location.scripts.all() if script.key == "combat_handler"]
+        from world.combat.constants import COMBAT_SCRIPT_KEY
+
+        handlers = [script for script in location.scripts.all() if script.key == COMBAT_SCRIPT_KEY]
         if not handlers:
             caller.msg(f"|yNo combat to end in {location.key}.|n")
             splattercast.msg(f"@peace: No combat to end in {location.key}.")
