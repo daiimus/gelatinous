@@ -6,7 +6,6 @@ Designed to be easily expandable for calendar systems and time-based events.
 """
 
 import time
-from evennia.utils import gametime
 
 
 # Time periods for weather variation (12 granular periods)
@@ -52,7 +51,7 @@ class TimeSystem:
     
     def __init__(self):
         """Initialize time system."""
-        self.time_multiplier = 1  # Real time = game time for now
+        pass
         
     def get_current_hour(self):
         """
@@ -87,15 +86,6 @@ class TimeSystem:
                     
         # Fallback
         return 'midday'
-        
-    def set_time_multiplier(self, multiplier):
-        """
-        Set game time speed multiplier.
-        
-        Args:
-            multiplier: Time speed (1.0 = real time, 2.0 = double speed, etc.)
-        """
-        self.time_multiplier = max(0.1, multiplier)
 
 
 # Global convenience function
@@ -106,16 +96,4 @@ def get_current_time_period():
     Returns:
         str: Current time period
     """
-    # For now, direct calculation - later will use global time system instance
-    current_time = time.localtime()
-    hour = current_time.tm_hour
-    
-    for period, (start, end) in TIME_RANGES.items():
-        if start <= end:
-            if start <= hour < end:
-                return period
-        else:
-            if hour >= start or hour < end:
-                return period
-                
-    return 'midday'
+    return TimeSystem().get_current_time_period()

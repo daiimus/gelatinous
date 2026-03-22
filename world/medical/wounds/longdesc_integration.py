@@ -71,7 +71,10 @@ def _prioritize_wounds_for_display(wounds):
         list: Sorted wounds (most significant first)
     """
     severity_order = {"Critical": 4, "Severe": 3, "Moderate": 2, "Light": 1}
-    stage_order = {"fresh": 4, "treated": 3, "healing": 2, "scarred": 1}
+    stage_order = {
+        "fresh": 6, "treated": 5, "healing": 4,
+        "destroyed": 3, "severed": 2, "scarred": 1,
+    }
     
     # Dynamic location priority - visible areas get higher priority
     # Face and head are typically most visible, then exposed areas
@@ -143,7 +146,8 @@ def _create_compound_wound_description(location, wounds):
     from .constants import get_location_display_name, INJURY_SEVERITY_MAP
     
     # Sort wounds by severity for compound description
-    wounds = sorted(wounds, key=lambda w: ["Light", "Moderate", "Severe", "Critical"].index(w['severity']))
+    _severity_rank = {"Light": 0, "Moderate": 1, "Severe": 2, "Critical": 3}
+    wounds = sorted(wounds, key=lambda w: _severity_rank.get(w['severity'], 0))
     
     # Find the most severe wound to base description on
     primary_wound = wounds[-1]  # Most severe
@@ -198,8 +202,7 @@ def update_character_longdesc_with_wounds(character):
     # 5. Preserve other longdesc content
     
     # For now, store wound display for testing
-    if character.db.wound_display is not None:
-        character.db.wound_display = wound_display
+    character.db.wound_display = wound_display
     
     return True
 
@@ -219,7 +222,6 @@ def remove_all_wound_descriptions(character):
     # This would remove all wound-related text from the longdesc
     
     # For now, clear stored wound display
-    if character.db.wound_display is not None:
-        character.db.wound_display = ""
+    character.db.wound_display = ""
     
     return True

@@ -35,8 +35,8 @@ def get_location_display_name(location, character=None):
         str: Human-readable location name
     """
     # Handle legacy calling convention (character, location)
-    if isinstance(location, object) and hasattr(location, 'longdesc') and isinstance(character, str):
-        # Swap arguments - old calling convention
+    if isinstance(location, str) is False and isinstance(character, str):
+        # Swap arguments - old calling convention passed (character, location)
         character, location = location, character
     
     # Check if character has custom location names
