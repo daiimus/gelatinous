@@ -39,7 +39,11 @@ from .constants import (
     DB_IS_YIELDING,
     DB_TARGET_DBREF,
     DEFAULT_MOTORICS,
+    NDB_AIMED_AT_BY,
+    NDB_AIMING_AT,
+    NDB_AIMING_DIRECTION,
     NDB_PROXIMITY,
+    NDB_SKIP_ROUND,
     WEAPON_TYPE_UNARMED,
 )
 from .debug import get_splattercast, log_debug
@@ -351,15 +355,15 @@ def clear_aim_state(character):
         character: The character to clear aim state from
     """
     # Clear aiming target
-    if hasattr(character.ndb, "aiming_at"):
+    if hasattr(character.ndb, NDB_AIMING_AT):
         del character.ndb.aiming_at
     
     # Clear aiming direction  
-    if hasattr(character.ndb, "aiming_direction"):
+    if hasattr(character.ndb, NDB_AIMING_DIRECTION):
         del character.ndb.aiming_direction
     
     # Clear being aimed at by others
-    if hasattr(character.ndb, "aimed_at_by"):
+    if hasattr(character.ndb, NDB_AIMED_AT_BY):
         del character.ndb.aimed_at_by
     
     log_debug("AIM", "CLEAR", "Cleared aim state", character)
@@ -374,22 +378,22 @@ def clear_mutual_aim(char1, char2):
         char2: Second character
     """
     # Clear char1 aiming at char2
-    if hasattr(char1.ndb, "aiming_at") and char1.ndb.aiming_at == char2:
+    if hasattr(char1.ndb, NDB_AIMING_AT) and char1.ndb.aiming_at == char2:
         del char1.ndb.aiming_at
-        if hasattr(char1.ndb, "aiming_direction"):
+        if hasattr(char1.ndb, NDB_AIMING_DIRECTION):
             del char1.ndb.aiming_direction
     
     # Clear char2 aiming at char1
-    if hasattr(char2.ndb, "aiming_at") and char2.ndb.aiming_at == char1:
+    if hasattr(char2.ndb, NDB_AIMING_AT) and char2.ndb.aiming_at == char1:
         del char2.ndb.aiming_at
-        if hasattr(char2.ndb, "aiming_direction"):
+        if hasattr(char2.ndb, NDB_AIMING_DIRECTION):
             del char2.ndb.aiming_direction
     
     # Clear being aimed at relationships
-    if hasattr(char1.ndb, "aimed_at_by") and char1.ndb.aimed_at_by == char2:
+    if hasattr(char1.ndb, NDB_AIMED_AT_BY) and char1.ndb.aimed_at_by == char2:
         del char1.ndb.aimed_at_by
     
-    if hasattr(char2.ndb, "aimed_at_by") and char2.ndb.aimed_at_by == char1:
+    if hasattr(char2.ndb, NDB_AIMED_AT_BY) and char2.ndb.aimed_at_by == char1:
         del char2.ndb.aimed_at_by
 
 
@@ -571,7 +575,7 @@ def remove_combatant(handler, char):
                     ranged_attackers.append(potential_target_char)
                     
                     # Check if they're also in proximity for melee priority
-                    if hasattr(other_char.ndb, "in_proximity_with") and potential_target_char in other_char.ndb.in_proximity_with:
+                    if hasattr(other_char.ndb, NDB_PROXIMITY) and potential_target_char in other_char.ndb.in_proximity_with:
                         proximity_attackers.append(potential_target_char)
             
             # Smart targeting logic based on weapon type
@@ -712,7 +716,7 @@ def cleanup_combatant_state(char, entry, handler):
     # Clear NDB attributes
     from .constants import NDB_CHARGE_BONUS, NDB_CHARGE_VULNERABILITY
     ndb_attrs = [NDB_PROXIMITY, NDB_SKIP_ROUND, NDB_CHARGE_VULNERABILITY, 
-                NDB_CHARGE_BONUS, "skip_combat_round"]
+                NDB_CHARGE_BONUS]
     for attr in ndb_attrs:
         if hasattr(char.ndb, attr):
             delattr(char.ndb, attr)
