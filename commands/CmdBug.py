@@ -10,7 +10,6 @@ from evennia.commands.default.muxcommand import MuxCommand
 from django.conf import settings
 from datetime import datetime, timedelta, timezone
 import requests
-import json
 
 
 class CmdBug(MuxCommand):
@@ -606,7 +605,8 @@ class CmdBug(MuxCommand):
                     
                     # Increment bug report counter
                     cmd_instance.increment_report_count(account)
-                    remaining = 30 - account.db.bug_report_count
+                    limit = getattr(settings, 'BUG_REPORT_DAILY_LIMIT', 30)
+                    remaining = limit - (account.db.bug_report_count or 0)
                     
                     caller.msg(f"\n|g✓|n Issue created: |c{issue_url}|n")
                     caller.msg("\nThank you for the detailed report! The development team will investigate.")

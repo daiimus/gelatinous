@@ -7,6 +7,15 @@
 #
 from evennia import Command
 
+from world.combat.constants import (
+    STYLE_ADJUSTABLE,
+    STYLE_CLOSURE,
+    STYLE_STATE_NORMAL,
+    STYLE_STATE_ROLLED,
+    STYLE_STATE_UNZIPPED,
+    STYLE_STATE_ZIPPED,
+)
+
 class CmdWear(Command):
     """
     Wear a clothing item from your inventory.
@@ -140,11 +149,11 @@ class CmdRemove(Command):
             return
         
         # STICKY GRENADE WARNING - Check for stuck grenades before removal
-        if item.db.stuck_grenade:
+        if item.db.stuck_grenade is not None:
             grenade = item.db.stuck_grenade
             
             # Get remaining countdown time if any
-            remaining = getattr(grenade.ndb, 'countdown_remaining', 0) if hasattr(grenade, 'ndb') else 0
+            remaining = getattr(grenade.ndb, 'countdown_remaining', 0)
             stuck_location = grenade.db.stuck_to_location if grenade.db.stuck_to_location is not None else 'unknown'
             
             # Send dramatic warning
@@ -185,7 +194,7 @@ class CmdRemove(Command):
         
         if success:
             # Message to room (only if no grenade warning was sent)
-            if not item.db.stuck_grenade:
+            if item.db.stuck_grenade is None:
                 caller.location.msg_contents(
                     f"{caller.get_display_name(None)} removes {item.key}.",
                     exclude=caller
@@ -233,8 +242,6 @@ class CmdRollUp(Command):
             return
         
         # Determine target state based on command
-        from world.combat.constants import STYLE_ADJUSTABLE, STYLE_STATE_ROLLED, STYLE_STATE_NORMAL
-        
         if self.cmdstring.lower() == "rollup":
             target_state = STYLE_STATE_ROLLED
             action = "roll up"
@@ -330,8 +337,6 @@ class CmdZip(Command):
             return
         
         # Determine target state based on command
-        from world.combat.constants import STYLE_CLOSURE, STYLE_STATE_ZIPPED, STYLE_STATE_UNZIPPED
-        
         cmd = self.cmdstring.lower()
         if cmd in ["zip", "button"]:
             target_state = STYLE_STATE_ZIPPED

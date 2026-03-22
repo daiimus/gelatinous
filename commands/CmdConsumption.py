@@ -463,7 +463,6 @@ class CmdBandage(ConsumptionCommand):
     def func(self):
         """Execute the bandage command."""
         caller = self.caller
-        self.parse()
         
         if not self.item_name:
             caller.msg("Usage: bandage <body_part> with <item> or bandage <item>")

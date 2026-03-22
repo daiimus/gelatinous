@@ -8,6 +8,9 @@ status checking, and basic medical actions.
 from evennia import Command
 from evennia.utils.evtable import EvTable
 
+from world.medical.constants import BODY_CAPACITIES
+from world.medical.utils import get_medical_status_summary
+
 
 class CmdMedical(Command):
     """
@@ -54,7 +57,6 @@ class CmdMedical(Command):
             return
             
         # Get medical status
-        from world.medical.utils import get_medical_status_summary
         status = get_medical_status_summary(target)
         
         # Format output
@@ -114,33 +116,24 @@ class CmdDamageTest(Command):
             caller.msg(f"|rYou take {damage_amount} {injury_type} damage to your {location}!|n")
         
         # Show medical status after damage
-        try:
-            medical_state = caller.medical_state  # Use property that loads from db
-            if medical_state:
-                # Show current wounds
-                total_wounds = sum(len(wounds) for wounds in medical_state.to_dict().get('wounds', {}).values())
-                if total_wounds > 0:
-                    caller.msg(f"|yYou now have {total_wounds} total wounds.|n")
-                
-                # Show organ damage - organs are now Organ objects, not dicts
-                damaged_organs = []
-                for organ_name, organ in medical_state.organs.items():
-                    if organ.current_hp < organ.max_hp:
-                        damage_taken = organ.max_hp - organ.current_hp
-                        damaged_organs.append(f"{organ_name} ({damage_taken} damage)")
-                
-                if damaged_organs:
-                    caller.msg("|yDamaged organs:|n")
-                    for organ_info in damaged_organs:
-                        caller.msg(f"  - {organ_info}")
-        except AttributeError:
-            # Fallback to old db.medical_state format if property doesn't work
-            medical_state = caller.db.medical_state or {}
-            if medical_state:
-                # Show current wounds
-                total_wounds = sum(len(wounds) for wounds in medical_state.get('wounds', {}).values())
-                if total_wounds > 0:
-                    caller.msg(f"|yYou now have {total_wounds} total wounds.|n")
+        medical_state = caller.medical_state  # Use property that loads from db
+        if medical_state:
+            # Show current wounds
+            total_wounds = sum(len(wounds) for wounds in medical_state.to_dict().get('wounds', {}).values())
+            if total_wounds > 0:
+                caller.msg(f"|yYou now have {total_wounds} total wounds.|n")
+            
+            # Show organ damage - organs are now Organ objects, not dicts
+            damaged_organs = []
+            for organ_name, organ in medical_state.organs.items():
+                if organ.current_hp < organ.max_hp:
+                    damage_taken = organ.max_hp - organ.current_hp
+                    damaged_organs.append(f"{organ_name} ({damage_taken} damage)")
+            
+            if damaged_organs:
+                caller.msg("|yDamaged organs:|n")
+                for organ_info in damaged_organs:
+                    caller.msg(f"  - {organ_info}")
         
         # Check for critical status - death and unconsciousness are handled by medical system
         # but we show explicit test feedback here
@@ -313,8 +306,6 @@ class CmdMedicalInfo(Command):
         
     def _show_capacities(self, caller, target, medical_state):
         """Show body capacity information."""
-        from world.medical.constants import BODY_CAPACITIES
-        
         table = EvTable("Capacity", "Level", "Status", border="cells")
         
         for capacity_name in BODY_CAPACITIES.keys():

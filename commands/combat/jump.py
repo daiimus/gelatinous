@@ -29,6 +29,17 @@ from world.combat.utils import (
 )
 from world.combat.handler import get_or_create_combat
 
+# Module-level cache for the Splattercast debug channel
+_splattercast_cache = None
+
+
+def _get_splattercast():
+    """Return the cached Splattercast channel, fetching once from DB."""
+    global _splattercast_cache
+    if _splattercast_cache is None:
+        _splattercast_cache = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    return _splattercast_cache
+
 
 class CmdJump(Command):
     """
@@ -127,7 +138,7 @@ class CmdJump(Command):
     
     def handle_explosive_sacrifice(self):
         """Handle jumping on explosive for heroic sacrifice."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = _get_splattercast()
         
         # Check if caller is being grappled (can't sacrifice while restrained)
         handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
@@ -370,7 +381,7 @@ class CmdJump(Command):
     
     def handle_edge_descent(self):
         """Handle jumping off edge for tactical descent."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = _get_splattercast()
         
         # Initialize grappled_victim variable
         grappled_victim = None
@@ -521,7 +532,7 @@ class CmdJump(Command):
     
     def handle_gap_jump(self):
         """Handle jumping across gap between same-level areas."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = _get_splattercast()
         
         # Check if caller is being grappled (can't jump while restrained)
         handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
@@ -614,7 +625,7 @@ class CmdJump(Command):
     
     def execute_successful_gap_jump(self, exit_obj, destination):
         """Execute a successful gap jump with sky room transit."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = _get_splattercast()
         
         # Get sky room directly from the exit object
         sky_room_id = exit_obj.db.sky_room
@@ -669,7 +680,7 @@ class CmdJump(Command):
     
     def finalize_successful_gap_jump(self, destination, origin_room):
         """Finalize successful gap jump with cleanup and messaging."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = _get_splattercast()
         
         # Clear combat state if fleeing via gap
         handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
@@ -733,7 +744,7 @@ class CmdJump(Command):
     
     def handle_gap_jump_failure(self, exit_obj, destination):
         """Handle failed gap jump with fall consequences."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = _get_splattercast()
         
         # Find or use existing sky room for this gap
         sky_room = self.get_sky_room_for_gap(self.caller.location, destination, self.direction)
@@ -801,7 +812,7 @@ class CmdJump(Command):
     
     def handle_fall_failure(self, exit_obj, destination, fall_type, grappled_victim=None):
         """Handle general fall failure (for edge descent failures)."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = _get_splattercast()
         
         # For edge descent failure, apply damage but stay in current room
         fall_damage = exit_obj.db.fall_damage if exit_obj.db.fall_damage is not None else 8  # Default moderate damage
@@ -819,7 +830,7 @@ class CmdJump(Command):
     
     def get_sky_room_for_gap(self, origin, destination, direction):
         """Get the sky room associated with this gap, checking both directions."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = _get_splattercast()
         
         # First try: look for sky room on the exit from origin
         exit_obj = origin.search(direction, quiet=True)
@@ -896,7 +907,7 @@ class CmdJump(Command):
 
     def handle_edge_fall_and_landing(self, exit_obj, destination, grappled_victim=None):
         """Handle fall mechanics and landing after jumping off an edge."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = _get_splattercast()
         
         # Check for preserved bodyshield relationship
         bodyshield_victim = getattr(self.caller.ndb, "bodyshield_victim", None)
@@ -1115,7 +1126,7 @@ class CmdJump(Command):
         Returns:
             tuple: (final_room, rooms_fallen)
         """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = _get_splattercast()
         current_room = start_room
         rooms_fallen = 0
         max_depth = 10  # Safety limit to prevent infinite loops
@@ -1172,7 +1183,7 @@ def apply_gravity_to_items(room):
     Args:
         room: The room to check for items that need to fall
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = _get_splattercast()
     
     # Check if this is a sky room
     is_sky_room = room.db.is_sky_room

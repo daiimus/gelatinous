@@ -9,8 +9,8 @@ Note: For spawning items, use Evennia's built-in 'spawn' command:
 
 from evennia import Command
 from world.medical.utils import (
-    is_medical_item, get_medical_item_info, can_be_used, 
-    get_medical_type, use_item
+    is_medical_item, get_medical_item_info, can_be_used,
+    get_medical_type,
 )
 
 
