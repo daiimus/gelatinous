@@ -1,112 +1,65 @@
-# Specifications Directory
+# specs/
 
-This directory contains detailed specifications for various features of the Gelatinous MUD project.
+Design specifications for game systems and features. 35 spec files covering combat, commands, UI, medical, and integrations.
 
----
+## Core Systems
 
-## Core Specifications (Required)
+| Spec | Description |
+|------|-------------|
+| `COMBAT_SYSTEM.md` | Overall combat system design |
+| `COMBAT_REFACTOR_SPEC.md` | Combat module decomposition plan |
+| `COMBAT_MESSAGE_FORMAT_SPEC.md` | Combat messaging and template system |
+| `PROXIMITY_SYSTEM_SPEC.md` | Tactical positioning mechanics |
+| `GRAPPLE_SYSTEM_SPEC.md` | Grappling and restraint mechanics |
+| `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` | Medical/trauma system design |
+| `CLOTHING_SYSTEM_SPEC.md` | Clothing and layering system |
+| `MODULAR_ARMOR_SYSTEM_SPEC.md` | Armor coverage and damage reduction |
+| `SHOP_SYSTEM_SPEC.md` | Shop pricing and inventory |
+| `TIME_SYSTEM_SPEC.md` | In-game time and day/night cycle |
+| `WORLD_STATE_INTELLIGENCE_SYSTEM_SPEC.md` | Zone-level world simulation (design phase) |
 
-These specs document core game systems that are always active:
+## Commands
 
-### Combat System
-- `GRAPPLE_SYSTEM_SPEC.md` - Grappling mechanics
-- `PROXIMITY_SYSTEM_SPEC.md` - Tactical positioning
-- `COMBAT_MESSAGE_FORMAT_SPEC.md` - Combat messaging system
+| Spec | Description |
+|------|-------------|
+| `JUMP_COMMAND_SPEC.md` | Inter-room jumping |
+| `THROW_COMMAND_SPEC.md` | Cross-room projectile throwing |
+| `WREST_COMMAND_SPEC.md` | Taking items by force |
+| `BUG_COMMAND_SPEC.md` | In-game bug reporting |
+| `LOOK_COMMAND_SPEC.md` | Enhanced look command |
+| `GRAFFITI_SYSTEM_SPEC.md` | Environmental writing |
+| `REMOTE_DETONATOR_SPEC.md` | Remote explosive detonation |
+| `STICKY_GRENADE_SPEC.md` | Sticky grenade mechanics |
 
-### Commands
-- `JUMP_COMMAND_SPEC.md` - Jumping between rooms
-- `THROW_COMMAND_SPEC.md` - Throwing items/characters
-- `WREST_COMMAND_SPEC.md` - Taking items by force
+## Character & Display
 
-### World Simulation
-- `WORLD_STATE_INTELLIGENCE_SYSTEM_SPEC.md` - Zone-level world state simulation, threat scoring, anomaly detection, and player-facing intelligence terminals (design phase)
+| Spec | Description |
+|------|-------------|
+| `DESCRIPTIVE_STAT_SYSTEM_SPEC.md` | G.R.I.M. stat descriptors |
+| `LONGDESC_SYSTEM_SPEC.md` | Character appearance generation |
+| `DEATH_CURTAIN_SPEC.md` | Narrative death experience |
+| `NATURAL_POSING_AND_PRONOUN_FIXES_SPEC.md` | Pronoun handling |
+| `PRONOUN_DEEP_DIVE_IMPLEMENTATION_SPEC.md` | Pronoun system internals |
+| `ORDINAL_NUMBERS_SPEC.md` | Ordinal number object display |
+| `WEAPON_MESSAGE_CONVERSION_SPEC.md` | Weapon message migration plan |
+| `EVMENU_PATTERNS_SPEC.md` | EvMenu usage patterns |
 
----
+## Web & UI
 
-## Optional Specifications (Forum Integration)
+| Spec | Description |
+|------|-------------|
+| `STYLING_SPEC.md` | Web client styling |
+| `WEBCLIENT_SCREEN_SIZE_DETECTION_SPEC.md` | Responsive client layout |
+| `WEB_CHARACTER_CREATION_ALIGNMENT.md` | Web/game character creation parity |
+| `WEB_RESPAWN_CHARACTER_CREATION_SPEC.md` | Web respawn flow |
+| `GMCP_PACKAGES_SPEC.md` | GMCP protocol packages |
+| `TURNSTILE_INTEGRATION_SPEC.md` | Cloudflare Turnstile captcha |
 
-**These are completely optional** - only needed if you're running a Discourse forum:
+## Forum Integration (Optional)
 
-### Main Guides
-- **`FORUM_INTEGRATION_GUIDE.md`** - Overview: Do you need forum integration? How to remove it if not needed.
-- **`DISCOURSE_INTEGRATION.md`** - Complete step-by-step setup guide with all code snippets ready to copy/paste.
+These only apply if running a Discourse forum alongside the game:
 
-**Note**: If you're not using Discourse, these files won't affect your game. The code is designed to gracefully degrade when Discourse settings are not configured.
-
----
-
-## How To Tell If You Need Forum Integration
-
-### ✅ You MIGHT want it if:
-- You want persistent, searchable community discussions
-- You want to provide game guides, announcements, or support forums
-- You have resources to run/manage a separate Discourse instance
-- You want unified login between game and forum
-
-### ❌ You DON'T need it if:
-- You only want in-game chat (Evennia has channels built-in)
-- You prefer Discord or another existing platform
-- You're just getting started and want simplicity
-- You don't want to manage a separate service
-
----
-
-## Quick Check: Is Forum Integration Active?
-
-Look at your `server/conf/secret_settings.py`:
-
-```python
-# If you see this and it's set to a real value:
-DISCOURSE_SSO_SECRET = "some-secret-here"
-DISCOURSE_URL = "https://forum.yourgame.com"
-
-# Then forum integration is active.
-
-# If these don't exist or are commented out:
-# Then forum integration is disabled.
-```
-
----
-
-## Removing Forum Specs (Optional Cleanup)
-
-If you're certain you won't use forum integration:
-
-```bash
-# Remove optional forum specs
-rm specs/DISCOURSE_*.md
-rm specs/FORUM_INTEGRATION_*.md
-rm specs/CACHING_AND_PRECONNECT_SETUP.md
-```
-
-The game will work exactly the same - these are just documentation files.
-
----
-
-## Questions?
-
-- **Game doesn't work**: Forum specs are documentation only - they don't affect game functionality
-- **Want to add forum later**: Just follow `FORUM_INTEGRATION_GUIDE.md` when ready
-- **Want to use different forum**: The iframe approach works with other platforms too
-- **Confused about optional vs required**: When in doubt, ignore Discourse specs - you don't need them unless you're specifically setting up a forum
-
----
-
-## Summary
-
-```
-Core Specs (always relevant):
-├── GRAPPLE_SYSTEM_SPEC.md
-├── PROXIMITY_SYSTEM_SPEC.md
-├── COMBAT_MESSAGE_FORMAT_SPEC.md
-├── JUMP_COMMAND_SPEC.md
-├── THROW_COMMAND_SPEC.md
-├── WREST_COMMAND_SPEC.md
-└── WORLD_STATE_INTELLIGENCE_SYSTEM_SPEC.md  ← World simulation & intel (design phase)
-
-Forum Specs (optional - only if using Discourse):
-├── FORUM_INTEGRATION_GUIDE.md    ← Overview & decision guide
-└── DISCOURSE_INTEGRATION.md      ← Complete setup instructions
-```
-
-When in doubt: **Ignore the forum specs** - they're optional enhancements, not requirements.
+| Spec | Description |
+|------|-------------|
+| `FORUM_INTEGRATION_GUIDE.md` | Overview and decision guide |
+| `DISCOURSE_INTEGRATION.md` | Step-by-step Discourse setup |
