@@ -14,9 +14,76 @@ Part of the G.R.I.M. Combat System.
 
 import random
 from evennia import Command, utils
-from evennia.utils import search
 from evennia.comms.models import ChannelDB
-from world.combat.constants import *
+from world.combat.constants import (
+    DB_CHAR,
+    DB_GRAPPLED_BY_DBREF,
+    DB_GRAPPLING_DBREF,
+    DEBUG_PREFIX_THROW,
+    MSG_CATCH_FAILED,
+    MSG_CATCH_FAILED_ROOM,
+    MSG_CATCH_NO_FREE_HANDS,
+    MSG_CATCH_NO_HANDS_AT_ALL,
+    MSG_CATCH_OBJECT_NOT_FOUND,
+    MSG_CATCH_SUCCESS,
+    MSG_CATCH_SUCCESS_ROOM,
+    MSG_CATCH_WHAT,
+    MSG_GRENADE_CHAIN_TRIGGER,
+    MSG_GRENADE_DAMAGE,
+    MSG_GRENADE_DAMAGE_ROOM,
+    MSG_GRENADE_DUD_ROOM,
+    MSG_GRENADE_EXPLODE_ROOM,
+    MSG_PULL_ALREADY_PULLED,
+    MSG_PULL_INVALID_SYNTAX,
+    MSG_PULL_NO_HANDS,
+    MSG_PULL_NO_PIN_REQUIRED,
+    MSG_PULL_NOT_EXPLOSIVE,
+    MSG_PULL_OBJECT_NOT_FOUND,
+    MSG_PULL_OBJECT_NOT_WIELDED,
+    MSG_PULL_SUCCESS,
+    MSG_PULL_SUCCESS_ROOM,
+    MSG_PULL_TIMER_WARNING,
+    MSG_PULL_WHAT,
+    MSG_THROW_ARRIVAL,
+    MSG_THROW_ARRIVAL_TARGETED,
+    MSG_THROW_ARRIVAL_TARGETED_VICTIM,
+    MSG_THROW_FLIGHT_SAMEROOM_GENERAL,
+    MSG_THROW_FLIGHT_SAMEROOM_TARGET,
+    MSG_THROW_FLIGHT_SAMEROOM_TARGET_VICTIM,
+    MSG_THROW_GRAPPLED,
+    MSG_THROW_INVALID_DIRECTION,
+    MSG_THROW_LANDING_PROXIMITY,
+    MSG_THROW_LANDING_ROOM,
+    MSG_THROW_NO_AIM_CROSS_ROOM,
+    MSG_THROW_NO_HANDS,
+    MSG_THROW_NOTHING_WIELDED,
+    MSG_THROW_OBJECT_NOT_FOUND,
+    MSG_THROW_OBJECT_NOT_WIELDED,
+    MSG_THROW_ORIGIN_DIRECTIONAL,
+    MSG_THROW_ORIGIN_FALLBACK,
+    MSG_THROW_ORIGIN_HERE,
+    MSG_THROW_ORIGIN_TARGETED_CROSS,
+    MSG_THROW_ORIGIN_TARGETED_SAME,
+    MSG_THROW_SUGGEST_AT_SYNTAX,
+    MSG_THROW_TARGET_NOT_FOUND,
+    MSG_THROW_TIMER_EXPIRED,
+    MSG_THROW_UTILITY_BOUNCE,
+    MSG_THROW_UTILITY_BOUNCE_VICTIM,
+    MSG_THROW_WEAPON_HIT,
+    MSG_THROW_WEAPON_HIT_VICTIM,
+    MSG_THROW_WEAPON_MISS,
+    MSG_THROW_WEAPON_MISS_VICTIM,
+    NDB_AIMING_DIRECTION,
+    NDB_COMBAT_HANDLER,
+    NDB_COUNTDOWN_REMAINING,
+    NDB_FLYING_OBJECTS,
+    NDB_GRENADE_TIMER,
+    NDB_PROXIMITY,
+    NDB_PROXIMITY_UNIVERSAL,
+    NDB_SKIP_ROUND,
+    SPLATTERCAST_CHANNEL,
+    THROW_FLIGHT_TIME,
+)
 # Note: apply_damage removed - using character.take_damage() for medical system integration
 from world.combat.handler import get_or_create_combat
 
@@ -1022,7 +1089,6 @@ class CmdThrow(Command):
     def check_grenade_deflection(self, grenade, destination, thrower):
         """Check if the specific target can deflect the incoming grenade with a melee weapon."""
         try:
-            import random
             splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: check_grenade_deflection called for {grenade} in {destination}")
             
@@ -1115,7 +1181,6 @@ class CmdThrow(Command):
     def perform_grenade_deflection(self, grenade, deflector, weapon, original_thrower, current_location):
         """Perform the actual grenade deflection."""
         try:
-            import random
             splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: perform_grenade_deflection called")
             
@@ -1146,7 +1211,6 @@ class CmdThrow(Command):
     def determine_deflection_target(self, grenade, deflector, original_thrower, current_location):
         """Determine where the deflected grenade goes."""
         try:
-            import random
             splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             
             # Get grenade's original flight data
@@ -1419,135 +1483,6 @@ class CmdPull(Command):
         # Start the ticker
         tick()
     
-    def explode_grenade(self, grenade):
-        """Handle grenade explosion."""
-        try:
-            # Check dud chance
-            dud_chance = grenade.db.dud_chance if grenade.db.dud_chance is not None else 0.0
-            if random.random() < dud_chance:
-                self.handle_dud(grenade)
-                return
-            
-            # Get blast damage
-            blast_damage = grenade.db.blast_damage if grenade.db.blast_damage is not None else 10
-            
-            # Check if grenade is in someone's inventory when it explodes
-            # Use typeclass check to distinguish characters (PCs and NPCs) from rooms
-            holder = None
-            if grenade.location:
-                from typeclasses.characters import Character
-                if isinstance(grenade.location, Character):
-                    # Grenade is in a character's inventory - they're holding it!
-                    # This works for both PCs and NPCs, regardless of hands/account status
-                    holder = grenade.location
-            
-            # Get proximity list
-            # Get unified proximity list (includes current grappling relationships)
-            proximity_list = get_unified_explosion_proximity(grenade)
-            
-            # Handle explosion in someone's hands (much more dangerous!)
-            if holder:
-                # Explosion in hands - double damage and guaranteed hit
-                holder_damage = blast_damage * 2
-                damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'  # Explosive damage type
-                holder.take_damage(holder_damage, location="chest", injury_type=damage_type)
-                holder.msg(f"|rThe {grenade.key} EXPLODES IN YOUR HANDS!|n You take {holder_damage} damage!")
-                
-                # Announce to the room
-                if holder.location:
-                    holder.location.msg_contents(
-                        f"|r{holder.key}'s {grenade.key} explodes in their hands!|n",
-                        exclude=holder
-                    )
-                    
-                # Still damage others in proximity, but less (shielded by holder's body)
-                for character in proximity_list:
-                    if character != holder and hasattr(character, 'msg'):
-                        reduced_damage = blast_damage // 2  # Half damage due to body shielding
-                        damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'
-                        character.take_damage(reduced_damage, location="chest", injury_type=damage_type)
-                        character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
-                        
-            else:
-                # Normal room explosion
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-                if grenade.location:
-                    explosion_msg = MSG_GRENADE_EXPLODE_ROOM.format(grenade=grenade.key)
-                    splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Sending explosion message to room {grenade.location}: {explosion_msg}")
-                    grenade.location.msg_contents(explosion_msg)
-                    # Notify adjacent rooms
-                    notify_adjacent_rooms_of_explosion(grenade.location)
-                    splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: Explosion message sent to {grenade.location}")
-                else:
-                    splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Grenade has no location for explosion message")
-                
-                # Check for human shield mechanics
-                from world.combat.utils import check_grenade_human_shield
-                damage_modifiers = check_grenade_human_shield(proximity_list)
-                
-                # Apply damage to all in proximity with human shield modifiers
-                splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Processing proximity list for damage: {[char.key if hasattr(char, 'key') else str(char) for char in proximity_list]}")
-                for character in proximity_list:
-                    if hasattr(character, 'msg'):  # Is a character
-                        # Apply damage modifier (0.0 for grapplers, 2.0 for victims, 1.0 for others)
-                        modifier = damage_modifiers.get(character, 1.0)
-                        final_damage = int(blast_damage * modifier)
-                        
-                        if final_damage > 0:
-                            damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'
-                            character.take_damage(final_damage, location="chest", injury_type=damage_type)
-                            character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
-                            if character.location:
-                                character.location.msg_contents(
-                                    MSG_GRENADE_DAMAGE_ROOM.format(victim=character.key, grenade=grenade.key),
-                                    exclude=character
-                                )
-                        # Note: Characters with 0.0 modifier (grapplers) take no damage and get no damage messages
-            
-            # Handle chain reactions
-            self.handle_chain_reactions(grenade)
-            
-            # Clean up
-            grenade.delete()
-            
-        except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-            splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in explode_grenade: {e}")
-    
-    def handle_dud(self, grenade):
-        """Handle grenade dud (failure to explode)."""
-        if grenade.location:
-            grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=grenade.key))
-        
-        # Clear timer state but keep grenade
-        setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
-        if hasattr(grenade.ndb, NDB_GRENADE_TIMER):
-            delattr(grenade.ndb, NDB_GRENADE_TIMER)
-    
-    def handle_chain_reactions(self, exploding_grenade):
-        """Handle chain reactions with other explosives."""
-        if not exploding_grenade.db.chain_trigger:
-            return
-        
-        # Find other explosives in proximity
-        proximity_list = getattr(exploding_grenade.ndb, NDB_PROXIMITY_UNIVERSAL, [])
-        if proximity_list is None:
-            proximity_list = []
-        
-        for obj in proximity_list:
-            if (hasattr(obj, 'db') and 
-                obj.db.is_explosive and 
-                obj != exploding_grenade):
-                
-                        # Trigger chain explosion with new ticker system
-                        if exploding_grenade.location:
-                            exploding_grenade.location.msg_contents(
-                                MSG_GRENADE_CHAIN_TRIGGER.format(grenade=obj.key))
-                        
-                        # Set short timer and start ticker
-                        obj.db.pin_pulled = True
-                        setattr(obj.ndb, NDB_COUNTDOWN_REMAINING, 1)  # 1 second for chain reaction
-                        self.start_grenade_ticker(obj)
 class CmdCatch(Command):
     """
     Catch thrown objects out of the air.
