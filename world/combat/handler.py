@@ -11,40 +11,62 @@ This is the central component that orchestrates combat encounters, handling:
 - Multi-room combat coordination
 - Combatant state management
 - Integration with proximity and grappling systems
+
+Attack processing, movement resolution, and special actions have been
+extracted into focused modules (``attack``, ``movement_resolution``,
+``actions``) to improve maintainability. The handler's ``at_repeat``
+method acts as a thin dispatcher that delegates to those modules.
 """
 
 from evennia import DefaultScript, create_script, search_object
-from random import randint
 from evennia.utils.utils import delay
-from world.combat.messages import get_combat_message
-from world.medical.utils import select_hit_location, select_target_organ
 from evennia.comms.models import ChannelDB
 
 from .constants import (
     COMBAT_SCRIPT_KEY, SPLATTERCAST_CHANNEL,
     DB_COMBATANTS, DB_COMBAT_RUNNING, DB_MANAGED_ROOMS,
-    DB_CHAR, DB_TARGET_DBREF, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, DB_IS_YIELDING,
+    DB_CHAR, DB_TARGET_DBREF, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF,
+    DB_IS_YIELDING,
     DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_INITIATIVE,
     NDB_COMBAT_HANDLER, NDB_PROXIMITY, NDB_SKIP_ROUND,
-    DEBUG_PREFIX_HANDLER, DEBUG_SUCCESS, DEBUG_FAIL, DEBUG_ERROR, DEBUG_CLEANUP,
-    MSG_GRAPPLE_AUTO_ESCAPE_VIOLENT,
-    COMBAT_ACTION_RETREAT, COMBAT_ACTION_ADVANCE, COMBAT_ACTION_CHARGE, COMBAT_ACTION_DISARM,
-    COMBAT_ACTION_GRAPPLE_INITIATE, COMBAT_ACTION_GRAPPLE_JOIN, COMBAT_ACTION_GRAPPLE_TAKEOVER,
+    DEBUG_PREFIX_HANDLER, DEBUG_SUCCESS, DEBUG_FAIL, DEBUG_ERROR,
+    DEBUG_CLEANUP,
+    COMBAT_ACTION_RETREAT, COMBAT_ACTION_ADVANCE, COMBAT_ACTION_CHARGE,
+    COMBAT_ACTION_DISARM,
+    COMBAT_ACTION_GRAPPLE_INITIATE, COMBAT_ACTION_GRAPPLE_JOIN,
+    COMBAT_ACTION_GRAPPLE_TAKEOVER,
     COMBAT_ACTION_RELEASE_GRAPPLE, COMBAT_ACTION_ESCAPE_GRAPPLE,
-    WEAPON_TYPE_UNARMED,
-    COMBAT_ROUND_INTERVAL, STAGGER_DELAY_INTERVAL, MAX_STAGGER_DELAY
+    COMBAT_ROUND_INTERVAL,
 )
 from .utils import (
-    get_numeric_stat, log_combat_action, get_display_name_safe,
-    roll_stat, opposed_roll, get_wielded_weapon, is_wielding_ranged_weapon,
-    get_weapon_damage, add_combatant, remove_combatant, cleanup_combatant_state,
-    cleanup_all_combatants, get_combatant_target, get_combatant_grappling_target,
+    get_numeric_stat, add_combatant, remove_combatant,
+    cleanup_combatant_state, cleanup_all_combatants,
+    get_combatant_target, get_combatant_grappling_target,
     get_combatant_grappled_by, get_character_dbref, get_character_by_dbref,
-    resolve_bonus_attack, get_combatants_safe
+    resolve_bonus_attack, get_combatants_safe,
 )
 from .grappling import (
     break_grapple, establish_grapple, resolve_grapple_initiate,
-    resolve_grapple_join, resolve_grapple_takeover, resolve_release_grapple, validate_and_cleanup_grapple_state
+    resolve_grapple_join, resolve_grapple_takeover,
+    resolve_release_grapple, validate_and_cleanup_grapple_state,
+)
+
+# Import extracted module functions
+from .attack import (
+    calculate_attack_delay,
+    process_delayed_attack,
+    process_attack,
+)
+from .movement_resolution import (
+    resolve_retreat,
+    resolve_advance,
+    resolve_charge,
+)
+from .actions import (
+    resolve_disarm,
+    resolve_grapple_attempt,
+    resolve_escape_grapple,
+    resolve_auto_escape,
 )
 
 
@@ -132,6 +154,11 @@ class CombatHandler(DefaultScript):
     - Multi-room combat coordination through handler merging
     - Integration with proximity and grappling systems
     - Cleanup and state consistency
+    
+    Attack processing, movement resolution, and special actions are
+    delegated to the ``attack``, ``movement_resolution``, and ``actions``
+    modules respectively. The ``at_repeat`` method dispatches to those
+    modules based on each combatant's queued action.
     
     The handler uses a database-backed combatants list with entries containing:
     - char: The character object
@@ -430,10 +457,16 @@ class CombatHandler(DefaultScript):
         """
         validate_and_cleanup_grapple_state(self)
 
+    # ── Main combat loop ───────────────────────────────────────────────
+
     def at_repeat(self):
         """
-        Main combat loop, processes each combatant's turn in initiative order.
-        Handles attacks, misses, deaths, and round progression across managed rooms.
+        Main combat loop — dispatches to extracted modules for action
+        resolution.
+
+        Processes each combatant's turn in initiative order, delegating
+        attack processing, movement resolution, and special actions to
+        the ``attack``, ``movement_resolution``, and ``actions`` modules.
         """
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         if not self.db.combat_is_running:
@@ -488,78 +521,37 @@ class CombatHandler(DefaultScript):
             # Update active list reference after orphan removal
             self._active_combatants_list = combatants_list
 
-        valid_combatants_entries = []
-        managed_rooms = self.db.managed_rooms or []
-        for entry in combatants_list:
-            char = entry.get(DB_CHAR)
-            if not char:
-                splattercast.msg(f"AT_REPEAT: Pruning missing character from handler {self.key}.")
-                continue
-            if not char.location:
-                splattercast.msg(f"AT_REPEAT: Pruning {char.key} (no location) from handler {self.key}.")
-                if hasattr(char, "ndb") and getattr(char.ndb, NDB_COMBAT_HANDLER) == self:
-                    delattr(char.ndb, NDB_COMBAT_HANDLER)
-                continue
-            if char.location not in managed_rooms:
-                splattercast.msg(f"AT_REPEAT: Pruning {char.key} (in unmanaged room {char.location.key}) from handler {self.key}.")
-                if hasattr(char, "ndb") and getattr(char.ndb, NDB_COMBAT_HANDLER) == self:
-                    delattr(char.ndb, NDB_COMBAT_HANDLER)
-                continue
-            valid_combatants_entries.append(entry)
-        
-        # Update the working list
-        combatants_list = valid_combatants_entries
-        # Update active list reference after validation
+        # Prune invalid combatants (dead, no location, wrong room)
+        combatants_list = self._validate_combatants(combatants_list)
         self._active_combatants_list = combatants_list
 
         if not combatants_list:
             splattercast.msg(f"AT_REPEAT: No valid combatants remain in managed rooms for handler {self.key}. Stopping.")
-            self._active_combatants_list = None  # Clear active list tracking
+            self._active_combatants_list = None
             self.stop_combat_logic()
             return
 
         if self.db.round == 0:
-            # combatants_list is guaranteed non-empty here (empty case handled above)
             splattercast.msg(f"AT_REPEAT: Handler {self.key}. Combatants present. Starting combat in round 1.")
             self.db.round = 1
 
+        managed_rooms = self.db.managed_rooms or []
         splattercast.msg(f"AT_REPEAT: Handler {self.key} (managing {[r.key for r in managed_rooms]}). Round {self.db.round} begins.")
         
         if len(combatants_list) <= 1:
             splattercast.msg(f"AT_REPEAT: Handler {self.key}. Not enough combatants ({len(combatants_list)}) to continue. Ending combat.")
-            self._active_combatants_list = None  # Clear active list tracking
+            self._active_combatants_list = None
             self.stop_combat_logic()
             return
 
-        # Check if all combatants are yielding - if so, end combat peacefully
-        # BUT ONLY if there are no active grapples happening
-        all_yielding = all(entry.get(DB_IS_YIELDING, False) for entry in combatants_list)
-        any_active_grapples = any(
-            entry.get(DB_GRAPPLING_DBREF) is not None or entry.get(DB_GRAPPLED_BY_DBREF) is not None
-            for entry in combatants_list
-        )
-        
-        if all_yielding and not any_active_grapples:
-            splattercast.msg(f"AT_REPEAT: Handler {self.key}. All combatants are yielding with no active grapples. Ending combat peacefully.")
-            # Send a message to all combatants about peaceful resolution
-            for entry in combatants_list:
-                char = entry.get(DB_CHAR)
-                if char and char.location:
-                    char.msg("|gWith all hostilities ceased, the confrontation comes to a peaceful end.|n")
-            # Notify observers in all managed rooms
-            for room in managed_rooms:
-                if room:
-                    room.msg_contents("|gThe confrontation ends peacefully as all participants stand down.|n", 
-                                    exclude=[entry.get(DB_CHAR) for entry in combatants_list if entry.get(DB_CHAR)])
-            self._active_combatants_list = None  # Clear active list tracking
-            self.stop_combat_logic()
+        # Check peaceful resolution (all yielding with no active grapples)
+        if self._check_peaceful_resolution(combatants_list, managed_rooms):
             return
-        elif all_yielding and any_active_grapples:
-            splattercast.msg(f"AT_REPEAT: Handler {self.key}. All combatants yielding but active grapples present. Combat continues in restraint mode.")
 
         # Sort combatants by initiative for processing
         initiative_order = sorted(combatants_list, key=lambda e: e.get(DB_INITIATIVE, 0), reverse=True)
         
+        # Process each combatant's turn
         for combat_entry in initiative_order:
             char = combat_entry.get(DB_CHAR)
             if not char:
@@ -568,12 +560,12 @@ class CombatHandler(DefaultScript):
             splattercast.msg(f"DEBUG_LOOP_ITERATION: Starting processing for {char.key}, combat_entry: {combat_entry}")
 
             # Always get a fresh reference to ensure we have current data
-            current_char_combat_entry = next((e for e in combatants_list if e.get(DB_CHAR) == char), None)
-            if not current_char_combat_entry:
+            current_entry = next((e for e in combatants_list if e.get(DB_CHAR) == char), None)
+            if not current_entry:
                 splattercast.msg(f"AT_REPEAT: {char.key} no longer in combatants list. Skipping.")
                 continue
 
-            # Skip if character is dead or unconscious (prevents redundant processing after immediate removal)
+            # Skip dead/unconscious characters
             if char.is_dead():
                 splattercast.msg(f"AT_REPEAT: {char.key} is dead, skipping turn.")
                 continue
@@ -594,317 +586,47 @@ class CombatHandler(DefaultScript):
                 splattercast.msg(f"AT_REPEAT: Cleared flee attempt flag for {char.key} at start of new round.")
 
             # START-OF-TURN NDB CLEANUP for charge flags
-            if hasattr(char.ndb, "charging_vulnerability_active"):
-                splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: Clearing charging_vulnerability_active for {char.key} (was active from their own previous charge).")
-                delattr(char.ndb, "charging_vulnerability_active")
-            
-            # Note: charge_attack_bonus_active is consumed automatically when used in attacks.
-            # No need to clean it up here as it should be consumed during the attack phase.
-            # Only clean it up if it exists AND has a truthy value AND the character is not going to attack this turn.
-            if hasattr(char.ndb, "charge_attack_bonus_active") and getattr(char.ndb, "charge_attack_bonus_active", False):
-                # In auto-combat, all characters attack, so bonus will be consumed naturally
-                # Only clean up if character won't attack (yielding, dead, unconscious, etc.)
-                if (current_char_combat_entry.get(DB_IS_YIELDING, False) or 
-                    char.is_dead() or 
-                    (hasattr(char, 'is_unconscious') and char.is_unconscious())):
-                    splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: Clearing unused charge_attack_bonus_active for {char.key} (won't attack this turn).")
-                    delattr(char.ndb, "charge_attack_bonus_active")
-                else:
-                    splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: {char.key} has charge_attack_bonus_active - will be consumed during attack.")
+            self._cleanup_charge_flags(char, current_entry)
 
             # Get combat action for this character
-            combat_action = current_char_combat_entry.get(DB_COMBAT_ACTION)
+            combat_action = current_entry.get(DB_COMBAT_ACTION)
             splattercast.msg(f"AT_REPEAT: {char.key} combat_action: {combat_action}")
 
             # Check if character is yielding first
-            if current_char_combat_entry.get(DB_IS_YIELDING, False):
+            if current_entry.get(DB_IS_YIELDING, False):
                 # Exception: Allow certain actions even when yielding
                 if combat_action in [COMBAT_ACTION_RELEASE_GRAPPLE, COMBAT_ACTION_ADVANCE, COMBAT_ACTION_RETREAT, COMBAT_ACTION_CHARGE]:
                     splattercast.msg(f"{char.key} is yielding but can still perform {combat_action} action.")
                     # Fall through to normal action processing
                 else:
-                    # Check if this character is grappling someone (restraint mode)
-                    grappling_target = self.get_grappling_obj(current_char_combat_entry)
-                    if grappling_target:
-                        # Grappler in restraint mode - maintain hold without violence
-                        splattercast.msg(f"{char.key} is yielding but maintains restraining hold on {grappling_target.key}.")
-                        char.msg(f"|gYou maintain a restraining hold on {grappling_target.key} without violence.|n")
-                        grappling_target.msg(f"|g{char.key} maintains a gentle but firm restraining hold on you.|n")
-                        char.location.msg_contents(f"|g{char.key} maintains a restraining hold on {grappling_target.key}.|n", exclude=[char, grappling_target])
-                    else:
-                        # Regular yielding behavior
-                        splattercast.msg(f"{char.key} is yielding and takes no hostile action this turn.")
-                        char.location.msg_contents(f"|y{char.key} holds their action, appearing non-hostile.|n", exclude=[char])
-                        char.msg("|yYou hold your action, appearing non-hostile.|n")
+                    self._handle_yielding_turn(char, current_entry)
                     continue
-                
-            # Handle being grappled (auto resist unless yielding)
-            grappler = self.get_grappled_by_obj(current_char_combat_entry)
-            if grappler:
-                # Safety check: prevent self-grappling and invalid grappler
-                if grappler == char:
-                    splattercast.msg(f"GRAPPLE_ERROR: {char.key} is grappled by themselves! Clearing invalid state.")
-                    current_char_combat_entry[DB_GRAPPLED_BY_DBREF] = None
-                    grappler = None
-                elif not any(e.get(DB_CHAR) == grappler for e in combatants_list):
-                    splattercast.msg(f"GRAPPLE_ERROR: {char.key} is grappled by {grappler.key} who is not in combat! Clearing invalid state.")
-                    current_char_combat_entry[DB_GRAPPLED_BY_DBREF] = None
-                    grappler = None
-                    
-            if grappler:
-                # Check if the victim is yielding (restraint mode acceptance)
-                if current_char_combat_entry.get(DB_IS_YIELDING, False):
-                    # Victim is yielding/accepting restraint - no automatic escape attempt
-                    splattercast.msg(f"{char.key} is being grappled by {grappler.key} but is yielding (accepting restraint).")
-                    char.msg(f"|gYou remain still in {grappler.key}'s hold, not resisting.|n")
-                    char.location.msg_contents(f"|g{char.key} does not resist {grappler.key}'s hold.|n", exclude=[char])
-                    continue
-                    
-                # Victim is not yielding - automatically attempt to escape
-                splattercast.msg(f"{char.key} is being grappled by {grappler.key} and automatically attempts to escape.")
-                char.msg(f"|yYou struggle against {grappler.key}'s grip!|n")
-                
-                # Setup an escape attempt
-                escaper_roll = randint(1, max(1, get_numeric_stat(char, "motorics", 1)))
-                grappler_roll = randint(1, max(1, get_numeric_stat(grappler, "motorics", 1)))
-                splattercast.msg(f"AUTO_ESCAPE_ATTEMPT: {char.key} (roll {escaper_roll}) vs {grappler.key} (roll {grappler_roll}).")
 
-                if escaper_roll > grappler_roll:
-                    # Success - clear grapple
-                    # NOTE: Strict > means ties favor the grappler (defender). This is intentional.
-                    current_char_combat_entry[DB_GRAPPLED_BY_DBREF] = None
-                    grappler_entry = next((e for e in combatants_list if e.get(DB_CHAR) == grappler), None)
-                    if grappler_entry:
-                        grappler_entry[DB_GRAPPLING_DBREF] = None
-                    
-                    # Successful auto-escape switches victim to violent mode (fighting for their life)
-                    was_yielding = current_char_combat_entry.get(DB_IS_YIELDING, False)
-                    current_char_combat_entry[DB_IS_YIELDING] = False
-                    
-                    # Ensure the victim has the grappler as their target for retaliation
-                    if not current_char_combat_entry.get(DB_TARGET_DBREF):
-                        current_char_combat_entry[DB_TARGET_DBREF] = self._get_dbref(grappler)
-                        splattercast.msg(f"AUTO_ESCAPE_TARGET: {char.key} targets {grappler.key} after escaping.")
-                    
-                    escape_messages = get_combat_message("grapple", "escape_hit", attacker=char, target=grappler)
-                    char.msg(escape_messages.get("attacker_msg", f"You break free from {grappler.key}'s grasp!"))
-                    grappler.msg(escape_messages.get("victim_msg", f"{char.key} breaks free from your grasp!"))
-                    obs_msg = escape_messages.get("observer_msg", f"{char.key} breaks free from {grappler.key}'s grasp!")
-                    char.location.msg_contents(obs_msg, exclude=[char, grappler])
-                    
-                    # Additional message if they switched from yielding to violent
-                    if was_yielding:
-                        char.msg(MSG_GRAPPLE_AUTO_ESCAPE_VIOLENT)
-                    
-                    splattercast.msg(f"AUTO_ESCAPE_SUCCESS: {char.key} escaped from {grappler.key}.")
-                else:
-                    # Failure
-                    escape_messages = get_combat_message("grapple", "escape_miss", attacker=char, target=grappler)
-                    char.msg(escape_messages.get("attacker_msg", f"You struggle but fail to break free from {grappler.key}'s grasp!"))
-                    grappler.msg(escape_messages.get("victim_msg", f"{char.key} struggles but fails to break free from your grasp!"))
-                    obs_msg = escape_messages.get("observer_msg", f"{char.key} struggles but fails to break free from {grappler.key}'s grasp!")
-                    char.location.msg_contents(obs_msg, exclude=[char, grappler])
-                    splattercast.msg(f"AUTO_ESCAPE_FAIL: {char.key} failed to escape {grappler.key}.")
-                    
-                # Either way, turn ends after escape attempt
+            # Handle being grappled (auto resist unless yielding)
+            if resolve_auto_escape(self, char, current_entry, combatants_list):
                 continue
 
             # Process combat action intent
             if combat_action:
-                splattercast.msg(f"AT_REPEAT: {char.key} has action_intent: {combat_action}")
-                
-                if isinstance(combat_action, str):
-                    if combat_action == COMBAT_ACTION_GRAPPLE_INITIATE:
-                        self._resolve_grapple_initiate(current_char_combat_entry, combatants_list)
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                        continue
-                    elif combat_action == COMBAT_ACTION_GRAPPLE_JOIN:
-                        self._resolve_grapple_join(current_char_combat_entry, combatants_list)
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                        continue
-                    elif combat_action == COMBAT_ACTION_GRAPPLE_TAKEOVER:
-                        self._resolve_grapple_takeover(current_char_combat_entry, combatants_list)
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                        continue
-                    elif combat_action == COMBAT_ACTION_RELEASE_GRAPPLE:
-                        self._resolve_release_grapple(current_char_combat_entry, combatants_list)
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                        continue
-                    elif combat_action == COMBAT_ACTION_RETREAT:
-                        self._resolve_retreat(char, current_char_combat_entry)
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
-                        continue
-                    elif combat_action == COMBAT_ACTION_ADVANCE:
-                        self._resolve_advance(char, current_char_combat_entry)
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
-                        continue
-                    elif combat_action == COMBAT_ACTION_CHARGE:
-                        self._resolve_charge(char, current_char_combat_entry, combatants_list)
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
-                        continue
-                    elif combat_action == COMBAT_ACTION_DISARM:
-                        self._resolve_disarm(char, current_char_combat_entry)
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
-                        continue
-                elif isinstance(combat_action, dict):
-                    intent_type = combat_action.get("type")
-                    action_target_char = combat_action.get("target")
-                    
-                    # Validate target
-                    is_action_target_valid = False
-                    if action_target_char and any(e.get(DB_CHAR) == action_target_char for e in combatants_list):
-                        if action_target_char.location and action_target_char.location in (self.db.managed_rooms or []):
-                            is_action_target_valid = True
-                    
-                    if not is_action_target_valid and action_target_char:
-                        char.msg(f"The target of your planned action ({action_target_char.key}) is no longer valid.")
-                        splattercast.msg(f"{char.key}'s action_intent target {action_target_char.key} is invalid. Intent cleared, falling through.")
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                    elif intent_type == "grapple" and is_action_target_valid:
-                        # Handle grapple intent
-                        can_grapple_target = (char.location == action_target_char.location)
-                        
-                        if can_grapple_target:
-                            # Proximity Check for Grapple
-                            if not hasattr(char.ndb, NDB_PROXIMITY): 
-                                setattr(char.ndb, NDB_PROXIMITY, set())
-                            
-                            proximity_set = getattr(char.ndb, NDB_PROXIMITY, set())
-                            if not proximity_set:
-                                setattr(char.ndb, NDB_PROXIMITY, set())
-                                proximity_set = set()
-                            
-                            # RELOAD RECOVERY: If characters are in mutual combat, restore proximity
-                            if action_target_char not in proximity_set and self._are_characters_in_mutual_combat(char, action_target_char):
-                                proximity_set.add(action_target_char)
-                                setattr(char.ndb, NDB_PROXIMITY, proximity_set)
-                                splattercast.msg(f"GRAPPLE_PROXIMITY_RESTORE: {char.key} and {action_target_char.key} proximity restored.")
-                            
-                            if action_target_char not in proximity_set:
-                                char.msg(f"You need to be in melee proximity with {action_target_char.key} to grapple them. Try advancing or charging.")
-                                splattercast.msg(f"GRAPPLE FAIL (PROXIMITY): {char.key} not in proximity with {action_target_char.key}.")
-                                current_char_combat_entry[DB_COMBAT_ACTION] = None
-                                continue
+                if self._dispatch_combat_action(char, current_entry, combatants_list, combat_action, initiative_order):
+                    continue
 
-                            attacker_roll = randint(1, max(1, get_numeric_stat(char, "motorics", 1)))
-                            defender_roll = randint(1, max(1, get_numeric_stat(action_target_char, "motorics", 1)))
-                            splattercast.msg(f"GRAPPLE ATTEMPT: {char.key} (roll {attacker_roll}) vs {action_target_char.key} (roll {defender_roll}).")
-
-                            if attacker_roll > defender_roll:
-                                # Store dbrefs for persistence
-                                # NOTE: Strict > means ties favor the defender. This is intentional.
-                                current_char_combat_entry[DB_GRAPPLING_DBREF] = self._get_dbref(action_target_char)
-                                target_entry = next((e for e in combatants_list if e.get(DB_CHAR) == action_target_char), None)
-                                if target_entry:
-                                    target_entry[DB_GRAPPLED_BY_DBREF] = self._get_dbref(char)
-                                
-                                # Auto-yield only the grappler (restraint intent)
-                                # Victim stays non-yielding so they auto-resist each turn
-                                current_char_combat_entry[DB_IS_YIELDING] = True
-                                
-                                grapple_messages = get_combat_message("grapple", "hit", attacker=char, target=action_target_char)
-                                char.msg(grapple_messages.get("attacker_msg"))
-                                action_target_char.msg(grapple_messages.get("victim_msg"))
-                                obs_msg = grapple_messages.get("observer_msg")
-                                if char.location:
-                                    char.location.msg_contents(obs_msg, exclude=[char, action_target_char])
-                                splattercast.msg(f"GRAPPLE_SUCCESS: {char.key} grappled {action_target_char.key}.")
-                            else:
-                                # Grapple failed
-                                grapple_messages = get_combat_message("grapple", "miss", attacker=char, target=action_target_char)
-                                char.msg(grapple_messages.get("attacker_msg"))
-                                action_target_char.msg(grapple_messages.get("victim_msg"))
-                                obs_msg = grapple_messages.get("observer_msg")
-                                if char.location:
-                                    char.location.msg_contents(obs_msg, exclude=[char, action_target_char])
-                                splattercast.msg(f"GRAPPLE_FAIL: {char.key} failed to grapple {action_target_char.key}.")
-                        else:
-                            char.msg(f"You can't reach {action_target_char.key} to grapple them from here.")
-                            splattercast.msg(f"GRAPPLE FAIL (REACH): {char.key} cannot reach {action_target_char.key}.")
-                        
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
-                        continue
-                    elif intent_type == COMBAT_ACTION_ESCAPE_GRAPPLE:
-                        grappler = self.get_grappled_by_obj(current_char_combat_entry)
-                        if grappler and any(e.get(DB_CHAR) == grappler for e in combatants_list):
-                            escaper_roll = randint(1, max(1, get_numeric_stat(char, "motorics", 1)))
-                            grappler_roll = randint(1, max(1, get_numeric_stat(grappler, "motorics", 1)))
-                            splattercast.msg(f"ESCAPE ATTEMPT: {char.key} (roll {escaper_roll}) vs {grappler.key} (roll {grappler_roll}).")
-
-                            if escaper_roll > grappler_roll:
-                                current_char_combat_entry[DB_GRAPPLED_BY_DBREF] = None
-                                # NOTE: Strict > means ties favor the grappler (defender). This is intentional.
-                                grappler_entry = next((e for e in combatants_list if e.get(DB_CHAR) == grappler), None)
-                                if grappler_entry:
-                                    grappler_entry[DB_GRAPPLING_DBREF] = None
-                                escape_messages = get_combat_message("grapple", "escape_hit", attacker=char, target=grappler)
-                                char.msg(escape_messages.get("attacker_msg"))
-                                grappler.msg(escape_messages.get("victim_msg"))
-                                obs_msg = escape_messages.get("observer_msg")
-                                char.location.msg_contents(obs_msg, exclude=[char, grappler])
-                                splattercast.msg(f"ESCAPE SUCCESS: {char.key} escaped from {grappler.key}.")
-                            else:
-                                escape_messages = get_combat_message("grapple", "escape_miss", attacker=char, target=grappler)
-                                char.msg(escape_messages.get("attacker_msg"))
-                                grappler.msg(escape_messages.get("victim_msg"))
-                                obs_msg = escape_messages.get("observer_msg")
-                                char.location.msg_contents(obs_msg, exclude=[char, grappler])
-                                splattercast.msg(f"ESCAPE FAIL: {char.key} failed to escape {grappler.key}.")
-                        current_char_combat_entry[DB_COMBAT_ACTION] = None
-                        current_char_combat_entry[DB_COMBAT_ACTION_TARGET] = None
-                        continue
-
-            # Standard attack processing - get target and schedule attack with staggered timing
-            target = self.get_target(char)
-            splattercast.msg(f"AT_REPEAT: After get_target(), {char.key} target is {target.key if target else None}")
-            if target:
-                # Calculate attack delay based on position in initiative order
-                attack_delay = self._calculate_attack_delay(char, initiative_order)
-                
-                splattercast.msg(f"AT_REPEAT: Scheduling attack for {char.key} -> {target.key} with {attack_delay}s delay")
-                
-                # Schedule the attack with delay to stagger combat messages
-                delay(attack_delay, self._process_delayed_attack, char, target, current_char_combat_entry, combatants_list)
-            else:
-                splattercast.msg(f"AT_REPEAT: {char.key} has no valid target for attack.")
+            # Standard attack processing — get target and schedule attack
+            self._schedule_attack(char, current_entry, combatants_list, initiative_order)
 
             # Clear the combat action after processing
-            current_char_combat_entry[DB_COMBAT_ACTION] = None
+            current_entry[DB_COMBAT_ACTION] = None
 
         # Save the modified combatants list to the database FIRST to persist
         # combat_action changes and grapple state from round processing.
-        # This must happen BEFORE the death check so that remove_combatant()
-        # operates on the already-persisted state and its changes aren't
-        # overwritten by a stale snapshot save afterward.
         self.db.combatants = combatants_list
         splattercast.msg(f"AT_REPEAT_SAVE: Saved modified combatants list back to database.")
 
-        # Clear active list tracking BEFORE death check so remove_combatant()
-        # operates directly on self.db.combatants rather than a stale snapshot.
+        # Clear active list tracking BEFORE death check
         self._active_combatants_list = None
 
-        # Check for dead or unconscious combatants after all attacks are processed
-        remaining_combatants = self.db.combatants or []
-        incapacitated_combatants = []
-        
-        for entry in remaining_combatants:
-            char = entry.get(DB_CHAR)
-            if char and hasattr(char, 'is_dead') and char.is_dead():
-                incapacitated_combatants.append(char)
-                splattercast.msg(f"POST_ROUND_DEATH_CHECK: {char.key} is dead, removing from combat.")
-            elif char and hasattr(char, 'is_unconscious') and char.is_unconscious():
-                incapacitated_combatants.append(char)
-                splattercast.msg(f"POST_ROUND_UNCONSCIOUS_CHECK: {char.key} is unconscious, removing from combat.")
-                
-        # Remove dead and unconscious combatants — remove_combatant() persists
-        # its changes directly to self.db.combatants, no second save needed.
-        for incapacitated_char in incapacitated_combatants:
-            self.remove_combatant(incapacitated_char)
+        # Check for dead or unconscious combatants after all attacks
+        self._remove_incapacitated(splattercast)
 
         # Check if combat should continue
         remaining_combatants = self.db.combatants or []
@@ -919,6 +641,288 @@ class CombatHandler(DefaultScript):
 
         self.db.round += 1
         splattercast.msg(f"AT_REPEAT: Handler {self.key}. Round {self.db.round} scheduled for next interval.")
+
+    # ── at_repeat helper methods ───────────────────────────────────────
+
+    def _validate_combatants(self, combatants_list):
+        """
+        Prune combatants with missing characters, no location, or in
+        unmanaged rooms.
+
+        Args:
+            combatants_list: List of combat entry dicts.
+
+        Returns:
+            list: Filtered list of valid combat entry dicts.
+        """
+        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        valid = []
+        managed_rooms = self.db.managed_rooms or []
+        for entry in combatants_list:
+            char = entry.get(DB_CHAR)
+            if not char:
+                splattercast.msg(f"AT_REPEAT: Pruning missing character from handler {self.key}.")
+                continue
+            if not char.location:
+                splattercast.msg(f"AT_REPEAT: Pruning {char.key} (no location) from handler {self.key}.")
+                if hasattr(char, "ndb") and getattr(char.ndb, NDB_COMBAT_HANDLER) == self:
+                    delattr(char.ndb, NDB_COMBAT_HANDLER)
+                continue
+            if char.location not in managed_rooms:
+                splattercast.msg(f"AT_REPEAT: Pruning {char.key} (in unmanaged room {char.location.key}) from handler {self.key}.")
+                if hasattr(char, "ndb") and getattr(char.ndb, NDB_COMBAT_HANDLER) == self:
+                    delattr(char.ndb, NDB_COMBAT_HANDLER)
+                continue
+            valid.append(entry)
+        return valid
+
+    def _check_peaceful_resolution(self, combatants_list, managed_rooms):
+        """
+        Check if all combatants are yielding with no active grapples.
+        If so, end combat peacefully.
+
+        Args:
+            combatants_list: List of combat entry dicts.
+            managed_rooms: List of managed room objects.
+
+        Returns:
+            bool: ``True`` if combat was ended peacefully.
+        """
+        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+
+        all_yielding = all(
+            entry.get(DB_IS_YIELDING, False) for entry in combatants_list
+        )
+        any_active_grapples = any(
+            entry.get(DB_GRAPPLING_DBREF) is not None
+            or entry.get(DB_GRAPPLED_BY_DBREF) is not None
+            for entry in combatants_list
+        )
+
+        if all_yielding and not any_active_grapples:
+            splattercast.msg(f"AT_REPEAT: Handler {self.key}. All combatants are yielding with no active grapples. Ending combat peacefully.")
+            for entry in combatants_list:
+                char = entry.get(DB_CHAR)
+                if char and char.location:
+                    char.msg("|gWith all hostilities ceased, the confrontation comes to a peaceful end.|n")
+            for room in managed_rooms:
+                if room:
+                    room.msg_contents(
+                        "|gThe confrontation ends peacefully as all participants stand down.|n",
+                        exclude=[entry.get(DB_CHAR) for entry in combatants_list if entry.get(DB_CHAR)],
+                    )
+            self._active_combatants_list = None
+            self.stop_combat_logic()
+            return True
+        elif all_yielding and any_active_grapples:
+            splattercast.msg(f"AT_REPEAT: Handler {self.key}. All combatants yielding but active grapples present. Combat continues in restraint mode.")
+
+        return False
+
+    def _cleanup_charge_flags(self, char, entry):
+        """
+        Clean up charge-related NDB flags at the start of a turn.
+
+        Args:
+            char: The character whose flags to clean.
+            entry: The character's combat entry dict.
+        """
+        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+
+        if hasattr(char.ndb, "charging_vulnerability_active"):
+            splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: Clearing charging_vulnerability_active for {char.key} (was active from their own previous charge).")
+            delattr(char.ndb, "charging_vulnerability_active")
+
+        if hasattr(char.ndb, "charge_attack_bonus_active") and getattr(char.ndb, "charge_attack_bonus_active", False):
+            if (
+                entry.get(DB_IS_YIELDING, False)
+                or char.is_dead()
+                or (hasattr(char, 'is_unconscious') and char.is_unconscious())
+            ):
+                splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: Clearing unused charge_attack_bonus_active for {char.key} (won't attack this turn).")
+                delattr(char.ndb, "charge_attack_bonus_active")
+            else:
+                splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: {char.key} has charge_attack_bonus_active - will be consumed during attack.")
+
+    def _handle_yielding_turn(self, char, entry):
+        """
+        Handle a yielding character's turn (restraint mode or passive).
+
+        Args:
+            char: The yielding character.
+            entry: The character's combat entry dict.
+        """
+        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+
+        grappling_target = self.get_grappling_obj(entry)
+        if grappling_target:
+            # Grappler in restraint mode — maintain hold without violence
+            splattercast.msg(f"{char.key} is yielding but maintains restraining hold on {grappling_target.key}.")
+            char.msg(f"|gYou maintain a restraining hold on {grappling_target.key} without violence.|n")
+            grappling_target.msg(f"|g{char.key} maintains a gentle but firm restraining hold on you.|n")
+            char.location.msg_contents(f"|g{char.key} maintains a restraining hold on {grappling_target.key}.|n", exclude=[char, grappling_target])
+        else:
+            # Regular yielding behavior
+            splattercast.msg(f"{char.key} is yielding and takes no hostile action this turn.")
+            char.location.msg_contents(f"|y{char.key} holds their action, appearing non-hostile.|n", exclude=[char])
+            char.msg("|yYou hold your action, appearing non-hostile.|n")
+
+    def _dispatch_combat_action(self, char, entry, combatants_list, combat_action, initiative_order):
+        """
+        Dispatch a combat action to the appropriate handler.
+
+        Args:
+            char: The acting character.
+            entry: The character's combat entry dict.
+            combatants_list: List of all combat entry dicts.
+            combat_action: The action to dispatch (str or dict).
+            initiative_order: List of entries sorted by initiative.
+
+        Returns:
+            bool: ``True`` if the action consumed the turn.
+        """
+        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast.msg(f"AT_REPEAT: {char.key} has action_intent: {combat_action}")
+
+        if isinstance(combat_action, str):
+            return self._dispatch_string_action(
+                char, entry, combatants_list, combat_action,
+            )
+        elif isinstance(combat_action, dict):
+            return self._dispatch_dict_action(
+                char, entry, combatants_list, combat_action,
+            )
+
+        return False
+
+    def _dispatch_string_action(self, char, entry, combatants_list, combat_action):
+        """
+        Dispatch a string-based combat action.
+
+        Args:
+            char: The acting character.
+            entry: The character's combat entry dict.
+            combatants_list: List of all combat entry dicts.
+            combat_action: The action string.
+
+        Returns:
+            bool: ``True`` if the action consumed the turn.
+        """
+        if combat_action == COMBAT_ACTION_GRAPPLE_INITIATE:
+            self._resolve_grapple_initiate(entry, combatants_list)
+            entry[DB_COMBAT_ACTION] = None
+            return True
+        elif combat_action == COMBAT_ACTION_GRAPPLE_JOIN:
+            self._resolve_grapple_join(entry, combatants_list)
+            entry[DB_COMBAT_ACTION] = None
+            return True
+        elif combat_action == COMBAT_ACTION_GRAPPLE_TAKEOVER:
+            self._resolve_grapple_takeover(entry, combatants_list)
+            entry[DB_COMBAT_ACTION] = None
+            return True
+        elif combat_action == COMBAT_ACTION_RELEASE_GRAPPLE:
+            self._resolve_release_grapple(entry, combatants_list)
+            entry[DB_COMBAT_ACTION] = None
+            return True
+        elif combat_action == COMBAT_ACTION_RETREAT:
+            resolve_retreat(self, char, entry)
+            entry[DB_COMBAT_ACTION] = None
+            entry[DB_COMBAT_ACTION_TARGET] = None
+            return True
+        elif combat_action == COMBAT_ACTION_ADVANCE:
+            resolve_advance(self, char, entry)
+            entry[DB_COMBAT_ACTION] = None
+            entry[DB_COMBAT_ACTION_TARGET] = None
+            return True
+        elif combat_action == COMBAT_ACTION_CHARGE:
+            resolve_charge(self, char, entry, combatants_list)
+            entry[DB_COMBAT_ACTION] = None
+            entry[DB_COMBAT_ACTION_TARGET] = None
+            return True
+        elif combat_action == COMBAT_ACTION_DISARM:
+            resolve_disarm(self, char, entry)
+            entry[DB_COMBAT_ACTION] = None
+            entry[DB_COMBAT_ACTION_TARGET] = None
+            return True
+
+        return False
+
+    def _dispatch_dict_action(self, char, entry, combatants_list, combat_action):
+        """
+        Dispatch a dict-based combat action (grapple attempt or escape).
+
+        Args:
+            char: The acting character.
+            entry: The character's combat entry dict.
+            combatants_list: List of all combat entry dicts.
+            combat_action: The action dict with ``type`` and ``target``.
+
+        Returns:
+            bool: ``True`` if the action consumed the turn.
+        """
+        intent_type = combat_action.get("type")
+
+        if intent_type == "grapple":
+            return resolve_grapple_attempt(
+                self, char, entry, combatants_list,
+            )
+        elif intent_type == COMBAT_ACTION_ESCAPE_GRAPPLE:
+            return resolve_escape_grapple(
+                self, char, entry, combatants_list,
+            )
+
+        return False
+
+    def _schedule_attack(self, char, entry, combatants_list, initiative_order):
+        """
+        Schedule a standard attack for a character using staggered delay.
+
+        Args:
+            char: The attacking character.
+            entry: The character's combat entry dict.
+            combatants_list: List of all combat entry dicts.
+            initiative_order: List of entries sorted by initiative.
+        """
+        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+
+        target = self.get_target(char)
+        splattercast.msg(f"AT_REPEAT: After get_target(), {char.key} target is {target.key if target else None}")
+        if target:
+            attack_delay = calculate_attack_delay(
+                self, char, initiative_order,
+            )
+            splattercast.msg(f"AT_REPEAT: Scheduling attack for {char.key} -> {target.key} with {attack_delay}s delay")
+            delay(
+                attack_delay, process_delayed_attack,
+                self, char, target, entry, combatants_list,
+            )
+        else:
+            splattercast.msg(f"AT_REPEAT: {char.key} has no valid target for attack.")
+
+    def _remove_incapacitated(self, splattercast):
+        """
+        Remove dead or unconscious combatants after all attacks are
+        processed.
+
+        Args:
+            splattercast: The Splattercast channel object.
+        """
+        remaining_combatants = self.db.combatants or []
+        incapacitated = []
+
+        for entry in remaining_combatants:
+            char = entry.get(DB_CHAR)
+            if char and hasattr(char, 'is_dead') and char.is_dead():
+                incapacitated.append(char)
+                splattercast.msg(f"POST_ROUND_DEATH_CHECK: {char.key} is dead, removing from combat.")
+            elif char and hasattr(char, 'is_unconscious') and char.is_unconscious():
+                incapacitated.append(char)
+                splattercast.msg(f"POST_ROUND_UNCONSCIOUS_CHECK: {char.key} is unconscious, removing from combat.")
+
+        for incapacitated_char in incapacitated:
+            self.remove_combatant(incapacitated_char)
+
+    # ── Target management ──────────────────────────────────────────────
 
     def get_target(self, char):
         """Get the target character for a given character."""
@@ -977,8 +981,9 @@ class CombatHandler(DefaultScript):
             
             return True
         return False
-    
-    # ...existing utility methods...
+
+    # ── Utility wrappers ───────────────────────────────────────────────
+
     def get_target_obj(self, combatant_entry):
         """Get the target object for a combatant entry."""
         return get_combatant_target(combatant_entry, self)
@@ -1026,399 +1031,9 @@ class CombatHandler(DefaultScript):
                    char2_target_dbref == char1_dbref)
         
         return False
-    
-    def _calculate_attack_delay(self, attacker, initiative_order):
-        """
-        Calculate attack delay to stagger combat messages within a round.
-        
-        Args:
-            attacker: The attacking character
-            initiative_order: List of combatants in initiative order
-            
-        Returns:
-            float: Delay in seconds for this attacker's attack
-        """
-        # Find attacker's position in initiative order
-        attacker_position = 0
-        for i, entry in enumerate(initiative_order):
-            if entry.get(DB_CHAR) == attacker:
-                attacker_position = i
-                break
-        
-        # Stagger attacks using configurable interval
-        # First attacker goes immediately, subsequent attackers are delayed
-        base_delay = attacker_position * STAGGER_DELAY_INTERVAL
-        
-        # Cap at max delay to ensure all attacks complete before next round
-        return min(base_delay, MAX_STAGGER_DELAY)
 
-    def _process_delayed_attack(self, attacker, target, attacker_entry, combatants_list):
-        """
-        Process a delayed attack - wrapper for _process_attack with validation.
-        
-        Args:
-            attacker: The attacking character
-            target: The target character  
-            attacker_entry: The attacker's combat entry
-            combatants_list: List of all combat entries at time of scheduling
-        """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        
-        # Validate that combat is still active
-        if not self.db.combat_is_running:
-            splattercast.msg(f"DELAYED_ATTACK: Combat ended before {attacker.key}'s attack on {target.key} could execute.")
-            return
-            
-        # Validate that both characters are still in combat
-        current_combatants = self.db.combatants or []
-        attacker_still_in_combat = any(e.get(DB_CHAR) == attacker for e in current_combatants)
-        target_still_in_combat = any(e.get(DB_CHAR) == target for e in current_combatants)
-        
-        if not attacker_still_in_combat:
-            splattercast.msg(f"DELAYED_ATTACK: {attacker.key} no longer in combat, attack cancelled.")
-            return
-            
-        if not target_still_in_combat:
-            splattercast.msg(f"DELAYED_ATTACK: {target.key} no longer in combat, {attacker.key}'s attack cancelled.")
-            return
-        
-        # Check if attacker is dead - dead characters can't attack
-        if attacker.is_dead():
-            splattercast.msg(f"DELAYED_ATTACK: {attacker.key} has died, attack cancelled.")
-            return
-            
-        # Check if target is dead - no point attacking the dead
-        if target.is_dead():
-            splattercast.msg(f"DELAYED_ATTACK: {target.key} has died, {attacker.key}'s attack cancelled.")
-            return
-        
-        # Get fresh combat entries
-        fresh_attacker_entry = next((e for e in current_combatants if e.get(DB_CHAR) == attacker), None)
-        if not fresh_attacker_entry:
-            splattercast.msg(f"DELAYED_ATTACK: Could not find fresh entry for {attacker.key}, attack cancelled.")
-            return
-        
-        splattercast.msg(f"DELAYED_ATTACK: Executing {attacker.key} -> {target.key}")
-        
-        try:
-            self._process_attack(attacker, target, fresh_attacker_entry, current_combatants)
-            splattercast.msg(f"DELAYED_ATTACK: _process_attack completed for {attacker.key} -> {target.key}")
-        except Exception as e:
-            splattercast.msg(f"DELAYED_ATTACK: ERROR in _process_attack for {attacker.key} -> {target.key}: {e}")
-            import traceback
-            splattercast.msg(f"DELAYED_ATTACK: Traceback: {traceback.format_exc()}")
+    # ── Grapple resolution wrappers ────────────────────────────────────
 
-    def _determine_injury_type(self, weapon):
-        """
-        Determine the injury type based on weapon's damage_type attribute.
-        
-        Args:
-            weapon: The weapon object being used (or None for unarmed)
-            
-        Returns:
-            str: Valid injury type for medical system
-        """
-        if not weapon:
-            return "blunt"  # Unarmed attacks are blunt trauma
-        
-        # Get damage_type from weapon, default to "blunt" if not specified
-        damage_type = weapon.db.damage_type if weapon.db.damage_type is not None else 'blunt'
-        return damage_type
-
-    def _process_attack(self, attacker, target, attacker_entry, combatants_list):
-        """
-        Process an attack between two characters.
-        
-        Args:
-            attacker: The attacking character
-            target: The target character
-            attacker_entry: The attacker's combat entry
-            combatants_list: List of all combat entries
-        """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        
-        # Check if target is already dead or unconscious - prevents attacking incapacitated characters
-        if target.is_dead():
-            splattercast.msg(f"ATTACK_CANCELLED: {target.key} is already dead, cancelling {attacker.key}'s attack.")
-            return
-        elif hasattr(target, 'is_unconscious') and target.is_unconscious():
-            splattercast.msg(f"ATTACK_CANCELLED: {target.key} is unconscious, cancelling {attacker.key}'s attack.")
-            return
-        
-        # Check if attacker is wielding a ranged weapon
-        is_ranged_attack = is_wielding_ranged_weapon(attacker)
-        
-        # For melee attacks, check same-room and proximity requirements
-        if not is_ranged_attack:
-            # Check if attacker can reach target (same room for melee)
-            if attacker.location != target.location:
-                attacker.msg(f"You can't reach {target.key} from here.")
-                splattercast.msg(f"ATTACK_FAIL (REACH): {attacker.key} cannot reach {target.key}.")
-                return
-            
-            # Check proximity for melee attacks
-            if not hasattr(attacker.ndb, NDB_PROXIMITY):
-                setattr(attacker.ndb, NDB_PROXIMITY, set())
-            
-            # Get proximity set - use proper attribute name
-            proximity_set = getattr(attacker.ndb, NDB_PROXIMITY, set())
-            if not proximity_set:  # Handle case where attribute exists but is None/empty
-                setattr(attacker.ndb, NDB_PROXIMITY, set())
-                proximity_set = set()
-            
-            if target not in proximity_set:
-                attacker.msg(f"You need to be in melee proximity with {target.key} to attack them. Try advancing or charging.")
-                splattercast.msg(f"ATTACK_FAIL (PROXIMITY): {attacker.key} not in proximity with {target.key}.")
-                return
-        else:
-            # For ranged attacks, just log that we're allowing cross-room attack
-            splattercast.msg(f"ATTACK_RANGED: {attacker.key} making ranged attack on {target.key} from {attacker.location.key} to {target.location.key}.")
-        
-        # Human Shield System Check
-        # Check if target is grappling someone who could act as a human shield
-        target_entry = None
-        for entry in combatants_list:
-            if entry.get(DB_CHAR) == target:
-                target_entry = entry
-                break
-        
-        original_target = target
-        if target_entry:
-            grappling_victim = get_combatant_grappling_target(target_entry, self)
-            if grappling_victim:
-                # Target is grappling someone - check for human shield interception
-                shield_chance = self._calculate_shield_chance(target, grappling_victim, is_ranged_attack, combatants_list)
-                shield_roll = randint(1, 100)
-                
-                splattercast.msg(f"HUMAN_SHIELD: {attacker.key} attacking {target.key} who is grappling {grappling_victim.key}. Shield chance: {shield_chance}%, roll: {shield_roll}")
-                
-                if shield_roll <= shield_chance:
-                    # Shield successful - redirect attack to victim
-                    self._send_shield_messages(attacker, target, grappling_victim)
-                    target = grappling_victim  # Redirect the attack
-                    splattercast.msg(f"HUMAN_SHIELD_SUCCESS: Attack redirected from {original_target.key} to {target.key}")
-                else:
-                    splattercast.msg(f"HUMAN_SHIELD_FAIL: Attack proceeds normally against {target.key}")
-        
-        # Get weapon and stats
-        weapon = get_wielded_weapon(attacker)
-        weapon_name = weapon.key if weapon else "unarmed"
-        
-        attacker_skill = get_numeric_stat(attacker, "motorics", 1)
-        target_skill = get_numeric_stat(target, "motorics", 1)
-        
-        # Roll for attack
-        attacker_roll = randint(1, 20) + attacker_skill
-        target_roll = randint(1, 20) + target_skill
-        
-        # Check for charge bonus
-        has_attr = hasattr(attacker.ndb, "charge_attack_bonus_active")
-        attr_value = getattr(attacker.ndb, "charge_attack_bonus_active", "MISSING")
-        splattercast.msg(f"ATTACK_BONUS_DEBUG_DETAILED: {attacker.key} hasattr={has_attr}, value={attr_value}")
-        
-        if has_attr and getattr(attacker.ndb, "charge_attack_bonus_active", False):
-            attacker_roll += 2
-            splattercast.msg(f"ATTACK_BONUS: {attacker.key} gets +2 charge attack bonus.")
-            splattercast.msg(f"ATTACK_BONUS_DEBUG: {attacker.key} had charge_attack_bonus_active set - this should only happen after using the 'charge' command.")
-            # Ensure complete attribute removal - delattr might leave None in Evennia ndb
-            try:
-                delattr(attacker.ndb, "charge_attack_bonus_active")
-            except AttributeError:
-                pass
-            # Double-check removal worked
-            if hasattr(attacker.ndb, "charge_attack_bonus_active"):
-                attacker.ndb.charge_attack_bonus_active = None
-                delattr(attacker.ndb, "charge_attack_bonus_active")
-        else:
-            splattercast.msg(f"ATTACK_BONUS_DEBUG: {attacker.key} does not have charge_attack_bonus_active - no bonus applied.")
-        
-        splattercast.msg(f"ATTACK: {attacker.key} (roll {attacker_roll}) vs {target.key} (roll {target_roll}) with {weapon_name}")
-        
-        if attacker_roll > target_roll:
-            # Hit - calculate damage
-            # NOTE: Strict > means ties favor the defender. This is intentional.
-            damage = randint(1, 6)  # Base damage
-            if weapon:
-                # Add weapon damage if applicable
-                weapon_damage = get_weapon_damage(weapon, 0)
-                damage += weapon_damage
-            
-            # Determine injury type based on weapon
-            injury_type = self._determine_injury_type(weapon)
-            
-            # Calculate success margin for precision targeting
-            success_margin = attacker_roll - target_roll
-            
-            # Select hit location - Intellect characters target less armored areas
-            hit_location = select_hit_location(target, success_margin, attacker)
-            
-            # Make precision roll for organ targeting within the location
-            precision_roll = randint(1, 20)
-            # Mix motorics (70%) and intellect (30%) for precision skill
-            attacker_motorics = get_numeric_stat(attacker, "motorics", 1)
-            attacker_intellect = get_numeric_stat(attacker, "intellect", 1) 
-            precision_skill = int((attacker_motorics * 0.7) + (attacker_intellect * 0.3))
-            
-            # Select specific target organ within the hit location
-            target_organ = select_target_organ(hit_location, precision_roll, precision_skill)
-            
-            # Debug output for precision targeting
-            splattercast.msg(f"PRECISION_TARGET: {attacker.key} margin={success_margin}, precision={precision_roll + precision_skill}, hit {hit_location}:{target_organ}")
-            
-            # Determine weapon type for messages
-            weapon_type = WEAPON_TYPE_UNARMED
-            if weapon and hasattr(weapon, 'db') and weapon.db.weapon_type:
-                weapon_type = weapon.db.weapon_type
-            
-            # Apply damage first to determine if this is a killing blow
-            # take_damage now returns (died, actual_damage_applied)
-            target_died, actual_damage = target.take_damage(damage, location=hit_location, injury_type=injury_type, target_organ=target_organ)
-            
-            if target_died:
-                # This was a killing blow - send kill messages instead of regular attack messages
-                kill_messages = get_combat_message(weapon_type, "kill", attacker=attacker, target=target, item=weapon, damage=actual_damage, hit_location=hit_location)
-                
-                # Send kill messages to establish lethal narrative before death curtain
-                if "attacker_msg" in kill_messages:
-                    attacker.msg(kill_messages["attacker_msg"])
-                if "victim_msg" in kill_messages:
-                    target.msg(kill_messages["victim_msg"])
-                if "observer_msg" in kill_messages:
-                    # Send to attacker's room
-                    if attacker.location:
-                        attacker.location.msg_contents(
-                            kill_messages["observer_msg"],
-                            exclude=[attacker, target],
-                        )
-                    # Also send to target's room if it differs (cross-room combat)
-                    if (
-                        target.location
-                        and target.location != attacker.location
-                    ):
-                        target.location.msg_contents(
-                            kill_messages["observer_msg"],
-                            exclude=[attacker, target],
-                        )
-                
-                splattercast.msg(f"KILLING_BLOW: {attacker.key} delivered killing blow to {target.key} for {actual_damage} damage.")
-                
-                # Check if death has already been processed to prevent double death curtains
-                if hasattr(target, 'ndb') and getattr(target.ndb, 'death_processed', False):
-                    splattercast.msg(f"COMBAT_DEATH_SKIP: {target.key} death already processed")
-                    
-                    # Check if death curtain was deferred and trigger it now after kill message
-                    if hasattr(target.ndb, 'death_curtain_pending') and target.ndb.death_curtain_pending:
-                        from typeclasses.curtain_of_death import show_death_curtain
-                        splattercast.msg(f"COMBAT_DEATH_CURTAIN: {target.key} triggering deferred death curtain after kill message")
-                        show_death_curtain(target)
-                        target.ndb.death_curtain_pending = False
-                else:
-                    # Trigger death processing - at_death() will handle death analysis and potentially defer curtain
-                    target.at_death()
-                    
-                    # If death curtain was deferred, trigger it now after kill message
-                    if hasattr(target.ndb, 'death_curtain_pending') and target.ndb.death_curtain_pending:
-                        from typeclasses.curtain_of_death import show_death_curtain
-                        splattercast.msg(f"COMBAT_DEATH_CURTAIN: {target.key} triggering deferred death curtain after kill message")
-                        show_death_curtain(target)
-                        target.ndb.death_curtain_pending = False
-                
-                # Remove from combat
-                self.remove_combatant(target)
-            else:
-                # Regular hit - send attack messages
-                hit_messages = get_combat_message(weapon_type, "hit", attacker=attacker, target=target, item=weapon, damage=actual_damage, hit_location=hit_location)
-                
-                # Send attack messages for non-fatal hits
-                attacker.msg(hit_messages["attacker_msg"])
-                target.msg(hit_messages["victim_msg"]) 
-                attacker.location.msg_contents(hit_messages["observer_msg"], exclude=[attacker, target])
-                
-                splattercast.msg(f"ATTACK_HIT: {attacker.key} hit {target.key} for {actual_damage} damage.")
-                
-        else:
-            # Miss - get miss messages from the message system
-            weapon_type = WEAPON_TYPE_UNARMED
-            if weapon and hasattr(weapon, 'db') and weapon.db.weapon_type:
-                weapon_type = weapon.db.weapon_type
-                
-            miss_messages = get_combat_message(weapon_type, "miss", attacker=attacker, target=target, item=weapon)
-            
-            attacker.msg(miss_messages["attacker_msg"])
-            target.msg(miss_messages["victim_msg"])
-            attacker.location.msg_contents(miss_messages["observer_msg"], exclude=[attacker, target])
-            
-            splattercast.msg(f"ATTACK_MISS: {attacker.key} missed {target.key}.")
-    
-    def _calculate_shield_chance(self, grappler, victim, is_ranged_attack, combatants_list):
-        """
-        Calculate the chance that a grappled victim will act as a human shield.
-        
-        Args:
-            grappler: The character doing the grappling
-            victim: The character being grappled (potential shield)
-            is_ranged_attack: Whether this is a ranged attack
-            combatants_list: List of all combat entries
-            
-        Returns:
-            int: Shield chance percentage (0-100)
-        """
-        # Base shield chance
-        base_chance = 40
-        
-        # Grappler Motorics modifier: +5% per point above 1
-        grappler_motorics = get_numeric_stat(grappler, "motorics", 1)
-        motorics_bonus = (grappler_motorics - 1) * 5
-        
-        # Victim resistance modifier based on yielding state
-        victim_entry = None
-        for entry in combatants_list:
-            if entry.get(DB_CHAR) == victim:
-                victim_entry = entry
-                break
-        
-        resistance_modifier = 0
-        if victim_entry:
-            is_yielding = victim_entry.get(DB_IS_YIELDING, False)
-            if is_yielding:
-                resistance_modifier = 10  # Easier to position yielding victim
-            else:
-                resistance_modifier = -10  # Struggling against positioning
-        
-        # Ranged attack modifier
-        ranged_modifier = -20 if is_ranged_attack else 0
-        
-        # Calculate final chance
-        final_chance = base_chance + motorics_bonus + resistance_modifier + ranged_modifier
-        
-        # Clamp to 0-100 range
-        return max(0, min(100, final_chance))
-    
-    def _send_shield_messages(self, attacker, grappler, victim):
-        """
-        Send human shield interception messages to all parties.
-        
-        Args:
-            attacker: The character making the attack
-            grappler: The character using victim as shield
-            victim: The character being used as shield
-        """
-        # Message templates from the spec
-        attacker_msg = f"|rYour attack is intercepted by {get_display_name_safe(victim)} as {get_display_name_safe(grappler)} uses them as a shield!|n"
-        grappler_msg = f"|yYou position {get_display_name_safe(victim)} to absorb {get_display_name_safe(attacker)}'s attack!|n"
-        victim_msg = f"|RYou are forced into the path of {get_display_name_safe(attacker)}'s attack by {get_display_name_safe(grappler)}!|n"
-        observer_msg = f"|y{get_display_name_safe(grappler)} uses {get_display_name_safe(victim)} as a human shield against {get_display_name_safe(attacker)}'s attack!|n"
-        
-        # Send messages
-        attacker.msg(attacker_msg)
-        grappler.msg(grappler_msg)
-        victim.msg(victim_msg)
-        
-        # Send to observers (exclude the three participants)
-        attacker.location.msg_contents(observer_msg, exclude=[attacker, grappler, victim])
-
-
-    
     def _resolve_grapple_initiate(self, char_entry, combatants_list):
         """Resolve a grapple initiate action."""
         resolve_grapple_initiate(char_entry, combatants_list, self)
@@ -1444,565 +1059,3 @@ class CombatHandler(DefaultScript):
             target: The target of the bonus attack
         """
         resolve_bonus_attack(self, attacker, target)
-
-    def _resolve_retreat(self, char, entry):
-        """Resolve a retreat action."""
-        from random import randint
-        from .utils import get_numeric_stat, initialize_proximity_ndb
-        from .proximity import break_proximity, is_in_proximity, establish_proximity
-        from .constants import SPLATTERCAST_CHANNEL, DEBUG_PREFIX_HANDLER, NDB_PROXIMITY_UNIVERSAL, DB_GRAPPLING_DBREF
-        
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        
-        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_RETREAT: {char.key} executing retreat action.")
-        
-        # Check if in proximity with anyone (combat proximity)
-        initialize_proximity_ndb(char)
-        combat_proximity_list = getattr(char.ndb, "in_proximity_with", set())
-        
-        # Also check grenade proximity
-        grenade_proximity_list = getattr(char.ndb, NDB_PROXIMITY_UNIVERSAL, [])
-        if not isinstance(grenade_proximity_list, list):
-            grenade_proximity_list = []
-        
-        # Combine both proximity systems to get all nearby entities
-        all_proximity = set(combat_proximity_list) | set(grenade_proximity_list)
-        all_proximity.discard(char)  # Remove self
-        
-        if not all_proximity:
-            char.msg("|yYou are not in melee with anyone to retreat from.|n")
-            return
-        
-        # Check if currently grappling someone
-        grappled_victim = None
-        grappled_victim_dbref = entry.get(DB_GRAPPLING_DBREF)
-        if grappled_victim_dbref:
-            grappled_victim = self._get_char_by_dbref(grappled_victim_dbref)
-        
-        # Get valid opponents (exclude grappled victim from motorics contest)
-        opponents = []
-        for entity in all_proximity:
-            if (entity != char and 
-                entity.location == char.location and
-                entity != grappled_victim):  # Exclude grappled victim from contest
-                opponents.append(entity)
-        
-        # Special case: If only in proximity with grappled victim, retreat fails
-        if grappled_victim and len(all_proximity) == 1 and grappled_victim in all_proximity:
-            char.msg("|rYou cannot retreat while grappling your only opponent! You are physically latched together.|n")
-            splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_RETREAT: {char.key} cannot retreat - only in proximity with grappled victim {grappled_victim.key}.")
-            return
-        
-        # If no valid opponents for contest (shouldn't happen after above check, but safety)
-        if not opponents:
-            char.msg("|yYou are not in melee with anyone to retreat from.|n")
-            return
-        
-        # Find the highest opponent stat for retreat difficulty
-        highest_opponent_stat = 0
-        for opponent in opponents:
-            opponent_stat = get_numeric_stat(opponent, "motorics")
-            if opponent_stat > highest_opponent_stat:
-                highest_opponent_stat = opponent_stat
-        
-        # Make opposed roll
-        char_motorics = get_numeric_stat(char, "motorics")
-        char_roll = randint(1, max(1, char_motorics))
-        opponent_roll = randint(1, max(1, highest_opponent_stat))
-        
-        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_RETREAT: {char.key} (motorics:{char_motorics}, roll:{char_roll}) vs highest opponent (motorics:{highest_opponent_stat}, roll:{opponent_roll})")
-        
-        if char_roll > opponent_roll:
-            # Success - break proximity with opponents but maintain with grappled victim
-            # NOTE: Strict > means ties favor the opponent (defender). This is intentional.
-            for opponent in opponents:
-                if is_in_proximity(char, opponent):
-                    break_proximity(char, opponent)
-            
-            # Always ensure proximity is maintained with grappled victim during retreat
-            if grappled_victim:
-                if not is_in_proximity(char, grappled_victim):
-                    establish_proximity(char, grappled_victim)
-                splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_RETREAT: Maintained proximity with grappled victim {grappled_victim.key} during retreat.")
-            
-            char.msg("|gYou successfully retreat from melee combat.|n")
-            char.location.msg_contents(f"|y{char.key} retreats from melee combat.|n", exclude=[char])
-            splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_RETREAT: {char.key} successfully retreated from melee.")
-        else:
-            # Failure - remain in proximity
-            char.msg("|rYour retreat fails! You remain locked in melee.|n")
-            char.location.msg_contents(f"|y{char.key} tries to retreat but remains engaged.|n", exclude=[char])
-            splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_RETREAT: {char.key} failed to retreat from melee.")
-
-    def _resolve_advance(self, char, entry):
-        """Resolve an advance action."""
-        from random import randint
-        from .utils import get_numeric_stat, initialize_proximity_ndb
-        from .proximity import establish_proximity, is_in_proximity
-        from .constants import SPLATTERCAST_CHANNEL, DEBUG_PREFIX_HANDLER, DB_COMBATANTS, DB_IS_YIELDING
-        
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        target = entry.get(DB_COMBAT_ACTION_TARGET)
-        
-        if not target:
-            char.msg("|rNo target specified for advance action.|n")
-            return
-        
-        # Check if target is still in combat
-        combatants_list = self.db.combatants or []
-        if not any(e.get(DB_CHAR) == target for e in combatants_list):
-            char.msg(f"|r{target.key} is no longer in combat.|n")
-            return
-        
-        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE: {char.key} executing advance action on {target.key}.")
-        
-        # Check if target is in the same room
-        if target.location == char.location:
-            # Same room - try to establish proximity
-            initialize_proximity_ndb(char)
-            initialize_proximity_ndb(target)
-            
-            if is_in_proximity(char, target):
-                char.msg(f"|yYou are already in melee proximity with {target.key}.|n")
-                return
-            
-            # Make opposed roll for proximity
-            char_motorics = get_numeric_stat(char, "motorics")
-            target_motorics = get_numeric_stat(target, "motorics")
-            char_roll = randint(1, max(1, char_motorics))
-            target_roll = randint(1, max(1, target_motorics))
-            
-            splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE: {char.key} (motorics:{char_motorics}, roll:{char_roll}) vs {target.key} (motorics:{target_motorics}, roll:{target_roll})")
-            
-            if char_roll > target_roll:
-                # Success - establish proximity
-                # NOTE: Strict > means ties favor the target (defender). This is intentional.
-                establish_proximity(char, target)
-                
-                char.msg(f"|gYou successfully advance to melee range with {target.key}.|n")
-                target.msg(f"|y{char.key} advances to melee range with you.|n")
-                char.location.msg_contents(f"|y{char.key} advances to melee range with {target.key}.|n", exclude=[char, target])
-                splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE: {char.key} successfully advanced to melee with {target.key}.")
-            else:
-                # Failure - no proximity established
-                char.msg(f"|rYour advance on {target.key} fails! They keep their distance.|n")
-                target.msg(f"|g{char.key} tries to advance on you but you keep your distance.|n")
-                char.location.msg_contents(f"|y{char.key} tries to advance on {target.key} but fails to close the distance.|n", exclude=[char, target])
-                splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE: {char.key} failed to advance on {target.key}.")
-        else:
-            # Different room - check if it's a managed room and try to move there
-            managed_rooms = self.db.managed_rooms or []
-            target_room = target.location
-            
-            if target_room not in managed_rooms:
-                char.msg(f"|r{target.key} is no longer in a combat area you can reach.|n")
-                return
-            
-            # Check if advancing character is grappling someone and should drag them
-            grappled_victim = self.get_grappling_obj(entry)
-            should_drag_victim = False
-            
-            if grappled_victim:
-                # Check drag conditions: grappling someone, yielding, and not targeted by others (except victim and advance target)
-                is_yielding = entry.get(DB_IS_YIELDING, False)
-                
-                # Check if targeted by others in the same room (excluding the victim and the advance target)
-                is_targeted_by_others_not_victim = False
-                for e in combatants_list:
-                    other_char = e.get(DB_CHAR)
-                    if not other_char:
-                        continue
-                    if (other_char != char and other_char != grappled_victim and other_char != target and
-                        other_char.location == char.location):  # Only check same-room combatants
-                        if self.get_target_obj(e) == char:
-                            is_targeted_by_others_not_victim = True
-                            break
-                
-                # Drag conditions: grappling someone, yielding, and not targeted by others (except victim and advance target)
-                if is_yielding and not is_targeted_by_others_not_victim:
-                    should_drag_victim = True
-                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE_DRAG: {char.key} meets drag conditions - will attempt to drag {grappled_victim.key}.")
-                else:
-                    char.msg(f"|rYou cannot advance to another room while actively grappling {grappled_victim.key} - others are targeting you or you're being aggressive.|n")
-                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE_DRAG_BLOCKED: {char.key} cannot drag {grappled_victim.key} - yielding:{is_yielding}, targeted_by_others:{is_targeted_by_others_not_victim}")
-                    return
-            
-            # Try to move to the target's room
-            # Find the exit from current room to target room
-            exit_to_target = None
-            for exit_obj in char.location.exits:
-                if exit_obj.destination == target_room:
-                    exit_to_target = exit_obj
-                    break
-            
-            if not exit_to_target:
-                char.msg(f"|rYou cannot find a way to {target.key}'s location.|n")
-                return
-            
-            # Make opposed roll for movement
-            char_motorics = get_numeric_stat(char, "motorics")
-            target_motorics = get_numeric_stat(target, "motorics")
-            char_roll = randint(1, max(1, char_motorics))
-            target_roll = randint(1, max(1, target_motorics))
-            
-            splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE_MOVE: {char.key} (motorics:{char_motorics}, roll:{char_roll}) vs {target.key} (motorics:{target_motorics}, roll:{target_roll})")
-            
-            if char_roll > target_roll:
-                # Success - move to target's room
-                # NOTE: Strict > means ties favor the target (defender). This is intentional.
-                old_location = char.location
-                
-                # Clear aim states before moving (consistent with traversal)
-                from .utils import clear_aim_state
-                if hasattr(char, "clear_aim_state"):
-                    char.clear_aim_state(reason_for_clearing="as you advance")
-                else:
-                    clear_aim_state(char)
-                
-                # Handle grapple victim dragging if needed
-                if should_drag_victim and grappled_victim:
-                    # Announce dragging
-                    char.msg(f"|gYou drag {grappled_victim.key} with you as you advance to {target_room.key}.|n")
-                    grappled_victim.msg(f"|r{char.key} drags you along as they advance to {target_room.key}!|n")
-                    old_location.msg_contents(f"|y{char.key} drags {grappled_victim.key} along as they advance toward {target_room.key}.|n", exclude=[char, grappled_victim])
-                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE_DRAG: {char.key} is dragging {grappled_victim.key} from {old_location.key} to {target_room.key}.")
-                    
-                    # Move both characters
-                    char.move_to(target_room)
-                    grappled_victim.move_to(target_room, quiet=True, move_hooks=False)
-                    
-                    # Re-establish proximity between grappler and victim after drag
-                    from .proximity import establish_proximity
-                    establish_proximity(char, grappled_victim)
-                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE_DRAG: Re-established proximity between {char.key} and dragged victim {grappled_victim.key} in {target_room.key}.")
-                    
-                    # Announce arrival in new location
-                    target_room.msg_contents(f"|y{char.key} arrives dragging {grappled_victim.key}.|n", exclude=[char, grappled_victim])
-                else:
-                    # Normal single character movement
-                    char.move_to(target_room)
-                
-                # Check for rigged grenades after successful movement
-                from commands.CmdThrow import check_rigged_grenade, check_auto_defuse
-                check_rigged_grenade(char, exit_to_target)
-                
-                # Check for auto-defuse opportunities after advancing to new room
-                check_auto_defuse(char)
-                
-                if should_drag_victim and grappled_victim:
-                    char.msg(f"|gYou successfully advance to {target_room.key} with {grappled_victim.key} in tow to engage {target.key}.|n")
-                    target.msg(f"|y{char.key} advances into the room dragging {grappled_victim.key} to engage you!|n")
-                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE_MOVE: {char.key} successfully moved to {target_room.key} with {grappled_victim.key} to engage {target.key}.")
-                else:
-                    char.msg(f"|gYou successfully advance to {target_room.key} to engage {target.key}.|n")
-                    target.msg(f"|y{char.key} advances into the room to engage you!|n")
-                    old_location.msg_contents(f"|y{char.key} advances toward {target_room.key} to engage {target.key}.|n", exclude=[char])
-                    target_room.msg_contents(f"|y{char.key} advances into the room to engage {target.key}!|n", exclude=[char, target])
-                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE_MOVE: {char.key} successfully moved to {target_room.key} to engage {target.key}.")
-            else:
-                # Failure - no movement
-                char.msg(f"|rYour advance toward {target.key} fails! You cannot reach their position.|n")
-                target.msg(f"|g{char.key} tries to advance toward your position but fails to reach you.|n")
-                char.location.msg_contents(f"|y{char.key} attempts to advance toward {target.key} but fails to reach them.|n", exclude=[char])
-                splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE_MOVE: {char.key} failed to move to {target.key}.")
-                
-                # Check if target has ranged weapon for bonus attack
-                if is_wielding_ranged_weapon(target):
-                    target.msg(f"|gYour ranged weapon gives you a clear shot as {char.key} fails to reach you!|n")
-                    char.msg(f"|r{target.key} takes advantage of your failed advance to attack from range!|n")
-                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_ADVANCE_MOVE_BONUS: {target.key} gets bonus attack vs {char.key} for failed cross-room advance.")
-                    self.resolve_bonus_attack(target, char)
-
-    def _resolve_charge(self, char, entry, combatants_list):
-        """Resolve a charge action."""
-        from random import randint
-        from .utils import get_numeric_stat, initialize_proximity_ndb, roll_with_disadvantage, standard_roll, clear_aim_state, is_wielding_ranged_weapon
-        from .proximity import establish_proximity, is_in_proximity
-        from .constants import SPLATTERCAST_CHANNEL, DEBUG_PREFIX_HANDLER
-        
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        target = entry.get(DB_COMBAT_ACTION_TARGET)
-        
-        if not target:
-            char.msg("|rNo target specified for charge action.|n")
-            return
-        
-        # Validate target is still in combat
-        if not any(e[DB_CHAR] == target for e in combatants_list):
-            char.msg(f"|r{target.key} is no longer in combat.|n")
-            return
-        
-        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} executing charge action on {target.key}.")
-        
-        # Initialize proximity for both characters
-        initialize_proximity_ndb(char)
-        initialize_proximity_ndb(target)
-        
-        # Check if already in proximity
-        if is_in_proximity(char, target):
-            char.msg(f"|yYou are already in melee proximity with {target.key}.|n")
-            # Clear the charge action since it's not needed
-            combatants_list = list(self.db.combatants)
-            for combat_entry in combatants_list:
-                if combat_entry[DB_CHAR] == char:
-                    combat_entry[DB_COMBAT_ACTION] = None
-                    combat_entry[DB_COMBAT_ACTION_TARGET] = None
-                    break
-            self.db.combatants = combatants_list
-            
-            # Instead of waiting for normal attack phase, make an immediate bonus attack
-            # This makes the charge feel more aggressive and responsive
-            splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} already in proximity with {target.key}, making immediate bonus attack.")
-            self.resolve_bonus_attack(char, target)
-            return
-        
-        # Handle same room vs different room charge
-        if target.location == char.location:
-            # Same room charge - use disadvantage
-            char_motorics = get_numeric_stat(char, "motorics")
-            target_motorics = get_numeric_stat(target, "motorics")
-            
-            charge_roll, roll1, roll2 = roll_with_disadvantage(char_motorics)
-            resist_roll, r_roll1, r_roll2 = standard_roll(target_motorics)
-            
-            splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE_SAME_ROOM: {char.key} (motorics:{char_motorics}, disadvantage:{roll1},{roll2}>>{charge_roll}) vs {target.key} (motorics:{target_motorics}, roll:{resist_roll})")
-            
-            if charge_roll > resist_roll:
-                # Success - establish proximity and charge bonus
-                # NOTE: Strict > means ties favor the target (defender). This is intentional.
-                
-                # Check if charger is grappling someone and release them
-                if entry.get(DB_GRAPPLING_DBREF):
-                    grappled_victim = self.get_grappling_obj(entry)
-                    
-                    if grappled_victim:
-                        # Release the grapple - update the actual combatants list
-                        for combatant_entry in combatants_list:
-                            if combatant_entry.get(DB_CHAR) == char:
-                                combatant_entry[DB_GRAPPLING_DBREF] = None
-                            elif combatant_entry.get(DB_CHAR) == grappled_victim:
-                                combatant_entry[DB_GRAPPLED_BY_DBREF] = None
-                        
-                        # Announce grapple release
-                        char.msg(f"|yYou release your grapple on {grappled_victim.get_display_name(char)} as you charge {target.key}!|n")
-                        if grappled_victim.access(char, "view"):
-                            grappled_victim.msg(f"|y{char.get_display_name(grappled_victim)} releases their grapple on you to charge {target.get_display_name(grappled_victim)}!|n")
-                        
-                        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE_GRAPPLE_RELEASE: {char.key} released grapple on {grappled_victim.key} due to successful charge.")
-                
-                establish_proximity(char, target)
-                
-                # Clear aim states
-                clear_aim_state(char)
-                
-                # Update target on successful charge
-                self.set_target(char, target)
-                
-                # Set charge bonus
-                char.ndb.charge_attack_bonus_active = True
-                splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} charge_attack_bonus_active set to True by successful charge.")
-                
-                char.msg(f"|gYou charge {target.key} and slam into melee range! Your next attack will have a bonus.|n")
-                target.msg(f"|r{char.key} charges at you and crashes into melee range!|n")
-                char.location.msg_contents(f"|y{char.key} charges at {target.key} with reckless abandon!|n", exclude=[char, target])
-                splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} successfully charged {target.key}.")
-            else:
-                # Failure - charge penalty
-                char.msg(f"|rYour reckless charge at {target.key} fails spectacularly!|n")
-                target.msg(f"|y{char.key} charges at you but you dodge, leaving them off-balance!|n")
-                char.location.msg_contents(f"|y{char.key} charges recklessly at {target.key} but misses and stumbles!|n", exclude=[char, target])
-                
-                # Check if target has ranged weapon for bonus attack
-                if is_wielding_ranged_weapon(target):
-                    self.resolve_bonus_attack(target, char)
-                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed charge against ranged weapon user {target.key}, bonus attack triggered.")
-                
-                # Apply charge failure penalty
-                # TODO: charge_penalty is set but never read — implement penalty
-                # mechanic (e.g., reduced dodge or accuracy next round) or remove
-                char.ndb.charge_penalty = True
-                char.msg("|rYour failed charge leaves you off-balance!|n")
-                splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed charge on {target.key}, penalty applied.")
-        else:
-            # Different room charge - move to target's room
-            managed_rooms = self.db.managed_rooms or []
-            if target.location not in managed_rooms:
-                char.msg(f"|r{target.key} is not in a room you can charge to.|n")
-                return
-            
-            # Check for valid path
-            target_room = target.location
-            exits_to_target = [ex for ex in char.location.exits if ex.destination == target_room]
-            
-            if not exits_to_target:
-                char.msg(f"|rThere is no clear path to charge at {target.key}.|n")
-                return
-            
-            # Check if target has ranged weapon
-            target_has_ranged = is_wielding_ranged_weapon(target)
-            
-            # Charge uses disadvantage for cross-room
-            char_motorics = get_numeric_stat(char, "motorics")
-            target_motorics = get_numeric_stat(target, "motorics")
-            
-            charge_roll, roll1, roll2 = roll_with_disadvantage(char_motorics)
-            resist_roll, r_roll1, r_roll2 = standard_roll(target_motorics)
-            
-            splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE_CROSS_ROOM: {char.key} (motorics:{char_motorics}, disadvantage:{roll1},{roll2}>>{charge_roll}) vs {target.key} (motorics:{target_motorics}, roll:{resist_roll})")
-            
-            if charge_roll > resist_roll:
-                # Success - move and establish proximity
-                # NOTE: Strict > means ties favor the target (defender). This is intentional.
-                exit_to_use = exits_to_target[0]
-                char.move_to(target_room)
-                
-                # Check if charger is grappling someone and release them
-                if entry.get(DB_GRAPPLING_DBREF):
-                    grappled_victim = self.get_grappling_obj(entry)
-                    
-                    if grappled_victim:
-                        # Release the grapple - update the actual combatants list
-                        for combatant_entry in combatants_list:
-                            if combatant_entry.get(DB_CHAR) == char:
-                                combatant_entry[DB_GRAPPLING_DBREF] = None
-                            elif combatant_entry.get(DB_CHAR) == grappled_victim:
-                                combatant_entry[DB_GRAPPLED_BY_DBREF] = None
-                        
-                        # Announce grapple release (victim might be in different room now)
-                        char.msg(f"|yYou release your grapple on {grappled_victim.get_display_name(char)} as you charge away!|n")
-                        if grappled_victim.access(char, "view"):
-                            grappled_victim.msg(f"|y{char.get_display_name(grappled_victim)} releases their grapple on you and charges away!|n")
-                        
-                        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE_GRAPPLE_RELEASE: {char.key} released grapple on {grappled_victim.key} due to successful cross-room charge.")
-                
-                # Check for rigged grenades after successful movement
-                from commands.CmdThrow import check_rigged_grenade, check_auto_defuse
-                check_rigged_grenade(char, exit_to_use)
-                
-                # Check for auto-defuse opportunities after charging to new room
-                check_auto_defuse(char)
-                
-                clear_aim_state(char)
-                establish_proximity(char, target)
-                
-                # Update target on successful charge
-                self.set_target(char, target)
-                
-                # Set charge bonus
-                char.ndb.charge_attack_bonus_active = True
-                splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} charge_attack_bonus_active set to True by successful cross-room charge.")
-                
-                char.msg(f"|gYou charge recklessly through the {exit_to_use.key} and crash into melee with {target.key}! Your next attack will have a bonus.|n")
-                target.msg(f"|r{char.key} charges recklessly through the {exit_to_use.key} and crashes into melee with you!|n")
-                char.location.msg_contents(f"|y{char.key} charges recklessly from {exit_to_use.get_return_exit().key if exit_to_use.get_return_exit() else 'elsewhere'} and crashes into melee!|n", exclude=[char, target])
-                splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} successfully charged cross-room and engaged {target.key} in melee.")
-            else:
-                # Failure - charge penalty and potential ranged attack
-                clear_aim_state(char)
-                
-                if target_has_ranged:
-                    char.msg(f"|r{target.key} stops your reckless charge with covering fire!|n")
-                    target.msg(f"|gYou stop {char.key}'s reckless charge with your ranged weapon!|n")
-                    
-                    # Trigger bonus attack
-                    self.resolve_bonus_attack(target, char)
-                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed cross-room charge against ranged weapon user {target.key}, bonus attack triggered.")
-                else:
-                    char.msg(f"|rYour reckless charge at {target.key} fails as you stumble at the entrance!|n")
-                    target.msg(f"|y{char.key} attempts to charge at you but stumbles at the entrance!|n")
-                    splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed cross-room charge on {target.key}.")
-                
-                # Apply charge failure penalty
-                # TODO: charge_penalty is set but never read — implement penalty
-                # mechanic (e.g., reduced dodge or accuracy next round) or remove
-                char.ndb.charge_penalty = True
-                char.msg("|rYour failed charge leaves you off-balance!|n")
-
-    def _resolve_disarm(self, char, entry):
-        """Resolve a disarm action."""
-        from random import randint
-        from .utils import get_numeric_stat, initialize_proximity_ndb, roll_stat, log_combat_action
-        from .proximity import is_in_proximity
-        from .constants import (
-            SPLATTERCAST_CHANNEL, DEBUG_PREFIX_HANDLER, MSG_DISARM_FAILED, MSG_DISARM_RESISTED,
-            MSG_DISARM_TARGET_EMPTY_HANDS, MSG_DISARM_NOTHING_TO_DISARM, MSG_DISARM_SUCCESS_ATTACKER,
-            MSG_DISARM_SUCCESS_VICTIM, MSG_DISARM_SUCCESS_OBSERVER
-        )
-        
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        target = entry.get(DB_COMBAT_ACTION_TARGET)
-        
-        if not target:
-            char.msg("|rNo target specified for disarm action.|n")
-            return
-        
-        # Validate target is still in combat and same room
-        if target.location != char.location:
-            char.msg(f"|r{target.key} is no longer in the same room.|n")
-            return
-        
-        combatants_list = self.db.combatants or []
-        if not any(e[DB_CHAR] == target for e in combatants_list):
-            char.msg(f"|r{target.key} is no longer in combat.|n")
-            return
-        
-        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_DISARM: {char.key} executing disarm action on {target.key}.")
-        
-        # Check proximity
-        initialize_proximity_ndb(char)
-        if not is_in_proximity(char, target):
-            char.msg(f"|rYou must be in melee proximity with {target.key} to disarm them.|n")
-            return
-        
-        # Check target's hands (hands is an AttributeProperty on Character)
-        hands = target.hands if target.hands is not None else {}
-        if not hands:
-            char.msg(MSG_DISARM_TARGET_EMPTY_HANDS.format(target=target.key))
-            log_combat_action(char, "disarm_fail", target, details="target has nothing in their hands")
-            return
-        
-        # Find weapon to disarm (prioritize weapons, then any held item)
-        weapon_hand = None
-        for hand, item in hands.items():
-            if item and item.db.weapon_type:
-                weapon_hand = hand
-                break
-        
-        if not weapon_hand:
-            for hand, item in hands.items():
-                if item:
-                    weapon_hand = hand
-                    break
-        
-        if not weapon_hand:
-            char.msg(MSG_DISARM_NOTHING_TO_DISARM.format(target=target.key))
-            log_combat_action(char, "disarm_fail", target, details="nothing found to disarm")
-            return
-        
-        # Grit vs Grit opposed roll
-        disarm_roll = roll_stat(char, "grit")
-        resist_roll = roll_stat(target, "grit")
-        
-        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_DISARM: {char.key} (grit roll:{disarm_roll}) vs {target.key} (grit roll:{resist_roll})")
-        log_combat_action(char, "disarm_attempt", target, details=f"rolls {disarm_roll} (grit) vs {resist_roll} (grit)")
-        
-        if disarm_roll <= resist_roll:
-            char.msg(MSG_DISARM_FAILED.format(target=target.key))
-            target.msg(MSG_DISARM_RESISTED.format(attacker=char.key))
-            log_combat_action(char, "disarm_fail", target, success=False)
-            splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_DISARM: {char.key} failed to disarm {target.key}.")
-            return
-        
-        # Success - disarm the item
-        item = hands[weapon_hand]
-        hands[weapon_hand] = None
-        item.move_to(target.location, quiet=True)
-        
-        char.msg(MSG_DISARM_SUCCESS_ATTACKER.format(target=target.key, item=item.key))
-        target.msg(MSG_DISARM_SUCCESS_VICTIM.format(attacker=char.key, item=item.key))
-        target.location.msg_contents(
-            MSG_DISARM_SUCCESS_OBSERVER.format(attacker=char.key, target=target.key, item=item.key),
-            exclude=[char, target]
-        )
-        log_combat_action(char, "disarm_success", target, details=f"disarmed {item.key}")
-        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_DISARM: {char.key} successfully disarmed {item.key} from {target.key}.")
