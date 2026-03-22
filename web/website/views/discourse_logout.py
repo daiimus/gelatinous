@@ -32,6 +32,7 @@ from django.http import HttpResponseForbidden
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
+from urllib.parse import urlparse
 
 
 @csrf_exempt
@@ -70,7 +71,11 @@ def discourse_logout(request):
         # Require a valid Referer from the configured Discourse instance.
         # A missing Referer is rejected because attackers can trivially strip
         # it (e.g. <meta name="referrer" content="no-referrer">).
-        if not referer or not referer.startswith(discourse_url):
+        # Compare hostnames (not prefix) to prevent bypass via subdomains
+        # like https://forum.gel.monster.evil.com.
+        discourse_host = urlparse(discourse_url).hostname
+        referer_host = urlparse(referer).hostname if referer else None
+        if not referer_host or referer_host != discourse_host:
             return HttpResponseForbidden(
                 "Invalid logout request. "
                 "Please log out through your account page."

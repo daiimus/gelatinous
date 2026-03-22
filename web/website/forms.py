@@ -5,6 +5,8 @@ Extends Evennia's default forms to add GRIM stat system, name structure,
 and Cloudflare Turnstile verification.
 """
 
+import re
+
 from django import forms
 from evennia.web.website.forms import (
     CharacterForm as EvenniaCharacterForm,
@@ -22,6 +24,31 @@ SEX_CHOICES = [
     ('female', 'Female'),
     ('ambiguous', 'Ambiguous'),
 ]
+
+# Regex for validating character names: must start and end with a letter,
+# may contain letters, hyphens, and apostrophes in between.
+_NAME_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z\-']*[a-zA-Z]$")
+
+
+def _validate_name(name: str) -> str:
+    """Validate a character name component (first or last name).
+
+    Args:
+        name: The raw name string from the form.
+
+    Returns:
+        The stripped name if valid.
+
+    Raises:
+        forms.ValidationError: If the name doesn't match the allowed pattern.
+    """
+    name = name.strip()
+    if not _NAME_PATTERN.match(name):
+        raise forms.ValidationError(
+            "Name must start and end with a letter, and contain only "
+            "letters, hyphens, and apostrophes."
+        )
+    return name
 
 
 class CharacterForm(EvenniaCharacterForm):
@@ -128,27 +155,11 @@ class CharacterForm(EvenniaCharacterForm):
     
     def clean_first_name(self):
         """Validate first name format."""
-        import re
-        name = self.cleaned_data.get('first_name', '').strip()
-        
-        if not re.match(r"^[a-zA-Z][a-zA-Z\-']*[a-zA-Z]$", name):
-            raise forms.ValidationError(
-                "Name must start and end with a letter, and contain only letters, hyphens, and apostrophes."
-            )
-        
-        return name
+        return _validate_name(self.cleaned_data.get('first_name', ''))
     
     def clean_last_name(self):
         """Validate last name format."""
-        import re
-        name = self.cleaned_data.get('last_name', '').strip()
-        
-        if not re.match(r"^[a-zA-Z][a-zA-Z\-']*[a-zA-Z]$", name):
-            raise forms.ValidationError(
-                "Name must start and end with a letter, and contain only letters, hyphens, and apostrophes."
-            )
-        
-        return name
+        return _validate_name(self.cleaned_data.get('last_name', ''))
     
     def clean(self):
         """

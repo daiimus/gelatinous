@@ -18,11 +18,7 @@ References:
 """
 
 import requests
-import hmac
-import hashlib
-import base64
 import logging
-from urllib.parse import urlencode, parse_qs
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
@@ -41,7 +37,7 @@ def get_discourse_user_id(user):
     # avoids Cloudflare WAF/challenge issues). Falls back to public URL.
     discourse_url = (
         getattr(settings, 'DISCOURSE_INTERNAL_URL', None)
-        or getattr(settings, 'DISCOURSE_URL', 'https://forum.gel.monster')
+        or getattr(settings, 'DISCOURSE_URL', None)
     )
     api_key = getattr(settings, 'DISCOURSE_API_KEY', None)
 
@@ -83,7 +79,7 @@ def logout_discourse_user(discourse_user_id):
     # avoids Cloudflare WAF/challenge issues). Falls back to public URL.
     discourse_url = (
         getattr(settings, 'DISCOURSE_INTERNAL_URL', None)
-        or getattr(settings, 'DISCOURSE_URL', 'https://forum.gel.monster')
+        or getattr(settings, 'DISCOURSE_URL', None)
     )
     api_key = getattr(settings, 'DISCOURSE_API_KEY', None)
 
@@ -114,7 +110,7 @@ def logout_discourse_user(discourse_user_id):
 
 
 @login_required
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["POST"])
 def logout_with_discourse(request):
     """
     Log out from Django and optionally from Discourse.
