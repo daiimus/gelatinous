@@ -18,6 +18,8 @@ from evennia.comms.models import ChannelDB
 
 from world.combat.constants import (
     NDB_COMBAT_HANDLER,
+    NDB_COUNTDOWN_REMAINING,
+    NDB_GRENADE_TIMER,
     SPLATTERCAST_CHANNEL,
     NDB_PROXIMITY,
     NDB_SKIP_ROUND,
@@ -186,7 +188,7 @@ class CmdJump(Command):
         
         # Determine explosive state for delayed revelation
         is_armed = explosive.db.pin_pulled
-        remaining_time = getattr(explosive.ndb, "countdown_remaining", None)
+        remaining_time = getattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, None)
         has_active_countdown = remaining_time is not None and remaining_time > 0
         
         # Always allow the heroic leap - false heroics are part of the drama!
@@ -210,15 +212,15 @@ class CmdJump(Command):
         # Stop the grenade timer immediately to prevent race conditions
         if is_armed and has_active_countdown:
             # Cancel delay timers stored in NDB (prevent original timer from firing)
-            if hasattr(explosive.ndb, "grenade_timer"):
-                timer = getattr(explosive.ndb, "grenade_timer", None)
+            if hasattr(explosive.ndb, NDB_GRENADE_TIMER):
+                timer = getattr(explosive.ndb, NDB_GRENADE_TIMER, None)
                 if timer:
                     try:
                         timer.cancel()  # Cancel the utils.delay timer
                         splattercast.msg(f"JUMP_SACRIFICE: Cancelled original grenade timer on {explosive.key}")
                     except Exception:
                         splattercast.msg(f"JUMP_SACRIFICE: Failed to cancel original grenade timer on {explosive.key}")
-                delattr(explosive.ndb, "grenade_timer")
+                delattr(explosive.ndb, NDB_GRENADE_TIMER)
             
             # Stop any timer scripts
             for script in explosive.scripts.all():
@@ -331,8 +333,8 @@ class CmdJump(Command):
                         splattercast.msg(f"JUMP_SACRIFICE: Stopped remaining timer script {script.key} on {explosive.key}")
                 
                 # Clear explosive's timer attributes
-                if hasattr(explosive.ndb, "countdown_remaining"):
-                    delattr(explosive.ndb, "countdown_remaining")
+                if hasattr(explosive.ndb, NDB_COUNTDOWN_REMAINING):
+                    delattr(explosive.ndb, NDB_COUNTDOWN_REMAINING)
                 
                 splattercast.msg(f"JUMP_SACRIFICE: Final cleanup - stopped {timer_scripts_stopped} remaining scripts, cleared countdown attributes")
                 

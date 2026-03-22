@@ -21,12 +21,13 @@ from world.combat.constants import (
     MSG_STOP_NOT_REGISTERED, MSG_STOP_YIELDING, MSG_STOP_ALREADY_ACCEPTING_GRAPPLE,
     MSG_STOP_ALREADY_YIELDING, MSG_RESUME_ATTACKING, MSG_GRAPPLE_VIOLENT_SWITCH,
     DEBUG_PREFIX_ATTACK, DEBUG_FAILSAFE, DEBUG_SUCCESS, DEBUG_FAIL,
+    DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_IS_YIELDING,
     NDB_PROXIMITY, NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY,
     NDB_AIMING_DIRECTION, SPLATTERCAST_CHANNEL,
 )
 from world.combat.handler import get_or_create_combat
 from world.combat.messages import get_combat_message
-from world.combat.proximity import establish_proximity, break_proximity, is_in_proximity
+from world.combat.proximity import establish_proximity
 from world.combat.utils import (
     initialize_proximity_ndb, get_wielded_weapon, get_numeric_stat,
 )
@@ -269,12 +270,12 @@ class CmdAttack(Command):
                 combatants_copy = final_handler.db.combatants or []
                 caller_entry_copy = next((e for e in combatants_copy if e.get("char") == caller), None)
                 if caller_entry_copy:
-                    caller_entry_copy["combat_action"] = None
-                    caller_entry_copy["combat_action_target"] = None
+                    caller_entry_copy[DB_COMBAT_ACTION] = None
+                    caller_entry_copy[DB_COMBAT_ACTION_TARGET] = None
                     
                     # Check if caller was yielding and provide appropriate messaging
-                    was_yielding = caller_entry_copy.get("is_yielding", False)
-                    caller_entry_copy["is_yielding"] = False
+                    was_yielding = caller_entry_copy.get(DB_IS_YIELDING, False)
+                    caller_entry_copy[DB_IS_YIELDING] = False
                     
                     # Save the modified combatants list back
                     final_handler.db.combatants = combatants_copy
@@ -526,14 +527,14 @@ class CmdStop(Command):
             # Check if being grappled - different message in this case
             grappler_obj = handler.get_grappled_by_obj(caller_entry)
             if grappler_obj:
-                if not caller_entry.get("is_yielding", False):
-                    caller_entry["is_yielding"] = True
+                if not caller_entry.get(DB_IS_YIELDING, False):
+                    caller_entry[DB_IS_YIELDING] = True
                     caller.msg(MSG_STOP_YIELDING)
                 else:
                     caller.msg(MSG_STOP_ALREADY_ACCEPTING_GRAPPLE)
             else:
-                if not caller_entry.get("is_yielding", False):
-                    caller_entry["is_yielding"] = True
+                if not caller_entry.get(DB_IS_YIELDING, False):
+                    caller_entry[DB_IS_YIELDING] = True
                     caller.msg(MSG_STOP_YIELDING)
                 else:
                     caller.msg(MSG_STOP_ALREADY_YIELDING)
@@ -556,7 +557,7 @@ class CmdStop(Command):
             aimer.override_place = ""
             
             # If target is still aiming at aimer, revert them to normal aiming
-            target_still_aiming = getattr(target.ndb, "aiming_at", None)
+            target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
             if target_still_aiming == aimer:
                 target.override_place = f"aiming carefully at {aimer.key}."
             else:
