@@ -40,10 +40,7 @@ class CmdEmailConnect(MuxCommand):
         # Look up account by email and verify password.
         # Use a generic error message for both "no account" and "wrong password"
         # to prevent user enumeration attacks.
-        try:
-            account = AccountDB.objects.filter(email__iexact=email).first()
-        except AccountDB.DoesNotExist:
-            account = None
+        account = AccountDB.objects.filter(email__iexact=email).first()
 
         if not account or not account.check_password(password):
             session.msg("Invalid email or password.")

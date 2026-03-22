@@ -181,6 +181,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdClothing.CmdWear())
         self.add(CmdClothing.CmdRemove())
         self.add(CmdClothing.CmdRollUp())
+        self.add(CmdClothing.CmdZip())
         
         # Add armor system commands
         self.add(CmdArmor())
@@ -214,8 +215,6 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdMedicalItems.CmdListMedItems())
         self.add(CmdMedicalItems.CmdMedItemInfo())
         self.add(CmdMedicalItems.CmdRefillMedItem())
-        
-        self.add(CmdClothing.CmdZip())
         
         # Add shop commands
         self.add(CmdBuy())

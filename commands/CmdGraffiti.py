@@ -11,6 +11,13 @@ from typeclasses.items import SprayCanItem, SolventCanItem
 from typeclasses.objects import GraffitiObject, BloodPool
 import random
 
+# Map color names to Evennia ANSI color codes
+GRAFFITI_COLOR_MAP = {
+    'red': 'r', 'blue': 'b', 'green': 'g', 'yellow': 'y',
+    'magenta': 'm', 'cyan': 'c', 'white': 'w', 'black': 'x',
+    'purple': 'm', 'pink': 'm', 'orange': 'y',
+}
+
 
 class CmdGraffiti(Command):
     """
@@ -158,12 +165,7 @@ class CmdGraffiti(Command):
         graffiti_obj.add_graffiti(message, current_color, self.caller)
         
         # Messages - using proper Evennia color formatting
-        color_map = {
-            'red': 'r', 'blue': 'b', 'green': 'g', 'yellow': 'y',
-            'magenta': 'm', 'cyan': 'c', 'white': 'w', 'black': 'x',
-            'purple': 'm', 'pink': 'm', 'orange': 'y'
-        }
-        color_code = color_map.get(current_color.lower() if current_color else 'white', 'w')
+        color_code = GRAFFITI_COLOR_MAP.get(current_color.lower() if current_color else 'white', 'w')
         colored_message = f"|{color_code}{message}|n"
         
         # Create appropriate message based on whether can ran out
@@ -381,12 +383,7 @@ class CmdPress(Command):
             return
         
         # Messages - color was successfully changed by set_color()
-        color_map = {
-            'red': 'r', 'blue': 'b', 'green': 'g', 'yellow': 'y',
-            'magenta': 'm', 'cyan': 'c', 'white': 'w', 'black': 'x',
-            'purple': 'm', 'pink': 'm', 'orange': 'y'
-        }
-        color_code = color_map.get(new_color.lower(), 'w')
+        color_code = GRAFFITI_COLOR_MAP.get(new_color.lower(), 'w')
         colored_name = f"|{color_code}{new_color}|n"
         
         self.caller.msg(f"You press the {colored_name} button on {spray_can.get_display_name(self.caller)}.")
