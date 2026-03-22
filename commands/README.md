@@ -1,14 +1,35 @@
 # commands/
 
-This folder holds modules for implementing one's own commands and
-command sets. All the modules' classes are essentially empty and just
-imports the default implementations from Evennia; so adding anything
-to them will start overloading the defaults. 
+Game commands organized by functionality. Each module implements one or more Evennia `Command` subclasses.
 
-You can change the organisation of this directory as you see fit, just
-remember that if you change any of the default command set classes'
-locations, you need to add the appropriate paths to
-`server/conf/settings.py` so that Evennia knows where to find them.
-Also remember that if you create new sub directories you must put
-(optionally empty) `__init__.py` files in there so that Python can
-find your modules.
+## Command Modules
+
+| Module | Description |
+|--------|-------------|
+| `combat/` | Combat command subpackage (attack, movement, grapple, aim, etc.) |
+| `charcreate.py` | EvMenu-based character creation flow |
+| `CmdAdmin.py` | Administrative and builder commands |
+| `CmdArmor.py` | Armor inspection and coverage display |
+| `CmdBug.py` | In-game bug reporting |
+| `CmdCharacter.py` | Character sheet, stats, and appearance |
+| `CmdClothing.py` | Wearing and removing clothing |
+| `CmdConsumption.py` | Eating and drinking |
+| `CmdExplosives.py` | Grenade and explosive device commands |
+| `CmdFixCharacterOwnership.py` | Admin tool for repairing character ownership |
+| `CmdGraffiti.py` | Spray-painting and environmental writing |
+| `CmdInventory.py` | Inventory management: wield, get, drop, give, wrest, frisk |
+| `CmdMedical.py` | Medical status and diagnostic commands |
+| `CmdMedicalItems.py` | Medical item usage and management |
+| `CmdSpawnMob.py` | NPC spawning with randomized stats (builder+) |
+| `CmdThrow.py` | Cross-room projectile throwing |
+| `default_cmdsets.py` | Command set definitions (which commands are available where) |
+| `explosion_utils.py` | Shared explosion/blast radius logic |
+| `shop.py` | Shop browsing, buying, and selling |
+| `unloggedin_email.py` | Email-based login/registration commands |
+
+## Command Sets
+
+`default_cmdsets.py` defines the command sets that determine which commands are available:
+- **CharacterCmdSet** -- Commands available to in-game characters
+- **AccountCmdSet** -- Commands available at the account level
+- **UnloggedinCmdSet** -- Commands available before login (handled by `unloggedin_email.py`)
