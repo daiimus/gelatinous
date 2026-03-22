@@ -82,7 +82,7 @@ def notify_adjacent_rooms_of_explosion(explosion_room):
 def check_rigged_grenade(character, exit_obj):
     """Check if character triggers a rigged grenade. Character should already be at destination."""
     # Initialize Splattercast for debug logging
-    splattercast = ChannelDB.objects.get_channel("Splattercast")
+    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
 
     # Check if there's a rigged grenade on this exit
     rigged_grenade = exit_obj.db.rigged_grenade
@@ -385,8 +385,6 @@ def explode_standalone_grenade(grenade):
 
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Grenade {grenade} is not a dud, proceeding with explosion")
 
-        splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Grenade {grenade} is not a dud, proceeding with explosion")
-
         # Get blast damage
         blast_damage = grenade.db.blast_damage if grenade.db.blast_damage is not None else 10
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Blast damage: {blast_damage}")
@@ -474,7 +472,6 @@ def explode_standalone_grenade(grenade):
         else:
             # Normal room explosion
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Handling normal room explosion")
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             if grenade.location:
                 explosion_msg = MSG_GRENADE_EXPLODE_ROOM.format(grenade=grenade.key)
                 splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Standalone explosion sending message to room {grenade.location}: {explosion_msg}")

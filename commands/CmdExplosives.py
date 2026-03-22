@@ -1226,8 +1226,8 @@ class CmdClearDetonator(Command):
     You must be wielding or holding the detonator to use it.
     """
 
-    key = "clear"
-    aliases = ["detonator clear"]
+    key = "detonator clear"
+    aliases = ["clear"]
     locks = "cmd:all()"
     help_category = "Combat"
 
