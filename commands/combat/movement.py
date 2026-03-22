@@ -18,19 +18,17 @@ from evennia.comms.models import ChannelDB
 from world.combat.constants import (
     MSG_NOTHING_TO_FLEE, MSG_FLEE_NO_EXITS, MSG_FLEE_PINNED_BY_AIM, MSG_FLEE_TRAPPED_IN_COMBAT,
     MSG_FLEE_ALL_EXITS_COVERED, MSG_FLEE_BREAK_FREE_AIM, MSG_FLEE_FAILED_BREAK_AIM,
-    MSG_FLEE_COMBAT_FAILED, MSG_FLEE_NO_TARGET_ERROR, MSG_FLEE_DISENGAGE_NO_ATTACKERS,
-    MSG_FLEE_DISENGAGE_SUCCESS_GENERIC, MSG_FLEE_PARTIAL_SUCCESS, MSG_FLEE_AIM_BROKEN_NO_MOVE,
     MSG_RETREAT_NOT_IN_COMBAT, MSG_RETREAT_COMBAT_DATA_MISSING, MSG_RETREAT_PROXIMITY_UNCLEAR,
-    MSG_RETREAT_NO_PROXIMITY, MSG_RETREAT_SUCCESS, MSG_RETREAT_FAILED, MSG_CANNOT_WHILE_GRAPPLED_RETREAT,
+    MSG_RETREAT_NO_PROXIMITY, MSG_CANNOT_WHILE_GRAPPLED_RETREAT,
     MSG_ADVANCE_NOT_IN_COMBAT, MSG_ADVANCE_COMBAT_DATA_MISSING, MSG_ADVANCE_NO_TARGET, MSG_ADVANCE_SELF_TARGET,
     MSG_CHARGE_NOT_IN_COMBAT, MSG_CHARGE_COMBAT_DATA_MISSING, MSG_CHARGE_NO_TARGET, MSG_CHARGE_SELF_TARGET,
-    MSG_CHARGE_FAILED_PENALTY,
     DEBUG_PREFIX_FLEE, DEBUG_PREFIX_RETREAT, DEBUG_PREFIX_ADVANCE, DEBUG_PREFIX_CHARGE,
-    DEBUG_SUCCESS, DEBUG_FAIL, DEBUG_ERROR,
-    NDB_PROXIMITY, NDB_SKIP_ROUND, SPLATTERCAST_CHANNEL,
-    COMBAT_ACTION_RETREAT, MSG_RETREAT_PREPARE, MSG_RETREAT_QUEUE_SUCCESS,
-    COMBAT_ACTION_ADVANCE, MSG_ADVANCE_PREPARE, MSG_ADVANCE_QUEUE_SUCCESS,
-    COMBAT_ACTION_CHARGE, MSG_CHARGE_PREPARE, MSG_CHARGE_QUEUE_SUCCESS,
+    DEBUG_FAIL, DEBUG_ERROR,
+    NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY, NDB_PROXIMITY, NDB_SKIP_ROUND,
+    SPLATTERCAST_CHANNEL,
+    COMBAT_ACTION_RETREAT, MSG_RETREAT_PREPARE,
+    COMBAT_ACTION_ADVANCE, MSG_ADVANCE_PREPARE,
+    COMBAT_ACTION_CHARGE, MSG_CHARGE_PREPARE,
 )
 
 # Re-export CmdJump and apply_gravity_to_items for backward compatibility.
@@ -77,10 +75,10 @@ class CmdFlee(Command):
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_COOLDOWN: {caller.key} attempted to flee but already tried this round.")
             return
         
-        original_handler_at_flee_start = getattr(caller.ndb, "combat_handler", None)
+        original_handler_at_flee_start = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
         # This is the specific character who has an NDB-level aim lock on the caller.
         # This aimer could be in the same room or an adjacent one.
-        ndb_aimer_locking_caller = getattr(caller.ndb, "aimed_at_by", None) 
+        ndb_aimer_locking_caller = getattr(caller.ndb, NDB_AIMED_AT_BY, None) 
 
         splattercast.msg(f"{DEBUG_PREFIX_FLEE}_DEBUG ({caller.key}): Initial Handler='{original_handler_at_flee_start.key if original_handler_at_flee_start else None}', NDB Aimer='{ndb_aimer_locking_caller.key if ndb_aimer_locking_caller else None}'")
 
@@ -124,7 +122,7 @@ class CmdFlee(Command):
                         if char_in_dest == caller or not hasattr(char_in_dest, "ndb"): continue
                         
                         # Check if char_in_dest is in combat, targeting caller, with a ranged weapon
-                        other_h = getattr(char_in_dest.ndb, "combat_handler", None)
+                        other_h = getattr(char_in_dest.ndb, NDB_COMBAT_HANDLER, None)
                         if other_h and other_h.db.combat_is_running and other_h.db.combatants:
                             other_entry = next((e for e in other_h.db.combatants if e["char"] == char_in_dest), None)
                             if other_entry and other_h.get_target_obj(other_entry) == caller:
@@ -163,10 +161,10 @@ class CmdFlee(Command):
             # Stale/Invalid Aim Check
             if not current_aimer_for_break_attempt.location or \
                current_aimer_for_break_attempt.location != caller.location or \
-               getattr(current_aimer_for_break_attempt.ndb, "aiming_at", None) != caller:
+               getattr(current_aimer_for_break_attempt.ndb, NDB_AIMING_AT, None) != caller:
                 caller.msg(f"The one aiming at you ({current_aimer_for_break_attempt.get_display_name(caller)}) seems to have stopped or departed; you are no longer locked by their aim.")
-                if hasattr(caller.ndb, "aimed_at_by"): del caller.ndb.aimed_at_by
-                if hasattr(current_aimer_for_break_attempt.ndb, "aiming_at") and current_aimer_for_break_attempt.ndb.aiming_at == caller:
+                if hasattr(caller.ndb, NDB_AIMED_AT_BY): del caller.ndb.aimed_at_by
+                if hasattr(current_aimer_for_break_attempt.ndb, NDB_AIMING_AT) and current_aimer_for_break_attempt.ndb.aiming_at == caller:
                     del current_aimer_for_break_attempt.ndb.aiming_at
                 splattercast.msg(f"{DEBUG_PREFIX_FLEE}_CMD (AIM_BREAK_PHASE): NDB Aim lock on {caller.key} by {current_aimer_for_break_attempt.key} was stale/invalid. Lock broken.")
                 current_aimer_for_break_attempt = None 
@@ -188,12 +186,12 @@ class CmdFlee(Command):
                     if hasattr(current_aimer_for_break_attempt, "clear_aim_state"):
                         current_aimer_for_break_attempt.clear_aim_state(reason_for_clearing=f"as {caller.key} breaks free")
                     else: # Fallback if clear_aim_state is missing on aimer
-                        if hasattr(current_aimer_for_break_attempt.ndb, "aiming_at"): 
+                        if hasattr(current_aimer_for_break_attempt.ndb, NDB_AIMING_AT): 
                             del current_aimer_for_break_attempt.ndb.aiming_at
                         # Clear override_place and handle mutual showdown cleanup
                         self._clear_aim_override_place_on_flee(current_aimer_for_break_attempt, caller)
                     
-                    if hasattr(caller.ndb, "aimed_at_by"): del caller.ndb.aimed_at_by # Clear on caller too
+                    if hasattr(caller.ndb, NDB_AIMED_AT_BY): del caller.ndb.aimed_at_by # Clear on caller too
                     
                     splattercast.msg(f"{DEBUG_PREFIX_FLEE}_AIM_SUCCESS: {caller.key} broke free from {current_aimer_for_break_attempt.key}'s NDB aim.")
                     current_aimer_for_break_attempt = None # Successfully broke this aim
@@ -322,7 +320,7 @@ class CmdFlee(Command):
                     for char_in_dest in destination.contents:
                         if char_in_dest == caller or not hasattr(char_in_dest, "ndb"):
                             continue
-                        other_handler = getattr(char_in_dest.ndb, "combat_handler", None)
+                        other_handler = getattr(char_in_dest.ndb, NDB_COMBAT_HANDLER, None)
                         if other_handler and other_handler.db.combat_is_running:
                             other_entry = next((e for e in (other_handler.db.combatants or []) if e["char"] == char_in_dest), None)
                             if other_entry and original_handler_at_flee_start.get_target_obj(other_entry) == caller:
@@ -398,7 +396,7 @@ class CmdFlee(Command):
             aimer.override_place = ""
             
             # If target is still aiming at aimer, revert them to normal aiming
-            target_still_aiming = getattr(target.ndb, "aiming_at", None)
+            target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
             if target_still_aiming == aimer:
                 target.override_place = f"aiming carefully at {aimer.key}."
             else:
@@ -430,7 +428,7 @@ class CmdRetreat(Command):
     def func(self):
         caller = self.caller
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        handler = getattr(caller.ndb, "combat_handler", None)
+        handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
 
         if not handler:
             caller.msg(MSG_RETREAT_NOT_IN_COMBAT)
@@ -449,7 +447,7 @@ class CmdRetreat(Command):
             splattercast.msg(f"{DEBUG_PREFIX_RETREAT}_{DEBUG_FAIL}: {caller.key} attempted to retreat while grappled by {grappler_obj.key if grappler_obj else 'Unknown'}.")
             return
 
-        if not hasattr(caller.ndb, "in_proximity_with") or not isinstance(caller.ndb.in_proximity_with, set):
+        if not hasattr(caller.ndb, NDB_PROXIMITY) or not isinstance(caller.ndb.in_proximity_with, set):
             caller.msg(MSG_RETREAT_PROXIMITY_UNCLEAR)
             splattercast.msg(f"{DEBUG_PREFIX_RETREAT}_{DEBUG_ERROR}: {caller.key} ndb.in_proximity_with missing or not a set.")
             # Initialize it as a failsafe, though it should be set by handler
@@ -573,7 +571,7 @@ class CmdAdvance(Command):
             return
 
         # Check if already in proximity
-        if hasattr(caller.ndb, "in_proximity_with") and caller.ndb.in_proximity_with and target in caller.ndb.in_proximity_with:
+        if hasattr(caller.ndb, NDB_PROXIMITY) and caller.ndb.in_proximity_with and target in caller.ndb.in_proximity_with:
             caller.msg(f"You are already in melee proximity with {target.get_display_name(caller)}.")
             return
 
@@ -612,7 +610,7 @@ class CmdCharge(Command):
         caller = self.caller
         args = self.args.strip()
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        handler = getattr(caller.ndb, "combat_handler", None)
+        handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
 
         if not handler:
             caller.msg(MSG_CHARGE_NOT_IN_COMBAT)
@@ -738,7 +736,7 @@ class CmdCharge(Command):
             return
 
         # Check if already in proximity
-        if hasattr(caller.ndb, "in_proximity_with") and caller.ndb.in_proximity_with and target in caller.ndb.in_proximity_with:
+        if hasattr(caller.ndb, NDB_PROXIMITY) and caller.ndb.in_proximity_with and target in caller.ndb.in_proximity_with:
             caller.msg(f"You are already in melee proximity with {target.get_display_name(caller)}.")
             return
 
