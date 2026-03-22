@@ -38,7 +38,6 @@ These attributes drive contested rolls, skill checks, and combat resolution thro
 - **96 Weapon Message Templates** -- Three-perspective combat narration (attacker, victim, observer) per weapon type
 - **GMCP WebSocket** -- Custom WebSocket handler speaking GMCP wire format for MUD client compatibility
 - **Web Authentication** -- Email-based login, Discourse SSO integration, Cloudflare Turnstile CAPTCHA
-- **Security Middleware** -- CSP headers, X-Frame-Options, SecurityMiddleware chain
 - **Natural Language Parsing** -- Ordinal number recognition and flexible command parsing
 
 ## Quick Start
