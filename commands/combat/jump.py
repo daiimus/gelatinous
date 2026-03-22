@@ -17,6 +17,7 @@ from evennia.utils.utils import delay
 from evennia.comms.models import ChannelDB
 
 from world.combat.constants import (
+    NDB_COMBAT_HANDLER,
     SPLATTERCAST_CHANNEL,
     NDB_PROXIMITY,
     NDB_SKIP_ROUND,
@@ -55,6 +56,19 @@ class CmdJump(Command):
     key = "jump"
     locks = "cmd:all()"
     help_category = "Combat"
+
+    DIRECTION_OPPOSITES = {
+        "north": "south", "n": "s",
+        "south": "north", "s": "n",
+        "east": "west", "e": "w",
+        "west": "east", "w": "e",
+        "northeast": "southwest", "ne": "sw",
+        "northwest": "southeast", "nw": "se",
+        "southeast": "northwest", "se": "nw",
+        "southwest": "northeast", "sw": "ne",
+        "up": "down", "u": "d",
+        "down": "up", "d": "u",
+    }
     
     def parse(self):
         """Parse jump command with syntax detection."""
@@ -116,7 +130,7 @@ class CmdJump(Command):
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         
         # Check if caller is being grappled (can't sacrifice while restrained)
-        handler = getattr(self.caller.ndb, "combat_handler", None)
+        handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
         if handler:
             combatants_list = handler.db.combatants or []
             caller_entry = next((e for e in combatants_list if e.get("char") == self.caller), None)
@@ -166,8 +180,6 @@ class CmdJump(Command):
         
         # Always allow the heroic leap - false heroics are part of the drama!
         
-        # Always allow the heroic leap - false heroics are part of the drama!
-        
         splattercast.msg(f"JUMP_SACRIFICE: {self.caller.key} attempting heroic sacrifice on {explosive.key} (armed:{is_armed}, countdown:{remaining_time}).")
         
         # Calculate revelation timing - hybrid approach
@@ -207,7 +219,7 @@ class CmdJump(Command):
         self.caller.ndb.performing_sacrifice = True
         
         # Check if hero is grappling someone for initial messaging
-        handler = getattr(self.caller.ndb, "combat_handler", None)
+        handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
         grappled_victim_preview = None
         if handler:
             combatants_list = handler.db.combatants or []
@@ -243,7 +255,7 @@ class CmdJump(Command):
                 # REAL HEROIC SACRIFICE WITH CRUEL GRAPPLING MECHANICS
                 
                 # Check if hero is grappling someone - implement human shield mechanics
-                handler = getattr(self.caller.ndb, "combat_handler", None)
+                handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
                 grappled_victim = None
                 shield_used = False
                 
@@ -289,7 +301,7 @@ class CmdJump(Command):
                     splattercast.msg(f"JUMP_SACRIFICE_HEROIC: {self.caller.key} absorbed {blast_damage} damage, protecting all others")
                 
                 # Move caller to explosive's location and inherit ALL its proximity relationships
-                from world.combat.proximity import establish_proximity, get_proximity_list
+                from world.combat.proximity import establish_proximity
                 
                 # Get everyone currently in proximity to the explosive
                 explosive_proximity = getattr(explosive.ndb, NDB_PROXIMITY, set())
@@ -364,7 +376,7 @@ class CmdJump(Command):
         grappled_victim = None
         
         # Check if caller is being grappled (can't jump while restrained)
-        handler = getattr(self.caller.ndb, "combat_handler", None)
+        handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
         if handler:
             combatants_list = handler.db.combatants or []
             caller_entry = next((e for e in combatants_list if e.get("char") == self.caller), None)
@@ -400,16 +412,6 @@ class CmdJump(Command):
         if not destination:
             self.caller.msg(f"The {self.direction} edge doesn't lead anywhere safe to land.")
             return
-        
-        # Check if caller is grappled (can't jump while grappled)
-        handler = getattr(self.caller.ndb, "combat_handler", None)
-        if handler:
-            caller_entry = next((e for e in (handler.db.combatants or []) if e.get("char") == self.caller), None)
-            if caller_entry:
-                grappler_obj = handler.get_grappled_by_obj(caller_entry)
-                if grappler_obj:
-                    self.caller.msg(f"You cannot jump while {grappler_obj.key} is grappling you!")
-                    return
         
         # Edge jumping always succeeds at getting off the edge - you're committed!
         # The skill check happens during the fall/landing phase
@@ -476,14 +478,16 @@ class CmdJump(Command):
         # Allow jump system to move through sky rooms
         self.caller.ndb.jump_movement_allowed = True
         self.caller.move_to(sky_room, quiet=True)
-        del self.caller.ndb.jump_movement_allowed
+        if hasattr(self.caller.ndb, "jump_movement_allowed"):
+            del self.caller.ndb.jump_movement_allowed
         
         # Move grappled victim along if any, but preserve the grapple relationship
         # for bodyshield mechanics during the fall
         if grappled_victim:
             grappled_victim.ndb.jump_movement_allowed = True
             grappled_victim.move_to(sky_room, quiet=True)
-            del grappled_victim.ndb.jump_movement_allowed
+            if hasattr(grappled_victim.ndb, "jump_movement_allowed"):
+                del grappled_victim.ndb.jump_movement_allowed
             grappled_victim.msg(f"|r{self.caller.key} drags you off the {self.direction} edge!|n")
             # Store bodyshield state to survive combat handler cleanup
             self.caller.ndb.bodyshield_victim = grappled_victim
@@ -507,7 +511,6 @@ class CmdJump(Command):
         self.caller.msg(f"|yYou leap from the {self.direction} edge and are now falling through the air!|n")
         
         # Message the room they left
-        original_location = self.caller.location
         if hasattr(self.caller, 'previous_location') and self.caller.previous_location:
             self.caller.previous_location.msg_contents(f"|y{self.caller.key} leaps off the {self.direction} edge!|n")
         
@@ -521,7 +524,7 @@ class CmdJump(Command):
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         
         # Check if caller is being grappled (can't jump while restrained)
-        handler = getattr(self.caller.ndb, "combat_handler", None)
+        handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
         if handler:
             combatants_list = handler.db.combatants or []
             caller_entry = next((e for e in combatants_list if e.get("char") == self.caller), None)
@@ -574,16 +577,6 @@ class CmdJump(Command):
         if not destination:
             self.caller.msg(f"The {self.direction} gap doesn't lead anywhere safe to land.")
             return
-        
-        # Check if caller is grappled (can't jump while grappled)
-        handler = getattr(self.caller.ndb, "combat_handler", None)
-        if handler:
-            caller_entry = next((e for e in (handler.db.combatants or []) if e.get("char") == self.caller), None)
-            if caller_entry:
-                grappler_obj = handler.get_grappled_by_obj(caller_entry)
-                if grappler_obj:
-                    self.caller.msg(f"You cannot jump while {grappler_obj.key} is grappling you!")
-                    return
         
         # Gap jumping requires Motorics check vs gap difficulty
         caller_motorics = get_numeric_stat(self.caller, "motorics")
@@ -651,7 +644,8 @@ class CmdJump(Command):
         # Allow jump system to move through sky rooms
         self.caller.ndb.jump_movement_allowed = True
         self.caller.move_to(sky_room, quiet=True)
-        del self.caller.ndb.jump_movement_allowed
+        if hasattr(self.caller.ndb, "jump_movement_allowed"):
+            del self.caller.ndb.jump_movement_allowed
         
         # Message the origin room
         if origin_room:
@@ -666,7 +660,8 @@ class CmdJump(Command):
                 # Allow jump system to move out of sky rooms
                 self.caller.ndb.jump_movement_allowed = True
                 self.caller.move_to(destination, quiet=True)
-                del self.caller.ndb.jump_movement_allowed
+                if hasattr(self.caller.ndb, "jump_movement_allowed"):
+                    del self.caller.ndb.jump_movement_allowed
                 self.finalize_successful_gap_jump(destination, origin_room)
         
         # Schedule landing
@@ -677,7 +672,7 @@ class CmdJump(Command):
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         
         # Clear combat state if fleeing via gap
-        handler = getattr(self.caller.ndb, "combat_handler", None)
+        handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
         if handler:
             handler.remove_combatant(self.caller)
         
@@ -734,19 +729,7 @@ class CmdJump(Command):
     
     def get_opposite_direction(self, direction):
         """Get the opposite direction for finding return edges."""
-        direction_map = {
-            'north': 'south', 'n': 's',
-            'south': 'north', 's': 'n', 
-            'east': 'west', 'e': 'w',
-            'west': 'east', 'w': 'e',
-            'northeast': 'southwest', 'ne': 'sw',
-            'northwest': 'southeast', 'nw': 'se',
-            'southeast': 'northwest', 'se': 'nw',
-            'southwest': 'northeast', 'sw': 'ne',
-            'up': 'down', 'u': 'd',
-            'down': 'up', 'd': 'u'
-        }
-        return direction_map.get(direction.lower(), direction)
+        return self.DIRECTION_OPPOSITES.get(direction.lower(), direction)
     
     def handle_gap_jump_failure(self, exit_obj, destination):
         """Handle failed gap jump with fall consequences."""
@@ -764,7 +747,8 @@ class CmdJump(Command):
         # Allow jump system to move through sky rooms
         self.caller.ndb.jump_movement_allowed = True
         self.caller.move_to(sky_room, quiet=True)
-        del self.caller.ndb.jump_movement_allowed
+        if hasattr(self.caller.ndb, "jump_movement_allowed"):
+            del self.caller.ndb.jump_movement_allowed
         
         # Message the origin room
         if hasattr(self.caller, 'previous_location') and self.caller.previous_location:
@@ -783,7 +767,7 @@ class CmdJump(Command):
         def handle_fall_landing():
             if self.caller.location == sky_room:
                 # Use gravity to find ground level instead of specific fall room
-                ground_room, actual_fall_distance = self.follow_gravity_to_ground(sky_room)
+                ground_room, actual_fall_distance = CmdJump.follow_gravity_to_ground(sky_room)
                 
                 # Update fall damage based on actual distance fallen
                 actual_fall_damage = actual_fall_distance * 5  # 5 damage per room fallen
@@ -792,13 +776,14 @@ class CmdJump(Command):
                 # Allow jump system to move out of sky rooms during gravity fall
                 self.caller.ndb.jump_movement_allowed = True
                 self.caller.move_to(ground_room, quiet=True)
-                del self.caller.ndb.jump_movement_allowed
+                if hasattr(self.caller.ndb, "jump_movement_allowed"):
+                    del self.caller.ndb.jump_movement_allowed
                 
                 # Apply fall damage using medical system
                 self.caller.take_damage(actual_fall_damage, location="chest", injury_type="blunt")
                 
                 # Clear combat state (fell out of combat)
-                handler = getattr(self.caller.ndb, "combat_handler", None)
+                handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
                 if handler:
                     handler.remove_combatant(self.caller)
                 
@@ -861,16 +846,7 @@ class CmdJump(Command):
                     return sky_room_id  # Already an object
         
         # Second try: check the reverse direction from destination
-        # Map direction to its opposite
-        reverse_directions = {
-            "north": "south", "south": "north", "east": "west", "west": "east",
-            "n": "s", "s": "n", "e": "w", "w": "e",
-            "northeast": "southwest", "ne": "sw", "southwest": "northeast", "sw": "ne",
-            "northwest": "southeast", "nw": "se", "southeast": "northwest", "se": "nw",
-            "up": "down", "u": "d", "down": "up", "d": "u"
-        }
-        
-        reverse_direction = reverse_directions.get(direction)
+        reverse_direction = self.DIRECTION_OPPOSITES.get(direction)
         splattercast.msg(f"SKY_ROOM_DEBUG: Trying reverse direction '{reverse_direction}' from {destination.key}")
         
         if reverse_direction:
@@ -967,7 +943,7 @@ class CmdJump(Command):
             splattercast.msg(f"JUMP_EDGE_LANDING: {self.caller.key} motorics:{motorics_roll} vs difficulty:{landing_difficulty}, success:{success}")
             
             # Follow gravity down from sky room to find ground level
-            final_destination, actual_fall_distance = self.follow_gravity_to_ground(destination)
+            final_destination, actual_fall_distance = CmdJump.follow_gravity_to_ground(destination)
             
             # Update fall damage based on actual distance fallen
             actual_fall_damage = base_fall_damage * actual_fall_distance
@@ -984,13 +960,15 @@ class CmdJump(Command):
             # Allow jump system to move out of sky rooms during edge descent
             self.caller.ndb.jump_movement_allowed = True
             self.caller.move_to(final_destination, quiet=True)
-            del self.caller.ndb.jump_movement_allowed
+            if hasattr(self.caller.ndb, "jump_movement_allowed"):
+                del self.caller.ndb.jump_movement_allowed
             
             # Move grappled victim too if any
             if actual_grappled_victim:
                 actual_grappled_victim.ndb.jump_movement_allowed = True
                 actual_grappled_victim.move_to(final_destination, quiet=True)
-                del actual_grappled_victim.ndb.jump_movement_allowed
+                if hasattr(actual_grappled_victim.ndb, "jump_movement_allowed"):
+                    del actual_grappled_victim.ndb.jump_movement_allowed
             
             # Apply bodyshield damage mechanics if victim present
             if actual_grappled_victim:
@@ -1124,18 +1102,24 @@ class CmdJump(Command):
         # Schedule the landing after fall time
         delay(fall_time, handle_landing)
 
-    def follow_gravity_to_ground(self, start_room):
+    @staticmethod
+    def follow_gravity_to_ground(start_room):
         """
         Follow gravity down from a sky room until hitting ground level.
         Traverses downward exits until finding a room without a down exit,
         or a room marked as ground level.
         
-        Returns: tuple of (final_room, rooms_fallen)
+        Args:
+            start_room: The room to start falling from.
+        
+        Returns:
+            tuple: (final_room, rooms_fallen)
         """
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         current_room = start_room
         rooms_fallen = 0
         max_depth = 10  # Safety limit to prevent infinite loops
+        visited = set()
         
         splattercast.msg(f"GRAVITY_FOLLOW: Starting gravity fall from {current_room.key} (#{current_room.id})")
         
@@ -1144,6 +1128,9 @@ class CmdJump(Command):
             if current_room.db.is_ground:
                 splattercast.msg(f"GRAVITY_GROUND: Found ground room {current_room.key} after {rooms_fallen} rooms")
                 return current_room, rooms_fallen
+            
+            # Track visited rooms to detect any cycle
+            visited.add(current_room)
             
             # Look for a down exit
             down_exit = current_room.search("down", quiet=True)
@@ -1161,9 +1148,9 @@ class CmdJump(Command):
                 splattercast.msg(f"GRAVITY_DEAD_END: Down exit from {current_room.key} has no destination, stopping fall")
                 return current_room, rooms_fallen
             
-            # Check if we're going in circles
-            if next_room == start_room:
-                splattercast.msg(f"GRAVITY_LOOP: Detected loop back to start room, stopping at {current_room.key}")
+            # Check if we've already visited this room (cycle detection)
+            if next_room in visited:
+                splattercast.msg(f"GRAVITY_LOOP: Detected loop to already-visited {next_room.key}, stopping at {current_room.key}")
                 return current_room, rooms_fallen
             
             # Move down one level
@@ -1199,12 +1186,11 @@ def apply_gravity_to_items(room):
     all_objects = list(room.contents)
     splattercast.msg(f"GRAVITY_ITEMS: Found {len(all_objects)} total objects in room")
     
+    from typeclasses.items import Item
+    from typeclasses.characters import Character
+    
     items = []
     for obj in all_objects:
-        # Check if this is an Item (not a Character)
-        from typeclasses.items import Item
-        from typeclasses.characters import Character
-        
         is_item = isinstance(obj, Item)
         is_character = isinstance(obj, Character)
         splattercast.msg(f"GRAVITY_ITEMS: Object {obj.key} - is_item: {is_item}, is_character: {is_character}")
@@ -1218,10 +1204,9 @@ def apply_gravity_to_items(room):
         splattercast.msg(f"GRAVITY_ITEMS: No items found in {room.key}")
         return  # No items to process
     
-    # Use the same gravity logic as characters
-    jump_cmd = CmdJump()  # Create instance to access the method
+    # Use the same gravity logic as characters (static method, no instance needed)
     try:
-        ground_room, fall_distance = jump_cmd.follow_gravity_to_ground(room)
+        ground_room, fall_distance = CmdJump.follow_gravity_to_ground(room)
         splattercast.msg(f"GRAVITY_ITEMS: Gravity check result - ground_room: {ground_room.key if ground_room else None}, fall_distance: {fall_distance}")
     except Exception as e:
         splattercast.msg(f"GRAVITY_ITEMS_ERROR: Failed to calculate gravity path: {e}")

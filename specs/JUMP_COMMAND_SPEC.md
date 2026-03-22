@@ -1,7 +1,7 @@
 # Jump Command Implementation Specification
 
 **Status: IMPLEMENTATION COMPLETE** ✅  
-**Location:** `commands/combat/movement.py` - CmdJump class  
+**Location:** `commands/combat/jump.py` - CmdJump class  
 **Integration:** Added to combat cmdset, ready for live testing
 
 ## Overview

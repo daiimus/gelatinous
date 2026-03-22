@@ -11,13 +11,8 @@ CmdJump and apply_gravity_to_items have been extracted to
 commands/combat/jump.py and are re-exported here for backward compatibility.
 """
 
-from evennia import Command, search_object
-from evennia.utils.utils import inherits_from, delay
-from evennia import create_object
+from evennia import Command
 from random import choice
-from world.combat.handler import get_or_create_combat
-from world.combat.constants import COMBAT_SCRIPT_KEY
-from world.combat.messages import get_combat_message
 from evennia.comms.models import ChannelDB
 
 from world.combat.constants import (
@@ -31,31 +26,19 @@ from world.combat.constants import (
     MSG_CHARGE_NOT_IN_COMBAT, MSG_CHARGE_COMBAT_DATA_MISSING, MSG_CHARGE_NO_TARGET, MSG_CHARGE_SELF_TARGET,
     MSG_CHARGE_FAILED_PENALTY,
     DEBUG_PREFIX_FLEE, DEBUG_PREFIX_RETREAT, DEBUG_PREFIX_ADVANCE, DEBUG_PREFIX_CHARGE,
-    DEBUG_FAILSAFE, DEBUG_SUCCESS, DEBUG_FAIL, DEBUG_ERROR,
+    DEBUG_SUCCESS, DEBUG_FAIL, DEBUG_ERROR,
     NDB_PROXIMITY, NDB_SKIP_ROUND, SPLATTERCAST_CHANNEL,
     COMBAT_ACTION_RETREAT, MSG_RETREAT_PREPARE, MSG_RETREAT_QUEUE_SUCCESS,
     COMBAT_ACTION_ADVANCE, MSG_ADVANCE_PREPARE, MSG_ADVANCE_QUEUE_SUCCESS,
     COMBAT_ACTION_CHARGE, MSG_CHARGE_PREPARE, MSG_CHARGE_QUEUE_SUCCESS,
-    COMBAT_ACTION_DISARM, MSG_DISARM_PREPARE, MSG_DISARM_QUEUE_SUCCESS
 )
 
 # Re-export CmdJump and apply_gravity_to_items for backward compatibility.
 # Canonical location: commands.combat.jump
 from commands.combat.jump import CmdJump, apply_gravity_to_items  # noqa: F401
 from world.combat.utils import (
-    initialize_proximity_ndb, get_wielded_weapon, roll_stat, opposed_roll,
-    log_combat_action, get_display_name_safe, validate_combat_target,
     get_highest_opponent_stat, get_numeric_stat, filter_valid_opponents,
-    roll_with_advantage, roll_with_disadvantage, standard_roll,
-    is_wielding_ranged_weapon, clear_aim_state, clear_mutual_aim
-)
-from world.combat.proximity import (
-    establish_proximity, break_proximity, clear_all_proximity,
-    is_in_proximity, get_proximity_list, proximity_opposed_roll
-)
-from world.combat.grappling import (
-    get_grappling_target, get_grappled_by, establish_grapple, break_grapple,
-    is_grappling, is_grappled, validate_grapple_action
+    standard_roll, clear_aim_state,
 )
 
 
@@ -82,6 +65,7 @@ class CmdFlee(Command):
 
     key = "flee"
     locks = "cmd:all()"
+    help_category = "Combat"
 
     def func(self):
         caller = self.caller
