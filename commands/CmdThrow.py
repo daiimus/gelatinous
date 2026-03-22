@@ -3700,7 +3700,7 @@ class CmdClearDetonator(Command):
         from evennia.utils.search import search_object
         for explosive_dbref in list(detonator.db.scanned_explosives):
             explosive = search_object(f"#{explosive_dbref}")
-                if explosive and len(explosive) > 0:
+            if explosive and len(explosive) > 0:
                 explosive_obj = explosive[0]
                 if explosive_obj.db.scanned_by_detonator is not None:
                     explosive_obj.db.scanned_by_detonator = None
