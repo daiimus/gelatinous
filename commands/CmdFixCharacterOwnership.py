@@ -33,7 +33,7 @@ class CmdFixCharacterOwnership(Command):
     """
     
     key = "@fixchar"
-    locks = "cmd:all()"
+    locks = "cmd:pperm(Admin)"
     help_category = "Admin"
     
     def func(self):

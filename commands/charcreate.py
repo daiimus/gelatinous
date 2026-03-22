@@ -648,7 +648,11 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
         char = create_character_from_template(caller, template, sex)
         
         # Puppet the new character
-        caller.puppet_object(caller.sessions.all()[0], char)
+        sessions = caller.sessions.all()
+        if not sessions:
+            char.msg("|rError: No active session. Please reconnect.|n")
+            return "respawn_welcome"
+        caller.puppet_object(sessions[0], char)
         
         # Teleport from Limbo staging area to spawn location
         spawn_location = get_spawn_location()
@@ -701,7 +705,11 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
         char = create_flash_clone(caller, old_char)
         
         # Puppet the new character
-        caller.puppet_object(caller.sessions.all()[0], char)
+        sessions = caller.sessions.all()
+        if not sessions:
+            char.msg("|rError: No active session. Please reconnect.|n")
+            return "respawn_welcome"
+        caller.puppet_object(sessions[0], char)
         
         # Teleport from Limbo staging area to spawn location
         spawn_location = get_spawn_location()
