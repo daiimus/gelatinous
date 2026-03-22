@@ -27,7 +27,6 @@ from .constants import (
     NDB_COMBAT_HANDLER,
 )
 from .debug import debug_broadcast, get_splattercast
-from .utils import get_character_by_dbref, get_display_name_safe
 
 
 # ------------------------------------------------------------------
@@ -53,6 +52,8 @@ def check_grenade_human_shield(proximity_list, combat_handler=None):
         ``dict`` of ``{char: damage_multiplier}`` where multiplier is
         ``0.0`` for grapplers and ``2.0`` for victims.
     """
+    from .utils import get_character_by_dbref  # lazy to avoid circular import
+
     splattercast = get_splattercast()
     damage_modifiers: dict = {}
 
@@ -107,6 +108,8 @@ def send_grenade_shield_messages(grappler, victim) -> None:
         grappler: The character using *victim* as shield.
         victim: The character being used as shield.
     """
+    from .utils import get_display_name_safe  # lazy to avoid circular import
+
     grappler_msg = (
         f"|yYou instinctively position {get_display_name_safe(victim)} "
         f"between yourself and the explosion!|n"
