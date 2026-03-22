@@ -632,7 +632,10 @@ class MedicalState:
         for condition_dict in condition_data:
             try:
                 # Import condition classes
-                from .conditions import MedicalCondition, BleedingCondition, PainCondition, InfectionCondition
+                from .conditions import (
+                    MedicalCondition, BleedingCondition, PainCondition,
+                    InfectionCondition, ConsciousnessSuppressionCondition,
+                )
                 
                 # Get condition type
                 condition_type = condition_dict.get("condition_type", "minor_bleeding")
@@ -644,6 +647,8 @@ class MedicalState:
                     condition = PainCondition.from_dict(condition_dict) 
                 elif condition_type == "infection":
                     condition = InfectionCondition.from_dict(condition_dict)
+                elif condition_type == "consciousness_suppression":
+                    condition = ConsciousnessSuppressionCondition.from_dict(condition_dict)
                 else:
                     # Fallback to base class
                     condition = MedicalCondition.from_dict(condition_dict)
