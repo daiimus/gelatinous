@@ -12,6 +12,12 @@ from evennia.comms.models import ChannelDB
 from world.combat.handler import get_or_create_combat 
 from world.combat.constants import (
     DB_CHAR,
+    DB_GRAPPLED_BY_DBREF,
+    DB_GRAPPLING_DBREF,
+    DB_IS_YIELDING,
+    NDB_AIMED_AT_BY,
+    NDB_AIMING_AT,
+    NDB_AIMING_DIRECTION,
     NDB_COMBAT_HANDLER,
     NDB_PROXIMITY,
     NDB_PROXIMITY_UNIVERSAL,
@@ -104,14 +110,14 @@ class Exit(DefaultExit):
         # --- END SACRIFICE RESTRICTION CHECK ---
         
         # --- AIMING LOCK CHECK ---
-        aimer = getattr(traversing_object.ndb, "aimed_at_by", None)
+        aimer = getattr(traversing_object.ndb, NDB_AIMED_AT_BY, None)
         if aimer:
             # Check if the aimer is still valid and in the same location
             if not aimer.location or aimer.location != traversing_object.location:
                 # Aimer is gone or no longer in the same room, clear the lock
                 splattercast.msg(f"AIM LOCK: {traversing_object.key} was aimed at by {aimer.key if aimer else 'Unknown'}, but aimer is no longer present/valid. Clearing lock.")
                 del traversing_object.ndb.aimed_at_by
-                if hasattr(aimer, "ndb") and getattr(aimer.ndb, "aiming_at", None) == traversing_object:
+                if hasattr(aimer, "ndb") and getattr(aimer.ndb, NDB_AIMING_AT, None) == traversing_object:
                     del aimer.ndb.aiming_at
             else:
                 traversing_object.msg(f"|r{aimer.key} is aiming at you, locking you in place! You cannot move.|n")
@@ -129,10 +135,10 @@ class Exit(DefaultExit):
             aim_cleared = False
             
             # Clear target aiming
-            old_aim_target = getattr(traversing_object.ndb, "aiming_at", None)
+            old_aim_target = getattr(traversing_object.ndb, NDB_AIMING_AT, None)
             if old_aim_target:
                 del traversing_object.ndb.aiming_at
-                if hasattr(old_aim_target, "ndb") and getattr(old_aim_target.ndb, "aimed_at_by", None) == traversing_object:
+                if hasattr(old_aim_target, "ndb") and getattr(old_aim_target.ndb, NDB_AIMED_AT_BY, None) == traversing_object:
                     del old_aim_target.ndb.aimed_at_by
                     old_aim_target.msg(f"{traversing_object.key} stops aiming at you as they move.")
                 
@@ -148,7 +154,7 @@ class Exit(DefaultExit):
                 aim_cleared = True
             
             # Clear direction aiming  
-            old_aim_direction = getattr(traversing_object.ndb, "aiming_direction", None)
+            old_aim_direction = getattr(traversing_object.ndb, NDB_AIMING_DIRECTION, None)
             if old_aim_direction:
                 del traversing_object.ndb.aiming_direction
                 
@@ -249,7 +255,7 @@ class Exit(DefaultExit):
 
             # Check drag conditions
             grappled_victim_obj = handler.get_grappling_obj(char_entry_in_handler)
-            is_yielding = char_entry_in_handler.get("is_yielding")
+            is_yielding = char_entry_in_handler.get(DB_IS_YIELDING)
             
             is_targeted_by_others_not_victim = False
             if combatants_list:
@@ -290,9 +296,9 @@ class Exit(DefaultExit):
                     grappler_entry = next((e for e in combatants_list if e["char"] == traversing_object), None)
                     victim_entry = next((e for e in combatants_list if e["char"] == grappled_victim_obj), None)
                     if grappler_entry:
-                        grappler_entry["grappling_dbref"] = None
+                        grappler_entry[DB_GRAPPLING_DBREF] = None
                     if victim_entry:
-                        victim_entry["grappled_by_dbref"] = None
+                        victim_entry[DB_GRAPPLED_BY_DBREF] = None
                     msg = f"{grappled_victim_obj.key} breaks free from {traversing_object.key}'s grapple!"
                     traversing_object.location.msg_contents(f"|g{msg}|n")
                     splattercast.msg(f"GRAPPLE BROKEN: {msg}")
@@ -336,7 +342,7 @@ class Exit(DefaultExit):
                 # --- Transfer combat state to the new location ---
                 # 1. Before removing, determine if victim is yielding
                 victim_entry_in_handler = next((e for e in combatants_list if e["char"] == grappled_victim_obj), None)
-                victim_is_yielding = victim_entry_in_handler.get("is_yielding", False) if victim_entry_in_handler else False
+                victim_is_yielding = victim_entry_in_handler.get(DB_IS_YIELDING, False) if victim_entry_in_handler else False
 
                 # 2. Remove combatants from the old handler.
                 old_handler.remove_combatant(traversing_object)
@@ -408,11 +414,11 @@ class Exit(DefaultExit):
             str: Formatted exit description with atmospheric context and character display
         """
         # Check aiming restrictions - aiming characters cannot examine exits (focus limitation)
-        if hasattr(looker, 'ndb') and getattr(looker.ndb, "aiming_at", None):
+        if hasattr(looker, 'ndb') and getattr(looker.ndb, NDB_AIMING_AT, None):
             looker.msg("You cannot see any further.")
             return ""
         
-        if hasattr(looker, 'ndb') and getattr(looker.ndb, "aiming_direction", None):
+        if hasattr(looker, 'ndb') and getattr(looker.ndb, NDB_AIMING_DIRECTION, None):
             looker.msg("You cannot see any further.")
             return ""
         
@@ -730,7 +736,7 @@ class Exit(DefaultExit):
             mover.override_place = ""
             
             # If target is still aiming at mover, revert them to normal aiming
-            target_still_aiming = getattr(target.ndb, "aiming_at", None)
+            target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
             if target_still_aiming == mover:
                 target.override_place = f"aiming carefully at {mover.key}."
             else:

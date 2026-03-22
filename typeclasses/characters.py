@@ -12,7 +12,7 @@ from evennia.objects.objects import DefaultCharacter
 from evennia.typeclasses.attributes import AttributeProperty
 from evennia.comms.models import ChannelDB  # Ensure this is imported
 
-from world.combat.constants import NDB_COMBAT_HANDLER
+from world.combat.constants import NDB_AIMED_AT_BY, NDB_AIMING_AT, NDB_AIMING_DIRECTION, NDB_COMBAT_HANDLER
 
 from .objects import ObjectParent
 from .armor_mixin import ArmorMixin
@@ -933,13 +933,13 @@ class Character(
         action_taken = False
 
         # Clear character-specific aim
-        old_aim_target_char = getattr(self.ndb, "aiming_at", None)
+        old_aim_target_char = getattr(self.ndb, NDB_AIMING_AT, None)
         if old_aim_target_char:
             action_taken = True
             del self.ndb.aiming_at
             log_message_parts.append(f"stopped aiming at {old_aim_target_char.key}")
             
-            if hasattr(old_aim_target_char, "ndb") and getattr(old_aim_target_char.ndb, "aimed_at_by", None) == self:
+            if hasattr(old_aim_target_char, "ndb") and getattr(old_aim_target_char.ndb, NDB_AIMED_AT_BY, None) == self:
                 del old_aim_target_char.ndb.aimed_at_by
                 old_aim_target_char.msg(f"{self.get_display_name(old_aim_target_char)} is no longer aiming directly at you.")
             
@@ -949,7 +949,7 @@ class Character(
             stopped_aiming_message_parts.append(f"at {old_aim_target_char.get_display_name(self)}")
 
         # Clear directional aim
-        old_aim_direction = getattr(self.ndb, "aiming_direction", None)
+        old_aim_direction = getattr(self.ndb, NDB_AIMING_DIRECTION, None)
         if old_aim_direction:
             action_taken = True
             del self.ndb.aiming_direction
@@ -1002,7 +1002,7 @@ class Character(
             self.override_place = ""
             
             # If target is still aiming at aimer, revert them to normal aiming
-            target_still_aiming = getattr(target.ndb, "aiming_at", None)
+            target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
             if target_still_aiming == self:
                 target.override_place = f"aiming carefully at {self.key}."
             else:
