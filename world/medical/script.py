@@ -156,8 +156,11 @@ class MedicalScript(DefaultScript):
                 self.delete()
                 
         except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-            splattercast.msg(f"MEDICAL_SCRIPT_CRITICAL_ERROR: {self.obj.key}: {e}")
+            try:
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast.msg(f"MEDICAL_SCRIPT_CRITICAL_ERROR: {self.obj.key}: {e}")
+            except Exception:
+                pass
             self.stop()
             self.delete()
     
@@ -262,48 +265,6 @@ class MedicalScript(DefaultScript):
                 location=self.obj.location
             )
             blood_pool.add_bleeding_incident(self.obj.key, severity)
-    
-    def _send_pain_messages(self, total_severity):
-        """Send consolidated pain messages to character based on total pain severity."""
-        import random
-        
-        # Check if character is dead - don't send personal messages to preserve death curtain
-        medical_state = getattr(self.obj, 'medical_state', None)
-        is_dead = medical_state and medical_state.is_dead()
-        
-        if is_dead:
-            # No pain messages for dead characters - preserve death curtain experience
-            return
-        
-        # Personal pain messages based on severity
-        if total_severity <= 5:
-            pain_msgs = [
-                "|yYou feel a persistent ache from your injuries.|n",
-                "|yDull pain reminds you of your wounds.|n",
-                "|yA nagging discomfort troubles your injured areas.|n"
-            ]
-        elif total_severity <= 12:
-            pain_msgs = [
-                "|rSharp pain flares from your wounds.|n",
-                "|rIntense aching throbs through your injured body.|n",
-                "|rPain pulses steadily from your various injuries.|n"
-            ]
-        elif total_severity <= 20:
-            pain_msgs = [
-                "|RAgony courses through your battered form.|n",
-                "|RExcruciating pain overwhelms your senses.|n",
-                "|RWaves of torment wash over you from multiple wounds.|n"
-            ]
-        else:  # 21+
-            pain_msgs = [
-                "|RUnbearable agony threatens to drive you unconscious.|n",
-                "|RThe pain is so intense you can barely think straight.|n",
-                "|REvery movement sends lightning bolts of pure torment through you.|n"
-            ]
-        
-        # Send personal pain message (no room message for pain - it's internal)
-        pain_msg = random.choice(pain_msgs)
-        self.obj.msg(pain_msg)
 
 
 def start_medical_script(character):
