@@ -316,7 +316,7 @@ class Exit(DefaultExit):
                 grappled_victim_obj.move_to(target_location, quiet=True, move_hooks=False)
 
                 # Check for rigged grenades after drag movement (same as normal traversal)
-                from commands.CmdThrow import check_rigged_grenade, check_auto_defuse
+                from commands.explosion_utils import check_rigged_grenade, check_auto_defuse
                 check_rigged_grenade(traversing_object, self)
 
                 # Check for auto-defuse opportunities for both characters after drag
@@ -380,7 +380,7 @@ class Exit(DefaultExit):
             traversing_object.temp_place = ""
         
         # Check for rigged grenades after successful movement
-        from commands.CmdThrow import check_rigged_grenade, check_auto_defuse
+        from commands.explosion_utils import check_rigged_grenade, check_auto_defuse
         check_rigged_grenade(traversing_object, self)
         
         # Check for auto-defuse opportunities after entering new room

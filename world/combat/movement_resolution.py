@@ -507,7 +507,7 @@ def _do_advance_move(
         char.move_to(target_room)
 
     # Check for rigged grenades after successful movement
-    from commands.CmdThrow import check_rigged_grenade, check_auto_defuse
+    from commands.explosion_utils import check_rigged_grenade, check_auto_defuse
 
     check_rigged_grenade(char, exit_to_target)
 
@@ -857,7 +857,7 @@ def _resolve_charge_cross_room(
         )
 
         # Check for rigged grenades after successful movement
-        from commands.CmdThrow import (
+        from commands.explosion_utils import (
             check_rigged_grenade, check_auto_defuse,
         )
 

@@ -29,9 +29,10 @@ from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather
 from commands.CmdFixCharacterOwnership import CmdFixCharacterOwnership
 from commands.combat.cmdset_combat import CombatCmdSet
 from commands.combat.special_actions import CmdAim, CmdGrapple
-from commands.CmdThrow import (
-    CmdThrow, CmdPull, CmdCatch, CmdRig, CmdDefuse,
-    CmdScan, CmdDetonate, CmdDetonateList, CmdClearDetonator
+from commands.CmdThrow import CmdThrow, CmdPull, CmdCatch
+from commands.CmdExplosives import (
+    CmdRig, CmdDefuse, CmdScan, CmdDetonate, CmdDetonateList,
+    CmdClearDetonator,
 )
 from commands.CmdGraffiti import CmdGraffiti, CmdPress
 from commands.CmdCharacter import CmdLongdesc, CmdSkintone
