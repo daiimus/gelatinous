@@ -145,7 +145,7 @@ DISCOURSE_URL = ""  # e.g., "https://forum.gel.monster"
 DISCOURSE_SSO_SECRET = ""
 
 ######################################################################
-# Django web features
+# Django debug / error handling
 ######################################################################
 
 # While DEBUG is False, show a regular server error page on the web
@@ -168,7 +168,7 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "json": {
+        "brief": {
             "()": "django.utils.log.ServerFormatter",
             "format": "{levelname} {name} {message}",
             "style": "{",

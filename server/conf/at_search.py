@@ -37,8 +37,8 @@ def at_search_result(matches, caller, query="", quiet=False, **kwargs):
             be echoed, and if >1, multimatch errors should be given. Only
             if a single match should the result pass through.
         caller (Object): The object performing the search and/or which should
-        receive error messages.
-    query (str, optional): The search query used to produce `matches`.
+            receive error messages.
+        query (str, optional): The search query used to produce `matches`.
         quiet (bool, optional): If `True`, no messages will be echoed to caller
             on errors.
 
