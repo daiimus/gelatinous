@@ -24,6 +24,7 @@ from world.combat.constants import (
     MSG_CHARGE_NOT_IN_COMBAT, MSG_CHARGE_COMBAT_DATA_MISSING, MSG_CHARGE_NO_TARGET, MSG_CHARGE_SELF_TARGET,
     DEBUG_PREFIX_FLEE, DEBUG_PREFIX_RETREAT, DEBUG_PREFIX_ADVANCE, DEBUG_PREFIX_CHARGE,
     DEBUG_FAIL, DEBUG_ERROR,
+    DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET,
     NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY, NDB_PROXIMITY, NDB_SKIP_ROUND,
     SPLATTERCAST_CHANNEL,
     COMBAT_ACTION_RETREAT, MSG_RETREAT_PREPARE,
@@ -460,7 +461,7 @@ class CmdRetreat(Command):
             return
 
         # Set retreat action to be processed on caller's next turn
-        caller_entry["combat_action"] = COMBAT_ACTION_RETREAT
+        caller_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_RETREAT
         caller.msg(MSG_RETREAT_PREPARE)
         splattercast.msg(f"{DEBUG_PREFIX_RETREAT}: {caller.key} queued retreat action for next turn.")
 
@@ -576,8 +577,8 @@ class CmdAdvance(Command):
             return
 
         # Set advance action to be processed on caller's next turn
-        caller_entry["combat_action"] = COMBAT_ACTION_ADVANCE
-        caller_entry["combat_action_target"] = target  # Store target for handler processing
+        caller_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_ADVANCE
+        caller_entry[DB_COMBAT_ACTION_TARGET] = target  # Store target for handler processing
         caller.msg(MSG_ADVANCE_PREPARE.format(target=target.get_display_name(caller)))
         splattercast.msg(f"{DEBUG_PREFIX_ADVANCE}: {caller.key} queued advance action on {target.key} for next turn.")
 
@@ -741,8 +742,8 @@ class CmdCharge(Command):
             return
 
         # Set charge action to be processed on caller's next turn
-        caller_entry["combat_action"] = COMBAT_ACTION_CHARGE
-        caller_entry["combat_action_target"] = target  # Store target for handler processing
+        caller_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_CHARGE
+        caller_entry[DB_COMBAT_ACTION_TARGET] = target  # Store target for handler processing
         caller.msg(MSG_CHARGE_PREPARE.format(target=target.get_display_name(caller)))
         splattercast.msg(f"{DEBUG_PREFIX_CHARGE}: {caller.key} queued charge action on {target.key} for next turn.")
 

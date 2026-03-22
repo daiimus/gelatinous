@@ -28,7 +28,11 @@ from world.combat.constants import (
     MSG_AIM_WHO_WHAT, MSG_AIM_SELF_TARGET, MSG_GRAPPLE_ESCAPE_VIOLENT_SWITCH,
     MSG_STOP_NOT_AIMING, SPLATTERCAST_CHANNEL, NDB_PROXIMITY,
     NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY, NDB_AIMING_DIRECTION,
+    DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_IS_YIELDING,
     COMBAT_ACTION_DISARM,
+    COMBAT_ACTION_GRAPPLE_INITIATE, COMBAT_ACTION_GRAPPLE_JOIN,
+    COMBAT_ACTION_GRAPPLE_TAKEOVER,
+    COMBAT_ACTION_ESCAPE_GRAPPLE, COMBAT_ACTION_RELEASE_GRAPPLE,
 )
 from world.combat.utils import log_combat_action, initialize_proximity_ndb
 
@@ -131,7 +135,7 @@ class CmdGrapple(Command):
 
         # Default to not yielding if already in combat or grapple fails.
         # This will be overridden if grapple is successful AND initiated combat.
-        caller_combat_entry["is_yielding"] = False 
+        caller_combat_entry[DB_IS_YIELDING] = False 
 
         # Check if target is grappling someone (Scenario 2: grappling an active grappler)
         target_grappling_someone = handler.get_grappling_obj(target_combat_entry)
@@ -144,8 +148,8 @@ class CmdGrapple(Command):
         
         # --- Set combat action ---
         # Ensure combat_action key exists for the entry
-        if "combat_action" not in caller_combat_entry:
-            caller_combat_entry["combat_action"] = {}
+        if DB_COMBAT_ACTION not in caller_combat_entry:
+            caller_combat_entry[DB_COMBAT_ACTION] = {}
             
         # Store whether caller initiated combat for use in handler
         caller_combat_entry["initiated_combat_this_action"] = caller_initiated_combat_this_action
@@ -160,18 +164,18 @@ class CmdGrapple(Command):
         if target_grappling_someone:
             # Scenario 2: Target is actively grappling someone - this is a takeover attempt
             # This will force the target to release their victim if successful
-            caller_combat_entry["combat_action"] = "grapple_takeover"
+            caller_combat_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_GRAPPLE_TAKEOVER
             caller_combat_entry["takeover_victim"] = target_grappling_someone  # Store who will be released
             handler.set_target(caller, target)
             log_combat_action(caller, "grapple_action", target, details=f"combat action set to grapple_takeover (target currently grappling {target_grappling_someone.key})")
         elif target_is_currently_grappled:
             # Scenario 1: Target is already being grappled by someone - this is a join attempt
-            caller_combat_entry["combat_action"] = "grapple_join"  
+            caller_combat_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_GRAPPLE_JOIN  
             handler.set_target(caller, target)
             log_combat_action(caller, "grapple_action", target, details="combat action set to grapple_join")
         else:
             # Target is not currently grappled - this is a grapple initiation
-            caller_combat_entry["combat_action"] = "grapple_initiate"
+            caller_combat_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_GRAPPLE_INITIATE
             handler.set_target(caller, target)
             log_combat_action(caller, "grapple_action", target, details="combat action set to grapple_initiate")
 
@@ -216,14 +220,14 @@ class CmdEscapeGrapple(Command):
             return
 
         # When someone actively escapes, they are no longer yielding
-        was_yielding = caller_entry.get("is_yielding", False)
-        caller_entry["is_yielding"] = False
+        was_yielding = caller_entry.get(DB_IS_YIELDING, False)
+        caller_entry[DB_IS_YIELDING] = False
         
         if was_yielding:
             caller.msg(MSG_GRAPPLE_ESCAPE_VIOLENT_SWITCH.format(grappler=grappler_obj.key))
 
         # Set escape action for the combat handler to process
-        caller_entry["combat_action"] = "escape_grapple"
+        caller_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_ESCAPE_GRAPPLE
         caller.msg(f"You prepare to struggle violently against {grappler_obj.key}'s hold!")
         log_combat_action(caller, "escape_action", grappler_obj, details="combat action set to escape_grapple")
 
@@ -264,7 +268,7 @@ class CmdReleaseGrapple(Command):
             return
 
         # Set release action for the combat handler to process
-        caller_entry["combat_action"] = "release_grapple"
+        caller_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_RELEASE_GRAPPLE
         caller.msg(f"You prepare to release your hold on {victim_obj.key}.")
         log_combat_action(caller, "release_action", victim_obj, details="combat action set to release_grapple")
 
@@ -313,8 +317,8 @@ class CmdDisarm(Command):
             return
 
         # Set disarm action to be processed on caller's next turn
-        caller_entry["combat_action"] = COMBAT_ACTION_DISARM
-        caller_entry["combat_action_target"] = target  # Store target for handler processing
+        caller_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_DISARM
+        caller_entry[DB_COMBAT_ACTION_TARGET] = target  # Store target for handler processing
         caller.msg(MSG_DISARM_PREPARE.format(target=target.get_display_name(caller)))
         
         # Debug message
