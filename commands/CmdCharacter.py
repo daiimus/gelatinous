@@ -1,6 +1,5 @@
 from evennia import Command
 from evennia.utils.search import search_object
-from evennia.utils.utils import inherits_from
 from world.combat.constants import (
     PERM_BUILDER, PERM_DEVELOPER,
     BOX_TOP_LEFT, BOX_TOP_RIGHT, BOX_BOTTOM_LEFT, BOX_BOTTOM_RIGHT,
@@ -9,7 +8,8 @@ from world.combat.constants import (
     MAX_DESCRIPTION_LENGTH,
     VALID_LONGDESC_LOCATIONS,
     SKINTONE_PALETTE, VALID_SKINTONES,
-    STAT_DESCRIPTORS, STAT_TIER_RANGES
+    STAT_DESCRIPTORS, STAT_TIER_RANGES,
+    ANATOMICAL_REGIONS, ANATOMICAL_DISPLAY_ORDER,
 )
 from world.medical.utils import get_medical_status_description
 import re
@@ -57,9 +57,6 @@ def _center_text(text, width=None, session=None):
         # Calculate visible text length (without color codes) - same as curtain
         visible_text = _strip_color_codes(line)
         
-        # Use Python's built-in center method for proper centering - same as curtain  
-        centered_visible = visible_text.center(message_width)
-        
         # Calculate the actual padding that center() applied
         padding_needed = message_width - len(visible_text)
         left_padding = padding_needed // 2
@@ -69,6 +66,63 @@ def _center_text(text, width=None, session=None):
         centered_lines.append(centered_line)
     
     return '\n'.join(centered_lines)
+
+
+# ===================================================================
+# PLACEMENT DESCRIPTION PARSER
+# ===================================================================
+
+def _parse_placement_description(raw_input):
+    """
+    Parse various input formats to extract a placement description.
+
+    Handles patterns like:
+    - "standing here"
+    - "me is standing here"
+    - "me are lounging lazily"
+    - "me is \"standing here\""
+    - "is standing here"
+    - "are crouched in the shadows"
+    - "\"standing here\""
+    - "me is \"is standing here\""
+
+    Args:
+        raw_input (str): The raw command arguments.
+
+    Returns:
+        str: The cleaned placement description.
+    """
+    text = raw_input.strip()
+
+    # Remove outer quotes if present
+    if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
+        text = text[1:-1]
+
+    # Handle "me is ..." / "me are ..." patterns
+    if text.lower().startswith('me is '):
+        text = text[6:].strip()
+        # Remove inner quotes if present after "me is"
+        if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
+            text = text[1:-1]
+    elif text.lower().startswith('me are '):
+        text = text[7:].strip()
+        if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
+            text = text[1:-1]
+
+    # Handle "is ..." / "are ..." patterns (without "me")
+    elif text.lower().startswith('is '):
+        text = text[3:].strip()
+    elif text.lower().startswith('are '):
+        text = text[4:].strip()
+
+    # Clean up redundant "is"/"are" at the beginning
+    # Handle cases like "me is \"is standing here\""
+    if text.lower().startswith('is '):
+        text = text[3:].strip()
+    elif text.lower().startswith('are '):
+        text = text[4:].strip()
+
+    return text.strip()
 
 
 # ===================================================================
@@ -265,30 +319,6 @@ class CmdStats(Command):
             intellect_display = intellect_desc
             motorics_display = motorics_desc
 
-        # Convert death count to Roman numerals for file reference
-        def to_roman(num):
-            """Convert integer to Roman numeral."""
-            val = [
-                1000, 900, 500, 400,
-                100, 90, 50, 40,
-                10, 9, 5, 4,
-                1
-            ]
-            syms = [
-                "M", "CM", "D", "CD",
-                "C", "XC", "L", "XL",
-                "X", "IX", "V", "IV",
-                "I"
-            ]
-            roman_num = ''
-            i = 0
-            while num > 0:
-                for _ in range(num // val[i]):
-                    roman_num += syms[i]
-                    num -= val[i]
-                i += 1
-            return roman_num
-
         # Generate dynamic file reference and subject name
         # Note: Character name already includes Roman numeral (e.g., "Laszlo V")
         file_ref = f"GEL-MST/PR-{target.id}"
@@ -429,47 +459,8 @@ class CmdLookPlace(Command):
         caller.msg("Others will see: '|c" + caller.get_display_name(caller) + f"|n is {description}'")
     
     def parse_placement_description(self, raw_input):
-        """
-        Parse various input formats to extract the placement description.
-        
-        Handles patterns like:
-        - "standing here"
-        - "me is standing here"  
-        - "me is \"standing here\""
-        - "is standing here"
-        - "\"standing here\""
-        - "me is \"is standing here\""
-        
-        Args:
-            raw_input (str): The raw command arguments
-            
-        Returns:
-            str: The cleaned placement description
-        """
-        text = raw_input.strip()
-        
-        # Remove outer quotes if present
-        if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
-            text = text[1:-1]
-        
-        # Handle "me is ..." pattern
-        if text.lower().startswith('me is '):
-            text = text[6:].strip()  # Remove "me is "
-            
-            # Remove inner quotes if present after "me is"
-            if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
-                text = text[1:-1]
-        
-        # Handle "is ..." pattern (without "me")
-        elif text.lower().startswith('is '):
-            text = text[3:].strip()  # Remove "is "
-        
-        # Clean up redundant "is" at the beginning
-        # Handle cases like "me is \"is standing here\""
-        if text.lower().startswith('is '):
-            text = text[3:].strip()
-        
-        return text.strip()
+        """Delegate to module-level parser."""
+        return _parse_placement_description(raw_input)
 
 
 class CmdTempPlace(Command):
@@ -547,35 +538,8 @@ class CmdTempPlace(Command):
         caller.msg("This will be cleared when you move to a different room.")
     
     def parse_placement_description(self, raw_input):
-        """
-        Parse various input formats to extract the placement description.
-        
-        Same logic as CmdLookPlace for consistency.
-        """
-        text = raw_input.strip()
-        
-        # Remove outer quotes if present
-        if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
-            text = text[1:-1]
-        
-        # Handle "me is ..." pattern
-        if text.lower().startswith('me is '):
-            text = text[6:].strip()  # Remove "me is "
-            
-            # Remove inner quotes if present after "me is"
-            if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
-                text = text[1:-1]
-        
-        # Handle "is ..." pattern (without "me")
-        elif text.lower().startswith('is '):
-            text = text[3:].strip()  # Remove "is "
-        
-        # Clean up redundant "is" at the beginning
-        # Handle cases like "me is \"is standing here\""
-        if text.lower().startswith('is '):
-            text = text[3:].strip()
-        
-        return text.strip()
+        """Delegate to module-level parser."""
+        return _parse_placement_description(raw_input)
 
 
 class CmdLongdesc(Command):
@@ -726,8 +690,6 @@ class CmdLongdesc(Command):
             return
 
         # Group locations by type for better display
-        from world.combat.constants import ANATOMICAL_REGIONS
-
         grouped_locations = {}
         extended_locations = []
 
@@ -871,8 +833,6 @@ class CmdLongdesc(Command):
             caller.msg(f"|w{target_char.get_display_name(caller)}'s longdesc descriptions:|n")
 
         # Show in anatomical order
-        from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
-
         displayed = set()
         for location in ANATOMICAL_DISPLAY_ORDER:
             if location in set_descriptions:
@@ -977,7 +937,7 @@ class CmdSkintone(Command):
             
         # Check if this might be staff targeting another character
         parts = args.split()
-        if len(parts) == 2 and caller.locks.check_lockstring(caller, "perm(Builder)"):
+        if len(parts) == 2 and caller.locks.check_lockstring(caller, f"dummy:perm({PERM_BUILDER}) or perm_above({PERM_BUILDER})"):
             character_name, tone_or_clear = parts
             target = self._find_character(caller, character_name)
             if target:
@@ -997,7 +957,7 @@ class CmdSkintone(Command):
     def _show_current_skintone(self, caller):
         """Show the caller's current skintone setting"""
         skintone = caller.db.skintone
-        if skintone:
+        if skintone is not None:
             color_code = SKINTONE_PALETTE.get(skintone, "")
             if color_code:
                 colored_skintone = f"{color_code}{skintone}|n"
