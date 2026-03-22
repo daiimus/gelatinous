@@ -9,8 +9,16 @@
 # - CmdWrest: Non-combat item snatching with contest mechanics
 #
 from evennia import Command
-from evennia.utils.search import search_object
-from world.combat.constants import NDB_PROXIMITY_UNIVERSAL
+from evennia.comms.models import ChannelDB
+from world.combat.constants import (
+    NDB_COMBAT_HANDLER, NDB_PROXIMITY_UNIVERSAL,
+    MSG_WREST_SUCCESS_CALLER, MSG_WREST_SUCCESS_TARGET, MSG_WREST_SUCCESS_ROOM,
+    MSG_WREST_FAILED_CALLER, MSG_WREST_FAILED_TARGET, MSG_WREST_FAILED_ROOM,
+    MSG_WREST_IN_COMBAT, MSG_WREST_NO_FREE_HANDS, MSG_WREST_TARGET_NOT_FOUND,
+    MSG_WREST_OBJECT_NOT_IN_HANDS, DB_CHAR, DB_GRAPPLED_BY_DBREF,
+    STAT_GRIT, SPLATTERCAST_CHANNEL,
+)
+from world.combat.utils import roll_stat, roll_with_disadvantage
 
 class CmdWield(Command):
     """
@@ -279,7 +287,6 @@ class CmdInventory(Command):
         
         return ", ".join(non_default_states)
 
-from evennia import Command
 
 class CmdDrop(Command):
     """
@@ -489,7 +496,7 @@ class CmdGet(Command):
         for hand, held in caller.hands.items():
             if held is None:
                 caller.hands[hand] = item
-                item.location = caller
+                item.move_to(caller, quiet=True)
                 
                 if from_container:
                     caller.msg(f"You take {item.get_display_name(caller)} from {from_container.get_display_name(caller)} and hold it in your {hand} hand.")
@@ -506,9 +513,9 @@ class CmdGet(Command):
         # No free hands — move the first held item to inventory
         for hand, held in caller.hands.items():
             if held:
-                held.location = caller  # move to inventory
+                held.move_to(caller, quiet=True)  # move to inventory
                 caller.hands[hand] = item
-                item.location = caller
+                item.move_to(caller, quiet=True)
                 
                 if from_container:
                     caller.msg(
@@ -639,12 +646,19 @@ class CmdGive(Command):
         item = None
         from_hand = None
         
-        # First check if it's in hands
-        for hand, held_item in caller.hands.items():
-            if held_item and self.item_name.lower() in held_item.key.lower():
-                item = held_item
-                from_hand = hand
-                break
+        # First check if it's in hands using caller.search for proper matching
+        held_items = [(hand, held) for hand, held in caller.hands.items() if held]
+        if held_items:
+            held_objects = [held for _, held in held_items]
+            result = caller.search(self.item_name, candidates=held_objects, quiet=True)
+            if result:
+                matched = result[0] if isinstance(result, list) else result
+                # Find which hand holds the matched item
+                for hand, held in held_items:
+                    if held == matched:
+                        item = matched
+                        from_hand = hand
+                        break
         
         # If not found in hands, check inventory
         if not item:
@@ -669,18 +683,11 @@ class CmdGive(Command):
                 caller.msg(f"Your hands are full. You need a free hand to give {item.key}.")
                 return
             
-            # Wield the item first
+            # Wield the item first (wield_item returns a status message)
             wield_result = caller.wield_item(item, caller_free_hand)
             if "wield" not in wield_result.lower():
                 caller.msg(f"Failed to prepare {item.key} for giving: {wield_result}")
                 return
-            
-            # Announce the wield action to match standard wield messages
-            caller.msg(f"You wield {item.key} in your {caller_free_hand} hand.")
-            caller.location.msg_contents(
-                f"{caller.key} wields {item.key} in their {caller_free_hand} hand.",
-                exclude=caller
-            )
             
             from_hand = caller_free_hand
 
@@ -754,17 +761,6 @@ class CmdWrest(Command):
             caller.msg("Usage: wrest <object> from <target>")
             return
 
-        # Import combat constants here to avoid circular imports
-        from evennia.comms.models import ChannelDB
-        from world.combat.constants import (
-            MSG_WREST_SUCCESS_CALLER, MSG_WREST_SUCCESS_TARGET, MSG_WREST_SUCCESS_ROOM,
-            MSG_WREST_FAILED_CALLER, MSG_WREST_FAILED_TARGET, MSG_WREST_FAILED_ROOM,
-            MSG_WREST_IN_COMBAT, MSG_WREST_NO_FREE_HANDS, MSG_WREST_TARGET_NOT_FOUND,
-            MSG_WREST_OBJECT_NOT_IN_HANDS, DB_CHAR, DB_GRAPPLED_BY_DBREF,
-            STAT_GRIT, SPLATTERCAST_CHANNEL
-        )
-        from world.combat.utils import roll_stat, roll_with_disadvantage
-
         # 1. Check caller not in combat
         if self._is_caller_in_combat():
             caller.msg(MSG_WREST_IN_COMBAT)
@@ -811,9 +807,8 @@ class CmdWrest(Command):
 
     def _is_caller_in_combat(self):
         """Check if caller is currently in combat."""
-        from world.combat.constants import DB_CHAR
         # Check for combat handler reference
-        combat_handler = getattr(self.caller.ndb, "combat_handler", None)
+        combat_handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
         if combat_handler:
             # Verify handler is still active
             combatants = combat_handler.db.combatants
@@ -843,16 +838,21 @@ class CmdWrest(Command):
     def _find_object_in_target_hands(self, target):
         """Find specified object in target's hands."""
         hands = getattr(target, 'hands', {})
-        for hand_name, held_item in hands.items():
-            if held_item and self.object_name.lower() in held_item.key.lower():
-                return hand_name, held_item
+        held_items = [(hand_name, held) for hand_name, held in hands.items() if held]
+        if held_items:
+            held_objects = [held for _, held in held_items]
+            result = self.caller.search(self.object_name, candidates=held_objects, quiet=True)
+            if result:
+                matched = result[0] if isinstance(result, list) else result
+                for hand_name, held in held_items:
+                    if held == matched:
+                        return hand_name, matched
         return None, None
 
     def _is_target_grappled(self, target):
         """Check if target is currently grappled."""
-        from world.combat.constants import DB_CHAR, DB_GRAPPLED_BY_DBREF
         # Check if target has a combat handler with grapple status
-        combat_handler = getattr(target.ndb, "combat_handler", None)
+        combat_handler = getattr(target.ndb, NDB_COMBAT_HANDLER, None)
         if combat_handler:
             combatants = combat_handler.db.combatants
             if combatants:
@@ -871,8 +871,6 @@ class CmdWrest(Command):
 
     def _execute_grit_contest(self, caller, target, target_is_grappled, roll_stat, roll_with_disadvantage):
         """Execute Grit vs Grit contest, with disadvantage for grappled targets."""
-        from evennia.comms.models import ChannelDB
-        from world.combat.constants import STAT_GRIT, SPLATTERCAST_CHANNEL
         
         # Caller rolls normally
         caller_roll = roll_stat(caller, STAT_GRIT)
@@ -1092,12 +1090,12 @@ class CmdFrisk(Command):
         
         for item in all_items:
             # Check if item is worn (common patterns for worn items)
-            if item.db.worn:
+            if item.db.worn is not None:
                 worn_items.append(item)
             elif hasattr(item, 'worn') and item.worn:
                 worn_items.append(item)
             # Check if it's in a wear location
-            elif item.db.wear_location:
+            elif item.db.wear_location is not None:
                 worn_items.append(item)
             else:
                 carried_items.append(item)
