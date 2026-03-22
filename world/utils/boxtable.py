@@ -427,7 +427,7 @@ class SimpleBoxTable(EvTable):
         # Insert header line after the first data row (after header row)
         # Find the width of the table
         if lines:
-            table_width = len(str(lines[0]))
+            table_width = len(ANSIString(str(lines[0])).clean())
             header_line = '├' + '─' * (table_width - 2) + '┤'
             
             # Insert after second line (header row)

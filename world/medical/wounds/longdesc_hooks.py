@@ -164,7 +164,10 @@ def get_standalone_wound_descriptions(character, looker=None):
 def _prioritize_wounds_for_display(wounds):
     """Sort wounds by display priority."""
     severity_order = {"Critical": 4, "Severe": 3, "Moderate": 2, "Light": 1}
-    stage_order = {"fresh": 4, "treated": 3, "healing": 2, "scarred": 1}
+    stage_order = {
+        "fresh": 6, "treated": 5, "healing": 4,
+        "destroyed": 3, "severed": 2, "scarred": 1,
+    }
     
     def wound_priority(wound):
         severity_score = severity_order.get(wound['severity'], 0)

@@ -107,7 +107,6 @@ CROWD_MESSAGES = {
                 "faces wear expressions borrowed from customer service training materials",
                 "a transaction occurs without money changing hands, but something definitely does",
                 "people maintain eye contact for exactly the wrong amount of time",
-                "someone's nervous laughter suggests they know something you don't",
                 "bodies move like they're following invisible queue lines painted on the ground",
                 "a person stops walking to stare at a crack in the sidewalk for thirty seconds",
                 "someone drops a piece of paper, picks it up, then drops it again",

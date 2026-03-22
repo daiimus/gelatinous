@@ -365,7 +365,7 @@ RANGED_WEAPON_BASE = {
 LIGHT_PISTOL = {
     "prototype_parent": "RANGED_WEAPON_BASE",
     "key": "PAM Model 6 pistol",
-    "aliases": ["pistol", "model 9", "m9", "pam pistol", "pam m9", "handgun", "9mm"],
+    "aliases": ["pistol", "model 6", "m6", "pam pistol", "pam m6", "handgun", "9mm"],
     "desc": "A Pioneer Arms Manufacturing Model 6 pistol in 6mm - the ubiquitous sidearm of frontier colonies across human space. The polymer frame keeps weight down while the slide is precision-machined steel with a corrosion-resistant finish that stands up to harsh planetary environments. Fixed three-dot sights are robust and simple, requiring no batteries or adjustment. The trigger is heavy but predictable, designed for reliability over refinement. No frills, no unnecessary features - just a working person's pistol that starts every time and keeps running through dust, mud, and neglect. You'll find Model 9s in the holsters of security guards, cargo haulers, and frontier marshals across a thousand worlds. It's not the best pistol ever made, but it might be the most common.",
     "damage": 12,
     "attrs": [
@@ -967,10 +967,6 @@ PLATE_CARRIER = {
 
 # =============================================================================
 # ARMOR PLATES (For Plate Carriers)
-# =============================================================================
-
-# =============================================================================
-# ARMOR PLATES (For Plate Carriers)
 # Universal fit - trade protection for weight/durability
 # =============================================================================
 
@@ -1238,7 +1234,7 @@ PLATE_MAIL = {
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("worn_desc", "Imposing {color}steel|n plate armor that encases their torso and arms in overlapping metal segments, each piece precisely fitted and articulated for maximum protection while maintaining combat mobility"),
-        ("layer", 3),
+        ("layer", 5),  # Heavy armor layer (over plate carriers and other armor)
         ("color", "bright_white"),  # Polished steel
         ("material", "steel"),
         ("weight", 25.0),  # Very heavy
