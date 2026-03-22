@@ -85,39 +85,10 @@ from .explosives import (  # noqa: F401 — re-export
 # CHARACTER STATE MANAGEMENT
 # ===================================================================
 
-def initialize_proximity_ndb(character):
-    """
-    Initialize a character's proximity NDB if missing or invalid.
-    
-    Args:
-        character: The character to initialize
-        
-    Returns:
-        bool: True if initialization was needed
-    """
-    if not hasattr(character.ndb, NDB_PROXIMITY) or not isinstance(character.ndb.in_proximity_with, set):
-        character.ndb.in_proximity_with = set()
-        log_debug("PROXIMITY", "FAILSAFE", f"Initialized {NDB_PROXIMITY}", character)
-        return True
-    return False
-
-
-def clear_character_proximity(character):
-    """
-    Clear all proximity relationships for a character.
-    
-    Args:
-        character: The character to clear proximity for
-    """
-    if hasattr(character.ndb, NDB_PROXIMITY) and character.ndb.in_proximity_with:
-        # Clear this character from others' proximity
-        for other_char in list(character.ndb.in_proximity_with):
-            if hasattr(other_char.ndb, NDB_PROXIMITY) and isinstance(other_char.ndb.in_proximity_with, set):
-                other_char.ndb.in_proximity_with.discard(character)
-        
-        # Clear this character's proximity
-        character.ndb.in_proximity_with.clear()
-        log_debug("PROXIMITY", "CLEAR", "Cleared all proximity", character)
+# Re-export proximity functions for backward compatibility.
+# Canonical implementations live in proximity.py.
+from .proximity import initialize_proximity as initialize_proximity_ndb  # noqa: F401
+from .proximity import clear_all_proximity as clear_character_proximity  # noqa: F401
 
 
 # ===================================================================
@@ -805,13 +776,17 @@ def get_combatant_target(entry, handler):
 
 def get_combatant_grappling_target(entry, handler):
     """Get the character that this combatant is grappling."""
-    grappling_dbref = entry.get("grappling_dbref")
+    from .constants import DB_GRAPPLING_DBREF
+
+    grappling_dbref = entry.get(DB_GRAPPLING_DBREF)
     return get_character_by_dbref(grappling_dbref)
 
 
 def get_combatant_grappled_by(entry, handler):
     """Get the character that is grappling this combatant."""
-    grappled_by_dbref = entry.get("grappled_by_dbref")
+    from .constants import DB_GRAPPLED_BY_DBREF
+
+    grappled_by_dbref = entry.get(DB_GRAPPLED_BY_DBREF)
     return get_character_by_dbref(grappled_by_dbref)
 
 
@@ -1036,9 +1011,11 @@ def resolve_bonus_attack(handler, attacker, target):
     if not attacker_entry:
         splattercast.msg(f"BONUS_ATTACK_ERROR: {attacker.key} not found in combat for bonus attack.")
         return
-        
-    # Process the bonus attack using the same logic as regular attacks
-    handler._process_attack(attacker, target, attacker_entry, combatants_list)
-    
+
+    # Process the bonus attack using the standalone attack function
+    from .attack import process_attack
+
+    process_attack(handler, attacker, target, attacker_entry, combatants_list)
+
     # Log the bonus attack
     splattercast.msg(f"BONUS_ATTACK: {attacker.key} made bonus attack against {target.key}.")

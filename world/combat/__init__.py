@@ -11,7 +11,6 @@ Main modules:
 - handler: Main combat handler script (refactored combathandler.py)
 - proximity: Proximity management logic
 - grappling: Grappling-specific operations
-- attributes: Character attribute helpers
 - messages: Combat message system
 """
 

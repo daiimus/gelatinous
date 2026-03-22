@@ -94,7 +94,7 @@ def get_or_create_combat(location):
 
     for handler_script in active_handlers:
         # Ensure it's our CombatHandler type and has managed_rooms
-        if hasattr(handler_script, "db") and handler_script.db.managed_rooms is not None:
+        if handler_script.db.managed_rooms is not None:
             if location in (handler_script.db.managed_rooms or []):
                 splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_GET: Location {location.key} is already managed by active handler {handler_script.key} (on {handler_script.obj.key}). Returning it.")
                 return handler_script

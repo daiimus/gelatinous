@@ -12,7 +12,6 @@ script instance) instead of operating as methods on the class.
 from random import randint
 
 from evennia.comms.models import ChannelDB
-from evennia.utils.utils import delay
 
 from world.combat.messages import get_combat_message
 from world.medical.utils import select_hit_location, select_target_organ
