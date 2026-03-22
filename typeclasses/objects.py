@@ -338,7 +338,7 @@ class GraffitiObject(Object):
             'color': color,  # Store full color name for display
             'color_code': color_code,  # Store single-letter code for formatting
             'author': author.key if author else 'someone',
-            'timestamp': str(gametime.gametime())
+            'timestamp': gametime.gametime()
         })
         
         # Enforce FIFO limit (cannibalization)
@@ -371,12 +371,12 @@ class GraffitiObject(Object):
                 break
                 
             # Pick a random entry
-            entry_index = random.randint(0, len(self.db.graffiti_entries) - 1)
+            entry_index = random.randrange(len(self.db.graffiti_entries))
             entry = self.db.graffiti_entries[entry_index]
             
             # Remove a random character from the message (replace with space)
             message = entry['message']
-            if len(message) > 0:
+            if message:
                 # Only replace non-space characters to avoid creating double spaces
                 non_space_indices = [i for i, char in enumerate(message) if char != ' ']
                 if non_space_indices:
@@ -621,11 +621,12 @@ class BloodPool(Object):
         age_desc = self.get_age_description()
         
         # Main description
-        if self.get_age_hours() < 1:
+        age_hours = self.get_age_hours()
+        if age_hours < 1:
             base_desc = f"Crimson blood marks this area with {volume_desc}, {age_desc}."
-        elif self.get_age_hours() < 6:
+        elif age_hours < 6:
             base_desc = f"Dark blood stains mark this spot with {volume_desc}, now {age_desc}."
-        elif self.get_age_hours() < 24:
+        elif age_hours < 24:
             base_desc = f"Dried blood residue shows {volume_desc} occurred here, {age_desc}."
         else:
             base_desc = f"Faint rusty stains hint at {volume_desc} that happened here, {age_desc}."
@@ -639,7 +640,7 @@ class BloodPool(Object):
             character_counts[char] = character_counts.get(char, 0) + incident['severity']
         
         if len(character_counts) == 1:
-            char_name = list(character_counts.keys())[0]
+            char_name = next(iter(character_counts))
             incident_summary.append(f"Evidence suggests this blood came from {char_name}.")
         else:
             incident_summary.append("Evidence suggests multiple sources:")

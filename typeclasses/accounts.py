@@ -192,7 +192,7 @@ class Account(DefaultAccount):
         # Count active (non-archived) characters - defensive coding
         active_count = 0
         for char in self.characters:
-            if not char or not hasattr(char, 'db'):
+            if not char:
                 continue
             if char.db.archived:
                 continue
@@ -222,7 +222,7 @@ class Account(DefaultAccount):
             active_chars.append(char)
         
         # CRITICAL: Only start character creation if there are ZERO active characters
-        if len(active_chars) == 0:
+        if not active_chars:
             # No active characters - start character creation
             # Import here to avoid circular imports
             try:
