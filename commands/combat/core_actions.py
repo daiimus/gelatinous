@@ -9,35 +9,26 @@ These commands form the core of the combat system and are used most frequently
 by players during combat encounters.
 """
 
+from random import randint
+
 from evennia import Command
-from evennia.utils.utils import inherits_from
-from random import randint, choice
-from world.combat.handler import get_or_create_combat
-from world.combat.constants import COMBAT_SCRIPT_KEY
-from world.combat.messages import get_combat_message
 from evennia.comms.models import ChannelDB
-from evennia.utils import utils
-from evennia.utils.evtable import EvTable
+from evennia.utils.utils import inherits_from
 
 from world.combat.constants import (
-    MSG_ATTACK_WHO, MSG_SELF_TARGET, MSG_NOT_IN_COMBAT, MSG_NO_COMBAT_DATA,
-    MSG_STOP_WHAT, MSG_STOP_NOT_AIMING, MSG_STOP_AIM_ERROR, MSG_STOP_NOT_IN_COMBAT,
+    MSG_ATTACK_WHO, MSG_SELF_TARGET, MSG_NOT_IN_COMBAT,
+    MSG_STOP_WHAT, MSG_STOP_NOT_AIMING, MSG_STOP_NOT_IN_COMBAT,
     MSG_STOP_NOT_REGISTERED, MSG_STOP_YIELDING, MSG_STOP_ALREADY_ACCEPTING_GRAPPLE,
     MSG_STOP_ALREADY_YIELDING, MSG_RESUME_ATTACKING, MSG_GRAPPLE_VIOLENT_SWITCH,
-    DEBUG_PREFIX_ATTACK, DEBUG_FAILSAFE, DEBUG_SUCCESS, DEBUG_FAIL, DEBUG_ERROR,
-    NDB_PROXIMITY, DEFAULT_WEAPON_TYPE, COLOR_SUCCESS, COLOR_FAILURE, COLOR_WARNING
+    DEBUG_PREFIX_ATTACK, DEBUG_FAILSAFE, DEBUG_SUCCESS, DEBUG_FAIL,
+    NDB_PROXIMITY, NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY,
+    NDB_AIMING_DIRECTION, SPLATTERCAST_CHANNEL,
 )
+from world.combat.handler import get_or_create_combat
+from world.combat.messages import get_combat_message
+from world.combat.proximity import establish_proximity, break_proximity, is_in_proximity
 from world.combat.utils import (
-    initialize_proximity_ndb, get_wielded_weapon, roll_stat, opposed_roll,
-    log_combat_action, get_display_name_safe, validate_combat_target
-)
-from world.combat.proximity import (
-    establish_proximity, break_proximity, clear_all_proximity, 
-    is_in_proximity, get_proximity_list, proximity_opposed_roll
-)
-from world.combat.grappling import (
-    get_grappling_target, get_grappled_by, establish_grapple, break_grapple,
-    is_grappling, is_grappled, validate_grapple_action
+    initialize_proximity_ndb, get_wielded_weapon, get_numeric_stat,
 )
 
 
@@ -56,11 +47,12 @@ class CmdAttack(Command):
     key = "attack"
     aliases = ["kill"]
     locks = "cmd:all()"
+    help_category = "Combat"
 
     def func(self):
         caller = self.caller
         args = self.args.strip()
-        splattercast = ChannelDB.objects.get_channel("Splattercast")
+        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
 
         if not args:
             caller.msg(MSG_ATTACK_WHO)
@@ -80,13 +72,13 @@ class CmdAttack(Command):
         # Debug weapon detection
         splattercast.msg(f"WEAPON_DETECT: {caller.key} hands={hands}, weapon_obj={weapon_obj.key if weapon_obj else 'None'}")
         if weapon_obj:
-            splattercast.msg(f"WEAPON_DETECT: {weapon_obj.key} has db={hasattr(weapon_obj, 'db')}, "
-                           f"db.is_ranged={weapon_obj.db.is_ranged if weapon_obj.db.is_ranged is not None else 'MISSING' if hasattr(weapon_obj, 'db') else 'NO_DB'}, "
-                           f"db.weapon_type={weapon_obj.db.weapon_type if weapon_obj.db.weapon_type is not None else 'MISSING' if hasattr(weapon_obj, 'db') else 'NO_DB'}")
+            splattercast.msg(f"WEAPON_DETECT: {weapon_obj.key} "
+                           f"db.is_ranged={weapon_obj.db.is_ranged if weapon_obj.db.is_ranged is not None else 'MISSING'}, "
+                           f"db.weapon_type={weapon_obj.db.weapon_type if weapon_obj.db.weapon_type is not None else 'MISSING'}")
         
-        is_ranged_weapon = weapon_obj and hasattr(weapon_obj, "db") and weapon_obj.db.is_ranged
+        is_ranged_weapon = weapon_obj and weapon_obj.db.is_ranged
         weapon_name_for_msg = weapon_obj.key if weapon_obj else "your fists"
-        weapon_type_for_msg = (str(weapon_obj.db.weapon_type).lower() if weapon_obj and hasattr(weapon_obj, "db") and weapon_obj.db.weapon_type else "unarmed")
+        weapon_type_for_msg = (str(weapon_obj.db.weapon_type).lower() if weapon_obj and weapon_obj.db.weapon_type else "unarmed")
         
         splattercast.msg(f"WEAPON_FINAL: {caller.key} is_ranged={is_ranged_weapon}, weapon_type={weapon_type_for_msg}")
         # --- END WEAPON IDENTIFICATION ---
@@ -95,7 +87,7 @@ class CmdAttack(Command):
         target_search_name = args
 
         # --- AIMING DIRECTION ATTACK ---
-        aiming_direction = getattr(caller.ndb, "aiming_direction", None)
+        aiming_direction = getattr(caller.ndb, NDB_AIMING_DIRECTION, None)
         if aiming_direction:
             splattercast.msg(f"{DEBUG_PREFIX_ATTACK}: {caller.key} is aiming {aiming_direction}, attempting remote attack on '{args}'.")
             
@@ -149,7 +141,7 @@ class CmdAttack(Command):
 
         # --- GRAPPLE RESTRICTION CHECK ---
         # Check if caller is grappled and trying to attack their grappler
-        caller_handler = getattr(caller.ndb, "combat_handler", None)
+        caller_handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
         if caller_handler:
             combatants_list = caller_handler.db.combatants
             if combatants_list:  # Add None check to prevent iteration errors
@@ -169,8 +161,8 @@ class CmdAttack(Command):
         # For melee weapons in same room, establish proximity if this is NEW combat initiation
         if not aiming_direction and caller.location == target.location and not is_ranged_weapon:
             # Check if either character is already in combat (existing combat scenario)
-            caller_existing_handler = getattr(caller.ndb, "combat_handler", None)
-            target_existing_handler = getattr(target.ndb, "combat_handler", None)
+            caller_existing_handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
+            target_existing_handler = getattr(target.ndb, NDB_COMBAT_HANDLER, None)
             
             # If neither is in combat, this is NEW combat initiation - grant proximity to melee aggressor
             if not caller_existing_handler and not target_existing_handler:
@@ -181,8 +173,6 @@ class CmdAttack(Command):
                 splattercast.msg(f"{DEBUG_PREFIX_ATTACK}_COMBAT_JOIN: {caller.key} joins existing combat - rolling contested proximity.")
                 
                 # Perform contested proximity roll (same mechanics as advance command)
-                from world.combat.utils import get_numeric_stat
-                
                 caller_motorics = get_numeric_stat(caller, "motorics")
                 target_motorics = get_numeric_stat(target, "motorics")
                 caller_roll = randint(1, max(1, caller_motorics))
@@ -220,8 +210,8 @@ class CmdAttack(Command):
             else: # Caller is NOT in melee with target (at range in same room)
                 if not is_ranged_weapon:
                     # Check if this is a "joining existing combat" scenario - allow those through
-                    caller_existing_handler = getattr(caller.ndb, "combat_handler", None)
-                    target_existing_handler = getattr(target.ndb, "combat_handler", None)
+                    caller_existing_handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
+                    target_existing_handler = getattr(target.ndb, NDB_COMBAT_HANDLER, None)
                     
                     if not caller_existing_handler and target_existing_handler:
                         # This is joining existing combat - proximity was handled above, allow through
@@ -403,7 +393,7 @@ class CmdAttack(Command):
                 # Get target's weapon for their defensive initiate message
                 target_weapon = get_wielded_weapon(target)
                 target_weapon_type = "unarmed"
-                if target_weapon and hasattr(target_weapon, 'db') and target_weapon.db.weapon_type is not None:
+                if target_weapon and target_weapon.db.weapon_type is not None:
                     target_weapon_type = target_weapon.db.weapon_type
                 
                 # Get target's initiate message (defensive reaction)
@@ -469,8 +459,8 @@ class CmdStop(Command):
 
         if args == "aiming" or args == "aim":
             # Check if currently aiming at a target
-            aiming_target = getattr(caller.ndb, "aiming_at", None)
-            aiming_direction = getattr(caller.ndb, "aiming_direction", None)
+            aiming_target = getattr(caller.ndb, NDB_AIMING_AT, None)
+            aiming_direction = getattr(caller.ndb, NDB_AIMING_DIRECTION, None)
             
             if not aiming_target and not aiming_direction:
                 caller.msg(MSG_STOP_NOT_AIMING)
@@ -478,9 +468,9 @@ class CmdStop(Command):
                 
             # Clear target aiming
             if aiming_target:
-                delattr(caller.ndb, "aiming_at")
-                if hasattr(aiming_target.ndb, "aimed_at_by") and getattr(aiming_target.ndb, "aimed_at_by") == caller:
-                    delattr(aiming_target.ndb, "aimed_at_by")
+                delattr(caller.ndb, NDB_AIMING_AT)
+                if hasattr(aiming_target.ndb, NDB_AIMED_AT_BY) and getattr(aiming_target.ndb, NDB_AIMED_AT_BY) == caller:
+                    delattr(aiming_target.ndb, NDB_AIMED_AT_BY)
                 
                 # Clear override_place and handle mutual showdown cleanup
                 self._clear_aim_override_place_on_stop(caller, aiming_target)
@@ -495,7 +485,7 @@ class CmdStop(Command):
                 
             # Clear direction aiming
             if aiming_direction:
-                delattr(caller.ndb, "aiming_direction")
+                delattr(caller.ndb, NDB_AIMING_DIRECTION)
                 
                 # Clear directional aim override_place (but only if we weren't also target aiming)
                 if not aiming_target:
@@ -522,7 +512,7 @@ class CmdStop(Command):
                 caller.msg(f"You stop aiming to the {exit_name} and lower your {weapon_name}.")
                 
         elif args == "attacking" or args == "attack":
-            handler = getattr(caller.ndb, "combat_handler", None)
+            handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
             
             if not handler:
                 caller.msg(MSG_STOP_NOT_IN_COMBAT)

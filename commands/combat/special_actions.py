@@ -12,23 +12,25 @@ These commands provide advanced tactical options for experienced combatants
 and add complexity to combat encounters.
 """
 
+import random
+
 from evennia import Command
 from evennia.comms.models import ChannelDB
 
 from world.combat.constants import (
     MSG_GRAPPLE_WHO, MSG_GRAPPLE_NO_TARGET, MSG_CANNOT_GRAPPLE_SELF, MSG_CANNOT_GRAPPLE_TARGET,
-    MSG_GRAPPLE_HANDLER_ERROR, MSG_GRAPPLE_COMBAT_ADD_ERROR, MSG_ALREADY_GRAPPLING,
-    MSG_CANNOT_GRAPPLE_WHILE_GRAPPLED, MSG_TARGET_ALREADY_GRAPPLED, MSG_GRAPPLE_PREPARE,
-    MSG_ESCAPE_NOT_IN_COMBAT, MSG_ESCAPE_NOT_REGISTERED, MSG_ESCAPE_NOT_GRAPPLED,
-    MSG_RELEASE_NOT_IN_COMBAT, MSG_RELEASE_NOT_GRAPPLING,
-    MSG_NOT_IN_COMBAT, MSG_DISARM_NO_TARGET, MSG_DISARM_NOT_IN_PROXIMITY, MSG_GRAPPLE_NOT_IN_PROXIMITY,
-    MSG_DISARM_TARGET_EMPTY_HANDS, MSG_DISARM_FAILED, MSG_DISARM_RESISTED, MSG_DISARM_NOTHING_TO_DISARM,
-    MSG_DISARM_SUCCESS_ATTACKER, MSG_DISARM_SUCCESS_VICTIM, MSG_DISARM_SUCCESS_OBSERVER,
-    MSG_AIM_WHO_WHAT, MSG_AIM_SELF_TARGET, MSG_GRAPPLE_VIOLENT_SWITCH, MSG_GRAPPLE_ESCAPE_VIOLENT_SWITCH,
-    MSG_STOP_NOT_AIMING, DEBUG_PREFIX_GRAPPLE, SPLATTERCAST_CHANNEL, NDB_PROXIMITY,
-    NDB_COMBAT_HANDLER, COMBAT_ACTION_DISARM, MSG_DISARM_PREPARE
+    MSG_GRAPPLE_HANDLER_ERROR, MSG_GRAPPLE_COMBAT_ADD_ERROR,
+    MSG_GRAPPLE_PREPARE,
+    MSG_ESCAPE_NOT_IN_COMBAT,
+    MSG_RELEASE_NOT_IN_COMBAT,
+    MSG_NOT_IN_COMBAT, MSG_DISARM_NO_TARGET, MSG_DISARM_NOT_IN_PROXIMITY,
+    MSG_DISARM_PREPARE,
+    MSG_AIM_WHO_WHAT, MSG_AIM_SELF_TARGET, MSG_GRAPPLE_ESCAPE_VIOLENT_SWITCH,
+    MSG_STOP_NOT_AIMING, SPLATTERCAST_CHANNEL, NDB_PROXIMITY,
+    NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY, NDB_AIMING_DIRECTION,
+    COMBAT_ACTION_DISARM,
 )
-from world.combat.utils import log_combat_action, get_numeric_stat, roll_stat, initialize_proximity_ndb
+from world.combat.utils import log_combat_action, initialize_proximity_ndb
 
 
 class CmdGrapple(Command):
@@ -195,7 +197,7 @@ class CmdEscapeGrapple(Command):
 
     def func(self):
         caller = self.caller
-        handler = getattr(caller.ndb, "combat_handler", None)
+        handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
 
         if not handler:
             caller.msg(MSG_ESCAPE_NOT_IN_COMBAT)
@@ -243,7 +245,7 @@ class CmdReleaseGrapple(Command):
 
     def func(self):
         caller = self.caller
-        handler = getattr(caller.ndb, "combat_handler", None)
+        handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
 
         if not handler:
             caller.msg(MSG_RELEASE_NOT_IN_COMBAT)
@@ -365,8 +367,8 @@ class CmdAim(Command):
 
         # Handle stopping aim
         if args.lower() in ("stop", "clear", "cancel"):
-            current_target = getattr(caller.ndb, "aiming_at", None)
-            current_direction = getattr(caller.ndb, "aiming_direction", None)
+            current_target = getattr(caller.ndb, NDB_AIMING_AT, None)
+            current_direction = getattr(caller.ndb, NDB_AIMING_DIRECTION, None)
             
             if not current_target and not current_direction:
                 caller.msg(MSG_STOP_NOT_AIMING)
@@ -374,9 +376,9 @@ class CmdAim(Command):
             
             # Clear target aiming if present
             if current_target:
-                delattr(caller.ndb, "aiming_at")
-                if hasattr(current_target, "ndb") and hasattr(current_target.ndb, "aimed_at_by") and getattr(current_target.ndb, "aimed_at_by") == caller:
-                    delattr(current_target.ndb, "aimed_at_by")
+                delattr(caller.ndb, NDB_AIMING_AT)
+                if hasattr(current_target, "ndb") and hasattr(current_target.ndb, NDB_AIMED_AT_BY) and getattr(current_target.ndb, NDB_AIMED_AT_BY) == caller:
+                    delattr(current_target.ndb, NDB_AIMED_AT_BY)
                 
                 # Clear override_place and check for mutual showdown cleanup
                 self._clear_aim_override_place(caller, current_target)
@@ -392,7 +394,7 @@ class CmdAim(Command):
             
             # Clear directional aiming if present
             if current_direction:
-                delattr(caller.ndb, "aiming_direction")
+                delattr(caller.ndb, NDB_AIMING_DIRECTION)
                 
                 # Clear directional aim override_place (but only if we weren't also target aiming)
                 if not current_target:
@@ -422,22 +424,22 @@ class CmdAim(Command):
             return
         
         # Check current aiming state for transition detection
-        current_aiming_direction = getattr(caller.ndb, "aiming_direction", None)
+        current_aiming_direction = getattr(caller.ndb, NDB_AIMING_DIRECTION, None)
         
         # Clear any existing aim first
-        current_target = getattr(caller.ndb, "aiming_at", None)
-        current_direction = getattr(caller.ndb, "aiming_direction", None)
+        current_target = getattr(caller.ndb, NDB_AIMING_AT, None)
+        current_direction = getattr(caller.ndb, NDB_AIMING_DIRECTION, None)
         
         if current_target:
-            if hasattr(current_target, "ndb") and hasattr(current_target.ndb, "aimed_at_by") and getattr(current_target.ndb, "aimed_at_by") == caller:
-                delattr(current_target.ndb, "aimed_at_by")
-            delattr(caller.ndb, "aiming_at")
+            if hasattr(current_target, "ndb") and hasattr(current_target.ndb, NDB_AIMED_AT_BY) and getattr(current_target.ndb, NDB_AIMED_AT_BY) == caller:
+                delattr(current_target.ndb, NDB_AIMED_AT_BY)
+            delattr(caller.ndb, NDB_AIMING_AT)
             # Clear override_place and check for mutual showdown cleanup
             self._clear_aim_override_place(caller, current_target)
             current_target.msg(f"{caller.key} stops aiming at you.")
             
         if current_direction:
-            delattr(caller.ndb, "aiming_direction")
+            delattr(caller.ndb, NDB_AIMING_DIRECTION)
             # Clear directional aim override_place
             caller.override_place = ""
 
@@ -469,13 +471,13 @@ class CmdAim(Command):
                 direction = args.strip().lower()
                 
                 # Clear any existing aim first
-                current_target = getattr(caller.ndb, "aiming_at", None)
-                current_direction = getattr(caller.ndb, "aiming_direction", None)
+                current_target = getattr(caller.ndb, NDB_AIMING_AT, None)
+                current_direction = getattr(caller.ndb, NDB_AIMING_DIRECTION, None)
                 
                 if current_target:
-                    if hasattr(current_target, "ndb") and hasattr(current_target.ndb, "aimed_at_by") and getattr(current_target.ndb, "aimed_at_by") == caller:
-                        delattr(current_target.ndb, "aimed_at_by")
-                    delattr(caller.ndb, "aiming_at")
+                    if hasattr(current_target, "ndb") and hasattr(current_target.ndb, NDB_AIMED_AT_BY) and getattr(current_target.ndb, NDB_AIMED_AT_BY) == caller:
+                        delattr(current_target.ndb, NDB_AIMED_AT_BY)
+                    delattr(caller.ndb, NDB_AIMING_AT)
                     current_target.msg(f"{caller.key} stops aiming at you.")
                     
                 # Check if we're switching between directions (for enhanced messaging)
@@ -483,7 +485,7 @@ class CmdAim(Command):
                 
                 if current_direction:
                     splattercast.msg(f"AIM_DEBUG: Clearing existing aiming_direction '{current_direction}' for {caller.key}")
-                    delattr(caller.ndb, "aiming_direction")
+                    delattr(caller.ndb, NDB_AIMING_DIRECTION)
                 
                 # Check if caller has a ranged weapon for direction aiming
                 hands = getattr(caller, "hands", {})
@@ -500,7 +502,7 @@ class CmdAim(Command):
                     return
                 
                 # Set direction aiming
-                setattr(caller.ndb, "aiming_direction", direction)
+                setattr(caller.ndb, NDB_AIMING_DIRECTION, direction)
                 
                 # Set override_place for directional aiming with proper grammar
                 caller.override_place = f"aiming carefully to the {direction}."
@@ -511,7 +513,7 @@ class CmdAim(Command):
                 splattercast.msg(f"AIM_DEBUG: Direct ndb check: hasattr={hasattr(caller.ndb, 'aiming_direction')}")
                 
                 # Test retrieval immediately
-                test_direction = getattr(caller.ndb, "aiming_direction", None)
+                test_direction = getattr(caller.ndb, NDB_AIMING_DIRECTION, None)
                 splattercast.msg(f"AIM_DEBUG: Immediate test retrieval: '{test_direction}'")
                 
                 # Get held weapon for better messaging
@@ -525,7 +527,6 @@ class CmdAim(Command):
                 # Enhanced messaging for direction transitions
                 if is_switching_directions:
                     splattercast.msg(f"AIM_DEBUG: PATH1 - previous_direction='{current_direction}', new direction='{direction}', is_switching={is_switching_directions}")
-                    import random
                     swivel_messages = [
                         f"You smoothly pivot your {weapon_name}, tracking your aim to the {exit_name}.",
                         f"You swivel your {weapon_name} with practiced precision, realigning toward the {exit_name}.",
@@ -548,7 +549,6 @@ class CmdAim(Command):
                         exclude=[caller]
                     )
                 else:
-                    import random
                     raise_messages = [
                         f"You raise your {weapon_name}, taking careful aim to the {exit_name}.",
                         f"You bring up your {weapon_name}, steadying your sights on the {exit_name}.",
@@ -590,8 +590,8 @@ class CmdAim(Command):
                     is_ranged_weapon = getattr(weapon_db, "is_ranged", False)
 
             # Set target aim relationship
-            setattr(caller.ndb, "aiming_at", target)
-            setattr(target.ndb, "aimed_at_by", caller)
+            setattr(caller.ndb, NDB_AIMING_AT, target)
+            setattr(target.ndb, NDB_AIMED_AT_BY, caller)
 
             # Set override_place and check for mutual showdown
             self._set_aim_override_place(caller, target)
@@ -649,7 +649,7 @@ class CmdAim(Command):
                     return
                 
                 # Set direction aiming
-                setattr(caller.ndb, "aiming_direction", direction)
+                setattr(caller.ndb, NDB_AIMING_DIRECTION, direction)
                 
                 # Set override_place for directional aiming with proper grammar
                 caller.override_place = f"aiming carefully to the {direction}."
@@ -660,7 +660,7 @@ class CmdAim(Command):
                 splattercast.msg(f"AIM_DEBUG: Direct ndb check: hasattr={hasattr(caller.ndb, 'aiming_direction')}")
                 
                 # Test retrieval immediately
-                test_direction = getattr(caller.ndb, "aiming_direction", None)
+                test_direction = getattr(caller.ndb, NDB_AIMING_DIRECTION, None)
                 splattercast.msg(f"AIM_DEBUG: Immediate test retrieval: '{test_direction}'")
                 
                 # Get held weapon for better messaging
@@ -685,7 +685,6 @@ class CmdAim(Command):
                 # Enhanced messaging for direction transitions
                 is_switching_directions = current_aiming_direction and current_aiming_direction != direction
                 if is_switching_directions:
-                    import random
                     swivel_messages = [
                         f"You smoothly pivot your {weapon_name}, tracking your aim to the {exit_name}.",
                         f"You swivel your {weapon_name} with practiced precision, realigning toward the {exit_name}.",
@@ -708,7 +707,6 @@ class CmdAim(Command):
                         exclude=[caller]
                     )
                 else:
-                    import random
                     raise_messages = [
                         f"You raise your {weapon_name}, taking careful aim to the {exit_name}.",
                         f"You bring up your {weapon_name}, steadying your sights on the {exit_name}.",
@@ -746,7 +744,7 @@ class CmdAim(Command):
             target: The character being aimed at
         """
         # Check if target is also aiming at the aimer (mutual showdown)
-        target_aiming_at = getattr(target.ndb, "aiming_at", None)
+        target_aiming_at = getattr(target.ndb, NDB_AIMING_AT, None)
         
         if target_aiming_at == aimer:
             # Mutual showdown - both characters get the special override_place
@@ -771,7 +769,7 @@ class CmdAim(Command):
             aimer.override_place = ""
             
             # If target is still aiming at aimer, revert them to normal aiming
-            target_still_aiming = getattr(target.ndb, "aiming_at", None)
+            target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
             if target_still_aiming == aimer:
                 target.override_place = f"aiming carefully at {aimer.key}."
             else:
