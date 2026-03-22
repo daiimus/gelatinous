@@ -4,9 +4,6 @@ Django views for Gelatinous Monster character creation.
 Extends Evennia's default CharacterCreateView to add GRIM stats and archiving.
 """
 
-import time
-import uuid
-
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
@@ -15,7 +12,6 @@ from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.utils.text import slugify
 from django.views.generic import View
-from evennia.web.website.views.objects import ObjectCreateView, ObjectDetailView
 from evennia.web.website.views.characters import (
     CharacterCreateView as EvenniaCharacterCreateView,
     CharacterListView as EvenniaCharacterListView,
@@ -46,7 +42,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         
         # Check for respawn scenario FIRST (before max character check)
         # This allows respawn even when at 0 active characters
-        if hasattr(account, 'db') and account.db.last_character:
+        if account.db.last_character:
             old_char = account.db.last_character
             
             # Validate that last_character is actually dead/archived and eligible for respawn
@@ -72,8 +68,8 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         # Check if account has reached max character limit
         active_characters = []
         for char in account.characters:
-            # Defensive check - ensure character and db are accessible
-            if not char or not hasattr(char, 'db'):
+            # Defensive check - ensure character is accessible
+            if not char:
                 continue
             archived = char.db.archived or False
             if not archived:
@@ -94,13 +90,12 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         # Debug: Add info to context to display on page
         debug_info = {
             'account_key': account.key if hasattr(account, 'key') else str(account),
-            'has_db': hasattr(account, 'db'),
+            'has_db': True,
             'last_character': None,
         }
         
-        if hasattr(account, 'db'):
-            last_char = account.db.last_character
-            debug_info['last_character'] = last_char.key if last_char else 'None'
+        last_char = account.db.last_character
+        debug_info['last_character'] = last_char.key if last_char else 'None'
         
         # First character - show manual stat allocation form with debug info
         response = super().get(request, *args, **kwargs)
@@ -244,8 +239,16 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             
             return HttpResponseRedirect(self.success_url)
             
-        except Exception as e:
-            messages.error(request, f"Sleeve decantation failed: {str(e)}")
+        except Exception:
+            import logging
+            logging.getLogger('evennia').exception(
+                "Sleeve decantation failed for account %s", account.key
+            )
+            messages.error(
+                request,
+                "Sleeve decantation failed due to an internal error. "
+                "Please try again or contact staff."
+            )
             return HttpResponseRedirect(self.success_url)
     
     def form_valid(self, form):
@@ -311,7 +314,8 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             # Strip Evennia color codes from error messages before displaying on web
             from evennia.utils.ansi import strip_ansi
             clean_errors = [strip_ansi(str(err)) for err in errors]
-            [messages.error(self.request, err) for err in clean_errors]
+            for err in clean_errors:
+                messages.error(self.request, err)
             return self.form_invalid(form)
         
         if character:
@@ -430,8 +434,7 @@ class CharacterArchiveView(LoginRequiredMixin, CharacterMixin, View):
         # FIX: character.account is None when accessed via web
         # Manually set last_character using request.user (which is the Evennia Account)
         account = request.user
-        if hasattr(account, 'db'):
-            account.db.last_character = character
+        account.db.last_character = character
         
         # Success message using character terminology
         messages.success(

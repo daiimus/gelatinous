@@ -36,7 +36,7 @@ _STYLE_CDNS = (
 
 # -- Build the default CSP directives ------------------------------------
 
-_DEFAULT_CSP = "; ".join((
+_CSP_DIRECTIVES = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' " + " ".join(_SCRIPT_CDNS),
     "style-src 'self' 'unsafe-inline' " + " ".join(_STYLE_CDNS),
@@ -48,12 +48,18 @@ _DEFAULT_CSP = "; ".join((
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
-))
+]
 
-# header_only is embedded in Discourse -- allow the forum as a frame ancestor
-_HEADER_ONLY_CSP = _DEFAULT_CSP.replace(
-    "frame-ancestors 'self'",
-    "frame-ancestors 'self' https://forum.gel.monster",
+_DEFAULT_CSP = "; ".join(_CSP_DIRECTIVES)
+
+# header_only is embedded in Discourse -- allow the forum as a frame ancestor.
+# Build from the directive list, replacing just the frame-ancestors entry,
+# so changes to other directives can't silently break this.
+_HEADER_ONLY_CSP = "; ".join(
+    "frame-ancestors 'self' https://forum.gel.monster"
+    if d.startswith("frame-ancestors ")
+    else d
+    for d in _CSP_DIRECTIVES
 )
 
 
