@@ -251,7 +251,7 @@ class CmdFlee(Command):
             caller.move_to(destination, quiet=True)
             
             # Check for rigged grenades after successful movement
-            from commands.CmdThrow import check_rigged_grenade, check_auto_defuse
+            from commands.explosion_utils import check_rigged_grenade, check_auto_defuse
             check_rigged_grenade(caller, chosen_exit)
             
             # Check for auto-defuse opportunities after fleeing to new room
@@ -368,7 +368,7 @@ class CmdFlee(Command):
             caller.move_to(destination, quiet=True)
             
             # Check for rigged grenades after successful movement
-            from commands.CmdThrow import check_rigged_grenade, check_auto_defuse
+            from commands.explosion_utils import check_rigged_grenade, check_auto_defuse
             check_rigged_grenade(caller, chosen_exit)
             
             # Check for auto-defuse opportunities after fleeing to new room
@@ -1200,7 +1200,7 @@ class CmdJump(Command):
             clear_aim_state(self.caller)
             
             # Check for rigged grenades at destination
-            from commands.CmdThrow import check_rigged_grenade, check_auto_defuse
+            from commands.explosion_utils import check_rigged_grenade, check_auto_defuse
             check_rigged_grenade(self.caller, exit_obj)
             check_auto_defuse(self.caller)
             
@@ -1236,7 +1236,7 @@ class CmdJump(Command):
         clear_aim_state(self.caller)
         
         # Auto-defuse check in sky room
-        from commands.CmdThrow import check_auto_defuse
+        from commands.explosion_utils import check_auto_defuse
         check_auto_defuse(self.caller)
         
         # Initial jump message - you always make it off the edge
@@ -1452,14 +1452,14 @@ class CmdJump(Command):
                     if key_matches or aliases_match:
                         # Found return edge - check for rigged grenades
                         splattercast.msg(f"JUMP_GAP_DEBUG: Found return edge {obj}, checking for rigged grenades")
-                        from commands.CmdThrow import check_rigged_grenade
+                        from commands.explosion_utils import check_rigged_grenade
                         check_rigged_grenade(self.caller, obj)
                         break
         else:
             splattercast.msg(f"JUMP_GAP_DEBUG: No origin room found, previous_location not set")
         
         # Check for auto-defuse opportunities in destination room
-        from commands.CmdThrow import check_auto_defuse
+        from commands.explosion_utils import check_auto_defuse
         check_auto_defuse(self.caller)
         
         # Success messages
