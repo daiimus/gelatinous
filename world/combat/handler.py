@@ -18,7 +18,7 @@ extracted into focused modules (``attack``, ``movement_resolution``,
 method acts as a thin dispatcher that delegates to those modules.
 """
 
-from evennia import DefaultScript, create_script, search_object
+from evennia import DefaultScript, create_script
 from evennia.utils.utils import delay
 from evennia.comms.models import ChannelDB
 
@@ -28,6 +28,7 @@ from .constants import (
     DB_CHAR, DB_TARGET_DBREF, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF,
     DB_IS_YIELDING,
     DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_INITIATIVE,
+    NDB_CHARGE_BONUS, NDB_CHARGE_VULNERABILITY,
     NDB_COMBAT_HANDLER, NDB_PROXIMITY, NDB_SKIP_ROUND,
     DEBUG_PREFIX_HANDLER, DEBUG_SUCCESS, DEBUG_FAIL, DEBUG_ERROR,
     DEBUG_CLEANUP,
@@ -729,18 +730,18 @@ class CombatHandler(DefaultScript):
         """
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
 
-        if hasattr(char.ndb, "charging_vulnerability_active"):
+        if hasattr(char.ndb, NDB_CHARGE_VULNERABILITY):
             splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: Clearing charging_vulnerability_active for {char.key} (was active from their own previous charge).")
-            delattr(char.ndb, "charging_vulnerability_active")
+            delattr(char.ndb, NDB_CHARGE_VULNERABILITY)
 
-        if hasattr(char.ndb, "charge_attack_bonus_active") and getattr(char.ndb, "charge_attack_bonus_active", False):
+        if hasattr(char.ndb, NDB_CHARGE_BONUS) and getattr(char.ndb, NDB_CHARGE_BONUS, False):
             if (
                 entry.get(DB_IS_YIELDING, False)
                 or char.is_dead()
                 or (hasattr(char, 'is_unconscious') and char.is_unconscious())
             ):
                 splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: Clearing unused charge_attack_bonus_active for {char.key} (won't attack this turn).")
-                delattr(char.ndb, "charge_attack_bonus_active")
+                delattr(char.ndb, NDB_CHARGE_BONUS)
             else:
                 splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: {char.key} has charge_attack_bonus_active - will be consumed during attack.")
 

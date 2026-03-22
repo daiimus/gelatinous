@@ -20,6 +20,7 @@ from .constants import (
     DEBUG_PREFIX_HANDLER,
     DB_CHAR, DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET,
     DB_IS_YIELDING, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF,
+    NDB_PROXIMITY,
     NDB_PROXIMITY_UNIVERSAL,
 )
 from .dice import roll_with_disadvantage, standard_roll
@@ -57,7 +58,7 @@ def resolve_retreat(handler, char, entry):
     # Check if in proximity with anyone (combat proximity)
     initialize_proximity_ndb(char)
     combat_proximity_list = getattr(
-        char.ndb, "in_proximity_with", set()
+        char.ndb, NDB_PROXIMITY, set()
     )
 
     # Also check grenade proximity

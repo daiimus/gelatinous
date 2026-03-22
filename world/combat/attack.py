@@ -19,6 +19,7 @@ from world.medical.utils import select_hit_location, select_target_organ
 from .constants import (
     SPLATTERCAST_CHANNEL,
     DB_CHAR, DB_IS_YIELDING,
+    NDB_CHARGE_BONUS,
     NDB_PROXIMITY,
     WEAPON_TYPE_UNARMED,
     STAGGER_DELAY_INTERVAL, MAX_STAGGER_DELAY,
@@ -396,9 +397,9 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     target_roll = randint(1, 20) + target_skill
 
     # Check for charge bonus
-    has_attr = hasattr(attacker.ndb, "charge_attack_bonus_active")
+    has_attr = hasattr(attacker.ndb, NDB_CHARGE_BONUS)
     attr_value = getattr(
-        attacker.ndb, "charge_attack_bonus_active", "MISSING"
+        attacker.ndb, NDB_CHARGE_BONUS, "MISSING"
     )
     splattercast.msg(
         f"ATTACK_BONUS_DEBUG_DETAILED: {attacker.key} "
@@ -406,7 +407,7 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     )
 
     if has_attr and getattr(
-        attacker.ndb, "charge_attack_bonus_active", False
+        attacker.ndb, NDB_CHARGE_BONUS, False
     ):
         attacker_roll += 2
         splattercast.msg(
@@ -419,13 +420,13 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
         )
         # Ensure complete attribute removal
         try:
-            delattr(attacker.ndb, "charge_attack_bonus_active")
+            delattr(attacker.ndb, NDB_CHARGE_BONUS)
         except AttributeError:
             pass
         # Double-check removal worked
-        if hasattr(attacker.ndb, "charge_attack_bonus_active"):
-            attacker.ndb.charge_attack_bonus_active = None
-            delattr(attacker.ndb, "charge_attack_bonus_active")
+        if hasattr(attacker.ndb, NDB_CHARGE_BONUS):
+            setattr(attacker.ndb, NDB_CHARGE_BONUS, None)
+            delattr(attacker.ndb, NDB_CHARGE_BONUS)
     else:
         splattercast.msg(
             f"ATTACK_BONUS_DEBUG: {attacker.key} does not have "
