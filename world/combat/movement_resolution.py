@@ -22,10 +22,10 @@ from .constants import (
     DB_IS_YIELDING, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF,
     NDB_PROXIMITY_UNIVERSAL,
 )
+from .dice import roll_with_disadvantage, standard_roll
 from .utils import (
     get_numeric_stat, initialize_proximity_ndb,
     is_wielding_ranged_weapon, clear_aim_state,
-    roll_with_disadvantage, standard_roll,
     get_character_by_dbref,
 )
 from .proximity import (

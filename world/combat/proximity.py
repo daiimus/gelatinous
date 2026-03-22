@@ -13,7 +13,7 @@ Functions:
 """
 
 from .constants import NDB_PROXIMITY
-from .utils import log_debug
+from .debug import log_debug
 
 
 def initialize_proximity(character):
@@ -159,7 +159,7 @@ def proximity_opposed_roll(character, stat_name="motorics"):
     Returns:
         tuple: (highest_roll, highest_opponent, all_rolls)
     """
-    from .utils import roll_stat
+    from .dice import roll_stat
     
     proximity_list = get_proximity_list(character)
     if not proximity_list:

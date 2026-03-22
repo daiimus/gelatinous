@@ -31,9 +31,10 @@ from .constants import (
     MSG_DISARM_SUCCESS_ATTACKER, MSG_DISARM_SUCCESS_VICTIM,
     MSG_DISARM_SUCCESS_OBSERVER,
 )
+from .debug import log_combat_action
+from .dice import roll_stat
 from .utils import (
     get_numeric_stat, initialize_proximity_ndb,
-    roll_stat, log_combat_action,
     get_character_dbref,
 )
 from .proximity import is_in_proximity

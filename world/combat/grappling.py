@@ -17,7 +17,8 @@ from .constants import (
     DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, 
     MSG_CANNOT_WHILE_GRAPPLED, MSG_CANNOT_GRAPPLE_SELF, MSG_ALREADY_GRAPPLING,
 )
-from .utils import log_debug, get_display_name_safe, get_character_by_dbref, get_character_dbref
+from .debug import log_debug
+from .utils import get_display_name_safe, get_character_by_dbref, get_character_dbref
 from .proximity import establish_proximity
 
 
@@ -255,7 +256,8 @@ def resolve_grapple_initiate(char_entry, combatants_list, handler):
         DB_CHAR, DB_TARGET_DBREF,
         DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, DB_IS_YIELDING
     )
-    from .utils import get_numeric_stat, get_splattercast
+    from .debug import get_splattercast
+    from .utils import get_numeric_stat
     from random import randint
     
     splattercast = get_splattercast()
@@ -363,7 +365,8 @@ def resolve_grapple_join(char_entry, combatants_list, handler):
         NDB_PROXIMITY, DB_CHAR,
         DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, DB_IS_YIELDING
     )
-    from .utils import get_numeric_stat, get_splattercast
+    from .debug import get_splattercast
+    from .utils import get_numeric_stat
     from random import randint
     
     splattercast = get_splattercast()
@@ -469,7 +472,8 @@ def resolve_grapple_takeover(char_entry, combatants_list, handler):
         DB_CHAR,
         DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, DB_IS_YIELDING, DB_TARGET_DBREF
     )
-    from .utils import get_numeric_stat, get_splattercast
+    from .debug import get_splattercast
+    from .utils import get_numeric_stat
     from random import randint
     
     splattercast = get_splattercast()
@@ -581,7 +585,7 @@ def resolve_release_grapple(char_entry, combatants_list, handler):
         handler: The combat handler instance
     """
     from .constants import DB_CHAR, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF
-    from .utils import get_splattercast
+    from .debug import get_splattercast
     
     splattercast = get_splattercast()
     char = char_entry.get(DB_CHAR)
@@ -637,7 +641,7 @@ def validate_and_cleanup_grapple_state(handler):
         handler: The combat handler instance
     """
     from .constants import DB_CHAR, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF
-    from .utils import get_splattercast
+    from .debug import get_splattercast
     
     splattercast = get_splattercast()
     combatants_list = list(handler.db.combatants or [])
