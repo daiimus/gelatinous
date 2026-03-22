@@ -45,7 +45,7 @@ class ClothingMixin:
         for hand, held_item in hands.items():
             if held_item == item:
                 hands[hand] = None
-                item.location = self  # Move to inventory
+                item.move_to(self, quiet=True)  # Move to inventory
                 self.hands = hands    # Save updated hands
                 break
 

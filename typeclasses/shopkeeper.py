@@ -162,7 +162,7 @@ class ShopContainer(DefaultObject):
             
             item = spawned[0]
             # Move item to buyer's inventory
-            item.location = buyer
+            item.move_to(buyer, quiet=True)
         except Exception as e:
             logger.log_err(f"ShopContainer: Error spawning '{prototype_key}': {e}")
             return False, "Something went wrong. Contact an admin."
