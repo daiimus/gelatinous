@@ -5969,11 +5969,4 @@ WEATHER_MESSAGES = {
             ]
         }
     },
-    
-    # WEATHER_INTENSITY mapping defines intensity levels for each weather type
-    'WEATHER_INTENSITY': {
-        # Mild weather (intensity: 1)
-        'clear': 1,
-        'overcast': 1,
-    }
 }

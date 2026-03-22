@@ -9,7 +9,7 @@ from world.namebank import (
 )
 
 def roll_stat():
-    return max(1, randint(1, 3))
+    return randint(1, 3)
 
 class CmdSpawnMob(Command):
     """
