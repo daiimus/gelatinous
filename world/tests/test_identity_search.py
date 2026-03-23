@@ -583,3 +583,102 @@ class TestCharacterSearchBuilderBypass(TestCase):
         self._set_builder(False)
         result = self.searcher.search("man")
         self.assertEqual(result, self.target)
+
+
+# ===================================================================
+# Tests: parse_ordinal — Evennia-native N.name format (Bug 3)
+# ===================================================================
+
+
+class TestParseOrdinalEvennia(TestCase):
+    """Tests for Evennia-native ``N.name`` ordinal format."""
+
+    def test_1_dot_man(self):
+        """'1.man' → (1, 'man')."""
+        self.assertEqual(parse_ordinal("1.man"), (1, "man"))
+
+    def test_2_dot_tall_man(self):
+        """'2.tall man' → (2, 'tall man')."""
+        self.assertEqual(parse_ordinal("2.tall man"), (2, "tall man"))
+
+    def test_3_dot_woman(self):
+        """'3.woman' → (3, 'woman')."""
+        self.assertEqual(parse_ordinal("3.woman"), (3, "woman"))
+
+    def test_0_dot_man_rejected(self):
+        """'0.man' — 0 is not a valid ordinal."""
+        self.assertEqual(parse_ordinal("0.man"), (None, "0.man"))
+
+    def test_evennia_ordinal_in_identity_match(self):
+        """'1.man' resolves to first matching character."""
+        searcher = _make_character(
+            key="Alice Smith",
+            sex="female",
+            height="short",
+            build="athletic",
+            sleeve_uid="uid-searcher",
+        )
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        candidates = [searcher, jorge]
+        result = identity_match_characters(
+            searcher, "1.man", candidates
+        )
+        self.assertEqual(result, [jorge])
+
+    def test_evennia_ordinal_2_dot_man(self):
+        """'2.man' resolves to second matching character."""
+        searcher = _make_character(
+            key="Alice Smith",
+            sex="female",
+            height="short",
+            build="athletic",
+            sleeve_uid="uid-searcher",
+        )
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        viktor = _make_character(
+            key="Viktor Kozlov",
+            sex="male",
+            height="above-average",
+            build="stocky",
+            sdesc_keyword="man",
+            sleeve_uid="uid-viktor",
+        )
+        candidates = [searcher, jorge, viktor]
+        result = identity_match_characters(
+            searcher, "2.man", candidates
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], viktor)
+
+    def test_is_identity_match_with_evennia_ordinal(self):
+        """is_identity_match handles '1.man' correctly."""
+        searcher = _make_character(
+            key="Alice Smith",
+            sex="female",
+            sleeve_uid="uid-searcher",
+        )
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        self.assertTrue(
+            is_identity_match(searcher, jorge, "1.man")
+        )

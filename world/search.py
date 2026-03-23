@@ -68,6 +68,11 @@ _ORDINAL_REGEX = re.compile(
     r"^(?P<number>\d+)(?:st|nd|rd|th)\s+(?P<rest>.+)$", re.IGNORECASE
 )
 
+#: Matches Evennia-native ``"1.man"`` ordinal format.
+_EVENNIA_ORDINAL_REGEX = re.compile(
+    r"^(?P<number>\d+)\.(?P<rest>.+)$"
+)
+
 #: Word-based ordinals.
 _ORDINAL_WORDS: dict[str, int] = {
     "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
@@ -80,8 +85,8 @@ _ORDINAL_WORDS: dict[str, int] = {
 def parse_ordinal(query: str) -> tuple[int | None, str]:
     """Extract an optional ordinal prefix from a query string.
 
-    Handles both numeric (``"2nd tall man"``) and word-based
-    (``"second tall man"``) ordinals.
+    Handles numeric (``"2nd tall man"``), word-based (``"second tall
+    man"``), and Evennia-native (``"1.man"``) ordinals.
 
     This runs *before* identity matching.  The existing
     ``get_search_query_replacement`` on ``ObjectParent`` handles ordinals
@@ -103,6 +108,8 @@ def parse_ordinal(query: str) -> tuple[int | None, str]:
         (2, 'tall man')
         >>> parse_ordinal("second tall man")
         (2, 'tall man')
+        >>> parse_ordinal("1.man")
+        (1, 'man')
         >>> parse_ordinal("tall man")
         (None, 'tall man')
     """
@@ -110,6 +117,13 @@ def parse_ordinal(query: str) -> tuple[int | None, str]:
 
     # Try numeric ordinal first: "2nd tall man"
     match = _ORDINAL_REGEX.match(query)
+    if match:
+        number = int(match.group("number"))
+        if number > 0:
+            return (number, match.group("rest").strip())
+
+    # Try Evennia-native format: "1.man"
+    match = _EVENNIA_ORDINAL_REGEX.match(query)
     if match:
         number = int(match.group("number"))
         if number > 0:
