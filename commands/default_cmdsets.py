@@ -38,6 +38,7 @@ from commands.CmdGraffiti import CmdGraffiti, CmdPress
 from commands.CmdCharacter import CmdLongdesc, CmdSkintone
 from commands.CmdCharacter import CmdShortdesc, CmdAssign
 from commands.CmdCommunication import CmdSay, CmdWhisper, CmdEmote, CmdDotPose
+from world.emote_templates import SOCIAL_COMMANDS
 from commands.CmdArmor import CmdArmor, CmdArmorRepair, CmdSlot, CmdUnslot
 from commands.shop import CmdBuy
 
@@ -188,6 +189,10 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdWhisper())
         self.add(CmdEmote())
         self.add(CmdDotPose())
+
+        # Add pre-built social emote template commands (nod, shrug, etc.)
+        for cmd_cls in SOCIAL_COMMANDS:
+            self.add(cmd_cls())
         
         # Add clothing system commands
         self.add(CmdClothing.CmdWear())
