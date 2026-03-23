@@ -13,6 +13,7 @@ from evennia.typeclasses.attributes import AttributeProperty
 from evennia.comms.models import ChannelDB  # Ensure this is imported
 
 from world.combat.constants import NDB_AIMED_AT_BY, NDB_AIMING_AT, NDB_AIMING_DIRECTION, NDB_COMBAT_HANDLER
+from world.identity_utils import msg_room_identity
 
 from .objects import ObjectParent
 from .armor_mixin import ArmorMixin
@@ -679,7 +680,12 @@ class Character(
         
         # Notify area
         if self.location:
-            self.location.msg_contents(f"{self.key} collapses on the ground in an unconscious heap.", exclude=[self])
+            msg_room_identity(
+                location=self.location,
+                template="{actor} collapses on the ground in an unconscious heap.",
+                char_refs={"actor": self},
+                exclude=[self],
+            )
         self.msg("You lose consciousness and slip into darkness...")
 
     def apply_death_state(self, force_test=False):
@@ -734,7 +740,12 @@ class Character(
         # Notify recovery - but only if character is not dead
         if not self.is_dead():
             if self.location:
-                self.location.msg_contents(f"{self.key} regains consciousness.", exclude=[self])
+                msg_room_identity(
+                    location=self.location,
+                    template="{actor} regains consciousness.",
+                    char_refs={"actor": self},
+                    exclude=[self],
+                )
             self.msg("You slowly regain consciousness...")
 
     def remove_death_state(self):
@@ -800,7 +811,12 @@ class Character(
         
         # Notify revival
         if self.location:
-            self.location.msg_contents(f"|g{self.key} has been revived!|n", exclude=[self])
+            msg_room_identity(
+                location=self.location,
+                template="|g{actor} has been revived!|n",
+                char_refs={"actor": self},
+                exclude=[self],
+            )
         self.msg("|gYou have been revived! You feel the spark of life return.|n")
 
     def apply_final_death_state(self):
@@ -1345,7 +1361,7 @@ class Character(
             # If target is still aiming at aimer, revert them to normal aiming
             target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
             if target_still_aiming == self:
-                target.override_place = f"aiming carefully at {self.key}."
+                target.override_place = "aiming carefully at {aim_target}."
             else:
                 # Target isn't aiming at anyone, clear their place too
                 target.override_place = ""

@@ -756,7 +756,7 @@ class CmdAim(Command):
             target.override_place = "locked in a deadly showdown."
         else:
             # Normal aiming
-            aimer.override_place = f"aiming carefully at {target.key}."
+            aimer.override_place = "aiming carefully at {aim_target}."
 
     def _clear_aim_override_place(self, aimer, target):
         """
@@ -775,7 +775,7 @@ class CmdAim(Command):
             # If target is still aiming at aimer, revert them to normal aiming
             target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
             if target_still_aiming == aimer:
-                target.override_place = f"aiming carefully at {aimer.key}."
+                target.override_place = "aiming carefully at {aim_target}."
             else:
                 # Target isn't aiming at anyone, clear their place too
                 target.override_place = ""
