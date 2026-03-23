@@ -34,7 +34,9 @@ from world.combat.constants import (
     COMBAT_ACTION_GRAPPLE_TAKEOVER,
     COMBAT_ACTION_ESCAPE_GRAPPLE, COMBAT_ACTION_RELEASE_GRAPPLE,
 )
-from world.combat.utils import log_combat_action, initialize_proximity_ndb
+from world.combat.utils import log_combat_action, initialize_proximity_ndb, get_display_name_safe
+from world.grammar import capitalize_first
+from world.identity_utils import msg_room_identity
 
 
 class CmdGrapple(Command):
@@ -129,7 +131,7 @@ class CmdGrapple(Command):
             log_combat_action(caller, "grapple_error", details="CRITICAL: failed to be added to combat")
             return
         if not target_combat_entry: 
-            caller.msg(f"There was an issue adding {target.key} to combat. Please try again.")
+            caller.msg(f"There was an issue adding {get_display_name_safe(target, caller)} to combat. Please try again.")
             log_combat_action(caller, "grapple_error", target, details="CRITICAL: target failed to be added to combat")
             return
 
@@ -179,7 +181,7 @@ class CmdGrapple(Command):
             handler.set_target(caller, target)
             log_combat_action(caller, "grapple_action", target, details="combat action set to grapple_initiate")
 
-        caller.msg(MSG_GRAPPLE_PREPARE.format(target=target.key))
+        caller.msg(MSG_GRAPPLE_PREPARE.format(target=get_display_name_safe(target, caller)))
         # The combat handler will process this on the character's turn
 
 
@@ -224,11 +226,11 @@ class CmdEscapeGrapple(Command):
         caller_entry[DB_IS_YIELDING] = False
         
         if was_yielding:
-            caller.msg(MSG_GRAPPLE_ESCAPE_VIOLENT_SWITCH.format(grappler=grappler_obj.key))
+            caller.msg(MSG_GRAPPLE_ESCAPE_VIOLENT_SWITCH.format(grappler=get_display_name_safe(grappler_obj, caller)))
 
         # Set escape action for the combat handler to process
         caller_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_ESCAPE_GRAPPLE
-        caller.msg(f"You prepare to struggle violently against {grappler_obj.key}'s hold!")
+        caller.msg(f"You prepare to struggle violently against {get_display_name_safe(grappler_obj, caller)}'s hold!")
         log_combat_action(caller, "escape_action", grappler_obj, details="combat action set to escape_grapple")
 
 
@@ -269,7 +271,7 @@ class CmdReleaseGrapple(Command):
 
         # Set release action for the combat handler to process
         caller_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_RELEASE_GRAPPLE
-        caller.msg(f"You prepare to release your hold on {victim_obj.key}.")
+        caller.msg(f"You prepare to release your hold on {get_display_name_safe(victim_obj, caller)}.")
         log_combat_action(caller, "release_action", victim_obj, details="combat action set to release_grapple")
 
 
@@ -306,7 +308,7 @@ class CmdDisarm(Command):
         # Check if in melee proximity with target
         initialize_proximity_ndb(caller)
         if not hasattr(caller.ndb, NDB_PROXIMITY) or target not in caller.ndb.in_proximity_with:
-            caller.msg(MSG_DISARM_NOT_IN_PROXIMITY.format(target=target.key))
+            caller.msg(MSG_DISARM_NOT_IN_PROXIMITY.format(target=get_display_name_safe(target, caller)))
             log_combat_action(caller, "disarm_fail", target, details="not in melee proximity")
             return
 
@@ -392,8 +394,8 @@ class CmdAim(Command):
                 weapon = next((item for hand, item in hands.items() if item), None)
                 weapon_name = weapon.key if weapon else "weapon"
                 
-                caller.msg(f"You stop aiming at {current_target.key} and lower your {weapon_name}.")
-                current_target.msg(f"{caller.key} stops aiming at you.")
+                caller.msg(f"You stop aiming at {get_display_name_safe(current_target, caller)} and lower your {weapon_name}.")
+                current_target.msg(f"{capitalize_first(get_display_name_safe(caller, current_target))} stops aiming at you.")
                 splattercast.msg(f"AIM_STOP: {caller.key} stopped aiming at {current_target.key}.")
             
             # Clear directional aiming if present
@@ -440,7 +442,7 @@ class CmdAim(Command):
             delattr(caller.ndb, NDB_AIMING_AT)
             # Clear override_place and check for mutual showdown cleanup
             self._clear_aim_override_place(caller, current_target)
-            current_target.msg(f"{caller.key} stops aiming at you.")
+            current_target.msg(f"{capitalize_first(get_display_name_safe(caller, current_target))} stops aiming at you.")
             
         if current_direction:
             delattr(caller.ndb, NDB_AIMING_DIRECTION)
@@ -482,7 +484,7 @@ class CmdAim(Command):
                     if hasattr(current_target, "ndb") and hasattr(current_target.ndb, NDB_AIMED_AT_BY) and getattr(current_target.ndb, NDB_AIMED_AT_BY) == caller:
                         delattr(current_target.ndb, NDB_AIMED_AT_BY)
                     delattr(caller.ndb, NDB_AIMING_AT)
-                    current_target.msg(f"{caller.key} stops aiming at you.")
+                    current_target.msg(f"{capitalize_first(get_display_name_safe(caller, current_target))} stops aiming at you.")
                     
                 # Check if we're switching between directions (for enhanced messaging)
                 is_switching_directions = current_aiming_direction and current_aiming_direction != direction
@@ -539,18 +541,20 @@ class CmdAim(Command):
                         f"You shift your aim with tactical awareness, training your {weapon_name} on the {exit_name}."
                     ]
                     
-                    room_swivel_messages = [
-                        f"{caller.key} smoothly pivots their {weapon_name} toward the {exit_name}.",
-                        f"{caller.key} swivels their {weapon_name} with practiced precision toward the {exit_name}.",
-                        f"{caller.key} sweeps their {weapon_name} in a fluid arc toward the {exit_name}.",
-                        f"{caller.key} adjusts their stance, redirecting their {weapon_name} toward the {exit_name}.",
-                        f"{caller.key} shifts their {weapon_name} with tactical awareness toward the {exit_name}."
+                    room_swivel_templates = [
+                        f"{{actor}} smoothly pivots their {weapon_name} toward the {exit_name}.",
+                        f"{{actor}} swivels their {weapon_name} with practiced precision toward the {exit_name}.",
+                        f"{{actor}} sweeps their {weapon_name} in a fluid arc toward the {exit_name}.",
+                        f"{{actor}} adjusts their stance, redirecting their {weapon_name} toward the {exit_name}.",
+                        f"{{actor}} shifts their {weapon_name} with tactical awareness toward the {exit_name}.",
                     ]
                     
                     caller.msg(random.choice(swivel_messages))
-                    caller.location.msg_contents(
-                        random.choice(room_swivel_messages),
-                        exclude=[caller]
+                    msg_room_identity(
+                        location=caller.location,
+                        template=random.choice(room_swivel_templates),
+                        char_refs={"actor": caller},
+                        exclude=[caller],
                     )
                 else:
                     raise_messages = [
@@ -561,18 +565,20 @@ class CmdAim(Command):
                         f"You level your {weapon_name}, centering your aim on the {exit_name}."
                     ]
                     
-                    room_raise_messages = [
-                        f"{caller.key} takes careful aim with their {weapon_name} toward the {exit_name}.",
-                        f"{caller.key} raises their {weapon_name}, focusing on the {exit_name}.",
-                        f"{caller.key} shoulders their {weapon_name}, targeting the {exit_name}.",
-                        f"{caller.key} brings up their {weapon_name} with deliberate focus toward the {exit_name}.",
-                        f"{caller.key} levels their {weapon_name}, aiming at the {exit_name}."
+                    room_raise_templates = [
+                        f"{{actor}} takes careful aim with their {weapon_name} toward the {exit_name}.",
+                        f"{{actor}} raises their {weapon_name}, focusing on the {exit_name}.",
+                        f"{{actor}} shoulders their {weapon_name}, targeting the {exit_name}.",
+                        f"{{actor}} brings up their {weapon_name} with deliberate focus toward the {exit_name}.",
+                        f"{{actor}} levels their {weapon_name}, aiming at the {exit_name}.",
                     ]
                     
                     caller.msg(random.choice(raise_messages))
-                    caller.location.msg_contents(
-                        random.choice(room_raise_messages),
-                        exclude=[caller]
+                    msg_room_identity(
+                        location=caller.location,
+                        template=random.choice(room_raise_templates),
+                        char_refs={"actor": caller},
+                        exclude=[caller],
                     )
                 
                 splattercast.msg(f"AIM_DIRECTION: {caller.key} is now aiming {direction}.")
@@ -605,11 +611,13 @@ class CmdAim(Command):
             weapon = next((item for hand, item in hands.items() if item), None)
             weapon_name = weapon.key if weapon else "weapon"
             
-            caller.msg(f"You raise your {weapon_name}, taking careful aim at {target.key}.")
-            target.msg(f"|r{caller.key} is aiming at you! You feel locked in place.|n")
-            caller.location.msg_contents(
-                f"{caller.key} takes careful aim at {target.key}.",
-                exclude=[caller, target]
+            caller.msg(f"You raise your {weapon_name}, taking careful aim at {get_display_name_safe(target, caller)}.")
+            target.msg(f"|r{capitalize_first(get_display_name_safe(caller, target))} is aiming at you! You feel locked in place.|n")
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} takes careful aim at {{target}}.",
+                char_refs={"actor": caller, "target": target},
+                exclude=[caller, target],
             )
 
             splattercast.msg(f"AIM_SET: {caller.key} is now aiming at {target.key}.")
@@ -697,18 +705,20 @@ class CmdAim(Command):
                         f"You shift your aim with tactical awareness, training your {weapon_name} on the {exit_name}."
                     ]
                     
-                    room_swivel_messages = [
-                        f"{caller.key} smoothly pivots their {weapon_name} toward the {exit_name}.",
-                        f"{caller.key} swivels their {weapon_name} with practiced precision toward the {exit_name}.",
-                        f"{caller.key} sweeps their {weapon_name} in a fluid arc toward the {exit_name}.",
-                        f"{caller.key} adjusts their stance, redirecting their {weapon_name} toward the {exit_name}.",
-                        f"{caller.key} shifts their {weapon_name} with tactical awareness toward the {exit_name}."
+                    room_swivel_templates = [
+                        f"{{actor}} smoothly pivots their {weapon_name} toward the {exit_name}.",
+                        f"{{actor}} swivels their {weapon_name} with practiced precision toward the {exit_name}.",
+                        f"{{actor}} sweeps their {weapon_name} in a fluid arc toward the {exit_name}.",
+                        f"{{actor}} adjusts their stance, redirecting their {weapon_name} toward the {exit_name}.",
+                        f"{{actor}} shifts their {weapon_name} with tactical awareness toward the {exit_name}.",
                     ]
                     
                     caller.msg(random.choice(swivel_messages))
-                    caller.location.msg_contents(
-                        random.choice(room_swivel_messages),
-                        exclude=[caller]
+                    msg_room_identity(
+                        location=caller.location,
+                        template=random.choice(room_swivel_templates),
+                        char_refs={"actor": caller},
+                        exclude=[caller],
                     )
                 else:
                     raise_messages = [
@@ -719,18 +729,20 @@ class CmdAim(Command):
                         f"You level your {weapon_name}, centering your aim on the {exit_name}."
                     ]
                     
-                    room_raise_messages = [
-                        f"{caller.key} takes careful aim with their {weapon_name} toward the {exit_name}.",
-                        f"{caller.key} raises their {weapon_name}, focusing on the {exit_name}.",
-                        f"{caller.key} shoulders their {weapon_name}, targeting the {exit_name}.",
-                        f"{caller.key} brings up their {weapon_name} with deliberate focus toward the {exit_name}.",
-                        f"{caller.key} levels their {weapon_name}, aiming at the {exit_name}."
+                    room_raise_templates = [
+                        f"{{actor}} takes careful aim with their {weapon_name} toward the {exit_name}.",
+                        f"{{actor}} raises their {weapon_name}, focusing on the {exit_name}.",
+                        f"{{actor}} shoulders their {weapon_name}, targeting the {exit_name}.",
+                        f"{{actor}} brings up their {weapon_name} with deliberate focus toward the {exit_name}.",
+                        f"{{actor}} levels their {weapon_name}, aiming at the {exit_name}.",
                     ]
                     
                     caller.msg(random.choice(raise_messages))
-                    caller.location.msg_contents(
-                        random.choice(room_raise_messages),
-                        exclude=[caller]
+                    msg_room_identity(
+                        location=caller.location,
+                        template=random.choice(room_raise_templates),
+                        char_refs={"actor": caller},
+                        exclude=[caller],
                     )
                 
                 splattercast.msg(f"AIM_DIRECTION: {caller.key} is now aiming {direction}.")

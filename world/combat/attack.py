@@ -307,7 +307,7 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     if not is_ranged_attack:
         # Check if attacker can reach target (same room for melee)
         if attacker.location != target.location:
-            attacker.msg(f"You can't reach {target.key} from here.")
+            attacker.msg(f"You can't reach {get_display_name_safe(target, attacker)} from here.")
             splattercast.msg(
                 f"ATTACK_FAIL (REACH): {attacker.key} cannot reach "
                 f"{target.key}."
@@ -326,7 +326,7 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
 
         if target not in proximity_set:
             attacker.msg(
-                f"You need to be in melee proximity with {target.key} "
+                f"You need to be in melee proximity with {get_display_name_safe(target, attacker)} "
                 f"to attack them. Try advancing or charging."
             )
             splattercast.msg(
