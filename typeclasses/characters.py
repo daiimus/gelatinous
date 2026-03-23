@@ -968,6 +968,198 @@ class Character(
         article = get_article(sdesc)
         return f"{article} {sdesc}"
 
+    def search(
+        self,
+        searchdata,
+        global_search=False,
+        use_nicks=True,
+        typeclass=None,
+        location=None,
+        attribute_name=None,
+        quiet=False,
+        exact=False,
+        candidates=None,
+        use_locks=True,
+        nofound_string=None,
+        multimatch_string=None,
+        use_dbref=None,
+        tags=None,
+        stacked=0,
+    ):
+        """Identity-aware search override.
+
+        Intercepts character targeting so players resolve targets via
+        assigned names and short descriptions rather than real character
+        keys.  Items, exits, and non-identity objects pass through to
+        the standard Evennia search unmodified.
+
+        **Bypass conditions** (uses default search only):
+          - ``global_search`` is ``True``
+          - Searcher has Builder+ permission
+          - ``searchdata`` is a dbref (``#123``)
+          - ``candidates`` or ``location`` is explicitly provided
+          - ``attribute_name`` is set
+
+        **Identity pipeline** (local room search):
+          1. Try identity matching (assigned names → sdescs) against
+             room occupants.
+          2. If identity matches are found, return them.
+          3. Otherwise, run the default Evennia search for items/exits.
+          4. Filter out any Characters from default results that were
+             NOT identity-matched (blocks ``.key`` targeting of
+             unrecognized characters).
+
+        See :mod:`world.search` for the matching utilities and
+        ``specs/IDENTITY_RECOGNITION_SPEC.md`` §Target Resolution for
+        the full specification.
+        """
+        from world.combat.constants import PERM_BUILDER
+        from world.search import identity_match_characters, is_identity_match
+
+        # ----------------------------------------------------------
+        # Bypass: let Evennia handle non-local or privileged searches
+        # ----------------------------------------------------------
+        bypass = (
+            global_search
+            or attribute_name is not None
+            or candidates is not None
+            or location is not None
+            or not isinstance(searchdata, str)
+        )
+
+        # Builder+ sees real names — full bypass
+        if not bypass and self.check_permstring(PERM_BUILDER):
+            bypass = True
+
+        # Dbref query — full bypass
+        if (
+            not bypass
+            and isinstance(searchdata, str)
+            and searchdata.strip().startswith("#")
+        ):
+            bypass = True
+
+        if bypass:
+            return super().search(
+                searchdata,
+                global_search=global_search,
+                use_nicks=use_nicks,
+                typeclass=typeclass,
+                location=location,
+                attribute_name=attribute_name,
+                quiet=quiet,
+                exact=exact,
+                candidates=candidates,
+                use_locks=use_locks,
+                nofound_string=nofound_string,
+                multimatch_string=multimatch_string,
+                use_dbref=use_dbref,
+                tags=tags,
+                stacked=stacked,
+            )
+
+        # ----------------------------------------------------------
+        # Identity-aware local search
+        # ----------------------------------------------------------
+        query = searchdata.strip()
+        if not query:
+            return super().search(
+                searchdata, global_search=global_search,
+                use_nicks=use_nicks, typeclass=typeclass,
+                location=location, attribute_name=attribute_name,
+                quiet=quiet, exact=exact, candidates=candidates,
+                use_locks=use_locks, nofound_string=nofound_string,
+                multimatch_string=multimatch_string, use_dbref=use_dbref,
+                tags=tags, stacked=stacked,
+            )
+
+        # Gather room occupants (identity candidates)
+        room = self.location
+        room_contents = room.contents if room else []
+
+        identity_matches = identity_match_characters(
+            self, query, room_contents
+        )
+
+        if identity_matches:
+            if quiet:
+                return identity_matches
+            if len(identity_matches) == 1:
+                return identity_matches[0]
+            # Multiple matches — prompt for disambiguation
+            names = [
+                obj.get_display_name(self) for obj in identity_matches
+            ]
+            header = (
+                multimatch_string
+                or f"Multiple matches for '{query}':"
+            )
+            listing = "\n".join(
+                f"  {i}. {name}" for i, name in enumerate(names, 1)
+            )
+            self.msg(f"{header}\n{listing}")
+            return None
+
+        # ----------------------------------------------------------
+        # Fallback: standard Evennia search (items, exits, etc.)
+        # ----------------------------------------------------------
+        # Use quiet=True so we can filter before messaging
+        default_results = super().search(
+            searchdata,
+            global_search=global_search,
+            use_nicks=use_nicks,
+            typeclass=typeclass,
+            location=location,
+            attribute_name=attribute_name,
+            quiet=True,
+            exact=exact,
+            candidates=candidates,
+            use_locks=use_locks,
+            nofound_string=nofound_string,
+            multimatch_string=multimatch_string,
+            use_dbref=use_dbref,
+            tags=tags,
+            stacked=stacked,
+        )
+
+        # Filter out unrecognized Characters from default results.
+        # Items, exits, rooms — anything without identity — passes
+        # through unmodified.
+        filtered = [
+            obj for obj in default_results
+            if is_identity_match(self, obj, query)
+        ]
+
+        # Return using the caller's original quiet mode
+        if quiet:
+            return filtered
+        if len(filtered) == 1:
+            return filtered[0]
+        if not filtered:
+            self.msg(
+                nofound_string
+                or f"Could not find '{query}'."
+            )
+            return None
+        # Multiple results — show disambiguation
+        names = [
+            (
+                obj.get_display_name(self)
+                if hasattr(obj, "get_display_name")
+                else obj.key
+            )
+            for obj in filtered
+        ]
+        header = (
+            multimatch_string
+            or f"Multiple matches for '{query}':"
+        )
+        listing = "\n".join(
+            f"  {i}. {name}" for i, name in enumerate(names, 1)
+        )
+        self.msg(f"{header}\n{listing}")
+        return None
+
     # ===================================================================
     # MR. HANDS SYSTEM
     # ===================================================================
