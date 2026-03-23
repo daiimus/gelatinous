@@ -636,3 +636,344 @@ class TestCmdEmote(TestCase):
 
         cmd.func()
         jorge.msg.assert_called_once_with("What do you want to emote?")
+
+
+# ===================================================================
+# Tests: CmdDotPose
+# ===================================================================
+
+
+class TestCmdDotPose(TestCase):
+    """Tests for the CmdDotPose command integration."""
+
+    def _run_dot_pose(
+        self,
+        caller,
+        raw_string: str,
+        room_contents: list,
+    ) -> None:
+        """Execute CmdDotPose with the given raw string."""
+        from commands.CmdCommunication import CmdDotPose
+
+        cmd = CmdDotPose()
+        cmd.caller = caller
+        cmd.raw_string = raw_string
+        # args would be whatever Evennia parses after the key "."
+        cmd.args = raw_string[1:] if raw_string.startswith(".") else raw_string
+        cmd.cmdstring = "."
+
+        room = MagicMock()
+        room.contents = room_contents
+        caller.location = room
+
+        cmd.func()
+
+    # -- Basic verb conjugation --
+
+    def test_actor_sees_you_form(self):
+        """Actor sees 'You lean back.' for '.lean back.'"""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        self._run_dot_pose(jorge, ".lean back.", [jorge])
+
+        # Actor is also an observer in render_dot_pose — find the call
+        # render_dot_pose calls observer.msg(text=..., type="pose", from_obj=actor)
+        call_kwargs = jorge.msg.call_args[1]
+        msg_text = call_kwargs.get("text", "")
+        self.assertIn("You lean back.", msg_text)
+
+    def test_observer_sees_third_person(self):
+        """Observer sees conjugated verb with actor's display name."""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice",
+            sex="female",
+            height="average",
+            build="average",
+            sleeve_uid="uid-alice",
+        )
+        self._run_dot_pose(jorge, ".lean back.", [jorge, observer])
+
+        call_kwargs = observer.msg.call_args[1]
+        msg_text = call_kwargs.get("text", "")
+        # Observer doesn't know Jorge, sees sdesc
+        self.assertIn("gaunt man", msg_text.lower())
+        self.assertIn("leans back.", msg_text)
+
+    def test_observer_known_sees_assigned_name(self):
+        """Observer who assigned a name sees that name."""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice",
+            sex="female",
+            height="average",
+            build="average",
+            sleeve_uid="uid-alice",
+            recognition_memory={
+                "uid-jorge": {"assigned_name": "Jorge"},
+            },
+        )
+        self._run_dot_pose(jorge, ".lean back.", [jorge, observer])
+
+        call_kwargs = observer.msg.call_args[1]
+        msg_text = call_kwargs.get("text", "")
+        self.assertIn("Jorge leans back.", msg_text)
+
+    # -- Pronoun transformation --
+
+    def test_pronoun_my_transforms(self):
+        """'my' becomes 'your' for actor, 'his' for male observer view."""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice",
+            sex="female",
+            height="average",
+            build="average",
+            sleeve_uid="uid-alice",
+        )
+        self._run_dot_pose(
+            jorge, ".scratch my jaw.", [jorge, observer]
+        )
+
+        actor_kwargs = jorge.msg.call_args[1]
+        actor_text = actor_kwargs.get("text", "")
+        self.assertIn("your jaw", actor_text)
+
+        obs_kwargs = observer.msg.call_args[1]
+        obs_text = obs_kwargs.get("text", "")
+        self.assertIn("his jaw", obs_text)
+
+    # -- Speech passthrough --
+
+    def test_speech_preserved(self):
+        """Quoted speech passes through unchanged."""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice",
+            sex="female",
+            height="average",
+            build="average",
+            sleeve_uid="uid-alice",
+        )
+        self._run_dot_pose(
+            jorge,
+            '.nod. "Understood."',
+            [jorge, observer],
+        )
+
+        obs_kwargs = observer.msg.call_args[1]
+        obs_text = obs_kwargs.get("text", "")
+        self.assertIn('"Understood."', obs_text)
+
+    # -- Speech-first pattern --
+
+    def test_speech_first_pattern(self):
+        """Speech before actor mention: '"Get down!" I .shout'"""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice",
+            sex="female",
+            height="average",
+            build="average",
+            sleeve_uid="uid-alice",
+        )
+        self._run_dot_pose(
+            jorge,
+            '"Get down!" I .shout.',
+            [jorge, observer],
+        )
+
+        actor_kwargs = jorge.msg.call_args[1]
+        actor_text = actor_kwargs.get("text", "")
+        self.assertIn('"Get down!"', actor_text)
+        self.assertIn("you shout", actor_text)
+
+        obs_kwargs = observer.msg.call_args[1]
+        obs_text = obs_kwargs.get("text", "")
+        self.assertIn('"Get down!"', obs_text)
+        # Observer sees capitalized display name or pronoun after speech
+        self.assertIn("shout", obs_text.lower())
+
+    # -- Death filter metadata --
+
+    def test_passes_type_pose(self):
+        """Messages include type='pose' for death filter compat."""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice",
+            sex="female",
+            height="average",
+            build="average",
+            sleeve_uid="uid-alice",
+        )
+        self._run_dot_pose(jorge, ".lean back.", [jorge, observer])
+
+        obs_kwargs = observer.msg.call_args[1]
+        self.assertEqual(obs_kwargs.get("type"), "pose")
+
+    def test_passes_from_obj(self):
+        """Messages include from_obj=caller for death filter compat."""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice",
+            sex="female",
+            height="average",
+            build="average",
+            sleeve_uid="uid-alice",
+        )
+        self._run_dot_pose(jorge, ".lean back.", [jorge, observer])
+
+        obs_kwargs = observer.msg.call_args[1]
+        self.assertEqual(obs_kwargs.get("from_obj"), jorge)
+
+    # -- Empty input --
+
+    def test_empty_shows_usage(self):
+        """Just '.' with no text shows usage hint."""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sleeve_uid="uid-jorge",
+        )
+        jorge.location = MagicMock()
+
+        from commands.CmdCommunication import CmdDotPose
+
+        cmd = CmdDotPose()
+        cmd.caller = jorge
+        cmd.raw_string = "."
+        cmd.args = ""
+        cmd.cmdstring = "."
+
+        cmd.func()
+
+        jorge.msg.assert_called_once()
+        msg_text = jorge.msg.call_args[0][0]
+        self.assertIn("Usage:", msg_text)
+
+    # -- No location --
+
+    def test_no_location(self):
+        """Command with no location shows error."""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sleeve_uid="uid-jorge",
+        )
+        jorge.location = None
+
+        from commands.CmdCommunication import CmdDotPose
+
+        cmd = CmdDotPose()
+        cmd.caller = jorge
+        cmd.raw_string = ".lean back."
+        cmd.args = "lean back."
+        cmd.cmdstring = "."
+
+        cmd.func()
+
+        jorge.msg.assert_called_once_with(
+            "You have no location to emote in."
+        )
+
+    # -- Character references --
+
+    def test_char_ref_resolved_per_observer(self):
+        """Character references resolve per-observer."""
+        jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        maria = _make_character(
+            key="Maria Santos",
+            sex="female",
+            height="short",
+            build="stocky",
+            sdesc_keyword="woman",
+            sleeve_uid="uid-maria",
+        )
+        # Observer knows Maria as "Maria"
+        observer = _make_character(
+            key="Bob",
+            sex="male",
+            height="average",
+            build="average",
+            sleeve_uid="uid-bob",
+            recognition_memory={
+                "uid-maria": {"assigned_name": "Maria"},
+            },
+        )
+        self._run_dot_pose(
+            jorge,
+            ".nod at stocky woman",
+            [jorge, maria, observer],
+        )
+
+        # Observer should see Maria's assigned name
+        obs_kwargs = observer.msg.call_args[1]
+        obs_text = obs_kwargs.get("text", "")
+        self.assertIn("Maria", obs_text)
+        self.assertIn("nod", obs_text.lower())

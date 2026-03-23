@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from evennia.commands.command import Command
 
+from world.emote import render_dot_pose, tokenize_dot_pose
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 
@@ -189,3 +190,90 @@ class CmdEmote(Command):
                 type="pose",
                 from_obj=caller,
             )
+
+
+class CmdDotPose(Command):
+    """
+    First-person natural emote using the dot-pose system.
+
+    Usage:
+        .<verb> <text>
+
+    Write emotes in a natural first-person style. Verbs are marked with
+    a leading dot; the first word is automatically treated as a verb.
+    First-person pronouns (I, my, me, mine, myself) are transformed
+    per-observer.  Other characters in the room can be referenced by
+    name or short description.
+
+    Examples::
+
+        .lean back.
+          You see:    You lean back.
+          Others see: A lanky man leans back.
+
+        .scratch my jaw, "What day is it?" I .ask.
+          You see:    You scratch your jaw, "What day is it?" you ask.
+          Others see: A lanky man scratches his jaw, "What day is it?" he asks.
+
+        "Get down!" I .shout, .diving behind cover.
+          You see:    "Get down!" you shout, diving behind cover.
+          Others see: "Get down!" A lanky man shouts, diving behind cover.
+
+        .nod at Jorge
+          You see:    You nod at Jorge.
+          Others see: A lanky man nods at a compact woman.
+    """
+
+    key = "."
+    locks = "cmd:all()"
+    help_category = "Social"
+    # Prevent Evennia from stripping the args — we need the full text.
+    arg_regex = r"(?s).*"
+
+    def func(self) -> None:
+        caller = self.caller
+
+        # Extract the emote text from raw_string.
+        # raw_string looks like ".lean back." — strip the leading "."
+        raw = self.raw_string
+        if raw.startswith("."):
+            raw = raw[1:]
+
+        # Strip trailing whitespace only (leading space is meaningful
+        # for speech-first patterns like ' "Hey," I .say')
+        emote_text = raw.rstrip()
+
+        if not emote_text or not emote_text.strip():
+            caller.msg(
+                "Usage: .<verb> <text>\n"
+                "  .lean back.\n"
+                '  .scratch my jaw, "What day is it?" I .ask.\n'
+                '  "Get down!" I .shout, .diving behind cover.'
+            )
+            return
+
+        location = caller.location
+        if not location:
+            caller.msg("You have no location to emote in.")
+            return
+
+        # Gather room occupants for character reference matching
+        room_occupants = [
+            obj
+            for obj in location.contents
+            if obj is not caller and hasattr(obj, "get_display_name")
+        ]
+
+        tokens = tokenize_dot_pose(emote_text, caller, room_occupants)
+
+        if not tokens:
+            caller.msg(
+                "Usage: .<verb> <text>\n"
+                "  .lean back.\n"
+                '  .scratch my jaw, "What day is it?" I .ask.\n'
+                '  "Get down!" I .shout, .diving behind cover.'
+            )
+            return
+
+        # Broadcast to room (each observer gets a unique rendering)
+        render_dot_pose(tokens, caller, location)

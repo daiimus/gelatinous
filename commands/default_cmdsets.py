@@ -37,7 +37,7 @@ from commands.CmdExplosives import (
 from commands.CmdGraffiti import CmdGraffiti, CmdPress
 from commands.CmdCharacter import CmdLongdesc, CmdSkintone
 from commands.CmdCharacter import CmdShortdesc, CmdAssign
-from commands.CmdCommunication import CmdSay, CmdWhisper, CmdEmote
+from commands.CmdCommunication import CmdSay, CmdWhisper, CmdEmote, CmdDotPose
 from commands.CmdArmor import CmdArmor, CmdArmorRepair, CmdSlot, CmdUnslot
 from commands.shop import CmdBuy
 
@@ -187,6 +187,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdSay())
         self.add(CmdWhisper())
         self.add(CmdEmote())
+        self.add(CmdDotPose())
         
         # Add clothing system commands
         self.add(CmdClothing.CmdWear())
