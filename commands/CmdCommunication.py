@@ -185,11 +185,14 @@ class CmdEmote(Command):
             caller.msg("You have no location to emote in.")
             return
 
-        # Gather room occupants for character reference matching
+        # Gather room occupants for character reference matching.
+        # Filter on get_sdesc (Character-only) — Exits and items also
+        # have get_display_name but lack get_sdesc, which
+        # build_char_candidates requires.
         room_occupants = [
             obj
             for obj in location.contents
-            if obj is not caller and hasattr(obj, "get_display_name")
+            if obj is not caller and hasattr(obj, "get_sdesc")
         ]
 
         tokens = tokenize_emote(action, caller, room_occupants)
@@ -267,11 +270,14 @@ class CmdDotPose(Command):
             caller.msg("You have no location to emote in.")
             return
 
-        # Gather room occupants for character reference matching
+        # Gather room occupants for character reference matching.
+        # Filter on get_sdesc (Character-only) — Exits and items also
+        # have get_display_name but lack get_sdesc, which
+        # build_char_candidates requires.
         room_occupants = [
             obj
             for obj in location.contents
-            if obj is not caller and hasattr(obj, "get_display_name")
+            if obj is not caller and hasattr(obj, "get_sdesc")
         ]
 
         tokens = tokenize_dot_pose(emote_text, caller, room_occupants)
