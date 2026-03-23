@@ -28,8 +28,11 @@ from world.emote import (
     _split_speech_segments,
     build_char_candidates,
     render_dot_pose,
+    render_emote,
+    render_emote_for_observer,
     render_for_observer,
     tokenize_dot_pose,
+    tokenize_emote,
 )
 
 
@@ -1170,3 +1173,195 @@ class TestEdgeCases(TestCase):
         result = render_for_observer(tokens, self.actor, observer)
         # Should start with "A" (capitalized article)
         self.assertTrue(result.startswith("A "))
+
+
+# ===================================================================
+# Tests: Traditional Emote — tokenize_emote / render_emote
+# ===================================================================
+
+
+class TestTokenizeEmote(TestCase):
+    """Tests for tokenize_emote (char-ref-only tokenizer)."""
+
+    def setUp(self) -> None:
+        self.actor = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        self.maria = _make_character(
+            key="Maria Santos",
+            sex="female",
+            height="short",
+            build="stocky",
+            sdesc_keyword="woman",
+            sleeve_uid="uid-maria",
+        )
+
+    def test_no_char_refs(self) -> None:
+        """Plain text with no character references returns TextTokens."""
+        tokens = tokenize_emote("leans back.", self.actor, [])
+        self.assertTrue(all(isinstance(t, TextToken) for t in tokens))
+        self.assertEqual("".join(t.text for t in tokens), "leans back.")
+
+    def test_char_ref_detected(self) -> None:
+        """Character reference by sdesc descriptor+keyword is detected."""
+        tokens = tokenize_emote(
+            "nods at squat woman.", self.actor, [self.maria]
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 1)
+        self.assertEqual(char_refs[0].character, self.maria)
+
+    def test_speech_exempt(self) -> None:
+        """Character names inside quoted speech are not tokenized."""
+        tokens = tokenize_emote(
+            'says "I saw squat woman earlier."',
+            self.actor,
+            [self.maria],
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 0)
+        # The speech block should be a SpeechToken
+        speech = [t for t in tokens if isinstance(t, SpeechToken)]
+        self.assertEqual(len(speech), 1)
+        self.assertIn("squat woman", speech[0].text)
+
+    def test_char_ref_outside_speech(self) -> None:
+        """Char ref outside speech is detected even with speech nearby."""
+        tokens = tokenize_emote(
+            'nods at squat woman. "Hello."',
+            self.actor,
+            [self.maria],
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 1)
+        self.assertEqual(char_refs[0].character, self.maria)
+
+    def test_no_verbs_or_pronouns_detected(self) -> None:
+        """tokenize_emote does NOT detect verbs or pronouns."""
+        tokens = tokenize_emote(
+            "scratches my jaw and .sighs.",
+            self.actor,
+            [self.maria],
+        )
+        # Should have no VerbToken or PronounToken
+        self.assertFalse(
+            any(isinstance(t, (VerbToken, PronounToken)) for t in tokens)
+        )
+
+    def test_empty_input(self) -> None:
+        """Empty input returns empty token list."""
+        tokens = tokenize_emote("", self.actor, [])
+        self.assertEqual(tokens, [])
+
+    def test_whitespace_only(self) -> None:
+        """Whitespace-only input returns empty token list."""
+        tokens = tokenize_emote("   ", self.actor, [])
+        self.assertEqual(tokens, [])
+
+
+class TestRenderEmoteForObserver(TestCase):
+    """Tests for render_emote_for_observer."""
+
+    def setUp(self) -> None:
+        self.actor = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        self.maria = _make_character(
+            key="Maria Santos",
+            sex="female",
+            height="short",
+            build="stocky",
+            sdesc_keyword="woman",
+            sleeve_uid="uid-maria",
+        )
+
+    def test_actor_sees_own_name_prepended(self) -> None:
+        """Actor sees own .key prepended (NOT 'You')."""
+        tokens = tokenize_emote("leans back.", self.actor, [])
+        result = render_emote_for_observer(tokens, self.actor, self.actor)
+        self.assertIn("Jorge Jackson", result)
+        self.assertIn("leans back.", result)
+
+    def test_unknown_observer_sees_sdesc(self) -> None:
+        """Observer who doesn't know actor sees sdesc."""
+        observer = _make_character(
+            key="Bob",
+            sex="male",
+            height="average",
+            build="average",
+            sleeve_uid="uid-bob",
+        )
+        tokens = tokenize_emote("leans back.", self.actor, [])
+        result = render_emote_for_observer(tokens, self.actor, observer)
+        self.assertIn("gaunt man", result.lower())
+        self.assertTrue(result[0].isupper())
+
+    def test_known_observer_sees_assigned_name(self) -> None:
+        """Observer who assigned a name sees it prepended."""
+        observer = _make_character(
+            key="Bob",
+            sex="male",
+            height="average",
+            build="average",
+            sleeve_uid="uid-bob",
+            recognition_memory={
+                "uid-jorge": {"assigned_name": "Jorge"},
+            },
+        )
+        tokens = tokenize_emote("waves.", self.actor, [])
+        result = render_emote_for_observer(tokens, self.actor, observer)
+        self.assertIn("Jorge waves.", result)
+
+    def test_char_ref_resolved_per_observer(self) -> None:
+        """Char ref in body is resolved using observer's memory."""
+        # Observer knows Maria
+        observer = _make_character(
+            key="Bob",
+            sex="male",
+            height="average",
+            build="average",
+            sleeve_uid="uid-bob",
+            recognition_memory={
+                "uid-maria": {"assigned_name": "Maria"},
+            },
+        )
+        tokens = tokenize_emote(
+            "nods at squat woman.", self.actor, [self.maria]
+        )
+        result = render_emote_for_observer(tokens, self.actor, observer)
+        self.assertIn("Maria", result)
+        self.assertIn("nods at", result)
+
+    def test_char_ref_unknown_observer_sees_sdesc(self) -> None:
+        """Observer who doesn't know target sees target's sdesc."""
+        observer = _make_character(
+            key="Bob",
+            sex="male",
+            height="average",
+            build="average",
+            sleeve_uid="uid-bob",
+        )
+        tokens = tokenize_emote(
+            "nods at squat woman.", self.actor, [self.maria]
+        )
+        result = render_emote_for_observer(tokens, self.actor, observer)
+        self.assertIn("squat woman", result.lower())
+        self.assertNotIn("Maria", result)
+
+    def test_speech_preserved_in_rendering(self) -> None:
+        """Speech blocks pass through unchanged in rendered output."""
+        tokens = tokenize_emote(
+            'says "Hello there."', self.actor, [self.maria]
+        )
+        result = render_emote_for_observer(tokens, self.actor, self.actor)
+        self.assertIn('"Hello there."', result)

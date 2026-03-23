@@ -752,3 +752,129 @@ def render_dot_pose(
 
         rendered = render_for_observer(tokens, actor, observer)
         observer.msg(text=rendered, type="pose", from_obj=actor)
+
+
+# =========================================================================
+# Traditional Emote — Character Reference Resolution
+# =========================================================================
+
+
+def tokenize_emote(
+    raw_input: str,
+    actor: "Character",
+    room_occupants: list["Character"] | None = None,
+) -> list[TextToken | SpeechToken | CharRefToken]:
+    """Tokenize traditional emote text for character reference resolution.
+
+    Unlike :func:`tokenize_dot_pose`, this does **not** detect verb
+    markers or first-person pronouns.  Only character references and
+    speech blocks are identified.  The player writes in third person
+    and is responsible for their own grammar.
+
+    Args:
+        raw_input: The action text (after the ``emote`` keyword).
+        actor: The character performing the emote.
+        room_occupants: Characters in the room.  If ``None``, no
+            character reference matching is performed.
+
+    Returns:
+        Ordered list of tokens representing the parsed emote.
+    """
+    if not raw_input or not raw_input.strip():
+        return []
+
+    candidates = build_char_candidates(actor, room_occupants or [])
+    segments = _split_speech_segments(raw_input)
+    tokens: list[TextToken | SpeechToken | CharRefToken] = []
+
+    for segment_text, is_speech in segments:
+        if is_speech:
+            tokens.append(SpeechToken(segment_text, actor))
+        else:
+            # Find character references only (no verbs, no pronouns)
+            char_ref_spans = _find_char_ref_spans(
+                segment_text, candidates, []
+            )
+            # Sort by position
+            char_ref_spans.sort(key=lambda s: s[0])
+
+            pos = 0
+            for start, end, char, _matched in char_ref_spans:
+                if start > pos:
+                    tokens.append(TextToken(segment_text[pos:start]))
+                tokens.append(CharRefToken(char, segment_text[start:end]))
+                pos = end
+            # Remaining text after last span
+            if pos < len(segment_text):
+                tokens.append(TextToken(segment_text[pos:]))
+
+    return tokens
+
+
+def render_emote_for_observer(
+    tokens: list[TextToken | SpeechToken | CharRefToken],
+    actor: "Character",
+    observer: "Character",
+) -> str:
+    """Render a traditional emote for a single observer.
+
+    Prepends the actor's display name and resolves character references
+    per-observer.  No verb conjugation or pronoun transformation is
+    performed — the player writes in third person.
+
+    Args:
+        tokens: Parsed token list from :func:`tokenize_emote`.
+        actor: The character performing the emote.
+        observer: The character receiving the message.
+
+    Returns:
+        The fully rendered emote string.
+    """
+    # Build the action body with resolved char refs
+    parts: list[str] = []
+    for token in tokens:
+        if isinstance(token, TextToken):
+            parts.append(token.text)
+        elif isinstance(token, SpeechToken):
+            parts.append(f'"{token.text}"')
+        elif isinstance(token, CharRefToken):
+            display_name = token.character.get_display_name(observer)
+            parts.append(display_name)
+
+    action = "".join(parts)
+
+    # Prepend actor name
+    actor_name = actor.get_display_name(observer)
+    result = f"{capitalize_first(actor_name)} {action}"
+
+    return result
+
+
+def render_emote(
+    tokens: list[TextToken | SpeechToken | CharRefToken],
+    actor: "Character",
+    location: object,
+    exclude: list | None = None,
+) -> None:
+    """Render and broadcast a traditional emote to all room occupants.
+
+    Each observer receives a unique rendering with identity-aware
+    character names for the actor and any referenced characters.
+
+    Args:
+        tokens: Parsed token list from :func:`tokenize_emote`.
+        actor: The character performing the emote.
+        location: The room to broadcast in.
+        exclude: Characters/objects to exclude from receiving the
+            message.
+    """
+    exclude_set = set(exclude) if exclude else set()
+
+    for observer in location.contents:
+        if observer in exclude_set:
+            continue
+        if not hasattr(observer, "msg"):
+            continue
+
+        rendered = render_emote_for_observer(tokens, actor, observer)
+        observer.msg(text=rendered, type="pose", from_obj=actor)
