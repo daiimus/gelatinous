@@ -255,8 +255,13 @@ class DeathProgressionScript(DefaultScript):
         )
         
         if character.location:
-            room_msg = f"|g{character.key} responds to medical treatment and returns from the brink of death!|n"
-            character.location.msg_contents(room_msg, exclude=[character])
+            from world.identity_utils import msg_room_identity
+            msg_room_identity(
+                location=character.location,
+                template="|g{actor} responds to medical treatment and returns from the brink of death!|n",
+                char_refs={"actor": character},
+                exclude=[character],
+            )
             
         # Restore character to living state
         if hasattr(character, 'remove_death_state'):
@@ -416,8 +421,13 @@ class DeathProgressionScript(DefaultScript):
         
         # Send final death rattle to observers - this is the transition to permanent death
         if character.location:
-            observer_msg = f"|r{character.key}'s form grows utterly still, life's final spark extinguished forever.|n"
-            character.location.msg_contents(observer_msg, exclude=[character])
+            from world.identity_utils import msg_room_identity
+            msg_room_identity(
+                location=character.location,
+                template="|r{actor}'s form grows utterly still, life's final spark extinguished forever.|n",
+                char_refs={"actor": character},
+                exclude=[character],
+            )
             
         # Apply final death state (if not already done)
         if hasattr(character, 'apply_final_death_state'):

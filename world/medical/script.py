@@ -194,16 +194,16 @@ class MedicalScript(DefaultScript):
                 # Normal living character bleeding messages
                 if bleeding_severity <= 3:
                     personal_parts.append("|rYou feel warm blood trickling from your wounds.|n")
-                    room_parts.append(f"Small droplets of blood fall from {self.obj.key}'s wounds.")
+                    room_parts.append("Small droplets of blood fall from {actor}'s wounds.")
                 elif bleeding_severity <= 7:
                     personal_parts.append("|rBlood flows freely from your wounds, leaving crimson trails.|n")
-                    room_parts.append(f"Blood steadily drips from {self.obj.key}, forming dark stains.")
+                    room_parts.append("Blood steadily drips from {actor}, forming dark stains.")
                 elif bleeding_severity <= 12:
                     personal_parts.append("|rYou feel your life ebbing away as blood pours from your wounds.|n")
-                    room_parts.append(f"Crimson flows freely from {self.obj.key}'s wounds, pooling on the ground.")
+                    room_parts.append("Crimson flows freely from {actor}'s wounds, pooling on the ground.")
                 else:  # 13+
                     personal_parts.append("|rYour vision dims as life-blood gushes from grievous wounds.|n")
-                    room_parts.append(f"{self.obj.key} leaves a trail of blood, their wounds gushing freely.")
+                    room_parts.append("{actor} leaves a trail of blood, their wounds gushing freely.")
         
         # Add pain components if present (only for living characters)
         if pain_severity > 0 and not is_dead:
@@ -234,10 +234,16 @@ class MedicalScript(DefaultScript):
             self.obj.msg(personal_msg)
         
         if room_parts:
-            # Join room messages and add color
-            room_msg = f"|r{' '.join(room_parts)}|n"
+            # Join room messages and send via identity-aware system
+            room_template = f"|r{' '.join(room_parts)}|n"
             if self.obj.location:
-                self.obj.location.msg_contents(room_msg, exclude=self.obj)
+                from world.identity_utils import msg_room_identity
+                msg_room_identity(
+                    location=self.obj.location,
+                    template=room_template,
+                    char_refs={"actor": self.obj},
+                    exclude=[self.obj],
+                )
     
     def _create_blood_pool(self, severity):
         """Create or update blood pool object in the room (like graffiti system)."""
