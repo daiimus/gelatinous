@@ -491,12 +491,21 @@ class BloodPool(Object):
         # Add aliases for examination
         self.aliases.add(["blood", "stains", "pool", "evidence"])
         
-    def add_bleeding_incident(self, character_name, severity):
-        """Add a new bleeding incident to this pool (like adding graffiti)."""
+    def add_bleeding_incident(self, character_name, severity, sleeve_uid=None):
+        """Add a new bleeding incident to this pool (like adding graffiti).
+
+        Args:
+            character_name: Display name of the character (used for staff
+                forensic display only, NOT shown to regular players).
+            severity: Numeric severity of the bleeding event.
+            sleeve_uid: Optional sleeve UID for forensic identity tracking.
+                If provided, stored as the behind-the-scenes identifier.
+        """
         current_time = gametime.gametime()
         
         incident = {
             'character': character_name,
+            'sleeve_uid': sleeve_uid,
             'severity': severity,
             'timestamp': current_time,
             'age_hours': 0  # Will be calculated dynamically
@@ -631,21 +640,23 @@ class BloodPool(Object):
         else:
             base_desc = f"Faint rusty stains hint at {volume_desc} that happened here, {age_desc}."
         
-        # Forensic incident summary
+        # Forensic incident summary — do NOT reveal character names
+        # Blood evidence shows patterns but not identities
         incident_summary = []
-        character_counts = {}
+        unique_sources = set()
         
         for incident in self.db.bleeding_incidents:
-            char = incident['character']
-            character_counts[char] = character_counts.get(char, 0) + incident['severity']
+            uid = incident.get('sleeve_uid')
+            if uid:
+                unique_sources.add(uid)
+            else:
+                # Legacy incidents without sleeve_uid — count as unknown
+                unique_sources.add(incident.get('character', 'unknown'))
         
-        if len(character_counts) == 1:
-            char_name = next(iter(character_counts))
-            incident_summary.append(f"Evidence suggests this blood came from {char_name}.")
+        if len(unique_sources) == 1:
+            incident_summary.append("Evidence suggests this blood came from a single source.")
         else:
-            incident_summary.append("Evidence suggests multiple sources:")
-            for char, total_volume in character_counts.items():
-                incident_summary.append(f"  - {char}: {total_volume} severity units")
+            incident_summary.append(f"Evidence suggests blood from {len(unique_sources)} different sources.")
         
         details = [
             base_desc,

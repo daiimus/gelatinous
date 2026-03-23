@@ -257,9 +257,10 @@ class MedicalScript(DefaultScript):
                 existing_pool = obj
                 break
         
+        sleeve_uid = self.obj.db.sleeve_uid if self.obj.db.sleeve_uid is not None else None
         if existing_pool:
             # Merge into existing pool (like graffiti entries)
-            existing_pool.add_bleeding_incident(self.obj.key, severity)
+            existing_pool.add_bleeding_incident(self.obj.key, severity, sleeve_uid=sleeve_uid)
         else:
             # Create new blood pool
             from evennia import create_object
@@ -270,7 +271,7 @@ class MedicalScript(DefaultScript):
                 key="blood stains",
                 location=self.obj.location
             )
-            blood_pool.add_bleeding_incident(self.obj.key, severity)
+            blood_pool.add_bleeding_incident(self.obj.key, severity, sleeve_uid=sleeve_uid)
 
 
 def start_medical_script(character):
