@@ -1072,21 +1072,43 @@ class CmdShortdesc(Command):
 
     def _set_keyword(self, caller, keyword):
         """Validate and set a keyword directly."""
-        from world.identity import is_valid_keyword, get_valid_keywords
+        from world.identity import (
+            ALL_KEYWORDS,
+            is_valid_keyword,
+            log_custom_keyword,
+            validate_custom_keyword,
+        )
 
         gender = caller.gender
-        if not is_valid_keyword(keyword, gender):
-            valid = get_valid_keywords(gender)
+
+        # Approved-list keyword for this gender — accept immediately.
+        if is_valid_keyword(keyword, gender):
+            self._apply_keyword(caller, keyword)
+            return
+
+        # Gender-restricted approved keyword — reject with clear message.
+        if keyword in ALL_KEYWORDS:
             caller.msg(
-                f"|r'{keyword}' is not a valid keyword for your character.|n\n"
+                f"|r'{keyword}' is not available for your character.|n\n"
                 f"Use |w@shortdesc|n to see the full list."
             )
             return
 
+        # Not on any approved list — validate as a custom keyword.
+        valid, reason = validate_custom_keyword(keyword)
+        if not valid:
+            caller.msg(f"|r'{keyword}' is not a valid keyword.|n {reason}")
+            return
+
+        # Accept the custom keyword, log it to the catalog.
+        log_custom_keyword(keyword, caller.key)
+        self._apply_keyword(caller, keyword)
+
+    def _apply_keyword(self, caller, keyword):
+        """Set the keyword on the caller and show confirmation."""
         old_keyword = caller.sdesc_keyword
         caller.sdesc_keyword = keyword
 
-        # Show the result
         sdesc = caller.get_sdesc()
         if old_keyword:
             caller.msg(
@@ -1172,7 +1194,8 @@ def _node_keyword_list(caller, raw_string, **kwargs):
 
     text += (
         f"\n|wEnter a number (1-{len(keywords)}) or keyword name to select."
-        f"\n|wType |yquit|w to exit.|n"
+        f"\nYou can also use |y@shortdesc <word>|w to set a custom keyword."
+        f"\nType |yquit|w to exit.|n"
     )
 
     options = ({"key": "_default", "goto": _process_keyword_choice},)

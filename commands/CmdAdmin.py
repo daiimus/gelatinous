@@ -950,3 +950,61 @@ class CmdMedicalAudit(Command):
             if len(details) > 20:
                 caller.msg(f"  ... and {len(details) - 20} more")
 
+
+class CmdKeywords(Command):
+    """
+    View the catalog of custom sdesc keywords used by players.
+
+    Usage:
+        @keywords           - list all custom keywords by usage count
+        @keywords clear     - wipe the catalog
+
+    Shows custom keywords that players have set via @shortdesc,
+    sorted by usage count.  Only keywords outside the approved lists
+    are cataloged.
+    """
+
+    key = "@keywords"
+    aliases = ["keywords"]
+    locks = "cmd:perm(Builder)"
+    help_category = "Admin"
+
+    def func(self):
+        caller = self.caller
+        args = self.args.strip().lower()
+
+        from world.identity import get_custom_keyword_catalog
+
+        if args == "clear":
+            from world.identity import _get_or_create_catalog
+
+            catalog_script = _get_or_create_catalog()
+            catalog_script.db.catalog = {}
+            caller.msg("|yCustom keyword catalog cleared.|n")
+            return
+
+        catalog = get_custom_keyword_catalog()
+        if not catalog:
+            caller.msg("No custom keywords have been used yet.")
+            return
+
+        # Sort by count descending
+        sorted_kws = sorted(
+            catalog.items(),
+            key=lambda item: int(item[1].get("count") or 0),
+            reverse=True,
+        )
+
+        header = f"|c=== Custom Keyword Catalog ({len(sorted_kws)} keywords) ===|n\n"
+        lines = []
+        for kw, meta in sorted_kws:
+            count = meta.get("count", 0)
+            first = meta.get("first_used_by", "?")
+            last = meta.get("last_used_by", "?")
+            lines.append(
+                f"  |w{kw:<20}|n  used |y{count}|nx"
+                f"  first: |c{first}|n  last: |c{last}|n"
+            )
+
+        caller.msg(header + "\n".join(lines))
+

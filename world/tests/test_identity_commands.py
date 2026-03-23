@@ -106,15 +106,15 @@ class TestShortdescInstantSet(TestCase):
         self.assertEqual(char.sdesc_keyword, "dude")
 
     def test_invalid_keyword_rejected(self):
-        """Invalid keyword produces error and does not change attribute."""
+        """Non-alpha keyword produces error and does not change attribute."""
         from commands.CmdCharacter import CmdShortdesc
 
         char = _make_character(sex="male", sdesc_keyword="man")
         cmd = CmdShortdesc()
         cmd.caller = char
-        cmd._set_keyword(char, "zzzzinvalid")
-        # Should still be "man" — the mock won't enforce this, but msg
-        # should have been called with error
+        cmd._set_keyword(char, "cyber2punk")
+        # Should still be "man"
+        self.assertEqual(char.sdesc_keyword, "man")
         char.msg.assert_called()
         msg_text = char.msg.call_args[0][0]
         self.assertIn("not a valid keyword", msg_text)
@@ -132,9 +132,11 @@ class TestShortdescInstantSet(TestCase):
         cmd = CmdShortdesc()
         cmd.caller = char
         cmd._set_keyword(char, kw)
+        # Should still be "man"
+        self.assertEqual(char.sdesc_keyword, "man")
         char.msg.assert_called()
         msg_text = char.msg.call_args[0][0]
-        self.assertIn("not a valid keyword", msg_text)
+        self.assertIn("not available", msg_text)
 
     def test_neutral_keyword_available_to_all(self):
         """Neutral keywords are available to any gender."""
@@ -431,3 +433,143 @@ class TestAssignCommand(TestCase):
         self.assertEqual(entry["relationship_valence"], "friendly")
         # first_seen unchanged
         self.assertEqual(entry["first_seen"], "2026-01-01T00:00:00")
+
+
+# ===================================================================
+# @shortdesc — custom keyword acceptance
+# ===================================================================
+
+
+class TestShortdescCustomKeyword(TestCase):
+    """Test that @shortdesc accepts arbitrary valid custom keywords."""
+
+    def test_custom_keyword_accepted(self):
+        """A novel alpha-only word is accepted as a custom keyword."""
+        from commands.CmdCharacter import CmdShortdesc
+
+        char = _make_character(sex="male", sdesc_keyword="man")
+        cmd = CmdShortdesc()
+        cmd.caller = char
+        with patch("world.identity.log_custom_keyword") as mock_log:
+            cmd._set_keyword(char, "ronin")
+        self.assertEqual(char.sdesc_keyword, "ronin")
+        mock_log.assert_called_once_with("ronin", char.key)
+
+    def test_custom_keyword_not_logged_for_approved(self):
+        """Approved keywords bypass the catalog entirely."""
+        from commands.CmdCharacter import CmdShortdesc
+
+        char = _make_character(sex="male", sdesc_keyword="man")
+        cmd = CmdShortdesc()
+        cmd.caller = char
+        with patch("world.identity.log_custom_keyword") as mock_log:
+            cmd._set_keyword(char, "dude")
+        self.assertEqual(char.sdesc_keyword, "dude")
+        mock_log.assert_not_called()
+
+    def test_custom_keyword_rejected_with_digits(self):
+        """Keywords containing digits are rejected."""
+        from commands.CmdCharacter import CmdShortdesc
+
+        char = _make_character(sex="male", sdesc_keyword="man")
+        cmd = CmdShortdesc()
+        cmd.caller = char
+        cmd._set_keyword(char, "r0nin")
+        self.assertEqual(char.sdesc_keyword, "man")
+        msg_text = char.msg.call_args[0][0]
+        self.assertIn("letters", msg_text)
+
+    def test_custom_keyword_rejected_too_short(self):
+        """Single-character keyword is rejected."""
+        from commands.CmdCharacter import CmdShortdesc
+
+        char = _make_character(sex="male", sdesc_keyword="man")
+        cmd = CmdShortdesc()
+        cmd.caller = char
+        cmd._set_keyword(char, "x")
+        self.assertEqual(char.sdesc_keyword, "man")
+
+    def test_custom_keyword_shows_sdesc(self):
+        """Confirmation message includes updated sdesc."""
+        from commands.CmdCharacter import CmdShortdesc
+
+        char = _make_character(
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+        )
+        cmd = CmdShortdesc()
+        cmd.caller = char
+        with patch("world.identity.log_custom_keyword"):
+            cmd._set_keyword(char, "samurai")
+        # sdesc_keyword should be updated
+        self.assertEqual(char.sdesc_keyword, "samurai")
+        msg_text = char.msg.call_args[0][0]
+        self.assertIn("samurai", msg_text)
+
+
+# ===================================================================
+# Custom keyword catalog — log_custom_keyword
+# ===================================================================
+
+
+class TestLogCustomKeyword(TestCase):
+    """Test catalog logging via :func:`log_custom_keyword`."""
+
+    def _make_catalog_mock(self):
+        """Build a mock catalog script with a real dict for db.catalog."""
+        catalog = MagicMock()
+        catalog.db.catalog = {}
+        return catalog
+
+    def test_custom_keyword_logged(self):
+        """Novel keyword creates a catalog entry."""
+        from world.identity import log_custom_keyword
+
+        catalog = self._make_catalog_mock()
+        with patch("world.identity._get_or_create_catalog", return_value=catalog):
+            log_custom_keyword("ronin", "Alice")
+
+        self.assertIn("ronin", catalog.db.catalog)
+        entry = catalog.db.catalog["ronin"]
+        self.assertEqual(entry["count"], 1)
+        self.assertEqual(entry["first_used_by"], "Alice")
+        self.assertEqual(entry["last_used_by"], "Alice")
+
+    def test_repeat_usage_increments_count(self):
+        """Repeated use of same keyword increments count."""
+        from world.identity import log_custom_keyword
+
+        catalog = self._make_catalog_mock()
+        with patch("world.identity._get_or_create_catalog", return_value=catalog):
+            log_custom_keyword("ronin", "Alice")
+            log_custom_keyword("ronin", "Bob")
+
+        entry = catalog.db.catalog["ronin"]
+        self.assertEqual(entry["count"], 2)
+        self.assertEqual(entry["first_used_by"], "Alice")
+        self.assertEqual(entry["last_used_by"], "Bob")
+
+    def test_approved_keyword_not_logged(self):
+        """Keywords from the approved lists are silently ignored."""
+        from world.identity import log_custom_keyword
+
+        catalog = self._make_catalog_mock()
+        with patch("world.identity._get_or_create_catalog", return_value=catalog):
+            log_custom_keyword("man", "Alice")
+
+        self.assertEqual(catalog.db.catalog, {})
+
+    def test_multiple_keywords_tracked(self):
+        """Multiple distinct keywords each get their own entry."""
+        from world.identity import log_custom_keyword
+
+        catalog = self._make_catalog_mock()
+        with patch("world.identity._get_or_create_catalog", return_value=catalog):
+            log_custom_keyword("ronin", "Alice")
+            log_custom_keyword("wraith", "Bob")
+
+        self.assertEqual(len(catalog.db.catalog), 2)
+        self.assertIn("ronin", catalog.db.catalog)
+        self.assertIn("wraith", catalog.db.catalog)
