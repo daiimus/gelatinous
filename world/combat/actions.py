@@ -17,6 +17,8 @@ from random import randint
 from evennia.comms.models import ChannelDB
 
 from world.combat.messages import get_combat_message
+from world.grammar import capitalize_first
+from world.identity_utils import msg_room_identity
 
 from .constants import (
     SPLATTERCAST_CHANNEL,
@@ -35,7 +37,7 @@ from .debug import log_combat_action
 from .dice import roll_stat
 from .utils import (
     get_numeric_stat, initialize_proximity_ndb,
-    get_character_dbref,
+    get_character_dbref, get_display_name_safe,
 )
 from .proximity import is_in_proximity
 
@@ -59,14 +61,16 @@ def resolve_disarm(handler, char, entry):
         char.msg("|rNo target specified for disarm action.|n")
         return
 
+    target_name = get_display_name_safe(target, char)
+
     # Validate target is still in combat and same room
     if target.location != char.location:
-        char.msg(f"|r{target.key} is no longer in the same room.|n")
+        char.msg(f"|r{target_name} is no longer in the same room.|n")
         return
 
     combatants_list = handler.db.combatants or []
     if not any(e[DB_CHAR] == target for e in combatants_list):
-        char.msg(f"|r{target.key} is no longer in combat.|n")
+        char.msg(f"|r{target_name} is no longer in combat.|n")
         return
 
     splattercast.msg(
@@ -78,7 +82,7 @@ def resolve_disarm(handler, char, entry):
     initialize_proximity_ndb(char)
     if not is_in_proximity(char, target):
         char.msg(
-            f"|rYou must be in melee proximity with {target.key} to "
+            f"|rYou must be in melee proximity with {target_name} to "
             f"disarm them.|n"
         )
         return
@@ -87,7 +91,7 @@ def resolve_disarm(handler, char, entry):
     hands = target.hands if target.hands is not None else {}
     if not hands:
         char.msg(
-            MSG_DISARM_TARGET_EMPTY_HANDS.format(target=target.key)
+            MSG_DISARM_TARGET_EMPTY_HANDS.format(target=target_name)
         )
         log_combat_action(
             char, "disarm_fail", target,
@@ -110,7 +114,7 @@ def resolve_disarm(handler, char, entry):
 
     if not weapon_hand:
         char.msg(
-            MSG_DISARM_NOTHING_TO_DISARM.format(target=target.key)
+            MSG_DISARM_NOTHING_TO_DISARM.format(target=target_name)
         )
         log_combat_action(
             char, "disarm_fail", target,
@@ -133,8 +137,12 @@ def resolve_disarm(handler, char, entry):
     )
 
     if disarm_roll <= resist_roll:
-        char.msg(MSG_DISARM_FAILED.format(target=target.key))
-        target.msg(MSG_DISARM_RESISTED.format(attacker=char.key))
+        char.msg(MSG_DISARM_FAILED.format(target=target_name))
+        target.msg(MSG_DISARM_RESISTED.format(
+            attacker=capitalize_first(
+                get_display_name_safe(char, target)
+            ),
+        ))
         log_combat_action(
             char, "disarm_fail", target, success=False,
         )
@@ -151,18 +159,24 @@ def resolve_disarm(handler, char, entry):
 
     char.msg(
         MSG_DISARM_SUCCESS_ATTACKER.format(
-            target=target.key, item=item.key,
+            target=target_name, item=item.key,
         )
     )
     target.msg(
         MSG_DISARM_SUCCESS_VICTIM.format(
-            attacker=char.key, item=item.key,
+            attacker=capitalize_first(
+                get_display_name_safe(char, target)
+            ),
+            item=item.key,
         )
     )
-    target.location.msg_contents(
-        MSG_DISARM_SUCCESS_OBSERVER.format(
-            attacker=char.key, target=target.key, item=item.key,
+    msg_room_identity(
+        location=target.location,
+        template=MSG_DISARM_SUCCESS_OBSERVER.format(
+            attacker="{actor}", target="{target_char}",
+            item=item.key,
         ),
+        char_refs={"actor": char, "target_char": target},
         exclude=[char, target],
     )
     log_combat_action(
@@ -209,7 +223,8 @@ def resolve_grapple_attempt(handler, char, entry, combatants_list):
     if not is_action_target_valid and action_target_char:
         char.msg(
             f"The target of your planned action "
-            f"({action_target_char.key}) is no longer valid."
+            f"({get_display_name_safe(action_target_char, char)}) "
+            f"is no longer valid."
         )
         splattercast.msg(
             f"{char.key}'s action_intent target "
@@ -255,8 +270,8 @@ def resolve_grapple_attempt(handler, char, entry, combatants_list):
         if action_target_char not in proximity_set:
             char.msg(
                 f"You need to be in melee proximity with "
-                f"{action_target_char.key} to grapple them. Try "
-                f"advancing or charging."
+                f"{get_display_name_safe(action_target_char, char)} "
+                f"to grapple them. Try advancing or charging."
             )
             splattercast.msg(
                 f"GRAPPLE FAIL (PROXIMITY): {char.key} not in "
@@ -304,10 +319,17 @@ def resolve_grapple_attempt(handler, char, entry, combatants_list):
             )
             char.msg(grapple_messages.get("attacker_msg"))
             action_target_char.msg(grapple_messages.get("victim_msg"))
-            obs_msg = grapple_messages.get("observer_msg")
             if char.location:
-                char.location.msg_contents(
-                    obs_msg,
+                msg_room_identity(
+                    location=char.location,
+                    template=grapple_messages.get(
+                        "observer_template",
+                        grapple_messages.get("observer_msg", ""),
+                    ),
+                    char_refs=grapple_messages.get(
+                        "observer_char_refs",
+                        {"actor": char, "target_char": action_target_char},
+                    ),
                     exclude=[char, action_target_char],
                 )
             splattercast.msg(
@@ -322,10 +344,17 @@ def resolve_grapple_attempt(handler, char, entry, combatants_list):
             )
             char.msg(grapple_messages.get("attacker_msg"))
             action_target_char.msg(grapple_messages.get("victim_msg"))
-            obs_msg = grapple_messages.get("observer_msg")
             if char.location:
-                char.location.msg_contents(
-                    obs_msg,
+                msg_room_identity(
+                    location=char.location,
+                    template=grapple_messages.get(
+                        "observer_template",
+                        grapple_messages.get("observer_msg", ""),
+                    ),
+                    char_refs=grapple_messages.get(
+                        "observer_char_refs",
+                        {"actor": char, "target_char": action_target_char},
+                    ),
                     exclude=[char, action_target_char],
                 )
             splattercast.msg(
@@ -334,8 +363,9 @@ def resolve_grapple_attempt(handler, char, entry, combatants_list):
             )
     else:
         char.msg(
-            f"You can't reach {action_target_char.key} to grapple them "
-            f"from here."
+            f"You can't reach "
+            f"{get_display_name_safe(action_target_char, char)} to "
+            f"grapple them from here."
         )
         splattercast.msg(
             f"GRAPPLE FAIL (REACH): {char.key} cannot reach "
@@ -400,10 +430,19 @@ def resolve_escape_grapple(handler, char, entry, combatants_list):
             )
             char.msg(escape_messages.get("attacker_msg"))
             grappler.msg(escape_messages.get("victim_msg"))
-            obs_msg = escape_messages.get("observer_msg")
-            char.location.msg_contents(
-                obs_msg, exclude=[char, grappler],
-            )
+            if char.location:
+                msg_room_identity(
+                    location=char.location,
+                    template=escape_messages.get(
+                        "observer_template",
+                        escape_messages.get("observer_msg", ""),
+                    ),
+                    char_refs=escape_messages.get(
+                        "observer_char_refs",
+                        {"actor": char, "target_char": grappler},
+                    ),
+                    exclude=[char, grappler],
+                )
             splattercast.msg(
                 f"ESCAPE SUCCESS: {char.key} escaped from "
                 f"{grappler.key}."
@@ -415,10 +454,19 @@ def resolve_escape_grapple(handler, char, entry, combatants_list):
             )
             char.msg(escape_messages.get("attacker_msg"))
             grappler.msg(escape_messages.get("victim_msg"))
-            obs_msg = escape_messages.get("observer_msg")
-            char.location.msg_contents(
-                obs_msg, exclude=[char, grappler],
-            )
+            if char.location:
+                msg_room_identity(
+                    location=char.location,
+                    template=escape_messages.get(
+                        "observer_template",
+                        escape_messages.get("observer_msg", ""),
+                    ),
+                    char_refs=escape_messages.get(
+                        "observer_char_refs",
+                        {"actor": char, "target_char": grappler},
+                    ),
+                    exclude=[char, grappler],
+                )
             splattercast.msg(
                 f"ESCAPE FAIL: {char.key} failed to escape "
                 f"{grappler.key}."
@@ -479,16 +527,19 @@ def resolve_auto_escape(handler, char, entry, combatants_list):
     # Check if the victim is yielding (restraint mode acceptance)
     if entry.get(DB_IS_YIELDING, False):
         # Victim is yielding/accepting restraint — no automatic escape
+        grappler_name = get_display_name_safe(grappler, char)
         splattercast.msg(
             f"{char.key} is being grappled by {grappler.key} but is "
             f"yielding (accepting restraint)."
         )
         char.msg(
-            f"|gYou remain still in {grappler.key}'s hold, not "
+            f"|gYou remain still in {grappler_name}'s hold, not "
             f"resisting.|n"
         )
-        char.location.msg_contents(
-            f"|g{char.key} does not resist {grappler.key}'s hold.|n",
+        msg_room_identity(
+            location=char.location,
+            template="|g{actor} does not resist {target_char}'s hold.|n",
+            char_refs={"actor": char, "target_char": grappler},
             exclude=[char],
         )
         return True  # Turn consumed (passive)
@@ -498,7 +549,10 @@ def resolve_auto_escape(handler, char, entry, combatants_list):
         f"{char.key} is being grappled by {grappler.key} and "
         f"automatically attempts to escape."
     )
-    char.msg(f"|yYou struggle against {grappler.key}'s grip!|n")
+    char.msg(
+        f"|yYou struggle against "
+        f"{get_display_name_safe(grappler, char)}'s grip!|n"
+    )
 
     # Setup an escape attempt
     escaper_roll = randint(
@@ -544,25 +598,44 @@ def resolve_auto_escape(handler, char, entry, combatants_list):
             "grapple", "escape_hit",
             attacker=char, target=grappler,
         )
+        grappler_name_for_char = get_display_name_safe(grappler, char)
+        char_name_for_grappler = capitalize_first(
+            get_display_name_safe(char, grappler)
+        )
         char.msg(
             escape_messages.get(
                 "attacker_msg",
-                f"You break free from {grappler.key}'s grasp!",
+                f"You break free from {grappler_name_for_char}'s grasp!",
             )
         )
         grappler.msg(
             escape_messages.get(
                 "victim_msg",
-                f"{char.key} breaks free from your grasp!",
+                f"{char_name_for_grappler} breaks free from your grasp!",
             )
         )
-        obs_msg = escape_messages.get(
-            "observer_msg",
-            f"{char.key} breaks free from {grappler.key}'s grasp!",
-        )
-        char.location.msg_contents(
-            obs_msg, exclude=[char, grappler],
-        )
+        if char.location:
+            obs_template = escape_messages.get("observer_template")
+            if obs_template:
+                msg_room_identity(
+                    location=char.location,
+                    template=obs_template,
+                    char_refs=escape_messages.get(
+                        "observer_char_refs",
+                        {"actor": char, "target_char": grappler},
+                    ),
+                    exclude=[char, grappler],
+                )
+            else:
+                msg_room_identity(
+                    location=char.location,
+                    template=(
+                        "{actor} breaks free from "
+                        "{target_char}'s grasp!"
+                    ),
+                    char_refs={"actor": char, "target_char": grappler},
+                    exclude=[char, grappler],
+                )
 
         # Additional message if they switched from yielding to violent
         if was_yielding:
@@ -578,28 +651,46 @@ def resolve_auto_escape(handler, char, entry, combatants_list):
             "grapple", "escape_miss",
             attacker=char, target=grappler,
         )
+        grappler_name_for_char = get_display_name_safe(grappler, char)
+        char_name_for_grappler = capitalize_first(
+            get_display_name_safe(char, grappler)
+        )
         char.msg(
             escape_messages.get(
                 "attacker_msg",
                 f"You struggle but fail to break free from "
-                f"{grappler.key}'s grasp!",
+                f"{grappler_name_for_char}'s grasp!",
             )
         )
         grappler.msg(
             escape_messages.get(
                 "victim_msg",
-                f"{char.key} struggles but fails to break free from "
-                f"your grasp!",
+                f"{char_name_for_grappler} struggles but fails to break "
+                f"free from your grasp!",
             )
         )
-        obs_msg = escape_messages.get(
-            "observer_msg",
-            f"{char.key} struggles but fails to break free from "
-            f"{grappler.key}'s grasp!",
-        )
-        char.location.msg_contents(
-            obs_msg, exclude=[char, grappler],
-        )
+        if char.location:
+            obs_template = escape_messages.get("observer_template")
+            if obs_template:
+                msg_room_identity(
+                    location=char.location,
+                    template=obs_template,
+                    char_refs=escape_messages.get(
+                        "observer_char_refs",
+                        {"actor": char, "target_char": grappler},
+                    ),
+                    exclude=[char, grappler],
+                )
+            else:
+                msg_room_identity(
+                    location=char.location,
+                    template=(
+                        "{actor} struggles but fails to break free "
+                        "from {target_char}'s grasp!"
+                    ),
+                    char_refs={"actor": char, "target_char": grappler},
+                    exclude=[char, grappler],
+                )
         splattercast.msg(
             f"AUTO_ESCAPE_FAIL: {char.key} failed to escape "
             f"{grappler.key}."
