@@ -30,7 +30,10 @@ from world.combat.messages import get_combat_message
 from world.combat.proximity import establish_proximity
 from world.combat.utils import (
     initialize_proximity_ndb, get_wielded_weapon, get_numeric_stat,
+    get_display_name_safe,
 )
+from world.grammar import capitalize_first
+from world.identity_utils import msg_room_identity
 
 
 class CmdAttack(Command):
@@ -130,14 +133,17 @@ class CmdAttack(Command):
             if validation_error:
                 # Target is invalid - show glitch effect for holographic
                 if target.db.is_holographic:
-                    caller.msg(f"|yYour attack passes through {target.key}'s holographic form with a shimmer of static.|n")
-                    target.location.msg_contents(
-                        f"|y{caller.key}'s attack passes through {target.key}'s flickering projection.|n",
-                        exclude=[caller, target]
-                    )
+                    caller.msg(f"|yYour attack passes through {get_display_name_safe(target, caller)}'s holographic form with a shimmer of static.|n")
+                    if target.location:
+                        msg_room_identity(
+                            location=target.location,
+                            template="|y{actor}'s attack passes through {target}'s flickering projection.|n",
+                            char_refs={"actor": caller, "target": target},
+                            exclude=[caller, target],
+                        )
                 else:
                     # Generic validation failure
-                    caller.msg(f"You cannot attack {target.key}.")
+                    caller.msg(f"You cannot attack {get_display_name_safe(target, caller)}.")
                 return
 
         # --- GRAPPLE RESTRICTION CHECK ---
@@ -150,7 +156,7 @@ class CmdAttack(Command):
                 if caller_entry:
                     grappler_obj = caller_handler.get_grappled_by_obj(caller_entry)
                     if grappler_obj and grappler_obj == target:
-                        caller.msg(f"You cannot attack {target.key} while they are grappling you! Use 'escape' to resist violently.")
+                        caller.msg(f"You cannot attack {get_display_name_safe(target, caller)} while they are grappling you! Use 'escape' to resist violently.")
                         return
 
         # --- PROXIMITY AND WEAPON VALIDATION ---
@@ -186,13 +192,25 @@ class CmdAttack(Command):
                     establish_proximity(caller, target)
                     caller.msg(f"|gYou rush forward and close to melee range with {target.get_display_name(caller)}!|n")
                     target.msg(f"|y{caller.get_display_name(target)} rushes forward to melee range with you!|n")
-                    caller.location.msg_contents(f"|y{caller.key} rushes forward to melee range with {target.key}!|n", exclude=[caller, target])
+                    if caller.location:
+                        msg_room_identity(
+                            location=caller.location,
+                            template="|y{actor} rushes forward to melee range with {target}!|n",
+                            char_refs={"actor": caller, "target": target},
+                            exclude=[caller, target],
+                        )
                     splattercast.msg(f"{DEBUG_PREFIX_ATTACK}_CONTESTED: {caller.key} successfully gained proximity to {target.key}.")
                 else:
                     # Failure - no proximity established, but still joins combat
                     caller.msg(f"|rYou rush forward trying to reach {target.get_display_name(caller)}, but they keep their distance!|n")
                     target.msg(f"|g{caller.get_display_name(target)} rushes at you but you keep your distance!|n")
-                    caller.location.msg_contents(f"|y{caller.key} rushes at {target.key} but fails to close the distance.|n", exclude=[caller, target])
+                    if caller.location:
+                        msg_room_identity(
+                            location=caller.location,
+                            template="|y{actor} rushes at {target} but fails to close the distance.|n",
+                            char_refs={"actor": caller, "target": target},
+                            exclude=[caller, target],
+                        )
                     splattercast.msg(f"{DEBUG_PREFIX_ATTACK}_CONTESTED: {caller.key} failed to gain proximity to {target.key}, but joins combat anyway.")
             else:
                 splattercast.msg(f"{DEBUG_PREFIX_ATTACK}_EXISTING_COMBAT: Preserving existing proximity state. Caller handler: {caller_existing_handler.key if caller_existing_handler else 'None'}, Target handler: {target_existing_handler.key if target_existing_handler else 'None'}.")
@@ -285,7 +303,7 @@ class CmdAttack(Command):
                         grappler_obj = final_handler.get_grappled_by_obj(caller_entry_copy)
                         if grappler_obj:
                             # Special message for switching to violent resistance while grappled
-                            caller.msg(MSG_GRAPPLE_VIOLENT_SWITCH.format(grappler=grappler_obj.key))
+                            caller.msg(MSG_GRAPPLE_VIOLENT_SWITCH.format(grappler=get_display_name_safe(grappler_obj, caller)))
                         else:
                             # General message for resuming attacking
                             caller.msg(MSG_RESUME_ATTACKING)
@@ -313,19 +331,19 @@ class CmdAttack(Command):
             std_observer_initiate = ""
 
             if isinstance(initiate_msg_obj, dict):
-                std_attacker_initiate = initiate_msg_obj.get("attacker_msg", f"You prepare to strike {target.key}!")
-                std_victim_initiate = initiate_msg_obj.get("victim_msg", f"{caller.key} prepares to strike you!")
-                std_observer_initiate = initiate_msg_obj.get("observer_msg", f"{caller.key} prepares to strike {target.key}!")
+                std_attacker_initiate = initiate_msg_obj.get("attacker_msg", f"You prepare to strike {get_display_name_safe(target, caller)}!")
+                std_victim_initiate = initiate_msg_obj.get("victim_msg", f"{capitalize_first(get_display_name_safe(caller, target))} prepares to strike you!")
+                std_observer_initiate = initiate_msg_obj.get("observer_msg", "")
             elif isinstance(initiate_msg_obj, str): # Fallback if get_combat_message returns a single string for initiate
                 splattercast.msg(f"CmdAttack (aiming): initiate_msg_obj for {weapon_type_for_msg} was a string. Using generic attacker/victim messages. String: {initiate_msg_obj}")
                 std_observer_initiate = initiate_msg_obj
-                std_attacker_initiate = f"You prepare to strike {target.key} with your {weapon_type_for_msg}!"
-                std_victim_initiate = f"{caller.key} prepares to strike you with their {weapon_type_for_msg}!"
+                std_attacker_initiate = f"You prepare to strike {get_display_name_safe(target, caller)} with your {weapon_type_for_msg}!"
+                std_victim_initiate = f"{capitalize_first(get_display_name_safe(caller, target))} prepares to strike you with their {weapon_type_for_msg}!"
             else: # Unexpected type
                 splattercast.msg(f"CmdAttack (aiming): Unexpected initiate_msg_obj type from get_combat_message for {weapon_type_for_msg}: {type(initiate_msg_obj)}. Content: {initiate_msg_obj}")
-                std_attacker_initiate = f"You initiate an attack on {target.key}."
-                std_victim_initiate = f"{caller.key} initiates an attack on you."
-                std_observer_initiate = f"{caller.key} initiates an attack on {target.key}."
+                std_attacker_initiate = f"You initiate an attack on {get_display_name_safe(target, caller)}."
+                std_victim_initiate = f"{capitalize_first(get_display_name_safe(caller, target))} initiates an attack on you."
+                std_observer_initiate = ""
 
             # 2. Determine the direction from which the attack arrives in the target's room
             attacker_direction_from_target_perspective = "a nearby location" # Default
@@ -348,12 +366,24 @@ class CmdAttack(Command):
             target.msg(prefix_victim + std_victim_initiate)
 
             # Observer message in caller's room (attacker's room)
-            prefix_observer_caller_room = f"|R{caller.key} takes aim {aiming_direction} into {target_room.get_display_name(caller.location)}, "
-            caller.location.msg_contents(prefix_observer_caller_room + std_observer_initiate, exclude=[caller])
+            observer_caller_room_suffix = std_observer_initiate
+            if caller.location:
+                msg_room_identity(
+                    location=caller.location,
+                    template=f"|R{{actor}} takes aim {aiming_direction} into {target_room.get_display_name(caller.location)}, " + observer_caller_room_suffix,
+                    char_refs={"actor": caller},
+                    exclude=[caller],
+                )
 
             # Observer message in target's room
-            prefix_observer_target_room = f"|RYour attention is drawn to the {attacker_direction_from_target_perspective} as {caller.key} aiming from {caller.location.get_display_name(target_room)}, "
-            target_room.msg_contents(prefix_observer_target_room + std_observer_initiate, exclude=[target])
+            observer_target_room_suffix = std_observer_initiate
+            if target_room:
+                msg_room_identity(
+                    location=target_room,
+                    template=f"|RYour attention is drawn to the {attacker_direction_from_target_perspective} as {{actor}} aiming from {caller.location.get_display_name(target_room)}, " + observer_target_room_suffix,
+                    char_refs={"actor": caller},
+                    exclude=[target],
+                )
             
         else:
             # Standard local attack initiation message (use get_combat_message)
@@ -364,24 +394,32 @@ class CmdAttack(Command):
             observer_msg = ""
             
             if isinstance(initiate_msg_obj, dict):
-                attacker_msg = initiate_msg_obj.get("attacker_msg", f"You prepare to strike {target.key}!")
-                victim_msg = initiate_msg_obj.get("victim_msg", f"{caller.key} prepares to strike you!")
-                observer_msg = initiate_msg_obj.get("observer_msg", f"{caller.key} prepares to strike {target.key}!")
+                attacker_msg = initiate_msg_obj.get("attacker_msg", f"You prepare to strike {get_display_name_safe(target, caller)}!")
+                victim_msg = initiate_msg_obj.get("victim_msg", f"{capitalize_first(get_display_name_safe(caller, target))} prepares to strike you!")
+                observer_msg = initiate_msg_obj.get("observer_msg", "")
             elif isinstance(initiate_msg_obj, str):
                 # If it's just a string, use it as observer message and create first/second person versions
                 observer_msg = initiate_msg_obj
-                attacker_msg = f"You prepare to strike {target.key}!"
-                victim_msg = f"{caller.key} prepares to strike you!"
+                attacker_msg = f"You prepare to strike {get_display_name_safe(target, caller)}!"
+                victim_msg = f"{capitalize_first(get_display_name_safe(caller, target))} prepares to strike you!"
             else:
                 splattercast.msg(f"CmdAttack: Unexpected initiate_msg_obj type from get_combat_message for {weapon_type_for_msg}: {type(initiate_msg_obj)}. Content: {initiate_msg_obj}")
-                attacker_msg = f"You initiate an attack on {target.key}."
-                victim_msg = f"{caller.key} initiates an attack on you."
-                observer_msg = f"{caller.key} initiates an attack on {target.key}."
+                attacker_msg = f"You initiate an attack on {get_display_name_safe(target, caller)}."
+                victim_msg = f"{capitalize_first(get_display_name_safe(caller, target))} initiates an attack on you."
+                observer_msg = ""
 
             # Send personalized messages
             caller.msg(attacker_msg)
             target.msg(victim_msg)
-            caller.location.msg_contents(observer_msg, exclude=[caller, target])
+            if observer_msg:
+                caller.location.msg_contents(observer_msg, exclude=[caller, target])
+            elif caller.location:
+                msg_room_identity(
+                    location=caller.location,
+                    template="{actor} prepares to strike {target}!",
+                    char_refs={"actor": caller, "target": target},
+                    exclude=[caller, target],
+                )
 
             # Check if target should also get an initiate message
             # Conditions: target wasn't already in combat OR target wasn't targeting anyone
@@ -405,22 +443,30 @@ class CmdAttack(Command):
                 target_observer_msg = ""
                 
                 if isinstance(target_initiate_msg_obj, dict):
-                    target_attacker_msg = target_initiate_msg_obj.get("attacker_msg", f"{target.key} takes a defensive stance!")
-                    target_victim_msg = target_initiate_msg_obj.get("victim_msg", f"{target.key} reacts defensively to your threat!")
-                    target_observer_msg = target_initiate_msg_obj.get("observer_msg", f"{target.key} reacts defensively to {caller.key}'s threat.")
+                    target_attacker_msg = target_initiate_msg_obj.get("attacker_msg", f"{capitalize_first(get_display_name_safe(target, target))} takes a defensive stance!")
+                    target_victim_msg = target_initiate_msg_obj.get("victim_msg", f"{capitalize_first(get_display_name_safe(target, caller))} reacts defensively to your threat!")
+                    target_observer_msg = target_initiate_msg_obj.get("observer_msg", "")
                 elif isinstance(target_initiate_msg_obj, str):
                     target_observer_msg = target_initiate_msg_obj
-                    target_attacker_msg = f"{target.key} takes a defensive stance!"
-                    target_victim_msg = f"{target.key} reacts defensively to your threat!"
+                    target_attacker_msg = f"{capitalize_first(get_display_name_safe(target, target))} takes a defensive stance!"
+                    target_victim_msg = f"{capitalize_first(get_display_name_safe(target, caller))} reacts defensively to your threat!"
                 else:
-                    target_attacker_msg = f"{target.key} takes a defensive stance!"
-                    target_victim_msg = f"{target.key} reacts defensively to your threat!"
-                    target_observer_msg = f"{target.key} reacts defensively to {caller.key}'s threat."
+                    target_attacker_msg = f"{capitalize_first(get_display_name_safe(target, target))} takes a defensive stance!"
+                    target_victim_msg = f"{capitalize_first(get_display_name_safe(target, caller))} reacts defensively to your threat!"
+                    target_observer_msg = ""
                 
                 # Send target's defensive reaction messages
                 target.msg(target_attacker_msg)  # Target sees their own defensive action
                 caller.msg(target_victim_msg)   # Attacker sees target's reaction to them
-                caller.location.msg_contents(target_observer_msg, exclude=[caller, target])  # Others see the reaction
+                if target_observer_msg:
+                    caller.location.msg_contents(target_observer_msg, exclude=[caller, target])  # Others see the reaction
+                elif caller.location:
+                    msg_room_identity(
+                        location=caller.location,
+                        template="{target} reacts defensively to {actor}'s threat.",
+                        char_refs={"target": target, "actor": caller},
+                        exclude=[caller, target],
+                    )
                 
                 # Debug message (simplified to avoid f-string complexity)
                 target_entry = next((e for e in final_handler.db.combatants if e["char"] == target), None)
@@ -481,8 +527,8 @@ class CmdStop(Command):
                 weapon = next((item for hand, item in hands.items() if item), None)
                 weapon_name = weapon.key if weapon else "weapon"
                 
-                caller.msg(f"You stop aiming at {aiming_target.key} and lower your {weapon_name}.")
-                aiming_target.msg(f"{caller.key} stops aiming at you.")
+                caller.msg(f"You stop aiming at {get_display_name_safe(aiming_target, caller)} and lower your {weapon_name}.")
+                aiming_target.msg(f"{capitalize_first(get_display_name_safe(caller, aiming_target))} stops aiming at you.")
                 
             # Clear direction aiming
             if aiming_direction:

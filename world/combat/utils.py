@@ -48,6 +48,9 @@ from .constants import (
 )
 from .debug import get_splattercast, log_debug
 
+from world.grammar import capitalize_first
+from world.identity_utils import msg_room_identity
+
 
 # ===================================================================
 # BACKWARD-COMPATIBLE RE-EXPORTS
@@ -248,10 +251,10 @@ def validate_combat_target(caller, target, allow_self=False):
     
     # Check if target is dead or unconscious
     if hasattr(target, 'is_dead') and target.is_dead():
-        return False, f"{target.key} is dead and cannot be targeted."
+        return False, f"{get_display_name_safe(target, caller)} is dead and cannot be targeted."
     
     if hasattr(target, 'is_unconscious') and target.is_unconscious():
-        return False, f"{target.key} is unconscious and cannot be targeted."
+        return False, f"{get_display_name_safe(target, caller)} is unconscious and cannot be targeted."
     
     return True, ""
 
@@ -639,14 +642,14 @@ def remove_combatant(handler, char):
                                                         attacker=other_char, target=new_target, item=weapon_obj)
                     
                     if isinstance(initiate_msg_obj, dict):
-                        attacker_msg = initiate_msg_obj.get("attacker_msg", f"You turn your attention to {new_target.key}!")
-                        victim_msg = initiate_msg_obj.get("victim_msg", f"{other_char.key} turns their attention to you!")
-                        observer_msg = initiate_msg_obj.get("observer_msg", f"{other_char.key} turns their attention to {new_target.key}!")
+                        attacker_msg = initiate_msg_obj.get("attacker_msg", f"You turn your attention to {get_display_name_safe(new_target, other_char)}!")
+                        victim_msg = initiate_msg_obj.get("victim_msg", f"{capitalize_first(get_display_name_safe(other_char, new_target))} turns their attention to you!")
+                        observer_msg = initiate_msg_obj.get("observer_msg", "")
                     else:
                         # Fallback messages
-                        attacker_msg = f"|yYour target has left combat, but you quickly turn your attention to {new_target.get_display_name(other_char)}!|n"
-                        victim_msg = f"|y{other_char.get_display_name(new_target)} turns their attention to you!|n"
-                        observer_msg = f"|y{other_char.key} turns their attention to {new_target.key}!|n"
+                        attacker_msg = f"|yYour target has left combat, but you quickly turn your attention to {get_display_name_safe(new_target, other_char)}!|n"
+                        victim_msg = f"|y{capitalize_first(get_display_name_safe(other_char, new_target))} turns their attention to you!|n"
+                        observer_msg = ""
                     
                     # Send messages
                     other_char.msg(attacker_msg)
@@ -654,16 +657,26 @@ def remove_combatant(handler, char):
                     
                     # Send observer message to location  
                     if hasattr(other_char, 'location') and other_char.location:
-                        other_char.location.msg_contents(observer_msg, exclude=[other_char, new_target])
+                        if observer_msg:
+                            # Dict path — pre-resolved from template system (2c-5 will make identity-aware)
+                            other_char.location.msg_contents(observer_msg, exclude=[other_char, new_target])
+                        else:
+                            # Fallback — identity-aware observer message
+                            msg_room_identity(
+                                location=other_char.location,
+                                template="|y{actor} turns their attention to {target}!|n",
+                                char_refs={"actor": other_char, "target": new_target},
+                                exclude=[other_char, new_target],
+                            )
                         
                 except Exception as e:
                     splattercast.msg(f"RMV_COMB_ERROR: Failed to send auto-retarget messages for {other_char.key}: {e}")
                     # Fallback message
-                    other_char.msg(f"|yYour target has left combat, but you quickly turn your attention to {new_target.get_display_name(other_char)}!|n")
+                    other_char.msg(f"|yYour target has left combat, but you quickly turn your attention to {get_display_name_safe(new_target, other_char)}!|n")
             else:
                 # No auto-retarget found - send original message
                 if hasattr(other_char, 'msg'):
-                    other_char.msg(f"|yYour target {char.get_display_name(other_char) if hasattr(char, 'get_display_name') else char.key} has left combat. Choose a new target if you wish to continue fighting.|n")
+                    other_char.msg(f"|yYour target {get_display_name_safe(char, other_char)} has left combat. Choose a new target if you wish to continue fighting.|n")
     
     # Remove from combatants list using in-place mutation so the active
     # working list (handler._active_combatants_list) stays in sync.
