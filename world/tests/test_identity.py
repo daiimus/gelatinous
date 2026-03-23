@@ -28,6 +28,7 @@ from world.identity import (
     get_physical_descriptor,
     get_valid_keywords,
     is_valid_keyword,
+    validate_custom_keyword,
 )
 
 
@@ -500,3 +501,55 @@ class TestComposeSdesc(TestCase):
         desc = get_physical_descriptor("above-average", "heavyset")
         sdesc = compose_sdesc(desc, "kid")
         self.assertEqual(sdesc, "hulking kid")
+
+
+# ===================================================================
+# Custom Keyword Validation
+# ===================================================================
+
+
+class TestValidateCustomKeyword(TestCase):
+    """Tests for :func:`validate_custom_keyword`."""
+
+    def test_valid_simple(self) -> None:
+        valid, reason = validate_custom_keyword("ronin")
+        self.assertTrue(valid)
+        self.assertEqual(reason, "")
+
+    def test_valid_min_length(self) -> None:
+        valid, _ = validate_custom_keyword("ab")
+        self.assertTrue(valid)
+
+    def test_valid_max_length(self) -> None:
+        valid, _ = validate_custom_keyword("a" * 20)
+        self.assertTrue(valid)
+
+    def test_reject_single_char(self) -> None:
+        valid, reason = validate_custom_keyword("x")
+        self.assertFalse(valid)
+        self.assertIn("at least", reason)
+
+    def test_reject_too_long(self) -> None:
+        valid, reason = validate_custom_keyword("a" * 21)
+        self.assertFalse(valid)
+        self.assertIn("at most", reason)
+
+    def test_reject_digits(self) -> None:
+        valid, reason = validate_custom_keyword("cyber2")
+        self.assertFalse(valid)
+        self.assertIn("letters", reason)
+
+    def test_reject_hyphen(self) -> None:
+        valid, reason = validate_custom_keyword("half-elf")
+        self.assertFalse(valid)
+        self.assertIn("letters", reason)
+
+    def test_reject_space(self) -> None:
+        """Spaces should already be stripped by the caller, but test anyway."""
+        valid, reason = validate_custom_keyword("no way")
+        self.assertFalse(valid)
+        self.assertIn("letters", reason)
+
+    def test_reject_empty(self) -> None:
+        valid, reason = validate_custom_keyword("")
+        self.assertFalse(valid)

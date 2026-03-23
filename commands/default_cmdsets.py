@@ -121,6 +121,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdAdmin.CmdHeal())
         self.add(CmdAdmin.CmdPeace())
         self.add(CmdAdmin.CmdTestDeathCurtain())
+        self.add(CmdAdmin.CmdKeywords())
         self.add(CmdWeather())
         
         # Add character ownership fix command

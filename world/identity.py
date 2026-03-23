@@ -5,14 +5,15 @@ Data tables and pure functions for the identity and recognition system:
 physical descriptor lookup, keyword validation, hair options, distinguishing
 feature formatting, and short description (sdesc) composition.
 
-This module has no Evennia dependencies in its core functions.  The actual
-character-reading logic (``get_distinguishing_feature``, ``get_display_name``
-override) lives on the Character typeclass and is added in a later phase.
+This module has no Evennia dependencies in its core functions (except for
+:class:`CustomKeywordCatalog`, which is an Evennia Script).
 
 See specs/IDENTITY_RECOGNITION_SPEC.md for the full specification.
 """
 
 from __future__ import annotations
+
+from evennia.scripts.scripts import DefaultScript
 
 from world.grammar import get_article
 
@@ -189,6 +190,135 @@ def is_valid_keyword(keyword: str, gender: str) -> bool:
         ``True`` if the keyword is in the valid set for *gender*.
     """
     return keyword.lower() in get_valid_keywords(gender)
+
+
+# -- Custom keyword validation ----------------------------------------
+
+#: Minimum length for a custom keyword.
+CUSTOM_KEYWORD_MIN_LENGTH: int = 2
+
+#: Maximum length for a custom keyword.
+CUSTOM_KEYWORD_MAX_LENGTH: int = 20
+
+
+def validate_custom_keyword(keyword: str) -> tuple[bool, str]:
+    """Validate a player-supplied custom keyword.
+
+    Custom keywords must be alphabetic, between
+    :data:`CUSTOM_KEYWORD_MIN_LENGTH` and :data:`CUSTOM_KEYWORD_MAX_LENGTH`
+    characters, and lowercase.
+
+    Args:
+        keyword: The keyword string to validate (should already be
+            lowercased by the caller).
+
+    Returns:
+        ``(True, "")`` if valid, or ``(False, reason)`` with a
+        human-readable rejection reason.
+    """
+    if not keyword.isalpha():
+        return False, "Keywords must contain only letters (a-z)."
+    if len(keyword) < CUSTOM_KEYWORD_MIN_LENGTH:
+        return (
+            False,
+            f"Keywords must be at least {CUSTOM_KEYWORD_MIN_LENGTH} "
+            f"characters long.",
+        )
+    if len(keyword) > CUSTOM_KEYWORD_MAX_LENGTH:
+        return (
+            False,
+            f"Keywords must be at most {CUSTOM_KEYWORD_MAX_LENGTH} "
+            f"characters long.",
+        )
+    return True, ""
+
+
+# -- Custom keyword catalog -------------------------------------------
+
+_CATALOG_SCRIPT_KEY = "custom_keyword_catalog"
+
+
+def _get_or_create_catalog() -> "CustomKeywordCatalog":
+    """Return the singleton :class:`CustomKeywordCatalog` script.
+
+    Creates the script on first call.  Subsequent calls return the
+    existing instance.
+
+    Returns:
+        The catalog script instance.
+    """
+    from evennia import create_script
+    from evennia.scripts.models import ScriptDB
+
+    try:
+        return ScriptDB.objects.get(db_key=_CATALOG_SCRIPT_KEY)
+    except ScriptDB.DoesNotExist:
+        pass
+
+    script = create_script(
+        CustomKeywordCatalog,
+        key=_CATALOG_SCRIPT_KEY,
+        persistent=True,
+    )
+    if not script.id:
+        script.save()
+    return script
+
+
+def log_custom_keyword(keyword: str, character_key: str) -> None:
+    """Record a custom keyword usage in the catalog.
+
+    Only logs keywords that are **not** in any approved list.  Safe to
+    call for any keyword — approved keywords are silently ignored.
+
+    Args:
+        keyword: The keyword being set (lowercase).
+        character_key: The ``.key`` of the character using it, for
+            attribution.
+    """
+    if keyword in ALL_KEYWORDS:
+        return
+
+    catalog = _get_or_create_catalog()
+    entries: dict[str, dict[str, object]] = catalog.db.catalog or {}
+
+    entry = entries.get(keyword)
+    if entry is None:
+        entries[keyword] = {
+            "count": 1,
+            "first_used_by": character_key,
+            "last_used_by": character_key,
+        }
+    else:
+        entry["count"] = int(entry.get("count") or 0) + 1  # type: ignore[arg-type]
+        entry["last_used_by"] = character_key
+
+    catalog.db.catalog = entries
+
+
+def get_custom_keyword_catalog() -> dict[str, dict[str, object]]:
+    """Return the current custom keyword catalog.
+
+    Returns:
+        Dict mapping keyword strings to usage metadata dicts.
+        Empty dict if no custom keywords have been logged.
+    """
+    catalog = _get_or_create_catalog()
+    return dict(catalog.db.catalog or {})
+
+
+class CustomKeywordCatalog(DefaultScript):
+    """Global script that stores custom keyword usage data.
+
+    Singleton script created by :func:`_get_or_create_catalog`.
+    Stores ``db.catalog`` — a dict of
+    ``{keyword: {count, first_used_by, last_used_by}}``.
+    """
+
+    def at_script_creation(self) -> None:
+        self.key = _CATALOG_SCRIPT_KEY
+        self.persistent = True
+        self.db.catalog = {}  # type: ignore[attr-defined]
 
 
 # =========================================================================
