@@ -1027,9 +1027,13 @@ class Character(
             or not isinstance(searchdata, str)
         )
 
-        # Builder+ sees real names — full bypass
-        if not bypass and self.check_permstring(PERM_BUILDER):
-            bypass = True
+        # Builder+ can also target by .key — tracked as a flag so the
+        # identity pipeline still runs first (sdesc/assigned-name
+        # matching works for Builders too), but the fallback filter
+        # allows .key results through instead of blocking them.
+        is_builder = (
+            not bypass and self.check_permstring(PERM_BUILDER)
+        )
 
         # Dbref query — full bypass
         if (
@@ -1124,11 +1128,15 @@ class Character(
 
         # Filter out unrecognized Characters from default results.
         # Items, exits, rooms — anything without identity — passes
-        # through unmodified.
-        filtered = [
-            obj for obj in default_results
-            if is_identity_match(self, obj, query)
-        ]
+        # through unmodified.  Builders skip the identity filter so
+        # they can also target by .key (their privilege).
+        if is_builder:
+            filtered = list(default_results)
+        else:
+            filtered = [
+                obj for obj in default_results
+                if is_identity_match(self, obj, query)
+            ]
 
         # Return using the caller's original quiet mode
         if quiet:
