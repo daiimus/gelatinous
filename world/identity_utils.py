@@ -61,6 +61,18 @@ def msg_room_identity(
     """
     exclude_set = set(exclude) if exclude else set()
 
+    # Determine which placeholder appears first in the template
+    # so we can capitalize its display name for proper sentence casing.
+    # e.g. "|g{actor} grapples {target}!" → capitalize actor's sdesc
+    # so "a lanky man" becomes "A lanky man" at the sentence start.
+    first_placeholder: str | None = None
+    first_pos = len(template)
+    for placeholder in char_refs:
+        pos = template.find(f"{{{placeholder}}}")
+        if pos != -1 and pos < first_pos:
+            first_pos = pos
+            first_placeholder = placeholder
+
     for observer in location.contents:
         if observer in exclude_set:
             continue
@@ -70,6 +82,8 @@ def msg_room_identity(
         resolved = template
         for placeholder, char in char_refs.items():
             display_name = char.get_display_name(observer)
+            if placeholder == first_placeholder:
+                display_name = capitalize_first(display_name)
             resolved = resolved.replace(f"{{{placeholder}}}", display_name)
 
         observer.msg(text=resolved, **kwargs)

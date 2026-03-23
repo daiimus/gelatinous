@@ -21,6 +21,9 @@ from .debug import log_debug
 from .utils import get_display_name_safe, get_character_by_dbref, get_character_dbref
 from .proximity import establish_proximity
 
+from world.grammar import capitalize_first
+from world.identity_utils import msg_room_identity
+
 
 def get_grappling_target(combat_handler, combatant_entry):
     """
@@ -272,7 +275,7 @@ def resolve_grapple_initiate(char_entry, combatants_list, handler):
     # Check if target is in combat
     target_entry = next((e for e in combatants_list if e.get(DB_CHAR) == target), None)
     if not target_entry:
-        char.msg(f"{target.key} is not in combat.")
+        char.msg(f"{capitalize_first(get_display_name_safe(target, char))} is not in combat.")
         return
     
     # Grappling inherently allows "rush in" - proximity will be established on success
@@ -302,21 +305,23 @@ def resolve_grapple_initiate(char_entry, combatants_list, handler):
         char_entry[DB_IS_YIELDING] = True
         # target_entry[DB_IS_YIELDING] = False  # Keep victim non-yielding for auto-resistance
         
-        char.msg(f"|gYou successfully grapple {target.key}!|n")
-        target.msg(f"|g{char.key} grapples you!|n")
+        char.msg(f"|gYou successfully grapple {get_display_name_safe(target, char)}!|n")
+        target.msg(f"|g{capitalize_first(get_display_name_safe(char, target))} grapples you!|n")
         # Note: No auto-yield message for victim since they remain non-yielding to auto-resist
         
         if char.location:
-            char.location.msg_contents(
-                f"|g{char.key} grapples {target.key}!|n",
-                exclude=[char, target]
+            msg_room_identity(
+                location=char.location,
+                template="|g{actor} grapples {target}!|n",
+                char_refs={"actor": char, "target": target},
+                exclude=[char, target],
             )
         
         splattercast.msg(f"GRAPPLE_SUCCESS: {char.key} grappled {target.key}.")
     else:
         # Failure
-        char.msg(f"|yYou fail to grapple {target.key}.|n")
-        target.msg(f"|y{char.key} fails to grapple you.|n")
+        char.msg(f"|yYou fail to grapple {get_display_name_safe(target, char)}.|n")
+        target.msg(f"|y{capitalize_first(get_display_name_safe(char, target))} fails to grapple you.|n")
         
         # Check if grappler initiated combat - if so, they should become yielding on failure
         grappler_initiated_combat = char_entry.get("initiated_combat_this_action", False)
@@ -344,9 +349,11 @@ def resolve_grapple_initiate(char_entry, combatants_list, handler):
                 # Target should potentially get a bonus or opportunity attack here in future implementation
         
         if char.location:
-            char.location.msg_contents(
-                f"|y{char.key} fails to grapple {target.key}.|n",
-                exclude=[char, target]
+            msg_room_identity(
+                location=char.location,
+                template="|y{actor} fails to grapple {target}.|n",
+                char_refs={"actor": char, "target": target},
+                exclude=[char, target],
             )
         
         splattercast.msg(f"GRAPPLE_FAIL: {char.key} failed to grapple {target.key}.")
@@ -381,7 +388,7 @@ def resolve_grapple_join(char_entry, combatants_list, handler):
     # Check if target is already grappled
     target_entry = next((e for e in combatants_list if e.get(DB_CHAR) == target), None)
     if not target_entry or not target_entry.get(DB_GRAPPLED_BY_DBREF):
-        char.msg(f"{target.key} is not currently being grappled.")
+        char.msg(f"{capitalize_first(get_display_name_safe(target, char))} is not currently being grappled.")
         return
     
     # Find the original grappler
@@ -393,14 +400,14 @@ def resolve_grapple_join(char_entry, combatants_list, handler):
     # Get the current grappler's combat entry
     current_grappler_entry = next((e for e in combatants_list if e.get(DB_CHAR) == current_grappler), None)
     if not current_grappler_entry:
-        char.msg(f"{current_grappler.key} is not properly registered in combat.")
+        char.msg(f"{capitalize_first(get_display_name_safe(current_grappler, char))} is not properly registered in combat.")
         return
     
     # Check proximity
     if not hasattr(char.ndb, NDB_PROXIMITY):
         setattr(char.ndb, NDB_PROXIMITY, set())
     if target not in getattr(char.ndb, NDB_PROXIMITY):
-        char.msg(f"You need to be in melee proximity with {target.key} to contest the grapple.")
+        char.msg(f"You need to be in melee proximity with {get_display_name_safe(target, char)} to contest the grapple.")
         return
     
     # Contest: new grappler vs current grappler (both using motorics)
@@ -422,28 +429,32 @@ def resolve_grapple_join(char_entry, combatants_list, handler):
         target_entry[DB_GRAPPLED_BY_DBREF] = get_character_dbref(char)
         
         # Success messages
-        char.msg(f"|gYou successfully wrestle {target.key} away from {current_grappler.key}!|n")
-        current_grappler.msg(f"|r{char.key} wrestles {target.key} away from your grasp!|n")
-        target.msg(f"|y{char.key} takes over grappling you from {current_grappler.key}!|n")
+        char.msg(f"|gYou successfully wrestle {get_display_name_safe(target, char)} away from {get_display_name_safe(current_grappler, char)}!|n")
+        current_grappler.msg(f"|r{capitalize_first(get_display_name_safe(char, current_grappler))} wrestles {get_display_name_safe(target, current_grappler)} away from your grasp!|n")
+        target.msg(f"|y{capitalize_first(get_display_name_safe(char, target))} takes over grappling you from {get_display_name_safe(current_grappler, target)}!|n")
         
         if char.location:
-            char.location.msg_contents(
-                f"|g{char.key} wrestles {target.key} away from {current_grappler.key}!|n",
-                exclude=[char, target, current_grappler]
+            msg_room_identity(
+                location=char.location,
+                template="|g{actor} wrestles {target} away from {grappler}!|n",
+                char_refs={"actor": char, "target": target, "grappler": current_grappler},
+                exclude=[char, target, current_grappler],
             )
         
         splattercast.msg(f"GRAPPLE_TAKEOVER: {char.key} took {target.key} from {current_grappler.key}.")
         
     else:
         # Current grappler maintains control
-        char.msg(f"|yYou fail to wrestle {target.key} away from {current_grappler.key}!|n")
-        current_grappler.msg(f"|gYou maintain your grip on {target.key} despite {char.key}'s attempt!|n")
-        target.msg(f"|y{char.key} tries to take you from {current_grappler.key} but fails!|n")
+        char.msg(f"|yYou fail to wrestle {get_display_name_safe(target, char)} away from {get_display_name_safe(current_grappler, char)}!|n")
+        current_grappler.msg(f"|gYou maintain your grip on {get_display_name_safe(target, current_grappler)} despite {get_display_name_safe(char, current_grappler)}'s attempt!|n")
+        target.msg(f"|y{capitalize_first(get_display_name_safe(char, target))} tries to take you from {get_display_name_safe(current_grappler, target)} but fails!|n")
         
         if char.location:
-            char.location.msg_contents(
-                f"|y{char.key} fails to wrestle {target.key} away from {current_grappler.key}!|n",
-                exclude=[char, target, current_grappler]
+            msg_room_identity(
+                location=char.location,
+                template="|y{actor} fails to wrestle {target} away from {grappler}!|n",
+                char_refs={"actor": char, "target": target, "grappler": current_grappler},
+                exclude=[char, target, current_grappler],
             )
         
         splattercast.msg(f"GRAPPLE_CONTEST_FAIL: {char.key} failed to take {target.key} from {current_grappler.key}.")
@@ -488,7 +499,7 @@ def resolve_grapple_takeover(char_entry, combatants_list, handler):
     # Check if target is in combat
     target_entry = next((e for e in combatants_list if e.get(DB_CHAR) == target), None)
     if not target_entry:
-        char.msg(f"{target.key} is not in combat.")
+        char.msg(f"{capitalize_first(get_display_name_safe(target, char))} is not in combat.")
         return
     
     # Get who the target is currently grappling (should be stored in takeover_victim)
@@ -497,13 +508,13 @@ def resolve_grapple_takeover(char_entry, combatants_list, handler):
         # Fallback: try to get from target's grappling state
         victim = handler.get_grappling_obj(target_entry)
         if not victim:
-            char.msg(f"{target.key} is not currently grappling anyone.")
+            char.msg(f"{capitalize_first(get_display_name_safe(target, char))} is not currently grappling anyone.")
             return
     
     # Find victim's combat entry
     victim_entry = next((e for e in combatants_list if e.get(DB_CHAR) == victim), None)
     if not victim_entry:
-        char.msg(f"{victim.key} is not properly registered in combat.")
+        char.msg(f"{capitalize_first(get_display_name_safe(victim, char))} is not properly registered in combat.")
         return
     
     # Grapple takeover allows "rush in" - proximity will be established on success.
@@ -541,28 +552,32 @@ def resolve_grapple_takeover(char_entry, combatants_list, handler):
         # target remains non-yielding for auto-resistance
         
         # Success messages
-        char.msg(f"|gYou successfully grapple {target.key}, forcing them to release {victim.key}!|n")
-        target.msg(f"|r{char.key} grapples you, forcing you to release {victim.key}!|n")
-        victim.msg(f"|g{target.key} is forced to release you as {char.key} grapples them!|n")
+        char.msg(f"|gYou successfully grapple {get_display_name_safe(target, char)}, forcing them to release {get_display_name_safe(victim, char)}!|n")
+        target.msg(f"|r{capitalize_first(get_display_name_safe(char, target))} grapples you, forcing you to release {get_display_name_safe(victim, target)}!|n")
+        victim.msg(f"|g{capitalize_first(get_display_name_safe(target, victim))} is forced to release you as {get_display_name_safe(char, victim)} grapples them!|n")
         
         if char.location:
-            char.location.msg_contents(
-                f"|g{char.key} grapples {target.key}, forcing them to release {victim.key}!|n",
-                exclude=[char, target, victim]
+            msg_room_identity(
+                location=char.location,
+                template="|g{actor} grapples {target}, forcing them to release {victim}!|n",
+                char_refs={"actor": char, "target": target, "victim": victim},
+                exclude=[char, target, victim],
             )
         
         splattercast.msg(f"GRAPPLE_TAKEOVER_SUCCESS: {char.key} grappled {target.key}, forcing release of {victim.key}")
         
     else:
         # Failure: Target maintains their grapple, new grappler fails
-        char.msg(f"|yYou fail to grapple {target.key}, who maintains their hold on {victim.key}!|n")
-        target.msg(f"|gYou resist {char.key}'s grapple attempt and maintain your grip on {victim.key}!|n")
-        victim.msg(f"|y{char.key} tries to grapple {target.key} but fails - you remain grappled!|n")
+        char.msg(f"|yYou fail to grapple {get_display_name_safe(target, char)}, who maintains their hold on {get_display_name_safe(victim, char)}!|n")
+        target.msg(f"|gYou resist {get_display_name_safe(char, target)}'s grapple attempt and maintain your grip on {get_display_name_safe(victim, target)}!|n")
+        victim.msg(f"|y{capitalize_first(get_display_name_safe(char, victim))} tries to grapple {get_display_name_safe(target, victim)} but fails - you remain grappled!|n")
         
         if char.location:
-            char.location.msg_contents(
-                f"|y{char.key} fails to grapple {target.key}, who maintains their hold on {victim.key}!|n",
-                exclude=[char, target, victim]
+            msg_room_identity(
+                location=char.location,
+                template="|y{actor} fails to grapple {target}, who maintains their hold on {victim}!|n",
+                char_refs={"actor": char, "target": target, "victim": victim},
+                exclude=[char, target, victim],
             )
         
         splattercast.msg(f"GRAPPLE_TAKEOVER_FAIL: {char.key} failed to grapple {target.key}, who keeps {victim.key}")
@@ -599,7 +614,7 @@ def resolve_release_grapple(char_entry, combatants_list, handler):
     # Find the target's entry
     target_entry = next((e for e in combatants_list if e.get(DB_CHAR) == grappling_target), None)
     if not target_entry:
-        char.msg(f"{grappling_target.key} is not in combat.")
+        char.msg(f"{capitalize_first(get_display_name_safe(grappling_target, char))} is not in combat.")
         return
     
     # Clear the grapple
@@ -610,13 +625,15 @@ def resolve_release_grapple(char_entry, combatants_list, handler):
     # The yielding state reflects the original intent when combat/grapple was initiated
     # If they want to become violent again, they need to explicitly take a hostile action
     
-    char.msg(f"|gYou release your grapple on {grappling_target.key}.|n")
-    grappling_target.msg(f"|g{char.key} releases their grapple on you.|n")
+    char.msg(f"|gYou release your grapple on {get_display_name_safe(grappling_target, char)}.|n")
+    grappling_target.msg(f"|g{capitalize_first(get_display_name_safe(char, grappling_target))} releases their grapple on you.|n")
     
     if char.location:
-        char.location.msg_contents(
-            f"|g{char.key} releases their grapple on {grappling_target.key}.|n",
-            exclude=[char, grappling_target]
+        msg_room_identity(
+            location=char.location,
+            template="|g{actor} releases their grapple on {target}.|n",
+            char_refs={"actor": char, "target": grappling_target},
+            exclude=[char, grappling_target],
         )
     
     splattercast.msg(f"GRAPPLE_RELEASE: {char.key} released {grappling_target.key}.")
