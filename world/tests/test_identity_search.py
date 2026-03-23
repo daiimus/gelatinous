@@ -480,3 +480,106 @@ class TestIsIdentityMatch(TestCase):
         self.assertTrue(
             is_identity_match(self.searcher, self.jorge, "1st man")
         )
+
+
+# ===================================================================
+# Tests: Character.search() override — Builder behaviour
+# ===================================================================
+
+
+class TestCharacterSearchBuilderBypass(TestCase):
+    """Verify that Builders can target by sdesc AND .key.
+
+    The identity pipeline must run for Builders (so ``look man`` works),
+    but the fallback filter must allow ``.key`` results through (so
+    ``look Jorge Jackson`` also works).
+
+    Non-Builders must NOT be able to target by ``.key``.
+    """
+
+    def setUp(self):
+        """Build a mock searcher, a target, and wire up search()."""
+        from typeclasses.characters import Character
+
+        self.target = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+
+        self.searcher = _make_character(
+            key="Alice Smith",
+            sex="female",
+            height="short",
+            build="athletic",
+            sleeve_uid="uid-searcher",
+        )
+
+        # Give the searcher a real location with contents
+        room = MagicMock()
+        room.contents = [self.searcher, self.target]
+        self.searcher.location = room
+
+        # Wire up the real search method (bound to mock)
+        self.searcher.search = (
+            lambda *a, **kw: Character.search(self.searcher, *a, **kw)
+        )
+
+        # Mock msg so we can capture error messages
+        self.searcher.msg = MagicMock()
+
+    def _set_builder(self, is_builder: bool):
+        """Configure the searcher's permission check."""
+        self.searcher.check_permstring = MagicMock(return_value=is_builder)
+
+    def _mock_super_search(self, results):
+        """Patch DefaultObject.search to return *results* in quiet mode."""
+        return patch(
+            "evennia.objects.objects.DefaultObject.search",
+            return_value=results,
+        )
+
+    # -- Builder can find by sdesc (identity pipeline runs) --
+
+    def test_builder_finds_by_sdesc(self):
+        """Builder typing 'look man' finds target via identity matching."""
+        self._set_builder(True)
+        result = self.searcher.search("man")
+        self.assertEqual(result, self.target)
+
+    def test_builder_finds_by_full_sdesc(self):
+        """Builder typing 'look gaunt man' finds target via sdesc."""
+        self._set_builder(True)
+        result = self.searcher.search("gaunt man")
+        self.assertEqual(result, self.target)
+
+    # -- Builder can also find by .key (fallback, unfiltered) --
+
+    def test_builder_finds_by_key(self):
+        """Builder typing 'look Jorge Jackson' finds via .key fallback."""
+        self._set_builder(True)
+        with self._mock_super_search([self.target]):
+            result = self.searcher.search("Jorge Jackson")
+        self.assertEqual(result, self.target)
+
+    # -- Non-builder CANNOT find by .key --
+
+    def test_non_builder_blocked_by_key(self):
+        """Normal player typing 'look Jorge Jackson' gets nothing."""
+        self._set_builder(False)
+        with self._mock_super_search([self.target]):
+            result = self.searcher.search("Jorge Jackson")
+        self.assertIsNone(result)
+        # Should have received "Could not find" message
+        self.searcher.msg.assert_called()
+
+    # -- Non-builder CAN find by sdesc --
+
+    def test_non_builder_finds_by_sdesc(self):
+        """Normal player typing 'look man' finds target via identity."""
+        self._set_builder(False)
+        result = self.searcher.search("man")
+        self.assertEqual(result, self.target)
