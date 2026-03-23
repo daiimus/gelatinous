@@ -410,16 +410,26 @@ class Room(ObjectParent, DefaultRoom):
             placement_groups[placement].append(char.get_display_name(looker))
         
         # Generate natural language descriptions
+        from world.grammar import capitalize_first
+
         descriptions = []
         for placement, char_names in placement_groups.items():
             if len(char_names) == 1:
-                descriptions.append(f"{char_names[0]} is {placement}")
+                descriptions.append(
+                    f"{capitalize_first(char_names[0])} is {placement}"
+                )
             elif len(char_names) == 2:
-                descriptions.append(f"{char_names[0]} and {char_names[1]} are {placement}")
+                descriptions.append(
+                    f"{capitalize_first(char_names[0])} and"
+                    f" {char_names[1]} are {placement}"
+                )
             else:
                 # Handle 3+ characters: "A, B, and C are here"
                 all_but_last = ", ".join(char_names[:-1])
-                descriptions.append(f"{all_but_last}, and {char_names[-1]} are {placement}")
+                descriptions.append(
+                    f"{capitalize_first(all_but_last)}, and"
+                    f" {char_names[-1]} are {placement}"
+                )
         
         character_display = " ".join(descriptions) if descriptions else ""
         
