@@ -126,6 +126,16 @@ GENDER_MAP: dict[str, str] = {
     "other": "neutral",
 }
 
+#: Default sdesc keyword assigned to new characters based on grammar gender.
+#: Used as a fallback when no keyword has been explicitly chosen via
+#: ``@shortdesc``.  Keyed by the grammar gender (output of ``GENDER_MAP``),
+#: not the raw ``sex`` attribute.
+DEFAULT_SDESC_KEYWORDS: dict[str, str] = {
+    "male": "man",
+    "female": "woman",
+    "neutral": "person",
+}
+
 #: First-person → second-person pronoun table (actor self-view).
 _FIRST_TO_SECOND: dict[str, str] = {
     "i": "you",

@@ -12,6 +12,7 @@ All test cases match the specification in ``specs/EMOTE_POSE_SPEC.md``
 from unittest import TestCase
 
 from world.grammar import (
+    DEFAULT_SDESC_KEYWORDS,
     GENDER_MAP,
     capitalize_first,
     conjugate_third_person,
@@ -316,6 +317,29 @@ class TestGenderMap(TestCase):
 
     def test_other(self) -> None:
         self.assertEqual(GENDER_MAP["other"], "neutral")
+
+
+# -----------------------------------------------------------------------
+# Default Sdesc Keywords
+# -----------------------------------------------------------------------
+
+
+class TestDefaultSdescKeywords(TestCase):
+    """Tests for ``DEFAULT_SDESC_KEYWORDS`` constant."""
+
+    def test_male(self) -> None:
+        self.assertEqual(DEFAULT_SDESC_KEYWORDS["male"], "man")
+
+    def test_female(self) -> None:
+        self.assertEqual(DEFAULT_SDESC_KEYWORDS["female"], "woman")
+
+    def test_neutral(self) -> None:
+        self.assertEqual(DEFAULT_SDESC_KEYWORDS["neutral"], "person")
+
+    def test_all_gender_map_outputs_covered(self) -> None:
+        """Every grammar gender produced by GENDER_MAP has a default."""
+        for gender in set(GENDER_MAP.values()):
+            self.assertIn(gender, DEFAULT_SDESC_KEYWORDS)
 
 
 # -----------------------------------------------------------------------
