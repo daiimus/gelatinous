@@ -19,6 +19,7 @@ from world.combat.constants import (
     STAT_GRIT, SPLATTERCAST_CHANNEL,
 )
 from world.combat.utils import roll_stat, roll_with_disadvantage
+from world.identity_utils import msg_room_identity
 
 class CmdWield(Command):
     """
@@ -348,12 +349,17 @@ class CmdDrop(Command):
             proximity_list.append(caller)
         
         # Send appropriate message based on whether it was wielded
+        item_name = obj.get_display_name(caller)
         if was_wielded:
-            caller.msg(f"You release {obj.get_display_name(caller)} from your {hand_name} hand and drop it.")
-            caller.location.msg_contents(f"{caller.key} drops {obj.get_display_name(caller)}.", exclude=caller)
+            caller.msg(f"You release {item_name} from your {hand_name} hand and drop it.")
         else:
-            caller.msg(f"You drop {obj.get_display_name(caller)}.")
-            caller.location.msg_contents(f"{caller.key} drops {obj.get_display_name(caller)}.", exclude=caller)
+            caller.msg(f"You drop {item_name}.")
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} drops {item_name}.",
+            char_refs={"actor": caller},
+            exclude=[caller],
+        )
 
     def _find_item_to_drop(self, caller, itemname):
         """Search for an item to drop using Evennia's search system."""
@@ -492,6 +498,9 @@ class CmdGet(Command):
 
     def _give_item_to_character(self, caller, item, from_container=None):
         """Give an item to the character, managing hands and inventory."""
+        item_name = item.get_display_name(caller)
+        container_name = from_container.get_display_name(caller) if from_container else None
+
         # Try to put it in a free hand
         for hand, held in caller.hands.items():
             if held is None:
@@ -499,41 +508,52 @@ class CmdGet(Command):
                 item.move_to(caller, quiet=True)
                 
                 if from_container:
-                    caller.msg(f"You take {item.get_display_name(caller)} from {from_container.get_display_name(caller)} and hold it in your {hand} hand.")
-                    caller.location.msg_contents(
-                        f"{caller.key} takes {item.get_display_name(caller)} from {from_container.get_display_name(caller)}.", exclude=caller
+                    caller.msg(f"You take {item_name} from {container_name} and hold it in your {hand} hand.")
+                    msg_room_identity(
+                        location=caller.location,
+                        template=f"{{actor}} takes {item_name} from {container_name}.",
+                        char_refs={"actor": caller},
+                        exclude=[caller],
                     )
                 else:
-                    caller.msg(f"You pick up {item.get_display_name(caller)} and hold it in your {hand} hand.")
-                    caller.location.msg_contents(
-                        f"{caller.key} picks up {item.get_display_name(caller)} and holds it in {hand} hand.", exclude=caller
+                    caller.msg(f"You pick up {item_name} and hold it in your {hand} hand.")
+                    msg_room_identity(
+                        location=caller.location,
+                        template=f"{{actor}} picks up {item_name} and holds it in {hand} hand.",
+                        char_refs={"actor": caller},
+                        exclude=[caller],
                     )
                 return
 
         # No free hands — move the first held item to inventory
         for hand, held in caller.hands.items():
             if held:
+                held_name = held.get_display_name(caller)
                 held.move_to(caller, quiet=True)  # move to inventory
                 caller.hands[hand] = item
                 item.move_to(caller, quiet=True)
                 
                 if from_container:
                     caller.msg(
-                        f"Your hands are full. You move {held.get_display_name(caller)} to inventory "
-                        f"and hold {item.get_display_name(caller)} from {from_container.get_display_name(caller)} in your {hand} hand."
+                        f"Your hands are full. You move {held_name} to inventory "
+                        f"and hold {item_name} from {container_name} in your {hand} hand."
                     )
-                    caller.location.msg_contents(
-                        f"{caller.key} takes {item.get_display_name(caller)} from {from_container.get_display_name(caller)}, shifting {held.get_display_name(caller)} to inventory.",
-                        exclude=caller
+                    msg_room_identity(
+                        location=caller.location,
+                        template=f"{{actor}} takes {item_name} from {container_name}, shifting {held_name} to inventory.",
+                        char_refs={"actor": caller},
+                        exclude=[caller],
                     )
                 else:
                     caller.msg(
-                        f"Your hands are full. You move {held.get_display_name(caller)} to inventory "
-                        f"and hold {item.get_display_name(caller)} in your {hand} hand."
+                        f"Your hands are full. You move {held_name} to inventory "
+                        f"and hold {item_name} in your {hand} hand."
                     )
-                    caller.location.msg_contents(
-                        f"{caller.key} picks up {item.get_display_name(caller)}, shifting {held.get_display_name(caller)} to inventory.",
-                        exclude=caller
+                    msg_room_identity(
+                        location=caller.location,
+                        template=f"{{actor}} picks up {item_name}, shifting {held_name} to inventory.",
+                        char_refs={"actor": caller},
+                        exclude=[caller],
                     )
                 return
     
@@ -622,13 +642,13 @@ class CmdGive(Command):
 
         # Check if target has hands (is a character)
         if not hasattr(target, 'hands'):
-            caller.msg(f"You can't give items to {target.key} - they have no hands to receive them.")
+            caller.msg(f"You can't give items to {target.get_display_name(caller)} - they have no hands to receive them.")
             return
 
         # Check if target actually has any hands at all
         target_hands = getattr(target, 'hands', {})
         if not target_hands:
-            caller.msg(f"You can't give items to {target.key} - they have no hands to receive them.")
+            caller.msg(f"You can't give items to {target.get_display_name(caller)} - they have no hands to receive them.")
             return
 
         # Check if target has any free hands
@@ -639,7 +659,7 @@ class CmdGive(Command):
                 break
 
         if not free_hand:
-            caller.msg(f"{target.key}'s hands are full and cannot receive {self.item_name}.")
+            caller.msg(f"{target.get_display_name(caller)}'s hands are full and cannot receive {self.item_name}.")
             return
 
         # Find the item - first check hands, then inventory
@@ -680,13 +700,13 @@ class CmdGive(Command):
                     break
             
             if not caller_free_hand:
-                caller.msg(f"Your hands are full. You need a free hand to give {item.key}.")
+                caller.msg(f"Your hands are full. You need a free hand to give {item.get_display_name(caller)}.")
                 return
             
             # Wield the item first (wield_item returns a status message)
             wield_result = caller.wield_item(item, caller_free_hand)
             if "wield" not in wield_result.lower():
-                caller.msg(f"Failed to prepare {item.key} for giving: {wield_result}")
+                caller.msg(f"Failed to prepare {item.get_display_name(caller)} for giving: {wield_result}")
                 return
             
             from_hand = caller_free_hand
@@ -697,11 +717,14 @@ class CmdGive(Command):
         item.move_to(target, quiet=True)
         
         # Success messages
-        caller.msg(f"You give {item.key} to {target.key}.")
-        target.msg(f"{caller.key} gives you {item.key}. You hold it in your {free_hand} hand.")
-        caller.location.msg_contents(
-            f"{caller.key} gives {item.key} to {target.key}.",
-            exclude=[caller, target]
+        item_name = item.get_display_name(caller)
+        caller.msg(f"You give {item_name} to {target.get_display_name(caller)}.")
+        target.msg(f"{caller.get_display_name(target)} gives you {item_name}. You hold it in your {free_hand} hand.")
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} gives {item_name} to {{target}}.",
+            char_refs={"actor": caller, "target": target},
+            exclude=[caller, target],
         )
 
 
@@ -933,14 +956,13 @@ class CmdWrest(Command):
             object=object_name
         ))
         
-        # Message to room (exclude caller and target)
-        caller.location.msg_contents(
-            msg_room.format(
-                caller=caller.get_display_name(None),
-                target=target.get_display_name(None),
-                object=object_name
-            ),
-            exclude=[caller, target]
+        # Per-observer room message — pre-fill item name, let identity resolve characters
+        room_template = msg_room.replace("{object}", object_name)
+        msg_room_identity(
+            location=caller.location,
+            template=room_template,
+            char_refs={"caller": caller, "target": target},
+            exclude=[caller, target],
         )
 
     def _announce_failure(self, caller, target, obj, msg_caller, msg_target, msg_room):
@@ -959,14 +981,13 @@ class CmdWrest(Command):
             object=object_name
         ))
         
-        # Message to room (exclude caller and target)
-        caller.location.msg_contents(
-            msg_room.format(
-                caller=caller.get_display_name(None),
-                target=target.get_display_name(None),
-                object=object_name
-            ),
-            exclude=[caller, target]
+        # Per-observer room message — pre-fill item name, let identity resolve characters
+        room_template = msg_room.replace("{object}", object_name)
+        msg_room_identity(
+            location=caller.location,
+            template=room_template,
+            char_refs={"caller": caller, "target": target},
+            exclude=[caller, target],
         )
 
 
@@ -1030,7 +1051,7 @@ class CmdFrisk(Command):
             frisk_reason = "unconscious"
             
         if not can_frisk:
-            caller.msg(f"{target.key} is too lively to frisk. They need to be unconscious, dead, or a corpse.")
+            caller.msg(f"{target.get_display_name(caller)} is too lively to frisk. They need to be unconscious, dead, or a corpse.")
             return
         
         # Get target's gender for pronouns
@@ -1050,16 +1071,19 @@ class CmdFrisk(Command):
         them = pronouns['them']
         
         # Send action message to caller
-        caller.msg(f"You square up to {target.key} and begin patting {them} down thoroughly.")
+        target_name = target.get_display_name(caller)
+        caller.msg(f"You square up to {target_name} and begin patting {them} down thoroughly.")
         
         # Send message to target (if they're a character and conscious)
         if hasattr(target, 'msg') and target.has_account and frisk_reason == "unconscious":
-            target.msg(f"{caller.key} squares up to you and begins patting you down thoroughly.")
+            target.msg(f"{caller.get_display_name(target)} squares up to you and begins patting you down thoroughly.")
             
         # Send message to room (excluding caller and target)
-        caller.location.msg_contents(
-            f"{caller.key} squares up to {target.key} and begins patting {them} down thoroughly.",
-            exclude=[caller, target]
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} squares up to {{target}} and begins patting {them} down thoroughly.",
+            char_refs={"actor": caller, "target": target},
+            exclude=[caller, target],
         )
         
         # Gather all items on target
@@ -1070,7 +1094,7 @@ class CmdFrisk(Command):
         all_items = target.contents
         
         if not all_items:
-            caller.msg(f"You feel nothing on {target.key}.")
+            caller.msg(f"You feel nothing on {target_name}.")
             return
             
         # Calculate delay based on item count (1-6 seconds, scaling with items)
@@ -1080,9 +1104,9 @@ class CmdFrisk(Command):
         
         # Use Evennia's delay system to show results after realistic search time
         from evennia.utils import delay
-        delay(delay_seconds, self._show_frisk_results, caller, target, all_items, them)
+        delay(delay_seconds, self._show_frisk_results, caller, target, all_items, them, target_name)
     
-    def _show_frisk_results(self, caller, target, all_items, them):
+    def _show_frisk_results(self, caller, target, all_items, them, target_name):
         """Show the frisk results after the delay."""
         # Separate worn vs carried items
         worn_items = []
@@ -1101,7 +1125,7 @@ class CmdFrisk(Command):
                 carried_items.append(item)
                 
         # Build the results message
-        result_lines = [f"You feel the following on {target.key}:"]
+        result_lines = [f"You feel the following on {target_name}:"]
         
         # Add worn items first
         for item in worn_items:
