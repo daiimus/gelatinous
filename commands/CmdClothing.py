@@ -15,6 +15,7 @@ from world.combat.constants import (
     STYLE_STATE_UNZIPPED,
     STYLE_STATE_ZIPPED,
 )
+from world.identity_utils import msg_room_identity
 
 class CmdWear(Command):
     """
@@ -76,9 +77,11 @@ class CmdWear(Command):
         
         if success:
             # Message to room
-            caller.location.msg_contents(
-                f"{caller.get_display_name(None)} puts on {item.key}.",
-                exclude=caller
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} puts on {item.key}.",
+                char_refs={"actor": caller},
+                exclude=[caller],
             )
 
 
@@ -126,9 +129,11 @@ class CmdRemove(Command):
             
             if removed_items:
                 caller.msg(f"You remove: {', '.join(removed_items)}")
-                caller.location.msg_contents(
-                    f"{caller.get_display_name(None)} removes several items.",
-                    exclude=caller
+                msg_room_identity(
+                    location=caller.location,
+                    template="{actor} removes several items.",
+                    char_refs={"actor": caller},
+                    exclude=[caller],
                 )
             else:
                 caller.msg("You couldn't remove anything.")
@@ -182,10 +187,15 @@ class CmdRemove(Command):
                 )
             
             # Warn the room
-            caller.location.msg_contents(
-                f"|R{caller.get_display_name(None)} carefully removes their {item.key} - "
-                f"the magnetically attached {grenade.key} moves with it!|n",
-                exclude=caller
+            msg_room_identity(
+                location=caller.location,
+                template=(
+                    f"|R{{actor}} carefully removes their {item.key} - "
+                    f"the magnetically attached {grenade.key} moves "
+                    f"with it!|n"
+                ),
+                char_refs={"actor": caller},
+                exclude=[caller],
             )
         
         # Remove the item
@@ -195,9 +205,11 @@ class CmdRemove(Command):
         if success:
             # Message to room (only if no grenade warning was sent)
             if item.db.stuck_grenade is None:
-                caller.location.msg_contents(
-                    f"{caller.get_display_name(None)} removes {item.key}.",
-                    exclude=caller
+                msg_room_identity(
+                    location=caller.location,
+                    template=f"{{actor}} removes {item.key}.",
+                    char_refs={"actor": caller},
+                    exclude=[caller],
                 )
 
 
@@ -274,15 +286,19 @@ class CmdRollUp(Command):
         if success:
             if target_state == STYLE_STATE_ROLLED:
                 caller.msg(f"You roll up the {item.key}.")
-                caller.location.msg_contents(
-                    f"{caller.get_display_name(None)} rolls up {item.key}.",
-                    exclude=caller
+                msg_room_identity(
+                    location=caller.location,
+                    template=f"{{actor}} rolls up {item.key}.",
+                    char_refs={"actor": caller},
+                    exclude=[caller],
                 )
             else:
                 caller.msg(f"You unroll the {item.key}.")
-                caller.location.msg_contents(
-                    f"{caller.get_display_name(None)} unrolls {item.key}.",
-                    exclude=caller
+                msg_room_identity(
+                    location=caller.location,
+                    template=f"{{actor}} unrolls {item.key}.",
+                    char_refs={"actor": caller},
+                    exclude=[caller],
                 )
         else:
             caller.msg(f"You can't {action} the {item.key}.")
@@ -380,9 +396,11 @@ class CmdZip(Command):
         
         if success:
             caller.msg(f"You {action} the {item.key}.")
-            caller.location.msg_contents(
-                f"{caller.get_display_name(None)} {action_past} {item.key}.",
-                exclude=caller
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} {action_past} {item.key}.",
+                char_refs={"actor": caller},
+                exclude=[caller],
             )
         else:
             caller.msg(f"You can't {action} the {item.key}.")

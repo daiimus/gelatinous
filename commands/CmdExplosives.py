@@ -42,6 +42,8 @@ from commands.explosion_utils import (
     notify_adjacent_rooms_of_explosion,
     get_unified_explosion_proximity,
 )
+from world.identity_utils import msg_room_identity
+from world.combat.utils import get_display_name_safe
 
 
 class CmdRig(Command):
@@ -206,9 +208,13 @@ class CmdRig(Command):
 
         # Announce
         self.caller.msg(MSG_RIG_SUCCESS.format(object=grenade.key, exit_name=exit_obj.key))
-        self.caller.location.msg_contents(
-            MSG_RIG_SUCCESS_ROOM.format(rigger=self.caller.key, object=grenade.key, exit_name=exit_obj.key),
-            exclude=self.caller
+        msg_room_identity(
+            location=self.caller.location,
+            template=MSG_RIG_SUCCESS_ROOM.format(
+                rigger="{actor}", object=grenade.key, exit_name=exit_obj.key
+            ),
+            char_refs={"actor": self.caller},
+            exclude=[self.caller],
         )
 
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
@@ -462,15 +468,19 @@ class CmdDefuse(Command):
         # Announce attempt (different message for rigged vs live)
         if is_rigged:
             self.caller.msg(f"You carefully examine the rigged {grenade.key} and attempt to disarm the trap...")
-            self.caller.location.msg_contents(
-                f"{self.caller.key} carefully works on disarming the rigged {grenade.key}.",
-                exclude=self.caller
+            msg_room_identity(
+                location=self.caller.location,
+                template=f"{{actor}} carefully works on disarming the rigged {grenade.key}.",
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
             )
         else:
             self.caller.msg(f"You carefully examine the live {grenade.key} and attempt to defuse it...")
-            self.caller.location.msg_contents(
-                f"{self.caller.key} carefully works on defusing the {grenade.key}.",
-                exclude=self.caller
+            msg_room_identity(
+                location=self.caller.location,
+                template=f"{{actor}} carefully works on defusing the {grenade.key}.",
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
             )
 
         # Debug output
@@ -506,9 +516,11 @@ class CmdDefuse(Command):
 
         # Success messages
         self.caller.msg(f"SUCCESS! You successfully defuse the {grenade.key}. It is now safe.")
-        self.caller.location.msg_contents(
-            f"{self.caller.key} successfully defuses the {grenade.key}!",
-            exclude=self.caller
+        msg_room_identity(
+            location=self.caller.location,
+            template=f"{{actor}} successfully defuses the {grenade.key}!",
+            char_refs={"actor": self.caller},
+            exclude=[self.caller],
         )
 
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
@@ -595,9 +607,11 @@ class CmdDefuse(Command):
 
             # Announce trap disarmament
             self.caller.msg("You also disarm the trap rigging mechanism.")
-            self.caller.location.msg_contents(
-                f"{self.caller.key} disarms the trap rigging on the {grenade.key}.",
-                exclude=self.caller
+            msg_room_identity(
+                location=self.caller.location,
+                template=f"{{actor}} disarms the trap rigging on the {grenade.key}.",
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
             )
 
             if splattercast:
@@ -611,9 +625,11 @@ class CmdDefuse(Command):
         if random.random() < early_detonation_chance:
             # Early detonation triggered
             self.caller.msg(f"FAILURE! Your clumsy attempt triggers the {grenade.key} early!")
-            self.caller.location.msg_contents(
-                f"{self.caller.key}'s failed defuse attempt triggers the {grenade.key}!",
-                exclude=self.caller
+            msg_room_identity(
+                location=self.caller.location,
+                template=f"{{actor}}'s failed defuse attempt triggers the {grenade.key}!",
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
             )
 
             # Trigger immediate explosion (reuse existing explosion logic)
@@ -632,9 +648,11 @@ class CmdDefuse(Command):
         else:
             # Failed but no early detonation
             self.caller.msg(f"FAILURE! You fail to defuse the {grenade.key}, but it continues ticking...")
-            self.caller.location.msg_contents(
-                f"{self.caller.key} fails to defuse the {grenade.key}.",
-                exclude=self.caller
+            msg_room_identity(
+                location=self.caller.location,
+                template=f"{{actor}} fails to defuse the {grenade.key}.",
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
             )
 
             splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
@@ -682,9 +700,13 @@ class CmdDefuse(Command):
                         character.take_damage(final_damage, location="chest", injury_type=damage_type)
                         character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
                         if character.location:
-                            character.location.msg_contents(
-                                MSG_GRENADE_DAMAGE_ROOM.format(victim=character.key, grenade=grenade.key),
-                                exclude=character
+                            msg_room_identity(
+                                location=character.location,
+                                template=MSG_GRENADE_DAMAGE_ROOM.format(
+                                    victim="{target_char}", grenade=grenade.key
+                                ),
+                                char_refs={"target_char": character},
+                                exclude=[character],
                             )
                     # Note: Characters with 0.0 modifier (grapplers) take no damage and get no damage messages
 
@@ -794,9 +816,11 @@ class CmdScan(Command):
             caller.msg(f"  Capacity: {len(detonator.db.scanned_explosives)}/{detonator.db.max_capacity}")
 
             # Room messaging
-            caller.location.msg_contents(
-                f"{caller.key} points a device at {explosive.key}, which emits a soft beep.",
-                exclude=[caller]
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} points a device at {explosive.key}, which emits a soft beep.",
+                char_refs={"actor": caller},
+                exclude=[caller],
             )
 
             # Debug logging
@@ -933,9 +957,11 @@ class CmdDetonate(Command):
         )
 
         # Operator's room messaging (button press)
-        caller.location.msg_contents(
-            f"{caller.key} flips open a red safety cover on their {detonator.key} and presses a large button.",
-            exclude=[caller]
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} flips open a red safety cover on their {detonator.key} and presses a large button.",
+            char_refs={"actor": caller},
+            exclude=[caller],
         )
 
         # Grenade's location messaging (activation)
@@ -1022,10 +1048,14 @@ class CmdDetonate(Command):
         caller.msg(f"|gDetonated {detonated_count} explosive(s).|n")
 
         # Operator's room messaging
-        caller.location.msg_contents(
-            f"{caller.key} flips open a red safety cover on their {detonator.key} and presses a large button. "
-            f"Multiple distant beeps echo from various locations!",
-            exclude=[caller]
+        msg_room_identity(
+            location=caller.location,
+            template=(
+                f"{{actor}} flips open a red safety cover on their {detonator.key} and presses a large button. "
+                f"Multiple distant beeps echo from various locations!"
+            ),
+            char_refs={"actor": caller},
+            exclude=[caller],
         )
 
         # Send activation messages to each location
@@ -1175,7 +1205,7 @@ class CmdDetonateList(Command):
                 if explosive.db.stuck_to_armor is not None:
                     stuck_to = explosive.db.stuck_to_armor
                     if hasattr(stuck_to, 'location') and hasattr(stuck_to.location, 'key'):
-                        loc_str = f"On {stuck_to.location.key}"
+                        loc_str = f"On {get_display_name_safe(stuck_to.location, caller)}"
                     else:
                         loc_str = "Stuck to armor"
                 else:
@@ -1320,9 +1350,11 @@ class CmdClearDetonator(Command):
             caller.msg(f"|gYou clear e-{explosive_dbref} ({explosive_name}) from {detonator.key}'s memory.|n")
 
             # Room messaging
-            caller.location.msg_contents(
-                f"{caller.key} presses several buttons on their {detonator.key}.",
-                exclude=[caller]
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} presses several buttons on their {detonator.key}.",
+                char_refs={"actor": caller},
+                exclude=[caller],
             )
 
             # Debug logging
@@ -1356,9 +1388,11 @@ class CmdClearDetonator(Command):
         caller.msg(f"|gYou clear all {count} explosive signature(s) from {detonator.key}'s memory.|n")
 
         # Room messaging
-        caller.location.msg_contents(
-            f"{caller.key} holds down a button on their {detonator.key}, which emits a series of beeps before going silent.",
-            exclude=[caller]
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} holds down a button on their {detonator.key}, which emits a series of beeps before going silent.",
+            char_refs={"actor": caller},
+            exclude=[caller],
         )
 
         # Debug logging

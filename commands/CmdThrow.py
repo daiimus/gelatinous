@@ -86,6 +86,9 @@ from world.combat.constants import (
 )
 # Note: apply_damage removed - using character.take_damage() for medical system integration
 from world.combat.handler import get_or_create_combat
+from world.combat.utils import get_display_name_safe
+from world.grammar import capitalize_first
+from world.identity_utils import msg_room_identity
 
 
 class CmdThrow(Command):
@@ -602,41 +605,46 @@ class CmdThrow(Command):
     
     def announce_throw_origin(self, obj, destination, target):
         """Announce throw in origin room."""
-        caller_name = self.caller.key
         object_name = obj.key
+        char_refs = {"actor": self.caller}
         
         # Determine announcement based on throw type
         if self.throw_type == "to_direction":
             direction = self.direction
-            message = MSG_THROW_ORIGIN_DIRECTIONAL.format(
-                thrower=caller_name, object=object_name, direction=direction)
+            template = MSG_THROW_ORIGIN_DIRECTIONAL.format(
+                thrower="{actor}", object=object_name, direction=direction)
         
         elif self.throw_type == "at_target" and target and target.location == self.caller.location:
-            target_name = target.key
-            message = MSG_THROW_ORIGIN_TARGETED_SAME.format(
-                thrower=caller_name, object=object_name, target=target_name)
+            template = MSG_THROW_ORIGIN_TARGETED_SAME.format(
+                thrower="{actor}", object=object_name, target="{target_char}")
+            char_refs["target_char"] = target
         
         elif self.throw_type == "at_target" and target:
             # Cross-room targeting
             aim_direction = getattr(self.caller.ndb, NDB_AIMING_DIRECTION, "that direction")
-            message = MSG_THROW_ORIGIN_TARGETED_CROSS.format(
-                thrower=caller_name, object=object_name, direction=aim_direction)
+            template = MSG_THROW_ORIGIN_TARGETED_CROSS.format(
+                thrower="{actor}", object=object_name, direction=aim_direction)
         
         elif self.throw_type == "to_here":
-            message = MSG_THROW_ORIGIN_HERE.format(
-                thrower=caller_name, object=object_name)
+            template = MSG_THROW_ORIGIN_HERE.format(
+                thrower="{actor}", object=object_name)
         
         else:  # fallback
             aim_direction = getattr(self.caller.ndb, NDB_AIMING_DIRECTION, "nearby")
             if aim_direction == "nearby":
-                message = MSG_THROW_ORIGIN_HERE.format(
-                    thrower=caller_name, object=object_name)
+                template = MSG_THROW_ORIGIN_HERE.format(
+                    thrower="{actor}", object=object_name)
             else:
-                message = MSG_THROW_ORIGIN_FALLBACK.format(
-                    thrower=caller_name, object=object_name, direction=aim_direction)
+                template = MSG_THROW_ORIGIN_FALLBACK.format(
+                    thrower="{actor}", object=object_name, direction=aim_direction)
         
-        # Broadcast to room
-        self.caller.location.msg_contents(message, exclude=self.caller)
+        # Broadcast to room using per-observer identity resolution
+        msg_room_identity(
+            location=self.caller.location,
+            template=template,
+            char_refs=char_refs,
+            exclude=[self.caller],
+        )
         self.caller.msg(f"You throw a {object_name}.")
     
     def complete_flight(self, obj):
@@ -695,9 +703,13 @@ class CmdThrow(Command):
                             # Send personal message to victim
                             target.msg(MSG_THROW_ARRIVAL_TARGETED_VICTIM.format(object=obj.key, direction=arrival_dir))
                             # Send observer message to everyone else
-                            destination.msg_contents(
-                                MSG_THROW_ARRIVAL_TARGETED.format(object=obj.key, direction=arrival_dir, target=target.key),
-                                exclude=[target]
+                            msg_room_identity(
+                                location=destination,
+                                template=MSG_THROW_ARRIVAL_TARGETED.format(
+                                    object=obj.key, direction=arrival_dir, target="{target_char}"
+                                ),
+                                char_refs={"target_char": target},
+                                exclude=[target],
                             )
                         else:
                             destination.msg_contents(MSG_THROW_ARRIVAL.format(object=obj.key, direction=arrival_dir))
@@ -708,9 +720,13 @@ class CmdThrow(Command):
                             # Send personal message to victim
                             target.msg(MSG_THROW_FLIGHT_SAMEROOM_TARGET_VICTIM.format(object=obj.key))
                             # Send observer message to everyone else (excluding thrower and victim)
-                            destination.msg_contents(
-                                MSG_THROW_FLIGHT_SAMEROOM_TARGET.format(object=obj.key, target=target.key),
-                                exclude=[thrower, target]
+                            msg_room_identity(
+                                location=destination,
+                                template=MSG_THROW_FLIGHT_SAMEROOM_TARGET.format(
+                                    object=obj.key, target="{target_char}"
+                                ),
+                                char_refs={"target_char": target},
+                                exclude=[thrower, target],
                             )
                         else:
                             destination.msg_contents(MSG_THROW_FLIGHT_SAMEROOM_GENERAL.format(object=obj.key), exclude=[thrower])
@@ -823,9 +839,13 @@ class CmdThrow(Command):
                     # Send personal message to victim
                     target.msg(MSG_THROW_UTILITY_BOUNCE_VICTIM.format(object=obj.key))
                     # Send observer message to room
-                    target.location.msg_contents(
-                        MSG_THROW_UTILITY_BOUNCE.format(object=obj.key, target=target.key),
-                        exclude=[target]
+                    msg_room_identity(
+                        location=target.location,
+                        template=MSG_THROW_UTILITY_BOUNCE.format(
+                            object=obj.key, target="{target_char}"
+                        ),
+                        char_refs={"target_char": target},
+                        exclude=[target],
                     )
                     showed_interaction = True  # Bounce message already shown
                     splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Utility bounce message sent")
@@ -856,12 +876,17 @@ class CmdThrow(Command):
             if not showed_interaction:
                 try:
                     if target:
-                        message = MSG_THROW_LANDING_PROXIMITY.format(object=obj.key, target=target.key)
+                        msg_room_identity(
+                            location=destination,
+                            template=MSG_THROW_LANDING_PROXIMITY.format(
+                                object=obj.key, target="{target_char}"
+                            ),
+                            char_refs={"target_char": target},
+                        )
                     else:
                         message = MSG_THROW_LANDING_ROOM.format(object=obj.key)
+                        destination.msg_contents(message)
                     
-                    splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Sending landing message: {message}")
-                    destination.msg_contents(message)
                     splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Landing message sent successfully")
                 except Exception as e:
                     splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in landing message: {e}")
@@ -911,10 +936,12 @@ class CmdThrow(Command):
                             if establish_stick(weapon, armor, hit_location):
                                 # Send stick messages - Spider-themed with telescoping legs
                                 target.msg(f"|rThe {weapon.key}'s articulated legs extend with mechanical precision, their electromagnetic tips skittering across your {armor.key} before *CLAMPING* tight with magnetic fury!|n")
-                                thrower.msg(f"Your {weapon.key}'s spider-legs deploy and latch onto {target.key}'s {armor.key} with a satisfying *CLACK-CLACK-CLACK* of magnetic adhesion!")
-                                target.location.msg_contents(
-                                    f"The {weapon.key}'s eight legs telescope outward in a blur of motion, seeking metal across {target.key}'s {armor.key} before *SNAPPING* into electromagnetic lock!",
-                                    exclude=[thrower, target]
+                                thrower.msg(f"Your {weapon.key}'s spider-legs deploy and latch onto {get_display_name_safe(target, thrower)}'s {armor.key} with a satisfying *CLACK-CLACK-CLACK* of magnetic adhesion!")
+                                msg_room_identity(
+                                    location=target.location,
+                                    template=f"The {weapon.key}'s eight legs telescope outward in a blur of motion, seeking metal across {{target_char}}'s {armor.key} before *SNAPPING* into electromagnetic lock!",
+                                    char_refs={"target_char": target},
+                                    exclude=[thrower, target],
                                 )
                                 
                                 splattercast.msg(f"{DEBUG_PREFIX_THROW}_STICKY_SUCCESS: {weapon.key} stuck to {armor.key} (roll {roll} <= {stick_chance})")
@@ -926,10 +953,12 @@ class CmdThrow(Command):
                         else:
                             # FAIL - Grenade bounces off
                             target.msg(f"The {weapon.key}'s legs extend and scrabble frantically across your {armor.key}, but the magnetic field is too weak - it bounces away with a frustrated clatter!")
-                            thrower.msg(f"Your {weapon.key}'s spider-legs fail to find purchase on {target.key}'s {armor.key}, bouncing off ineffectively!")
-                            target.location.msg_contents(
-                                f"The {weapon.key}'s articulated legs scrape and skitter across {target.key}'s {armor.key} before losing grip and clattering away!",
-                                exclude=[thrower, target]
+                            thrower.msg(f"Your {weapon.key}'s spider-legs fail to find purchase on {get_display_name_safe(target, thrower)}'s {armor.key}, bouncing off ineffectively!")
+                            msg_room_identity(
+                                location=target.location,
+                                template=f"The {weapon.key}'s articulated legs scrape and skitter across {{target_char}}'s {armor.key} before losing grip and clattering away!",
+                                char_refs={"target_char": target},
+                                exclude=[thrower, target],
                             )
                             
                             splattercast.msg(f"{DEBUG_PREFIX_THROW}_STICKY_FAIL: {weapon.key} bounce (roll {roll} > {stick_chance})")
@@ -937,10 +966,12 @@ class CmdThrow(Command):
                     else:
                         # No armor at hit location - bounce off
                         target.msg(f"The {weapon.key} strikes your {hit_location} and its legs extend desperately, seeking metal that isn't there - it bounces away with a frustrated whir of servos!")
-                        thrower.msg(f"Your {weapon.key}'s electromagnetic sensors find no ferrous surface on {target.key}'s {hit_location} - the spider-legs retract as it falls away!")
-                        target.location.msg_contents(
-                            f"The {weapon.key}'s articulated legs extend and search frantically across {target.key}'s {hit_location} before retracting in defeat!",
-                            exclude=[thrower, target]
+                        thrower.msg(f"Your {weapon.key}'s electromagnetic sensors find no ferrous surface on {get_display_name_safe(target, thrower)}'s {hit_location} - the spider-legs retract as it falls away!")
+                        msg_room_identity(
+                            location=target.location,
+                            template=f"The {weapon.key}'s articulated legs extend and search frantically across {{target_char}}'s {hit_location} before retracting in defeat!",
+                            char_refs={"target_char": target},
+                            exclude=[thrower, target],
                         )
                         
                         splattercast.msg(f"{DEBUG_PREFIX_THROW}_STICKY_FAIL: No armor at {hit_location}")
@@ -954,13 +985,16 @@ class CmdThrow(Command):
                 target.take_damage(total_damage, location="chest", injury_type=damage_type)
                 
                 # Send personal message to victim
-                target.msg(MSG_THROW_WEAPON_HIT_VICTIM.format(thrower=thrower.key, weapon=weapon.key))
+                target.msg(MSG_THROW_WEAPON_HIT_VICTIM.format(
+                    thrower=capitalize_first(get_display_name_safe(thrower, target)), weapon=weapon.key))
                 # Send personal message to thrower
-                thrower.msg(MSG_THROW_WEAPON_HIT.format(weapon=weapon.key, target=target.key))
+                thrower.msg(MSG_THROW_WEAPON_HIT.format(weapon=weapon.key, target=get_display_name_safe(target, thrower)))
                 # Observer message (everyone else in room)
-                target.location.msg_contents(
-                    f"{thrower.key}'s {weapon.key} strikes {target.key}!",
-                    exclude=[thrower, target]
+                msg_room_identity(
+                    location=target.location,
+                    template=f"{{actor}}'s {weapon.key} strikes {{target_char}}!",
+                    char_refs={"actor": thrower, "target_char": target},
+                    exclude=[thrower, target],
                 )
                 
                 # Establish proximity if hit (safe pattern)
@@ -979,13 +1013,16 @@ class CmdThrow(Command):
             
             else:
                 # Miss - send personal message to victim
-                target.msg(MSG_THROW_WEAPON_MISS_VICTIM.format(thrower=thrower.key, weapon=weapon.key))
+                target.msg(MSG_THROW_WEAPON_MISS_VICTIM.format(
+                    thrower=capitalize_first(get_display_name_safe(thrower, target)), weapon=weapon.key))
                 # Send personal message to thrower
-                thrower.msg(MSG_THROW_WEAPON_MISS.format(weapon=weapon.key, target=target.key))
+                thrower.msg(MSG_THROW_WEAPON_MISS.format(weapon=weapon.key, target=get_display_name_safe(target, thrower)))
                 # Observer message (everyone else in room)
-                target.location.msg_contents(
-                    f"{thrower.key}'s {weapon.key} narrowly misses {target.key} and clatters to the ground.",
-                    exclude=[thrower, target]
+                msg_room_identity(
+                    location=target.location,
+                    template=f"{{actor}}'s {weapon.key} narrowly misses {{target_char}} and clatters to the ground.",
+                    char_refs={"actor": thrower, "target_char": target},
+                    exclude=[thrower, target],
                 )
                 
         except Exception as e:
@@ -1160,9 +1197,11 @@ class CmdThrow(Command):
             else:
                 # Failed deflection attempt
                 target.msg(f"You attempt to deflect the {grenade.key} with your {melee_weapon.key}, but your reflexes aren't quick enough!")
-                destination.msg_contents(
-                    f"{target.key} swings their {melee_weapon.key} at the incoming {grenade.key} but fails to connect!",
-                    exclude=target
+                msg_room_identity(
+                    location=destination,
+                    template=f"{{target_char}} swings their {melee_weapon.key} at the incoming {grenade.key} but fails to connect!",
+                    char_refs={"target_char": target},
+                    exclude=[target],
                 )
                 splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: {target} failed deflection attempt")
                 return False
@@ -1186,9 +1225,11 @@ class CmdThrow(Command):
             
             # Announce successful deflection
             deflector.msg(f"|yYou successfully bat the {grenade.key} away with your {weapon.key}!|n")
-            current_location.msg_contents(
-                f"|y{deflector.key} deflects the incoming {grenade.key} with their {weapon.key}!|n",
-                exclude=deflector
+            msg_room_identity(
+                location=current_location,
+                template=f"|y{{actor}} deflects the incoming {grenade.key} with their {weapon.key}!|n",
+                char_refs={"actor": deflector},
+                exclude=[deflector],
             )
             
             # Determine deflection target and destination
@@ -1374,9 +1415,13 @@ class CmdPull(Command):
         
         # Announce
         self.caller.msg(MSG_PULL_SUCCESS.format(object=grenade.key))
-        self.caller.location.msg_contents(
-            MSG_PULL_SUCCESS_ROOM.format(puller=self.caller.key, object=grenade.key),
-            exclude=self.caller
+        msg_room_identity(
+            location=self.caller.location,
+            template=MSG_PULL_SUCCESS_ROOM.format(
+                puller="{actor}", object=grenade.key
+            ),
+            char_refs={"actor": self.caller},
+            exclude=[self.caller],
         )
         
         # Timer warning
@@ -1425,9 +1470,11 @@ class CmdPull(Command):
                             
                             # Warning to room
                             if wearer.location:
-                                wearer.location.msg_contents(
-                                    f"|y{wearer.key} has a live {grenade.key} magnetically stuck to their {armor.key}! {remaining} seconds remaining!|n",
-                                    exclude=wearer
+                                msg_room_identity(
+                                    location=wearer.location,
+                                    template=f"|y{{target_char}} has a live {grenade.key} magnetically stuck to their {armor.key}! {remaining} seconds remaining!|n",
+                                    char_refs={"target_char": wearer},
+                                    exclude=[wearer],
                                 )
                         else:
                             # Armor on ground with stuck grenade
@@ -1552,9 +1599,13 @@ class CmdCatch(Command):
         else:
             # Failure - object continues flight
             self.caller.msg(MSG_CATCH_FAILED.format(object=target_obj.key))
-            self.caller.location.msg_contents(
-                MSG_CATCH_FAILED_ROOM.format(catcher=self.caller.key, object=target_obj.key),
-                exclude=self.caller
+            msg_room_identity(
+                location=self.caller.location,
+                template=MSG_CATCH_FAILED_ROOM.format(
+                    catcher="{actor}", object=target_obj.key
+                ),
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
             )
     
     def catch_object(self, obj, hand_name):
@@ -1571,9 +1622,14 @@ class CmdCatch(Command):
         
         # Announce success
         self.caller.msg(MSG_CATCH_SUCCESS.format(object=obj.key))
-        self.caller.location.msg_contents(
-            MSG_CATCH_SUCCESS_ROOM.format(catcher=self.caller.key, object=obj.key),
-            exclude=self.caller
+        observer_template = MSG_CATCH_SUCCESS_ROOM.format(
+            catcher="{actor}", object=obj.key
+        )
+        msg_room_identity(
+            room=self.caller.location,
+            template=observer_template,
+            char_refs={"actor": self.caller},
+            exclude=[self.caller],
         )
         
         # Clean up flight data

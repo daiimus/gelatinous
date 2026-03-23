@@ -19,6 +19,7 @@ Part of the G.R.I.M. Combat System.
 import random
 from evennia import utils
 from evennia.comms.models import ChannelDB
+from world.identity_utils import msg_room_identity
 from world.combat.constants import (
     DEBUG_PREFIX_THROW,
     NDB_PROXIMITY_UNIVERSAL,
@@ -98,9 +99,14 @@ def check_rigged_grenade(character, exit_obj):
 
     # Trigger the rigged grenade
     character.msg(MSG_RIG_TRIGGERED.format(object=rigged_grenade.key))
-    character.location.msg_contents(
-        MSG_RIG_TRIGGERED_ROOM.format(object=rigged_grenade.key, victim=character.key),
-        exclude=character
+    observer_template = MSG_RIG_TRIGGERED_ROOM.format(
+        object=rigged_grenade.key, victim="{target_char}"
+    )
+    msg_room_identity(
+        room=character.location,
+        template=observer_template,
+        char_refs={"target_char": character},
+        exclude=[character],
     )
 
     # Pull the pin and start countdown timer when triggered
@@ -191,9 +197,14 @@ def check_rigged_grenade(character, exit_obj):
                         other_character.take_damage(final_damage, location="chest", injury_type=damage_type)
                         other_character.msg(MSG_GRENADE_DAMAGE.format(grenade=rigged_grenade.key))
                         if other_character.location:
-                            other_character.location.msg_contents(
-                                MSG_GRENADE_DAMAGE_ROOM.format(victim=other_character.key, grenade=rigged_grenade.key),
-                                exclude=other_character
+                            observer_template = MSG_GRENADE_DAMAGE_ROOM.format(
+                                victim="{target_char}", grenade=rigged_grenade.key
+                            )
+                            msg_room_identity(
+                                room=other_character.location,
+                                template=observer_template,
+                                char_refs={"target_char": other_character},
+                                exclude=[other_character],
                             )
                     # Note: Characters with 0.0 modifier (grapplers) take no damage and get no damage messages
 
@@ -446,9 +457,11 @@ def explode_standalone_grenade(grenade):
 
                 # Announce to the room
                 if holder.location:
-                    holder.location.msg_contents(
-                        f"|R{holder.key}'s {grenade.key}, magnetically clamped to their {stuck_to_armor.key}, EXPLODES in a devastating blast!|n",
-                        exclude=holder
+                    msg_room_identity(
+                        room=holder.location,
+                        template=f"|R{{target_char}}'s {grenade.key}, magnetically clamped to their {stuck_to_armor.key}, EXPLODES in a devastating blast!|n",
+                        char_refs={"target_char": holder},
+                        exclude=[holder],
                     )
             else:
                 # Normal grenade in hands
@@ -456,9 +469,11 @@ def explode_standalone_grenade(grenade):
 
                 # Announce to the room
                 if holder.location:
-                    holder.location.msg_contents(
-                        f"|r{holder.key}'s {grenade.key} explodes in their hands!|n",
-                        exclude=holder
+                    msg_room_identity(
+                        room=holder.location,
+                        template=f"|r{{target_char}}'s {grenade.key} explodes in their hands!|n",
+                        char_refs={"target_char": holder},
+                        exclude=[holder],
                     )
 
             # Still damage others in proximity, but less (shielded by holder's body)
@@ -505,9 +520,14 @@ def explode_standalone_grenade(grenade):
                         character.take_damage(final_damage, location="chest", injury_type=damage_type)
                         character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
                         if character.location:
-                            character.location.msg_contents(
-                                MSG_GRENADE_DAMAGE_ROOM.format(victim=character.key, grenade=grenade.key),
-                                exclude=character
+                            observer_template = MSG_GRENADE_DAMAGE_ROOM.format(
+                                victim="{target_char}", grenade=grenade.key
+                            )
+                            msg_room_identity(
+                                room=character.location,
+                                template=observer_template,
+                                char_refs={"target_char": character},
+                                exclude=[character],
                             )
                     # Note: Characters with 0.0 modifier (grapplers) take no damage and get no damage messages
 
@@ -613,9 +633,11 @@ def attempt_auto_defuse(character, grenade):
 
         # Announce auto-defuse attempt (more subtle than manual)
         character.msg(f"You notice the live {grenade.key} and instinctively attempt to defuse it...")
-        character.location.msg_contents(
-            f"{character.key} quickly works on defusing the {grenade.key}.",
-            exclude=character
+        msg_room_identity(
+            room=character.location,
+            template=f"{{actor}} quickly works on defusing the {grenade.key}.",
+            char_refs={"actor": character},
+            exclude=[character],
         )
 
         # Debug output
@@ -648,9 +670,11 @@ def handle_auto_defuse_success(character, grenade):
 
         # Success messages (more dramatic than manual defuse)
         character.msg(f"SUCCESS! You instinctively defuse the {grenade.key} just in time!")
-        character.location.msg_contents(
-            f"{character.key} quickly defuses the {grenade.key}!",
-            exclude=character
+        msg_room_identity(
+            room=character.location,
+            template=f"{{actor}} quickly defuses the {grenade.key}!",
+            char_refs={"actor": character},
+            exclude=[character],
         )
 
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
@@ -670,9 +694,11 @@ def handle_auto_defuse_failure(character, grenade):
         if random.random() < early_detonation_chance:
             # Early detonation triggered
             character.msg(f"Your hasty defuse attempt accidentally triggers the {grenade.key}!")
-            character.location.msg_contents(
-                f"{character.key}'s defuse attempt accidentally triggers the {grenade.key}!",
-                exclude=character
+            msg_room_identity(
+                room=character.location,
+                template=f"{{actor}}'s defuse attempt accidentally triggers the {grenade.key}!",
+                char_refs={"actor": character},
+                exclude=[character],
             )
 
             # Trigger immediate explosion (same as manual defuse)
@@ -690,9 +716,11 @@ def handle_auto_defuse_failure(character, grenade):
         else:
             # Failed but no early detonation (more subtle failure message)
             character.msg(f"You notice the {grenade.key} but can't defuse it in time.")
-            character.location.msg_contents(
-                f"{character.key} notices the {grenade.key} but can't defuse it.",
-                exclude=character
+            msg_room_identity(
+                room=character.location,
+                template=f"{{actor}} notices the {grenade.key} but can't defuse it.",
+                char_refs={"actor": character},
+                exclude=[character],
             )
 
             splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
@@ -744,9 +772,14 @@ def trigger_auto_defuse_explosion(grenade):
                     character.take_damage(final_damage, location="chest", injury_type=damage_type)
                     character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
                     if character.location:
-                        character.location.msg_contents(
-                            MSG_GRENADE_DAMAGE_ROOM.format(victim=character.key, grenade=grenade.key),
-                            exclude=character
+                        observer_template = MSG_GRENADE_DAMAGE_ROOM.format(
+                            victim="{target_char}", grenade=grenade.key
+                        )
+                        msg_room_identity(
+                            room=character.location,
+                            template=observer_template,
+                            char_refs={"target_char": character},
+                            exclude=[character],
                         )
                 # Note: Characters with 0.0 modifier (grapplers) take no damage and get no damage messages
 
