@@ -88,14 +88,14 @@ Derived from the cross-product of height and build. Players select height and bu
 
 Players select their keyword via `@shortdesc`. Keywords are gender-gated: feminine-presenting and gender-neutral keywords are available to female characters, masculine-presenting and gender-neutral to male characters. The `appear` command allows crossing this boundary.
 
-**Feminine-presenting:**
-female, girl, lass, woman, matron, grandma, hag, granny, madam, lesbian, dyke, tomboy, chick, gal, chica, vixen, diva, dame, sheila, mona, bimbo, bitch, lady, senorita, chola, devotchka
+**Feminine-presenting (24):**
+female, girl, lass, woman, matron, grandma, hag, granny, madam, tomboy, chick, gal, chica, vixen, diva, dame, sheila, mona, bimbo, bitch, lady, senorita, chola, devotchka
 
-**Masculine-presenting:**
-male, boy, lad, man, patron, grandpa, geezer, gramps, gentleman, twink, fag, femboy, guy, fellow, dude, playa, pimp, bloke, bruce, mano, bro, douche, stiff, hombre, cholo, droog
+**Masculine-presenting (23):**
+male, boy, lad, man, patron, grandpa, geezer, gramps, gentleman, guy, fellow, dude, playa, pimp, bloke, bruce, mano, bro, douche, stiff, hombre, cholo, droog
 
-**Gender-neutral:**
-person, kid, urchin, human, citizen, elder, fossil, fleshbag, denizen, queer, neut, snack, walker, chum, charmer, star, mate, smoker, meatsicle, punk, clone, wageslave, baka, androog, suit
+**Gender-neutral (24):**
+person, kid, urchin, human, citizen, elder, fossil, fleshbag, denizen, neut, snack, walker, chum, charmer, star, mate, smoker, meatsicle, punk, clone, wageslave, baka, androog, suit
 
 ### Distinguishing Feature Derivation
 
