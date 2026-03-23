@@ -1,6 +1,6 @@
 # specs/
 
-Design specifications for game systems and features. 35 spec files covering combat, commands, UI, medical, and integrations.
+Design specifications for game systems and features. 37 spec files covering combat, commands, UI, medical, identity, communication, and integrations.
 
 ## Core Systems
 
@@ -17,6 +17,8 @@ Design specifications for game systems and features. 35 spec files covering comb
 | `SHOP_SYSTEM_SPEC.md` | Shop pricing and inventory |
 | `TIME_SYSTEM_SPEC.md` | In-game time and day/night cycle |
 | `WORLD_STATE_INTELLIGENCE_SYSTEM_SPEC.md` | Zone-level world simulation (design phase) |
+| `IDENTITY_RECOGNITION_SPEC.md` | Sleeve-based identity, recognition memory, and assigned names |
+| `EMOTE_POSE_SPEC.md` | Emote, pose, and communication system with identity integration |
 
 ## Commands
 

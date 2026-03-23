@@ -456,8 +456,8 @@ class CombatEventBus:
 - [Python Testing](https://docs.python.org/3/library/unittest.html)
 
 ### Project-Specific Documentation
-- `PROJECT_OVERVIEW.md` - Project overview and philosophy
-- `ARCHITECTURE.md` - File structure and architectural decisions
+- `README.md` - Project overview, architecture, and feature summary
+- `AGENTS.md` - Combat system architecture and agent reference
 - `specs/COMBAT_SYSTEM.md` - Combat system documentation
 - Module-specific README files
 
