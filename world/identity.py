@@ -1,0 +1,354 @@
+"""
+Identity Constants and Sdesc Composition
+
+Data tables and pure functions for the identity and recognition system:
+physical descriptor lookup, keyword validation, hair options, distinguishing
+feature formatting, and short description (sdesc) composition.
+
+This module has no Evennia dependencies in its core functions.  The actual
+character-reading logic (``get_distinguishing_feature``, ``get_display_name``
+override) lives on the Character typeclass and is added in a later phase.
+
+See specs/IDENTITY_RECOGNITION_SPEC.md for the full specification.
+"""
+
+from __future__ import annotations
+
+from world.grammar import get_article
+
+# =========================================================================
+# Height / Build / Physical Descriptor
+# =========================================================================
+
+#: Valid height options, ordered shortest → tallest.
+HEIGHTS: tuple[str, ...] = (
+    "short",
+    "below-average",
+    "average",
+    "above-average",
+    "tall",
+)
+
+#: Valid build options, ordered slightest → heaviest.
+BUILDS: tuple[str, ...] = (
+    "slight",
+    "lean",
+    "athletic",
+    "average",
+    "stocky",
+    "heavyset",
+)
+
+#: Physical descriptor table.  ``PHYSICAL_DESCRIPTOR_TABLE[height][build]``
+#: yields a single adjective describing the character's silhouette.
+#:
+#: 30 unique descriptors from the cross-product of 5 heights × 6 builds.
+#: These are setting-neutral and describe observable silhouette only.
+PHYSICAL_DESCRIPTOR_TABLE: dict[str, dict[str, str]] = {
+    "short": {
+        "slight": "diminutive",
+        "lean": "wiry",
+        "athletic": "compact",
+        "average": "short",
+        "stocky": "squat",
+        "heavyset": "rotund",
+    },
+    "below-average": {
+        "slight": "slight",
+        "lean": "lithe",
+        "athletic": "spry",
+        "average": "unassuming",
+        "stocky": "stout",
+        "heavyset": "portly",
+    },
+    "average": {
+        "slight": "slender",
+        "lean": "lean",
+        "athletic": "athletic",
+        "average": "average",
+        "stocky": "stocky",
+        "heavyset": "heavyset",
+    },
+    "above-average": {
+        "slight": "willowy",
+        "lean": "rangy",
+        "athletic": "strapping",
+        "average": "tall",
+        "stocky": "brawny",
+        "heavyset": "hulking",
+    },
+    "tall": {
+        "slight": "lanky",
+        "lean": "gaunt",
+        "athletic": "towering",
+        "average": "tall",
+        "stocky": "burly",
+        "heavyset": "massive",
+    },
+}
+
+
+def get_physical_descriptor(height: str, build: str) -> str:
+    """Look up the physical descriptor for a height/build combination.
+
+    Args:
+        height: One of :data:`HEIGHTS`.
+        build: One of :data:`BUILDS`.
+
+    Returns:
+        A single adjective (e.g. ``"lanky"``, ``"compact"``).
+
+    Raises:
+        KeyError: If *height* or *build* is not a valid option.
+    """
+    try:
+        return PHYSICAL_DESCRIPTOR_TABLE[height][build]
+    except KeyError:
+        # Re-raise with a helpful message identifying which value is bad.
+        if height not in PHYSICAL_DESCRIPTOR_TABLE:
+            raise KeyError(
+                f"Invalid height {height!r}. "
+                f"Valid options: {', '.join(HEIGHTS)}"
+            ) from None
+        raise KeyError(
+            f"Invalid build {build!r}. "
+            f"Valid options: {', '.join(BUILDS)}"
+        ) from None
+
+
+# =========================================================================
+# Keyword Lists
+# =========================================================================
+
+#: Keywords available to female-presenting characters.
+FEMININE_KEYWORDS: frozenset[str] = frozenset({
+    "female", "girl", "lass", "woman", "matron", "grandma", "hag", "granny",
+    "madam", "lesbian", "dyke", "tomboy", "chick", "gal", "chica", "vixen",
+    "diva", "dame", "sheila", "mona", "bimbo", "bitch", "lady", "senorita",
+    "chola", "devotchka",
+})
+
+#: Keywords available to male-presenting characters.
+MASCULINE_KEYWORDS: frozenset[str] = frozenset({
+    "male", "boy", "lad", "man", "patron", "grandpa", "geezer", "gramps",
+    "gentleman", "twink", "fag", "femboy", "guy", "fellow", "dude", "playa",
+    "pimp", "bloke", "bruce", "mano", "bro", "douche", "stiff", "hombre",
+    "cholo", "droog",
+})
+
+#: Keywords available to all characters regardless of gender.
+NEUTRAL_KEYWORDS: frozenset[str] = frozenset({
+    "person", "kid", "urchin", "human", "citizen", "elder", "fossil",
+    "fleshbag", "denizen", "queer", "neut", "snack", "walker", "chum",
+    "charmer", "star", "mate", "smoker", "meatsicle", "punk", "clone",
+    "wageslave", "baka", "androog", "suit",
+})
+
+#: All keywords across all gender categories.
+ALL_KEYWORDS: frozenset[str] = FEMININE_KEYWORDS | MASCULINE_KEYWORDS | NEUTRAL_KEYWORDS
+
+
+def get_valid_keywords(gender: str) -> frozenset[str]:
+    """Return the set of keywords available for a grammar gender.
+
+    Male characters get masculine + neutral keywords.  Female characters
+    get feminine + neutral keywords.  Neutral characters get all three
+    sets (no restrictions).
+
+    The ``appear`` command (disguise) bypasses this restriction and
+    allows any keyword — that logic lives in the command, not here.
+
+    Args:
+        gender: Grammar gender (``"male"``, ``"female"``, or
+            ``"neutral"``).  This is the output of
+            :data:`world.grammar.GENDER_MAP`, not the raw ``sex``
+            attribute.
+
+    Returns:
+        Frozenset of valid keyword strings.
+    """
+    if gender == "male":
+        return MASCULINE_KEYWORDS | NEUTRAL_KEYWORDS
+    if gender == "female":
+        return FEMININE_KEYWORDS | NEUTRAL_KEYWORDS
+    # Neutral / unknown: all keywords available.
+    return ALL_KEYWORDS
+
+
+def is_valid_keyword(keyword: str, gender: str) -> bool:
+    """Check whether a keyword is valid for a given grammar gender.
+
+    Convenience wrapper around :func:`get_valid_keywords`.
+
+    Args:
+        keyword: The keyword to validate (case-insensitive).
+        gender: Grammar gender (``"male"``, ``"female"``, or
+            ``"neutral"``).
+
+    Returns:
+        ``True`` if the keyword is in the valid set for *gender*.
+    """
+    return keyword.lower() in get_valid_keywords(gender)
+
+
+# =========================================================================
+# Hair Options
+# =========================================================================
+
+#: Valid hair colour options.  ``None`` represents bald / no hair.
+HAIR_COLORS: tuple[str, ...] = (
+    "red",
+    "black",
+    "blonde",
+    "white",
+    "brown",
+    "gray",
+    "blue",
+    "green",
+    "pink",
+    "purple",
+    "silver",
+    "auburn",
+    "orange",
+)
+
+#: Valid hair style options.  ``None`` represents bald / no hair.
+HAIR_STYLES: tuple[str, ...] = (
+    "cropped",
+    "short",
+    "long",
+    "braided",
+    "dreaded",
+    "mohawk",
+    "ponytail",
+    "shaved sides",
+    "curly",
+    "straight",
+    "matted",
+    "slicked",
+)
+
+
+# =========================================================================
+# Distinguishing Feature Formatters
+# =========================================================================
+#
+# Each formatter takes simple string inputs and returns a feature clause
+# suitable for appending to an sdesc.  New feature types (cybernetics,
+# carried objects, etc.) are added as new ``format_*_feature`` functions.
+#
+# The actual *selection* of which formatter to call (i.e. the priority
+# chain: wielded weapon > clothing > hair > nothing) is handled by the
+# Character typeclass in a later phase — not by this module.
+
+def format_wielded_feature(item_name: str) -> str:
+    """Format a wielded item as a distinguishing feature clause.
+
+    Args:
+        item_name: The item's display name (e.g. ``"Kitchen Knife"``).
+
+    Returns:
+        Feature clause, e.g. ``"wielding a Kitchen Knife"``.
+    """
+    article = get_article(item_name)
+    return f"wielding {article} {item_name}"
+
+
+def format_clothing_feature(item_name: str) -> str:
+    """Format an outermost clothing item as a distinguishing feature clause.
+
+    Args:
+        item_name: The item's display name (e.g. ``"Black Trenchcoat"``).
+
+    Returns:
+        Feature clause, e.g. ``"in a Black Trenchcoat"``.
+    """
+    article = get_article(item_name)
+    return f"in {article} {item_name}"
+
+
+def format_hair_feature(
+    color: str | None = None,
+    style: str | None = None,
+) -> str | None:
+    """Format hair attributes as a distinguishing feature clause.
+
+    Handles any combination of colour and style.  If both are ``None``
+    (bald), returns ``None`` to indicate no feature.
+
+    Args:
+        color: Hair colour (e.g. ``"blonde"``), or ``None``.
+        style: Hair style (e.g. ``"braided"``), or ``None``.
+
+    Returns:
+        Feature clause (e.g. ``"with blonde braids"``,
+        ``"with cropped white hair"``, ``"with red hair"``),
+        or ``None`` if both inputs are ``None``.
+    """
+    if not color and not style:
+        return None
+
+    if color and style:
+        # Certain styles read better as nouns: "blonde braids",
+        # "red dreadlocks", "white mohawk".  Others need "hair" appended:
+        # "cropped white hair", "straight black hair".
+        noun_styles = _NOUN_HAIR_STYLES.get(style)
+        if noun_styles:
+            return f"with {color} {noun_styles}"
+        return f"with {style} {color} hair"
+
+    if color:
+        return f"with {color} hair"
+
+    # Style only, no colour.
+    noun_styles = _NOUN_HAIR_STYLES.get(style)
+    if noun_styles:
+        return f"with {noun_styles}"
+    return f"with {style} hair"
+
+
+#: Hair styles that read naturally as standalone nouns (plural form).
+#: Styles NOT in this table need ``"hair"`` appended.
+#: E.g. ``"braided"`` → ``"braids"``, but ``"cropped"`` → ``"cropped hair"``.
+_NOUN_HAIR_STYLES: dict[str, str] = {
+    "braided": "braids",
+    "dreaded": "dreadlocks",
+    "mohawk": "mohawk",
+    "ponytail": "ponytail",
+    "shaved sides": "shaved sides",
+    "curly": "curls",
+}
+
+
+# =========================================================================
+# Sdesc Composition
+# =========================================================================
+
+
+def compose_sdesc(
+    descriptor: str,
+    keyword: str,
+    feature: str | None = None,
+) -> str:
+    """Assemble a short description string from its components.
+
+    Returns the sdesc **without** a leading article.  The caller is
+    responsible for prepending the article via
+    :func:`world.grammar.get_article` based on context (indefinite for
+    strangers, definite for targeting, none for certain message formats).
+
+    Args:
+        descriptor: Physical descriptor (e.g. ``"lanky"``).
+        keyword: Player-selected keyword (e.g. ``"man"``).
+        feature: Optional distinguishing feature clause (e.g.
+            ``"in a Black Trenchcoat"``).  If ``None`` or empty,
+            the sdesc has no feature suffix.
+
+    Returns:
+        Composed sdesc, e.g. ``"lanky man in a Black Trenchcoat"``
+        or ``"compact woman"`` (no article prefix).
+    """
+    base = f"{descriptor} {keyword}"
+    if feature:
+        return f"{base} {feature}"
+    return base
