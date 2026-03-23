@@ -25,7 +25,7 @@ from commands import CmdConsumption
 from commands import CmdMedicalItems
 from commands.CmdSpawnMob import CmdSpawnMob
 from commands.CmdBug import CmdBug
-from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious, CmdMigrateIdentity
+from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
 from commands.CmdFixCharacterOwnership import CmdFixCharacterOwnership
 from commands.combat.cmdset_combat import CombatCmdSet
 from commands.combat.special_actions import CmdAim, CmdGrapple
@@ -202,9 +202,6 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # Add medical administration commands
         self.add(CmdResetMedical())
         self.add(CmdMedicalAudit())
-        
-        # Add identity migration command
-        self.add(CmdMigrateIdentity())
         
         # Add medical state testing commands (using real medical system)
         self.add(CmdTestDeath())
