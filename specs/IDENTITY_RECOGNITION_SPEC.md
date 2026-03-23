@@ -13,7 +13,7 @@ This is foundational infrastructure. Identity and recognition form the backbone 
 3. **Obscurable with effort** — Characters can obscure their identity, but only if they're meticulous. Half-measures leave tells.
 4. **Per-observer truth** — Every character in a room may know other characters by different names. Messages must render per-observer.
 5. **RAG-ready memory** — Recognition entries are rich documents with temporal, spatial, and contextual metadata, designed for future retrieval-augmented generation.
-6. **Generic grammar** — The grammar engine serves identity now and the posing system later. Built generic from day one.
+6. **Generic grammar** — The grammar engine serves identity now and the posing system later. Built generic from day one. See `EMOTE_POSE_SPEC.md` for the canonical grammar engine specification.
 
 ---
 
@@ -329,7 +329,7 @@ Exact thresholds and formulas are a tuning concern — the architecture supports
 
 ## Grammar Engine
 
-The grammar engine handles article selection, possessive forms, objective forms, and pronoun integration for sdescs and character names. It is designed generically to serve the identity system now and the **posing system** in the future.
+The grammar engine handles article selection, possessive forms, objective forms, and pronoun integration for sdescs and character names. It is designed generically to serve the identity system now and the **posing system** in the future. The canonical grammar engine specification — including verb conjugation rules, the `inflect` integration for articles, and pronoun transformation tables — lives in `EMOTE_POSE_SPEC.md`. This section covers the identity-specific requirements.
 
 ### Article Handling
 
@@ -363,14 +363,16 @@ For recognized characters, pronouns still derive from actual sex — recognition
 ### Self-Perception
 
 When `looker == self`:
-- `get_display_name(self)` → `"You"`
-- Possessive: `"your"`
-- Objective: `"you"`
-- Subject: `"you"`
+- `get_display_name(self)` → `self.key` (the character's own real name)
+- Self-perception "You" is **not** returned by `get_display_name` — it is handled by the communication/rendering layer (dot-pose, say, whisper, system messages)
+- This avoids breaking third-person sentence construction ("You is standing here")
+- See `EMOTE_POSE_SPEC.md` Appendix C for the full architectural rationale
 
 ### Future: Posing System
 
-The grammar engine is built as a standalone utility module (`world/grammar.py` or similar) that can be imported anywhere. The posing system will use it for:
+The grammar engine is built as a standalone utility module (`world/grammar.py`) that can be imported anywhere. The full posing and communication system — including the dot-pose command, verb conjugation, pronoun transformation, per-observer emote rendering, and custom say/whisper overrides — is specified in `EMOTE_POSE_SPEC.md`.
+
+Example of the grammar engine in action with the posing system:
 
 ```
 > pose picks up {their} knife and stares at {target}.
@@ -663,7 +665,7 @@ All locations that currently use `.key` directly or bypass `get_display_name` ne
 | Attack processing errors | `world/combat/attack.py:310, 329` | Uses `.key` in messages | Route through `get_display_name` |
 | Shield messages | `world/combat/attack.py:231-269` | Uses `get_display_name_safe()` | Already partially correct — verify observer is passed |
 | Normal movement | Evennia defaults | `announce_move_from/to` use `.key` | Override with custom per-observer announcements |
-| Communication (say/whisper/emote) | Evennia defaults | All use `.key` | Custom command overrides required |
+| Communication (say/whisper/emote) | Evennia defaults | All use `.key` | Custom command overrides required (see `EMOTE_POSE_SPEC.md`) |
 | Death filtering | `typeclasses/characters.py:137-205` | Pattern-matches `.key` in message strings | Refactor to use structured message data |
 | CmdAttack target resolution | `commands/combat/core_actions.py:110-120` | Manual substring match on `.key` | Add recognition-aware search |
 | Exit drag messages | `typeclasses/exits.py:317-340` | Uses `.key` directly | Route through `get_display_name` |
@@ -745,7 +747,7 @@ Players should be prompted to customize their sdesc on next login if defaults we
 
 - `msg_room_identity` helper function
 - Combat message templates → per-observer rendering
-- Custom say/whisper/emote command overrides
+- Custom say/whisper/emote command overrides (see `EMOTE_POSE_SPEC.md`)
 - Custom movement announcement overrides
 - Fix `CmdAttack` target resolution
 - Fix drag messages, death filter pattern matching
