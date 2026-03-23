@@ -644,12 +644,17 @@ def remove_combatant(handler, char):
                     if isinstance(initiate_msg_obj, dict):
                         attacker_msg = initiate_msg_obj.get("attacker_msg", f"You turn your attention to {get_display_name_safe(new_target, other_char)}!")
                         victim_msg = initiate_msg_obj.get("victim_msg", f"{capitalize_first(get_display_name_safe(other_char, new_target))} turns their attention to you!")
-                        observer_msg = initiate_msg_obj.get("observer_msg", "")
+                        observer_template = initiate_msg_obj.get("observer_template", "")
+                        observer_char_refs = initiate_msg_obj.get(
+                            "observer_char_refs",
+                            {"actor": other_char, "target_char": new_target},
+                        )
                     else:
                         # Fallback messages
                         attacker_msg = f"|yYour target has left combat, but you quickly turn your attention to {get_display_name_safe(new_target, other_char)}!|n"
                         victim_msg = f"|y{capitalize_first(get_display_name_safe(other_char, new_target))} turns their attention to you!|n"
-                        observer_msg = ""
+                        observer_template = ""
+                        observer_char_refs = {"actor": other_char, "target_char": new_target}
                     
                     # Send messages
                     other_char.msg(attacker_msg)
@@ -657,15 +662,19 @@ def remove_combatant(handler, char):
                     
                     # Send observer message to location  
                     if hasattr(other_char, 'location') and other_char.location:
-                        if observer_msg:
-                            # Dict path — pre-resolved from template system (2c-5 will make identity-aware)
-                            other_char.location.msg_contents(observer_msg, exclude=[other_char, new_target])
+                        if observer_template:
+                            msg_room_identity(
+                                location=other_char.location,
+                                template=observer_template,
+                                char_refs=observer_char_refs,
+                                exclude=[other_char, new_target],
+                            )
                         else:
                             # Fallback — identity-aware observer message
                             msg_room_identity(
                                 location=other_char.location,
-                                template="|y{actor} turns their attention to {target}!|n",
-                                char_refs={"actor": other_char, "target": new_target},
+                                template="|y{actor} turns their attention to {target_char}!|n",
+                                char_refs={"actor": other_char, "target_char": new_target},
                                 exclude=[other_char, new_target],
                             )
                         

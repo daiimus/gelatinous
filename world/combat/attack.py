@@ -30,6 +30,7 @@ from .utils import (
     get_weapon_damage, get_combatant_grappling_target,
     get_character_dbref,
 )
+from world.identity_utils import msg_room_identity
 
 
 def calculate_attack_delay(handler, attacker, initiative_order):
@@ -240,22 +241,17 @@ def send_shield_messages(handler, attacker, grappler, victim):
     """
     attacker_msg = (
         f"|rYour attack is intercepted by "
-        f"{get_display_name_safe(victim)} as "
-        f"{get_display_name_safe(grappler)} uses them as a shield!|n"
+        f"{get_display_name_safe(victim, attacker)} as "
+        f"{get_display_name_safe(grappler, attacker)} uses them as a shield!|n"
     )
     grappler_msg = (
-        f"|yYou position {get_display_name_safe(victim)} to absorb "
-        f"{get_display_name_safe(attacker)}'s attack!|n"
+        f"|yYou position {get_display_name_safe(victim, grappler)} to absorb "
+        f"{get_display_name_safe(attacker, grappler)}'s attack!|n"
     )
     victim_msg = (
         f"|RYou are forced into the path of "
-        f"{get_display_name_safe(attacker)}'s attack by "
-        f"{get_display_name_safe(grappler)}!|n"
-    )
-    observer_msg = (
-        f"|y{get_display_name_safe(grappler)} uses "
-        f"{get_display_name_safe(victim)} as a human shield against "
-        f"{get_display_name_safe(attacker)}'s attack!|n"
+        f"{get_display_name_safe(attacker, victim)}'s attack by "
+        f"{get_display_name_safe(grappler, victim)}!|n"
     )
 
     # Send messages
@@ -263,9 +259,12 @@ def send_shield_messages(handler, attacker, grappler, victim):
     grappler.msg(grappler_msg)
     victim.msg(victim_msg)
 
-    # Send to observers (exclude the three participants)
-    attacker.location.msg_contents(
-        observer_msg, exclude=[attacker, grappler, victim]
+    # Send identity-aware observer message
+    msg_room_identity(
+        location=attacker.location,
+        template="|y{grappler_char} uses {victim_char} as a human shield against {attacker_char}'s attack!|n",
+        char_refs={"grappler_char": grappler, "victim_char": victim, "attacker_char": attacker},
+        exclude=[attacker, grappler, victim],
     )
 
 
@@ -506,8 +505,10 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
 
             attacker.msg(hit_messages["attacker_msg"])
             target.msg(hit_messages["victim_msg"])
-            attacker.location.msg_contents(
-                hit_messages["observer_msg"],
+            msg_room_identity(
+                location=attacker.location,
+                template=hit_messages["observer_template"],
+                char_refs=hit_messages["observer_char_refs"],
                 exclude=[attacker, target],
             )
 
@@ -528,8 +529,10 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
 
         attacker.msg(miss_messages["attacker_msg"])
         target.msg(miss_messages["victim_msg"])
-        attacker.location.msg_contents(
-            miss_messages["observer_msg"],
+        msg_room_identity(
+            location=attacker.location,
+            template=miss_messages["observer_template"],
+            char_refs=miss_messages["observer_char_refs"],
             exclude=[attacker, target],
         )
 
@@ -573,11 +576,13 @@ def _handle_kill(
         attacker.msg(kill_messages["attacker_msg"])
     if "victim_msg" in kill_messages:
         target.msg(kill_messages["victim_msg"])
-    if "observer_msg" in kill_messages:
+    if "observer_template" in kill_messages:
         # Send to attacker's room
         if attacker.location:
-            attacker.location.msg_contents(
-                kill_messages["observer_msg"],
+            msg_room_identity(
+                location=attacker.location,
+                template=kill_messages["observer_template"],
+                char_refs=kill_messages["observer_char_refs"],
                 exclude=[attacker, target],
             )
         # Also send to target's room if it differs (cross-room combat)
@@ -585,8 +590,10 @@ def _handle_kill(
             target.location
             and target.location != attacker.location
         ):
-            target.location.msg_contents(
-                kill_messages["observer_msg"],
+            msg_room_identity(
+                location=target.location,
+                template=kill_messages["observer_template"],
+                char_refs=kill_messages["observer_char_refs"],
                 exclude=[attacker, target],
             )
 
