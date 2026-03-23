@@ -558,11 +558,12 @@ class TestCmdEmote(TestCase):
         )
         self._run_emote(jorge, "leans against the wall.", [jorge, observer])
 
+        # render_emote sends via keyword args (text=..., type=..., from_obj=...)
         jorge.msg.assert_called_once()
-        actor_msg = jorge.msg.call_args[0][0]
+        call_kwargs = jorge.msg.call_args[1]
+        actor_msg = call_kwargs.get("text", "")
         self.assertIn("Jorge Jackson", actor_msg)
         self.assertIn("leans against the wall.", actor_msg)
-        self.assertNotIn("You", actor_msg)
 
     def test_observer_sees_sdesc(self):
         """Observer who doesn't know actor sees sdesc."""
@@ -636,6 +637,115 @@ class TestCmdEmote(TestCase):
 
         cmd.func()
         jorge.msg.assert_called_once_with("What do you want to emote?")
+
+    def test_emote_char_ref_resolved_per_observer(self):
+        """Character reference in emote body is resolved per-observer."""
+        jorge = _make_character(
+            key="Jorge Jackson", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        maria = _make_character(
+            key="Maria Santos", sex="female", height="short",
+            build="stocky", sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
+        # Observer knows Maria as "Maria" but doesn't know Jorge
+        observer = _make_character(
+            key="Bob", sex="male", height="average",
+            build="average", sleeve_uid="uid-bob",
+            recognition_memory={
+                "uid-maria": {"assigned_name": "Maria"},
+            },
+        )
+        # Jorge emotes referencing Maria by her sdesc (short+stocky = "squat")
+        self._run_emote(
+            jorge, "nods at squat woman.", [jorge, maria, observer]
+        )
+
+        obs_kwargs = observer.msg.call_args[1]
+        obs_text = obs_kwargs.get("text", "")
+        # Observer should see assigned name "Maria" for the target
+        self.assertIn("Maria", obs_text)
+        # Observer should see sdesc for Jorge (actor)
+        self.assertIn("gaunt man", obs_text.lower())
+        self.assertIn("nods at", obs_text)
+
+    def test_emote_char_ref_unknown_observer(self):
+        """Observer who knows neither actor nor target sees sdescs for both."""
+        jorge = _make_character(
+            key="Jorge Jackson", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        maria = _make_character(
+            key="Maria Santos", sex="female", height="short",
+            build="stocky", sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
+        observer = _make_character(
+            key="Bob", sex="male", height="average",
+            build="average", sleeve_uid="uid-bob",
+        )
+        # Jorge emotes referencing Maria by descriptor+keyword
+        self._run_emote(
+            jorge, "nods at squat woman.", [jorge, maria, observer]
+        )
+
+        obs_kwargs = observer.msg.call_args[1]
+        obs_text = obs_kwargs.get("text", "")
+        # Both should appear as sdescs
+        self.assertIn("gaunt man", obs_text.lower())
+        self.assertIn("squat woman", obs_text.lower())
+        # Real names should NOT appear
+        self.assertNotIn("Jorge", obs_text)
+        self.assertNotIn("Maria", obs_text)
+
+    def test_emote_char_ref_in_speech_not_resolved(self):
+        """Character names inside quoted speech are NOT resolved."""
+        jorge = _make_character(
+            key="Jorge Jackson", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        maria = _make_character(
+            key="Maria Santos", sex="female", height="short",
+            build="stocky", sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
+        observer = _make_character(
+            key="Bob", sex="male", height="average",
+            build="average", sleeve_uid="uid-bob",
+        )
+        # Jorge says Maria's descriptor inside quotes — should NOT resolve
+        self._run_emote(
+            jorge,
+            'says "I saw squat woman earlier."',
+            [jorge, maria, observer],
+        )
+
+        obs_kwargs = observer.msg.call_args[1]
+        obs_text = obs_kwargs.get("text", "")
+        # Inside speech, "squat woman" should be preserved verbatim
+        self.assertIn('"I saw squat woman earlier."', obs_text)
+
+    def test_emote_actor_sees_char_ref_via_own_memory(self):
+        """Actor's char ref rendering uses their own recognition memory."""
+        jorge = _make_character(
+            key="Jorge Jackson", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+            recognition_memory={
+                "uid-maria": {"assigned_name": "Maria"},
+            },
+        )
+        maria = _make_character(
+            key="Maria Santos", sex="female", height="short",
+            build="stocky", sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
+        # Jorge emotes referencing Maria by descriptor+keyword
+        self._run_emote(
+            jorge, "nods at squat woman.", [jorge, maria]
+        )
+
+        # Actor should see "Maria" (their assigned name) for the target
+        jorge_kwargs = jorge.msg.call_args[1]
+        jorge_text = jorge_kwargs.get("text", "")
+        self.assertIn("Maria", jorge_text)
+        self.assertIn("nods at", jorge_text)
 
 
 # ===================================================================

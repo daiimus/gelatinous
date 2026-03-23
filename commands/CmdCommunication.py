@@ -14,7 +14,12 @@ from __future__ import annotations
 
 from evennia.commands.command import Command
 
-from world.emote import render_dot_pose, tokenize_dot_pose
+from world.emote import (
+    render_dot_pose,
+    render_emote,
+    tokenize_dot_pose,
+    tokenize_emote,
+)
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 
@@ -148,12 +153,18 @@ class CmdEmote(Command):
         :<action text>
 
     Your name is prepended to the action text. Each observer sees
-    your name as they know you. You see your real name.
+    your name as they know you. You see your real name. Other
+    characters mentioned by name or short description are resolved
+    per-observer. Names inside quoted speech are not resolved.
 
     Example:
         emote leans against the wall.
         → You see: "Jorge leans against the wall."
         → Others might see: "A lanky man leans against the wall."
+
+        emote nods at Jorge.
+        → Observer who knows Jorge sees: "A lanky man nods at Jorge."
+        → Observer who doesn't: "A lanky man nods at a compact woman."
     """
 
     key = "emote"
@@ -174,22 +185,21 @@ class CmdEmote(Command):
             caller.msg("You have no location to emote in.")
             return
 
-        # Actor sees their real name (per spec: NOT "You")
-        actor_name_for_self = caller.get_display_name(caller)
-        caller.msg(f"{actor_name_for_self} {action}")
+        # Gather room occupants for character reference matching
+        room_occupants = [
+            obj
+            for obj in location.contents
+            if obj is not caller and hasattr(obj, "get_display_name")
+        ]
 
-        # Each observer sees per-observer name
-        for observer in location.contents:
-            if observer is caller:
-                continue
-            if not hasattr(observer, "msg"):
-                continue
-            actor_name = caller.get_display_name(observer)
-            observer.msg(
-                text=f"{capitalize_first(actor_name)} {action}",
-                type="pose",
-                from_obj=caller,
-            )
+        tokens = tokenize_emote(action, caller, room_occupants)
+
+        if not tokens:
+            caller.msg("What do you want to emote?")
+            return
+
+        # Broadcast to room (each observer gets unique char ref rendering)
+        render_emote(tokens, caller, location)
 
 
 class CmdDotPose(Command):
