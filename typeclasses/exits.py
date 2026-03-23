@@ -26,6 +26,7 @@ from world.combat.constants import (
 
 
 from .objects import ObjectParent
+from world.identity_utils import msg_room_identity
 
 class Exit(DefaultExit):
     """
@@ -120,8 +121,8 @@ class Exit(DefaultExit):
                 if hasattr(aimer, "ndb") and getattr(aimer.ndb, NDB_AIMING_AT, None) == traversing_object:
                     del aimer.ndb.aiming_at
             else:
-                traversing_object.msg(f"|r{aimer.key} is aiming at you, locking you in place! You cannot move.|n")
-                aimer.msg(f"|yYour target, {traversing_object.key}, tries to move but is locked by your aim!|n")
+                traversing_object.msg(f"|r{aimer.get_display_name(traversing_object)} is aiming at you, locking you in place! You cannot move.|n")
+                aimer.msg(f"|yYour target, {traversing_object.get_display_name(aimer)}, tries to move but is locked by your aim!|n")
                 splattercast.msg(f"AIM LOCK: {traversing_object.key} attempted to traverse {self.key} but is locked by {aimer.key}'s aim.")
                 return # Block traversal
         # --- END AIMING LOCK CHECK ---
@@ -140,14 +141,14 @@ class Exit(DefaultExit):
                 del traversing_object.ndb.aiming_at
                 if hasattr(old_aim_target, "ndb") and getattr(old_aim_target.ndb, NDB_AIMED_AT_BY, None) == traversing_object:
                     del old_aim_target.ndb.aimed_at_by
-                    old_aim_target.msg(f"{traversing_object.key} stops aiming at you as they move.")
+                    old_aim_target.msg(f"{traversing_object.get_display_name(old_aim_target)} stops aiming at you as they move.")
                 
                 # Get weapon name for better messaging
                 hands = getattr(traversing_object, "hands", {})
                 weapon = next((item for hand, item in hands.items() if item), None)
                 weapon_name = weapon.key if weapon else "weapon"
                 
-                traversing_object.msg(f"You stop aiming at {old_aim_target.key} and lower your {weapon_name} as you move.")
+                traversing_object.msg(f"You stop aiming at {old_aim_target.get_display_name(traversing_object)} and lower your {weapon_name} as you move.")
                 
                 # Clear override_place and handle mutual showdown cleanup
                 self._clear_aim_override_place_on_move(traversing_object, old_aim_target)
@@ -287,8 +288,8 @@ class Exit(DefaultExit):
                 splattercast.msg(f"DRAG RESIST: {grappled_victim_obj.key} rolls {resist_roll} vs {drag_roll} ({traversing_object.key})")
 
                 if resist_roll > drag_roll:
-                    traversing_object.msg(f"|r{grappled_victim_obj.key} resists your attempt to drag them!|n")
-                    grappled_victim_obj.msg(f"|gYou resist {traversing_object.key}'s attempt to drag you!|n")
+                    traversing_object.msg(f"|r{grappled_victim_obj.get_display_name(traversing_object)} resists your attempt to drag them!|n")
+                    grappled_victim_obj.msg(f"|gYou resist {traversing_object.get_display_name(grappled_victim_obj)}'s attempt to drag you!|n")
                     splattercast.msg(f"{grappled_victim_obj.key} successfully resisted being dragged by {traversing_object.key}.")
 
                     # --- Break the grapple on successful resistance ---
@@ -300,27 +301,35 @@ class Exit(DefaultExit):
                     if victim_entry:
                         victim_entry[DB_GRAPPLED_BY_DBREF] = None
                     msg = f"{grappled_victim_obj.key} breaks free from {traversing_object.key}'s grapple!"
-                    traversing_object.location.msg_contents(f"|g{msg}|n")
+                    msg_room_identity(
+                        location=traversing_object.location,
+                        template="|g{victim} breaks free from {grappler}'s grapple!|n",
+                        char_refs={"victim": grappled_victim_obj, "grappler": traversing_object},
+                    )
                     splattercast.msg(f"GRAPPLE BROKEN: {msg}")
 
                     return
 
                 # Proceed with drag if resistance fails
-                traversing_object.msg(f"|g{grappled_victim_obj.key} struggles but fails to resist.|n")
-                grappled_victim_obj.msg(f"|rYou struggle but fail to resist {traversing_object.key}'s attempt to drag you.|n")
+                traversing_object.msg(f"|g{grappled_victim_obj.get_display_name(traversing_object)} struggles but fails to resist.|n")
+                grappled_victim_obj.msg(f"|rYou struggle but fail to resist {traversing_object.get_display_name(grappled_victim_obj)}'s attempt to drag you.|n")
                 splattercast.msg(f"{grappled_victim_obj.key} failed to resist being dragged by {traversing_object.key}.")
 
                 old_handler = handler
                 old_location = traversing_object.location
 
                 # Announce dragging
-                msg_drag_self = f"|gYou drag {grappled_victim_obj.key} with you through the {self.key} exit...|n"
-                msg_drag_victim = f"|r{traversing_object.key} drags you through the {self.key} exit!|n"
-                msg_drag_room = f"{traversing_object.key} drags {grappled_victim_obj.key} away through the {self.key} exit."
+                msg_drag_self = f"|gYou drag {grappled_victim_obj.get_display_name(traversing_object)} with you through the {self.key} exit...|n"
+                msg_drag_victim = f"|r{traversing_object.get_display_name(grappled_victim_obj)} drags you through the {self.key} exit!|n"
                 
                 traversing_object.msg(msg_drag_self)
                 grappled_victim_obj.msg(msg_drag_victim)
-                old_location.msg_contents(msg_drag_room, exclude=[traversing_object, grappled_victim_obj])
+                msg_room_identity(
+                    location=old_location,
+                    template=f"{{grappler}} drags {{victim}} away through the {self.key} exit.",
+                    char_refs={"grappler": traversing_object, "victim": grappled_victim_obj},
+                    exclude=[traversing_object, grappled_victim_obj],
+                )
                 splattercast.msg(f"DRAG: {traversing_object.key} is dragging {grappled_victim_obj.key} from {old_location.key} to {target_location.key} via {self.key}.")
 
                 # Perform moves: grappler first, then victim quietly
@@ -336,8 +345,12 @@ class Exit(DefaultExit):
                 check_auto_defuse(grappled_victim_obj)
 
                 # Announce arrival in new location
-                msg_arrive_room = f"{traversing_object.key} arrives, dragging {grappled_victim_obj.key}."
-                target_location.msg_contents(msg_arrive_room, exclude=[traversing_object, grappled_victim_obj])
+                msg_room_identity(
+                    location=target_location,
+                    template="{grappler} arrives, dragging {victim}.",
+                    char_refs={"grappler": traversing_object, "victim": grappled_victim_obj},
+                    exclude=[traversing_object, grappled_victim_obj],
+                )
 
                 # --- Transfer combat state to the new location ---
                 # 1. Before removing, determine if victim is yielding
@@ -738,7 +751,7 @@ class Exit(DefaultExit):
             # If target is still aiming at mover, revert them to normal aiming
             target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
             if target_still_aiming == mover:
-                target.override_place = f"aiming carefully at {mover.key}."
+                target.override_place = "aiming carefully at {aim_target}."
             else:
                 # Target isn't aiming at anyone, clear their place too
                 target.override_place = ""

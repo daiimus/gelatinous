@@ -404,6 +404,15 @@ class Room(ObjectParent, DefaultRoom):
                         temp_place if temp_place else
                         look_place if look_place else
                         "standing here.")
+
+            # Resolve {aim_target} template in placement (used by aim system)
+            if "{aim_target}" in placement:
+                aim_target = getattr(char.ndb, "aiming_at", None) if hasattr(char.ndb, "aiming_at") else None
+                if aim_target and hasattr(aim_target, "get_display_name"):
+                    placement = placement.replace("{aim_target}", aim_target.get_display_name(looker))
+                else:
+                    # Aim target gone — fall back to generic description
+                    placement = "aiming carefully."
             
             if placement not in placement_groups:
                 placement_groups[placement] = []
