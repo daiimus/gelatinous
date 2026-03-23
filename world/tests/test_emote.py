@@ -23,6 +23,7 @@ from world.emote import (
     TextToken,
     VerbToken,
     _find_char_ref_spans,
+    _find_ordinal_char_ref_spans,
     _find_pronoun_spans,
     _should_conjugate,
     _split_speech_segments,
@@ -1079,7 +1080,7 @@ class TestBuildCharCandidates(TestCase):
             "uid-maria": {"assigned_name": "Maria"},
         }
         candidates = build_char_candidates(actor, [actor, maria])
-        names = [name for name, _char in candidates]
+        names = [name for name, _char, _rc in candidates]
         self.assertIn("Maria", names)
 
     def test_sorted_longest_first(self) -> None:
@@ -1101,7 +1102,7 @@ class TestBuildCharCandidates(TestCase):
             sleeve_uid="uid-maria",
         )
         candidates = build_char_candidates(actor, [actor, maria])
-        lengths = [len(name) for name, _char in candidates]
+        lengths = [len(name) for name, _char, _rc in candidates]
         self.assertEqual(lengths, sorted(lengths, reverse=True))
 
 
@@ -1365,3 +1366,289 @@ class TestRenderEmoteForObserver(TestCase):
         )
         result = render_emote_for_observer(tokens, self.actor, self.actor)
         self.assertIn('"Hello there."', result)
+
+
+# ===================================================================
+# Tests: Descriptor-Only Matching with Capital Gate (Bug 1)
+# ===================================================================
+
+
+class TestDescriptorOnlyMatching(TestCase):
+    """Tests for physical descriptor-only character references.
+
+    Physical descriptors (e.g. ``"towering"``, ``"gaunt"``) are valid
+    character references but require a leading capital letter to
+    distinguish intentional references from ordinary adjective usage.
+    """
+
+    def setUp(self) -> None:
+        self.actor = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        self.big_guy = _make_character(
+            key="Viktor Kozlov",
+            sex="male",
+            height="tall",
+            build="heavyset",
+            sdesc_keyword="man",
+            sleeve_uid="uid-viktor",
+        )
+
+    def test_capitalized_descriptor_matches(self) -> None:
+        """'Massive' (capitalized) matches the character."""
+        tokens = tokenize_dot_pose(
+            "flick a nod at Massive.",
+            self.actor,
+            [self.actor, self.big_guy],
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.big_guy)
+
+    def test_lowercase_descriptor_does_not_match(self) -> None:
+        """'massive' (lowercase) does NOT match as a character ref."""
+        tokens = tokenize_dot_pose(
+            "look at the massive building.",
+            self.actor,
+            [self.actor, self.big_guy],
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 0)
+
+    def test_descriptor_keyword_still_works_lowercase(self) -> None:
+        """'man' (keyword) still matches lowercase as before."""
+        tokens = tokenize_dot_pose(
+            "nod at man.",
+            self.actor,
+            [self.actor, self.big_guy],
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.big_guy)
+
+    def test_full_sdesc_still_works_lowercase(self) -> None:
+        """'massive man' (full sdesc) still matches lowercase."""
+        tokens = tokenize_dot_pose(
+            "nod at massive man.",
+            self.actor,
+            [self.actor, self.big_guy],
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.big_guy)
+
+    def test_descriptor_in_candidates(self) -> None:
+        """build_char_candidates includes descriptor with capital gate."""
+        candidates = build_char_candidates(
+            self.actor, [self.actor, self.big_guy]
+        )
+        descriptor_candidates = [
+            (name, rc)
+            for name, char, rc in candidates
+            if name == "massive"
+        ]
+        self.assertEqual(len(descriptor_candidates), 1)
+        # The descriptor candidate requires capital
+        self.assertTrue(descriptor_candidates[0][1])
+
+    def test_traditional_emote_descriptor_capitalized(self) -> None:
+        """Traditional emote: 'nods at Massive' resolves correctly."""
+        tokens = tokenize_emote(
+            "nods at Massive.",
+            self.actor,
+            [self.actor, self.big_guy],
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.big_guy)
+
+    def test_traditional_emote_descriptor_lowercase_no_match(self) -> None:
+        """Traditional emote: 'stands by the massive wall' no match."""
+        tokens = tokenize_emote(
+            "stands by the massive wall.",
+            self.actor,
+            [self.actor, self.big_guy],
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 0)
+
+
+# ===================================================================
+# Tests: Ordinal Character References in Emotes (Bug 2)
+# ===================================================================
+
+
+class TestOrdinalCharRefsInEmotes(TestCase):
+    """Tests for ordinal-prefixed character references in emotes.
+
+    Patterns like ``"2nd man"`` should resolve to the second matching
+    character in the room.
+    """
+
+    def setUp(self) -> None:
+        self.actor = _make_character(
+            key="Alice Smith",
+            sex="female",
+            height="short",
+            build="athletic",
+            sdesc_keyword="woman",
+            sleeve_uid="uid-alice",
+        )
+        self.jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        self.viktor = _make_character(
+            key="Viktor Kozlov",
+            sex="male",
+            height="tall",
+            build="heavyset",
+            sdesc_keyword="man",
+            sleeve_uid="uid-viktor",
+        )
+        self.occupants = [self.actor, self.jorge, self.viktor]
+
+    def test_dot_pose_2nd_man(self) -> None:
+        """'.flick a nod at 2nd man' resolves to Viktor."""
+        tokens = tokenize_dot_pose(
+            "flick a nod at 2nd man.",
+            self.actor,
+            self.occupants,
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.viktor)
+
+    def test_dot_pose_1st_man(self) -> None:
+        """'.nod at 1st man' resolves to Jorge."""
+        tokens = tokenize_dot_pose(
+            "nod at 1st man.",
+            self.actor,
+            self.occupants,
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.jorge)
+
+    def test_dot_pose_ordinal_out_of_range(self) -> None:
+        """'.nod at 3rd man' with only 2 men: ordinal fails, 'man' matches 1st."""
+        tokens = tokenize_dot_pose(
+            "nod at 3rd man.",
+            self.actor,
+            self.occupants,
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        # The ordinal fails (no 3rd man), but "man" still matches
+        # via regular char ref matching (picks the first: Jorge)
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.jorge)
+
+    def test_traditional_emote_2nd_man(self) -> None:
+        """'emote nods at 2nd man' resolves to Viktor."""
+        tokens = tokenize_emote(
+            "nods at 2nd man.",
+            self.actor,
+            self.occupants,
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.viktor)
+
+    def test_ordinal_does_not_consume_non_ordinal(self) -> None:
+        """Plain 'man' still works alongside ordinals."""
+        tokens = tokenize_dot_pose(
+            "nod at man.",
+            self.actor,
+            self.occupants,
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        # Should match the first man (Jorge) via regular matching
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.jorge)
+
+    def test_ordinal_span_claimed(self) -> None:
+        """Ordinal span is fully claimed — no double match on 'man'."""
+        tokens = tokenize_dot_pose(
+            "flick a nod at 2nd man.",
+            self.actor,
+            self.occupants,
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        # Only ONE char ref (the ordinal match), not two
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.viktor)
+
+    def test_ordinal_rendering(self) -> None:
+        """Ordinal char ref renders with resolved display name."""
+        observer = _make_character(
+            key="Bob Doe",
+            sex="male",
+            height="average",
+            build="average",
+            sleeve_uid="uid-bob",
+            recognition_memory={
+                "uid-viktor": {"assigned_name": "Vik"},
+            },
+        )
+        tokens = tokenize_dot_pose(
+            "flick a nod at 2nd man.",
+            self.actor,
+            self.occupants,
+        )
+        result = render_for_observer(tokens, self.actor, observer)
+        # Observer knows Viktor as "Vik"
+        self.assertIn("Vik", result)
+
+    def test_ordinal_in_traditional_emote_rendering(self) -> None:
+        """Ordinal in traditional emote renders correctly."""
+        observer = _make_character(
+            key="Bob Doe",
+            sex="male",
+            height="average",
+            build="average",
+            sleeve_uid="uid-bob",
+            recognition_memory={},
+        )
+        tokens = tokenize_emote(
+            "nods at 2nd man.",
+            self.actor,
+            self.occupants,
+        )
+        result = render_emote_for_observer(tokens, self.actor, observer)
+        # Viktor's sdesc is "a massive man" (tall + heavyset)
+        self.assertIn("massive man", result.lower())
+
+    def test_ordinal_with_full_sdesc(self) -> None:
+        """'2nd gaunt man' — only one gaunt man, ordinal fails but
+        'gaunt man' falls through to regular matching and finds Jorge."""
+        tokens = tokenize_dot_pose(
+            "nod at 2nd gaunt man.",
+            self.actor,
+            self.occupants,
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        # Ordinal fails (only 1 gaunt man), but "gaunt man" matches Jorge
+        # via regular char ref path.
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.jorge)
+
+    def test_ordinal_zero_ignored(self) -> None:
+        """'0th man' is not a valid ordinal and is ignored."""
+        tokens = tokenize_dot_pose(
+            "nod at 0th man.",
+            self.actor,
+            self.occupants,
+        )
+        char_refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        # "man" should still match via regular path (first match)
+        self.assertEqual(len(char_refs), 1)
+        self.assertIs(char_refs[0].character, self.jorge)

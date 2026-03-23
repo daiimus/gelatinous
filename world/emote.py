@@ -254,49 +254,56 @@ def _spans_overlap(
 def build_char_candidates(
     actor: "Character",
     room_occupants: list["Character"],
-) -> list[tuple[str, "Character"]]:
-    """Build sorted (name, character) pairs for character reference matching.
+) -> list[tuple[str, "Character", bool]]:
+    """Build sorted (name, character, requires_capital) triples for matching.
 
     For each room occupant (excluding the actor), collects possible
     name strings the actor might use to reference them, sorted by
     string length descending (longest match first).
+
+    The ``requires_capital`` flag indicates whether a match must start
+    with an uppercase letter in the source text.  This prevents bare
+    physical descriptors like ``"towering"`` from matching generic
+    adjective usage while still allowing ``"Towering"`` as an
+    intentional character reference.
 
     Args:
         actor: The character performing the emote.
         room_occupants: All characters in the room.
 
     Returns:
-        List of ``(name_string, character)`` pairs, sorted longest
-        first.
+        List of ``(name_string, character, requires_capital)`` triples,
+        sorted longest first.
     """
     from world.grammar import DEFAULT_SDESC_KEYWORDS, get_article
     from world.identity import compose_sdesc, get_physical_descriptor
     from world.search import strip_leading_article
 
-    candidates: list[tuple[str, "Character"]] = []
+    candidates: list[tuple[str, "Character", bool]] = []
 
     for char in room_occupants:
         if char is actor:
             continue
 
-        names: list[str] = []
+        names: list[tuple[str, bool]] = []
 
         # 1. Display name as seen by actor (assigned name or sdesc with article)
         display_name = char.get_display_name(actor)
         if display_name:
-            names.append(display_name)
+            names.append((display_name, False))
             # 2. Article-stripped version
             stripped = strip_leading_article(display_name)
             if stripped != display_name:
-                names.append(stripped)
+                names.append((stripped, False))
 
         # 3. Raw sdesc (no article)
         sdesc = char.get_sdesc()
         if sdesc and sdesc != char.key:
-            if sdesc not in names:
-                names.append(sdesc)
+            if sdesc not in [n for n, _rc in names]:
+                names.append((sdesc, False))
 
         # 4. Descriptor + keyword only (no feature clause)
+        descriptor = None
         height = getattr(char, "height", None)
         build = getattr(char, "build", None)
         if height and build:
@@ -308,10 +315,10 @@ def build_char_candidates(
                         getattr(char, "gender", "neutral"), "person"
                     )
                 short_sdesc = compose_sdesc(descriptor, keyword)
-                if short_sdesc not in names:
-                    names.append(short_sdesc)
+                if short_sdesc not in [n for n, _rc in names]:
+                    names.append((short_sdesc, False))
             except (KeyError, AttributeError):
-                pass
+                descriptor = None
 
         # 5. Keyword only
         keyword = getattr(char, "sdesc_keyword", None)
@@ -319,10 +326,14 @@ def build_char_candidates(
             keyword = DEFAULT_SDESC_KEYWORDS.get(
                 getattr(char, "gender", "neutral"), "person"
             )
-        if keyword and keyword not in names:
-            names.append(keyword)
+        if keyword and keyword not in [n for n, _rc in names]:
+            names.append((keyword, False))
 
-        # 6. Character .key — Builder+ only (check actor's permissions)
+        # 6. Physical descriptor alone (requires capital letter)
+        if descriptor and descriptor not in [n for n, _rc in names]:
+            names.append((descriptor, True))
+
+        # 7. Character .key — Builder+ only (check actor's permissions)
         # For the emote engine, we include .key if the actor has Builder+
         # permissions.  Normal players don't get .key access.
         if hasattr(actor, "locks"):
@@ -330,22 +341,22 @@ def build_char_candidates(
                 if actor.locks.check_lockstring(
                     actor, "perm(Builder)"
                 ):
-                    if char.key not in names:
-                        names.append(char.key)
+                    if char.key not in [n for n, _rc in names]:
+                        names.append((char.key, False))
             except Exception:
                 pass
 
-        for name in names:
-            candidates.append((name, char))
+        for name, requires_capital in names:
+            candidates.append((name, char, requires_capital))
 
     # Sort by length descending so longest match wins
-    candidates.sort(key=lambda pair: len(pair[0]), reverse=True)
+    candidates.sort(key=lambda triple: len(triple[0]), reverse=True)
     return candidates
 
 
 def _find_char_ref_spans(
     text: str,
-    candidates: list[tuple[str, "Character"]],
+    candidates: list[tuple[str, "Character", bool]],
     claimed_spans: list[tuple[int, int]],
 ) -> list[tuple[int, int, "Character", str]]:
     """Find character reference matches in text.
@@ -353,10 +364,14 @@ def _find_char_ref_spans(
     Scans text for case-insensitive word-boundary matches against
     candidate names.  Skips spans already claimed by verb markers.
 
+    Candidates with ``requires_capital=True`` only match when the
+    matched text starts with an uppercase letter, preventing bare
+    physical descriptors from matching generic adjective usage.
+
     Args:
         text: The non-speech text segment.
-        candidates: Sorted ``(name, character)`` pairs from
-            :func:`build_char_candidates`.
+        candidates: Sorted ``(name, character, requires_capital)``
+            triples from :func:`build_char_candidates`.
         claimed_spans: Spans already claimed (verb markers, etc.).
 
     Returns:
@@ -365,7 +380,7 @@ def _find_char_ref_spans(
     refs: list[tuple[int, int, "Character", str]] = []
     ref_spans: list[tuple[int, int]] = list(claimed_spans)
 
-    for name, char in candidates:
+    for name, char, requires_capital in candidates:
         # Build word-boundary pattern for this name
         pattern = re.compile(
             r"\b" + re.escape(name) + r"\b", re.IGNORECASE
@@ -373,8 +388,112 @@ def _find_char_ref_spans(
         for match in pattern.finditer(text):
             start, end = match.start(), match.end()
             if not _spans_overlap(start, end, ref_spans):
-                refs.append((start, end, char, match.group()))
+                matched_text = match.group()
+                if requires_capital and not matched_text[0].isupper():
+                    continue
+                refs.append((start, end, char, matched_text))
                 ref_spans.append((start, end))
+
+    return refs
+
+
+#: Matches numeric ordinal prefixes like "2nd ", "3rd ", "1st " in text.
+_ORDINAL_PREFIX_PATTERN = re.compile(
+    r"\b(\d+)(?:st|nd|rd|th)\s+", re.IGNORECASE
+)
+
+
+def _find_ordinal_char_ref_spans(
+    text: str,
+    candidates: list[tuple[str, "Character", bool]],
+    claimed_spans: list[tuple[int, int]],
+) -> list[tuple[int, int, "Character", str]]:
+    """Find ordinal-prefixed character references in text.
+
+    Scans non-speech text for patterns like ``"2nd man"`` and resolves
+    them to the Nth unique character matching the name.  Only numeric
+    ordinals are supported (``1st``, ``2nd``, etc.) — word ordinals
+    are too ambiguous in free-form emote text.
+
+    This runs as a **pre-pass** before :func:`_find_char_ref_spans`
+    so that ordinal spans are claimed and won't be double-matched.
+
+    Args:
+        text: The non-speech text segment.
+        candidates: Sorted ``(name, character, requires_capital)``
+            triples from :func:`build_char_candidates`.
+        claimed_spans: Spans already claimed (verb markers, etc.).
+
+    Returns:
+        List of ``(start, end, character, matched_text)`` tuples,
+        where the span covers the full ordinal + name text.
+    """
+    refs: list[tuple[int, int, "Character", str]] = []
+    ref_spans: list[tuple[int, int]] = list(claimed_spans)
+
+    for ord_match in _ORDINAL_PREFIX_PATTERN.finditer(text):
+        ord_start = ord_match.start()
+        after_ordinal = ord_match.end()  # Position after "2nd "
+        ordinal_num = int(ord_match.group(1))
+        if ordinal_num < 1:
+            continue
+
+        # Try to match candidate names starting at after_ordinal
+        remainder = text[after_ordinal:]
+        best_match: tuple[int, str, "Character"] | None = None
+
+        for name, char, requires_capital in candidates:
+            pattern = re.compile(
+                r"\b" + re.escape(name) + r"\b", re.IGNORECASE
+            )
+            m = pattern.match(remainder)
+            if m:
+                matched_text = m.group()
+                if requires_capital and not matched_text[0].isupper():
+                    continue
+                match_end = after_ordinal + m.end()
+                # Take the longest match at this position
+                if best_match is None or m.end() > best_match[0]:
+                    best_match = (m.end(), name, char)
+
+        if best_match is None:
+            continue
+
+        name_len, matched_name, _ = best_match
+        full_end = after_ordinal + name_len
+
+        # Check the full span (ordinal + name) doesn't overlap
+        if _spans_overlap(ord_start, full_end, ref_spans):
+            continue
+
+        # Collect ALL unique characters matching this name (preserving
+        # room order from candidates), then pick the Nth one.
+        matched_name_lower = matched_name.lower()
+        seen_chars: list["Character"] = []
+        seen_ids: set[int] = set()
+        for cand_name, cand_char, cand_rc in candidates:
+            if cand_name.lower() == matched_name_lower:
+                if cand_rc:
+                    # requires_capital — check the actual text
+                    remainder_at = text[after_ordinal:]
+                    pat = re.compile(
+                        r"\b" + re.escape(cand_name) + r"\b",
+                        re.IGNORECASE,
+                    )
+                    rm = pat.match(remainder_at)
+                    if not rm or not rm.group()[0].isupper():
+                        continue
+                if id(cand_char) not in seen_ids:
+                    seen_ids.add(id(cand_char))
+                    seen_chars.append(cand_char)
+
+        if ordinal_num > len(seen_chars):
+            continue
+
+        target_char = seen_chars[ordinal_num - 1]
+        matched_text = text[ord_start:full_end]
+        refs.append((ord_start, full_end, target_char, matched_text))
+        ref_spans.append((ord_start, full_end))
 
     return refs
 
@@ -413,7 +532,7 @@ def _find_pronoun_spans(
 def _tokenize_non_speech(
     text: str,
     actor: "Character",
-    candidates: list[tuple[str, "Character"]],
+    candidates: list[tuple[str, "Character", bool]],
     is_first_segment: bool,
 ) -> list[TextToken | VerbToken | PronounToken | CharRefToken]:
     """Tokenize a non-speech segment.
@@ -459,17 +578,24 @@ def _tokenize_non_speech(
                     auto_verb_span = (start, end, word)
                     claimed_spans.append((start, end))
 
-    # Step 2: Find character references
+    # Step 2: Find ordinal character references (pre-pass)
+    ordinal_ref_spans = _find_ordinal_char_ref_spans(
+        text, candidates, claimed_spans
+    )
+    for start, end, _char, _matched in ordinal_ref_spans:
+        claimed_spans.append((start, end))
+
+    # Step 3: Find character references
     char_ref_spans = _find_char_ref_spans(text, candidates, claimed_spans)
     for start, end, _char, _matched in char_ref_spans:
         claimed_spans.append((start, end))
 
-    # Step 3: Find pronouns
+    # Step 4: Find pronouns
     pronoun_spans = _find_pronoun_spans(text, claimed_spans)
     for start, end, _pron, _case in pronoun_spans:
         claimed_spans.append((start, end))
 
-    # Step 4: Build sorted list of all identified spans
+    # Step 5: Build sorted list of all identified spans
     all_spans: list[tuple[int, int, str, object]] = []
 
     # Auto-verb
@@ -481,7 +607,9 @@ def _tokenize_non_speech(
     for s, e, base_form in verb_spans:
         all_spans.append((s, e, "verb", base_form))
 
-    # Character references
+    # Character references (ordinal + regular)
+    for s, e, char, matched in ordinal_ref_spans:
+        all_spans.append((s, e, "charref", (char, matched)))
     for s, e, char, matched in char_ref_spans:
         all_spans.append((s, e, "charref", (char, matched)))
 
@@ -492,7 +620,7 @@ def _tokenize_non_speech(
     # Sort by position
     all_spans.sort(key=lambda span: span[0])
 
-    # Step 5: Build token list, filling gaps with TextTokens
+    # Step 6: Build token list, filling gaps with TextTokens
     tokens: list[TextToken | VerbToken | PronounToken | CharRefToken] = []
     pos = 0
 
@@ -791,15 +919,23 @@ def tokenize_emote(
         if is_speech:
             tokens.append(SpeechToken(segment_text, actor))
         else:
-            # Find character references only (no verbs, no pronouns)
-            char_ref_spans = _find_char_ref_spans(
+            # Ordinal pre-pass: "2nd man" → resolve Nth match
+            ordinal_ref_spans = _find_ordinal_char_ref_spans(
                 segment_text, candidates, []
             )
-            # Sort by position
-            char_ref_spans.sort(key=lambda s: s[0])
+            ordinal_claimed: list[tuple[int, int]] = [
+                (s, e) for s, e, _c, _m in ordinal_ref_spans
+            ]
+            # Find remaining character references
+            char_ref_spans = _find_char_ref_spans(
+                segment_text, candidates, ordinal_claimed
+            )
+            # Combine and sort by position
+            all_refs = ordinal_ref_spans + char_ref_spans
+            all_refs.sort(key=lambda s: s[0])
 
             pos = 0
-            for start, end, char, _matched in char_ref_spans:
+            for start, end, char, _matched in all_refs:
                 if start > pos:
                     tokens.append(TextToken(segment_text[pos:start]))
                 tokens.append(CharRefToken(char, segment_text[start:end]))
