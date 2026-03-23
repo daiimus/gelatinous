@@ -45,7 +45,18 @@ class Character(
     intellect = AttributeProperty(1, category='stat', autocreate=True)
     motorics = AttributeProperty(1, category='stat', autocreate=True)
     sex = AttributeProperty("ambiguous", category="biology", autocreate=True)
-    
+
+    # Identity & Recognition System (Phase 1b)
+    # sleeve_uid is the physical body identity — flash clones inherit it.
+    # Set in at_object_creation() via uuid.uuid4(); chargen may override.
+    sleeve_uid = AttributeProperty(None, category="identity")
+    height = AttributeProperty(None, category="identity")
+    build = AttributeProperty(None, category="identity")
+    hair_color = AttributeProperty(None, category="identity")
+    hair_style = AttributeProperty(None, category="identity")
+    sdesc_keyword = AttributeProperty(None, category="identity")
+    recognition_memory = AttributeProperty({}, category="identity", autocreate=True)
+
     # Shop System Attributes
     is_merchant = AttributeProperty(False, category="shop", autocreate=True)
     is_holographic = AttributeProperty(False, category="shop", autocreate=True)
@@ -107,6 +118,11 @@ class Character(
         from world.combat.constants import DEFAULT_LONGDESC_LOCATIONS
         if not self.longdesc:
             self.longdesc = DEFAULT_LONGDESC_LOCATIONS.copy()
+
+        # Initialize identity: assign a unique sleeve_uid for this body
+        if self.sleeve_uid is None:
+            import uuid
+            self.sleeve_uid = str(uuid.uuid4())
 
         # Initialize medical system - replaces legacy HP system
         self._initialize_medical_state()
@@ -826,6 +842,131 @@ class Character(
         
         # Character is a valid attack target
         return None
+
+    # ===================================================================
+    # IDENTITY & RECOGNITION SYSTEM
+    # ===================================================================
+
+    def get_distinguishing_feature(self):
+        """Return the distinguishing feature clause for this character's sdesc.
+
+        Priority chain (first non-empty wins):
+          1. Wielded weapon or explosive
+          2. Outermost clothing item
+          3. Hair (colour/style)
+          4. ``None`` — no feature
+
+        Returns:
+            Feature clause string (e.g. ``"wielding a Kitchen Knife"``,
+            ``"in a Black Trenchcoat"``, ``"with blonde braids"``),
+            or ``None`` if nothing qualifies.
+        """
+        from world.identity import (
+            format_clothing_feature,
+            format_hair_feature,
+            format_wielded_feature,
+        )
+
+        # 1. Wielded weapon / explosive
+        hands = self.hands or {}
+        for _hand, item in hands.items():
+            if item is not None:
+                return format_wielded_feature(item.key)
+
+        # 2. Outermost clothing item (pick the first location with coverage)
+        coverage_map = self._build_clothing_coverage_map()
+        if coverage_map:
+            # Deterministic: pick the first location alphabetically so the
+            # feature is stable between calls.
+            for _location in sorted(coverage_map):
+                item = coverage_map[_location]
+                if item is not None:
+                    return format_clothing_feature(item.key)
+
+        # 3. Hair
+        hair_color = self.hair_color
+        hair_style = self.hair_style
+        if hair_color or hair_style:
+            return format_hair_feature(color=hair_color, style=hair_style)
+
+        # 4. Nothing
+        return None
+
+    def get_sdesc(self):
+        """Return the composed short description for this character.
+
+        The sdesc has no leading article — callers prepend ``a``/``an``/
+        ``the`` as needed via :func:`world.grammar.get_article`.
+
+        If height/build/keyword are not yet set (pre-chargen character),
+        falls back to ``self.key``.
+
+        Returns:
+            Sdesc string, e.g. ``"lanky man wielding a Kitchen Knife"``.
+        """
+        from world.identity import compose_sdesc, get_physical_descriptor
+        from world.grammar import DEFAULT_SDESC_KEYWORDS
+
+        height = self.height
+        build = self.build
+        if not height or not build:
+            return self.key
+
+        descriptor = get_physical_descriptor(height, build)
+        keyword = self.sdesc_keyword
+        if not keyword:
+            keyword = DEFAULT_SDESC_KEYWORDS.get(self.gender, "person")
+
+        feature = self.get_distinguishing_feature()
+        return compose_sdesc(descriptor, keyword, feature)
+
+    def get_display_name(self, looker=None, **kwargs):
+        """Return the name of this character as seen by *looker*.
+
+        Resolution order:
+          1. ``looker is self`` → ``self.key`` (own real name)
+          2. *looker* has an assigned name in ``recognition_memory``
+             for this character's ``sleeve_uid`` → that assigned name
+          3. Otherwise → composed sdesc with indefinite article
+             (e.g. ``"a lanky man in a Black Trenchcoat"``)
+
+        If *looker* is ``None`` (system / log context), returns
+        ``self.key``.
+
+        Args:
+            looker: The character observing this character, or ``None``.
+            **kwargs: Passed through from Evennia's display-name pipeline.
+
+        Returns:
+            Display name string.
+        """
+        # No observer context — use real name
+        if looker is None:
+            return self.key
+
+        # Self-perception — always own real name
+        if looker is self:
+            return self.key
+
+        # Check if looker has a recognized name for this sleeve
+        sleeve_uid = self.sleeve_uid
+        if sleeve_uid is not None and hasattr(looker, "recognition_memory"):
+            memory = looker.recognition_memory
+            if memory and sleeve_uid in memory:
+                entry = memory[sleeve_uid]
+                assigned = entry.get("assigned_name")
+                if assigned:
+                    return assigned
+
+        # Fall back to sdesc with indefinite article
+        from world.grammar import get_article
+
+        sdesc = self.get_sdesc()
+        # If sdesc fell back to self.key, return it as-is (no article)
+        if sdesc == self.key:
+            return self.key
+        article = get_article(sdesc)
+        return f"{article} {sdesc}"
 
     # ===================================================================
     # MR. HANDS SYSTEM
