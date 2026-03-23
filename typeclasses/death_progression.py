@@ -510,6 +510,10 @@ class DeathProgressionScript(DefaultScript):
         corpse.db.death_time = time.time()
         corpse.db.physical_description = character.db.desc if character.db.desc is not None else 'A person.'
         
+        # Store identity data for identity-aware corpse description
+        corpse.db.sleeve_uid = character.db.sleeve_uid
+        corpse.db.sdesc_at_death = character.get_sdesc() if hasattr(character, 'get_sdesc') else character.key
+        
         # Preserve character appearance data for proper corpse display
         corpse.db.original_gender = getattr(character, 'gender', 'neutral')
         corpse.db.original_skintone = character.db.skintone
@@ -594,8 +598,9 @@ class DeathProgressionScript(DefaultScript):
         except Exception:
             pass
         
-        # Set corpse description
-        corpse.db.desc = f"The lifeless body of {character.key}. {corpse.db.physical_description}"
+        # Set corpse description using sdesc (identity-aware)
+        sdesc = corpse.db.sdesc_at_death if corpse.db.sdesc_at_death is not None else character.key
+        corpse.db.desc = f"The lifeless body of a {sdesc}. {corpse.db.physical_description}"
         
         return corpse
 
