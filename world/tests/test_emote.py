@@ -271,9 +271,9 @@ class TestTokenizer(TestCase):
     def test_simple_verb_first(self) -> None:
         """'.lean back.' → VerbToken + TextToken."""
         tokens = tokenize_dot_pose("lean back.", self.actor)
-        self.assertIsInstance(tokens[0], VerbToken)
+        assert isinstance(tokens[0], VerbToken)
         self.assertEqual(tokens[0].base_form, "lean")
-        self.assertIsInstance(tokens[1], TextToken)
+        assert isinstance(tokens[1], TextToken)
         self.assertEqual(tokens[1].text, " back.")
 
     def test_multiple_verbs(self) -> None:
@@ -378,7 +378,7 @@ class TestTokenizer(TestCase):
         """If first word is a pronoun like 'I', it's not auto-verbed."""
         tokens = tokenize_dot_pose("I .lean back", self.actor)
         # First token should be a PronounToken, not a VerbToken
-        self.assertIsInstance(tokens[0], PronounToken)
+        assert isinstance(tokens[0], PronounToken)
         self.assertEqual(tokens[0].case, "subject")
 
 
@@ -1206,7 +1206,10 @@ class TestTokenizeEmote(TestCase):
         """Plain text with no character references returns TextTokens."""
         tokens = tokenize_emote("leans back.", self.actor, [])
         self.assertTrue(all(isinstance(t, TextToken) for t in tokens))
-        self.assertEqual("".join(t.text for t in tokens), "leans back.")
+        self.assertEqual(
+            "".join(t.text for t in tokens if isinstance(t, TextToken)),
+            "leans back.",
+        )
 
     def test_char_ref_detected(self) -> None:
         """Character reference by sdesc descriptor+keyword is detected."""

@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 from world.grammar import (
     GENDER_MAP,
@@ -253,7 +253,7 @@ def _spans_overlap(
 
 def build_char_candidates(
     actor: "Character",
-    room_occupants: list["Character"],
+    room_occupants: Sequence["Character"],
 ) -> list[tuple[str, "Character", bool]]:
     """Build sorted (name, character, requires_capital) triples for matching.
 
@@ -655,7 +655,7 @@ def _tokenize_non_speech(
 def tokenize_dot_pose(
     raw_input: str,
     actor: "Character",
-    room_occupants: list["Character"] | None = None,
+    room_occupants: Sequence["Character"] | None = None,
 ) -> list[TextToken | VerbToken | PronounToken | SpeechToken | CharRefToken]:
     """Tokenize a dot-pose input string.
 
@@ -890,7 +890,7 @@ def render_dot_pose(
 def tokenize_emote(
     raw_input: str,
     actor: "Character",
-    room_occupants: list["Character"] | None = None,
+    room_occupants: Sequence["Character"] | None = None,
 ) -> list[TextToken | SpeechToken | CharRefToken]:
     """Tokenize traditional emote text for character reference resolution.
 
