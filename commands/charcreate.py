@@ -354,6 +354,23 @@ def create_flash_clone(account, old_character):
     if old_character.db.skintone is not None:
         char.db.skintone = old_character.db.skintone
     
+    # INHERIT: Physical identity — same body means same sleeve_uid
+    if old_character.sleeve_uid is not None:
+        char.sleeve_uid = old_character.sleeve_uid
+    # Inherit identity attributes (same physical body)
+    if old_character.height is not None:
+        char.height = old_character.height
+    if old_character.build is not None:
+        char.build = old_character.build
+    if old_character.hair_color is not None:
+        char.hair_color = old_character.hair_color
+    if old_character.hair_style is not None:
+        char.hair_style = old_character.hair_style
+    if old_character.sdesc_keyword is not None:
+        char.sdesc_keyword = old_character.sdesc_keyword
+    # NOTE: recognition_memory is NOT inherited — flash clones have
+    # empty brains and recognise nobody.
+    
     # Debug: Verify sex was inherited correctly
     from evennia.comms.models import ChannelDB
     try:
