@@ -1,0 +1,638 @@
+"""
+Tests for Identity Phase 2b: msg_room_identity and communication commands.
+
+Tests the ``msg_room_identity`` helper and custom ``CmdSay``,
+``CmdWhisper``, and ``CmdEmote`` commands for per-observer identity
+rendering.
+
+Run via::
+
+    evennia test world.tests.test_communication
+
+All test cases match the specification in
+``specs/EMOTE_POSE_SPEC.md`` and
+``specs/IDENTITY_RECOGNITION_SPEC.md`` §msg_room_identity Helper.
+"""
+
+from unittest import TestCase
+from unittest.mock import MagicMock, PropertyMock, call
+
+from world.identity_utils import msg_room_identity
+
+
+# ===================================================================
+# Helpers — lightweight character / room stand-in
+# ===================================================================
+
+
+def _make_character(
+    *,
+    key="Jorge Jackson",
+    sex="male",
+    height="tall",
+    build="lean",
+    sdesc_keyword=None,
+    hair_color=None,
+    hair_style=None,
+    sleeve_uid="uid-abc-123",
+    recognition_memory=None,
+):
+    """Build a mock character with identity methods bound."""
+    from typeclasses.characters import Character
+
+    char = MagicMock(spec=Character)
+    char.key = key
+    char.sex = sex
+    char.height = height
+    char.build = build
+    char.sdesc_keyword = sdesc_keyword
+    char.hair_color = hair_color
+    char.hair_style = hair_style
+    char.sleeve_uid = sleeve_uid
+    char.recognition_memory = (
+        recognition_memory if recognition_memory is not None else {}
+    )
+
+    # Hands / clothing
+    char.hands = {"left": None, "right": None}
+    char.worn_items = {}
+
+    def _coverage_map():
+        coverage = {}
+        if char.worn_items:
+            for loc, items in char.worn_items.items():
+                if items:
+                    coverage[loc] = items[0]
+        return coverage
+
+    char._build_clothing_coverage_map = _coverage_map
+
+    # Bind real methods
+    char.get_distinguishing_feature = (
+        lambda: Character.get_distinguishing_feature(char)
+    )
+    char.get_sdesc = lambda: Character.get_sdesc(char)
+    char.get_display_name = (
+        lambda looker=None, **kw: Character.get_display_name(
+            char, looker, **kw
+        )
+    )
+
+    # gender property
+    sex_val = (sex or "ambiguous").lower().strip()
+    if sex_val in ("male", "man", "masculine", "m"):
+        type(char).gender = PropertyMock(return_value="male")
+    elif sex_val in ("female", "woman", "feminine", "f"):
+        type(char).gender = PropertyMock(return_value="female")
+    else:
+        type(char).gender = PropertyMock(return_value="neutral")
+
+    return char
+
+
+def _make_room(contents):
+    """Build a mock room with the given contents list."""
+    room = MagicMock()
+    room.contents = contents
+    return room
+
+
+def _make_item(key="Knife"):
+    """Build a non-character item that has no msg method."""
+    item = MagicMock(spec=[])
+    item.key = key
+    return item
+
+
+# ===================================================================
+# Tests: msg_room_identity
+# ===================================================================
+
+
+class TestMsgRoomIdentity(TestCase):
+    """Tests for the msg_room_identity helper."""
+
+    def setUp(self):
+        # Actor: Jorge — tall lean man → sdesc "gaunt man"
+        self.jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        # Target: Maria — short athletic woman → sdesc "compact woman"
+        self.maria = _make_character(
+            key="Maria Santos",
+            sex="female",
+            height="short",
+            build="athletic",
+            sdesc_keyword="woman",
+            sleeve_uid="uid-maria",
+        )
+        # Observer who knows both
+        self.observer_knows_both = _make_character(
+            key="Alice Smith",
+            sex="female",
+            height="average",
+            build="average",
+            sleeve_uid="uid-alice",
+            recognition_memory={
+                "uid-jorge": {"assigned_name": "Jorge"},
+                "uid-maria": {"assigned_name": "Maria"},
+            },
+        )
+        # Observer who knows neither
+        self.observer_knows_neither = _make_character(
+            key="Bob Doe",
+            sex="male",
+            height="average",
+            build="average",
+            sleeve_uid="uid-bob",
+            recognition_memory={},
+        )
+
+    def test_per_observer_rendering(self):
+        """Each observer sees appropriate names for actor and target."""
+        room = _make_room([
+            self.jorge, self.maria,
+            self.observer_knows_both,
+            self.observer_knows_neither,
+        ])
+
+        msg_room_identity(
+            location=room,
+            template="{actor} attacks {target} with a knife!",
+            char_refs={"actor": self.jorge, "target": self.maria},
+            exclude=[self.jorge, self.maria],
+        )
+
+        # Observer who knows both should see assigned names
+        self.observer_knows_both.msg.assert_called_once()
+        msg_text = self.observer_knows_both.msg.call_args[1].get(
+            "text", self.observer_knows_both.msg.call_args[0][0]
+            if self.observer_knows_both.msg.call_args[0] else None
+        )
+        self.assertIn("Jorge", msg_text)
+        self.assertIn("Maria", msg_text)
+        self.assertIn("with a knife!", msg_text)
+
+        # Observer who knows neither should see sdescs
+        self.observer_knows_neither.msg.assert_called_once()
+        msg_text2 = self.observer_knows_neither.msg.call_args[1].get(
+            "text", self.observer_knows_neither.msg.call_args[0][0]
+            if self.observer_knows_neither.msg.call_args[0] else None
+        )
+        self.assertIn("gaunt man", msg_text2)
+        self.assertIn("compact woman", msg_text2)
+
+    def test_exclude_works(self):
+        """Excluded characters should not receive the message."""
+        room = _make_room([
+            self.jorge, self.maria, self.observer_knows_both,
+        ])
+
+        msg_room_identity(
+            location=room,
+            template="{actor} waves.",
+            char_refs={"actor": self.jorge},
+            exclude=[self.jorge],
+        )
+
+        self.jorge.msg.assert_not_called()
+        self.maria.msg.assert_called_once()
+        self.observer_knows_both.msg.assert_called_once()
+
+    def test_items_skipped(self):
+        """Non-character objects without msg are skipped gracefully."""
+        item = _make_item("Sword")
+        room = _make_room([self.jorge, item, self.observer_knows_both])
+
+        # Should not raise
+        msg_room_identity(
+            location=room,
+            template="{actor} looks around.",
+            char_refs={"actor": self.jorge},
+            exclude=[self.jorge],
+        )
+
+        self.observer_knows_both.msg.assert_called_once()
+
+    def test_kwargs_passed_through(self):
+        """Extra kwargs (like type) are passed to observer.msg()."""
+        room = _make_room([self.jorge, self.observer_knows_both])
+
+        msg_room_identity(
+            location=room,
+            template="{actor} says something.",
+            char_refs={"actor": self.jorge},
+            exclude=[self.jorge],
+            type="say",
+        )
+
+        call_kwargs = self.observer_knows_both.msg.call_args[1]
+        self.assertEqual(call_kwargs.get("type"), "say")
+
+    def test_no_exclude(self):
+        """All room contents receive message when exclude is None."""
+        room = _make_room([self.jorge, self.maria])
+
+        msg_room_identity(
+            location=room,
+            template="{actor} stretches.",
+            char_refs={"actor": self.jorge},
+        )
+
+        self.jorge.msg.assert_called_once()
+        self.maria.msg.assert_called_once()
+
+    def test_single_placeholder(self):
+        """Template with only one character reference works."""
+        room = _make_room([self.jorge, self.observer_knows_both])
+
+        msg_room_identity(
+            location=room,
+            template="{actor} leaves north.",
+            char_refs={"actor": self.jorge},
+            exclude=[self.jorge],
+        )
+
+        msg_text = self.observer_knows_both.msg.call_args[1].get(
+            "text", self.observer_knows_both.msg.call_args[0][0]
+            if self.observer_knows_both.msg.call_args[0] else None
+        )
+        self.assertIn("Jorge", msg_text)
+        self.assertIn("leaves north.", msg_text)
+
+
+# ===================================================================
+# Tests: CmdSay
+# ===================================================================
+
+
+class TestCmdSay(TestCase):
+    """Tests for the identity-aware say command."""
+
+    def _run_say(self, caller, speech, room_contents):
+        """Helper to invoke CmdSay.func() with mocked state."""
+        from commands.CmdCommunication import CmdSay
+
+        cmd = CmdSay()
+        cmd.caller = caller
+        cmd.args = f" {speech}"
+        cmd.cmdstring = "say"
+
+        room = MagicMock()
+        room.contents = room_contents
+        caller.location = room
+
+        cmd.func()
+
+    def test_actor_sees_you_say(self):
+        """Actor should see 'You say, \"...\"'."""
+        jorge = _make_character(
+            key="Jorge Jackson", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice", sex="female", height="average",
+            build="average", sleeve_uid="uid-alice",
+        )
+        self._run_say(jorge, "Hello!", [jorge, observer])
+
+        jorge.msg.assert_called_once_with('You say, "Hello!"')
+
+    def test_observer_sees_sdesc(self):
+        """Observer who doesn't know the speaker sees sdesc."""
+        jorge = _make_character(
+            key="Jorge Jackson", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice", sex="female", height="average",
+            build="average", sleeve_uid="uid-alice",
+            recognition_memory={},
+        )
+        self._run_say(jorge, "Hello!", [jorge, observer])
+
+        # Observer should see sdesc-based name
+        observer.msg.assert_called_once()
+        call_kwargs = observer.msg.call_args[1]
+        msg_text = call_kwargs.get("text", "")
+        self.assertIn("says,", msg_text)
+        self.assertIn("gaunt man", msg_text.lower())
+        self.assertIn('"Hello!"', msg_text)
+
+    def test_observer_sees_assigned_name(self):
+        """Observer who has assigned a name sees that name."""
+        jorge = _make_character(
+            key="Jorge Jackson", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice", sex="female", height="average",
+            build="average", sleeve_uid="uid-alice",
+            recognition_memory={
+                "uid-jorge": {"assigned_name": "Jorge"},
+            },
+        )
+        self._run_say(jorge, "Hello!", [jorge, observer])
+
+        call_kwargs = observer.msg.call_args[1]
+        msg_text = call_kwargs.get("text", "")
+        self.assertIn("Jorge", msg_text)
+        self.assertIn("says,", msg_text)
+
+    def test_say_passes_type_metadata(self):
+        """Say messages include type='say' for death filter compat."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice", sex="female", height="average",
+            build="average", sleeve_uid="uid-alice",
+        )
+        self._run_say(jorge, "Hello!", [jorge, observer])
+
+        call_kwargs = observer.msg.call_args[1]
+        self.assertEqual(call_kwargs.get("type"), "say")
+
+    def test_say_no_args(self):
+        """Say with no arguments shows help."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall",
+            build="lean", sleeve_uid="uid-jorge",
+        )
+        from commands.CmdCommunication import CmdSay
+
+        cmd = CmdSay()
+        cmd.caller = jorge
+        cmd.args = ""
+        cmd.cmdstring = "say"
+        jorge.location = MagicMock()
+
+        cmd.func()
+
+        jorge.msg.assert_called_once_with("Say what?")
+
+
+# ===================================================================
+# Tests: CmdWhisper
+# ===================================================================
+
+
+class TestCmdWhisper(TestCase):
+    """Tests for the identity-aware whisper command."""
+
+    def _run_whisper(self, caller, args, room_contents, search_result=None):
+        """Helper to invoke CmdWhisper.func()."""
+        from commands.CmdCommunication import CmdWhisper
+
+        cmd = CmdWhisper()
+        cmd.caller = caller
+        cmd.args = f" {args}"
+        cmd.cmdstring = "whisper"
+
+        room = MagicMock()
+        room.contents = room_contents
+        caller.location = room
+
+        # Mock caller.search to return the target
+        if search_result is not None:
+            caller.search = MagicMock(return_value=search_result)
+
+        cmd.func()
+
+    def test_actor_sees_own_whisper(self):
+        """Actor sees 'You whisper to <target>, \"...\"'."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+            recognition_memory={
+                "uid-maria": {"assigned_name": "Maria"},
+            },
+        )
+        maria = _make_character(
+            key="Maria Santos", sex="female", height="short",
+            build="athletic", sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
+        self._run_whisper(
+            jorge, "Maria = Meet me later.",
+            [jorge, maria], search_result=maria,
+        )
+
+        # Actor should see whisper to target
+        jorge.msg.assert_called_once()
+        actor_msg = jorge.msg.call_args[0][0]
+        self.assertIn("You whisper to", actor_msg)
+        self.assertIn("Maria", actor_msg)
+        self.assertIn("Meet me later.", actor_msg)
+
+    def test_target_hears_message(self):
+        """Target receives the full whisper with speaker's name."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        maria = _make_character(
+            key="Maria Santos", sex="female", height="short",
+            build="athletic", sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
+        self._run_whisper(
+            jorge, "Maria = Secret stuff",
+            [jorge, maria], search_result=maria,
+        )
+
+        maria.msg.assert_called_once()
+        call_kwargs = maria.msg.call_args[1]
+        msg_text = call_kwargs.get("text", "")
+        self.assertIn("whispers to you", msg_text)
+        self.assertIn("Secret stuff", msg_text)
+
+    def test_observer_sees_no_content(self):
+        """Room observers see that a whisper happened but NOT the content."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        maria = _make_character(
+            key="Maria Santos", sex="female", height="short",
+            build="athletic", sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
+        observer = _make_character(
+            key="Bob", sex="male", height="average",
+            build="average", sleeve_uid="uid-bob",
+        )
+        self._run_whisper(
+            jorge, "Maria = Top secret",
+            [jorge, maria, observer], search_result=maria,
+        )
+
+        observer.msg.assert_called_once()
+        call_kwargs = observer.msg.call_args[1]
+        msg_text = call_kwargs.get("text", "")
+        self.assertIn("whispers something to", msg_text)
+        self.assertNotIn("Top secret", msg_text)
+
+    def test_whisper_passes_type_metadata(self):
+        """Whisper messages include type='whisper' for death filter."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        maria = _make_character(
+            key="Maria", sex="female", height="short",
+            build="athletic", sleeve_uid="uid-maria",
+        )
+        observer = _make_character(
+            key="Bob", sex="male", height="average",
+            build="average", sleeve_uid="uid-bob",
+        )
+        self._run_whisper(
+            jorge, "Maria = Hello",
+            [jorge, maria, observer], search_result=maria,
+        )
+
+        # Check target message type
+        target_kwargs = maria.msg.call_args[1]
+        self.assertEqual(target_kwargs.get("type"), "whisper")
+
+        # Check observer message type
+        obs_kwargs = observer.msg.call_args[1]
+        self.assertEqual(obs_kwargs.get("type"), "whisper")
+
+    def test_whisper_no_equals(self):
+        """Whisper without = shows usage."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall",
+            build="lean", sleeve_uid="uid-jorge",
+        )
+        from commands.CmdCommunication import CmdWhisper
+
+        cmd = CmdWhisper()
+        cmd.caller = jorge
+        cmd.args = " just talking"
+        cmd.cmdstring = "whisper"
+        jorge.location = MagicMock()
+
+        cmd.func()
+        jorge.msg.assert_called_once_with(
+            "Usage: whisper <target> = <message>"
+        )
+
+
+# ===================================================================
+# Tests: CmdEmote
+# ===================================================================
+
+
+class TestCmdEmote(TestCase):
+    """Tests for the identity-aware emote command."""
+
+    def _run_emote(self, caller, action, room_contents):
+        """Helper to invoke CmdEmote.func()."""
+        from commands.CmdCommunication import CmdEmote
+
+        cmd = CmdEmote()
+        cmd.caller = caller
+        cmd.args = f" {action}"
+        cmd.cmdstring = "emote"
+
+        room = MagicMock()
+        room.contents = room_contents
+        caller.location = room
+
+        cmd.func()
+
+    def test_actor_sees_real_name(self):
+        """Actor sees their own real name, NOT 'You'."""
+        jorge = _make_character(
+            key="Jorge Jackson", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice", sex="female", height="average",
+            build="average", sleeve_uid="uid-alice",
+        )
+        self._run_emote(jorge, "leans against the wall.", [jorge, observer])
+
+        jorge.msg.assert_called_once()
+        actor_msg = jorge.msg.call_args[0][0]
+        self.assertIn("Jorge Jackson", actor_msg)
+        self.assertIn("leans against the wall.", actor_msg)
+        self.assertNotIn("You", actor_msg)
+
+    def test_observer_sees_sdesc(self):
+        """Observer who doesn't know actor sees sdesc."""
+        jorge = _make_character(
+            key="Jorge Jackson", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice", sex="female", height="average",
+            build="average", sleeve_uid="uid-alice",
+            recognition_memory={},
+        )
+        self._run_emote(jorge, "leans against the wall.", [jorge, observer])
+
+        call_kwargs = observer.msg.call_args[1]
+        msg_text = call_kwargs.get("text", "")
+        # Should see sdesc, capitalized at start of sentence
+        self.assertIn("gaunt man", msg_text.lower())
+        self.assertIn("leans against the wall.", msg_text)
+        # First character should be uppercase (article "A")
+        self.assertTrue(msg_text[0].isupper())
+
+    def test_observer_sees_assigned_name(self):
+        """Observer who has assigned a name sees that name in emote."""
+        jorge = _make_character(
+            key="Jorge Jackson", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice", sex="female", height="average",
+            build="average", sleeve_uid="uid-alice",
+            recognition_memory={
+                "uid-jorge": {"assigned_name": "Jorge"},
+            },
+        )
+        self._run_emote(jorge, "waves.", [jorge, observer])
+
+        call_kwargs = observer.msg.call_args[1]
+        msg_text = call_kwargs.get("text", "")
+        self.assertIn("Jorge", msg_text)
+        self.assertIn("waves.", msg_text)
+
+    def test_emote_passes_type_metadata(self):
+        """Emote messages include type='pose' for death filter."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall",
+            build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        observer = _make_character(
+            key="Alice", sex="female", height="average",
+            build="average", sleeve_uid="uid-alice",
+        )
+        self._run_emote(jorge, "nods.", [jorge, observer])
+
+        call_kwargs = observer.msg.call_args[1]
+        self.assertEqual(call_kwargs.get("type"), "pose")
+
+    def test_emote_no_args(self):
+        """Emote with no arguments shows help."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall",
+            build="lean", sleeve_uid="uid-jorge",
+        )
+        from commands.CmdCommunication import CmdEmote
+
+        cmd = CmdEmote()
+        cmd.caller = jorge
+        cmd.args = ""
+        cmd.cmdstring = "emote"
+        jorge.location = MagicMock()
+
+        cmd.func()
+        jorge.msg.assert_called_once_with("What do you want to emote?")
