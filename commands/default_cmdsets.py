@@ -25,7 +25,7 @@ from commands import CmdConsumption
 from commands import CmdMedicalItems
 from commands.CmdSpawnMob import CmdSpawnMob
 from commands.CmdBug import CmdBug
-from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
+from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious, CmdMigrateIdentity
 from commands.CmdFixCharacterOwnership import CmdFixCharacterOwnership
 from commands.combat.cmdset_combat import CombatCmdSet
 from commands.combat.special_actions import CmdAim, CmdGrapple
@@ -36,6 +36,7 @@ from commands.CmdExplosives import (
 )
 from commands.CmdGraffiti import CmdGraffiti, CmdPress
 from commands.CmdCharacter import CmdLongdesc, CmdSkintone
+from commands.CmdCharacter import CmdShortdesc, CmdAssign
 from commands.CmdArmor import CmdArmor, CmdArmorRepair, CmdSlot, CmdUnslot
 from commands.shop import CmdBuy
 
@@ -177,6 +178,10 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # Add skintone system command
         self.add(CmdSkintone())
         
+        # Add identity system commands
+        self.add(CmdShortdesc())
+        self.add(CmdAssign())
+        
         # Add clothing system commands
         self.add(CmdClothing.CmdWear())
         self.add(CmdClothing.CmdRemove())
@@ -197,6 +202,9 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # Add medical administration commands
         self.add(CmdResetMedical())
         self.add(CmdMedicalAudit())
+        
+        # Add identity migration command
+        self.add(CmdMigrateIdentity())
         
         # Add medical state testing commands (using real medical system)
         self.add(CmdTestDeath())
