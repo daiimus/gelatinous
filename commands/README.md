@@ -8,11 +8,12 @@ Game commands organized by functionality. Each module implements one or more Eve
 |--------|-------------|
 | `combat/` | Combat command subpackage (attack, movement, grapple, aim, etc.) |
 | `charcreate.py` | EvMenu-based character creation flow |
-| `CmdAdmin.py` | Administrative and builder commands |
+| `CmdAdmin.py` | Administrative and builder commands (`@keywords` custom keyword catalog) |
 | `CmdArmor.py` | Armor inspection and coverage display |
 | `CmdBug.py` | In-game bug reporting |
-| `CmdCharacter.py` | Character sheet, stats, and appearance |
+| `CmdCharacter.py` | Character sheet, stats, appearance, and `@shortdesc` keyword management |
 | `CmdClothing.py` | Wearing and removing clothing |
+| `CmdCommunication.py` | Identity-aware say, whisper, emote, and dot-pose commands |
 | `CmdConsumption.py` | Eating and drinking |
 | `CmdExplosives.py` | Grenade and explosive device commands |
 | `CmdFixCharacterOwnership.py` | Admin tool for repairing character ownership |

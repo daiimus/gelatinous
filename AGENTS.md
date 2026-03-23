@@ -50,6 +50,14 @@ Core player experiences: exploration, tactical combat, grappling/restraint mecha
 | Work on death/corpses | `typeclasses/corpse.py`, `typeclasses/deathscroll.py` |
 | Change room behavior | `typeclasses/rooms.py` |
 | Find object prototypes | `world/prototypes.py` |
+| Modify identity/recognition/sdescs/keywords | `world/identity.py` |
+| Change identity message routing | `world/identity_utils.py` |
+| Fix target resolution/search | `world/search.py` |
+| Modify emote/dot-pose tokenizer/renderer | `world/emote.py` |
+| Add/change social templates | `world/emote_templates.py` |
+| Fix grammar engine (conjugation, articles) | `world/grammar.py` |
+| Modify say/whisper/emote/dot-pose commands | `commands/CmdCommunication.py` |
+| Change @shortdesc keyword management | `commands/CmdCharacter.py` |
 | Understand a system before implementing | `specs/*.md` |
 
 ### When Stuck

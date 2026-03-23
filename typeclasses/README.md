@@ -18,7 +18,7 @@ characters.py          # Character typeclass (G.R.I.M. stats, combat, medical)
 | Module | Description |
 |--------|-------------|
 | `accounts.py` | Player accounts with email login and multi-character support |
-| `characters.py` | Character typeclass with G.R.I.M. stats, combat, and medical integration |
+| `characters.py` | Character typeclass with G.R.I.M. stats, combat, medical, and identity system (`get_display_name`, `get_sdesc`, identity-aware search override) |
 | `appearance_mixin.py` | Character appearance and longdesc generation |
 | `armor_mixin.py` | Armor value calculation and body coverage |
 | `clothing_mixin.py` | Clothing wear/remove logic and layering |

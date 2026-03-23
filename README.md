@@ -38,6 +38,9 @@ These attributes drive contested rolls, skill checks, and combat resolution thro
 - **96 Weapon Message Templates** -- Three-perspective combat narration (attacker, victim, observer) per weapon type
 - **GMCP WebSocket** -- Custom WebSocket handler speaking GMCP wire format for MUD client compatibility
 - **Web Authentication** -- Email-based login, Discourse SSO integration, Cloudflare Turnstile CAPTCHA
+- **Identity & Recognition** -- Sleeve-based physical identity with short descriptions, stranger perception, manual name assignment, and custom keyword catalog
+- **Emote, Pose & Communication** -- Dot-pose engine, traditional emote with character references, identity-aware say/whisper, social templates, and perspective-transformed pronouns
+- **Grammar Engine** -- Third-person verb conjugation, article selection (a/an), first-letter capitalization, and sdesc keyword validation
 - **Natural Language Parsing** -- Ordinal number recognition and flexible command parsing
 
 ## Quick Start
@@ -63,8 +66,9 @@ gelatinous/
 │   ├── CmdAdmin.py                # Administrative commands
 │   ├── CmdArmor.py                # Armor inspection and management
 │   ├── CmdBug.py                  # In-game bug reporting
-│   ├── CmdCharacter.py            # Character sheet and stats
-│   ├── CmdClothing.py             # Clothing and wearing
+│   ├── CmdCharacter.py                # Character sheet, stats, and @shortdesc
+│   ├── CmdClothing.py                 # Clothing and wearing
+│   ├── CmdCommunication.py            # Identity-aware say, whisper, emote, dot-pose
 │   ├── CmdConsumption.py          # Eating and drinking
 │   ├── CmdExplosives.py           # Grenade and explosive commands
 │   ├── CmdFixCharacterOwnership.py # Admin character ownership repair
@@ -122,9 +126,16 @@ gelatinous/
 │   │   └── time_system.py            # In-game time tracking
 │   ├── shop/                      # Shop system
 │   │   └── utils.py                   # Pricing and inventory logic
+│   ├── tests/                     # Test suite (identity, emote, communication)
 │   ├── utils/                     # Shared utilities
 │   │   └── boxtable.py               # Table formatting
+│   ├── emote.py                   # Dot-pose/emote tokenizer and renderer
+│   ├── emote_templates.py         # Social template commands
+│   ├── grammar.py                 # Grammar engine (conjugation, articles, capitalization)
+│   ├── identity.py                # Identity system (sdescs, recognition, keywords, catalog)
+│   ├── identity_utils.py          # Identity message helpers (msg_room_identity)
 │   ├── namebank.py                # Name generation (first/last names)
+│   ├── search.py                  # Identity-aware target resolution
 │   └── prototypes.py             # Object prototypes (weapons, items, NPCs)
 ├── server/                    # Server configuration
 │   └── conf/
@@ -147,7 +158,7 @@ gelatinous/
 │   └── templates/                 # HTML templates
 ├── tests/                     # Test suite
 │   └── test_gmcp_websocket.py     # GMCP wire format validation
-├── specs/                     # Design specifications (36 documents)
+├── specs/                     # Design specifications (37 documents)
 └── AGENTS.md                  # Agent reference for combat system architecture
 ```
 
@@ -168,6 +179,10 @@ gelatinous/
 **GMCP WebSocket** -- Custom WebSocket protocol handler (`server/conf/gmcp_websocket.py`) that speaks GMCP wire format when clients negotiate the `gmcp.mudstandards.org` subprotocol, with fallback to Evennia's standard JSON protocol for browser clients. Sends game text as BINARY frames with ANSI escape codes and OOB data as TEXT frames.
 
 **Web and Authentication** -- Email-based login system replacing Evennia's default username auth. Includes Discourse SSO for forum integration, Cloudflare Turnstile CAPTCHA for registration, and a security middleware chain (CSP headers, X-Frame-Options, SecurityMiddleware).
+
+**Identity & Recognition** -- Sleeve-based physical identity system where characters appear as short descriptions ("a lanky man in a leather jacket") to strangers. Players manually assign names to recognized characters via `assign <target> as <name>`. Short descriptions are composed from auto-derived physical descriptors (height x build table), player-selected keywords (curated list or custom words), and auto-derived distinguishing features (wielded weapons, clothing, hair). Recognition memory is stored per `sleeve_uid` for flash-clone compatibility. The `@shortdesc` command manages keyword selection, with a `CustomKeywordCatalog` tracking novel custom keywords. Identity-aware `get_display_name()` renders assigned names for recognized characters and sdescs for strangers across all game output.
+
+**Communication** -- Identity-aware emote, pose, and communication system. Dot-pose (`.emote`) provides a full tokenizer with verb markers, pronoun tokens, speech blocks, and character references that resolve to identity-appropriate names per observer. Traditional emote supports character reference resolution. Say and whisper commands render speaker identity per-observer. Social templates provide room-wide narrative actions. The grammar engine handles third-person verb conjugation, a/an article selection, and first-letter capitalization.
 
 ### Design Principles
 
@@ -202,21 +217,37 @@ gelatinous/
 - Email-based authentication with Discourse SSO
 - Cloudflare Turnstile CAPTCHA integration
 - Security middleware (CSP, clickjacking protection)
+- Identity & Recognition system (Phases 1-2 complete)
+- Sleeve-based physical identity with short descriptions
+- Manual name assignment and recognition memory
+- Custom sdesc keywords with admin catalog
+- Identity-aware target resolution (assigned names and sdescs)
+- Dot-pose engine with verb markers, pronouns, speech blocks, and character references
+- Traditional emote with character reference resolution
+- Identity-aware say and whisper commands
+- Social template system for narrative actions
+- Grammar engine (verb conjugation, articles, capitalization)
+- 484+ automated tests
 
 ### In Development
 
+- Identity Phase 3: Disguise system (`appear` command, disguise mechanics)
+- Identity Phase 4: Cybernetics (cyberbrain, digital ID, memory backup)
+- Identity Phase 5: Resonance mechanics (memory decay, auto-recognition, perception checks)
 - Additional weapon types and combat moves
 - Expanded medical conditions and treatments
 - Economic systems and trade
 - Quest and narrative frameworks
 - Character progression systems
 
-See `specs/` for 36 detailed specifications covering implemented and planned features.
+See `specs/` for 37 detailed specifications covering implemented and planned features.
 
 ## Documentation
 
 - **[AGENTS.md](AGENTS.md)** -- Combat system architecture, patterns, and agent reference. The most comprehensive technical document in the project.
-- **[specs/](specs/)** -- 36 design specifications covering combat, medical, grappling, proximity, shops, explosives, web integration, and planned features.
+- **[specs/](specs/)** -- 37 design specifications covering combat, medical, identity, communication, grappling, proximity, shops, explosives, web integration, and planned features.
+- **[specs/IDENTITY_RECOGNITION_SPEC.md](specs/IDENTITY_RECOGNITION_SPEC.md)** -- Sleeve-based identity and recognition system design.
+- **[specs/EMOTE_POSE_SPEC.md](specs/EMOTE_POSE_SPEC.md)** -- Emote, pose, and communication system with identity integration.
 
 ## Contributing
 

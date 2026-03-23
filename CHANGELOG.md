@@ -2,6 +2,34 @@
 
 ## [Unreleased]
 
+### Added - Identity & Recognition System (PRs #79-96, #105)
+- **Sleeve-based physical identity** -- Characters appear as short descriptions to strangers (e.g. "a lanky man in a leather jacket")
+- Short description composition: auto-derived physical descriptor (height x build) + player-selected keyword + auto-derived distinguishing feature (wielded weapon > clothing > hair)
+- Manual name assignment via `assign <target> as <name>` command
+- `@shortdesc` command with EvMenu keyword selection and instant `@shortdesc <word>` mode
+- Recognition memory storage per `sleeve_uid` for flash-clone compatibility
+- Identity-aware `get_display_name()` pipeline: assigned name > sdesc > "someone" fallback
+- Identity-aware target resolution: search by assigned names and sdescs with word-boundary matching and ordinal support
+- Identity-aware `say`, `whisper`, and `emote` commands with per-observer perspective transformation
+- `msg_room_identity()` helper for observer-specific character name rendering in room messages
+- Identity conversion across all game commands: combat, inventory, medical, environmental, social, and admin
+- Custom sdesc keywords: any alphabetic word (2-20 chars) beyond the curated approved list
+- `CustomKeywordCatalog` singleton script tracking custom keyword usage with first/last attribution
+- `@keywords` admin command (Builder+) to view catalog sorted by usage count and clear it
+- Chargen integration: height, build, hair color/style, and sdesc keyword selection
+- Character attributes: `db.sleeve_uid`, `db.height`, `db.build`, `db.hair_color`, `db.hair_style`, `db.sdesc_keyword`, `db.recognition_memory`
+
+### Added - Emote, Pose & Communication System (PRs #97-100)
+- **Grammar engine** (`world/grammar.py`) -- Third-person verb conjugation, a/an article selection, first-letter capitalization, sdesc keyword validation
+- **Dot-pose engine** (`.emote` syntax) -- Full tokenizer with 5 token types: TextToken, VerbToken, PronounToken, SpeechToken, CharRefToken
+- Dot-pose verb markers (`~verb`), pronoun tokens, speech blocks with quotation detection, and character reference resolution
+- Traditional emote override with character reference resolution via `@` prefix
+- Social template system for room-wide narrative actions (`world/emote_templates.py`)
+- Per-observer rendering pipeline: each observer sees identity-appropriate names for all referenced characters
+
+### Added - Magic String Cleanup (PRs #76-78)
+- Centralized remaining magic strings into constants across combat, medical, and command modules
+
 ### Added - Website & Authentication (October 2025)
 - **Cloudflare Turnstile Integration** - CAPTCHA protection for registration
   - Optional configuration for GitHub forks (gracefully degrades when not configured)
@@ -54,6 +82,15 @@
   - `CmdWrest` - Take objects from other characters
   - Grit-based contest system with grapple integration
   - Combat state validation and cooldown mechanics
+
+### Fixed - Identity & Communication (PRs #86-88, #101-104)
+- Fixed Builder bypass in identity search: builders still use identity pipeline with relaxed fallback
+- Fixed article capitalization in sdescs at sentence start
+- Added identity attributes (`sleeve_uid`, height, build, hair, keyword) to `@spawnmob` command
+- Fixed crash when Exit objects appeared in room contents during emote character matching
+- Fixed 3 emote character reference matching bugs: capital-gate for descriptor-only candidates, ordinal pre-pass resolution, out-of-range ordinal fallthrough
+- Fixed pyright type-narrowing warnings in emote tests (`assert isinstance()` pattern)
+- Removed 6 sdesc keywords: lesbian, dyke, twink, fag, femboy, queer
 
 ### Changed
 - Updated project documentation to reflect current state
