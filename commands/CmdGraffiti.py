@@ -9,6 +9,7 @@ from evennia import Command, create_object
 from evennia.utils import delay
 from typeclasses.items import SprayCanItem, SolventCanItem
 from typeclasses.objects import GraffitiObject, BloodPool
+from world.identity_utils import msg_room_identity
 import random
 
 # Map color names to Evennia ANSI color codes
@@ -171,15 +172,19 @@ class CmdGraffiti(Command):
         # Create appropriate message based on whether can ran out
         if ran_out_mid_message:
             self.caller.msg(f"You start to spray on the wall with a {can_name_for_message}, but it runs out of paint mid-message! You manage to spray '{colored_message}' before the can crumples up and becomes useless.")
-            self.caller.location.msg_contents(
-                f"{self.caller.name} starts to spray on the wall, but their can runs out of paint mid-message, managing only '{colored_message}' before tossing the empty can aside.",
-                exclude=self.caller
+            msg_room_identity(
+                location=self.caller.location,
+                template=f"{{actor}} starts to spray on the wall, but their can runs out of paint mid-message, managing only '{colored_message}' before tossing the empty can aside.",
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
             )
         else:
             self.caller.msg(f"You spray '{colored_message}' on the wall with a {can_name_for_message}.")
-            self.caller.location.msg_contents(
-                f"{self.caller.name} sprays '{colored_message}' on the wall.",
-                exclude=self.caller
+            msg_room_identity(
+                location=self.caller.location,
+                template=f"{{actor}} sprays '{colored_message}' on the wall.",
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
             )
     
     def _handle_clean_with_solvent(self, solvent_can):
@@ -257,9 +262,11 @@ class CmdGraffiti(Command):
             
             # Immediate action message
             self.caller.msg(f"You apply solvent to the {item_desc}, {action_desc}.")
-            self.caller.location.msg_contents(
-                f"{self.caller.name} applies solvent to the {item_desc}, {action_desc}.",
-                exclude=self.caller
+            msg_room_identity(
+                location=self.caller.location,
+                template=f"{{actor}} applies solvent to the {item_desc}, {action_desc}.",
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
             )
             
             # Delayed atmospheric message to everyone including the player
@@ -278,9 +285,11 @@ class CmdGraffiti(Command):
             
         else:
             self.caller.msg("The solvent doesn't seem to affect anything here.")
-            self.caller.location.msg_contents(
-                f"{self.caller.name} scrubs at the surfaces with solvent.",
-                exclude=self.caller
+            msg_room_identity(
+                location=self.caller.location,
+                template="{actor} scrubs at the surfaces with solvent.",
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
             )
 
 
@@ -387,7 +396,9 @@ class CmdPress(Command):
         colored_name = f"|{color_code}{new_color}|n"
         
         self.caller.msg(f"You press the {colored_name} button on {spray_can.get_display_name(self.caller)}.")
-        self.caller.location.msg_contents(
-            f"{self.caller.name} presses a button on their spray can.",
-            exclude=self.caller
+        msg_room_identity(
+            location=self.caller.location,
+            template="{actor} presses a button on their spray can.",
+            char_refs={"actor": self.caller},
+            exclude=[self.caller],
         )

@@ -28,8 +28,11 @@ from world.combat.utils import (
     clear_aim_state,
     get_numeric_stat,
     standard_roll,
+    get_display_name_safe,
 )
 from world.combat.handler import get_or_create_combat
+from world.grammar import capitalize_first
+from world.identity_utils import msg_room_identity
 
 # Module-level cache for the Splattercast debug channel
 _splattercast_cache = None
@@ -151,7 +154,7 @@ class CmdJump(Command):
                 from world.combat.grappling import get_grappled_by
                 grappler = get_grappled_by(handler, caller_entry)
                 if grappler:
-                    self.caller.msg(f"|rYou cannot perform heroic sacrifices while being grappled by {grappler.key}!|n")
+                    self.caller.msg(f"|rYou cannot perform heroic sacrifices while being grappled by {get_display_name_safe(grappler, self.caller)}!|n")
                     splattercast.msg(f"JUMP_SACRIFICE_BLOCKED: {self.caller.key} attempted sacrifice while grappled by {grappler.key}")
                     return
         
@@ -176,7 +179,7 @@ class CmdJump(Command):
         if getattr(explosive.ndb, "sacrifice_in_progress", False):
             current_hero = getattr(explosive.ndb, "current_hero", "someone")
             if hasattr(current_hero, 'key'):
-                hero_name = current_hero.key
+                hero_name = get_display_name_safe(current_hero, self.caller)
             else:
                 hero_name = str(current_hero)
             self.caller.msg(f"{explosive.key} is already being heroically tackled by {hero_name}!")
@@ -243,12 +246,26 @@ class CmdJump(Command):
         
         # Immediate dramatic messaging - hint at the grappling situation
         if grappled_victim_preview and grappled_victim_preview.location == self.caller.location:
-            self.caller.location.msg_contents(
-                f"|R{self.caller.key} makes the ultimate sacrifice, leaping onto {self.explosive_name} while still holding {grappled_victim_preview.key}!|n"
+            msg_room_identity(
+                location=self.caller.location,
+                template=(
+                    "|R{actor} makes the ultimate sacrifice, leaping "
+                    f"onto {self.explosive_name} while still holding "
+                    "{victim}!|n"
+                ),
+                char_refs={
+                    "actor": self.caller,
+                    "victim": grappled_victim_preview,
+                },
             )
         else:
-            self.caller.location.msg_contents(
-                f"|R{self.caller.key} makes the ultimate sacrifice, leaping onto {self.explosive_name}!|n"
+            msg_room_identity(
+                location=self.caller.location,
+                template=(
+                    "|R{actor} makes the ultimate sacrifice, leaping "
+                    f"onto {self.explosive_name}!|n"
+                ),
+                char_refs={"actor": self.caller},
             )
         
         # Get blast damage for real explosions
@@ -284,10 +301,20 @@ class CmdJump(Command):
                     shield_used = True
                     
                     # Send cruel shield messages
-                    self.caller.msg(f"|RYou instinctively use {grappled_victim.key} to shield yourself from the blast!|n")
-                    grappled_victim.msg(f"|RYou are forced between {self.caller.key} and the explosion!|n")
-                    observer_msg = f"|R{self.caller.key} uses {grappled_victim.key} as a human shield against their own 'heroic' sacrifice!|n"
-                    self.caller.location.msg_contents(observer_msg, exclude=[self.caller, grappled_victim])
+                    self.caller.msg(f"|RYou instinctively use {get_display_name_safe(grappled_victim, self.caller)} to shield yourself from the blast!|n")
+                    grappled_victim.msg(f"|RYou are forced between {capitalize_first(get_display_name_safe(self.caller, grappled_victim))} and the explosion!|n")
+                    msg_room_identity(
+                        location=self.caller.location,
+                        template=(
+                            "|R{actor} uses {victim} as a human shield "
+                            "against their own 'heroic' sacrifice!|n"
+                        ),
+                        char_refs={
+                            "actor": self.caller,
+                            "victim": grappled_victim,
+                        },
+                        exclude=[self.caller, grappled_victim],
+                    )
                     
                     # Cruel damage distribution using medical system
                     victim_alive_before = not grappled_victim.is_dead()
@@ -303,7 +330,7 @@ class CmdJump(Command):
                     
                     # Check if victim died and add guilt messaging
                     if not victim_alive_after and victim_alive_before:
-                        self.caller.msg(f"|RYour 'heroic' sacrifice just killed {grappled_victim.key}... some hero you are.|n")
+                        self.caller.msg(f"|RYour 'heroic' sacrifice just killed {get_display_name_safe(grappled_victim, self.caller)}... some hero you are.|n")
                         splattercast.msg(f"JUMP_SACRIFICE_VICTIM_DEATH: {grappled_victim.key} died from blast shield damage caused by {self.caller.key}")
                     
                     splattercast.msg(f"JUMP_SACRIFICE_CRUEL: {self.caller.key} used {grappled_victim.key} as blast shield - victim took {blast_damage * 2}, hero took {hero_damage}")
@@ -343,8 +370,17 @@ class CmdJump(Command):
                 
                 # Revelation message - varies based on whether shield was used
                 if shield_used:
-                    self.caller.location.msg_contents(
-                        f"|R{self.explosive_name} explodes with a deafening blast - {grappled_victim.key} bore the brunt while {self.caller.key} used them as a shield!|n"
+                    msg_room_identity(
+                        location=self.caller.location,
+                        template=(
+                            f"|R{self.explosive_name} explodes with a "
+                            "deafening blast - {victim} bore the brunt "
+                            "while {actor} used them as a shield!|n"
+                        ),
+                        char_refs={
+                            "actor": self.caller,
+                            "victim": grappled_victim,
+                        },
                     )
                     splattercast.msg(f"JUMP_SACRIFICE_SUCCESS: {self.caller.key} used {grappled_victim.key} as blast shield - victim took {blast_damage * 2}, hero took {hero_damage} (completely shielded)")
                     
@@ -356,8 +392,14 @@ class CmdJump(Command):
                         self.caller.msg("|yThe explosion breaks your hold!|n")
                         splattercast.msg(f"JUMP_SACRIFICE_GRAPPLE_BREAK: Blast broke grapple between {self.caller.key} and {grappled_victim.key}")
                 else:
-                    self.caller.location.msg_contents(
-                        f"|R{self.explosive_name} explodes with a muffled blast - {self.caller.key} absorbed the full force to protect everyone!|n"
+                    msg_room_identity(
+                        location=self.caller.location,
+                        template=(
+                            f"|R{self.explosive_name} explodes with a "
+                            "muffled blast - {actor} absorbed the full "
+                            "force to protect everyone!|n"
+                        ),
+                        char_refs={"actor": self.caller},
                     )
                     splattercast.msg(f"JUMP_SACRIFICE_SUCCESS: {self.caller.key} absorbed {blast_damage} damage from {explosive.key}, protecting all others in proximity.")
                 
@@ -397,14 +439,14 @@ class CmdJump(Command):
                 from world.combat.grappling import get_grappled_by, get_grappling_target
                 grappler = get_grappled_by(handler, caller_entry)
                 if grappler:
-                    self.caller.msg(f"|rYou cannot jump while being grappled by {grappler.key}!|n")
+                    self.caller.msg(f"|rYou cannot jump while being grappled by {get_display_name_safe(grappler, self.caller)}!|n")
                     splattercast.msg(f"JUMP_EDGE_BLOCKED: {self.caller.key} attempted edge jump while grappled by {grappler.key}")
                     return
                 
                 # Check if caller is grappling someone - take them along for the ride
                 grappled_victim = get_grappling_target(handler, caller_entry)
                 if grappled_victim:
-                    self.caller.msg(f"|yYou leap from the {self.direction} edge while dragging {grappled_victim.key} with you!|n")
+                    self.caller.msg(f"|yYou leap from the {self.direction} edge while dragging {get_display_name_safe(grappled_victim, self.caller)} with you!|n")
                     splattercast.msg(f"JUMP_EDGE_WITH_VICTIM: {self.caller.key} edge jumping while grappling {grappled_victim.key}")
         
         if not self.direction:
@@ -450,7 +492,7 @@ class CmdJump(Command):
             # Move grappled victim along if any and apply bodyshield mechanics
             if grappled_victim:
                 grappled_victim.move_to(destination, quiet=True)
-                grappled_victim.msg(f"|r{self.caller.key} drags you off the {self.direction} edge!|n")
+                grappled_victim.msg(f"|r{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} drags you off the {self.direction} edge!|n")
                 
                 # Apply bodyshield damage even without sky room using medical system
                 base_damage = exit_obj.db.fall_damage if exit_obj.db.fall_damage is not None else 8
@@ -460,8 +502,8 @@ class CmdJump(Command):
                 grappled_victim.take_damage(victim_damage, location="chest", injury_type="blunt")
                 self.caller.take_damage(grappler_damage, location="chest", injury_type="blunt")
                 
-                self.caller.msg(f"|gYou use {grappled_victim.key} to cushion your fall! You take {grappler_damage} damage while they absorb the impact.|n")
-                grappled_victim.msg(f"|r{self.caller.key} uses you as a bodyshield during the fall! You take {victim_damage} damage!|n")
+                self.caller.msg(f"|gYou use {get_display_name_safe(grappled_victim, self.caller)} to cushion your fall! You take {grappler_damage} damage while they absorb the impact.|n")
+                grappled_victim.msg(f"|r{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} uses you as a bodyshield during the fall! You take {victim_damage} damage!|n")
                 splattercast.msg(f"JUMP_EDGE_BODYSHIELD_DIRECT: {self.caller.key} used {grappled_victim.key} as bodyshield in direct fall - victim took {victim_damage}, grappler took {grappler_damage}")
             else:
                 # Normal fall damage without bodyshield using medical system
@@ -501,7 +543,7 @@ class CmdJump(Command):
             grappled_victim.move_to(sky_room, quiet=True)
             if hasattr(grappled_victim.ndb, "jump_movement_allowed"):
                 del grappled_victim.ndb.jump_movement_allowed
-            grappled_victim.msg(f"|r{self.caller.key} drags you off the {self.direction} edge!|n")
+            grappled_victim.msg(f"|r{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} drags you off the {self.direction} edge!|n")
             # Store bodyshield state to survive combat handler cleanup
             self.caller.ndb.bodyshield_victim = grappled_victim
             grappled_victim.ndb.bodyshield_grappler = self.caller
@@ -525,7 +567,11 @@ class CmdJump(Command):
         
         # Message the room they left
         if hasattr(self.caller, 'previous_location') and self.caller.previous_location:
-            self.caller.previous_location.msg_contents(f"|y{self.caller.key} leaps off the {self.direction} edge!|n")
+            msg_room_identity(
+                location=self.caller.previous_location,
+                template=f"|y{{actor}} leaps off the {self.direction} edge!|n",
+                char_refs={"actor": self.caller},
+            )
         
         splattercast.msg(f"JUMP_EDGE_AIRBORNE: {self.caller.key} successfully jumped off {self.direction} edge, now falling in {sky_room.key}")
         
@@ -545,7 +591,7 @@ class CmdJump(Command):
                 from world.combat.grappling import get_grappled_by, get_grappling_target
                 grappler = get_grappled_by(handler, caller_entry)
                 if grappler:
-                    self.caller.msg(f"|rYou cannot jump while being grappled by {grappler.key}!|n")
+                    self.caller.msg(f"|rYou cannot jump while being grappled by {get_display_name_safe(grappler, self.caller)}!|n")
                     splattercast.msg(f"JUMP_GAP_BLOCKED: {self.caller.key} attempted gap jump while grappled by {grappler.key}")
                     return
                 
@@ -554,8 +600,8 @@ class CmdJump(Command):
                 if grappled_victim:
                     from world.combat.grappling import break_grapple
                     break_grapple(handler, grappler=self.caller, victim=grappled_victim)
-                    self.caller.msg(f"|yYou release your grip on {grappled_victim.key} to focus on the gap jump!|n")
-                    grappled_victim.msg(f"|g{self.caller.key} releases their grip on you to attempt a gap jump!|n")
+                    self.caller.msg(f"|yYou release your grip on {get_display_name_safe(grappled_victim, self.caller)} to focus on the gap jump!|n")
+                    grappled_victim.msg(f"|g{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} releases their grip on you to attempt a gap jump!|n")
                     splattercast.msg(f"JUMP_GAP_GRAPPLE_BREAK: {self.caller.key} broke grapple with {grappled_victim.key} for gap jump")
                     grappled_victim = None
                 else:
@@ -662,7 +708,11 @@ class CmdJump(Command):
         
         # Message the origin room
         if origin_room:
-            origin_room.msg_contents(f"|y{self.caller.key} leaps across the {self.direction} gap!|n")
+            msg_room_identity(
+                location=origin_room,
+                template=f"|y{{actor}} leaps across the {self.direction} gap!|n",
+                char_refs={"actor": self.caller},
+            )
         
         # Brief sky room experience
         self.caller.msg(f"|CYou soar through the air across the {self.direction} gap...|n")
@@ -736,7 +786,12 @@ class CmdJump(Command):
         
         # Success messages
         self.caller.msg(f"|gYou successfully leap across the gap and land safely in {destination.key}!|n")
-        self.caller.location.msg_contents(f"|y{self.caller.key} arrives with a spectacular leap from across the gap.|n", exclude=[self.caller])
+        msg_room_identity(
+            location=self.caller.location,
+            template="|y{actor} arrives with a spectacular leap from across the gap.|n",
+            char_refs={"actor": self.caller},
+            exclude=[self.caller],
+        )
         
         splattercast.msg(f"JUMP_GAP_SUCCESS: {self.caller.key} successfully crossed gap to {destination.key}")
     
@@ -765,7 +820,11 @@ class CmdJump(Command):
         
         # Message the origin room
         if hasattr(self.caller, 'previous_location') and self.caller.previous_location:
-            self.caller.previous_location.msg_contents(f"|r{self.caller.key} attempts to leap across the {self.direction} gap but falls short!|n")
+            msg_room_identity(
+                location=self.caller.previous_location,
+                template=f"|r{{actor}} attempts to leap across the {self.direction} gap but falls short!|n",
+                char_refs={"actor": self.caller},
+            )
         
         # Failed jump experience
         self.caller.msg(f"|rYou leap for the {self.direction} gap but don't make it far enough... you're falling!|n")
@@ -805,7 +864,12 @@ class CmdJump(Command):
                 
                 # Failure messages
                 self.caller.msg(f"|rYou fall {actual_fall_distance} stories and crash into {ground_room.key}, taking {actual_fall_damage} damage!|n")
-                self.caller.location.msg_contents(f"|r{self.caller.key} crashes down from above, having failed a gap jump!|n", exclude=[self.caller])
+                msg_room_identity(
+                    location=self.caller.location,
+                    template="|r{actor} crashes down from above, having failed a gap jump!|n",
+                    char_refs={"actor": self.caller},
+                    exclude=[self.caller],
+                )
                 
                 splattercast.msg(f"JUMP_GAP_FAIL: {self.caller.key} fell {actual_fall_distance} rooms, took {actual_fall_damage} damage, landed in {ground_room.key}")
         
@@ -826,7 +890,12 @@ class CmdJump(Command):
         
         # Failure messages
         self.caller.msg(f"|rYou slip during your {fall_type} attempt and take {fall_damage} damage from the awkward landing!|n")
-        self.caller.location.msg_contents(f"|r{self.caller.key} slips during a {fall_type} attempt and crashes back down!|n", exclude=[self.caller])
+        msg_room_identity(
+            location=self.caller.location,
+            template=f"|r{{actor}} slips during a {fall_type} attempt and crashes back down!|n",
+            char_refs={"actor": self.caller},
+            exclude=[self.caller],
+        )
         
         splattercast.msg(f"JUMP_FALL_FAIL: {self.caller.key} failed {fall_type}, took {fall_damage} damage, remained in {self.caller.location.key}")
     
@@ -994,8 +1063,8 @@ class CmdJump(Command):
                     actual_grappled_victim.take_damage(victim_damage, location="chest", injury_type="blunt")
                     self.caller.take_damage(grappler_damage, location="chest", injury_type="blunt")
                     
-                    self.caller.msg(f"|gYou use {actual_grappled_victim.key} to cushion your landing! You take {grappler_damage} damage while they absorb most of the impact.|n")
-                    actual_grappled_victim.msg(f"|r{self.caller.key} uses you as a bodyshield during the landing! You take {victim_damage} damage from being crushed beneath them!|n")
+                    self.caller.msg(f"|gYou use {get_display_name_safe(actual_grappled_victim, self.caller)} to cushion your landing! You take {grappler_damage} damage while they absorb most of the impact.|n")
+                    actual_grappled_victim.msg(f"|r{capitalize_first(get_display_name_safe(self.caller, actual_grappled_victim))} uses you as a bodyshield during the landing! You take {victim_damage} damage from being crushed beneath them!|n")
                     splattercast.msg(f"JUMP_EDGE_BODYSHIELD_SUCCESS: {self.caller.key} used {actual_grappled_victim.key} as bodyshield - victim took {victim_damage}, grappler took {grappler_damage}")
                 else:
                     # Failed landing - even worse for victim, grappler still gets some protection
@@ -1005,8 +1074,8 @@ class CmdJump(Command):
                     actual_grappled_victim.take_damage(victim_damage, location="chest", injury_type="blunt")
                     self.caller.take_damage(grappler_damage, location="chest", injury_type="blunt")
                     
-                    self.caller.msg(f"|rYou crash hard but {actual_grappled_victim.key} cushions your impact! You take {grappler_damage} damage while they are crushed beneath you!|n")
-                    actual_grappled_victim.msg(f"|R{self.caller.key} uses you as a human cushion during the devastating crash! You take {victim_damage} damage from being crushed!|n")
+                    self.caller.msg(f"|rYou crash hard but {get_display_name_safe(actual_grappled_victim, self.caller)} cushions your impact! You take {grappler_damage} damage while they are crushed beneath you!|n")
+                    actual_grappled_victim.msg(f"|R{capitalize_first(get_display_name_safe(self.caller, actual_grappled_victim))} uses you as a human cushion during the devastating crash! You take {victim_damage} damage from being crushed!|n")
                     splattercast.msg(f"JUMP_EDGE_BODYSHIELD_CRASH: {self.caller.key} used {actual_grappled_victim.key} as bodyshield in crash - victim took {victim_damage}, grappler took {grappler_damage}")
                 
                 # Clean up bodyshield state
@@ -1055,21 +1124,21 @@ class CmdJump(Command):
                         
                         splattercast.msg(f"JUMP_EDGE_RESTORE_STEP5: Combat entries created with grapple state")
                         
-                        self.caller.msg(f"|yYou maintain your grip on {actual_grappled_victim.key} after the fall!|n")
-                        actual_grappled_victim.msg(f"|r{self.caller.key} still has you in their grip after that brutal fall!|n")
+                        self.caller.msg(f"|yYou maintain your grip on {get_display_name_safe(actual_grappled_victim, self.caller)} after the fall!|n")
+                        actual_grappled_victim.msg(f"|r{capitalize_first(get_display_name_safe(self.caller, actual_grappled_victim))} still has you in their grip after that brutal fall!|n")
                         splattercast.msg(f"JUMP_EDGE_GRAPPLE_RESTORED: {self.caller.key} maintains grapple on {actual_grappled_victim.key} after fall survival")
                     except Exception as e:
                         splattercast.msg(f"JUMP_EDGE_RESTORE_ERROR: Failed to restore grapple - {e}")
-                        self.caller.msg(f"|rYour grip on {actual_grappled_victim.key} was lost during the fall!|n")
+                        self.caller.msg(f"|rYour grip on {get_display_name_safe(actual_grappled_victim, self.caller)} was lost during the fall!|n")
                     
                 elif not victim_alive and grappler_alive:
                     # Victim died from fall - grappler is holding a corpse
-                    self.caller.msg(f"|RYou feel {actual_grappled_victim.key}'s body go limp in your grip - they didn't survive the fall!|n")
+                    self.caller.msg(f"|RYou feel {get_display_name_safe(actual_grappled_victim, self.caller)}'s body go limp in your grip - they didn't survive the fall!|n")
                     splattercast.msg(f"JUMP_EDGE_VICTIM_DEATH: {actual_grappled_victim.key} died from bodyshield fall damage - grapple relationship ended")
                     
                 elif not grappler_alive and victim_alive:
                     # Grappler died (somehow) - victim is free
-                    actual_grappled_victim.msg(f"|gYou feel {self.caller.key}'s grip loosen as they succumb to their injuries!|n")
+                    actual_grappled_victim.msg(f"|gYou feel {get_display_name_safe(self.caller, actual_grappled_victim)}'s grip loosen as they succumb to their injuries!|n")
                     splattercast.msg(f"JUMP_EDGE_GRAPPLER_DEATH: {self.caller.key} died from fall damage - grapple relationship ended")
                     
                 else:
@@ -1096,14 +1165,34 @@ class CmdJump(Command):
             # Arrival messages
             if actual_grappled_victim:
                 if success:
-                    self.caller.location.msg_contents(f"|g{self.caller.key} lands with {actual_grappled_victim.key} crushed beneath them!|n", exclude=[self.caller, actual_grappled_victim])
+                    msg_room_identity(
+                        location=self.caller.location,
+                        template="|g{actor} lands with {victim} crushed beneath them!|n",
+                        char_refs={"actor": self.caller, "victim": actual_grappled_victim},
+                        exclude=[self.caller, actual_grappled_victim],
+                    )
                 else:
-                    self.caller.location.msg_contents(f"|r{self.caller.key} crashes down from above with {actual_grappled_victim.key} taking the brunt of the impact!|n", exclude=[self.caller, actual_grappled_victim])
+                    msg_room_identity(
+                        location=self.caller.location,
+                        template="|r{actor} crashes down from above with {victim} taking the brunt of the impact!|n",
+                        char_refs={"actor": self.caller, "victim": actual_grappled_victim},
+                        exclude=[self.caller, actual_grappled_victim],
+                    )
             else:
                 if success:
-                    self.caller.location.msg_contents(f"|g{self.caller.key} lands with athletic grace from above!|n", exclude=[self.caller])
+                    msg_room_identity(
+                        location=self.caller.location,
+                        template="|g{actor} lands with athletic grace from above!|n",
+                        char_refs={"actor": self.caller},
+                        exclude=[self.caller],
+                    )
                 else:
-                    self.caller.location.msg_contents(f"|r{self.caller.key} crashes down from above with a bone-jarring impact!|n", exclude=[self.caller])
+                    msg_room_identity(
+                        location=self.caller.location,
+                        template="|r{actor} crashes down from above with a bone-jarring impact!|n",
+                        char_refs={"actor": self.caller},
+                        exclude=[self.caller],
+                    )
             
             # Skip turn due to fall recovery
             setattr(self.caller.ndb, NDB_SKIP_ROUND, True)

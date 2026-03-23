@@ -5,6 +5,7 @@ from world.combat.messages import get_combat_message
 from evennia.comms.models import ChannelDB
 from world.weather import weather_system
 from world.weather.weather_messages import WEATHER_INTENSITY
+from world.identity_utils import msg_room_identity
 
 class CmdHeal(Command):
     """
@@ -389,10 +390,20 @@ class CmdTestDeath(Command):
                 
                 # Theatrical entrance - the admin snaps their fingers menacingly
                 if target != caller:
-                    target.location.msg_contents(f"|R{caller.key} snaps their fingers menacingly...|n", exclude=[caller])
+                    msg_room_identity(
+                        location=target.location,
+                        template="|R{actor} snaps their fingers menacingly...|n",
+                        char_refs={"actor": caller},
+                        exclude=[caller],
+                    )
                     caller.msg(f"|RYou snap your fingers menacingly at {target.key}...|n")
                 else:
-                    caller.location.msg_contents(f"|R{caller.key} snaps their fingers menacingly at themselves...|n", exclude=[caller])
+                    msg_room_identity(
+                        location=caller.location,
+                        template="|R{actor} snaps their fingers menacingly at themselves...|n",
+                        char_refs={"actor": caller},
+                        exclude=[caller],
+                    )
                     caller.msg(f"|RYou snap your fingers menacingly at yourself...|n")
                 
                 # Import condition classes
@@ -459,7 +470,12 @@ class CmdTestDeath(Command):
                 def show_bleeding_onset():
                     target.msg(f"|RYour vision blurs as crimson begins to weep from every pore, every orifice - your eyes streaming scarlet tears as your body betrays you in the most visceral symphony of hemorrhage.|n")
                     if target.location:
-                        target.location.msg_contents(f"|R{target.key} begins bleeding from everywhere at once - eyes weeping blood, crimson pouring from nose and mouth as their skin becomes a canvas of seeping red.|n", exclude=[target])
+                        msg_room_identity(
+                            location=target.location,
+                            template="|R{actor} begins bleeding from everywhere at once - eyes weeping blood, crimson pouring from nose and mouth as their skin becomes a canvas of seeping red.|n",
+                            char_refs={"actor": target},
+                            exclude=[target],
+                        )
                 
                 # Schedule the dramatic message - only one needed
                 delay(3, show_bleeding_onset)

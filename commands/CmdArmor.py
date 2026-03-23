@@ -1116,9 +1116,14 @@ class CmdArmorRepair(Command):
         )
 
         # Send to location
-        location_msg = f"{caller.key} works on repairing {armor_item.key}."
         if caller.location:
-            caller.location.msg_contents(location_msg, exclude=[caller])
+            from world.identity_utils import msg_room_identity
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} works on repairing {armor_item.key}.",
+                char_refs={"actor": caller},
+                exclude=[caller],
+            )
 
     def _send_repair_failure_messages(
         self, caller, armor_item, repair_type, repair_tool

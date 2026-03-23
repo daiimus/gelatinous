@@ -270,6 +270,8 @@ class DeathCurtain:
             
     def _on_animation_complete(self):
         """Called when the animation completes."""
+        from world.identity_utils import msg_room_identity
+
         # Send a single, vivid death message that incorporates the cause
         if self.location:
             death_cause = None
@@ -279,25 +281,30 @@ class DeathCurtain:
             if death_cause:
                 # Create vivid death descriptions based on cause
                 if 'blood loss' in death_cause.lower():
-                    death_msg = f"|R{self.character.key}'s lifeblood pools crimson around their still form.|n"
+                    death_template = "|R{actor}'s lifeblood pools crimson around their still form.|n"
                 elif 'heart failure' in death_cause.lower():
-                    death_msg = f"|R{self.character.key} clutches their chest one last time before going still.|n"
+                    death_template = "|R{actor} clutches their chest one last time before going still.|n"
                 elif 'head' in death_cause.lower() or 'brain' in death_cause.lower():
-                    death_msg = f"|R{self.character.key}'s eyes lose focus as they collapse, unmoving.|n"
+                    death_template = "|R{actor}'s eyes lose focus as they collapse, unmoving.|n"
                 elif 'poison' in death_cause.lower():
-                    death_msg = f"|R{self.character.key} convulses violently before falling silent.|n"
+                    death_template = "|R{actor} convulses violently before falling silent.|n"
                 elif 'fire' in death_cause.lower() or 'burn' in death_cause.lower():
-                    death_msg = f"|R{self.character.key}'s charred form crumples to the ground.|n"
+                    death_template = "|R{actor}'s charred form crumples to the ground.|n"
                 elif 'stab' in death_cause.lower() or 'slash' in death_cause.lower():
-                    death_msg = f"|R{self.character.key} gasps once, crimson flowing, then goes still.|n"
+                    death_template = "|R{actor} gasps once, crimson flowing, then goes still.|n"
                 else:
                     # Generic death message with cause hint
-                    death_msg = f"|R{self.character.key} draws their final breath and grows still.|n"
+                    death_template = "|R{actor} draws their final breath and grows still.|n"
             else:
                 # No cause specified
-                death_msg = f"|R{self.character.key} draws their final breath and grows still.|n"
+                death_template = "|R{actor} draws their final breath and grows still.|n"
                 
-            self.location.msg_contents(death_msg, exclude=[self.character])
+            msg_room_identity(
+                location=self.location,
+                template=death_template,
+                char_refs={"actor": self.character},
+                exclude=[self.character],
+            )
         
         # Start death progression system after death curtain completes
         try:

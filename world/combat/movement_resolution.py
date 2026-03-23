@@ -23,11 +23,14 @@ from .constants import (
     NDB_PROXIMITY,
     NDB_PROXIMITY_UNIVERSAL,
 )
+from world.grammar import capitalize_first
+from world.identity_utils import msg_room_identity
+
 from .dice import roll_with_disadvantage, standard_roll
 from .utils import (
     get_numeric_stat, initialize_proximity_ndb,
     is_wielding_ranged_weapon, clear_aim_state,
-    get_character_by_dbref,
+    get_character_by_dbref, get_display_name_safe,
 )
 from .proximity import (
     establish_proximity, break_proximity, is_in_proximity,
@@ -159,8 +162,10 @@ def resolve_retreat(handler, char, entry):
         char.msg(
             "|gYou successfully retreat from melee combat.|n"
         )
-        char.location.msg_contents(
-            f"|y{char.key} retreats from melee combat.|n",
+        msg_room_identity(
+            location=char.location,
+            template="|y{actor} retreats from melee combat.|n",
+            char_refs={"actor": char},
             exclude=[char],
         )
         splattercast.msg(
@@ -172,8 +177,10 @@ def resolve_retreat(handler, char, entry):
         char.msg(
             "|rYour retreat fails! You remain locked in melee.|n"
         )
-        char.location.msg_contents(
-            f"|y{char.key} tries to retreat but remains engaged.|n",
+        msg_room_identity(
+            location=char.location,
+            template="|y{actor} tries to retreat but remains engaged.|n",
+            char_refs={"actor": char},
             exclude=[char],
         )
         splattercast.msg(
@@ -205,7 +212,10 @@ def resolve_advance(handler, char, entry):
     # Check if target is still in combat
     combatants_list = handler.db.combatants or []
     if not any(e.get(DB_CHAR) == target for e in combatants_list):
-        char.msg(f"|r{target.key} is no longer in combat.|n")
+        char.msg(
+            f"|r{get_display_name_safe(target, char)} is no longer in "
+            f"combat.|n"
+        )
         return
 
     splattercast.msg(
@@ -237,7 +247,8 @@ def _resolve_advance_same_room(handler, char, target, splattercast):
 
     if is_in_proximity(char, target):
         char.msg(
-            f"|yYou are already in melee proximity with {target.key}.|n"
+            f"|yYou are already in melee proximity with "
+            f"{get_display_name_safe(target, char)}.|n"
         )
         return
 
@@ -261,14 +272,19 @@ def _resolve_advance_same_room(handler, char, target, splattercast):
 
         char.msg(
             f"|gYou successfully advance to melee range with "
-            f"{target.key}.|n"
+            f"{get_display_name_safe(target, char)}.|n"
         )
         target.msg(
-            f"|y{char.key} advances to melee range with you.|n"
+            f"|y{capitalize_first(get_display_name_safe(char, target))} "
+            f"advances to melee range with you.|n"
         )
-        char.location.msg_contents(
-            f"|y{char.key} advances to melee range with "
-            f"{target.key}.|n",
+        msg_room_identity(
+            location=char.location,
+            template=(
+                "|y{actor} advances to melee range with "
+                "{target_char}.|n"
+            ),
+            char_refs={"actor": char, "target_char": target},
             exclude=[char, target],
         )
         splattercast.msg(
@@ -278,16 +294,21 @@ def _resolve_advance_same_room(handler, char, target, splattercast):
     else:
         # Failure — no proximity established
         char.msg(
-            f"|rYour advance on {target.key} fails! They keep their "
-            f"distance.|n"
+            f"|rYour advance on "
+            f"{get_display_name_safe(target, char)} fails! They keep "
+            f"their distance.|n"
         )
         target.msg(
-            f"|g{char.key} tries to advance on you but you keep your "
-            f"distance.|n"
+            f"|g{capitalize_first(get_display_name_safe(char, target))} "
+            f"tries to advance on you but you keep your distance.|n"
         )
-        char.location.msg_contents(
-            f"|y{char.key} tries to advance on {target.key} but fails "
-            f"to close the distance.|n",
+        msg_room_identity(
+            location=char.location,
+            template=(
+                "|y{actor} tries to advance on {target_char} but fails "
+                "to close the distance.|n"
+            ),
+            char_refs={"actor": char, "target_char": target},
             exclude=[char, target],
         )
         splattercast.msg(
@@ -316,8 +337,8 @@ def _resolve_advance_cross_room(
 
     if target_room not in managed_rooms:
         char.msg(
-            f"|r{target.key} is no longer in a combat area you can "
-            f"reach.|n"
+            f"|r{capitalize_first(get_display_name_safe(target, char))} "
+            f"is no longer in a combat area you can reach.|n"
         )
         return
 
@@ -354,8 +375,10 @@ def _resolve_advance_cross_room(
         else:
             char.msg(
                 f"|rYou cannot advance to another room while actively "
-                f"grappling {grappled_victim.key} — others are targeting "
-                f"you or you're being aggressive.|n"
+                f"grappling "
+                f"{get_display_name_safe(grappled_victim, char)} — "
+                f"others are targeting you or you're being "
+                f"aggressive.|n"
             )
             splattercast.msg(
                 f"{DEBUG_PREFIX_HANDLER}_ADVANCE_DRAG_BLOCKED: "
@@ -375,7 +398,8 @@ def _resolve_advance_cross_room(
 
     if not exit_to_target:
         char.msg(
-            f"|rYou cannot find a way to {target.key}'s location.|n"
+            f"|rYou cannot find a way to "
+            f"{get_display_name_safe(target, char)}'s location.|n"
         )
         return
 
@@ -402,16 +426,22 @@ def _resolve_advance_cross_room(
     else:
         # Failure — no movement
         char.msg(
-            f"|rYour advance toward {target.key} fails! You cannot "
+            f"|rYour advance toward "
+            f"{get_display_name_safe(target, char)} fails! You cannot "
             f"reach their position.|n"
         )
         target.msg(
-            f"|g{char.key} tries to advance toward your position but "
-            f"fails to reach you.|n"
+            f"|g{capitalize_first(get_display_name_safe(char, target))} "
+            f"tries to advance toward your position but fails to reach "
+            f"you.|n"
         )
-        char.location.msg_contents(
-            f"|y{char.key} attempts to advance toward {target.key} but "
-            f"fails to reach them.|n",
+        msg_room_identity(
+            location=char.location,
+            template=(
+                "|y{actor} attempts to advance toward {target_char} but "
+                "fails to reach them.|n"
+            ),
+            char_refs={"actor": char, "target_char": target},
             exclude=[char],
         )
         splattercast.msg(
@@ -423,11 +453,13 @@ def _resolve_advance_cross_room(
         if is_wielding_ranged_weapon(target):
             target.msg(
                 f"|gYour ranged weapon gives you a clear shot as "
-                f"{char.key} fails to reach you!|n"
+                f"{get_display_name_safe(char, target)} fails to reach "
+                f"you!|n"
             )
             char.msg(
-                f"|r{target.key} takes advantage of your failed advance "
-                f"to attack from range!|n"
+                f"|r{capitalize_first(get_display_name_safe(target, char))} "
+                f"takes advantage of your failed advance to attack from "
+                f"range!|n"
             )
             splattercast.msg(
                 f"{DEBUG_PREFIX_HANDLER}_ADVANCE_MOVE_BONUS: "
@@ -466,16 +498,22 @@ def _do_advance_move(
     if should_drag_victim and grappled_victim:
         # Announce dragging
         char.msg(
-            f"|gYou drag {grappled_victim.key} with you as you advance "
-            f"to {target_room.key}.|n"
+            f"|gYou drag "
+            f"{get_display_name_safe(grappled_victim, char)} with you "
+            f"as you advance to {target_room.key}.|n"
         )
         grappled_victim.msg(
-            f"|r{char.key} drags you along as they advance to "
+            f"|r{capitalize_first(get_display_name_safe(char, grappled_victim))} "
+            f"drags you along as they advance to "
             f"{target_room.key}!|n"
         )
-        old_location.msg_contents(
-            f"|y{char.key} drags {grappled_victim.key} along as they "
-            f"advance toward {target_room.key}.|n",
+        msg_room_identity(
+            location=old_location,
+            template=(
+                "|y{actor} drags {victim} along as they advance toward "
+                + f"{target_room.key}.|n"
+            ),
+            char_refs={"actor": char, "victim": grappled_victim},
             exclude=[char, grappled_victim],
         )
         splattercast.msg(
@@ -499,8 +537,10 @@ def _do_advance_move(
         )
 
         # Announce arrival in new location
-        target_room.msg_contents(
-            f"|y{char.key} arrives dragging {grappled_victim.key}.|n",
+        msg_room_identity(
+            location=target_room,
+            template="|y{actor} arrives dragging {victim}.|n",
+            char_refs={"actor": char, "victim": grappled_victim},
             exclude=[char, grappled_victim],
         )
     else:
@@ -518,11 +558,14 @@ def _do_advance_move(
     if should_drag_victim and grappled_victim:
         char.msg(
             f"|gYou successfully advance to {target_room.key} with "
-            f"{grappled_victim.key} in tow to engage {target.key}.|n"
+            f"{get_display_name_safe(grappled_victim, char)} in tow to "
+            f"engage {get_display_name_safe(target, char)}.|n"
         )
         target.msg(
-            f"|y{char.key} advances into the room dragging "
-            f"{grappled_victim.key} to engage you!|n"
+            f"|y{capitalize_first(get_display_name_safe(char, target))} "
+            f"advances into the room dragging "
+            f"{get_display_name_safe(grappled_victim, target)} to "
+            f"engage you!|n"
         )
         splattercast.msg(
             f"{DEBUG_PREFIX_HANDLER}_ADVANCE_MOVE: {char.key} "
@@ -532,19 +575,29 @@ def _do_advance_move(
     else:
         char.msg(
             f"|gYou successfully advance to {target_room.key} to engage "
-            f"{target.key}.|n"
+            f"{get_display_name_safe(target, char)}.|n"
         )
         target.msg(
-            f"|y{char.key} advances into the room to engage you!|n"
+            f"|y{capitalize_first(get_display_name_safe(char, target))} "
+            f"advances into the room to engage you!|n"
         )
-        old_location.msg_contents(
-            f"|y{char.key} advances toward {target_room.key} to engage "
-            f"{target.key}.|n",
+        msg_room_identity(
+            location=old_location,
+            template=(
+                "|y{actor} advances toward "
+                + f"{target_room.key} to engage "
+                + "{target_char}.|n"
+            ),
+            char_refs={"actor": char, "target_char": target},
             exclude=[char],
         )
-        target_room.msg_contents(
-            f"|y{char.key} advances into the room to engage "
-            f"{target.key}!|n",
+        msg_room_identity(
+            location=target_room,
+            template=(
+                "|y{actor} advances into the room to engage "
+                "{target_char}!|n"
+            ),
+            char_refs={"actor": char, "target_char": target},
             exclude=[char, target],
         )
         splattercast.msg(
@@ -578,7 +631,10 @@ def resolve_charge(handler, char, entry, combatants_list):
 
     # Validate target is still in combat
     if not any(e[DB_CHAR] == target for e in combatants_list):
-        char.msg(f"|r{target.key} is no longer in combat.|n")
+        char.msg(
+            f"|r{get_display_name_safe(target, char)} is no longer in "
+            f"combat.|n"
+        )
         return
 
     splattercast.msg(
@@ -593,7 +649,8 @@ def resolve_charge(handler, char, entry, combatants_list):
     # Check if already in proximity
     if is_in_proximity(char, target):
         char.msg(
-            f"|yYou are already in melee proximity with {target.key}.|n"
+            f"|yYou are already in melee proximity with "
+            f"{get_display_name_safe(target, char)}.|n"
         )
         # Clear the charge action since it's not needed
         charge_combatants = list(handler.db.combatants)
@@ -671,7 +728,7 @@ def _release_grapple_for_charge(
         char.msg(
             f"|yYou release your grapple on "
             f"{grappled_victim.get_display_name(char)} as you charge "
-            f"{target.key}!|n"
+            f"{get_display_name_safe(target, char)}!|n"
         )
         if grappled_victim.access(char, "view"):
             grappled_victim.msg(
@@ -742,16 +799,21 @@ def _resolve_charge_same_room(
         )
 
         char.msg(
-            f"|gYou charge {target.key} and slam into melee range! "
-            f"Your next attack will have a bonus.|n"
+            f"|gYou charge {get_display_name_safe(target, char)} and "
+            f"slam into melee range! Your next attack will have a "
+            f"bonus.|n"
         )
         target.msg(
-            f"|r{char.key} charges at you and crashes into melee "
-            f"range!|n"
+            f"|r{capitalize_first(get_display_name_safe(char, target))} "
+            f"charges at you and crashes into melee range!|n"
         )
-        char.location.msg_contents(
-            f"|y{char.key} charges at {target.key} with reckless "
-            f"abandon!|n",
+        msg_room_identity(
+            location=char.location,
+            template=(
+                "|y{actor} charges at {target_char} with reckless "
+                "abandon!|n"
+            ),
+            char_refs={"actor": char, "target_char": target},
             exclude=[char, target],
         )
         splattercast.msg(
@@ -761,16 +823,22 @@ def _resolve_charge_same_room(
     else:
         # Failure — charge penalty
         char.msg(
-            f"|rYour reckless charge at {target.key} fails "
+            f"|rYour reckless charge at "
+            f"{get_display_name_safe(target, char)} fails "
             f"spectacularly!|n"
         )
         target.msg(
-            f"|y{char.key} charges at you but you dodge, leaving them "
+            f"|y{capitalize_first(get_display_name_safe(char, target))} "
+            f"charges at you but you dodge, leaving them "
             f"off-balance!|n"
         )
-        char.location.msg_contents(
-            f"|y{char.key} charges recklessly at {target.key} but "
-            f"misses and stumbles!|n",
+        msg_room_identity(
+            location=char.location,
+            template=(
+                "|y{actor} charges recklessly at {target_char} but "
+                "misses and stumbles!|n"
+            ),
+            char_refs={"actor": char, "target_char": target},
             exclude=[char, target],
         )
 
@@ -811,7 +879,8 @@ def _resolve_charge_cross_room(
     managed_rooms = handler.db.managed_rooms or []
     if target.location not in managed_rooms:
         char.msg(
-            f"|r{target.key} is not in a room you can charge to.|n"
+            f"|r{capitalize_first(get_display_name_safe(target, char))} "
+            f"is not in a room you can charge to.|n"
         )
         return
 
@@ -823,7 +892,8 @@ def _resolve_charge_cross_room(
 
     if not exits_to_target:
         char.msg(
-            f"|rThere is no clear path to charge at {target.key}.|n"
+            f"|rThere is no clear path to charge at "
+            f"{get_display_name_safe(target, char)}.|n"
         )
         return
 
@@ -883,20 +953,26 @@ def _resolve_charge_cross_room(
 
         char.msg(
             f"|gYou charge recklessly through the {exit_to_use.key} and "
-            f"crash into melee with {target.key}! Your next attack will "
-            f"have a bonus.|n"
+            f"crash into melee with "
+            f"{get_display_name_safe(target, char)}! Your next attack "
+            f"will have a bonus.|n"
         )
         target.msg(
-            f"|r{char.key} charges recklessly through the "
-            f"{exit_to_use.key} and crashes into melee with you!|n"
+            f"|r{capitalize_first(get_display_name_safe(char, target))} "
+            f"charges recklessly through the {exit_to_use.key} and "
+            f"crashes into melee with you!|n"
         )
         return_exit = exit_to_use.get_return_exit()
         from_label = (
             return_exit.key if return_exit else "elsewhere"
         )
-        char.location.msg_contents(
-            f"|y{char.key} charges recklessly from {from_label} and "
-            f"crashes into melee!|n",
+        msg_room_identity(
+            location=char.location,
+            template=(
+                "|y{actor} charges recklessly from "
+                + f"{from_label} and crashes into melee!|n"
+            ),
+            char_refs={"actor": char},
             exclude=[char, target],
         )
         splattercast.msg(
@@ -909,12 +985,13 @@ def _resolve_charge_cross_room(
 
         if target_has_ranged:
             char.msg(
-                f"|r{target.key} stops your reckless charge with "
-                f"covering fire!|n"
+                f"|r{capitalize_first(get_display_name_safe(target, char))} "
+                f"stops your reckless charge with covering fire!|n"
             )
             target.msg(
-                f"|gYou stop {char.key}'s reckless charge with your "
-                f"ranged weapon!|n"
+                f"|gYou stop "
+                f"{get_display_name_safe(char, target)}'s reckless "
+                f"charge with your ranged weapon!|n"
             )
 
             # Trigger bonus attack
@@ -926,12 +1003,14 @@ def _resolve_charge_cross_room(
             )
         else:
             char.msg(
-                f"|rYour reckless charge at {target.key} fails as you "
+                f"|rYour reckless charge at "
+                f"{get_display_name_safe(target, char)} fails as you "
                 f"stumble at the entrance!|n"
             )
             target.msg(
-                f"|y{char.key} attempts to charge at you but stumbles "
-                f"at the entrance!|n"
+                f"|y{capitalize_first(get_display_name_safe(char, target))} "
+                f"attempts to charge at you but stumbles at the "
+                f"entrance!|n"
             )
             splattercast.msg(
                 f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed "
