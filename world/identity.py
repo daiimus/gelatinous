@@ -123,7 +123,7 @@ def get_physical_descriptor(height: str, build: str) -> str:
 #: Keywords available to female-presenting characters.
 FEMININE_KEYWORDS: frozenset[str] = frozenset({
     "female", "girl", "lass", "woman", "matron", "grandma", "hag", "granny",
-    "madam", "lesbian", "dyke", "tomboy", "chick", "gal", "chica", "vixen",
+    "madam", "tomboy", "chick", "gal", "chica", "vixen",
     "diva", "dame", "sheila", "mona", "bimbo", "bitch", "lady", "senorita",
     "chola", "devotchka",
 })
@@ -131,7 +131,7 @@ FEMININE_KEYWORDS: frozenset[str] = frozenset({
 #: Keywords available to male-presenting characters.
 MASCULINE_KEYWORDS: frozenset[str] = frozenset({
     "male", "boy", "lad", "man", "patron", "grandpa", "geezer", "gramps",
-    "gentleman", "twink", "fag", "femboy", "guy", "fellow", "dude", "playa",
+    "gentleman", "guy", "fellow", "dude", "playa",
     "pimp", "bloke", "bruce", "mano", "bro", "douche", "stiff", "hombre",
     "cholo", "droog",
 })
@@ -139,7 +139,7 @@ MASCULINE_KEYWORDS: frozenset[str] = frozenset({
 #: Keywords available to all characters regardless of gender.
 NEUTRAL_KEYWORDS: frozenset[str] = frozenset({
     "person", "kid", "urchin", "human", "citizen", "elder", "fossil",
-    "fleshbag", "denizen", "queer", "neut", "snack", "walker", "chum",
+    "fleshbag", "denizen", "neut", "snack", "walker", "chum",
     "charmer", "star", "mate", "smoker", "meatsicle", "punk", "clone",
     "wageslave", "baka", "androog", "suit",
 })

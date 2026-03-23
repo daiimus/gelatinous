@@ -177,13 +177,13 @@ class TestKeywordLists(TestCase):
     """Verify keyword sets match the spec."""
 
     def test_feminine_count(self) -> None:
-        self.assertEqual(len(FEMININE_KEYWORDS), 26)
+        self.assertEqual(len(FEMININE_KEYWORDS), 24)
 
     def test_masculine_count(self) -> None:
-        self.assertEqual(len(MASCULINE_KEYWORDS), 26)
+        self.assertEqual(len(MASCULINE_KEYWORDS), 23)
 
     def test_neutral_count(self) -> None:
-        self.assertEqual(len(NEUTRAL_KEYWORDS), 25)
+        self.assertEqual(len(NEUTRAL_KEYWORDS), 24)
 
     def test_all_keywords_is_union(self) -> None:
         self.assertEqual(
