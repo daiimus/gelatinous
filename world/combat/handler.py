@@ -44,13 +44,16 @@ from .utils import (
     cleanup_combatant_state, cleanup_all_combatants,
     get_combatant_target, get_combatant_grappling_target,
     get_combatant_grappled_by, get_character_dbref, get_character_by_dbref,
-    resolve_bonus_attack, get_combatants_safe,
+    resolve_bonus_attack, get_combatants_safe, get_display_name_safe,
 )
 from .grappling import (
     break_grapple, establish_grapple, resolve_grapple_initiate,
     resolve_grapple_join, resolve_grapple_takeover,
     resolve_release_grapple, validate_and_cleanup_grapple_state,
 )
+
+from world.grammar import capitalize_first
+from world.identity_utils import msg_room_identity
 
 # Import extracted module functions
 from .attack import (
@@ -759,13 +762,25 @@ class CombatHandler(DefaultScript):
         if grappling_target:
             # Grappler in restraint mode — maintain hold without violence
             splattercast.msg(f"{char.key} is yielding but maintains restraining hold on {grappling_target.key}.")
-            char.msg(f"|gYou maintain a restraining hold on {grappling_target.key} without violence.|n")
-            grappling_target.msg(f"|g{char.key} maintains a gentle but firm restraining hold on you.|n")
-            char.location.msg_contents(f"|g{char.key} maintains a restraining hold on {grappling_target.key}.|n", exclude=[char, grappling_target])
+            char.msg(f"|gYou maintain a restraining hold on {get_display_name_safe(grappling_target, char)} without violence.|n")
+            grappling_target.msg(f"|g{capitalize_first(get_display_name_safe(char, grappling_target))} maintains a gentle but firm restraining hold on you.|n")
+            if char.location:
+                msg_room_identity(
+                    location=char.location,
+                    template="|g{actor} maintains a restraining hold on {target}.|n",
+                    char_refs={"actor": char, "target": grappling_target},
+                    exclude=[char, grappling_target],
+                )
         else:
             # Regular yielding behavior
             splattercast.msg(f"{char.key} is yielding and takes no hostile action this turn.")
-            char.location.msg_contents(f"|y{char.key} holds their action, appearing non-hostile.|n", exclude=[char])
+            if char.location:
+                msg_room_identity(
+                    location=char.location,
+                    template="|y{actor} holds their action, appearing non-hostile.|n",
+                    char_refs={"actor": char},
+                    exclude=[char],
+                )
             char.msg("|yYou hold your action, appearing non-hostile.|n")
 
     def _dispatch_combat_action(self, char, entry, combatants_list, combat_action, initiative_order):
