@@ -1026,3 +1026,364 @@ class CmdSkintone(Command):
                 return None
         else:
             return results[0]
+
+
+# ===================================================================
+# IDENTITY SYSTEM COMMANDS
+# ===================================================================
+
+
+class CmdShortdesc(Command):
+    """
+    View or change your short description keyword.
+
+    Usage:
+      @shortdesc               - show current keyword and open selection menu
+      @shortdesc change        - open selection menu
+      @shortdesc <keyword>     - instantly set your keyword
+
+    Your short description (sdesc) is how strangers see you before they
+    learn your name.  It consists of a physical descriptor (derived from
+    your height and build), a keyword (set here), and a distinguishing
+    feature (auto-derived from what you're wielding or wearing).
+
+    Example sdesc: "a lanky man in a Black Trenchcoat"
+                         ^^^
+                      keyword
+
+    Available keywords depend on your character's gender.
+    """
+
+    key = "@shortdesc"
+    aliases = ["shortdesc"]
+    locks = "cmd:all()"
+    help_category = "Character"
+
+    def func(self):
+        caller = self.caller
+        args = self.args.strip().lower()
+
+        if not args or args == "change":
+            self._show_menu(caller)
+            return
+
+        # Instant-set mode
+        self._set_keyword(caller, args)
+
+    def _set_keyword(self, caller, keyword):
+        """Validate and set a keyword directly."""
+        from world.identity import is_valid_keyword, get_valid_keywords
+
+        gender = caller.gender
+        if not is_valid_keyword(keyword, gender):
+            valid = get_valid_keywords(gender)
+            caller.msg(
+                f"|r'{keyword}' is not a valid keyword for your character.|n\n"
+                f"Use |w@shortdesc|n to see the full list."
+            )
+            return
+
+        old_keyword = caller.sdesc_keyword
+        caller.sdesc_keyword = keyword
+
+        # Show the result
+        sdesc = caller.get_sdesc()
+        if old_keyword:
+            caller.msg(
+                f"Changed keyword from |w{old_keyword}|n to |w{keyword}|n.\n"
+                f"You now appear as: |c{sdesc}|n"
+            )
+        else:
+            caller.msg(
+                f"Set keyword to |w{keyword}|n.\n"
+                f"You now appear as: |c{sdesc}|n"
+            )
+
+    def _show_menu(self, caller):
+        """Open the EvMenu keyword selection interface."""
+        from evennia.utils.evmenu import EvMenu
+        from world.identity import get_valid_keywords
+        from world.grammar import DEFAULT_SDESC_KEYWORDS
+
+        gender = caller.gender
+        valid_keywords = sorted(get_valid_keywords(gender))
+        current = caller.sdesc_keyword
+        sdesc = caller.get_sdesc()
+
+        # Store data for the menu node
+        caller.ndb._shortdesc_keywords = valid_keywords
+        caller.ndb._shortdesc_gender = gender
+
+        EvMenu(
+            caller,
+            {"node_keyword_list": _node_keyword_list},
+            startnode="node_keyword_list",
+            cmd_on_exit=_shortdesc_exit,
+        )
+
+
+def _shortdesc_exit(caller, menu):
+    """Clean up ndb data when the menu closes."""
+    if hasattr(caller.ndb, "_shortdesc_keywords"):
+        del caller.ndb._shortdesc_keywords
+    if hasattr(caller.ndb, "_shortdesc_gender"):
+        del caller.ndb._shortdesc_gender
+
+
+def _node_keyword_list(caller, raw_string, **kwargs):
+    """EvMenu node: display keyword list and accept selection."""
+    from world.identity import get_valid_keywords
+    from world.grammar import DEFAULT_SDESC_KEYWORDS
+
+    gender = getattr(caller.ndb, "_shortdesc_gender", caller.gender)
+    keywords = getattr(caller.ndb, "_shortdesc_keywords", None)
+    if keywords is None:
+        keywords = sorted(get_valid_keywords(gender))
+        caller.ndb._shortdesc_keywords = keywords
+
+    current = caller.sdesc_keyword
+    default_kw = DEFAULT_SDESC_KEYWORDS.get(gender, "person")
+    display_current = current if current else f"{default_kw} (default)"
+    sdesc = caller.get_sdesc()
+
+    # Build numbered list in columns
+    text = f"\n|c=== Short Description Keyword ===|n\n"
+    text += f"\n  Current keyword: |w{display_current}|n"
+    text += f"  |xYou appear as: |c{sdesc}|n|x\n"
+    text += f"\n|yAvailable keywords for your character:|n\n"
+
+    # Render in 3 columns
+    col_width = 26
+    cols = 3
+    rows = (len(keywords) + cols - 1) // cols
+    for row in range(rows):
+        line = "  "
+        for col in range(cols):
+            idx = col * rows + row
+            if idx < len(keywords):
+                kw = keywords[idx]
+                num = f"{idx + 1}"
+                marker = "|g*|n" if kw == current else " "
+                entry = f"|w{num:>3}|n{marker}{kw}"
+                # Pad to column width (accounting for color codes)
+                padding = col_width - len(f"{num:>3} {kw}")
+                line += entry + " " * max(padding, 1)
+        text += line.rstrip() + "\n"
+
+    text += (
+        f"\n|wEnter a number (1-{len(keywords)}) or keyword name to select."
+        f"\n|wType |yquit|w to exit.|n"
+    )
+
+    options = ({"key": "_default", "goto": _process_keyword_choice},)
+    return text, options
+
+
+def _process_keyword_choice(caller, raw_string, **kwargs):
+    """Goto-callable: process numbered or text keyword input."""
+    choice = raw_string.strip().lower()
+    keywords = getattr(caller.ndb, "_shortdesc_keywords", [])
+
+    if not choice:
+        return None  # Re-display
+
+    # Try as a number
+    try:
+        idx = int(choice) - 1
+        if 0 <= idx < len(keywords):
+            keyword = keywords[idx]
+            return _apply_keyword(caller, keyword)
+        else:
+            caller.msg(f"|rInvalid number. Enter 1-{len(keywords)}.|n")
+            return None  # Re-display
+    except ValueError:
+        pass
+
+    # Try as a keyword name
+    if choice in {kw.lower() for kw in keywords}:
+        # Find the actual-case keyword
+        keyword = next(kw for kw in keywords if kw.lower() == choice)
+        return _apply_keyword(caller, keyword)
+
+    caller.msg(f"|r'{raw_string.strip()}' is not a valid keyword or number.|n")
+    return None  # Re-display
+
+
+def _apply_keyword(caller, keyword):
+    """Set the keyword and exit the menu."""
+    old = caller.sdesc_keyword
+    caller.sdesc_keyword = keyword
+    sdesc = caller.get_sdesc()
+
+    if old and old != keyword:
+        caller.msg(
+            f"\nChanged keyword from |w{old}|n to |w{keyword}|n."
+            f"\nYou now appear as: |c{sdesc}|n"
+        )
+    elif old == keyword:
+        caller.msg(f"\nKeyword is already |w{keyword}|n.")
+    else:
+        caller.msg(
+            f"\nSet keyword to |w{keyword}|n."
+            f"\nYou now appear as: |c{sdesc}|n"
+        )
+    return None  # Exit menu after setting
+
+
+class CmdAssign(Command):
+    """
+    Assign a name to someone you can see.
+
+    Usage:
+      assign <target> as <name>
+
+    When you encounter someone for the first time, you see their short
+    description (e.g. "a lanky man in a Black Trenchcoat").  Use this
+    command to assign them a name — any name you choose.  From then on
+    you'll see that name instead of their sdesc.
+
+    You can assign false or partial names.  Other characters won't know
+    what name you've assigned.
+
+    To change an existing assignment, simply assign again.
+    To clear an assignment, use:  assign <target> as clear
+
+    Examples:
+      assign man as Jorge
+      assign woman as Sketchy Lady
+      assign 2nd man as Big J
+      assign jorge as clear
+    """
+
+    key = "assign"
+    locks = "cmd:all()"
+    help_category = "Character"
+
+    def func(self):
+        caller = self.caller
+        args = self.args.strip()
+
+        if not args or " as " not in args:
+            caller.msg("Usage: assign <target> as <name>")
+            return
+
+        # Split on first " as " to allow names with spaces
+        parts = args.split(" as ", 1)
+        target_str = parts[0].strip()
+        name = parts[1].strip()
+
+        if not target_str:
+            caller.msg("Who do you want to assign a name to?")
+            return
+        if not name:
+            caller.msg("What name do you want to assign?")
+            return
+
+        # Find the target
+        target = caller.search(target_str)
+        if not target:
+            return  # caller.search already sends error messages
+
+        # Must be a character (not an item/exit)
+        from typeclasses.characters import Character
+        if not isinstance(target, Character):
+            caller.msg("You can only assign names to characters.")
+            return
+
+        # Can't assign a name to yourself
+        if target is caller:
+            caller.msg("You already know your own name.")
+            return
+
+        # Target must have a sleeve_uid
+        sleeve_uid = target.sleeve_uid
+        if sleeve_uid is None:
+            caller.msg("You can't assign a name to that character.")
+            return
+
+        # Handle "clear" to remove assignment
+        if name.lower() == "clear":
+            self._clear_assignment(caller, target, sleeve_uid)
+            return
+
+        # Apply the assignment
+        self._set_assignment(caller, target, sleeve_uid, name)
+
+    def _set_assignment(self, caller, target, sleeve_uid, name):
+        """Store a name assignment in the caller's recognition memory."""
+        import time
+
+        memory = caller.recognition_memory
+        if memory is None:
+            memory = {}
+
+        old_entry = memory.get(sleeve_uid, {})
+        old_name = old_entry.get("assigned_name", "")
+
+        # Build/update the recognition entry
+        now = time.strftime("%Y-%m-%dT%H:%M:%S")
+        location_name = caller.location.key if caller.location else "unknown"
+
+        if sleeve_uid in memory:
+            entry = memory[sleeve_uid]
+            entry["assigned_name"] = name
+            entry["last_seen"] = now
+            entry["times_seen"] = entry.get("times_seen", 0) + 1
+            entry["location_last_seen"] = location_name
+            if location_name not in entry.get("locations_seen", []):
+                entry.setdefault("locations_seen", []).append(location_name)
+            entry["sdesc_at_last_encounter"] = target.get_sdesc()
+        else:
+            entry = {
+                "assigned_name": name,
+                "first_seen": now,
+                "last_seen": now,
+                "times_seen": 1,
+                "location_first_seen": location_name,
+                "location_last_seen": location_name,
+                "locations_seen": [location_name],
+                "sdesc_at_first_encounter": target.get_sdesc(),
+                "sdesc_at_last_encounter": target.get_sdesc(),
+                "notes": "",
+                "tags": [],
+                "confidence": 1.0,
+                "relationship_valence": "neutral",
+                "recent_interactions": [],
+            }
+
+        memory[sleeve_uid] = entry
+        caller.recognition_memory = memory
+
+        # Provide feedback using the newly assigned name
+        if old_name and old_name != name:
+            caller.msg(
+                f"You now know {target.get_display_name(caller)} "
+                f"(previously '{old_name}') as |w{name}|n."
+            )
+        else:
+            # After setting, get_display_name should return the new name
+            caller.msg(
+                f"You will now recognize "
+                f"{target.get_sdesc()} as |w{name}|n."
+            )
+
+    def _clear_assignment(self, caller, target, sleeve_uid):
+        """Remove a name assignment from recognition memory."""
+        memory = caller.recognition_memory
+        if not memory or sleeve_uid not in memory:
+            caller.msg("You don't have a name assigned to them.")
+            return
+
+        old_name = memory[sleeve_uid].get("assigned_name", "")
+        # Clear the assigned name but keep the memory entry
+        memory[sleeve_uid]["assigned_name"] = ""
+        caller.recognition_memory = memory
+
+        sdesc = target.get_sdesc()
+        if old_name:
+            caller.msg(
+                f"Cleared name '{old_name}'. "
+                f"They will now appear as their description."
+            )
+        else:
+            caller.msg("No name was assigned to clear.")

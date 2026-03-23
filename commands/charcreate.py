@@ -16,6 +16,15 @@ import random
 import time
 import re
 
+from world.identity import (
+    HEIGHTS,
+    BUILDS,
+    HAIR_COLORS,
+    HAIR_STYLES,
+    NEUTRAL_KEYWORDS,
+    get_valid_keywords,
+)
+
 
 # =============================================================================
 # CUSTOM EV MENU CLASS
@@ -91,6 +100,17 @@ def generate_random_template():
     # Shuffle so variance isn't predictable by position
     random.shuffle(stats)
     
+    # Generate random identity attributes
+    height = random.choice(HEIGHTS)
+    build = random.choice(BUILDS)
+    # ~15% chance of bald; otherwise random color and style
+    if random.random() < 0.15:
+        hair_color = None
+        hair_style = None
+    else:
+        hair_color = random.choice(HAIR_COLORS)
+        hair_style = random.choice(HAIR_STYLES)
+    
     return {
         'first_name': first_name,
         'last_name': last_name,
@@ -99,7 +119,11 @@ def generate_random_template():
         'grit': stats[0],
         'resonance': stats[1],
         'intellect': stats[2],
-        'motorics': stats[3]
+        'motorics': stats[3],
+        'height': height,
+        'build': build,
+        'hair_color': hair_color,
+        'hair_style': hair_style,
     }
 
 
@@ -274,6 +298,13 @@ def create_character_from_template(account, template, sex="ambiguous"):
     
     # Set sex
     char.sex = sex
+    
+    # Set identity attributes from template
+    char.height = template.get('height')
+    char.build = template.get('build')
+    char.hair_color = template.get('hair_color')
+    char.hair_style = template.get('hair_style')
+    # sdesc_keyword defaults via get_sdesc() based on gender
     
     # Debug: Verify sex was set correctly
     from evennia.comms.models import ChannelDB
@@ -563,6 +594,20 @@ Select a consciousness vessel:
     # Display templates
     for i, template in enumerate(templates, 1):
         text += f"\n|w[{i}]|n |c{template['first_name']} {template['last_name']}|n\n"
+        # Physical summary
+        h = template.get('height', 'average')
+        b = template.get('build', 'average')
+        hc = template.get('hair_color')
+        hs = template.get('hair_style')
+        if hc and hs:
+            hair_desc = f"{hc} {hs} hair"
+        elif hc:
+            hair_desc = f"{hc} hair"
+        elif hs:
+            hair_desc = f"{hs} hair"
+        else:
+            hair_desc = "bald"
+        text += f"    |wPhysique:|n {h}, {b} — {hair_desc}\n"
         text += f"    |gGrit:|n {template['grit']:3d}  "
         text += f"|yResonance:|n {template['resonance']:3d}  "
         text += f"|bIntellect:|n {template['intellect']:3d}  "
@@ -932,15 +977,15 @@ Select biological sex:
     
     options = (
         {"key": "1",
-         "goto": ("first_char_grim", {"sex": "male"}),
+         "goto": ("first_char_height", {"sex": "male"}),
          "auto_help": False,
          "auto_look": False},
         {"key": "2",
-         "goto": ("first_char_grim", {"sex": "female"}),
+         "goto": ("first_char_height", {"sex": "female"}),
          "auto_help": False,
          "auto_look": False},
         {"key": "3",
-         "goto": ("first_char_grim", {"sex": "ambiguous"}),
+         "goto": ("first_char_height", {"sex": "ambiguous"}),
          "auto_help": False,
          "auto_look": False},
         {"key": "_default",
@@ -952,13 +997,212 @@ Select biological sex:
     return text, options
 
 
+# -------------------------------------------------------------------------
+# Identity Selection Nodes (between sex selection and GRIM distribution)
+# -------------------------------------------------------------------------
+
+def first_char_height(caller, raw_string, **kwargs):
+    """Select character height."""
+    # Store sex if arriving from sex selection
+    if 'sex' in kwargs:
+        caller.ndb.charcreate_data['sex'] = kwargs['sex']
+
+    first_name = caller.ndb.charcreate_data.get('first_name', '')
+    last_name = caller.ndb.charcreate_data.get('last_name', '')
+    sex = caller.ndb.charcreate_data.get('sex', 'ambiguous')
+
+    text = f"""
+|w╔════════════════════════════════════════════════════════════════╗
+║  PHYSICAL CONFIGURATION                                         ║
+╚════════════════════════════════════════════════════════════════╝|n
+
+Name: |c{first_name} {last_name}|n
+Sex: |c{sex.capitalize()}|n
+
+Select your height:
+
+"""
+    for i, h in enumerate(HEIGHTS, 1):
+        text += f"|w[{i}]|n {h.capitalize()}\n"
+
+    text += "\n|wEnter choice:|n "
+
+    # Build option list dynamically from HEIGHTS
+    option_list = []
+    for i, h in enumerate(HEIGHTS, 1):
+        option_list.append({
+            "key": str(i),
+            "goto": ("first_char_build", {"height": h}),
+            "auto_help": False,
+            "auto_look": False,
+        })
+    option_list.append({
+        "key": "_default",
+        "goto": "first_char_height",
+        "auto_help": False,
+        "auto_look": False,
+    })
+
+    return text, tuple(option_list)
+
+
+def first_char_build(caller, raw_string, **kwargs):
+    """Select character build."""
+    if 'height' in kwargs:
+        caller.ndb.charcreate_data['height'] = kwargs['height']
+
+    first_name = caller.ndb.charcreate_data.get('first_name', '')
+    last_name = caller.ndb.charcreate_data.get('last_name', '')
+    sex = caller.ndb.charcreate_data.get('sex', 'ambiguous')
+    height = caller.ndb.charcreate_data.get('height', 'average')
+
+    text = f"""
+|w╔════════════════════════════════════════════════════════════════╗
+║  PHYSICAL CONFIGURATION                                         ║
+╚════════════════════════════════════════════════════════════════╝|n
+
+Name: |c{first_name} {last_name}|n
+Sex: |c{sex.capitalize()}|n
+Height: |c{height.capitalize()}|n
+
+Select your build:
+
+"""
+    for i, b in enumerate(BUILDS, 1):
+        text += f"|w[{i}]|n {b.capitalize()}\n"
+
+    text += "\n|wEnter choice:|n "
+
+    option_list = []
+    for i, b in enumerate(BUILDS, 1):
+        option_list.append({
+            "key": str(i),
+            "goto": ("first_char_hair_color", {"build": b}),
+            "auto_help": False,
+            "auto_look": False,
+        })
+    option_list.append({
+        "key": "_default",
+        "goto": "first_char_build",
+        "auto_help": False,
+        "auto_look": False,
+    })
+
+    return text, tuple(option_list)
+
+
+def first_char_hair_color(caller, raw_string, **kwargs):
+    """Select character hair color (or bald)."""
+    if 'build' in kwargs:
+        caller.ndb.charcreate_data['build'] = kwargs['build']
+
+    first_name = caller.ndb.charcreate_data.get('first_name', '')
+    last_name = caller.ndb.charcreate_data.get('last_name', '')
+    sex = caller.ndb.charcreate_data.get('sex', 'ambiguous')
+    height = caller.ndb.charcreate_data.get('height', 'average')
+    build = caller.ndb.charcreate_data.get('build', 'average')
+
+    text = f"""
+|w╔════════════════════════════════════════════════════════════════╗
+║  PHYSICAL CONFIGURATION                                         ║
+╚════════════════════════════════════════════════════════════════╝|n
+
+Name: |c{first_name} {last_name}|n
+Sex: |c{sex.capitalize()}|n
+Height: |c{height.capitalize()}|n
+Build: |c{build.capitalize()}|n
+
+Select your hair color:
+
+"""
+    for i, c in enumerate(HAIR_COLORS, 1):
+        text += f"|w[{i:2d}]|n {c.capitalize()}\n"
+    text += f"|w[{len(HAIR_COLORS) + 1:2d}]|n Bald / No hair\n"
+
+    text += "\n|wEnter choice:|n "
+
+    option_list = []
+    for i, c in enumerate(HAIR_COLORS, 1):
+        option_list.append({
+            "key": str(i),
+            "goto": ("first_char_hair_style", {"hair_color": c}),
+            "auto_help": False,
+            "auto_look": False,
+        })
+    # Bald option
+    option_list.append({
+        "key": str(len(HAIR_COLORS) + 1),
+        "goto": ("first_char_grim", {"hair_color": None, "hair_style": None}),
+        "auto_help": False,
+        "auto_look": False,
+    })
+    option_list.append({
+        "key": "_default",
+        "goto": "first_char_hair_color",
+        "auto_help": False,
+        "auto_look": False,
+    })
+
+    return text, tuple(option_list)
+
+
+def first_char_hair_style(caller, raw_string, **kwargs):
+    """Select character hair style."""
+    if 'hair_color' in kwargs:
+        caller.ndb.charcreate_data['hair_color'] = kwargs['hair_color']
+
+    first_name = caller.ndb.charcreate_data.get('first_name', '')
+    last_name = caller.ndb.charcreate_data.get('last_name', '')
+    sex = caller.ndb.charcreate_data.get('sex', 'ambiguous')
+    height = caller.ndb.charcreate_data.get('height', 'average')
+    build = caller.ndb.charcreate_data.get('build', 'average')
+    hair_color = caller.ndb.charcreate_data.get('hair_color', '')
+
+    text = f"""
+|w╔════════════════════════════════════════════════════════════════╗
+║  PHYSICAL CONFIGURATION                                         ║
+╚════════════════════════════════════════════════════════════════╝|n
+
+Name: |c{first_name} {last_name}|n
+Sex: |c{sex.capitalize()}|n
+Height: |c{height.capitalize()}|n
+Build: |c{build.capitalize()}|n
+Hair Color: |c{hair_color.capitalize() if hair_color else 'N/A'}|n
+
+Select your hair style:
+
+"""
+    for i, s in enumerate(HAIR_STYLES, 1):
+        text += f"|w[{i:2d}]|n {s.capitalize()}\n"
+
+    text += "\n|wEnter choice:|n "
+
+    option_list = []
+    for i, s in enumerate(HAIR_STYLES, 1):
+        option_list.append({
+            "key": str(i),
+            "goto": ("first_char_grim", {"hair_style": s}),
+            "auto_help": False,
+            "auto_look": False,
+        })
+    option_list.append({
+        "key": "_default",
+        "goto": "first_char_hair_style",
+        "auto_help": False,
+        "auto_look": False,
+    })
+
+    return text, tuple(option_list)
+
+
 def first_char_grim(caller, raw_string, **kwargs):
     """Distribute GRIM points."""
     
-    # Store sex if explicitly provided in kwargs (from EvMenu goto dict)
-    # Only update if 'sex' key exists in kwargs to avoid overwriting with default
-    if 'sex' in kwargs:
-        caller.ndb.charcreate_data['sex'] = kwargs['sex']
+    # Store identity attrs if explicitly provided in kwargs (from EvMenu goto dict)
+    # Only update if key exists in kwargs to avoid overwriting with default
+    for attr_key in ('sex', 'height', 'build', 'hair_color', 'hair_style'):
+        if attr_key in kwargs:
+            caller.ndb.charcreate_data[attr_key] = kwargs[attr_key]
     
     first_name = caller.ndb.charcreate_data.get('first_name', '')
     last_name = caller.ndb.charcreate_data.get('last_name', '')
@@ -1086,10 +1330,24 @@ def first_char_confirm(caller, raw_string, **kwargs):
     first_name = caller.ndb.charcreate_data.get('first_name', '')
     last_name = caller.ndb.charcreate_data.get('last_name', '')
     sex = caller.ndb.charcreate_data.get('sex', 'ambiguous')
+    height = caller.ndb.charcreate_data.get('height', 'average')
+    build = caller.ndb.charcreate_data.get('build', 'average')
+    hair_color = caller.ndb.charcreate_data.get('hair_color')
+    hair_style = caller.ndb.charcreate_data.get('hair_style')
     grit = caller.ndb.charcreate_data.get('grit', 75)
     resonance = caller.ndb.charcreate_data.get('resonance', 75)
     intellect = caller.ndb.charcreate_data.get('intellect', 75)
     motorics = caller.ndb.charcreate_data.get('motorics', 75)
+
+    # Format hair display
+    if hair_color and hair_style:
+        hair_display = f"{hair_color.capitalize()}, {hair_style}"
+    elif hair_color:
+        hair_display = hair_color.capitalize()
+    elif hair_style:
+        hair_display = hair_style.capitalize()
+    else:
+        hair_display = "Bald"
     
     text = f"""
 |w╔════════════════════════════════════════════════════════════════╗
@@ -1098,6 +1356,9 @@ def first_char_confirm(caller, raw_string, **kwargs):
 
 |wName:|n |c{first_name} {last_name}|n
 |wSex:|n |c{sex.capitalize()}|n
+|wHeight:|n |c{height.capitalize()}|n
+|wBuild:|n |c{build.capitalize()}|n
+|wHair:|n |c{hair_display}|n
 
 |wG.R.I.M. Attributes:|n
   |gGrit:|n      {grit:3d}
@@ -1145,6 +1406,10 @@ def first_char_finalize(caller, raw_string, **kwargs):
     last_name = caller.ndb.charcreate_data.get('last_name', '')
     full_name = f"{first_name} {last_name}"
     sex = caller.ndb.charcreate_data.get('sex', 'ambiguous')
+    height = caller.ndb.charcreate_data.get('height', 'average')
+    build = caller.ndb.charcreate_data.get('build', 'average')
+    hair_color = caller.ndb.charcreate_data.get('hair_color')
+    hair_style = caller.ndb.charcreate_data.get('hair_style')
     grit = caller.ndb.charcreate_data.get('grit', 75)
     resonance = caller.ndb.charcreate_data.get('resonance', 75)
     intellect = caller.ndb.charcreate_data.get('intellect', 75)
@@ -1175,6 +1440,13 @@ def first_char_finalize(caller, raw_string, **kwargs):
         
         # Set sex
         char.sex = sex
+        
+        # Set identity attributes (physical configuration from chargen)
+        char.height = height
+        char.build = build
+        char.hair_color = hair_color
+        char.hair_style = hair_style
+        # sdesc_keyword defaults via get_sdesc() based on gender
         
         # Set defaults
         # death_count starts at 1 via AttributeProperty in Character class
