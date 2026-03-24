@@ -1073,7 +1073,7 @@ class CmdShortdesc(Command):
     def _set_keyword(self, caller, keyword):
         """Validate and set a keyword directly."""
         from world.identity import (
-            ALL_KEYWORDS,
+            get_all_keywords,
             is_valid_keyword,
             log_custom_keyword,
             validate_custom_keyword,
@@ -1087,7 +1087,7 @@ class CmdShortdesc(Command):
             return
 
         # Gender-restricted approved keyword — reject with clear message.
-        if keyword in ALL_KEYWORDS:
+        if keyword in get_all_keywords():
             caller.msg(
                 f"|r'{keyword}' is not available for your character.|n\n"
                 f"Use |w@shortdesc|n to see the full list."
@@ -1101,7 +1101,8 @@ class CmdShortdesc(Command):
             return
 
         # Accept the custom keyword, log it to the catalog.
-        log_custom_keyword(keyword, caller.key)
+        account = caller.account if caller.account else None
+        log_custom_keyword(keyword, caller.key, account=account)
         self._apply_keyword(caller, keyword)
 
     def _apply_keyword(self, caller, keyword):

@@ -12,15 +12,14 @@ All test cases match the specification in
 from unittest import TestCase
 
 from world.identity import (
-    ALL_KEYWORDS,
     BUILDS,
-    FEMININE_KEYWORDS,
     HAIR_COLORS,
     HAIR_STYLES,
     HEIGHTS,
-    MASCULINE_KEYWORDS,
-    NEUTRAL_KEYWORDS,
     PHYSICAL_DESCRIPTOR_TABLE,
+    _DEFAULT_FEMININE_KEYWORDS,
+    _DEFAULT_MASCULINE_KEYWORDS,
+    _DEFAULT_NEUTRAL_KEYWORDS,
     compose_sdesc,
     format_clothing_feature,
     format_hair_feature,
@@ -175,57 +174,69 @@ class TestPhysicalDescriptorTable(TestCase):
 
 
 class TestKeywordLists(TestCase):
-    """Verify keyword sets match the spec."""
+    """Verify default keyword sets match the spec."""
 
     def test_feminine_count(self) -> None:
-        self.assertEqual(len(FEMININE_KEYWORDS), 24)
+        self.assertEqual(len(_DEFAULT_FEMININE_KEYWORDS), 24)
 
     def test_masculine_count(self) -> None:
-        self.assertEqual(len(MASCULINE_KEYWORDS), 23)
+        self.assertEqual(len(_DEFAULT_MASCULINE_KEYWORDS), 23)
 
     def test_neutral_count(self) -> None:
-        self.assertEqual(len(NEUTRAL_KEYWORDS), 24)
+        self.assertEqual(len(_DEFAULT_NEUTRAL_KEYWORDS), 24)
 
     def test_all_keywords_is_union(self) -> None:
+        all_kws = (
+            _DEFAULT_FEMININE_KEYWORDS
+            | _DEFAULT_MASCULINE_KEYWORDS
+            | _DEFAULT_NEUTRAL_KEYWORDS
+        )
         self.assertEqual(
-            ALL_KEYWORDS,
-            FEMININE_KEYWORDS | MASCULINE_KEYWORDS | NEUTRAL_KEYWORDS,
+            all_kws,
+            _DEFAULT_FEMININE_KEYWORDS
+            | _DEFAULT_MASCULINE_KEYWORDS
+            | _DEFAULT_NEUTRAL_KEYWORDS,
         )
 
     def test_no_overlap_feminine_masculine(self) -> None:
         """Feminine and masculine sets should not share keywords."""
-        overlap = FEMININE_KEYWORDS & MASCULINE_KEYWORDS
+        overlap = _DEFAULT_FEMININE_KEYWORDS & _DEFAULT_MASCULINE_KEYWORDS
         self.assertEqual(overlap, set(), f"Unexpected overlap: {overlap}")
 
     def test_no_overlap_gendered_neutral(self) -> None:
         """Neutral should not overlap with gendered sets."""
-        overlap_f = FEMININE_KEYWORDS & NEUTRAL_KEYWORDS
-        overlap_m = MASCULINE_KEYWORDS & NEUTRAL_KEYWORDS
+        overlap_f = _DEFAULT_FEMININE_KEYWORDS & _DEFAULT_NEUTRAL_KEYWORDS
+        overlap_m = _DEFAULT_MASCULINE_KEYWORDS & _DEFAULT_NEUTRAL_KEYWORDS
         self.assertEqual(overlap_f, set(), f"Feminine-neutral overlap: {overlap_f}")
         self.assertEqual(overlap_m, set(), f"Masculine-neutral overlap: {overlap_m}")
 
     # -- Spot-check representative keywords --
 
     def test_woman_in_feminine(self) -> None:
-        self.assertIn("woman", FEMININE_KEYWORDS)
+        self.assertIn("woman", _DEFAULT_FEMININE_KEYWORDS)
 
     def test_man_in_masculine(self) -> None:
-        self.assertIn("man", MASCULINE_KEYWORDS)
+        self.assertIn("man", _DEFAULT_MASCULINE_KEYWORDS)
 
     def test_person_in_neutral(self) -> None:
-        self.assertIn("person", NEUTRAL_KEYWORDS)
+        self.assertIn("person", _DEFAULT_NEUTRAL_KEYWORDS)
 
     def test_droog_in_masculine(self) -> None:
-        self.assertIn("droog", MASCULINE_KEYWORDS)
+        self.assertIn("droog", _DEFAULT_MASCULINE_KEYWORDS)
 
     def test_devotchka_in_feminine(self) -> None:
-        self.assertIn("devotchka", FEMININE_KEYWORDS)
+        self.assertIn("devotchka", _DEFAULT_FEMININE_KEYWORDS)
 
     def test_androog_in_neutral(self) -> None:
-        self.assertIn("androog", NEUTRAL_KEYWORDS)
+        self.assertIn("androog", _DEFAULT_NEUTRAL_KEYWORDS)
 
     def test_all_keywords_lowercase(self) -> None:
-        for kw in ALL_KEYWORDS:
+        all_kws = (
+            _DEFAULT_FEMININE_KEYWORDS
+            | _DEFAULT_MASCULINE_KEYWORDS
+            | _DEFAULT_NEUTRAL_KEYWORDS
+        )
+        for kw in all_kws:
             self.assertEqual(kw, kw.lower(), f"Keyword not lowercase: {kw!r}")
 
 
@@ -234,20 +245,36 @@ class TestGetValidKeywords(TestCase):
 
     def test_male_gets_masculine_and_neutral(self) -> None:
         result = get_valid_keywords("male")
-        self.assertEqual(result, MASCULINE_KEYWORDS | NEUTRAL_KEYWORDS)
+        self.assertEqual(
+            result,
+            _DEFAULT_MASCULINE_KEYWORDS | _DEFAULT_NEUTRAL_KEYWORDS,
+        )
 
     def test_female_gets_feminine_and_neutral(self) -> None:
         result = get_valid_keywords("female")
-        self.assertEqual(result, FEMININE_KEYWORDS | NEUTRAL_KEYWORDS)
+        self.assertEqual(
+            result,
+            _DEFAULT_FEMININE_KEYWORDS | _DEFAULT_NEUTRAL_KEYWORDS,
+        )
 
     def test_neutral_gets_all(self) -> None:
         result = get_valid_keywords("neutral")
-        self.assertEqual(result, ALL_KEYWORDS)
+        all_defaults = (
+            _DEFAULT_FEMININE_KEYWORDS
+            | _DEFAULT_MASCULINE_KEYWORDS
+            | _DEFAULT_NEUTRAL_KEYWORDS
+        )
+        self.assertEqual(result, all_defaults)
 
     def test_unknown_gender_gets_all(self) -> None:
         """Unknown gender should be permissive, not restrictive."""
         result = get_valid_keywords("other")
-        self.assertEqual(result, ALL_KEYWORDS)
+        all_defaults = (
+            _DEFAULT_FEMININE_KEYWORDS
+            | _DEFAULT_MASCULINE_KEYWORDS
+            | _DEFAULT_NEUTRAL_KEYWORDS
+        )
+        self.assertEqual(result, all_defaults)
 
     def test_man_valid_for_male(self) -> None:
         self.assertTrue(is_valid_keyword("man", "male"))
