@@ -6,16 +6,22 @@ physical descriptor lookup, keyword validation, hair options, distinguishing
 feature formatting, and short description (sdesc) composition.
 
 This module has no Evennia dependencies in its core functions (except for
-:class:`CustomKeywordCatalog`, which is an Evennia Script).
+:class:`KeywordManager`, which is an Evennia Script, and
+:class:`~world.models.KeywordEvent`, a Django model).
 
 See specs/IDENTITY_RECOGNITION_SPEC.md for the full specification.
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from evennia.scripts.scripts import DefaultScript
 
 from world.grammar import get_article
+
+if TYPE_CHECKING:
+    from evennia.accounts.models import AccountDB
 
 # =========================================================================
 # Height / Build / Physical Descriptor
@@ -121,32 +127,32 @@ def get_physical_descriptor(height: str, build: str) -> str:
 # Keyword Lists
 # =========================================================================
 
-#: Keywords available to female-presenting characters.
-FEMININE_KEYWORDS: frozenset[str] = frozenset({
+#: Default feminine keywords — seeds for the :class:`KeywordManager` script.
+#: At runtime, use :func:`get_feminine_keywords` instead.
+_DEFAULT_FEMININE_KEYWORDS: frozenset[str] = frozenset({
     "female", "girl", "lass", "woman", "matron", "grandma", "hag", "granny",
     "madam", "tomboy", "chick", "gal", "chica", "vixen",
     "diva", "dame", "sheila", "mona", "bimbo", "bitch", "lady", "senorita",
     "chola", "devotchka",
 })
 
-#: Keywords available to male-presenting characters.
-MASCULINE_KEYWORDS: frozenset[str] = frozenset({
+#: Default masculine keywords — seeds for the :class:`KeywordManager` script.
+#: At runtime, use :func:`get_masculine_keywords` instead.
+_DEFAULT_MASCULINE_KEYWORDS: frozenset[str] = frozenset({
     "male", "boy", "lad", "man", "patron", "grandpa", "geezer", "gramps",
     "gentleman", "guy", "fellow", "dude", "playa",
     "pimp", "bloke", "bruce", "mano", "bro", "douche", "stiff", "hombre",
     "cholo", "droog",
 })
 
-#: Keywords available to all characters regardless of gender.
-NEUTRAL_KEYWORDS: frozenset[str] = frozenset({
+#: Default neutral keywords — seeds for the :class:`KeywordManager` script.
+#: At runtime, use :func:`get_neutral_keywords` instead.
+_DEFAULT_NEUTRAL_KEYWORDS: frozenset[str] = frozenset({
     "person", "kid", "urchin", "human", "citizen", "elder", "fossil",
     "fleshbag", "denizen", "neut", "snack", "walker", "chum",
     "charmer", "star", "mate", "smoker", "meatsicle", "punk", "clone",
     "wageslave", "baka", "androog", "suit",
 })
-
-#: All keywords across all gender categories.
-ALL_KEYWORDS: frozenset[str] = FEMININE_KEYWORDS | MASCULINE_KEYWORDS | NEUTRAL_KEYWORDS
 
 
 def get_valid_keywords(gender: str) -> frozenset[str]:
@@ -169,11 +175,11 @@ def get_valid_keywords(gender: str) -> frozenset[str]:
         Frozenset of valid keyword strings.
     """
     if gender == "male":
-        return MASCULINE_KEYWORDS | NEUTRAL_KEYWORDS
+        return get_masculine_keywords() | get_neutral_keywords()
     if gender == "female":
-        return FEMININE_KEYWORDS | NEUTRAL_KEYWORDS
+        return get_feminine_keywords() | get_neutral_keywords()
     # Neutral / unknown: all keywords available.
-    return ALL_KEYWORDS
+    return get_all_keywords()
 
 
 def is_valid_keyword(keyword: str, gender: str) -> bool:
@@ -233,31 +239,33 @@ def validate_custom_keyword(keyword: str) -> tuple[bool, str]:
     return True, ""
 
 
-# -- Custom keyword catalog -------------------------------------------
+# =========================================================================
+# KeywordManager Script  (runtime keyword list storage)
+# =========================================================================
 
-_CATALOG_SCRIPT_KEY = "custom_keyword_catalog"
+_KEYWORD_MANAGER_KEY = "keyword_manager"
 
 
-def _get_or_create_catalog() -> "CustomKeywordCatalog":
-    """Return the singleton :class:`CustomKeywordCatalog` script.
+def _get_or_create_keyword_manager() -> "KeywordManager":
+    """Return the singleton :class:`KeywordManager` script.
 
     Creates the script on first call.  Subsequent calls return the
     existing instance.
 
     Returns:
-        The catalog script instance.
+        The keyword manager script instance.
     """
     from evennia import create_script
     from evennia.scripts.models import ScriptDB
 
     try:
-        return ScriptDB.objects.get(db_key=_CATALOG_SCRIPT_KEY)
+        return ScriptDB.objects.get(db_key=_KEYWORD_MANAGER_KEY)
     except ScriptDB.DoesNotExist:
         pass
 
     script = create_script(
-        CustomKeywordCatalog,
-        key=_CATALOG_SCRIPT_KEY,
+        KeywordManager,
+        key=_KEYWORD_MANAGER_KEY,
         persistent=True,
     )
     if not script.id:
@@ -265,8 +273,120 @@ def _get_or_create_catalog() -> "CustomKeywordCatalog":
     return script
 
 
-def log_custom_keyword(keyword: str, character_key: str) -> None:
-    """Record a custom keyword usage in the catalog.
+class KeywordManager(DefaultScript):
+    """Global script that stores the approved keyword lists.
+
+    Singleton script created by :func:`_get_or_create_keyword_manager`.
+    Stores three mutable sets on ``db`` attributes:
+
+    * ``db.feminine_keywords`` — :class:`set` of feminine keywords
+    * ``db.masculine_keywords`` — :class:`set` of masculine keywords
+    * ``db.neutral_keywords`` — :class:`set` of neutral keywords
+
+    These are seeded from the module-level ``_DEFAULT_*`` frozensets on
+    first creation and may be modified at runtime via
+    :func:`add_approved_keyword` / :func:`remove_approved_keyword`.
+    """
+
+    def at_script_creation(self) -> None:
+        self.key = _KEYWORD_MANAGER_KEY
+        self.persistent = True
+        self.db.feminine_keywords = set(_DEFAULT_FEMININE_KEYWORDS)  # type: ignore[attr-defined]
+        self.db.masculine_keywords = set(_DEFAULT_MASCULINE_KEYWORDS)  # type: ignore[attr-defined]
+        self.db.neutral_keywords = set(_DEFAULT_NEUTRAL_KEYWORDS)  # type: ignore[attr-defined]
+
+
+# =========================================================================
+# Keyword Getters  (read from KeywordManager, fall back to defaults)
+# =========================================================================
+
+
+def get_feminine_keywords() -> frozenset[str]:
+    """Return the current set of approved feminine keywords.
+
+    Reads from the :class:`KeywordManager` script if it exists.
+    Falls back to :data:`_DEFAULT_FEMININE_KEYWORDS` if the script
+    has not been created yet (e.g. during tests or early startup).
+
+    Returns:
+        Frozenset of feminine keyword strings.
+    """
+    from evennia.scripts.models import ScriptDB
+
+    try:
+        mgr = ScriptDB.objects.get(db_key=_KEYWORD_MANAGER_KEY)
+        kws: set[str] | None = mgr.db.feminine_keywords
+        if kws is not None:
+            return frozenset(kws)
+    except ScriptDB.DoesNotExist:
+        pass
+    return _DEFAULT_FEMININE_KEYWORDS
+
+
+def get_masculine_keywords() -> frozenset[str]:
+    """Return the current set of approved masculine keywords.
+
+    Reads from the :class:`KeywordManager` script if it exists.
+    Falls back to :data:`_DEFAULT_MASCULINE_KEYWORDS` if the script
+    has not been created yet.
+
+    Returns:
+        Frozenset of masculine keyword strings.
+    """
+    from evennia.scripts.models import ScriptDB
+
+    try:
+        mgr = ScriptDB.objects.get(db_key=_KEYWORD_MANAGER_KEY)
+        kws: set[str] | None = mgr.db.masculine_keywords
+        if kws is not None:
+            return frozenset(kws)
+    except ScriptDB.DoesNotExist:
+        pass
+    return _DEFAULT_MASCULINE_KEYWORDS
+
+
+def get_neutral_keywords() -> frozenset[str]:
+    """Return the current set of approved neutral keywords.
+
+    Reads from the :class:`KeywordManager` script if it exists.
+    Falls back to :data:`_DEFAULT_NEUTRAL_KEYWORDS` if the script
+    has not been created yet.
+
+    Returns:
+        Frozenset of neutral keyword strings.
+    """
+    from evennia.scripts.models import ScriptDB
+
+    try:
+        mgr = ScriptDB.objects.get(db_key=_KEYWORD_MANAGER_KEY)
+        kws: set[str] | None = mgr.db.neutral_keywords
+        if kws is not None:
+            return frozenset(kws)
+    except ScriptDB.DoesNotExist:
+        pass
+    return _DEFAULT_NEUTRAL_KEYWORDS
+
+
+def get_all_keywords() -> frozenset[str]:
+    """Return the union of all approved keyword lists.
+
+    Returns:
+        Frozenset of all keyword strings across all genders.
+    """
+    return get_feminine_keywords() | get_masculine_keywords() | get_neutral_keywords()
+
+
+# =========================================================================
+# Keyword Event Logging & Admin Operations
+# =========================================================================
+
+
+def log_custom_keyword(
+    keyword: str,
+    character_key: str,
+    account: AccountDB | None = None,
+) -> None:
+    """Record a custom keyword usage as a :class:`~world.models.KeywordEvent`.
 
     Only logs keywords that are **not** in any approved list.  Safe to
     call for any keyword — approved keywords are silently ignored.
@@ -275,50 +395,119 @@ def log_custom_keyword(keyword: str, character_key: str) -> None:
         keyword: The keyword being set (lowercase).
         character_key: The ``.key`` of the character using it, for
             attribution.
+        account: The player's :class:`~evennia.accounts.models.AccountDB`,
+            if available.  Used to record the account name.
     """
-    if keyword in ALL_KEYWORDS:
+    if keyword in get_all_keywords():
         return
 
-    catalog = _get_or_create_catalog()
-    entries: dict[str, dict[str, object]] = catalog.db.catalog or {}
+    from world.models import KeywordEvent
 
-    entry = entries.get(keyword)
-    if entry is None:
-        entries[keyword] = {
-            "count": 1,
-            "first_used_by": character_key,
-            "last_used_by": character_key,
-        }
-    else:
-        entry["count"] = int(entry.get("count") or 0) + 1  # type: ignore[arg-type]
-        entry["last_used_by"] = character_key
-
-    catalog.db.catalog = entries
+    account_name = account.key if account is not None else ""
+    KeywordEvent.objects.create(
+        event_type="custom_set",
+        keyword=keyword,
+        character_name=character_key,
+        account_name=account_name,
+    )
 
 
-def get_custom_keyword_catalog() -> dict[str, dict[str, object]]:
-    """Return the current custom keyword catalog.
+def add_approved_keyword(
+    keyword: str,
+    gender_list: str,
+    admin_name: str = "",
+) -> tuple[bool, str]:
+    """Add a keyword to an approved gender list.
+
+    Creates a :class:`~world.models.KeywordEvent` with event type
+    ``admin_add`` and adds the keyword to the :class:`KeywordManager`
+    script's set for the given gender list.
+
+    Args:
+        keyword: Keyword to add (lowercase).
+        gender_list: One of ``"feminine"``, ``"masculine"``, or
+            ``"neutral"``.
+        admin_name: Name of the admin performing the action.
 
     Returns:
-        Dict mapping keyword strings to usage metadata dicts.
-        Empty dict if no custom keywords have been logged.
+        ``(True, "")`` on success, or ``(False, reason)`` on failure.
     """
-    catalog = _get_or_create_catalog()
-    return dict(catalog.db.catalog or {})
+    attr_map = {
+        "feminine": "feminine_keywords",
+        "masculine": "masculine_keywords",
+        "neutral": "neutral_keywords",
+    }
+    attr_name = attr_map.get(gender_list)
+    if attr_name is None:
+        return False, f"Invalid gender list {gender_list!r}."
+
+    mgr = _get_or_create_keyword_manager()
+    kw_set: set[str] | None = getattr(mgr.db, attr_name)
+    if kw_set is None:
+        kw_set = set()
+    if keyword in kw_set:
+        return False, f"'{keyword}' is already in the {gender_list} list."
+
+    kw_set.add(keyword)
+    setattr(mgr.db, attr_name, kw_set)
+
+    from world.models import KeywordEvent
+
+    KeywordEvent.objects.create(
+        event_type="admin_add",
+        keyword=keyword,
+        gender_list=gender_list,
+        account_name=admin_name,
+    )
+    return True, ""
 
 
-class CustomKeywordCatalog(DefaultScript):
-    """Global script that stores custom keyword usage data.
+def remove_approved_keyword(
+    keyword: str,
+    gender_list: str,
+    admin_name: str = "",
+) -> tuple[bool, str]:
+    """Remove a keyword from an approved gender list.
 
-    Singleton script created by :func:`_get_or_create_catalog`.
-    Stores ``db.catalog`` — a dict of
-    ``{keyword: {count, first_used_by, last_used_by}}``.
+    Creates a :class:`~world.models.KeywordEvent` with event type
+    ``admin_remove`` and removes the keyword from the
+    :class:`KeywordManager` script's set for the given gender list.
+
+    Args:
+        keyword: Keyword to remove (lowercase).
+        gender_list: One of ``"feminine"``, ``"masculine"``, or
+            ``"neutral"``.
+        admin_name: Name of the admin performing the action.
+
+    Returns:
+        ``(True, "")`` on success, or ``(False, reason)`` on failure.
     """
+    attr_map = {
+        "feminine": "feminine_keywords",
+        "masculine": "masculine_keywords",
+        "neutral": "neutral_keywords",
+    }
+    attr_name = attr_map.get(gender_list)
+    if attr_name is None:
+        return False, f"Invalid gender list {gender_list!r}."
 
-    def at_script_creation(self) -> None:
-        self.key = _CATALOG_SCRIPT_KEY
-        self.persistent = True
-        self.db.catalog = {}  # type: ignore[attr-defined]
+    mgr = _get_or_create_keyword_manager()
+    kw_set: set[str] | None = getattr(mgr.db, attr_name)
+    if kw_set is None or keyword not in kw_set:
+        return False, f"'{keyword}' is not in the {gender_list} list."
+
+    kw_set.discard(keyword)
+    setattr(mgr.db, attr_name, kw_set)
+
+    from world.models import KeywordEvent
+
+    KeywordEvent.objects.create(
+        event_type="admin_remove",
+        keyword=keyword,
+        gender_list=gender_list,
+        account_name=admin_name,
+    )
+    return True, ""
 
 
 # =========================================================================

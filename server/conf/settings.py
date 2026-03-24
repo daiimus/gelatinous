@@ -28,6 +28,14 @@ put secret game- or server-specific settings in secret_settings.py.
 from evennia.settings_default import *
 
 ######################################################################
+# Custom Django Apps
+######################################################################
+
+# Register the ``world`` package as a Django app so that its models
+# (e.g. KeywordEvent) are picked up by the ORM and admin interface.
+INSTALLED_APPS = INSTALLED_APPS + ["world"]  # type: ignore[name-defined]
+
+######################################################################
 # Security Middleware
 ######################################################################
 

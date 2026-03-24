@@ -122,10 +122,13 @@ class TestShortdescInstantSet(TestCase):
     def test_gender_gated_keyword(self):
         """Male character cannot use a feminine-only keyword."""
         from commands.CmdCharacter import CmdShortdesc
-        from world.identity import FEMININE_KEYWORDS, NEUTRAL_KEYWORDS
+        from world.identity import (
+            _DEFAULT_FEMININE_KEYWORDS,
+            _DEFAULT_NEUTRAL_KEYWORDS,
+        )
 
         # Pick a keyword that's feminine-only (not in neutral)
-        feminine_only = FEMININE_KEYWORDS - NEUTRAL_KEYWORDS
+        feminine_only = _DEFAULT_FEMININE_KEYWORDS - _DEFAULT_NEUTRAL_KEYWORDS
         kw = sorted(feminine_only)[0]
 
         char = _make_character(sex="male", sdesc_keyword="man")
@@ -453,7 +456,9 @@ class TestShortdescCustomKeyword(TestCase):
         with patch("world.identity.log_custom_keyword") as mock_log:
             cmd._set_keyword(char, "ronin")
         self.assertEqual(char.sdesc_keyword, "ronin")
-        mock_log.assert_called_once_with("ronin", char.key)
+        mock_log.assert_called_once_with(
+            "ronin", char.key, account=char.account,
+        )
 
     def test_custom_keyword_not_logged_for_approved(self):
         """Approved keywords bypass the catalog entirely."""
@@ -515,61 +520,86 @@ class TestShortdescCustomKeyword(TestCase):
 
 
 class TestLogCustomKeyword(TestCase):
-    """Test catalog logging via :func:`log_custom_keyword`."""
+    """Test event logging via :func:`log_custom_keyword`."""
 
-    def _make_catalog_mock(self):
-        """Build a mock catalog script with a real dict for db.catalog."""
-        catalog = MagicMock()
-        catalog.db.catalog = {}
-        return catalog
+    def _mock_keyword_event(self):
+        """Return a mock ``world.models`` module with KeywordEvent stub.
+
+        ``world.models`` can't be imported during default-settings tests
+        (``world`` isn't in INSTALLED_APPS for the test runner).  We
+        inject a fake module into ``sys.modules`` instead.
+        """
+        mock_module = MagicMock()
+        mock_create = mock_module.KeywordEvent.objects.create
+        return mock_module, mock_create
 
     def test_custom_keyword_logged(self):
-        """Novel keyword creates a catalog entry."""
+        """Novel keyword creates a KeywordEvent record."""
         from world.identity import log_custom_keyword
 
-        catalog = self._make_catalog_mock()
-        with patch("world.identity._get_or_create_catalog", return_value=catalog):
-            log_custom_keyword("ronin", "Alice")
+        mock_module, mock_create = self._mock_keyword_event()
 
-        self.assertIn("ronin", catalog.db.catalog)
-        entry = catalog.db.catalog["ronin"]
-        self.assertEqual(entry["count"], 1)
-        self.assertEqual(entry["first_used_by"], "Alice")
-        self.assertEqual(entry["last_used_by"], "Alice")
+        with patch.dict("sys.modules", {"world.models": mock_module}):
+            with patch(
+                "world.identity.get_all_keywords", return_value=frozenset()
+            ):
+                log_custom_keyword("ronin", "Alice")
 
-    def test_repeat_usage_increments_count(self):
-        """Repeated use of same keyword increments count."""
+        mock_create.assert_called_once_with(
+            event_type="custom_set",
+            keyword="ronin",
+            character_name="Alice",
+            account_name="",
+        )
+
+    def test_custom_keyword_logged_with_account(self):
+        """Account name is included when account is provided."""
         from world.identity import log_custom_keyword
 
-        catalog = self._make_catalog_mock()
-        with patch("world.identity._get_or_create_catalog", return_value=catalog):
-            log_custom_keyword("ronin", "Alice")
-            log_custom_keyword("ronin", "Bob")
+        mock_module, mock_create = self._mock_keyword_event()
 
-        entry = catalog.db.catalog["ronin"]
-        self.assertEqual(entry["count"], 2)
-        self.assertEqual(entry["first_used_by"], "Alice")
-        self.assertEqual(entry["last_used_by"], "Bob")
+        account = MagicMock()
+        account.key = "player1"
+
+        with patch.dict("sys.modules", {"world.models": mock_module}):
+            with patch(
+                "world.identity.get_all_keywords", return_value=frozenset()
+            ):
+                log_custom_keyword("ronin", "Alice", account=account)
+
+        mock_create.assert_called_once_with(
+            event_type="custom_set",
+            keyword="ronin",
+            character_name="Alice",
+            account_name="player1",
+        )
 
     def test_approved_keyword_not_logged(self):
         """Keywords from the approved lists are silently ignored."""
         from world.identity import log_custom_keyword
 
-        catalog = self._make_catalog_mock()
-        with patch("world.identity._get_or_create_catalog", return_value=catalog):
-            log_custom_keyword("man", "Alice")
+        mock_module, mock_create = self._mock_keyword_event()
 
-        self.assertEqual(catalog.db.catalog, {})
+        with patch.dict("sys.modules", {"world.models": mock_module}):
+            with patch(
+                "world.identity.get_all_keywords",
+                return_value=frozenset({"man"}),
+            ):
+                log_custom_keyword("man", "Alice")
 
-    def test_multiple_keywords_tracked(self):
-        """Multiple distinct keywords each get their own entry."""
+        mock_create.assert_not_called()
+
+    def test_multiple_keywords_each_logged(self):
+        """Multiple distinct keywords each create their own event."""
         from world.identity import log_custom_keyword
 
-        catalog = self._make_catalog_mock()
-        with patch("world.identity._get_or_create_catalog", return_value=catalog):
-            log_custom_keyword("ronin", "Alice")
-            log_custom_keyword("wraith", "Bob")
+        mock_module, mock_create = self._mock_keyword_event()
 
-        self.assertEqual(len(catalog.db.catalog), 2)
-        self.assertIn("ronin", catalog.db.catalog)
-        self.assertIn("wraith", catalog.db.catalog)
+        with patch.dict("sys.modules", {"world.models": mock_module}):
+            with patch(
+                "world.identity.get_all_keywords", return_value=frozenset()
+            ):
+                log_custom_keyword("ronin", "Alice")
+                log_custom_keyword("wraith", "Bob")
+
+        self.assertEqual(mock_create.call_count, 2)

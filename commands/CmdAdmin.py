@@ -953,15 +953,22 @@ class CmdMedicalAudit(Command):
 
 class CmdKeywords(Command):
     """
-    View the catalog of custom sdesc keywords used by players.
+    Manage approved sdesc keywords and view event logs.
 
     Usage:
-        @keywords           - list all custom keywords by usage count
-        @keywords clear     - wipe the catalog
+        @keywords                      - summary (approved counts + recent
+                                         custom usage)
+        @keywords list                 - all approved keywords by gender
+        @keywords log                  - recent 20 events
+        @keywords log player <name>    - events for a player (account name)
+        @keywords log keyword <word>   - events for a specific keyword
+        @keywords add <gender> <word>  - add to approved list
+        @keywords remove <gender> <word> - remove from approved list
 
-    Shows custom keywords that players have set via @shortdesc,
-    sorted by usage count.  Only keywords outside the approved lists
-    are cataloged.
+    <gender> is one of: feminine, masculine, neutral.
+
+    Event logs are stored as Django model records and are also visible
+    in the Evennia admin interface.
     """
 
     key = "@keywords"
@@ -969,42 +976,192 @@ class CmdKeywords(Command):
     locks = "cmd:perm(Builder)"
     help_category = "Admin"
 
-    def func(self):
+    _LOG_PAGE_SIZE = 20
+
+    def func(self) -> None:
         caller = self.caller
-        args = self.args.strip().lower()
+        args = self.args.strip()
 
-        from world.identity import get_custom_keyword_catalog
-
-        if args == "clear":
-            from world.identity import _get_or_create_catalog
-
-            catalog_script = _get_or_create_catalog()
-            catalog_script.db.catalog = {}
-            caller.msg("|yCustom keyword catalog cleared.|n")
+        if not args:
+            self._show_summary(caller)
             return
 
-        catalog = get_custom_keyword_catalog()
-        if not catalog:
-            caller.msg("No custom keywords have been used yet.")
-            return
+        parts = args.split(None, 1)
+        sub = parts[0].lower()
+        rest = parts[1].strip() if len(parts) > 1 else ""
 
-        # Sort by count descending
-        sorted_kws = sorted(
-            catalog.items(),
-            key=lambda item: int(item[1].get("count") or 0),
-            reverse=True,
+        if sub == "list":
+            self._show_list(caller)
+        elif sub == "log":
+            self._show_log(caller, rest)
+        elif sub == "add":
+            self._add_keyword(caller, rest)
+        elif sub == "remove":
+            self._remove_keyword(caller, rest)
+        else:
+            caller.msg("Unknown subcommand. See |whelp @keywords|n.")
+
+    # -- subcommand handlers -----------------------------------------
+
+    def _show_summary(self, caller: object) -> None:
+        """Summary view: approved counts + last 5 custom events."""
+        from world.identity import (
+            get_feminine_keywords,
+            get_masculine_keywords,
+            get_neutral_keywords,
+        )
+        from world.models import KeywordEvent
+
+        fem = get_feminine_keywords()
+        masc = get_masculine_keywords()
+        neut = get_neutral_keywords()
+
+        lines = [
+            "|c=== Keyword Summary ===|n",
+            f"  Feminine:  |w{len(fem)}|n approved",
+            f"  Masculine: |w{len(masc)}|n approved",
+            f"  Neutral:   |w{len(neut)}|n approved",
+            f"  Total:     |w{len(fem) + len(masc) + len(neut)}|n",
+        ]
+
+        recent = KeywordEvent.objects.filter(
+            event_type="custom_set"
+        ).order_by("-timestamp")[:5]
+        if recent:
+            lines.append("")
+            lines.append("|c--- Recent Custom Usage (last 5) ---|n")
+            for evt in recent:
+                lines.append(
+                    f"  |w{evt.keyword:<20}|n  "
+                    f"by |c{evt.character_name or '?'}|n  "
+                    f"({evt.account_name or '?'})  "
+                    f"|x{evt.timestamp:%Y-%m-%d %H:%M}|n"
+                )
+        else:
+            lines.append("\nNo custom keyword events recorded yet.")
+
+        caller.msg("\n".join(lines))
+
+    def _show_list(self, caller: object) -> None:
+        """Display all approved keywords grouped by gender."""
+        from world.identity import (
+            get_feminine_keywords,
+            get_masculine_keywords,
+            get_neutral_keywords,
         )
 
-        header = f"|c=== Custom Keyword Catalog ({len(sorted_kws)} keywords) ===|n\n"
-        lines = []
-        for kw, meta in sorted_kws:
-            count = meta.get("count", 0)
-            first = meta.get("first_used_by", "?")
-            last = meta.get("last_used_by", "?")
-            lines.append(
-                f"  |w{kw:<20}|n  used |y{count}|nx"
-                f"  first: |c{first}|n  last: |c{last}|n"
+        for label, kws in [
+            ("Feminine", get_feminine_keywords()),
+            ("Masculine", get_masculine_keywords()),
+            ("Neutral", get_neutral_keywords()),
+        ]:
+            sorted_kws = sorted(kws)
+            caller.msg(
+                f"|c{label} ({len(sorted_kws)}):|n "
+                + ", ".join(sorted_kws)
             )
 
-        caller.msg(header + "\n".join(lines))
+    def _show_log(self, caller: object, rest: str) -> None:
+        """Show event log, optionally filtered by player or keyword."""
+        from world.models import KeywordEvent
+
+        if not rest:
+            events = KeywordEvent.objects.all()[:self._LOG_PAGE_SIZE]
+            title = f"Recent {self._LOG_PAGE_SIZE} Keyword Events"
+        else:
+            log_parts = rest.split(None, 1)
+            filter_type = log_parts[0].lower()
+            filter_value = log_parts[1].strip() if len(log_parts) > 1 else ""
+
+            if not filter_value:
+                caller.msg(
+                    "Usage: |w@keywords log player <name>|n "
+                    "or |w@keywords log keyword <word>|n"
+                )
+                return
+
+            if filter_type == "player":
+                events = KeywordEvent.objects.filter(
+                    account_name__iexact=filter_value
+                )[:self._LOG_PAGE_SIZE]
+                title = (
+                    f"Keyword Events for player '{filter_value}' "
+                    f"(last {self._LOG_PAGE_SIZE})"
+                )
+            elif filter_type == "keyword":
+                events = KeywordEvent.objects.filter(
+                    keyword__iexact=filter_value
+                )[:self._LOG_PAGE_SIZE]
+                title = (
+                    f"Keyword Events for '{filter_value}' "
+                    f"(last {self._LOG_PAGE_SIZE})"
+                )
+            else:
+                caller.msg(
+                    "Usage: |w@keywords log player <name>|n "
+                    "or |w@keywords log keyword <word>|n"
+                )
+                return
+
+        if not events:
+            caller.msg("No matching keyword events found.")
+            return
+
+        lines = [f"|c=== {title} ===|n"]
+        for evt in events:
+            evt_type = evt.get_event_type_display()
+            gender_str = (
+                f" [{evt.gender_list}]" if evt.gender_list else ""
+            )
+            lines.append(
+                f"  |x{evt.timestamp:%Y-%m-%d %H:%M}|n  "
+                f"|w{evt.keyword:<16}|n  {evt_type}{gender_str}"
+                f"  char=|c{evt.character_name or '-'}|n"
+                f"  acct=|c{evt.account_name or '-'}|n"
+            )
+
+        caller.msg("\n".join(lines))
+
+    def _add_keyword(self, caller: object, rest: str) -> None:
+        """Add a keyword to an approved gender list."""
+        from world.identity import add_approved_keyword
+
+        parts = rest.split()
+        if len(parts) != 2:
+            caller.msg("Usage: |w@keywords add <gender> <word>|n")
+            return
+
+        gender_list, keyword = parts[0].lower(), parts[1].lower()
+        admin_name = caller.key  # type: ignore[attr-defined]
+
+        ok, reason = add_approved_keyword(keyword, gender_list, admin_name)
+        if ok:
+            caller.msg(
+                f"|gAdded|n '{keyword}' to the |w{gender_list}|n list."
+            )
+        else:
+            caller.msg(f"|rFailed:|n {reason}")
+
+    def _remove_keyword(self, caller: object, rest: str) -> None:
+        """Remove a keyword from an approved gender list."""
+        from world.identity import remove_approved_keyword
+
+        parts = rest.split()
+        if len(parts) != 2:
+            caller.msg("Usage: |w@keywords remove <gender> <word>|n")
+            return
+
+        gender_list, keyword = parts[0].lower(), parts[1].lower()
+        admin_name = caller.key  # type: ignore[attr-defined]
+
+        ok, reason = remove_approved_keyword(
+            keyword, gender_list, admin_name
+        )
+        if ok:
+            caller.msg(
+                f"|gRemoved|n '{keyword}' from the "
+                f"|w{gender_list}|n list."
+            )
+        else:
+            caller.msg(f"|rFailed:|n {reason}")
 
