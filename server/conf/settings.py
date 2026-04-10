@@ -36,6 +36,20 @@ from evennia.settings_default import *
 INSTALLED_APPS = INSTALLED_APPS + ["world"]  # type: ignore[name-defined]
 
 ######################################################################
+# Global Scripts
+######################################################################
+
+# Auto-managed singleton scripts.  Evennia recreates these if they
+# are deleted, preventing stale-reference tracebacks on reload.
+GLOBAL_SCRIPTS = {
+    "keyword_manager": {
+        "typeclass": "world.identity.KeywordManager",
+        "desc": "Manages approved sdesc keywords",
+        "persistent": True,
+    },
+}
+
+######################################################################
 # Security Middleware
 ######################################################################
 
