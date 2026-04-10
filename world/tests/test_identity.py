@@ -10,6 +10,7 @@ All test cases match the specification in
 """
 
 from unittest import TestCase
+from unittest.mock import patch
 
 from world.identity import (
     BUILDS,
@@ -241,7 +242,21 @@ class TestKeywordLists(TestCase):
 
 
 class TestGetValidKeywords(TestCase):
-    """Tests for ``get_valid_keywords`` and ``is_valid_keyword``."""
+    """Tests for ``get_valid_keywords`` and ``is_valid_keyword``.
+
+    The getter functions read from the live ``KeywordManager`` script
+    when one exists.  We patch ``_get_keyword_manager`` so the getters
+    always fall back to the code-level ``_DEFAULT_*`` frozensets,
+    keeping these tests independent of live DB state.
+    """
+
+    def setUp(self) -> None:
+        patcher = patch(
+            "world.identity._get_keyword_manager",
+            side_effect=Exception("no script in unit tests"),
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_male_gets_masculine_and_neutral(self) -> None:
         result = get_valid_keywords("male")
