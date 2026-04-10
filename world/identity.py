@@ -246,37 +246,31 @@ def validate_custom_keyword(keyword: str) -> tuple[bool, str]:
 _KEYWORD_MANAGER_KEY = "keyword_manager"
 
 
-def _get_or_create_keyword_manager() -> "KeywordManager":
+def _get_keyword_manager() -> "KeywordManager":
     """Return the singleton :class:`KeywordManager` script.
 
-    Creates the script on first call.  Subsequent calls return the
-    existing instance.
+    Looks up the script by key in the database.  Evennia's
+    ``GLOBAL_SCRIPTS`` registry (configured in
+    ``server/conf/settings.py``) guarantees the script exists at
+    server startup and recreates it if it is ever deleted.
 
     Returns:
         The keyword manager script instance.
+
+    Raises:
+        ``ScriptDB.DoesNotExist``: If the script has not been created
+            yet (e.g. during unit tests that bypass server startup).
     """
-    from evennia import create_script
     from evennia.scripts.models import ScriptDB
 
-    try:
-        return ScriptDB.objects.get(db_key=_KEYWORD_MANAGER_KEY)
-    except ScriptDB.DoesNotExist:
-        pass
-
-    script = create_script(
-        KeywordManager,
-        key=_KEYWORD_MANAGER_KEY,
-        persistent=True,
-    )
-    if not script.id:
-        script.save()
-    return script
+    return ScriptDB.objects.get(db_key=_KEYWORD_MANAGER_KEY)
 
 
 class KeywordManager(DefaultScript):
     """Global script that stores the approved keyword lists.
 
-    Singleton script created by :func:`_get_or_create_keyword_manager`.
+    Managed by Evennia's ``GLOBAL_SCRIPTS`` registry (configured in
+    ``server/conf/settings.py``).  Access via :func:`_get_keyword_manager`.
     Stores three mutable sets on ``db`` attributes:
 
     * ``db.feminine_keywords`` — :class:`set` of feminine keywords
@@ -304,21 +298,19 @@ class KeywordManager(DefaultScript):
 def get_feminine_keywords() -> frozenset[str]:
     """Return the current set of approved feminine keywords.
 
-    Reads from the :class:`KeywordManager` script if it exists.
-    Falls back to :data:`_DEFAULT_FEMININE_KEYWORDS` if the script
-    has not been created yet (e.g. during tests or early startup).
+    Reads from the :class:`KeywordManager` script via
+    ``GLOBAL_SCRIPTS``.  Falls back to
+    :data:`_DEFAULT_FEMININE_KEYWORDS` during tests or early startup.
 
     Returns:
         Frozenset of feminine keyword strings.
     """
-    from evennia.scripts.models import ScriptDB
-
     try:
-        mgr = ScriptDB.objects.get(db_key=_KEYWORD_MANAGER_KEY)
+        mgr = _get_keyword_manager()
         kws: set[str] | None = mgr.db.feminine_keywords
         if kws is not None:
             return frozenset(kws)
-    except ScriptDB.DoesNotExist:
+    except Exception:
         pass
     return _DEFAULT_FEMININE_KEYWORDS
 
@@ -326,21 +318,19 @@ def get_feminine_keywords() -> frozenset[str]:
 def get_masculine_keywords() -> frozenset[str]:
     """Return the current set of approved masculine keywords.
 
-    Reads from the :class:`KeywordManager` script if it exists.
-    Falls back to :data:`_DEFAULT_MASCULINE_KEYWORDS` if the script
-    has not been created yet.
+    Reads from the :class:`KeywordManager` script via
+    ``GLOBAL_SCRIPTS``.  Falls back to
+    :data:`_DEFAULT_MASCULINE_KEYWORDS` during tests or early startup.
 
     Returns:
         Frozenset of masculine keyword strings.
     """
-    from evennia.scripts.models import ScriptDB
-
     try:
-        mgr = ScriptDB.objects.get(db_key=_KEYWORD_MANAGER_KEY)
+        mgr = _get_keyword_manager()
         kws: set[str] | None = mgr.db.masculine_keywords
         if kws is not None:
             return frozenset(kws)
-    except ScriptDB.DoesNotExist:
+    except Exception:
         pass
     return _DEFAULT_MASCULINE_KEYWORDS
 
@@ -348,21 +338,19 @@ def get_masculine_keywords() -> frozenset[str]:
 def get_neutral_keywords() -> frozenset[str]:
     """Return the current set of approved neutral keywords.
 
-    Reads from the :class:`KeywordManager` script if it exists.
-    Falls back to :data:`_DEFAULT_NEUTRAL_KEYWORDS` if the script
-    has not been created yet.
+    Reads from the :class:`KeywordManager` script via
+    ``GLOBAL_SCRIPTS``.  Falls back to
+    :data:`_DEFAULT_NEUTRAL_KEYWORDS` during tests or early startup.
 
     Returns:
         Frozenset of neutral keyword strings.
     """
-    from evennia.scripts.models import ScriptDB
-
     try:
-        mgr = ScriptDB.objects.get(db_key=_KEYWORD_MANAGER_KEY)
+        mgr = _get_keyword_manager()
         kws: set[str] | None = mgr.db.neutral_keywords
         if kws is not None:
             return frozenset(kws)
-    except ScriptDB.DoesNotExist:
+    except Exception:
         pass
     return _DEFAULT_NEUTRAL_KEYWORDS
 
@@ -441,7 +429,7 @@ def add_approved_keyword(
     if attr_name is None:
         return False, f"Invalid gender list {gender_list!r}."
 
-    mgr = _get_or_create_keyword_manager()
+    mgr = _get_keyword_manager()
     kw_set: set[str] | None = getattr(mgr.db, attr_name)
     if kw_set is None:
         kw_set = set()
@@ -491,7 +479,7 @@ def remove_approved_keyword(
     if attr_name is None:
         return False, f"Invalid gender list {gender_list!r}."
 
-    mgr = _get_or_create_keyword_manager()
+    mgr = _get_keyword_manager()
     kw_set: set[str] | None = getattr(mgr.db, attr_name)
     if kw_set is None or keyword not in kw_set:
         return False, f"'{keyword}' is not in the {gender_list} list."
