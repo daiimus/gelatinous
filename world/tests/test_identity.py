@@ -10,7 +10,9 @@ All test cases match the specification in
 """
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+from django.core.exceptions import ObjectDoesNotExist
 
 from world.identity import (
     BUILDS,
@@ -25,6 +27,9 @@ from world.identity import (
     format_clothing_feature,
     format_hair_feature,
     format_wielded_feature,
+    get_feminine_keywords,
+    get_masculine_keywords,
+    get_neutral_keywords,
     get_physical_descriptor,
     get_valid_keywords,
     is_valid_keyword,
@@ -245,15 +250,16 @@ class TestGetValidKeywords(TestCase):
     """Tests for ``get_valid_keywords`` and ``is_valid_keyword``.
 
     The getter functions read from the live ``KeywordManager`` script
-    when one exists.  We patch ``_get_keyword_manager`` so the getters
-    always fall back to the code-level ``_DEFAULT_*`` frozensets,
-    keeping these tests independent of live DB state.
+    when one exists.  We patch ``_get_keyword_manager`` to raise
+    ``ObjectDoesNotExist`` (the expected missing-script path) so the
+    getters fall back to code-level ``_DEFAULT_*`` frozensets, keeping
+    these routing tests independent of live DB state.
     """
 
     def setUp(self) -> None:
         patcher = patch(
             "world.identity._get_keyword_manager",
-            side_effect=Exception("no script in unit tests"),
+            side_effect=ObjectDoesNotExist,
         )
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -307,6 +313,145 @@ class TestGetValidKeywords(TestCase):
     def test_case_insensitive_validation(self) -> None:
         self.assertTrue(is_valid_keyword("Man", "male"))
         self.assertTrue(is_valid_keyword("WOMAN", "female"))
+
+
+# ===================================================================
+# Keyword Getter Fallback Behaviour
+# ===================================================================
+
+
+class TestKeywordGetterFallback(TestCase):
+    """Verify that keyword getters handle all script states correctly.
+
+    Each getter has three code paths:
+
+    1. Script exists and has keywords → return the script's data.
+    2. ``ObjectDoesNotExist`` → silent fallback to ``_DEFAULT_*``.
+    3. Unexpected error → ``log_trace`` + fallback to ``_DEFAULT_*``.
+
+    A fourth edge case (script exists but ``db`` attribute is ``None``)
+    also falls back to defaults without logging.
+    """
+
+    # -- Happy path: script provides keywords --------------------------
+
+    def test_feminine_returns_script_keywords(self) -> None:
+        mock_mgr = MagicMock()
+        mock_mgr.db.feminine_keywords = {"queen", "duchess"}
+        with patch("world.identity._get_keyword_manager", return_value=mock_mgr):
+            result = get_feminine_keywords()
+        self.assertEqual(result, frozenset({"queen", "duchess"}))
+
+    def test_masculine_returns_script_keywords(self) -> None:
+        mock_mgr = MagicMock()
+        mock_mgr.db.masculine_keywords = {"king", "duke"}
+        with patch("world.identity._get_keyword_manager", return_value=mock_mgr):
+            result = get_masculine_keywords()
+        self.assertEqual(result, frozenset({"king", "duke"}))
+
+    def test_neutral_returns_script_keywords(self) -> None:
+        mock_mgr = MagicMock()
+        mock_mgr.db.neutral_keywords = {"citizen", "clone"}
+        with patch("world.identity._get_keyword_manager", return_value=mock_mgr):
+            result = get_neutral_keywords()
+        self.assertEqual(result, frozenset({"citizen", "clone"}))
+
+    # -- Missing script: silent fallback to defaults -------------------
+
+    def test_feminine_falls_back_when_script_missing(self) -> None:
+        with patch(
+            "world.identity._get_keyword_manager",
+            side_effect=ObjectDoesNotExist,
+        ):
+            self.assertEqual(get_feminine_keywords(), _DEFAULT_FEMININE_KEYWORDS)
+
+    def test_masculine_falls_back_when_script_missing(self) -> None:
+        with patch(
+            "world.identity._get_keyword_manager",
+            side_effect=ObjectDoesNotExist,
+        ):
+            self.assertEqual(get_masculine_keywords(), _DEFAULT_MASCULINE_KEYWORDS)
+
+    def test_neutral_falls_back_when_script_missing(self) -> None:
+        with patch(
+            "world.identity._get_keyword_manager",
+            side_effect=ObjectDoesNotExist,
+        ):
+            self.assertEqual(get_neutral_keywords(), _DEFAULT_NEUTRAL_KEYWORDS)
+
+    # -- Unexpected error: log + fallback ------------------------------
+
+    def test_feminine_logs_and_falls_back_on_unexpected_error(self) -> None:
+        with (
+            patch(
+                "world.identity._get_keyword_manager",
+                side_effect=RuntimeError("connection lost"),
+            ),
+            patch("world.identity.logger") as mock_logger,
+        ):
+            result = get_feminine_keywords()
+        self.assertEqual(result, _DEFAULT_FEMININE_KEYWORDS)
+        mock_logger.log_trace.assert_called_once()
+
+    def test_masculine_logs_and_falls_back_on_unexpected_error(self) -> None:
+        with (
+            patch(
+                "world.identity._get_keyword_manager",
+                side_effect=RuntimeError("connection lost"),
+            ),
+            patch("world.identity.logger") as mock_logger,
+        ):
+            result = get_masculine_keywords()
+        self.assertEqual(result, _DEFAULT_MASCULINE_KEYWORDS)
+        mock_logger.log_trace.assert_called_once()
+
+    def test_neutral_logs_and_falls_back_on_unexpected_error(self) -> None:
+        with (
+            patch(
+                "world.identity._get_keyword_manager",
+                side_effect=RuntimeError("connection lost"),
+            ),
+            patch("world.identity.logger") as mock_logger,
+        ):
+            result = get_neutral_keywords()
+        self.assertEqual(result, _DEFAULT_NEUTRAL_KEYWORDS)
+        mock_logger.log_trace.assert_called_once()
+
+    # -- None attribute: fallback without logging ----------------------
+
+    def test_feminine_falls_back_when_attribute_is_none(self) -> None:
+        mock_mgr = MagicMock()
+        mock_mgr.db.feminine_keywords = None
+        with patch("world.identity._get_keyword_manager", return_value=mock_mgr):
+            self.assertEqual(get_feminine_keywords(), _DEFAULT_FEMININE_KEYWORDS)
+
+    def test_masculine_falls_back_when_attribute_is_none(self) -> None:
+        mock_mgr = MagicMock()
+        mock_mgr.db.masculine_keywords = None
+        with patch("world.identity._get_keyword_manager", return_value=mock_mgr):
+            self.assertEqual(get_masculine_keywords(), _DEFAULT_MASCULINE_KEYWORDS)
+
+    def test_neutral_falls_back_when_attribute_is_none(self) -> None:
+        mock_mgr = MagicMock()
+        mock_mgr.db.neutral_keywords = None
+        with patch("world.identity._get_keyword_manager", return_value=mock_mgr):
+            self.assertEqual(get_neutral_keywords(), _DEFAULT_NEUTRAL_KEYWORDS)
+
+    # -- Missing-script path does NOT log ------------------------------
+
+    def test_missing_script_does_not_log(self) -> None:
+        """ObjectDoesNotExist is expected — should not produce a log entry."""
+        with (
+            patch(
+                "world.identity._get_keyword_manager",
+                side_effect=ObjectDoesNotExist,
+            ),
+            patch("world.identity.logger") as mock_logger,
+        ):
+            get_feminine_keywords()
+            get_masculine_keywords()
+            get_neutral_keywords()
+        mock_logger.log_trace.assert_not_called()
 
 
 # ===================================================================

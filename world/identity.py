@@ -16,7 +16,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from django.core.exceptions import ObjectDoesNotExist
 from evennia.scripts.scripts import DefaultScript
+from evennia.utils import logger
 
 from world.grammar import get_article
 
@@ -310,8 +312,10 @@ def get_feminine_keywords() -> frozenset[str]:
         kws: set[str] | None = mgr.db.feminine_keywords
         if kws is not None:
             return frozenset(kws)
-    except Exception:
+    except ObjectDoesNotExist:
         pass
+    except Exception:
+        logger.log_trace("Unexpected error reading KeywordManager")
     return _DEFAULT_FEMININE_KEYWORDS
 
 
@@ -330,8 +334,10 @@ def get_masculine_keywords() -> frozenset[str]:
         kws: set[str] | None = mgr.db.masculine_keywords
         if kws is not None:
             return frozenset(kws)
-    except Exception:
+    except ObjectDoesNotExist:
         pass
+    except Exception:
+        logger.log_trace("Unexpected error reading KeywordManager")
     return _DEFAULT_MASCULINE_KEYWORDS
 
 
@@ -350,8 +356,10 @@ def get_neutral_keywords() -> frozenset[str]:
         kws: set[str] | None = mgr.db.neutral_keywords
         if kws is not None:
             return frozenset(kws)
-    except Exception:
+    except ObjectDoesNotExist:
         pass
+    except Exception:
+        logger.log_trace("Unexpected error reading KeywordManager")
     return _DEFAULT_NEUTRAL_KEYWORDS
 
 
