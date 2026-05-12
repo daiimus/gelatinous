@@ -39,11 +39,17 @@ Skintone is deliberately excluded from the sdesc. It appears only in the longdes
 
 ### Recognition
 
-A per-character memory mapping stored on the brain organ: "I know the person with sleeve_uid X as [name], and here's everything I remember about them." When you see someone whose sleeve_uid is in your memory, you see the name you assigned. When you don't recognize them, you see their sdesc.
+A per-character memory mapping stored on the brain organ: "I know the person with this Apparent UID as [name], and here's everything I remember about them." When you see someone whose current Apparent UID is in your memory, you see the name you assigned. When you don't recognize them, you see their sdesc. Because the Apparent UID is derived from the target's full identity signature (real sleeve, active overrides, essential items), the same physical body can produce different recognition entries under different disguises — see §Memory Data Model.
 
 ### Apparent Identity
 
-What the recognition pipeline actually resolves against. Normally your real `sleeve_uid`, but the `appear` (disguise) command can substitute a fake one. The sdesc is also overridable through `appear`, but the distinguishing feature always reflects actual visible state — true disguise requires changing your clothes.
+What the recognition pipeline actually resolves against. Three distinct concepts work together:
+
+1. **Identity Signature** — a tuple of all observable identity inputs: real `sleeve_uid` (the body's salt), active presentation overrides (height, build, keyword), and the sorted set of equipped essential disguise item types. The signature is recomputed on access from current state.
+2. **Apparent UID** — a deterministic 16-character hex digest of the identity signature (`blake2b(signature_bytes, digest_size=8).hexdigest()`). This is the **key** that recognition memory is stored under. Same signature → same UID → auto-recognition; any signature change → new UID → observers see a stranger.
+3. **Persona** — a player-private label for a remembered combination of overrides. Personas do **not** generate UIDs themselves; they are pure recall ergonomics. Adopting a persona restores its captured overrides, which then flow through the signature → UID pipeline like any other state.
+
+The sdesc is overridable through `appear`, but the distinguishing feature always reflects actual visible state — true disguise requires changing your clothes (or destroying / acquiring essential items).
 
 ---
 
@@ -166,17 +172,20 @@ You will now appear as "a lanky droog in a leather jacket" to those who don't kn
 ```mermaid
 graph TD
     A["get_display_name(looker)"] --> B{Is looker self?}
-    B -->|Yes| C["Return 'You'"]
-    B -->|No| D[Get target's apparent_sleeve_uid]
+    B -->|Yes| C["Return self.key"]
+    B -->|No| D["Compute target's Apparent UID<br/>from current identity signature"]
     D --> E[Get looker's brain organ]
-    E --> F{sleeve_uid in recognition_memory?}
-    F -->|Yes| G[Return stored assigned_name]
-    F -->|No| H[Return target's sdesc]
+    E --> F{Apparent UID in recognition_memory?}
+    F -->|Yes, has assigned_name| G[Return stored assigned_name]
+    F -->|Yes, no assigned_name<br/>(forgotten entry)| H[Return target's sdesc]
+    F -->|No| H
     G --> I{Staff cyberware active?}
     H --> I
     I -->|Yes| J["Append ' [real_name]'"]
     I -->|No| K[Return as-is]
 ```
+
+Self-perception (`"You"`) is **not** returned by `get_display_name`; it is handled at the rendering layer (see §Self-Perception below).
 
 ### `get_display_name` Override
 
@@ -186,58 +195,63 @@ The central hook. Currently returns `self.key` (Evennia default). Overridden on 
 def get_display_name(self, looker, **kwargs):
     """Return identity-aware display name based on looker's recognition."""
     if looker == self:
-        return "You"  # Self-perception
-    
-    # Get apparent identity (real or disguise)
-    apparent_uid = self.get_apparent_sleeve_uid()
-    
-    # Check looker's recognition memory
+        return self.key  # Self-perception handled at render layer
+
+    # Compute current Apparent UID from identity signature
+    apparent_uid = self.get_apparent_uid()
+
+    # Check looker's recognition memory (keyed on Apparent UID)
     recognized_name = looker.recall_name(apparent_uid)
-    
+
     if recognized_name:
         display = recognized_name
     else:
         display = self.get_sdesc()
-    
+
     # Staff cyberware overlay
     if looker.has_identity_overlay():
         display = f"{display} [{self.key}]"
-    
+
     return display
 ```
 
 ### Memory Data Model
 
-Each recognition entry is a rich document, designed for future RAG integration:
+Each recognition entry is a rich document, designed for future RAG integration. Entries are **keyed on Apparent UID** (the 16-character hex digest of the target's identity signature at the moment of remembering), not on real `sleeve_uid`. This means a single real character may appear under multiple recognition entries — one per distinct disguise signature the observer has tagged.
 
 ```python
 recognition_memory = {
-    "<sleeve_uid>": {
+    "<apparent_uid>": {              # 16-char hex digest of identity signature
         # Core identity
-        "assigned_name": str,           # What the rememberer calls them
-        
+        "assigned_name": str | None,    # What the rememberer calls them
+                                        # (None means entry exists but has been forgotten)
+
         # Temporal context
         "first_seen": str,              # ISO timestamp of first encounter
         "last_seen": str,               # ISO timestamp of most recent encounter
         "times_seen": int,              # Total encounter count
-        
+
         # Spatial context
         "location_first_seen": str,     # Room name/key where first encountered
         "location_last_seen": str,      # Room name/key where last seen
         "locations_seen": [str],        # All locations where encountered
-        
+
         # Appearance snapshot
         "sdesc_at_first_encounter": str,  # What they looked like initially
         "sdesc_at_last_encounter": str,   # What they looked like most recently
-        
+
         # Player-authored
         "notes": str,                   # Free-text notes (player-written)
         "tags": [str],                  # Player-assigned tags ("dangerous", "merchant", "ally")
-        
+
         # System-derived
         "confidence": float,            # 0.0-1.0, Resonance-influenced recognition certainty
         "relationship_valence": str,    # "hostile", "neutral", "friendly", "unknown"
-        
+        "lost_contact": bool,           # True once the entry's UID has not matched any
+                                        # observable character for an extended period;
+                                        # entry remains visible in `memory` and `recall`
+                                        # but is annotated as out of contact.
+
         # Interaction log (capped, rolling window)
         "recent_interactions": [
             {
@@ -251,7 +265,11 @@ recognition_memory = {
 }
 ```
 
-This is stored as a db attribute on the brain organ, keyed by `sleeve_uid`. The `recent_interactions` list should be capped (e.g., last 20 interactions per entry) to prevent unbounded growth, with older interactions eligible for summarization or archival.
+This is stored as a db attribute on the brain organ, keyed by **Apparent UID**. The `recent_interactions` list should be capped (e.g., last 20 interactions per entry) to prevent unbounded growth, with older interactions eligible for summarization or archival.
+
+**One-time wipe (engine PR rollout):** Existing `recognition_memory` dicts (keyed on real `sleeve_uid` from prior phases) are wiped at engine-PR deployment. There is no migration recompute; players rebuild recognition organically under the new keying. This is acceptable because no production characters depend on the prior memory schema for ongoing play, and the schema change is total (key shape, value shape).
+
+**Orphaned entries (`lost_contact`):** A recognition entry whose Apparent UID has not matched any observable character within a configurable window (deferred to balance pass; provisional default: 30 in-game days) is marked `lost_contact = True`. The entry stays visible in `memory` and `recall` (player-authored notes are valuable lore even when the trail goes cold) and is rendered with a "(lost contact)" annotation. A future player command may allow explicit pruning of lost-contact entries; auto-pruning is intentionally **not** done.
 
 ### Remembering Names
 
@@ -261,7 +279,7 @@ This is stored as a db attribute on the brain organ, keyed by `sleeve_uid`. The 
 remember <target> as <name>
 ```
 
-Stores the name in the rememberer's brain recognition memory for the target's apparent `sleeve_uid`. Any name is valid — false names are always possible. Re-remembering overwrites.
+Stores the name in the rememberer's brain recognition memory under the target's current **Apparent UID**. Any name is valid — false names are always possible. Re-remembering overwrites. Names are validated against the cross-namespace uniqueness rule (see §Personas — *Cross-namespace uniqueness*): the assigned name must not collide with the keyword catalog, the caller's persona names, or any existing recognition `assigned_name` on a different Apparent UID.
 
 ```
 > remember tall man as Jorge
@@ -379,9 +397,7 @@ When a character is the object of an action:
 
 ### Pronoun Integration
 
-The grammar engine interoperates with the existing pronoun system in `_process_description_variables()`. Template variables like `{they}`, `{them}`, `{their}` resolve based on the character's gender. For unrecognized characters, pronouns still derive from the character's actual sex attribute (observable physical presentation).
-
-For recognized characters, pronouns still derive from actual sex — recognition changes the name, not the pronoun set.
+The grammar engine interoperates with the existing pronoun system. Template variables like `{they}`, `{them}`, `{their}` resolve based on the character's **apparent gender** — the result of `get_apparent_gender(char)` (see §Pronouns Under Disguise). For an undisguised character this matches `caller.gender`; for a disguised character it derives from the active `keyword_override`. Recognition (i.e. having a name tagged on the observed Apparent UID) changes the *name* observers see, but does not alter the pronoun set; pronouns are a function of the *current* apparent presentation, not of the recognition tag.
 
 ### Self-Perception
 
@@ -450,18 +466,28 @@ The recognition system needs a stable identifier for "this disguised person" so 
 2. The character's **active presentation overrides** (height, build, keyword)
 3. The set of **essential disguise items** currently equipped (by item type, not specific instance)
 
+```python
+identity_signature = (
+    real_sleeve_uid,            # str (UUID)
+    height_override or None,    # str | None — None when no override
+    build_override or None,     # str | None
+    keyword_override or None,   # str | None
+    tuple(sorted(essential_item_type_ids)),  # tuple[str, ...] — stable order
+)
+
+signature_bytes = repr(identity_signature).encode("utf-8")
+apparent_uid = hashlib.blake2b(signature_bytes, digest_size=8).hexdigest()
+# 16-character lowercase hex string, e.g. "a3f1c92b08e4d7f6"
 ```
-identity_signature = (real_sleeve_uid, height_override, build_override,
-                      keyword_override, sorted(essential_item_types))
-apparent_uid = deterministic_uuid_from(identity_signature)
-```
+
+**Hash choice rationale:** `blake2b` with `digest_size=8` is fast, deterministic across processes (unlike Python's builtin `hash()`, which is salted per-process via `PYTHONHASHSEED`), and produces a 16-character hex digest with a 64-bit collision space — comfortable for the per-observer recognition-memory dict, where collisions only matter within a single character's memory and population is bounded by encounter count.
 
 **Key properties:**
 
 - Same character + same overrides + same essential items → **same Apparent UID, every time.** Observers who tagged this combination before will auto-recognize it again. This is the *organic recurring identity* property.
 - Change any signature input → **different Apparent UID.** Observers who tagged the prior signature see a stranger. This is the *unmasking* property.
 - Two different characters wearing the same overrides + items → **different Apparent UIDs** (different salt). Visual collision but no recognition collision. Impersonation is *visual*, not *systemic*.
-- Items reference by **type**, not instance. Replacing a destroyed balaclava with another balaclava of the same type preserves the signature.
+- Items reference by **type**, not instance. Replacing a destroyed balaclava with another balaclava of the same type preserves the signature. The exact "type ID" representation is defined by the disguise-item taxonomy in Phase 3.5; the engine consumes a sorted tuple of stable string identifiers.
 
 **Tradecraft as gameplay:**
 
@@ -472,14 +498,17 @@ Because the signature emerges from observable state — not from a player declar
 The `appear` command is the player's interface to presentation overrides. Each override is a **per-axis** change applied independently:
 
 ```
-appear taller / shorter / average           — height axis
-appear bulkier / leaner / athletic          — build axis
-appear man / woman / [keyword]              — keyword axis
-appear reset                                — clear all overrides
-appear                                       — show current overrides
+appear taller / shorter                     — height axis (one step on the HEIGHTS scale)
+appear bulkier / fatter                     — build axis, one step heavier
+appear thinner / leaner                     — build axis, one step lighter
+appear <keyword>                            — keyword axis (full catalog, gender filter
+                                              bypassed)
+appear <persona name>                       — adopt a saved persona (clean swap)
+appear                                       — show current overrides + active persona
+stop appearing                               — clear all overrides + active-persona pointer
 ```
 
-(Exact command grammar is subject to iteration; this is the working syntax for the foundation cut.)
+Axis-step verbs refuse at the extremes (an unreachable axis value is itself a tell). The canonical clear verb is `stop appearing`; there is no `appear reset` alias.
 
 Each override is a **skill-based performance** — using the `appear` verb triggers a Resonance check for that axis. The check is a stub in the foundation cut (always succeeds) but the call point exists in code for future tuning. Per-axis difficulty modeling is deferred.
 
@@ -497,13 +526,33 @@ The composed sdesc descriptor (`gaunt`, `burly`, etc.) is recomputed from the ov
 - Voice (deferred to future communication-system integration)
 - The character's real `sleeve_uid` (the underlying body identity)
 
+### Pronouns Under Disguise
+
+Pronouns must follow the disguise. A character presenting as "a woman" should be referenced with feminine pronouns by observers who do not know the real identity, regardless of the disguiser's underlying `sex` attribute. Failing to do so is an immediate identity tell and a defect of the rendering layer.
+
+**Derivation rule:**
+
+1. If the character has an active `keyword_override`, look the override up in the runtime keyword catalog (`KeywordManager` script's `db.feminine_keywords` / `db.masculine_keywords` / `db.neutral_keywords`, falling back to the `_DEFAULT_FEMININE_KEYWORDS` / `_DEFAULT_MASCULINE_KEYWORDS` / `_DEFAULT_NEUTRAL_KEYWORDS` frozensets in `world/identity.py` when the script is unavailable).
+   - Match in the feminine list → render as `she/her/hers`.
+   - Match in the masculine list → render as `he/him/his`.
+   - Match in the neutral list, **or no match anywhere** (e.g. a custom `@shortdesc` keyword such as `ronin` or `wraith`, which carries no gender metadata in `KeywordEvent`) → render as `they/them/theirs` (singular they).
+2. If the character has **no** active `keyword_override`, pronouns derive from the character's real `gender` property as today (no behavior change for undisguised characters).
+
+**Implementation surface (engine PR):**
+
+A single helper, conceptually `get_apparent_gender(char)`, returns one of `"male" | "female" | "neutral"` and is the only function that consumers (`world/emote.py`, `world/grammar.py`'s `transform_pronoun()`, longdesc/sdesc renderers, social templates) call to determine pronouns. The existing `caller.gender` reads inside emote / pose / template paths are redirected through this helper. The helper internally consults the keyword catalog and falls through to `caller.gender` only when no override is active.
+
+**No explicit `gender_override` axis in Phase 3.** Derivation is sufficient: a player who wants to be referred to with a different pronoun set picks a keyword from the desired gender list (the full catalog is available via `appear <keyword>`, gender filter bypassed). An explicit override axis is noted in Future Hooks for the case where a player wants a custom keyword *and* a non-neutral pronoun set.
+
+**Custom-keyword consequence:** Keywords minted via `@shortdesc` (logged as `KeywordEvent` rows) have no gender field on the model. They will always render neutral under this rule. This is acceptable — custom keywords are deliberately ambiguous, and forcing the player to also pick from the gendered catalog if they want gendered pronouns matches the deliberate-tradecraft theme of the system.
+
 ### Personas — Player-Facing Persona Recall
 
 Because the identity engine is purely emergent from current state, players need an ergonomic layer to **remember and restore** disguise combinations they have discovered and want to reuse. Personas fill this role.
 
 A persona is a **player-private snapshot** of presentation overrides, captured at the moment of saving and restorable later. Personas are designed in parallel to the planned identity/contact system — same recall, annotation, and (future) web-UI patterns.
 
-> **Status (current PR — `appear-persona-cluster`):** The surface verbs (`appear`, `stop appearing`, `personas`, `persona`, `remember me as <name>`, `forget <persona>`) and the persona storage schema are shipped. The signature engine, Apparent UID derivation, essential-item integration, and `get_sdesc()` consumption of overrides are deferred to follow-up Phase 3 PRs. Until those land, override axes are written to character DB but do not yet affect what observers perceive.
+> **Status (current PR — `appear-persona-cluster`):** The surface verbs (`appear`, `stop appearing`, `personas`, `persona`, `remember me as <name>`, `forget <persona>`) and the persona storage schema are shipped. The signature engine, Apparent UID derivation, essential-item integration, pronoun derivation under disguise, and `get_sdesc()` consumption of overrides land in the follow-up engine PR. Until that lands, override axes are written to character DB but do not yet affect what observers perceive.
 
 **A persona stores:**
 - A **player-chosen name** (case-insensitive lookup, case-preserving display, player-private — never visible to other characters)
@@ -511,6 +560,8 @@ A persona is a **player-private snapshot** of presentation overrides, captured a
 - The **types of essential disguise items** equipped at save time *(reserved field, populated when the engine PR lands; written empty in the foundation cut)*
 - A **freeform notes field** for player annotations *(reserved field, currently always empty)*
 - A **created-at timestamp** and the **room name** where it was saved
+
+**Pronouns are not stored separately.** Restoring a persona restores its `keyword_override`, and pronouns derive from that keyword via the rule in §Pronouns Under Disguise. A persona that captured a feminine keyword automatically restores feminine pronouns when adopted; a persona that captured a custom keyword automatically restores neutral pronouns. No persona field is needed for gender.
 
 **Personas do NOT generate identities.** They are pure recall aids. When a player adopts a persona, the system applies the captured overrides as a **clean swap** — overwriting all three axes including any unset axes (so adoption produces an exact replay of the saved state, never a merge). The resulting Apparent UID, once the engine PR lands, will be derived from the restored state, not from the persona itself. Two personas with identical overrides + item-type composition will yield the same Apparent UID — they are just labels in the player's memory.
 
@@ -524,20 +575,20 @@ A persona is a **player-private snapshot** of presentation overrides, captured a
 - `appear <persona name>` — restore a saved persona (clean swap)
 - `stop appearing` — clear all overrides and any adopted-persona pointer; the only canonical clear verb (no aliases)
 - `remember me as <persona name>` — snapshot current overrides as a persona; allowed even with no axes set (intentional — supports saving a baseline)
-- `forget <persona name>` — delete a persona; if it was the currently-adopted persona, also clears all overrides
+- `forget <persona name>` — delete a persona; if it was the currently-adopted persona, also clears all overrides **and** clears `db.active_persona` (the active-persona pointer is invalidated whenever its referent ceases to exist)
 - `personas` — list saved personas, recency-sorted (newest first); the active persona, if any, is marked with `*`
 - `persona <name>` — inspect a single persona's snapshot
 
-**Resolution order for `appear <arg>`:** persona name → axis nudge keyword (`taller`/`shorter`/`thinner`/`fatter`) → keyword catalog. Persona names take precedence so a player can always reach their own personas; cross-namespace uniqueness (below) prevents real ambiguity.
+**Resolution order for `appear <arg>`:** persona name → axis nudge keyword (`taller`/`shorter`/`thinner`/`fatter`/`bulkier`/`leaner`) → keyword catalog. Persona names take precedence so a player can always reach their own personas; cross-namespace uniqueness (below) prevents real ambiguity.
 
-**Manual axis change after persona adoption** dissociates the active-persona pointer (with an explicit message) but leaves the persona definition intact. The player can re-adopt it later with `appear <name>`.
+**Manual axis change after persona adoption** dissociates the active-persona pointer (with an explicit message) but leaves the persona definition intact. The player can re-adopt it later with `appear <name>`. The `db.active_persona` pointer is also cleared by `stop appearing` and by deleting the active persona via `forget`.
 
-**Cross-namespace uniqueness** is enforced when saving a persona name *or* assigning a recognition name via `remember <target> as <name>`. A name is rejected if it collides with:
+**Cross-namespace uniqueness** is enforced (case-insensitive) when saving a persona name *or* assigning a recognition name via `remember <target> as <name>`. A name is rejected if it collides with:
 - the keyword catalog (so `appear <name>` stays unambiguous)
 - any of the caller's existing recognition `assigned_name`s (so `forget <name>` stays unambiguous)
 - any of the caller's existing persona names
 
-The collision check is case-insensitive and presents the offending namespace in the error message.
+The same rule applies in reverse: assigning a recognition name that collides with a persona name or a catalog keyword is rejected with the offending namespace named in the error message.
 
 ### Disguise Items
 
@@ -603,10 +654,11 @@ A disguised character (overrides: `tall man` + essential cowl + non-essential ca
 ### Recognition Interactions
 
 - **Stranger meets disguised character:** Observer sees the disguised sdesc; no auto-recognition. Observer can `remember` them by a name, which binds to the current Apparent UID.
-- **Observer who knew real identity meets the disguised character:** Observer's recognition memory is keyed on the *real* `sleeve_uid`; the disguise has a different Apparent UID; no auto-recognition. The observer sees the disguised sdesc as a stranger.
+- **Observer who knew real identity meets the disguised character:** The observer's recognition entry was keyed on the Apparent UID of the *undisguised* signature (real `sleeve_uid` + no overrides + no essential items). The disguise produces a *different* Apparent UID; no auto-recognition. The observer sees the disguised sdesc as a stranger.
 - **Observer meets the same disguised character a second time, same signature:** Auto-recognition fires (same Apparent UID); observer sees the previously-assigned name.
 - **Observer meets the same disguised character a second time, different signature** (e.g., one essential item swapped): Different Apparent UID; observer sees a stranger.
 - **Two characters wearing identical overrides + items:** Visual collision (sdesc strings match), but Apparent UIDs differ (different salts). Each observer's recognition is per-UID; impersonation is *visual*, not *systemic*. An impostor *looks* the same but does not auto-resolve to the original's assigned name. Successful name-fooling requires either acquiring the original's salt (future adversarial-identity mechanic — e.g., through stolen contact cards) or the observer manually `remember`ing the same name onto the impostor's distinct UID.
+- **Observer meets a previously-tagged disguise that has since been abandoned and never re-presented:** The recognition entry is preserved but its Apparent UID never matches anyone in the room. After a configurable inactivity window (deferred to balance pass), the entry is marked `lost_contact = True` and rendered with a "(lost contact)" annotation in `memory` and `recall`. The entry is never auto-pruned — player notes and lore on the entry remain valuable even when the trail has gone cold.
 
 ### Impersonation
 
@@ -647,6 +699,9 @@ These are designed into the architecture but not implemented yet:
 - **Voice modulation**: Integration with say/whisper/communication so voice becomes part of the identity signature for observers who can hear but not see (or in addition to visual identification).
 - **Web UI integration**: Personas designed to mirror the planned identity/contact archive system; eventual web UI surface for managing personas, photos, and contact memory in one place.
 - **Salt-acquisition mechanics for true impersonation**: Stolen contact cards, hacked digital identities, and other adversarial means by which an impostor can acquire the original's salt and become auto-recognized as them.
+- **Explicit `gender_override` axis**: Phase 3 derives pronouns from `keyword_override` against the catalog's gender lists, so a player who wants gendered pronouns picks a gendered keyword. A future explicit override axis would let a player pair a custom (`@shortdesc`) keyword with a chosen pronoun set without forcing them through a catalog keyword. Deferred until a real player need surfaces.
+- **Forensic linking of multiple Apparent UIDs to one real identity**: Investigation gameplay where a sufficiently-resourced investigator can correlate multiple recognition entries (different Apparent UIDs) and infer they refer to the same underlying `sleeve_uid`. Requires evidence-system integration (Phase 5+).
+- **Player-initiated lost-contact pruning**: A `forget --lost` (or similar) command letting players explicitly drop entries the system has marked `lost_contact`. Auto-pruning is deliberately not done; this gives the player the choice.
 
 ---
 
@@ -786,7 +841,7 @@ Flash clones inherit physical attributes from the original body, including `slee
 
 ### Consequences
 
-- **Others recognize the clone**: Anyone who had Jorge's `sleeve_uid` in their memory auto-recognizes Jorge II (same `sleeve_uid` → same assigned name appears)
+- **Others recognize the clone**: Anyone whose recognition entry was tagged against Jorge's undisguised Apparent UID (derived from Jorge's `sleeve_uid` + no overrides + no essential items) auto-recognizes Jorge II in his undisguised state — Jorge II's `sleeve_uid` is inherited, so his undisguised Apparent UID matches Jorge's. Recognition entries tagged against Jorge in disguise transfer the same way: same body + same overrides + same items = same UID.
 - **Clone recognizes nobody**: Jorge II starts with an empty brain. Every person is a stranger. This is a significant gameplay consequence of death and resleeving.
 - **Digital memory (future)**: If the original backed up their cyberbrain, the clone could restore contacts. Without backup, digital memory is also lost.
 - **The clone's system `key` (Jorge Jackson II)** is not what others see — they see whatever name they previously assigned to that sleeve_uid, or the sdesc if they never met the original.
@@ -957,17 +1012,20 @@ Players should be prompted to customize their sdesc on next login if defaults we
 **Scope:** Identity signature engine, the `appear` / persona verb cluster (per-axis overrides + persona snapshots), disguise item flags, and lifecycle integration. Shipped incrementally across multiple PRs.
 
 **Build in Phase 3:**
-- Identity signature tuple: `(real_sleeve_uid, height_override, build_override, keyword_override, sorted(essential_item_types))`
-- Apparent UID derivation: `hash(real_sleeve_uid + override_signature)` — deterministic, recomputed on access (no caching in foundation cut)
+- Identity signature tuple: `(real_sleeve_uid, height_override, build_override, keyword_override, sorted(essential_item_type_ids))` *(engine PR)*
+- Apparent UID derivation: `hashlib.blake2b(repr(signature).encode("utf-8"), digest_size=8).hexdigest()` — deterministic 16-char hex, recomputed on access (no caching in foundation cut) *(engine PR)*
 - Per-axis `appear` command grammar — **shipped (`appear-persona-cluster`)**:
-  - `appear` (status), `appear taller | shorter`, `appear thinner | fatter`, `appear <keyword>`, `appear <persona name>`
+  - `appear` (status), `appear taller | shorter`, `appear thinner | fatter | bulkier | leaner`, `appear <keyword>`, `appear <persona name>`
   - `stop appearing` (clears all overrides + active-persona pointer)
-- Sdesc descriptor recomposition via existing `get_physical_descriptor(height, build)` table
+- Sdesc descriptor recomposition via existing `get_physical_descriptor(height, build)` table *(engine PR — wire into `get_sdesc()`)*
+- Pronoun derivation under disguise via `get_apparent_gender(char)` helper consulting `keyword_override` against `KeywordManager` gender lists; consumers (`world/emote.py`, `world/grammar.py`'s `transform_pronoun()`, longdesc/sdesc renderers, social templates) redirected through this helper *(engine PR)*
 - Resonance check stub on each axis override (always succeeds; call point exists for Phase 5 tuning)
 - DB attributes for active overrides on character — **shipped**: `db.height_override`, `db.build_override`, `db.keyword_override`, `db.active_persona`, `db.personas`
-- `db.disguise_essential` flag on items — contributes to identity signature when worn *(deferred)*
-- `db.is_disguise_item` flag on items — Phase 5 perception bonus hook (defined but inert in Phase 3) *(deferred)*
-- Hook `get_sdesc()` / `get_display_name()` to consume override axes and Apparent UID *(deferred — overrides are written but not yet rendered)*
+- `db.disguise_essential` flag on items — contributes to identity signature when worn *(engine PR — flag schema + signature wiring; concrete item prototypes ship in Phase 3.5)*
+- `db.is_disguise_item` flag on items — Phase 5 perception bonus hook (defined but inert in Phase 3) *(engine PR — flag schema only)*
+- Hook `get_sdesc()` / `get_display_name()` to consume override axes and Apparent UID *(engine PR)*
+- Recognition memory re-keyed on Apparent UID; one-time wipe of existing `recognition_memory` dicts at engine-PR deployment (no migration recompute) *(engine PR)*
+- Orphaned-entry handling: `lost_contact` boolean flag + render annotation in `memory` / `recall`; never auto-pruned *(engine PR — flag + render; inactivity threshold itself is a balance-pass tuning value)*
 - Full keyword catalog available regardless of character gender (override bypasses gender filter) — **shipped via `appear <keyword>` validation**
 - Available to **all characters** (no access level restriction)
 - Persona layer (player-private ergonomics) — **shipped (`appear-persona-cluster`)**:
@@ -975,10 +1033,10 @@ Players should be prompted to customize their sdesc on next login if defaults we
   - `appear <persona name>` — adopt a persona (clean swap; overwrites all axes including unset ones)
   - `personas` — list saved personas, recency-sorted; active persona marked with `*`
   - `persona <name>` — inspect a single persona
-  - `forget <persona name>` — delete a persona; clears overrides if it was active
+  - `forget <persona name>` — delete a persona; clears overrides and `db.active_persona` if it was active
   - Cross-namespace uniqueness enforced (keyword catalog ∩ recognition names ∩ persona names)
   - No cap (deferred to engine PR / balance pass)
-- Lifecycle integration *(deferred to engine PR)*:
+- Lifecycle integration *(engine PR)*:
   - Death: clears overrides; corpse stores `real_sleeve_uid` + `last_active_signature` snapshot
   - Sleeve swap (flash clone / resleeving): salt is `real_sleeve_uid`, so personas don't carry across bodies; persona records remain on the player
   - Item destruction: removing/destroying essential item changes signature → Apparent UID changes → observers see stranger
