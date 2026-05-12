@@ -692,18 +692,50 @@ APPARENT_UID_HEX_LENGTH: int = _APPARENT_UID_DIGEST_BYTES * 2
 def get_essential_item_type_ids(char: Any) -> tuple[str, ...]:
     """Return the sorted tuple of equipped essential disguise item type IDs.
 
-    Stub for the foundation engine PR. Returns an empty tuple until
-    PR-C wires the ``disguise_essential`` item flag and the
-    disguise-item taxonomy. The signature shape stays stable; only its
-    content changes when items land.
+    Walks the character's worn items via
+    :meth:`typeclasses.clothing_mixin.ClothingMixin.get_worn_items`,
+    selects items flagged ``disguise_essential = True``, and returns
+    their ``disguise_type_id`` values as a sorted tuple.  This tuple is
+    the fifth element of :func:`get_identity_signature` and so feeds
+    directly into the wearer's Apparent UID.
+
+    Two essential items sharing the same ``disguise_type_id`` (e.g. two
+    balaclava instances) collapse to a single contribution: the sorted
+    tuple deduplicates intentionally so swapping one balaclava for
+    another does not shift the wearer's Apparent UID.
+
+    An essential item with an empty ``disguise_type_id`` is *skipped*
+    (no contribution) and a soft warning is emitted via
+    :func:`evennia.utils.logger.log_warn`; this catches authoring slips
+    without breaking recognition for the wearer.
+
+    Characters without :meth:`get_worn_items` (e.g. mocks, NPCs that
+    cannot wear clothing) yield an empty tuple.
 
     Args:
         char: The character whose equipped items are inspected.
 
     Returns:
-        Empty tuple until essential-item integration ships.
+        Sorted, deduplicated tuple of ``disguise_type_id`` strings.
     """
-    return ()
+    get_worn = getattr(char, "get_worn_items", None)
+    if get_worn is None:
+        return ()
+
+    type_ids: set[str] = set()
+    for item in get_worn():
+        if not getattr(item, "disguise_essential", False):
+            continue
+        type_id = getattr(item, "disguise_type_id", "") or ""
+        if not type_id:
+            logger.log_warn(
+                f"Essential disguise item {item!r} on {char!r} has empty "
+                f"disguise_type_id; skipping signature contribution."
+            )
+            continue
+        type_ids.add(type_id)
+
+    return tuple(sorted(type_ids))
 
 
 def get_identity_signature(char: Any) -> tuple:

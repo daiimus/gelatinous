@@ -764,6 +764,7 @@ class _SignatureMockCharacter:
         keyword_override: str | None = None,
         sex: str = "male",
         gender: str | None = None,
+        worn_items: list | None = None,
     ) -> None:
         self.sleeve_uid = sleeve_uid
         self.sex = sex
@@ -779,6 +780,204 @@ class _SignatureMockCharacter:
 
         self.recognition_memory: dict = {}
         self.key = "Jorge"
+        self._worn_items = worn_items or []
+
+    def get_worn_items(self, location: str | None = None) -> list:
+        """Mirror :meth:`ClothingMixin.get_worn_items` for signature tests."""
+        return list(self._worn_items)
+
+
+class _FakeDisguiseItem:
+    """Lightweight stand-in for ``typeclasses.items.Item`` in signature tests.
+
+    Mirrors the duck-typed surface ``get_essential_item_type_ids`` reads:
+    ``disguise_essential`` (bool) and ``disguise_type_id`` (str).
+    """
+
+    def __init__(
+        self, *, disguise_essential: bool = False, disguise_type_id: str = ""
+    ) -> None:
+        self.disguise_essential = disguise_essential
+        self.disguise_type_id = disguise_type_id
+
+
+class TestGetEssentialItemTypeIds(TestCase):
+    """Essential disguise items contribute their type IDs to the signature."""
+
+    def test_no_worn_items_yields_empty_tuple(self) -> None:
+        from world.identity import get_essential_item_type_ids
+
+        char = _SignatureMockCharacter()
+        self.assertEqual(get_essential_item_type_ids(char), ())
+
+    def test_non_essential_items_are_ignored(self) -> None:
+        """A worn item without ``disguise_essential`` contributes nothing."""
+        from world.identity import get_essential_item_type_ids
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    disguise_essential=False, disguise_type_id="balaclava"
+                ),
+            ]
+        )
+        self.assertEqual(get_essential_item_type_ids(char), ())
+
+    def test_essential_item_contributes_type_id(self) -> None:
+        from world.identity import get_essential_item_type_ids
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id="balaclava"
+                ),
+            ]
+        )
+        self.assertEqual(get_essential_item_type_ids(char), ("balaclava",))
+
+    def test_duplicate_type_ids_collapse(self) -> None:
+        """Two balaclavas → one signature contribution (set semantics)."""
+        from world.identity import get_essential_item_type_ids
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id="balaclava"
+                ),
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id="balaclava"
+                ),
+            ]
+        )
+        self.assertEqual(get_essential_item_type_ids(char), ("balaclava",))
+
+    def test_multiple_distinct_types_are_sorted(self) -> None:
+        from world.identity import get_essential_item_type_ids
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id="wig"
+                ),
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id="balaclava"
+                ),
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id="mask_full"
+                ),
+            ]
+        )
+        self.assertEqual(
+            get_essential_item_type_ids(char),
+            ("balaclava", "mask_full", "wig"),
+        )
+
+    def test_essential_with_empty_type_id_is_skipped_and_warns(self) -> None:
+        """Authoring slip: essential flag set but no type_id → warn + skip."""
+        from world.identity import get_essential_item_type_ids
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id=""
+                ),
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id="wig"
+                ),
+            ]
+        )
+        with patch("world.identity.logger.log_warn") as mock_warn:
+            result = get_essential_item_type_ids(char)
+        self.assertEqual(result, ("wig",))
+        mock_warn.assert_called_once()
+
+    def test_character_without_get_worn_items_yields_empty_tuple(self) -> None:
+        """NPCs that cannot wear clothing must not crash signature derivation."""
+        from world.identity import get_essential_item_type_ids
+
+        class _BareChar:
+            pass
+
+        self.assertEqual(get_essential_item_type_ids(_BareChar()), ())
+
+
+class TestEssentialItemsAffectSignatureAndUid(TestCase):
+    """Integration: equipping essential items shifts signature + Apparent UID."""
+
+    def test_essential_item_appears_in_signature_tuple(self) -> None:
+        from world.identity import get_identity_signature
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id="balaclava"
+                ),
+            ]
+        )
+        sig = get_identity_signature(char)
+        self.assertEqual(sig[4], ("balaclava",))
+
+    def test_essential_item_changes_apparent_uid(self) -> None:
+        from world.identity import get_apparent_uid
+
+        bare = get_apparent_uid(_SignatureMockCharacter())
+        disguised = get_apparent_uid(
+            _SignatureMockCharacter(
+                worn_items=[
+                    _FakeDisguiseItem(
+                        disguise_essential=True, disguise_type_id="balaclava"
+                    ),
+                ]
+            )
+        )
+        self.assertNotEqual(bare, disguised)
+
+    def test_two_balaclavas_hash_identically(self) -> None:
+        """Swapping one balaclava for another must not shift the UID."""
+        from world.identity import get_apparent_uid
+
+        a = get_apparent_uid(
+            _SignatureMockCharacter(
+                worn_items=[
+                    _FakeDisguiseItem(
+                        disguise_essential=True, disguise_type_id="balaclava"
+                    ),
+                ]
+            )
+        )
+        b = get_apparent_uid(
+            _SignatureMockCharacter(
+                worn_items=[
+                    _FakeDisguiseItem(
+                        disguise_essential=True, disguise_type_id="balaclava"
+                    ),
+                ]
+            )
+        )
+        self.assertEqual(a, b)
+
+    def test_different_essential_types_produce_different_uids(self) -> None:
+        from world.identity import get_apparent_uid
+
+        balaclava_uid = get_apparent_uid(
+            _SignatureMockCharacter(
+                worn_items=[
+                    _FakeDisguiseItem(
+                        disguise_essential=True, disguise_type_id="balaclava"
+                    ),
+                ]
+            )
+        )
+        wig_uid = get_apparent_uid(
+            _SignatureMockCharacter(
+                worn_items=[
+                    _FakeDisguiseItem(
+                        disguise_essential=True, disguise_type_id="wig"
+                    ),
+                ]
+            )
+        )
+        self.assertNotEqual(balaclava_uid, wig_uid)
 
 
 class TestGetIdentitySignature(TestCase):

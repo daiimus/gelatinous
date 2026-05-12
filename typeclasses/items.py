@@ -92,6 +92,46 @@ class Item(DefaultObject):
     
     # Plate size compatibility (small, medium, large, extra_large)
     plate_size = AttributeProperty("", autocreate=True)
+
+    # ===================================================================
+    # DISGUISE SYSTEM ATTRIBUTES
+    # ===================================================================
+    #
+    # Two-flag taxonomy for the Phase 3 disguise system. See
+    # ``specs/IDENTITY_RECOGNITION_SPEC.md`` §Disguise Items for the
+    # design rationale.
+    #
+    # ``is_disguise_item`` marks an item as belonging to the disguise
+    # taxonomy at all (carries a future Phase 5 perception-roll bonus).
+    # ``disguise_essential`` is the stronger flag: an essential item
+    # contributes to the wearer's identity signature, so equipping or
+    # removing it shifts their Apparent UID and produces a distinct
+    # recognition entry.  Non-essential disguise items contribute only
+    # visually through the existing distinguishing-feature derivation.
+    #
+    # ``disguise_type_id`` is the stable per-item-type identifier hashed
+    # into the signature.  Two balaclavas with the same
+    # ``disguise_type_id`` produce the same signature contribution, so
+    # the same physical disguise produces the same Apparent UID across
+    # different item instances.  Authors set this explicitly per
+    # essential item (e.g. ``"balaclava"``, ``"mask_full"``, ``"wig"``);
+    # leaving it empty on an essential item suppresses its signature
+    # contribution and emits a startup warning via the wearer's
+    # signature query path.
+
+    # Marks an item as part of the disguise taxonomy (perception-roll
+    # bonus in Phase 5; no behavioural effect today).
+    is_disguise_item = AttributeProperty(False, autocreate=True)
+
+    # Marks an essential disguise item: when worn, contributes its
+    # ``disguise_type_id`` to the wearer's identity signature.
+    disguise_essential = AttributeProperty(False, autocreate=True)
+
+    # Stable per-item-type identifier fed into the identity signature
+    # for essential disguise items.  Empty string means "no
+    # contribution"; treated as a soft warning when paired with
+    # ``disguise_essential = True``.
+    disguise_type_id = AttributeProperty("", autocreate=True)
     
     # Multiple style properties for combination states
     style_properties = AttributeProperty({}, autocreate=True)
