@@ -269,8 +269,6 @@ recognition_memory = {
 
 This is stored as a db attribute on the Character (`recognition_memory` AttributeProperty), keyed by **Apparent UID**. See §Memory Architecture for the storage-location rationale and the planned migration to brain-organ storage. The `recent_interactions` list should be capped (e.g., last 20 interactions per entry) to prevent unbounded growth, with older interactions eligible for summarization or archival.
 
-**One-time wipe (engine PR rollout):** Existing `recognition_memory` dicts (keyed on real `sleeve_uid` from prior phases) are wiped at engine-PR deployment. There is no migration recompute; players rebuild recognition organically under the new keying. This is acceptable because no production characters depend on the prior memory schema for ongoing play, and the schema change is total (key shape, value shape).
-
 **Orphaned entries (`lost_contact`):** A recognition entry whose Apparent UID has not matched any observable character within a configurable window (deferred to balance pass; provisional default: 30 in-game days) is marked `lost_contact = True`. The entry stays visible in `memory` and `recall` (player-authored notes are valuable lore even when the trail goes cold) and is rendered with a "(lost contact)" annotation. A future player command may allow explicit pruning of lost-contact entries; auto-pruning is intentionally **not** done.
 
 ### Remembering Names
@@ -1138,7 +1136,7 @@ Players should be prompted to customize their sdesc on next login if defaults we
 - `db.disguise_essential` flag on items — contributes to identity signature when worn *(engine PR — flag schema + signature wiring; concrete item prototypes ship in Phase 3.5)*
 - `db.is_disguise_item` flag on items — Phase 5 perception bonus hook (defined but inert in Phase 3) *(engine PR — flag schema only)*
 - Hook `get_sdesc()` / `get_display_name()` to consume override axes and Apparent UID *(engine PR)*
-- Recognition memory re-keyed on Apparent UID; one-time wipe of existing `recognition_memory` dicts at engine-PR deployment (no migration recompute) *(engine PR)*
+- Recognition memory re-keyed on Apparent UID *(engine PR)*
 - Orphaned-entry handling: `lost_contact` boolean flag + render annotation in `memory` / `recall`; never auto-pruned *(engine PR — flag + render; inactivity threshold itself is a balance-pass tuning value)*
 - Full keyword catalog available regardless of character gender (override bypasses gender filter) — **shipped via `appear <keyword>` validation**
 - Available to **all characters** (no access level restriction)
