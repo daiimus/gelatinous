@@ -164,18 +164,20 @@ def _match_assigned_name(
         query: The normalized query string.
 
     Returns:
-        ``True`` if the searcher's assigned name for *target*'s sleeve
-        matches *query*.
+        ``True`` if the searcher's assigned name for *target*'s current
+        Apparent UID matches *query*.
     """
-    sleeve_uid = getattr(target, "sleeve_uid", None)
-    if sleeve_uid is None:
+    from world.identity import get_apparent_uid
+
+    apparent_uid = get_apparent_uid(target)
+    if apparent_uid is None:
         return False
 
     memory = getattr(searcher, "recognition_memory", None)
-    if not memory or sleeve_uid not in memory:
+    if not memory or apparent_uid not in memory:
         return False
 
-    assigned = memory[sleeve_uid].get("assigned_name", "")
+    assigned = memory[apparent_uid].get("assigned_name", "")
     if not assigned:
         return False
 

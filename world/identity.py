@@ -14,13 +14,14 @@ See specs/IDENTITY_RECOGNITION_SPEC.md for the full specification.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import hashlib
+from typing import TYPE_CHECKING, Any
 
 from django.core.exceptions import ObjectDoesNotExist
 from evennia.scripts.scripts import DefaultScript
 from evennia.utils import logger
 
-from world.grammar import get_article
+from world.grammar import GENDER_MAP, get_article
 
 if TYPE_CHECKING:
     from evennia.accounts.models import AccountDB
@@ -667,3 +668,261 @@ def compose_sdesc(
     if feature:
         return f"{base} {feature}"
     return base
+
+
+# =========================================================================
+# Identity Signature, Apparent UID, Apparent Gender
+# =========================================================================
+#
+# See specs/IDENTITY_RECOGNITION_SPEC.md §"Identity Signature & Apparent
+# UID" and §"Pronouns Under Disguise" for the full design rationale.
+
+#: Length in bytes of the blake2b digest backing the Apparent UID.
+#: Eight bytes → 16-character lowercase hex string. The 64-bit collision
+#: space is comfortable for per-observer recognition memory, where keys
+#: are bounded by encounter count.
+_APPARENT_UID_DIGEST_BYTES: int = 8
+
+#: Length in characters of an Apparent UID hex string.  Used by the
+#: startup wipe migration as a shape check for legacy entries (real
+#: ``sleeve_uid`` values are 36-character UUID strings).
+APPARENT_UID_HEX_LENGTH: int = _APPARENT_UID_DIGEST_BYTES * 2
+
+
+def get_essential_item_type_ids(char: Any) -> tuple[str, ...]:
+    """Return the sorted tuple of equipped essential disguise item type IDs.
+
+    Stub for the foundation engine PR. Returns an empty tuple until
+    PR-C wires the ``disguise_essential`` item flag and the
+    disguise-item taxonomy. The signature shape stays stable; only its
+    content changes when items land.
+
+    Args:
+        char: The character whose equipped items are inspected.
+
+    Returns:
+        Empty tuple until essential-item integration ships.
+    """
+    return ()
+
+
+def get_identity_signature(char: Any) -> tuple:
+    """Compute the identity signature tuple for a character.
+
+    The signature is the input to :func:`get_apparent_uid`.  It captures
+    every observable identity input that can shift recognition:
+
+    * The character's real ``sleeve_uid`` (acts as a per-character salt
+      — two impostors with identical disguises still produce different
+      Apparent UIDs).
+    * The active presentation overrides on each axis (height, build,
+      keyword), each ``None`` when unset.
+    * The sorted tuple of equipped essential disguise item type IDs
+      (empty until PR-C lands; see :func:`get_essential_item_type_ids`).
+
+    Re-evaluated on every call from current state — there is no
+    cache. Performance optimisation is intentionally deferred.
+
+    Args:
+        char: The character whose signature is computed.
+
+    Returns:
+        Five-tuple
+        ``(sleeve_uid, height_override, build_override, keyword_override,
+        essential_item_type_ids)``.
+    """
+    sleeve_uid = getattr(char, "sleeve_uid", None)
+    db = getattr(char, "db", None)
+    height_override = db.height_override if db is not None else None
+    build_override = db.build_override if db is not None else None
+    keyword_override = db.keyword_override if db is not None else None
+    return (
+        sleeve_uid,
+        height_override,
+        build_override,
+        keyword_override,
+        get_essential_item_type_ids(char),
+    )
+
+
+def get_apparent_uid(char: Any) -> str | None:
+    """Compute the Apparent UID for a character's current presentation.
+
+    Deterministic 16-character lowercase hex digest of the identity
+    signature — same signature, same UID, every time, across processes
+    (unlike Python's salted builtin ``hash()``).
+
+    Returns ``None`` when the signature has no real ``sleeve_uid``
+    (pre-chargen character or other transient state). Callers MUST
+    treat ``None`` as "no recognition possible" and skip memory
+    lookups; storing entries under ``None`` would conflate distinct
+    pre-chargen shells.
+
+    Args:
+        char: The character whose Apparent UID is computed.
+
+    Returns:
+        16-character hex string, or ``None`` when ``sleeve_uid`` is
+        unset.
+    """
+    signature = get_identity_signature(char)
+    if signature[0] is None:
+        return None
+    signature_bytes = repr(signature).encode("utf-8")
+    return hashlib.blake2b(
+        signature_bytes, digest_size=_APPARENT_UID_DIGEST_BYTES
+    ).hexdigest()
+
+
+def get_apparent_gender(char: Any) -> str:
+    """Return the grammar gender presented by a character's current look.
+
+    Pronouns must follow the disguise: a character presenting as "a
+    woman" should be referenced with feminine pronouns by observers
+    who do not know the real identity, regardless of the underlying
+    ``sex`` attribute.
+
+    Derivation rule:
+
+    1. If the character has an active ``keyword_override``, look it up
+       in the runtime keyword catalog (KeywordManager script, falling
+       back to the module-level default frozensets).
+
+       * Match in the feminine list → ``"female"``
+       * Match in the masculine list → ``"male"``
+       * Match in the neutral list, **or no match anywhere** (custom
+         ``@shortdesc`` keyword carrying no gender metadata) →
+         ``"neutral"``.
+
+    2. Otherwise, fall through to the character's real grammar gender
+       via :data:`world.grammar.GENDER_MAP` (no behaviour change for
+       undisguised characters).
+
+    There is no explicit ``gender_override`` axis in Phase 3; players
+    select pronouns implicitly by choosing a keyword from the desired
+    gender list.  Custom keywords always render neutral by design.
+
+    Args:
+        char: The character whose apparent gender is computed.
+
+    Returns:
+        One of ``"male"``, ``"female"``, ``"neutral"``.
+    """
+    db = getattr(char, "db", None)
+    keyword_override = db.keyword_override if db is not None else None
+
+    if keyword_override:
+        keyword_lc = keyword_override.lower()
+        if keyword_lc in get_feminine_keywords():
+            return "female"
+        if keyword_lc in get_masculine_keywords():
+            return "male"
+        # Neutral list match OR unknown custom keyword → neutral.
+        return "neutral"
+
+    # No override → use real grammar gender.
+    real_gender = getattr(char, "gender", None)
+    if real_gender in ("male", "female", "neutral"):
+        return real_gender
+    sex_value = getattr(char, "sex", None)
+    if sex_value:
+        return GENDER_MAP.get(sex_value, "neutral")
+    return "neutral"
+
+
+# =========================================================================
+# Recognition Memory Migration
+# =========================================================================
+
+
+def _is_legacy_recognition_entry(uid: Any, entry: Any) -> bool:
+    """Return True if a recognition entry pre-dates the engine PR schema.
+
+    Legacy entries are keyed on real ``sleeve_uid`` (a 36-character
+    UUID string) instead of on the new 16-character Apparent UID, or
+    are missing the post-engine-PR ``lost_contact`` field.
+
+    Args:
+        uid: The dict key from ``recognition_memory``.
+        entry: The corresponding value (usually a dict).
+
+    Returns:
+        ``True`` if the entry should be wiped.
+    """
+    if not isinstance(uid, str) or len(uid) != APPARENT_UID_HEX_LENGTH:
+        return True
+    if not isinstance(entry, dict):
+        return True
+    if "lost_contact" not in entry:
+        return True
+    return False
+
+
+def wipe_legacy_recognition_memory(char: Any) -> int:
+    """Wipe legacy recognition_memory entries on a single character.
+
+    Idempotent shape-check: any entry whose key length does not match
+    :data:`APPARENT_UID_HEX_LENGTH` or whose value lacks the
+    ``lost_contact`` field is removed.  After the engine-PR
+    deployment, all surviving entries pass the shape check and this
+    function becomes a no-op for that character.
+
+    The spec is explicit (see §"Memory Data Model" — *One-time wipe*)
+    that there is no migration recompute — players rebuild recognition
+    organically under the new keying.
+
+    .. todo:: Remove this function and its caller after the engine-PR
+       deployment is verified clean across all production characters.
+
+    Args:
+        char: The character whose ``recognition_memory`` is inspected.
+
+    Returns:
+        The number of entries wiped (``0`` if already clean).
+    """
+    memory = getattr(char, "recognition_memory", None)
+    if not memory:
+        return 0
+    legacy_keys = [
+        uid for uid, entry in memory.items()
+        if _is_legacy_recognition_entry(uid, entry)
+    ]
+    if not legacy_keys:
+        return 0
+    new_memory = {
+        uid: entry for uid, entry in memory.items() if uid not in legacy_keys
+    }
+    char.recognition_memory = new_memory
+    logger.log_info(
+        f"identity: wiped {len(legacy_keys)} legacy recognition_memory "
+        f"entries on {getattr(char, 'key', '<unknown>')}"
+    )
+    return len(legacy_keys)
+
+
+def wipe_all_legacy_recognition_memory() -> int:
+    """Wipe legacy recognition_memory entries across all Character objects.
+
+    Intended to be called once at server startup as a one-shot
+    migration. Idempotent — safe to call repeatedly; subsequent calls
+    are no-ops once all entries pass the shape check.
+
+    .. todo:: Remove this function and its server-startup hook after
+       the engine-PR deployment is verified clean across all
+       production characters.
+
+    Returns:
+        Total number of entries wiped across all characters.
+    """
+    from typeclasses.characters import Character
+
+    total = 0
+    for char in Character.objects.all():
+        try:
+            total += wipe_legacy_recognition_memory(char)
+        except Exception:
+            logger.log_trace(
+                f"identity: failed to wipe recognition_memory on "
+                f"{getattr(char, 'key', '<unknown>')}"
+            )
+    return total

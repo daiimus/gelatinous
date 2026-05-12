@@ -1054,11 +1054,19 @@ class CmdFrisk(Command):
             caller.msg(f"{target.get_display_name(caller)} is too lively to frisk. They need to be unconscious, dead, or a corpse.")
             return
         
-        # Get target's gender for pronouns
-        gender = target.db.gender if target.db.gender is not None else 'neutral'
-        # For corpses, try to get original gender
+        # Get target's gender for pronouns. Living targets follow the
+        # apparent presentation (disguises shift pronouns); corpses
+        # use the body's original gender snapshot if recorded.
         if frisk_reason == "corpse":
-            gender = target.db.original_gender if target.db.original_gender is not None else gender
+            gender = (
+                target.db.original_gender
+                if target.db.original_gender is not None
+                else "neutral"
+            )
+        else:
+            from world.identity import get_apparent_gender
+
+            gender = get_apparent_gender(target)
             
         pronoun_map = {
             'male': {'them': 'him', 'their': 'his', 'they': 'he'},

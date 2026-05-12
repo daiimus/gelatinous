@@ -22,6 +22,11 @@ from world.search import (
     strip_leading_article,
 )
 
+from world.tests._identity_helpers import (
+    apparent_uid_for,
+    prepare_mock_for_apparent_uid,
+)
+
 
 # ===================================================================
 # Helpers — lightweight character / object stand-in
@@ -90,6 +95,7 @@ def _make_character(
     else:
         type(char).gender = PropertyMock(return_value="neutral")
 
+    prepare_mock_for_apparent_uid(char)
     return char
 
 
@@ -269,7 +275,10 @@ class TestIdentityMatchCharacters(TestCase):
     def test_match_by_assigned_name(self):
         """Assigned name 'Jorge' matches."""
         self.searcher.recognition_memory = {
-            "uid-jorge": {"assigned_name": "Jorge"},
+            apparent_uid_for(self.jorge): {
+                "assigned_name": "Jorge",
+                "lost_contact": False,
+            },
         }
         result = identity_match_characters(
             self.searcher, "jorge", self.candidates
@@ -279,7 +288,10 @@ class TestIdentityMatchCharacters(TestCase):
     def test_assigned_name_takes_priority(self):
         """Assigned name matches come before sdesc matches."""
         self.searcher.recognition_memory = {
-            "uid-jorge": {"assigned_name": "Big Guy"},
+            apparent_uid_for(self.jorge): {
+                "assigned_name": "Big Guy",
+                "lost_contact": False,
+            },
         }
         # "Big" would not match Jorge's sdesc, but matches assigned name
         result = identity_match_characters(
@@ -394,7 +406,10 @@ class TestIdentityMatchCharacters(TestCase):
     def test_assigned_name_partial_match(self):
         """Partial assigned name match works (substring)."""
         self.searcher.recognition_memory = {
-            "uid-jorge": {"assigned_name": "Jorge Jackson"},
+            apparent_uid_for(self.jorge): {
+                "assigned_name": "Jorge Jackson",
+                "lost_contact": False,
+            },
         }
         result = identity_match_characters(
             self.searcher, "jorge", self.candidates
@@ -404,7 +419,10 @@ class TestIdentityMatchCharacters(TestCase):
     def test_assigned_name_no_double_count(self):
         """A character matched by assigned name is not also added by sdesc."""
         self.searcher.recognition_memory = {
-            "uid-jorge": {"assigned_name": "gaunt man"},
+            apparent_uid_for(self.jorge): {
+                "assigned_name": "gaunt man",
+                "lost_contact": False,
+            },
         }
         # "gaunt man" matches both assigned name AND sdesc —
         # should only appear once
@@ -447,7 +465,10 @@ class TestIsIdentityMatch(TestCase):
 
     def test_assigned_name_match_returns_true(self):
         self.searcher.recognition_memory = {
-            "uid-jorge": {"assigned_name": "Jorge"},
+            apparent_uid_for(self.jorge): {
+                "assigned_name": "Jorge",
+                "lost_contact": False,
+            },
         }
         self.assertTrue(
             is_identity_match(self.searcher, self.jorge, "jorge")

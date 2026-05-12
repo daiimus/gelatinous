@@ -30,7 +30,32 @@ def at_server_start():
     This is called every time the server starts up, regardless of
     how it was shut down.
     """
-    pass
+    # One-time recognition_memory schema migration (engine PR).
+    #
+    # Wipes any pre-engine-PR recognition_memory entries that were
+    # keyed on real ``sleeve_uid`` (36-char UUID) instead of the new
+    # 16-char Apparent UID, or that lack the post-engine-PR
+    # ``lost_contact`` field. Idempotent — once all entries pass the
+    # shape check, this is a no-op.
+    #
+    # TODO: Remove this call (and the helper in world/identity.py)
+    # after the engine-PR deployment is verified clean across all
+    # production characters.
+    try:
+        from world.identity import wipe_all_legacy_recognition_memory
+
+        wiped = wipe_all_legacy_recognition_memory()
+        if wiped:
+            from evennia.utils import logger
+
+            logger.log_info(
+                f"identity: engine-PR migration wiped {wiped} legacy "
+                f"recognition_memory entries"
+            )
+    except Exception:
+        from evennia.utils import logger
+
+        logger.log_trace("identity: legacy recognition_memory wipe failed")
 
 
 def at_server_stop():

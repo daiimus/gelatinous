@@ -26,7 +26,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Sequence
 
 from world.grammar import (
-    GENDER_MAP,
     capitalize_first,
     conjugate_third_person,
     transform_pronoun,
@@ -730,9 +729,13 @@ def render_for_observer(
         Fully rendered emote string for this observer.
     """
     is_actor = observer is actor
-    gender = GENDER_MAP.get(
-        getattr(actor, "sex", "ambiguous") or "ambiguous", "neutral"
-    )
+    # Pronouns must follow the disguise: derive from the actor's
+    # apparent gender (which inspects active keyword_override against
+    # the keyword catalog) rather than from the underlying ``sex``
+    # attribute. See spec §"Pronouns Under Disguise".
+    from world.identity import get_apparent_gender
+
+    gender = get_apparent_gender(actor)
 
     parts: list[str] = []
     actor_named = False

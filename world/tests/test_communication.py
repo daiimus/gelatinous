@@ -19,6 +19,11 @@ from unittest.mock import MagicMock, PropertyMock, call
 
 from world.identity_utils import msg_room_identity
 
+from world.tests._identity_helpers import (
+    apparent_uid_for,
+    prepare_mock_for_apparent_uid,
+)
+
 
 # ===================================================================
 # Helpers — lightweight character / room stand-in
@@ -87,6 +92,7 @@ def _make_character(
     else:
         type(char).gender = PropertyMock(return_value="neutral")
 
+    prepare_mock_for_apparent_uid(char)
     return char
 
 
@@ -139,8 +145,8 @@ class TestMsgRoomIdentity(TestCase):
             build="average",
             sleeve_uid="uid-alice",
             recognition_memory={
-                "uid-jorge": {"assigned_name": "Jorge"},
-                "uid-maria": {"assigned_name": "Maria"},
+                apparent_uid_for(self.jorge): {"assigned_name": "Jorge"},
+                apparent_uid_for(self.maria): {"assigned_name": "Maria"},
             },
         )
         # Observer who knows neither
@@ -334,7 +340,7 @@ class TestCmdSay(TestCase):
             key="Alice", sex="female", height="average",
             build="average", sleeve_uid="uid-alice",
             recognition_memory={
-                "uid-jorge": {"assigned_name": "Jorge"},
+                apparent_uid_for(jorge): {"assigned_name": "Jorge"},
             },
         )
         self._run_say(jorge, "Hello!", [jorge, observer])
@@ -407,16 +413,16 @@ class TestCmdWhisper(TestCase):
 
     def test_actor_sees_own_whisper(self):
         """Actor sees 'You whisper to <target>, \"...\"'."""
+        maria = _make_character(
+            key="Maria Santos", sex="female", height="short",
+            build="athletic", sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
         jorge = _make_character(
             key="Jorge", sex="male", height="tall",
             build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
             recognition_memory={
-                "uid-maria": {"assigned_name": "Maria"},
+                apparent_uid_for(maria): {"assigned_name": "Maria"},
             },
-        )
-        maria = _make_character(
-            key="Maria Santos", sex="female", height="short",
-            build="athletic", sdesc_keyword="woman", sleeve_uid="uid-maria",
         )
         self._run_whisper(
             jorge, "Maria = Meet me later.",
@@ -596,7 +602,7 @@ class TestCmdEmote(TestCase):
             key="Alice", sex="female", height="average",
             build="average", sleeve_uid="uid-alice",
             recognition_memory={
-                "uid-jorge": {"assigned_name": "Jorge"},
+                apparent_uid_for(jorge): {"assigned_name": "Jorge"},
             },
         )
         self._run_emote(jorge, "waves.", [jorge, observer])
@@ -653,7 +659,7 @@ class TestCmdEmote(TestCase):
             key="Bob", sex="male", height="average",
             build="average", sleeve_uid="uid-bob",
             recognition_memory={
-                "uid-maria": {"assigned_name": "Maria"},
+                apparent_uid_for(maria): {"assigned_name": "Maria"},
             },
         )
         # Jorge emotes referencing Maria by her sdesc (short+stocky = "squat")
@@ -725,16 +731,16 @@ class TestCmdEmote(TestCase):
 
     def test_emote_actor_sees_char_ref_via_own_memory(self):
         """Actor's char ref rendering uses their own recognition memory."""
+        maria = _make_character(
+            key="Maria Santos", sex="female", height="short",
+            build="stocky", sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
         jorge = _make_character(
             key="Jorge Jackson", sex="male", height="tall",
             build="lean", sdesc_keyword="man", sleeve_uid="uid-jorge",
             recognition_memory={
-                "uid-maria": {"assigned_name": "Maria"},
+                apparent_uid_for(maria): {"assigned_name": "Maria"},
             },
-        )
-        maria = _make_character(
-            key="Maria Santos", sex="female", height="short",
-            build="stocky", sdesc_keyword="woman", sleeve_uid="uid-maria",
         )
         # Jorge emotes referencing Maria by descriptor+keyword
         self._run_emote(
@@ -840,7 +846,7 @@ class TestCmdDotPose(TestCase):
             build="average",
             sleeve_uid="uid-alice",
             recognition_memory={
-                "uid-jorge": {"assigned_name": "Jorge"},
+                apparent_uid_for(jorge): {"assigned_name": "Jorge"},
             },
         )
         self._run_dot_pose(jorge, ".lean back.", [jorge, observer])
@@ -1073,7 +1079,7 @@ class TestCmdDotPose(TestCase):
             build="average",
             sleeve_uid="uid-bob",
             recognition_memory={
-                "uid-maria": {"assigned_name": "Maria"},
+                apparent_uid_for(maria): {"assigned_name": "Maria"},
             },
         )
         self._run_dot_pose(

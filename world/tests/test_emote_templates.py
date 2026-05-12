@@ -22,6 +22,10 @@ from world.emote_templates import (
     _actor_verb,
     _make_social_cmd,
 )
+from world.tests._identity_helpers import (
+    apparent_uid_for,
+    prepare_mock_for_apparent_uid,
+)
 
 
 # ===================================================================
@@ -91,6 +95,7 @@ def _make_character(
     else:
         type(char).gender = PropertyMock(return_value="neutral")
 
+    prepare_mock_for_apparent_uid(char)
     return char
 
 
@@ -371,8 +376,14 @@ class TestSocialCmdTargeted(TestCase):
             build="average",
             sleeve_uid="uid-alice",
             recognition_memory={
-                "uid-jorge": {"assigned_name": "Jorge"},
-                "uid-maria": {"assigned_name": "Maria"},
+                apparent_uid_for(self.jorge): {
+                    "assigned_name": "Jorge",
+                    "lost_contact": False,
+                },
+                apparent_uid_for(self.maria): {
+                    "assigned_name": "Maria",
+                    "lost_contact": False,
+                },
             },
         )
         self.observer_knows_neither = _make_character(

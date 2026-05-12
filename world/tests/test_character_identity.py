@@ -22,6 +22,10 @@ from world.identity import (
     get_physical_descriptor,
 )
 from world.grammar import DEFAULT_SDESC_KEYWORDS, get_article
+from world.tests._identity_helpers import (
+    apparent_uid_for,
+    prepare_mock_for_apparent_uid,
+)
 
 
 # ===================================================================
@@ -101,6 +105,7 @@ def _make_character(
     else:
         type(char).gender = PropertyMock(return_value="neutral")
 
+    prepare_mock_for_apparent_uid(char)
     return char
 
 
@@ -378,8 +383,9 @@ class TestGetDisplayName(TestCase):
             key="Looker",
             sleeve_uid="uid-looker-3",
             recognition_memory={
-                "uid-target-3": {
+                apparent_uid_for(target): {
                     "assigned_name": "Big J",
+                    "lost_contact": False,
                 }
             },
         )
@@ -399,8 +405,9 @@ class TestGetDisplayName(TestCase):
             key="Looker",
             sleeve_uid="uid-looker-4",
             recognition_memory={
-                "uid-target-4": {
+                apparent_uid_for(target): {
                     "assigned_name": "",
+                    "lost_contact": False,
                 }
             },
         )
@@ -488,7 +495,10 @@ class TestGetDisplayName(TestCase):
             key="Friend",
             sleeve_uid="uid-friend",
             recognition_memory={
-                "uid-target-multi": {"assigned_name": "Jorge"},
+                apparent_uid_for(target): {
+                    "assigned_name": "Jorge",
+                    "lost_contact": False,
+                },
             },
         )
         stranger = _make_character(
@@ -518,7 +528,10 @@ class TestFlashCloneInheritance(TestCase):
             key="Jorge Jackson",
             sleeve_uid="uid-parent",
             recognition_memory={
-                "uid-somebody": {"assigned_name": "Somebody"},
+                "uid-somebody": {
+                    "assigned_name": "Somebody",
+                    "lost_contact": False,
+                },
             },
         )
         # Simulate what create_flash_clone should do:
@@ -551,7 +564,10 @@ class TestFlashCloneInheritance(TestCase):
             key="Observer",
             sleeve_uid="uid-observer",
             recognition_memory={
-                "uid-shared-body": {"assigned_name": "Big J"},
+                apparent_uid_for(parent): {
+                    "assigned_name": "Big J",
+                    "lost_contact": False,
+                },
             },
         )
         self.assertEqual(parent.get_display_name(observer), "Big J")

@@ -911,11 +911,18 @@ class Character(
     def get_sdesc(self):
         """Return the composed short description for this character.
 
+        Consumes the active presentation overrides
+        (``db.height_override``, ``db.build_override``,
+        ``db.keyword_override``) when set; otherwise falls back to the
+        character's real ``height`` / ``build`` / ``sdesc_keyword``.
+        This is the engine-PR consumption point that makes the
+        ``appear`` command's overrides actually visible to observers.
+
         The sdesc has no leading article — callers prepend ``a``/``an``/
         ``the`` as needed via :func:`world.grammar.get_article`.
 
-        If height/build/keyword are not yet set (pre-chargen character),
-        falls back to ``self.key``.
+        If height/build are not yet set (pre-chargen character), falls
+        back to ``self.key``.
 
         Returns:
             Sdesc string, e.g. ``"lanky man wielding a Kitchen Knife"``.
@@ -923,13 +930,14 @@ class Character(
         from world.identity import compose_sdesc, get_physical_descriptor
         from world.grammar import DEFAULT_SDESC_KEYWORDS
 
-        height = self.height
-        build = self.build
+        # Override axes take precedence over real values.
+        height = self.db.height_override or self.height
+        build = self.db.build_override or self.build
         if not height or not build:
             return self.key
 
         descriptor = get_physical_descriptor(height, build)
-        keyword = self.sdesc_keyword
+        keyword = self.db.keyword_override or self.sdesc_keyword
         if not keyword:
             keyword = DEFAULT_SDESC_KEYWORDS.get(self.gender, "person")
 
@@ -942,9 +950,15 @@ class Character(
         Resolution order:
           1. ``looker is self`` → ``self.key`` (own real name)
           2. *looker* has an assigned name in ``recognition_memory``
-             for this character's ``sleeve_uid`` → that assigned name
+             keyed on this character's current Apparent UID → that
+             assigned name
           3. Otherwise → composed sdesc with indefinite article
              (e.g. ``"a lanky man in a Black Trenchcoat"``)
+
+        The Apparent UID is derived from the target's full identity
+        signature (real ``sleeve_uid`` + active overrides + essential
+        items), so the same physical body produces different
+        recognition entries under different disguises.
 
         If *looker* is ``None`` (system / log context), returns
         ``self.key``.
@@ -964,12 +978,14 @@ class Character(
         if looker is self:
             return self.key
 
-        # Check if looker has a recognized name for this sleeve
-        sleeve_uid = self.sleeve_uid
-        if sleeve_uid is not None and hasattr(looker, "recognition_memory"):
+        # Check if looker has a recognized name for this Apparent UID.
+        from world.identity import get_apparent_uid
+
+        apparent_uid = get_apparent_uid(self)
+        if apparent_uid is not None and hasattr(looker, "recognition_memory"):
             memory = looker.recognition_memory
-            if memory and sleeve_uid in memory:
-                entry = memory[sleeve_uid]
+            if memory and apparent_uid in memory:
+                entry = memory[apparent_uid]
                 assigned = entry.get("assigned_name")
                 if assigned:
                     return assigned

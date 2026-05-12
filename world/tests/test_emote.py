@@ -36,6 +36,11 @@ from world.emote import (
     tokenize_emote,
 )
 
+from world.tests._identity_helpers import (
+    apparent_uid_for,
+    prepare_mock_for_apparent_uid,
+)
+
 
 # ===================================================================
 # Helpers — lightweight character / room stand-in
@@ -111,6 +116,7 @@ def _make_character(
     else:
         char.locks.check_lockstring.return_value = False
 
+    prepare_mock_for_apparent_uid(char)
     return char
 
 
@@ -348,7 +354,7 @@ class TestTokenizer(TestCase):
         )
         # Actor knows Maria
         self.actor.recognition_memory = {
-            "uid-maria": {"assigned_name": "Maria"},
+            apparent_uid_for(maria): {"assigned_name": "Maria"},
         }
         tokens = tokenize_dot_pose(
             "nod at Maria", self.actor, [self.actor, maria]
@@ -496,7 +502,7 @@ class TestRendererActorView(TestCase):
             sleeve_uid="uid-maria",
         )
         self.actor.recognition_memory = {
-            "uid-maria": {"assigned_name": "Maria"},
+            apparent_uid_for(maria): {"assigned_name": "Maria"},
         }
         tokens = tokenize_dot_pose(
             "nod at Maria.", self.actor, [self.actor, maria]
@@ -529,7 +535,7 @@ class TestRendererObserverKnown(TestCase):
             build="average",
             sleeve_uid="uid-alice",
             recognition_memory={
-                "uid-jorge": {"assigned_name": "Jorge"},
+                apparent_uid_for(self.actor): {"assigned_name": "Jorge"},
             },
         )
 
@@ -773,7 +779,7 @@ class TestCharacterReferences(TestCase):
         )
         # Actor knows Maria
         self.actor.recognition_memory = {
-            "uid-maria": {"assigned_name": "Maria"},
+            apparent_uid_for(self.maria): {"assigned_name": "Maria"},
         }
 
     def test_char_ref_observer_sees_sdesc(self) -> None:
@@ -804,8 +810,8 @@ class TestCharacterReferences(TestCase):
             build="average",
             sleeve_uid="uid-alice",
             recognition_memory={
-                "uid-jorge": {"assigned_name": "Jorge"},
-                "uid-maria": {"assigned_name": "Maria"},
+                apparent_uid_for(self.actor): {"assigned_name": "Jorge"},
+                apparent_uid_for(self.maria): {"assigned_name": "Maria"},
             },
         )
         tokens = tokenize_dot_pose(
@@ -864,7 +870,7 @@ class TestSpecExamples(TestCase):
             build="average",
             sleeve_uid="uid-alice",
             recognition_memory={
-                "uid-jorge": {"assigned_name": "Jorge"},
+                apparent_uid_for(self.actor): {"assigned_name": "Jorge"},
             },
         )
         self.observer_unknown = _make_character(
@@ -999,7 +1005,7 @@ class TestRenderDotPose(TestCase):
             build="average",
             sleeve_uid="uid-alice",
             recognition_memory={
-                "uid-jorge": {"assigned_name": "Jorge"},
+                apparent_uid_for(self.actor): {"assigned_name": "Jorge"},
             },
         )
 
@@ -1077,7 +1083,7 @@ class TestBuildCharCandidates(TestCase):
             sleeve_uid="uid-maria",
         )
         actor.recognition_memory = {
-            "uid-maria": {"assigned_name": "Maria"},
+            apparent_uid_for(maria): {"assigned_name": "Maria"},
         }
         candidates = build_char_candidates(actor, [actor, maria])
         names = [name for name, _char, _rc in candidates]
@@ -1319,7 +1325,7 @@ class TestRenderEmoteForObserver(TestCase):
             build="average",
             sleeve_uid="uid-bob",
             recognition_memory={
-                "uid-jorge": {"assigned_name": "Jorge"},
+                apparent_uid_for(self.actor): {"assigned_name": "Jorge"},
             },
         )
         tokens = tokenize_emote("waves.", self.actor, [])
@@ -1336,7 +1342,7 @@ class TestRenderEmoteForObserver(TestCase):
             build="average",
             sleeve_uid="uid-bob",
             recognition_memory={
-                "uid-maria": {"assigned_name": "Maria"},
+                apparent_uid_for(self.maria): {"assigned_name": "Maria"},
             },
         )
         tokens = tokenize_emote(
@@ -1599,7 +1605,7 @@ class TestOrdinalCharRefsInEmotes(TestCase):
             build="average",
             sleeve_uid="uid-bob",
             recognition_memory={
-                "uid-viktor": {"assigned_name": "Vik"},
+                apparent_uid_for(self.viktor): {"assigned_name": "Vik"},
             },
         )
         tokens = tokenize_dot_pose(

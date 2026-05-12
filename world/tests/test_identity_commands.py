@@ -14,6 +14,11 @@ All test cases match the specification in
 from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch, call
 
+from world.tests._identity_helpers import (
+    apparent_uid_for,
+    prepare_mock_for_apparent_uid,
+)
+
 
 # ===================================================================
 # Helpers — lightweight character stand-in
@@ -85,6 +90,7 @@ def _make_character(
         location.key = "Test Room"
     char.location = location
 
+    prepare_mock_for_apparent_uid(char)
     return char
 
 
@@ -258,15 +264,16 @@ class TestRememberCommand(TestCase):
             build="lean",
             sdesc_keyword="man",
         )
+        target_uid = apparent_uid_for(target)
 
         cmd = CmdRemember()
         cmd.caller = caller
-        cmd._remember_target(caller, target, "uid-target", "Big J")
+        cmd._remember_target(caller, target, target_uid, "Big J")
 
         memory = caller.recognition_memory
-        self.assertIn("uid-target", memory)
-        self.assertEqual(memory["uid-target"]["assigned_name"], "Big J")
-        self.assertEqual(memory["uid-target"]["times_seen"], 1)
+        self.assertIn(target_uid, memory)
+        self.assertEqual(memory[target_uid]["assigned_name"], "Big J")
+        self.assertEqual(memory[target_uid]["times_seen"], 1)
 
     def test_display_name_changes_after_remember(self):
         """After remembering, get_display_name returns the chosen name."""
@@ -278,13 +285,14 @@ class TestRememberCommand(TestCase):
             build="lean",
             sdesc_keyword="man",
         )
+        target_uid = apparent_uid_for(target)
 
         # Before — stranger
         self.assertEqual(target.get_display_name(caller), "a gaunt man")
 
         # Manually set recognition memory (simulating what remember does)
         caller.recognition_memory = {
-            "uid-target": {"assigned_name": "Big J"},
+            target_uid: {"assigned_name": "Big J"},
         }
         self.assertEqual(target.get_display_name(caller), "Big J")
 
@@ -292,11 +300,19 @@ class TestRememberCommand(TestCase):
         """Re-remembering updates the name and increments times_seen."""
         from commands.CmdCharacter import CmdRemember
 
+        target = _make_character(
+            key="Jorge",
+            sleeve_uid="uid-target",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+        )
+        target_uid = apparent_uid_for(target)
         caller = _make_character(
             key="Observer",
             sleeve_uid="uid-observer",
             recognition_memory={
-                "uid-target": {
+                target_uid: {
                     "assigned_name": "Big J",
                     "first_seen": "2026-01-01T00:00:00",
                     "last_seen": "2026-01-01T00:00:00",
@@ -311,9 +327,23 @@ class TestRememberCommand(TestCase):
                     "confidence": 1.0,
                     "relationship_valence": "neutral",
                     "recent_interactions": [],
+                    "lost_contact": False,
                 },
             },
         )
+
+        cmd = CmdRemember()
+        cmd.caller = caller
+        cmd._remember_target(caller, target, target_uid, "Jorge")
+
+        memory = caller.recognition_memory
+        self.assertEqual(memory[target_uid]["assigned_name"], "Jorge")
+        self.assertEqual(memory[target_uid]["times_seen"], 4)
+
+    def test_remember_preserves_existing_fields(self):
+        """Re-remembering preserves notes, tags, etc."""
+        from commands.CmdCharacter import CmdRemember
+
         target = _make_character(
             key="Jorge",
             sleeve_uid="uid-target",
@@ -321,24 +351,12 @@ class TestRememberCommand(TestCase):
             build="lean",
             sdesc_keyword="man",
         )
-
-        cmd = CmdRemember()
-        cmd.caller = caller
-        cmd._remember_target(caller, target, "uid-target", "Jorge")
-
-        memory = caller.recognition_memory
-        self.assertEqual(memory["uid-target"]["assigned_name"], "Jorge")
-        self.assertEqual(memory["uid-target"]["times_seen"], 4)
-
-    def test_remember_preserves_existing_fields(self):
-        """Re-remembering preserves notes, tags, etc."""
-        from commands.CmdCharacter import CmdRemember
-
+        target_uid = apparent_uid_for(target)
         caller = _make_character(
             key="Observer",
             sleeve_uid="uid-observer",
             recognition_memory={
-                "uid-target": {
+                target_uid: {
                     "assigned_name": "Big J",
                     "first_seen": "2026-01-01T00:00:00",
                     "last_seen": "2026-01-01T00:00:00",
@@ -353,23 +371,17 @@ class TestRememberCommand(TestCase):
                     "confidence": 0.8,
                     "relationship_valence": "friendly",
                     "recent_interactions": [],
+                    "lost_contact": False,
                 },
             },
-        )
-        target = _make_character(
-            key="Jorge",
-            sleeve_uid="uid-target",
-            height="tall",
-            build="lean",
-            sdesc_keyword="man",
         )
 
         cmd = CmdRemember()
         cmd.caller = caller
-        cmd._remember_target(caller, target, "uid-target", "J-Dog")
+        cmd._remember_target(caller, target, target_uid, "J-Dog")
 
         memory = caller.recognition_memory
-        entry = memory["uid-target"]
+        entry = memory[target_uid]
         self.assertEqual(entry["assigned_name"], "J-Dog")
         self.assertEqual(entry["notes"], "Seems dangerous")
         self.assertEqual(entry["tags"], ["ally"])
@@ -401,6 +413,7 @@ def _seed_memory(uid="uid-target", name="Big J"):
             "confidence": 1.0,
             "relationship_valence": "neutral",
             "recent_interactions": [],
+            "lost_contact": False,
         },
     }
 
@@ -412,11 +425,6 @@ class TestForgetCommand(TestCase):
         """forget <visible target> blanks assigned_name, preserves entry."""
         from commands.CmdCharacter import CmdForget
 
-        caller = _make_character(
-            key="Observer",
-            sleeve_uid="uid-observer",
-            recognition_memory=_seed_memory(),
-        )
         target = _make_character(
             key="Jorge",
             sleeve_uid="uid-target",
@@ -424,39 +432,54 @@ class TestForgetCommand(TestCase):
             build="lean",
             sdesc_keyword="man",
         )
+        target_uid = apparent_uid_for(target)
+        caller = _make_character(
+            key="Observer",
+            sleeve_uid="uid-observer",
+            recognition_memory=_seed_memory(uid=target_uid),
+        )
 
         cmd = CmdForget()
         cmd.caller = caller
-        cmd._forget_visible(caller, target, "uid-target")
+        cmd._forget_visible(caller, target, target_uid)
 
         memory = caller.recognition_memory
-        self.assertIn("uid-target", memory)
-        self.assertEqual(memory["uid-target"]["assigned_name"], "")
+        self.assertIn(target_uid, memory)
+        self.assertEqual(memory[target_uid]["assigned_name"], "")
         # History preserved
-        self.assertEqual(memory["uid-target"]["times_seen"], 2)
+        self.assertEqual(memory[target_uid]["times_seen"], 2)
         self.assertEqual(
-            memory["uid-target"]["sdesc_at_first_encounter"], "a gaunt man"
+            memory[target_uid]["sdesc_at_first_encounter"], "a gaunt man"
         )
 
     def test_forget_remembered_name_when_target_absent(self):
         """forget <remembered name> works without target object."""
         from commands.CmdCharacter import CmdForget, _find_remembered_uid_by_name
 
+        # Build a target only to derive its apparent UID for seeding.
+        target = _make_character(
+            key="Jorge",
+            sleeve_uid="uid-target",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+        )
+        target_uid = apparent_uid_for(target)
         caller = _make_character(
             key="Observer",
             sleeve_uid="uid-observer",
-            recognition_memory=_seed_memory(),
+            recognition_memory=_seed_memory(uid=target_uid),
         )
 
         sleeve_uid, entry = _find_remembered_uid_by_name(caller, "big j")
-        self.assertEqual(sleeve_uid, "uid-target")
+        self.assertEqual(sleeve_uid, target_uid)
 
         cmd = CmdForget()
         cmd.caller = caller
         cmd._forget_remembered(caller, sleeve_uid, entry)
 
         memory = caller.recognition_memory
-        self.assertEqual(memory["uid-target"]["assigned_name"], "")
+        self.assertEqual(memory[target_uid]["assigned_name"], "")
         # Output message references snapshot data
         msg_text = caller.msg.call_args[0][0]
         self.assertIn("Big J", msg_text)
@@ -475,13 +498,6 @@ class TestForgetCommand(TestCase):
         """forget on someone with a blank assigned_name reports correctly."""
         from commands.CmdCharacter import CmdForget
 
-        memory = _seed_memory()
-        memory["uid-target"]["assigned_name"] = ""
-        caller = _make_character(
-            key="Observer",
-            sleeve_uid="uid-observer",
-            recognition_memory=memory,
-        )
         target = _make_character(
             key="Jorge",
             sleeve_uid="uid-target",
@@ -489,10 +505,18 @@ class TestForgetCommand(TestCase):
             build="lean",
             sdesc_keyword="man",
         )
+        target_uid = apparent_uid_for(target)
+        memory = _seed_memory(uid=target_uid)
+        memory[target_uid]["assigned_name"] = ""
+        caller = _make_character(
+            key="Observer",
+            sleeve_uid="uid-observer",
+            recognition_memory=memory,
+        )
 
         cmd = CmdForget()
         cmd.caller = caller
-        cmd._forget_visible(caller, target, "uid-target")
+        cmd._forget_visible(caller, target, target_uid)
 
         msg_text = caller.msg.call_args[0][0]
         self.assertIn("don't have a name", msg_text)

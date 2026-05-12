@@ -1330,22 +1330,27 @@ class CmdRemember(Command):
             caller.msg("You already know your own name.")
             return
 
-        # Target must have a sleeve_uid
-        sleeve_uid = target.sleeve_uid
-        if sleeve_uid is None:
+        # Target must have a derivable Apparent UID (requires a real
+        # sleeve_uid — pre-chargen shells return None).
+        from world.identity import get_apparent_uid
+
+        apparent_uid = get_apparent_uid(target)
+        if apparent_uid is None:
             caller.msg("You can't remember that character.")
             return
 
         # Cross-namespace uniqueness: a remembered name for someone else
         # must not collide with one of our own persona names or a valid
         # keyword (which would shadow `appear <keyword>`).
-        taken, reason = _name_is_taken(caller, name, allow_assigned_uid=sleeve_uid)
+        taken, reason = _name_is_taken(
+            caller, name, allow_assigned_uid=apparent_uid
+        )
         if taken:
             caller.msg(reason)
             return
 
         # Apply the assignment
-        self._remember_target(caller, target, sleeve_uid, name)
+        self._remember_target(caller, target, apparent_uid, name)
 
     def _remember_self_as_persona(self, caller, name):
         """Save the caller's current overrides as a named persona."""
@@ -1369,23 +1374,29 @@ class CmdRemember(Command):
             f"Restore later with |wappear {name}|n."
         )
 
-    def _remember_target(self, caller, target, sleeve_uid, name):
-        """Store a name assignment in the caller's recognition memory."""
+    def _remember_target(self, caller, target, apparent_uid, name):
+        """Store a name assignment in the caller's recognition memory.
+
+        The recognition entry is keyed on the target's current
+        Apparent UID, NOT on real ``sleeve_uid``.  A character under
+        a different disguise produces a different Apparent UID and
+        gets its own recognition entry.
+        """
         import time
 
         memory = caller.recognition_memory
         if memory is None:
             memory = {}
 
-        old_entry = memory.get(sleeve_uid, {})
+        old_entry = memory.get(apparent_uid, {})
         old_name = old_entry.get("assigned_name", "")
 
         # Build/update the recognition entry
         now = time.strftime("%Y-%m-%dT%H:%M:%S")
         location_name = caller.location.key if caller.location else "unknown"
 
-        if sleeve_uid in memory:
-            entry = memory[sleeve_uid]
+        if apparent_uid in memory:
+            entry = memory[apparent_uid]
             entry["assigned_name"] = name
             entry["last_seen"] = now
             entry["times_seen"] = entry.get("times_seen", 0) + 1
@@ -1393,6 +1404,8 @@ class CmdRemember(Command):
             if location_name not in entry.get("locations_seen", []):
                 entry.setdefault("locations_seen", []).append(location_name)
             entry["sdesc_at_last_encounter"] = target.get_sdesc()
+            # Re-encountering this UID clears any stale lost-contact flag.
+            entry["lost_contact"] = False
         else:
             entry = {
                 "assigned_name": name,
@@ -1408,10 +1421,11 @@ class CmdRemember(Command):
                 "tags": [],
                 "confidence": 1.0,
                 "relationship_valence": "neutral",
+                "lost_contact": False,
                 "recent_interactions": [],
             }
 
-        memory[sleeve_uid] = entry
+        memory[apparent_uid] = entry
         caller.recognition_memory = memory
 
         # Provide feedback using the newly assigned name
@@ -1427,20 +1441,20 @@ class CmdRemember(Command):
                 f"{target.get_sdesc()} as |w{name}|n."
             )
 
-    def _clear_assignment(self, caller, target, sleeve_uid):
+    def _clear_assignment(self, caller, target, apparent_uid):
         """Remove a name assignment from recognition memory.
 
         Retained for backward-compatible internal use; player-facing clear
         is now the |wforget|n command (:class:`CmdForget`).
         """
         memory = caller.recognition_memory
-        if not memory or sleeve_uid not in memory:
+        if not memory or apparent_uid not in memory:
             caller.msg("You don't have a name assigned to them.")
             return
 
-        old_name = memory[sleeve_uid].get("assigned_name", "")
+        old_name = memory[apparent_uid].get("assigned_name", "")
         # Clear the assigned name but keep the memory entry
-        memory[sleeve_uid]["assigned_name"] = ""
+        memory[apparent_uid]["assigned_name"] = ""
         caller.recognition_memory = memory
 
         sdesc = target.get_sdesc()
@@ -1459,11 +1473,13 @@ class CmdRemember(Command):
 
 
 def _find_remembered_uid_by_name(caller, name):
-    """Look up a sleeve_uid in caller's recognition_memory by assigned_name.
+    """Look up an Apparent UID in caller's recognition_memory by assigned_name.
 
     Case-insensitive match against ``assigned_name``.  Returns the first
-    matching ``(sleeve_uid, entry)`` tuple, or ``(None, None)`` if no
-    match.
+    matching ``(apparent_uid, entry)`` tuple, or ``(None, None)`` if no
+    match.  The returned UID is the recognition_memory dict key (an
+    Apparent UID derived from the target's identity signature at the
+    time the entry was written), not the target's real ``sleeve_uid``.
     """
     memory = caller.recognition_memory
     if not memory:
@@ -1546,17 +1562,19 @@ class CmdForget(Command):
                 target = target[0] if target else None
 
         if target and isinstance(target, Character):
-            sleeve_uid = target.sleeve_uid
-            if sleeve_uid is None:
+            from world.identity import get_apparent_uid
+
+            apparent_uid = get_apparent_uid(target)
+            if apparent_uid is None:
                 caller.msg("You can't forget that character.")
                 return
-            self._forget_visible(caller, target, sleeve_uid)
+            self._forget_visible(caller, target, apparent_uid)
             return
 
         # Fall back to remembered-name lookup
-        sleeve_uid, entry = _find_remembered_uid_by_name(caller, args)
-        if sleeve_uid is not None:
-            self._forget_remembered(caller, sleeve_uid, entry)
+        apparent_uid, entry = _find_remembered_uid_by_name(caller, args)
+        if apparent_uid is not None:
+            self._forget_remembered(caller, apparent_uid, entry)
             return
 
         # Final fallback: persona lookup.
@@ -1595,19 +1613,24 @@ class CmdForget(Command):
             caller.msg(f"Forgot persona |w{match_key}|n.")
         return True
 
-    def _forget_visible(self, caller, target, sleeve_uid):
-        """Forget a target who is currently present."""
+    def _forget_visible(self, caller, target, apparent_uid):
+        """Forget a target who is currently present.
+
+        Keyed on the target's *Apparent UID* (derived from their current
+        identity signature), so forgetting under a disguise only forgets
+        the disguised persona — the real-form entry is untouched.
+        """
         memory = caller.recognition_memory
-        if not memory or sleeve_uid not in memory:
+        if not memory or apparent_uid not in memory:
             caller.msg("You don't have a name remembered for them.")
             return
 
-        old_name = memory[sleeve_uid].get("assigned_name", "")
+        old_name = memory[apparent_uid].get("assigned_name", "")
         if not old_name:
             caller.msg("You don't have a name remembered for them.")
             return
 
-        memory[sleeve_uid]["assigned_name"] = ""
+        memory[apparent_uid]["assigned_name"] = ""
         caller.recognition_memory = memory
 
         caller.msg(
@@ -1615,8 +1638,12 @@ class CmdForget(Command):
             f"They will now appear as their description."
         )
 
-    def _forget_remembered(self, caller, sleeve_uid, entry):
-        """Forget someone by remembered name; they may not be present."""
+    def _forget_remembered(self, caller, apparent_uid, entry):
+        """Forget someone by remembered name; they may not be present.
+
+        ``apparent_uid`` is the recognition_memory dict key (an Apparent
+        UID derived from the target's signature at recording time).
+        """
         old_name = entry.get("assigned_name", "")
         sdesc = entry.get("sdesc_at_last_encounter", "someone")
         location = entry.get("location_last_seen", "somewhere")
@@ -1624,7 +1651,7 @@ class CmdForget(Command):
         when = _format_relative_time(last_seen)
 
         memory = caller.recognition_memory
-        memory[sleeve_uid]["assigned_name"] = ""
+        memory[apparent_uid]["assigned_name"] = ""
         caller.recognition_memory = memory
 
         caller.msg(
@@ -1675,19 +1702,20 @@ class CmdRecall(Command):
             if isinstance(target, list):
                 target = target[0] if target else None
 
-        sleeve_uid = None
         entry = None
 
         if target and isinstance(target, Character):
-            sleeve_uid = target.sleeve_uid
-            if sleeve_uid is None:
+            from world.identity import get_apparent_uid
+
+            apparent_uid = get_apparent_uid(target)
+            if apparent_uid is None:
                 caller.msg("You can't recall anything about that character.")
                 return
             memory = caller.recognition_memory or {}
-            entry = memory.get(sleeve_uid)
+            entry = memory.get(apparent_uid)
         else:
             # Fall back to remembered-name lookup
-            sleeve_uid, entry = _find_remembered_uid_by_name(caller, args)
+            _apparent_uid, entry = _find_remembered_uid_by_name(caller, args)
 
         if entry is None:
             caller.msg("You don't recognize that person.")
@@ -1696,22 +1724,33 @@ class CmdRecall(Command):
         self._render_entry(caller, entry)
 
     def _render_entry(self, caller, entry):
-        """Format and send a recognition_memory entry to the caller."""
+        """Format and send a recognition_memory entry to the caller.
+
+        Adds a ``(lost contact)`` annotation when the stored entry's
+        ``lost_contact`` flag is True (set by the periodic prune scan;
+        cleared on re-encounter).  Old entries that predate the flag
+        default to False.
+        """
         assigned_name = entry.get("assigned_name", "")
         sdesc_first = entry.get("sdesc_at_first_encounter", "(unknown)")
         location_first = entry.get("location_first_seen", "(unknown)")
         first_seen = entry.get("first_seen", "")
         times_seen = entry.get("times_seen", 0)
+        lost_contact = entry.get("lost_contact", False)
 
         when = _format_relative_time(first_seen)
 
         if assigned_name:
             header = f"You remember them as: |w{assigned_name}|n"
+            if lost_contact:
+                header += " |y(lost contact)|n"
         else:
             header = (
                 "You've encountered them before but don't have a "
                 "name for them."
             )
+            if lost_contact:
+                header += " |y(lost contact)|n"
 
         lines = [
             header,
@@ -1777,8 +1816,11 @@ class CmdMemory(Command):
             border="cells",
         )
         for _uid, entry in named:
+            name_cell = entry.get("assigned_name", "")
+            if entry.get("lost_contact", False):
+                name_cell = f"{name_cell} |y(lost contact)|n"
             table.add_row(
-                entry.get("assigned_name", ""),
+                name_cell,
                 entry.get("sdesc_at_last_encounter", "(unknown)"),
                 entry.get("location_last_seen", "(unknown)"),
                 _format_relative_time(entry.get("last_seen", "")),
@@ -1895,8 +1937,8 @@ def _name_is_taken(caller, name, allow_assigned_uid=None):
         caller: The character whose namespaces are being checked.
         name: The candidate name (case-insensitive).
         allow_assigned_uid: When checking a remembered-as assignment,
-            the existing recognition entry for *that* sleeve_uid does
-            not count as a collision (re-naming the same person).
+            the existing recognition entry for *that* Apparent UID does
+            not count as a collision (re-naming the same persona).
 
     Returns:
         Tuple ``(taken: bool, reason: str)``.  *reason* is a

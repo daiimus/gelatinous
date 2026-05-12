@@ -740,3 +740,262 @@ class TestValidateCustomKeyword(TestCase):
     def test_reject_empty(self) -> None:
         valid, reason = validate_custom_keyword("")
         self.assertFalse(valid)
+
+
+# =====================================================================
+# Disguise engine: signature, Apparent UID, gender derivation, wipe
+# =====================================================================
+
+
+class _SignatureMockCharacter:
+    """Minimal stand-in for a Character used by signature/UID tests.
+
+    Avoids ``MagicMock`` because its auto-attribute behaviour silently
+    produces non-``None`` ``db.*_override`` values that poison the
+    signature.  This explicit class makes the unset state obvious and
+    makes the tests fail loudly when a new signature input is added.
+    """
+
+    def __init__(
+        self,
+        sleeve_uid: str | None = "uid-jorge",
+        height_override: str | None = None,
+        build_override: str | None = None,
+        keyword_override: str | None = None,
+        sex: str = "male",
+        gender: str | None = None,
+    ) -> None:
+        self.sleeve_uid = sleeve_uid
+        self.sex = sex
+        self.gender = gender
+
+        class _DB:
+            pass
+
+        self.db = _DB()
+        self.db.height_override = height_override
+        self.db.build_override = build_override
+        self.db.keyword_override = keyword_override
+
+        self.recognition_memory: dict = {}
+        self.key = "Jorge"
+
+
+class TestGetIdentitySignature(TestCase):
+    """Signature is the deterministic input tuple for Apparent UID derivation."""
+
+    def test_undisguised_signature_shape(self) -> None:
+        """Signature is a 5-tuple ending with an empty essential-items tuple."""
+        from world.identity import get_identity_signature
+
+        char = _SignatureMockCharacter()
+        sig = get_identity_signature(char)
+        self.assertEqual(len(sig), 5)
+        self.assertEqual(sig[0], "uid-jorge")
+        self.assertIsNone(sig[1])
+        self.assertIsNone(sig[2])
+        self.assertIsNone(sig[3])
+        # Essential-item tuple is empty until PR-C wires the flag.
+        self.assertEqual(sig[4], ())
+
+    def test_overrides_change_signature(self) -> None:
+        from world.identity import get_identity_signature
+
+        bare = get_identity_signature(_SignatureMockCharacter())
+        disguised = get_identity_signature(
+            _SignatureMockCharacter(
+                height_override="short",
+                build_override="stocky",
+                keyword_override="woman",
+            )
+        )
+        self.assertNotEqual(bare, disguised)
+        self.assertEqual(disguised[1], "short")
+        self.assertEqual(disguised[2], "stocky")
+        self.assertEqual(disguised[3], "woman")
+
+    def test_signature_is_pure_function_of_state(self) -> None:
+        """Two calls on the same state yield the same signature (no caching artefacts)."""
+        from world.identity import get_identity_signature
+
+        char = _SignatureMockCharacter(keyword_override="hooded")
+        self.assertEqual(get_identity_signature(char), get_identity_signature(char))
+
+
+class TestGetApparentUid(TestCase):
+    """Apparent UID is a deterministic 16-char hex digest of the signature."""
+
+    def test_uid_is_sixteen_hex_chars(self) -> None:
+        from world.identity import APPARENT_UID_HEX_LENGTH, get_apparent_uid
+
+        uid = get_apparent_uid(_SignatureMockCharacter())
+        self.assertIsNotNone(uid)
+        self.assertEqual(len(uid), APPARENT_UID_HEX_LENGTH)
+        self.assertEqual(len(uid), 16)
+        int(uid, 16)  # Raises ValueError if not valid hex.
+
+    def test_uid_is_deterministic(self) -> None:
+        """Same signature → same UID across calls (unlike salted ``hash()``)."""
+        from world.identity import get_apparent_uid
+
+        char1 = _SignatureMockCharacter(sleeve_uid="uid-x", keyword_override="man")
+        char2 = _SignatureMockCharacter(sleeve_uid="uid-x", keyword_override="man")
+        self.assertEqual(get_apparent_uid(char1), get_apparent_uid(char2))
+
+    def test_uid_changes_with_disguise(self) -> None:
+        """Adopting any override produces a distinct UID from the bare form."""
+        from world.identity import get_apparent_uid
+
+        bare = get_apparent_uid(_SignatureMockCharacter())
+        disguised = get_apparent_uid(
+            _SignatureMockCharacter(keyword_override="woman")
+        )
+        self.assertNotEqual(bare, disguised)
+
+    def test_uid_includes_sleeve_salt(self) -> None:
+        """Two impostors with identical disguises still get distinct UIDs."""
+        from world.identity import get_apparent_uid
+
+        a = _SignatureMockCharacter(sleeve_uid="uid-A", keyword_override="hooded")
+        b = _SignatureMockCharacter(sleeve_uid="uid-B", keyword_override="hooded")
+        self.assertNotEqual(get_apparent_uid(a), get_apparent_uid(b))
+
+    def test_uid_none_when_no_sleeve(self) -> None:
+        """Pre-chargen shells (no sleeve_uid) produce ``None``, never a digest."""
+        from world.identity import get_apparent_uid
+
+        self.assertIsNone(
+            get_apparent_uid(_SignatureMockCharacter(sleeve_uid=None))
+        )
+
+
+class TestGetApparentGender(TestCase):
+    """Gender derivation follows keyword override → real grammar gender."""
+
+    def test_no_override_uses_real_gender(self) -> None:
+        from world.identity import get_apparent_gender
+
+        char = _SignatureMockCharacter(sex="male", gender="male")
+        self.assertEqual(get_apparent_gender(char), "male")
+
+    def test_no_override_falls_back_to_sex_when_no_gender(self) -> None:
+        """When ``gender`` is unset, fall back through GENDER_MAP[sex]."""
+        from world.identity import get_apparent_gender
+
+        char = _SignatureMockCharacter(sex="female", gender=None)
+        self.assertEqual(get_apparent_gender(char), "female")
+
+    def test_feminine_override_returns_female(self) -> None:
+        from world.identity import get_apparent_gender
+
+        char = _SignatureMockCharacter(sex="male", keyword_override="woman")
+        self.assertEqual(get_apparent_gender(char), "female")
+
+    def test_masculine_override_returns_male(self) -> None:
+        from world.identity import get_apparent_gender
+
+        char = _SignatureMockCharacter(sex="female", keyword_override="man")
+        self.assertEqual(get_apparent_gender(char), "male")
+
+    def test_neutral_keyword_override_returns_neutral(self) -> None:
+        from world.identity import get_apparent_gender
+
+        char = _SignatureMockCharacter(sex="male", keyword_override="figure")
+        self.assertEqual(get_apparent_gender(char), "neutral")
+
+    def test_custom_keyword_override_returns_neutral(self) -> None:
+        """Custom ``@shortdesc`` keywords carry no gender metadata → neutral."""
+        from world.identity import get_apparent_gender
+
+        char = _SignatureMockCharacter(
+            sex="male", gender="male", keyword_override="zaibatsu-runner"
+        )
+        self.assertEqual(get_apparent_gender(char), "neutral")
+
+
+class TestLegacyRecognitionWipe(TestCase):
+    """Idempotent shape-check wipe of pre-engine-PR recognition entries."""
+
+    def _entry(self, **overrides) -> dict:
+        base = {
+            "assigned_name": "Big J",
+            "first_seen": "2025-01-01T00:00:00",
+            "last_seen": "2025-01-01T00:00:00",
+            "times_seen": 1,
+            "lost_contact": False,
+        }
+        base.update(overrides)
+        return base
+
+    def test_legacy_uuid_key_is_wiped(self) -> None:
+        """36-char UUID-style keys are pre-engine and must be wiped."""
+        from world.identity import wipe_legacy_recognition_memory
+
+        char = _SignatureMockCharacter()
+        char.recognition_memory = {
+            "12345678-1234-1234-1234-123456789012": self._entry(),
+        }
+        wiped = wipe_legacy_recognition_memory(char)
+        self.assertEqual(wiped, 1)
+        self.assertEqual(char.recognition_memory, {})
+
+    def test_missing_lost_contact_field_is_wiped(self) -> None:
+        """16-char key but missing ``lost_contact`` field → still legacy."""
+        from world.identity import wipe_legacy_recognition_memory
+
+        char = _SignatureMockCharacter()
+        # 16-char key, but entry pre-dates the lost_contact field.
+        legacy = self._entry()
+        del legacy["lost_contact"]
+        char.recognition_memory = {"abcdef0123456789": legacy}
+        wiped = wipe_legacy_recognition_memory(char)
+        self.assertEqual(wiped, 1)
+        self.assertEqual(char.recognition_memory, {})
+
+    def test_modern_entry_is_preserved(self) -> None:
+        """16-char key + ``lost_contact`` field present → no-op."""
+        from world.identity import wipe_legacy_recognition_memory
+
+        char = _SignatureMockCharacter()
+        char.recognition_memory = {"abcdef0123456789": self._entry()}
+        wiped = wipe_legacy_recognition_memory(char)
+        self.assertEqual(wiped, 0)
+        self.assertIn("abcdef0123456789", char.recognition_memory)
+
+    def test_wipe_is_idempotent(self) -> None:
+        """A second call after a successful wipe is a no-op."""
+        from world.identity import wipe_legacy_recognition_memory
+
+        char = _SignatureMockCharacter()
+        char.recognition_memory = {
+            "12345678-1234-1234-1234-123456789012": self._entry(),
+            "abcdef0123456789": self._entry(),
+        }
+        first = wipe_legacy_recognition_memory(char)
+        second = wipe_legacy_recognition_memory(char)
+        self.assertEqual(first, 1)
+        self.assertEqual(second, 0)
+
+    def test_wipe_handles_empty_memory(self) -> None:
+        from world.identity import wipe_legacy_recognition_memory
+
+        char = _SignatureMockCharacter()
+        char.recognition_memory = {}
+        self.assertEqual(wipe_legacy_recognition_memory(char), 0)
+
+    def test_wipe_handles_none_memory(self) -> None:
+        """A character with no recognition_memory attribute is handled gracefully."""
+        from world.identity import wipe_legacy_recognition_memory
+
+        char = _SignatureMockCharacter()
+        char.recognition_memory = None
+        self.assertEqual(wipe_legacy_recognition_memory(char), 0)
+
+    def test_non_dict_entry_value_is_wiped(self) -> None:
+        """A corrupt non-dict value at a 16-char key is still legacy."""
+        from world.identity import wipe_legacy_recognition_memory
+
+        char = _SignatureMockCharacter()
+        char.recognition_memory = {"abcdef0123456789": "corrupt-string"}
+        self.assertEqual(wipe_legacy_recognition_memory(char), 1)
+        self.assertEqual(char.recognition_memory, {})
