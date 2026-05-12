@@ -273,8 +273,129 @@ class TestMsgRoomIdentity(TestCase):
 
 
 # ===================================================================
-# Tests: CmdSay
+# Tests: msg_room_identity pre_resolved_refs (snapshot idiom)
 # ===================================================================
+
+
+class TestMsgRoomIdentityPreResolved(TestCase):
+    """Tests for the pre_resolved_refs snapshot kwarg.
+
+    The snapshot idiom is documented in
+    ``specs/IDENTITY_RECOGNITION_SPEC.md`` §"Action Broadcast Sdesc
+    Stability".  Used by clothing commands (and future wield/appear)
+    to broadcast pre-mutation sdescs.
+    """
+
+    def setUp(self):
+        self.jorge = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        self.alice = _make_character(
+            key="Alice Smith",
+            sex="female",
+            height="average",
+            build="average",
+            sleeve_uid="uid-alice",
+            recognition_memory={
+                apparent_uid_for(self.jorge): {"assigned_name": "Jorge"},
+            },
+        )
+        self.bob = _make_character(
+            key="Bob Doe",
+            sex="male",
+            height="average",
+            build="average",
+            sleeve_uid="uid-bob",
+            recognition_memory={},
+        )
+
+    def _msg_text(self, observer):
+        call = observer.msg.call_args
+        return call[1].get(
+            "text",
+            call[0][0] if call[0] else None,
+        )
+
+    def test_snapshot_used_when_observer_present(self):
+        """Snapshot string is used verbatim, get_display_name is not called."""
+        room = _make_room([self.jorge, self.alice, self.bob])
+        snapshot = {
+            "actor": {
+                self.alice: "PRE-Jorge",
+                self.bob: "PRE-sdesc",
+            }
+        }
+        # Spy on get_display_name to assert it is bypassed.
+        self.jorge.get_display_name = MagicMock(
+            side_effect=AssertionError(
+                "get_display_name must not be called when snapshot present"
+            )
+        )
+
+        msg_room_identity(
+            location=room,
+            template="{actor} puts on a balaclava.",
+            char_refs={"actor": self.jorge},
+            exclude=[self.jorge],
+            pre_resolved_refs=snapshot,
+        )
+
+        self.assertIn("PRE-Jorge", self._msg_text(self.alice))
+        self.assertIn("PRE-sdesc", self._msg_text(self.bob))
+
+    def test_snapshot_missing_observer_falls_back(self):
+        """Observers absent from snapshot fall back to live get_display_name."""
+        room = _make_room([self.jorge, self.alice, self.bob])
+        # Only Alice has a snapshot entry; Bob must fall back.
+        snapshot = {"actor": {self.alice: "PRE-Jorge"}}
+
+        msg_room_identity(
+            location=room,
+            template="{actor} puts on a balaclava.",
+            char_refs={"actor": self.jorge},
+            exclude=[self.jorge],
+            pre_resolved_refs=snapshot,
+        )
+
+        self.assertIn("PRE-Jorge", self._msg_text(self.alice))
+        # Bob has no snapshot entry → live sdesc lookup
+        self.assertIn("gaunt man", self._msg_text(self.bob))
+
+    def test_snapshot_missing_placeholder_falls_back(self):
+        """Placeholders absent from snapshot mapping use live names."""
+        room = _make_room([self.jorge, self.alice])
+        # Empty snapshot — entire mapping has no entries for "actor"
+        msg_room_identity(
+            location=room,
+            template="{actor} puts on a balaclava.",
+            char_refs={"actor": self.jorge},
+            exclude=[self.jorge],
+            pre_resolved_refs={},
+        )
+        self.assertIn("Jorge", self._msg_text(self.alice))
+
+    def test_first_placeholder_capitalization_preserved(self):
+        """Snapshot string at sentence start receives capitalize_first()."""
+        room = _make_room([self.jorge, self.bob])
+        snapshot = {"actor": {self.bob: "a lithe man"}}
+
+        msg_room_identity(
+            location=room,
+            template="{actor} puts on a balaclava.",
+            char_refs={"actor": self.jorge},
+            exclude=[self.jorge],
+            pre_resolved_refs=snapshot,
+        )
+
+        self.assertTrue(
+            self._msg_text(self.bob).startswith("A lithe man "),
+            self._msg_text(self.bob),
+        )
 
 
 class TestCmdSay(TestCase):

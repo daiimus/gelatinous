@@ -26,6 +26,7 @@ def msg_room_identity(
     template: str,
     char_refs: dict[str, "Character"],
     exclude: list | None = None,
+    pre_resolved_refs: dict[str, dict] | None = None,
     **kwargs,
 ) -> None:
     """Send an identity-aware message to all observers in a room.
@@ -44,6 +45,20 @@ def msg_room_identity(
         exclude: Characters/objects to exclude from receiving the
             message.  Typically the actor and/or target who receive
             separate first-person messages.
+        pre_resolved_refs: Optional pre-computed display-name snapshots,
+            shaped ``{placeholder: {observer: display_name_str}}``.
+            When an observer has an entry under a placeholder, that
+            string is used verbatim instead of calling
+            ``char.get_display_name(observer)``.  This is the snapshot
+            idiom used by actions whose effect mutates the actor's own
+            sdesc inputs (e.g. putting on a disguise item) — the
+            command captures pre-mutation names *before* mutating
+            state, then passes them here so the broadcast describes
+            the actor as they appeared at the moment they began the
+            action.  See specs/IDENTITY_RECOGNITION_SPEC.md
+            §"Action Broadcast Sdesc Stability".  Missing placeholder
+            keys or missing observer keys silently fall through to
+            the live ``get_display_name`` lookup.
         **kwargs: Extra keyword arguments passed through to each
             ``observer.msg()`` call (e.g. ``type="say"``).
 
@@ -60,6 +75,7 @@ def msg_room_identity(
     Observer B (knows neither): ``"A lanky man attacks a wiry droog with a knife!"``
     """
     exclude_set = set(exclude) if exclude else set()
+    pre_resolved_refs = pre_resolved_refs or {}
 
     # Determine which placeholder appears first in the template
     # so we can capitalize its display name for proper sentence casing.
@@ -81,7 +97,14 @@ def msg_room_identity(
 
         resolved = template
         for placeholder, char in char_refs.items():
-            display_name = char.get_display_name(observer)
+            snapshot_for_placeholder = pre_resolved_refs.get(placeholder)
+            if (
+                snapshot_for_placeholder is not None
+                and observer in snapshot_for_placeholder
+            ):
+                display_name = snapshot_for_placeholder[observer]
+            else:
+                display_name = char.get_display_name(observer)
             if placeholder == first_placeholder:
                 display_name = capitalize_first(display_name)
             resolved = resolved.replace(f"{{{placeholder}}}", display_name)

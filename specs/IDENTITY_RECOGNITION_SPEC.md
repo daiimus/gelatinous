@@ -748,7 +748,14 @@ This affects every system that sends messages to rooms: combat, movement, commun
 A centralized helper replaces direct `msg_contents()` calls for any message referencing characters:
 
 ```python
-def msg_room_identity(location, template, char_refs, exclude=None):
+def msg_room_identity(
+    location,
+    template,
+    char_refs,
+    exclude=None,
+    pre_resolved_refs=None,
+    **kwargs,
+):
     """Send identity-aware message to all observers in a room.
 
     Args:
@@ -757,15 +764,12 @@ def msg_room_identity(location, template, char_refs, exclude=None):
         char_refs: Dict mapping placeholder names to Character objects.
             e.g., {"actor": attacker_obj, "target": target_obj}
         exclude: Characters to exclude from receiving the message.
+        pre_resolved_refs: Optional snapshot mapping of the shape
+            ``{placeholder: {observer: display_name}}``.  When set,
+            an observer's entry under a placeholder is used verbatim
+            instead of calling ``char.get_display_name(observer)``.
+            See "Action Broadcast Sdesc Stability" below.
     """
-    for observer in location.contents_get(exclude=exclude):
-        if not hasattr(observer, "msg"):
-            continue
-        resolved = template
-        for placeholder, char in char_refs.items():
-            display_name = char.get_display_name(observer)
-            resolved = resolved.replace(f"{{{placeholder}}}", display_name)
-        observer.msg(resolved)
 ```
 
 Usage:
@@ -789,6 +793,87 @@ With 20 observers and 2 character references: 40 dict lookups + 40 string replac
 **NPC memory storage**: An NPC that has encountered 500 unique characters stores a dict with 500 keys. Each entry is ~500 bytes of metadata. Total: ~250KB per well-traveled NPC. Acceptable.
 
 **Scaling concern**: The real cost is not runtime performance but **refactoring scope**. Every `msg_contents()` call and every `.key` reference in message strings across the codebase must be converted to use `msg_room_identity` or route through `get_display_name`. This is a large, methodical effort (Phase 2).
+
+### Action Broadcast Sdesc Stability
+
+A subtle hazard arises whenever the action being broadcast *mutates the
+actor's own sdesc inputs*.  The canonical example is a disguise item:
+
+```python
+char_refs = {"actor": caller}
+caller.wear_item(item)        # mutates worn_items, changing the sdesc
+msg_room_identity(
+    location=caller.location,
+    template=f"{{actor}} puts on {item.key}.",
+    char_refs=char_refs,
+    exclude=[caller],
+)
+```
+
+By the time `msg_room_identity` calls `caller.get_display_name(observer)`,
+the worn-items mutation has already taken effect.  The actor's sdesc now
+includes the disguise's `disguise_adjective` and `worn_sdesc_short`
+feature, producing a broadcast like:
+
+> *a lithe masked droog in a black balaclava puts on a black balaclava.*
+
+The action message describes the actor as if the action had already
+landed on their appearance — the actor cannot be the subject of the
+"puts on a balaclava" sentence while *already wearing* the balaclava.
+
+**Snapshot idiom.**  Capture per-observer display names *before* mutating
+state, then pass them via `pre_resolved_refs`:
+
+```python
+char_refs = {"actor": caller}
+pre_resolved = {
+    placeholder: {
+        obs: char.get_display_name(obs)
+        for obs in caller.location.contents
+        if obs is not caller and hasattr(obs, "msg")
+    }
+    for placeholder, char in char_refs.items()
+}
+caller.wear_item(item)
+msg_room_identity(
+    location=caller.location,
+    template=f"{{actor}} puts on {item.key}.",
+    char_refs=char_refs,
+    exclude=[caller],
+    pre_resolved_refs=pre_resolved,
+)
+```
+
+The snapshot is **defensive**: every placeholder in `char_refs` is
+captured, not only the one known to mutate today.  This protects future
+multi-actor templates (e.g. a forced-equip command with both
+`{actor}` and `{victim}`) without requiring per-call audits.
+
+**When to apply the snapshot idiom.**  Any command whose body mutates
+attributes that feed into `compose_sdesc` *for an actor referenced by
+the broadcast template*:
+
+- `wear` / `remove` (clothing changes feature partition and
+  disguise adjective)
+- `rollup` / `unroll`, `zip` / `unzip` (style changes can swap
+  `worn_sdesc_short`)
+- Future: `wield` / `unwield` if weapons ever feed sdesc; `appear`
+  command overrides; transformation effects.
+
+Commands that mutate non-broadcast actors (e.g. an admin command
+forcing another character's sdesc) need the snapshot for *that*
+character, not the caller — `_snapshot_actor_names` snapshots every
+placeholder defensively for exactly this reason.
+
+**Article grammar.**  The same neutral-introduction broadcasts that
+benefit from the snapshot also need indefinite-article grammar on the
+item being acted upon: `"puts on a black balaclava"` not
+`"puts on black balaclava"`.  Use `world.grammar.get_article` (or the
+`_articled` helper in `commands/CmdClothing.py`) when interpolating an
+item key into the template; for lists of items use
+`evennia.utils.utils.iter_to_str` over `[_articled(k) for k in keys]`.
+Error messages and possessive forms (`"the X"`, `"their X"`) are left
+untouched — only neutral introductions need the article fix.
 
 ---
 

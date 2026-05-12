@@ -7,6 +7,8 @@ coverage queries, and the clothing coverage map builder for Character objects.
 Extracted from typeclasses/characters.py in Phase 4 refactoring.
 """
 
+from world.grammar import get_article
+
 
 class ClothingMixin:
     """
@@ -207,7 +209,7 @@ class ClothingMixin:
 
             location_items.insert(insert_index, item)
 
-        return True, f"You put on {item.key}."
+        return True, f"You put on {get_article(item.key)} {item.key}."
 
     def remove_item(self, item):
         """
@@ -286,7 +288,7 @@ class ClothingMixin:
                     if not items:
                         del self.worn_items[location]
 
-        return True, f"You remove {item.key}."
+        return True, f"You remove {get_article(item.key)} {item.key}."
 
     def is_item_worn(self, item):
         """

@@ -6,6 +6,7 @@
 # - CmdZip/CmdUnzip: Closure management
 #
 from evennia import Command
+from evennia.utils.utils import iter_to_str
 
 from world.combat.constants import (
     STYLE_ADJUSTABLE,
@@ -15,7 +16,49 @@ from world.combat.constants import (
     STYLE_STATE_UNZIPPED,
     STYLE_STATE_ZIPPED,
 )
+from world.grammar import get_article
 from world.identity_utils import msg_room_identity
+
+
+def _snapshot_actor_names(caller, char_refs):
+    """Capture per-observer display names for *char_refs* before mutation.
+
+    Returns a ``pre_resolved_refs`` mapping suitable for
+    :func:`world.identity_utils.msg_room_identity` of the shape
+    ``{placeholder: {observer: display_name}}``.
+
+    This is the snapshot idiom for actions that mutate the actor's own
+    sdesc inputs (clothing, future ``wield``/``appear``).  Without it,
+    observers receive the broadcast describing the actor's *post-action*
+    sdesc, which produces nonsense like "a lithe masked droog in a
+    black balaclava puts on a black balaclava" — the message describes
+    the actor as if the action had already taken effect on their
+    appearance.  See specs/IDENTITY_RECOGNITION_SPEC.md
+    §"Action Broadcast Sdesc Stability".
+
+    Defensive: snapshots every placeholder in *char_refs* so future
+    multi-actor templates (e.g. forced equip with ``{actor}`` and
+    ``{victim}``) get stable names too, not only the placeholder we
+    know mutates today.
+    """
+    location = caller.location
+    if location is None:
+        return {}
+    observers = [
+        obs
+        for obs in location.contents
+        if obs is not caller and hasattr(obs, "msg")
+    ]
+    return {
+        placeholder: {obs: char.get_display_name(obs) for obs in observers}
+        for placeholder, char in char_refs.items()
+    }
+
+
+def _articled(item_key: str) -> str:
+    """Return ``"a black balaclava"`` / ``"an axe handle"`` for *item_key*."""
+    return f"{get_article(item_key)} {item_key}"
+
 
 class CmdWear(Command):
     """
@@ -71,17 +114,21 @@ class CmdWear(Command):
             caller.msg(f"You're already wearing {item.key}.")
             return
         
-        # Attempt to wear the item
+        # Attempt to wear the item.  Snapshot observer names BEFORE
+        # mutating worn_items so the broadcast describes the actor as
+        # they appeared at the moment they began the action.
+        char_refs = {"actor": caller}
+        pre_resolved = _snapshot_actor_names(caller, char_refs)
         success, message = caller.wear_item(item)
         caller.msg(message)
-        
+
         if success:
-            # Message to room
             msg_room_identity(
                 location=caller.location,
-                template=f"{{actor}} puts on {item.key}.",
-                char_refs={"actor": caller},
+                template=f"{{actor}} puts on {_articled(item.key)}.",
+                char_refs=char_refs,
                 exclude=[caller],
+                pre_resolved_refs=pre_resolved,
             )
 
 
@@ -120,20 +167,28 @@ class CmdRemove(Command):
             if not worn_items:
                 caller.msg("You're not wearing anything.")
                 return
-            
+
+            # Snapshot observer names BEFORE mutating worn state so the
+            # broadcast describes the actor as they appeared at the
+            # moment they began the action.
+            char_refs = {"actor": caller}
+            pre_resolved = _snapshot_actor_names(caller, char_refs)
+
             removed_items = []
             for item in worn_items:
                 success, message = caller.remove_item(item)
                 if success:
                     removed_items.append(item.key)
-            
+
             if removed_items:
                 caller.msg(f"You remove: {', '.join(removed_items)}")
+                articled = iter_to_str([_articled(key) for key in removed_items])
                 msg_room_identity(
                     location=caller.location,
-                    template="{actor} removes several items.",
-                    char_refs={"actor": caller},
+                    template=f"{{actor}} removes {articled}.",
+                    char_refs=char_refs,
                     exclude=[caller],
+                    pre_resolved_refs=pre_resolved,
                 )
             else:
                 caller.msg("You couldn't remove anything.")
@@ -154,6 +209,10 @@ class CmdRemove(Command):
             return
         
         # STICKY GRENADE WARNING - Check for stuck grenades before removal
+        # Snapshot actor names BEFORE remove_item mutates worn state.
+        char_refs = {"actor": caller}
+        pre_resolved = _snapshot_actor_names(caller, char_refs)
+
         if item.db.stuck_grenade is not None:
             grenade = item.db.stuck_grenade
             
@@ -186,16 +245,17 @@ class CmdRemove(Command):
                     f"The grenade will remain stuck to the armor.\n"
                 )
             
-            # Warn the room
+            # Warn the room (possessive form: "their X" stays as-is)
             msg_room_identity(
                 location=caller.location,
                 template=(
                     f"|R{{actor}} carefully removes their {item.key} - "
-                    f"the magnetically attached {grenade.key} moves "
+                    f"the magnetically attached {_articled(grenade.key)} moves "
                     f"with it!|n"
                 ),
-                char_refs={"actor": caller},
+                char_refs=char_refs,
                 exclude=[caller],
+                pre_resolved_refs=pre_resolved,
             )
         
         # Remove the item
@@ -207,9 +267,10 @@ class CmdRemove(Command):
             if item.db.stuck_grenade is None:
                 msg_room_identity(
                     location=caller.location,
-                    template=f"{{actor}} removes {item.key}.",
-                    char_refs={"actor": caller},
+                    template=f"{{actor}} removes {_articled(item.key)}.",
+                    char_refs=char_refs,
                     exclude=[caller],
+                    pre_resolved_refs=pre_resolved,
                 )
 
 
@@ -280,6 +341,13 @@ class CmdRollUp(Command):
             caller.msg(f"That wouldn't change anything about the {item.key}.")
             return
         
+        # Snapshot observer names BEFORE the style change so the
+        # broadcast describes the actor as they appeared at the
+        # moment they began the action (rolling/unrolling can
+        # change worn_sdesc_short and thus the sdesc).
+        char_refs = {"actor": caller}
+        pre_resolved = _snapshot_actor_names(caller, char_refs)
+
         # Apply the style change
         success = item.set_style_property(STYLE_ADJUSTABLE, target_state)
         
@@ -288,17 +356,19 @@ class CmdRollUp(Command):
                 caller.msg(f"You roll up the {item.key}.")
                 msg_room_identity(
                     location=caller.location,
-                    template=f"{{actor}} rolls up {item.key}.",
-                    char_refs={"actor": caller},
+                    template=f"{{actor}} rolls up {_articled(item.key)}.",
+                    char_refs=char_refs,
                     exclude=[caller],
+                    pre_resolved_refs=pre_resolved,
                 )
             else:
                 caller.msg(f"You unroll the {item.key}.")
                 msg_room_identity(
                     location=caller.location,
-                    template=f"{{actor}} unrolls {item.key}.",
-                    char_refs={"actor": caller},
+                    template=f"{{actor}} unrolls {_articled(item.key)}.",
+                    char_refs=char_refs,
                     exclude=[caller],
+                    pre_resolved_refs=pre_resolved,
                 )
         else:
             caller.msg(f"You can't {action} the {item.key}.")
@@ -391,6 +461,13 @@ class CmdZip(Command):
             caller.msg(f"That wouldn't change anything about the {item.key}.")
             return
         
+        # Snapshot observer names BEFORE the style change so the
+        # broadcast describes the actor as they appeared at the
+        # moment they began the action (zipping/buttoning can
+        # change worn_sdesc_short and thus the sdesc).
+        char_refs = {"actor": caller}
+        pre_resolved = _snapshot_actor_names(caller, char_refs)
+
         # Apply the style change
         success = item.set_style_property(STYLE_CLOSURE, target_state)
         
@@ -398,9 +475,10 @@ class CmdZip(Command):
             caller.msg(f"You {action} the {item.key}.")
             msg_room_identity(
                 location=caller.location,
-                template=f"{{actor}} {action_past} {item.key}.",
-                char_refs={"actor": caller},
+                template=f"{{actor}} {action_past} {_articled(item.key)}.",
+                char_refs=char_refs,
                 exclude=[caller],
+                pre_resolved_refs=pre_resolved,
             )
         else:
             caller.msg(f"You can't {action} the {item.key}.")
