@@ -39,7 +39,7 @@ Skintone is deliberately excluded from the sdesc. It appears only in the longdes
 
 ### Recognition
 
-A per-character memory mapping stored on the brain organ: "I know the person with this Apparent UID as [name], and here's everything I remember about them." When you see someone whose current Apparent UID is in your memory, you see the name you assigned. When you don't recognize them, you see their sdesc. Because the Apparent UID is derived from the target's full identity signature (real sleeve, active overrides, essential items), the same physical body can produce different recognition entries under different disguises — see §Memory Data Model.
+A per-character memory mapping (currently stored as an `AttributeProperty` on the Character; brain-organ storage deferred — see §Memory Architecture): "I know the person with this Apparent UID as [name], and here's everything I remember about them." When you see someone whose current Apparent UID is in your memory, you see the name you assigned. When you don't recognize them, you see their sdesc. Because the Apparent UID is derived from the target's full identity signature (real sleeve, active overrides, essential items), the same physical body can produce different recognition entries under different disguises — see §Memory Data Model.
 
 ### Apparent Identity
 
@@ -174,7 +174,7 @@ graph TD
     A["get_display_name(looker)"] --> B{Is looker self?}
     B -->|Yes| C["Return self.key"]
     B -->|No| D["Compute target's Apparent UID<br/>from current identity signature"]
-    D --> E[Get looker's brain organ]
+    D --> E[Get looker's recognition_memory]
     E --> F{Apparent UID in recognition_memory?}
     F -->|Yes, has assigned_name| G[Return stored assigned_name]
     F -->|Yes, no assigned_name<br/>(forgotten entry)| H[Return target's sdesc]
@@ -265,7 +265,7 @@ recognition_memory = {
 }
 ```
 
-This is stored as a db attribute on the brain organ, keyed by **Apparent UID**. The `recent_interactions` list should be capped (e.g., last 20 interactions per entry) to prevent unbounded growth, with older interactions eligible for summarization or archival.
+This is stored as a db attribute on the Character (`recognition_memory` AttributeProperty), keyed by **Apparent UID**. See §Memory Architecture for the storage-location rationale and the planned migration to brain-organ storage. The `recent_interactions` list should be capped (e.g., last 20 interactions per entry) to prevent unbounded growth, with older interactions eligible for summarization or archival.
 
 **One-time wipe (engine PR rollout):** Existing `recognition_memory` dicts (keyed on real `sleeve_uid` from prior phases) are wiped at engine-PR deployment. There is no migration recompute; players rebuild recognition organically under the new keying. This is acceptable because no production characters depend on the prior memory schema for ongoing play, and the schema change is total (key shape, value shape).
 
@@ -279,7 +279,7 @@ This is stored as a db attribute on the brain organ, keyed by **Apparent UID**. 
 remember <target> as <name>
 ```
 
-Stores the name in the rememberer's brain recognition memory under the target's current **Apparent UID**. Any name is valid — false names are always possible. Re-remembering overwrites. Names are validated against the cross-namespace uniqueness rule (see §Personas — *Cross-namespace uniqueness*): the assigned name must not collide with the keyword catalog, the caller's persona names, or any existing recognition `assigned_name` on a different Apparent UID.
+Stores the name in the rememberer's recognition memory under the target's current **Apparent UID**. Any name is valid — false names are always possible. Re-remembering overwrites. Names are validated against the cross-namespace uniqueness rule (see §Personas — *Cross-namespace uniqueness*): the assigned name must not collide with the keyword catalog, the caller's persona names, or any existing recognition `assigned_name` on a different Apparent UID.
 
 ```
 > remember tall man as Jorge
@@ -330,18 +330,20 @@ Socially, demanding someone flash their digital ID is a faux pas in most context
 
 ## Memory Architecture
 
-### Organic Memory (Brain Organ)
+### Organic Memory (Character AttributeProperty)
 
-Recognition data lives on the brain organ object (`world/medical/constants.py` defines the brain organ with `container: "head"`, `vital: True`, `capacity: "consciousness"`).
+Recognition data lives directly on the Character as an `AttributeProperty` (`typeclasses/characters.py`: `recognition_memory`). The original design located this on the brain organ — that pivot was deferred to keep the engine PR scoped, but the storage location is conceptually still "the character's organic memory" and the migration to brain-organ storage remains tracked under the medical-system rework.
 
-**Storage:** A new db attribute on the brain organ: `db.recognition_memory` (dict).
+**Storage:** `Character.recognition_memory` (dict, AttributeProperty), keyed by **Apparent UID**.
 
 **Properties:**
 - Populated by explicit player action (`remember` command)
 - Future: auto-populated by Resonance-driven proximity detection
-- Lost if the brain is destroyed (brain destruction = death, so this is moot for the current character, but matters for brain transplant scenarios)
-- Brain damage (non-fatal) carries a risk of partial memory loss — individual entries can be degraded or lost. This is a future enhancement once the memory pool is rich enough to make partial loss meaningful.
-- Flash clones get a new brain — they start with empty recognition memory. The clone is a stranger who happens to look like someone others remember.
+- Lost on character deletion. When recognition migrates to the brain organ (future medical-system work), it will be lost on brain destruction — moot for the current character (brain destruction = death) but relevant for brain-transplant scenarios.
+- Brain damage (non-fatal, future) will carry a risk of partial memory loss — individual entries can be degraded or lost. This is a future enhancement once the memory pool is rich enough to make partial loss meaningful and once recognition lives on the brain organ.
+- Flash clones get a new Character record — they start with empty recognition memory. The clone is a stranger who happens to look like someone others remember.
+
+> **Implementation note (engine PR rollout):** The engine PR ships recognition storage on the `Character` typeclass as an `AttributeProperty`, not on the brain organ. Migration to brain-organ storage is a follow-up tracked alongside the medical-system rework. All consumers in this spec that read or write "the brain's recognition memory" should be understood to mean "the character's `recognition_memory` AttributeProperty" until that migration lands. The data shape and semantics are unchanged.
 
 ### Digital Memory (Cyberbrain — Phase 4)
 
@@ -893,11 +895,13 @@ When forensic investigation commands are built:
 
 The distinguishing feature is not stored — it is computed on access from worn items and hair attributes.
 
-### On Brain Organ
+### On Character (recognition memory)
 
 | Attribute | Type | Default |
 |---|---|---|
-| `db.recognition_memory` | dict | `{}` |
+| `recognition_memory` (`AttributeProperty`) | dict | `{}` |
+
+> Originally specified to live on the brain organ; storage was kept on the Character for the engine PR rollout. See §Memory Architecture for the migration plan.
 
 ### On Items (for sdesc feature derivation)
 
@@ -966,7 +970,7 @@ Existing characters need identity attributes backfilled. Use the existing `@fixc
 2. Set default `height` = `"average"`, `build` = `"average"` (or derive from existing descriptive data if possible)
 3. Set default `hair_color` and `hair_style` = `None` (forces players to set via `@shortdesc` or `@hair`)
 4. Set default `sdesc_keyword` based on existing `sex` attribute (`"man"` for male, `"woman"` for female, `"person"` for ambiguous)
-5. Initialize empty `recognition_memory` on all brain organs
+5. Initialize empty `recognition_memory` (Character AttributeProperty; defaults to `{}` automatically)
 6. Staff can run `@fixchar/all` to batch-process
 
 Players should be prompted to customize their sdesc on next login if defaults were applied.
@@ -983,7 +987,7 @@ Players should be prompted to customize their sdesc on next login if defaults we
 - Physical descriptor table in constants
 - Keyword list in constants
 - Sdesc composition logic
-- `recognition_memory` on brain organ
+- `recognition_memory` AttributeProperty on Character (migration to brain organ deferred — see §Memory Architecture)
 - `Character.get_display_name(looker)` override
 - `@shortdesc` command
 - `remember` / `forget` / `recall` / `memory` commands
@@ -1181,10 +1185,10 @@ This decision depends on the MUD server's resource budget and acceptable latency
 
 ### Indexing Strategy
 
-Each character's brain maintains its own recognition memory dict (source of truth). The vector index is a **read-through cache** built from these dicts:
+Each character maintains its own recognition memory dict on the Character itself (source of truth — see §Memory Architecture). The vector index is a **read-through cache** built from these dicts:
 
 ```
-Brain organ (db.recognition_memory)  ←  source of truth
+Character.recognition_memory  ←  source of truth
          ↓ on write
 ChromaDB collection (per-character)  ←  vector index
          ↑ on query
@@ -1192,7 +1196,7 @@ Semantic search results              →  returned to caller
 ```
 
 - **Writes**: When a recognition entry is created or updated, the corresponding document in the vector index is upserted
-- **Reads**: Exact lookups (by `sleeve_uid`) hit the dict directly — no vector search needed. Semantic queries hit the vector index.
+- **Reads**: Exact lookups (by Apparent UID) hit the dict directly — no vector search needed. Semantic queries hit the vector index.
 - **Consistency**: The dict is authoritative. The vector index can be rebuilt from dicts at any time (cold start, migration, corruption recovery).
 
 ### Collection Strategy
