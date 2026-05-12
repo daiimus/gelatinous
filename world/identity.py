@@ -645,6 +645,7 @@ def compose_sdesc(
     descriptor: str,
     keyword: str,
     feature: str | None = None,
+    disguise_adjective: str | None = None,
 ) -> str:
     """Assemble a short description string from its components.
 
@@ -659,15 +660,117 @@ def compose_sdesc(
         feature: Optional distinguishing feature clause (e.g.
             ``"in a Black Trenchcoat"``).  If ``None`` or empty,
             the sdesc has no feature suffix.
+        disguise_adjective: Optional disguise adjective injected
+            between descriptor and keyword (e.g. ``"masked"`` →
+            ``"lanky masked man"``).  If ``None`` or empty, the sdesc
+            shape is unchanged from its three-argument form.  See
+            :func:`get_disguise_adjective`.
 
     Returns:
-        Composed sdesc, e.g. ``"lanky man in a Black Trenchcoat"``
-        or ``"compact woman"`` (no article prefix).
+        Composed sdesc, e.g. ``"lanky man in a Black Trenchcoat"``,
+        ``"lanky masked man in a Black Trenchcoat"``, or
+        ``"compact woman"`` (no article prefix).
     """
-    base = f"{descriptor} {keyword}"
+    if disguise_adjective:
+        base = f"{descriptor} {disguise_adjective} {keyword}"
+    else:
+        base = f"{descriptor} {keyword}"
     if feature:
         return f"{base} {feature}"
     return base
+
+
+# =========================================================================
+# Disguise Adjective
+# =========================================================================
+#
+# See specs/IDENTITY_RECOGNITION_SPEC.md §"Disguise Adjective" for the
+# design rationale.  The adjective is the visible "red flag": when an
+# item flagged ``is_disguise_item = True`` is worn, its
+# ``disguise_adjective`` is injected into the wearer's sdesc so
+# observers can immediately tell someone is disguising themselves.
+
+#: Priority ranks for disguise adjectives, lowest rank wins.  The
+#: ranking captures *identity-defining-ness*: a mask hides the face
+#: more than a hood, so ``"masked"`` outranks ``"hooded"`` when both
+#: are worn.  Adjectives not in this table are admitted at rank 999
+#: (alphabetical tiebreak), so authors can ship new disguise types via
+#: item attribute alone without editing this table.
+_DISGUISE_ADJECTIVE_PRIORITY: dict[str, int] = {
+    "masked": 1,
+    "helmeted": 2,
+    "cowled": 3,
+    "hooded": 4,
+    "goggled": 5,
+    "veiled": 6,
+    "wigged": 7,
+}
+
+#: Sentinel rank for adjectives missing from the priority table.
+_DISGUISE_ADJECTIVE_UNKNOWN_RANK: int = 999
+
+
+def get_disguise_adjective(char: Any) -> str | None:
+    """Return the most-prominent disguise adjective for a character.
+
+    Walks the wearer's worn items via
+    :meth:`typeclasses.clothing_mixin.ClothingMixin.get_worn_items`,
+    collects non-empty ``disguise_adjective`` values from items also
+    flagged ``is_disguise_item = True``, and returns the highest-
+    priority adjective per :data:`_DISGUISE_ADJECTIVE_PRIORITY`.
+
+    Adjectives missing from the priority table are admitted at
+    :data:`_DISGUISE_ADJECTIVE_UNKNOWN_RANK` (alphabetical tiebreak),
+    so authors can ship new disguise types via item attribute alone.
+
+    Items with ``disguise_adjective`` set but ``is_disguise_item`` not
+    ``True`` are skipped with a soft warning: the adjective is a red-
+    flag style standard reserved for the disguise taxonomy.
+
+    Characters without :meth:`get_worn_items` (e.g. mocks, NPCs that
+    cannot wear clothing) yield ``None``.
+
+    Args:
+        char: The character whose worn items are inspected.
+
+    Returns:
+        The winning adjective string (e.g. ``"masked"``), or ``None``
+        when no eligible adjective is contributed.
+    """
+    get_worn = getattr(char, "get_worn_items", None)
+    if get_worn is None:
+        return None
+
+    candidates: list[str] = []
+    for item in get_worn():
+        adjective = getattr(item, "disguise_adjective", "") or ""
+        if not adjective:
+            continue
+        if not getattr(item, "is_disguise_item", False):
+            logger.log_warn(
+                f"Item {item!r} on {char!r} has disguise_adjective="
+                f"{adjective!r} but is_disguise_item is not True; "
+                f"skipping (disguise adjectives are reserved for the "
+                f"disguise taxonomy)."
+            )
+            continue
+        candidates.append(adjective)
+
+    if not candidates:
+        return None
+
+    # Sort by (priority rank, adjective) so unknowns tie-break
+    # alphabetically and the lowest rank (most identity-defining) wins.
+    candidates.sort(
+        key=lambda adj: (
+            _DISGUISE_ADJECTIVE_PRIORITY.get(
+                adj, _DISGUISE_ADJECTIVE_UNKNOWN_RANK
+            ),
+            adj,
+        )
+    )
+    return candidates[0]
+
 
 
 # =========================================================================

@@ -868,8 +868,18 @@ class Character(
 
         Priority chain (first non-empty wins):
           1. Wielded weapon or explosive
-          2. Outermost clothing item
-          3. Hair (colour/style)
+          2. Outermost clothing item.  Non-disguise items are preferred
+             over items flagged ``is_disguise_item = True``; the
+             disguise pool is consulted only when nothing else is worn
+             (the naked-but-masked carve-out — a lone balaclava still
+             reads as ``"in a black balaclava"`` rather than vanishing).
+             When chosen, the item's ``worn_sdesc_short`` is used in
+             preference to its ``key``.
+          3. Hair (colour/style) — suppressed when any worn item has
+             ``covers_hair = True``; under coverage we fall through to
+             "nothing" rather than describing hair the observer cannot
+             see.  Scope is feature-fallback only; longdesc gating
+             lives with the existing clothing-coverage code.
           4. ``None`` — no feature
 
         Returns:
@@ -889,21 +899,46 @@ class Character(
             if item is not None:
                 return format_wielded_feature(item.key)
 
-        # 2. Outermost clothing item (pick the first location with coverage)
+        # 2. Outermost clothing item (pick the first location with coverage).
+        # Partition disguise vs non-disguise so the clothing feature reads
+        # the wearer's "real" outfit when there is one, and only falls
+        # back to disguise items in the solo-disguise carve-out.
         coverage_map = self._build_clothing_coverage_map()
         if coverage_map:
-            # Deterministic: pick the first location alphabetically so the
-            # feature is stable between calls.
-            for _location in sorted(coverage_map):
-                item = coverage_map[_location]
-                if item is not None:
-                    return format_clothing_feature(item.key)
+            non_disguise: dict = {}
+            disguise: dict = {}
+            for _location, item in coverage_map.items():
+                if item is None:
+                    continue
+                if getattr(item, "is_disguise_item", False):
+                    disguise[_location] = item
+                else:
+                    non_disguise[_location] = item
+            chosen_pool = non_disguise or disguise
+            if chosen_pool:
+                # Deterministic: pick the first location alphabetically.
+                for _location in sorted(chosen_pool):
+                    item = chosen_pool[_location]
+                    label = (
+                        getattr(item, "worn_sdesc_short", "") or item.key
+                    )
+                    return format_clothing_feature(label)
 
-        # 3. Hair
-        hair_color = self.hair_color
-        hair_style = self.hair_style
-        if hair_color or hair_style:
-            return format_hair_feature(color=hair_color, style=hair_style)
+        # 3. Hair — suppressed when any worn item declares covers_hair.
+        suppress_hair = False
+        get_worn = getattr(self, "get_worn_items", None)
+        if get_worn is not None:
+            for worn in get_worn():
+                if getattr(worn, "covers_hair", False):
+                    suppress_hair = True
+                    break
+        if not suppress_hair:
+            hair_color = self.hair_color
+            hair_style = self.hair_style
+            if hair_color or hair_style:
+                return format_hair_feature(
+                    color=hair_color, style=hair_style
+                )
 
         # 4. Nothing
         return None
@@ -927,7 +962,11 @@ class Character(
         Returns:
             Sdesc string, e.g. ``"lanky man wielding a Kitchen Knife"``.
         """
-        from world.identity import compose_sdesc, get_physical_descriptor
+        from world.identity import (
+            compose_sdesc,
+            get_disguise_adjective,
+            get_physical_descriptor,
+        )
         from world.grammar import DEFAULT_SDESC_KEYWORDS
 
         # Override axes take precedence over real values.
@@ -942,7 +981,10 @@ class Character(
             keyword = DEFAULT_SDESC_KEYWORDS.get(self.gender, "person")
 
         feature = self.get_distinguishing_feature()
-        return compose_sdesc(descriptor, keyword, feature)
+        adjective = get_disguise_adjective(self)
+        return compose_sdesc(
+            descriptor, keyword, feature, disguise_adjective=adjective
+        )
 
     def get_display_name(self, looker=None, **kwargs):
         """Return the name of this character as seen by *looker*.

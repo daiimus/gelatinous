@@ -687,6 +687,43 @@ DEV_HOODIE = {
     # "tags": [("clothing", "type"), ("hoodie", "category"), ("developer_gear", "specialty")]
 }
 
+# Canonical disguise item — the foundational red-flag head-covering.
+# Demonstrates the full Phase 3 disguise surface in one prototype:
+#   * is_disguise_item       → marks it as belonging to the disguise taxonomy
+#   * disguise_essential     → contributes to the identity signature when worn
+#   * disguise_type_id       → the per-type hash key (multiple balaclavas are
+#                              indistinguishable; swapping one for another of
+#                              the same type does NOT shift Apparent UID)
+#   * disguise_adjective     → "masked" red-flag prefix in observer sdescs
+#   * worn_sdesc_short       → brief noun phrase used in the distinguishing-
+#                              feature clause (solo-disguise carve-out)
+#   * covers_hair            → suppresses hair fallback under the head covering
+BALACLAVA = {
+    "prototype_key": "BALACLAVA",
+    "key": "black balaclava",
+    "aliases": ["balaclava", "ski mask", "mask"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A heavy knit balaclava in matte black, woven tight enough to swallow detail. Only a narrow eye-slit interrupts the seamless coverage; the wearer's features collapse into shadow, and even hair colour is hidden by the snug pull of the fabric.",
+    "attrs": [
+        # Clothing attributes
+        ("coverage", ["head"]),
+        ("worn_desc", "A snug {color}black|n balaclava pulled tight over {their} head, devouring features and hair alike behind a narrow eye-slit"),
+        ("layer", 2),  # Regular clothing layer
+        ("color", "black"),
+        ("material", "wool"),
+        ("weight", 0.2),
+
+        # Disguise surface — see specs/IDENTITY_RECOGNITION_SPEC.md
+        # §"Disguise Items" and §"Disguise Adjective".
+        ("is_disguise_item", True),
+        ("disguise_essential", True),
+        ("disguise_type_id", "balaclava"),
+        ("disguise_adjective", "masked"),
+        ("worn_sdesc_short", "black balaclava"),
+        ("covers_hair", True),
+    ],
+}
+
 # Classic blue jeans with functional styling
 BLUE_JEANS = {
     "prototype_key": "BLUE_JEANS",

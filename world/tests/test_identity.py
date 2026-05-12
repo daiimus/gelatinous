@@ -664,6 +664,42 @@ class TestComposeSdesc(TestCase):
     def test_empty_feature_ignored(self) -> None:
         self.assertEqual(compose_sdesc("gaunt", "droog", ""), "gaunt droog")
 
+    # -- Disguise adjective param --
+
+    def test_disguise_adjective_injected_between_descriptor_and_keyword(
+        self,
+    ) -> None:
+        self.assertEqual(
+            compose_sdesc(
+                "lanky", "man", disguise_adjective="masked"
+            ),
+            "lanky masked man",
+        )
+
+    def test_disguise_adjective_with_feature(self) -> None:
+        self.assertEqual(
+            compose_sdesc(
+                "lanky",
+                "man",
+                "in a Black Trenchcoat",
+                disguise_adjective="masked",
+            ),
+            "lanky masked man in a Black Trenchcoat",
+        )
+
+    def test_none_adjective_unchanged(self) -> None:
+        """``None`` adjective preserves the three-arg shape exactly."""
+        self.assertEqual(
+            compose_sdesc("lanky", "man", "in a Black Trenchcoat", None),
+            "lanky man in a Black Trenchcoat",
+        )
+
+    def test_empty_adjective_unchanged(self) -> None:
+        self.assertEqual(
+            compose_sdesc("lanky", "man", disguise_adjective=""),
+            "lanky man",
+        )
+
     # -- End-to-end integration: descriptor lookup → compose --
 
     def test_end_to_end_from_table(self) -> None:
@@ -790,15 +826,34 @@ class _SignatureMockCharacter:
 class _FakeDisguiseItem:
     """Lightweight stand-in for ``typeclasses.items.Item`` in signature tests.
 
-    Mirrors the duck-typed surface ``get_essential_item_type_ids`` reads:
-    ``disguise_essential`` (bool) and ``disguise_type_id`` (str).
+    Mirrors the duck-typed surface read by the engine helpers:
+    ``disguise_essential`` / ``disguise_type_id`` (signature),
+    ``is_disguise_item`` / ``disguise_adjective`` (sdesc adjective),
+    ``worn_sdesc_short`` / ``covers_hair`` / ``key`` (distinguishing
+    feature).
     """
 
     def __init__(
-        self, *, disguise_essential: bool = False, disguise_type_id: str = ""
+        self,
+        *,
+        disguise_essential: bool = False,
+        disguise_type_id: str = "",
+        is_disguise_item: bool = False,
+        disguise_adjective: str = "",
+        worn_sdesc_short: str = "",
+        covers_hair: bool = False,
+        key: str = "fake item",
     ) -> None:
         self.disguise_essential = disguise_essential
         self.disguise_type_id = disguise_type_id
+        self.is_disguise_item = is_disguise_item
+        self.disguise_adjective = disguise_adjective
+        self.worn_sdesc_short = worn_sdesc_short
+        self.covers_hair = covers_hair
+        self.key = key
+
+    def __repr__(self) -> str:
+        return f"<_FakeDisguiseItem key={self.key!r}>"
 
 
 class TestGetEssentialItemTypeIds(TestCase):
@@ -978,6 +1033,148 @@ class TestEssentialItemsAffectSignatureAndUid(TestCase):
             )
         )
         self.assertNotEqual(balaclava_uid, wig_uid)
+
+
+class TestGetDisguiseAdjective(TestCase):
+    """``get_disguise_adjective`` resolves the most-prominent worn adjective."""
+
+    def test_no_worn_items_yields_none(self) -> None:
+        from world.identity import get_disguise_adjective
+
+        char = _SignatureMockCharacter()
+        self.assertIsNone(get_disguise_adjective(char))
+
+    def test_character_without_get_worn_items_yields_none(self) -> None:
+        """Defensive: NPCs/mocks lacking the wear API simply opt out."""
+        from world.identity import get_disguise_adjective
+
+        class _Bare:
+            pass
+
+        self.assertIsNone(get_disguise_adjective(_Bare()))
+
+    def test_single_disguise_item_returns_its_adjective(self) -> None:
+        from world.identity import get_disguise_adjective
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    is_disguise_item=True,
+                    disguise_adjective="masked",
+                    key="black balaclava",
+                )
+            ]
+        )
+        self.assertEqual(get_disguise_adjective(char), "masked")
+
+    def test_priority_table_lowest_rank_wins(self) -> None:
+        """``masked`` (rank 1) outranks ``hooded`` (rank 4)."""
+        from world.identity import get_disguise_adjective
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    is_disguise_item=True,
+                    disguise_adjective="hooded",
+                    key="grey hood",
+                ),
+                _FakeDisguiseItem(
+                    is_disguise_item=True,
+                    disguise_adjective="masked",
+                    key="black balaclava",
+                ),
+            ]
+        )
+        self.assertEqual(get_disguise_adjective(char), "masked")
+
+    def test_unknown_adjective_admitted_at_lowest_rank(self) -> None:
+        """Unknown adjectives still ship — they just lose to known ones."""
+        from world.identity import get_disguise_adjective
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    is_disguise_item=True,
+                    disguise_adjective="bedazzled",
+                    key="rhinestone visor",
+                ),
+                _FakeDisguiseItem(
+                    is_disguise_item=True,
+                    disguise_adjective="hooded",
+                    key="grey hood",
+                ),
+            ]
+        )
+        self.assertEqual(get_disguise_adjective(char), "hooded")
+
+    def test_unknown_adjective_alone_wins(self) -> None:
+        """A solo unknown adjective should still be picked, not dropped."""
+        from world.identity import get_disguise_adjective
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    is_disguise_item=True,
+                    disguise_adjective="bedazzled",
+                    key="rhinestone visor",
+                )
+            ]
+        )
+        self.assertEqual(get_disguise_adjective(char), "bedazzled")
+
+    def test_unknown_adjectives_tiebreak_alphabetically(self) -> None:
+        """Two unknowns at rank 999 → alphabetical first wins (deterministic)."""
+        from world.identity import get_disguise_adjective
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    is_disguise_item=True,
+                    disguise_adjective="zonked",
+                    key="z",
+                ),
+                _FakeDisguiseItem(
+                    is_disguise_item=True,
+                    disguise_adjective="bedazzled",
+                    key="b",
+                ),
+            ]
+        )
+        self.assertEqual(get_disguise_adjective(char), "bedazzled")
+
+    def test_non_disguise_item_with_adjective_skipped_with_warning(
+        self,
+    ) -> None:
+        """Adjective on non-disguise item is ignored (red-flag standard)."""
+        from world.identity import get_disguise_adjective
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    is_disguise_item=False,
+                    disguise_adjective="masked",
+                    key="ceremonial mask",
+                )
+            ]
+        )
+        with patch("world.identity.logger.log_warn") as mock_warn:
+            self.assertIsNone(get_disguise_adjective(char))
+            mock_warn.assert_called_once()
+
+    def test_empty_adjective_string_ignored(self) -> None:
+        """Items without a populated adjective contribute nothing."""
+        from world.identity import get_disguise_adjective
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    is_disguise_item=True,
+                    disguise_adjective="",
+                    key="plain hat",
+                )
+            ]
+        )
+        self.assertIsNone(get_disguise_adjective(char))
 
 
 class TestGetIdentitySignature(TestCase):

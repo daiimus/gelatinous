@@ -34,9 +34,21 @@ from world.tests._identity_helpers import (
 
 
 def _make_item(key="Kitchen Knife"):
-    """Return a minimal mock item with a ``.key``."""
+    """Return a minimal mock item with a ``.key`` and disguise defaults.
+
+    Disguise-related attributes are pinned to falsy defaults so the
+    distinguishing-feature chain treats these as ordinary clothing
+    (not auto-truthy ``MagicMock`` placeholders that would, e.g.,
+    cause ``worn_sdesc_short`` to mask ``key``).
+    """
     item = MagicMock()
     item.key = key
+    item.is_disguise_item = False
+    item.disguise_essential = False
+    item.disguise_type_id = ""
+    item.disguise_adjective = ""
+    item.worn_sdesc_short = ""
+    item.covers_hair = False
     return item
 
 

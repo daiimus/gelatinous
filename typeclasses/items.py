@@ -132,6 +132,33 @@ class Item(DefaultObject):
     # contribution"; treated as a soft warning when paired with
     # ``disguise_essential = True``.
     disguise_type_id = AttributeProperty("", autocreate=True)
+
+    # ``disguise_adjective`` is the visible "red flag" — when an item
+    # flagged ``is_disguise_item = True`` is worn, this adjective is
+    # injected into the wearer's sdesc between the physical descriptor
+    # and the keyword (e.g. ``"a tall lean masked droog"``).  Empty
+    # string means no contribution.  Authors set per item type
+    # (``"masked"``, ``"hooded"``, ``"helmeted"``, etc.).  Adjectives
+    # not in :data:`world.identity._DISGUISE_ADJECTIVE_PRIORITY` are
+    # admitted at the lowest priority rank, so new disguise types ship
+    # via item attribute alone without a code edit.  Honoured only when
+    # ``is_disguise_item`` is also ``True`` (red-flag style standard);
+    # otherwise skipped with a soft warning.
+    disguise_adjective = AttributeProperty("", autocreate=True)
+
+    # Brief noun phrase used by the distinguishing-feature clothing
+    # selector (e.g. ``"black balaclava"`` → ``"in a black balaclava"``).
+    # Empty string falls back to the item's ``key``.  See
+    # ``specs/IDENTITY_RECOGNITION_SPEC.md`` §"Distinguishing Feature
+    # Derivation".
+    worn_sdesc_short = AttributeProperty("", autocreate=True)
+
+    # When worn, suppresses the hair fallback in the distinguishing-
+    # feature chain.  A hooded character with red braids reads
+    # ``"a tall lean hooded droog"``, not ``"… with red braids"``.
+    # Scope is feature-fallback only; longdesc gating lives with the
+    # existing clothing-coverage code.
+    covers_hair = AttributeProperty(False, autocreate=True)
     
     # Multiple style properties for combination states
     style_properties = AttributeProperty({}, autocreate=True)

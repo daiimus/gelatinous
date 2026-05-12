@@ -118,7 +118,9 @@ The system selects the most visually prominent worn item. Prominence is determin
 
 Format: `"in {article} {item_sdesc}"` — e.g., `"in a leather jacket"`, `"in red power armor"`, `"in a tattered lab coat"`
 
-Items will need a `sdesc` or `worn_sdesc_short` attribute for this purpose — a brief, recognizable description suitable for the sdesc clause.
+Items use a `worn_sdesc_short` attribute for this clause — a brief, recognizable noun phrase. When unset, the selector falls back to the item's `key`.
+
+**Disguise items are deprioritised.** When a wearer has any non-disguise clothing, the feature selector partitions the worn items and prefers the non-disguise pool. The disguise pool is consulted only when nothing else is worn — the *naked-but-masked* carve-out. Without this carve-out, a lone balaclava would yield no feature clause; with it, observers still get `"a tall lean masked droog in a black balaclava"`. When real clothing is added, the feature shifts to that clothing and the balaclava's contribution falls back to the disguise adjective only (see [Disguise Adjective](#disguise-adjective)): `"a tall lean masked droog in a black trenchcoat"`.
 
 #### Hair-based Feature
 
@@ -128,7 +130,7 @@ Format: `"with {color} {style}"` — e.g., `"with red dreadlocks"`, `"with cropp
 
 If the character is bald or has no hair attribute set, this is skipped.
 
-If a head covering (hood, helmet, hat) is worn, hair is hidden and not used even as fallback.
+Head coverings suppress the hair fallback by setting `covers_hair = True` on the item; under coverage the chain falls through to "no feature" rather than describing hair the observer cannot see. Scope is feature-fallback only — longdesc gating lives with the existing clothing-coverage code.
 
 #### No Feature
 
@@ -604,6 +606,29 @@ Examples:
 - **Non-essential**: gloves, scarf, signature jacket, distinguishing hat
 
 The item taxonomy itself (which items exist, their categories, quality tiers) is designed in **Phase 3.5**, a separate cut after the foundation lands. The foundation only needs the two flags to function correctly with zero defined disguise items.
+
+### Disguise Adjective
+
+Disguise items can also flag themselves as a visible **red flag** in the wearer's sdesc through two additional attributes:
+
+- **`disguise_adjective`** (`str`): a single descriptor (`"masked"`, `"hooded"`, `"helmeted"`, …) injected between the physical descriptor and the keyword — e.g., `"a tall lean masked droog"`. Honoured **only** when the same item also has `is_disguise_item = True`; an adjective on a non-disguise item is skipped with a soft warning (red-flag style is reserved for the disguise taxonomy).
+- **`covers_hair`** (`bool`): when any worn item declares this, the hair fallback in the distinguishing-feature chain is suppressed. Scope is feature-fallback only; longdesc gating is handled by the existing clothing-coverage code.
+
+When more than one adjective is contributed, the wearer's sdesc shows the most identity-defining one. Priority ranks (lowest wins):
+
+| Adjective | Rank |
+|---|---|
+| `masked` | 1 |
+| `helmeted` | 2 |
+| `cowled` | 3 |
+| `hooded` | 4 |
+| `goggled` | 5 |
+| `veiled` | 6 |
+| `wigged` | 7 |
+
+Adjectives missing from the priority table are admitted at rank 999 with an alphabetical tiebreak — authors can ship new disguise types via item attribute alone, without editing the priority table.
+
+The adjective is **a visual-only red flag** and contributes nothing to the identity signature. Whether the wearer is recognised across encounters is governed entirely by the signature inputs (overrides + essential item type IDs); the adjective only governs how observers describe them. A `masked` wearer who removes the mask and dons an `helmeted` one shifts both adjective and signature simultaneously, but the adjective change alone (e.g., spec-future "rigid mask" item with the same `disguise_type_id` as a balaclava) would not affect recognition.
 
 ### Disguise Completeness
 
