@@ -269,7 +269,7 @@ recognition_memory = {
 
 This is stored as a db attribute on the Character (`recognition_memory` AttributeProperty), keyed by **Apparent UID**. See §Memory Architecture for the storage-location rationale and the planned migration to brain-organ storage. The `recent_interactions` list should be capped (e.g., last 20 interactions per entry) to prevent unbounded growth, with older interactions eligible for summarization or archival.
 
-**Orphaned entries (`lost_contact`):** A recognition entry whose Apparent UID has not matched any observable character within a configurable window (deferred to balance pass; provisional default: 30 in-game days) is marked `lost_contact = True`. The entry stays visible in `memory` and `recall` (player-authored notes are valuable lore even when the trail goes cold) and is rendered with a "(lost contact)" annotation. A future player command may allow explicit pruning of lost-contact entries; auto-pruning is intentionally **not** done.
+**Orphaned entries (`lost_contact`):** A recognition entry whose Apparent UID has not matched any observable character within a configurable window (deferred to balance pass; provisional default: 30 in-game days, defined as `LOST_CONTACT_THRESHOLD_SECONDS` in `world/identity.py`) is marked `lost_contact = True`. The entry stays visible in `memory` and `recall` (player-authored notes are valuable lore even when the trail goes cold) and is rendered with a "(lost contact)" annotation. The flip is performed lazily at render time by `world/identity.py:mark_lost_contact_entries`, invoked from the `memory` and `recall` commands via `commands/CmdCharacter._refresh_lost_contact` immediately before iterating recognition memory; there is no background scan. The inverse — clearing the flag back to `False` on re-meet — is handled by the recognition writer in `_remember_target`. A future player command may allow explicit pruning of lost-contact entries; auto-pruning is intentionally **not** done.
 
 ### Remembering Names
 
@@ -512,7 +512,7 @@ stop appearing                               — clear all overrides + active-pe
 
 Axis-step verbs refuse at the extremes (an unreachable axis value is itself a tell). The canonical clear verb is `stop appearing`; there is no `appear reset` alias.
 
-Each override is a **skill-based performance** — using the `appear` verb triggers a Resonance check for that axis. The check is a stub in the foundation cut (always succeeds) but the call point exists in code for future tuning. Per-axis difficulty modeling is deferred.
+Each override is conceptually a **skill-based performance** — using the `appear` verb is intended to trigger a Resonance check for that axis. In the foundation cut, no check is implemented; every axis override succeeds unconditionally. The Resonance check call point will be added alongside Phase 5 perception mechanics, when there is a real consumer (per-axis difficulty modeling, opposed-roll tuning) to justify the wiring. Per-axis difficulty modeling is deferred.
 
 The composed sdesc descriptor (`gaunt`, `burly`, etc.) is recomputed from the overridden height + build values via the existing `get_physical_descriptor(height, build)` table. Players override the **components**; the system composes the descriptor.
 
@@ -614,7 +614,7 @@ Disguise items can also flag themselves as a visible **red flag** in the wearer'
 - **`disguise_adjective`** (`str`): a single descriptor (`"masked"`, `"hooded"`, `"helmeted"`, …) injected between the physical descriptor and the keyword — e.g., `"a tall lean masked droog"`. Honoured **only** when the same item also has `is_disguise_item = True`; an adjective on a non-disguise item is skipped with a soft warning (red-flag style is reserved for the disguise taxonomy).
 - **`covers_hair`** (`bool`): when any worn item declares this, the hair fallback in the distinguishing-feature chain is suppressed. Scope is feature-fallback only; longdesc gating is handled by the existing clothing-coverage code.
 
-When more than one adjective is contributed, the wearer's sdesc shows the most identity-defining one. Priority ranks (lowest wins):
+Adjective selection is implemented in `world/identity.py:get_disguise_adjective` and consumed by `compose_sdesc`. When more than one adjective is contributed, the wearer's sdesc shows the most identity-defining one. Priority ranks (lowest wins):
 
 | Adjective | Rank |
 |---|---|
@@ -1133,7 +1133,6 @@ Players should be prompted to customize their sdesc on next login if defaults we
   - `stop appearing` (clears all overrides + active-persona pointer)
 - Sdesc descriptor recomposition via existing `get_physical_descriptor(height, build)` table — **shipped** (wired into `typeclasses/characters.py:get_sdesc`)
 - Pronoun derivation under disguise via `get_apparent_gender(char)` helper consulting `keyword_override` against `KeywordManager` gender lists — **shipped** (`world/identity.py:get_apparent_gender`; consumed in `world/emote.py`)
-- Resonance check stub on each axis override (always succeeds; call point exists for Phase 5 tuning)
 - DB attributes for active overrides on character — **shipped**: `db.height_override`, `db.build_override`, `db.keyword_override`, `db.active_persona`, `db.personas`
 - `db.disguise_essential` flag on items — contributes to identity signature when worn — **shipped** (signature wiring in `world/identity.py:get_essential_item_type_ids`; concrete item prototypes ship in Phase 3.5)
 - `db.is_disguise_item` flag on items — Phase 5 perception bonus hook (defined but inert in Phase 3) — **shipped (flag schema only)**
