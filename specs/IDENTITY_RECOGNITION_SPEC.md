@@ -554,18 +554,18 @@ Because the identity engine is purely emergent from current state, players need 
 
 A persona is a **player-private snapshot** of presentation overrides, captured at the moment of saving and restorable later. Personas are designed in parallel to the planned identity/contact system — same recall, annotation, and (future) web-UI patterns.
 
-> **Status (current PR — `appear-persona-cluster`):** The surface verbs (`appear`, `stop appearing`, `personas`, `persona`, `remember me as <name>`, `forget <persona>`) and the persona storage schema are shipped. The signature engine, Apparent UID derivation, essential-item integration, pronoun derivation under disguise, and `get_sdesc()` consumption of overrides land in the follow-up engine PR. Until that lands, override axes are written to character DB but do not yet affect what observers perceive.
+> **Status:** The surface verbs (`appear`, `stop appearing`, `personas`, `persona`, `remember me as <name>`, `forget <persona>`), the persona storage schema, the signature engine, Apparent UID derivation, `get_sdesc()` consumption of overrides, pronoun derivation under disguise via `get_apparent_gender`, and recognition-memory keying on Apparent UID are all **shipped**. Two tail items remain: populating the persona's `essential_item_types` snapshot from `get_essential_item_type_ids()` at save time (the field currently writes empty), and the `lost_contact` orphan-marking flag plus its `memory` / `recall` render annotation (the field exists on entries and defaults to `False`, but no code path currently flips it). Both tails are tracked in this spec's change-log below.
 
 **A persona stores:**
 - A **player-chosen name** (case-insensitive lookup, case-preserving display, player-private — never visible to other characters)
 - The **override values** active at save time (height, build, keyword) — `None` for axes that were unset
-- The **types of essential disguise items** equipped at save time *(reserved field, populated when the engine PR lands; written empty in the foundation cut)*
+- The **types of essential disguise items** equipped at save time *(reserved field; population from `get_essential_item_type_ids()` is the remaining persona tail item — see change-log below)*
 - A **freeform notes field** for player annotations *(reserved field, currently always empty)*
 - A **created-at timestamp** and the **room name** where it was saved
 
 **Pronouns are not stored separately.** Restoring a persona restores its `keyword_override`, and pronouns derive from that keyword via the rule in §Pronouns Under Disguise. A persona that captured a feminine keyword automatically restores feminine pronouns when adopted; a persona that captured a custom keyword automatically restores neutral pronouns. No persona field is needed for gender.
 
-**Personas do NOT generate identities.** They are pure recall aids. When a player adopts a persona, the system applies the captured overrides as a **clean swap** — overwriting all three axes including any unset axes (so adoption produces an exact replay of the saved state, never a merge). The resulting Apparent UID, once the engine PR lands, will be derived from the restored state, not from the persona itself. Two personas with identical overrides + item-type composition will yield the same Apparent UID — they are just labels in the player's memory.
+**Personas do NOT generate identities.** They are pure recall aids. When a player adopts a persona, the system applies the captured overrides as a **clean swap** — overwriting all three axes including any unset axes (so adoption produces an exact replay of the saved state, never a merge). The resulting Apparent UID is derived from the restored state, not from the persona itself. Two personas with identical overrides + item-type composition will yield the same Apparent UID — they are just labels in the player's memory.
 
 **Cap:** No cap in the surface PR. The previously-floated `min(Resonance × 2, 10)` gating is held for the engine PR or later balance pass.
 
@@ -1124,20 +1124,20 @@ Players should be prompted to customize their sdesc on next login if defaults we
 **Scope:** Identity signature engine, the `appear` / persona verb cluster (per-axis overrides + persona snapshots), disguise item flags, and lifecycle integration. Shipped incrementally across multiple PRs.
 
 **Build in Phase 3:**
-- Identity signature tuple: `(real_sleeve_uid, height_override, build_override, keyword_override, sorted(essential_item_type_ids))` *(engine PR)*
-- Apparent UID derivation: `hashlib.blake2b(repr(signature).encode("utf-8"), digest_size=8).hexdigest()` — deterministic 16-char hex, recomputed on access (no caching in foundation cut) *(engine PR)*
+- Identity signature tuple: `(real_sleeve_uid, height_override, build_override, keyword_override, sorted(essential_item_type_ids))` — **shipped** (`world/identity.py:get_identity_signature`)
+- Apparent UID derivation: `hashlib.blake2b(repr(signature).encode("utf-8"), digest_size=8).hexdigest()` — deterministic 16-char hex, recomputed on access (no caching) — **shipped** (`world/identity.py:get_apparent_uid`)
 - Per-axis `appear` command grammar — **shipped (`appear-persona-cluster`)**:
   - `appear` (status), `appear taller | shorter`, `appear thinner | fatter | bulkier | leaner`, `appear <keyword>`, `appear <persona name>`
   - `stop appearing` (clears all overrides + active-persona pointer)
-- Sdesc descriptor recomposition via existing `get_physical_descriptor(height, build)` table *(engine PR — wire into `get_sdesc()`)*
-- Pronoun derivation under disguise via `get_apparent_gender(char)` helper consulting `keyword_override` against `KeywordManager` gender lists; consumers (`world/emote.py`, `world/grammar.py`'s `transform_pronoun()`, longdesc/sdesc renderers, social templates) redirected through this helper *(engine PR)*
+- Sdesc descriptor recomposition via existing `get_physical_descriptor(height, build)` table — **shipped** (wired into `typeclasses/characters.py:get_sdesc`)
+- Pronoun derivation under disguise via `get_apparent_gender(char)` helper consulting `keyword_override` against `KeywordManager` gender lists — **shipped** (`world/identity.py:get_apparent_gender`; consumed in `world/emote.py`)
 - Resonance check stub on each axis override (always succeeds; call point exists for Phase 5 tuning)
 - DB attributes for active overrides on character — **shipped**: `db.height_override`, `db.build_override`, `db.keyword_override`, `db.active_persona`, `db.personas`
-- `db.disguise_essential` flag on items — contributes to identity signature when worn *(engine PR — flag schema + signature wiring; concrete item prototypes ship in Phase 3.5)*
-- `db.is_disguise_item` flag on items — Phase 5 perception bonus hook (defined but inert in Phase 3) *(engine PR — flag schema only)*
-- Hook `get_sdesc()` / `get_display_name()` to consume override axes and Apparent UID *(engine PR)*
-- Recognition memory re-keyed on Apparent UID *(engine PR)*
-- Orphaned-entry handling: `lost_contact` boolean flag + render annotation in `memory` / `recall`; never auto-pruned *(engine PR — flag + render; inactivity threshold itself is a balance-pass tuning value)*
+- `db.disguise_essential` flag on items — contributes to identity signature when worn — **shipped** (signature wiring in `world/identity.py:get_essential_item_type_ids`; concrete item prototypes ship in Phase 3.5)
+- `db.is_disguise_item` flag on items — Phase 5 perception bonus hook (defined but inert in Phase 3) — **shipped (flag schema only)**
+- Hook `get_sdesc()` / `get_display_name()` to consume override axes and Apparent UID — **shipped** (`typeclasses/characters.py:946,989`)
+- Recognition memory re-keyed on Apparent UID — **shipped**
+- Orphaned-entry handling: `lost_contact` boolean flag + render annotation in `memory` / `recall`; never auto-pruned — **tail item (not yet shipped)**; flag field exists on entries (defaults `False`) but no code path flips it. Planned implementation: lazy evaluation at render time inside the `memory` / `recall` commands, with a module constant `LOST_CONTACT_THRESHOLD_SECONDS` in `world/identity.py` (provisional 30 in-game days, balance-pass tuning value). Re-meeting a previously-lost contact clears the flag back to `False`.
 - Full keyword catalog available regardless of character gender (override bypasses gender filter) — **shipped via `appear <keyword>` validation**
 - Available to **all characters** (no access level restriction)
 - Persona layer (player-private ergonomics) — **shipped (`appear-persona-cluster`)**:
@@ -1147,8 +1147,9 @@ Players should be prompted to customize their sdesc on next login if defaults we
   - `persona <name>` — inspect a single persona
   - `forget <persona name>` — delete a persona; clears overrides and `db.active_persona` if it was active
   - Cross-namespace uniqueness enforced (keyword catalog ∩ recognition names ∩ persona names)
-  - No cap (deferred to engine PR / balance pass)
-- Lifecycle integration *(engine PR)*:
+  - No cap (deferred to balance pass)
+  - Persona `essential_item_types` snapshot — **tail item (not yet shipped)**; `_build_persona_entry` currently writes `[]` instead of capturing `get_essential_item_type_ids(caller)` at save time. Planned implementation also adds an adoption-time advisory: when the player runs `appear <persona>`, the system diffs the saved `essential_item_types` against currently-equipped essential items and emits a yellow heads-up listing missing and extra type IDs. Adoption is not refused — the player can choose to proceed and accept the resulting Apparent UID divergence.
+- Lifecycle integration *(future)*:
   - Death: clears overrides; corpse stores `real_sleeve_uid` + `last_active_signature` snapshot
   - Sleeve swap (flash clone / resleeving): salt is `real_sleeve_uid`, so personas don't carry across bodies; persona records remain on the player
   - Item destruction: removing/destroying essential item changes signature → Apparent UID changes → observers see stranger
