@@ -1872,10 +1872,15 @@ def _build_persona_entry(caller, name):
     """Snapshot the caller's current overrides into a persona dict.
 
     The shape matches the persona schema documented in the disguise
-    spec; ``essential_item_types`` and ``notes`` are reserved for the
-    Phase 3 engine PR but written empty now so the schema is stable.
+    spec.  ``essential_item_types`` captures the currently-equipped
+    essential disguise items (via :func:`get_essential_item_type_ids`)
+    so adoption can advise the player when the saved composition no
+    longer matches what's worn.  ``notes`` remains reserved for a
+    future player-annotation feature.
     """
     import time
+
+    from world.identity import get_essential_item_type_ids
 
     location_name = caller.location.key if caller.location else "unknown"
     return {
@@ -1885,7 +1890,7 @@ def _build_persona_entry(caller, name):
         "keyword_override": caller.db.keyword_override,
         "saved_at": time.time(),
         "saved_in": location_name,
-        "essential_item_types": [],
+        "essential_item_types": list(get_essential_item_type_ids(caller)),
         "notes": "",
     }
 
@@ -2172,7 +2177,39 @@ class CmdAppear(Command):
     # -- persona adoption ------------------------------------------------
 
     def _adopt_persona(self, caller, name, entry):
-        """Clean swap: overwrite all three axes from the persona snapshot."""
+        """Clean swap: overwrite all three axes from the persona snapshot.
+
+        If the persona's saved ``essential_item_types`` diverges from
+        the caller's currently-equipped essential disguise items, emit
+        a yellow advisory naming missing and extra type IDs before the
+        override swap.  Adoption is not refused — the player can choose
+        to proceed and accept the resulting Apparent UID divergence.
+        """
+        from world.identity import get_essential_item_type_ids
+
+        saved = tuple(entry.get("essential_item_types") or ())
+        current = get_essential_item_type_ids(caller)
+        missing = tuple(t for t in saved if t not in current)
+        extra = tuple(t for t in current if t not in saved)
+        if missing or extra:
+            advisory_lines = [
+                f"|y(Heads up: '{name}' was saved with a different set of "
+                f"essential disguise items than you have on now.)|n"
+            ]
+            if missing:
+                advisory_lines.append(
+                    f"|y  Missing: {', '.join(missing)}|n"
+                )
+            if extra:
+                advisory_lines.append(
+                    f"|y  Extra:   {', '.join(extra)}|n"
+                )
+            advisory_lines.append(
+                "|y  Your Apparent UID will not match the saved persona "
+                "exactly.|n"
+            )
+            caller.msg("\n".join(advisory_lines))
+
         caller.db.height_override = entry.get("height_override")
         caller.db.build_override = entry.get("build_override")
         caller.db.keyword_override = entry.get("keyword_override")

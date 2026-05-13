@@ -56,6 +56,11 @@ def _make_character(
     char.hands = {"left": None, "right": None}
     char.worn_items = {}
 
+    # get_worn_items: empty by default so get_essential_item_type_ids()
+    # produces an empty tuple.  Tests that need essentials override
+    # this via _equip_essential_items() below.
+    char.get_worn_items = MagicMock(return_value=[])
+
     def _coverage_map():
         coverage = {}
         if char.worn_items:
@@ -917,6 +922,22 @@ def _make_disguise_character(**overrides):
     return char
 
 
+def _equip_essential_items(char, type_ids):
+    """Make ``char.get_worn_items()`` return mocks for the given type IDs.
+
+    Each fake worn item has ``disguise_essential = True`` and a
+    ``disguise_type_id`` from the list.  Pass an empty list to reset.
+    """
+    items = []
+    for type_id in type_ids:
+        item = MagicMock()
+        item.disguise_essential = True
+        item.disguise_type_id = type_id
+        items.append(item)
+    char.get_worn_items = MagicMock(return_value=items)
+    return char
+
+
 # ===================================================================
 # CmdAppear — bare status display
 # ===================================================================
@@ -1418,6 +1439,147 @@ class TestCmdRememberMeAs(TestCase):
         self.assertEqual(len(caller.db.personas), 1)
         msg = caller.msg.call_args[0][0]
         self.assertIn("already have a persona", msg)
+
+    def test_captures_essential_item_types_when_equipped(self):
+        """Saving with essentials worn populates essential_item_types."""
+        caller = _make_disguise_character(
+            db_attrs={"keyword_override": "wanderer"},
+        )
+        _equip_essential_items(caller, ["balaclava", "trenchcoat"])
+        with patch(
+            "world.identity.get_all_keywords",
+            return_value=frozenset({"man", "wanderer"}),
+        ):
+            self._run(caller, "me as Hooded Wanderer")
+
+        entry = caller.db.personas["Hooded Wanderer"]
+        # Sorted, deduplicated.
+        self.assertEqual(
+            entry["essential_item_types"], ["balaclava", "trenchcoat"]
+        )
+
+    def test_dedupes_duplicate_essential_item_types(self):
+        """Two balaclavas collapse to one entry in the snapshot."""
+        caller = _make_disguise_character()
+        _equip_essential_items(
+            caller, ["balaclava", "balaclava", "trenchcoat"]
+        )
+        with patch(
+            "world.identity.get_all_keywords", return_value=frozenset({"man"})
+        ):
+            self._run(caller, "me as Dupes")
+
+        entry = caller.db.personas["Dupes"]
+        self.assertEqual(
+            entry["essential_item_types"], ["balaclava", "trenchcoat"]
+        )
+
+    def test_empty_essential_items_yields_empty_list(self):
+        """No essentials → empty list (existing behavior preserved)."""
+        caller = _make_disguise_character()
+        with patch(
+            "world.identity.get_all_keywords", return_value=frozenset({"man"})
+        ):
+            self._run(caller, "me as Bare")
+        self.assertEqual(caller.db.personas["Bare"]["essential_item_types"], [])
+
+
+# ===================================================================
+# CmdAppear — persona adoption essential-item advisory
+# ===================================================================
+
+
+class TestCmdAppearPersonaEssentialAdvisory(TestCase):
+    """``appear <persona>`` warns when essential item composition diverges."""
+
+    def _run(self, caller, args):
+        from commands.CmdCharacter import CmdAppear
+
+        cmd = CmdAppear()
+        cmd.caller = caller
+        cmd.args = args
+        cmd.func()
+
+    def _persona(self, name, essential_item_types):
+        return {
+            "name": name,
+            "height_override": None,
+            "build_override": None,
+            "keyword_override": None,
+            "saved_at": 1000.0,
+            "saved_in": "Bar",
+            "essential_item_types": list(essential_item_types),
+            "notes": "",
+        }
+
+    def test_warns_on_missing_items(self):
+        persona = self._persona("Hooded", ["balaclava", "trenchcoat"])
+        caller = _make_disguise_character(
+            db_attrs={"personas": {"Hooded": persona}},
+        )
+        # Strip everything — both items missing.
+        _equip_essential_items(caller, [])
+
+        self._run(caller, "Hooded")
+
+        all_msgs = " ".join(
+            ca[0][0] for ca in caller.msg.call_args_list
+        )
+        self.assertIn("Heads up", all_msgs)
+        self.assertIn("Missing", all_msgs)
+        self.assertIn("balaclava", all_msgs)
+        self.assertIn("trenchcoat", all_msgs)
+        # Adoption proceeded anyway.
+        self.assertEqual(caller.db.active_persona, "Hooded")
+
+    def test_warns_on_extra_items(self):
+        persona = self._persona("Plain", [])
+        caller = _make_disguise_character(
+            db_attrs={"personas": {"Plain": persona}},
+        )
+        # Wearing a balaclava the persona didn't have.
+        _equip_essential_items(caller, ["balaclava"])
+
+        self._run(caller, "Plain")
+
+        all_msgs = " ".join(
+            ca[0][0] for ca in caller.msg.call_args_list
+        )
+        self.assertIn("Heads up", all_msgs)
+        self.assertIn("Extra", all_msgs)
+        self.assertIn("balaclava", all_msgs)
+        self.assertEqual(caller.db.active_persona, "Plain")
+
+    def test_no_warning_on_exact_match(self):
+        persona = self._persona("Hooded", ["balaclava"])
+        caller = _make_disguise_character(
+            db_attrs={"personas": {"Hooded": persona}},
+        )
+        _equip_essential_items(caller, ["balaclava"])
+
+        self._run(caller, "Hooded")
+
+        all_msgs = " ".join(
+            ca[0][0] for ca in caller.msg.call_args_list
+        )
+        self.assertNotIn("Heads up", all_msgs)
+        self.assertNotIn("Missing", all_msgs)
+        self.assertNotIn("Extra", all_msgs)
+        self.assertEqual(caller.db.active_persona, "Hooded")
+
+    def test_no_warning_when_both_empty(self):
+        """No essentials saved, none worn → silent adoption."""
+        persona = self._persona("Plain", [])
+        caller = _make_disguise_character(
+            db_attrs={"personas": {"Plain": persona}},
+        )
+
+        self._run(caller, "Plain")
+
+        all_msgs = " ".join(
+            ca[0][0] for ca in caller.msg.call_args_list
+        )
+        self.assertNotIn("Heads up", all_msgs)
 
 
 # ===================================================================
