@@ -179,11 +179,11 @@ graph TD
     D --> E[Get looker's recognition_memory]
     E --> F{Apparent UID in recognition_memory?}
     F -->|Yes, has assigned_name| G[Return stored assigned_name]
-    F -->|Yes, no assigned_name<br/>(forgotten entry)| H[Return target's sdesc]
+    F -->|"Yes, no assigned_name (forgotten entry)"| H["Return target's sdesc"]
     F -->|No| H
     G --> I{Staff cyberware active?}
     H --> I
-    I -->|Yes| J["Append ' [real_name]'"]
+    I -->|Yes| J["Append ' (real_name)'"]
     I -->|No| K[Return as-is]
 ```
 
