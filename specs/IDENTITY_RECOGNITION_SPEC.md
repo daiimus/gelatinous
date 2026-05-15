@@ -399,7 +399,7 @@ Resonance ("Social Connection & Empathy", currently 0 mechanical uses) becomes t
 
 - **Memory persistence** — Higher Resonance → organic memories persist indefinitely. Low Resonance → risk of memory decay over time (entries lose confidence, eventually drop out).
 - **Auto-recognition** — Future: at high Resonance, spending extended time in proximity with someone can auto-populate a recognition entry (you develop an intuitive sense of who they are without formal introduction).
-- **Disguise perception** — Higher Resonance → better chance of seeing through disguises (opposed Resonance check: disguiser vs. observer).
+- **Disguise perception** — **Shipped.** Disguise piercing uses an opposed Intellect (observer) vs Resonance (target) roll with a familiarity bonus capped at `DISGUISE_PIERCE_FAMILIARITY_CAP` and a per-vector penalty of `DISGUISE_PIERCE_VECTOR_PENALTY` (worn `disguise_essential` items + active overrides). See the [Disguise Piercing](#disguise-piercing) section for the full contract.
 - **Confidence** — The `confidence` field in memory entries is influenced by Resonance. Higher confidence means the name displays with certainty; at low confidence, the display could show uncertainty: `"Jorge(?)"` or `"someone who might be Jorge"`.
 
 Exact thresholds and formulas are a tuning concern — the architecture supports Resonance as an input to all these systems.
@@ -805,7 +805,7 @@ Two characters can create overrides + ensembles with identical descriptors, keyw
 
 Building a reputation — having many people tag a recognized signature — is itself a form of identity security. The more people who "know" a signature, the harder it is for a visual impostor to operate in those social circles.
 
-> **Design note:** No mechanical impersonation detection in the foundation cut. Active detection (e.g., "this person reminds you of someone...") is deferred to Phase 5 alongside other Resonance-based perception mechanics.
+> **Design note:** Mechanical disguise piercing **is** implemented (see [Disguise Piercing](#disguise-piercing)). What remains deferred is *active* impersonation detection — surfacing a soft hint like "this person reminds you of someone..." when a fresh signature closely matches a known one *without* a shared `sleeve_uid`. That requires similarity scoring across signatures and is out of scope for the current cut.
 
 ### Photos & Forensic Artifacts (Forward Hooks)
 
@@ -824,8 +824,8 @@ These are designed into the architecture but not implemented yet:
 - **Per-axis Resonance checks on `appear`**: Currently always succeeds. Future: per-axis difficulty, opposed or threshold rolls, with failure meaning the override doesn't take effect or appears unconvincing.
 - **Clothing coverage gating**: No coverage requirement for now. Future: certain overrides require minimum body coverage to be plausible (e.g., can't `appear bulkier` while shirtless because there's no padding to sell it). Boots/shoes can sell height changes; bulky clothing can sell build changes.
 - **Disguise item quality tiers**: All disguise items equal in foundation. Future: cheap rubber mask vs. high-tech prosthetic affects perception bonuses.
-- **Perception checks (Phase 5)**: Opposed Resonance rolls to see through disguise. Disguise items add to disguiser's roll. Familiarity bonus for observers who know the real identity well.
-- **Active impersonation detection (Phase 5)**: Resonance-based hints when a disguised signature closely matches a known identity (e.g., *"this person reminds you of someone..."*).
+- **Perception checks (shipped)**: See [Disguise Piercing](#disguise-piercing). Opposed Intellect-vs-Resonance with familiarity bonus and per-vector penalty.
+- **Active impersonation detection (Phase 5)**: Resonance-based hints when a *fresh* signature (different `sleeve_uid`) closely matches a known identity (e.g., *"this person reminds you of someone..."*).
 - **Forcible item removal via grapple**: Requires grapple-system integration for stripping equipment from a grappled character.
 - **Pharmaceutical / biomod items**: Consumable or implanted modifications that override `@longdesc` and contribute to the identity signature (extending the signature function with body-mod inputs). Closes the last gap: with body mods, even direct `look` reveals a different person. Pharmaceuticals would be temporary (wears off over time), potentially expensive/rare, and could carry side effects (stat penalties, addiction).
 - **Photos / identity artifacts**: Captured signature snapshots usable as recipes (own personas) or investigation tools (others'). Salt-acquisition mechanics enable true impersonation gameplay. Ties into Phase 4 (cybernetics) where digital identity data becomes hackable and forgeable.
@@ -1306,8 +1306,7 @@ Per-phase detail below.
 - Apparent UID caching + perf optimization (measure first; add only if needed)
 - Per-axis Resonance difficulty tuning (Phase 5)
 - Clothing coverage gating (no coverage requirement for now)
-- Perception checks to see through disguise (Phase 5)
-- Active impersonation detection (Phase 5)
+- Active impersonation detection — Resonance-based hints on similar-but-different signatures (Phase 5)
 - Disguise item quality tiers (Phase 3.5 / 5)
 - Forcible strip via grapple (needs grapple system integration)
 - Photo / recording mechanic (capture full signature for later impersonation; future phase)
@@ -1341,12 +1340,12 @@ Per-phase detail below.
 
 ### Phase 5 — Resonance Mechanics
 
-**Scope:** Give Resonance full mechanical integration.
+**Scope:** Give Resonance full mechanical integration. (Disguise piercing landed early — see [Disguise Piercing](#disguise-piercing) — and uses Intellect-vs-Resonance, not opposed-Resonance.)
 
 - Memory decay curves (low Resonance → memory loss over time)
 - Auto-recognition from proximity + time + high Resonance
-- Disguise perception checks (opposed Resonance rolls)
 - Confidence display (uncertain recognition at low confidence)
+- Active impersonation detection (similar-but-different signatures surface a soft hint)
 - Social reads (emotional state, lie detection during introductions)
 - Brain damage → partial memory loss (risk scaled to damage severity)
 
