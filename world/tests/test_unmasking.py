@@ -258,6 +258,38 @@ class TestBroadcastCellB(TestCase):
             "Jorge",
         )
 
+    def test_old_entry_backfills_real_sleeve_uid(self) -> None:
+        """Lazy backfill on cell B's old entry.
+
+        Mirrors the contract in cells C and D: any entry touched by
+        the unmasking pipeline gets ``real_sleeve_uid`` populated
+        from the live target when missing.  This keeps legacy
+        entries from staying pierce-ineligible forever after their
+        owner walks through a disguise transition.
+        """
+        self.target.sleeve_uid = "sleeve-jorge"
+        # Pre-condition: old entry has no real_sleeve_uid (legacy).
+        self.observer.recognition_memory["uid-old"].pop(
+            "real_sleeve_uid", None
+        )
+        _broadcast_unmasking(self.target, "uid-old", "uid-new")
+        self.assertEqual(
+            self.observer.recognition_memory["uid-old"]["real_sleeve_uid"],
+            "sleeve-jorge",
+        )
+
+    def test_old_entry_preserves_existing_real_sleeve_uid(self) -> None:
+        """Backfill must not overwrite a non-None value."""
+        self.target.sleeve_uid = "sleeve-jorge"
+        self.observer.recognition_memory["uid-old"]["real_sleeve_uid"] = (
+            "sleeve-original"
+        )
+        _broadcast_unmasking(self.target, "uid-old", "uid-new")
+        self.assertEqual(
+            self.observer.recognition_memory["uid-old"]["real_sleeve_uid"],
+            "sleeve-original",
+        )
+
 
 class TestBroadcastCellC(TestCase):
     """Observer knew new only — refresh, no link."""

@@ -1778,6 +1778,13 @@ def _broadcast_unmasking(
             # Cell B — old presentation just left view; new presentation
             # arrives as a fresh sighting linked back to the old one.
             memory[old_uid]["lost_contact"] = True
+            # Lazy backfill: same contract as cells C and D — touch
+            # every entry we mutate so legacy entries become pierce-
+            # eligible at the earliest opportunity.
+            if memory[old_uid].get("real_sleeve_uid") is None:
+                real_sleeve_uid = getattr(char, "sleeve_uid", None)
+                if real_sleeve_uid:
+                    memory[old_uid]["real_sleeve_uid"] = real_sleeve_uid
             memory[new_uid] = _build_link_entry(
                 target=char,
                 observer=observer,
