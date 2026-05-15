@@ -1386,6 +1386,18 @@ def attempt_disguise_pierce(
     on every call (keeps the cache bounded, no junk keys for tooling).
     Anonymous targets (no ``apparent_uid``) are likewise un-cached.
 
+    **dbref recycling and stale entries.**  Cache entries keyed on a
+    deleted target's ``dbref`` are dead weight but cannot misfire:
+    Evennia / Django uses monotonically-increasing primary keys (no
+    reuse), so a future object will never collide with a stale entry's
+    key.  No pruning hook is wired at delete time — entries simply
+    accumulate at the rate the observer encounters distinct
+    presentations, which in practice is bounded by their social
+    surface.  If pruning becomes warranted (very long-lived observers
+    + churn-heavy NPC populations), the right place to hook it is an
+    ``at_object_delete`` on the target side that broadcasts to
+    in-room observers, mirroring the unmasking-moment pipeline.
+
     The roll is opposed ``Intellect`` (observer) vs ``Resonance``
     (target), with:
 
