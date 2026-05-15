@@ -133,6 +133,17 @@ class Item(DefaultObject):
     # ``disguise_essential = True``.
     disguise_type_id = AttributeProperty("", autocreate=True)
 
+    # Per-item pierce-penalty weight.  Counts as this many disguise
+    # vectors when worn (and ``disguise_essential = True``) in
+    # :func:`world.identity._count_disguise_vectors`.  Default ``1``
+    # preserves the original flat-1-per-essential-item contract; bump
+    # higher for heavy concealment (a full prosthetic mask, an
+    # all-covering hooded robe) and drop to ``0`` for cosmetic
+    # essentials that should still pin the identity signature but
+    # shouldn't make piercing harder.  No effect on non-essential
+    # items.
+    disguise_weight = AttributeProperty(1, autocreate=True)
+
     # ``disguise_adjective`` is the visible "red flag" — when an item
     # flagged ``is_disguise_item = True`` is worn, this adjective is
     # injected into the wearer's sdesc between the physical descriptor

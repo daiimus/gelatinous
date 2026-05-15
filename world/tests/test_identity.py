@@ -863,6 +863,7 @@ class _FakeDisguiseItem:
         worn_sdesc_short: str = "",
         covers_hair: bool = False,
         key: str = "fake item",
+        disguise_weight: int = 1,
     ) -> None:
         self.disguise_essential = disguise_essential
         self.disguise_type_id = disguise_type_id
@@ -871,6 +872,7 @@ class _FakeDisguiseItem:
         self.worn_sdesc_short = worn_sdesc_short
         self.covers_hair = covers_hair
         self.key = key
+        self.disguise_weight = disguise_weight
 
     def __repr__(self) -> str:
         return f"<_FakeDisguiseItem key={self.key!r}>"
@@ -2268,3 +2270,194 @@ class TestAttemptDisplayPierce(TestCase):
         ):
             result = attempt_display_pierce(observer, target, "uid-cape")
         self.assertEqual(result, "Bruce")
+
+
+# =========================================================================
+# _count_disguise_vectors — per-item disguise_weight support
+# =========================================================================
+
+
+class TestCountDisguiseVectors(TestCase):
+    """The pierce penalty weights each essential item by its
+    ``disguise_weight`` (default ``1``).  Non-essential items and
+    overrides are unaffected.  Backward-compatible: any item or fake
+    that omits the attribute behaves exactly as before.
+    """
+
+    def _make_target(self, worn=(), **overrides):
+        target = _SignatureMockCharacter(worn_items=list(worn))
+        # _SignatureMockCharacter ships with db.*_override = None; only
+        # set what the caller asks for so the no-override baseline is
+        # clean.
+        for field, value in overrides.items():
+            setattr(target.db, field, value)
+        return target
+
+    def test_no_essential_items_returns_zero(self) -> None:
+        from world.identity import _count_disguise_vectors
+
+        target = self._make_target()
+        self.assertEqual(_count_disguise_vectors(target), 0)
+
+    def test_default_weight_essential_items_count_one_each(self) -> None:
+        """Items with no explicit ``disguise_weight`` use the default
+        ``1`` — preserving the original contract."""
+        from world.identity import _count_disguise_vectors
+
+        target = self._make_target(
+            worn=[
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id="balaclava"
+                ),
+                _FakeDisguiseItem(
+                    disguise_essential=True, disguise_type_id="trenchcoat"
+                ),
+            ]
+        )
+        self.assertEqual(_count_disguise_vectors(target), 2)
+
+    def test_explicit_default_weight_matches_implicit(self) -> None:
+        """Setting ``disguise_weight=1`` explicitly is a no-op."""
+        from world.identity import _count_disguise_vectors
+
+        target = self._make_target(
+            worn=[
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="balaclava",
+                    disguise_weight=1,
+                ),
+            ]
+        )
+        self.assertEqual(_count_disguise_vectors(target), 1)
+
+    def test_heavy_concealment_weight_scales_penalty(self) -> None:
+        """A full prosthetic mask weighted at 3 contributes 3 vectors."""
+        from world.identity import _count_disguise_vectors
+
+        target = self._make_target(
+            worn=[
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="prosthetic_mask",
+                    disguise_weight=3,
+                ),
+            ]
+        )
+        self.assertEqual(_count_disguise_vectors(target), 3)
+
+    def test_zero_weight_essential_item_pins_signature_without_penalty(
+        self,
+    ) -> None:
+        """Weight ``0`` lets an essential item still pin the identity
+        signature elsewhere while contributing no pierce penalty."""
+        from world.identity import _count_disguise_vectors
+
+        target = self._make_target(
+            worn=[
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="signature_pendant",
+                    disguise_weight=0,
+                ),
+            ]
+        )
+        self.assertEqual(_count_disguise_vectors(target), 0)
+
+    def test_non_essential_item_weight_is_ignored(self) -> None:
+        """``disguise_weight`` on a non-essential item is ignored."""
+        from world.identity import _count_disguise_vectors
+
+        target = self._make_target(
+            worn=[
+                _FakeDisguiseItem(
+                    disguise_essential=False,
+                    disguise_type_id="shirt",
+                    disguise_weight=5,
+                ),
+            ]
+        )
+        self.assertEqual(_count_disguise_vectors(target), 0)
+
+    def test_negative_weight_clamps_to_zero(self) -> None:
+        """A negative weight is clamped to ``0`` rather than reducing
+        other items' contributions or going below zero."""
+        from world.identity import _count_disguise_vectors
+
+        target = self._make_target(
+            worn=[
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="oddity",
+                    disguise_weight=-7,
+                ),
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="balaclava",
+                    disguise_weight=1,
+                ),
+            ]
+        )
+        self.assertEqual(_count_disguise_vectors(target), 1)
+
+    def test_non_numeric_weight_falls_back_to_one(self) -> None:
+        """A malformed weight ('heavy', None) falls back to ``1`` —
+        never silently zero, so a bad attribute doesn't accidentally
+        let a disguise through unpenalised."""
+        from world.identity import _count_disguise_vectors
+
+        target = self._make_target(
+            worn=[
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="oddity",
+                    disguise_weight="heavy",  # type: ignore[arg-type]
+                ),
+            ]
+        )
+        self.assertEqual(_count_disguise_vectors(target), 1)
+
+    def test_mixed_weights_sum_correctly(self) -> None:
+        """Multiple items with varying weights sum their contributions."""
+        from world.identity import _count_disguise_vectors
+
+        target = self._make_target(
+            worn=[
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="prosthetic_mask",
+                    disguise_weight=3,
+                ),
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="signature_pendant",
+                    disguise_weight=0,
+                ),
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="trenchcoat",
+                    # default weight 1
+                ),
+            ]
+        )
+        self.assertEqual(_count_disguise_vectors(target), 4)
+
+    def test_overrides_add_one_each_regardless_of_item_weight(self) -> None:
+        """The three string overrides each contribute exactly ``1``,
+        independent of any item weights."""
+        from world.identity import _count_disguise_vectors
+
+        target = self._make_target(
+            worn=[
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="prosthetic_mask",
+                    disguise_weight=3,
+                ),
+            ],
+            height_override="tall",
+            build_override="slight",
+            keyword_override="stranger",
+        )
+        # 3 (mask) + 1 + 1 + 1 (overrides) = 6
+        self.assertEqual(_count_disguise_vectors(target), 6)

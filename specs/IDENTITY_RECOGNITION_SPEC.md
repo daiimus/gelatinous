@@ -636,6 +636,7 @@ A disguise item is a clothing/equipment item with two declarative properties:
 
 - **`is_disguise_item`** (`bool`): marks the item as belonging to the disguise taxonomy. Disguise items provide a future Phase 5 perception-roll bonus to the disguiser.
 - **`disguise_essential`** (`bool`): marks the item as identity-essential. Essential items contribute to the identity signature (their type is hashed into the Apparent UID); non-essential items contribute only visually through the existing distinguishing-feature derivation.
+- **`disguise_weight`** (`int`, default `1`): per-item pierce-penalty weight. When worn (and `disguise_essential = True`), the item counts as this many vectors in the `_count_disguise_vectors` calculation. Heavy concealment (full prosthetic mask, hooded robe) can scale piercing difficulty independently of how many items are involved; `0` lets an essential item pin the identity signature without making piercing harder. Negative values are clamped to `0`; non-numeric values fall back to `1`. No effect on non-essential items.
 
 Examples:
 - **Essential**: balaclava, full mask, cowl, wig, contacts, prosthetic face, voice modulator (when voice integration lands)
@@ -779,7 +780,7 @@ This is the standing complement to the eyewitness Unmasking Moments hook (§Unma
 **The roll.** `attempt_disguise_pierce(observer, target, apparent_uid, bare_entry)` rolls opposed `Intellect` (observer) vs `Resonance` (target) via `world.combat.dice.opposed_roll`, with:
 
 - **Familiarity bonus** added to the observer's effective total: `min(bare_entry["times_seen"], DISGUISE_PIERCE_FAMILIARITY_CAP)`. The cap (default 5) keeps a grizzled veteran from auto-piercing every disguise on Earth.
-- **Disguise penalty** added to the target's effective total: `DISGUISE_PIERCE_VECTOR_PENALTY * count_of_active_vectors`. Vectors are worn `disguise_essential` items plus the three string overrides (`height_override`, `build_override`, `keyword_override`); each contributes 1. Heavier disguises are harder to see through.
+- **Disguise penalty** added to the target's effective total: `DISGUISE_PIERCE_VECTOR_PENALTY * count_of_active_vectors`. Vectors are worn `disguise_essential` items (each contributing its `disguise_weight`, default `1`) plus the three string overrides (`height_override`, `build_override`, `keyword_override`), each contributing `1`. Heavier disguises are harder to see through; an item with `disguise_weight = 3` (e.g. a full prosthetic mask) triples its contribution, while `disguise_weight = 0` lets a cosmetic essential pin the identity signature without affecting the pierce roll.
 
 Success condition: `(observer_roll + familiarity) > (target_roll + penalty)`. Ties favour the target (the disguise holds).
 

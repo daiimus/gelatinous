@@ -1345,9 +1345,15 @@ def _count_disguise_vectors(target: Any) -> int:
     """Return the count of active disguise vectors on *target*.
 
     A "vector" is anything that perturbs the Apparent UID away from the
-    bare sleeve: each worn ``disguise_essential`` item counts once, and
-    each of the three string overrides (``height_override``,
-    ``build_override``, ``keyword_override``) counts once when set.
+    bare sleeve.  Each of the three string overrides
+    (``height_override``, ``build_override``, ``keyword_override``)
+    counts once when set.  Each worn ``disguise_essential`` item
+    contributes its ``disguise_weight`` (default ``1``) so heavy
+    concealment (full prosthetic mask, hooded robe) can scale piercing
+    difficulty independently of how many items are involved.  A
+    weight of ``0`` lets an essential item still pin the identity
+    signature without making piercing harder.  Missing or non-numeric
+    weights fall back to ``1``.
 
     Used by :func:`compute_disguise_pierce` to penalise the observer's
     roll: heavier disguises are harder to see through.
@@ -1359,9 +1365,19 @@ def _count_disguise_vectors(target: Any) -> int:
             worn = get_worn() or []
         except (AttributeError, TypeError):
             worn = []
-        vectors += sum(
-            1 for item in worn if getattr(item, "disguise_essential", False)
-        )
+        for item in worn:
+            if not getattr(item, "disguise_essential", False):
+                continue
+            raw_weight = getattr(item, "disguise_weight", 1)
+            try:
+                weight = int(raw_weight)
+            except (TypeError, ValueError):
+                weight = 1
+            # Guard against negative or absurd weights; clamp to a
+            # non-negative integer so the penalty stays well-defined.
+            if weight < 0:
+                weight = 0
+            vectors += weight
     db = getattr(target, "db", None)
     if db is not None:
         for field in ("height_override", "build_override", "keyword_override"):
