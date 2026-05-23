@@ -8,6 +8,7 @@ from world.namebank import (
     LAST_NAMES
 )
 from world.identity import HEIGHTS, BUILDS, HAIR_COLORS, HAIR_STYLES
+from world.identity_utils import msg_room_identity
 
 
 def roll_stat():
@@ -86,7 +87,9 @@ class CmdSpawnMob(Command):
             mob.hair_style = choice(HAIR_STYLES)
 
         caller.msg(f"You manifest {mob_name} into the world.")
-        caller.location.msg_contents(
-            f"{mob_name} flickers into existence, vacant and twitching.",
-            exclude=caller,
+        msg_room_identity(
+            location=caller.location,
+            template="{mob} flickers into existence, vacant and twitching.",
+            char_refs={"mob": mob},
+            exclude=[caller],
         )

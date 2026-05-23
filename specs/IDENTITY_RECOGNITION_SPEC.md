@@ -1484,7 +1484,7 @@ Players should be prompted to customize their sdesc on next login if defaults we
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Foundation (sdesc, recognition, chargen, grammar) | ✅ Shipped |
-| 2 | Per-observer rendering consistency | 🟡 In progress — helper shipped; per-surface `msg_contents()` → `msg_room_identity` sweep underway (Φ₁ Consumption ✅; Φ₂ Armor, Φ₃ Movement+Jump, Φ₄ Misc pending) |
+| 2 | Per-observer rendering consistency | ✅ Shipped — helper + per-surface `msg_contents()` → `msg_room_identity` sweep complete (Φ₁ Consumption, Φ₂ Armor, Φ₃ Movement, Φ₄ Capstone all shipped) |
 | 3 | Disguise foundation (signature engine, `appear`, personas, unmasking) | ✅ Shipped |
 | 3.5 | Disguise item taxonomy | 🟡 Partially shipped — prototypes live, cohesion polish pending |
 | 4 | Cybernetics (digital memory, ID exchange) | ⛔ Not started (gated on cyberware system) |
@@ -1533,9 +1533,9 @@ The helper and most rendering surfaces shipped in earlier work; a per-surface au
 | Φ₁ | Consumption verbs (inject / apply / bandage / eat / drink / inhale / smoke) | `commands/CmdConsumption.py` (14 sites) | ✅ Shipped |
 | Φ₂ | Armor put-on / take-off / repair | `commands/CmdArmor.py` (~7 sites) | ✅ Shipped |
 | Φ₃ | Movement flee announcements | `commands/combat/movement.py` (5 sites) | ✅ Shipped |
-| Φ₄ | Capstone: throw, shop, spawnmob, explosives | `commands/CmdThrow.py`, `commands/shop.py`, `commands/CmdSpawnMob.py`, `commands/CmdExplosives.py`, `commands/explosion_utils.py`, `world/combat/explosives.py` (~11 sites) | 🟡 Pending |
+| Φ₄ | Capstone: spawnmob, shop, human-shield grenade | `commands/CmdSpawnMob.py` (1 site), `commands/shop.py` (1 site), `world/combat/explosives.py` (1 site) | ✅ Shipped |
 
-Sites that broadcast **only** non-character text (item names, constant prose) are intentionally left as raw `msg_contents` since per-observer rendering adds no value there. `commands/combat/jump.py` was audited during Φ₃ and its 3 `msg_contents` sites (sacrifice dud, false-heroics, gravity item-fall) are all item-only and remain raw under this rule. The roadmap row flips back to ✅ Shipped when Φ₄ lands.
+Sites that broadcast **only** non-character text (item names, constant prose) are intentionally left as raw `msg_contents` since per-observer rendering adds no value there. `commands/combat/jump.py` was audited during Φ₃ and its 3 `msg_contents` sites (sacrifice dud, false-heroics, gravity item-fall) are all item-only and remain raw under this rule. During Φ₄, the bulk of broadcasts in `commands/CmdThrow.py` (5 sites), `commands/CmdExplosives.py` (7 sites), and `commands/explosion_utils.py` (13 sites) were similarly audited and confirmed item-only (grenade/object names, prose, direction strings) — they remain raw. The 3 character-naming sites (spawnmob manifest, shop purchase, human-shield grenade) shipped in Φ₄ closing the sweep.
 
 ### Phase 3 — Disguise (Foundation)
 

@@ -109,6 +109,7 @@ def send_grenade_shield_messages(grappler, victim) -> None:
         victim: The character being used as shield.
     """
     from .utils import get_display_name_safe  # lazy to avoid circular import
+    from world.identity_utils import msg_room_identity
 
     grappler_msg = (
         f"|yYou instinctively position {get_display_name_safe(victim)} "
@@ -118,19 +119,21 @@ def send_grenade_shield_messages(grappler, victim) -> None:
         f"|RYou are forced to absorb the full blast as "
         f"{get_display_name_safe(grappler)} uses you as a shield!|n"
     )
-    observer_msg = (
-        f"|y{get_display_name_safe(grappler)} uses "
-        f"{get_display_name_safe(victim)} as a human shield against "
-        f"the explosion!|n"
+    observer_template = (
+        "|y{grappler} uses {victim} as a human shield against "
+        "the explosion!|n"
     )
 
     grappler.msg(grappler_msg)
     victim.msg(victim_msg)
 
-    # Send to observers in the same location
+    # Send to observers in the same location (per-observer rendering)
     if grappler.location:
-        grappler.location.msg_contents(
-            observer_msg, exclude=[grappler, victim]
+        msg_room_identity(
+            location=grappler.location,
+            template=observer_template,
+            char_refs={"grappler": grappler, "victim": victim},
+            exclude=[grappler, victim],
         )
 
 

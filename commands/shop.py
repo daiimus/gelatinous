@@ -6,6 +6,7 @@ Provides buy command for purchasing from shops.
 
 from evennia import Command
 from evennia.utils import logger
+from world.identity_utils import msg_room_identity
 
 
 class CmdBuy(Command):
@@ -101,9 +102,20 @@ class CmdBuy(Command):
         
         # Success messages
         caller.msg(msg_buyer.format(**format_data))
-        caller.location.msg_contents(
-            msg_room.format(**format_data),
-            exclude=caller
+        # Per-observer broadcast: pre-interpolate non-character placeholders
+        # (item/price/shop are rendered from caller's perspective for the
+        # baked-in token; the {buyer} placeholder is resolved per observer).
+        room_template = msg_room.format(
+            buyer="{buyer}",
+            item=item.get_display_name(caller),
+            price=format_currency(price),
+            shop=container.get_display_name(caller),
+        )
+        msg_room_identity(
+            location=caller.location,
+            template=room_template,
+            char_refs={"buyer": caller},
+            exclude=[caller],
         )
         
         # Optional: merchant transaction message if merchant present
