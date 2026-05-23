@@ -40,6 +40,7 @@ from world.combat.utils import (
     get_highest_opponent_stat, get_numeric_stat, filter_valid_opponents,
     standard_roll, clear_aim_state,
 )
+from world.identity_utils import msg_room_identity
 
 
 class CmdFlee(Command):
@@ -247,11 +248,20 @@ class CmdFlee(Command):
             
             # Messages
             caller.msg(f"|gYou successfully flee {chosen_exit.key} to {destination.key}!|n")
-            caller.location.msg_contents(f"|y{caller.get_display_name(caller.location)} has arrived, fleeing from an aimer.|n", exclude=[caller])
+            msg_room_identity(
+                location=caller.location,
+                template="|y{actor} has arrived, fleeing from an aimer.|n",
+                char_refs={"actor": caller},
+                exclude=[caller],
+            )
             
             # Message the room they left
             if hasattr(caller, 'previous_location') and caller.previous_location:
-                caller.previous_location.msg_contents(f"|y{caller.get_display_name(caller.previous_location)} flees {chosen_exit.key}!|n")
+                msg_room_identity(
+                    location=caller.previous_location,
+                    template=f"|y{{actor}} flees {chosen_exit.key}!|n",
+                    char_refs={"actor": caller},
+                )
             
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_SUCCESS: {caller.key} successfully fled after breaking aim via {chosen_exit.key} to {destination.key}.")
             return
@@ -301,9 +311,11 @@ class CmdFlee(Command):
                     caller.msg(f"|rYou try to flee but {blocking_opponent.get_display_name(caller) if blocking_opponent else 'your opponents'} block your escape!|n")
                     if blocking_opponent:
                         blocking_opponent.msg(f"|gYou successfully block {caller.get_display_name(blocking_opponent)}'s attempt to flee!|n")
-                    caller.location.msg_contents(
-                        f"|y{caller.get_display_name(caller.location)} tries to flee but is blocked by their opponents!|n",
-                        exclude=[caller] + opponents_targeting_caller
+                    msg_room_identity(
+                        location=caller.location,
+                        template="|y{actor} tries to flee but is blocked by their opponents!|n",
+                        char_refs={"actor": caller},
+                        exclude=[caller] + opponents_targeting_caller,
                     )
                     splattercast.msg(f"{DEBUG_PREFIX_FLEE}_DISENGAGE_FAIL: {caller.key} failed to disengage from combat.")
                     
@@ -364,11 +376,20 @@ class CmdFlee(Command):
             
             # Messages
             caller.msg(f"|gYou successfully flee {chosen_exit.key} to {destination.key}!|n")
-            caller.location.msg_contents(f"|y{caller.get_display_name(caller.location)} has arrived, fleeing from combat.|n", exclude=[caller])
+            msg_room_identity(
+                location=caller.location,
+                template="|y{actor} has arrived, fleeing from combat.|n",
+                char_refs={"actor": caller},
+                exclude=[caller],
+            )
             
             # Message the room they left
             if old_location and old_location != destination:
-                old_location.msg_contents(f"|y{caller.get_display_name(old_location)} flees {chosen_exit.key}!|n")
+                msg_room_identity(
+                    location=old_location,
+                    template=f"|y{{actor}} flees {chosen_exit.key}!|n",
+                    char_refs={"actor": caller},
+                )
             
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_SUCCESS: {caller.key} successfully fled via {chosen_exit.key} to {destination.key}.")
             

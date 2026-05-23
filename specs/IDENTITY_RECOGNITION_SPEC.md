@@ -1532,10 +1532,10 @@ The helper and most rendering surfaces shipped in earlier work; a per-surface au
 |---|---|---|---|
 | Φ₁ | Consumption verbs (inject / apply / bandage / eat / drink / inhale / smoke) | `commands/CmdConsumption.py` (14 sites) | ✅ Shipped |
 | Φ₂ | Armor put-on / take-off / repair | `commands/CmdArmor.py` (~7 sites) | ✅ Shipped |
-| Φ₃ | Movement + jump announcements | `commands/combat/movement.py` (~5), `commands/combat/jump.py` (~2) | 🟡 Pending |
+| Φ₃ | Movement flee announcements | `commands/combat/movement.py` (5 sites) | ✅ Shipped |
 | Φ₄ | Capstone: throw, shop, spawnmob, explosives | `commands/CmdThrow.py`, `commands/shop.py`, `commands/CmdSpawnMob.py`, `commands/CmdExplosives.py`, `commands/explosion_utils.py`, `world/combat/explosives.py` (~11 sites) | 🟡 Pending |
 
-Sites that broadcast **only** non-character text (item names, constant prose) are intentionally left as raw `msg_contents` since per-observer rendering adds no value. The roadmap row flips back to ✅ Shipped when Φ₄ lands.
+Sites that broadcast **only** non-character text (item names, constant prose) are intentionally left as raw `msg_contents` since per-observer rendering adds no value there. `commands/combat/jump.py` was audited during Φ₃ and its 3 `msg_contents` sites (sacrifice dud, false-heroics, gravity item-fall) are all item-only and remain raw under this rule. The roadmap row flips back to ✅ Shipped when Φ₄ lands.
 
 ### Phase 3 — Disguise (Foundation)
 
