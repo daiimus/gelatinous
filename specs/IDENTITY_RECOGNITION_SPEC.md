@@ -1413,29 +1413,36 @@ The distinguishing feature is not stored — it is computed on access from worn 
 
 ## Impact on Existing Systems
 
-All locations that currently use `.key` directly or bypass `get_display_name` need refactoring:
+The table below tracks the original Phase 2 audit surface. Most rows have been resolved by the Phase 2 sweep (PRs #156, #158, #160, #162) and are kept here with ✅ markers for historical reference. The remaining 🟡 row is genuine future work.
 
-| System | File(s) | Current Issue | Required Change |
+| System | File(s) | Status | Notes |
 |---|---|---|---|
-| Combat message templates | `world/combat/messages/__init__.py` | Uses `.key` for `attacker_name` / `target_name` | Use `get_display_name` with per-observer rendering |
-| Attack processing errors | `world/combat/attack.py:310, 329` | Uses `.key` in messages | Route through `get_display_name` |
-| Shield messages | `world/combat/attack.py:231-269` | Uses `get_display_name_safe()` | Already partially correct — verify observer is passed |
-| Normal movement | Evennia defaults | `announce_move_from/to` use `.key` | Override with custom per-observer announcements |
-| Communication (say/whisper/emote) | Evennia defaults | All use `.key` | Custom command overrides required (see `EMOTE_POSE_SPEC.md`) |
-| Death filtering | `typeclasses/characters.py:137-205` | Pattern-matches `.key` in message strings | Refactor to use structured message data |
-| CmdAttack target resolution | `commands/combat/core_actions.py:110-120` | Manual substring match on `.key` | Add recognition-aware search |
-| Exit drag messages | `typeclasses/exits.py:317-340` | Uses `.key` directly | Route through `get_display_name` |
-| Room character listing | `typeclasses/rooms.py:410` | Uses `get_display_name(looker)` | Already correct |
-| Combat movement messages | `commands/combat/movement.py` | Uses `get_display_name(observer)` | Already correct |
-| Look command / appearance | `typeclasses/appearance_mixin.py` | Uses `get_display_name(looker)` | Already correct |
+| Combat message templates | `world/combat/messages/__init__.py` | ✅ | Module exposes `observer_template` + `char_refs` for `msg_room_identity`; legacy `observer_msg` retained for back-compat |
+| Shield messages | `world/combat/attack.py:232-268` | ✅ | First-person msgs use `get_display_name_safe(target, observer)`; observer broadcast at line 263 uses `msg_room_identity` with three char_refs |
+| Normal movement (Evennia defaults) | Evennia `announce_move_from/to` | 🟡 | Still use `.key`; no per-observer override written. Future work |
+| Communication (say/whisper/emote) | `commands/CmdCommunication.py` | ✅ | Custom `CmdSay` / `CmdWhisper` / `CmdEmote` overrides ship per-observer rendering |
+| Death curtain filter | `typeclasses/characters.py:155-222` | n/a | Uses verb-substring matching (`' says, "'`, `' tells you'`, etc.) in `_is_social_message`, not `.key`. Intentional design; out of per-observer-rendering scope |
+| CmdAttack target resolution | `commands/combat/core_actions.py:118` | ✅ | Uses `resolve_character_target(...)` — recognition-aware |
+| Exit drag messages | `typeclasses/exits.py:327` | ✅ | Uses `msg_room_identity` with `{grappler}` / `{victim}` char_refs |
+| Room character listing | `typeclasses/rooms.py:410` | ✅ | Uses `get_display_name(looker)` |
+| Combat movement messages | `commands/combat/movement.py` | ✅ | First-person msgs use `get_display_name(observer)`; room broadcasts converted to `msg_room_identity` in Phase 2 Φ₃ (PR #160) |
+| Look command / appearance | `typeclasses/appearance_mixin.py` | ✅ | Uses `get_display_name(looker)` |
 
 ### Systems Already Correct
 
-Several systems already route through `get_display_name(looker)` and will work automatically once the override is in place:
-- Room character listings (`rooms.py:410`)
-- Combat movement messages (`commands/combat/movement.py`, ~25 uses)
-- Look / appearance rendering (`appearance_mixin.py:363, 397-419`)
-- Exit character previews (`exits.py:673`)
+Several systems route through `get_display_name(looker)` or `msg_room_identity` and render per-observer correctly:
+
+- Room character listings (`typeclasses/rooms.py:410`)
+- Combat movement (`commands/combat/movement.py`) — first-person via `get_display_name(observer)`, room broadcasts via `msg_room_identity` (Phase 2 Φ₃, PR #160)
+- Look / appearance rendering (`typeclasses/appearance_mixin.py:363, 397-419`)
+- Exit character previews (`typeclasses/exits.py:673`)
+- Exit drag broadcasts (`typeclasses/exits.py:327`, via `msg_room_identity`)
+- Communication commands (`commands/CmdCommunication.py`: `CmdSay`, `CmdWhisper`, `CmdEmote`)
+- Combat message templates (`world/combat/messages/__init__.py`, via `observer_template` + `char_refs`)
+- Shield messages (`world/combat/attack.py:232-268`, via per-observer first-person + `msg_room_identity` observer broadcast)
+- Consumption commands (`commands/CmdConsumption.py`) — Phase 2 Φ₁, PR #156
+- Armor commands (`commands/CmdArmor.py`) — Phase 2 Φ₂, PR #158
+- Spawnmob manifest, shop purchase, human-shield grenade — Phase 2 Φ₄, PR #162
 - Medical commands (`commands/CmdMedical.py`)
 - Clothing commands (`commands/CmdClothing.py`)
 - Most inventory/interaction commands
@@ -1511,6 +1518,8 @@ Per-phase detail below.
 - Staff identity overlay (permission-based stopgap)
 
 ### Phase 2 — Consistency
+
+**Status: ✅ Shipped (PRs #156, #158, #160, #162).** Helper plus per-surface conversion sweep complete; see Conversion Status table below.
 
 **Scope:** Patch all `.key` usage across the codebase.
 
