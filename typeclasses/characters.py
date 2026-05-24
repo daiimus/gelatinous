@@ -1118,6 +1118,103 @@ class Character(
 
         return f"{name} ({with_article(sdesc)})"
 
+    def announce_move_from(
+        self, destination, msg=None, mapping=None, **kwargs
+    ):
+        """Broadcast our departure to the source room, per-observer.
+
+        Overrides Evennia's default, which interpolates the mover's
+        name in a way that effectively renders ``self.key`` for every
+        observer regardless of their recognition memory.  Routes the
+        broadcast through :func:`world.identity_utils.msg_room_identity`
+        so each observer sees the mover rendered according to their
+        own recognition memory (assigned name, sdesc, or distinguishing
+        feature as appropriate).
+
+        Honors caller-provided ``msg``/``mapping`` by delegating to
+        ``super()`` — this preserves any future customization a caller
+        might want to layer on top of the default announcement.
+
+        See ``specs/IDENTITY_RECOGNITION_SPEC.md`` §"Phase 2 —
+        Consistency" (Φ₅) for the broader sweep.
+
+        Args:
+            destination: Room the mover is heading to.
+            msg: Optional caller-provided message template; when set,
+                we delegate to ``super()`` to preserve customization.
+            mapping: Optional caller-provided template mapping; when
+                set, we delegate to ``super()`` for the same reason.
+            **kwargs: Forwarded to ``super()`` on the delegation path
+                (e.g. ``move_type``).
+        """
+        if msg is not None or mapping is not None:
+            return super().announce_move_from(
+                destination, msg=msg, mapping=mapping, **kwargs
+            )
+        if not self.location:
+            return
+        origin_name = (
+            self.location.get_display_name(self)
+            if self.location
+            else "somewhere"
+        )
+        dest_name = (
+            destination.get_display_name(self) if destination else "somewhere"
+        )
+        template = (
+            f"{{actor}} is leaving {origin_name}, heading for {dest_name}."
+        )
+        msg_room_identity(
+            self.location,
+            template,
+            {"actor": self},
+            exclude=[self],
+        )
+
+    def announce_move_to(
+        self, source_location, msg=None, mapping=None, **kwargs
+    ):
+        """Broadcast our arrival to the destination room, per-observer.
+
+        Overrides Evennia's default for the same reason as
+        :meth:`announce_move_from` — to ensure observers see the
+        mover rendered according to their own recognition memory.
+
+        See ``specs/IDENTITY_RECOGNITION_SPEC.md`` §"Phase 2 —
+        Consistency" (Φ₅) for the broader sweep.
+
+        Args:
+            source_location: Room the mover came from (may be ``None``
+                for fresh spawns / teleports without a prior location).
+            msg: Optional caller-provided message template; when set,
+                we delegate to ``super()`` to preserve customization.
+            mapping: Optional caller-provided template mapping; when
+                set, we delegate to ``super()`` for the same reason.
+            **kwargs: Forwarded to ``super()`` on the delegation path
+                (e.g. ``move_type``).
+        """
+        if msg is not None or mapping is not None:
+            return super().announce_move_to(
+                source_location, msg=msg, mapping=mapping, **kwargs
+            )
+        if not self.location:
+            return
+        origin_name = (
+            source_location.get_display_name(self)
+            if source_location
+            else "somewhere"
+        )
+        dest_name = self.location.get_display_name(self)
+        template = (
+            f"{{actor}} arrives to {dest_name} from {origin_name}."
+        )
+        msg_room_identity(
+            self.location,
+            template,
+            {"actor": self},
+            exclude=[self],
+        )
+
     def at_post_move(self, source_location, **kwargs):
         """Hook called after this character lands in a new location.
 

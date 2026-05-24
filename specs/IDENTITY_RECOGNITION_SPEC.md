@@ -1413,13 +1413,13 @@ The distinguishing feature is not stored — it is computed on access from worn 
 
 ## Impact on Existing Systems
 
-The table below tracks the original Phase 2 audit surface. Most rows have been resolved by the Phase 2 sweep (PRs #156, #158, #160, #162) and are kept here with ✅ markers for historical reference. The remaining 🟡 row is genuine future work.
+The table below tracks the original Phase 2 audit surface. All rows have been resolved by the Phase 2 sweep (PRs #156, #158, #160, #162, #166) and are kept here with ✅ markers for historical reference.
 
 | System | File(s) | Status | Notes |
 |---|---|---|---|
 | Combat message templates | `world/combat/messages/__init__.py` | ✅ | Module exposes `observer_template` + `char_refs` for `msg_room_identity`; legacy `observer_msg` retained for back-compat |
 | Shield messages | `world/combat/attack.py:232-268` | ✅ | First-person msgs use `get_display_name_safe(target, observer)`; observer broadcast at line 263 uses `msg_room_identity` with three char_refs |
-| Normal movement (Evennia defaults) | Evennia `announce_move_from/to` | 🟡 | Still use `.key`; no per-observer override written. Future work |
+| Normal movement (Evennia defaults) | `typeclasses/characters.py` (`Character.announce_move_from/to`) | ✅ | Per-observer override routes broadcasts through `msg_room_identity`; honors caller `msg=`/`mapping=` by delegating to `super()`. Phase 2 Φ₅, PR #166 |
 | Communication (say/whisper/emote) | `commands/CmdCommunication.py` | ✅ | Custom `CmdSay` / `CmdWhisper` / `CmdEmote` overrides ship per-observer rendering |
 | Death curtain filter | `typeclasses/characters.py:155-222` | n/a | Uses verb-substring matching (`' says, "'`, `' tells you'`, etc.) in `_is_social_message`, not `.key`. Intentional design; out of per-observer-rendering scope |
 | CmdAttack target resolution | `commands/combat/core_actions.py:118` | ✅ | Uses `resolve_character_target(...)` — recognition-aware |
@@ -1443,6 +1443,7 @@ Several systems route through `get_display_name(looker)` or `msg_room_identity` 
 - Consumption commands (`commands/CmdConsumption.py`) — Phase 2 Φ₁, PR #156
 - Armor commands (`commands/CmdArmor.py`) — Phase 2 Φ₂, PR #158
 - Spawnmob manifest, shop purchase, human-shield grenade — Phase 2 Φ₄, PR #162
+- Normal exit traversal announcements (`Character.announce_move_from/to` in `typeclasses/characters.py`) — Phase 2 Φ₅, PR #166
 - Medical commands (`commands/CmdMedical.py`)
 - Clothing commands (`commands/CmdClothing.py`)
 - Most inventory/interaction commands
@@ -1519,7 +1520,7 @@ Per-phase detail below.
 
 ### Phase 2 — Consistency
 
-**Status: ✅ Shipped (PRs #156, #158, #160, #162).** Helper plus per-surface conversion sweep complete; see Conversion Status table below.
+**Status: ✅ Shipped (PRs #156, #158, #160, #162, #166).** Helper plus per-surface conversion sweep complete; see Conversion Status table below.
 
 **Scope:** Patch all `.key` usage across the codebase.
 
@@ -1543,6 +1544,7 @@ The helper and most rendering surfaces shipped in earlier work; a per-surface au
 | Φ₂ | Armor put-on / take-off / repair | `commands/CmdArmor.py` (~7 sites) | ✅ Shipped |
 | Φ₃ | Movement flee announcements | `commands/combat/movement.py` (5 sites) | ✅ Shipped |
 | Φ₄ | Capstone: spawnmob, shop, human-shield grenade | `commands/CmdSpawnMob.py` (1 site), `commands/shop.py` (1 site), `world/combat/explosives.py` (1 site) | ✅ Shipped |
+| Φ₅ | Normal exit traversal announcements | `typeclasses/characters.py` (`announce_move_from/to` overrides) | ✅ Shipped |
 
 Sites that broadcast **only** non-character text (item names, constant prose) are intentionally left as raw `msg_contents` since per-observer rendering adds no value there. `commands/combat/jump.py` was audited during Φ₃ and its 3 `msg_contents` sites (sacrifice dud, false-heroics, gravity item-fall) are all item-only and remain raw under this rule. During Φ₄, the bulk of broadcasts in `commands/CmdThrow.py` (5 sites), `commands/CmdExplosives.py` (7 sites), and `commands/explosion_utils.py` (13 sites) were similarly audited and confirmed item-only (grenade/object names, prose, direction strings) — they remain raw. The 3 character-naming sites (spawnmob manifest, shop purchase, human-shield grenade) shipped in Φ₄ closing the sweep.
 
