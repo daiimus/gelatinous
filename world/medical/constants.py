@@ -240,35 +240,42 @@ ORGANS = {
     "brain": {
         "container": "head", "max_hp": 10, "hit_weight": "very_rare",
         "vital": True, "capacity": "consciousness", "contribution": "total",
-        "special": "damage_always_scars", "can_scar": True, "can_heal": False
+        "special": "damage_always_scars", "can_scar": True, "can_heal": False,
+        "can_be_harvested": True
     },
     "left_eye": {
         "container": "head", "max_hp": 10, "hit_weight": "rare",
         "capacity": "sight", "contribution": "major", "disfiguring_if_lost": True,
-        "damage_always_scars": True, "vulnerable_to_blunt": False
+        "damage_always_scars": True, "vulnerable_to_blunt": False,
+        "can_be_harvested": True
     },
     "right_eye": {
         "container": "head", "max_hp": 10, "hit_weight": "rare",
         "capacity": "sight", "contribution": "major", "disfiguring_if_lost": True,
-        "damage_always_scars": True, "vulnerable_to_blunt": False
+        "damage_always_scars": True, "vulnerable_to_blunt": False,
+        "can_be_harvested": True
     },
     "left_ear": {
         "container": "head", "max_hp": 12, "hit_weight": "rare",
-        "capacity": "hearing", "contribution": "major", "disfiguring_if_lost": True
+        "capacity": "hearing", "contribution": "major", "disfiguring_if_lost": True,
+        "can_be_harvested": True
     },
     "right_ear": {
         "container": "head", "max_hp": 12, "hit_weight": "rare",
-        "capacity": "hearing", "contribution": "major", "disfiguring_if_lost": True
+        "capacity": "hearing", "contribution": "major", "disfiguring_if_lost": True,
+        "can_be_harvested": True
     },
     "tongue": {
         "container": "head", "max_hp": 20, "hit_weight": "rare",
         "capacities": ["talking", "eating"], "talking_contribution": "major",
-        "eating_contribution": "major", "disfiguring_if_lost": True
+        "eating_contribution": "major", "disfiguring_if_lost": True,
+        "can_be_harvested": True
     },
     "jaw": {
         "container": "head", "max_hp": 10, "hit_weight": "rare",
         "capacities": ["talking", "eating"], "talking_contribution": "major",
-        "eating_contribution": "moderate", "disfiguring_if_lost": True, "can_scar": False
+        "eating_contribution": "moderate", "disfiguring_if_lost": True, "can_scar": False,
+        "can_be_harvested": True
     },
 
     # CHEST CONTAINER → VITAL ORGANS INSIDE  

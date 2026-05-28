@@ -170,9 +170,9 @@ class CmdHarvestTests(TestCase):
         caller = _make_caller()
         caller.search.return_value = MagicMock()  # not a _CorpseStandIn
         _make_cmd(caller=caller, args="heart from rock").func()
-        caller.msg.assert_called_with(
-            "You can only harvest organs from a corpse."
-        )
+        msg = caller.msg.call_args[0][0].lower()
+        self.assertIn("corpse", msg)
+        self.assertIn("severed head", msg)
 
     # ----- decay / snapshot gates -----
 

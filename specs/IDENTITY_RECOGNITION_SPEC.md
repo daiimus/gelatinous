@@ -1780,12 +1780,15 @@ the head is a first-class forensic peer of the source corpse:
 - **Severing a SeveredHead is refused**: heads are terminal; the
   `CmdSever` isinstance gate remains `Corpse`-only.
 
-PR-C will widen `CmdAutopsy` and `CmdHarvest` isinstance gates to
-accept `SeveredHead` so the head can be examined and its
-head-container organs harvested through the same forensic surface
-as a corpse.
+**Accepted targets ✅ (PR #196)**: `CmdAutopsy` and `CmdHarvest`
+accept either a `Corpse` or a `SeveredHead` — the isinstance gate
+is `(Corpse, SeveredHead)`.  Autopsy on a head renders the standard
+five-section report against the trimmed head-container snapshot
+(brain / eyes / ears / etc.); harvest extracts head-container organs
+honoring the carry-forward `removed_organs` list.  `CmdSever`
+remains `Corpse`-only.
 
-**Deferred** (not blocking PR-C): the snapshot represents the
+**Deferred** (post PR-C): the snapshot represents the
 *body's* identity at sever time, not consciousness; sleeve-swap
 awareness on the head awaits the resleeving system.
 

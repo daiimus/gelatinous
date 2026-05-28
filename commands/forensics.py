@@ -26,6 +26,7 @@ from __future__ import annotations
 from evennia import Command, create_object
 
 from typeclasses.corpse import Corpse
+from typeclasses.items import SeveredHead
 from world.combat.constants import (
     AUTOPSY_DC_BASIC,
     HARVEST_CRIT_FAIL,
@@ -91,8 +92,11 @@ class CmdAutopsy(Command):
         if target is None:
             return  # search() already messaged the caller
 
-        if not isinstance(target, Corpse):
-            caller.msg("You can only perform an autopsy on a corpse.")
+        if not isinstance(target, (Corpse, SeveredHead)):
+            caller.msg(
+                "You can only perform an autopsy on a corpse or a "
+                "severed head."
+            )
             return
 
         # Skeletal-stage guard: no soft tissue, no signature axes worth
@@ -254,8 +258,11 @@ class CmdHarvest(Command):
         if target is None:
             return  # search() already messaged
 
-        if not isinstance(target, Corpse):
-            caller.msg("You can only harvest organs from a corpse.")
+        if not isinstance(target, (Corpse, SeveredHead)):
+            caller.msg(
+                "You can only harvest organs from a corpse or a "
+                "severed head."
+            )
             return
 
         if target.get_decay_stage() == "skeletal":
