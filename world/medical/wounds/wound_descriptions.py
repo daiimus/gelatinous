@@ -52,10 +52,17 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
     
     # Build format variables
     location_display = get_location_display_name(location, character)
+    # Humanize the organ token the same way location is humanized so
+    # templates using {organ} render "left eye" instead of "left_eye".
+    # Cheap str-level transform — organ-spec lookup is intentionally
+    # avoided here to keep this renderer independent of the ORGANS
+    # registry (the registry can grow species-specific entries in PR-G
+    # without rippling into the wound-description pipeline).
+    organ_display = (organ or "").replace("_", " ") if organ else ""
     format_vars = {
         'severity': INJURY_SEVERITY_MAP.get(severity, severity.lower()),
         'location': location_display,
-        'organ': organ or "",
+        'organ': organ_display,
         'injury_type': injury_type
     }
     

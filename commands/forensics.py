@@ -393,6 +393,29 @@ class CmdHarvest(Command):
         # parity with crit-fail branch; future per-organ HP tweaks rely
         # on this contract.
 
+        # PR #200 (PR-F): synthesize a ``harvested``-type wound on the
+        # corpse at the organ's *container* location.  Targeting the
+        # container (not the organ name) lets PR-D's wound + longdesc
+        # carry-forward overlay move this wound onto severed limbs /
+        # heads automatically when those locations are later severed.
+        # Harvests of organs whose container is unseverable (chest,
+        # abdomen, back) leave the wound on the corpse permanently —
+        # which is the correct narrative for torso excisions.
+        wounds = list(target.db.wounds_at_death or ())
+        wounds.append({
+            "injury_type": "harvested",
+            "location": organ_data.get("container") or organ_arg,
+            "severity": "Critical",
+            "stage": "old",
+            "organ": organ_arg,
+            "organ_damage": {
+                "current_hp": 0,
+                "max_hp": 0,
+                "container": organ_data.get("container") or organ_arg,
+            },
+        })
+        target.db.wounds_at_death = wounds
+
         organ_item = create_object(
             "typeclasses.items.Organ",
             key=f"{condition} {readable_name}",

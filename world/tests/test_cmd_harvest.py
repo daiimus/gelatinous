@@ -83,6 +83,11 @@ class _FakeCorpse(_CorpseStandIn):
         self.db.medical_state_at_death = snapshot
         self.db.removed_organs = list(removed_organs or ())
         self.db.severed_locations = list(severed_locations or ())
+        # PR-F (#200): CmdHarvest synthesizes a ``harvested``-type wound
+        # on the corpse at the organ's container.  Seed the slot so the
+        # success branch's ``list(target.db.wounds_at_death or ())``
+        # round-trip preserves any pre-existing wounds from death.
+        self.db.wounds_at_death = []
         self._display = display or key
         self._decay_stage = decay_stage
 
@@ -355,3 +360,111 @@ class CmdHarvestTests(TestCase):
             _make_cmd(caller=caller, args="left kidney from corpse").func()
             mk.assert_called_once()
         self.assertEqual(corpse.db.removed_organs, ["left_kidney"])
+
+    # ----- PR-F (#200) — harvested wound synthesis -----
+
+    def test_success_synthesizes_harvested_wound_at_container(self):
+        """A successful heart harvest stamps a ``harvested`` wound at chest."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with())
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=HARVEST_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=MagicMock()
+        ):
+            _make_cmd(caller=caller, args="heart from corpse").func()
+        self.assertEqual(len(corpse.db.wounds_at_death), 1)
+        wound = corpse.db.wounds_at_death[0]
+        self.assertEqual(wound["injury_type"], "harvested")
+        # Location is the *container*, not the organ name.
+        self.assertEqual(wound["location"], "chest")
+        self.assertEqual(wound["organ"], "heart")
+        self.assertEqual(wound["severity"], "Critical")
+        self.assertEqual(wound["stage"], "old")
+        self.assertEqual(wound["organ_damage"]["container"], "chest")
+        self.assertEqual(wound["organ_damage"]["current_hp"], 0)
+
+    def test_eye_harvest_targets_head_container(self):
+        """Eye harvest must target ``head`` so PR-D head-cluster carry-forward triggers."""
+        caller = _make_caller()
+        # Snapshot needs left_eye for the eye harvest path.
+        snap = _snapshot_with()
+        snap["organs"]["left_eye"] = {
+            "current_hp": 10, "max_hp": 10, "container": "head",
+        }
+        corpse = _FakeCorpse(snapshot=snap)
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=HARVEST_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=MagicMock()
+        ):
+            _make_cmd(caller=caller, args="left eye from corpse").func()
+        self.assertEqual(len(corpse.db.wounds_at_death), 1)
+        wound = corpse.db.wounds_at_death[0]
+        self.assertEqual(wound["location"], "head")
+        self.assertEqual(wound["organ"], "left_eye")
+
+    def test_miss_does_not_synthesize_wound(self):
+        """Below-DC rolls leave wounds_at_death untouched."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with())
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=HARVEST_DC_BASIC - 1
+        ), patch.object(cmd_module, "create_object"):
+            _make_cmd(caller=caller, args="heart from corpse").func()
+        self.assertEqual(corpse.db.wounds_at_death, [])
+
+    def test_crit_fail_does_not_synthesize_wound(self):
+        """Crit-fail destroys the organ silently — no harvested wound prose."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with())
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=HARVEST_CRIT_FAIL
+        ), patch.object(cmd_module, "create_object"):
+            _make_cmd(caller=caller, args="heart from corpse").func()
+        self.assertEqual(corpse.db.wounds_at_death, [])
+        # And the destruction signal lives on the snapshot, not in
+        # the wounds list — confirm the snapshot was zeroed.
+        self.assertEqual(
+            corpse.db.medical_state_at_death["organs"]["heart"]["current_hp"],
+            0,
+        )
+
+    def test_harvest_preserves_pre_existing_wounds(self):
+        """The new wound is appended, not replacing pre-existing wounds."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with())
+        # Seed a pre-existing wound that came from combat death.
+        existing = {
+            "injury_type": "bullet",
+            "location": "chest",
+            "severity": "Critical",
+            "stage": "old",
+            "organ": "heart",
+            "organ_damage": {
+                "current_hp": 0, "max_hp": 15, "container": "chest",
+            },
+        }
+        corpse.db.wounds_at_death = [existing]
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=HARVEST_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=MagicMock()
+        ):
+            _make_cmd(caller=caller, args="liver from corpse").func()
+        self.assertEqual(len(corpse.db.wounds_at_death), 2)
+        # Existing bullet wound preserved.
+        self.assertIn(existing, corpse.db.wounds_at_death)
+        # New harvested wound at liver's container.
+        harvested = [
+            w for w in corpse.db.wounds_at_death
+            if w["injury_type"] == "harvested"
+        ]
+        self.assertEqual(len(harvested), 1)
+        self.assertEqual(harvested[0]["location"], "abdomen")
+        self.assertEqual(harvested[0]["organ"], "liver")

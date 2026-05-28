@@ -260,3 +260,130 @@ class ApplySeverToCorpseTests(TestCase):
         self.assertEqual(
             corpse.db.wounds_at_death[0]["injury_type"], "severed",
         )
+
+
+# ---------------------------------------------------------------------
+# PR-F (#200) — harvested-organ wound carry-forward via PR-D overlay
+# ---------------------------------------------------------------------
+
+
+def _harvested_wound(location, organ):
+    """Build a harvested wound dict shaped like CmdHarvest synthesizes."""
+    return {
+        "injury_type": "harvested",
+        "location": location,
+        "severity": "Critical",
+        "stage": "old",
+        "organ": organ,
+        "organ_damage": {
+            "current_hp": 0, "max_hp": 0, "container": location,
+        },
+    }
+
+
+class HarvestedWoundCarryForwardTests(TestCase):
+    """Integration: harvested wounds piggyback PR-D's existing overlay.
+
+    The contract verified here is that ``CmdHarvest`` synthesizes
+    wounds at the organ's *container* location (PR-F design), so the
+    pre-existing PR-D ``apply_wound_and_longdesc_overlay`` and
+    ``apply_sever_to_corpse`` helpers move them correctly without
+    any harvest-specific code in the overlay layer.
+    """
+
+    def test_harvested_hand_wound_moves_to_severed_right_hand(self):
+        """harvest right metacarpals → sever right hand → wound rides along."""
+        corpse = _FakeCorpse(wounds=[
+            _harvested_wound("right_hand", "right_metacarpals"),
+            _wound("chest"),  # unrelated
+        ])
+        appendage = _FakeAppendage()
+        # Simulate the configure_from_sever overlay call.
+        apply_wound_and_longdesc_overlay(appendage, corpse, ("right_hand",))
+        # Then simulate the corpse-side mutation.
+        apply_sever_to_corpse(corpse, "right_hand")
+
+        # Severed item carries the harvested wound.
+        appendage_wounds = appendage.db.wounds_at_death
+        self.assertEqual(len(appendage_wounds), 1)
+        self.assertEqual(appendage_wounds[0]["injury_type"], "harvested")
+        self.assertEqual(appendage_wounds[0]["organ"], "right_metacarpals")
+
+        # Corpse no longer carries it (moved, not copied).
+        corpse_harvested = [
+            w for w in corpse.db.wounds_at_death
+            if w["injury_type"] == "harvested"
+        ]
+        self.assertEqual(corpse_harvested, [])
+        # Stump wound now exists at right_hand on the corpse.
+        stumps = [
+            w for w in corpse.db.wounds_at_death
+            if w["injury_type"] == "severed" and w["location"] == "right_hand"
+        ]
+        self.assertEqual(len(stumps), 1)
+        # Unrelated chest wound survives.
+        chest_wounds = [
+            w for w in corpse.db.wounds_at_death if w["location"] == "chest"
+        ]
+        self.assertEqual(len(chest_wounds), 1)
+
+    def test_harvested_eye_wound_moves_with_head_cluster(self):
+        """harvest left eye → sever head → harvested wound rides cluster."""
+        corpse = _FakeCorpse(wounds=[
+            _harvested_wound("head", "left_eye"),
+            _wound("abdomen"),  # unrelated, unseverable container
+        ])
+        head_item = _FakeAppendage()
+        apply_wound_and_longdesc_overlay(
+            head_item, corpse, SEVERED_HEAD_LOCATIONS,
+        )
+        apply_sever_to_corpse(corpse, "head")
+
+        # Severed head carries the harvested-eye wound.
+        head_wounds = head_item.db.wounds_at_death
+        harvested = [
+            w for w in head_wounds if w["injury_type"] == "harvested"
+        ]
+        self.assertEqual(len(harvested), 1)
+        self.assertEqual(harvested[0]["organ"], "left_eye")
+
+        # Corpse no longer carries the harvested-eye wound.
+        corpse_harvested = [
+            w for w in corpse.db.wounds_at_death
+            if w["injury_type"] == "harvested"
+        ]
+        self.assertEqual(corpse_harvested, [])
+        # Abdomen wound (unseverable container) survives on corpse.
+        abd_wounds = [
+            w for w in corpse.db.wounds_at_death if w["location"] == "abdomen"
+        ]
+        self.assertEqual(len(abd_wounds), 1)
+
+    def test_harvested_torso_wound_stays_on_corpse_after_limb_sever(self):
+        """A harvested-liver wound at abdomen survives a left-arm sever.
+
+        Demonstrates the design intent: wounds at unseverable
+        containers (chest / abdomen / back) remain on the corpse
+        permanently — limb severs only move wounds whose location
+        matches the severed location.
+        """
+        corpse = _FakeCorpse(wounds=[
+            _harvested_wound("abdomen", "liver"),
+            _wound("left_arm"),
+        ])
+        appendage = _FakeAppendage()
+        apply_wound_and_longdesc_overlay(appendage, corpse, ("left_arm",))
+        apply_sever_to_corpse(corpse, "left_arm")
+
+        # Severed left arm has only the left_arm bullet wound, no liver.
+        appendage_organs = [
+            w.get("organ") for w in appendage.db.wounds_at_death
+        ]
+        self.assertNotIn("liver", appendage_organs)
+        # Corpse still has the harvested-liver wound at abdomen.
+        liver_wounds = [
+            w for w in corpse.db.wounds_at_death
+            if w.get("organ") == "liver"
+        ]
+        self.assertEqual(len(liver_wounds), 1)
+        self.assertEqual(liver_wounds[0]["location"], "abdomen")

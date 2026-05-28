@@ -1844,6 +1844,53 @@ the corpse retains its wounds and longdesc unchanged.
 (rather than a whole limb) is harvested; decay-tier modulation of
 inherited longdesc prose on the severed item itself.
 
+### Harvested-Organ Wounds (PR-F ✅ — PR #200)
+
+When `CmdHarvest` succeeds, the corpse gains a synthesized
+`harvested`-type wound at the organ's **container** location.
+Targeting the container (not the organ name) lets the existing
+PR-D wound + longdesc carry-forward overlay
+(`apply_wound_and_longdesc_overlay`) move the wound onto a severed
+limb / head automatically when that container is later severed —
+no harvest-specific code is needed in the overlay layer.
+
+**Synthesized wound contract**:
+`{injury_type: "harvested", location: <container>, severity: "Critical",
+stage: "old", organ: <organ_name>, organ_damage: {current_hp: 0,
+max_hp: 0, container: <container>}}`. Appended to
+`corpse.db.wounds_at_death` after `removed_organs.append`. Templates
+in `world/medical/wounds/messages/harvested.py` (fresh / old / treated
+/ healing / scarred / destroyed stages) render via the standard
+`get_wound_description` pipeline using `{location}` and `{organ}`
+tokens.
+
+**Carry-forward behavior**:
+- **Severable container** (head, hands, arms, thighs, shins, feet) —
+  harvested wound rides with the severed item when that location is
+  later severed. A harvested-eye wound at `head` flows through the
+  head-cluster fan-out; a harvested-metacarpal wound at `right_hand`
+  moves to the severed right hand.
+- **Unseverable container** (chest, abdomen, back) — wound stays on
+  the corpse permanently. A harvested-heart wound at `chest` cannot
+  travel because no sever operation targets the chest; the autopsy
+  forever records the excision.
+
+**Crit-fail behavior**: silent — no wound synthesized. The
+`destroyed` organ-status in the autopsy snapshot already conveys
+the destruction, and crit-fail is operator error not external
+trauma. Successful harvest leaves a clean surgical trace; crit-fail
+leaves an internal mess that doesn't manifest as an external wound.
+
+**Rendering helper change**: `world/medical/wounds/wound_descriptions.py`
+adds an `organ_display` key to `format_vars` (humanizes `left_eye`
+→ `left eye`) so templates using `{organ}` render readable prose.
+Cheap str-level transform — no `ORGANS` registry lookup, to keep the
+renderer independent of registry growth in subsequent PRs.
+
+**Deferred** (PR-G): species-aware naming for corpses, severed items,
+and organs; decay-modulated keys; recognition reveal as parenthetical;
+static default descriptions per organ × condition tier.
+
 ---
 
 ## New Character Attributes

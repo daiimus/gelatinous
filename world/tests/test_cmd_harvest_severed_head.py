@@ -69,6 +69,10 @@ class _FakeSeveredHead(_SeveredHeadStandIn):
         self.db.medical_state_at_death = snapshot
         self.db.removed_organs = list(removed_organs or ())
         self.db.severed_locations = []
+        # PR-F (#200): CmdHarvest synthesizes a ``harvested`` wound
+        # on the target at the organ's container.  Seed the slot so
+        # the wound-append round-trip works against the SeveredHead.
+        self.db.wounds_at_death = []
         self._display = display or key
         self._decay_stage = decay_stage
 
