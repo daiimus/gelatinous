@@ -730,10 +730,24 @@ CORPSE_DECAY_ADVANCED = 604800 # < 1 week - advanced decomposition
 CORPSE_DECAY_COMPLETE = 1209600 # 2 weeks - complete decay and cleanup
 
 # Forensic Recognition Engine (PR-E) ----------------------------------
-# Intellect DC for the basic autopsy roll on a corpse.  Deep examination
-# rolls against ``AUTOPSY_DC_BASIC + AUTOPSY_DC_DEEP_OFFSET``.  Both
-# constants are provisional pending a balance pass — cf. the
-# disguise-pierce constants in ``world/identity.py`` (PR #134/#136),
-# which carry the same flag.
+# Intellect DC for the autopsy roll on a corpse.  PR #186 dropped the
+# two-tier ``/deep`` switch in favour of a single richer report (cause
+# of death, fuzzy time of death, wound enumeration, organ inventory,
+# worn essentials) rendered on any successful roll.  Flagged for
+# balance tuning per the disguise-pierce precedent in
+# ``world/identity.py`` (PR #134/#136).
 AUTOPSY_DC_BASIC = 3
-AUTOPSY_DC_DEEP_OFFSET = 2
+
+# Fuzzy time-of-death buckets surfaced in the autopsy report.  Each
+# tuple is ``(max_seconds_since_death, display_string)``; the first
+# tuple whose threshold the elapsed time falls under wins.  A trailing
+# entry with ``float('inf')`` provides the long-dead fallback.  Tuned
+# to align with ``CORPSE_DECAY_*`` thresholds above so the report
+# narrative tracks the decay model without exposing exact times.
+AUTOPSY_TIME_BUCKETS = (
+    (CORPSE_DECAY_FRESH, "recently deceased"),
+    (CORPSE_DECAY_EARLY, "dead for hours"),
+    (CORPSE_DECAY_MODERATE, "dead for a day or more"),
+    (CORPSE_DECAY_ADVANCED, "dead for several days"),
+    (float("inf"), "long dead"),
+)

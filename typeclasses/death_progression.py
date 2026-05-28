@@ -564,6 +564,34 @@ class DeathProgressionScript(DefaultScript):
             corpse.db.death_cause = character.get_death_cause()
             corpse.db.medical_conditions = character.medical_state.get_condition_summary()
             corpse.db.blood_type = character.db.blood_type if character.db.blood_type is not None else 'unknown'
+
+            # Snapshot the full medical state at death so forensic
+            # consumers (autopsy, harvest, sever) can render organ
+            # inventory and the upcoming surgical commands can mutate
+            # the snapshot in place without touching live medical
+            # systems.  ``MedicalState.to_dict()`` is the canonical
+            # serialization; pre-PR-186 corpses carry None and degrade
+            # gracefully in :func:`world.forensics.render_forensic_report`.
+            try:
+                corpse.db.medical_state_at_death = character.medical_state.to_dict()
+                try:
+                    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                    organ_count = len(corpse.db.medical_state_at_death.get("organs", {}))
+                    splattercast.msg(
+                        f"DEATH_MEDICAL_SNAPSHOT: {organ_count} organs preserved "
+                        f"on corpse for {character.key}"
+                    )
+                except Exception:
+                    pass
+            except Exception as snapshot_err:
+                try:
+                    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                    splattercast.msg(
+                        f"DEATH_MEDICAL_SNAPSHOT_ERROR: Failed to snapshot "
+                        f"medical state for {character.key}: {snapshot_err}"
+                    )
+                except Exception:
+                    pass
             
             # Transfer wound data for corpse wound descriptions
             try:

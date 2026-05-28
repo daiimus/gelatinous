@@ -45,9 +45,11 @@ Out of scope (deferred per PR-E scope lock):
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
 
+from world.combat.constants import AUTOPSY_TIME_BUCKETS
 from world.identity import (
     get_apparent_uid,
     get_identity_signature,
@@ -313,25 +315,180 @@ def attempt_forensic_recognition(
 # ---------------------------------------------------------------------
 
 
-_DEPTHS = ("summary", "detailed", "comparison")
+def _fuzzy_time_of_death(corpse) -> str:
+    """Return a fuzzy time-of-death string from a corpse's death_time.
+
+    Drives the autopsy report's "Apparent time of death" line.  The
+    buckets are tuned to align with the decay-stage thresholds in
+    ``world/combat/constants.py`` so the narrative tracks the corpse
+    model without leaking exact seconds.  Pre-PR-#183 corpses without
+    a ``death_time`` return ``"unknown"``.
+
+    Args:
+        corpse: A :class:`typeclasses.corpse.Corpse` instance (duck
+            typed — only ``corpse.db.death_time`` is read).
+
+    Returns:
+        One of the strings in :data:`world.combat.constants.AUTOPSY_TIME_BUCKETS`,
+        or ``"unknown"`` if the corpse has no death-time stamp.
+    """
+    death_time = getattr(getattr(corpse, "db", None), "death_time", None)
+    if death_time is None:
+        return "unknown"
+    try:
+        elapsed = time.time() - float(death_time)
+    except (TypeError, ValueError):
+        return "unknown"
+    if elapsed < 0:
+        elapsed = 0
+    for threshold, label in AUTOPSY_TIME_BUCKETS:
+        if elapsed < threshold:
+            return label
+    return AUTOPSY_TIME_BUCKETS[-1][1]
+
+
+def _render_wound_lines(corpse) -> list[str]:
+    """Render wound enumeration lines for the autopsy report.
+
+    Reads ``corpse.db.wounds_at_death`` (the existing PR #133 snapshot)
+    and groups entries by body location, using
+    :func:`world.medical.wounds.get_wound_description` for severity
+    prose and
+    :func:`world.medical.wounds.get_location_display_name` for the
+    location label.  Returns an empty list when no wounds were
+    snapshotted (pre-PR-#133 corpses, peaceful deaths) so the caller
+    can omit the section header cleanly.
+
+    Args:
+        corpse: A :class:`typeclasses.corpse.Corpse` instance.
+
+    Returns:
+        A list of report lines (without the section header).  Empty
+        if there are no wounds to render.
+    """
+    wounds = getattr(getattr(corpse, "db", None), "wounds_at_death", None) or []
+    if not wounds:
+        return []
+
+    try:
+        from world.medical.wounds import (
+            get_location_display_name,
+            get_wound_description,
+        )
+    except ImportError:
+        return []
+
+    grouped: dict[str, list[str]] = {}
+    for wound in wounds:
+        location = wound.get("location") or "unknown"
+        try:
+            descr = get_wound_description(
+                injury_type=wound.get("injury_type", "unknown"),
+                location=location,
+                severity=wound.get("severity", "Moderate"),
+                stage=wound.get("stage", "fresh"),
+                organ=wound.get("organ"),
+            )
+        except (TypeError, ValueError, KeyError):
+            descr = (
+                f"{wound.get('severity', 'unspecified')} "
+                f"{wound.get('injury_type', 'wound')}"
+            )
+        grouped.setdefault(location, []).append(descr)
+
+    lines: list[str] = []
+    for location, descrs in grouped.items():
+        try:
+            label = get_location_display_name(location)
+        except (TypeError, ValueError, KeyError):
+            label = location.replace("_", " ")
+        for descr in descrs:
+            lines.append(f"  {label}: {descr}")
+    return lines
+
+
+def _render_organ_lines(corpse) -> list[str]:
+    """Render the organ-inventory section of the autopsy report.
+
+    Reads ``corpse.get_medical_snapshot()`` (PR #186) and per-organ
+    status from the serialized :class:`world.medical.core.MedicalState`.
+    Organs whose name appears in ``corpse.db.removed_organs`` (harvest
+    target) or whose ``container`` appears in
+    ``corpse.db.severed_locations`` (sever target) render as
+    ``"absent"`` per the no-surgeon-attribution rule (PR-186 Q3).
+
+    A snapshot of ``None`` (pre-PR-#186 corpse) yields an empty list,
+    letting the caller print a "no internal examination possible"
+    marker instead.
+
+    Args:
+        corpse: A :class:`typeclasses.corpse.Corpse` instance.
+
+    Returns:
+        A list of report lines (without the section header).  Empty
+        when no snapshot is available.
+    """
+    snapshot = None
+    getter = getattr(corpse, "get_medical_snapshot", None)
+    if callable(getter):
+        snapshot = getter()
+    if not snapshot:
+        return []
+
+    removed = set(
+        getattr(getattr(corpse, "db", None), "removed_organs", None) or []
+    )
+    severed = set(
+        getattr(getattr(corpse, "db", None), "severed_locations", None) or []
+    )
+
+    lines: list[str] = []
+    organs = snapshot.get("organs") or {}
+    for name, organ in organs.items():
+        if name in removed or organ.get("container") in severed:
+            status = "absent"
+        else:
+            current_hp = organ.get("current_hp", 0)
+            max_hp = organ.get("max_hp", 1) or 1
+            ratio = current_hp / max_hp
+            if current_hp <= 0:
+                status = "destroyed"
+            elif ratio < 0.5:
+                status = "damaged"
+            else:
+                status = "intact"
+        lines.append(f"  {name}: {status}")
+    return lines
 
 
 def render_forensic_report(
     subject: ForensicSubject,
     *,
     observer,
-    depth: Literal["summary", "detailed", "comparison"] = "summary",
 ) -> str:
-    """Render a human-readable forensic report from a subject.
+    """Render a human-readable autopsy report from a subject.
 
-    Depth ladder:
+    The single-tier report (PR #186 dropped the ``/deep`` switch)
+    composes up to five sections, omitting any that have no data:
 
-    * ``"summary"`` — height / build / keyword axes only.
-    * ``"detailed"`` — summary plus reconstructed essential-item
-      descriptors from :attr:`ForensicSubject.essential_item_type_ids`.
-    * ``"comparison"`` — primitive scaffold reserved for future
-      multi-subject linking gameplay; currently returns a placeholder
-      and is not wired to any command.
+    1. **Identity axes** — height / build / keyword from the preserved
+       :func:`world.identity.get_identity_signature`.
+    2. **Apparent time of death** — fuzzy bucket from
+       :func:`_fuzzy_time_of_death`.
+    3. **Apparent cause of death** — ``corpse.db.death_cause``.
+    4. **Wounds** — enumerated by body location via
+       :func:`_render_wound_lines`.
+    5. **Organ inventory** — from
+       :meth:`typeclasses.corpse.Corpse.get_medical_snapshot` via
+       :func:`_render_organ_lines`; harvested / severed organs render
+       as ``"absent"`` (PR-186 Q3 — no surgeon attribution).
+    6. **Worn essentials** — disguise-essential item type IDs from
+       :attr:`ForensicSubject.essential_item_type_ids`.  Folded into
+       the unified report (formerly ``/deep``-only).
+
+    Pre-PR-#183 subjects with ``signature=None`` collapse to a single
+    "no further forensic detail" line so identity-axes never leak as
+    blank fields.
 
     Critically, this function **never** assigns a name to the
     subject.  The recognition contract requires that an assigned
@@ -346,20 +503,11 @@ def render_forensic_report(
             future observer-specific phrasing (per-observer
             rendering hooks).  Currently unused but accepted to
             keep the signature stable as renderers grow.
-        depth: One of ``"summary"`` / ``"detailed"`` / ``"comparison"``.
 
     Returns:
         A string suitable for ``observer.msg()``.
-
-    Raises:
-        ValueError: If ``depth`` is not a recognised level.
     """
     del observer  # Reserved; see docstring.
-    if depth not in _DEPTHS:
-        raise ValueError(
-            f"render_forensic_report: depth must be one of {_DEPTHS!r}, "
-            f"got {depth!r}"
-        )
 
     if subject.signature is None:
         return "The remains yield no further forensic detail."
@@ -369,24 +517,42 @@ def render_forensic_report(
     build = summary["build_override"] or "indeterminate"
     keyword = summary["keyword_override"] or "indeterminate"
 
-    lines = [
+    lines: list[str] = [
         "|wForensic Examination|n",
         f"  Apparent height : {height}",
         f"  Apparent build  : {build}",
         f"  Keyword         : {keyword}",
     ]
 
-    if depth in ("detailed", "comparison"):
-        essentials = subject.essential_item_type_ids
-        if essentials:
-            joined = ", ".join(essentials)
-            lines.append(f"  Worn essentials : {joined}")
-        else:
-            lines.append("  Worn essentials : none recovered")
+    corpse = subject.source_ref if subject.source_kind == "corpse" else None
 
-    if depth == "comparison":
-        # Placeholder for future multi-subject linking gameplay.
-        lines.append("  [Comparison rendering reserved for future linking gameplay.]")
+    if corpse is not None:
+        tod = _fuzzy_time_of_death(corpse)
+        lines.append(f"  Time of death   : {tod}")
+
+        cause = getattr(getattr(corpse, "db", None), "death_cause", None)
+        if cause:
+            lines.append(f"  Cause of death  : {cause}")
+
+        wound_lines = _render_wound_lines(corpse)
+        if wound_lines:
+            lines.append("|wWounds|n")
+            lines.extend(wound_lines)
+
+        organ_lines = _render_organ_lines(corpse)
+        if organ_lines:
+            lines.append("|wOrgan Inventory|n")
+            lines.extend(organ_lines)
+        elif getattr(corpse, "get_medical_snapshot", lambda: None)() is None:
+            lines.append(
+                "  (No internal examination possible — pre-mortem records "
+                "unavailable.)"
+            )
+
+    essentials = subject.essential_item_type_ids
+    if essentials:
+        joined = ", ".join(essentials)
+        lines.append(f"  Worn essentials : {joined}")
 
     return "\n".join(lines)
 

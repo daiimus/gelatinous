@@ -6,8 +6,9 @@ Covers :mod:`world.forensics`:
   incident; ``NotImplementedError`` for photo stub.
 * :func:`attempt_forensic_recognition` — roll, cache hit/miss, cache
   re-roll on UID change, anonymous-looker handling.
-* :func:`render_forensic_report` — depth ladder output shape; safe
-  None-signature handling; never includes assigned names.
+* :func:`render_forensic_report` — single-tier unified output (PR
+  #186); identity axes always render; ``signature=None`` falls back to
+  graceful message; never includes assigned names.
 * :func:`link_subjects` — shared-axes detection.
 
 Built on lightweight fakes so no Evennia DB is required.
@@ -273,46 +274,39 @@ class TestRenderForensicReport(TestCase):
     def test_summary_lists_three_axes(self):
         sig = ("sleeve-1", "tall", "lean", "hooded", ())
         out = render_forensic_report(
-            self._subject(sig=sig), observer=None, depth="summary",
+            self._subject(sig=sig), observer=None,
         )
         self.assertIn("tall", out)
         self.assertIn("lean", out)
         self.assertIn("hooded", out)
-        self.assertNotIn("Worn essentials", out)
 
-    def test_detailed_includes_essentials(self):
+    def test_essentials_always_rendered_when_present(self):
+        """PR #186 dropped the depth ladder — essentials always render."""
         sig = ("sleeve-1", "tall", "lean", "hooded", ("balaclava", "trenchcoat"))
         out = render_forensic_report(
             self._subject(sig=sig, essentials=("balaclava", "trenchcoat")),
-            observer=None, depth="detailed",
+            observer=None,
         )
         self.assertIn("balaclava", out)
         self.assertIn("trenchcoat", out)
 
-    def test_detailed_with_no_essentials(self):
+    def test_no_essentials_omits_section(self):
         sig = ("sleeve-1", "tall", "lean", "hooded", ())
         out = render_forensic_report(
-            self._subject(sig=sig), observer=None, depth="detailed",
+            self._subject(sig=sig), observer=None,
         )
-        self.assertIn("none recovered", out)
+        self.assertNotIn("Worn essentials", out)
 
     def test_none_signature_returns_graceful_message(self):
         out = render_forensic_report(
-            self._subject(sig=None), observer=None, depth="summary",
+            self._subject(sig=None), observer=None,
         )
         self.assertIn("no further forensic detail", out)
-
-    def test_invalid_depth_raises(self):
-        sig = ("sleeve-1", None, None, None, ())
-        with self.assertRaises(ValueError):
-            render_forensic_report(
-                self._subject(sig=sig), observer=None, depth="bogus",
-            )
 
     def test_indeterminate_axes_rendered(self):
         sig = ("sleeve-1", None, None, None, ())
         out = render_forensic_report(
-            self._subject(sig=sig), observer=None, depth="summary",
+            self._subject(sig=sig), observer=None,
         )
         self.assertIn("indeterminate", out)
 
@@ -320,7 +314,7 @@ class TestRenderForensicReport(TestCase):
         """Recognition contract: renderer must not surface names."""
         sig = ("sleeve-1", "tall", "lean", "hooded", ())
         out = render_forensic_report(
-            self._subject(sig=sig), observer=None, depth="detailed",
+            self._subject(sig=sig), observer=None,
         )
         # The renderer has no access to recognition memory at all.
         self.assertNotIn("Jorge", out)

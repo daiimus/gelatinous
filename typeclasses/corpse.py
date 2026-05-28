@@ -33,6 +33,27 @@ class Corpse(Item):
         self.db.medical_conditions = []
         self.db.physical_description = ""
         self.db.longdesc_data = {}
+
+        # Death-time medical snapshot (PR #186 / Issue #186).  Set by
+        # :meth:`typeclasses.death_progression.DeathProgression._create_corpse_from_character`
+        # to ``character.medical_state.to_dict()``.  Read via
+        # :meth:`get_medical_snapshot`.  Surgical commands (harvest /
+        # sever) mutate this in place; the autopsy report renders from
+        # it.  Pre-PR-186 corpses still in the live DB carry ``None``;
+        # consumers degrade gracefully.  Two PR-186 sibling lists track
+        # what has been physically removed from the corpse since death:
+        #
+        # * ``removed_organs``: list of organ names that the
+        #   :class:`commands.surgery.CmdHarvest` flow has extracted.
+        # * ``severed_locations``: list of body-location names that
+        #   :class:`commands.surgery.CmdSever` has removed.
+        #
+        # Both lists are initialised empty so the harvest/sever code
+        # can ``append`` without a None-guard, and the autopsy report
+        # uniformly renders "absent" for any organ present in either.
+        self.db.medical_state_at_death = None
+        self.db.removed_organs = []
+        self.db.severed_locations = []
         
         # Preserve character appearance data for proper display
         self.db.original_skintone = None
@@ -61,7 +82,30 @@ class Corpse(Item):
         elapsed = time.time() - self.db.creation_time
         max_decay_time = self.db.decay_stages["advanced"]  # 1 week
         return min(1.0, elapsed / max_decay_time)
-    
+
+    def get_medical_snapshot(self):
+        """Return the death-time medical-state snapshot, if any.
+
+        The snapshot is :meth:`world.medical.core.MedicalState.to_dict`
+        captured at the moment of corpse creation (see
+        :meth:`typeclasses.death_progression.DeathProgression._create_corpse_from_character`).
+
+        Pre-PR-#186 corpses still in the live DB return ``None``;
+        consumers should degrade gracefully (autopsy renders identity
+        axes only, harvest/sever refuse with a "no internal
+        examination possible" message).
+
+        Surgical commands mutate the returned dict in place and then
+        re-assign it to ``self.db.medical_state_at_death`` to persist;
+        callers must respect that mutation contract — do not treat the
+        dict as read-only.
+
+        Returns:
+            dict | None: The serialized medical state, or ``None`` if
+            no snapshot was captured.
+        """
+        return self.db.medical_state_at_death
+
     def get_display_name(self, looker, **kwargs):
         """Return a display name, preferring recognition memory.
 

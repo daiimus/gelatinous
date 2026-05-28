@@ -1379,16 +1379,19 @@ photos). It exposes:
 - `attempt_forensic_recognition()` — Intellect roll vs DC with
   permanent per-`(observer, evidence)` cache, mirroring
   `attempt_disguise_pierce` semantics.
-- `render_forensic_report()` — depth ladder
-  (`summary` / `detailed` / `comparison`) over the preserved
-  signature.  **Never** assigns a name; surfacing a name remains the
-  exclusive responsibility of recognition-memory lookup.
+- `render_forensic_report()` — single-tier five-section renderer
+  (identity axes + fuzzy time-of-death + cause of death + wounds +
+  organ inventory + worn essentials) over the preserved signature
+  and death-time medical snapshot.  **Never** assigns a name;
+  surfacing a name remains the exclusive responsibility of
+  recognition-memory lookup.  (The legacy depth ladder
+  `summary`/`detailed`/`comparison` was dropped in PR #186.)
 - `link_subjects()` — diagnostic primitive comparing two subjects
   axis-by-axis (reserved for future linking gameplay; no command
   exposes it).
 
-**Shipped consumer**: `commands/forensics.py:CmdAutopsy` (basic +
-`/deep`) routes corpses through the engine.
+**Shipped consumer**: `commands/forensics.py:CmdAutopsy` (single-tier)
+routes corpses through the engine.
 
 **Data prep only**: blood pools have the `signature` / `apparent_uid`
 fields wired in `BloodPool.add_bleeding_incident` and the medical
@@ -1448,11 +1451,24 @@ an assigned name* — invariant across evidence types.
 
 **Report rendering (Surface B)**:
 
-- `render_forensic_report(subject, *, observer, depth)` —
-  depth ladder: `"summary"` (height/build/keyword),
-  `"detailed"` (+ essential items), `"comparison"` (scaffold for
-  future linking gameplay).
-- Raises `ValueError` on invalid depth.
+- `render_forensic_report(subject, *, observer)` — single-tier
+  five-section report (PR #186):
+  1. Identity axes (height / build / keyword).
+  2. Apparent time of death — fuzzy bucket from
+     `AUTOPSY_TIME_BUCKETS` (aligned with `CORPSE_DECAY_*`).
+  3. Apparent cause of death — `corpse.db.death_cause`.
+  4. Wounds — enumerated by body location from
+     `corpse.db.wounds_at_death`.
+  5. Organ inventory — from `corpse.get_medical_snapshot()`;
+     harvested / severed organs render as `absent` per the
+     no-surgeon-attribution rule (PR-186 Q3).  Pre-PR-#186
+     corpses with no snapshot emit a single "no internal
+     examination possible" marker.
+  6. Worn essentials — disguise-essential item type IDs folded
+     into the unified report (formerly `/deep`-only).
+- Pre-PR-#183 subjects (`signature is None`) collapse to a single
+  "no further forensic detail" line so identity axes never leak as
+  blank fields.
 - **Critically never assigns a name.**  Name surfacing remains
   the exclusive responsibility of the recognition-memory lookup
   performed by the consumer command.
@@ -1465,13 +1481,14 @@ an assigned name* — invariant across evidence types.
 
 ### Consumer: `autopsy` command
 
-`commands/forensics.py:CmdAutopsy` (keyed `autopsy`, switch
-`deep`, help category `Forensics`):
+`commands/forensics.py:CmdAutopsy` (keyed `autopsy`, no switches,
+help category `Forensics`):
 
-- `autopsy <corpse>` — Intellect vs `AUTOPSY_DC_BASIC` → summary
-  report.
-- `autopsy/deep <corpse>` — Intellect vs
-  `AUTOPSY_DC_BASIC + AUTOPSY_DC_DEEP_OFFSET` → detailed report.
+- `autopsy <corpse>` — Intellect vs `AUTOPSY_DC_BASIC` → unified
+  five-section report (identity axes, fuzzy ToD, cause, wounds,
+  organ inventory, worn essentials).
+- Skeletal corpses short-circuit with a "too far decomposed" message
+  before rolling.
 - Pre-roll room broadcast via `msg_room_identity` so observers
   see the investigation regardless of outcome.
 - Concatenates the recognized-name header only when the looker
@@ -1484,13 +1501,20 @@ Constants live in `world/combat/constants.py`:
 
 ```python
 AUTOPSY_DC_BASIC = 3
-AUTOPSY_DC_DEEP_OFFSET = 2  # /deep DC = BASIC + OFFSET
+# AUTOPSY_DC_DEEP_OFFSET removed in PR #186 alongside the /deep tier.
+AUTOPSY_TIME_BUCKETS = (
+    (CORPSE_DECAY_FRESH,    "recently deceased"),
+    (CORPSE_DECAY_EARLY,    "dead for hours"),
+    (CORPSE_DECAY_MODERATE, "dead for a day or more"),
+    (CORPSE_DECAY_ADVANCED, "dead for several days"),
+    (float("inf"),          "long dead"),
+)
 ```
 
 Flagged for balance tuning per the disguise-pierce precedent.
-Both are intentionally low for the shipping basic-Intellect
-target; raise alongside any future Investigation skill stat
-gating.
+`AUTOPSY_DC_BASIC` is intentionally low for the shipping
+basic-Intellect target; raise alongside any future Investigation
+skill stat gating.
 
 ### Cache strategy
 
@@ -1521,6 +1545,11 @@ careful examination and prevents Intellect re-roll abuse.
 - Memory decay & active impersonation detection (spec L1668
   Phase 5).
 - Sleeve-swap awareness (blocked on resleeving system).
+- Skeletal-bone harvest (cracked-bone marrow extraction) — deferred
+  past PR-186; skeletal corpses currently refuse autopsy and harvest.
+- Severed-head super-item carrying full identity signature —
+  deferred to v2 of the sever workflow (PR-188 ships limb sever
+  only).
 
 ---
 

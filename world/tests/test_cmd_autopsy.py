@@ -1,4 +1,4 @@
-"""Unit tests for :class:`commands.forensics.CmdAutopsy` (PR-E).
+"""Unit tests for :class:`commands.forensics.CmdAutopsy` (PR-E + PR #186).
 
 Exercises the command surface end-to-end with lightweight fakes so no
 Evennia DB is required.  The command itself is thin glue over
@@ -6,11 +6,13 @@ Evennia DB is required.  The command itself is thin glue over
 
 * Usage / argument handling.
 * Non-corpse target rejection.
-* Basic vs ``/deep`` DC routing and depth selection.
+* Skeletal-corpse short-circuit (PR #186).
 * Cache-hit silent re-render (per PR-E scope lock #4).
 * Recognition-memory name surfacing *only* when the looker holds the
   revealed UID (regression: command must never auto-assign names).
 * Room broadcast routes through :func:`world.identity_utils.msg_room_identity`.
+* Five-section report assertions (ToD bucket, cause, wounds, organ
+  status including absent-on-harvested/severed).
 
 To bypass ``isinstance(target, Corpse)`` without patching the builtin
 (which causes infinite recursion against mock.call internals), we
@@ -25,12 +27,17 @@ Run via::
 
 from __future__ import annotations
 
+import time
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from commands import forensics as cmd_module
 from commands.forensics import CmdAutopsy
-from world.combat.constants import AUTOPSY_DC_BASIC, AUTOPSY_DC_DEEP_OFFSET
+from world.combat.constants import (
+    AUTOPSY_DC_BASIC,
+    AUTOPSY_TIME_BUCKETS,
+    CORPSE_DECAY_EARLY,
+)
 from world.forensics import RecognitionResult
 
 
@@ -55,7 +62,19 @@ class _CorpseStandIn:
 class _FakeCorpse(_CorpseStandIn):
     """Minimal corpse surface the command needs."""
 
-    def __init__(self, *, key="the corpse of Jorge", display=None):
+    def __init__(
+        self,
+        *,
+        key="the corpse of Jorge",
+        display=None,
+        decay_stage="fresh",
+        snapshot=None,
+        removed_organs=None,
+        severed_locations=None,
+        wounds=None,
+        death_cause="multiple gunshot wounds",
+        death_time=None,
+    ):
         self.key = key
         self.db = _DB()
         self.db.signature_at_death = (
@@ -63,11 +82,26 @@ class _FakeCorpse(_CorpseStandIn):
         )
         self.db.apparent_uid_at_death = "abc123"
         self.db.forensic_recognition_cache = None
+        self.db.death_cause = death_cause
+        self.db.death_time = (
+            death_time if death_time is not None else time.time() - 60
+        )
+        self.db.wounds_at_death = wounds or []
+        self.db.removed_organs = removed_organs or []
+        self.db.severed_locations = severed_locations or []
         self._display = display or key
+        self._decay_stage = decay_stage
+        self._snapshot = snapshot
 
     def get_display_name(self, looker=None, **kwargs):  # noqa: D401
         del looker, kwargs
         return self._display
+
+    def get_decay_stage(self):
+        return self._decay_stage
+
+    def get_medical_snapshot(self):
+        return self._snapshot
 
 
 def _make_caller(*, key="Alice", dbref="#42", memory=None, location=None):
@@ -143,16 +177,30 @@ class TestCmdAutopsyTargetValidation(TestCase):
         caller.msg.assert_called_once()
         self.assertIn("corpse", caller.msg.call_args[0][0].lower())
 
+    def test_skeletal_corpse_short_circuits(self):
+        """Skeletal corpses refuse autopsy with a dedicated message."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(decay_stage="skeletal")
+        cmd = _make_cmd(caller=caller, target=corpse)
+        with _patch_corpse(), \
+                patch.object(cmd_module, "msg_room_identity") as broadcast, \
+                patch("world.combat.dice.roll_stat") as mocked_roll:
+            cmd.func()
+        mocked_roll.assert_not_called()
+        broadcast.assert_not_called()
+        out = caller.msg.call_args[0][0]
+        self.assertIn("decomposed", out.lower())
+
 
 # ---------------------------------------------------------------------
-# DC / depth dispatch
+# Single-tier dispatch (PR #186 dropped /deep)
 # ---------------------------------------------------------------------
 
 
 class TestCmdAutopsyDispatch(TestCase):
-    def _run(self, *, switches, roll=99):
+    def _run(self, *, switches=(), roll=99, corpse=None):
         caller = _make_caller()
-        corpse = _FakeCorpse()
+        corpse = corpse or _FakeCorpse()
         cmd = _make_cmd(caller=caller, target=corpse, switches=switches)
         with _patch_corpse(), \
                 patch.object(cmd_module, "msg_room_identity") as broadcast, \
@@ -160,28 +208,97 @@ class TestCmdAutopsyDispatch(TestCase):
             cmd.func()
         return caller, corpse, broadcast
 
-    def test_basic_uses_summary_depth(self):
-        caller, _, broadcast = self._run(switches=[])
+    def test_unified_report_includes_essentials(self):
+        """No more /deep gating — essentials always render on success."""
+        caller, _, broadcast = self._run()
         self.assertTrue(caller.msg.called)
         rendered = caller.msg.call_args[0][0]
-        self.assertNotIn("Worn essentials", rendered)
+        self.assertIn("Worn essentials", rendered)
         broadcast.assert_called_once()
         template = broadcast.call_args.kwargs["template"]
         self.assertIn("examines", template)
         self.assertNotIn("deep autopsy", template)
 
-    def test_deep_uses_detailed_depth(self):
-        caller, _, broadcast = self._run(switches=["deep"])
-        rendered = caller.msg.call_args[0][0]
-        self.assertIn("Worn essentials", rendered)
-        template = broadcast.call_args.kwargs["template"]
-        self.assertIn("deep autopsy", template)
+    def test_dc_basic_constant_low_enough_to_tune(self):
+        """Sanity: AUTOPSY_DC_BASIC remains reachable by base Intellect."""
+        self.assertGreater(AUTOPSY_DC_BASIC, 0)
+        self.assertLess(AUTOPSY_DC_BASIC, 10)
 
-    def test_dc_constants_distinct(self):
-        """Sanity: /deep DC must exceed basic so tuning is meaningful."""
-        self.assertGreater(
-            AUTOPSY_DC_BASIC + AUTOPSY_DC_DEEP_OFFSET, AUTOPSY_DC_BASIC,
+
+# ---------------------------------------------------------------------
+# Report sections (PR #186)
+# ---------------------------------------------------------------------
+
+
+class TestCmdAutopsyReportSections(TestCase):
+    def _run(self, *, corpse):
+        caller = _make_caller()
+        cmd = _make_cmd(caller=caller, target=corpse)
+        with _patch_corpse(), \
+                patch.object(cmd_module, "msg_room_identity"), \
+                patch("world.combat.dice.roll_stat", return_value=99):
+            cmd.func()
+        return caller.msg.call_args[0][0]
+
+    def test_fresh_corpse_emits_recent_time_of_death_bucket(self):
+        corpse = _FakeCorpse(death_time=time.time() - 30)
+        rendered = self._run(corpse=corpse)
+        self.assertIn(AUTOPSY_TIME_BUCKETS[0][1], rendered)
+
+    def test_older_corpse_falls_into_later_bucket(self):
+        corpse = _FakeCorpse(death_time=time.time() - CORPSE_DECAY_EARLY - 1)
+        rendered = self._run(corpse=corpse)
+        self.assertIn(AUTOPSY_TIME_BUCKETS[2][1], rendered)
+
+    def test_cause_of_death_rendered(self):
+        corpse = _FakeCorpse(death_cause="blunt force trauma")
+        rendered = self._run(corpse=corpse)
+        self.assertIn("blunt force trauma", rendered)
+
+    def test_no_snapshot_emits_pre_mortem_unavailable_marker(self):
+        corpse = _FakeCorpse(snapshot=None)
+        rendered = self._run(corpse=corpse)
+        self.assertIn("No internal examination possible", rendered)
+
+    def test_organ_status_intact_damaged_destroyed(self):
+        snapshot = {
+            "organs": {
+                "heart": {"current_hp": 10, "max_hp": 10, "container": "torso"},
+                "liver": {"current_hp": 2, "max_hp": 10, "container": "torso"},
+                "left_lung": {
+                    "current_hp": 0, "max_hp": 10, "container": "torso",
+                },
+            }
+        }
+        corpse = _FakeCorpse(snapshot=snapshot)
+        rendered = self._run(corpse=corpse)
+        self.assertIn("heart: intact", rendered)
+        self.assertIn("liver: damaged", rendered)
+        self.assertIn("left_lung: destroyed", rendered)
+
+    def test_removed_organ_renders_as_absent(self):
+        snapshot = {
+            "organs": {
+                "heart": {"current_hp": 10, "max_hp": 10, "container": "torso"},
+            }
+        }
+        corpse = _FakeCorpse(snapshot=snapshot, removed_organs=["heart"])
+        rendered = self._run(corpse=corpse)
+        self.assertIn("heart: absent", rendered)
+
+    def test_severed_location_marks_contained_organs_absent(self):
+        snapshot = {
+            "organs": {
+                "left_hand_bones": {
+                    "current_hp": 8, "max_hp": 8, "container": "left_arm",
+                },
+            }
+        }
+        corpse = _FakeCorpse(
+            snapshot=snapshot, severed_locations=["left_arm"],
         )
+        rendered = self._run(corpse=corpse)
+        self.assertIn("left_hand_bones: absent", rendered)
 
 
 # ---------------------------------------------------------------------
@@ -301,3 +418,4 @@ class TestCmdAutopsyBroadcast(TestCase):
         self.assertIn("corpse", kwargs["char_refs"])
         self.assertIs(kwargs["char_refs"]["actor"], caller)
         self.assertIs(kwargs["char_refs"]["corpse"], corpse)
+
