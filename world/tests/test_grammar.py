@@ -197,6 +197,11 @@ class TestIsPluraliaTantum(TestCase):
         self.assertTrue(is_pluralia_tantum("contacts"))
         self.assertTrue(is_pluralia_tantum("colored contacts"))
 
+    def test_pluralia_tantum_mirrorshades(self) -> None:
+        """Mirrorshades is a plural back-formation (cf. shades/sunglasses)."""
+        self.assertTrue(is_pluralia_tantum("mirrorshades"))
+        self.assertTrue(is_pluralia_tantum("chrome mirrorshades"))
+
     def test_not_pluralia_tantum_trenchcoat(self) -> None:
         self.assertFalse(is_pluralia_tantum("Black Trenchcoat"))
 

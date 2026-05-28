@@ -17,6 +17,7 @@ from unittest import TestCase
 
 from world import prototypes
 from world.identity import (
+    format_clothing_feature,
     get_apparent_uid,
     get_disguise_adjective,
     get_essential_item_type_ids,
@@ -433,3 +434,58 @@ class TestEssentialTypeIdsFromCatalog(TestCase):
                 self.assertEqual(
                     get_essential_item_type_ids(char), expected
                 )
+
+
+class TestWornSdescShortRendersGrammatically(TestCase):
+    """Every disguise prototype's ``worn_sdesc_short`` must render as a
+    grammatical ``format_clothing_feature`` clause.
+
+    ``format_clothing_feature`` calls :func:`world.grammar.with_article`,
+    which inspects ``_PLURALIA_TANTUM_NOUNS`` to decide whether to prepend
+    ``"a"``/``"an"`` or leave the noun bare.  An ungrammatical output
+    (e.g. ``"in a mirrorshades"``) indicates either a malformed
+    ``worn_sdesc_short`` or a missing pluralia-tantum noun.
+
+    Locks in the audit from #180 / closes the third pending Phase 3.5
+    cohesion item from #171.
+    """
+
+    def _assert_grammatical(self, clause: str, prototype: str) -> None:
+        # Bare plurals must not be preceded by indefinite "a"/"an".
+        # The renderer can produce either "in a X" / "in an X" (singular)
+        # or "in X" (pluralia tantum).  "a Xs" / "an Xs" patterns where
+        # X ends in a known plural marker are wrong.
+        self.assertTrue(
+            clause.startswith("in "),
+            f"{prototype}: expected 'in ...' clause, got {clause!r}",
+        )
+        # Forbid the specific failure mode the audit caught: indefinite
+        # article in front of a pluralia-tantum form ending in 's'.
+        if clause.startswith(("in a ", "in an ")):
+            tail = clause.split(" ", 2)[2]
+            head = tail.split()[-1].lower()
+            from world.grammar import _PLURALIA_TANTUM_NOUNS
+            self.assertNotIn(
+                head,
+                _PLURALIA_TANTUM_NOUNS,
+                f"{prototype}: indefinite article applied to pluralia-"
+                f"tantum head noun {head!r} in clause {clause!r}",
+            )
+
+    def test_every_prototype_renders_grammatically(self) -> None:
+        for name in ALL_DISGUISE_PROTOTYPES:
+            with self.subTest(prototype=name):
+                attrs = _attrs_dict(name)
+                short = attrs["worn_sdesc_short"]
+                clause = format_clothing_feature(short)
+                self._assert_grammatical(clause, name)
+
+    def test_mirrorshades_renders_bare(self) -> None:
+        """Regression for #180: ``mirrorshades`` is pluralia tantum."""
+        clause = format_clothing_feature("mirrorshades")
+        self.assertEqual(clause, "in mirrorshades")
+
+    def test_chrome_mirrorshades_renders_bare(self) -> None:
+        """Modifier prefix must not flip the pluralia-tantum decision."""
+        clause = format_clothing_feature("chrome mirrorshades")
+        self.assertEqual(clause, "in chrome mirrorshades")
