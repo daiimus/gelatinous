@@ -1014,8 +1014,19 @@ class Organ(Item):
         the player-facing organ display name from
         :data:`world.medical.constants.ORGAN_DISPLAY` (falling back to
         the underscore-stripped canonical key).
+
+        PR #204: also seeds ``self.db.desc`` from the condition-keyed
+        default description so the Evennia-standard ``return_appearance``
+        renderer slots it into the look output naturally — no custom
+        ``return_appearance`` override required.  Organs without a
+        registered description (or with the ``refuse`` condition, which
+        the harvest command gate refuses upstream anyway) leave
+        ``db.desc`` untouched so the engine default applies.
         """
-        from world.medical.constants import get_organ_display_name
+        from world.medical.constants import (
+            get_organ_default_description,
+            get_organ_display_name,
+        )
 
         self.db.organ_name = organ_name
         self.db.condition = condition
@@ -1026,30 +1037,13 @@ class Organ(Item):
         self.db.source_species = corpse.db.species or "human"
         readable = get_organ_display_name(organ_name)
         self.key = f"{condition} {readable}"
-
-    def return_appearance(self, looker, **kwargs):
-        """Render condition-keyed default prose above any base desc.
-
-        PR-G: every harvested organ now ships with a clinical default
-        description per condition (pristine / damaged / putrid).  We
-        prepend that prose to the standard ``return_appearance`` output
-        so the player sees the organ's current state at a glance even
-        when no custom ``db.desc`` has been set.
-
-        Refuse-stage organs (skeletal harvest, which the command gate
-        refuses anyway) and organs not registered in
-        :data:`world.medical.constants.ORGAN_DISPLAY` fall through to
-        the base appearance without a prefix.
-        """
-        from world.medical.constants import get_organ_default_description
-
-        base = super().return_appearance(looker, **kwargs)
-        prose = get_organ_default_description(
-            self.db.organ_name or "", self.db.condition or "",
-        )
+        # PR #204: populate db.desc the Evennia-standard way so the
+        # engine renderer handles it (rather than overriding
+        # return_appearance to prepend prose).  Conditional: leave the
+        # engine default in place when no prose is registered.
+        prose = get_organ_default_description(organ_name, condition)
         if prose:
-            return f"{prose}\n{base}" if base else prose
-        return base
+            self.db.desc = prose
 
 
 class Appendage(Item):
@@ -1126,6 +1120,16 @@ class Appendage(Item):
         except AttributeError:
             decay_stage = "fresh"
         self.key = get_species_part_name(species, location_name, decay_stage)
+        # PR #204: populate db.desc the Evennia-standard way so the
+        # engine renderer handles it.  ``Appendage.return_appearance``
+        # still composes wound + longdesc carry-forward dynamically on
+        # top of the engine-rendered base (which now includes our
+        # seeded desc), so both surfaces coexist cleanly.  Conditional:
+        # leave the engine default in place when no prose is registered.
+        from world.anatomy import get_severed_part_description
+        prose = get_severed_part_description(species, location_name, condition)
+        if prose:
+            self.db.desc = prose
         # PR #198: pull this location's wound + longdesc prose off the
         # corpse onto ourselves.  The corpse-side mutation
         # (delete-from-source + synthesized stump wound) is handled by

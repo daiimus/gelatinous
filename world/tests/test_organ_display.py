@@ -96,3 +96,127 @@ class TestOrganDisplayHelpers(TestCase):
         self.assertEqual(
             get_organ_default_description("heart", "refuse"), ""
         )
+
+
+class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
+    """PR #204: ``configure_from_harvest`` must seed ``db.desc``.
+
+    Verifies the Evennia-standard contract: the engine's normal
+    ``return_appearance`` renderer picks up ``db.desc`` and slots it
+    into the look output.  No custom ``return_appearance`` override
+    is required (or wanted).
+    """
+
+    def _fake_corpse(self, species="human"):
+        """Minimal duck-typed corpse for ``configure_from_harvest``."""
+
+        class _DB:
+            pass
+
+        corpse = type("FakeCorpse", (), {})()
+        corpse.db = _DB()
+        corpse.db.signature_at_death = ("uid", "tall", "lean", "hooded", ())
+        corpse.db.apparent_uid_at_death = "hash-abc"
+        corpse.db.species = species
+        corpse.dbref = "#42"
+        return corpse
+
+    def _fake_organ(self):
+        """Stub with a ``db`` namespace; binds the unbound configure method."""
+        from typeclasses.items import Organ
+
+        class _DB:
+            pass
+
+        organ = type("FakeOrgan", (), {})()
+        organ.db = _DB()
+        organ.db.organ_name = ""
+        organ.db.condition = "pristine"
+        organ.db.source_signature = None
+        organ.db.source_apparent_uid = None
+        organ.db.source_corpse_dbref = None
+        organ.db.source_species = "human"
+        organ.db.desc = None
+        # Track key assignment.
+        organ.key = ""
+        organ.configure_from_harvest = (
+            Organ.configure_from_harvest.__get__(organ)
+        )
+        return organ
+
+    def test_registered_organ_populates_desc(self):
+        organ = self._fake_organ()
+        organ.configure_from_harvest(
+            organ_name="heart", condition="pristine",
+            corpse=self._fake_corpse(),
+        )
+        self.assertTrue(organ.db.desc)
+        self.assertIn("heart", organ.db.desc.lower())
+
+    def test_damaged_condition_uses_damaged_prose(self):
+        organ = self._fake_organ()
+        organ.configure_from_harvest(
+            organ_name="liver", condition="damaged",
+            corpse=self._fake_corpse(),
+        )
+        self.assertTrue(organ.db.desc)
+        # Damaged prose typically signals decay-onset vocabulary.
+        self.assertIn("liver", organ.db.desc.lower())
+
+    def test_putrid_condition_uses_putrid_prose(self):
+        organ = self._fake_organ()
+        organ.configure_from_harvest(
+            organ_name="brain", condition="putrid",
+            corpse=self._fake_corpse(),
+        )
+        self.assertTrue(organ.db.desc)
+        self.assertIn("brain", organ.db.desc.lower())
+
+    def test_unknown_organ_leaves_desc_untouched(self):
+        organ = self._fake_organ()
+        organ.configure_from_harvest(
+            organ_name="flux_capacitor", condition="pristine",
+            corpse=self._fake_corpse(),
+        )
+        # Falls through to engine default — we do NOT set an empty
+        # string, so the original ``None`` survives.
+        self.assertIsNone(organ.db.desc)
+
+    def test_refuse_condition_leaves_desc_untouched(self):
+        organ = self._fake_organ()
+        organ.configure_from_harvest(
+            organ_name="heart", condition="refuse",
+            corpse=self._fake_corpse(),
+        )
+        # ``refuse`` has no registered prose; preserve engine default.
+        self.assertIsNone(organ.db.desc)
+
+    def test_key_still_assigned_alongside_desc(self):
+        # Regression guard: the desc plumbing must not skip the
+        # display-key assignment that the rest of the system reads.
+        organ = self._fake_organ()
+        organ.configure_from_harvest(
+            organ_name="heart", condition="pristine",
+            corpse=self._fake_corpse(),
+        )
+        self.assertEqual(organ.key, "pristine heart")
+
+
+class TestOrganHasNoReturnAppearanceOverride(TestCase):
+    """PR #204: the PR-G return_appearance override is gone.
+
+    Asserts the override no longer exists on ``Organ`` so the engine's
+    default renderer handles look output (consuming ``db.desc``
+    naturally).  Guards against accidental re-introduction.
+    """
+
+    def test_organ_does_not_define_return_appearance(self):
+        from typeclasses.items import Organ
+
+        # ``return_appearance`` should be inherited, not defined on
+        # Organ itself.  ``__dict__`` check skips inherited members.
+        self.assertNotIn(
+            "return_appearance", Organ.__dict__,
+            "Organ must not override return_appearance; populate db.desc "
+            "in configure_from_harvest instead.",
+        )

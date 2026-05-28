@@ -1968,28 +1968,67 @@ characters are unaffected — they don't pass through
 `IdentityBearerMixin`.  Skeletal stage retains its hard cutoff (no
 recognition reveal under any circumstance).
 
-### Organ Default Descriptions (PR-G ✅)
+### Organ Default Descriptions (PR-G ✅ — corrected in PR #204)
 
 `world/medical/constants.py` ships an `ORGAN_DISPLAY` table sibling
 to `ORGANS`, carrying display names and condition-keyed prose for
 every harvestable organ (26 entries × 3 conditions: pristine /
 damaged / putrid).  The prose is short, clinical, and physically
 anchored — enough to ground the player in the organ's current state
-without `look` requiring a custom `db.desc`.
+without staff ever setting a custom `db.desc`.
 
-`Organ.return_appearance` prepends the condition-keyed prose to the
-base appearance output, so a freshly harvested heart reads:
+`Organ.configure_from_harvest` populates `self.db.desc` from the
+condition-keyed prose at harvest time, the Evennia-standard way.  The
+engine's default `return_appearance` renderer then slots the prose
+into the look output naturally — no custom override required.  A
+freshly harvested heart reads:
 
 ```
 A dense, dark-red heart, its muscle firm and the great vessels
 stumped cleanly above.
 ```
 
+> **Historical note (PR-G → PR #204):** the original PR-G shipped
+> with an `Organ.return_appearance` override that prepended prose to
+> the engine output. That bypassed Evennia's normal renderer and
+> produced a "You see nothing special" line alongside the floating
+> prose. PR #204 deleted the override and moved the prose into
+> `db.desc` at harvest time, matching the convention used by every
+> other Item subclass in `typeclasses/items.py`.
+
 Two lookup helpers (`get_organ_display_name`,
 `get_organ_default_description`) provide defensive fallbacks: unknown
 organs return the underscore-stripped key; unknown conditions
 (`refuse` — skeletal-stage harvest, refused at the command gate)
-return empty so callers render nothing rather than asserting.
+return empty so `configure_from_harvest` leaves `db.desc` untouched
+(engine default applies) rather than overwriting with an empty
+string.
+
+### Severed Part Default Descriptions (PR #204 ✅)
+
+Parallel to the organ table, `world/anatomy/severed_parts.py` ships
+`SEVERED_PART_DESCRIPTIONS` — a species-keyed prose table for every
+entry in `world.combat.constants.SEVERABLE_CONTAINERS` (11 locations
+for humans: `head`, both arms / hands / thighs / shins / feet × 3
+conditions = 33 prose strings).  Same vocabulary register as the
+organ table — short, clinical, physically anchored.
+
+`Appendage.configure_from_sever` populates `self.db.desc` from the
+condition-keyed prose at sever-time.  `SeveredHead` inherits this
+behaviour via its `super().configure_from_sever(...)` call, so a
+severed head also reads with a populated default desc.
+
+`Appendage.return_appearance` is retained: it composes wound +
+longdesc carry-forward (PR-D / PR-F) dynamically on top of the
+engine-rendered base.  Since `super().return_appearance(...)` now
+includes the seeded `db.desc` in its output, both surfaces coexist
+cleanly — the default prose anchors the look, and the dynamic prose
+(wounds, transferred longdesc) follows.
+
+A single helper (`get_severed_part_description`) provides the same
+defensive fallback contract as the organ helper: unknown species fall
+back to human; unknown locations / conditions return empty so the
+configure step leaves `db.desc` untouched.
 
 ---
 
