@@ -842,6 +842,46 @@ def get_identity_signature(char: Any) -> tuple:
     )
 
 
+def render_signature_summary(signature: tuple) -> dict:
+    """Unpack a stored identity-signature tuple into a labeled dict.
+
+    The 5-tuple returned by :func:`get_identity_signature` is opaque to
+    consumers that didn't author it.  This helper provides a stable,
+    keyed view for forensic-display callers (corpse autopsy renderers,
+    photo-evidence consumers — spec L1000 / L1015 / L1020) so they
+    don't index by position.
+
+    The helper is pure: it does not mutate ``signature`` and does not
+    touch any character state.  Pass in a tuple previously produced by
+    :func:`get_identity_signature` (typically read from
+    ``corpse.db.signature_at_death``).
+
+    Args:
+        signature: A 5-tuple matching the shape of
+            :func:`get_identity_signature`'s return value.
+
+    Returns:
+        Dict with keys ``sleeve_uid``, ``height_override``,
+        ``build_override``, ``keyword_override``,
+        ``essential_item_type_ids``.
+
+    Raises:
+        ValueError: If ``signature`` is not a 5-element sequence.
+    """
+    if signature is None or len(signature) != 5:
+        raise ValueError(
+            "render_signature_summary expects a 5-element tuple from "
+            "get_identity_signature; got: %r" % (signature,)
+        )
+    return {
+        "sleeve_uid": signature[0],
+        "height_override": signature[1],
+        "build_override": signature[2],
+        "keyword_override": signature[3],
+        "essential_item_type_ids": signature[4],
+    }
+
+
 def get_apparent_uid(char: Any) -> str | None:
     """Compute the Apparent UID for a character's current presentation.
 

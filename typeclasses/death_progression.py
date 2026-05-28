@@ -526,12 +526,34 @@ class DeathProgressionScript(DefaultScript):
         corpse.db.keyword_override = character.db.keyword_override
         # Record the original Apparent UID so observers who recognised
         # the deceased can still match the corpse before any loot
-        # disturbs its presentation.
+        # disturbs its presentation.  Also snapshot the full identity
+        # signature tuple (spec L808, L1015) so forensic consumers can
+        # reconstruct the component axes — the hash alone is one-way.
         try:
-            from world.identity import get_apparent_uid
+            from world.identity import get_apparent_uid, get_identity_signature
+            corpse.db.signature_at_death = get_identity_signature(character)
             corpse.db.apparent_uid_at_death = get_apparent_uid(character)
         except (AttributeError, TypeError, ValueError):
+            corpse.db.signature_at_death = None
             corpse.db.apparent_uid_at_death = None
+
+        # Spec L1597: clear all live overrides on the dead Character
+        # AFTER the snapshot above has captured them.  Order matters —
+        # snapshotting first preserves the death-moment disguise on the
+        # corpse; clearing after ensures the Character object carries no
+        # stale disguise state into limbo or any future
+        # resurrection/clone consumer.
+        try:
+            from commands.CmdCharacter import _clear_all_overrides
+            _clear_all_overrides(character)
+        except Exception as e:
+            try:
+                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast.msg(
+                    f"DEATH_OVERRIDE_CLEAR_ERROR: {character.key} - {e}"
+                )
+            except Exception:
+                pass
         
         # Preserve character appearance data for proper corpse display
         corpse.db.original_gender = getattr(character, 'gender', 'neutral')

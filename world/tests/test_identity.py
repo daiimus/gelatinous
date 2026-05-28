@@ -1228,6 +1228,58 @@ class TestGetIdentitySignature(TestCase):
         self.assertEqual(get_identity_signature(char), get_identity_signature(char))
 
 
+class TestRenderSignatureSummary(TestCase):
+    """``render_signature_summary`` unpacks the 5-tuple into a labeled dict."""
+
+    def test_round_trip_from_get_identity_signature(self) -> None:
+        from world.identity import (
+            get_identity_signature,
+            render_signature_summary,
+        )
+
+        char = _SignatureMockCharacter(
+            sleeve_uid="uid-jorge",
+            height_override="tall",
+            build_override="lean",
+            keyword_override="hooded",
+        )
+        summary = render_signature_summary(get_identity_signature(char))
+        self.assertEqual(summary["sleeve_uid"], "uid-jorge")
+        self.assertEqual(summary["height_override"], "tall")
+        self.assertEqual(summary["build_override"], "lean")
+        self.assertEqual(summary["keyword_override"], "hooded")
+        self.assertEqual(summary["essential_item_type_ids"], ())
+
+    def test_handles_none_overrides(self) -> None:
+        from world.identity import (
+            get_identity_signature,
+            render_signature_summary,
+        )
+
+        summary = render_signature_summary(
+            get_identity_signature(_SignatureMockCharacter())
+        )
+        self.assertIsNone(summary["height_override"])
+        self.assertIsNone(summary["build_override"])
+        self.assertIsNone(summary["keyword_override"])
+
+    def test_rejects_wrong_arity(self) -> None:
+        from world.identity import render_signature_summary
+
+        with self.assertRaises(ValueError):
+            render_signature_summary(("uid", None, None))
+        with self.assertRaises(ValueError):
+            render_signature_summary(None)
+
+    def test_pure_function_no_mutation(self) -> None:
+        from world.identity import render_signature_summary
+
+        sig = ("uid-x", "tall", "lean", "hooded", ("hat",))
+        before = tuple(sig)
+        render_signature_summary(sig)
+        self.assertEqual(sig, before)
+
+
 class TestGetApparentUid(TestCase):
     """Apparent UID is a deterministic 16-char hex digest of the signature."""
 
