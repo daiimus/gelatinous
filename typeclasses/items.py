@@ -996,6 +996,11 @@ class Organ(Item):
         self.db.source_signature = None
         self.db.source_apparent_uid = None
         self.db.source_corpse_dbref = None
+        # PR-G: species provenance, used to render condition-aware
+        # default descriptions and (in future) species-specific organ
+        # variants.  Defaults to ``"human"`` so direct-spawned organs
+        # without ``configure_from_harvest`` still look sensible.
+        self.db.source_species = "human"
 
     def configure_from_harvest(self, *, organ_name, condition, corpse):
         """Populate forensic-chain fields immediately after spawn.
@@ -1005,17 +1010,46 @@ class Organ(Item):
             condition (str): Freshness descriptor.
             corpse: The source :class:`typeclasses.corpse.Corpse`.
 
-        Sets the display key to ``"<condition> <organ_name>"`` with
-        underscores in the organ name replaced by spaces so the
-        canonical ``"left_kidney"`` reads as ``"pristine left kidney"``.
+        Sets the display key to ``"<condition> <display_name>"`` using
+        the player-facing organ display name from
+        :data:`world.medical.constants.ORGAN_DISPLAY` (falling back to
+        the underscore-stripped canonical key).
         """
+        from world.medical.constants import get_organ_display_name
+
         self.db.organ_name = organ_name
         self.db.condition = condition
         self.db.source_signature = corpse.db.signature_at_death
         self.db.source_apparent_uid = corpse.db.apparent_uid_at_death
         self.db.source_corpse_dbref = corpse.dbref
-        readable = organ_name.replace("_", " ")
+        # PR-G: species inheritance for condition-aware prose.
+        self.db.source_species = corpse.db.species or "human"
+        readable = get_organ_display_name(organ_name)
         self.key = f"{condition} {readable}"
+
+    def return_appearance(self, looker, **kwargs):
+        """Render condition-keyed default prose above any base desc.
+
+        PR-G: every harvested organ now ships with a clinical default
+        description per condition (pristine / damaged / putrid).  We
+        prepend that prose to the standard ``return_appearance`` output
+        so the player sees the organ's current state at a glance even
+        when no custom ``db.desc`` has been set.
+
+        Refuse-stage organs (skeletal harvest, which the command gate
+        refuses anyway) and organs not registered in
+        :data:`world.medical.constants.ORGAN_DISPLAY` fall through to
+        the base appearance without a prefix.
+        """
+        from world.medical.constants import get_organ_default_description
+
+        base = super().return_appearance(looker, **kwargs)
+        prose = get_organ_default_description(
+            self.db.organ_name or "", self.db.condition or "",
+        )
+        if prose:
+            return f"{prose}\n{base}" if base else prose
+        return base
 
 
 class Appendage(Item):
@@ -1052,6 +1086,11 @@ class Appendage(Item):
         self.db.source_signature = None
         self.db.source_apparent_uid = None
         self.db.source_corpse_dbref = None
+        # PR-G: species provenance for decay-aware naming.  Defaults to
+        # ``"human"`` so legacy code paths and tests that spawn a bare
+        # Appendage without going through ``configure_from_sever`` still
+        # render a sensible key.
+        self.db.source_species = "human"
         # PR #198 wound + longdesc carry-forward: populated by
         # ``configure_from_sever`` via ``apply_wound_and_longdesc_overlay``.
         # Default to empty containers so renderer code paths can iterate
@@ -1067,13 +1106,26 @@ class Appendage(Item):
             condition (str): Freshness descriptor.
             corpse: The source :class:`typeclasses.corpse.Corpse`.
         """
+        from world.anatomy import get_species_part_name
+
         self.db.location_name = location_name
         self.db.condition = condition
         self.db.source_signature = corpse.db.signature_at_death
         self.db.source_apparent_uid = corpse.db.apparent_uid_at_death
         self.db.source_corpse_dbref = corpse.dbref
-        readable = location_name.replace("_", " ")
-        self.key = f"{condition} {readable}"
+        # PR-G: inherit species from corpse so the appendage's
+        # decay-modulated key matches its origin anatomy.
+        species = corpse.db.species or "human"
+        self.db.source_species = species
+        # Read the corpse's current decay stage for naming.  The
+        # ``condition`` parameter is the organ-condition mapping
+        # (pristine / damaged / putrid / refuse) — useful for harvest
+        # bookkeeping but coarser than the underlying decay tier.
+        try:
+            decay_stage = corpse.get_decay_stage()
+        except AttributeError:
+            decay_stage = "fresh"
+        self.key = get_species_part_name(species, location_name, decay_stage)
         # PR #198: pull this location's wound + longdesc prose off the
         # corpse onto ourselves.  The corpse-side mutation
         # (delete-from-source + synthesized stump wound) is handled by
@@ -1388,15 +1440,21 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         return "skeletal"
 
     def _decay_display_name(self):
-        """Fallback display when no recognition memory matches."""
+        """Fallback display when no recognition memory matches.
+
+        PR-G: delegates to the species registry so head names drift
+        through the decay tiers in lockstep with the rest of the
+        species-aware naming surface (corpse, severed limbs, organs).
+        Skeletal heads render as "skeletal head" rather than a bespoke
+        "skull" — gameplay-consistent with the unified vocabulary —
+        though the species table can override this later if a "skull"
+        alias is wanted as a search keyword.
+        """
+        from world.anatomy import get_species_part_name
+
+        species = self.db.source_species or "human"
         stage = self.get_decay_stage()
-        return {
-            "fresh": "fresh severed head",
-            "early": "pale severed head",
-            "moderate": "decomposing severed head",
-            "advanced": "putrid severed head",
-            "skeletal": "skull",
-        }.get(stage, "severed head")
+        return get_species_part_name(species, "head", stage)
 
     def get_medical_snapshot(self):
         """Return the trimmed head-container medical snapshot, if any.

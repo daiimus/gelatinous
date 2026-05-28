@@ -491,18 +491,28 @@ class DeathProgressionScript(DefaultScript):
     def _create_corpse_from_character(self, character):
         """Create a corpse object that preserves forensic data from the character."""
         from evennia import create_object
+        from world.anatomy import get_species_corpse_name
         import time
-        
+
+        # Determine source species (default to human) so the corpse's
+        # decay-modulated key reflects the deceased's anatomy.
+        species = character.db.species or "human"
+        initial_key = get_species_corpse_name(species, "fresh")
+
         # Create corpse object using specialized Corpse typeclass
         corpse = create_object(
             typeclass="typeclasses.corpse.Corpse",
-            key="fresh corpse",  # Anonymous corpse name
+            key=initial_key,  # Species-aware, decay-modulated anonymous name
             location=character.location
         )
-        
+
         # The Corpse typeclass automatically sets up most properties in at_object_creation()
         # Just need to transfer the specific forensic data from this character
-        
+
+        # Propagate species to the corpse so decay updates and any organ /
+        # severed-part creation downstream can stay species-consistent.
+        corpse.db.species = species
+
         # Transfer forensic data for investigation
         corpse.db.original_character_name = character.key
         corpse.db.original_character_dbref = character.dbref

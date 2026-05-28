@@ -1891,6 +1891,106 @@ renderer independent of registry growth in subsequent PRs.
 and organs; decay-modulated keys; recognition reveal as parenthetical;
 static default descriptions per organ × condition tier.
 
+### Species Anatomy Overlay (PR-G ✅ — PR #202)
+
+PR-G introduces a thin **species registry** at `world/anatomy/species.py`
+that owns the player-facing vocabulary for body locations, severed
+parts, and whole-corpse names — keyed by species and decay stage.  The
+registry is consulted by every species-aware rendering path
+(`Corpse`, `Appendage`, `SeveredHead`, `Organ`, wound-display
+`get_location_display_name`) so naming conventions stay consistent and
+new species can be added by registering a single dict.
+
+**Registry shape** (`SPECIES_DEFINITIONS[species]`):
+
+| Key                    | Purpose                                              |
+|------------------------|------------------------------------------------------|
+| `display_name`         | Glance-level species tag (e.g. `"human"`).           |
+| `location_display`     | Canonical body-location → readable string mapping.   |
+| `decay_part_prefixes`  | Decay-stage → severed-part template (`{species} {part}`). |
+| `decay_corpse_names`   | Decay-stage → whole-corpse name string.              |
+
+**Three pure-function helpers** (state-free, callable per
+`get_display_name` invocation):
+
+```python
+get_species_location_display(species, location) -> str
+get_species_part_name(species, location, decay_stage) -> str
+get_species_corpse_name(species, decay_stage) -> str
+```
+
+Unknown species fall back to the `"human"` definition; unknown
+locations fall back to underscore-stripped passthrough; unknown decay
+stages fall back to the `"fresh"` template.
+
+**Provenance propagation**:
+
+* `Character.at_object_creation` sets `db.species = "human"` (default).
+* `_create_corpse_from_character` copies `character.db.species` →
+  `corpse.db.species` and seeds the corpse's initial key with
+  `get_species_corpse_name(species, "fresh")`.
+* `Appendage.configure_from_sever` and `Organ.configure_from_harvest`
+  copy `corpse.db.species` → `db.source_species`.
+* `SeveredHead` inherits the propagation via its super-call.
+
+### Display-Name Conventions (PR-G ✅)
+
+**Decay-tier vocabulary** — universal across corpses and severed parts:
+
+| Stage     | Part display           | Corpse display       |
+|-----------|------------------------|----------------------|
+| fresh     | `human <part>`         | `human corpse`       |
+| early     | `human <part>`         | `human corpse`       |
+| moderate  | `rotting <part>`       | `rotting corpse`     |
+| advanced  | `rotting <part>`       | `rotting corpse`     |
+| skeletal  | `skeletal <part>`      | `skeletal remains`   |
+
+Fresh / early stages cleanly identify species; moderate / advanced
+obscure species (just "rotting"); skeletal abandons species entirely
+and the corpse switches from "corpse" to "remains" — a deliberate
+vocabulary shift that signals decay irreversibility.
+
+**Recognition-parenthetical format** — `IdentityBearerMixin.get_display_name`:
+
+When an observer's recognition memory matches the bearer's UID (either
+natural recognition on the degraded UID or forensic recovery on the
+fresh UID), the returned display name is:
+
+```
+<decay name> (<assigned name>)
+```
+
+Examples: `"human corpse (Jorge)"`, `"rotting corpse (Jorge)"`,
+`"rotting head (Mira)"`.  The decay name still leads so the
+recognising observer retains glance-level awareness of decay state;
+the parenthetical surfaces the remembered identity.  Living
+characters are unaffected — they don't pass through
+`IdentityBearerMixin`.  Skeletal stage retains its hard cutoff (no
+recognition reveal under any circumstance).
+
+### Organ Default Descriptions (PR-G ✅)
+
+`world/medical/constants.py` ships an `ORGAN_DISPLAY` table sibling
+to `ORGANS`, carrying display names and condition-keyed prose for
+every harvestable organ (26 entries × 3 conditions: pristine /
+damaged / putrid).  The prose is short, clinical, and physically
+anchored — enough to ground the player in the organ's current state
+without `look` requiring a custom `db.desc`.
+
+`Organ.return_appearance` prepends the condition-keyed prose to the
+base appearance output, so a freshly harvested heart reads:
+
+```
+A dense, dark-red heart, its muscle firm and the great vessels
+stumped cleanly above.
+```
+
+Two lookup helpers (`get_organ_display_name`,
+`get_organ_default_description`) provide defensive fallbacks: unknown
+organs return the underscore-stripped key; unknown conditions
+(`refuse` — skeletal-stage harvest, refused at the command gate)
+return empty so callers render nothing rather than asserting.
+
 ---
 
 ## New Character Attributes

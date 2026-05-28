@@ -93,11 +93,13 @@ class _FakeDecayCorpse:
         self.contents = list(contents or [])
         self.ndb = type("_NDB", (), {})()
         self._stage = stage
+        # PR-G: match the species-aware vocabulary produced by
+        # ``world.anatomy.get_species_corpse_name(species="human", ...)``.
         self._decay_names = {
-            "fresh": "fresh corpse",
-            "early": "pale corpse",
-            "moderate": "decomposing remains",
-            "advanced": "putrid remains",
+            "fresh": "human corpse",
+            "early": "human corpse",
+            "moderate": "rotting corpse",
+            "advanced": "rotting corpse",
             "skeletal": "skeletal remains",
         }
 
@@ -245,7 +247,9 @@ class TestNaturalRecognitionLightDecay(TestCase):
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
         )
-        self.assertEqual(corpse.get_display_name(observer), "Jorge")
+        self.assertEqual(
+            corpse.get_display_name(observer), "human corpse (Jorge)"
+        )
 
     def test_early_recognition_returns_assigned_name(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="early")
@@ -253,19 +257,21 @@ class TestNaturalRecognitionLightDecay(TestCase):
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
         )
-        self.assertEqual(corpse.get_display_name(observer), "Jorge")
+        self.assertEqual(
+            corpse.get_display_name(observer), "human corpse (Jorge)"
+        )
 
     def test_none_looker_returns_decay_name(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="moderate")
         self.assertEqual(
-            corpse.get_display_name(None), "decomposing remains",
+            corpse.get_display_name(None), "rotting corpse",
         )
 
     def test_stranger_sees_decay_name(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="moderate")
         observer = _FakeObserver(memory={})
         self.assertEqual(
-            corpse.get_display_name(observer), "decomposing remains",
+            corpse.get_display_name(observer), "rotting corpse",
         )
 
 
@@ -285,7 +291,7 @@ class TestForensicRecovery(TestCase):
         )
         # DC 3 for moderate; force a passing roll.
         with patch("world.combat.dice.roll_stat", return_value=3):
-            self.assertEqual(corpse.get_display_name(observer), "Jorge")
+            self.assertEqual(corpse.get_display_name(observer), "rotting corpse (Jorge)")
 
     def test_moderate_fail_returns_decay_name(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="moderate")
@@ -296,7 +302,7 @@ class TestForensicRecovery(TestCase):
         # DC 3 for moderate; force a failing roll.
         with patch("world.combat.dice.roll_stat", return_value=2):
             self.assertEqual(
-                corpse.get_display_name(observer), "decomposing remains",
+                corpse.get_display_name(observer), "rotting corpse",
             )
 
     def test_advanced_pass_returns_assigned_name(self):
@@ -307,7 +313,7 @@ class TestForensicRecovery(TestCase):
         )
         # DC 5 for advanced.
         with patch("world.combat.dice.roll_stat", return_value=5):
-            self.assertEqual(corpse.get_display_name(observer), "Jorge")
+            self.assertEqual(corpse.get_display_name(observer), "rotting corpse (Jorge)")
 
     def test_advanced_fail_returns_decay_name(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="advanced")
@@ -317,7 +323,7 @@ class TestForensicRecovery(TestCase):
         )
         with patch("world.combat.dice.roll_stat", return_value=4):
             self.assertEqual(
-                corpse.get_display_name(observer), "putrid remains",
+                corpse.get_display_name(observer), "rotting corpse",
             )
 
 
@@ -338,13 +344,13 @@ class TestForensicCache(TestCase):
         # First look: forced failure.
         with patch("world.combat.dice.roll_stat", return_value=1):
             self.assertEqual(
-                corpse.get_display_name(observer), "decomposing remains",
+                corpse.get_display_name(observer), "rotting corpse",
             )
         # Second look: even a guaranteed-pass roll must not re-roll —
         # the cached failure persists.
         with patch("world.combat.dice.roll_stat", return_value=99) as mocked:
             self.assertEqual(
-                corpse.get_display_name(observer), "decomposing remains",
+                corpse.get_display_name(observer), "rotting corpse",
             )
             mocked.assert_not_called()
 
@@ -355,10 +361,10 @@ class TestForensicCache(TestCase):
             memory={fresh_uid: {"assigned_name": "Jorge"}},
         )
         with patch("world.combat.dice.roll_stat", return_value=10):
-            self.assertEqual(corpse.get_display_name(observer), "Jorge")
+            self.assertEqual(corpse.get_display_name(observer), "rotting corpse (Jorge)")
         # Cached success: a forced-fail roll must not be consulted.
         with patch("world.combat.dice.roll_stat", return_value=1) as mocked:
-            self.assertEqual(corpse.get_display_name(observer), "Jorge")
+            self.assertEqual(corpse.get_display_name(observer), "rotting corpse (Jorge)")
             mocked.assert_not_called()
 
     def test_cache_is_keyed_by_dbref(self):
@@ -372,11 +378,11 @@ class TestForensicCache(TestCase):
         with patch("world.combat.dice.roll_stat", return_value=1):
             self.assertEqual(
                 corpse.get_display_name(observer_a),
-                "decomposing remains",
+                "rotting corpse",
             )
         # B independently passes (different dbref → fresh roll).
         with patch("world.combat.dice.roll_stat", return_value=99):
-            self.assertEqual(corpse.get_display_name(observer_b), "Jorge")
+            self.assertEqual(corpse.get_display_name(observer_b), "rotting corpse (Jorge)")
 
     def test_anonymous_looker_rerolls_each_call(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="moderate")
@@ -389,11 +395,11 @@ class TestForensicCache(TestCase):
         with patch("world.combat.dice.roll_stat", return_value=1):
             self.assertEqual(
                 corpse.get_display_name(observer),
-                "decomposing remains",
+                "rotting corpse",
             )
         # Re-roll happens because nothing was stored.
         with patch("world.combat.dice.roll_stat", return_value=99) as mocked:
-            self.assertEqual(corpse.get_display_name(observer), "Jorge")
+            self.assertEqual(corpse.get_display_name(observer), "rotting corpse (Jorge)")
             mocked.assert_called_once()
 
 
@@ -441,7 +447,7 @@ class TestWornItemDisguiseThroughDecay(TestCase):
         # Advanced DC = 5; pass.
         with patch("world.combat.dice.roll_stat", return_value=5):
             self.assertEqual(
-                corpse.get_display_name(observer), "BalaclavaDude",
+                corpse.get_display_name(observer), "rotting corpse (BalaclavaDude)",
             )
 
 

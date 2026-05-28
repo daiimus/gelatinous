@@ -109,16 +109,17 @@ class Corpse(IdentityBearerMixin, Item):
 
 
     def _decay_display_name(self):
-        """Return the decay-stage name used when no recognition matches."""
+        """Return the decay-stage name used when no recognition matches.
+
+        PR-G: delegates to the species registry so corpse fallback
+        names share vocabulary with the rest of the species-aware
+        naming surface (severed limbs, organs, organ-display prose).
+        """
+        from world.anatomy import get_species_corpse_name
+
         stage = self.get_decay_stage()
-        decay_names = {
-            "fresh": "fresh corpse",
-            "early": "pale corpse",
-            "moderate": "decomposing remains",
-            "advanced": "putrid remains",
-            "skeletal": "skeletal remains",
-        }
-        return decay_names.get(stage, 'corpse')
+        species = self.db.species or "human"
+        return get_species_corpse_name(species, stage)
 
     # ------------------------------------------------------------------
     # Disguise / identity signature surface
@@ -607,30 +608,37 @@ class Corpse(IdentityBearerMixin, Item):
     
     def _update_decay_descriptions(self):
         """Update descriptions based on current decay stage."""
+        from world.anatomy import get_species_corpse_name
+
         stage = self.get_decay_stage()
         decay_factor = self.get_decay_factor()
         
         # Base physical description
         base_desc = self.db.physical_description or "A lifeless body."
-        
-        # Update aliases to match decay stage so players can reference the corpse correctly
-        decay_names = {
-            "fresh": "fresh corpse",
-            "early": "pale corpse", 
-            "moderate": "decomposing remains",
-            "advanced": "putrid remains",
-            "skeletal": "skeletal remains"
-        }
-        
-        stage_name = decay_names.get(stage, 'corpse')
+
+        # PR-G: derive the player-facing corpse name from the species
+        # registry rather than hardcoded per-stage strings.  This keeps
+        # non-human corpses (when they exist) consistent and lets the
+        # registry own the decay vocabulary in one place.
+        species = self.db.species or "human"
+        stage_name = get_species_corpse_name(species, stage)
+
+        # Update the corpse's primary key so glance-level rendering
+        # (room contents, inventory listings) reflects the current
+        # decay tier.  Recognition memory (handled by
+        # IdentityBearerMixin.get_display_name) overrides this when an
+        # observer has assigned a name to the corpse.
+        if self.key != stage_name:
+            self.key = stage_name
+
         # Update aliases to include the current decay stage name
         # Don't use clear() as it wipes out Evennia's multi-match tracking
         # Instead, get current aliases and add our decay-related ones
         current_aliases = set(self.aliases.all())
-        
+
         # Define the aliases we want for this decay stage
         desired_aliases = {stage_name, "corpse", "remains", "body"}
-        
+
         # Add any missing aliases
         for alias in desired_aliases:
             if alias not in current_aliases:

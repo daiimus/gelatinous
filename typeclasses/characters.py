@@ -125,6 +125,10 @@ class Character(
             import uuid
             self.sleeve_uid = str(uuid.uuid4())
 
+        # Initialize species for anatomy/decay naming (PR-G)
+        if self.db.species is None:
+            self.db.species = "human"
+
         # Initialize medical system - replaces legacy HP system
         self._initialize_medical_state()
 

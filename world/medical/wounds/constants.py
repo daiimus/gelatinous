@@ -22,15 +22,23 @@ INJURY_SEVERITY_MAP = {
     "Critical": "grievous",
 }
 
-# Body location display mapping for wounds (dynamic - will adapt to character's anatomy)
+# Body location display mapping for wounds (species-aware via the
+# anatomy registry).
 def get_location_display_name(location, character=None):
     """
-    Get the display name for a body location based on character's anatomy.
-    
+    Get the display name for a body location based on character's species.
+
+    PR-G: delegates to :func:`world.anatomy.get_species_location_display`
+    so naming stays consistent with severed limbs, organs, and corpses.
+    The previous ``character.location_display_names`` per-instance
+    override branch was dead code (no production code path ever set
+    the attribute) and has been removed.
+
     Args:
         location (str): Body location key
-        character: Character object (optional)
-        
+        character: Character object (optional) — used to read
+            ``db.species``; falls back to ``"human"`` when absent.
+
     Returns:
         str: Human-readable location name
     """
@@ -38,35 +46,13 @@ def get_location_display_name(location, character=None):
     if isinstance(location, str) is False and isinstance(character, str):
         # Swap arguments - old calling convention passed (character, location)
         character, location = location, character
-    
-    # Check if character has custom location names
-    if character and hasattr(character, 'location_display_names'):
-        custom_name = character.location_display_names.get(location)
-        if custom_name:
-            return custom_name
-    
-    # Default humanoid mappings (fallback)
-    default_mappings = {
-        "head": "head",
-        "face": "face", 
-        "chest": "chest",
-        "abdomen": "abdomen",
-        "back": "back",
-        "left_arm": "left arm",
-        "right_arm": "right arm",
-        "left_hand": "left hand", 
-        "right_hand": "right hand",
-        "left_thigh": "left thigh",
-        "right_thigh": "right thigh",
-        "left_shin": "left shin",
-        "right_shin": "right shin",
-        "left_foot": "left foot",
-        "right_foot": "right foot",
-        "neck": "neck",
-        "groin": "groin",
-    }
-    
-    return default_mappings.get(location, location)
+
+    from world.anatomy import get_species_location_display
+
+    species = None
+    if character is not None:
+        species = getattr(character.db, "species", None)
+    return get_species_location_display(species, location)
 
 # Wound transition thresholds (days since injury)
 WOUND_TRANSITION_DAYS = {

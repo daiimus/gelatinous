@@ -121,7 +121,9 @@ class TestIdentityBearerMixin(TestCase):
         ), patch(
             "world.identity.get_apparent_uid", return_value="uid-A",
         ):
-            self.assertEqual(bearer.get_display_name(looker), "Alice")
+            self.assertEqual(
+                bearer.get_display_name(looker), "fresh bearer (Alice)"
+            )
 
     def test_forensic_recovery_on_pass(self):
         """Degraded UID misses, fresh UID hits, Intellect roll passes."""
@@ -141,7 +143,9 @@ class TestIdentityBearerMixin(TestCase):
             "._attempt_forensic_recognition",
             return_value=True,
         ):
-            self.assertEqual(bearer.get_display_name(looker), "Alice")
+            self.assertEqual(
+                bearer.get_display_name(looker), "moderate thing (Alice)"
+            )
 
     def test_forensic_recovery_on_fail(self):
         """Degraded UID misses, fresh UID hits, Intellect roll fails."""

@@ -73,14 +73,19 @@ class IdentityBearerMixin:
         """Return a display name, preferring recognition memory.
 
         Mirrors the corpse-recognition contract: observers who already
-        remember the deceased / severed party see the assigned name;
-        strangers and the system see the decay-stage fallback.
+        remember the deceased / severed party see the decay-stage name
+        followed by the assigned name in parentheses (PR-G); strangers
+        and the system see only the decay-stage fallback.
 
         * ``looker is None`` → decay-stage fallback.
         * ``get_decay_stage() == "skeletal"`` → hard cutoff; return
           decay-stage fallback regardless of recognition memory.
         * Otherwise two-pass: natural (degraded UID) then forensic
-          (fresh UID + Intellect roll).
+          (fresh UID + Intellect roll).  A successful match returns
+          ``"<decay name> (<assigned name>)"`` — e.g.
+          ``"rotting corpse (Jorge)"`` — so the recognising observer
+          still sees decay state at a glance while having the
+          remembered identity surfaced.
         """
         del kwargs  # Evennia passes look context we don't need.
         decay_name = self._decay_display_name()
@@ -109,7 +114,7 @@ class IdentityBearerMixin:
         if degraded_uid is not None and degraded_uid in memory:
             assigned = memory[degraded_uid].get("assigned_name")
             if assigned:
-                return assigned
+                return f"{decay_name} ({assigned})"
 
         # Pass 2: forensic recovery against the fresh-equivalent UID.
         try:
@@ -125,7 +130,7 @@ class IdentityBearerMixin:
             if self._attempt_forensic_recognition(looker, stage):
                 assigned = memory[fresh_uid].get("assigned_name")
                 if assigned:
-                    return assigned
+                    return f"{decay_name} ({assigned})"
 
         return decay_name
 

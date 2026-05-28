@@ -55,6 +55,9 @@ class _FakeHead:
         self.db.removed_organs = []
         self.db.signature_at_death = None
         self.db.apparent_uid_at_death = None
+        # PR-G: species drives decay-aware naming via the anatomy
+        # registry; stub defaults to human to match production behaviour.
+        self.db.source_species = "human"
 
 
 class _FakeCorpse:
@@ -226,10 +229,10 @@ class SeveredHeadDecayContractTests(TestCase):
     def test_decay_display_name_per_stage(self):
         head = self._make_head_at_age(60)
         self.assertEqual(
-            SeveredHead._decay_display_name(head), "fresh severed head"
+            SeveredHead._decay_display_name(head), "human head"
         )
         head.db.creation_time = time.time() - (604800 + 10)
-        self.assertEqual(SeveredHead._decay_display_name(head), "skull")
+        self.assertEqual(SeveredHead._decay_display_name(head), "skeletal head")
 
     def test_get_worn_items_is_empty(self):
         head = _FakeHead()
