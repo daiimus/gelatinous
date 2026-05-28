@@ -26,7 +26,7 @@ from __future__ import annotations
 from evennia import Command, create_object
 
 from typeclasses.corpse import Corpse
-from typeclasses.items import SeveredHead
+from typeclasses.items import SeveredHead, apply_sever_to_corpse
 from world.combat.constants import (
     AUTOPSY_DC_BASIC,
     HARVEST_CRIT_FAIL,
@@ -638,6 +638,13 @@ class CmdSever(Command):
         appendage.configure_from_sever(
             location_name=location_arg, condition=condition, corpse=target,
         )
+
+        # PR #198: mirror the appendage-side wound/longdesc overlay by
+        # clearing that prose off the corpse and synthesizing a stump
+        # wound at the canonical severed location.  Handles the
+        # head-cluster fan-out internally (head sever also clears
+        # face / neck / eyes / ears prose).
+        apply_sever_to_corpse(target, location_arg)
 
         caller.msg(
             f"You sever the {readable_name} from {corpse_display} — "

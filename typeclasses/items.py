@@ -1052,6 +1052,12 @@ class Appendage(Item):
         self.db.source_signature = None
         self.db.source_apparent_uid = None
         self.db.source_corpse_dbref = None
+        # PR #198 wound + longdesc carry-forward: populated by
+        # ``configure_from_sever`` via ``apply_wound_and_longdesc_overlay``.
+        # Default to empty containers so renderer code paths can iterate
+        # without ``None`` checks.
+        self.db.wounds_at_death = []
+        self.db.longdesc_data = {}
 
     def configure_from_sever(self, *, location_name, condition, corpse):
         """Populate forensic-chain fields immediately after spawn.
@@ -1068,6 +1074,179 @@ class Appendage(Item):
         self.db.source_corpse_dbref = corpse.dbref
         readable = location_name.replace("_", " ")
         self.key = f"{condition} {readable}"
+        # PR #198: pull this location's wound + longdesc prose off the
+        # corpse onto ourselves.  The corpse-side mutation
+        # (delete-from-source + synthesized stump wound) is handled by
+        # :func:`commands.forensics._apply_sever_to_corpse` so this
+        # helper stays a pure copy and is independently unit-testable.
+        apply_wound_and_longdesc_overlay(self, corpse, (location_name,))
+
+    def return_appearance(self, looker, **kwargs):
+        """Compose appearance from base desc + carried longdesc + wounds.
+
+        PR #198: severed limbs and heads carry forward the source
+        corpse's per-location longdesc prose and wound records.  We
+        render them after the base ``return_appearance`` output so the
+        condition-keyed line (e.g. ``"fresh left arm"``) still leads.
+
+        Longdesc text is shown verbatim — the ``condition`` prefix in
+        the key already conveys decay state, so we deliberately skip
+        the decay-modulation pass that
+        :class:`typeclasses.corpse.Corpse` applies to its preserved
+        longdescs.  Wound descriptions render at ``stage="old"`` to
+        match the corpse's own preserved-wound contract.
+        """
+        base = super().return_appearance(looker, **kwargs)
+        parts = [base] if base else []
+
+        longdescs = self.db.longdesc_data or {}
+        if longdescs:
+            try:
+                from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
+            except ImportError:
+                ANATOMICAL_DISPLAY_ORDER = list(longdescs.keys())
+            seen = set()
+            for loc in ANATOMICAL_DISPLAY_ORDER:
+                text = longdescs.get(loc)
+                if text and loc not in seen:
+                    parts.append(text)
+                    seen.add(loc)
+            # Any longdesc locations not in the canonical order
+            # (defensive — preserves prose for nonstandard anatomy).
+            for loc, text in longdescs.items():
+                if text and loc not in seen:
+                    parts.append(text)
+                    seen.add(loc)
+
+        wounds = self.db.wounds_at_death or []
+        if wounds:
+            try:
+                from world.medical.wounds import get_wound_description
+            except ImportError:
+                get_wound_description = None
+            if get_wound_description is not None:
+                for wound in wounds:
+                    try:
+                        rendered = get_wound_description(
+                            injury_type=wound.get("injury_type", "generic"),
+                            location=wound.get(
+                                "location", self.db.location_name or ""
+                            ),
+                            severity=wound.get("severity", "Moderate"),
+                            stage="old",
+                            organ=wound.get("organ"),
+                            character=self,
+                        )
+                    except (KeyError, ValueError, AttributeError):
+                        continue
+                    if rendered:
+                        parts.append(rendered)
+
+        return "\n".join(p for p in parts if p)
+
+
+def apply_wound_and_longdesc_overlay(appendage, corpse, locations):
+    """Copy wounds + longdesc prose for ``locations`` from corpse → appendage.
+
+    Extracted as a module-level helper (matching the
+    :func:`apply_severed_head_overlay` pattern) so unit tests can
+    exercise the overlay against plain-Python stubs without
+    instantiating an Evennia typeclass.
+
+    The overlay is a **pure copy** — the caller (:func:`commands.forensics._apply_sever_to_corpse`)
+    is responsible for the symmetric corpse-side delete + stump-wound
+    synthesis.  Wound dict entries are shallow-copied (one level) to
+    prevent the appendage and corpse from sharing list/dict identity
+    on subsequent mutations.
+
+    Args:
+        appendage: Object whose ``db`` should receive ``wounds_at_death``
+            and ``longdesc_data`` for the given locations.
+        corpse: Source :class:`typeclasses.corpse.Corpse`-like object
+            whose ``db.wounds_at_death`` and ``db.longdesc_data`` are
+            read.
+        locations: Iterable of body-location names.  Wounds whose
+            ``location`` field is in this set are copied; longdesc
+            entries whose key is in this set are copied.
+    """
+    locs = frozenset(locations)
+
+    src_wounds = corpse.db.wounds_at_death or []
+    appendage.db.wounds_at_death = [
+        dict(wound) for wound in src_wounds
+        if wound.get("location") in locs
+    ]
+
+    src_longdescs = corpse.db.longdesc_data or {}
+    appendage.db.longdesc_data = {
+        loc: text for loc, text in src_longdescs.items() if loc in locs
+    }
+
+
+def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
+    """Mutate ``corpse`` to reflect a successful sever at ``location_arg``.
+
+    Symmetric counterpart to :func:`apply_wound_and_longdesc_overlay`:
+    where the overlay copies prose onto the severed item, this helper
+    removes that prose from the source corpse and synthesizes a stump
+    wound at the canonical severed location.
+
+    For ``location_arg == "head"`` the full
+    :data:`world.combat.constants.SEVERED_HEAD_LOCATIONS` cluster is
+    cleared from the corpse's ``longdesc_data`` and ``wounds_at_death``
+    (face, neck, eyes, ears all visually leave with the head).  For
+    any other limb, only that single location is cleared.  In every
+    case exactly one synthesized ``severed``-type wound is appended at
+    ``location_arg`` so the corpse renders, e.g., *"the left shoulder
+    ends in a ragged stump"*.
+
+    Args:
+        corpse: The source corpse to mutate in place.
+        location_arg: Canonical severed-location identifier
+            (member of :data:`world.combat.constants.SEVERABLE_CONTAINERS`).
+        head_locations: Override for the head-cluster set; defaults to
+            :data:`world.combat.constants.SEVERED_HEAD_LOCATIONS`.
+            Exposed for test injection.
+    """
+    if head_locations is None:
+        from world.combat.constants import SEVERED_HEAD_LOCATIONS
+        head_locations = SEVERED_HEAD_LOCATIONS
+
+    if location_arg == "head":
+        locs = frozenset(head_locations)
+    else:
+        locs = frozenset({location_arg})
+
+    # Drop longdesc prose for the cleared locations.
+    src_longdescs = corpse.db.longdesc_data or {}
+    if src_longdescs:
+        corpse.db.longdesc_data = {
+            loc: text for loc, text in src_longdescs.items()
+            if loc not in locs
+        }
+
+    # Wounds at the cleared locations move to the severed item; drop
+    # them from the corpse to avoid double-counting in autopsy.
+    src_wounds = corpse.db.wounds_at_death or []
+    remaining = [
+        wound for wound in src_wounds
+        if wound.get("location") not in locs
+    ]
+    # Synthesized stump wound — single entry at the canonical sever
+    # location, regardless of head-cluster size.
+    remaining.append({
+        "injury_type": "severed",
+        "location": location_arg,
+        "severity": "Critical",
+        "stage": "old",
+        "organ": None,
+        "organ_damage": {
+            "current_hp": 0,
+            "max_hp": 0,
+            "container": location_arg,
+        },
+    })
+    corpse.db.wounds_at_death = remaining
 
 
 def apply_severed_head_overlay(head, corpse):
@@ -1258,10 +1437,22 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         open.
         """
         # Inherited bookkeeping: location_name, condition, source_*
-        # provenance, display key.
+        # provenance, display key.  The Appendage super-call also
+        # invokes :func:`apply_wound_and_longdesc_overlay` for the
+        # single ``"head"`` location; we re-invoke it below with the
+        # full head-cluster set so face / neck / eyes / ears prose
+        # also follows the severed head.
         super().configure_from_sever(
             location_name=location_name, condition=condition, corpse=corpse,
         )
         # Identity / decay / trimmed snapshot overlay (unit-testable).
         apply_severed_head_overlay(self, corpse)
+        # Re-apply wound + longdesc overlay across the full head-cluster
+        # (overrides the head-only set the Appendage super-call laid
+        # down).  Per PR #198: face, neck, eyes, ears all visually leave
+        # with the head.
+        from world.combat.constants import SEVERED_HEAD_LOCATIONS
+        apply_wound_and_longdesc_overlay(
+            self, corpse, SEVERED_HEAD_LOCATIONS,
+        )
 

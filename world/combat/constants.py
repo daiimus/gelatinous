@@ -796,3 +796,15 @@ SEVERABLE_CONTAINERS = frozenset({
     "left_shin", "right_shin",
     "left_foot", "right_foot",
 })
+
+# Body locations bundled with the severed-head super-item.  When the
+# head is severed (PR #198), the longdesc text and wound records for
+# all of these locations move from the corpse onto the SeveredHead,
+# since they are visually and anatomically part of the head cluster.
+# The corpse loses prose for every location in this set and gains a
+# single synthesized ``severed`` wound at ``head``.
+SEVERED_HEAD_LOCATIONS = frozenset({
+    "head", "face", "neck",
+    "left_eye", "right_eye",
+    "left_ear", "right_ear",
+})

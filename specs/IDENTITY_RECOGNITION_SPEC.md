@@ -1792,6 +1792,58 @@ remains `Corpse`-only.
 *body's* identity at sever time, not consciousness; sleeve-swap
 awareness on the head awaits the resleeving system.
 
+### Wound + Longdesc Carry-Forward (PR-D ✅ — PR #198)
+
+When `CmdSever` succeeds, the severed appendage (or head) inherits
+the corpse's per-location wounds and free-form longdesc prose, and
+the corpse's matching prose is cleared and replaced with a
+synthesized stump wound — keeping a single source of truth for "what
+happened to that body part" and letting both autopsy and the severed
+item render the same narrative.
+
+**Move semantics** (not copy): pre-existing wounds at the severed
+location(s) are removed from the corpse and reassigned to the
+severed item. The corpse keeps only the synthesized stump wound at
+the sever location. This prevents double-reporting in autopsy.
+
+**Head cluster**: severing the head moves wounds and longdesc for
+the entire head cluster — `{head, face, neck, left_eye, right_eye,
+left_ear, right_ear}` (see `SEVERED_HEAD_LOCATIONS` in
+`world/combat/constants.py`). Limbs use a single-location move.
+
+**Stump wound contract**: synthesized as
+`{injury_type: "severed", location: <sever_loc>, severity: "Critical",
+stage: "old", organ: None, organ_damage: {current_hp: 0, max_hp: 0,
+container: <sever_loc>}}` and appended to `corpse.db.wounds_at_death`.
+Rendering flows through the standard
+`world.medical.wounds.get_wound_description()` pipeline using new
+templates in `world/medical/wounds/messages/severed.py` (fresh / old /
+treated / healing / scarred / destroyed stages all defined, with `old`
+being the canonical autopsy form).
+
+**Severed-item rendering**: `Appendage.return_appearance` (and the
+`SeveredHead` override) renders the base condition prose, then any
+carried longdesc verbatim per location (no decay modulation — once
+written into death prose, it ages with the host item's overall decay
+clock, not its own), then any inherited wounds via
+`get_wound_description`. This keeps a severed hand with a tattoo
+description on it readable as "a severed left hand — tattoo prose —
+old slash wound" regardless of where the hand ends up.
+
+**Helpers** (`typeclasses/items.py`):
+- `apply_wound_and_longdesc_overlay(item, corpse, locations)` —
+  moves the listed locations' wounds and longdesc from corpse → item.
+- `apply_sever_to_corpse(corpse, location)` — wraps the overlay for
+  the limb / head-cluster case and stamps the stump wound onto the
+  corpse.
+
+**Failure modes**: on a failed sever roll, neither helper is called;
+the corpse retains its wounds and longdesc unchanged.
+
+**Deferred**: per-organ wound carry-forward when only an organ
+(rather than a whole limb) is harvested; decay-tier modulation of
+inherited longdesc prose on the severed item itself.
+
 ---
 
 ## New Character Attributes

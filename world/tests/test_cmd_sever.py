@@ -67,6 +67,8 @@ class _FakeCorpse(_CorpseStandIn):
         snapshot=None,
         removed_organs=None,
         severed_locations=None,
+        wounds_at_death=None,
+        longdesc_data=None,
         dbref="#101",
     ):
         self.key = key
@@ -79,6 +81,14 @@ class _FakeCorpse(_CorpseStandIn):
         self.db.medical_state_at_death = snapshot
         self.db.removed_organs = list(removed_organs or ())
         self.db.severed_locations = list(severed_locations or ())
+        # PR #198 corpse-side state read by apply_sever_to_corpse.
+        self.db.wounds_at_death = list(wounds_at_death or ())
+        self.db.longdesc_data = dict(longdesc_data or {})
+        # PR #198 decay clock fields touched by apply_severed_head_overlay.
+        import time
+        self.db.creation_time = time.time()
+        self.db.death_time = time.time()
+        self.db.death_cause = "gunshot"
         self._display = display or key
         self._decay_stage = decay_stage
 
@@ -376,3 +386,87 @@ class CmdSeverTests(TestCase):
             _make_cmd(caller=caller, args="left_arm from corpse").func()
         args, _ = mk.call_args
         self.assertEqual(args[0], "typeclasses.items.Appendage")
+
+    # ----- wound + longdesc carry-forward (PR #198) -----
+
+    def test_successful_sever_clears_corpse_longdesc(self):
+        """After a limb sever, the corpse's longdesc for that location
+        is removed (it moved to the appendage)."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(
+            snapshot=_snapshot_with_limbs(),
+            longdesc_data={
+                "left_arm": "a pale freckled arm",
+                "chest": "a broad chest",
+            },
+        )
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=MagicMock()
+        ):
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+        self.assertNotIn("left_arm", corpse.db.longdesc_data)
+        self.assertIn("chest", corpse.db.longdesc_data)
+
+    def test_successful_sever_appends_stump_wound(self):
+        """After a limb sever, the corpse gains a synthesized
+        ``severed``-type wound at the severed location."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=MagicMock()
+        ):
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+        stump_wounds = [
+            w for w in corpse.db.wounds_at_death
+            if w.get("injury_type") == "severed"
+        ]
+        self.assertEqual(len(stump_wounds), 1)
+        self.assertEqual(stump_wounds[0]["location"], "left_arm")
+
+    def test_head_sever_clears_full_head_cluster(self):
+        """Severing the head clears longdesc for the entire
+        SEVERED_HEAD_LOCATIONS cluster, not just ``head``."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(
+            snapshot=_snapshot_with_limbs(),
+            longdesc_data={
+                "head": "a shaven scalp",
+                "face": "sharp features",
+                "neck": "a thick neck",
+                "left_eye": "a milky eye",
+                "chest": "a broad chest",
+            },
+        )
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=MagicMock()
+        ):
+            _make_cmd(caller=caller, args="head from corpse").func()
+        self.assertEqual(set(corpse.db.longdesc_data.keys()), {"chest"})
+
+    def test_failed_sever_does_not_clear_longdesc(self):
+        """Sub-DC rolls must not mutate corpse longdesc."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(
+            snapshot=_snapshot_with_limbs(),
+            longdesc_data={"left_arm": "a pale arm"},
+        )
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC - 1
+        ), patch.object(
+            cmd_module, "create_object"
+        ):
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+        # Longdesc untouched on failure.
+        self.assertEqual(
+            corpse.db.longdesc_data, {"left_arm": "a pale arm"}
+        )
