@@ -54,7 +54,9 @@ ALL_DISGUISE_PROTOTYPES: tuple[str, ...] = (
     CLASS_A_PROTOTYPES + CLASS_B_PROTOTYPES
 )
 
-# Items that must have ``covers_hair=True``.
+# Items whose ``coverage`` must include ``"hair"`` (replaces the legacy
+# ``covers_hair`` boolean — see #176).  These are the head-coverings
+# that conceal scalp/hair from observers.
 COVERS_HAIR_PROTOTYPES: frozenset[str] = frozenset(
     {
         "BALACLAVA",
@@ -88,7 +90,7 @@ def _fake_item_from_prototype(prototype_name: str) -> _FakeDisguiseItem:
         is_disguise_item=attrs.get("is_disguise_item", False),
         disguise_adjective=attrs.get("disguise_adjective", ""),
         worn_sdesc_short=attrs.get("worn_sdesc_short", ""),
-        covers_hair=attrs.get("covers_hair", False),
+        coverage=attrs.get("coverage", []),
         key=proto["key"],
     )
 
@@ -231,19 +233,37 @@ class TestClassBSilentObfuscators(TestCase):
                 )
 
 
-class TestCoversHairFlag(TestCase):
-    """Items in COVERS_HAIR_PROTOTYPES set covers_hair=True; others False."""
+class TestHairCoverageFlag(TestCase):
+    """Items in COVERS_HAIR_PROTOTYPES include ``"hair"`` in coverage; others omit it.
 
-    def test_covers_hair_set_correctly(self) -> None:
+    Replaces the legacy ``covers_hair`` boolean with the unified
+    clothing-coverage vocabulary; see #176.
+    """
+
+    def test_hair_coverage_set_correctly(self) -> None:
         for name in ALL_DISGUISE_PROTOTYPES:
             with self.subTest(prototype=name):
                 attrs = _attrs_dict(name)
-                covers = bool(attrs.get("covers_hair", False))
+                coverage = list(attrs.get("coverage", []))
+                covers_hair = "hair" in coverage
                 expected = name in COVERS_HAIR_PROTOTYPES
                 self.assertEqual(
-                    covers,
+                    covers_hair,
                     expected,
-                    f"{name} covers_hair={covers}, expected {expected}",
+                    f"{name} has 'hair' in coverage={covers_hair}, "
+                    f"expected {expected} (coverage={coverage!r})",
+                )
+
+    def test_covers_hair_attribute_is_gone(self) -> None:
+        """Legacy ``covers_hair`` attribute must not appear in any prototype."""
+        for name in ALL_DISGUISE_PROTOTYPES:
+            with self.subTest(prototype=name):
+                attrs = _attrs_dict(name)
+                self.assertNotIn(
+                    "covers_hair",
+                    attrs,
+                    f"{name} still defines legacy covers_hair "
+                    f"attribute; migrate to coverage=[..., 'hair']",
                 )
 
 

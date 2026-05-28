@@ -817,8 +817,9 @@ class _FakeDisguiseItem:
     Mirrors the duck-typed surface read by the engine helpers:
     ``disguise_essential`` / ``disguise_type_id`` (signature),
     ``is_disguise_item`` / ``disguise_adjective`` (sdesc adjective),
-    ``worn_sdesc_short`` / ``covers_hair`` / ``key`` (distinguishing
-    feature).
+    ``worn_sdesc_short`` / ``coverage`` / ``key`` (distinguishing
+    feature; ``"hair"`` in ``coverage`` suppresses hair fallback,
+    replacing the legacy ``covers_hair`` boolean — see #176).
     """
 
     def __init__(
@@ -829,7 +830,7 @@ class _FakeDisguiseItem:
         is_disguise_item: bool = False,
         disguise_adjective: str = "",
         worn_sdesc_short: str = "",
-        covers_hair: bool = False,
+        coverage: list | None = None,
         key: str = "fake item",
         disguise_weight: int = 1,
         disguise_silent_feature: bool = False,
@@ -839,7 +840,7 @@ class _FakeDisguiseItem:
         self.is_disguise_item = is_disguise_item
         self.disguise_adjective = disguise_adjective
         self.worn_sdesc_short = worn_sdesc_short
-        self.covers_hair = covers_hair
+        self.coverage = list(coverage) if coverage else []
         self.key = key
         self.disguise_weight = disguise_weight
         self.disguise_silent_feature = disguise_silent_feature

@@ -697,7 +697,10 @@ DEV_HOODIE = {
 #   * disguise_adjective     → "masked" red-flag prefix in observer sdescs
 #   * worn_sdesc_short       → brief noun phrase used in the distinguishing-
 #                              feature clause (solo-disguise carve-out)
-#   * covers_hair            → suppresses hair fallback under the head covering
+#   * coverage                → body locations the item hides; "hair" in the
+#                              coverage list suppresses the hair fallback in
+#                              the distinguishing-feature chain (replaces the
+#                              legacy ``covers_hair`` boolean — see #176)
 BALACLAVA = {
     "prototype_key": "BALACLAVA",
     "key": "black balaclava",
@@ -706,7 +709,7 @@ BALACLAVA = {
     "desc": "A heavy knit balaclava in matte black, woven tight enough to swallow detail. Only a narrow eye-slit interrupts the seamless coverage; the wearer's features collapse into shadow, and even hair colour is hidden by the snug pull of the fabric.",
     "attrs": [
         # Clothing attributes
-        ("coverage", ["head"]),
+        ("coverage", ["hair", "head"]),
         ("worn_desc", "A snug {color}black|n balaclava pulled tight over {their} head, devouring features and hair alike behind a narrow eye-slit"),
         ("layer", 2),  # Regular clothing layer
         ("color", "black"),
@@ -720,7 +723,6 @@ BALACLAVA = {
         ("disguise_type_id", "balaclava"),
         ("disguise_adjective", "masked"),
         ("worn_sdesc_short", "black balaclava"),
-        ("covers_hair", True),
     ],
 }
 
@@ -757,7 +759,7 @@ SKI_MASK = {
     "typeclass": "typeclasses.items.Item",
     "desc": "A pull-on ski mask of coarse charcoal wool with three cut-outs — two for the eyes and one for the mouth — leaving everything between in featureless shadow. The weave is dense enough to obscure hair colour and jawline alike.",
     "attrs": [
-        ("coverage", ["head", "face"]),
+        ("coverage", ["hair", "head", "face"]),
         ("worn_desc", "A coarse {color}charcoal|n ski mask drawn tight over {their} head, three ragged cut-outs the only break in featureless wool"),
         ("layer", 2),
         ("color", "charcoal"),
@@ -769,7 +771,6 @@ SKI_MASK = {
         ("disguise_type_id", "balaclava"),
         ("disguise_adjective", "masked"),
         ("worn_sdesc_short", "wool ski mask"),
-        ("covers_hair", True),
     ],
 }
 
@@ -794,7 +795,6 @@ SURGICAL_MASK = {
         ("disguise_type_id", "face_mask"),
         ("disguise_adjective", "masked"),
         ("worn_sdesc_short", "surgical mask"),
-        ("covers_hair", False),
     ],
 }
 
@@ -818,7 +818,6 @@ RESPIRATOR = {
         ("disguise_type_id", "respirator"),
         ("disguise_adjective", "masked"),
         ("worn_sdesc_short", "industrial respirator"),
-        ("covers_hair", False),
     ],
 }
 
@@ -842,7 +841,6 @@ DOMINO_MASK = {
         ("disguise_type_id", "domino_mask"),
         ("disguise_adjective", "masked"),
         ("worn_sdesc_short", "domino mask"),
-        ("covers_hair", False),
     ],
 }
 
@@ -866,7 +864,6 @@ FACE_BANDANA = {
         ("disguise_type_id", "face_bandana"),
         ("disguise_adjective", "masked"),
         ("worn_sdesc_short", "face bandana"),
-        ("covers_hair", False),
     ],
 }
 
@@ -880,7 +877,7 @@ HOODIE_HOOD_UP = {
     "typeclass": "typeclasses.items.Item",
     "desc": "A loose dark-grey hood, deep enough to swallow most of the wearer's face in shadow when raised. The drawstrings hang loose against the chest, and the lining is unbleached cotton softened by long use.",
     "attrs": [
-        ("coverage", ["head"]),
+        ("coverage", ["hair", "head"]),
         ("worn_desc", "A loose {color}dark-grey|n hood drawn forward over {their} head, casting {their} face into shadow"),
         ("layer", 3),
         ("color", "dark-grey"),
@@ -892,7 +889,6 @@ HOODIE_HOOD_UP = {
         ("disguise_type_id", "hood"),
         ("disguise_adjective", "hooded"),
         ("worn_sdesc_short", "drawn hood"),
-        ("covers_hair", True),
     ],
 }
 
@@ -909,7 +905,7 @@ BLACK_WIG = {
     "typeclass": "typeclasses.items.Item",
     "desc": "A shoulder-length wig of glossy jet-black synthetic hair, cut to a blunt fringe. The mesh cap is fine enough to pass for a natural hairline at conversational distance.",
     "attrs": [
-        ("coverage", ["head"]),
+        ("coverage", ["hair", "head"]),
         ("worn_desc", "A glossy {color}black|n shoulder-length wig with a blunt fringe"),
         ("layer", 2),
         ("color", "black"),
@@ -921,7 +917,6 @@ BLACK_WIG = {
         ("disguise_type_id", "wig"),
         ("disguise_adjective", ""),
         ("worn_sdesc_short", "black wig"),
-        ("covers_hair", True),
     ],
 }
 
@@ -932,7 +927,7 @@ BLOND_WIG = {
     "typeclass": "typeclasses.items.Item",
     "desc": "A chin-length blond wig in honey-gold synthetic fibre, layered for volume. The cap is mesh-lined and the parting has been hand-stitched to mimic a real scalp.",
     "attrs": [
-        ("coverage", ["head"]),
+        ("coverage", ["hair", "head"]),
         ("worn_desc", "A honey-{color}blond|n chin-length wig layered for volume"),
         ("layer", 2),
         ("color", "gold"),
@@ -944,7 +939,6 @@ BLOND_WIG = {
         ("disguise_type_id", "wig"),
         ("disguise_adjective", ""),
         ("worn_sdesc_short", "blond wig"),
-        ("covers_hair", True),
     ],
 }
 
@@ -955,7 +949,7 @@ BROWN_WIG = {
     "typeclass": "typeclasses.items.Item",
     "desc": "A mid-length brown wig in walnut-toned synthetic fibre, parted off-centre. The cap is a soft stretch mesh and the ends have been heat-set into a loose wave.",
     "attrs": [
-        ("coverage", ["head"]),
+        ("coverage", ["hair", "head"]),
         ("worn_desc", "A walnut-{color}brown|n mid-length wig parted off-centre with loose waves"),
         ("layer", 2),
         ("color", "brown"),
@@ -967,7 +961,6 @@ BROWN_WIG = {
         ("disguise_type_id", "wig"),
         ("disguise_adjective", ""),
         ("worn_sdesc_short", "brown wig"),
-        ("covers_hair", True),
     ],
 }
 
@@ -991,7 +984,6 @@ COLORED_CONTACTS = {
         ("disguise_type_id", "contacts"),
         ("disguise_adjective", ""),
         ("worn_sdesc_short", "colored contacts"),
-        ("covers_hair", False),
         # Sub-visible: contacts sit on the eye — observers register eye
         # colour, not "in colored contacts."  Excluded from the
         # distinguishing-feature clause while remaining in the disguise
@@ -1020,7 +1012,6 @@ MIRRORSHADES = {
         ("disguise_type_id", "mirrorshades"),
         ("disguise_adjective", ""),
         ("worn_sdesc_short", "mirrorshades"),
-        ("covers_hair", False),
     ],
 }
 
@@ -1043,7 +1034,6 @@ AVIATOR_SUNGLASSES = {
         ("disguise_type_id", "sunglasses"),
         ("disguise_adjective", ""),
         ("worn_sdesc_short", "aviator sunglasses"),
-        ("covers_hair", False),
     ],
 }
 

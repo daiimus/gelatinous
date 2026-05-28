@@ -39,8 +39,11 @@ FALLBACK_WEAPON_NAME = "your fists"
 # ===================================================================
 
 # Default human anatomy (auto-created on character creation)
+# "hair" precedes "head": hair frames the head and is registered first at a
+# glance, so it leads the head region in display order and longdesc default.
 DEFAULT_LONGDESC_LOCATIONS = {
-    "head": None, "face": None, "left_eye": None, "right_eye": None, 
+    "hair": None,
+    "head": None, "face": None, "left_eye": None, "right_eye": None,
     "left_ear": None, "right_ear": None, "neck": None,
     "chest": None, "back": None, "abdomen": None, "groin": None,
     "left_arm": None, "right_arm": None, "left_hand": None, "right_hand": None,
@@ -61,10 +64,11 @@ REGION_BREAK_PRIORITY = True     # Prefer breaking between anatomical regions
 # Valid location validation set (expandable)
 VALID_LONGDESC_LOCATIONS = set(DEFAULT_LONGDESC_LOCATIONS.keys())
 
-# Anatomical display order (head to toe)
+# Anatomical display order (head to toe). "hair" leads the head region —
+# observers register hair before facial features in a head-to-toe scan.
 ANATOMICAL_DISPLAY_ORDER = [
     # Head region
-    "head", "face", "left_eye", "right_eye", "left_ear", "right_ear", "neck",
+    "hair", "head", "face", "left_eye", "right_eye", "left_ear", "right_ear", "neck",
     # Torso region  
     "chest", "back", "abdomen",
     # Arm region
@@ -75,7 +79,7 @@ ANATOMICAL_DISPLAY_ORDER = [
 
 # Anatomical regions for paragraph breaking
 ANATOMICAL_REGIONS = {
-    "head_region": ["head", "face", "left_eye", "right_eye", "left_ear", "right_ear", "neck"],
+    "head_region": ["hair", "head", "face", "left_eye", "right_eye", "left_ear", "right_ear", "neck"],
     "torso_region": ["chest", "back", "abdomen"],
     "arm_region": ["left_arm", "right_arm", "left_hand", "right_hand"],
     "leg_region": ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin", "left_foot", "right_foot"]
@@ -86,6 +90,7 @@ ANATOMICAL_REGIONS = {
 # Head locations (head, face, eyes, ears) are INDEPENDENT - no automatic inheritance
 # This allows for partial head protection (e.g., helmet without face protection)
 COVERAGE_INHERITANCE = {
+    "hair": [],  # Hair is independent — covered explicitly by head-coverings
     "head": [],  # Head (skull/crown) is separate from face/eyes/ears
     "face": [],  # Face is separate
     "left_eye": [],  # Eyes are separate

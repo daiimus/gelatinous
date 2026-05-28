@@ -164,13 +164,6 @@ class Item(DefaultObject):
     # Derivation".
     worn_sdesc_short = AttributeProperty("", autocreate=True)
 
-    # When worn, suppresses the hair fallback in the distinguishing-
-    # feature chain.  A hooded character with red braids reads
-    # ``"a tall lean hooded droog"``, not ``"… with red braids"``.
-    # Scope is feature-fallback only; longdesc gating lives with the
-    # existing clothing-coverage code.
-    covers_hair = AttributeProperty(False, autocreate=True)
-    
     # Multiple style properties for combination states
     style_properties = AttributeProperty({}, autocreate=True)
     # Structure: {"adjustable": "rolled", "closure": "zipped"}

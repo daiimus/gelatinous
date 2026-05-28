@@ -879,11 +879,12 @@ class Character(
              (e.g. contact lenses) and never selected here, regardless
              of pool — they remain in the disguise / Apparent UID
              system but contribute nothing to the feature clause.
-          3. Hair (colour/style) — suppressed when any worn item has
-             ``covers_hair = True``; under coverage we fall through to
-             "nothing" rather than describing hair the observer cannot
-             see.  Scope is feature-fallback only; longdesc gating
-             lives with the existing clothing-coverage code.
+          3. Hair (colour/style) — suppressed when any worn item covers
+             the ``"hair"`` body location (via the clothing coverage
+             system); under coverage we fall through to "nothing"
+             rather than describing hair the observer cannot see.
+             Scope is feature-fallback only; longdesc gating lives
+             with the existing clothing-coverage code.
           4. ``None`` — no feature
 
         Returns:
@@ -934,15 +935,10 @@ class Character(
                     )
                     return format_clothing_feature(label)
 
-        # 3. Hair — suppressed when any worn item declares covers_hair.
-        suppress_hair = False
-        get_worn = getattr(self, "get_worn_items", None)
-        if get_worn is not None:
-            for worn in get_worn():
-                if getattr(worn, "covers_hair", False):
-                    suppress_hair = True
-                    break
-        if not suppress_hair:
+        # 3. Hair — suppressed when the "hair" body location is covered
+        # by any worn item (see #176; replaces the legacy ``covers_hair``
+        # boolean with the unified clothing-coverage vocabulary).
+        if "hair" not in coverage_map:
             hair_color = self.hair_color
             hair_style = self.hair_style
             if hair_color or hair_style:
