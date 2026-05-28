@@ -14,6 +14,11 @@ Currently ships:
   Motorics roll, spawning a :class:`typeclasses.items.Organ` item
   into the harvester's inventory and marking the organ ``absent`` on
   subsequent autopsies (PR #188).
+* :class:`CmdSever` — remove a limb (or the head) from a corpse via
+  a Motorics roll, spawning a :class:`typeclasses.items.Appendage`
+  item.  The severed location is appended to
+  ``corpse.db.severed_locations`` so :class:`CmdHarvest` correctly
+  refuses to extract organs that left with the limb (PR #190).
 """
 
 from __future__ import annotations
@@ -26,6 +31,9 @@ from world.combat.constants import (
     HARVEST_CRIT_FAIL,
     HARVEST_DC_BASIC,
     ORGAN_CONDITION_BY_DECAY,
+    SEVER_CRIT_FAIL,
+    SEVER_DC_BASIC,
+    SEVERABLE_CONTAINERS,
 )
 from world.combat.dice import roll_stat
 from world.forensics import (
@@ -395,6 +403,234 @@ class CmdHarvest(Command):
             location=caller.location,
             template=(
                 f"{{actor}} extracts the {condition} {readable_name} "
+                f"from {{corpse}}."
+            ),
+            char_refs={"actor": caller, "corpse": target},
+            exclude=[caller],
+        )
+
+
+# ---------------------------------------------------------------------
+# CmdSever (PR #190)
+# ---------------------------------------------------------------------
+
+
+def _severable_locations(corpse) -> list[str]:
+    """Return body-location identifiers still detachable from *corpse*.
+
+    A location is severable when **all** of the following hold:
+
+    * It is present in :data:`world.combat.constants.SEVERABLE_CONTAINERS`
+      (the limb partition + ``head``).
+    * The death-time medical snapshot mentions at least one organ
+      housed in that container (so we know the corpse had the limb
+      in the first place — bare anatomy without organs is treated
+      as not severable to avoid spawning items for missing
+      structures).
+    * The location is not already in ``corpse.db.severed_locations``.
+
+    Returns an empty list if the snapshot is missing.
+    """
+    snapshot = corpse.get_medical_snapshot()
+    if snapshot is None:
+        return []
+    organs = snapshot.get("organs") or {}
+    present_containers = {
+        (data.get("container") or "")
+        for data in organs.values()
+    }
+    severed = set(corpse.db.severed_locations or ())
+    out = [
+        loc for loc in SEVERABLE_CONTAINERS
+        if loc in present_containers and loc not in severed
+    ]
+    out.sort()
+    return out
+
+
+class CmdSever(Command):
+    """Detach a limb (or the head) from a corpse.
+
+    Usage:
+      sever <location> from <corpse>
+      sever <corpse>            (lists severable locations)
+
+    Rolls Motorics vs ``SEVER_DC_BASIC``.  On success an
+    :class:`~typeclasses.items.Appendage` item is spawned into the
+    severer's inventory and the location is appended to
+    ``corpse.db.severed_locations``.  Subsequent ``harvest`` attempts
+    targeting organs whose container matches the severed location are
+    refused — the contained organs went with the limb (v1 does not
+    spawn separate organ items for the contained anatomy; a future
+    butchery pass may unbundle them).
+
+    A natural roll of ``SEVER_CRIT_FAIL`` botches the cut: no item,
+    no bookkeeping mutation, just a "mangled" message.  Unlike
+    organ harvest crit-fail (which destroys the organ), limb
+    botches are recoverable — try again.
+
+    Refused outright when:
+
+    * The corpse is skeletal (no soft tissue left to cut through).
+    * The corpse predates PR #186 and has no medical snapshot.
+    * The named location is not in
+      :data:`world.combat.constants.SEVERABLE_CONTAINERS`.
+    * The snapshot mentions no organs in that container (the corpse
+      never had that limb).
+    * The location is already in ``corpse.db.severed_locations``.
+
+    Appendage freshness tracks the source corpse's decay stage via
+    :data:`world.combat.constants.ORGAN_CONDITION_BY_DECAY`.
+    """
+
+    key = "sever"
+    aliases = ()
+    locks = "cmd:all()"
+    help_category = "Forensics"
+
+    def func(self):  # noqa: C901 — straight-line guard-clause flow
+        caller = self.caller
+        raw = (self.args or "").strip()
+        if not raw:
+            caller.msg("Usage: sever <location> from <corpse>")
+            return
+
+        if " from " in raw:
+            location_arg, _, corpse_arg = raw.partition(" from ")
+            location_arg = location_arg.strip().lower().replace(" ", "_")
+            corpse_arg = corpse_arg.strip()
+        else:
+            location_arg = ""
+            corpse_arg = raw
+
+        target = caller.search(corpse_arg, location=caller.location)
+        if target is None:
+            return
+
+        if not isinstance(target, Corpse):
+            caller.msg("You can only sever limbs from a corpse.")
+            return
+
+        if target.get_decay_stage() == "skeletal":
+            caller.msg(
+                "The remains are too far decomposed — only bone is left."
+            )
+            return
+
+        snapshot = target.get_medical_snapshot()
+        if snapshot is None:
+            caller.msg(
+                "These remains predate forensic record-keeping; no "
+                "internal examination is possible."
+            )
+            return
+
+        severable = _severable_locations(target)
+
+        if not location_arg:
+            if not severable:
+                caller.msg(
+                    f"There are no limbs left to sever on "
+                    f"{target.get_display_name(caller)}."
+                )
+                return
+            readable = ", ".join(loc.replace("_", " ") for loc in severable)
+            caller.msg(
+                f"Severable locations on {target.get_display_name(caller)}:"
+                f" {readable}.\nUsage: sever <location> from <corpse>"
+            )
+            return
+
+        # Specific location requested.
+        if location_arg not in SEVERABLE_CONTAINERS:
+            caller.msg(
+                f"You cannot sever the {location_arg.replace('_', ' ')} "
+                f"— it is not a detachable body location."
+            )
+            return
+
+        organs = snapshot.get("organs") or {}
+        present = any(
+            (data.get("container") or "") == location_arg
+            for data in organs.values()
+        )
+        if not present:
+            caller.msg(
+                f"{target.get_display_name(caller)} has no "
+                f"{location_arg.replace('_', ' ')} to sever."
+            )
+            return
+
+        if location_arg in (target.db.severed_locations or ()):
+            caller.msg(
+                f"The {location_arg.replace('_', ' ')} has already been "
+                f"severed from these remains."
+            )
+            return
+
+        # Pre-roll broadcast.
+        readable_name = location_arg.replace("_", " ")
+        corpse_display = target.get_display_name(caller)
+        msg_room_identity(
+            location=caller.location,
+            template=(
+                f"{{actor}} begins severing the {readable_name} "
+                f"from {{corpse}}."
+            ),
+            char_refs={"actor": caller, "corpse": target},
+            exclude=[caller],
+        )
+
+        roll = roll_stat(caller, "motorics")
+
+        if roll == SEVER_CRIT_FAIL:
+            caller.msg(
+                f"Your cut goes wide — you mangle the {readable_name} "
+                f"but fail to detach it."
+            )
+            msg_room_identity(
+                location=caller.location,
+                template=(
+                    f"{{actor}} mangles the {readable_name} on "
+                    f"{{corpse}} but fails to sever it."
+                ),
+                char_refs={"actor": caller, "corpse": target},
+                exclude=[caller],
+            )
+            return
+
+        if roll < SEVER_DC_BASIC:
+            caller.msg(
+                f"You hack at {corpse_display} but cannot detach the "
+                f"{readable_name} cleanly. The limb remains attached."
+            )
+            return
+
+        # Success.
+        condition = ORGAN_CONDITION_BY_DECAY.get(
+            target.get_decay_stage(), "damaged"
+        )
+        severed_list = list(target.db.severed_locations or ())
+        severed_list.append(location_arg)
+        target.db.severed_locations = severed_list
+
+        appendage = create_object(
+            "typeclasses.items.Appendage",
+            key=f"{condition} {readable_name}",
+            location=caller,
+        )
+        appendage.configure_from_sever(
+            location_name=location_arg, condition=condition, corpse=target,
+        )
+
+        caller.msg(
+            f"You sever the {readable_name} from {corpse_display} — "
+            f"the limb is {condition}."
+        )
+        msg_room_identity(
+            location=caller.location,
+            template=(
+                f"{{actor}} severs the {condition} {readable_name} "
                 f"from {{corpse}}."
             ),
             char_refs={"actor": caller, "corpse": target},

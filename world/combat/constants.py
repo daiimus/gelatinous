@@ -771,3 +771,28 @@ ORGAN_CONDITION_BY_DECAY = {
     "advanced": "putrid",
     "skeletal": "refuse",
 }
+
+# Surgical Sever (PR #190) --------------------------------------------
+# Motorics DC for removing a limb (or the head) from a corpse via
+# ``sever <location> from <corpse>``.  A natural ``SEVER_CRIT_FAIL``
+# botches the cut — no item is spawned and no bookkeeping mutates,
+# unlike the harvest crit-fail which destroys the organ.  The
+# asymmetry is deliberate: limbs are coarser anatomy and the
+# failure-mode is "you hacked a mess into the corpse" rather than
+# "you ruptured a delicate organ".
+SEVER_DC_BASIC = 3
+SEVER_CRIT_FAIL = 1
+
+# Severable body locations: the limb partition from
+# :meth:`world.medical.core.Organ._is_limb_container` plus ``head``
+# (the head is internal anatomy but severable as a discrete item per
+# the PR #190 contract; a future v2 severed-head super-item carrying
+# the full identity signature is documented as deferred).
+SEVERABLE_CONTAINERS = frozenset({
+    "head",
+    "left_arm", "right_arm",
+    "left_hand", "right_hand",
+    "left_thigh", "right_thigh",
+    "left_shin", "right_shin",
+    "left_foot", "right_foot",
+})

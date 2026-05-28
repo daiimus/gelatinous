@@ -1015,3 +1015,55 @@ class Organ(Item):
         self.db.source_corpse_dbref = corpse.dbref
         readable = organ_name.replace("_", " ")
         self.key = f"{condition} {readable}"
+
+
+class Appendage(Item):
+    """A severed limb (or head) detached from a corpse via ``sever``.
+
+    Sibling typeclass to :class:`Organ`; carries the same
+    forensic-chain provenance fields so investigators (and future
+    black-market gameplay) can trace a found appendage back to its
+    source corpse signature without re-querying the corpse.
+
+    Attributes (``self.db``):
+        location_name: Canonical body-location identifier
+            (e.g. ``"left_arm"``, ``"head"``) — matches the
+            ``container`` keys used in
+            :data:`world.medical.constants.ORGANS`.
+        condition: Freshness descriptor at severance, derived from
+            the source corpse's decay stage via
+            :data:`world.combat.constants.ORGAN_CONDITION_BY_DECAY`.
+        source_signature: Copy of source corpse's
+            ``signature_at_death``.
+        source_apparent_uid: Copy of source corpse's
+            ``apparent_uid_at_death``.
+        source_corpse_dbref: Audit pointer to the source corpse;
+            not guaranteed resolvable after decay.
+
+    The display name renders as ``"<condition> <location>"``
+    (underscores → spaces), e.g. ``"pristine left arm"``.
+    """
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        self.db.location_name = ""
+        self.db.condition = "pristine"
+        self.db.source_signature = None
+        self.db.source_apparent_uid = None
+        self.db.source_corpse_dbref = None
+
+    def configure_from_sever(self, *, location_name, condition, corpse):
+        """Populate forensic-chain fields immediately after spawn.
+
+        Args:
+            location_name (str): Canonical body-location identifier.
+            condition (str): Freshness descriptor.
+            corpse: The source :class:`typeclasses.corpse.Corpse`.
+        """
+        self.db.location_name = location_name
+        self.db.condition = condition
+        self.db.source_signature = corpse.db.signature_at_death
+        self.db.source_apparent_uid = corpse.db.apparent_uid_at_death
+        self.db.source_corpse_dbref = corpse.dbref
+        readable = location_name.replace("_", " ")
+        self.key = f"{condition} {readable}"

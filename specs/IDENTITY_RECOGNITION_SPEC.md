@@ -1634,6 +1634,101 @@ intentionally — both are "basic forensic competency" gates.
 
 ---
 
+## Surgical Sever (PR #190)
+
+`sever <location> from <corpse>` detaches a limb (or the head) from
+a corpse, spawning a :class:`typeclasses.items.Appendage` item into
+the severer's inventory.  Sibling to PR-188 harvest; shares the
+forensic-chain provenance pattern and the death-time medical
+snapshot as the single source of truth for what anatomy the corpse
+had.
+
+### Command contract
+
+- **Roll**: Motorics vs `SEVER_DC_BASIC`.  Natural `SEVER_CRIT_FAIL`
+  (= 1) mangles the cut but leaves state intact — no item, no
+  bookkeeping mutation.  Crit-fail is **non-destructive** (unlike
+  harvest, which destroys the organ); limbs are coarser anatomy
+  and the realistic failure-mode is hacking a mess, not destroying
+  the limb beyond recovery.
+- **Ambiguous form** (`sever <corpse>`) lists severable locations.
+- **Pre-roll refusals** (no Motorics roll spent):
+  - Skeletal corpse / pre-PR-#186 corpse.
+  - Location not in
+    :data:`world.combat.constants.SEVERABLE_CONTAINERS`.
+  - Snapshot contains no organs in that container (the corpse
+    never had that limb).
+  - Location already in `corpse.db.severed_locations`.
+- **Pre-roll broadcast** via `msg_room_identity`.
+- **On success**: append location to `severed_locations`, spawn
+  `Appendage` item with `configure_from_sever`.
+
+### Severable partition
+
+The canonical limb partition from
+:meth:`world.medical.core.Organ._is_limb_container` plus `head`:
+
+```python
+SEVERABLE_CONTAINERS = frozenset({
+    "head",
+    "left_arm", "right_arm",
+    "left_hand", "right_hand",
+    "left_thigh", "right_thigh",
+    "left_shin", "right_shin",
+    "left_foot", "right_foot",
+})
+```
+
+`head` is internal anatomy in the medical model but is severable as
+a discrete item per the PR-190 contract.  A v2 super-item carrying
+the full identity signature on the severed head (so it can be
+recognized / autopsied independently of the source corpse) remains
+deferred.
+
+### Appendage typeclass
+
+`typeclasses.items.Appendage` extends `Item`; carries the same
+forensic-chain fields as `Organ` (`source_signature`,
+`source_apparent_uid`, `source_corpse_dbref`) plus:
+
+| Attribute | Source |
+|---|---|
+| `db.location_name` | Canonical container key (e.g. `left_arm`) |
+| `db.condition` | `ORGAN_CONDITION_BY_DECAY[stage]` at severance |
+
+Display key renders `"<condition> <location>"` (underscores → spaces).
+
+### Harvest interaction
+
+`CmdHarvest` already filters its harvestable-organs list with
+`organ_data["container"] not in corpse.db.severed_locations`.  Once
+PR-190 ships, severing an arm correctly causes subsequent
+harvest attempts on contained organs (e.g. `left_humerus`) to
+refuse with "went with the severed left_arm".  V1 does **not**
+spawn separate organ items for the anatomy bundled inside the
+limb — a future butchery pass may unbundle.
+
+### DC tuning (provisional)
+
+```python
+SEVER_DC_BASIC = 3
+SEVER_CRIT_FAIL = 1
+```
+
+Matches `HARVEST_DC_BASIC` / `AUTOPSY_DC_BASIC` — all three are
+basic forensic / surgical competency gates.  Flagged for balance
+review alongside the harvest economy work.
+
+### Out of scope (deferred past PR #190)
+
+- Severed-head super-item carrying full identity signature.
+- Limb-attached worn-item retention (severing an arm with a watch
+  on does **not** transfer the watch to the appendage in v1).
+- Reattachment / cybernetic limb prosthetics.
+- Per-organ unbundling from severed limbs.
+
+---
+
 ## New Character Attributes
 
 ### On Character (sleeve-level)
