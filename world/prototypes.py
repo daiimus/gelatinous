@@ -752,6 +752,11 @@ BALACLAVA = {
 
 # A second balaclava variant; shares ``disguise_type_id="balaclava"`` so
 # swapping a BALACLAVA for a SKI_MASK is invisible to observers.
+#
+# disguise_type_id rationale: "balaclava" — shared with BALACLAVA.
+# Both items fully obscure head and hair through dense knit; the
+# narrow eye-slit / cut-outs read the same at observer distance.
+# Swap-equivalent for Apparent UID purposes.
 SKI_MASK = {
     "prototype_key": "SKI_MASK",
     "key": "wool ski mask",
@@ -776,6 +781,13 @@ SKI_MASK = {
 
 # Pale-blue surgical mask — covers nose and mouth, leaves eyes and hair
 # untouched.
+#
+# disguise_type_id rationale: "face_mask" — deliberately distinct
+# from RESPIRATOR's "respirator". The flat pleated profile reads
+# completely differently from a bulky filtered respirator; collapsing
+# them would let an observer who knows the wearer in a surgical mask
+# fail to react to the same wearer in a gas mask. See
+# test_disguise_prototypes.test_surgical_mask_and_respirator_distinct.
 SURGICAL_MASK = {
     "prototype_key": "SURGICAL_MASK",
     "key": "pale-blue surgical mask",
@@ -799,6 +811,12 @@ SURGICAL_MASK = {
 }
 
 # Industrial half-face respirator — heavy rubber and twin filter cans.
+#
+# disguise_type_id rationale: "respirator" — deliberately distinct
+# from SURGICAL_MASK's "face_mask". The twin filter cans and rubber
+# harness create an unmistakable silhouette; not swap-equivalent
+# with any other face-covering. See
+# test_disguise_prototypes.test_surgical_mask_and_respirator_distinct.
 RESPIRATOR = {
     "prototype_key": "RESPIRATOR",
     "key": "industrial respirator",
@@ -822,6 +840,10 @@ RESPIRATOR = {
 }
 
 # Slim domino mask — covers the eyes only, classic costume-party shape.
+#
+# disguise_type_id rationale: "domino_mask" — sole occupant of this
+# slot; the satin upper-face cut is structurally unlike any other
+# face-covering in the catalog.
 DOMINO_MASK = {
     "prototype_key": "DOMINO_MASK",
     "key": "black domino mask",
@@ -845,6 +867,11 @@ DOMINO_MASK = {
 }
 
 # Bandana worn outlaw-style across the lower face.
+#
+# disguise_type_id rationale: "face_bandana" — sole occupant. Knotted
+# cloth across the lower face reads distinctly from a pleated
+# medical mask or a moulded respirator; the loose triangle hangs and
+# moves with the wearer in a way none of the other items do.
 FACE_BANDANA = {
     "prototype_key": "FACE_BANDANA",
     "key": "red face bandana",
@@ -870,6 +897,11 @@ FACE_BANDANA = {
 # A standalone hood worn raised — separate from the DEV_HOODIE garment so
 # the disguise hook can fire on a discrete wear/remove cycle without
 # requiring a full hoodie style transition.
+#
+# disguise_type_id rationale: "hood" — sole occupant. A drawn hood
+# casts shadow rather than obscuring with fabric directly; the
+# silhouette is unmistakably "hooded" rather than "masked" and
+# triggers a distinct disguise_adjective.
 HOODIE_HOOD_UP = {
     "prototype_key": "HOODIE_HOOD_UP",
     "key": "drawn hood",
@@ -914,12 +946,23 @@ BLACK_WIG = {
 
         ("is_disguise_item", True),
         ("disguise_essential", True),
+        # disguise_type_id rationale: "wig" — shared across all three
+        # wig prototypes (BLACK_WIG, BLOND_WIG, BROWN_WIG). All wigs
+        # read as "wearing a wig" at observer distance; the color is
+        # appearance (skintone-style flavour), not an identity-class
+        # distinction. Swapping one wig for another of a different
+        # colour does NOT shift the Apparent UID — but going from
+        # bare-headed to wigged DOES (the disguise_essential flag is
+        # what flips the signature, not the per-colour type id).
         ("disguise_type_id", "wig"),
         ("disguise_adjective", ""),
         ("worn_sdesc_short", "black wig"),
     ],
 }
 
+# disguise_type_id rationale: "wig" — shared with BLACK_WIG and
+# BROWN_WIG. See BLACK_WIG above for the full rationale on why colour
+# is flavour rather than an identity-class distinction.
 BLOND_WIG = {
     "prototype_key": "BLOND_WIG",
     "key": "blond wig",
@@ -942,6 +985,8 @@ BLOND_WIG = {
     ],
 }
 
+# disguise_type_id rationale: "wig" — shared with BLACK_WIG and
+# BLOND_WIG. See BLACK_WIG above for the full rationale.
 BROWN_WIG = {
     "prototype_key": "BROWN_WIG",
     "key": "brown wig",
@@ -965,6 +1010,14 @@ BROWN_WIG = {
 }
 
 # Cosmetic contact lenses — change apparent eye colour silently.
+#
+# disguise_type_id rationale: "contacts" — sole occupant. Contacts sit
+# on the eye itself and read only as eye colour to observers; they are
+# silent (no adjective, no distinguishing-feature clause) and there is
+# no second contact-class prototype to collapse with. A future tinted-
+# lens variant in a different colour would still share "contacts" —
+# colour is flavour, not an identity-class distinction (same precedent
+# as the three wigs sharing "wig").
 COLORED_CONTACTS = {
     "prototype_key": "COLORED_CONTACTS",
     "key": "colored contact lenses",
@@ -993,6 +1046,17 @@ COLORED_CONTACTS = {
 }
 
 # Mirrorshade aviators — opaque chrome lenses, classic shape.
+#
+# disguise_type_id rationale: "mirrorshades" — deliberately distinct
+# from AVIATOR_SUNGLASSES ("sunglasses"). The mirrored chrome finish
+# is unmistakable at observer distance: lenses read as a reflective
+# silver pane rather than tinted glass. An observer who has memorised
+# a target in mirrorshades would not be fooled into thinking they had
+# swapped to gold-framed smoke-tint aviators (or vice versa). Both
+# share the aviator silhouette, but the lens finish is the salient
+# identity feature, not the frame shape. Compare with SURGICAL_MASK
+# vs RESPIRATOR: same principle — silhouette overlap is not enough to
+# collapse the type id when the visible signature differs sharply.
 MIRRORSHADES = {
     "prototype_key": "MIRRORSHADES",
     "key": "chrome mirrorshades",
@@ -1015,6 +1079,12 @@ MIRRORSHADES = {
     ],
 }
 
+# disguise_type_id rationale: "sunglasses" — deliberately distinct
+# from MIRRORSHADES ("mirrorshades"). Smoke-tinted teardrop lenses in
+# a gold wire frame read as conventional sunglasses; the eyes are
+# obscured but the lenses are not reflective. See MIRRORSHADES above
+# for the full rationale on why lens finish (not frame silhouette)
+# governs eyewear type identity.
 AVIATOR_SUNGLASSES = {
     "prototype_key": "AVIATOR_SUNGLASSES",
     "key": "aviator sunglasses",

@@ -302,6 +302,34 @@ class TestSameTypeSwapApparentUidStable(TestCase):
             "shift Apparent UID.",
         )
 
+    def test_brown_wig_collapses_with_other_wigs(self) -> None:
+        """BROWN_WIG must collapse with BLACK_WIG and BLOND_WIG.
+
+        Per the rationale on BLACK_WIG in ``world/prototypes.py``: wig
+        colour is appearance flavour, not an identity-class distinction.
+        All three wig prototypes share ``disguise_type_id='wig'`` and
+        must produce identical Apparent UIDs when worn alone.
+        """
+        with_black = _SignatureMockCharacter(
+            worn_items=[_fake_item_from_prototype("BLACK_WIG")]
+        )
+        with_brown = _SignatureMockCharacter(
+            worn_items=[_fake_item_from_prototype("BROWN_WIG")]
+        )
+        with_blond = _SignatureMockCharacter(
+            worn_items=[_fake_item_from_prototype("BLOND_WIG")]
+        )
+        for char in (with_black, with_brown, with_blond):
+            prepare_mock_for_apparent_uid(char)
+        self.assertEqual(
+            get_apparent_uid(with_black),
+            get_apparent_uid(with_brown),
+        )
+        self.assertEqual(
+            get_apparent_uid(with_brown),
+            get_apparent_uid(with_blond),
+        )
+
     def test_sunglasses_swap_uid_unchanged_within_type(self) -> None:
         """MIRRORSHADES and AVIATOR_SUNGLASSES are distinct types.
 
@@ -365,6 +393,29 @@ class TestCrossTypeSwapApparentUidShifts(TestCase):
         self.assertNotEqual(
             get_apparent_uid(with_contacts),
             get_apparent_uid(with_aviators),
+        )
+
+    def test_surgical_mask_to_respirator_uid_shifts(self) -> None:
+        """SURGICAL_MASK and RESPIRATOR are deliberately distinct types.
+
+        Both cover the lower face, but a flat paper rectangle reads
+        very differently from a moulded respirator with twin filter
+        cans.  Per the rationale comments in ``world/prototypes.py``:
+        silhouette overlap is not enough to collapse the type id when
+        the visible signature differs sharply.  Swapping between them
+        must shift the Apparent UID so observers register the change.
+        """
+        with_surgical = _SignatureMockCharacter(
+            worn_items=[_fake_item_from_prototype("SURGICAL_MASK")]
+        )
+        with_respirator = _SignatureMockCharacter(
+            worn_items=[_fake_item_from_prototype("RESPIRATOR")]
+        )
+        prepare_mock_for_apparent_uid(with_surgical)
+        prepare_mock_for_apparent_uid(with_respirator)
+        self.assertNotEqual(
+            get_apparent_uid(with_surgical),
+            get_apparent_uid(with_respirator),
         )
 
 

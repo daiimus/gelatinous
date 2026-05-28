@@ -1626,6 +1626,27 @@ Sites that broadcast **only** non-character text (item names, constant prose) ar
 - Pharmaceutical / biomod items for `@longdesc` override — **deferred** (depends on body-mod system; tracked under Future Hooks).
 - Photos / identity artifacts — **deferred** (tracked under Future Hooks).
 
+#### Taxonomy decisions (`disguise_type_id`)
+
+The 13 Phase 3.5 disguise prototypes in `world/prototypes.py` are grouped by `disguise_type_id` as follows. Items sharing an id are **swap-equivalent** at the Apparent UID layer: an observer who has memorised the wearer in one variant will still recognise them in another of the same id. Items with distinct ids shift the UID on swap, even when they share a coverage slot. The rationale comment above each prototype is the single source of truth; the table below is a navigational summary.
+
+| `disguise_type_id` | Prototypes | Rationale (one-liner) |
+| --- | --- | --- |
+| `balaclava` | `BALACLAVA`, `SKI_MASK` | Both fully obscure head + hair; silhouette and concealment surface are interchangeable. |
+| `face_mask` | `SURGICAL_MASK` | Flat paper rectangle over the lower face; deliberately distinct from `respirator` (different visible signature). |
+| `respirator` | `RESPIRATOR` | Twin filter cans and moulded shell are unmistakable; deliberately distinct from `face_mask`. |
+| `domino_mask` | `DOMINO_MASK` | Sole occupant; a small upper-face mask has no swap-equivalent peer in the current catalog. |
+| `face_bandana` | `FACE_BANDANA` | Sole occupant; knotted fabric over the lower face has no swap-equivalent peer. |
+| `hood` | `HOODIE_HOOD_UP` | Sole occupant; a drawn hood casts the face in shadow rather than covering it with fabric. |
+| `wig` | `BLACK_WIG`, `BLOND_WIG`, `BROWN_WIG` | All read as "wearing a wig" at observer distance; colour is appearance flavour, not an identity-class distinction. The bare↔wigged UID shift is driven by `disguise_essential`, not the per-colour id. |
+| `contacts` | `COLORED_CONTACTS` | Sole occupant; contacts sit on the eye and read only as eye colour. Also flagged `disguise_silent_feature`. |
+| `mirrorshades` | `MIRRORSHADES` | Reflective chrome finish is the salient identity feature; deliberately distinct from `sunglasses`. |
+| `sunglasses` | `AVIATOR_SUNGLASSES` | Conventional tinted lenses obscure eyes without reflecting; deliberately distinct from `mirrorshades`. |
+
+**Guiding principle.** When two prototypes share a body-coverage slot, the question is whether their *visible signature* differs sharply enough that an observer would notice the swap. If yes (surgical mask ↔ respirator, mirrorshades ↔ aviators), they get distinct ids. If no (two balaclava variants, three wig colours), they collapse to a shared id. Colour alone is not enough to split an id — colour is appearance flavour. The bare↔disguised transition is governed by `disguise_essential`; the same-slot swap-equivalence question is governed by `disguise_type_id`. These axes are orthogonal.
+
+Lock-in regression tests live in `world/tests/test_disguise_prototypes.py` (`TestSameTypeSwapApparentUidStable`, `TestCrossTypeSwapApparentUidShifts`, `TestEssentialTypeIdsFromCatalog`).
+
 ### Phase 4 — Cybernetics
 
 **Scope:** Digital memory and identity exchange.
