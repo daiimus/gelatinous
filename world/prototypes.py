@@ -992,6 +992,11 @@ COLORED_CONTACTS = {
         ("disguise_adjective", ""),
         ("worn_sdesc_short", "colored contacts"),
         ("covers_hair", False),
+        # Sub-visible: contacts sit on the eye — observers register eye
+        # colour, not "in colored contacts."  Excluded from the
+        # distinguishing-feature clause while remaining in the disguise
+        # / Apparent UID system (swap detection, recognition memory).
+        ("disguise_silent_feature", True),
     ],
 }
 

@@ -832,6 +832,7 @@ class _FakeDisguiseItem:
         covers_hair: bool = False,
         key: str = "fake item",
         disguise_weight: int = 1,
+        disguise_silent_feature: bool = False,
     ) -> None:
         self.disguise_essential = disguise_essential
         self.disguise_type_id = disguise_type_id
@@ -841,6 +842,7 @@ class _FakeDisguiseItem:
         self.covers_hair = covers_hair
         self.key = key
         self.disguise_weight = disguise_weight
+        self.disguise_silent_feature = disguise_silent_feature
 
     def __repr__(self) -> str:
         return f"<_FakeDisguiseItem key={self.key!r}>"
@@ -944,6 +946,23 @@ class TestGetEssentialItemTypeIds(TestCase):
             pass
 
         self.assertEqual(get_essential_item_type_ids(_BareChar()), ())
+
+    def test_silent_feature_item_still_contributes_type_id(self) -> None:
+        """``disguise_silent_feature`` only suppresses the feature clause —
+        UID / signature contribution is preserved so swap detection
+        and recognition memory still work."""
+        from world.identity import get_essential_item_type_ids
+
+        char = _SignatureMockCharacter(
+            worn_items=[
+                _FakeDisguiseItem(
+                    disguise_essential=True,
+                    disguise_type_id="contacts",
+                    disguise_silent_feature=True,
+                ),
+            ]
+        )
+        self.assertEqual(get_essential_item_type_ids(char), ("contacts",))
 
 
 class TestEssentialItemsAffectSignatureAndUid(TestCase):

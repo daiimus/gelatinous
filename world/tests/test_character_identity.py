@@ -49,6 +49,7 @@ def _make_item(key="Kitchen Knife"):
     item.disguise_adjective = ""
     item.worn_sdesc_short = ""
     item.covers_hair = False
+    item.disguise_silent_feature = False
     return item
 
 
@@ -213,6 +214,73 @@ class TestDistinguishingFeature(TestCase):
         char = _make_character(hands={"left": None, "right": axe})
         result = char.get_distinguishing_feature()
         self.assertEqual(result, "wielding an Axe")
+
+    # -------------------------------------------------------------------
+    # disguise_silent_feature — sub-visible items (e.g. contacts) must
+    # never surface in the feature clause, regardless of pool.
+    # -------------------------------------------------------------------
+
+    def test_silent_disguise_alone_falls_through_to_hair(self):
+        """Solo silent disguise → hair feature, not the silent item."""
+        contacts = _make_item("colored contact lenses")
+        contacts.is_disguise_item = True
+        contacts.disguise_essential = True
+        contacts.disguise_type_id = "contacts"
+        contacts.worn_sdesc_short = "colored contacts"
+        contacts.disguise_silent_feature = True
+        char = _make_character(
+            worn_items={"eyes": [contacts]},
+            hair_color="blonde",
+            hair_style="braided",
+        )
+        result = char.get_distinguishing_feature()
+        self.assertEqual(result, "with blonde braids")
+
+    def test_silent_disguise_alone_with_no_hair_returns_none(self):
+        """Solo silent disguise + no hair → None (not the silent item)."""
+        contacts = _make_item("colored contact lenses")
+        contacts.is_disguise_item = True
+        contacts.disguise_essential = True
+        contacts.disguise_type_id = "contacts"
+        contacts.worn_sdesc_short = "colored contacts"
+        contacts.disguise_silent_feature = True
+        char = _make_character(worn_items={"eyes": [contacts]})
+        self.assertIsNone(char.get_distinguishing_feature())
+
+    def test_silent_disguise_with_non_disguise_clothing(self):
+        """Non-disguise clothing wins over silent disguise — regression lock."""
+        contacts = _make_item("colored contact lenses")
+        contacts.is_disguise_item = True
+        contacts.disguise_essential = True
+        contacts.disguise_type_id = "contacts"
+        contacts.worn_sdesc_short = "colored contacts"
+        contacts.disguise_silent_feature = True
+        coat = _make_item("Black Trenchcoat")
+        char = _make_character(
+            worn_items={"eyes": [contacts], "chest": [coat]},
+        )
+        result = char.get_distinguishing_feature()
+        self.assertEqual(result, "in a Black Trenchcoat")
+
+    def test_silent_disguise_with_visible_disguise(self):
+        """Visible disguise wins over silent disguise — solo-disguise carve-out
+        still works because silent items don't crowd the disguise pool."""
+        contacts = _make_item("colored contact lenses")
+        contacts.is_disguise_item = True
+        contacts.disguise_essential = True
+        contacts.disguise_type_id = "contacts"
+        contacts.worn_sdesc_short = "colored contacts"
+        contacts.disguise_silent_feature = True
+        balaclava = _make_item("black balaclava")
+        balaclava.is_disguise_item = True
+        balaclava.disguise_essential = True
+        balaclava.disguise_type_id = "balaclava"
+        balaclava.worn_sdesc_short = "black balaclava"
+        char = _make_character(
+            worn_items={"eyes": [contacts], "head": [balaclava]},
+        )
+        result = char.get_distinguishing_feature()
+        self.assertEqual(result, "in a black balaclava")
 
 
 # ===================================================================

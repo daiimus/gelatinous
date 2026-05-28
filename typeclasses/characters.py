@@ -874,7 +874,11 @@ class Character(
              (the naked-but-masked carve-out — a lone balaclava still
              reads as ``"in a black balaclava"`` rather than vanishing).
              When chosen, the item's ``worn_sdesc_short`` is used in
-             preference to its ``key``.
+             preference to its ``key``.  Items flagged
+             ``disguise_silent_feature = True`` are sub-visible
+             (e.g. contact lenses) and never selected here, regardless
+             of pool — they remain in the disguise / Apparent UID
+             system but contribute nothing to the feature clause.
           3. Hair (colour/style) — suppressed when any worn item has
              ``covers_hair = True``; under coverage we fall through to
              "nothing" rather than describing hair the observer cannot
@@ -902,13 +906,19 @@ class Character(
         # 2. Outermost clothing item (pick the first location with coverage).
         # Partition disguise vs non-disguise so the clothing feature reads
         # the wearer's "real" outfit when there is one, and only falls
-        # back to disguise items in the solo-disguise carve-out.
+        # back to disguise items in the solo-disguise carve-out.  Items
+        # flagged ``disguise_silent_feature`` (e.g. contacts) are
+        # sub-visible — excluded from both pools so they never surface as
+        # the feature clause, while remaining in the disguise / UID
+        # system elsewhere.
         coverage_map = self._build_clothing_coverage_map()
         if coverage_map:
             non_disguise: dict = {}
             disguise: dict = {}
             for _location, item in coverage_map.items():
                 if item is None:
+                    continue
+                if getattr(item, "disguise_silent_feature", False):
                     continue
                 if getattr(item, "is_disguise_item", False):
                     disguise[_location] = item
