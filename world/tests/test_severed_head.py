@@ -55,6 +55,8 @@ class _FakeHead:
         self.db.removed_organs = []
         self.db.signature_at_death = None
         self.db.apparent_uid_at_death = None
+        # PR #208: face-side body identity; populated by overlay.
+        self.db.sleeve_uid = None
         # PR-G: species drives decay-aware naming via the anatomy
         # registry; stub defaults to human to match production behaviour.
         self.db.source_species = "human"
@@ -66,6 +68,7 @@ class _FakeCorpse:
         *,
         signature=("sleeve-9", "tall", "lean", "hooded", ("balaclava",)),
         apparent_uid="hash-xyz",
+        sleeve_uid="sleeve-9",
         creation_time=None,
         death_time=None,
         death_cause="gunshot",
@@ -77,11 +80,19 @@ class _FakeCorpse:
         self.db = _DB()
         self.db.signature_at_death = signature
         self.db.apparent_uid_at_death = apparent_uid
+        # PR #208: source face-side identity for sever-head propagation.
+        self.db.sleeve_uid = sleeve_uid
+        # PR #208: overlay sets ``head_severed = True`` on the corpse;
+        # tests can assert against this.
+        self.db.head_severed = False
         self.db.creation_time = creation_time or (time.time() - 100)
         self.db.death_time = death_time or self.db.creation_time
         self.db.death_cause = death_cause
         self.db.medical_state_at_death = snapshot
         self.db.removed_organs = list(removed_organs or ())
+        # For ``apply_sever_to_corpse`` invocation in propagation tests.
+        self.db.longdesc_data = {}
+        self.db.wounds_at_death = []
 
     def get_medical_snapshot(self):
         return self.db.medical_state_at_death
@@ -240,3 +251,57 @@ class SeveredHeadDecayContractTests(TestCase):
         self.assertEqual(
             SeveredHead.get_worn_items(head, location="head"), []
         )
+
+
+# ---------------------------------------------------------------------
+# PR #208 — sleeve_uid propagation + head_severed flag
+# ---------------------------------------------------------------------
+
+
+class SeveredHeadIdentityPropagationTests(TestCase):
+    """Overlay copies ``sleeve_uid`` and marks the corpse headless."""
+
+    def setUp(self):
+        self.head = _FakeHead()
+        self.corpse = _FakeCorpse(snapshot=_full_snapshot())
+
+    def test_sleeve_uid_copied_to_head(self):
+        apply_severed_head_overlay(self.head, self.corpse)
+        self.assertEqual(self.head.db.sleeve_uid, self.corpse.db.sleeve_uid)
+        self.assertEqual(self.head.db.sleeve_uid, "sleeve-9")
+
+    def test_overlay_marks_corpse_head_severed(self):
+        """``apply_sever_to_corpse(location='head')`` flips the
+        ``head_severed`` gate that
+        :meth:`typeclasses.corpse.Corpse.get_display_name` reads."""
+        from typeclasses.items import apply_sever_to_corpse
+        self.assertFalse(self.corpse.db.head_severed)
+        apply_sever_to_corpse(self.corpse, "head")
+        self.assertTrue(self.corpse.db.head_severed)
+
+    def test_limb_sever_does_not_mark_corpse_head_severed(self):
+        """Non-head sever leaves ``head_severed`` unchanged."""
+        from typeclasses.items import apply_sever_to_corpse
+        apply_sever_to_corpse(self.corpse, "left_arm")
+        self.assertFalse(self.corpse.db.head_severed)
+
+    def test_overlay_preserves_corpse_identity_for_autopsy(self):
+        """Identity is duplicated, not transferred — corpse keeps snapshot."""
+        sig_before = self.corpse.db.signature_at_death
+        uid_before = self.corpse.db.apparent_uid_at_death
+        sleeve_before = self.corpse.db.sleeve_uid
+        apply_severed_head_overlay(self.head, self.corpse)
+        self.assertEqual(self.corpse.db.signature_at_death, sig_before)
+        self.assertEqual(self.corpse.db.apparent_uid_at_death, uid_before)
+        self.assertEqual(self.corpse.db.sleeve_uid, sleeve_before)
+
+    def test_sleeve_uid_property_reads_db_attr(self):
+        """The property surface matches Corpse.sleeve_uid for the identity pipeline."""
+        self.head.db.sleeve_uid = "sleeve-test"
+        # Bound-method-style call against the production property.
+        # ``SeveredHead.sleeve_uid`` is a property descriptor; resolve
+        # via the fget so we can call it against the stub directly.
+        self.assertEqual(
+            SeveredHead.sleeve_uid.fget(self.head), "sleeve-test",
+        )
+

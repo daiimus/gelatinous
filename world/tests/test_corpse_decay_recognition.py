@@ -90,6 +90,9 @@ class _FakeDecayCorpse:
         self.db.apparent_uid_at_death = None
         self.db.signature_at_death = None
         self.db.forensic_recognition_cache = None
+        # PR #208: default to head-intact; tests that exercise the
+        # head-severed look-suppression flip this to True.
+        self.db.head_severed = False
         self.contents = list(contents or [])
         self.ndb = type("_NDB", (), {})()
         self._stage = stage
@@ -491,3 +494,100 @@ class TestLivingCharacterRegressionGuard(TestCase):
             get_apparent_uid(living),
             get_apparent_uid_for_decay(living, "advanced"),
         )
+
+
+# ---------------------------------------------------------------------
+# PR #208 — headless-corpse recognition suppression
+# ---------------------------------------------------------------------
+
+
+class TestHeadSeveredSuppression(TestCase):
+    """A corpse with ``db.head_severed`` blocks both recognition paths.
+
+    Identity-bearing snapshot fields stay populated so the autopsy
+    flow keeps working; only the look-time tertiary recognition is
+    suppressed.  Pass 1 (natural / degraded UID) and Pass 2
+    (forensic-recovery Intellect roll) both short-circuit to the
+    decay-stage fallback before the mixin's recognition pipeline runs.
+    """
+
+    def test_headless_blocks_natural_recognition_fresh(self):
+        corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="fresh")
+        corpse.db.head_severed = True
+        fresh_uid = get_apparent_uid(corpse)
+        observer = _FakeObserver(
+            memory={fresh_uid: {"assigned_name": "Jorge"}},
+        )
+        self.assertEqual(
+            corpse.get_display_name(observer), "human corpse",
+        )
+
+    def test_headless_blocks_natural_recognition_early(self):
+        corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="early")
+        corpse.db.head_severed = True
+        fresh_uid = get_apparent_uid(corpse)
+        observer = _FakeObserver(
+            memory={fresh_uid: {"assigned_name": "Jorge"}},
+        )
+        self.assertEqual(
+            corpse.get_display_name(observer), "human corpse",
+        )
+
+    def test_headless_blocks_forensic_recovery_at_moderate(self):
+        corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="moderate")
+        corpse.db.head_severed = True
+        fresh_uid = get_apparent_uid(corpse)
+        observer = _FakeObserver(
+            memory={fresh_uid: {"assigned_name": "Jorge"}},
+        )
+        # Even with a guaranteed-pass roll, head-severed short-circuits
+        # before forensic recovery is attempted.
+        with patch(
+            "world.combat.dice.roll_stat", return_value=99,
+        ) as mocked:
+            self.assertEqual(
+                corpse.get_display_name(observer), "rotting corpse",
+            )
+            mocked.assert_not_called()
+
+    def test_headless_blocks_forensic_recovery_at_advanced(self):
+        corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="advanced")
+        corpse.db.head_severed = True
+        fresh_uid = get_apparent_uid(corpse)
+        observer = _FakeObserver(
+            memory={fresh_uid: {"assigned_name": "Jorge"}},
+        )
+        with patch(
+            "world.combat.dice.roll_stat", return_value=99,
+        ) as mocked:
+            self.assertEqual(
+                corpse.get_display_name(observer), "rotting corpse",
+            )
+            mocked.assert_not_called()
+
+    def test_head_intact_preserves_natural_recognition(self):
+        """Regression guard — head-severed defaults False; recognition still flows."""
+        corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="fresh")
+        # corpse.db.head_severed is False by default.
+        fresh_uid = get_apparent_uid(corpse)
+        observer = _FakeObserver(
+            memory={fresh_uid: {"assigned_name": "Jorge"}},
+        )
+        self.assertEqual(
+            corpse.get_display_name(observer), "human corpse (Jorge)",
+        )
+
+    def test_headless_none_looker_still_returns_decay_name(self):
+        corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="moderate")
+        corpse.db.head_severed = True
+        self.assertEqual(
+            corpse.get_display_name(None), "rotting corpse",
+        )
+
+    def test_headless_skeletal_still_returns_decay_name(self):
+        corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="skeletal")
+        corpse.db.head_severed = True
+        self.assertEqual(
+            corpse.get_display_name(None), "skeletal remains",
+        )
+

@@ -55,6 +55,17 @@ class Corpse(IdentityBearerMixin, Item):
         self.db.medical_state_at_death = None
         self.db.removed_organs = []
         self.db.severed_locations = []
+
+        # PR #208: tracks whether the head has been severed off this
+        # corpse.  Identity-bearing snapshot fields
+        # (``signature_at_death``, ``apparent_uid_at_death``,
+        # ``sleeve_uid``) stay populated so ``autopsy`` and
+        # :func:`world.forensics.extract_subject_from_corpse` keep
+        # working — but :meth:`get_display_name` reads this flag and
+        # short-circuits to the decay-stage fallback when ``True``,
+        # suppressing both natural and forensic look-time recognition.
+        # Set by :func:`typeclasses.items.apply_severed_head_overlay`.
+        self.db.head_severed = False
         
         # Preserve character appearance data for proper display
         self.db.original_skintone = None
@@ -120,6 +131,36 @@ class Corpse(IdentityBearerMixin, Item):
         stage = self.get_decay_stage()
         species = self.db.species or "human"
         return get_species_corpse_name(species, stage)
+
+    def get_display_name(self, looker, **kwargs):
+        """Decay-stage fallback when the head has been severed.
+
+        PR #208: a headless corpse loses the face — the dominant
+        unaided-recognition cue.  When ``self.db.head_severed`` is
+        ``True`` we short-circuit to the bare decay-stage name,
+        suppressing both natural recognition (Pass 1 in the mixin —
+        live degraded-UID lookup) and the forensic-recovery Intellect
+        roll (Pass 2).  Investigators must use the explicit
+        :class:`commands.forensics.CmdAutopsy` flow, which reads
+        :attr:`db.signature_at_death` directly via
+        :func:`world.forensics.extract_subject_from_corpse` and so
+        bypasses the live-signature derivation entirely.
+
+        Identity is *duplicated* rather than transferred on sever:
+        ``signature_at_death`` / ``apparent_uid_at_death`` /
+        ``sleeve_uid`` remain populated so the autopsy path keeps
+        working.  Only the look-time tertiary recognition is
+        suppressed here.
+
+        We invoke :class:`IdentityBearerMixin` explicitly rather than
+        through ``super()`` so duck-typed test fakes that bind this
+        method onto a non-mixin class (see
+        :class:`world.tests.test_corpse_decay_recognition._FakeDecayCorpse`)
+        still resolve the recognition pipeline correctly.
+        """
+        if self.db.head_severed:
+            return self._decay_display_name()
+        return IdentityBearerMixin.get_display_name(self, looker, **kwargs)
 
     # ------------------------------------------------------------------
     # Disguise / identity signature surface

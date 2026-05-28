@@ -1705,10 +1705,49 @@ SEVERABLE_CONTAINERS = frozenset({
 ```
 
 `head` is internal anatomy in the medical model but is severable as
-a discrete item per the PR-190 contract.  A v2 super-item carrying
-the full identity signature on the severed head (so it can be
-recognized / autopsied independently of the source corpse) remains
-deferred.
+a discrete item per the PR-190 contract.  Severed heads are
+super-items (`typeclasses.items.SeveredHead`, PR-B/#194) that carry
+the full identity signature and can be recognized / autopsied
+independently of the source corpse — see "Sever-Head Identity
+Surface" below.
+
+### Sever-Head Identity Surface (issue #208)
+
+When `apply_severed_head_overlay` runs (head-sever success path), the
+identity surface is **duplicated**, not transferred:
+
+1. **Head carries face-side identity** — the overlay copies
+   `corpse.db.sleeve_uid → head.db.sleeve_uid`, in addition to the
+   forensic-chain fields (`source_signature`,
+   `source_apparent_uid`, `source_corpse_dbref`) already inherited
+   from `Appendage`. `SeveredHead.sleeve_uid` is a property
+   descriptor reading `db.sleeve_uid`, satisfying
+   `world.identity.get_identity_signature`'s 5-tuple
+   `(sleeve_uid, height_override, build_override, keyword_override,
+   essential_item_type_ids)`. The head's `get_worn_items()` returns
+   `[]`, so the essentials axis collapses naturally and the head
+   reduces to the face-side signature.
+2. **Corpse retains its snapshot** — `signature_at_death`,
+   `apparent_uid_at_death`, `sleeve_uid`, `medical_state_at_death`
+   are untouched. Autopsy/harvest/forensic-recovery paths still
+   resolve the source identity.
+3. **Corpse look-time recognition is gated** — the overlay sets
+   `corpse.db.head_severed = True`. `Corpse.get_display_name`
+   short-circuits to the decay-tier name (e.g. `"a rotting corpse"`)
+   when this flag is true, suppressing unaided recognition while
+   leaving the forensic surface intact. Autopsy bypasses
+   live-derivation entirely (it reads `medical_state_at_death`), so
+   forensic identification continues to work on headless corpses.
+
+This split means: a witness who knew the deceased recognizes the
+**head** by sight, while the **headless corpse** appears as a
+generic decaying body until autopsied — matching real-world
+forensic intuition.
+
+Recognition-tier DCs for severed heads mirror live-character tiers
+(moderate DC 3, advanced DC 5, skeletal hard-cutoff with no roll
+path); decay-name mapping is fresh/early → `"human head"`,
+moderate/advanced → `"rotting head"`, skeletal → `"skeletal head"`.
 
 ### Appendage typeclass
 

@@ -1304,6 +1304,18 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
     })
     corpse.db.wounds_at_death = remaining
 
+    # Mark the corpse as headless on head sever.  Identity is
+    # *duplicated* (the corpse keeps its
+    # ``signature_at_death`` / ``apparent_uid_at_death`` / ``sleeve_uid``
+    # so autopsy and forensic-chain lookups continue to work) but
+    # :meth:`typeclasses.corpse.Corpse.get_display_name` short-circuits
+    # to the decay-stage fallback when this flag is set, suppressing
+    # unaided look-time recognition.  See issue #208 and
+    # ``specs/IDENTITY_RECOGNITION_SPEC.md`` §"Sever-Head Identity
+    # Surface" for the rationale.
+    if location_arg == "head":
+        corpse.db.head_severed = True
+
 
 def apply_severed_head_overlay(head, corpse):
     """Copy identity / decay / trimmed snapshot from ``corpse`` onto ``head``.
@@ -1318,6 +1330,12 @@ def apply_severed_head_overlay(head, corpse):
 
     * ``signature_at_death`` / ``apparent_uid_at_death`` copied verbatim
       from the source corpse (IdentityBearerMixin contract).
+    * ``sleeve_uid`` copied from the source corpse.  This is the
+      face-side identity axis — the only one that survives
+      decapitation.  Surfaced via :attr:`SeveredHead.sleeve_uid` so
+      :func:`world.identity.get_identity_signature` produces a
+      recognisable signature for the head and the mixin's natural- /
+      forensic-recognition passes can match looker memory.
     * ``creation_time`` / ``death_time`` / ``death_cause`` shared with
       the corpse so the head ages on the same decay clock.
     * ``medical_state_at_death`` = trimmed snapshot — only organs whose
@@ -1327,10 +1345,26 @@ def apply_severed_head_overlay(head, corpse):
       are deep-copied to prevent aliasing with the corpse snapshot.
     * ``removed_organs`` filtered to the head-container subset of the
       corpse's removed-organ list (so pre-sever harvests stay visible).
+
+    Side-effect on ``corpse.db``:
+
+    * ``head_severed`` is set to ``True``.  Identity is *duplicated*
+      across head and corpse (the corpse retains
+      ``signature_at_death`` / ``apparent_uid_at_death`` /
+      ``sleeve_uid`` so :func:`world.forensics.extract_subject_from_corpse`
+      and the ``autopsy`` command keep working) — but the corpse's
+      look-time tertiary recognition is suppressed by
+      :meth:`typeclasses.corpse.Corpse.get_display_name` reading
+      this flag.  Game-mechanic justification: the face is the
+      dominant unaided-recognition cue; without it, only an explicit
+      autopsy can resolve the body's identity.
     """
     # IdentityBearerMixin contract — copy snapshotted identity.
     head.db.signature_at_death = corpse.db.signature_at_death
     head.db.apparent_uid_at_death = corpse.db.apparent_uid_at_death
+    # Face-side body identity — surfaced via SeveredHead.sleeve_uid so
+    # the live-signature derivation in world.identity matches.
+    head.db.sleeve_uid = corpse.db.sleeve_uid
 
     # Shared decay clock — head ages with the corpse.
     head.db.creation_time = corpse.db.creation_time
@@ -1358,6 +1392,13 @@ def apply_severed_head_overlay(head, corpse):
     head.db.removed_organs = [
         name for name in corpse_removed if name in head_organs
     ]
+
+    # Corpse-side ``head_severed`` flag is set by
+    # :func:`apply_sever_to_corpse`, which runs in the command path
+    # after this overlay.  Identity is *duplicated* across head and
+    # corpse: the head carries face-side recognition (sleeve_uid +
+    # forensic chain), while the corpse keeps its snapshot for
+    # autopsy.  See issue #208.
 
 
 class SeveredHead(IdentityBearerMixin, Appendage):
@@ -1400,6 +1441,14 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         # IdentityBearerMixin contract — populated by configure_from_sever.
         self.db.signature_at_death = None
         self.db.apparent_uid_at_death = None
+        # Face-side body identity — copied from source corpse at sever
+        # time by :func:`apply_severed_head_overlay`.  Exposed via the
+        # :attr:`sleeve_uid` property so ``world.identity.get_identity_signature``
+        # picks it up the same way it picks up a Corpse's sleeve_uid.
+        # Override axes (height/build/keyword) and worn essential items
+        # are intentionally NOT carried: those are body-side and stay
+        # with the corpse.  The head presents face only.
+        self.db.sleeve_uid = None
         # Decay clock — copied from source corpse at severance so the
         # head and corpse age together.  Default to creation time of
         # this object until configure_from_sever overwrites.
@@ -1433,6 +1482,24 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         ("moderate", 259200),
         ("advanced", 604800),
     )
+
+    @property
+    def sleeve_uid(self):
+        """Expose the deceased's sleeve UID via the property surface.
+
+        :func:`world.identity.get_identity_signature` reads
+        ``getattr(char, "sleeve_uid", None)``; mirroring
+        :attr:`typeclasses.corpse.Corpse.sleeve_uid` here lets the
+        severed head flow through the same identity pipeline so the
+        IdentityBearerMixin recognition path can match looker memory.
+
+        The sleeve UID is the face-side identity axis — the only one
+        that survives decapitation.  Body-side axes (height / build /
+        keyword overrides, worn essential items) stay with the corpse;
+        :meth:`get_worn_items` returns ``[]`` on a head so the
+        essential-items axis collapses to an empty tuple naturally.
+        """
+        return self.db.sleeve_uid
 
     def get_decay_stage(self):
         """Return the current decay tier; mirrors Corpse semantics."""

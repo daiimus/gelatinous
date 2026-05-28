@@ -452,6 +452,73 @@ class CmdSeverTests(TestCase):
             _make_cmd(caller=caller, args="head from corpse").func()
         self.assertEqual(set(corpse.db.longdesc_data.keys()), {"chest"})
 
+    # ----- head-sever identity surface (issue #208) -----
+
+    def test_head_sever_marks_corpse_head_severed(self):
+        """After a successful head sever, the corpse carries
+        ``db.head_severed = True`` — the gate that
+        ``Corpse.get_display_name`` reads to suppress unaided
+        recognition while preserving autopsy access."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
+        # Pre-sever invariant: flag absent / falsy.
+        self.assertFalse(getattr(corpse.db, "head_severed", False))
+        caller.search.return_value = corpse
+        fake_head = MagicMock()
+        with patch.object(
+            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=fake_head
+        ):
+            _make_cmd(caller=caller, args="head from corpse").func()
+        self.assertTrue(corpse.db.head_severed)
+
+    def test_limb_sever_does_not_mark_head_severed(self):
+        """Severing a non-head limb must NOT set head_severed."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=MagicMock()
+        ):
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+        self.assertFalse(getattr(corpse.db, "head_severed", False))
+
+    def test_head_sever_preserves_corpse_identity_snapshot(self):
+        """The corpse keeps its ``signature_at_death`` /
+        ``apparent_uid_at_death`` / ``sleeve_uid`` after the head is
+        severed — autopsy and recognition-memory lookups still work."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
+        sig_before = corpse.db.signature_at_death
+        uid_before = corpse.db.apparent_uid_at_death
+        sleeve_before = corpse.db.signature_at_death[0]
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=MagicMock()
+        ):
+            _make_cmd(caller=caller, args="head from corpse").func()
+        self.assertEqual(corpse.db.signature_at_death, sig_before)
+        self.assertEqual(corpse.db.apparent_uid_at_death, uid_before)
+        self.assertEqual(corpse.db.signature_at_death[0], sleeve_before)
+
+    def test_failed_head_sever_does_not_mark_head_severed(self):
+        """Sub-DC head roll must not set ``head_severed``."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC - 1
+        ), patch.object(
+            cmd_module, "create_object"
+        ):
+            _make_cmd(caller=caller, args="head from corpse").func()
+        self.assertFalse(getattr(corpse.db, "head_severed", False))
+
     def test_failed_sever_does_not_clear_longdesc(self):
         """Sub-DC rolls must not mutate corpse longdesc."""
         caller = _make_caller()
