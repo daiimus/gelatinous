@@ -342,3 +342,37 @@ class CmdSeverTests(TestCase):
         ):
             _make_cmd(caller=caller, args="left_arm from corpse").func()
         self.assertIn("left_arm", corpse.db.severed_locations)
+
+    # ----- head routing → SeveredHead super-item (PR #194) -----
+
+    def test_head_routes_to_severed_head_typeclass(self):
+        """Severing the head spawns ``typeclasses.items.SeveredHead``,
+        not the plain ``Appendage`` other locations get.
+        """
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=MagicMock()
+        ) as mk:
+            _make_cmd(caller=caller, args="head from corpse").func()
+        args, kwargs = mk.call_args
+        # First positional arg is the typeclass path.
+        self.assertEqual(args[0], "typeclasses.items.SeveredHead")
+        self.assertIn("head", kwargs["key"])
+
+    def test_non_head_still_routes_to_appendage(self):
+        """Non-head severable locations still spawn plain Appendage."""
+        caller = _make_caller()
+        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
+        caller.search.return_value = corpse
+        with patch.object(
+            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
+        ), patch.object(
+            cmd_module, "create_object", return_value=MagicMock()
+        ) as mk:
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+        args, _ = mk.call_args
+        self.assertEqual(args[0], "typeclasses.items.Appendage")

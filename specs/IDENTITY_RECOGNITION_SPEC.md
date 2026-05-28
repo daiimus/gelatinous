@@ -1746,11 +1746,48 @@ review alongside the harvest economy work.
 
 ### Out of scope (deferred past PR #190)
 
-- Severed-head super-item carrying full identity signature.
 - Limb-attached worn-item retention (severing an arm with a watch
   on does **not** transfer the watch to the appendage in v1).
 - Reattachment / cybernetic limb prosthetics.
 - Per-organ unbundling from severed limbs.
+
+### Severed-Head Super-Item ✅ (Shipped — PR #194)
+
+`sever head from <corpse>` produces a `typeclasses.items.SeveredHead`
+rather than the generic `Appendage` used for limbs.  `SeveredHead`
+inherits `IdentityBearerMixin` (alongside its `Appendage` base) so
+the head is a first-class forensic peer of the source corpse:
+
+- **Identity carry-forward**: `db.signature_at_death` and
+  `db.apparent_uid_at_death` are copied verbatim from the corpse, so
+  the two-pass recognition algorithm (live UID → snapshot UID via
+  forensic-recovery roll) works against a disembodied head with the
+  same semantics it does against a corpse.
+- **Shared decay clock**: `db.creation_time`, `db.death_time`,
+  `db.death_cause` are copied so the head ages on the same timeline
+  as the corpse it came from.  `get_decay_stage()` maps the elapsed
+  time onto `fresh` / `early` / `moderate` / `advanced` / `skeletal`
+  using the standard `CORPSE_DECAY_*` thresholds.
+- **Trimmed medical snapshot**: `db.medical_state_at_death` retains
+  only the organs whose `container == "head"` (brain, eyes, ears,
+  etc.); body-wide fields (`conditions`, `blood_level`, `pain_level`,
+  `consciousness`) are blanked because reporting them off a
+  disembodied head would lie.  Head-container entries from the
+  corpse's `removed_organs` list are carried over so pre-sever
+  harvests stay visible.
+- **Worn-items contract**: `get_worn_items()` returns `[]` — heads
+  carry no clothing in v1 (renderer compatibility shim).
+- **Severing a SeveredHead is refused**: heads are terminal; the
+  `CmdSever` isinstance gate remains `Corpse`-only.
+
+PR-C will widen `CmdAutopsy` and `CmdHarvest` isinstance gates to
+accept `SeveredHead` so the head can be examined and its
+head-container organs harvested through the same forensic surface
+as a corpse.
+
+**Deferred** (not blocking PR-C): the snapshot represents the
+*body's* identity at sever time, not consciousness; sleeve-swap
+awareness on the head awaits the resleeving system.
 
 ---
 

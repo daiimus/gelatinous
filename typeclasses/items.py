@@ -1,5 +1,6 @@
 from evennia import DefaultObject, AttributeProperty
 from world.combat.constants import DEFAULT_CLOTHING_LAYER
+from .identity_bearer import IdentityBearerMixin
 
 # ANSI Color definitions for clothing descriptions
 COLOR_DEFINITIONS = {
@@ -1067,3 +1068,200 @@ class Appendage(Item):
         self.db.source_corpse_dbref = corpse.dbref
         readable = location_name.replace("_", " ")
         self.key = f"{condition} {readable}"
+
+
+def apply_severed_head_overlay(head, corpse):
+    """Copy identity / decay / trimmed snapshot from ``corpse`` onto ``head``.
+
+    Extracted from :meth:`SeveredHead.configure_from_sever` so unit
+    tests can exercise the overlay logic against plain-Python stubs
+    without instantiating an Evennia typeclass (whose metaclass would
+    bind ``super()`` to the concrete class and reject duck-typed
+    ``self`` substitutes).
+
+    Contract — after this call ``head.db`` has:
+
+    * ``signature_at_death`` / ``apparent_uid_at_death`` copied verbatim
+      from the source corpse (IdentityBearerMixin contract).
+    * ``creation_time`` / ``death_time`` / ``death_cause`` shared with
+      the corpse so the head ages on the same decay clock.
+    * ``medical_state_at_death`` = trimmed snapshot — only organs whose
+      ``container == "head"``; body-wide fields (conditions, blood,
+      pain, consciousness) blanked because they describe the whole
+      body and would lie if reported off a disembodied head.  Organs
+      are deep-copied to prevent aliasing with the corpse snapshot.
+    * ``removed_organs`` filtered to the head-container subset of the
+      corpse's removed-organ list (so pre-sever harvests stay visible).
+    """
+    # IdentityBearerMixin contract — copy snapshotted identity.
+    head.db.signature_at_death = corpse.db.signature_at_death
+    head.db.apparent_uid_at_death = corpse.db.apparent_uid_at_death
+
+    # Shared decay clock — head ages with the corpse.
+    head.db.creation_time = corpse.db.creation_time
+    head.db.death_time = corpse.db.death_time
+    head.db.death_cause = corpse.db.death_cause
+
+    # Trimmed head-container medical snapshot.
+    corpse_snapshot = corpse.get_medical_snapshot() or {}
+    organs = corpse_snapshot.get("organs") or {}
+    head_organs = {
+        name: dict(data)
+        for name, data in organs.items()
+        if (data.get("container") or "") == "head"
+    }
+    head.db.medical_state_at_death = {
+        "organs": head_organs,
+        "conditions": [],
+        "blood_level": None,
+        "pain_level": None,
+        "consciousness": None,
+    }
+
+    # Head-container subset of removed_organs.
+    corpse_removed = corpse.db.removed_organs or ()
+    head.db.removed_organs = [
+        name for name in corpse_removed if name in head_organs
+    ]
+
+
+class SeveredHead(IdentityBearerMixin, Appendage):
+    """A severed head — super-item spawned by ``sever head from <corpse>``.
+
+    Sibling of :class:`Appendage` but additionally inherits
+    :class:`typeclasses.identity_bearer.IdentityBearerMixin` so the
+    head carries the same two-pass recognition + forensic-recovery
+    surface as a :class:`typeclasses.corpse.Corpse`.  Investigators
+    can autopsy the head, harvest brain/eyes from it, and recognise
+    its identity through decay exactly as they could the source
+    corpse — within the limits of the head-container partition.
+
+    Decay clock is shared with the source corpse: ``creation_time``
+    is copied at severance, so a head that left a moderate-decay
+    corpse is itself moderate-decay.  ``death_time`` is likewise
+    copied so the autopsy "time since death" reads consistently.
+
+    Attributes (``self.db``):
+        Inherited from :class:`Appendage` —
+            ``location_name`` (always ``"head"``), ``condition``,
+            ``source_signature``, ``source_apparent_uid``,
+            ``source_corpse_dbref``.
+        IdentityBearerMixin contract —
+            ``signature_at_death``, ``apparent_uid_at_death``.
+        Decay clock —
+            ``creation_time``, ``death_time``, ``death_cause``.
+        Trimmed snapshot —
+            ``medical_state_at_death`` (head-container organs only,
+            other fields blanked) and ``removed_organs`` (head-
+            container subset of the source corpse's removals).
+
+    Severing a SeveredHead is refused at the :class:`commands.forensics.CmdSever`
+    gate (Corpse-only ``isinstance`` check) — heads are terminal.
+    """
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        self.db.location_name = "head"
+        # IdentityBearerMixin contract — populated by configure_from_sever.
+        self.db.signature_at_death = None
+        self.db.apparent_uid_at_death = None
+        # Decay clock — copied from source corpse at severance so the
+        # head and corpse age together.  Default to creation time of
+        # this object until configure_from_sever overwrites.
+        import time
+        self.db.creation_time = time.time()
+        self.db.death_time = time.time()
+        self.db.death_cause = "unknown"
+        # Trimmed head-container medical snapshot — set by
+        # configure_from_sever.  Conformant with the dict shape
+        # :meth:`typeclasses.corpse.Corpse.get_medical_snapshot`
+        # returns so harvest / autopsy code can consume both via
+        # ``get_medical_snapshot``.
+        self.db.medical_state_at_death = None
+        self.db.removed_organs = []
+        # ``severed_locations`` is unused on a head (you cannot sever
+        # the head off a head), but harvest/autopsy code paths may
+        # read it defensively — keep it present and empty.
+        self.db.severed_locations = []
+
+    # ------------------------------------------------------------------
+    # IdentityBearerMixin contract — decay surface
+    # ------------------------------------------------------------------
+
+    # Decay tier thresholds, in seconds since ``creation_time``.  Same
+    # ladder the corpse uses (see ``world/combat/constants.py``
+    # ``CORPSE_DECAY_*``).  Copied locally so we don't need a Corpse
+    # instance to consult.
+    _DECAY_STAGES = (
+        ("fresh", 3600),
+        ("early", 86400),
+        ("moderate", 259200),
+        ("advanced", 604800),
+    )
+
+    def get_decay_stage(self):
+        """Return the current decay tier; mirrors Corpse semantics."""
+        import time
+        elapsed = time.time() - (self.db.creation_time or time.time())
+        for stage, threshold in self._DECAY_STAGES:
+            if elapsed < threshold:
+                return stage
+        return "skeletal"
+
+    def _decay_display_name(self):
+        """Fallback display when no recognition memory matches."""
+        stage = self.get_decay_stage()
+        return {
+            "fresh": "fresh severed head",
+            "early": "pale severed head",
+            "moderate": "decomposing severed head",
+            "advanced": "putrid severed head",
+            "skeletal": "skull",
+        }.get(stage, "severed head")
+
+    def get_medical_snapshot(self):
+        """Return the trimmed head-container medical snapshot, if any.
+
+        Same contract as :meth:`typeclasses.corpse.Corpse.get_medical_snapshot`;
+        consumed by :class:`commands.forensics.CmdHarvest` and
+        :class:`commands.forensics.CmdAutopsy` once PR-C widens their
+        isinstance gates.
+        """
+        return self.db.medical_state_at_death
+
+    def get_worn_items(self, location=None):
+        """Heads carry no worn clothing — return ``[]``.
+
+        Renderer compatibility shim for any code path that calls
+        :func:`world.identity.get_essential_item_type_ids` against a
+        severed head (the identity signature is the snapshotted one,
+        not a re-derived live signature).
+        """
+        del location  # parity with ClothingMixin.get_worn_items signature
+        return []
+
+    # ------------------------------------------------------------------
+    # Sever-time configuration
+    # ------------------------------------------------------------------
+
+    def configure_from_sever(self, *, location_name, condition, corpse):
+        """Populate identity + decay + trimmed snapshot fields at sever.
+
+        Overrides :meth:`Appendage.configure_from_sever` to additionally
+        copy the corpse's identity / death / decay state and to build
+        the trimmed head-container medical snapshot.
+
+        ``location_name`` is expected to be ``"head"`` — the caller
+        (:class:`commands.forensics.CmdSever`) routes only heads here.
+        We don't assert it, to keep the surface duck-typed and to leave
+        future container types (severed face? severed neck?) the door
+        open.
+        """
+        # Inherited bookkeeping: location_name, condition, source_*
+        # provenance, display key.
+        super().configure_from_sever(
+            location_name=location_name, condition=condition, corpse=corpse,
+        )
+        # Identity / decay / trimmed snapshot overlay (unit-testable).
+        apply_severed_head_overlay(self, corpse)
+

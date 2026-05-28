@@ -614,8 +614,17 @@ class CmdSever(Command):
         severed_list.append(location_arg)
         target.db.severed_locations = severed_list
 
+        # Route ``head`` to the super-item typeclass so the head
+        # carries identity / decay / trimmed snapshot state forward
+        # for downstream autopsy and harvest.  All other severable
+        # locations spawn a plain Appendage.
+        if location_arg == "head":
+            appendage_typeclass = "typeclasses.items.SeveredHead"
+        else:
+            appendage_typeclass = "typeclasses.items.Appendage"
+
         appendage = create_object(
-            "typeclasses.items.Appendage",
+            appendage_typeclass,
             key=f"{condition} {readable_name}",
             location=caller,
         )
