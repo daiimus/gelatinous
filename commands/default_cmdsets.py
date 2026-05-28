@@ -38,7 +38,7 @@ from commands.CmdGraffiti import CmdGraffiti, CmdPress
 from commands.CmdCharacter import CmdLongdesc, CmdSkintone
 from commands.CmdCharacter import CmdShortdesc, CmdRemember, CmdForget, CmdRecall, CmdMemory
 from commands.CmdCommunication import CmdSay, CmdWhisper, CmdEmote, CmdDotPose
-from commands.forensics import CmdAutopsy
+from commands.forensics import CmdAutopsy, CmdHarvest
 from world.emote_templates import SOCIAL_COMMANDS
 from commands.CmdArmor import CmdArmor, CmdArmorRepair, CmdSlot, CmdUnslot
 from commands.shop import CmdBuy
@@ -247,6 +247,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
 
         # Add forensic command surfaces (PR-E)
         self.add(CmdAutopsy())
+        self.add(CmdHarvest())
 
 class AccountCmdSet(default_cmds.AccountCmdSet):
     """

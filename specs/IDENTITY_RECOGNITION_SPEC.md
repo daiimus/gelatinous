@@ -1553,6 +1553,87 @@ careful examination and prevents Intellect re-roll abuse.
 
 ---
 
+## Surgical Harvest (PR #188)
+
+`harvest <organ> from <corpse>` extracts a named organ from a
+corpse, spawning a :class:`typeclasses.items.Organ` item into the
+harvester's inventory.  Builds on the PR-186 death-time medical
+snapshot — the snapshot is the single source of truth for organ
+state, and the harvest command mutates it in place so subsequent
+autopsies render the removed organ as `absent`.
+
+### Command contract
+
+- **Roll**: Motorics vs `HARVEST_DC_BASIC`.  Natural
+  `HARVEST_CRIT_FAIL` (= 1) destroys the organ — zeroes
+  `current_hp` in the snapshot, no item produced.
+- **Ambiguous form** (`harvest <corpse>`) lists currently
+  harvestable organ names instead of erroring opaquely.
+- **Pre-roll refusals** (no Motorics roll spent):
+  - Skeletal corpse — no soft tissue remains.
+  - Pre-PR-#186 corpse — `get_medical_snapshot() is None`.
+  - Organ not present in the snapshot.
+  - Organ flagged `cannot_be_destroyed` (spine).
+  - Organ not flagged `can_be_harvested` (lungs, brain, eyes, etc.).
+  - Organ already in `corpse.db.removed_organs`.
+  - Organ's container in `corpse.db.severed_locations` (PR #189
+    sever-limb takes contained organs with it).
+  - Organ `current_hp <= 0` ("already destroyed").
+- **Pre-roll broadcast**: room sees the extraction attempt via
+  `msg_room_identity` regardless of outcome.
+- **On success**: append to `removed_organs`, re-save snapshot,
+  spawn `Organ` item with `configure_from_harvest`.
+- **Organ freshness** tracks the source corpse's decay stage via
+  `ORGAN_CONDITION_BY_DECAY`: fresh / early → `pristine`;
+  moderate → `damaged`; advanced → `putrid`.  Skeletal is gated
+  out at the decay check.
+
+### Organ typeclass
+
+`typeclasses.items.Organ` extends `Item` and carries:
+
+| Attribute | Source |
+|---|---|
+| `db.organ_name` | Canonical key from `ORGANS` |
+| `db.condition` | `ORGAN_CONDITION_BY_DECAY[stage]` at extraction |
+| `db.source_signature` | Copy of `corpse.db.signature_at_death` |
+| `db.source_apparent_uid` | Copy of `corpse.db.apparent_uid_at_death` |
+| `db.source_corpse_dbref` | Audit pointer; not resolution-guaranteed |
+
+The display key is rendered `"<condition> <organ name>"`
+(underscores → spaces) at spawn time via
+`configure_from_harvest`.
+
+### DC tuning (provisional)
+
+```python
+HARVEST_DC_BASIC = 3
+HARVEST_CRIT_FAIL = 1
+ORGAN_CONDITION_BY_DECAY = {
+    "fresh": "pristine", "early": "pristine",
+    "moderate": "damaged", "advanced": "putrid",
+    "skeletal": "refuse",
+}
+```
+
+Flagged for balance review once the black-market organ-trade
+gameplay loop lands.  `HARVEST_DC_BASIC` matches `AUTOPSY_DC_BASIC`
+intentionally — both are "basic forensic competency" gates.
+
+### Out of scope (deferred to later PRs)
+
+- Sever-limb command (PR #189) — will populate
+  `corpse.db.severed_locations` which the harvest gate already
+  honours.
+- Black-market organ economy / NPC fences.
+- Organ implantation / replacement surgery.
+- Snapshot persistence across corpse deletion (lost when the
+  corpse decays out — `source_corpse_dbref` becomes stale but the
+  forensic-chain copy of the signature on the organ item
+  survives).
+
+---
+
 ## New Character Attributes
 
 ### On Character (sleeve-level)

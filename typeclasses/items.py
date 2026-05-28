@@ -955,3 +955,63 @@ class RemoteDetonator(Item):
                         explosive_obj.db.scanned_by_detonator = None
         
         super().at_delete()
+
+
+class Organ(Item):
+    """A harvested organ extracted from a corpse via ``harvest``.
+
+    Surfaces the forensic-chain provenance (source corpse signature)
+    so downstream gameplay — implantation, black-market trade,
+    investigation — can reason about origin without re-querying the
+    source corpse (which may have decayed away by the time the organ
+    changes hands).
+
+    Attributes (``self.db``):
+        organ_name: Canonical organ identifier from
+            :data:`world.medical.constants.ORGANS`
+            (e.g. ``"heart"``, ``"liver"``).
+        condition: Freshness descriptor at extraction time, derived
+            from the source corpse's decay stage via
+            :data:`world.combat.constants.ORGAN_CONDITION_BY_DECAY`.
+        source_signature: Copy of the source corpse's
+            ``signature_at_death`` tuple (forensic chain).
+        source_apparent_uid: Copy of the source corpse's
+            ``apparent_uid_at_death`` (forensic chain).
+        source_corpse_dbref: ``#NNN`` ref of the source corpse, for
+            audit / debugging — not guaranteed resolvable (the corpse
+            may have decayed and been deleted).
+
+    The display name is rendered ``"<condition> <organ_name>"``
+    (e.g. ``"pristine heart"``) at ``at_object_creation`` time; callers
+    that need the raw organ identifier should read ``db.organ_name``.
+    """
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        # Defaults — the harvest command overwrites these immediately
+        # after spawn via ``configure_from_harvest``.
+        self.db.organ_name = ""
+        self.db.condition = "pristine"
+        self.db.source_signature = None
+        self.db.source_apparent_uid = None
+        self.db.source_corpse_dbref = None
+
+    def configure_from_harvest(self, *, organ_name, condition, corpse):
+        """Populate forensic-chain fields immediately after spawn.
+
+        Args:
+            organ_name (str): Canonical organ identifier.
+            condition (str): Freshness descriptor.
+            corpse: The source :class:`typeclasses.corpse.Corpse`.
+
+        Sets the display key to ``"<condition> <organ_name>"`` with
+        underscores in the organ name replaced by spaces so the
+        canonical ``"left_kidney"`` reads as ``"pristine left kidney"``.
+        """
+        self.db.organ_name = organ_name
+        self.db.condition = condition
+        self.db.source_signature = corpse.db.signature_at_death
+        self.db.source_apparent_uid = corpse.db.apparent_uid_at_death
+        self.db.source_corpse_dbref = corpse.dbref
+        readable = organ_name.replace("_", " ")
+        self.key = f"{condition} {readable}"

@@ -751,3 +751,23 @@ AUTOPSY_TIME_BUCKETS = (
     (CORPSE_DECAY_ADVANCED, "dead for several days"),
     (float("inf"), "long dead"),
 )
+
+# Surgical Harvest (PR #188) ------------------------------------------
+# Motorics DC for extracting an organ from a corpse via
+# ``harvest <organ> from <corpse>``.  A roll of exactly ``1`` (natural
+# botch) destroys the target organ instead of producing an item.  Tuned
+# against the same baseline as ``AUTOPSY_DC_BASIC``; flagged for
+# balance review once organ-trade gameplay lands.
+HARVEST_DC_BASIC = 3
+HARVEST_CRIT_FAIL = 1
+
+# Decay-stage → freshness condition surfaced on harvested ``Organ``
+# items and gated for refusal at the skeletal stage (no soft tissue
+# remains).  Mirrors the corpse decay model in :mod:`typeclasses.corpse`.
+ORGAN_CONDITION_BY_DECAY = {
+    "fresh": "pristine",
+    "early": "pristine",
+    "moderate": "damaged",
+    "advanced": "putrid",
+    "skeletal": "refuse",
+}
