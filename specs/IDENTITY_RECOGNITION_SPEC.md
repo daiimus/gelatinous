@@ -1369,6 +1369,31 @@ Corpses already preserve forensic data (original name, dbref, physical descripti
 
 **Disguise persistence.** Worn-item axes contribute to the signature at all non-skeletal stages, so looting a disguise-essential item (e.g. a balaclava) silently breaks both recognition paths just as it does for a living character.
 
+#### Identity-Bearer Mixin
+
+The two-pass recognition algorithm above is factored into
+`typeclasses.identity_bearer.IdentityBearerMixin` so multiple
+typeclasses can share the same recognition surface without
+duplicating the implementation.  `Corpse` inherits the mixin
+unchanged; the upcoming `SeveredHead` super-item (severed-head v2)
+will inherit the same mixin so heads recognise on-sight identically
+to corpses.
+
+**Contract** (duck-typed; subclass must supply):
+
+| Member | Contract |
+|---|---|
+| `self.db.signature_at_death` | 5-tuple identity signature at bodily-separation moment. `None` on legacy objects. |
+| `self.db.apparent_uid_at_death` | Hashed apparent UID matching the signature. |
+| `get_decay_stage() -> str` | One of `fresh` / `early` / `moderate` / `advanced` / `skeletal`. |
+| `_decay_display_name() -> str` | Fallback name when no recognition match (`"fresh corpse"`, `"fresh head"`, …). |
+
+Subclasses may override `_FORENSIC_RECOGNITION_DC` to tune per-stage
+DCs.  The default `{"moderate": 3, "advanced": 5}` matches the
+original `Corpse` behaviour; `fresh` and `early` are deliberately
+absent so forensic-recovery rolls never fire at those stages
+(natural recognition covers them via the unchanged degraded UID).
+
 ### Evidence and Investigation ✅ (Engine shipped — PR-E)
 
 The Forensic Recognition Engine (`world/forensics.py`) is the canonical

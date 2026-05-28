@@ -3,9 +3,10 @@
 # =============================================================================
 
 from .items import Item
+from .identity_bearer import IdentityBearerMixin
 import time
 
-class Corpse(Item):
+class Corpse(IdentityBearerMixin, Item):
     """
     A corpse object that preserves forensic data and uses just-in-time decay.
     Decay is calculated on-demand when the corpse is looked at or referenced,
@@ -106,148 +107,6 @@ class Corpse(Item):
         """
         return self.db.medical_state_at_death
 
-    def get_display_name(self, looker, **kwargs):
-        """Return a display name, preferring recognition memory.
-
-        Looters and bystanders who already remember the deceased should
-        continue to see the assigned name on the corpse, exactly as
-        they would on the living character.  The lookup mirrors
-        :meth:`typeclasses.characters.Character.get_display_name`:
-
-        * ``looker is None`` (system context) → decay-stage fallback.
-        * Stage is ``skeletal`` → decay-stage name (hard cutoff;
-          neither natural recognition nor a forensic skill check can
-          recover an identity from bones; recognizable clothing is
-          deduced by the player through item inspection, not surfaced
-          through the corpse name).
-        * Otherwise, two-pass recognition:
-
-          1. **Natural recognition.**  Compute the *decay-degraded*
-             apparent UID via :func:`world.identity.get_apparent_uid_for_decay`
-             (which blanks the body-identity axis at ``moderate`` and
-             ``advanced`` stages).  If the looker's memory has that UID,
-             return its ``assigned_name``.  At ``fresh`` and ``early``
-             the degraded UID equals the fresh UID, so this path covers
-             ordinary recognition through light decay.
-          2. **Forensic recovery.**  If the degraded lookup missed,
-             compute the *fresh-equivalent* UID via
-             :func:`world.identity.get_apparent_uid`.  If memory has
-             that UID **and** the looker passes an Intellect roll
-             against the stage DC (see :meth:`_attempt_forensic_recognition`),
-             return its ``assigned_name``.  The roll outcome is cached
-             permanently per ``(looker, this corpse)``.
-
-        * Else → decay-stage name (``"fresh corpse"`` etc.).
-
-        Disguise loss after death is handled by re-reading the
-        signature on every call (no cache): once a disguise-essential
-        item is looted, both UID computations see the new
-        ``get_worn_items()`` view and the recognition match silently
-        falls away.
-        """
-        del kwargs  # Evennia passes look context we don't need.
-        decay_name = self._decay_display_name()
-        stage = self.get_decay_stage()
-
-        if looker is None:
-            return decay_name
-
-        if stage == "skeletal":
-            # Hard cutoff: no recognition path returns a name for a
-            # skeleton.  The sleeve_uid is still queryable
-            # programmatically (forensic tooling, admin commands) but
-            # not surfaced through the display name.
-            return decay_name
-
-        memory = getattr(looker, "recognition_memory", None)
-        if not memory:
-            return decay_name
-
-        # Pass 1: natural recognition against the decay-degraded UID.
-        try:
-            from world.identity import (
-                get_apparent_uid,
-                get_apparent_uid_for_decay,
-            )
-            degraded_uid = get_apparent_uid_for_decay(self, stage)
-        except (AttributeError, TypeError, ValueError):
-            degraded_uid = None
-
-        if degraded_uid is not None and degraded_uid in memory:
-            assigned = memory[degraded_uid].get("assigned_name")
-            if assigned:
-                return assigned
-
-        # Pass 2: forensic recovery against the fresh-equivalent UID.
-        try:
-            fresh_uid = get_apparent_uid(self)
-        except (AttributeError, TypeError, ValueError):
-            fresh_uid = None
-
-        if (
-            fresh_uid is not None
-            and fresh_uid != degraded_uid
-            and fresh_uid in memory
-        ):
-            if self._attempt_forensic_recognition(looker, stage):
-                assigned = memory[fresh_uid].get("assigned_name")
-                if assigned:
-                    return assigned
-
-        return decay_name
-
-    # Intellect DC by decay stage for forensic recognition recovery.
-    # Stages absent from this map never roll: ``fresh`` / ``early`` don't
-    # need recovery (the degraded UID still matches memory), and
-    # ``skeletal`` is hard-cutoff in :meth:`get_display_name` before this
-    # table is consulted.
-    _FORENSIC_RECOGNITION_DC = {
-        "moderate": 3,
-        "advanced": 5,
-    }
-
-    def _attempt_forensic_recognition(self, looker, stage):
-        """Resolve (and cache) a forensic-recognition Intellect roll.
-
-        Per-observer, per-corpse, permanent: a looker who fails the roll
-        the first time they examine this corpse will keep failing, and a
-        looker who passes will keep recognising it across subsequent
-        looks.  This rewards a single careful examination and prevents
-        Intellect re-rolls on every ``look`` from eventually surfacing
-        an identity by chance.
-
-        Thin wrapper over :func:`world.forensics.attempt_forensic_recognition`
-        (PR-E).  The engine owns the roll, cache, and apparent-UID
-        keying; this method preserves the stage-DC table and the
-        ``forensic_recognition_cache`` attribute name so the live
-        cache attribute slot continues to be reused.
-
-        Args:
-            looker: The character attempting recognition.
-            stage: The corpse's current decay stage (used for DC).
-
-        Returns:
-            ``True`` if the looker recovers the identity, else ``False``.
-        """
-        dc = self._FORENSIC_RECOGNITION_DC.get(stage)
-        if dc is None:
-            # Stage has no defined DC — never recover.
-            return False
-
-        from world.forensics import (
-            attempt_forensic_recognition,
-            extract_subject_from_corpse,
-        )
-
-        subject = extract_subject_from_corpse(self)
-        result = attempt_forensic_recognition(
-            looker,
-            subject,
-            dc,
-            cache_owner=self,
-            cache_attr="forensic_recognition_cache",
-        )
-        return result.success
 
     def _decay_display_name(self):
         """Return the decay-stage name used when no recognition matches."""
