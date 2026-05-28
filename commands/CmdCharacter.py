@@ -1643,6 +1643,12 @@ class CmdForget(Command):
         Keyed on the target's *Apparent UID* (derived from their current
         identity signature), so forgetting under a disguise only forgets
         the disguised persona — the real-form entry is untouched.
+
+        Also invalidates every cached pierce verdict for any
+        presentation of the target's sleeve (issue #210): without this,
+        a cached ``True`` in ``observer.db.disguise_pierce_cache``
+        survives forget and the rendering pipeline keeps surfacing the
+        forgotten name through any disguise.
         """
         memory = caller.recognition_memory
         if not memory or apparent_uid not in memory:
@@ -1657,6 +1663,19 @@ class CmdForget(Command):
         memory[apparent_uid]["assigned_name"] = ""
         caller.recognition_memory = memory
 
+        # Drop stale pierce-cache verdicts for this sleeve so the next
+        # look re-evaluates against the now-nameless memory.  Prefer
+        # the entry's stored ``real_sleeve_uid`` (covers all backfilled
+        # presentations); fall back to the target's live sleeve_uid
+        # for pre-schema entries.
+        from world.identity import invalidate_pierce_cache_for_sleeve
+
+        entry_sleeve = memory[apparent_uid].get("real_sleeve_uid")
+        live_sleeve = getattr(target, "sleeve_uid", None)
+        sleeve_uid = entry_sleeve or live_sleeve
+        if sleeve_uid:
+            invalidate_pierce_cache_for_sleeve(caller, sleeve_uid)
+
         caller.msg(
             f"You forget the name '{old_name}'. "
             f"They will now appear as their description."
@@ -1667,6 +1686,14 @@ class CmdForget(Command):
 
         ``apparent_uid`` is the recognition_memory dict key (an Apparent
         UID derived from the target's signature at recording time).
+
+        Also invalidates pierce-cache entries for the sleeve (issue
+        #210); pre-schema entries (no ``real_sleeve_uid``) skip
+        invalidation since there is no other handle on the sleeve when
+        the target is absent.  The pierce candidate filter in
+        :func:`world.identity.attempt_display_pierce` still guards
+        rendering correctness in that degraded case — it requires a
+        truthy ``assigned_name``, which the forget just cleared.
         """
         old_name = entry.get("assigned_name", "")
         sdesc = entry.get("sdesc_at_last_encounter", "someone")
@@ -1677,6 +1704,12 @@ class CmdForget(Command):
         memory = caller.recognition_memory
         memory[apparent_uid]["assigned_name"] = ""
         caller.recognition_memory = memory
+
+        from world.identity import invalidate_pierce_cache_for_sleeve
+
+        sleeve_uid = entry.get("real_sleeve_uid")
+        if sleeve_uid:
+            invalidate_pierce_cache_for_sleeve(caller, sleeve_uid)
 
         caller.msg(
             f"You forget the name '{old_name}'. "

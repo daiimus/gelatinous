@@ -1484,6 +1484,77 @@ def attempt_disguise_pierce(
     return success
 
 
+def invalidate_pierce_cache_for_sleeve(
+    observer: Any, real_sleeve_uid: str | None
+) -> int:
+    """Drop pierce-cache entries for every presentation of ``real_sleeve_uid``.
+
+    Walks :attr:`observer.recognition_memory` to collect every
+    ``apparent_uid`` belonging to the supplied sleeve (via the
+    ``real_sleeve_uid`` field populated by :func:`_remember_target`
+    and the unmasking-moments lazy backfill), then removes any
+    ``(target_dbref, apparent_uid)`` key from
+    ``observer.db.disguise_pierce_cache`` whose ``apparent_uid``
+    matches.
+
+    Used by ``CmdForget`` (see ``commands/CmdCharacter.py``) so the
+    cognitive act of forgetting a person also discards every cached
+    pierce verdict for any disguise that person has worn.  Without
+    this invalidation, :func:`attempt_disguise_pierce` short-circuits
+    on a cached ``True`` and surfaces the bare-face entry's
+    ``assigned_name`` from any *other* (still-named) entry sharing the
+    sleeve — leaving forgotten targets perpetually recognized through
+    disguises.  See issue #210.
+
+    Sleeve-wide scope matches the semantics of forget: the player is
+    declaring "I no longer know this person", not "I no longer know
+    this particular presentation".  Per-``apparent_uid`` invalidation
+    would leave stale ``True`` verdicts the moment the target swaps
+    any signature axis.
+
+    Pre-schema memory entries (missing ``real_sleeve_uid``) are
+    silently skipped — same contract as
+    :func:`find_entries_by_real_sleeve_uid`.  A missing or empty
+    ``real_sleeve_uid`` argument is a no-op.  Missing or empty cache
+    is a no-op.
+
+    Args:
+        observer: Character whose pierce cache is pruned.
+        real_sleeve_uid: The underlying sleeve UID whose
+            presentations should be invalidated.
+
+    Returns:
+        Count of cache entries removed.
+    """
+    if not real_sleeve_uid:
+        return 0
+    cache = observer.db.disguise_pierce_cache
+    if not cache:
+        return 0
+
+    matching_uids = {
+        apparent_uid
+        for apparent_uid, _entry in find_entries_by_real_sleeve_uid(
+            observer, real_sleeve_uid
+        )
+    }
+    if not matching_uids:
+        return 0
+
+    keys_to_drop = [
+        key for key in cache
+        if isinstance(key, tuple) and len(key) == 2
+        and key[1] in matching_uids
+    ]
+    for key in keys_to_drop:
+        del cache[key]
+
+    if keys_to_drop:
+        observer.db.disguise_pierce_cache = cache
+
+    return len(keys_to_drop)
+
+
 def attempt_display_pierce(
     looker: Any, target: Any, apparent_uid: str | None
 ) -> str | None:
