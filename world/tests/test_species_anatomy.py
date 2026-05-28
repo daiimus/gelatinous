@@ -16,6 +16,7 @@ from world.anatomy import (
     SPECIES_DEFINITIONS,
     get_species_corpse_name,
     get_species_location_display,
+    get_species_organ_name,
     get_species_part_name,
 )
 
@@ -42,6 +43,9 @@ class TestSpeciesRegistry(TestCase):
         stages = {"fresh", "early", "moderate", "advanced", "skeletal"}
         self.assertEqual(set(human["decay_part_prefixes"].keys()), stages)
         self.assertEqual(set(human["decay_corpse_names"].keys()), stages)
+        # Issue #212: organ-specific decay prefixes mirror part prefixes
+        # in shape but substitute ``desiccated`` for ``skeletal``.
+        self.assertEqual(set(human["decay_organ_prefixes"].keys()), stages)
 
 
 class TestLocationDisplay(TestCase):
@@ -143,4 +147,64 @@ class TestCorpseName(TestCase):
     def test_unknown_species_falls_back_to_human(self):
         self.assertEqual(
             get_species_corpse_name("synth", "fresh"), "human corpse"
+        )
+
+
+class TestOrganName(TestCase):
+    """Issue #212: species + decay-tier aware organ naming."""
+
+    def test_fresh_includes_species(self):
+        self.assertEqual(
+            get_species_organ_name("human", "heart", "fresh"),
+            "human heart",
+        )
+
+    def test_early_includes_species(self):
+        self.assertEqual(
+            get_species_organ_name("human", "left_kidney", "early"),
+            "human left kidney",
+        )
+
+    def test_moderate_drops_species(self):
+        self.assertEqual(
+            get_species_organ_name("human", "heart", "moderate"),
+            "rotting heart",
+        )
+
+    def test_advanced_drops_species(self):
+        self.assertEqual(
+            get_species_organ_name("human", "liver", "advanced"),
+            "rotting liver",
+        )
+
+    def test_skeletal_uses_desiccated_for_soft_tissue(self):
+        # Organs don't skeletonize — they desiccate.  This is the
+        # critical divergence from ``get_species_part_name``.
+        self.assertEqual(
+            get_species_organ_name("human", "heart", "skeletal"),
+            "desiccated heart",
+        )
+
+    def test_none_stage_falls_back_to_fresh(self):
+        self.assertEqual(
+            get_species_organ_name("human", "brain", None),
+            "human brain",
+        )
+
+    def test_unknown_stage_falls_back_to_fresh(self):
+        self.assertEqual(
+            get_species_organ_name("human", "brain", "wibbly"),
+            "human brain",
+        )
+
+    def test_unknown_species_falls_back_to_human(self):
+        self.assertEqual(
+            get_species_organ_name("unobtanium_alien", "heart", "fresh"),
+            "human heart",
+        )
+
+    def test_unknown_organ_falls_back_to_underscore_stripped(self):
+        self.assertEqual(
+            get_species_organ_name("human", "flux_capacitor", "fresh"),
+            "human flux capacitor",
         )

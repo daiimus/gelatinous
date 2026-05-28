@@ -1625,9 +1625,16 @@ autopsies render the removed organ as `absent`.
 | `db.source_apparent_uid` | Copy of `corpse.db.apparent_uid_at_death` |
 | `db.source_corpse_dbref` | Audit pointer; not resolution-guaranteed |
 
-The display key is rendered `"<condition> <organ name>"`
-(underscores → spaces) at spawn time via
-`configure_from_harvest`.
+The display key is rendered via `get_species_organ_name(species,
+organ_name, decay_stage)` at spawn time by `configure_from_harvest`
+(issue #212).  Fresh / early decay produces `"{species} {organ}"`
+(e.g. `human heart`); moderate / advanced drops to `"rotting
+{organ}"`; the skeletal tier reads `"desiccated {organ}"` —
+mirroring the appendage decay-tier contract from
+`get_species_part_name` but substituting `desiccated` for `skeletal`
+because soft tissue dries out rather than skeletonizing.  The
+freshness `condition` (`pristine` / `damaged` / `putrid`) is
+conveyed via `db.desc` and surfaces at `look` time, not in the key.
 
 ### DC tuning (provisional)
 

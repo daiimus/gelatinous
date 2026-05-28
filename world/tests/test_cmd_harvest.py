@@ -334,17 +334,24 @@ class CmdHarvestTests(TestCase):
         self.assertEqual(corpse.db.removed_organs, ["heart"])
 
     def test_success_condition_tracks_decay(self):
+        # Issue #212: condition no longer appears in the placeholder
+        # key passed to ``create_object`` — it's carried via the
+        # ``configure_from_harvest`` call, which is the sole authority
+        # for the final species + decay-aware key.
         caller = _make_caller()
         corpse = _FakeCorpse(snapshot=_snapshot_with(), decay_stage="advanced")
         caller.search.return_value = corpse
+        fake_organ = MagicMock()
         with patch.object(
             cmd_module, "roll_stat", return_value=HARVEST_DC_BASIC + 5
         ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ) as mk:
+            cmd_module, "create_object", return_value=fake_organ
+        ):
             _make_cmd(caller=caller, args="liver from corpse").func()
-        self.assertIn(
-            ORGAN_CONDITION_BY_DECAY["advanced"], mk.call_args.kwargs["key"]
+        fake_organ.configure_from_harvest.assert_called_once_with(
+            organ_name="liver",
+            condition=ORGAN_CONDITION_BY_DECAY["advanced"],
+            corpse=corpse,
         )
 
     def test_organ_name_accepts_spaces(self):

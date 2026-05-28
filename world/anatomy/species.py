@@ -30,6 +30,11 @@ Design notes
   description (which still carries decay prose) or ``autopsy`` (which
   rolls Intellect for forensic recovery).
 
+  Harvested **organs** follow the same shape via
+  :data:`decay_organ_prefixes`, but the skeletal-tier tag is
+  ``desiccated`` rather than ``skeletal`` — a heart or kidney doesn't
+  skeletonize, it dries out.  See :func:`get_species_organ_name`.
+
 * **No species in skeletal/rotting stages**: deliberate gameplay
   signal — late decay obscures species at a glance.  Once a body has
   rotted past recognition or reduced to bone, the casual observer
@@ -101,6 +106,18 @@ SPECIES_DEFINITIONS = {
             "moderate": "rotting {part}",
             "advanced": "rotting {part}",
             "skeletal": "skeletal {part}",
+        },
+
+        # Decay-tier prefix templates for harvested organs.  Same shape
+        # as ``decay_part_prefixes`` but the skeletal tier uses
+        # ``desiccated`` — soft tissue dries out rather than
+        # skeletonizing.  Rendered by :func:`get_species_organ_name`.
+        "decay_organ_prefixes": {
+            "fresh":    "{species} {organ}",
+            "early":    "{species} {organ}",
+            "moderate": "rotting {organ}",
+            "advanced": "rotting {organ}",
+            "skeletal": "desiccated {organ}",
         },
 
         # Decay-tier corpse-name templates.  Rendered by
@@ -210,3 +227,50 @@ def get_species_corpse_name(
     if decay_stage in names:
         return names[decay_stage]
     return names.get("fresh", "corpse")
+
+
+def get_species_organ_name(
+    species: str | None,
+    organ_name: str,
+    decay_stage: str | None = None,
+) -> str:
+    """Return the decay-modulated display name for a harvested organ.
+
+    Used by :class:`typeclasses.items.Organ` to render decay-aware
+    glance names like ``"human heart"`` (fresh) → ``"rotting heart"``
+    (moderate) → ``"desiccated heart"`` (skeletal).  The skeletal tier
+    deliberately reads ``desiccated`` rather than ``skeletal`` — soft
+    tissue dries out rather than skeletonizing.
+
+    Mirrors the contract of :func:`get_species_part_name`: fresh/early
+    surface species cleanly, moderate/advanced obscure it ("rotting"
+    only), and the skeletal tier abandons species entirely.  Players
+    wanting more precision must ``look`` (which shows condition-keyed
+    prose) or use forensic commands.
+
+    Args:
+        species: Species identifier; unknown / None → human (the
+            defensive fallback contract documented in
+            ``specs/IDENTITY_RECOGNITION_SPEC.md``).
+        organ_name: Canonical organ identifier from
+            :data:`world.medical.constants.ORGANS`.  Unregistered
+            organs fall back to their underscore-stripped key.
+        decay_stage: One of ``fresh`` / ``early`` / ``moderate`` /
+            ``advanced`` / ``skeletal``.  ``None`` or unknown stages
+            fall back to the ``fresh`` template.
+
+    Returns:
+        Display string ready for use as ``self.key`` or in look output.
+    """
+    from .organs import get_organ_display_name
+
+    spec = _resolve_species(species)
+    prefixes = spec.get("decay_organ_prefixes") or {}
+    template = (
+        prefixes.get(decay_stage)
+        or prefixes.get("fresh")
+        or "{organ}"
+    )
+    organ_display = get_organ_display_name(organ_name)
+    species_display = spec.get("display_name", "")
+    return template.format(species=species_display, organ=organ_display)

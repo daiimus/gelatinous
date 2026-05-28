@@ -418,9 +418,14 @@ class CmdHarvest(Command):
 
         organ_item = create_object(
             "typeclasses.items.Organ",
-            key=f"{condition} {readable_name}",
+            key=organ_arg,
             location=caller,
         )
+        # Issue #212: ``configure_from_harvest`` is the sole authority
+        # for the final key (species + decay-tier aware via
+        # :func:`world.anatomy.species.get_species_organ_name`).  The
+        # ``key=organ_arg`` above is a transient placeholder for the
+        # window between spawn and configuration.
         organ_item.configure_from_harvest(
             organ_name=organ_arg, condition=condition, corpse=target,
         )

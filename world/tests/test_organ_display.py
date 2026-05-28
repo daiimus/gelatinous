@@ -194,12 +194,49 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
     def test_key_still_assigned_alongside_desc(self):
         # Regression guard: the desc plumbing must not skip the
         # display-key assignment that the rest of the system reads.
+        # Issue #212: key is now species-qualified, decay-modulated
+        # via ``get_species_organ_name`` — fake corpse lacks
+        # ``get_decay_stage`` so the configure helper falls back to
+        # the ``fresh`` template (``{species} {organ}``).
         organ = self._fake_organ()
         organ.configure_from_harvest(
             organ_name="heart", condition="pristine",
             corpse=self._fake_corpse(),
         )
-        self.assertEqual(organ.key, "pristine heart")
+        self.assertEqual(organ.key, "human heart")
+
+    def test_key_omits_species_at_moderate_decay(self):
+        # Issue #212: moderate/advanced decay drops the species token
+        # ("rotting heart").  Stub a corpse with ``get_decay_stage``.
+        organ = self._fake_organ()
+        corpse = self._fake_corpse()
+        corpse.get_decay_stage = lambda: "moderate"
+        organ.configure_from_harvest(
+            organ_name="heart", condition="damaged", corpse=corpse,
+        )
+        self.assertEqual(organ.key, "rotting heart")
+
+    def test_key_uses_desiccated_at_skeletal_decay(self):
+        # Issue #212: organs use ``desiccated`` (not ``skeletal``) at
+        # the skeletal decay tier — soft tissue dries out.
+        organ = self._fake_organ()
+        corpse = self._fake_corpse()
+        corpse.get_decay_stage = lambda: "skeletal"
+        organ.configure_from_harvest(
+            organ_name="heart", condition="refuse", corpse=corpse,
+        )
+        self.assertEqual(organ.key, "desiccated heart")
+
+    def test_key_falls_back_for_unknown_species(self):
+        # Issue #212: unknown species fall through to human via
+        # ``_resolve_species`` — keeps the system robust as new
+        # species register incrementally.
+        organ = self._fake_organ()
+        corpse = self._fake_corpse(species="unobtanium_alien")
+        organ.configure_from_harvest(
+            organ_name="liver", condition="pristine", corpse=corpse,
+        )
+        self.assertEqual(organ.key, "human liver")
 
 
 class TestOrganHasNoReturnAppearanceOverride(TestCase):

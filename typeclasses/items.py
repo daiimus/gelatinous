@@ -982,9 +982,14 @@ class Organ(Item):
             audit / debugging — not guaranteed resolvable (the corpse
             may have decayed and been deleted).
 
-    The display name is rendered ``"<condition> <organ_name>"``
-    (e.g. ``"pristine heart"``) at ``at_object_creation`` time; callers
-    that need the raw organ identifier should read ``db.organ_name``.
+    The display name renders as ``"<species> <organ>"`` for fresh /
+    early corpses (e.g. ``"human heart"``), drops to ``"rotting
+    <organ>"`` at moderate / advanced decay, and to ``"desiccated
+    <organ>"`` at the skeletal tier — mirroring the
+    :class:`Appendage` decay-tier contract.  Condition (pristine /
+    damaged / putrid) is conveyed via ``self.db.desc`` and surfaces
+    at ``look`` time; callers that need the raw organ identifier
+    should read ``db.organ_name``.
     """
 
     def at_object_creation(self):
@@ -1010,10 +1015,11 @@ class Organ(Item):
             condition (str): Freshness descriptor.
             corpse: The source :class:`typeclasses.corpse.Corpse`.
 
-        Sets the display key to ``"<condition> <display_name>"`` using
-        the player-facing organ display name from
-        :data:`world.anatomy.organs.ORGAN_DISPLAY` (falling back to
-        the underscore-stripped canonical key).
+        Sets the display key via
+        :func:`world.anatomy.species.get_species_organ_name`, which
+        renders decay-modulated species-aware names (``"human heart"``
+        → ``"rotting heart"`` → ``"desiccated heart"``) matching the
+        appendage naming contract.  Issue #212.
 
         PR #204: also seeds ``self.db.desc`` from the condition-keyed
         default description so the Evennia-standard ``return_appearance``
@@ -1025,7 +1031,7 @@ class Organ(Item):
         """
         from world.anatomy import (
             get_organ_default_description,
-            get_organ_display_name,
+            get_species_organ_name,
         )
 
         self.db.organ_name = organ_name
@@ -1034,9 +1040,17 @@ class Organ(Item):
         self.db.source_apparent_uid = corpse.db.apparent_uid_at_death
         self.db.source_corpse_dbref = corpse.dbref
         # PR-G: species inheritance for condition-aware prose.
-        self.db.source_species = corpse.db.species or "human"
-        readable = get_organ_display_name(organ_name)
-        self.key = f"{condition} {readable}"
+        species = corpse.db.species or "human"
+        self.db.source_species = species
+        # Issue #212: read decay stage off the corpse for species-aware
+        # key composition.  Mirrors the Appendage pattern below.  Fake
+        # corpses in unit tests may lack ``get_decay_stage`` — fall back
+        # to ``fresh`` (the species-revealing tier) for those paths.
+        if hasattr(corpse, "get_decay_stage"):
+            decay_stage = corpse.get_decay_stage()
+        else:
+            decay_stage = "fresh"
+        self.key = get_species_organ_name(species, organ_name, decay_stage)
         # PR #204: populate db.desc the Evennia-standard way so the
         # engine renderer handles it (rather than overriding
         # return_appearance to prepend prose).  Conditional: leave the
