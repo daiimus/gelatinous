@@ -51,7 +51,7 @@ def get_location_display_name(location, character=None):
 
     species = None
     if character is not None:
-        species = getattr(character.db, "species", None)
+        species = character.db.species
     return get_species_location_display(species, location)
 
 # Wound transition thresholds (days since injury)

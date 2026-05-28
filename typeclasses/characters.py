@@ -57,6 +57,7 @@ class Character(
     hair_style = AttributeProperty(None, category="identity")
     sdesc_keyword = AttributeProperty(None, category="identity")
     recognition_memory = AttributeProperty({}, category="identity", autocreate=True)
+    species = AttributeProperty("human", category="identity")
 
     # Shop System Attributes
     is_merchant = AttributeProperty(False, category="shop", autocreate=True)
@@ -124,10 +125,6 @@ class Character(
         if self.sleeve_uid is None:
             import uuid
             self.sleeve_uid = str(uuid.uuid4())
-
-        # Initialize species for anatomy/decay naming (PR-G)
-        if self.db.species is None:
-            self.db.species = "human"
 
         # Initialize medical system - replaces legacy HP system
         self._initialize_medical_state()

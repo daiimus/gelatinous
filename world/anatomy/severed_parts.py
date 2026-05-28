@@ -1,6 +1,6 @@
 """Severed body-part default descriptions (PR #204).
 
-Sibling table to :data:`world.medical.constants.ORGAN_DISPLAY`, but
+Sibling table to :data:`world.anatomy.organs.ORGAN_DISPLAY`, but
 keyed by species and severable body-location.  Consumed by
 :meth:`typeclasses.items.Appendage.configure_from_sever` (and via
 super-call by :class:`typeclasses.items.SeveredHead`) to seed
@@ -15,7 +15,7 @@ Design notes
   templates).  Prose belongs in its own file so the structural data
   stays scannable and the prose-heavy block stays easy to translate
   or rewrite in isolation (mirrors the
-  :data:`world.medical.constants.ORGAN_DISPLAY` separation from
+  :data:`world.anatomy.organs.ORGAN_DISPLAY` separation from
   :data:`world.medical.constants.ORGANS`).
 
 * **Species-keyed** so non-humans (when they exist) can register
@@ -29,7 +29,7 @@ Design notes
   intentionally absent: skeletal corpses refuse severance at the
   command gate, so no Appendage instance ever reaches that condition.
 
-* **Same vocabulary register as** :data:`world.medical.constants.ORGAN_DISPLAY`
+* **Same vocabulary register as** :data:`world.anatomy.organs.ORGAN_DISPLAY`
   — short, clinical, physically anchored, single sentence.  Anchors
   the player's senses without depending on a custom ``db.desc``
   ever being set by a staff member.

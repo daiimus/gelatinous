@@ -1012,7 +1012,7 @@ class Organ(Item):
 
         Sets the display key to ``"<condition> <display_name>"`` using
         the player-facing organ display name from
-        :data:`world.medical.constants.ORGAN_DISPLAY` (falling back to
+        :data:`world.anatomy.organs.ORGAN_DISPLAY` (falling back to
         the underscore-stripped canonical key).
 
         PR #204: also seeds ``self.db.desc`` from the condition-keyed
@@ -1023,7 +1023,7 @@ class Organ(Item):
         the harvest command gate refuses upstream anyway) leave
         ``db.desc`` untouched so the engine default applies.
         """
-        from world.medical.constants import (
+        from world.anatomy import (
             get_organ_default_description,
             get_organ_display_name,
         )
@@ -1115,9 +1115,9 @@ class Appendage(Item):
         # ``condition`` parameter is the organ-condition mapping
         # (pristine / damaged / putrid / refuse) — useful for harvest
         # bookkeeping but coarser than the underlying decay tier.
-        try:
+        if hasattr(corpse, "get_decay_stage"):
             decay_stage = corpse.get_decay_stage()
-        except AttributeError:
+        else:
             decay_stage = "fresh"
         self.key = get_species_part_name(species, location_name, decay_stage)
         # PR #204: populate db.desc the Evennia-standard way so the

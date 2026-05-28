@@ -1,6 +1,6 @@
 """Tests for organ display metadata (PR #202 / PR-G).
 
-Covers :data:`world.medical.constants.ORGAN_DISPLAY` and the two
+Covers :data:`world.anatomy.organs.ORGAN_DISPLAY` and the two
 lookup helpers (``get_organ_display_name``,
 ``get_organ_default_description``).  Schema + coverage checks plus a
 spot-check on the Organ typeclass key formatting at harvest time.
@@ -10,12 +10,12 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from world.medical.constants import (
+from world.anatomy import (
     ORGAN_DISPLAY,
-    ORGANS,
     get_organ_default_description,
     get_organ_display_name,
 )
+from world.medical.constants import ORGANS
 
 
 class TestOrganDisplayCoverage(TestCase):
