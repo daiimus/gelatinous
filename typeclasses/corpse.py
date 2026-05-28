@@ -172,11 +172,11 @@ class Corpse(Item):
         Intellect re-rolls on every ``look`` from eventually surfacing
         an identity by chance.
 
-        Cache lives in ``self.db.forensic_recognition_cache`` as
-        ``{looker.dbref: bool}``.  Anonymous lookers (no dbref) are not
-        cached and re-roll on every call — this keeps the cache bounded
-        and avoids storing junk keys for tooling that walks corpses
-        without a real observer.
+        Thin wrapper over :func:`world.forensics.attempt_forensic_recognition`
+        (PR-E).  The engine owns the roll, cache, and apparent-UID
+        keying; this method preserves the stage-DC table and the
+        ``forensic_recognition_cache`` attribute name so the live
+        cache attribute slot continues to be reused.
 
         Args:
             looker: The character attempting recognition.
@@ -190,24 +190,20 @@ class Corpse(Item):
             # Stage has no defined DC — never recover.
             return False
 
-        cache = self.db.forensic_recognition_cache
-        if cache is None:
-            cache = {}
+        from world.forensics import (
+            attempt_forensic_recognition,
+            extract_subject_from_corpse,
+        )
 
-        looker_dbref = getattr(looker, "dbref", None)
-        if looker_dbref is not None and looker_dbref in cache:
-            return bool(cache[looker_dbref])
-
-        from world.combat.dice import roll_stat
-
-        roll = roll_stat(looker, "intellect", default=1)
-        success = roll >= dc
-
-        if looker_dbref is not None:
-            cache[looker_dbref] = success
-            self.db.forensic_recognition_cache = cache
-
-        return success
+        subject = extract_subject_from_corpse(self)
+        result = attempt_forensic_recognition(
+            looker,
+            subject,
+            dc,
+            cache_owner=self,
+            cache_attr="forensic_recognition_cache",
+        )
+        return result.success
 
     def _decay_display_name(self):
         """Return the decay-stage name used when no recognition matches."""

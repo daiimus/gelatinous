@@ -258,9 +258,27 @@ class MedicalScript(DefaultScript):
                 break
         
         sleeve_uid = self.obj.db.sleeve_uid if self.obj.db.sleeve_uid is not None else None
+
+        # Forensic Recognition Engine (PR-E) data prep: snapshot the
+        # bleeder's current identity signature alongside the legacy
+        # ``sleeve_uid`` field so future forensic consumers can
+        # reconstruct presentation axes at bleed-time.  Reads default
+        # to ``None`` for legacy incidents — no migration required.
+        signature = None
+        apparent_uid = None
+        try:
+            from world.identity import get_identity_signature, get_apparent_uid
+            signature = get_identity_signature(self.obj)
+            apparent_uid = get_apparent_uid(self.obj)
+        except (AttributeError, TypeError, ValueError):
+            pass
+
         if existing_pool:
             # Merge into existing pool (like graffiti entries)
-            existing_pool.add_bleeding_incident(self.obj.key, severity, sleeve_uid=sleeve_uid)
+            existing_pool.add_bleeding_incident(
+                self.obj.key, severity, sleeve_uid=sleeve_uid,
+                signature=signature, apparent_uid=apparent_uid,
+            )
         else:
             # Create new blood pool
             from evennia import create_object
@@ -271,7 +289,10 @@ class MedicalScript(DefaultScript):
                 key="blood stains",
                 location=self.obj.location
             )
-            blood_pool.add_bleeding_incident(self.obj.key, severity, sleeve_uid=sleeve_uid)
+            blood_pool.add_bleeding_incident(
+                self.obj.key, severity, sleeve_uid=sleeve_uid,
+                signature=signature, apparent_uid=apparent_uid,
+            )
 
 
 def start_medical_script(character):

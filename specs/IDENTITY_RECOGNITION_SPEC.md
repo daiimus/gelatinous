@@ -1369,12 +1369,158 @@ Corpses already preserve forensic data (original name, dbref, physical descripti
 
 **Disguise persistence.** Worn-item axes contribute to the signature at all non-skeletal stages, so looting a disguise-essential item (e.g. a balaclava) silently breaks both recognition paths just as it does for a living character.
 
-### Evidence and Investigation (Future)
+### Evidence and Investigation ✅ (Engine shipped — PR-E)
 
-When forensic investigation commands are built:
-- Evidence sources (fingerprints, DNA, etc.) link to `sleeve_uid`
-- Investigators see recognized names or sdescs when examining evidence
-- Creates detective gameplay: "The blood at the crime scene belongs to that tall man I saw earlier"
+The Forensic Recognition Engine (`world/forensics.py`) is the canonical
+access layer for all forensic evidence surfaces (corpses, blood pools,
+photos). It exposes:
+
+- `ForensicSubject` — source-agnostic envelope.
+- `attempt_forensic_recognition()` — Intellect roll vs DC with
+  permanent per-`(observer, evidence)` cache, mirroring
+  `attempt_disguise_pierce` semantics.
+- `render_forensic_report()` — depth ladder
+  (`summary` / `detailed` / `comparison`) over the preserved
+  signature.  **Never** assigns a name; surfacing a name remains the
+  exclusive responsibility of recognition-memory lookup.
+- `link_subjects()` — diagnostic primitive comparing two subjects
+  axis-by-axis (reserved for future linking gameplay; no command
+  exposes it).
+
+**Shipped consumer**: `commands/forensics.py:CmdAutopsy` (basic +
+`/deep`) routes corpses through the engine.
+
+**Data prep only**: blood pools have the `signature` / `apparent_uid`
+fields wired in `BloodPool.add_bleeding_incident` and the medical
+script, but no player-facing command consumes them yet.
+
+**Out of scope (deferred)**: photo capture/display (extractor stub
+raises `NotImplementedError`), multi-UID linking gameplay,
+sleeve-swap awareness (blocked on resleeving system).
+
+See the dedicated §"Forensic Recognition Engine" later in this
+document for the full surface, contracts, and DC tuning notes.
+
+---
+
+## Forensic Recognition Engine
+
+**Module**: `world/forensics.py` (PR-E, Issue #184).
+
+The Forensic Recognition Engine is the canonical access layer for
+identity recovery from *static evidence* — corpses today, blood
+pools and photos in follow-ups.  It complements
+`world.identity.attempt_disguise_pierce` (which handles *live*
+targets whose disguise an observer might see through) by keeping
+the recognition contract — *live UID is the only key that returns
+an assigned name* — invariant across evidence types.
+
+### Surface
+
+**Subject envelope**:
+
+- `ForensicSubject(signature, apparent_uid_at_death,
+  essential_item_type_ids, source_kind, source_ref)` — frozen
+  dataclass; consumers extract one per evidence object.
+
+**Extractors** (one per evidence surface):
+
+- `extract_subject_from_corpse(corpse)` — reads
+  `db.signature_at_death` + `db.apparent_uid_at_death`.
+- `extract_subject_from_blood_pool_incident(pool, incident)` —
+  reads `incident.get("signature")` / `incident.get("apparent_uid")`
+  so legacy incidents land as `signature=None` automatically.
+- `extract_subject_from_photo(photo)` — stub
+  (`NotImplementedError`); wire when photo typeclass lands.
+
+**Recognition (Surface A)**:
+
+- `attempt_forensic_recognition(looker, subject, dc, *,
+  cache_owner, cache_attr="forensic_recognition_cache")` —
+  returns `RecognitionResult(success, revealed_uid, from_cache)`.
+- Rolls `world.combat.dice.roll_stat(looker, "intellect", default=1)`
+  vs `dc`.  Cache key is `(looker.dbref, revealed_uid)` so a
+  signature change (looted disguise essential) naturally spawns a
+  fresh cache slot on the next examine.
+- Anonymous lookers (no dbref) re-roll every call; subjects
+  without a recoverable UID short-circuit to
+  `RecognitionResult(False, None, False)` without rolling.
+
+**Report rendering (Surface B)**:
+
+- `render_forensic_report(subject, *, observer, depth)` —
+  depth ladder: `"summary"` (height/build/keyword),
+  `"detailed"` (+ essential items), `"comparison"` (scaffold for
+  future linking gameplay).
+- Raises `ValueError` on invalid depth.
+- **Critically never assigns a name.**  Name surfacing remains
+  the exclusive responsibility of the recognition-memory lookup
+  performed by the consumer command.
+
+**Linking primitive**:
+
+- `link_subjects(a, b)` returns `LinkResult(shared_sleeve_uid,
+  shared_apparent_uid, shared_axes)` — diagnostic only, no
+  command exposes it yet.
+
+### Consumer: `autopsy` command
+
+`commands/forensics.py:CmdAutopsy` (keyed `autopsy`, switch
+`deep`, help category `Forensics`):
+
+- `autopsy <corpse>` — Intellect vs `AUTOPSY_DC_BASIC` → summary
+  report.
+- `autopsy/deep <corpse>` — Intellect vs
+  `AUTOPSY_DC_BASIC + AUTOPSY_DC_DEEP_OFFSET` → detailed report.
+- Pre-roll room broadcast via `msg_room_identity` so observers
+  see the investigation regardless of outcome.
+- Concatenates the recognized-name header only when the looker
+  already holds the revealed UID in `recognition_memory` with an
+  `assigned_name` set.
+
+### DC tuning (provisional)
+
+Constants live in `world/combat/constants.py`:
+
+```python
+AUTOPSY_DC_BASIC = 3
+AUTOPSY_DC_DEEP_OFFSET = 2  # /deep DC = BASIC + OFFSET
+```
+
+Flagged for balance tuning per the disguise-pierce precedent.
+Both are intentionally low for the shipping basic-Intellect
+target; raise alongside any future Investigation skill stat
+gating.
+
+### Cache strategy
+
+Per `(observer, evidence)` cache stored on the evidence object
+(`cache_owner.db.<cache_attr>` — defaults to
+`"forensic_recognition_cache"` for backward compatibility with
+the pre-PR-E corpse path).  Permanent across server restarts.
+A second examination by the same character silently re-renders
+the cached outcome rather than rolling again — rewards single
+careful examination and prevents Intellect re-roll abuse.
+
+### Recognition contract guarantees
+
+1. The engine never assigns a name on its own.
+2. Consumers may concatenate an `assigned_name` from the looker's
+   recognition memory **only after** confirming the revealed UID
+   is present in that memory.
+3. Subjects without a UID (pre-PR-#183 corpses, legacy blood
+   incidents) gracefully render "no further forensic detail"
+   instead of leaking a `sleeve_uid` or other internal hash.
+
+### Out of scope (deferred)
+
+- Photo capture/display gameplay.
+- Blood-pool forensic consumer command (data field is wired so
+  future consumers have something to read).
+- Multi-UID linking gameplay (`link_subjects` is a primitive).
+- Memory decay & active impersonation detection (spec L1668
+  Phase 5).
+- Sleeve-swap awareness (blocked on resleeving system).
 
 ---
 
@@ -1685,7 +1831,7 @@ For reference, the existing forensic data preserved by the system:
 
 **Corpses** (`typeclasses/corpse.py`): original character name/dbref, account dbref, death time, cause of death, medical conditions, wounds at death, physical description, longdesc data, skintone, gender. Decay stages: fresh (<1h), early (<1d), moderate (<3d), advanced (<1w), skeletal (>1w).
 
-`sleeve_uid` has been added to corpse forensic data (PR #133) — corpses participate in the recognition pipeline. Blood pool integration is still pending.
+`sleeve_uid` has been added to corpse forensic data (PR #133) — corpses participate in the recognition pipeline. PR-E adds a `signature` + `apparent_uid` field to each blood-pool incident (data prep only — no consumer command yet); see §"Forensic Recognition Engine" for the engine surface that will read them once a blood-pool examination command lands.
 
 ---
 

@@ -88,6 +88,7 @@ class _FakeDecayCorpse:
         self.db.build_override = build_override
         self.db.keyword_override = keyword_override
         self.db.apparent_uid_at_death = None
+        self.db.signature_at_death = None
         self.db.forensic_recognition_cache = None
         self.contents = list(contents or [])
         self.ndb = type("_NDB", (), {})()

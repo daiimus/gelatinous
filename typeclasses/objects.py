@@ -491,7 +491,10 @@ class BloodPool(Object):
         # Add aliases for examination
         self.aliases.add(["blood", "stains", "pool", "evidence"])
         
-    def add_bleeding_incident(self, character_name, severity, sleeve_uid=None):
+    def add_bleeding_incident(
+        self, character_name, severity, sleeve_uid=None,
+        signature=None, apparent_uid=None,
+    ):
         """Add a new bleeding incident to this pool (like adding graffiti).
 
         Args:
@@ -500,12 +503,24 @@ class BloodPool(Object):
             severity: Numeric severity of the bleeding event.
             sleeve_uid: Optional sleeve UID for forensic identity tracking.
                 If provided, stored as the behind-the-scenes identifier.
+            signature: Optional 5-tuple from
+                :func:`world.identity.get_identity_signature` captured
+                at the moment of bleeding.  Forward-only data prep for
+                the Forensic Recognition Engine (PR-E); existing
+                incidents recorded before this argument was added
+                store ``None`` and forensic consumers treat them as
+                "signature unknown" via :py:meth:`dict.get`.
+            apparent_uid: Optional pre-computed apparent UID for the
+                donor at bleed-time.  Mirrors
+                ``corpse.db.apparent_uid_at_death``.
         """
         current_time = gametime.gametime()
-        
+
         incident = {
             'character': character_name,
             'sleeve_uid': sleeve_uid,
+            'signature': signature,
+            'apparent_uid': apparent_uid,
             'severity': severity,
             'timestamp': current_time,
             'age_hours': 0  # Will be calculated dynamically

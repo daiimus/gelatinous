@@ -728,3 +728,12 @@ CORPSE_DECAY_EARLY = 86400     # < 1 day - early decomposition
 CORPSE_DECAY_MODERATE = 259200 # < 3 days - moderate decomposition
 CORPSE_DECAY_ADVANCED = 604800 # < 1 week - advanced decomposition
 CORPSE_DECAY_COMPLETE = 1209600 # 2 weeks - complete decay and cleanup
+
+# Forensic Recognition Engine (PR-E) ----------------------------------
+# Intellect DC for the basic autopsy roll on a corpse.  Deep examination
+# rolls against ``AUTOPSY_DC_BASIC + AUTOPSY_DC_DEEP_OFFSET``.  Both
+# constants are provisional pending a balance pass — cf. the
+# disguise-pierce constants in ``world/identity.py`` (PR #134/#136),
+# which carry the same flag.
+AUTOPSY_DC_BASIC = 3
+AUTOPSY_DC_DEEP_OFFSET = 2
