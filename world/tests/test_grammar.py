@@ -192,6 +192,11 @@ class TestIsPluraliaTantum(TestCase):
     def test_pluralia_tantum_scissors(self) -> None:
         self.assertTrue(is_pluralia_tantum("scissors"))
 
+    def test_pluralia_tantum_contacts(self) -> None:
+        """Contact lenses idiomatically take no indefinite article."""
+        self.assertTrue(is_pluralia_tantum("contacts"))
+        self.assertTrue(is_pluralia_tantum("colored contacts"))
+
     def test_not_pluralia_tantum_trenchcoat(self) -> None:
         self.assertFalse(is_pluralia_tantum("Black Trenchcoat"))
 

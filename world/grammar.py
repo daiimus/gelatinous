@@ -132,7 +132,7 @@ _PLURALIA_TANTUM_NOUNS: frozenset[str] = frozenset({
     "slippers", "heels", "loafers", "moccasins", "mittens",
     # eyewear
     "glasses", "goggles", "spectacles", "binoculars",
-    "sunglasses", "shades",
+    "sunglasses", "shades", "contacts",
     # tools
     "scissors", "pliers", "tweezers", "tongs", "shears", "clippers",
     # other
