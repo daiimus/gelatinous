@@ -18,11 +18,25 @@ Design notes
   :data:`world.anatomy.severed_parts.SEVERED_PART_DESCRIPTIONS`
   split out of structural anatomy data).
 
-* **Three conditions only** — ``pristine`` / ``damaged`` / ``putrid``,
-  matching the :data:`world.combat.constants.ORGAN_CONDITION_BY_DECAY`
-  map.  The ``refuse`` condition (skeletal-stage corpses) is
-  intentionally absent: skeletal corpses refuse harvest at the
-  command gate, so no Organ instance ever reaches that condition.
+* **Tiered conditions** — soft-tissue organs carry three conditions
+  (``pristine`` / ``damaged`` / ``putrid``) matching the
+  :data:`world.combat.constants.ORGAN_CONDITION_BY_DECAY` map.
+  Bones (see :data:`BONE_ORGANS`) carry a fourth ``desiccated``
+  tier (issue #213) for mineralized-tissue narrative when a future
+  harvest-gate relaxation (issue #227) allows skeletal-stage bone
+  harvest.  The ``refuse`` condition (current skeletal-stage soft-
+  tissue gate) is intentionally absent: skeletal corpses refuse
+  soft-tissue harvest at the command gate, so no Organ instance
+  ever reaches that condition with registered prose.
+
+* **Bone vs. soft-tissue vocabulary** (issue #213): bones decay by
+  drying, staining, and cracking — not by weeping serum or
+  dissolving into pulp.  Bone prose deliberately avoids the soft-
+  tissue register (``weeping``, ``slurry``, ``pulp``, ``slough``,
+  ``serum``, ``frothy``, ``slime``) and reaches for mineralized-
+  tissue language (``ivory``, ``periosteum``, ``hairline``,
+  ``marrow``, ``chalk``, ``bleached``).  An exhaustive test in
+  :mod:`world.tests.test_organ_display` enforces the split.
 
 * Schema (per organ):
 
@@ -41,9 +55,35 @@ Evennia's standard appearance rendering picks it up.
 from __future__ import annotations
 
 
+#: Canonical bone-organ identifiers.  Bones carry a four-tier
+#: ``default_descriptions`` block (pristine / damaged / putrid /
+#: desiccated) and use mineralized-tissue vocabulary throughout.
+#: Issue #213.  Frozenset so callers can't accidentally mutate the
+#: registry.
+BONE_ORGANS = frozenset({
+    "jaw",
+    "spine",
+    "pelvis",
+    "left_humerus",
+    "right_humerus",
+    "left_metacarpals",
+    "right_metacarpals",
+    "left_femur",
+    "right_femur",
+    "left_tibia",
+    "right_tibia",
+    "left_metatarsals",
+    "right_metatarsals",
+})
+
+
 #: Organ display registry.  Keys: canonical organ identifier
 #: (matching :data:`world.medical.constants.ORGANS`) →
 #: ``{"display_name": str, "default_descriptions": {condition: prose}}``.
+#:
+#: Soft-tissue entries carry three conditions; bone entries (per
+#: :data:`BONE_ORGANS`) carry four (the extra ``desiccated`` tier
+#: lands at issue #213 ahead of the gate relaxation in issue #227).
 ORGAN_DISPLAY = {
     "brain": {
         "display_name": "brain",
@@ -96,9 +136,10 @@ ORGAN_DISPLAY = {
     "jaw": {
         "display_name": "jaw",
         "default_descriptions": {
-            "pristine": "A clean jawbone, its teeth seated firmly and the hinge surfaces still slick with synovial fluid.",
-            "damaged": "A discoloured jaw, several teeth loosened in their sockets and the bone surface beginning to dull.",
-            "putrid": "A foul jaw, the gum-line sloughed away and the bone stained with seeping decay.",
+            "pristine": "A clean ivory jawbone, its teeth seated firmly in their sockets and the hinge surfaces faintly glossy.",
+            "damaged": "A dulled jawbone, several teeth loosened in their sockets and hairline cracks fanning across the ramus.",
+            "putrid": "A stained jawbone, the gum-line long shed and dark mineral discolouration creeping along the alveolar margin.",
+            "desiccated": "A chalk-pale jawbone, bone-dry and brittle, the teeth rattling loose in their parched sockets.",
         },
     },
     "heart": {
@@ -160,97 +201,109 @@ ORGAN_DISPLAY = {
     "spine": {
         "display_name": "spine",
         "default_descriptions": {
-            "pristine": "A clean length of spine, its vertebrae articulated and the cord still glistening within the canal.",
-            "damaged": "A discoloured spine, the intervertebral discs flattened and the cord gone grey within its sheath.",
-            "putrid": "A fouled spine, the cord liquefied and seeping from between the slumping vertebrae.",
+            "pristine": "A clean length of spine, its vertebrae articulated and the intervertebral discs firm between glossy ivory bone.",
+            "damaged": "A dulled spine, the discs flattened and hairline cracks tracing the lateral processes of several vertebrae.",
+            "putrid": "A stained spine, the canal fouled with dark mineral residue and the vertebrae beginning to loosen from one another.",
+            "desiccated": "A bone-dry spine, chalk-pale and brittle, the vertebrae held together only by parchment-thin remnants of ligament.",
         },
     },
     "left_humerus": {
         "display_name": "left humerus",
         "default_descriptions": {
-            "pristine": "A clean left humerus, its surface ivory-pale and the joint ends still slick with cartilage.",
-            "damaged": "A discoloured left humerus, the cartilage caps cracking and dried tissue clinging to the shaft.",
-            "putrid": "A stained left humerus, the marrow weeping from the medullary cavity and the surface fouled with rot.",
+            "pristine": "A clean left humerus, its shaft ivory-pale and the cartilage caps at each end still faintly glossy.",
+            "damaged": "A dulled left humerus, the cartilage caps cracking and hairline fractures spidering across the upper shaft.",
+            "putrid": "A stained left humerus, dark mineral discolouration creeping along the shaft and the marrow cavity rimmed with residue.",
+            "desiccated": "A chalk-pale left humerus, bone-dry and lightweight, hairline cracks fanning the length of the bleached shaft.",
         },
     },
     "right_humerus": {
         "display_name": "right humerus",
         "default_descriptions": {
-            "pristine": "A clean right humerus, its surface ivory-pale and the joint ends still slick with cartilage.",
-            "damaged": "A discoloured right humerus, the cartilage caps cracking and dried tissue clinging to the shaft.",
-            "putrid": "A stained right humerus, the marrow weeping from the medullary cavity and the surface fouled with rot.",
+            "pristine": "A clean right humerus, its shaft ivory-pale and the cartilage caps at each end still faintly glossy.",
+            "damaged": "A dulled right humerus, the cartilage caps cracking and hairline fractures spidering across the upper shaft.",
+            "putrid": "A stained right humerus, dark mineral discolouration creeping along the shaft and the marrow cavity rimmed with residue.",
+            "desiccated": "A chalk-pale right humerus, bone-dry and lightweight, hairline cracks fanning the length of the bleached shaft.",
         },
     },
     "left_metacarpals": {
         "display_name": "left metacarpals",
         "default_descriptions": {
-            "pristine": "A neat cluster of left metacarpals, still articulated and the joint surfaces pearly white.",
-            "damaged": "A loosened set of left metacarpals, several bones disarticulated and the cartilage gone leathery.",
-            "putrid": "A fouled jumble of left metacarpals, stained dark and stuck together with putrefying tissue.",
+            "pristine": "A neat cluster of left metacarpals, still articulated and the joint surfaces a pearly ivory white.",
+            "damaged": "A loosened set of left metacarpals, several bones disarticulated and dulled grey along their shafts.",
+            "putrid": "A stained cluster of left metacarpals, mineral residue darkening the joint surfaces and several bones cracked.",
+            "desiccated": "A chalk-pale fan of left metacarpals, bone-dry and brittle, the bones rattling apart at the slightest touch.",
         },
     },
     "right_metacarpals": {
         "display_name": "right metacarpals",
         "default_descriptions": {
-            "pristine": "A neat cluster of right metacarpals, still articulated and the joint surfaces pearly white.",
-            "damaged": "A loosened set of right metacarpals, several bones disarticulated and the cartilage gone leathery.",
-            "putrid": "A fouled jumble of right metacarpals, stained dark and stuck together with putrefying tissue.",
+            "pristine": "A neat cluster of right metacarpals, still articulated and the joint surfaces a pearly ivory white.",
+            "damaged": "A loosened set of right metacarpals, several bones disarticulated and dulled grey along their shafts.",
+            "putrid": "A stained cluster of right metacarpals, mineral residue darkening the joint surfaces and several bones cracked.",
+            "desiccated": "A chalk-pale fan of right metacarpals, bone-dry and brittle, the bones rattling apart at the slightest touch.",
         },
     },
     "left_femur": {
         "display_name": "left femur",
         "default_descriptions": {
-            "pristine": "A heavy left femur, its shaft smooth and the femoral head a perfect glistening sphere.",
-            "damaged": "A discoloured left femur, hairline fractures spidering the shaft and the joint caps cracking.",
-            "putrid": "A stained left femur, the marrow weeping from the medullary cavity and the surface slick with rot.",
+            "pristine": "A heavy left femur, its shaft smooth ivory and the femoral head a perfect glistening sphere.",
+            "damaged": "A dulled left femur, hairline fractures spidering the shaft and the joint caps cracking at their edges.",
+            "putrid": "A stained left femur, the marrow cavity rimmed with dark mineral residue and the shaft mottled with discolouration.",
+            "desiccated": "A chalk-pale left femur, bone-dry and notably lighter than it should be, the shaft sun-bleached and brittle.",
         },
     },
     "right_femur": {
         "display_name": "right femur",
         "default_descriptions": {
-            "pristine": "A heavy right femur, its shaft smooth and the femoral head a perfect glistening sphere.",
-            "damaged": "A discoloured right femur, hairline fractures spidering the shaft and the joint caps cracking.",
-            "putrid": "A stained right femur, the marrow weeping from the medullary cavity and the surface slick with rot.",
+            "pristine": "A heavy right femur, its shaft smooth ivory and the femoral head a perfect glistening sphere.",
+            "damaged": "A dulled right femur, hairline fractures spidering the shaft and the joint caps cracking at their edges.",
+            "putrid": "A stained right femur, the marrow cavity rimmed with dark mineral residue and the shaft mottled with discolouration.",
+            "desiccated": "A chalk-pale right femur, bone-dry and notably lighter than it should be, the shaft sun-bleached and brittle.",
         },
     },
     "left_tibia": {
         "display_name": "left tibia",
         "default_descriptions": {
-            "pristine": "A long, clean left tibia, its anterior crest sharp and the periosteum still glossy.",
-            "damaged": "A discoloured left tibia, the periosteum stripped in patches and the bone dulled to a greyish ivory.",
-            "putrid": "A foul left tibia, the marrow seeping at both ends and the shaft mottled with putrid stains.",
+            "pristine": "A long, clean left tibia, its anterior crest sharp and the periosteum still faintly glossy.",
+            "damaged": "A dulled left tibia, the periosteum stripped in patches and the bone discoloured to a greyish ivory.",
+            "putrid": "A stained left tibia, the marrow cavity rimmed dark and mineral residue creeping along the cracked shaft.",
+            "desiccated": "A chalk-pale left tibia, bone-dry and brittle, its anterior crest crumbling and the shaft hairline-cracked.",
         },
     },
     "right_tibia": {
         "display_name": "right tibia",
         "default_descriptions": {
-            "pristine": "A long, clean right tibia, its anterior crest sharp and the periosteum still glossy.",
-            "damaged": "A discoloured right tibia, the periosteum stripped in patches and the bone dulled to a greyish ivory.",
-            "putrid": "A foul right tibia, the marrow seeping at both ends and the shaft mottled with putrid stains.",
+            "pristine": "A long, clean right tibia, its anterior crest sharp and the periosteum still faintly glossy.",
+            "damaged": "A dulled right tibia, the periosteum stripped in patches and the bone discoloured to a greyish ivory.",
+            "putrid": "A stained right tibia, the marrow cavity rimmed dark and mineral residue creeping along the cracked shaft.",
+            "desiccated": "A chalk-pale right tibia, bone-dry and brittle, its anterior crest crumbling and the shaft hairline-cracked.",
         },
     },
     "left_metatarsals": {
         "display_name": "left metatarsals",
         "default_descriptions": {
-            "pristine": "A neat row of left metatarsals, still articulated and the joint surfaces gleaming white.",
-            "damaged": "A loosened set of left metatarsals, several bones disarticulated and the cartilage gone leathery.",
-            "putrid": "A fouled set of left metatarsals, stained dark and stuck together with putrefying tissue.",
+            "pristine": "A neat row of left metatarsals, still articulated and the joint surfaces gleaming ivory.",
+            "damaged": "A loosened set of left metatarsals, several bones disarticulated and dulled grey along their shafts.",
+            "putrid": "A stained row of left metatarsals, mineral residue darkening the joint surfaces and the shafts hairline-cracked.",
+            "desiccated": "A chalk-pale row of left metatarsals, bone-dry and brittle, the bones rattling loose from one another.",
         },
     },
     "right_metatarsals": {
         "display_name": "right metatarsals",
         "default_descriptions": {
-            "pristine": "A neat row of right metatarsals, still articulated and the joint surfaces gleaming white.",
-            "damaged": "A loosened set of right metatarsals, several bones disarticulated and the cartilage gone leathery.",
-            "putrid": "A fouled set of right metatarsals, stained dark and stuck together with putrefying tissue.",
+            "pristine": "A neat row of right metatarsals, still articulated and the joint surfaces gleaming ivory.",
+            "damaged": "A loosened set of right metatarsals, several bones disarticulated and dulled grey along their shafts.",
+            "putrid": "A stained row of right metatarsals, mineral residue darkening the joint surfaces and the shafts hairline-cracked.",
+            "desiccated": "A chalk-pale row of right metatarsals, bone-dry and brittle, the bones rattling loose from one another.",
         },
     },
     "pelvis": {
         "display_name": "pelvis",
         "default_descriptions": {
-            "pristine": "A broad, intact pelvis, its iliac wings flared and the joint surfaces still smooth.",
-            "damaged": "A discoloured pelvis, the sacroiliac joints loosened and the bone surface beginning to dull.",
-            "putrid": "A stained pelvis, the bone fouled with seeping decay and the joint surfaces sloughing away.",
+            "pristine": "A broad, intact pelvis, its iliac wings flared and the joint surfaces still smooth ivory.",
+            "damaged": "A dulled pelvis, the sacroiliac joints loosened and hairline cracks tracing the iliac wings.",
+            "putrid": "A stained pelvis, dark mineral residue fouling the joint surfaces and the bone discoloured along its margins.",
+            "desiccated": "A chalk-pale pelvis, bone-dry and brittle, the iliac wings cracked and the joints crumbling at a touch.",
         },
     },
 }
@@ -274,9 +327,9 @@ def get_organ_default_description(organ_name, condition):
     """Return the default prose for an organ at a given condition.
 
     Returns an empty string when the organ has no registered prose
-    or the condition isn't one of pristine / damaged / putrid (e.g.
-    ``refuse``).  Callers should treat empty as "render nothing"
-    rather than asserting.
+    or the condition isn't one of pristine / damaged / putrid (or,
+    for bones, ``desiccated`` — issue #213).  Callers should treat
+    empty as "render nothing" rather than asserting.
     """
     entry = ORGAN_DISPLAY.get(organ_name)
     if not entry:

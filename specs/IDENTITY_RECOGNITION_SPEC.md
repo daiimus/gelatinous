@@ -2096,6 +2096,36 @@ live in `world/anatomy/conditions.py` and are shared between
 identically.  The `refuse` condition (gameplay-internal skeletal-
 stage harvest gate) renders empty so the term never leaks to players.
 
+#### Bone vs. Soft-Tissue Prose Tiers (issue #213 ✅)
+
+Bones (jaw, spine, pelvis, both humeri, both metacarpal clusters,
+both femora, both tibiae, both metatarsal rows) decay differently
+from soft tissue: they dry, stain, and crack rather than weep,
+slough, or dissolve.  Issue #213 captured this in two ways:
+
+1. **Bone identity**: `world/anatomy/organs.py` exports a
+   `BONE_ORGANS` frozenset (13 entries) as the authoritative
+   bone-identity source for both display and (eventually) the
+   harvest gate.
+2. **Four-tier prose**: bone entries in `ORGAN_DISPLAY` carry a
+   fourth `desiccated` condition tier in addition to the three
+   soft-tissue baseline (`pristine` / `damaged` / `putrid`).  The
+   `desiccated` prose surfaces once issue #227 relaxes the
+   skeletal-stage harvest gate to allow bone harvest from
+   skeletal-stage corpses; until then it ships forward-compatible.
+3. **Vocabulary split**: bone prose deliberately avoids the soft-
+   tissue register (`weeping`, `slurry`, `pulp`, `slough`,
+   `serum`, `frothy`, `slime`, `fetid`, `pus`, `swollen`,
+   `dissolving`, `blackening`, `ruptured`, ...) and reaches for
+   mineralized-tissue language (`ivory`, `periosteum`, `hairline`,
+   `marrow`, `chalk`, `bleached`, `cracked`, `crumbling`).  An
+   exhaustive contract test in
+   `world/tests/test_organ_display.py::TestBoneOrganContract`
+   enforces the split in both directions: no soft-tissue word
+   appears in any bone prose, and no soft-tissue organ
+   accidentally registers a `desiccated` tier (which would imply a
+   non-existent harvest code path).
+
 > **Historical note (PR-G → PR #204):** the original PR-G shipped
 > with an `Organ.return_appearance` override that prepended prose to
 > the engine output. That bypassed Evennia's normal renderer and

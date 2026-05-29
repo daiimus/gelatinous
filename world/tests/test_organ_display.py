@@ -11,6 +11,7 @@ from __future__ import annotations
 from unittest import TestCase
 
 from world.anatomy import (
+    BONE_ORGANS,
     ORGAN_DISPLAY,
     get_organ_default_description,
     get_organ_display_name,
@@ -64,6 +65,120 @@ class TestOrganDisplayCoverage(TestCase):
                     len(prose.strip()), 0,
                     f"{organ_name}/{condition} prose is empty",
                 )
+
+
+class TestBoneOrganContract(TestCase):
+    """Bones carry a four-tier prose block with mineralized vocabulary.
+
+    Issue #213.  Bones decay by drying, staining, and cracking — not
+    by weeping serum or dissolving into pulp.  These contract tests
+    enforce that:
+
+    1. Every bone in :data:`BONE_ORGANS` registers prose for the
+       fourth ``desiccated`` tier (in addition to the three baseline
+       conditions covered by :class:`TestOrganDisplayCoverage`).
+    2. Bone prose never reaches for soft-tissue vocabulary
+       (``weeping``, ``pulp``, ``slurry``, etc.).
+    """
+
+    #: Bones in :data:`BONE_ORGANS` must register prose for every
+    #: condition in this set.  Pristine / damaged / putrid are
+    #: shared with soft tissue; ``desiccated`` is bone-only and
+    #: surfaces once issue #227 relaxes the skeletal harvest gate.
+    REQUIRED_BONE_CONDITIONS = {
+        "pristine", "damaged", "putrid", "desiccated",
+    }
+
+    #: Vocabulary that reads as soft-tissue decay.  Bones never
+    #: weep, pulp, frothy-up, or slough.  Banning these words is a
+    #: defensive guard against future copy-paste from a soft-tissue
+    #: template into a bone entry.  ``slough`` covers ``sloughing``
+    #: / ``sloughed``; matching is case-insensitive substring.
+    SOFT_TISSUE_BANNED = (
+        "weeping", "weep", "wept",
+        "pulp",
+        "slurry",
+        "slough",
+        "serum",
+        "frothy", "froth",
+        "slime",
+        "fetid",
+        "pus",
+        "putrefying", "putrefy",
+        "ruptured", "rupture",
+        "swollen", "swelling",
+        "dissolving", "dissolve",
+        "blackening", "blackened",
+        "fluid",
+        "gunge",
+        "mucus",
+    )
+
+    def test_bone_organs_set_matches_display_registry(self):
+        # Every BONE_ORGANS entry must exist in ORGAN_DISPLAY — the
+        # frozenset is the authoritative bone-identity source for
+        # both display and (eventually) the harvest gate.
+        missing = sorted(BONE_ORGANS - set(ORGAN_DISPLAY.keys()))
+        self.assertEqual(
+            missing, [],
+            f"BONE_ORGANS entries missing from ORGAN_DISPLAY: {missing}",
+        )
+
+    def test_every_bone_carries_desiccated_tier(self):
+        missing = []
+        for bone in sorted(BONE_ORGANS):
+            descs = ORGAN_DISPLAY[bone].get("default_descriptions", {})
+            if "desiccated" not in descs:
+                missing.append(bone)
+        self.assertEqual(
+            missing, [],
+            f"Bones missing desiccated-tier prose: {missing}",
+        )
+
+    def test_every_bone_covers_all_four_conditions(self):
+        for bone in sorted(BONE_ORGANS):
+            descs = ORGAN_DISPLAY[bone].get("default_descriptions", {})
+            missing = self.REQUIRED_BONE_CONDITIONS - set(descs.keys())
+            self.assertEqual(
+                missing, set(),
+                f"Bone {bone} missing conditions: {sorted(missing)}",
+            )
+
+    def test_bone_prose_avoids_soft_tissue_vocabulary(self):
+        # Exhaustive contract: every bone × every condition × every
+        # banned word.  Subtests surface the precise offending pair
+        # so a future failure points straight at the bad string.
+        for bone in sorted(BONE_ORGANS):
+            descs = ORGAN_DISPLAY[bone].get("default_descriptions", {})
+            for condition, prose in descs.items():
+                lowered = prose.lower()
+                for banned in self.SOFT_TISSUE_BANNED:
+                    with self.subTest(
+                        bone=bone, condition=condition, banned=banned,
+                    ):
+                        self.assertNotIn(
+                            banned, lowered,
+                            f"{bone}/{condition} prose contains "
+                            f"soft-tissue vocabulary '{banned}': {prose!r}",
+                        )
+
+    def test_soft_tissue_organs_do_not_register_desiccated(self):
+        # Inverse guard: soft-tissue entries must NOT register a
+        # ``desiccated`` tier — that would imply a code path which
+        # doesn't exist (the skeletal-stage gate refuses soft-tissue
+        # harvest entirely).  Catches copy-paste in the other
+        # direction.
+        offenders = []
+        for organ_name, entry in ORGAN_DISPLAY.items():
+            if organ_name in BONE_ORGANS:
+                continue
+            if "desiccated" in entry.get("default_descriptions", {}):
+                offenders.append(organ_name)
+        self.assertEqual(
+            offenders, [],
+            f"Soft-tissue organs unexpectedly carry desiccated prose: "
+            f"{offenders}",
+        )
 
 
 class TestOrganDisplayHelpers(TestCase):

@@ -28,6 +28,7 @@ from .conditions import (
     prepend_condition_to_desc,
 )
 from .organs import (
+    BONE_ORGANS,
     ORGAN_DISPLAY,
     get_organ_default_description,
     get_organ_display_name,
@@ -45,6 +46,7 @@ from .species import (
 )
 
 __all__ = (
+    "BONE_ORGANS",
     "ORGAN_DISPLAY",
     "SEVERED_PART_DESCRIPTIONS",
     "SPECIES_DEFINITIONS",
