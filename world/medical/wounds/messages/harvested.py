@@ -33,7 +33,7 @@ WOUND_DESCRIPTIONS = {
         "from the {location}, the cavity still wet and red|n",
         "|RThe {location} bears a surgical opening where the {organ} "
         "was excised, the edges of the cut still glistening|n",
-        "|RWhere the {organ} used to sit inside the {location}, only "
+        "|RWhere the {organ} was lifted free from the {location}, only "
         "a hollow, blood-slick pocket remains|n",
         "|RA careful cut along the {location} has exposed the empty "
         "socket where the {organ} was lifted free|n",
@@ -43,7 +43,7 @@ WOUND_DESCRIPTIONS = {
         "the {location}, the cavity sunken and dark|n",
         "|rThe {location} bears a healed-over surgical opening where "
         "the {organ} was removed, the edges crusted brown|n",
-        "|rWhere the {organ} used to sit inside the {location}, only "
+        "|rWhere the {organ} was extracted from the {location}, only "
         "a shrunken, empty pocket remains|n",
         "|rA puckered seam along the {location} marks the long-ago "
         "extraction of the {organ}|n",
