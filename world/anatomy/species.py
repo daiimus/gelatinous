@@ -132,6 +132,51 @@ SPECIES_DEFINITIONS = {
             "advanced": "rotting corpse",
             "skeletal": "skeletal remains",
         },
+
+        # Decay-tier corpse *description* templates — the body paragraph
+        # rendered on ``look`` (distinct from the glance-level name in
+        # ``decay_corpse_names``).  Rendered by
+        # :func:`get_species_corpse_description` with ``{species}`` and
+        # ``{base_desc}`` substitution.  ``{base_desc}`` is the
+        # death-time physical description; it is embedded only in the
+        # fresh / early templates — by moderate the original features
+        # have deteriorated enough that the snapshot no longer applies,
+        # so those tiers describe the decay state generically.
+        #
+        # Unlike the *name* templates (which hard-drop the species token
+        # at moderate+), every description tier keeps ``{species}`` so a
+        # known species reads naturally at all stages ("Decomposing
+        # human remains").  The token-drop convention (module docstring,
+        # issue #215) is applied for *unknown* species instead: the
+        # helper substitutes an empty token and collapses whitespace,
+        # yielding "Decomposing remains." rather than misclaiming human.
+        "decay_corpse_descriptions": {
+            "fresh": (
+                "A recently deceased {species} body. {base_desc} "
+                "The body appears fresh, with no signs of decomposition "
+                "yet visible."
+            ),
+            "early": (
+                "A pale {species} corpse. {base_desc} The skin has begun "
+                "to pale and cool, with early signs of lividity visible."
+            ),
+            "moderate": (
+                "Decomposing {species} remains. Bloating and "
+                "discoloration have begun, with a distinct odor of "
+                "decay. The original features are still recognizable but "
+                "deteriorating."
+            ),
+            "advanced": (
+                "Putrid {species} remains. Advanced decomposition has set "
+                "in with severe bloating, fluid leakage, and strong "
+                "putrid odors. Identification is becoming difficult."
+            ),
+            "skeletal": (
+                "Skeletal {species} remains. Only bones, dried tissue, "
+                "and clothing remain. The decomposition process is nearly "
+                "complete."
+            ),
+        },
     },
 }
 
@@ -227,6 +272,60 @@ def get_species_corpse_name(
     if decay_stage in names:
         return names[decay_stage]
     return names.get("fresh", "corpse")
+
+
+def get_species_corpse_description(
+    species: str | None,
+    decay_stage: str | None,
+    base_desc: str = "A lifeless body.",
+) -> str:
+    """Return the decay-modulated *body paragraph* for a whole corpse.
+
+    Used by :class:`typeclasses.corpse.Corpse._build_decay_desc_paragraph`
+    to render the description paragraph shown on ``look`` — the prose
+    counterpart to the glance-level name from
+    :func:`get_species_corpse_name`.  The result drifts with the corpse's
+    decay stage: fresh / early embed the death-time physical description
+    (``base_desc``); moderate onward describe the decay state generically
+    as the original features deteriorate.
+
+    **Unknown-species fallback (issue #215):** unknown / ``None`` species
+    drop the species token entirely — an alien corpse reads "A recently
+    deceased body." rather than misclaiming itself as human.  Known
+    species surface their token at every tier (e.g. "Decomposing human
+    remains").  This mirrors the token-drop contract of
+    :func:`get_species_organ_name`.
+
+    This helper is pure: it composes and returns a string with no I/O or
+    state mutation, preserving the corpse pure-look contract (issue
+    #230).
+
+    Args:
+        species: Species identifier; ``None`` or unregistered species
+            drop the species token from every template.
+        decay_stage: One of ``fresh`` / ``early`` / ``moderate`` /
+            ``advanced`` / ``skeletal``.  ``None`` or unknown stages fall
+            back to the ``fresh`` template.
+        base_desc: The death-time physical description, embedded in the
+            fresh / early templates.  Defaults to a neutral placeholder.
+
+    Returns:
+        Description paragraph ready to slot into ``return_appearance``.
+    """
+    # Issue #215: detect unknown species before the human-default
+    # fallback so an unregistered species renders with an empty species
+    # token rather than claiming "human".
+    is_known = bool(species) and species in SPECIES_DEFINITIONS
+    spec = SPECIES_DEFINITIONS[species] if is_known else SPECIES_DEFINITIONS["human"]
+    descriptions = spec.get("decay_corpse_descriptions") or {}
+    template = descriptions.get(decay_stage) or descriptions.get("fresh")
+    if not template:
+        return base_desc
+    species_display = spec.get("display_name", "") if is_known else ""
+    rendered = template.format(species=species_display, base_desc=base_desc)
+    # Collapse any double spaces / leading whitespace left behind when
+    # the species token is empty (template was "... {species} ...").
+    return " ".join(rendered.split())
 
 
 def get_species_organ_name(

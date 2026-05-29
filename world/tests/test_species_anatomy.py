@@ -14,6 +14,7 @@ from unittest import TestCase
 
 from world.anatomy import (
     SPECIES_DEFINITIONS,
+    get_species_corpse_description,
     get_species_corpse_name,
     get_species_location_display,
     get_species_organ_name,
@@ -34,6 +35,7 @@ class TestSpeciesRegistry(TestCase):
             "location_display",
             "decay_part_prefixes",
             "decay_corpse_names",
+            "decay_corpse_descriptions",
         ):
             self.assertIn(key, human, f"human species missing '{key}'")
 
@@ -43,6 +45,11 @@ class TestSpeciesRegistry(TestCase):
         stages = {"fresh", "early", "moderate", "advanced", "skeletal"}
         self.assertEqual(set(human["decay_part_prefixes"].keys()), stages)
         self.assertEqual(set(human["decay_corpse_names"].keys()), stages)
+        # Issue #232: corpse-description prose templates mirror the same
+        # five-stage shape as names / part / organ prefixes.
+        self.assertEqual(
+            set(human["decay_corpse_descriptions"].keys()), stages
+        )
         # Issue #212: organ-specific decay prefixes mirror part prefixes
         # in shape but substitute ``desiccated`` for ``skeletal``.
         self.assertEqual(set(human["decay_organ_prefixes"].keys()), stages)
@@ -231,3 +238,75 @@ class TestOrganName(TestCase):
             get_species_organ_name("human", "flux_capacitor", "fresh"),
             "human flux capacitor",
         )
+
+
+class TestCorpseDescription(TestCase):
+    """Issue #232: species + decay-tier aware corpse body prose."""
+
+    BASE = "He has tousled brown hair and a jagged scar."
+
+    def test_fresh_includes_species_and_base_desc(self):
+        out = get_species_corpse_description("human", "fresh", self.BASE)
+        self.assertTrue(out.startswith("A recently deceased human body."))
+        self.assertIn(self.BASE, out)
+        self.assertIn("no signs of decomposition yet visible", out)
+
+    def test_early_includes_species_and_base_desc(self):
+        out = get_species_corpse_description("human", "early", self.BASE)
+        self.assertTrue(out.startswith("A pale human corpse."))
+        self.assertIn(self.BASE, out)
+
+    def test_moderate_includes_species_drops_base_desc(self):
+        out = get_species_corpse_description("human", "moderate", self.BASE)
+        self.assertTrue(out.startswith("Decomposing human remains."))
+        # By moderate decay the death-time snapshot no longer applies.
+        self.assertNotIn(self.BASE, out)
+
+    def test_advanced_includes_species_drops_base_desc(self):
+        out = get_species_corpse_description("human", "advanced", self.BASE)
+        self.assertTrue(out.startswith("Putrid human remains."))
+        self.assertNotIn(self.BASE, out)
+
+    def test_skeletal_includes_species_drops_base_desc(self):
+        out = get_species_corpse_description("human", "skeletal", self.BASE)
+        self.assertTrue(out.startswith("Skeletal human remains."))
+        self.assertNotIn(self.BASE, out)
+
+    def test_unknown_stage_falls_back_to_fresh(self):
+        out = get_species_corpse_description("human", "wibbly", self.BASE)
+        self.assertTrue(out.startswith("A recently deceased human body."))
+
+    def test_unknown_species_drops_species_token(self):
+        # Issue #215 convention: an unregistered species drops the
+        # species word entirely rather than misclaiming "human", and
+        # leaves no double space behind.
+        out = get_species_corpse_description(
+            "unobtanium_alien", "fresh", self.BASE
+        )
+        self.assertTrue(out.startswith("A recently deceased body."))
+        self.assertNotIn("human", out)
+        self.assertNotIn("  ", out)
+
+    def test_none_species_drops_species_token(self):
+        out = get_species_corpse_description(None, "moderate", self.BASE)
+        self.assertTrue(out.startswith("Decomposing remains."))
+        self.assertNotIn("human", out)
+        self.assertNotIn("  ", out)
+
+    def test_unknown_species_late_decay_no_double_space(self):
+        # Every tier templates {species}; the empty token must collapse
+        # cleanly at all stages, not just the fresh / early ones.
+        for stage in ("fresh", "early", "moderate", "advanced", "skeletal"):
+            out = get_species_corpse_description("xeno", stage, self.BASE)
+            self.assertNotIn("  ", out, f"double space at stage {stage!r}")
+            self.assertNotIn("human", out, f"'human' leaked at {stage!r}")
+
+    def test_default_base_desc_used_when_omitted(self):
+        out = get_species_corpse_description("human", "fresh")
+        self.assertIn("A lifeless body.", out)
+
+    def test_empty_base_desc_no_double_space(self):
+        # An empty base_desc in the fresh template must not leave a
+        # double space where {base_desc} was.
+        out = get_species_corpse_description("human", "fresh", "")
+        self.assertNotIn("  ", out)

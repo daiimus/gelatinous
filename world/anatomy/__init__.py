@@ -12,6 +12,7 @@ Public surface:
 * :data:`world.anatomy.species.SPECIES_DEFINITIONS`
 * :func:`world.anatomy.species.get_species_part_name`
 * :func:`world.anatomy.species.get_species_corpse_name`
+* :func:`world.anatomy.species.get_species_corpse_description`
 * :func:`world.anatomy.species.get_species_location_display`
 * :func:`world.anatomy.species.get_species_organ_name`
 * :data:`world.anatomy.severed_parts.SEVERED_PART_DESCRIPTIONS`
@@ -39,6 +40,7 @@ from .severed_parts import (
 )
 from .species import (
     SPECIES_DEFINITIONS,
+    get_species_corpse_description,
     get_species_corpse_name,
     get_species_location_display,
     get_species_organ_name,
@@ -54,6 +56,7 @@ __all__ = (
     "get_organ_default_description",
     "get_organ_display_name",
     "get_severed_part_description",
+    "get_species_corpse_description",
     "get_species_corpse_name",
     "get_species_location_display",
     "get_species_organ_name",

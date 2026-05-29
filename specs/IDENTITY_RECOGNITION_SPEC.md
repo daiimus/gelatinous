@@ -1374,6 +1374,7 @@ Corpses already preserve forensic data (original name, dbref, physical descripti
 - Worn-item changes on the corpse re-derive the apparent presentation — **shipped** via `at_object_leave` invalidation, so stripping a body changes its signature exactly like stripping a live character.
 - Corpse decay interacts with recognition via the **decay-aware recognition** policy below — **shipped** (PR B).
 - **Pure `look`** (issue #230) — **shipped**. ``Corpse.return_appearance`` is a pure read; it does not write ``db.desc``, ``key``, or aliases. All decay-stage aliases (``corpse``, ``remains``, ``body``, ``human corpse``, ``rotting corpse``, ``skeletal remains``) are pre-seeded at creation by ``_seed_decay_aliases_and_key`` so search/targeting works from t=0 regardless of which stage is current. The corpse's ``key`` is refreshed on stage transitions by ``_refresh_decay_key_if_changed``, invoked from ``Room._check_corpse_decay`` on character entry (a lifecycle event). The staged decay paragraph is computed on the fly by ``_build_decay_desc_paragraph`` and inlined into the look output without persisting. The death-time ``db.desc`` snapshot set in ``death_progression.py`` survives untouched.
+- **Species-aware decay prose** (issue #232) — **shipped**. ``_build_decay_desc_paragraph`` delegates to ``world.anatomy.species.get_species_corpse_description(species, decay_stage, base_desc)`` rather than hardcoding "human", so a non-human corpse's body prose reads correctly at every stage (e.g. "Decomposing synth remains."). The death-time physical description is embedded into the fresh / early tiers; moderate onward describe the decay state generically as the original features deteriorate. Following the unknown-species token-drop convention (issue #215), an unregistered / ``None`` species drops the species word entirely ("A recently deceased body.") rather than misclaiming itself as human. The helper is pure, preserving the #230 pure-look contract.
 
 #### Decay-Aware Recognition
 
@@ -2003,19 +2004,23 @@ new species can be added by registering a single dict.
 | `location_display`     | Canonical body-location → readable string mapping.   |
 | `decay_part_prefixes`  | Decay-stage → severed-part template (`{species} {part}`). |
 | `decay_corpse_names`   | Decay-stage → whole-corpse name string.              |
+| `decay_corpse_descriptions` | Decay-stage → whole-corpse body-prose template (`{species}` / `{base_desc}`). |
 
-**Three pure-function helpers** (state-free, callable per
-`get_display_name` invocation):
+**Pure-function helpers** (state-free, callable per
+`get_display_name` / `return_appearance` invocation):
 
 ```python
 get_species_location_display(species, location) -> str
 get_species_part_name(species, location, decay_stage) -> str
 get_species_corpse_name(species, decay_stage) -> str
+get_species_corpse_description(species, decay_stage, base_desc) -> str
+get_species_organ_name(species, organ_name, decay_stage) -> str
 ```
 
-Unknown species fall back to the `"human"` definition; unknown
-locations fall back to underscore-stripped passthrough; unknown decay
-stages fall back to the `"fresh"` template.
+Unknown species fall back to the `"human"` definition (or, for the
+description / organ helpers, drop the species token per issue #215);
+unknown locations fall back to underscore-stripped passthrough; unknown
+decay stages fall back to the `"fresh"` template.
 
 **Provenance propagation**:
 

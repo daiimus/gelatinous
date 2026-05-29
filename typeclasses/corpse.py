@@ -708,38 +708,23 @@ class Corpse(IdentityBearerMixin, Item):
         composed string; ``return_appearance`` slots it into the look
         output without persisting anything.
 
+        Issue #232: the staged prose is now species-aware, delegating to
+        :func:`world.anatomy.species.get_species_corpse_description` so a
+        non-human corpse no longer reads as "human".  Unknown / ``None``
+        species drop the species token entirely (the #215 convention).
+        The death-time physical description is embedded into the fresh /
+        early tiers by the helper.
+
         The death-time ``db.desc`` snapshot
         (``typeclasses/death_progression.py:682``) is preserved untouched
         for debug / admin / forensic tooling (Option α from the #230
         design discussion).
         """
+        from world.anatomy import get_species_corpse_description
+
+        species = self.db.species or "human"
         base_desc = self.db.physical_description or "A lifeless body."
-        decay_descriptions = {
-            "fresh": (
-                f"A recently deceased human body. {base_desc} "
-                "The body appears fresh, with no signs of decomposition yet visible."
-            ),
-            "early": (
-                f"A pale human corpse. {base_desc} "
-                "The skin has begun to pale and cool, with early signs of "
-                "lividity visible."
-            ),
-            "moderate": (
-                "Decomposing human remains. Bloating and discoloration have "
-                "begun, with a distinct odor of decay. The original features "
-                "are still recognizable but deteriorating."
-            ),
-            "advanced": (
-                "Putrid human remains. Advanced decomposition has set in with "
-                "severe bloating, fluid leakage, and strong putrid odors. "
-                "Identification is becoming difficult."
-            ),
-            "skeletal": (
-                "Skeletal human remains. Only bones, dried tissue, and "
-                "clothing remain. The decomposition process is nearly complete."
-            ),
-        }
-        return decay_descriptions.get(stage, base_desc)
+        return get_species_corpse_description(species, stage, base_desc)
 
     def _refresh_decay_key_if_changed(self):
         """Update ``self.key`` if the current decay stage no longer matches.
