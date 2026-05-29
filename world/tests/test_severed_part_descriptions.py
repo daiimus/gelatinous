@@ -149,6 +149,8 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertTrue(app.db.desc)
         self.assertIn("left arm", app.db.desc.lower())
+        # Issue #221: condition tagline leads the desc.
+        self.assertTrue(app.db.desc.startswith("|gPristine.|n"))
 
     def test_damaged_right_thigh_populates_desc(self):
         app = self._fake_appendage()
@@ -158,6 +160,7 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertTrue(app.db.desc)
         self.assertIn("right thigh", app.db.desc.lower())
+        self.assertTrue(app.db.desc.startswith("|yDamaged.|n"))
 
     def test_putrid_head_populates_desc(self):
         app = self._fake_appendage()
@@ -167,6 +170,7 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertTrue(app.db.desc)
         self.assertIn("head", app.db.desc.lower())
+        self.assertTrue(app.db.desc.startswith("|rPutrid.|n"))
 
     def test_unknown_location_leaves_desc_untouched(self):
         app = self._fake_appendage()
@@ -174,8 +178,9 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
             location_name="tentacle", condition="pristine",
             corpse=self._fake_corpse(),
         )
-        # No registered prose → engine default preserved.
-        self.assertIsNone(app.db.desc)
+        # Issue #221: even without registered prose, the condition
+        # tagline alone surfaces — a meaningful freshness signal.
+        self.assertEqual(app.db.desc, "|gPristine.|n")
 
     def test_key_still_assigned_alongside_desc(self):
         # Regression guard for the species-aware key path.

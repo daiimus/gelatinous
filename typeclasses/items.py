@@ -1032,6 +1032,7 @@ class Organ(Item):
         from world.anatomy import (
             get_organ_default_description,
             get_species_organ_name,
+            prepend_condition_to_desc,
         )
 
         self.db.organ_name = organ_name
@@ -1053,11 +1054,19 @@ class Organ(Item):
         self.key = get_species_organ_name(species, organ_name, decay_stage)
         # PR #204: populate db.desc the Evennia-standard way so the
         # engine renderer handles it (rather than overriding
-        # return_appearance to prepend prose).  Conditional: leave the
-        # engine default in place when no prose is registered.
+        # return_appearance to prepend prose).
+        #
+        # Issue #221: prepend a colour-coded condition tagline so the
+        # look output explicitly surfaces the freshness state the key
+        # intentionally dropped in issue #212.  ``prepend_condition_to_desc``
+        # composes a final desc that blends the tagline above the prose;
+        # when neither tagline nor prose is registered (e.g. ``refuse``
+        # condition with no registered prose) the helper returns ``""``
+        # and we leave the engine default in place.
         prose = get_organ_default_description(organ_name, condition)
-        if prose:
-            self.db.desc = prose
+        composed = prepend_condition_to_desc(condition, prose)
+        if composed:
+            self.db.desc = composed
 
 
 class Appendage(Item):
@@ -1138,12 +1147,17 @@ class Appendage(Item):
         # engine renderer handles it.  ``Appendage.return_appearance``
         # still composes wound + longdesc carry-forward dynamically on
         # top of the engine-rendered base (which now includes our
-        # seeded desc), so both surfaces coexist cleanly.  Conditional:
-        # leave the engine default in place when no prose is registered.
-        from world.anatomy import get_severed_part_description
+        # seeded desc), so both surfaces coexist cleanly.
+        #
+        # Issue #221: prepend a colour-coded condition tagline so the
+        # look output explicitly surfaces the freshness state.  The
+        # tagline travels in ``db.desc`` so the dynamic wound /
+        # longdesc composition below still rides on top cleanly.
+        from world.anatomy import get_severed_part_description, prepend_condition_to_desc
         prose = get_severed_part_description(species, location_name, condition)
-        if prose:
-            self.db.desc = prose
+        composed = prepend_condition_to_desc(condition, prose)
+        if composed:
+            self.db.desc = composed
         # PR #198: pull this location's wound + longdesc prose off the
         # corpse onto ourselves.  The corpse-side mutation
         # (delete-from-source + synthesized stump wound) is handled by

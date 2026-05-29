@@ -2077,9 +2077,24 @@ into the look output naturally — no custom override required.  A
 freshly harvested heart reads:
 
 ```
+|gPristine.|n
+
 A dense, dark-red heart, its muscle firm and the great vessels
 stumped cleanly above.
 ```
+
+Issue #221 added the colour-coded `|gPristine.|n` tagline that leads
+the description.  The tagline (pristine = green, damaged = yellow,
+putrid = red, desiccated = bright red) explicitly surfaces the
+freshness state that issue #212 deliberately stripped from the item
+key — keys now carry species + decay-tier information, the tagline
+carries condition.  The `format_condition_tagline` /
+`prepend_condition_to_desc` helpers live in
+`world/anatomy/conditions.py` and are shared between
+`configure_from_harvest` (organs) and `configure_from_sever`
+(appendages, including severed heads) so both surfaces render
+identically.  The `refuse` condition (gameplay-internal skeletal-stage
+harvest gate) renders empty so the term never leaks to players.
 
 > **Historical note (PR-G → PR #204):** the original PR-G shipped
 > with an `Organ.return_appearance` override that prepended prose to

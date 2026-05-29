@@ -19,8 +19,14 @@ Public surface:
 * :data:`world.anatomy.organs.ORGAN_DISPLAY`
 * :func:`world.anatomy.organs.get_organ_display_name`
 * :func:`world.anatomy.organs.get_organ_default_description`
+* :func:`world.anatomy.conditions.format_condition_tagline`
+* :func:`world.anatomy.conditions.prepend_condition_to_desc`
 """
 
+from .conditions import (
+    format_condition_tagline,
+    prepend_condition_to_desc,
+)
 from .organs import (
     ORGAN_DISPLAY,
     get_organ_default_description,
@@ -42,6 +48,7 @@ __all__ = (
     "ORGAN_DISPLAY",
     "SEVERED_PART_DESCRIPTIONS",
     "SPECIES_DEFINITIONS",
+    "format_condition_tagline",
     "get_organ_default_description",
     "get_organ_display_name",
     "get_severed_part_description",
@@ -49,4 +56,5 @@ __all__ = (
     "get_species_location_display",
     "get_species_organ_name",
     "get_species_part_name",
+    "prepend_condition_to_desc",
 )

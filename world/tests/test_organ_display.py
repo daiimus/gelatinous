@@ -152,6 +152,8 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         )
         self.assertTrue(organ.db.desc)
         self.assertIn("heart", organ.db.desc.lower())
+        # Issue #221: condition tagline prepended above the prose.
+        self.assertTrue(organ.db.desc.startswith("|gPristine.|n"))
 
     def test_damaged_condition_uses_damaged_prose(self):
         organ = self._fake_organ()
@@ -162,6 +164,8 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         self.assertTrue(organ.db.desc)
         # Damaged prose typically signals decay-onset vocabulary.
         self.assertIn("liver", organ.db.desc.lower())
+        # Issue #221: yellow ``damaged`` tagline leads the desc.
+        self.assertTrue(organ.db.desc.startswith("|yDamaged.|n"))
 
     def test_putrid_condition_uses_putrid_prose(self):
         organ = self._fake_organ()
@@ -171,6 +175,8 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         )
         self.assertTrue(organ.db.desc)
         self.assertIn("brain", organ.db.desc.lower())
+        # Issue #221: red ``putrid`` tagline leads the desc.
+        self.assertTrue(organ.db.desc.startswith("|rPutrid.|n"))
 
     def test_unknown_organ_leaves_desc_untouched(self):
         organ = self._fake_organ()
@@ -178,9 +184,10 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
             organ_name="flux_capacitor", condition="pristine",
             corpse=self._fake_corpse(),
         )
-        # Falls through to engine default — we do NOT set an empty
-        # string, so the original ``None`` survives.
-        self.assertIsNone(organ.db.desc)
+        # Issue #221: even when no prose is registered, the condition
+        # tagline still surfaces so the player gets *some* freshness
+        # signal in the look output (the tagline alone is meaningful).
+        self.assertEqual(organ.db.desc, "|gPristine.|n")
 
     def test_refuse_condition_leaves_desc_untouched(self):
         organ = self._fake_organ()
@@ -188,7 +195,9 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
             organ_name="heart", condition="refuse",
             corpse=self._fake_corpse(),
         )
-        # ``refuse`` has no registered prose; preserve engine default.
+        # ``refuse`` has no registered prose AND no tagline (issue #221:
+        # defensive empty for gameplay-internal conditions); preserve
+        # engine default.
         self.assertIsNone(organ.db.desc)
 
     def test_key_still_assigned_alongside_desc(self):
