@@ -367,6 +367,13 @@ forget <target>
 
 Clears the assigned name on a recognition entry. The entry itself is preserved (sdesc snapshots, locations, `times_seen`, etc.) so future `remember` calls extend the existing history rather than starting fresh. Targets resolve against currently-visible characters first, then against previously-remembered names — you can `forget` someone who isn't present.
 
+`forget` additionally invalidates the caller's
+`disguise_pierce_cache` entries for the target's sleeve
+(PR #211 / issue #210).  Without this, a future encounter under a
+previously-seen disguise would short-circuit on the stale cached
+verdict instead of re-rolling cleanly against the now-name-less
+memory entry.  See §Disguise Piercing → Caching.
+
 **`recall` command:**
 
 ```
@@ -933,6 +940,24 @@ Success condition: `(observer_roll + familiarity) > (target_roll + penalty)`. Ti
 Observers or targets without a `dbref` are not cached and re-roll on every call (keeps the cache bounded; no junk keys for tooling that walks characters without a real observer). The cache survives reloads (it's on `db`, not `ndb`) and persists across sessions — by design: a player who has decided "I do not recognise this person" should not be magically reset to undecided on a server restart.
 
 **dbref recycling.** Cache entries for deleted targets are dead weight but cannot misfire: Evennia/Django primary keys are monotonically allocated and never reused, so a freshly-created object will never collide with a stale entry. No prune-on-delete hook is wired; entries accumulate at the rate the observer encounters distinct presentations, bounded in practice by their social surface. If pruning becomes warranted (very long-lived observers + churn-heavy NPC populations), the right place to add it is an `at_object_delete` broadcast on the target side mirroring the unmasking-moment pipeline.
+
+**`forget` invalidation (PR #211, issue #210).** When an observer
+runs `forget <target>`, every cache entry on
+`observer.db.disguise_pierce_cache` whose target shares the
+forgotten entry's `real_sleeve_uid` is dropped — across **all**
+apparent UIDs for that sleeve, not just the current presentation.
+Rationale: `forget` declares "I no longer claim to know this
+person"; a stale `True` verdict from a prior pierce would otherwise
+short-circuit future `look`s and silently restore the recognition
+the player just disowned.  The clear is scoped to the caller; other
+observers' caches are untouched (their verdicts are their own).
+Implementation: `commands.CmdCharacter.CmdForget._forget_visible`
+reads the entry's stored `real_sleeve_uid` (falling back to the
+target's live `sleeve_uid` for pre-schema entries) and calls
+`world.identity.invalidate_pierce_cache_for_sleeve(observer,
+sleeve_uid)` before clearing the entry's `assigned_name`.  Keying
+on `sleeve_uid` rather than dbref ensures the clear covers
+backfilled presentations of the same body.
 
 **Tunables.** Recognition/disguise balance constants, all defined in `world/identity.py`:
 
@@ -1572,9 +1597,9 @@ careful examination and prevents Intellect re-roll abuse.
 - Sleeve-swap awareness (blocked on resleeving system).
 - Skeletal-bone harvest (cracked-bone marrow extraction) — deferred
   past PR-186; skeletal corpses currently refuse autopsy and harvest.
-- Severed-head super-item carrying full identity signature —
-  deferred to v2 of the sever workflow (PR-188 ships limb sever
-  only).
+- ~~Severed-head super-item carrying full identity signature~~ —
+  ✅ shipped in PR #194 (`SeveredHead`); see "Severed-Head
+  Super-Item" subsection below.
 
 ---
 
@@ -1624,6 +1649,7 @@ autopsies render the removed organ as `absent`.
 | `db.source_signature` | Copy of `corpse.db.signature_at_death` |
 | `db.source_apparent_uid` | Copy of `corpse.db.apparent_uid_at_death` |
 | `db.source_corpse_dbref` | Audit pointer; not resolution-guaranteed |
+| `db.source_species` | Inherited from `corpse.db.species` (PR-G) |
 
 The display key is rendered via `get_species_organ_name(species,
 organ_name, decay_stage)` at spawn time by `configure_from_harvest`
@@ -1775,14 +1801,26 @@ forensic-chain fields as `Organ` (`source_signature`,
 |---|---|
 | `db.location_name` | Canonical container key (e.g. `left_arm`) |
 | `db.condition` | `ORGAN_CONDITION_BY_DECAY[stage]` at severance |
+| `db.source_species` | Inherited from `corpse.db.species` |
 
-Display key renders `"<condition> <location>"` (underscores → spaces).
+The display key is rendered via
+`get_species_part_name(species, location, decay_stage)` at spawn
+time by `configure_from_sever` (PR #202 / PR-G).  Fresh / early
+decay produces `"{species} {location}"` (e.g. `human left arm`);
+moderate / advanced drops to `"rotting {location}"`; the skeletal
+tier reads `"skeletal {location}"` — limbs *can* skeletonize, so
+the appendage contract keeps the `skeletal` prefix (in contrast to
+the organ contract, which substitutes `desiccated` because soft
+tissue dries rather than skeletonizes — see issue #212).  The
+freshness `condition` (`pristine` / `damaged` / `putrid`) is
+conveyed via `db.desc` (PR #204) and surfaces at `look` time, not
+in the key.
 
 ### Harvest interaction
 
 `CmdHarvest` already filters its harvestable-organs list with
-`organ_data["container"] not in corpse.db.severed_locations`.  Once
-PR-190 ships, severing an arm correctly causes subsequent
+`organ_data["container"] not in corpse.db.severed_locations`.  With
+PR #190 shipped, severing an arm correctly causes subsequent
 harvest attempts on contained organs (e.g. `left_humerus`) to
 refuse with "went with the severed left_arm".  V1 does **not**
 spawn separate organ items for the anatomy bundled inside the
@@ -2215,7 +2253,7 @@ Players should be prompted to customize their sdesc on next login if defaults we
 | 1 | Foundation (sdesc, recognition, chargen, grammar) | ✅ Shipped |
 | 2 | Per-observer rendering consistency | ✅ Shipped — helper + per-surface `msg_contents()` → `msg_room_identity` sweep complete (Φ₁ Consumption, Φ₂ Armor, Φ₃ Movement, Φ₄ Capstone all shipped) |
 | 3 | Disguise foundation (signature engine, `appear`, personas, unmasking) | ✅ Shipped |
-| 3.5 | Disguise item taxonomy | 🟡 Partially shipped — prototypes live, cohesion polish pending |
+| 3.5 | Disguise item taxonomy | ✅ Shipped — catalog, taxonomy, suppression cohesion, and sdesc-fragment audit all closed (PRs #132 / #176 / #178 / #179 / #180). Biomod / pharmaceutical items and identity artifacts remain deferred to Future Hooks per scope. |
 | 4 | Cybernetics (digital memory, ID exchange) | ⛔ Not started (gated on cyberware system) |
 | 5 | Resonance mechanics (decay, perception, social reads) | ⛔ Not started (gated on Phase 4) |
 

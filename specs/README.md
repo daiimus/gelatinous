@@ -40,7 +40,6 @@ Design specifications for game systems and features. 37 spec files covering comb
 | `DESCRIPTIVE_STAT_SYSTEM_SPEC.md` | G.R.I.M. stat descriptors |
 | `LONGDESC_SYSTEM_SPEC.md` | Character appearance generation |
 | `DEATH_CURTAIN_SPEC.md` | Narrative death experience |
-| `NATURAL_POSING_AND_PRONOUN_FIXES_SPEC.md` | Pronoun handling |
 | `PRONOUN_DEEP_DIVE_IMPLEMENTATION_SPEC.md` | Pronoun system internals |
 | `ORDINAL_NUMBERS_SPEC.md` | Ordinal number object display |
 | `WEAPON_MESSAGE_CONVERSION_SPEC.md` | Weapon message migration plan |
