@@ -554,53 +554,18 @@ class Corpse(IdentityBearerMixin, Item):
             # No item context, just remove color tags
             processed_desc = processed_desc.replace("{color}", "")
         
-        # Process gender pronouns (always third person for corpses)
-        gender_mapping = {
-            'male': 'male',
-            'female': 'female', 
-            'neutral': 'plural',
-            'nonbinary': 'plural',
-            'other': 'plural'
-        }
-        
-        character_gender = gender_mapping.get(original_gender, 'plural')
-        
-        # Pronoun processing - comprehensive mapping
-        pronoun_map = {
-            'male': {
-                'They': 'He', 'they': 'he', 
-                'Their': 'His', 'their': 'his',
-                'Them': 'Him', 'them': 'him',
-                'Theirs': 'His', 'theirs': 'his',
-                'Themselves': 'Himself', 'themselves': 'himself',
-                'Themself': 'Himself', 'themself': 'himself'
-            },
-            'female': {
-                'They': 'She', 'they': 'she',
-                'Their': 'Her', 'their': 'her', 
-                'Them': 'Her', 'them': 'her',
-                'Theirs': 'Hers', 'theirs': 'hers',
-                'Themselves': 'Herself', 'themselves': 'herself',
-                'Themself': 'Herself', 'themself': 'herself'
-            },
-            'plural': {
-                'They': 'They', 'they': 'they',
-                'Their': 'Their', 'their': 'their',
-                'Them': 'Them', 'them': 'them', 
-                'Theirs': 'Theirs', 'theirs': 'theirs',
-                'Themselves': 'Themselves', 'themselves': 'themselves',
-                'Themself': 'Themselves', 'themself': 'themselves'
-            }
-        }
-        
-        pronouns = pronoun_map.get(character_gender, pronoun_map['plural'])
-        for template, replacement in pronouns.items():
-            if f"{{{template}}}" in processed_desc:
-                processed_desc = processed_desc.replace(f"{{{template}}}", replacement)
-        
-        # Process name variables
-        processed_desc = processed_desc.replace("{name}", original_name)
-        processed_desc = processed_desc.replace("{name's}", f"{original_name}'s")
+        # Process gender pronouns and name tokens (always third person
+        # for corpses).  Delegated to the shared pure helper so the
+        # severed-part renderer (Appendage.return_appearance) and this
+        # path stay byte-for-byte consistent.  ``{color}`` / skintone
+        # handling stays corpse-side because it depends on item context.
+        from world.anatomy import substitute_pronoun_tokens
+
+        processed_desc = substitute_pronoun_tokens(
+            processed_desc,
+            gender=original_gender,
+            name=original_name,
+        )
         
         # Apply skintone coloring if preserved (only to body descriptions, not clothing items)
         if original_skintone and not hasattr(self, '_current_item_context'):

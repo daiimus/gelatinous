@@ -1925,6 +1925,23 @@ clock, not its own), then any inherited wounds via
 description on it readable as "a severed left hand — tattoo prose —
 old slash wound" regardless of where the hand ends up.
 
+**Pronoun-token substitution (#234)**: carried longdesc prose may
+contain author-written `{their}` / `{they}` / `{name}` brace tokens.
+Because the living-character renderer is no longer in play, both the
+corpse and the severed-part paths resolve these against *preserved*
+character data via the shared pure helper
+`world.anatomy.longdesc_tokens.substitute_pronoun_tokens(text, *,
+gender, name)` — always third person. `Corpse` keeps its own
+`{color}` / skintone handling and calls the helper for the pronoun /
+name pass; `Appendage.configure_from_sever` snapshots
+`original_gender` / `original_character_name` off the corpse so
+`return_appearance` can run each longdesc through the same helper.
+Parts spawned before the snapshot existed degrade to plural pronouns
+("their" / "they"), never leaking braces. (Note: `%`-style tokens such
+as `%p` are **not** supported anywhere — the only token vocabulary is
+the brace form.)
+
+
 **Helpers** (`typeclasses/items.py`):
 - `apply_wound_and_longdesc_overlay(item, corpse, locations)` —
   moves the listed locations' wounds and longdesc from corpse → item.

@@ -22,12 +22,14 @@ Public surface:
 * :func:`world.anatomy.organs.get_organ_default_description`
 * :func:`world.anatomy.conditions.format_condition_tagline`
 * :func:`world.anatomy.conditions.prepend_condition_to_desc`
+* :func:`world.anatomy.longdesc_tokens.substitute_pronoun_tokens`
 """
 
 from .conditions import (
     format_condition_tagline,
     prepend_condition_to_desc,
 )
+from .longdesc_tokens import substitute_pronoun_tokens
 from .organs import (
     BONE_ORGANS,
     ORGAN_DISPLAY,
@@ -62,4 +64,5 @@ __all__ = (
     "get_species_organ_name",
     "get_species_part_name",
     "prepend_condition_to_desc",
+    "substitute_pronoun_tokens",
 )

@@ -110,6 +110,9 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         corpse.db.wounds = []
         corpse.db.wounds_at_death = []
         corpse.db.severed_locations = []
+        # Issue #234: preserved gender / name snapshot.
+        corpse.db.original_gender = "male"
+        corpse.db.original_character_name = "Jdoe"
         corpse._stage = stage
 
         def get_decay_stage():
@@ -135,6 +138,8 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         app.db.wounds_at_death = []
         app.db.longdesc_data = {}
         app.db.desc = None
+        app.db.original_gender = None
+        app.db.original_character_name = None
         app.key = ""
         app.configure_from_sever = (
             Appendage.configure_from_sever.__get__(app)
@@ -198,3 +203,14 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         # Fresh corpse → "human left arm" via species helper.
         self.assertEqual(app.key, "human left arm")
+
+    def test_gender_and_name_snapshotted_from_corpse(self):
+        # Issue #234: configure_from_sever must carry the preserved
+        # gender + name so return_appearance can resolve pronoun tokens.
+        app = self._fake_appendage()
+        app.configure_from_sever(
+            location_name="left_arm", condition="pristine",
+            corpse=self._fake_corpse(),
+        )
+        self.assertEqual(app.db.original_gender, "male")
+        self.assertEqual(app.db.original_character_name, "Jdoe")

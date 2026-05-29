@@ -1130,6 +1130,13 @@ class Appendage(Item):
         self.db.source_signature = corpse.db.signature_at_death
         self.db.source_apparent_uid = corpse.db.apparent_uid_at_death
         self.db.source_corpse_dbref = corpse.dbref
+        # Issue #234: snapshot the preserved gender + name so carried
+        # longdesc prose can have its {their}/{they}/{name} tokens
+        # resolved at render time (the living-character renderer is no
+        # longer in play).  Parts spawned before this field existed fall
+        # back to plural pronouns in return_appearance.
+        self.db.original_gender = corpse.db.original_gender
+        self.db.original_character_name = corpse.db.original_character_name
         # PR-G: inherit species from corpse so the appendage's
         # decay-modulated key matches its origin anatomy.
         species = corpse.db.species or "human"
@@ -1185,6 +1192,15 @@ class Appendage(Item):
 
         longdescs = self.db.longdesc_data or {}
         if longdescs:
+            from world.anatomy import substitute_pronoun_tokens
+
+            # Issue #234: resolve {their}/{they}/{name} tokens against
+            # the snapshotted character data before display.  Always
+            # third person — the source character is gone.  A missing
+            # snapshot (older parts) yields plural pronouns, not leaked
+            # braces.
+            gender = self.db.original_gender
+            name = self.db.original_character_name or "the corpse"
             try:
                 from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
             except ImportError:
@@ -1193,13 +1209,21 @@ class Appendage(Item):
             for loc in ANATOMICAL_DISPLAY_ORDER:
                 text = longdescs.get(loc)
                 if text and loc not in seen:
-                    parts.append(text)
+                    parts.append(
+                        substitute_pronoun_tokens(
+                            text, gender=gender, name=name
+                        )
+                    )
                     seen.add(loc)
             # Any longdesc locations not in the canonical order
             # (defensive — preserves prose for nonstandard anatomy).
             for loc, text in longdescs.items():
                 if text and loc not in seen:
-                    parts.append(text)
+                    parts.append(
+                        substitute_pronoun_tokens(
+                            text, gender=gender, name=name
+                        )
+                    )
                     seen.add(loc)
 
         wounds = self.db.wounds_at_death or []
