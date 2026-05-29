@@ -802,9 +802,10 @@ SEVERABLE_CONTAINERS = frozenset({
 # all of these locations move from the corpse onto the SeveredHead,
 # since they are visually and anatomically part of the head cluster.
 # The corpse loses prose for every location in this set and gains a
-# single synthesized ``severed`` wound at ``head``.
+# single synthesized ``severed`` wound at ``head``.  "hair" is part of
+# the cluster (#236): it frames the head and visually leaves with it.
 SEVERED_HEAD_LOCATIONS = frozenset({
-    "head", "face", "neck",
+    "hair", "head", "face", "neck",
     "left_eye", "right_eye",
     "left_ear", "right_ear",
 })

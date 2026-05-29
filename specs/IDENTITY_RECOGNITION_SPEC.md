@@ -1902,9 +1902,10 @@ severed item. The corpse keeps only the synthesized stump wound at
 the sever location. This prevents double-reporting in autopsy.
 
 **Head cluster**: severing the head moves wounds and longdesc for
-the entire head cluster — `{head, face, neck, left_eye, right_eye,
-left_ear, right_ear}` (see `SEVERED_HEAD_LOCATIONS` in
-`world/combat/constants.py`). Limbs use a single-location move.
+the entire head cluster — `{hair, head, face, neck, left_eye,
+right_eye, left_ear, right_ear}` (see `SEVERED_HEAD_LOCATIONS` in
+`world/combat/constants.py`). Hair (#236) frames the head and visually
+leaves with it. Limbs use a single-location move.
 
 **Stump wound contract**: synthesized as
 `{injury_type: "severed", location: <sever_loc>, severity: "Critical",
@@ -1917,13 +1918,19 @@ treated / healing / scarred / destroyed stages all defined, with `old`
 being the canonical autopsy form).
 
 **Severed-item rendering**: `Appendage.return_appearance` (and the
-`SeveredHead` override) renders the base condition prose, then any
-carried longdesc verbatim per location (no decay modulation — once
-written into death prose, it ages with the host item's overall decay
-clock, not its own), then any inherited wounds via
-`get_wound_description`. This keeps a severed hand with a tattoo
-description on it readable as "a severed left hand — tattoo prose —
-old slash wound" regardless of where the hand ends up.
+`SeveredHead` override) renders the base condition prose, then the
+carried longdesc + inherited wounds as a **single flowing paragraph**
+appended after the item name (#236 — the name stays on its own header
+line). Composition is per-location, in anatomical order: each
+location's longdesc is immediately followed by that location's wound
+description(s), so a wound stays connected to the body part it belongs
+to (mirroring the corpse). Wounds whose location has no carried
+longdesc still render (appended last) so no forensic detail is
+silently dropped. Longdescs carry no decay modulation — once written
+into death prose, they age with the host item's overall decay clock,
+not their own. This keeps a severed left hand readable as "a severed
+left hand. <tattoo prose> <old slash wound>" regardless of where the
+hand ends up.
 
 **Pronoun-token substitution (#234)**: carried longdesc prose may
 contain author-written `{their}` / `{they}` / `{name}` brace tokens.

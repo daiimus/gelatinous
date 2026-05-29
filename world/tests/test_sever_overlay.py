@@ -122,6 +122,28 @@ class ApplyWoundAndLongdescOverlayTests(TestCase):
             {"head", "face", "neck", "left_eye"},
         )
 
+    def test_hair_rides_head_cluster(self):
+        # Issue #236: hair frames the head and must follow it on sever.
+        corpse = _FakeCorpse(
+            wounds=[_wound("hair", injury_type="cut")],
+            longdescs={
+                "hair": "long silver braids bound with copper wire",
+                "chest": "a broad chest",  # should NOT carry
+            },
+        )
+        appendage = _FakeAppendage()
+        apply_wound_and_longdesc_overlay(
+            appendage, corpse, SEVERED_HEAD_LOCATIONS,
+        )
+        self.assertIn("hair", appendage.db.longdesc_data)
+        self.assertEqual(
+            appendage.db.longdesc_data["hair"],
+            "long silver braids bound with copper wire",
+        )
+        self.assertEqual(
+            {w["location"] for w in appendage.db.wounds_at_death}, {"hair"}
+        )
+
     def test_empty_corpse_state_yields_empty_appendage_state(self):
         corpse = _FakeCorpse()
         appendage = _FakeAppendage()
@@ -195,6 +217,7 @@ class ApplySeverToCorpseTests(TestCase):
 
     def test_head_sever_clears_full_cluster_longdescs(self):
         corpse = _FakeCorpse(longdescs={
+            "hair": "long silver braids",
             "head": "a shaven scalp",
             "face": "sharp features",
             "neck": "a thick neck",

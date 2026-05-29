@@ -1176,81 +1176,117 @@ class Appendage(Item):
         """Compose appearance from base desc + carried longdesc + wounds.
 
         PR #198: severed limbs and heads carry forward the source
-        corpse's per-location longdesc prose and wound records.  We
-        render them after the base ``return_appearance`` output so the
-        condition-keyed line (e.g. ``"fresh left arm"``) still leads.
+        corpse's per-location longdesc prose and wound records.
 
-        Longdesc text is shown verbatim — the ``condition`` prefix in
-        the key already conveys decay state, so we deliberately skip
-        the decay-modulation pass that
-        :class:`typeclasses.corpse.Corpse` applies to its preserved
-        longdescs.  Wound descriptions render at ``stage="old"`` to
-        match the corpse's own preserved-wound contract.
+        Issue #236: the carried prose renders as a single flowing
+        paragraph appended to the base ``return_appearance`` output (the
+        name stays on its own header line via ``base``).  Composition is
+        **per location**, in anatomical order: each location's longdesc
+        is immediately followed by that location's wound description(s),
+        so a wound stays connected to the body part it belongs to —
+        mirroring :meth:`typeclasses.corpse.Corpse` rendering.
+
+        Longdesc text is shown verbatim (decay-modulated only by the
+        condition prefix already baked into the key).  Pronoun / name
+        brace tokens are resolved against the snapshotted character data
+        (issue #234); a missing snapshot degrades to plural pronouns.
+        Wound descriptions render at ``stage="old"`` to match the
+        corpse's preserved-wound contract.
         """
         base = super().return_appearance(looker, **kwargs)
-        parts = [base] if base else []
+
+        from world.anatomy import substitute_pronoun_tokens
 
         longdescs = self.db.longdesc_data or {}
-        if longdescs:
-            from world.anatomy import substitute_pronoun_tokens
-
-            # Issue #234: resolve {their}/{they}/{name} tokens against
-            # the snapshotted character data before display.  Always
-            # third person — the source character is gone.  A missing
-            # snapshot (older parts) yields plural pronouns, not leaked
-            # braces.
-            gender = self.db.original_gender
-            name = self.db.original_character_name or "the corpse"
-            try:
-                from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
-            except ImportError:
-                ANATOMICAL_DISPLAY_ORDER = list(longdescs.keys())
-            seen = set()
-            for loc in ANATOMICAL_DISPLAY_ORDER:
-                text = longdescs.get(loc)
-                if text and loc not in seen:
-                    parts.append(
-                        substitute_pronoun_tokens(
-                            text, gender=gender, name=name
-                        )
-                    )
-                    seen.add(loc)
-            # Any longdesc locations not in the canonical order
-            # (defensive — preserves prose for nonstandard anatomy).
-            for loc, text in longdescs.items():
-                if text and loc not in seen:
-                    parts.append(
-                        substitute_pronoun_tokens(
-                            text, gender=gender, name=name
-                        )
-                    )
-                    seen.add(loc)
-
         wounds = self.db.wounds_at_death or []
-        if wounds:
-            try:
-                from world.medical.wounds import get_wound_description
-            except ImportError:
-                get_wound_description = None
-            if get_wound_description is not None:
-                for wound in wounds:
-                    try:
-                        rendered = get_wound_description(
-                            injury_type=wound.get("injury_type", "generic"),
-                            location=wound.get(
-                                "location", self.db.location_name or ""
-                            ),
-                            severity=wound.get("severity", "Moderate"),
-                            stage="old",
-                            organ=wound.get("organ"),
-                            character=self,
-                        )
-                    except (KeyError, ValueError, AttributeError):
-                        continue
-                    if rendered:
-                        parts.append(rendered)
+        gender = self.db.original_gender
+        name = self.db.original_character_name or "the corpse"
 
-        return "\n".join(p for p in parts if p)
+        try:
+            from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
+        except ImportError:
+            ANATOMICAL_DISPLAY_ORDER = list(longdescs.keys())
+
+        try:
+            from world.medical.wounds import get_wound_description
+        except ImportError:
+            get_wound_description = None
+
+        def _render_wound(wound):
+            """Render one preserved wound; None on failure / no renderer."""
+            if get_wound_description is None:
+                return None
+            try:
+                return get_wound_description(
+                    injury_type=wound.get("injury_type", "generic"),
+                    location=wound.get("location")
+                    or self.db.location_name
+                    or "",
+                    severity=wound.get("severity", "Moderate"),
+                    stage="old",
+                    organ=wound.get("organ"),
+                    character=self,
+                )
+            except (KeyError, ValueError, AttributeError):
+                return None
+
+        def _wound_location(wound):
+            return wound.get("location") or self.db.location_name or ""
+
+        # Compose one chunk per location: longdesc first, then any
+        # wounds at that location, so they stay connected.
+        chunks = []
+        seen_locs = set()
+        handled_wounds = set()
+
+        def _build_location_chunk(loc):
+            pieces = []
+            text = longdescs.get(loc)
+            if text:
+                pieces.append(
+                    substitute_pronoun_tokens(text, gender=gender, name=name)
+                )
+            for idx, wound in enumerate(wounds):
+                if idx in handled_wounds or _wound_location(wound) != loc:
+                    continue
+                rendered = _render_wound(wound)
+                handled_wounds.add(idx)
+                if rendered:
+                    pieces.append(rendered)
+            return " ".join(pieces)
+
+        for loc in ANATOMICAL_DISPLAY_ORDER:
+            if loc in seen_locs:
+                continue
+            seen_locs.add(loc)
+            chunk = _build_location_chunk(loc)
+            if chunk:
+                chunks.append(chunk)
+
+        # Longdesc locations outside the canonical order (defensive —
+        # preserves prose + connected wounds for nonstandard anatomy).
+        for loc in longdescs:
+            if loc in seen_locs:
+                continue
+            seen_locs.add(loc)
+            chunk = _build_location_chunk(loc)
+            if chunk:
+                chunks.append(chunk)
+
+        # Any wounds whose location had no longdesc chunk above — render
+        # them so forensic detail is never silently dropped.
+        for idx, wound in enumerate(wounds):
+            if idx in handled_wounds:
+                continue
+            handled_wounds.add(idx)
+            rendered = _render_wound(wound)
+            if rendered:
+                chunks.append(rendered)
+
+        body = " ".join(chunks)
+        if not body:
+            return base
+        return f"{base} {body}" if base else body
 
 
 def apply_wound_and_longdesc_overlay(appendage, corpse, locations):
