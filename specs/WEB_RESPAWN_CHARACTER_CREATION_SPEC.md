@@ -10,7 +10,9 @@ Implement the respawn character creation flow (templates + flash clone) on the D
 - **First character**: Custom stat allocation (300 points across GRIM)
 - **Respawn**: EvMenu with 3 random templates + flash clone option
 - **Flash clone**: Inherits stats, appearance, sex from archived character
-- **Roman numerals**: Auto-appends based on death_count (Jorge Jackson → Jorge Jackson II)
+- **Roman numerals**: Auto-appends based on death_count. Every sleeve
+  carries a Roman numeral suffix — first sleeve renders as `Jorge
+  Jackson I`, first clone as `Jorge Jackson II`, etc. (issue #50).
 
 ### Web Character Creation (web/website/views/characters.py)
 - **Current**: Single Django form for manual character creation

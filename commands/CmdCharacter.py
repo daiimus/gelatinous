@@ -243,8 +243,9 @@ class CmdStats(Command):
     are shown using standardized classification descriptors (A-Z tiers) for 
     efficient liability assessment.
     
-    File reference includes subject ID and mortality revision count in Roman 
-    numerals. Authorized personnel may access diagnostic numeric values for 
+    File reference includes subject ID. The subject name carries the
+    sleeve iteration as a Roman numeral suffix (e.g. "Laszlo XLIV").
+    Authorized personnel may access diagnostic numeric values for 
     detailed risk evaluation and resource allocation purposes.
     """
 

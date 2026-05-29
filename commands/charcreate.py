@@ -127,40 +127,44 @@ def generate_random_template():
 
 def build_name_from_death_count(base_name, death_count):
     """
-    Build character name with Roman numeral based on death_count.
-    
-    The death_count is the source of truth - it's incremented at death (at_death()).
-    - death_count = 1: No Roman numeral (original character)
-    - death_count = 2: Roman numeral II (first death/clone)
-    - death_count = 3: Roman numeral III (second death/clone)
-    - etc.
-    
+    Build character display name with Roman numeral based on death_count.
+
+    The death_count is the source of truth — set to 1 at character
+    creation and incremented at death (at_death()). Every sleeve renders
+    with a Roman numeral so the first sleeve is "<name> I", the second
+    is "<name> II", etc.
+
+    - death_count = 1 → "<name> I"   (original sleeve)
+    - death_count = 2 → "<name> II"  (first clone)
+    - death_count = 3 → "<name> III" (second clone)
+
     Examples:
-        ("Brock", 1) → "Brock"
-        ("Brock", 2) → "Brock II"
-        ("Brock", 3) → "Brock III"
+        ("Brock", 1)  → "Brock I"
+        ("Brock", 2)  → "Brock II"
         ("Marcus", 10) → "Marcus X"
-    
+
     Args:
-        base_name (str): Character base name (may include old Roman numeral to strip)
-        death_count (int): Current death_count value
-        
+        base_name (str): Character base name (may include old Roman
+            numeral, which will be stripped).
+        death_count (int | None): Current death_count value. ``None`` or
+            values < 1 fall back to 1 (defensive — covers legacy
+            characters that pre-date the default flip).
+
     Returns:
-        str: Name with appropriate Roman numeral (or none if death_count=1)
+        str: Name with appropriate Roman numeral suffix.
     """
-    # Strip any existing Roman numeral from base_name
+    # Strip any existing Roman numeral from base_name.
     # Only strip if there's whitespace before the Roman numeral to avoid
-    # stripping letters from names like "Drivel" (ends with "L")
+    # stripping letters from names like "Drivel" (ends with "L").
     pattern = r'^(.+?)\s+([IVXLCDM]+)$'
     match = re.match(pattern, base_name.strip(), re.IGNORECASE)
     if match:
         base_name = match.group(1).strip()
-    
-    # Original character (death_count=1) has no Roman numeral
-    if death_count == 1:
-        return base_name
-    
-    # death_count 2+ gets Roman numeral (2=II, 3=III, etc.)
+
+    # Defensive fallback for None / pre-fix legacy values.
+    if death_count is None or death_count < 1:
+        death_count = 1
+
     roman = int_to_roman(death_count)
     return f"{base_name} {roman}"
 
@@ -273,8 +277,12 @@ def create_character_from_template(account, template, sex="ambiguous"):
     # Get spawn location
     start_location = get_start_location()
     
-    # Create full name
-    full_name = f"{template['first_name']} {template['last_name']}"
+    # Create full name with Roman numeral suffix (first sleeve → "I").
+    # death_count defaults to 1 via AttributeProperty; pass it explicitly
+    # because the attribute isn't readable until after create_character.
+    full_name = build_name_from_death_count(
+        f"{template['first_name']} {template['last_name']}", 1
+    )
     
     # Use Evennia's proper character creation method
     char, errors = account.create_character(
@@ -1402,7 +1410,11 @@ def first_char_finalize(caller, raw_string, **kwargs):
     # Get data
     first_name = caller.ndb.charcreate_data.get('first_name', '')
     last_name = caller.ndb.charcreate_data.get('last_name', '')
-    full_name = f"{first_name} {last_name}"
+    # First sleeve renders with Roman numeral "I"; helper is the single
+    # source of truth for display name composition.
+    full_name = build_name_from_death_count(
+        f"{first_name} {last_name}", 1
+    )
     sex = caller.ndb.charcreate_data.get('sex', 'ambiguous')
     height = caller.ndb.charcreate_data.get('height', 'average')
     build = caller.ndb.charcreate_data.get('build', 'average')
