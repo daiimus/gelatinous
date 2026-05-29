@@ -152,8 +152,11 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         )
         self.assertTrue(organ.db.desc)
         self.assertIn("heart", organ.db.desc.lower())
-        # Issue #221: condition tagline prepended above the prose.
-        self.assertTrue(organ.db.desc.startswith("|gPristine.|n"))
+        # Issue #221 / #223: plain condition sentence prepended above
+        # the prose, single newline (no blank-line gap).
+        self.assertTrue(
+            organ.db.desc.startswith("It is a pristine specimen.\n")
+        )
 
     def test_damaged_condition_uses_damaged_prose(self):
         organ = self._fake_organ()
@@ -164,8 +167,9 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         self.assertTrue(organ.db.desc)
         # Damaged prose typically signals decay-onset vocabulary.
         self.assertIn("liver", organ.db.desc.lower())
-        # Issue #221: yellow ``damaged`` tagline leads the desc.
-        self.assertTrue(organ.db.desc.startswith("|yDamaged.|n"))
+        self.assertTrue(
+            organ.db.desc.startswith("It is a damaged specimen.\n")
+        )
 
     def test_putrid_condition_uses_putrid_prose(self):
         organ = self._fake_organ()
@@ -175,8 +179,9 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         )
         self.assertTrue(organ.db.desc)
         self.assertIn("brain", organ.db.desc.lower())
-        # Issue #221: red ``putrid`` tagline leads the desc.
-        self.assertTrue(organ.db.desc.startswith("|rPutrid.|n"))
+        self.assertTrue(
+            organ.db.desc.startswith("It is a putrid specimen.\n")
+        )
 
     def test_unknown_organ_leaves_desc_untouched(self):
         organ = self._fake_organ()
@@ -185,9 +190,9 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
             corpse=self._fake_corpse(),
         )
         # Issue #221: even when no prose is registered, the condition
-        # tagline still surfaces so the player gets *some* freshness
-        # signal in the look output (the tagline alone is meaningful).
-        self.assertEqual(organ.db.desc, "|gPristine.|n")
+        # sentence alone surfaces so the player gets *some* freshness
+        # signal in the look output.
+        self.assertEqual(organ.db.desc, "It is a pristine specimen.")
 
     def test_refuse_condition_leaves_desc_untouched(self):
         organ = self._fake_organ()
@@ -195,7 +200,7 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
             organ_name="heart", condition="refuse",
             corpse=self._fake_corpse(),
         )
-        # ``refuse`` has no registered prose AND no tagline (issue #221:
+        # ``refuse`` has no registered prose AND no sentence (issue #221:
         # defensive empty for gameplay-internal conditions); preserve
         # engine default.
         self.assertIsNone(organ.db.desc)

@@ -1,8 +1,8 @@
-"""Freshness-condition presentation helpers (issue #221).
+"""Freshness-condition presentation helpers (issue #221, #223).
 
-Centralises the colour-coded tagline that surfaces an item's
-freshness condition (``pristine`` / ``damaged`` / ``putrid`` /
-``desiccated``) at the top of its ``look`` output.
+Centralises the condition sentence prepended to an item's
+``db.desc`` so the ``look`` output explicitly conveys the freshness
+state (``pristine`` / ``damaged`` / ``putrid`` / ``desiccated``).
 
 Design notes
 ============
@@ -10,7 +10,7 @@ Design notes
 * **Single source of truth**: both :class:`typeclasses.items.Organ`
   and :class:`typeclasses.items.Appendage` consume this helper at
   ``configure_from_harvest`` / ``configure_from_sever`` time so the
-  tagline travels in ``self.db.desc`` and the engine renderer slots
+  sentence travels in ``self.db.desc`` and the engine renderer slots
   it in naturally (AGENTS.md "populate ``db.desc`` the Evennia-
   standard way" contract; cf. PR #204).
 
@@ -19,9 +19,17 @@ Design notes
   tier).  This helper surfaces the condition information that the
   key intentionally dropped.
 
+* **Plain sentence form** (issue #223): the original #221 cut used a
+  colour-coded standalone tagline (``|gPristine.|n``) separated from
+  the prose by a blank line.  In practice that read as two distinct
+  blocks rather than one description.  The replacement is a single
+  uniform sentence (``"It is a pristine specimen."``) on the line
+  immediately above the prose — one logical paragraph, no colour
+  codes, no blank-line break.
+
 * **Defensive empty for unknown / refuse**: callers prepend the
   helper's output unconditionally; an empty string means "no
-  tagline" and the engine renderer falls through to the prose
+  sentence" and the engine renderer falls through to the prose
   alone.  ``refuse`` is the gameplay-internal condition for
   skeletal-stage harvest (refused at the command gate), so leaking
   the term would be a UX bug.
@@ -29,18 +37,19 @@ Design notes
 
 from __future__ import annotations
 
-#: Condition → ANSI-colour-coded capitalised tagline.  Used as a
-#: blends-into-description prefix line in ``db.desc``.
-_CONDITION_TAGLINES = {
-    "pristine": "|gPristine.|n",
-    "damaged": "|yDamaged.|n",
-    "putrid": "|rPutrid.|n",
-    "desiccated": "|RDesiccated.|n",
-}
+#: Set of condition identifiers the helper recognises.  Any other
+#: value (``None``, ``""``, ``"refuse"``, ``"phlegmatic"``, ...)
+#: yields an empty sentence.  Kept as a frozenset rather than an
+#: explicit per-condition mapping because the rendered sentence is
+#: now purely formulaic — ``"It is a {condition} specimen."`` — so a
+#: dict would just duplicate the keys.
+_RECOGNISED_CONDITIONS = frozenset(
+    {"pristine", "damaged", "putrid", "desiccated"}
+)
 
 
 def format_condition_tagline(condition: str | None) -> str:
-    """Return a coloured, capitalised tagline for the given condition.
+    """Return a plain condition sentence for the given freshness state.
 
     Args:
         condition: One of ``pristine`` / ``damaged`` / ``putrid`` /
@@ -50,20 +59,20 @@ def format_condition_tagline(condition: str | None) -> str:
             internal vocabulary.
 
     Returns:
-        The coloured tagline (e.g. ``"|gPristine.|n"``) or ``""``.
+        The sentence (e.g. ``"It is a pristine specimen."``) or ``""``.
     """
-    if not condition:
+    if not condition or condition not in _RECOGNISED_CONDITIONS:
         return ""
-    return _CONDITION_TAGLINES.get(condition, "")
+    return f"It is a {condition} specimen."
 
 
 def prepend_condition_to_desc(condition: str | None, desc: str | None) -> str:
-    """Compose a final ``db.desc`` value with a condition tagline prefix.
+    """Compose a final ``db.desc`` value with a condition sentence prefix.
 
     Centralised so both :class:`typeclasses.items.Organ` and
     :class:`typeclasses.items.Appendage` produce identical formatting
-    (single blank line between tagline and prose, no trailing
-    whitespace).
+    (sentence on its own line directly above the prose, no blank-line
+    separation, no trailing whitespace).
 
     Args:
         condition: Freshness condition identifier.
@@ -73,14 +82,14 @@ def prepend_condition_to_desc(condition: str | None, desc: str | None) -> str:
             May be empty / ``None`` when no prose is registered.
 
     Returns:
-        ``"{tagline}\\n\\n{desc}"`` when both are present; ``tagline``
+        ``"{sentence}\\n{desc}"`` when both are present; ``sentence``
         alone when prose is empty; ``desc`` alone when the condition
-        has no tagline; ``""`` when both are empty.
+        has no sentence; ``""`` when both are empty.
     """
-    tagline = format_condition_tagline(condition)
+    sentence = format_condition_tagline(condition)
     body = desc or ""
-    if tagline and body:
-        return f"{tagline}\n\n{body}"
-    if tagline:
-        return tagline
+    if sentence and body:
+        return f"{sentence}\n{body}"
+    if sentence:
+        return sentence
     return body

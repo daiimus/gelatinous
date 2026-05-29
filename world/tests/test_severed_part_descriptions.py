@@ -149,8 +149,10 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertTrue(app.db.desc)
         self.assertIn("left arm", app.db.desc.lower())
-        # Issue #221: condition tagline leads the desc.
-        self.assertTrue(app.db.desc.startswith("|gPristine.|n"))
+        # Issue #221 / #223: plain condition sentence leads the desc.
+        self.assertTrue(
+            app.db.desc.startswith("It is a pristine specimen.\n")
+        )
 
     def test_damaged_right_thigh_populates_desc(self):
         app = self._fake_appendage()
@@ -160,7 +162,9 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertTrue(app.db.desc)
         self.assertIn("right thigh", app.db.desc.lower())
-        self.assertTrue(app.db.desc.startswith("|yDamaged.|n"))
+        self.assertTrue(
+            app.db.desc.startswith("It is a damaged specimen.\n")
+        )
 
     def test_putrid_head_populates_desc(self):
         app = self._fake_appendage()
@@ -170,7 +174,9 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertTrue(app.db.desc)
         self.assertIn("head", app.db.desc.lower())
-        self.assertTrue(app.db.desc.startswith("|rPutrid.|n"))
+        self.assertTrue(
+            app.db.desc.startswith("It is a putrid specimen.\n")
+        )
 
     def test_unknown_location_leaves_desc_untouched(self):
         app = self._fake_appendage()
@@ -179,8 +185,8 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
             corpse=self._fake_corpse(),
         )
         # Issue #221: even without registered prose, the condition
-        # tagline alone surfaces — a meaningful freshness signal.
-        self.assertEqual(app.db.desc, "|gPristine.|n")
+        # sentence alone surfaces — a meaningful freshness signal.
+        self.assertEqual(app.db.desc, "It is a pristine specimen.")
 
     def test_key_still_assigned_alongside_desc(self):
         # Regression guard for the species-aware key path.
