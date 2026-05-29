@@ -79,6 +79,46 @@ class Corpse(IdentityBearerMixin, Item):
             "advanced": 604800, # < 1 week
             "skeletal": float('inf')  # > 1 week
         }
+
+        # Issue #230: pre-populate all decay-stage aliases at creation so
+        # ``target corpse`` / ``harvest organ from rotting corpse`` work
+        # from t=0 regardless of which stage we're currently in.  Aliases
+        # are append-only and stage progression is monotonic, so pre-
+        # adding every stage's name covers the corpse's whole lifetime
+        # without ever needing alias mutation on look.
+        self._seed_decay_aliases_and_key()
+
+    def _seed_decay_aliases_and_key(self):
+        """Set the initial ``key`` and pre-add every decay-stage alias.
+
+        Called once from :meth:`at_object_creation`.  Idempotent — safe
+        to call again from migration tooling if needed.  Combines the
+        stage-independent aliases (``corpse``, ``remains``, ``body``)
+        with the per-stage display names from the species registry so
+        search / targeting works at any stage without on-look mutation.
+        """
+        from world.anatomy import get_species_corpse_name
+
+        species = self.db.species or "human"
+        stage_names = {
+            get_species_corpse_name(species, stage)
+            for stage in ("fresh", "early", "moderate", "advanced", "skeletal")
+        }
+        # Stage-independent aliases — always valid regardless of decay.
+        base_aliases = {"corpse", "remains", "body"}
+        desired = stage_names | base_aliases
+
+        current = set(self.aliases.all())
+        for alias in desired:
+            if alias not in current:
+                self.aliases.add(alias)
+
+        # Initial key: the fresh-stage name.  The room decay check
+        # (see ``_refresh_decay_key_if_changed``) advances this lazily
+        # on character entry as stages transition.
+        fresh_name = get_species_corpse_name(species, "fresh")
+        if self.key != fresh_name:
+            self.key = fresh_name
     
     def get_decay_stage(self):
         """Calculate current decay stage based on time elapsed."""
@@ -592,30 +632,43 @@ class Corpse(IdentityBearerMixin, Item):
         return f"{description}{modifier}"
     
     def return_appearance(self, looker, **kwargs):
-        """Update appearance based on current decay stage when looked at."""
-        # Check for complete decay first
+        """Render the corpse without mutating any persistent state.
+
+        Issue #230: previously this method called
+        ``_update_decay_descriptions`` which wrote ``self.key``,
+        ``self.aliases``, and ``self.db.desc`` on every look — a pure
+        read with persistent side effects.  Aliases and the initial
+        ``key`` are now seeded at creation
+        (:meth:`_seed_decay_aliases_and_key`); ``key`` refresh on stage
+        transition runs from the room's character-entry hook
+        (:meth:`_refresh_decay_key_if_changed`); and the staged decay
+        paragraph is computed on the fly here.  Result: ``look`` is a
+        pure read.
+        """
+        # Lifecycle event (deletes the corpse) — acceptable mutation;
+        # not a "render" side effect.
         if self._handle_complete_decay():
-            return None  # Corpse was destroyed
-            
-        # Update decay-based descriptions just-in-time
-        self._update_decay_descriptions()
-        
-        # Build appearance similar to character with preserved longdesc data
+            return None
+
+        stage = self.get_decay_stage()
+
+        # Build appearance similar to character with preserved longdesc data.
         parts = []
-        
-        # 1. Corpse name and main description (current decay state)
+
+        # 1. Corpse name and main description (computed per current stage).
         name_and_desc = [self.get_display_name(looker)]
-        if self.db.desc:
-            name_and_desc.append(self.db.desc)
+        decay_paragraph = self._build_decay_desc_paragraph(stage)
+        if decay_paragraph:
+            name_and_desc.append(decay_paragraph)
         parts.append('\n'.join(name_and_desc))
-        
-        # 2. Display preserved longdesc data with clothing integration
+
+        # 2. Display preserved longdesc data with clothing integration.
         if self.db.longdesc_data:
             longdesc_descriptions = self._get_preserved_longdesc_descriptions()
             if longdesc_descriptions:
                 formatted_longdesc = self._format_corpse_longdescs(longdesc_descriptions)
                 parts.append(formatted_longdesc)
-        
+
         return '\n\n'.join(parts)
     
     def at_object_receive(self, moved_obj, source_location, **kwargs):
@@ -647,91 +700,67 @@ class Corpse(IdentityBearerMixin, Item):
             if self.db.apparent_uid_at_death is not None:
                 self.db.apparent_uid_at_death = None
     
-    def _update_decay_descriptions(self):
-        """Update descriptions based on current decay stage."""
+    def _build_decay_desc_paragraph(self, stage):
+        """Return the staged decay paragraph for ``stage``.  Pure.
+
+        Issue #230: replaces the old ``_update_decay_descriptions``
+        which wrote ``self.db.desc``.  This helper just *returns* the
+        composed string; ``return_appearance`` slots it into the look
+        output without persisting anything.
+
+        The death-time ``db.desc`` snapshot
+        (``typeclasses/death_progression.py:682``) is preserved untouched
+        for debug / admin / forensic tooling (Option α from the #230
+        design discussion).
+        """
+        base_desc = self.db.physical_description or "A lifeless body."
+        decay_descriptions = {
+            "fresh": (
+                f"A recently deceased human body. {base_desc} "
+                "The body appears fresh, with no signs of decomposition yet visible."
+            ),
+            "early": (
+                f"A pale human corpse. {base_desc} "
+                "The skin has begun to pale and cool, with early signs of "
+                "lividity visible."
+            ),
+            "moderate": (
+                "Decomposing human remains. Bloating and discoloration have "
+                "begun, with a distinct odor of decay. The original features "
+                "are still recognizable but deteriorating."
+            ),
+            "advanced": (
+                "Putrid human remains. Advanced decomposition has set in with "
+                "severe bloating, fluid leakage, and strong putrid odors. "
+                "Identification is becoming difficult."
+            ),
+            "skeletal": (
+                "Skeletal human remains. Only bones, dried tissue, and "
+                "clothing remain. The decomposition process is nearly complete."
+            ),
+        }
+        return decay_descriptions.get(stage, base_desc)
+
+    def _refresh_decay_key_if_changed(self):
+        """Update ``self.key`` if the current decay stage no longer matches.
+
+        Issue #230: called from :meth:`typeclasses.rooms.Room._check_corpse_decay`
+        on character entry — a lifecycle event, NOT from ``look``.  This
+        keeps ``look`` pure while still letting ``@find`` and direct
+        ``self.key`` consumers see the current stage name.
+
+        Aliases are not touched here: every decay-stage alias is
+        pre-seeded at creation by :meth:`_seed_decay_aliases_and_key`,
+        so search/targeting works at any stage regardless of which
+        stage's name is currently in ``key``.
+        """
         from world.anatomy import get_species_corpse_name
 
-        stage = self.get_decay_stage()
-        decay_factor = self.get_decay_factor()
-        
-        # Base physical description
-        base_desc = self.db.physical_description or "A lifeless body."
-
-        # PR-G: derive the player-facing corpse name from the species
-        # registry rather than hardcoded per-stage strings.  This keeps
-        # non-human corpses (when they exist) consistent and lets the
-        # registry own the decay vocabulary in one place.
         species = self.db.species or "human"
+        stage = self.get_decay_stage()
         stage_name = get_species_corpse_name(species, stage)
-
-        # Update the corpse's primary key so glance-level rendering
-        # (room contents, inventory listings) reflects the current
-        # decay tier.  Recognition memory (handled by
-        # IdentityBearerMixin.get_display_name) overrides this when an
-        # observer has assigned a name to the corpse.
         if self.key != stage_name:
             self.key = stage_name
-
-        # Update aliases to include the current decay stage name
-        # Don't use clear() as it wipes out Evennia's multi-match tracking
-        # Instead, get current aliases and add our decay-related ones
-        current_aliases = set(self.aliases.all())
-
-        # Define the aliases we want for this decay stage
-        desired_aliases = {stage_name, "corpse", "remains", "body"}
-
-        # Add any missing aliases
-        for alias in desired_aliases:
-            if alias not in current_aliases:
-                self.aliases.add(alias)
-        
-        # Stage-specific description modifications
-        decay_descriptions = {
-            "fresh": f"A recently deceased human body. {base_desc} "
-                    f"The body appears fresh, with no signs of decomposition yet visible.",
-            
-            "early": f"A pale human corpse. {base_desc} "
-                    f"The skin has begun to pale and cool, with early signs of lividity visible.",
-            
-            "moderate": f"Decomposing human remains. "
-                       f"Bloating and discoloration have begun, with a distinct odor of decay. "
-                       f"The original features are still recognizable but deteriorating.",
-            
-            "advanced": f"Putrid human remains. "
-                       f"Advanced decomposition has set in with severe bloating, fluid leakage, "
-                       f"and strong putrid odors. Identification is becoming difficult.",
-            
-            "skeletal": f"Skeletal human remains. "
-                       f"Only bones, dried tissue, and clothing remain. The decomposition process "
-                       f"is nearly complete."
-        }
-        
-        # Update main description
-        self.db.desc = decay_descriptions.get(stage, base_desc)
-        
-        # Update longdesc if it exists
-        if hasattr(self, 'longdesc') and self.longdesc:
-            self._update_longdesc_for_decay(stage, decay_factor)
-    
-    def _update_longdesc_for_decay(self, stage, decay_factor):
-        """Update longdesc details based on decay stage."""
-        # This would modify specific longdesc body parts based on decay
-        # For now, we'll just add a general decay note
-        if hasattr(self, 'longdesc') and self.longdesc:
-            # Add decay information to longdesc
-            decay_notes = {
-                "fresh": "appears fresh and recently deceased",
-                "early": "shows early signs of decomposition with pale skin",
-                "moderate": "displays moderate decomposition with bloating and discoloration", 
-                "advanced": "exhibits advanced putrefaction with severe decay",
-                "skeletal": "has decomposed to mostly skeletal remains"
-            }
-            
-            decay_note = decay_notes.get(stage, "shows signs of decay")
-            
-            # You could modify specific body parts here based on your longdesc system
-            # For example: modify skin color, add bloating to torso, etc.
-    
     def get_forensic_data(self):
         """Return forensic data for investigation purposes."""
         stage = self.get_decay_stage()

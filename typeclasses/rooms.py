@@ -82,6 +82,14 @@ class Room(ObjectParent, DefaultRoom):
         
         for corpse in corpses:
             try:
+                # Issue #230: refresh corpse key to current decay stage.
+                # ``look`` is now a pure read; key advancement on stage
+                # transitions runs here, triggered by character entry.
+                try:
+                    corpse._refresh_decay_key_if_changed()
+                except Exception:
+                    pass  # Don't let key refresh block decay cleanup.
+
                 if corpse.check_complete_decay():
                     # Drop items to room
                     for item in list(corpse.contents):

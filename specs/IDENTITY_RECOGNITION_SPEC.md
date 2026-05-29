@@ -1373,6 +1373,7 @@ Corpses already preserve forensic data (original name, dbref, physical descripti
 - Looking at a corpse: investigator sees recognized name or sdesc based on their memory — **shipped**. The corpse's `get_display_name` routes through the observer's recognition memory keyed on the corpse's apparent UID (derived from `sleeve_uid` plus whatever the corpse is still wearing).
 - Worn-item changes on the corpse re-derive the apparent presentation — **shipped** via `at_object_leave` invalidation, so stripping a body changes its signature exactly like stripping a live character.
 - Corpse decay interacts with recognition via the **decay-aware recognition** policy below — **shipped** (PR B).
+- **Pure `look`** (issue #230) — **shipped**. ``Corpse.return_appearance`` is a pure read; it does not write ``db.desc``, ``key``, or aliases. All decay-stage aliases (``corpse``, ``remains``, ``body``, ``human corpse``, ``rotting corpse``, ``skeletal remains``) are pre-seeded at creation by ``_seed_decay_aliases_and_key`` so search/targeting works from t=0 regardless of which stage is current. The corpse's ``key`` is refreshed on stage transitions by ``_refresh_decay_key_if_changed``, invoked from ``Room._check_corpse_decay`` on character entry (a lifecycle event). The staged decay paragraph is computed on the fly by ``_build_decay_desc_paragraph`` and inlined into the look output without persisting. The death-time ``db.desc`` snapshot set in ``death_progression.py`` survives untouched.
 
 #### Decay-Aware Recognition
 
