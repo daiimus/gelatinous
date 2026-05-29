@@ -67,22 +67,30 @@ class TestFormatConditionTagline(TestCase):
 
 
 class TestPrependConditionToDesc(TestCase):
-    """Composition rules for ``{sentence}\\n{desc}`` (no blank-line gap)."""
+    """Composition rules for ``{sentence} {desc}`` (single-space join)."""
 
-    def test_sentence_and_desc_compose_with_single_newline(self):
+    def test_sentence_and_desc_compose_with_single_space(self):
         result = prepend_condition_to_desc(
             "pristine", "A fresh human heart, glistening."
         )
         self.assertEqual(
             result,
-            "It is a pristine specimen.\nA fresh human heart, glistening.",
+            "It is a pristine specimen. A fresh human heart, glistening.",
         )
 
-    def test_no_blank_line_between_sentence_and_prose(self):
-        # Issue #223 regression guard: the original #221 cut used
-        # ``\n\n`` which rendered as a visual paragraph break.
+    def test_no_newline_between_sentence_and_prose(self):
+        # Issue #225 regression guard: the prior cut joined with ``\n``,
+        # producing two visible lines under the item name.  The composed
+        # output must be a single continuous paragraph.
         result = prepend_condition_to_desc("damaged", "Some prose.")
-        self.assertNotIn("\n\n", result)
+        self.assertNotIn("\n", result)
+
+    def test_no_double_space_between_sentence_and_prose(self):
+        # Defensive: the period belongs to the sentence; the prose
+        # starts with a capital and no leading whitespace.  We must
+        # join with exactly one space.
+        result = prepend_condition_to_desc("putrid", "Some prose.")
+        self.assertNotIn("  ", result)
 
     def test_sentence_only_when_desc_empty(self):
         self.assertEqual(
@@ -111,11 +119,12 @@ class TestPrependConditionToDesc(TestCase):
 
     def test_all_four_conditions_round_trip(self):
         # Exhaustive contract: every recognised condition produces a
-        # non-empty composed result when paired with prose, with the
-        # sentence leading and the prose following on the next line.
+        # non-empty composed result when paired with prose, joined by a
+        # single space into one continuous paragraph.
         for condition in ("pristine", "damaged", "putrid", "desiccated"):
             with self.subTest(condition=condition):
                 result = prepend_condition_to_desc(condition, "Body part.")
                 self.assertIn("Body part.", result)
                 self.assertTrue(result.startswith("It is a "))
-                self.assertIn(" specimen.\n", result)
+                self.assertIn(" specimen. ", result)
+                self.assertNotIn("\n", result)

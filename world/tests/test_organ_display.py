@@ -152,10 +152,10 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         )
         self.assertTrue(organ.db.desc)
         self.assertIn("heart", organ.db.desc.lower())
-        # Issue #221 / #223: plain condition sentence prepended above
-        # the prose, single newline (no blank-line gap).
+        # Issue #221 / #223 / #225: plain condition sentence joined to
+        # the prose with a single space (one continuous paragraph).
         self.assertTrue(
-            organ.db.desc.startswith("It is a pristine specimen.\n")
+            organ.db.desc.startswith("It is a pristine specimen. ")
         )
 
     def test_damaged_condition_uses_damaged_prose(self):
@@ -168,7 +168,7 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         # Damaged prose typically signals decay-onset vocabulary.
         self.assertIn("liver", organ.db.desc.lower())
         self.assertTrue(
-            organ.db.desc.startswith("It is a damaged specimen.\n")
+            organ.db.desc.startswith("It is a damaged specimen. ")
         )
 
     def test_putrid_condition_uses_putrid_prose(self):
@@ -180,7 +180,7 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         self.assertTrue(organ.db.desc)
         self.assertIn("brain", organ.db.desc.lower())
         self.assertTrue(
-            organ.db.desc.startswith("It is a putrid specimen.\n")
+            organ.db.desc.startswith("It is a putrid specimen. ")
         )
 
     def test_unknown_organ_leaves_desc_untouched(self):

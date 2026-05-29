@@ -149,9 +149,10 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertTrue(app.db.desc)
         self.assertIn("left arm", app.db.desc.lower())
-        # Issue #221 / #223: plain condition sentence leads the desc.
+        # Issue #221 / #223 / #225: plain sentence joined to prose with
+        # a single space (one continuous paragraph).
         self.assertTrue(
-            app.db.desc.startswith("It is a pristine specimen.\n")
+            app.db.desc.startswith("It is a pristine specimen. ")
         )
 
     def test_damaged_right_thigh_populates_desc(self):
@@ -163,7 +164,7 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         self.assertTrue(app.db.desc)
         self.assertIn("right thigh", app.db.desc.lower())
         self.assertTrue(
-            app.db.desc.startswith("It is a damaged specimen.\n")
+            app.db.desc.startswith("It is a damaged specimen. ")
         )
 
     def test_putrid_head_populates_desc(self):
@@ -175,7 +176,7 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         self.assertTrue(app.db.desc)
         self.assertIn("head", app.db.desc.lower())
         self.assertTrue(
-            app.db.desc.startswith("It is a putrid specimen.\n")
+            app.db.desc.startswith("It is a putrid specimen. ")
         )
 
     def test_unknown_location_leaves_desc_untouched(self):

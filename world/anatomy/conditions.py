@@ -23,9 +23,9 @@ Design notes
   colour-coded standalone tagline (``|gPristine.|n``) separated from
   the prose by a blank line.  In practice that read as two distinct
   blocks rather than one description.  The replacement is a single
-  uniform sentence (``"It is a pristine specimen."``) on the line
-  immediately above the prose — one logical paragraph, no colour
-  codes, no blank-line break.
+  uniform sentence (``"It is a pristine specimen."``) joined to the
+  prose with a single space (issue #225) so the whole description
+  flows as one paragraph rather than two visible lines.
 
 * **Defensive empty for unknown / refuse**: callers prepend the
   helper's output unconditionally; an empty string means "no
@@ -70,9 +70,11 @@ def prepend_condition_to_desc(condition: str | None, desc: str | None) -> str:
     """Compose a final ``db.desc`` value with a condition sentence prefix.
 
     Centralised so both :class:`typeclasses.items.Organ` and
-    :class:`typeclasses.items.Appendage` produce identical formatting
-    (sentence on its own line directly above the prose, no blank-line
-    separation, no trailing whitespace).
+    :class:`typeclasses.items.Appendage` produce identical formatting:
+    sentence joined to the prose with a single space so the whole
+    description renders as one continuous paragraph on a single line
+    (issue #225 — the prior ``"\\n"`` join broke onto two visible
+    lines, which read as two separate blocks).
 
     Args:
         condition: Freshness condition identifier.
@@ -82,14 +84,14 @@ def prepend_condition_to_desc(condition: str | None, desc: str | None) -> str:
             May be empty / ``None`` when no prose is registered.
 
     Returns:
-        ``"{sentence}\\n{desc}"`` when both are present; ``sentence``
+        ``"{sentence} {desc}"`` when both are present; ``sentence``
         alone when prose is empty; ``desc`` alone when the condition
         has no sentence; ``""`` when both are empty.
     """
     sentence = format_condition_tagline(condition)
     body = desc or ""
     if sentence and body:
-        return f"{sentence}\n{body}"
+        return f"{sentence} {body}"
     if sentence:
         return sentence
     return body
