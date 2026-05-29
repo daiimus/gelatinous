@@ -84,10 +84,11 @@ class TestSeveredPartTokenSubstitution(EvenniaTest):
         )
         out = part.return_appearance(self.char1)
         # The three locations appear as one continuous, space-joined run
-        # (anatomical order: hair, face, left_eye) — no newline between.
+        # (anatomical order: hair, left_eye, face — eyes lead the facial
+        # features) — no newline between.
         self.assertIn(
-            "Close-cropped silver hair. A weathered face. "
-            "A pale blue left eye.",
+            "Close-cropped silver hair. A pale blue left eye. "
+            "A weathered face.",
             out,
         )
 
@@ -114,14 +115,26 @@ class TestSeveredPartTokenSubstitution(EvenniaTest):
         out = part.return_appearance(self.char1)
         face_idx = out.index("A weathered face.")
         eye_idx = out.index("A pale blue left eye.")
-        # Face longdesc precedes the eye longdesc (anatomical order)...
-        self.assertLess(face_idx, eye_idx)
-        # ...and the face wound text renders in the gap between them,
-        # keeping the wound connected to the face location.
-        between = out[face_idx + len("A weathered face."):eye_idx]
+        # Anatomical order now leads with the eye (eyes precede the face),
+        # so the eye longdesc renders before the face longdesc...
+        self.assertLess(eye_idx, face_idx)
+        # ...and the invariant under test holds regardless of neighbour
+        # order: the face wound renders immediately after the face
+        # longdesc (its own location), not detached at the end. With the
+        # face rendering last here, the wound text is the trailing run.
+        after_face = out[face_idx + len("A weathered face."):]
         self.assertTrue(
+            after_face.strip(),
+            "Expected the face wound description to render immediately "
+            "after the face longdesc (connected to its own location).",
+        )
+        # The wound stays connected to the face, not to the earlier eye:
+        # nothing wound-like intrudes between the eye longdesc and the
+        # face longdesc.
+        between = out[eye_idx + len("A pale blue left eye."):face_idx]
+        self.assertFalse(
             between.strip(),
-            "Expected the face wound description to render between the "
-            "face longdesc and the eye longdesc.",
+            "Expected no wound text between the eye longdesc and the "
+            "face longdesc; the face wound belongs after the face.",
         )
 

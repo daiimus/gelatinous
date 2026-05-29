@@ -259,7 +259,7 @@ class Corpse(IdentityBearerMixin, Item):
         except ImportError:
             # Fallback order if constants not available
             ANATOMICAL_DISPLAY_ORDER = [
-                "head", "face", "left_eye", "right_eye", "left_ear", "right_ear", "neck",
+                "hair", "left_eye", "right_eye", "head", "face", "left_ear", "right_ear", "neck",
                 "chest", "back", "abdomen", "groin",
                 "left_arm", "right_arm", "left_hand", "right_hand",
                 "left_thigh", "right_thigh", "left_shin", "right_shin", "left_foot", "right_foot"

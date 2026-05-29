@@ -81,8 +81,11 @@ Following the Mr. Hands pattern, body locations will be defined in `world/combat
 
 ```python
 # Default human anatomy (auto-created on character creation)
+# Head-region order mirrors organic recognition: hair, then eyes, then
+# the head and face resolve into view, followed by ears and neck.
 DEFAULT_LONGDESC_LOCATIONS = {
-    "head": None, "face": None, "left_eye": None, "right_eye": None, 
+    "hair": None,
+    "left_eye": None, "right_eye": None, "head": None, "face": None,
     "left_ear": None, "right_ear": None, "neck": None,
     "chest": None, "back": None, "abdomen": None, "groin": None,
     "left_arm": None, "right_arm": None, "left_hand": None, "right_hand": None,
@@ -476,7 +479,7 @@ longdesc = AttributeProperty(
 - `MAX_DESCRIPTION_LENGTH` - Individual description limit (1000 chars)
 - `PARAGRAPH_BREAK_THRESHOLD` - Auto-paragraph threshold (400 chars)
 - `VALID_LONGDESC_LOCATIONS` - Validation set
-- `ANATOMICAL_DISPLAY_ORDER` - Head-to-toe display sequence
+- `ANATOMICAL_DISPLAY_ORDER` - Head-to-toe display sequence (head region ordered by organic recognition: hair, eyes, head, face, ears, neck)
 - `ANATOMICAL_REGIONS` - Region groupings for smart paragraph breaks
 
 #### 2. Character Typeclass Enhancement (`typeclasses/characters.py`)
