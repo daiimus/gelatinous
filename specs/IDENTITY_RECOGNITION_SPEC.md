@@ -1636,6 +1636,15 @@ because soft tissue dries out rather than skeletonizing.  The
 freshness `condition` (`pristine` / `damaged` / `putrid`) is
 conveyed via `db.desc` and surfaces at `look` time, not in the key.
 
+**Unknown-species fallback (issue #215):** unregistered species drop
+the species token entirely at fresh / early stages — an organ from
+an alien species renders as bare `"heart"`, not `"human heart"`.
+This is a deliberate feature: builders who create something truly
+alien get inscrutable organ names for free, and the system never
+misclaims provenance.  Late-decay tiers already drop species via
+their templates, so this fallback only affects fresh / early surface
+output.
+
 ### DC tuning (provisional)
 
 ```python

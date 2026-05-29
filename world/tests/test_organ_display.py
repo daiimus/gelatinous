@@ -228,15 +228,15 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         self.assertEqual(organ.key, "desiccated heart")
 
     def test_key_falls_back_for_unknown_species(self):
-        # Issue #212: unknown species fall through to human via
-        # ``_resolve_species`` — keeps the system robust as new
-        # species register incrementally.
+        # Issue #215: unknown species drop the species token entirely
+        # at fresh decay — accidentally-alien organs render as bare
+        # ``liver`` rather than misclaiming as human.
         organ = self._fake_organ()
         corpse = self._fake_corpse(species="unobtanium_alien")
         organ.configure_from_harvest(
             organ_name="liver", condition="pristine", corpse=corpse,
         )
-        self.assertEqual(organ.key, "human liver")
+        self.assertEqual(organ.key, "liver")
 
 
 class TestOrganHasNoReturnAppearanceOverride(TestCase):

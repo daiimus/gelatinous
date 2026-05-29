@@ -197,10 +197,33 @@ class TestOrganName(TestCase):
             "human brain",
         )
 
-    def test_unknown_species_falls_back_to_human(self):
+    def test_unknown_species_drops_species_token(self):
+        # Issue #215: unknown species drop the species prefix entirely
+        # at fresh / early decay, rendering bare organ names.  Feature,
+        # not bug — accidentally-alien organs read as inscrutable.
         self.assertEqual(
             get_species_organ_name("unobtanium_alien", "heart", "fresh"),
-            "human heart",
+            "heart",
+        )
+
+    def test_none_species_drops_species_token(self):
+        # Issue #215: ``None`` species behaves identically to unknown.
+        self.assertEqual(
+            get_species_organ_name(None, "liver", "fresh"),
+            "liver",
+        )
+
+    def test_unknown_species_late_decay_unaffected(self):
+        # Late-decay templates already drop the species token, so
+        # unknown-species rendering at moderate / skeletal stages
+        # matches the known-species output.
+        self.assertEqual(
+            get_species_organ_name("unobtanium_alien", "heart", "moderate"),
+            "rotting heart",
+        )
+        self.assertEqual(
+            get_species_organ_name("unobtanium_alien", "heart", "skeletal"),
+            "desiccated heart",
         )
 
     def test_unknown_organ_falls_back_to_underscore_stripped(self):

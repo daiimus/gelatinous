@@ -248,10 +248,17 @@ def get_species_organ_name(
     wanting more precision must ``look`` (which shows condition-keyed
     prose) or use forensic commands.
 
+    **Unknown-species fallback (issue #215):** unknown species drop the
+    species token entirely — an organ from an unregistered species
+    renders as bare ``"heart"`` rather than misclaiming it as human.
+    This is a feature: builders creating something truly alien get
+    inscrutable organ names for free.  Late-decay tiers already drop
+    species via their templates, so this only changes the
+    fresh / early surface for unregistered species.
+
     Args:
-        species: Species identifier; unknown / None → human (the
-            defensive fallback contract documented in
-            ``specs/IDENTITY_RECOGNITION_SPEC.md``).
+        species: Species identifier; ``None`` or unregistered species
+            drop the species token from the fresh / early template.
         organ_name: Canonical organ identifier from
             :data:`world.medical.constants.ORGANS`.  Unregistered
             organs fall back to their underscore-stripped key.
@@ -264,7 +271,13 @@ def get_species_organ_name(
     """
     from .organs import get_organ_display_name
 
-    spec = _resolve_species(species)
+    # Issue #215: detect unknown species before falling through to the
+    # ``_resolve_species`` human-default behaviour.  Unknown species
+    # use the human template shape (so decay tiers still work) but
+    # render with an empty species token, producing bare organ names
+    # at fresh / early stages.
+    is_known = bool(species) and species in SPECIES_DEFINITIONS
+    spec = SPECIES_DEFINITIONS[species] if is_known else SPECIES_DEFINITIONS["human"]
     prefixes = spec.get("decay_organ_prefixes") or {}
     template = (
         prefixes.get(decay_stage)
@@ -272,5 +285,8 @@ def get_species_organ_name(
         or "{organ}"
     )
     organ_display = get_organ_display_name(organ_name)
-    species_display = spec.get("display_name", "")
-    return template.format(species=species_display, organ=organ_display)
+    species_display = spec.get("display_name", "") if is_known else ""
+    rendered = template.format(species=species_display, organ=organ_display)
+    # Collapse any leading whitespace left behind when species_display
+    # is empty (template was ``"{species} {organ}"``).
+    return " ".join(rendered.split())
