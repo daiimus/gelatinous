@@ -226,6 +226,14 @@ The system separates **ability to hit** from **target selection wisdom**:
 
 ### Vital Area Targeting Ability
 
+> **Vital area derivation (#251)**: the set of vital body locations is computed
+> dynamically by `_get_vital_locations` from the lethal body capacities
+> (`LETHAL_CAPACITY_NAMES` in `world/medical/constants.py` — the capacities
+> `is_dead()` enforces plus `consciousness`). Each lethal capacity's organs are
+> mapped to their `container`, yielding `{head, chest, neck, abdomen}` for the
+> stock anatomy. It is data-driven, not a hardcoded literal, so anatomy changes
+> propagate automatically.
+
 **Skill Calculation**: `vital_targeting_skill = attacker_grit + attacker_motorics`
 
 **Ability Tiers**:
