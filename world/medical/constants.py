@@ -173,6 +173,19 @@ BODY_CAPACITIES = {
         "stomach_contribution": 0.5,  # Stomach is secondary
         "fatal_threshold": 0.0  # Death if liver lost
     },
+    "neck_integrity": {
+        # Decapitation gate. The cervical spine bundles the airway, the
+        # great vessels, and the spinal cord at the neck; severing it is
+        # immediately fatal. Modeled as its own vital capacity (rather
+        # than folding into "breathing") so destruction reads as a clean
+        # decapitation death without perturbing the lungs' contribution
+        # math. See is_dead() in core.py and combat-sever Phase A (#243).
+        "organs": ["cervical_spine"],
+        "fatal_threshold": 0.0,
+        "directly_fatal": True,
+        "affects": ["consciousness", "breathing", "moving"],
+        "description": "Integrity of the neck - zero equals decapitation/death"
+    },
     
     # Blood Loss System
     "blood_loss": {
@@ -276,6 +289,19 @@ ORGANS = {
         "capacities": ["talking", "eating"], "talking_contribution": "major",
         "eating_contribution": "moderate", "disfiguring_if_lost": True, "can_scar": False,
         "can_be_harvested": True
+    },
+
+    # NECK CONTAINER → DECAPITATION STRUCTURE
+    # The cervical spine is the decapitation locus (combat-sever Phase A,
+    # #243). Unlike the thoracic/lumbar "spine" organ in the "back"
+    # container (cannot_be_destroyed), this one CAN be destroyed: bringing
+    # it to 0 HP severs the head from the body. It is vital and gates the
+    # "neck_integrity" capacity (total contribution), so destruction is
+    # immediately fatal via is_dead().
+    "cervical_spine": {
+        "container": "neck", "max_hp": 12, "hit_weight": "rare",
+        "vital": True, "capacity": "neck_integrity", "contribution": "total",
+        "causes_pain_when_damaged": True, "can_be_destroyed": True
     },
 
     # CHEST CONTAINER → VITAL ORGANS INSIDE  

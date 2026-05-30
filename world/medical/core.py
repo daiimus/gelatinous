@@ -411,6 +411,8 @@ class MedicalState:
             return True
         if self.calculate_body_capacity("digestion") <= 0.0:
             return True  # Liver failure
+        if self.calculate_body_capacity("neck_integrity") <= 0.0:
+            return True  # Decapitation - cervical spine severed (#243)
             
         # Death from blood loss
         if self.blood_level <= (100.0 - BLOOD_LOSS_DEATH_THRESHOLD):
