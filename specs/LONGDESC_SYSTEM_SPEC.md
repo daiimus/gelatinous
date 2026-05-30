@@ -113,6 +113,52 @@ VALID_LONGDESC_LOCATIONS = set(DEFAULT_LONGDESC_LOCATIONS.keys())
 - **Extensible validation** - supports any anatomy configuration (alien, cybernetic, etc.)
 - **Error prevention** - prevents setting descriptions for non-existent body parts
 
+#### Schema Drift & Backfill (IMPORTANT)
+A character's `longdesc` dict is persisted **once**, at `at_object_creation`,
+as a copy of `DEFAULT_LONGDESC_LOCATIONS`. There is no automatic migration:
+adding (or reordering) a location in `DEFAULT_LONGDESC_LOCATIONS` does **not**
+propagate to already-existing characters. Their stored dict keeps the key set
+(and order) it had at creation time.
+
+Consequences for a body that predates a new default location:
+- The location is absent from `get_available_locations()`, so it never appears
+  in `@longdesc/list`.
+- `has_location()` returns `False` for it, so `@longdesc <new_location> "..."`
+  is rejected — the player cannot describe a body part they anatomically have.
+- `@longdesc/list` groups by region in **dict-insertion order**, so a key added
+  out of canonical position can also display out of anatomical order.
+
+**Whenever `DEFAULT_LONGDESC_LOCATIONS` gains a location (or its order
+changes), run a one-off backfill** to bring existing bodies into sync. The
+backfill rebuilds each dict in canonical (`DEFAULT_LONGDESC_LOCATIONS`) order,
+preserving any set descriptions and keeping extended anatomy (tails, wings,
+cybernetics) at the end. It is idempotent (a second pass updates nothing) and
+never overwrites set values:
+
+```python
+# Run via `evennia shell`, then `evennia reload` to flush the server's
+# in-memory object cache so post-reload reads come fresh from the DB.
+from typeclasses.characters import Character
+from world.combat.constants import DEFAULT_LONGDESC_LOCATIONS as D
+
+updated = 0
+for c in Character.objects.all_family():
+    cur = c.longdesc or {}
+    rebuilt = {k: cur.get(k) for k in D}   # canonical order + backfill missing as None
+    for k, v in cur.items():               # preserve extended anatomy
+        if k not in rebuilt:
+            rebuilt[k] = v
+    if rebuilt != cur:
+        c.longdesc = rebuilt
+        updated += 1
+print(f"Updated {updated} characters")
+```
+
+Because the rebuild also reorders each dict into canonical order, it doubles
+as the fix for `@longdesc/list` showing a backfilled key (e.g. `hair`) out of
+position. This procedure was used to propagate the `hair` location (added in
+#176) to the 155 pre-existing bodies that lacked it.
+
 ## Command Interface
 
 ### Primary Command: `@longdesc`
@@ -474,7 +520,7 @@ longdesc = AttributeProperty(
 **Status**: ✅ **IMPLEMENTED**  
 **Location**: Lines 35-77  
 **Added Constants**:
-- `DEFAULT_LONGDESC_LOCATIONS` - 21-location default human anatomy dictionary
+- `DEFAULT_LONGDESC_LOCATIONS` - 22-location default human anatomy dictionary (includes `hair`)
 - `MAX_LONGDESC_LOCATIONS` - Practical limit (50 locations)  
 - `MAX_DESCRIPTION_LENGTH` - Individual description limit (1000 chars)
 - `PARAGRAPH_BREAK_THRESHOLD` - Auto-paragraph threshold (400 chars)
