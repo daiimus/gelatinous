@@ -2106,11 +2106,29 @@ def _format_wound_grammar(text):
     # Handles template variables like {skintone} correctly
 ```
 
-**Multiple Wound Handling**:
-- Locations with longdesc: Wound descriptions append seamlessly
-- Locations without longdesc: Standalone descriptions using wound types
-- Smart conjunction formatting: "A cut and a bullet wound mark his arm"
-- Prevents redundancy while maintaining natural language flow
+**Multiple Wound Handling** (consolidated in #258):
+- Both render paths share one summarizer, `_summarize_location_wounds`
+  (`world/medical/wounds/longdesc_hooks.py`):
+  - **Locations with longdesc** — `append_wounds_to_longdesc` appends the
+    summary as a trailing clause.
+  - **Locations without longdesc** — `get_standalone_wound_description`
+    returns the summary as its own sentence (consumed by
+    `typeclasses/appearance_mixin.py`).
+- **One wound**: rendered via the type/stage-specific
+  `get_wound_description` (the per-injury-type message modules).
+- **Two or more wounds at the same location**: collapse into a single
+  concise line via `_compound_phrase` — the worst wound (severity → stage
+  priority) plus a count of the rest ("a grievous cut wound **and another
+  wound** mark the left arm", or "**and several other wounds**"), rather
+  than concatenating every wound's full description. An all-healed mix
+  renders a calm, skintone-colored "multiple old wounds" summary.
+- **Future hook (not yet built)**: per-injury-type compound templates,
+  mirroring the single-wound `messages.<type>.WOUND_DESCRIPTIONS` dicts. A
+  later pass can add `messages.<worst_type>.COMPOUND_DESCRIPTIONS[stage]`,
+  `random.choice` a variant, and fall back to `messages.generic` then to the
+  generic phrasing — exactly how `get_wound_description` resolves single
+  wounds. The type message modules are intentionally left untouched until
+  then; `_compound_phrase` is the single seam to flip.
 
 #### Character Integration Points
 ```python

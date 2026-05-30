@@ -126,24 +126,13 @@ class AppearanceMixin:
                 else:
                     # No longdesc for this location, but check for standalone wounds
                     try:
-                        from world.medical.wounds import get_character_wounds
-                        wounds = get_character_wounds(self)
-                        location_wounds = [
-                            w for w in wounds if w['location'] == location
-                        ]
-
-                        if location_wounds:
-                            # Create standalone wound description for this location
-                            from world.medical.wounds import get_wound_description
-                            wound = location_wounds[0]
-                            wound_desc = get_wound_description(
-                                injury_type=wound['injury_type'],
-                                location=wound['location'],
-                                severity=wound['severity'],
-                                stage=wound['stage'],
-                                organ=wound.get('organ'),
-                                character=self,
-                            )
+                        from world.medical.wounds import (
+                            get_standalone_wound_description,
+                        )
+                        wound_desc = get_standalone_wound_description(
+                            self, location, looker
+                        )
+                        if wound_desc:
                             descriptions.append((location, wound_desc))
                     except ImportError:
                         # Wound system not available, continue without wounds
@@ -186,23 +175,13 @@ class AppearanceMixin:
                     # No longdesc for extended location, but check for
                     # standalone wounds
                     try:
-                        from world.medical.wounds import get_character_wounds
-                        wounds = get_character_wounds(self)
-                        location_wounds = [
-                            w for w in wounds if w['location'] == location
-                        ]
-
-                        if location_wounds:
-                            from world.medical.wounds import get_wound_description
-                            wound = location_wounds[0]
-                            wound_desc = get_wound_description(
-                                injury_type=wound['injury_type'],
-                                location=wound['location'],
-                                severity=wound['severity'],
-                                stage=wound['stage'],
-                                organ=wound.get('organ'),
-                                character=self,
-                            )
+                        from world.medical.wounds import (
+                            get_standalone_wound_description,
+                        )
+                        wound_desc = get_standalone_wound_description(
+                            self, location, looker
+                        )
+                        if wound_desc:
                             descriptions.append((location, wound_desc))
                     except ImportError:
                         # Wound system not available, continue without wounds

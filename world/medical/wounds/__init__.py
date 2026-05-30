@@ -9,28 +9,30 @@ Key Features:
 - Multiple description variants per injury type and healing stage
 - Red color coding for fresh wounds (|R....|n)
 - Clothing/armor concealment system
-- Grammatically correct compound descriptions
+- Concise single-line summaries when a location carries multiple wounds
 - Integration with medical system and longdesc
 
 Usage:
-    from world.medical.wounds import get_character_wound_display
-    
-    # Get formatted wound descriptions for longdesc
-    wound_text = get_character_wound_display(character)
-    
-    # Update character's longdesc with current wounds
-    update_character_longdesc_with_wounds(character)
+    from world.medical.wounds import (
+        append_wounds_to_longdesc,
+        get_standalone_wound_description,
+    )
+
+    # Append wounds onto a location that already has a longdesc
+    desc = append_wounds_to_longdesc(desc, character, location, looker)
+
+    # Render wounds for a location with no longdesc set
+    line = get_standalone_wound_description(character, location, looker)
 """
 
 from .wound_descriptions import (
     get_wound_description,
     get_character_wounds,
-    update_character_wounds
 )
 
 from .longdesc_hooks import (
     append_wounds_to_longdesc,
-    get_standalone_wound_descriptions
+    get_standalone_wound_description,
 )
 
 from .constants import (
@@ -45,13 +47,12 @@ from .constants import (
 __all__ = [
     # Core wound functions
     'get_wound_description',
-    'get_character_wounds', 
-    'update_character_wounds',
-    
+    'get_character_wounds',
+
     # Longdesc integration hooks
     'append_wounds_to_longdesc',
-    'get_standalone_wound_descriptions',
-    
+    'get_standalone_wound_description',
+
     # Constants
     'WOUND_STAGES',
     'INJURY_SEVERITY_MAP',

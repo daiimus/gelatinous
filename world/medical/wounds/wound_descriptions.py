@@ -8,8 +8,7 @@ multiple description variants.
 
 import random
 from .constants import (
-    WOUND_STAGES, INJURY_SEVERITY_MAP, get_location_display_name,
-    WOUND_TRANSITION_DAYS, MAX_WOUND_DESCRIPTIONS, MEDICAL_COLORS
+    INJURY_SEVERITY_MAP, get_location_display_name, MEDICAL_COLORS
 )
 
 # Import wound message files (similar to combat messages)
@@ -187,41 +186,6 @@ def get_character_wounds(character):
     return wounds
 
 
-def update_character_wounds(character):
-    """
-    Update character's longdesc with current wound descriptions.
-    
-    Args:
-        character: Character object to update
-        
-    Returns:
-        bool: True if longdesc was updated, False otherwise
-    """
-    wounds = get_character_wounds(character)
-    
-    if not wounds:
-        # No wounds - remove any existing wound descriptions
-        return _remove_wound_descriptions(character)
-    
-    # Limit to most significant wounds
-    significant_wounds = _prioritize_wounds(wounds)[:MAX_WOUND_DESCRIPTIONS]
-    
-    # Generate wound descriptions
-    wound_descriptions = []
-    for wound in significant_wounds:
-        description = get_wound_description(
-            injury_type=wound['injury_type'],
-            location=wound['location'], 
-            severity=wound['severity'],
-            stage=wound['stage'],
-            organ=wound.get('organ')
-        )
-        wound_descriptions.append(description)
-    
-    # Update longdesc with wound descriptions
-    return _update_longdesc_with_wounds(character, wound_descriptions)
-
-
 def _is_wound_visible(character, location):
     """
     Check if a wound at the specified location is visible (not concealed by clothing/armor).
@@ -323,101 +287,3 @@ def _determine_severity_from_damage(organ):
         return 'Severe'
     else:
         return 'Critical'
-
-
-def _determine_injury_type_from_condition(condition):
-    """
-    Determine injury type from medical condition.
-    
-    Args:
-        condition: Medical condition object
-        
-    Returns:
-        str: Injury type (bullet, cut, blunt, etc.)
-    """
-    # Map condition types to injury types
-    condition_to_injury = {
-        "bleeding": "cut",      # Generic bleeding becomes cut
-        "laceration": "cut",    # Laceration is cutting injury
-        "puncture": "stab",     # Puncture is stabbing injury  
-        "fracture": "blunt",    # Fractures are blunt trauma
-    }
-    
-    condition_type = condition.condition_type if hasattr(condition, 'condition_type') else "unknown"
-    return condition_to_injury.get(condition_type, "trauma")
-
-
-def _determine_wound_stage(condition):
-    """
-    Determine wound healing stage from condition data.
-    
-    Args:
-        condition: Medical condition object
-        
-    Returns:
-        str: Wound stage (fresh, treated, healing, scarred)
-    """
-    # For now, return fresh - this will be enhanced with time/treatment tracking
-    if hasattr(condition, 'treated') and condition.treated:
-        return "treated"
-    
-    # Could add time-based healing here based on when condition was created
-    return "fresh"
-
-
-def _prioritize_wounds(wounds):
-    """
-    Sort wounds by significance for display.
-    
-    Args:
-        wounds (list): List of wound data dictionaries
-        
-    Returns:
-        list: Sorted wounds (most significant first)
-    """
-    severity_order = {"Critical": 4, "Severe": 3, "Moderate": 2, "Light": 1}
-    stage_order = {"fresh": 4, "treated": 3, "healing": 2, "scarred": 1}
-    
-    def wound_priority(wound):
-        severity_score = severity_order.get(wound['severity'], 0)
-        stage_score = stage_order.get(wound['stage'], 0) 
-        return (severity_score, stage_score)
-    
-    return sorted(wounds, key=wound_priority, reverse=True)
-
-
-def _update_longdesc_with_wounds(character, wound_descriptions):
-    """
-    Update character longdesc with wound descriptions.
-    
-    Args:
-        character: Character object
-        wound_descriptions (list): List of wound description strings
-        
-    Returns:
-        bool: True if updated successfully
-    """
-    # For now, this is a placeholder
-    # Will integrate with actual longdesc system
-    
-    # TODO: Implement longdesc integration
-    # - Add wounds to appropriate body locations in longdesc
-    # - Handle wound description formatting
-    # - Preserve existing longdesc content
-    
-    return True
-
-
-def _remove_wound_descriptions(character):
-    """
-    Remove wound descriptions from character longdesc.
-    
-    Args:
-        character: Character object
-        
-    Returns:
-        bool: True if removed successfully
-    """
-    # Placeholder for wound removal logic
-    # TODO: Implement wound description removal from longdesc
-    return True

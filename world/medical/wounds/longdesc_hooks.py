@@ -1,220 +1,187 @@
 """
 Longdesc Integration for Wound Descriptions
 
-This module provides a simple hook into the existing longdesc system
-to automatically append wound descriptions to body part descriptions.
+This module provides the hooks the appearance system uses to weave wound
+descriptions into a character's longdesc. Two render paths share a single
+summarizer so multi-wound output is concise and consistent:
+
+- ``append_wounds_to_longdesc`` — for a body location that already has a
+  longdesc string, appends the wound summary onto it.
+- ``get_standalone_wound_description`` — for a location with wounds but no
+  longdesc set, returns a standalone sentence.
+
+Both delegate to ``_summarize_location_wounds``: a single wound renders via
+the type/stage-specific ``get_wound_description``; two or more collapse into
+one concise compound line rather than a concatenation of every wound.
 """
 
-from .wound_descriptions import get_character_wounds, get_wound_description
-from .constants import MAX_WOUND_DESCRIPTIONS
+from .wound_descriptions import (
+    get_character_wounds,
+    get_wound_description,
+    _format_wound_grammar,
+)
+from .constants import get_location_display_name, INJURY_SEVERITY_MAP
 
 
 def append_wounds_to_longdesc(original_desc, character, location, looker=None):
     """
-    Append wound descriptions to an existing longdesc for a body location.
-    
-    This function is designed to be called from the existing longdesc processing
-    to seamlessly integrate wounds into body part descriptions.
-    
+    Append a wound summary to an existing longdesc for a body location.
+
     Args:
-        original_desc (str): Original longdesc for this location
-        character: Character object  
-        location (str): Body location
-        looker: Character looking (for future permission checks)
-        
+        original_desc (str): Original longdesc for this location.
+        character: Character object.
+        location (str): Body location.
+        looker: Character looking (reserved for future permission checks).
+
     Returns:
-        str: Original description with wounds appended, or original if no wounds
+        str: Original description with the wound summary appended, or the
+            original unchanged if there are no visible wounds here.
     """
-    # Get wounds visible at this location
     wounds = get_character_wounds(character)
     location_wounds = [w for w in wounds if w['location'] == location]
-    
     if not location_wounds:
         return original_desc
-    
-    # Limit to most significant wounds to prevent spam
-    significant_wounds = _prioritize_wounds_for_display(location_wounds)[:2]  # Max 2 per location
-    
-    # Generate wound descriptions
-    wound_descriptions = []
-    for wound in significant_wounds:
-        wound_desc = get_wound_description(
+
+    summary = _summarize_location_wounds(location_wounds, character)
+    if not summary:
+        return original_desc
+
+    # Merge the summary as an additional clause on the existing description.
+    # Strip the summary's own terminal period (preserving any trailing color
+    # reset) so the combined sentence flows, then re-terminate.
+    clean = summary
+    has_reset = clean.endswith('|n')
+    if clean.endswith('.|n'):
+        clean = clean[:-3]
+    elif clean.endswith('.'):
+        clean = clean[:-1]
+
+    if has_reset and not clean.endswith('|n'):
+        return f"{original_desc} {clean}.|n"
+    return f"{original_desc} {clean}."
+
+
+def get_standalone_wound_description(character, location, looker=None):
+    """
+    Build a standalone wound sentence for a location with no longdesc set.
+
+    Used by the appearance system for body locations the player never
+    described but which carry visible wounds.
+
+    Args:
+        character: Character object.
+        location (str): Body location.
+        looker: Character looking (reserved for future permission checks).
+
+    Returns:
+        str: A formatted wound sentence, or "" if no visible wounds here.
+    """
+    wounds = get_character_wounds(character)
+    location_wounds = [w for w in wounds if w['location'] == location]
+    if not location_wounds:
+        return ""
+    return _summarize_location_wounds(location_wounds, character)
+
+
+def _summarize_location_wounds(location_wounds, character=None):
+    """
+    Return a single formatted sentence describing all wounds at one location.
+
+    One wound renders via the type/stage-specific ``get_wound_description``.
+    Two or more collapse into one concise compound line (the worst wound plus
+    a count of the rest) rather than a concatenation of every description.
+
+    Args:
+        location_wounds (list): Wound dicts, all for the same location.
+        character: Character object (for skintone / species naming).
+
+    Returns:
+        str: Formatted wound sentence (capitalized, terminated), or "".
+    """
+    if not location_wounds:
+        return ""
+
+    prioritized = _prioritize_wounds_for_display(location_wounds)
+
+    if len(prioritized) == 1:
+        wound = prioritized[0]
+        return get_wound_description(
             injury_type=wound['injury_type'],
             location=wound['location'],
-            severity=wound['severity'], 
+            severity=wound['severity'],
             stage=wound['stage'],
             organ=wound.get('organ'),
-            character=character  # Pass character for skintone
+            character=character,
         )
-        wound_descriptions.append(wound_desc)
-    
-    # Append to original description
-    if len(wound_descriptions) == 1:
-        # Single wound - remove the period and color reset, we'll add our own
-        clean_wound = wound_descriptions[0]
-        if clean_wound.endswith('.|n'):
-            clean_wound = clean_wound[:-3]  # Remove .|n
-        elif clean_wound.endswith('.'):
-            clean_wound = clean_wound[:-1]  # Remove just .
-        return f"{original_desc} {clean_wound}."
-    elif len(wound_descriptions) == 2:
-        # Two wounds - format with proper conjunction
-        clean_wound1 = wound_descriptions[0]
-        clean_wound2 = wound_descriptions[1]
-        
-        # Clean both wounds
-        if clean_wound1.endswith('.|n'):
-            clean_wound1 = clean_wound1[:-3]
-        elif clean_wound1.endswith('.'):
-            clean_wound1 = clean_wound1[:-1]
-            
-        if clean_wound2.endswith('.|n'):
-            clean_wound2 = clean_wound2[:-3]
-        elif clean_wound2.endswith('.'):
-            clean_wound2 = clean_wound2[:-1]
-        
-        # Check if we need color reset at the end
-        has_color_reset = wound_descriptions[0].endswith('|n') or wound_descriptions[1].endswith('|n')
-        
-        if has_color_reset:
-            return f"{original_desc} {clean_wound1} and {clean_wound2}.|n"
-        else:
-            return f"{original_desc} {clean_wound1} and {clean_wound2}."
-    
-    return original_desc
+
+    return _compound_phrase(prioritized[0], len(prioritized) - 1, character)
 
 
-def get_standalone_wound_locations(character):
+def _compound_phrase(worst_wound, others_count, character=None):
     """
-    Get locations that have wounds but no longdesc set.
-    These wounds will need their own entries in the appearance.
-    Uses character's actual anatomy from longdesc system.
-    
+    Concise single-line summary for two or more wounds at one location.
+
+    FUTURE (not implemented this pass): per-injury-type compound templates,
+    mirroring the single-wound ``messages.<type>.WOUND_DESCRIPTIONS`` dicts.
+    A later pass can look up ``messages.<worst_type>.COMPOUND_DESCRIPTIONS``,
+    ``random.choice`` a variant, and fall back to ``messages.generic`` then to
+    the generic phrasing below — exactly how ``get_wound_description`` resolves
+    single wounds. The type message modules are intentionally left untouched
+    until that feature lands.
+
     Args:
-        character: Character object
-        
+        worst_wound (dict): Highest-priority wound at this location.
+        others_count (int): Number of additional wounds beyond the worst.
+        character: Character object (for skintone / species naming).
+
     Returns:
-        list: Locations with wounds but no longdesc
+        str: A formatted, single-sentence compound summary.
     """
-    wounds = get_character_wounds(character)
-    
-    # Get character's actual anatomy locations
-    if not hasattr(character, 'longdesc') or not character.longdesc:
-        return []
-    
-    longdescs = character.longdesc
-    
-    wound_locations = set(w['location'] for w in wounds)
-    
-    # Only consider locations that exist in character's anatomy but have no description
-    longdesc_locations = set(loc for loc, desc in longdescs.items() if desc is not None)
-    
-    # Locations with wounds but no longdesc
-    standalone_locations = wound_locations - longdesc_locations
-    
-    return list(standalone_locations)
+    location_display = get_location_display_name(worst_wound['location'], character)
+    others_phrase = "another wound" if others_count == 1 else "several other wounds"
+
+    # No fresh/raw wound in the mix: render a calm, skintone-colored summary.
+    if worst_wound['stage'] in ("treated", "healing", "scarred"):
+        skintone_color = _skintone_color(character)
+        phrase = (f"{skintone_color}multiple old wounds mark the "
+                  f"{location_display}|n")
+        return _format_wound_grammar(phrase)
+
+    severity = INJURY_SEVERITY_MAP.get(
+        worst_wound['severity'], worst_wound['severity'].lower()
+    )
+    injury_type = worst_wound['injury_type']
+    type_word = "" if injury_type == "generic" else f"{injury_type} "
+    phrase = (f"|Ra {severity} {type_word}wound and {others_phrase} "
+              f"mark the {location_display}|n")
+    return _format_wound_grammar(phrase)
 
 
-def get_standalone_wound_descriptions(character, looker=None):
-    """
-    Get wound descriptions for locations that don't have longdescs.
-    
-    Args:
-        character: Character object
-        looker: Character looking
-        
-    Returns:
-        list: List of (location, description) tuples for standalone wounds
-    """
-    standalone_locations = get_standalone_wound_locations(character)
-    if not standalone_locations:
-        return []
-    
-    wounds = get_character_wounds(character)
-    descriptions = []
-    
-    for location in standalone_locations:
-        location_wounds = [w for w in wounds if w['location'] == location]
-        if not location_wounds:
-            continue
-            
-        # Prioritize wounds for this location
-        significant_wounds = _prioritize_wounds_for_display(location_wounds)[:2]
-        
-        # Create location-based description
-        if len(significant_wounds) == 1:
-            wound = significant_wounds[0]
-            wound_desc = get_wound_description(
-                injury_type=wound['injury_type'],
-                location=wound['location'],
-                severity=wound['severity'],
-                stage=wound['stage'],
-                organ=wound.get('organ'),
-                character=character  # Pass character for skintone
-            )
-            descriptions.append((location, wound_desc))
-        else:
-            # Multiple wounds at location without longdesc
-            compound_desc = _create_compound_wound_description_for_location(location, significant_wounds, character)
-            descriptions.append((location, compound_desc))
-    
-    return descriptions
+def _skintone_color(character):
+    """Return the character's skintone color code, or "" if unavailable."""
+    if not character:
+        return ""
+    skintone = character.db.skintone
+    if not skintone:
+        return ""
+    try:
+        from world.combat.constants import SKINTONE_PALETTE
+        return SKINTONE_PALETTE.get(skintone, "")
+    except ImportError:
+        return ""
 
 
 def _prioritize_wounds_for_display(wounds):
-    """Sort wounds by display priority."""
+    """Sort wounds by display priority (most significant first)."""
     severity_order = {"Critical": 4, "Severe": 3, "Moderate": 2, "Light": 1}
     stage_order = {
         "fresh": 6, "treated": 5, "healing": 4,
         "destroyed": 3, "severed": 2, "scarred": 1,
     }
-    
+
     def wound_priority(wound):
         severity_score = severity_order.get(wound['severity'], 0)
         stage_score = stage_order.get(wound['stage'], 0)
         return (severity_score, stage_score)
-    
+
     return sorted(wounds, key=wound_priority, reverse=True)
-
-
-def _create_compound_wound_description_for_location(location, wounds, character=None):
-    """Create description for multiple wounds at a location without longdesc."""
-    from .constants import get_location_display_name
-    
-    location_display = get_location_display_name(location, character)
-    fresh_count = len([w for w in wounds if w['stage'] == 'fresh'])
-    
-    # Get the most common or most severe wound type
-    wound_types = {}
-    for wound in wounds:
-        injury_type = wound['injury_type']
-        if injury_type not in wound_types:
-            wound_types[injury_type] = 0
-        wound_types[injury_type] += 1
-    
-    # Use the most common wound type for the description
-    primary_wound_type = max(wound_types, key=wound_types.get)
-    
-    # Determine if we need skintone coloring
-    skintone_color = ""
-    if character and fresh_count == 0:  # No fresh wounds, use skintone
-        skintone = character.db.skintone
-        if skintone:
-            try:
-                from world.combat.constants import SKINTONE_PALETTE
-                skintone_color = SKINTONE_PALETTE.get(skintone, "")
-            except ImportError:
-                # Skintone system not available
-                skintone_color = ""
-    
-    if fresh_count > 1:
-        desc = f"|RMultiple fresh {primary_wound_type} wounds on the {location_display}|n"
-    elif fresh_count == 1:
-        desc = f"|RA fresh {primary_wound_type} wound|n among other injuries on the {location_display}"
-    else:
-        # All wounds are healed - use generic description
-        desc = f"{skintone_color}Multiple old scars on the {location_display}|n"
-    
-    # Apply grammar formatting
-    from .wound_descriptions import _format_wound_grammar
-    return _format_wound_grammar(desc)
