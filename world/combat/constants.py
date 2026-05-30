@@ -822,3 +822,17 @@ SEVERED_HEAD_LOCATIONS = frozenset({
     "left_eye", "right_eye",
     "left_ear", "right_ear",
 })
+
+# Maps a severable limb container to the hand side ("left" / "right")
+# whose wielded weapon travels onto the severed appendage.  When an arm
+# or hand is severed from a living character (Phase B, issue #245), any
+# item the character is wielding in the matching hand detaches with the
+# limb (you cannot keep gripping a weapon with a hand that just left your
+# body).  Containers absent from this map (thigh, shin, foot) carry no
+# hand and so never pull a wielded weapon.
+SEVER_HAND_BY_CONTAINER = {
+    "left_arm": "left",
+    "left_hand": "left",
+    "right_arm": "right",
+    "right_hand": "right",
+}

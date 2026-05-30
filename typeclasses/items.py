@@ -1172,6 +1172,78 @@ class Appendage(Item):
         # helper stays a pure copy and is independently unit-testable.
         apply_wound_and_longdesc_overlay(self, corpse, (location_name,))
 
+    def configure_from_living_sever(self, *, character, location_name,
+                                    injury_type="cut"):
+        """Populate provenance + prose from a *living* character on sever.
+
+        Living-character counterpart to :meth:`configure_from_sever`.
+        Where the corpse path inherits a decay stage and death-snapshot
+        identity, a limb cut from the living is always **pristine /
+        fresh** (no decay clock yet) and reads identity straight off the
+        live character.  The forensic-chain fields mirror what the corpse
+        captures at death so a found living-severed limb is traceable the
+        same way (:func:`world.identity.get_identity_signature` /
+        :func:`world.identity.get_apparent_uid`).
+
+        Args:
+            character: The living character losing the limb.
+            location_name (str): Canonical severed-limb location.
+            injury_type (str): Edged injury that caused the cut.
+        """
+        from world.anatomy import (
+            get_severed_part_description,
+            get_species_part_name,
+            prepend_condition_to_desc,
+        )
+
+        condition = "pristine"
+        self.db.location_name = location_name
+        self.db.condition = condition
+        # No source corpse exists for a living sever.
+        self.db.source_corpse_dbref = None
+
+        # Forensic-chain identity read live off the character (mirrors the
+        # corpse death-snapshot capture in death_progression).
+        try:
+            from world.identity import get_apparent_uid, get_identity_signature
+            self.db.source_signature = get_identity_signature(character)
+            self.db.source_apparent_uid = get_apparent_uid(character)
+        except (AttributeError, TypeError, ValueError):
+            self.db.source_signature = None
+            self.db.source_apparent_uid = None
+
+        # Snapshot gender + name so carried longdesc pronoun / name tokens
+        # resolve at render time (parity with configure_from_sever #234).
+        self.db.original_gender = character.gender
+        self.db.original_character_name = character.key
+
+        species = character.db.species or "human"
+        self.db.source_species = species
+        # Living sever → always the freshest naming tier.
+        self.key = get_species_part_name(species, location_name, "fresh")
+
+        prose = get_severed_part_description(species, location_name, condition)
+        composed = prepend_condition_to_desc(condition, prose)
+        if composed:
+            self.db.desc = composed
+
+        # Carry this location's longdesc prose + visible wounds onto the
+        # part.  Read BEFORE the caller mutates the body so the source
+        # prose / wounds are still intact.
+        from world.medical.wounds import get_character_wounds
+
+        longdescs = dict(character.longdesc or {})
+        try:
+            wounds = get_character_wounds(character) or []
+        except (AttributeError, TypeError, ValueError):
+            wounds = []
+        apply_living_sever_overlay(
+            self,
+            longdescs=longdescs,
+            wounds=wounds,
+            locations=(location_name,),
+        )
+
     def return_appearance(self, looker, **kwargs):
         """Compose appearance from base desc + carried longdesc + wounds.
 
@@ -1403,6 +1475,279 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
     # Surface" for the rationale.
     if location_arg == "head":
         corpse.db.head_severed = True
+
+
+# ---------------------------------------------------------------------
+# Living-character severance (PR Phase B, issue #245)
+# ---------------------------------------------------------------------
+#
+# Where the corpse-side helpers above move prose / wounds off a *dead*
+# body, these move a single limb off a *living* character: the limb
+# becomes an :class:`Appendage` item, the character keeps living
+# (capacity loss only — never a death trigger; decapitation routes
+# through death → corpse, not through this path), and worn / wielded
+# items that belong to the severed limb travel with it.
+#
+# All three are pure module-level helpers (no ``create_object`` /
+# ``msg`` side effects) so they unit-test against plain-Python stubs.
+# The orchestrator :func:`apply_sever_to_character` wires them together
+# with the Evennia spawn + broadcast.
+
+
+def apply_living_sever_overlay(appendage, *, longdescs, wounds, locations):
+    """Copy a live character's prose + wounds for ``locations`` → appendage.
+
+    Living-character analog of :func:`apply_wound_and_longdesc_overlay`.
+    Where the corpse overlay reads ``corpse.db.{longdesc_data,
+    wounds_at_death}``, the living data has different sources — the
+    longdesc dict (``character.longdesc``) and the *visible* wound list
+    (:func:`world.medical.wounds.get_character_wounds`) — so the caller
+    snapshots both **before** any body mutation and passes them in.
+    Keeping this a pure function over plain data makes it independently
+    testable and decouples it from the medical / clothing machinery.
+
+    The appendage receives ``db.longdesc_data`` and ``db.wounds_at_death``
+    in the exact shape :meth:`Appendage.return_appearance` consumes, so
+    a living-severed limb renders identically to a corpse-severed one.
+
+    Args:
+        appendage: Object whose ``db`` receives ``longdesc_data`` and
+            ``wounds_at_death``.
+        longdescs: Snapshot of ``character.longdesc`` (``{location: text}``).
+            ``None`` is treated as empty.
+        wounds: Snapshot of ``get_character_wounds(character)`` — a list
+            of wound dicts (keys: ``injury_type``, ``location``,
+            ``severity``, ``organ``, ``organ_obj``).  ``None`` → empty.
+        locations: Iterable of body-location names to carry forward.
+    """
+    locs = frozenset(locations)
+
+    appendage.db.longdesc_data = {
+        loc: text
+        for loc, text in (longdescs or {}).items()
+        if loc in locs and text
+    }
+
+    carried = []
+    for wound in wounds or []:
+        if wound.get("location") not in locs:
+            continue
+        organ_obj = wound.get("organ_obj")
+        max_hp = getattr(organ_obj, "max_hp", 0) if organ_obj else 0
+        carried.append({
+            "injury_type": wound.get("injury_type", "generic"),
+            "location": wound.get("location"),
+            "severity": wound.get("severity", "Moderate"),
+            # Wounds on a detached part render at the preserved-wound
+            # stage, matching the corpse-severed contract.
+            "stage": "old",
+            "organ": wound.get("organ"),
+            "organ_damage": {
+                "current_hp": 0,
+                "max_hp": max_hp,
+                "container": wound.get("location"),
+            },
+        })
+    appendage.db.wounds_at_death = carried
+
+
+def sever_character_body(character, container):
+    """Mutate a living ``character`` to reflect a limb severed at ``container``.
+
+    Symmetric counterpart to :func:`apply_living_sever_overlay`: the
+    overlay copies prose onto the detached limb, this strips the matching
+    state from the source character.
+
+    * The longdesc prose for ``container`` is dropped (the limb is no
+      longer part of the body to describe) — reassigned, not mutated in
+      place, so the ``AttributeProperty`` persists the change.
+    * Every organ whose ``container`` matches is set to ``current_hp = 0``
+      with ``wound_stage = 'severed'`` (a clean amputation, distinct from
+      the ``'destroyed'`` mangling of in-place combat damage).  The
+      existing :func:`world.medical.wounds.get_character_wounds` renderer
+      then surfaces a ``severed`` stump wound at the location, and the
+      body-capacity recompute drops the limb's contribution automatically.
+
+    Persisting the medical state and recomputing vital signs is left to
+    the caller (:func:`apply_sever_to_character`) so this stays a pure,
+    stub-testable mutation with no Evennia side effects.
+
+    Args:
+        character: The living character losing the limb.
+        container: Canonical severed-limb location (e.g. ``"left_arm"``).
+    """
+    longdescs = character.longdesc
+    if longdescs and container in longdescs:
+        remaining = dict(longdescs)
+        del remaining[container]
+        character.longdesc = remaining
+
+    medical_state = character.medical_state
+    for organ in medical_state.organs.values():
+        if organ.container == container:
+            organ.current_hp = 0
+            organ.wound_stage = "severed"
+
+
+def detach_items_to_appendage(character, appendage, container):
+    """Move worn / wielded items belonging to ``container`` onto ``appendage``.
+
+    Item-retention rule (issue #245):
+
+    * A **worn** item travels onto the appendage only if **all** of the
+      body locations it is currently worn at are within the severed
+      cluster (for a limb, ``{container}``).  A glove worn solely at
+      ``left_hand`` follows a severed left hand; a jacket spanning
+      chest + both arms stays on the character when one arm is severed.
+    * A **wielded** weapon in the hand corresponding to the severed
+      limb (via :data:`world.combat.constants.SEVER_HAND_BY_CONTAINER`)
+      always follows the limb — you cannot keep gripping with a hand
+      that just left your body.
+
+    Bookkeeping (``worn_items`` / ``hands`` dicts) is updated purely and
+    reassigned so the ``AttributeProperty`` persists.  The physical
+    relocation uses ``item.move_to`` when available; it is guarded so the
+    pure bookkeeping remains exercisable against plain-Python stubs.
+
+    Args:
+        character: The living character losing the limb.
+        appendage: Destination :class:`Appendage` item.
+        container: Canonical severed-limb location.
+
+    Returns:
+        list: Items moved onto the appendage (worn first, then wielded).
+    """
+    from world.combat.constants import SEVER_HAND_BY_CONTAINER
+
+    severed_locs = {container}
+    moved = []
+
+    # --- Worn items fully contained within the severed cluster --------
+    worn = character.worn_items or {}
+    # Map each worn item to the set of locations it currently occupies.
+    item_locations = {}
+    for loc, items in worn.items():
+        for item in items or []:
+            item_locations.setdefault(item, set()).add(loc)
+
+    items_to_move = [
+        item for item, locs in item_locations.items()
+        if locs <= severed_locs
+    ]
+
+    if items_to_move:
+        new_worn = {}
+        for loc, items in worn.items():
+            kept = [it for it in (items or []) if it not in items_to_move]
+            if kept:
+                new_worn[loc] = kept
+        character.worn_items = new_worn
+        for item in items_to_move:
+            _relocate_item(item, appendage)
+            moved.append(item)
+
+    # --- Wielded weapon in the matching hand --------------------------
+    hand = SEVER_HAND_BY_CONTAINER.get(container)
+    if hand:
+        hands = character.hands or {}
+        held = hands.get(hand)
+        if held:
+            new_hands = dict(hands)
+            new_hands[hand] = None
+            character.hands = new_hands
+            _relocate_item(held, appendage)
+            moved.append(held)
+
+    return moved
+
+
+def _relocate_item(item, destination):
+    """Best-effort physical move of ``item`` into ``destination``.
+
+    Guarded so the surrounding pure bookkeeping in
+    :func:`detach_items_to_appendage` stays testable against stubs that
+    lack Evennia's ``move_to``.
+    """
+    move_to = getattr(item, "move_to", None)
+    if callable(move_to):
+        move_to(destination, quiet=True)
+
+
+def apply_sever_to_character(character, container, *, injury_type="cut"):
+    """Sever ``container`` from a living ``character`` into a new Appendage.
+
+    Orchestrator that wires the pure helpers together with the Evennia
+    spawn + per-observer broadcast:
+
+    1. Snapshot is taken implicitly by configuring the appendage
+       *before* the body is mutated (the overlay reads the still-intact
+       character prose + wounds).
+    2. Spawn an :class:`Appendage` in the character's room and populate
+       its provenance / prose via
+       :meth:`Appendage.configure_from_living_sever`.
+    3. Strip the limb from the character's body
+       (:func:`sever_character_body`) and recompute vital signs so the
+       capacity loss takes effect; persist the medical state.
+    4. Move worn / wielded items belonging to the limb onto the
+       appendage (:func:`detach_items_to_appendage`).
+    5. Broadcast the severance per-observer.
+
+    Decapitation is **not** handled here — a lethal neck hit routes
+    through the normal death → corpse pipeline (where the existing
+    :func:`apply_sever_to_corpse` head path and :class:`SeveredHead`
+    take over).  This path is for survivable limb loss only.
+
+    Args:
+        character: The living character losing the limb.
+        container: Canonical severed-limb location (member of
+            :data:`world.combat.constants.SEVERABLE_CONTAINERS`, minus
+            ``"head"``).
+        injury_type: Edged injury that caused the cut (default ``"cut"``).
+
+    Returns:
+        The spawned :class:`Appendage`, or ``None`` if the character has
+        no location to drop it into.
+    """
+    from evennia import create_object
+
+    room = character.location
+    if room is None:
+        return None
+
+    appendage = create_object(
+        "typeclasses.items.Appendage",
+        key="severed limb",
+        location=room,
+    )
+    appendage.configure_from_living_sever(
+        character=character,
+        location_name=container,
+        injury_type=injury_type,
+    )
+
+    sever_character_body(character, container)
+    medical_state = character.medical_state
+    update_vital_signs = getattr(medical_state, "update_vital_signs", None)
+    if callable(update_vital_signs):
+        update_vital_signs()
+    character.save_medical_state()
+
+    detach_items_to_appendage(character, appendage, container)
+
+    from world.identity_utils import msg_room_identity
+
+    part_name = appendage.key
+    msg_room_identity(
+        location=room,
+        template=(
+            f"{{actor}}'s {part_name} is severed in a spray of blood "
+            f"and falls to the ground!"
+        ),
+        char_refs={"actor": character},
+        exclude=[],
+    )
+
+    return appendage
 
 
 def apply_severed_head_overlay(head, corpse):
