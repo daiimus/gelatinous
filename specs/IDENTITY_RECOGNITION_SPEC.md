@@ -1871,6 +1871,9 @@ Flagged for balance review alongside the harvest economy work.
 
 - Limb-attached worn-item retention (severing an arm with a watch
   on does **not** transfer the watch to the appendage in v1).
+  *(Update: now implemented for the **living-character** sever path —
+  see "Combat-Driven Severance → Phase B → Item-retention rule".  The
+  corpse-side `CmdSever` still leaves worn items on the corpse.)*
 - Reattachment / cybernetic limb prosthetics.
 - Per-organ unbundling from severed limbs.
 
@@ -2225,6 +2228,153 @@ A single helper (`get_severed_part_description`) provides the same
 defensive fallback contract as the organ helper: unknown species fall
 back to human; unknown locations / conditions return empty so the
 configure step leaves `db.desc` untouched.
+
+---
+
+## Combat-Driven Severance
+
+Where Surgical Sever (PR #190) is a deliberate post-mortem act against a
+**corpse**, Combat-Driven Severance makes body parts come off **during
+the fight**, as a consequence of damage.  It reuses the corpse-side
+sever machinery (`Appendage` / `SeveredHead` / `apply_sever_to_corpse`)
+and adds a living-character path plus the damage-pipeline trigger.  Built
+in three phases (A → C), each its own PR.
+
+**Locked design rulings** (apply across all three phases):
+
+- **Decapitation has a real anatomical locus** — a `cervical_spine`
+  organ in the `neck` container, not a special-cased flag.
+- **Trigger is representative-bone-at-0** — a severable part comes off
+  when the bone organ in its container reaches 0 HP.
+- **Weapon gate is edged-only** — `cut` / `stab` / `laceration` shear a
+  part clean off; `blunt` / `bullet` / `burn` destroy the bone *in
+  place* with no detachment (a hammer pulps, fire chars, a bullet
+  shatters — none cleanly amputate).
+- **Limb loss is survivable** — capacity loss only, never a death
+  trigger and no special bleeding model in v1.  Only the neck path kills
+  (via `neck_integrity`), and it routes through the normal death →
+  corpse pipeline.
+- **Worn / wielded items stay with the part** — see the item-retention
+  rule under Phase B.
+
+### Phase A — Neck Organ & Decapitation Death Model (#243 ✅ — PR #244)
+
+Adds the anatomical locus that gives HP-driven decapitation somewhere to
+live.
+
+- **`cervical_spine` organ** registered in `world/medical/constants.py`
+  `ORGANS`: `container: "neck"`, `vital: True`,
+  `capacity: "neck_integrity"`, `contribution: "total"`, and explicitly
+  `can_be_destroyed` (unlike the thoracic / lumbar `spine` in `back`,
+  which cannot — the cervical spine *is* the decapitation locus).
+- **`neck_integrity` body capacity** in `BODY_CAPACITIES`:
+  `organs: ["cervical_spine"]`, `directly_fatal: True`.
+- **Death wiring** — `MedicalState.is_dead()` reads `neck_integrity`
+  alongside the existing blood-pumping / breathing / digestion / blood
+  loss checks; a destroyed cervical spine drives the capacity to 0.0 and
+  is immediately fatal.
+- **Hit routing** — `neck` resolves to `cervical_spine` (single-organ
+  container, so `select_target_organ` is deterministic).
+- **Pre-migration safety net** — a persisted medical state that predates
+  the organ lazily reads a *healthy* neck via `get_organ` lazy creation,
+  so legacy characters are never spuriously decapitated.  A one-shot DB
+  migration backfills the organ on existing characters.
+
+### Phase B — Living-Character Limb Severance (#245 ✅ — PR #246)
+
+Moves a single limb off a **living** character into an `Appendage`,
+mirroring the corpse-side helpers but leaving the character alive.
+
+- **Orchestrator** — `apply_sever_to_character(character, container, *,
+  injury_type="cut")` (`typeclasses/items.py`): snapshots the still-intact
+  prose / wounds onto a freshly spawned `Appendage` via
+  `Appendage.configure_from_living_sever`, strips the limb from the body
+  (`sever_character_body`), recomputes vital signs, persists the medical
+  state, moves the limb's items onto the appendage
+  (`detach_items_to_appendage`), and broadcasts the severance
+  per-observer through `msg_room_identity`.
+- **Living-stump model** — *no* synthesized wound dict is written onto
+  the character.  Instead `sever_character_body` drops the container's
+  longdesc prose and marks every organ in that container
+  `current_hp = 0` with `wound_stage = "severed"` (a clean amputation,
+  distinct from in-place `"destroyed"` mangling).  The existing
+  `world.medical.wounds.get_character_wounds` renderer then surfaces a
+  `severed` stump wound, and the body-capacity recompute drops the
+  limb's contribution automatically.
+- **Item-retention rule** (supersedes the PR #190 "out of scope"
+  deferral — worn-item retention now *is* implemented, for the living
+  path):
+  - A **worn** item travels onto the appendage only if **all** of the
+    body locations it currently occupies are within the severed cluster
+    (`{container}` for a limb).  A glove worn solely at `left_hand`
+    follows a severed left hand; a jacket spanning chest + both arms
+    stays on the character when one arm comes off.
+  - A **wielded** weapon in the hand matching the severed limb (via
+    `SEVER_HAND_BY_CONTAINER`) always follows — you cannot keep gripping
+    with a hand that just left your body.  Leg containers (thigh / shin /
+    foot) carry no hand and so never pull a weapon.
+- **`SEVER_HAND_BY_CONTAINER`** (`world/combat/constants.py`) maps
+  `left_arm` / `left_hand` → `"left"`, `right_arm` / `right_hand` →
+  `"right"`; legs are deliberately absent.
+- **Decapitation is *not* handled here** — a lethal neck hit routes
+  through the death → corpse pipeline (Phase C), where the existing
+  `apply_sever_to_corpse` head path and `SeveredHead` take over.  This
+  path is survivable limb loss only.
+
+### Phase C — Combat Trigger & Weapon Gate (#247 ✅ — PR #248)
+
+Wires the damage pipeline into the Phase A / B machinery.
+
+- **`SEVERING_INJURY_TYPES`** (`world/combat/constants.py`) —
+  `frozenset({"cut", "stab", "laceration"})`, the edged set that can
+  shear a part off.
+- **Detection** — `ArmorMixin._bone_freshly_destroyed(location)` reports
+  a severable container whose representative bone (each limb container
+  holds exactly one) is at/below 0 HP **and** not already
+  `wound_stage == "severed"`.  The `"severed"` guard makes the trigger
+  idempotent: a second edged hit on an already-detached stump will not
+  re-sever it.
+- **Trigger** — `ArmorMixin._maybe_sever_from_damage(location,
+  injury_type)` is invoked from `take_damage` immediately after
+  `save_medical_state` and **before** the death handler (so the
+  decapitation flag is set before `at_death` kicks off the asynchronous
+  corpse pipeline).  Gated on `injury_type in SEVERING_INJURY_TYPES`:
+  - **Neck** — a destroyed cervical spine is already lethal via
+    `neck_integrity`, and the corpse does not yet exist, so the limb
+    cannot be severed synchronously.  Instead the dying character is
+    flagged `db.decapitation_pending = True`.
+  - **Any other severable limb** (arm / hand / thigh / shin / foot;
+    `head` is excluded — living decapitation routes through the neck) —
+    survivable.  `apply_sever_to_character` runs synchronously; `died`
+    stays `False`.
+- **Deferred decapitation realisation** — the asynchronous death
+  pipeline reads the flag.  At the tail of
+  `DeathProgressionScript._create_corpse_from_character` (right before
+  `return corpse`, once the corpse is fully populated with longdesc /
+  wound / identity snapshots), `spawn_severed_head_for_corpse(corpse)`
+  fires when `db.decapitation_pending` is set.  That helper mirrors the
+  manual `CmdSever` head path: spawn a `SeveredHead` in the room,
+  `configure_from_sever(location_name="head", ...)`, record the sever in
+  `corpse.db.severed_locations`, and `apply_sever_to_corpse(corpse,
+  "head")` to fan the head-cluster prose / wounds onto the head and
+  stamp the corpse's stump wound.  The corpse therefore ends up headless
+  with its identity-gating `head_severed` flag set, exactly as a manual
+  decapitation would — see "Sever-Head Identity Surface".
+
+**Identity consequence**: combat decapitation produces the same
+forensic surface as surgical decapitation — a `SeveredHead` carrying the
+face-side identity signature (recognisable by witnesses who knew the
+deceased) and a headless corpse whose look-time recognition is gated to
+the decay-tier fallback until autopsied.
+
+### Out of scope (deferred past Phase C)
+
+- Severance from non-edged damage (no "blunt amputation" / explosive
+  dismemberment in v1).
+- Special arterial-bleeding model for living stumps (limb loss is
+  capacity-only).
+- Reattachment / cybernetic prosthetics for severed living limbs.
+- Multi-limb / cascading severance from a single blow.
 
 ---
 
