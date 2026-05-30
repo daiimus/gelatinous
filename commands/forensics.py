@@ -226,7 +226,7 @@ class CmdHarvest(Command):
     * The corpse is skeletal (no soft tissue remains).
     * The corpse predates PR #186 and has no medical snapshot.
     * The named organ is missing, undeclared as harvestable, or
-      flagged ``cannot_be_destroyed`` (spine).
+      flagged ``cannot_be_destroyed`` (thoracolumbar spine).
     * The organ has already been harvested, lives inside a severed
       limb container, or is destroyed.
 

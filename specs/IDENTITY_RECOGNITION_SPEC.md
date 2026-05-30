@@ -1625,7 +1625,7 @@ autopsies render the removed organ as `absent`.
   - Skeletal corpse — no soft tissue remains.
   - Pre-PR-#186 corpse — `get_medical_snapshot() is None`.
   - Organ not present in the snapshot.
-  - Organ flagged `cannot_be_destroyed` (spine).
+  - Organ flagged `cannot_be_destroyed` (thoracolumbar spine).
   - Organ not flagged `can_be_harvested` (lungs, brain, eyes, etc.).
   - Organ already in `corpse.db.removed_organs`.
   - Organ's container in `corpse.db.severed_locations` (PR #189
@@ -2159,7 +2159,7 @@ stage harvest gate) renders empty so the term never leaks to players.
 
 #### Bone vs. Soft-Tissue Prose Tiers (issue #213 ✅)
 
-Bones (jaw, spine, pelvis, both humeri, both metacarpal clusters,
+Bones (jaw, thoracolumbar spine, pelvis, both humeri, both metacarpal clusters,
 both femora, both tibiae, both metatarsal rows) decay differently
 from soft tissue: they dry, stain, and crack rather than weep,
 slough, or dissolve.  Issue #213 captured this in two ways:
@@ -2265,7 +2265,7 @@ live.
 - **`cervical_spine` organ** registered in `world/medical/constants.py`
   `ORGANS`: `container: "neck"`, `vital: True`,
   `capacity: "neck_integrity"`, `contribution: "total"`, and explicitly
-  `can_be_destroyed` (unlike the thoracic / lumbar `spine` in `back`,
+  `can_be_destroyed` (unlike the `thoracolumbar_spine` in `back`,
   which cannot — the cervical spine *is* the decapitation locus).
 - **`neck_integrity` body capacity** in `BODY_CAPACITIES`:
   `organs: ["cervical_spine"]`, `directly_fatal: True`.

@@ -36,7 +36,7 @@ class TestNeckOrganSchema(TestCase):
         self.assertEqual(organ.get("contribution"), "total")
 
     def test_cervical_spine_is_destroyable(self):
-        # Unlike the thoracic/lumbar ``spine`` in the ``back`` container,
+        # Unlike the thoracolumbar_spine in the ``back`` container,
         # the cervical spine must be destroyable (it is the decapitation
         # locus).
         self.assertTrue(ORGANS["cervical_spine"].get("can_be_destroyed"))

@@ -62,7 +62,7 @@ from __future__ import annotations
 #: registry.
 BONE_ORGANS = frozenset({
     "jaw",
-    "spine",
+    "thoracolumbar_spine",
     "pelvis",
     "left_humerus",
     "right_humerus",
@@ -198,13 +198,13 @@ ORGAN_DISPLAY = {
             "putrid": "A bloated, blackening stomach, its walls ruptured and weeping a foul digestive slurry.",
         },
     },
-    "spine": {
-        "display_name": "spine",
+    "thoracolumbar_spine": {
+        "display_name": "thoracolumbar spine",
         "default_descriptions": {
-            "pristine": "A clean length of spine, its vertebrae articulated and the intervertebral discs firm between glossy ivory bone.",
-            "damaged": "A dulled spine, the discs flattened and hairline cracks tracing the lateral processes of several vertebrae.",
-            "putrid": "A stained spine, the canal fouled with dark mineral residue and the vertebrae beginning to loosen from one another.",
-            "desiccated": "A bone-dry spine, chalk-pale and brittle, the vertebrae held together only by parchment-thin remnants of ligament.",
+            "pristine": "A clean length of thoracolumbar spine, its vertebrae articulated and the intervertebral discs firm between glossy ivory bone.",
+            "damaged": "A dulled thoracolumbar spine, the discs flattened and hairline cracks tracing the lateral processes of several vertebrae.",
+            "putrid": "A stained thoracolumbar spine, the canal fouled with dark mineral residue and the vertebrae beginning to loosen from one another.",
+            "desiccated": "A bone-dry thoracolumbar spine, chalk-pale and brittle, the vertebrae held together only by parchment-thin remnants of ligament.",
         },
     },
     "left_humerus": {

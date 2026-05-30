@@ -209,9 +209,9 @@ BODY_CAPACITIES = {
         "total_loss_penalty": "deafness"
     },
     "moving": {
-        "organs": ["spine", "pelvis", "left_femur", "right_femur", "left_tibia", "right_tibia", 
+        "organs": ["thoracolumbar_spine", "pelvis", "left_femur", "right_femur", "left_tibia", "right_tibia", 
                   "left_metatarsals", "right_metatarsals"],
-        "spine_contribution": 1.0,    # Spine damage = paralysis
+        "thoracolumbar_spine_contribution": 1.0,    # Spine damage = paralysis
         "pelvis_contribution": 1.0,   # Essential for walking
         "femur_contribution": 0.4,    # Each femur contributes 40%
         "tibia_contribution": 0.4,    # Each tibia contributes 40%
@@ -308,7 +308,7 @@ ORGANS = {
 
     # NECK CONTAINER → DECAPITATION STRUCTURE
     # The cervical spine is the decapitation locus (combat-sever Phase A,
-    # #243). Unlike the thoracic/lumbar "spine" organ in the "back"
+    # #243). Unlike the "thoracolumbar_spine" organ in the "back"
     # container (cannot_be_destroyed), this one CAN be destroyed: bringing
     # it to 0 HP severs the head from the body. It is vital and gates the
     # "neck_integrity" capacity (total contribution), so destruction is
@@ -359,7 +359,10 @@ ORGANS = {
     },
 
     # BACK CONTAINER → STRUCTURAL ORGANS INSIDE
-    "spine": {
+    # The thoracolumbar spine is the thoracic/lumbar vertebral column in the
+    # back. Distinct from cervical_spine (the neck decapitation locus); unlike
+    # that organ, it cannot be destroyed (its loss is paralysis, not death).
+    "thoracolumbar_spine": {
         "container": "back", "max_hp": 25, "hit_weight": "uncommon",
         "capacity": "moving", "contribution": "total", "cannot_be_destroyed": True,
         "causes_pain_when_damaged": True, "paralysis_if_destroyed": True

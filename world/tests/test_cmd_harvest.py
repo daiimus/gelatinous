@@ -15,7 +15,7 @@ Coverage matrix:
 * Skeletal-corpse short-circuit.
 * Pre-PR-#186 snapshot-less corpse refusal.
 * Ambiguous ``harvest <corpse>`` lists harvestable organs.
-* Snapshot organ missing / spec missing / spine refusal.
+* Snapshot organ missing / spec missing / thoracolumbar-spine refusal.
 * Already-removed / inside-severed-limb / destroyed refusal.
 * Roll-fail (mid-range) leaves snapshot untouched.
 * Critical-fail (natural 1) zeroes ``current_hp`` in snapshot.
@@ -115,7 +115,7 @@ def _snapshot_with(*, heart_hp=15, liver_hp=20, kidney_hp=15):
             "left_kidney": {
                 "current_hp": kidney_hp, "max_hp": 15, "container": "abdomen",
             },
-            "spine": {
+            "thoracolumbar_spine": {
                 "current_hp": 25, "max_hp": 25, "container": "back",
             },
             "left_lung": {
@@ -208,8 +208,8 @@ class CmdHarvestTests(TestCase):
         self.assertIn("heart", msg)
         self.assertIn("liver", msg)
         self.assertIn("left kidney", msg)
-        # spine is cannot_be_destroyed; lung is can_be_harvested=False
-        self.assertNotIn("spine", msg)
+        # thoracolumbar spine is cannot_be_destroyed; lung is can_be_harvested=False
+        self.assertNotIn("thoracolumbar spine", msg)
         self.assertNotIn("lung", msg)
 
     def test_ambiguous_with_nothing_left(self):
@@ -237,7 +237,7 @@ class CmdHarvestTests(TestCase):
         caller = _make_caller()
         corpse = _FakeCorpse(snapshot=_snapshot_with())
         caller.search.return_value = corpse
-        _make_cmd(caller=caller, args="spine from corpse").func()
+        _make_cmd(caller=caller, args="thoracolumbar_spine from corpse").func()
         msg = caller.msg.call_args[0][0]
         self.assertIn("too deeply integrated", msg)
 
