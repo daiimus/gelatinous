@@ -243,6 +243,21 @@ BODY_CAPACITIES = {
     }
 }
 
+# Capacities whose total loss kills or incapacitates the character. This is the
+# single source of truth for "what makes a body location vital": the union of
+# the capacities is_dead() enforces (blood_pumping, breathing, digestion,
+# neck_integrity) plus consciousness (brain). _get_vital_locations() maps each
+# of these capacities' organs to their containers to build the vital-location
+# set used by the combat hit-location bias. Keep in sync with is_dead() in
+# world/medical/core.py.
+LETHAL_CAPACITY_NAMES = (
+    "blood_pumping",
+    "breathing",
+    "digestion",
+    "neck_integrity",
+    "consciousness",
+)
+
 # ===================================================================
 # ORGAN DEFINITIONS
 # ===================================================================

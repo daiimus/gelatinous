@@ -51,32 +51,40 @@ def calculate_hit_weights_for_location(location):
 def _get_vital_locations(character):
     """
     Dynamically determine vital body locations based on organ criticality.
-    
-    A location is vital if it contains critical organs (organs whose failure causes death).
-    This allows for dynamic anatomy - characters with different body structures will have
-    different vital areas.
-    
+
+    A location is vital if it houses an organ belonging to a lethal capacity -
+    a capacity whose total loss kills or incapacitates the character (see
+    LETHAL_CAPACITY_NAMES and is_dead() in world/medical/core.py). Each lethal
+    capacity's organs are mapped to their containing body location via the
+    organ schema's ``container`` field. This keeps the vital set data-driven so
+    that anatomy changes (new organs, new lethal capacities) are reflected
+    automatically.
+
     Args:
         character: Character object with medical state
-        
+
     Returns:
         set: Set of vital body location names
     """
-    from .constants import ORGANS
-    
+    from .constants import BODY_CAPACITIES, LETHAL_CAPACITY_NAMES, ORGANS
+
     vital_locations = set()
-    
-    # Check each organ - if it's critical (failure causes death), its location is vital
-    for organ_name, organ_data in ORGANS.items():
-        if organ_data.get('critical', False):  # Critical organs
-            location = organ_data.get('location')
-            if location:
-                vital_locations.add(location)
-    
-    # Fallback to common vital areas if no critical organs found
+
+    for capacity_name in LETHAL_CAPACITY_NAMES:
+        capacity_data = BODY_CAPACITIES.get(capacity_name, {})
+        for organ_name in capacity_data.get("organs", []):
+            organ_data = ORGANS.get(organ_name)
+            if not organ_data:
+                continue
+            container = organ_data.get("container")
+            if container:
+                vital_locations.add(container)
+
+    # Fallback to common vital areas if nothing could be derived (defensive;
+    # should not happen with the stock anatomy).
     if not vital_locations:
         vital_locations = {"head", "chest", "neck", "abdomen"}
-    
+
     return vital_locations
 
 
