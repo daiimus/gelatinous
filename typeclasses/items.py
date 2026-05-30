@@ -1477,6 +1477,62 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
         corpse.db.head_severed = True
 
 
+def spawn_severed_head_for_corpse(corpse):
+    """Spawn + configure a :class:`SeveredHead` for a decapitated corpse.
+
+    Combat-driven decapitation (Phase C, issue #245 follow-up) cannot
+    reach the corpse synchronously: a lethal edged neck hit flags the
+    dying character, the asynchronous death pipeline builds the corpse,
+    and this helper is invoked at the tail of
+    :meth:`typeclasses.death_progression.DeathProgressionScript._create_corpse_from_character`
+    once the corpse is fully populated.  It mirrors the manual
+    :class:`commands.forensics.CmdSever` head path: spawn the
+    super-item, copy the corpse's identity / decay / trimmed snapshot
+    onto it via :meth:`SeveredHead.configure_from_sever`, record the
+    sever, and clear the head-cluster prose off the corpse via
+    :func:`apply_sever_to_corpse`.
+
+    Idempotent: if the head has already been severed (``"head"`` in
+    ``corpse.db.severed_locations``) this is a no-op returning ``None``.
+
+    Args:
+        corpse: The freshly built corpse to decapitate.
+
+    Returns:
+        The spawned :class:`SeveredHead`, or ``None`` if the corpse has
+        no location or the head was already severed.
+    """
+    from evennia import create_object
+    from world.combat.constants import ORGAN_CONDITION_BY_DECAY
+
+    room = corpse.location
+    if room is None:
+        return None
+    if "head" in (corpse.db.severed_locations or ()):
+        return None
+
+    get_decay_stage = getattr(corpse, "get_decay_stage", None)
+    decay_stage = get_decay_stage() if callable(get_decay_stage) else "fresh"
+    condition = ORGAN_CONDITION_BY_DECAY.get(decay_stage, "damaged")
+
+    head = create_object(
+        "typeclasses.items.SeveredHead",
+        key=f"{condition} head",
+        location=room,
+    )
+    head.configure_from_sever(
+        location_name="head", condition=condition, corpse=corpse,
+    )
+
+    severed_list = list(corpse.db.severed_locations or ())
+    severed_list.append("head")
+    corpse.db.severed_locations = severed_list
+
+    apply_sever_to_corpse(corpse, "head")
+
+    return head
+
+
 # ---------------------------------------------------------------------
 # Living-character severance (PR Phase B, issue #245)
 # ---------------------------------------------------------------------

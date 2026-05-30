@@ -76,6 +76,14 @@ class ArmorMixin:
         # Save medical state after damage
         self.save_medical_state()
 
+        # Combat-driven severance (Phase C, issue #245 follow-up): an
+        # edged hit that reduces a severable limb's bone to 0 HP shears
+        # the limb clean off; an edged neck hit that destroys the
+        # cervical spine flags a decapitation to be realised in the
+        # death → corpse pipeline.  Must run before the death handler
+        # below so the flag is set before ``at_death`` spawns the corpse.
+        self._maybe_sever_from_damage(location, injury_type)
+
         # Debug broadcast damage application
         try:
             from world.combat.utils import debug_broadcast
@@ -97,6 +105,84 @@ class ArmorMixin:
 
         # Return death status and actual damage applied (after armor) for combat system
         return (died, final_damage)
+
+    def _bone_freshly_destroyed(self, location):
+        """Return True if ``location``'s bone organ was just destroyed.
+
+        A severable limb container holds exactly one representative bone
+        organ.  This reports True when that organ is present, at or below
+        0 HP, and not already marked ``"severed"`` — i.e. this hit (or a
+        prior combat hit) pulped it, but it has not yet been amputated.
+        The ``"severed"`` guard makes the caller idempotent: a second
+        edged hit to an already-detached stump will not re-sever it.
+
+        Args:
+            location (str): Body location / container to inspect.
+
+        Returns:
+            bool: Whether a fresh (un-severed) bone destruction is present.
+        """
+        try:
+            medical_state = self.medical_state
+        except AttributeError:
+            return False
+        if medical_state is None:
+            return False
+
+        organs = [
+            organ for organ in medical_state.organs.values()
+            if getattr(organ, "container", None) == location
+        ]
+        if not organs:
+            return False
+        return all(
+            organ.current_hp <= 0 and organ.wound_stage != "severed"
+            for organ in organs
+        )
+
+    def _maybe_sever_from_damage(self, location, injury_type):
+        """Detach a limb or flag a decapitation when an edged hit pulps bone.
+
+        Only edged / sharp injuries (:data:`SEVERING_INJURY_TYPES`) shear
+        a part off; blunt, bullet, and burn damage destroy the bone in
+        place without a clean detachment.  The body part must have just
+        lost its representative bone (see :meth:`_bone_freshly_destroyed`).
+
+        * **Neck** — a destroyed cervical spine is already lethal via
+          ``neck_integrity`` collapse, so we cannot sever synchronously
+          (the corpse does not yet exist).  Instead we set
+          ``db.decapitation_pending``; the death → corpse pipeline reads
+          it and spawns the :class:`~typeclasses.items.SeveredHead`.
+        * **Any other severable limb** — survivable.  We detach it
+          immediately into an :class:`~typeclasses.items.Appendage` via
+          :func:`~typeclasses.items.apply_sever_to_character`.
+
+        Args:
+            location (str): Body location that was hit.
+            injury_type (str): Injury type applied.
+        """
+        from world.combat.constants import (
+            SEVERABLE_CONTAINERS,
+            SEVERING_INJURY_TYPES,
+        )
+
+        if injury_type not in SEVERING_INJURY_TYPES:
+            return
+
+        if location == "neck":
+            if self._bone_freshly_destroyed("neck"):
+                self.db.decapitation_pending = True
+            return
+
+        # Living limb severance: head is excluded (decapitation routes
+        # through the neck → death path above), neck is handled above.
+        if location not in SEVERABLE_CONTAINERS or location == "head":
+            return
+        if not self._bone_freshly_destroyed(location):
+            return
+
+        from typeclasses.items import apply_sever_to_character
+        apply_sever_to_character(self, location, injury_type=injury_type)
 
     def _calculate_armor_damage_reduction(self, damage, location, injury_type):
         """

@@ -836,3 +836,11 @@ SEVER_HAND_BY_CONTAINER = {
     "right_arm": "right",
     "right_hand": "right",
 }
+
+# Edged / sharp injury types that can shear a body part clean off.  When
+# an attack of one of these types reduces a severable limb container's
+# representative bone to 0 HP, the limb detaches (Phase C, issue #245
+# follow-up).  Blunt, bullet, and burn damage destroy the bone without
+# producing a clean detachment, so they are deliberately excluded: a
+# limb pulped by a hammer or boiled by fire stays grimly attached.
+SEVERING_INJURY_TYPES = frozenset({"cut", "stab", "laceration"})

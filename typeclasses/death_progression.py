@@ -681,6 +681,27 @@ class DeathProgressionScript(DefaultScript):
         sdesc = corpse.db.sdesc_at_death if corpse.db.sdesc_at_death is not None else character.key
         corpse.db.desc = f"The lifeless body of a {sdesc}. {corpse.db.physical_description}"
         
+        # Combat-driven decapitation (Phase C, issue #245 follow-up): a
+        # lethal edged neck hit set ``db.decapitation_pending`` on the
+        # dying character in ``ArmorMixin.take_damage``.  The death
+        # pipeline is asynchronous, so the actual head-item spawn waits
+        # until here, once the corpse is fully populated with longdesc /
+        # wound / identity snapshots.  ``spawn_severed_head_for_corpse``
+        # mirrors the manual ``CmdSever`` head path.
+        if character.db.decapitation_pending:
+            try:
+                from typeclasses.items import spawn_severed_head_for_corpse
+                spawn_severed_head_for_corpse(corpse)
+            except Exception as e:
+                try:
+                    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                    splattercast.msg(
+                        f"DEATH_DECAPITATION_ERROR: {character.key} - {e}"
+                    )
+                except Exception:
+                    pass
+            character.db.decapitation_pending = False
+        
         return corpse
 
     def _transition_character_to_death(self, character):
