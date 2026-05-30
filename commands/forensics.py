@@ -24,6 +24,7 @@ Currently ships:
 from __future__ import annotations
 
 from evennia import Command, create_object
+from evennia.utils import utils
 
 from typeclasses.corpse import Corpse
 from typeclasses.items import SeveredHead, apply_sever_to_corpse
@@ -31,12 +32,15 @@ from world.combat.constants import (
     AUTOPSY_DC_BASIC,
     HARVEST_CRIT_FAIL,
     HARVEST_DC_BASIC,
+    NDB_COMBAT_HANDLER,
     ORGAN_CONDITION_BY_DECAY,
-    SEVER_CRIT_FAIL,
-    SEVER_DC_BASIC,
+    SEVER_CRIT_FAIL_SUM,
+    SEVER_DC_INT_MOT,
+    SEVER_TIME_SECONDS,
     SEVERABLE_CONTAINERS,
 )
 from world.combat.dice import roll_stat
+from world.combat.utils import get_wielded_weapon
 from world.forensics import (
     attempt_forensic_recognition,
     extract_subject_from_corpse,
@@ -490,7 +494,12 @@ class CmdSever(Command):
       sever <location> from <corpse>
       sever <corpse>            (lists severable locations)
 
-    Rolls Motorics vs ``SEVER_DC_BASIC``.  On success an
+    Requires a wielded edged weapon flagged ``db.can_sever`` (PR #190).
+    The cut takes :data:`world.combat.constants.SEVER_TIME_SECONDS`
+    real-seconds and resolves on a combined
+    ``intellect + motorics`` roll vs
+    :data:`world.combat.constants.SEVER_DC_INT_MOT` — anatomical
+    know-how *and* a steady hand.  On success an
     :class:`~typeclasses.items.Appendage` item is spawned into the
     severer's inventory and the location is appended to
     ``corpse.db.severed_locations``.  Subsequent ``harvest`` attempts
@@ -499,13 +508,22 @@ class CmdSever(Command):
     spawn separate organ items for the contained anatomy; a future
     butchery pass may unbundle them).
 
-    A natural roll of ``SEVER_CRIT_FAIL`` botches the cut: no item,
-    no bookkeeping mutation, just a "mangled" message.  Unlike
+    A combined sum at or below
+    :data:`world.combat.constants.SEVER_CRIT_FAIL_SUM` botches the cut:
+    no item, no bookkeeping mutation, just a "mangled" message.  Unlike
     organ harvest crit-fail (which destroys the organ), limb
     botches are recoverable — try again.
 
+    The cut is **re-validated on completion** rather than actively
+    interrupted (the codebase has no channeled-action infrastructure).
+    If, when the timer fires, the actor has moved away from the corpse,
+    stopped wielding the blade, entered combat, or the corpse has been
+    moved or destroyed, the cut aborts with no mutation.
+
     Refused outright when:
 
+    * The actor is not wielding a ``can_sever`` weapon.
+    * A sever is already in progress for the actor.
     * The corpse is skeletal (no soft tissue left to cut through).
     * The corpse predates PR #186 and has no medical snapshot.
     * The named location is not in
@@ -603,9 +621,34 @@ class CmdSever(Command):
             )
             return
 
-        # Pre-roll broadcast.
+        # Wielded-blade gate (PR #190): the cut requires an edged
+        # weapon flagged ``can_sever``.  ``db.can_sever is not True``
+        # treats an unset / non-edged weapon as ineligible.
+        weapon = get_wielded_weapon(caller)
+        if weapon is None:
+            caller.msg(
+                "You need a bladed weapon in hand to sever a limb."
+            )
+            return
+        if weapon.db.can_sever is not True:
+            caller.msg(
+                f"{weapon.get_display_name(caller)} is too dull to "
+                f"sever a limb — you need a keener edge."
+            )
+            return
+
+        # One cut at a time.
+        if caller.ndb.sever_task is not None:
+            caller.msg("You are already mid-cut.")
+            return
+
         readable_name = location_arg.replace("_", " ")
-        corpse_display = target.get_display_name(caller)
+
+        # Pre-cut broadcast.
+        caller.msg(
+            f"You set your {weapon.get_display_name(caller)} to the "
+            f"{readable_name} and begin to cut..."
+        )
         msg_room_identity(
             location=caller.location,
             template=(
@@ -616,9 +659,79 @@ class CmdSever(Command):
             exclude=[caller],
         )
 
-        roll = roll_stat(caller, "motorics")
+        # Schedule the resolution.  The cut is re-validated on
+        # completion rather than actively interrupted.
+        caller.ndb.sever_task = utils.delay(
+            SEVER_TIME_SECONDS,
+            self._complete_sever,
+            caller,
+            target,
+            location_arg,
+        )
 
-        if roll == SEVER_CRIT_FAIL:
+    def _complete_sever(self, caller, target, location_arg):
+        """Resolve a scheduled sever after re-validating the situation.
+
+        Called by ``utils.delay`` once ``SEVER_TIME_SECONDS`` elapses.
+        Re-checks every precondition that could have changed during the
+        cut (the actor moving away, unwielding the blade, entering
+        combat, or the corpse being moved / destroyed) before rolling.
+        Any failed check aborts the cut with no mutation.
+        """
+        caller.ndb.sever_task = None
+        readable_name = location_arg.replace("_", " ")
+
+        # Corpse still present and intact?
+        if (
+            target is None
+            or target.pk is None
+            or target.location is None
+            or target.location != caller.location
+        ):
+            caller.msg(
+                f"The remains are gone; your cut for the "
+                f"{readable_name} finds nothing."
+            )
+            return
+        if target.get_decay_stage() == "skeletal":
+            caller.msg(
+                "The remains are too far decomposed — only bone is left."
+            )
+            return
+
+        # Blade still in hand and still keen?
+        weapon = get_wielded_weapon(caller)
+        if weapon is None or weapon.db.can_sever is not True:
+            caller.msg(
+                f"Without a blade in hand the cut for the "
+                f"{readable_name} comes to nothing."
+            )
+            return
+
+        # Not dragged into combat mid-cut.
+        if getattr(caller.ndb, NDB_COMBAT_HANDLER, None) is not None:
+            caller.msg(
+                f"The fighting breaks your concentration; you abandon "
+                f"the cut for the {readable_name}."
+            )
+            return
+
+        # Location still severable and not already taken.
+        if location_arg not in SEVERABLE_CONTAINERS:
+            return
+        if location_arg in (target.db.severed_locations or ()):
+            caller.msg(
+                f"The {readable_name} has already been severed from "
+                f"these remains."
+            )
+            return
+
+        corpse_display = target.get_display_name(caller)
+
+        # Combined Intellect + Motorics roll (PR #190).
+        roll = roll_stat(caller, "intellect") + roll_stat(caller, "motorics")
+
+        if roll <= SEVER_CRIT_FAIL_SUM:
             caller.msg(
                 f"Your cut goes wide — you mangle the {readable_name} "
                 f"but fail to detach it."
@@ -634,7 +747,7 @@ class CmdSever(Command):
             )
             return
 
-        if roll < SEVER_DC_BASIC:
+        if roll < SEVER_DC_INT_MOT:
             caller.msg(
                 f"You hack at {corpse_display} but cannot detach the "
                 f"{readable_name} cleanly. The limb remains attached."

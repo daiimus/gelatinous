@@ -1714,23 +1714,49 @@ had.
 
 ### Command contract
 
-- **Roll**: Motorics vs `SEVER_DC_BASIC`.  Natural `SEVER_CRIT_FAIL`
-  (= 1) mangles the cut but leaves state intact — no item, no
-  bookkeeping mutation.  Crit-fail is **non-destructive** (unlike
-  harvest, which destroys the organ); limbs are coarser anatomy
-  and the realistic failure-mode is hacking a mess, not destroying
-  the limb beyond recovery.
+- **Wielded-blade gate**: the actor must wield an edged weapon flagged
+  `db.can_sever` (stamped on `SWORD`, `KATANA`, `DAGGER`,
+  `FIGHTING_FAN`/tessen, `CHAINSAW` prototypes).  A missing weapon
+  ("you need a bladed weapon in hand") or a non-`can_sever` weapon
+  ("too dull") is refused before any cut begins.  The check is
+  `weapon.db.can_sever is not True`, so an unset flag reads as
+  ineligible — no base-class default is required.
+- **Cast-time**: the cut takes `SEVER_TIME_SECONDS` real-seconds,
+  scheduled via `utils.delay`.  Only one cut may be in flight per
+  actor (`caller.ndb.sever_task`); a second `sever` is refused with
+  "you are already mid-cut".
+- **Roll**: combined `intellect + motorics` (two independent
+  `roll_stat` calls summed, per the `CmdExplosives` pattern) vs
+  `SEVER_DC_INT_MOT`.  A sum at or below `SEVER_CRIT_FAIL_SUM` mangles
+  the cut but leaves state intact — no item, no bookkeeping mutation.
+  Crit-fail is **non-destructive** (unlike harvest, which destroys the
+  organ); limbs are coarser anatomy and the realistic failure-mode is
+  hacking a mess, not destroying the limb beyond recovery.  `SEVER_DC_INT_MOT`
+  (14), `SEVER_CRIT_FAIL_SUM` (3), and `SEVER_TIME_SECONDS` (3) are
+  coarse placeholders pending a balance pass.
 - **Ambiguous form** (`sever <corpse>`) lists severable locations.
-- **Pre-roll refusals** (no Motorics roll spent):
+- **Pre-cast refusals** (no roll spent, no cut scheduled):
   - Skeletal corpse / pre-PR-#186 corpse.
   - Location not in
     :data:`world.combat.constants.SEVERABLE_CONTAINERS`.
   - Snapshot contains no organs in that container (the corpse
     never had that limb).
   - Location already in `corpse.db.severed_locations`.
-- **Pre-roll broadcast** via `msg_room_identity`.
+  - No `can_sever` weapon wielded; a cut already pending.
+- **Pre-cast broadcast** via `msg_room_identity`.
+- **Completion-time re-validation** (the codebase has no
+  channeled-action infrastructure; all timed actions validate at
+  completion rather than actively interrupting).  When the timer
+  fires, the cut aborts with **no mutation** if any of the following
+  changed during the cut — satisfying the four interruption rules:
+  - The corpse was moved away (`target.location != caller.location`)
+    or destroyed (`target.pk is None`), or has since gone skeletal.
+  - The actor stopped wielding a `can_sever` blade.
+  - The actor entered combat (`caller.ndb.combat_handler is not None`).
+  - The location was severed by someone else in the interim.
 - **On success**: append location to `severed_locations`, spawn
-  `Appendage` item with `configure_from_sever`.
+  `Appendage` (or `SeveredHead` for `head`) with `configure_from_sever`,
+  and `apply_sever_to_corpse` for the wound/longdesc carry-forward.
 
 ### Severable partition
 
@@ -1831,13 +1857,15 @@ limb — a future butchery pass may unbundle.
 ### DC tuning (provisional)
 
 ```python
-SEVER_DC_BASIC = 3
-SEVER_CRIT_FAIL = 1
+SEVER_DC_INT_MOT = 14      # vs intellect_roll + motorics_roll
+SEVER_CRIT_FAIL_SUM = 3    # combined sum at/under this botches
+SEVER_TIME_SECONDS = 3     # cast-time, re-validated on completion
 ```
 
-Matches `HARVEST_DC_BASIC` / `AUTOPSY_DC_BASIC` — all three are
-basic forensic / surgical competency gates.  Flagged for balance
-review alongside the harvest economy work.
+All three are coarse placeholders re-tuned for the combined
+`intellect + motorics` *sum* range (the old single-Motorics
+`SEVER_DC_BASIC = 3` / natural-1 `SEVER_CRIT_FAIL` no longer apply).
+Flagged for balance review alongside the harvest economy work.
 
 ### Out of scope (deferred past PR #190)
 

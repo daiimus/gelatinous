@@ -3,22 +3,24 @@
 Mirrors the harvest test strategy: lightweight fakes + Corpse symbol
 swap so ``isinstance(target, Corpse)`` accepts our stand-in.
 
-Coverage matrix:
+PR #190 enhancements covered here:
 
-* Usage / argument parsing.
-* Non-corpse rejection.
-* Skeletal short-circuit.
-* Pre-PR-#186 snapshot-less refusal.
-* Ambiguous form lists severable locations (filters non-severable
-  containers and already-severed).
-* Non-severable container rejection (e.g. ``chest``).
-* Snapshot-missing-location rejection.
-* Already-severed rejection.
-* Mid-range fail vs crit-fail vs success — bookkeeping correctness.
-* Condition tracks decay.
-* Forward-compat: after sever-arm, harvest cannot target organs in
-  that arm (verified at the harvest gate, exercised here by reading
-  the post-sever ``severed_locations`` state).
+* Wielded-blade gate — a ``db.can_sever`` weapon is required; a missing
+  or dull weapon is refused before any cut begins.
+* One-cut-at-a-time guard (``caller.ndb.sever_task``).
+* Cast-time scheduling via ``utils.delay`` (``SEVER_TIME_SECONDS``).
+* Combined ``intellect + motorics`` resolution vs ``SEVER_DC_INT_MOT``;
+  a sum at or below ``SEVER_CRIT_FAIL_SUM`` botches (recoverable).
+* Completion-time re-validation: the cut aborts with no mutation if the
+  corpse moved / was destroyed, the actor stopped wielding the blade,
+  or the actor entered combat during the cut.
+
+Legacy coverage retained:
+
+* Usage / argument parsing, non-corpse rejection, skeletal / snapshot
+  gates, ambiguous listing, per-location refusals, bookkeeping
+  correctness, head routing to ``SeveredHead``, wound + longdesc
+  carry-forward (PR #198), head-sever identity surface (issue #208).
 
 Run via::
 
@@ -27,6 +29,7 @@ Run via::
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -34,8 +37,9 @@ from commands import forensics as cmd_module
 from commands.forensics import CmdSever
 from world.combat.constants import (
     ORGAN_CONDITION_BY_DECAY,
-    SEVER_CRIT_FAIL,
-    SEVER_DC_BASIC,
+    SEVER_CRIT_FAIL_SUM,
+    SEVER_DC_INT_MOT,
+    SEVER_TIME_SECONDS,
 )
 
 
@@ -70,9 +74,13 @@ class _FakeCorpse(_CorpseStandIn):
         wounds_at_death=None,
         longdesc_data=None,
         dbref="#101",
+        location=None,
+        pk=101,
     ):
         self.key = key
         self.dbref = dbref
+        self.pk = pk
+        self.location = location
         self.db = _DB()
         self.db.signature_at_death = (
             "sleeve-1", "tall", "lean", "hooded", ("balaclava",),
@@ -133,7 +141,26 @@ def _make_caller(*, location=None):
     caller.msg = MagicMock()
     caller.search = MagicMock()
     caller.motorics = 10
+    caller.intellect = 10
+    # Pending-cast / combat re-validation state (PR #190).
+    caller.ndb.sever_task = None
+    caller.ndb.combat_handler = None
     return caller
+
+
+def _make_weapon(*, can_sever=True, display="a knife"):
+    weapon = MagicMock()
+    weapon.db.can_sever = can_sever
+    weapon.get_display_name = MagicMock(return_value=display)
+    return weapon
+
+
+def _make_corpse(caller, **kwargs):
+    """Build a corpse co-located with *caller* and wire it to search."""
+    kwargs.setdefault("location", caller.location)
+    corpse = _FakeCorpse(**kwargs)
+    caller.search.return_value = corpse
+    return corpse
 
 
 def _make_cmd(*, caller, args):
@@ -142,6 +169,51 @@ def _make_cmd(*, caller, args):
     cmd.args = args
     cmd.switches = ()
     return cmd
+
+
+def _rolls(intel, motor):
+    """A ``roll_stat`` side-effect returning per-stat fixed values."""
+    def _inner(char, stat, *args, **kwargs):
+        del char, args, kwargs
+        return {"intellect": intel, "motorics": motor}.get(stat, 1)
+    return _inner
+
+
+def _immediate_delay(seconds, callback, *args, **kwargs):
+    """Stand-in for ``utils.delay`` that resolves synchronously."""
+    del seconds
+    callback(*args, **kwargs)
+    return MagicMock()
+
+
+# Per-stat roll values that land the combined sum in each band.
+_SUCCESS = SEVER_DC_INT_MOT  # intel + motor == DC (success boundary)
+_MID_FAIL = SEVER_CRIT_FAIL_SUM + 2  # above crit band, below DC
+_CRIT = 1  # sum == 2 → at/under SEVER_CRIT_FAIL_SUM (assumes >= 2)
+
+
+def _split(total):
+    """Split a target sum into (intellect, motorics) halves."""
+    return total // 2, total - total // 2
+
+
+@contextmanager
+def _sever_env(*, weapon=None, intel=None, motor=None, create_return=None):
+    """Patch the cast-time + roll surface for a full sever resolution."""
+    weapon = weapon if weapon is not None else _make_weapon()
+    if intel is None or motor is None:
+        intel, motor = _split(_SUCCESS)
+    create_mock = MagicMock(return_value=create_return or MagicMock())
+    with patch.object(
+        cmd_module, "get_wielded_weapon", return_value=weapon
+    ), patch.object(
+        cmd_module.utils, "delay", side_effect=_immediate_delay
+    ), patch.object(
+        cmd_module, "roll_stat", side_effect=_rolls(intel, motor)
+    ), patch.object(
+        cmd_module, "create_object", create_mock
+    ):
+        yield create_mock
 
 
 class CmdSeverTests(TestCase):
@@ -171,17 +243,15 @@ class CmdSeverTests(TestCase):
 
     def test_skeletal_short_circuit(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(
-            decay_stage="skeletal", snapshot=_snapshot_with_limbs()
+        _make_corpse(
+            caller, decay_stage="skeletal", snapshot=_snapshot_with_limbs()
         )
-        caller.search.return_value = corpse
         _make_cmd(caller=caller, args="left_arm from corpse").func()
         self.assertIn("decomposed", caller.msg.call_args[0][0])
 
     def test_no_snapshot_refused(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=None)
-        caller.search.return_value = corpse
+        _make_corpse(caller, snapshot=None)
         _make_cmd(caller=caller, args="left_arm from corpse").func()
         self.assertIn("predate", caller.msg.call_args[0][0])
 
@@ -189,8 +259,7 @@ class CmdSeverTests(TestCase):
 
     def test_ambiguous_lists_severable(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
+        _make_corpse(caller, snapshot=_snapshot_with_limbs())
         _make_cmd(caller=caller, args="corpse").func()
         msg = caller.msg.call_args[0][0]
         # Limb partition + head present
@@ -202,14 +271,14 @@ class CmdSeverTests(TestCase):
 
     def test_ambiguous_with_nothing_left(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(
+        _make_corpse(
+            caller,
             snapshot=_snapshot_with_limbs(),
             severed_locations=[
                 "head", "left_arm", "right_arm",
                 "left_thigh", "right_thigh",
             ],
         )
-        caller.search.return_value = corpse
         _make_cmd(caller=caller, args="corpse").func()
         self.assertIn("no limbs left", caller.msg.call_args[0][0])
 
@@ -217,8 +286,7 @@ class CmdSeverTests(TestCase):
 
     def test_non_severable_container_rejected(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
+        _make_corpse(caller, snapshot=_snapshot_with_limbs())
         _make_cmd(caller=caller, args="chest from corpse").func()
         self.assertIn(
             "not a detachable", caller.msg.call_args[0][0]
@@ -234,44 +302,130 @@ class CmdSeverTests(TestCase):
                 },
             },
         }
-        corpse = _FakeCorpse(snapshot=snap)
-        caller.search.return_value = corpse
+        _make_corpse(caller, snapshot=snap)
         _make_cmd(caller=caller, args="left_arm from corpse").func()
         self.assertIn("no left arm", caller.msg.call_args[0][0])
 
     def test_already_severed_rejected(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(
+        _make_corpse(
+            caller,
             snapshot=_snapshot_with_limbs(),
             severed_locations=["left_arm"],
         )
-        caller.search.return_value = corpse
         _make_cmd(caller=caller, args="left_arm from corpse").func()
         self.assertIn(
             "already been severed", caller.msg.call_args[0][0]
         )
 
+    # ----- wielded-blade gate (PR #190) -----
+
+    def test_no_weapon_refused(self):
+        caller = _make_caller()
+        _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with patch.object(
+            cmd_module, "get_wielded_weapon", return_value=None
+        ), patch.object(cmd_module.utils, "delay") as delay:
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+            delay.assert_not_called()
+        self.assertIn("bladed weapon", caller.msg.call_args[0][0])
+
+    def test_dull_weapon_refused(self):
+        caller = _make_caller()
+        _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        blunt = _make_weapon(can_sever=False, display="a club")
+        with patch.object(
+            cmd_module, "get_wielded_weapon", return_value=blunt
+        ), patch.object(cmd_module.utils, "delay") as delay:
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+            delay.assert_not_called()
+        self.assertIn("too dull", caller.msg.call_args[0][0])
+
+    def test_already_mid_cut_refused(self):
+        caller = _make_caller()
+        caller.ndb.sever_task = MagicMock()  # a cut already pending
+        _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with patch.object(
+            cmd_module, "get_wielded_weapon", return_value=_make_weapon()
+        ), patch.object(cmd_module.utils, "delay") as delay:
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+            delay.assert_not_called()
+        self.assertIn("already mid-cut", caller.msg.call_args[0][0])
+
+    # ----- cast-time scheduling -----
+
+    def test_schedules_delayed_cut(self):
+        """A valid request schedules the resolution rather than
+        resolving inline; nothing is spawned until the timer fires."""
+        caller = _make_caller()
+        _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with patch.object(
+            cmd_module, "get_wielded_weapon", return_value=_make_weapon()
+        ), patch.object(cmd_module.utils, "delay") as delay, \
+                patch.object(cmd_module, "create_object") as mk:
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+            delay.assert_called_once()
+            self.assertEqual(delay.call_args[0][0], SEVER_TIME_SECONDS)
+            mk.assert_not_called()
+
+    # ----- completion-time re-validation (PR #190) -----
+
+    def test_completion_aborts_if_corpse_moved_away(self):
+        caller = _make_caller()
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        corpse.location = _FakeRoom()  # no longer co-located
+        with _sever_env() as mk:
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+            mk.assert_not_called()
+        self.assertEqual(corpse.db.severed_locations, [])
+
+    def test_completion_aborts_if_corpse_destroyed(self):
+        caller = _make_caller()
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        corpse.pk = None  # deleted mid-cut
+        with _sever_env() as mk:
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+            mk.assert_not_called()
+        self.assertEqual(corpse.db.severed_locations, [])
+
+    def test_completion_aborts_if_blade_unwielded(self):
+        caller = _make_caller()
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        # Blade present at the gate, gone by completion.
+        weapon = _make_weapon()
+        with patch.object(
+            cmd_module, "get_wielded_weapon", side_effect=[weapon, None]
+        ), patch.object(
+            cmd_module.utils, "delay", side_effect=_immediate_delay
+        ), patch.object(cmd_module, "create_object") as mk:
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+            mk.assert_not_called()
+        self.assertEqual(corpse.db.severed_locations, [])
+
+    def test_completion_aborts_if_in_combat(self):
+        caller = _make_caller()
+        caller.ndb.combat_handler = MagicMock()  # dragged into a fight
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with _sever_env() as mk:
+            _make_cmd(caller=caller, args="left_arm from corpse").func()
+            mk.assert_not_called()
+        self.assertEqual(corpse.db.severed_locations, [])
+
     # ----- roll outcomes -----
 
     def test_roll_fail_leaves_state_intact(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
-        fail_roll = SEVER_DC_BASIC - 1
-        self.assertGreater(fail_roll, SEVER_CRIT_FAIL)
-        with patch.object(cmd_module, "roll_stat", return_value=fail_roll), \
-                patch.object(cmd_module, "create_object") as mk:
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        intel, motor = _split(_MID_FAIL)
+        with _sever_env(intel=intel, motor=motor) as mk:
             _make_cmd(caller=caller, args="left_arm from corpse").func()
             mk.assert_not_called()
         self.assertEqual(corpse.db.severed_locations, [])
 
     def test_crit_fail_no_mutation_no_item(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_CRIT_FAIL
-        ), patch.object(cmd_module, "create_object") as mk:
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with _sever_env(intel=_CRIT, motor=_CRIT) as mk:
             _make_cmd(caller=caller, args="left_arm from corpse").func()
             mk.assert_not_called()
         # Unlike harvest crit-fail, sever crit-fail does NOT destroy
@@ -285,14 +439,9 @@ class CmdSeverTests(TestCase):
 
     def test_success_spawns_appendage_and_appends(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
         fake_app = MagicMock()
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=fake_app
-        ) as mk:
+        with _sever_env(create_return=fake_app) as mk:
             _make_cmd(caller=caller, args="left_arm from corpse").func()
             mk.assert_called_once()
             kwargs = mk.call_args.kwargs
@@ -307,29 +456,20 @@ class CmdSeverTests(TestCase):
 
     def test_success_condition_tracks_decay(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(
-            snapshot=_snapshot_with_limbs(), decay_stage="advanced"
+        corpse = _make_corpse(
+            caller, snapshot=_snapshot_with_limbs(), decay_stage="advanced"
         )
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC + 5
-        ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ) as mk:
+        with _sever_env() as mk:
             _make_cmd(caller=caller, args="head from corpse").func()
         self.assertIn(
             ORGAN_CONDITION_BY_DECAY["advanced"], mk.call_args.kwargs["key"]
         )
+        self.assertEqual(corpse.db.severed_locations, ["head"])
 
     def test_location_accepts_spaces(self):
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ):
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with _sever_env():
             _make_cmd(caller=caller, args="left arm from corpse").func()
         self.assertEqual(corpse.db.severed_locations, ["left_arm"])
 
@@ -343,13 +483,8 @@ class CmdSeverTests(TestCase):
         state contract those tests depend on.
         """
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ):
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with _sever_env():
             _make_cmd(caller=caller, args="left_arm from corpse").func()
         self.assertIn("left_arm", corpse.db.severed_locations)
 
@@ -360,13 +495,8 @@ class CmdSeverTests(TestCase):
         not the plain ``Appendage`` other locations get.
         """
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ) as mk:
+        _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with _sever_env() as mk:
             _make_cmd(caller=caller, args="head from corpse").func()
         args, kwargs = mk.call_args
         # First positional arg is the typeclass path.
@@ -376,13 +506,8 @@ class CmdSeverTests(TestCase):
     def test_non_head_still_routes_to_appendage(self):
         """Non-head severable locations still spawn plain Appendage."""
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ) as mk:
+        _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with _sever_env() as mk:
             _make_cmd(caller=caller, args="left_arm from corpse").func()
         args, _ = mk.call_args
         self.assertEqual(args[0], "typeclasses.items.Appendage")
@@ -393,19 +518,15 @@ class CmdSeverTests(TestCase):
         """After a limb sever, the corpse's longdesc for that location
         is removed (it moved to the appendage)."""
         caller = _make_caller()
-        corpse = _FakeCorpse(
+        corpse = _make_corpse(
+            caller,
             snapshot=_snapshot_with_limbs(),
             longdesc_data={
                 "left_arm": "a pale freckled arm",
                 "chest": "a broad chest",
             },
         )
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ):
+        with _sever_env():
             _make_cmd(caller=caller, args="left_arm from corpse").func()
         self.assertNotIn("left_arm", corpse.db.longdesc_data)
         self.assertIn("chest", corpse.db.longdesc_data)
@@ -414,13 +535,8 @@ class CmdSeverTests(TestCase):
         """After a limb sever, the corpse gains a synthesized
         ``severed``-type wound at the severed location."""
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ):
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with _sever_env():
             _make_cmd(caller=caller, args="left_arm from corpse").func()
         stump_wounds = [
             w for w in corpse.db.wounds_at_death
@@ -433,7 +549,8 @@ class CmdSeverTests(TestCase):
         """Severing the head clears longdesc for the entire
         SEVERED_HEAD_LOCATIONS cluster, not just ``head``."""
         caller = _make_caller()
-        corpse = _FakeCorpse(
+        corpse = _make_corpse(
+            caller,
             snapshot=_snapshot_with_limbs(),
             longdesc_data={
                 "head": "a shaven scalp",
@@ -443,12 +560,7 @@ class CmdSeverTests(TestCase):
                 "chest": "a broad chest",
             },
         )
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ):
+        with _sever_env():
             _make_cmd(caller=caller, args="head from corpse").func()
         self.assertEqual(set(corpse.db.longdesc_data.keys()), {"chest"})
 
@@ -460,29 +572,18 @@ class CmdSeverTests(TestCase):
         ``Corpse.get_display_name`` reads to suppress unaided
         recognition while preserving autopsy access."""
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
         # Pre-sever invariant: flag absent / falsy.
         self.assertFalse(getattr(corpse.db, "head_severed", False))
-        caller.search.return_value = corpse
-        fake_head = MagicMock()
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=fake_head
-        ):
+        with _sever_env(create_return=MagicMock()):
             _make_cmd(caller=caller, args="head from corpse").func()
         self.assertTrue(corpse.db.head_severed)
 
     def test_limb_sever_does_not_mark_head_severed(self):
         """Severing a non-head limb must NOT set head_severed."""
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ):
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        with _sever_env():
             _make_cmd(caller=caller, args="left_arm from corpse").func()
         self.assertFalse(getattr(corpse.db, "head_severed", False))
 
@@ -491,16 +592,11 @@ class CmdSeverTests(TestCase):
         ``apparent_uid_at_death`` / ``sleeve_uid`` after the head is
         severed — autopsy and recognition-memory lookups still work."""
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
         sig_before = corpse.db.signature_at_death
         uid_before = corpse.db.apparent_uid_at_death
         sleeve_before = corpse.db.signature_at_death[0]
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC
-        ), patch.object(
-            cmd_module, "create_object", return_value=MagicMock()
-        ):
+        with _sever_env():
             _make_cmd(caller=caller, args="head from corpse").func()
         self.assertEqual(corpse.db.signature_at_death, sig_before)
         self.assertEqual(corpse.db.apparent_uid_at_death, uid_before)
@@ -509,29 +605,22 @@ class CmdSeverTests(TestCase):
     def test_failed_head_sever_does_not_mark_head_severed(self):
         """Sub-DC head roll must not set ``head_severed``."""
         caller = _make_caller()
-        corpse = _FakeCorpse(snapshot=_snapshot_with_limbs())
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC - 1
-        ), patch.object(
-            cmd_module, "create_object"
-        ):
+        corpse = _make_corpse(caller, snapshot=_snapshot_with_limbs())
+        intel, motor = _split(_MID_FAIL)
+        with _sever_env(intel=intel, motor=motor):
             _make_cmd(caller=caller, args="head from corpse").func()
         self.assertFalse(getattr(corpse.db, "head_severed", False))
 
     def test_failed_sever_does_not_clear_longdesc(self):
         """Sub-DC rolls must not mutate corpse longdesc."""
         caller = _make_caller()
-        corpse = _FakeCorpse(
+        corpse = _make_corpse(
+            caller,
             snapshot=_snapshot_with_limbs(),
             longdesc_data={"left_arm": "a pale arm"},
         )
-        caller.search.return_value = corpse
-        with patch.object(
-            cmd_module, "roll_stat", return_value=SEVER_DC_BASIC - 1
-        ), patch.object(
-            cmd_module, "create_object"
-        ):
+        intel, motor = _split(_MID_FAIL)
+        with _sever_env(intel=intel, motor=motor):
             _make_cmd(caller=caller, args="left_arm from corpse").func()
         # Longdesc untouched on failure.
         self.assertEqual(

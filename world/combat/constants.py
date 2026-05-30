@@ -776,15 +776,25 @@ ORGAN_CONDITION_BY_DECAY = {
 }
 
 # Surgical Sever (PR #190) --------------------------------------------
-# Motorics DC for removing a limb (or the head) from a corpse via
-# ``sever <location> from <corpse>``.  A natural ``SEVER_CRIT_FAIL``
-# botches the cut — no item is spawned and no bookkeeping mutates,
-# unlike the harvest crit-fail which destroys the organ.  The
-# asymmetry is deliberate: limbs are coarser anatomy and the
-# failure-mode is "you hacked a mess into the corpse" rather than
-# "you ruptured a delicate organ".
-SEVER_DC_BASIC = 3
-SEVER_CRIT_FAIL = 1
+# ``sever <location> from <corpse>`` is gated on a wielded edged weapon
+# flagged ``db.can_sever`` and resolved on a combined Intellect+Motorics
+# roll (the cut demands anatomical know-how *and* a steady hand), unlike
+# the single-Motorics harvest.  A botch spawns no item and mutates no
+# bookkeeping — unlike the harvest crit-fail which destroys the organ.
+# The asymmetry is deliberate: limbs are coarser anatomy and the
+# failure-mode is "you hacked a mess into the corpse" rather than "you
+# ruptured a delicate organ".  Because the resolution rolls a two-die
+# *sum* rather than a single die, there is no natural-1 crit-fail — a
+# low *sum* botches instead.  All three values are deliberately coarse
+# placeholders; balance is deferred to a tuning pass.
+#
+# DC for ``intellect_roll + motorics_roll`` vs the cut.
+SEVER_DC_INT_MOT = 14
+# Combined-sum at or below this botches the cut (mangled, recoverable).
+SEVER_CRIT_FAIL_SUM = 3
+# Real-seconds the cut takes; re-validated on completion (the actor may
+# have moved, unwielded, entered combat, or the corpse may be gone).
+SEVER_TIME_SECONDS = 3
 
 # Severable body locations: the limb partition from
 # :meth:`world.medical.core.Organ._is_limb_container` plus ``head``

@@ -191,6 +191,7 @@ SWORD = {
     "damage": 10,
     "weapon_type": "long_sword",  # Using existing message type
     "damage_type": "cut",  # Medical system injury type
+    "can_sever": True,  # Edged: can sever limbs from a corpse (PR #190)
 }
 
 # Baseball bat (enhanced deflection)
@@ -240,6 +241,7 @@ KATANA = {
     "deflection_bonus": 0.25,  # +5 to deflection threshold (excellent for parrying)
     "weapon_type": "katana",  # Using existing katana message type
     "damage_type": "cut",  # Medical system injury type
+    "can_sever": True,  # Edged: can sever limbs from a corpse (PR #190)
 }
 
 # Dagger (poor deflection)
@@ -252,6 +254,7 @@ DAGGER = {
     "deflection_bonus": -0.05,  # -1 to deflection threshold (penalty)
     "weapon_type": "knife",  # Using existing message type
     "damage_type": "stab",  # Medical system injury type
+    "can_sever": True,  # Edged: can sever limbs from a corpse (PR #190)
 }
 
 # Tessen (iron war fan)
@@ -264,6 +267,7 @@ FIGHTING_FAN = {
     "deflection_bonus": 0.15,  # +3 to deflection threshold (good defensive weapon)
     "weapon_type": "tessen",
     "damage_type": "cut",  # Medical system injury type
+    "can_sever": True,  # Edged: can sever limbs from a corpse (PR #190)
 }
 
 # Chainsaw (devastating damage, no deflection)
@@ -276,6 +280,7 @@ CHAINSAW = {
     "deflection_bonus": -0.50,  # -10 to deflection threshold (major penalty - chainsaws are terrible for defense)
     "weapon_type": "chainsaw",  # Using our newly converted message type
     "damage_type": "laceration",  # Medical system injury type
+    "can_sever": True,  # Edged: can sever limbs from a corpse (PR #190)
 }
 
 # =============================================================================
