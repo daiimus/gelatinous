@@ -232,7 +232,9 @@ The system separates **ability to hit** from **target selection wisdom**:
 > `is_dead()` enforces plus `consciousness`). Each lethal capacity's organs are
 > mapped to their `container`, yielding `{head, chest, neck, abdomen}` for the
 > stock anatomy. It is data-driven, not a hardcoded literal, so anatomy changes
-> propagate automatically.
+> propagate automatically. See `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` §
+> "Spinal Anatomy, Decapitation & Combat Severance" for the canonical anatomy
+> and death model behind the lethal capacities.
 
 **Skill Calculation**: `vital_targeting_skill = attacker_grit + attacker_motorics`
 

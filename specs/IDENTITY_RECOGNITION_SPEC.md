@@ -2233,6 +2233,15 @@ configure step leaves `db.desc` untouched.
 
 ## Combat-Driven Severance
 
+> **Anatomy source of truth**: the underlying spinal/decapitation/death
+> model (the `cervical_spine` / `thoracolumbar_spine` organs, the
+> `neck_integrity` capacity, `is_dead()` wiring, hit routing, and the
+> `_get_vital_locations` derivation) is documented canonically in
+> `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` § "Spinal Anatomy, Decapitation &
+> Combat Severance". This section covers the **identity / forensic**
+> consequences of severance — sdesc-bearing severed parts, recognition
+> surfaces, and the corpse/sever machinery.
+
 Where Surgical Sever (PR #190) is a deliberate post-mortem act against a
 **corpse**, Combat-Driven Severance makes body parts come off **during
 the fight**, as a consequence of damage.  It reuses the corpse-side

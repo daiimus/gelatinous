@@ -11,7 +11,7 @@ Design specifications for game systems and features. 37 spec files covering comb
 | `COMBAT_MESSAGE_FORMAT_SPEC.md` | Combat messaging and template system |
 | `PROXIMITY_SYSTEM_SPEC.md` | Tactical positioning mechanics |
 | `GRAPPLE_SYSTEM_SPEC.md` | Grappling and restraint mechanics |
-| `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` | Medical/trauma system design |
+| `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` | Medical/trauma system design; canonical source of truth for anatomy (spinal organs, neck integrity) and death/decapitation conditions |
 | `CLOTHING_SYSTEM_SPEC.md` | Clothing and layering system |
 | `MODULAR_ARMOR_SYSTEM_SPEC.md` | Armor coverage and damage reduction |
 | `SHOP_SYSTEM_SPEC.md` | Shop pricing and inventory |

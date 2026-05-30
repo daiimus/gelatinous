@@ -576,6 +576,94 @@ ORGAN_MISSING = "not in medical_state"  # Removed/never existed (rare, for extre
 # Destroyed organs remain in medical state for potential healing/replacement
 ```
 
+### Spinal Anatomy, Decapitation & Combat Severance
+
+This is the **canonical reference** for the spinal/decapitation/severance
+anatomy model (combat-sever Phases A–D, issues #243/#245/#247/#249). The
+detailed *identity / forensic* consequences live in
+`IDENTITY_RECOGNITION_SPEC.md` § "Combat-Driven Severance"; the *vital-area
+targeting* math lives in `MODULAR_ARMOR_SYSTEM_SPEC.md` § "Vital Area
+Targeting Ability". This section owns the underlying anatomy and death wiring.
+
+#### Two spinal organs
+
+The anatomy models the spine as **two distinct organs**, not one:
+
+| Organ | Container | Destroyable? | Capacity | Loss effect |
+|-------|-----------|--------------|----------|-------------|
+| `cervical_spine` | `neck` | **Yes** (`can_be_destroyed`) | `neck_integrity` | Decapitation → death |
+| `thoracolumbar_spine` | `back` | **No** (`cannot_be_destroyed`) | `moving` | Paralysis (`paralysis_if_destroyed`) |
+
+`cervical_spine` is the **decapitation locus**: it bundles the airway, the
+great vessels, and the cord at the neck, so bringing it to 0 HP is immediately
+fatal. `thoracolumbar_spine` is the thoracic/lumbar column in the back — it
+contributes `1.0` (total) to the `moving` capacity and gates paralysis, but it
+cannot be destroyed. (It was renamed from a plain `spine` in #254 to remove the
+ambiguity with `cervical_spine`; a one-shot DB migration renamed the persisted
+organ key on existing characters.)
+
+#### `neck_integrity` capacity & death wiring
+
+```python
+# world/medical/constants.py — BODY_CAPACITIES
+"neck_integrity": {
+    "organs": ["cervical_spine"],
+    "fatal_threshold": 0.0,
+    "directly_fatal": True,
+    # ...
+}
+```
+
+`MedicalState.is_dead()` (see the corrected listing below) treats
+`neck_integrity <= 0.0` as a death condition, alongside `blood_pumping`,
+`breathing`, and `digestion`. A destroyed cervical spine drives
+`neck_integrity` to 0.0 and reads as a clean decapitation death without
+perturbing the lungs' contribution math.
+
+#### Hit routing to the neck
+
+`neck` resolves to a **single organ** (`cervical_spine`), so neck hits are
+deterministic at the organ-selection stage and concentrate 100% of post-armor
+damage on the kill organ. The neck is nonetheless a **low-probability**
+location: its only organ carries `hit_weight: "rare"` (8) versus `uncommon`
+(15) for the chest and `common` (25) for limbs.
+
+#### Combat-driven severance trigger (Phase C)
+
+Body parts come off **during combat** (not only via the corpse `sever`
+command) when a location's representative bone hits 0 HP **and** the damaging
+blow used an edged weapon:
+
+```python
+# world/combat/constants.py
+SEVERING_INJURY_TYPES = frozenset({"cut", "stab", "laceration"})
+```
+
+`ArmorMixin.take_damage` detects a freshly-destroyed representative bone and,
+if the injury type is severing, applies the severance. For the neck, the death
+hook defers realisation: `db.decapitation_pending` is set during the synchronous
+hit and consumed later in the asynchronous death flow
+(`_create_corpse_from_character`), which spawns a `SeveredHead`. See the
+IDENTITY spec for the full Phase A–D narrative and the item-retention rules.
+
+#### Vital-location derivation (`_get_vital_locations`)
+
+The set of **vital body locations** used by the combat hit-location bias is
+derived dynamically (issue #251), not hardcoded:
+
+```python
+# world/medical/constants.py
+LETHAL_CAPACITY_NAMES = (
+    "blood_pumping", "breathing", "digestion", "neck_integrity", "consciousness",
+)
+```
+
+`_get_vital_locations` maps each lethal capacity's `organs` to their
+`container`, yielding `{head, chest, neck, abdomen}` for the stock anatomy.
+Because it is data-driven, `neck` is vital *by data* (cervical spine →
+neck_integrity), and anatomy changes propagate automatically. See
+`MODULAR_ARMOR_SYSTEM_SPEC.md` for how the vital set feeds targeting bias.
+
 ### Character Anatomy Customization
 Characters can have varied anatomy through:
 1. **Species Templates**: Different creature types get different default organs/locations
@@ -640,12 +728,17 @@ class MedicalState:
     
     def is_dead(self):
         """Multi-factor death determination"""
-        # Death from vital organ failure
+        # Death from vital capacity failure. These mirror the lethal members
+        # of LETHAL_CAPACITY_NAMES (consciousness is unconsciousness, not death,
+        # so it is excluded here). See "Spinal Anatomy, Decapitation & Combat
+        # Severance" above.
         if self.calculate_body_capacity("blood_pumping") <= 0.0:  # Heart
             return True
         if self.calculate_body_capacity("breathing") <= 0.0:      # Lungs
             return True
         if self.calculate_body_capacity("digestion") <= 0.0:      # Liver
+            return True
+        if self.calculate_body_capacity("neck_integrity") <= 0.0:  # Decapitation (#243)
             return True
         # Death from catastrophic blood loss (85%+ loss)
         if self.blood_level <= 15.0:
@@ -731,7 +824,7 @@ TENTACLE_MONSTER_LOCATIONS = {
 - **Organs have HP**: Each organ has max_hp (see ORGANS definition above)  
 - **Damage reduces HP**: Incoming damage reduces current HP from max_hp
 - **Destruction at 0 HP**: When organ HP reaches 0, organ is destroyed/non-functional
-- **Death conditions**: Destruction of vital organs (heart, both lungs, liver) = death
+- **Death conditions**: Destruction of vital organs (heart, both lungs, liver, or the `cervical_spine` → decapitation) = death
 - **Paired organ logic**: Both kidneys/lungs destroyed = death, single destruction = reduced function
 
 ### Hit Distribution Formula  
@@ -749,6 +842,7 @@ HIT_WEIGHTS = {
 ### Death vs Unconsciousness vs Functionality
 - **Blood loss kills**: Tracked separately, reaches fatal threshold = death
 - **Blood pumping = 0**: Death (heart destroyed/stopped)
+- **Neck integrity = 0**: Death (cervical spine destroyed → decapitation, #243)
 - **Consciousness**: Flag system (is_unconscious = True/False), not death
 - **Functionality**: Reduced stats/capabilities, but character remains conscious
 
