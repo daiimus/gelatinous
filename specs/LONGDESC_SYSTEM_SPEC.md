@@ -283,36 +283,50 @@ With your administrative visibility, you see: item1 [#123], item2 [#456], weapon
 - **Constants-driven**: Uses `PARAGRAPH_BREAK_THRESHOLD`, `REGION_BREAK_PRIORITY`, and `ANATOMICAL_REGIONS` for fine-tuning
 
 #### Paired Longdesc Collapse ✅
-Symmetric left/right paired appendages collapse into a single pluralized line
-when their descriptions are interchangeable, avoiding redundant repetition
-(e.g. two identical "a pale blue eye." lines becoming "Pale blue eyes.").
+Symmetric left/right paired appendages collapse into a single line when their
+descriptions are interchangeable, avoiding redundant repetition (e.g. two
+identical "a pale blue eye." lines becoming one line). The system **never
+rewrites authored prose** — it only *selects* which stored string represents
+the pair. There is no pluralization or grammar transformation at render time.
 
 **Pairs are derived dynamically** from `left_*` / `right_*` location keys
 (union of `longdesc` keys, `coverage_map`, `ANATOMICAL_DISPLAY_ORDER`, and
 severed locations), so custom species anatomy (`left_wing` / `right_wing`,
 etc.) participates automatically with no hardcoded list.
 
-**Collapse eligibility** — a pair collapses only when **both** sides are
-uncovered AND **one** of:
-- **Identical longdescs**: both sides hold the same non-empty longdesc string
-  (literal equality — WYSIWYG, no normalization), OR
-- **Both cleanly severed**: both sides are fully severed (every organ in the
-  location has `wound_stage == "severed"`); the longdesc key is absent.
+**Merge keys** — registered symmetric pairs each expose a third addressable
+longdesc location, the *merge key*, defined in
+`world.combat.constants.PAIR_MERGE_KEYS`:
 
-When eligible, the pair renders as one line and the right-side entry is
-skipped. Asymmetric coverage (one side clothed), differing prose, or a single
-amputated limb all **fail** the identity test and render each side separately.
+```python
+PAIR_MERGE_KEYS = {
+    "eyes": ("left_eye", "right_eye"),   "ears":  ("left_ear", "right_ear"),
+    "arms": ("left_arm", "right_arm"),   "hands": ("left_hand", "right_hand"),
+    "thighs": ("left_thigh", "right_thigh"), "shins": ("left_shin", "right_shin"),
+    "feet": ("left_foot", "right_foot"),
+}
+```
 
-**Pluralization** (`_pluralize_pair_longdesc`):
-- Pluralizes the first whole-word occurrence of the pair's anatomical base
-  noun (`eye`→`eyes`, `foot`→`feet`) via `world.grammar.pluralize_noun`
-  (wrapping `inflect`).
-- Strips one leading article (`a` / `an` / `the`), tolerating leading color
-  codes / `{tokens}`; recapitalizes via `grammar.capitalize_first` if the
-  article was capitalized.
-- **Safe fallback**: if the base noun is absent from the prose (e.g. "a
-  freckled forearm" for base "arm"), returns `None` → the pair renders
-  separately rather than producing malformed text.
+A player **writes one** (the merge key alone, for a single clean line) **or
+three** (the merge key plus both sides, to retain per-side prose when a limb is
+later covered or severed). Merge keys are in `VALID_LONGDESC_LOCATIONS` but are
+**not** default anatomy, are **not** wearable (`CLOTHING_LOCATIONS` excludes
+them), and **never render on their own line** — only through the pair anchor.
+
+**Selection** (`_merge_paired_location`) — when **both** sides are uncovered:
+- **Both cleanly severed** (every organ `wound_stage == "severed"`, longdesc
+  key absent) → one paired stump line (see below).
+- Else if the **merge key carries a longdesc** → that one authored line.
+- Else if **both sides hold the same** non-empty longdesc (literal equality —
+  WYSIWYG, no normalization) → that line, shown once verbatim.
+- Otherwise (differing prose, only one side described) → render separately.
+
+Asymmetric coverage (one side clothed) or a single amputated limb **never**
+collapse: the merge key is ignored and the visible/surviving side renders on
+its own (its side longdesc if written, else the default). Writing only the
+merge key (write-1) therefore means a lost side falls back to the generic
+default line — an accepted trade-off; write all three to keep flavor through
+coverage and severance.
 
 **Both-severed stumps** render via `world.medical.wounds`
 `get_paired_severed_description` using the type-agnostic
@@ -321,14 +335,14 @@ amputated limb all **fail** the identity test and render each side separately.
 
 **Wounds do not gate collapse**: a wound on one side does not split the pair —
 the merged line renders once and per-side wound sentences continue to append
-through the normal wound-layering path. (Collapsing two identical per-side
-wound sentences into "both hands" is a possible future refinement, not
-currently done.)
+through the normal wound-layering path.
 
 **Implementation**: `_build_paired_longdesc_collapse`,
-`_merge_paired_location`, `_get_severed_locations`, and
-`_pluralize_pair_longdesc` in `typeclasses/appearance_mixin.py`, consulted by
-both passes of `_get_visible_body_descriptions`.
+`_merge_paired_location`, and `_get_severed_locations` in
+`typeclasses/appearance_mixin.py`, consulted by both passes of
+`_get_visible_body_descriptions` (which also suppresses merge keys from
+standalone rendering). Merge keys are made addressable for set/view/clear/list
+by `has_location` / `get_available_locations`.
 
 ### Visibility Rules ✅
 - **Default**: All body locations are visible unless covered by clothing

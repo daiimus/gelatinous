@@ -571,6 +571,14 @@ class CmdLongdesc(Command):
     neck, chest, back, abdomen, groin, left_arm, right_arm, left_hand, right_hand,
     left_thigh, right_thigh, left_shin, right_shin, left_foot, right_foot.
 
+    Symmetric pairs — eyes, ears, arms, hands, thighs, shins, feet:
+        Each pair can be described as one line using its merged key (e.g.
+        @longdesc eyes "..."). When both sides are visible, that single line
+        is shown for the pair. Write only the merged key for one clean line,
+        or write the merged key AND both sides if you want each side to keep
+        its own prose when a limb is covered or lost. If you skip the merged
+        key but give both sides identical text, that line is shown once too.
+
     Extended anatomy (tails, wings, etc.) is supported for modified characters.
     Descriptions appear when others look at you, integrated with your base description.
     """
@@ -659,16 +667,25 @@ class CmdLongdesc(Command):
 
     def _handle_list_locations(self, caller):
         """Show all available body locations for the character."""
+        from world.combat.constants import PAIR_MERGE_KEYS
+
         locations = caller.get_available_locations()
         if not locations:
             caller.msg("No body locations available.")
             return
 
+        merge_keys = set(PAIR_MERGE_KEYS)
+
         # Group locations by type for better display
         grouped_locations = {}
         extended_locations = []
+        merge_locations = []
 
         for location in locations:
+            if location in merge_keys:
+                merge_locations.append(location)
+                continue
+
             found_region = None
             for region_name, region_locations in ANATOMICAL_REGIONS.items():
                 if location in region_locations:
@@ -699,6 +716,14 @@ class CmdLongdesc(Command):
 
         if extended_locations:
             caller.msg(f"  |cExtended Anatomy:|n {', '.join(extended_locations)}")
+
+        if merge_locations:
+            # Show each merge key beside the sides it represents.
+            ordered = [k for k in PAIR_MERGE_KEYS if k in merge_locations]
+            pairs = ", ".join(
+                f"{k} ({'/'.join(PAIR_MERGE_KEYS[k])})" for k in ordered
+            )
+            caller.msg(f"  |cSymmetric Shorthand:|n {pairs}")
 
     def _handle_clear(self, caller, args):
         """Handle clear commands."""

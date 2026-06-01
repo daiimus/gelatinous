@@ -77,14 +77,22 @@ class AppearanceMixin:
         Returns:
             list: List of (location, description) tuples in anatomical order.
         """
-        from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
+        from world.combat.constants import (
+            ANATOMICAL_DISPLAY_ORDER,
+            PAIR_MERGE_KEYS,
+        )
 
         descriptions = []
         coverage_map = self._build_clothing_coverage_map()
         longdescs = self.longdesc or {}
 
+        # Merge keys (e.g. "eyes") are authored shorthand for a symmetric pair;
+        # they never render on their own line, only through the pair anchor.
+        merge_keys = set(PAIR_MERGE_KEYS)
+
         # Pre-compute symmetric left/right pairs that collapse into a single
-        # pluralized line (identical longdescs, or both cleanly severed).
+        # line by selecting an authored string (merged key, or identical sides,
+        # or a paired stump). Prose is never rewritten.
         collapse_map, collapse_skip = self._build_paired_longdesc_collapse(
             looker, longdescs, coverage_map
         )
@@ -154,6 +162,9 @@ class AppearanceMixin:
         all_locations = set(longdescs.keys()) | set(coverage_map.keys())
         for location in all_locations:
             if location not in ANATOMICAL_DISPLAY_ORDER:
+                if location in merge_keys:
+                    # Authored pair shorthand; rendered only via the anchor.
+                    continue
                 if location in collapse_skip:
                     continue
                 if location in collapse_map:
@@ -210,12 +221,12 @@ class AppearanceMixin:
         """
         Compute which symmetric left/right pairs collapse into one line.
 
-        A ``left_*``/``right_*`` pair collapses when both sides are uncovered
-        and either (a) their longdescs are identical and non-empty, or (b)
-        both sides have been cleanly severed. Severance deletes a location's
-        longdesc key, so a single amputated limb naturally fails the identity
-        test and renders on its own — only a matched, intact (or matched,
-        fully amputated) pair merges.
+        A ``left_*``/``right_*`` pair collapses (selecting a single authored
+        string, never rewriting prose) when both sides are uncovered and one
+        of these holds: the pair's merged key (e.g. ``eyes``) carries a
+        longdesc; both sides carry the same non-empty longdesc; or both sides
+        have been cleanly severed. Any asymmetric arrangement (covered side,
+        severed side, differing prose) renders each side on its own.
 
         Args:
             looker: Character looking.
@@ -227,10 +238,18 @@ class AppearanceMixin:
                 ``left_*`` anchor location to its merged description string and
                 ``skip_set`` holds the ``right_*`` partners to skip.
         """
-        from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
+        from world.combat.constants import (
+            ANATOMICAL_DISPLAY_ORDER,
+            PAIR_MERGE_KEYS,
+        )
 
         collapse_map = {}
         skip_set = set()
+
+        # Reverse the merge-key table to find a pair's authored merged key.
+        left_to_merge_key = {
+            left: key for key, (left, _right) in PAIR_MERGE_KEYS.items()
+        }
 
         severed_locs = self._get_severed_locations()
         # Consider every left_* location the body could render this pass.
@@ -251,9 +270,10 @@ class AppearanceMixin:
             if left_loc in coverage_map or right_loc in coverage_map:
                 continue
 
-            base_noun = left_loc[len("left_"):].replace("_", " ")
+            merged_key = left_to_merge_key.get(left_loc)
             merged = self._merge_paired_location(
-                looker, left_loc, right_loc, base_noun, longdescs, severed_locs
+                looker, left_loc, right_loc, merged_key, longdescs,
+                severed_locs,
             )
             if merged is not None:
                 collapse_map[left_loc] = merged
@@ -261,52 +281,73 @@ class AppearanceMixin:
 
         return collapse_map, skip_set
 
-    def _merge_paired_location(self, looker, left_loc, right_loc, base_noun,
+    def _merge_paired_location(self, looker, left_loc, right_loc, merged_key,
                                longdescs, severed_locs):
         """
         Build the merged description for one collapsible pair, or ``None``.
 
-        Handles the two collapse cases: identical longdescs (pluralized, with
-        each side's wounds appended on its own side) and both-sides-severed
-        (a single plural stump line).
+        The system never rewrites authored prose; it only *selects* which
+        stored string represents both sides:
+
+        * If both sides are cleanly severed, a single paired stump line.
+        * Otherwise, if the pair's merged key (e.g. ``eyes``) carries a
+          longdesc, that one authored line.
+        * Otherwise, if both sides carry the same non-empty longdesc, that
+          verbatim line shown once.
+
+        Any other arrangement (one side severed, sides differ, only one side
+        described) returns ``None`` so the caller renders each side on its
+        own. Each side's wounds are appended on its own side, never merged.
         """
         left_desc = longdescs.get(left_loc)
         right_desc = longdescs.get(right_loc)
+        pair_intact = (
+            left_loc not in severed_locs and right_loc not in severed_locs
+        )
 
-        # Case 1: identical, non-empty longdescs on both sides.
-        if left_desc and right_desc and left_desc == right_desc:
-            plural = self._pluralize_pair_longdesc(left_desc, base_noun)
-            if plural is None:
-                return None
-            processed = self._process_description_variables(
-                plural, looker, force_third_person=True, apply_skintone=True,
-            )
-            parts = [processed]
-            # A wound simply sits on its own side without splitting the pair.
-            try:
-                from world.medical.wounds import get_standalone_wound_description
-                for side in (left_loc, right_loc):
-                    wound_desc = get_standalone_wound_description(
-                        self, side, looker
+        # Severance takes precedence: a fully amputated pair gets one stump
+        # line; a single amputation never collapses (survivor renders alone).
+        if not pair_intact:
+            if (left_desc is None and right_desc is None
+                    and left_loc in severed_locs
+                    and right_loc in severed_locs):
+                try:
+                    from world.medical.wounds import (
+                        get_paired_severed_description,
                     )
-                    if wound_desc:
-                        parts.append(wound_desc)
-            except ImportError:
-                pass
-            return " ".join(parts)
+                    return get_paired_severed_description(
+                        self, left_loc, right_loc, looker
+                    )
+                except ImportError:
+                    return None
+            return None
 
-        # Case 2: both sides cleanly severed (neither carries a longdesc).
-        if (not left_desc and not right_desc
-                and left_loc in severed_locs and right_loc in severed_locs):
-            try:
-                from world.medical.wounds import get_paired_severed_description
-                return get_paired_severed_description(
-                    self, left_loc, right_loc, looker
+        # Both sides present: select the authored string that represents them.
+        merged_desc = longdescs.get(merged_key) if merged_key else None
+        if merged_desc:
+            chosen = merged_desc
+        elif left_desc and right_desc and left_desc == right_desc:
+            chosen = left_desc
+        else:
+            # Sides differ, or only one is described — render separately.
+            return None
+
+        processed = self._process_description_variables(
+            chosen, looker, force_third_person=True, apply_skintone=True,
+        )
+        parts = [processed]
+        # A wound simply sits on its own side without splitting the pair.
+        try:
+            from world.medical.wounds import get_standalone_wound_description
+            for side in (left_loc, right_loc):
+                wound_desc = get_standalone_wound_description(
+                    self, side, looker
                 )
-            except ImportError:
-                return None
-
-        return None
+                if wound_desc:
+                    parts.append(wound_desc)
+        except ImportError:
+            pass
+        return " ".join(parts)
 
     def _get_severed_locations(self):
         """Return the set of body locations that are cleanly severed."""
@@ -324,46 +365,6 @@ class AppearanceMixin:
             if all(w.get('stage') == 'severed' for w in location_wounds):
                 severed.add(location)
         return severed
-
-    def _pluralize_pair_longdesc(self, text, base_noun):
-        """
-        Pluralize an identical paired longdesc for a merged rendering.
-
-        Pluralizes the first whole-word occurrence of the anatomical noun
-        (e.g. "hand" -> "hands") and strips a single leading article,
-        preserving the article's capitalization onto the new first word.
-
-        Returns ``None`` when the anatomical noun is absent from the prose,
-        signalling the caller to render the two sides separately rather than
-        risk a grammatically broken merge.
-        """
-        import re
-        from world.grammar import pluralize_noun, capitalize_first
-
-        noun_pattern = re.compile(r'\b' + re.escape(base_noun) + r'\b',
-                                  re.IGNORECASE)
-        if not noun_pattern.search(text):
-            return None
-
-        plural = pluralize_noun(base_noun)
-        merged, _count = noun_pattern.subn(plural, text, count=1)
-
-        # Strip a single leading article, tolerating leading color codes or
-        # template tokens, and re-capitalize if the article was capitalized.
-        article_pattern = re.compile(
-            r'^((?:\|[a-zA-Z0-9]|\{[^}]+\}|\s)*)(a|an|the)\b[ \t]+',
-            re.IGNORECASE,
-        )
-        match = article_pattern.match(merged)
-        if match:
-            lead = match.group(1)
-            article_capitalized = match.group(2)[0].isupper()
-            remainder = merged[match.end():]
-            if article_capitalized:
-                remainder = capitalize_first(remainder)
-            merged = lead + remainder
-
-        return merged
 
     def _format_longdescs_with_paragraphs(self, longdesc_list):
         """
@@ -443,6 +444,9 @@ class AppearanceMixin:
         """
         Checks if this character has a specific body location.
 
+        A symmetric merge key (e.g. ``eyes``) is addressable whenever both of
+        its side locations exist, even before it has been written.
+
         Args:
             location: Body location to check.
 
@@ -450,17 +454,29 @@ class AppearanceMixin:
             bool: True if character has this location.
         """
         longdescs = self.longdesc or {}
-        return location in longdescs
+        if location in longdescs:
+            return True
+        from world.combat.constants import PAIR_MERGE_KEYS
+        pair = PAIR_MERGE_KEYS.get(location)
+        return bool(pair) and all(side in longdescs for side in pair)
 
     def get_available_locations(self):
         """
         Gets list of all body locations this character has.
 
+        Includes symmetric merge keys whose both sides exist, so the merged
+        shorthand can be set/viewed/cleared and listed.
+
         Returns:
             list: List of available body location names.
         """
         longdescs = self.longdesc or {}
-        return list(longdescs.keys())
+        locations = list(longdescs.keys())
+        from world.combat.constants import PAIR_MERGE_KEYS
+        for key, pair in PAIR_MERGE_KEYS.items():
+            if key not in longdescs and all(side in longdescs for side in pair):
+                locations.append(key)
+        return locations
 
     def set_longdesc(self, location, description):
         """
