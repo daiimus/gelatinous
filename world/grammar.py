@@ -88,6 +88,38 @@ def conjugate_third_person(verb: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Noun Pluralization
+# ---------------------------------------------------------------------------
+
+
+def pluralize_noun(noun: str) -> str:
+    """Return the plural form of a singular noun.
+
+    Thin wrapper over the ``inflect`` engine so callers do not reach into
+    the singleton directly. Handles regular and irregular plurals
+    ("hand" → "hands", "foot" → "feet", "eye" → "eyes") and preserves the
+    leading capitalization of the input.
+
+    Args:
+        noun: A singular noun (a single word, e.g. "hand").
+
+    Returns:
+        The plural form, capitalized to match ``noun``'s first letter.
+    """
+    if not noun:
+        return noun
+
+    plural = _engine.plural_noun(noun)
+    # ``plural_noun`` can return False on unexpected input; fall back safely.
+    if not plural:
+        return noun
+
+    if noun[0].isupper():
+        return plural[0].upper() + plural[1:]
+    return plural
+
+
+# ---------------------------------------------------------------------------
 # Article Handling
 # ---------------------------------------------------------------------------
 

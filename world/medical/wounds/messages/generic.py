@@ -107,3 +107,22 @@ COMPOUND_DESCRIPTIONS = {
         "{skintone}a {severity} old scar joins {others_phrase} on the {location}|n",
     ],
 }
+
+
+# Paired-severance descriptions collapse a symmetric left/right pair that has
+# been *cleanly amputated on both sides* into one plural stump line. The
+# ``{location}`` slot receives a plural body-part phrase (e.g. "both hands").
+# Severance prose is type-agnostic, so this single generic set serves every
+# injury type. Rendered through ``_format_wound_grammar`` (capitalized and
+# terminated), so templates need no leading capital or trailing period.
+PAIRED_SEVERED_DESCRIPTIONS = [
+    "a pair of clean surgical amputations where {location} once were, "
+    "properly treated|n",
+    "{location} have been medically severed with sterile bandaging|n",
+    "a professionally treated pair of amputation sites where {location} "
+    "were removed|n",
+    "{location} have been cleanly amputated with proper medical closure|n",
+    "a sterile pair of severances with surgical care where {location} "
+    "once were|n",
+    "{location} have been surgically removed with clinical precision|n",
+]

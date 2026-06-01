@@ -282,6 +282,54 @@ With your administrative visibility, you see: item1 [#123], item2 [#456], weapon
 - **Writer freedom**: No forced connecting words or narrative structure - writers control their own style
 - **Constants-driven**: Uses `PARAGRAPH_BREAK_THRESHOLD`, `REGION_BREAK_PRIORITY`, and `ANATOMICAL_REGIONS` for fine-tuning
 
+#### Paired Longdesc Collapse ✅
+Symmetric left/right paired appendages collapse into a single pluralized line
+when their descriptions are interchangeable, avoiding redundant repetition
+(e.g. two identical "a pale blue eye." lines becoming "Pale blue eyes.").
+
+**Pairs are derived dynamically** from `left_*` / `right_*` location keys
+(union of `longdesc` keys, `coverage_map`, `ANATOMICAL_DISPLAY_ORDER`, and
+severed locations), so custom species anatomy (`left_wing` / `right_wing`,
+etc.) participates automatically with no hardcoded list.
+
+**Collapse eligibility** — a pair collapses only when **both** sides are
+uncovered AND **one** of:
+- **Identical longdescs**: both sides hold the same non-empty longdesc string
+  (literal equality — WYSIWYG, no normalization), OR
+- **Both cleanly severed**: both sides are fully severed (every organ in the
+  location has `wound_stage == "severed"`); the longdesc key is absent.
+
+When eligible, the pair renders as one line and the right-side entry is
+skipped. Asymmetric coverage (one side clothed), differing prose, or a single
+amputated limb all **fail** the identity test and render each side separately.
+
+**Pluralization** (`_pluralize_pair_longdesc`):
+- Pluralizes the first whole-word occurrence of the pair's anatomical base
+  noun (`eye`→`eyes`, `foot`→`feet`) via `world.grammar.pluralize_noun`
+  (wrapping `inflect`).
+- Strips one leading article (`a` / `an` / `the`), tolerating leading color
+  codes / `{tokens}`; recapitalizes via `grammar.capitalize_first` if the
+  article was capitalized.
+- **Safe fallback**: if the base noun is absent from the prose (e.g. "a
+  freckled forearm" for base "arm"), returns `None` → the pair renders
+  separately rather than producing malformed text.
+
+**Both-severed stumps** render via `world.medical.wounds`
+`get_paired_severed_description` using the type-agnostic
+`PAIRED_SEVERED_DESCRIPTIONS` templates, with `{location}` filled as
+`both <plural>` (e.g. "both hands").
+
+**Wounds do not gate collapse**: a wound on one side does not split the pair —
+the merged line renders once and per-side wound sentences continue to append
+through the normal wound-layering path. (Collapsing two identical per-side
+wound sentences into "both hands" is a possible future refinement, not
+currently done.)
+
+**Implementation**: `_build_paired_longdesc_collapse`,
+`_merge_paired_location`, `_get_severed_locations`, and
+`_pluralize_pair_longdesc` in `typeclasses/appearance_mixin.py`, consulted by
+both passes of `_get_visible_body_descriptions`.
+
 ### Visibility Rules ✅
 - **Default**: All body locations are visible unless covered by clothing
 - **Clothing Coverage**: Worn items hide covered locations and display their own descriptions instead

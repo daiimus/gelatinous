@@ -186,6 +186,63 @@ def _compound_phrase(worst_wound, others_count, character=None):
     return _format_wound_grammar(phrase)
 
 
+def get_paired_severed_description(character, left_location, right_location,
+                                  looker=None):
+    """
+    Render one plural stump line for a symmetric pair severed on both sides.
+
+    When both members of a ``left_*``/``right_*`` pair have been cleanly
+    amputated, their individual stump descriptions are collapsed into a
+    single plural sentence (e.g. "Both hands have been cleanly amputated...")
+    so the body description reads naturally instead of repeating two nearly
+    identical amputation lines.
+
+    Args:
+        character: Character object (reserved for future species naming).
+        left_location (str): The ``left_*`` member of the pair.
+        right_location (str): The ``right_*`` member of the pair.
+        looker: Character looking (reserved for future permission checks).
+
+    Returns:
+        str | None: A formatted plural stump sentence when both sides are
+            severed, else ``None``.
+    """
+    if not (_location_is_severed(character, left_location)
+            and _location_is_severed(character, right_location)):
+        return None
+
+    from world.grammar import pluralize_noun
+
+    base_noun = _pair_base_noun(left_location)
+    plural = pluralize_noun(base_noun)
+    location_display = f"both {plural}"
+
+    templates = getattr(messages.generic, 'PAIRED_SEVERED_DESCRIPTIONS', None)
+    if not templates:
+        return None
+    template = random.choice(templates)
+    return _format_wound_grammar(template.format(location=location_display))
+
+
+def _location_is_severed(character, location):
+    """Return True if every wound at ``location`` is a clean severance."""
+    location_wounds = [
+        w for w in get_character_wounds(character)
+        if w['location'] == location
+    ]
+    if not location_wounds:
+        return False
+    return all(w.get('stage') == 'severed' for w in location_wounds)
+
+
+def _pair_base_noun(location):
+    """Strip a ``left_``/``right_`` prefix to the bare body-part noun."""
+    for prefix in ("left_", "right_"):
+        if location.startswith(prefix):
+            return location[len(prefix):].replace("_", " ")
+    return location.replace("_", " ")
+
+
 def _resolve_compound_template(injury_type, stage):
     """
     Resolve a random compound template for an injury type and stage.
