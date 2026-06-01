@@ -1,14 +1,10 @@
-"""Unit tests for symmetric left/right longdesc collapse (selection model).
+"""Unit tests for symmetric left/right longdesc collapse.
 
-The render path never rewrites authored prose; it only *selects* which stored
-string represents a symmetric pair:
-
-* an authored merged key (e.g. ``eyes``) stands in for both sides when both
-  are visible;
-* failing that, two identical side longdescs render once, verbatim;
-* a pair severed on both sides collapses to one paired stump line;
-* any divergence (asymmetric coverage, one side severed, differing prose with
-  no merged key) falls back to separate, per-side rendering.
+A matched ``left_*``/``right_*`` pair with identical longdescs renders as one
+pluralized line (e.g. "Calloused hands."); a wound sits on its own side
+without splitting the pair; a pair severed on both sides collapses to one
+plural stump line; and any divergence (coverage, severance of one side,
+differing prose) falls back to separate rendering.
 
 Run via::
 
@@ -35,32 +31,49 @@ class _Body(AppearanceMixin):
         self._severed = set(severed or ())
 
     def _process_description_variables(self, desc, looker, **kwargs):
-        # Passthrough so tests can assert on the selected text directly.
+        # Passthrough so tests can assert on the pluralized text directly.
         return desc
 
     def _get_severed_locations(self):
         return set(self._severed)
 
 
-class _Render(AppearanceMixin):
-    """Full-render host: stubs clothing, skintone processing and severance."""
+class PluralizePairLongdescTests(TestCase):
 
-    def __init__(self, longdescs, severed=None):
-        self._longdescs = dict(longdescs)
-        self._severed = set(severed or ())
+    def setUp(self):
+        self.obj = _Bare()
 
-    @property
-    def longdesc(self):
-        return self._longdescs
+    def test_strips_article_and_pluralizes_with_capital(self):
+        out = self.obj._pluralize_pair_longdesc(
+            "A calloused hand with scarred knuckles.", "hand"
+        )
+        self.assertEqual(out, "Calloused hands with scarred knuckles.")
 
-    def _build_clothing_coverage_map(self):
-        return {}
+    def test_lowercase_fragment_stays_lowercase(self):
+        out = self.obj._pluralize_pair_longdesc("a milky eye", "eye")
+        self.assertEqual(out, "milky eyes")
 
-    def _process_description_variables(self, desc, looker, **kwargs):
-        return desc
+    def test_irregular_plural_foot_to_feet(self):
+        out = self.obj._pluralize_pair_longdesc("A scarred foot.", "foot")
+        self.assertEqual(out, "Scarred feet.")
 
-    def _get_severed_locations(self):
-        return set(self._severed)
+    def test_definite_article_handled(self):
+        out = self.obj._pluralize_pair_longdesc("The gnarled hand.", "hand")
+        self.assertEqual(out, "Gnarled hands.")
+
+    def test_missing_noun_returns_none(self):
+        # The anatomical noun isn't present; cannot safely pluralize.
+        out = self.obj._pluralize_pair_longdesc(
+            "a sleek prosthetic appendage", "hand"
+        )
+        self.assertIsNone(out)
+
+    def test_only_first_occurrence_pluralized(self):
+        out = self.obj._pluralize_pair_longdesc(
+            "a hand, a working hand", "hand"
+        )
+        # Leading article stripped; only the first 'hand' becomes plural.
+        self.assertEqual(out, "hands, a working hand")
 
 
 class GetSeveredLocationsTests(TestCase):
@@ -100,8 +113,7 @@ class BuildPairedCollapseTests(TestCase):
             None, longdescs, coverage_map or {}
         )
 
-    def test_identical_pair_collapses_verbatim(self):
-        # No pluralization — the authored line is shown exactly as written.
+    def test_identical_pair_collapses_to_plural(self):
         longdescs = {
             "left_hand": "A calloused hand.",
             "right_hand": "A calloused hand.",
@@ -112,37 +124,7 @@ class BuildPairedCollapseTests(TestCase):
             collapse_map, skip = self._build(longdescs)
         self.assertIn("left_hand", collapse_map)
         self.assertIn("right_hand", skip)
-        self.assertEqual(collapse_map["left_hand"], "A calloused hand.")
-
-    def test_merged_key_stands_in_for_both_sides(self):
-        # Write-1: only the merged key is set; both sides default-empty.
-        longdescs = {"eyes": "{Their} eyes gleam an unsettling silver."}
-        with mock.patch(
-            f"{WOUNDS}.get_standalone_wound_description", return_value=""
-        ):
-            collapse_map, skip = self._build(longdescs)
-        self.assertEqual(
-            collapse_map["left_eye"],
-            "{Their} eyes gleam an unsettling silver.",
-        )
-        self.assertIn("right_eye", skip)
-
-    def test_merged_key_wins_over_differing_sides(self):
-        # Write-3: merged key is authoritative while both sides are visible.
-        longdescs = {
-            "eyes": "{Their} eyes gleam an unsettling silver.",
-            "left_eye": "a silver left eye",
-            "right_eye": "a silver right eye",
-        }
-        with mock.patch(
-            f"{WOUNDS}.get_standalone_wound_description", return_value=""
-        ):
-            collapse_map, skip = self._build(longdescs)
-        self.assertEqual(
-            collapse_map["left_eye"],
-            "{Their} eyes gleam an unsettling silver.",
-        )
-        self.assertIn("right_eye", skip)
+        self.assertEqual(collapse_map["left_hand"], "Calloused hands.")
 
     def test_wound_on_one_side_stays_merged(self):
         longdescs = {
@@ -161,7 +143,7 @@ class BuildPairedCollapseTests(TestCase):
             collapse_map, skip = self._build(longdescs)
         self.assertEqual(
             collapse_map["left_hand"],
-            "A calloused hand. A fresh laceration crosses the right hand.",
+            "Calloused hands. A fresh laceration crosses the right hand.",
         )
         self.assertIn("right_hand", skip)
 
@@ -178,23 +160,7 @@ class BuildPairedCollapseTests(TestCase):
         self.assertEqual(collapse_map, {})
         self.assertEqual(skip, set())
 
-    def test_covered_side_ignores_merged_key(self):
-        # One eye covered: the pair does not collapse and the merged key must
-        # not stand in — the visible side renders on its own elsewhere.
-        longdescs = {
-            "eyes": "{Their} eyes gleam an unsettling silver.",
-            "left_eye": "a silver left eye",
-            "right_eye": "a silver right eye",
-        }
-        coverage = {"left_eye": object()}
-        with mock.patch(
-            f"{WOUNDS}.get_standalone_wound_description", return_value=""
-        ):
-            collapse_map, skip = self._build(longdescs, coverage)
-        self.assertEqual(collapse_map, {})
-        self.assertEqual(skip, set())
-
-    def test_differing_prose_without_merged_key_does_not_collapse(self):
+    def test_differing_prose_does_not_collapse(self):
         longdescs = {
             "left_hand": "A calloused hand.",
             "right_hand": "A scarred hand.",
@@ -205,15 +171,18 @@ class BuildPairedCollapseTests(TestCase):
             collapse_map, _skip = self._build(longdescs)
         self.assertEqual(collapse_map, {})
 
-    def test_only_one_side_described_does_not_collapse(self):
-        longdescs = {"left_hand": "A calloused hand."}
+    def test_non_pluralizable_pair_falls_back(self):
+        longdescs = {
+            "left_hand": "a sleek prosthetic appendage",
+            "right_hand": "a sleek prosthetic appendage",
+        }
         with mock.patch(
             f"{WOUNDS}.get_standalone_wound_description", return_value=""
         ):
             collapse_map, _skip = self._build(longdescs)
         self.assertEqual(collapse_map, {})
 
-    def test_both_severed_collapses_to_paired_stump(self):
+    def test_both_severed_collapses_to_plural_stump(self):
         self.obj = _Body(severed={"left_hand", "right_hand"})
         with mock.patch(
             f"{WOUNDS}.get_paired_severed_description",
@@ -235,19 +204,7 @@ class BuildPairedCollapseTests(TestCase):
             collapse_map, _skip = self._build(longdescs)
         self.assertEqual(collapse_map, {})
 
-    def test_one_side_severed_with_merged_key_does_not_collapse(self):
-        # Write-1 + one side lost: the merged key must not stand in; the
-        # survivor falls back to its own (default) rendering elsewhere.
-        self.obj = _Body(severed={"left_eye"})
-        longdescs = {"eyes": "{Their} eyes gleam an unsettling silver."}
-        with mock.patch(
-            f"{WOUNDS}.get_standalone_wound_description", return_value=""
-        ):
-            collapse_map, _skip = self._build(longdescs)
-        self.assertEqual(collapse_map, {})
-
-    def test_custom_longdesc_pair_collapses_verbatim(self):
-        # A non-registered symmetric pair still collapses on identical prose.
+    def test_custom_longdesc_pair_collapses(self):
         longdescs = {
             "left_wing": "A feathered wing.",
             "right_wing": "A feathered wing.",
@@ -256,45 +213,8 @@ class BuildPairedCollapseTests(TestCase):
             f"{WOUNDS}.get_standalone_wound_description", return_value=""
         ):
             collapse_map, skip = self._build(longdescs)
-        self.assertEqual(collapse_map["left_wing"], "A feathered wing.")
+        self.assertEqual(collapse_map["left_wing"], "Feathered wings.")
         self.assertIn("right_wing", skip)
-
-
-class VisibleBodyDescriptionsTests(TestCase):
-    """End-to-end selection through ``_get_visible_body_descriptions``."""
-
-    def _render(self, host):
-        with mock.patch(
-            f"{WOUNDS}.get_standalone_wound_description", return_value=""
-        ), mock.patch(
-            f"{WOUNDS}.append_wounds_to_longdesc",
-            side_effect=lambda desc, *a, **k: desc,
-        ):
-            return host._get_visible_body_descriptions(None)
-
-    def test_merged_key_renders_at_anchor_not_standalone(self):
-        host = _Render({"eyes": "{Their} eyes gleam silver."})
-        result = dict(self._render(host))
-        self.assertEqual(result.get("left_eye"), "{Their} eyes gleam silver.")
-        self.assertNotIn("right_eye", result)
-        # The merged key itself never renders as its own line.
-        self.assertNotIn("eyes", result)
-
-    def test_identical_sides_render_once(self):
-        host = _Render(
-            {"left_hand": "A calloused hand.", "right_hand": "A calloused hand."}
-        )
-        result = dict(self._render(host))
-        self.assertEqual(result.get("left_hand"), "A calloused hand.")
-        self.assertNotIn("right_hand", result)
-
-    def test_differing_sides_render_separately(self):
-        host = _Render(
-            {"left_hand": "A calloused hand.", "right_hand": "A scarred hand."}
-        )
-        result = dict(self._render(host))
-        self.assertEqual(result.get("left_hand"), "A calloused hand.")
-        self.assertEqual(result.get("right_hand"), "A scarred hand.")
 
 
 class PairedSeveredDescriptionTests(TestCase):

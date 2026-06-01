@@ -63,31 +63,8 @@ MAX_DESCRIPTION_LENGTH = 1000  # Generous limit, allows detailed descriptions
 PARAGRAPH_BREAK_THRESHOLD = 400  # Characters before automatic paragraph break
 REGION_BREAK_PRIORITY = True     # Prefer breaking between anatomical regions
 
-# Symmetric pair merge keys. Each maps an authored "merged" longdesc location
-# (the form a player writes once to describe both sides at once) to its
-# ``(left, right)`` side locations. The render path never rewrites prose: when
-# both sides of a pair are visible and the merged key carries a longdesc, that
-# single authored line stands in for the pair. Side keys remain addressable so
-# a player can write all three (merged + both sides) and retain per-side prose
-# when a limb is later covered or severed. The merged keys are valid longdesc
-# locations for set/clear/view, but are NOT default anatomy, are never worn as
-# clothing, and never render on their own — only through the pair anchor.
-PAIR_MERGE_KEYS = {
-    "eyes": ("left_eye", "right_eye"),
-    "ears": ("left_ear", "right_ear"),
-    "arms": ("left_arm", "right_arm"),
-    "hands": ("left_hand", "right_hand"),
-    "thighs": ("left_thigh", "right_thigh"),
-    "shins": ("left_shin", "right_shin"),
-    "feet": ("left_foot", "right_foot"),
-}
-
-# Valid location validation set (expandable). Includes the symmetric merge
-# keys so they can be set/viewed/cleared, even though they are not part of the
-# default anatomy or anatomical display order.
-VALID_LONGDESC_LOCATIONS = set(DEFAULT_LONGDESC_LOCATIONS.keys()) | set(
-    PAIR_MERGE_KEYS.keys()
-)
+# Valid location validation set (expandable)
+VALID_LONGDESC_LOCATIONS = set(DEFAULT_LONGDESC_LOCATIONS.keys())
 
 # Anatomical display order (head to toe). The head region mirrors how an
 # observer organically registers a person: hair first, then the eyes, after
@@ -144,10 +121,8 @@ COVERAGE_INHERITANCE = {
 # CLOTHING SYSTEM CONSTANTS  
 # ===================================================================
 
-# Clothing uses the physical body locations (default anatomy), NOT the
-# symmetric merge keys — merge keys are authored longdesc shorthand, not
-# wearable locations.
-CLOTHING_LOCATIONS = set(DEFAULT_LONGDESC_LOCATIONS.keys())
+# Clothing uses same body locations as longdesc system for consistency
+CLOTHING_LOCATIONS = VALID_LONGDESC_LOCATIONS
 
 # Default clothing layer assignments
 DEFAULT_CLOTHING_LAYER = 2
