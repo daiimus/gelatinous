@@ -65,3 +65,45 @@ WOUND_DESCRIPTIONS = {
         "{skintone}a {severity} scar from old trauma on the {location}|n"
     ]
 }
+
+
+# Compound descriptions collapse two or more wounds at one location into a
+# single concise line. The worst wound drives {severity}; {others_phrase}
+# renders the remaining count ("another wound" / "several other wounds").
+# Generic is the fallback set for any injury type lacking its own.
+COMPOUND_DESCRIPTIONS = {
+    "fresh": [
+        "|Ra {severity} wound and {others_phrase} mark the {location}|n",
+        "|Ra {severity} wound joins {others_phrase} across the {location}|n",
+        "|Rthe {location} bears a {severity} wound alongside {others_phrase}|n",
+        "|Ra {severity} wound and {others_phrase} cover the {location}|n",
+    ],
+
+    "treated": [
+        "{skintone}a {severity} treated wound and {others_phrase} dress the {location}|n",
+        "{skintone}the {location} carries a {severity} bandaged wound among {others_phrase}|n",
+        "{skintone}a {severity} tended wound joins {others_phrase} on the {location}|n",
+    ],
+
+    "healing": [
+        "{skintone}a {severity} healing wound and {others_phrase} mend across the {location}|n",
+        "{skintone}the {location} shows a {severity} healing wound among {others_phrase}|n",
+        "{skintone}a {severity} mending wound joins {others_phrase} on the {location}|n",
+    ],
+
+    "destroyed": [
+        "|Ra {severity} ruinous wound and {others_phrase} have wrecked the {location}|n",
+        "|Rthe {location} is a mangled ruin of a {severity} wound and {others_phrase}|n",
+    ],
+
+    "severed": [
+        "|Ra {severity} wound and {others_phrase} surround the ruined {location}|n",
+        "|Rthe ruined {location} is ringed by a {severity} wound and {others_phrase}|n",
+    ],
+
+    "scarred": [
+        "{skintone}a {severity} scar and {others_phrase} crisscross the {location}|n",
+        "{skintone}the {location} is marked by a {severity} scar among {others_phrase}|n",
+        "{skintone}a {severity} old scar joins {others_phrase} on the {location}|n",
+    ],
+}

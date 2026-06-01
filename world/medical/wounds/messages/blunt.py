@@ -65,3 +65,34 @@ WOUND_DESCRIPTIONS = {
         "{skintone}a {severity} healed impact wound scar on the {location}|n"
     ]
 }
+
+
+# Compound descriptions: two or more wounds at one location, worst-first.
+COMPOUND_DESCRIPTIONS = {
+    "fresh": [
+        "|Ra {severity} contusion and {others_phrase} mottle the {location}|n",
+        "|Ra {severity} impact wound joins {others_phrase} across the {location}|n",
+        "|Rthe {location} is battered by a {severity} contusion alongside {others_phrase}|n",
+        "|Ra {severity} contusion and {others_phrase} bruise the {location}|n",
+    ],
+
+    "treated": [
+        "{skintone}a {severity} wrapped contusion and {others_phrase} dress the {location}|n",
+        "{skintone}the {location} carries a {severity} compressed impact wound among {others_phrase}|n",
+    ],
+
+    "healing": [
+        "{skintone}a {severity} fading contusion and {others_phrase} mend across the {location}|n",
+        "{skintone}the {location} shows a {severity} healing impact wound among {others_phrase}|n",
+    ],
+
+    "destroyed": [
+        "|Ra {severity} crushing blow has pulped the {location}, joined by {others_phrase}|n",
+        "|Rthe {location} is a shattered ruin of a {severity} contusion and {others_phrase}|n",
+    ],
+
+    "scarred": [
+        "{skintone}a {severity} impact scar and {others_phrase} discolor the {location}|n",
+        "{skintone}the {location} is mottled by a {severity} contusion scar among {others_phrase}|n",
+    ],
+}

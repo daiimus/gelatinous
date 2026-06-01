@@ -65,3 +65,34 @@ WOUND_DESCRIPTIONS = {
         "{skintone}a {severity} healed projectile wound scar on the {location}|n"
     ]
 }
+
+
+# Compound descriptions: two or more wounds at one location, worst-first.
+COMPOUND_DESCRIPTIONS = {
+    "fresh": [
+        "|Ra {severity} bullet wound and {others_phrase} riddle the {location}|n",
+        "|Ra {severity} gunshot wound joins {others_phrase} across the {location}|n",
+        "|Rthe {location} is torn by a {severity} bullet wound alongside {others_phrase}|n",
+        "|Ra {severity} bullet wound and {others_phrase} pepper the {location}|n",
+    ],
+
+    "treated": [
+        "{skintone}a {severity} bandaged bullet wound and {others_phrase} dress the {location}|n",
+        "{skintone}the {location} carries a {severity} patched gunshot wound among {others_phrase}|n",
+    ],
+
+    "healing": [
+        "{skintone}a {severity} healing bullet wound and {others_phrase} mend across the {location}|n",
+        "{skintone}the {location} shows a {severity} mending gunshot wound among {others_phrase}|n",
+    ],
+
+    "destroyed": [
+        "|Ra {severity} gunshot has shattered the {location}, joined by {others_phrase}|n",
+        "|Rthe {location} is a pulped ruin of a {severity} bullet wound and {others_phrase}|n",
+    ],
+
+    "scarred": [
+        "{skintone}a {severity} bullet scar and {others_phrase} pock the {location}|n",
+        "{skintone}the {location} is stippled by a {severity} gunshot scar among {others_phrase}|n",
+    ],
+}

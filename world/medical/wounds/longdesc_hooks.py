@@ -20,7 +20,14 @@ from .wound_descriptions import (
     get_wound_description,
     _format_wound_grammar,
 )
-from .constants import get_location_display_name, INJURY_SEVERITY_MAP
+from .constants import (
+    get_location_display_name,
+    INJURY_SEVERITY_MAP,
+    MEDICAL_COLORS,
+)
+from . import messages
+
+import random
 
 
 def append_wounds_to_longdesc(original_desc, character, location, looker=None):
@@ -121,13 +128,18 @@ def _compound_phrase(worst_wound, others_count, character=None):
     """
     Concise single-line summary for two or more wounds at one location.
 
-    FUTURE (not implemented this pass): per-injury-type compound templates,
-    mirroring the single-wound ``messages.<type>.WOUND_DESCRIPTIONS`` dicts.
-    A later pass can look up ``messages.<worst_type>.COMPOUND_DESCRIPTIONS``,
-    ``random.choice`` a variant, and fall back to ``messages.generic`` then to
-    the generic phrasing below — exactly how ``get_wound_description`` resolves
-    single wounds. The type message modules are intentionally left untouched
-    until that feature lands.
+    Per-injury-type compound templates mirror the single-wound
+    ``messages.<type>.WOUND_DESCRIPTIONS`` dicts: the worst wound's
+    ``injury_type`` selects a ``messages.<type>.COMPOUND_DESCRIPTIONS``
+    set (falling back to ``messages.generic``), keyed by the worst
+    wound's healing ``stage``. A random variant is chosen and formatted
+    with the worst wound's severity, the location name, and an
+    ``{others_phrase}`` count of the remaining wounds — exactly how
+    ``get_wound_description`` resolves a single wound.
+
+    When no template set resolves (e.g. an injury type with no compound
+    dict and a missing generic fallback), the legacy inline phrasing
+    below is used so the summarizer always returns a sentence.
 
     Args:
         worst_wound (dict): Highest-priority wound at this location.
@@ -137,24 +149,74 @@ def _compound_phrase(worst_wound, others_count, character=None):
     Returns:
         str: A formatted, single-sentence compound summary.
     """
-    location_display = get_location_display_name(worst_wound['location'], character)
-    others_phrase = "another wound" if others_count == 1 else "several other wounds"
+    location_display = get_location_display_name(
+        worst_wound['location'], character
+    )
+    others_phrase = (
+        "another wound" if others_count == 1 else "several other wounds"
+    )
+    stage = worst_wound['stage']
+    injury_type = worst_wound['injury_type']
+    severity = INJURY_SEVERITY_MAP.get(
+        worst_wound['severity'], worst_wound['severity'].lower()
+    )
 
+    template = _resolve_compound_template(injury_type, stage)
+    if template:
+        format_vars = {
+            'severity': severity,
+            'location': location_display,
+            'others_phrase': others_phrase,
+            'skintone': _skintone_color(character),
+        }
+        format_vars.update(MEDICAL_COLORS)
+        return _format_wound_grammar(template.format(**format_vars))
+
+    # Ultimate fallback: legacy inline phrasing (no template set available).
     # No fresh/raw wound in the mix: render a calm, skintone-colored summary.
-    if worst_wound['stage'] in ("treated", "healing", "scarred"):
+    if stage in ("treated", "healing", "scarred"):
         skintone_color = _skintone_color(character)
         phrase = (f"{skintone_color}multiple old wounds mark the "
                   f"{location_display}|n")
         return _format_wound_grammar(phrase)
 
-    severity = INJURY_SEVERITY_MAP.get(
-        worst_wound['severity'], worst_wound['severity'].lower()
-    )
-    injury_type = worst_wound['injury_type']
     type_word = "" if injury_type == "generic" else f"{injury_type} "
     phrase = (f"|Ra {severity} {type_word}wound and {others_phrase} "
               f"mark the {location_display}|n")
     return _format_wound_grammar(phrase)
+
+
+def _resolve_compound_template(injury_type, stage):
+    """
+    Resolve a random compound template for an injury type and stage.
+
+    Mirrors ``get_wound_description`` resolution: look up the injury
+    type's ``COMPOUND_DESCRIPTIONS`` module dict, fall back to
+    ``messages.generic`` when the type has none, then key by ``stage``
+    with a ``"fresh"`` default.
+
+    Args:
+        injury_type (str): Worst wound's injury type (bullet, cut, ...).
+        stage (str): Worst wound's healing stage.
+
+    Returns:
+        str | None: A chosen template string, or ``None`` when no
+            template set is available (caller falls back to inline prose).
+    """
+    compound = None
+    module = getattr(messages, injury_type, None)
+    if module is not None:
+        compound = getattr(module, 'COMPOUND_DESCRIPTIONS', None)
+    if not compound:
+        compound = getattr(messages.generic, 'COMPOUND_DESCRIPTIONS', None)
+    if not compound:
+        return None
+
+    variants = compound.get(stage) or compound.get('fresh')
+    if not variants:
+        return None
+    return random.choice(variants)
+
 
 
 def _skintone_color(character):

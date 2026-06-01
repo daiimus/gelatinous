@@ -65,3 +65,34 @@ WOUND_DESCRIPTIONS = {
         "{skintone}a {severity} faded slash scar in the {location}|n"
     ]
 }
+
+
+# Compound descriptions: two or more wounds at one location, worst-first.
+COMPOUND_DESCRIPTIONS = {
+    "fresh": [
+        "|Ra {severity} laceration and {others_phrase} crisscross the {location}|n",
+        "|Ra {severity} gash joins {others_phrase} across the {location}|n",
+        "|Rthe {location} is opened by a {severity} cut alongside {others_phrase}|n",
+        "|Ra {severity} slash and {others_phrase} score the {location}|n",
+    ],
+
+    "treated": [
+        "{skintone}a {severity} sutured laceration and {others_phrase} dress the {location}|n",
+        "{skintone}the {location} carries a {severity} stitched gash among {others_phrase}|n",
+    ],
+
+    "healing": [
+        "{skintone}a {severity} healing laceration and {others_phrase} mend across the {location}|n",
+        "{skintone}the {location} shows a {severity} knitting gash among {others_phrase}|n",
+    ],
+
+    "destroyed": [
+        "|Ra {severity} cut has flayed the {location}, joined by {others_phrase}|n",
+        "|Rthe {location} is a shredded ruin of a {severity} laceration and {others_phrase}|n",
+    ],
+
+    "scarred": [
+        "{skintone}a {severity} slash scar and {others_phrase} line the {location}|n",
+        "{skintone}the {location} is etched by a {severity} cutting scar among {others_phrase}|n",
+    ],
+}

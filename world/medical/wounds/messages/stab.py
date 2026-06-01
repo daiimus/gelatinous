@@ -65,3 +65,34 @@ WOUND_DESCRIPTIONS = {
         "{skintone}a {severity} faded stab scar in the {location}|n"
     ]
 }
+
+
+# Compound descriptions: two or more wounds at one location, worst-first.
+COMPOUND_DESCRIPTIONS = {
+    "fresh": [
+        "|Ra {severity} stab wound and {others_phrase} punch the {location}|n",
+        "|Ra {severity} puncture joins {others_phrase} across the {location}|n",
+        "|Rthe {location} is pierced by a {severity} stab wound alongside {others_phrase}|n",
+        "|Ra {severity} stab wound and {others_phrase} riddle the {location}|n",
+    ],
+
+    "treated": [
+        "{skintone}a {severity} packed stab wound and {others_phrase} dress the {location}|n",
+        "{skintone}the {location} carries a {severity} bandaged puncture among {others_phrase}|n",
+    ],
+
+    "healing": [
+        "{skintone}a {severity} healing stab wound and {others_phrase} mend across the {location}|n",
+        "{skintone}the {location} shows a {severity} closing puncture among {others_phrase}|n",
+    ],
+
+    "destroyed": [
+        "|Ra {severity} stab wound has mangled the {location}, joined by {others_phrase}|n",
+        "|Rthe {location} is a shredded ruin of a {severity} puncture and {others_phrase}|n",
+    ],
+
+    "scarred": [
+        "{skintone}a {severity} stab scar and {others_phrase} pock the {location}|n",
+        "{skintone}the {location} is stippled by a {severity} puncture scar among {others_phrase}|n",
+    ],
+}

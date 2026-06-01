@@ -2024,13 +2024,37 @@ def _format_wound_grammar(text):
     # Handles color codes like |r, |g, |n and template vars like {skintone}
     
 # Longdesc integration hooks (world/medical/wounds/longdesc_hooks.py)
-def append_wounds_to_longdesc(character, location, base_longdesc):
-    """Integrate wound descriptions into character longdesc"""
-    wounds = get_wounds_for_location(character, location)
-    if wounds:
-        wound_desc = _create_compound_wound_description_for_location(wounds, location)
-        return f"{base_longdesc} {wound_desc}"
-    return base_longdesc
+#
+# Two render paths share one summarizer so multi-wound output is concise:
+#   - append_wounds_to_longdesc        -> location already has a longdesc
+#   - get_standalone_wound_description -> location has wounds but no longdesc
+# Both delegate to _summarize_location_wounds.
+
+def append_wounds_to_longdesc(original_desc, character, location, looker=None):
+    """Append a wound summary onto an existing longdesc for a location."""
+    summary = _summarize_location_wounds(
+        [w for w in get_character_wounds(character) if w['location'] == location],
+        character,
+    )
+    if not summary:
+        return original_desc
+    # Strip the summary's terminal period (preserving any |n reset) so the
+    # combined sentence flows, then re-terminate.
+    return f"{original_desc} {summary.rstrip('.|n')}."
+
+def get_standalone_wound_description(character, location, looker=None):
+    """Return a standalone wound sentence for a location with no longdesc."""
+    return _summarize_location_wounds(
+        [w for w in get_character_wounds(character) if w['location'] == location],
+        character,
+    )
+
+def _summarize_location_wounds(location_wounds, character=None):
+    """One wound -> type/stage description; two or more -> one compound line."""
+    prioritized = _prioritize_wounds_for_display(location_wounds)
+    if len(prioritized) == 1:
+        return get_wound_description(**prioritized[0], character=character)
+    return _compound_phrase(prioritized[0], len(prioritized) - 1, character)
 ```
 
 #### Treatment Quality & Method System
