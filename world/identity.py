@@ -911,6 +911,44 @@ def get_apparent_uid(char: Any) -> str | None:
     ).hexdigest()
 
 
+def get_assigned_name(observer: Any, target: Any) -> str | None:
+    """Return *observer*'s assigned recognition name for *target*.
+
+    Single source of truth for "what name has the observer chosen to
+    remember this character by."  Resolves *target*'s current Apparent
+    UID and looks up the matching ``recognition_memory`` entry on
+    *observer*, returning its non-empty ``assigned_name``.
+
+    Used by the display-name pipeline (:meth:`Character.get_display_name`),
+    identity-aware search (:func:`world.search._match_assigned_name`),
+    and the emote/dot-pose target resolver
+    (:func:`world.emote.build_char_candidates`) so all three agree on the
+    exact name the observer has assigned.
+
+    Note: this returns the assigned name only.  It does NOT attempt
+    disguise piercing — callers that need the full display resolution
+    (assigned name → pierce → sdesc fallback) should use
+    :meth:`Character.get_display_name`.
+
+    Args:
+        observer: The character whose recognition memory is consulted.
+        target: The character being named.
+
+    Returns:
+        The non-empty assigned name string, or ``None`` when the
+        observer has no name assigned for *target*'s current
+        presentation (including when *target* has no Apparent UID).
+    """
+    apparent_uid = get_apparent_uid(target)
+    if apparent_uid is None:
+        return None
+    memory = getattr(observer, "recognition_memory", None)
+    if not memory or apparent_uid not in memory:
+        return None
+    assigned = memory[apparent_uid].get("assigned_name") or ""
+    return assigned or None
+
+
 # Decay stages at which a corpse's body-identity axis (``sleeve_uid``) is
 # no longer recoverable by an unaided observer.  Stages strictly listed
 # here cause :func:`get_apparent_uid_for_decay` to blank the sleeve_uid

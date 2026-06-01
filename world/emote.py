@@ -275,7 +275,11 @@ def build_char_candidates(
         sorted longest first.
     """
     from world.grammar import DEFAULT_SDESC_KEYWORDS, get_article
-    from world.identity import compose_sdesc, get_physical_descriptor
+    from world.identity import (
+        compose_sdesc,
+        get_assigned_name,
+        get_physical_descriptor,
+    )
     from world.search import strip_leading_article
 
     candidates: list[tuple[str, "Character", bool]] = []
@@ -294,6 +298,23 @@ def build_char_candidates(
             stripped = strip_leading_article(display_name)
             if stripped != display_name:
                 names.append((stripped, False))
+
+        # 2b. Individual words of an assigned recognition name.
+        # When the actor has remembered this character under a name like
+        # "Whimsical Wendy", allow targeting by any single word of it
+        # (e.g. "Wendy") — parity with the substring matching used by the
+        # ``look`` path (world.search._match_assigned_name).  Only the
+        # player-assigned name is tokenized; sdescs are NOT, so generic
+        # descriptors ("lanky", "man") never over-match emote prose.  The
+        # length-descending sort below keeps the full name winning when
+        # the actor types it in full.
+        assigned = get_assigned_name(actor, char)
+        if assigned:
+            existing = [n for n, _rc in names]
+            for token in assigned.split():
+                if token and token not in existing:
+                    names.append((token, False))
+                    existing.append(token)
 
         # 3. Raw sdesc (no article)
         sdesc = char.get_sdesc()

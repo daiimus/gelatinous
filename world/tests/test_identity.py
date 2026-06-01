@@ -1327,6 +1327,48 @@ class TestGetApparentUid(TestCase):
         )
 
 
+class TestGetAssignedName(TestCase):
+    """Observer's assigned recognition name for a target."""
+
+    def test_returns_assigned_name_when_remembered(self) -> None:
+        from world.identity import get_apparent_uid, get_assigned_name
+
+        target = _SignatureMockCharacter(sleeve_uid="uid-wendy")
+        observer = _SignatureMockCharacter(sleeve_uid="uid-bob")
+        observer.recognition_memory = {
+            get_apparent_uid(target): {"assigned_name": "Whimsical Wendy"},
+        }
+        self.assertEqual(
+            get_assigned_name(observer, target), "Whimsical Wendy"
+        )
+
+    def test_none_when_no_memory_entry(self) -> None:
+        from world.identity import get_assigned_name
+
+        target = _SignatureMockCharacter(sleeve_uid="uid-wendy")
+        observer = _SignatureMockCharacter(sleeve_uid="uid-bob")
+        self.assertIsNone(get_assigned_name(observer, target))
+
+    def test_none_when_blank_assigned_name(self) -> None:
+        """An entry with an empty assigned_name returns ``None``."""
+        from world.identity import get_apparent_uid, get_assigned_name
+
+        target = _SignatureMockCharacter(sleeve_uid="uid-wendy")
+        observer = _SignatureMockCharacter(sleeve_uid="uid-bob")
+        observer.recognition_memory = {
+            get_apparent_uid(target): {"assigned_name": ""},
+        }
+        self.assertIsNone(get_assigned_name(observer, target))
+
+    def test_none_when_target_has_no_uid(self) -> None:
+        """A target with no Apparent UID can never be named."""
+        from world.identity import get_assigned_name
+
+        target = _SignatureMockCharacter(sleeve_uid=None)
+        observer = _SignatureMockCharacter(sleeve_uid="uid-bob")
+        self.assertIsNone(get_assigned_name(observer, target))
+
+
 class TestGetApparentGender(TestCase):
     """Gender derivation follows keyword override → real grammar gender."""
 

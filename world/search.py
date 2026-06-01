@@ -167,17 +167,9 @@ def _match_assigned_name(
         ``True`` if the searcher's assigned name for *target*'s current
         Apparent UID matches *query*.
     """
-    from world.identity import get_apparent_uid
+    from world.identity import get_assigned_name
 
-    apparent_uid = get_apparent_uid(target)
-    if apparent_uid is None:
-        return False
-
-    memory = getattr(searcher, "recognition_memory", None)
-    if not memory or apparent_uid not in memory:
-        return False
-
-    assigned = memory[apparent_uid].get("assigned_name", "")
+    assigned = get_assigned_name(searcher, target)
     if not assigned:
         return False
 

@@ -1031,17 +1031,13 @@ class Character(
             return self.key
 
         # Check if looker has a recognized name for this Apparent UID.
-        from world.identity import get_apparent_uid
+        from world.identity import get_apparent_uid, get_assigned_name
+
+        assigned = get_assigned_name(looker, self)
+        if assigned:
+            return assigned
 
         apparent_uid = get_apparent_uid(self)
-        if apparent_uid is not None and hasattr(looker, "recognition_memory"):
-            memory = looker.recognition_memory
-            if memory and apparent_uid in memory:
-                entry = memory[apparent_uid]
-                assigned = entry.get("assigned_name")
-                if assigned:
-                    return assigned
-
         # Disguise piercing: looker doesn't know this presentation, but
         # may have previously remembered the underlying sleeve under a
         # different presentation.  Opposed Intellect-vs-Resonance roll

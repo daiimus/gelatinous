@@ -1297,6 +1297,28 @@ If multiple characters match the same target string:
 - If no ordinal and multiple matches, prompt the player: `"Which one? There are two tall men here."`
 - Assigned names should be unique within a player's recognition memory (reassignment overwrites)
 
+### Emote / Dot-Pose Targeting Parity
+
+The emote/dot-pose engine (`world/emote.py`) does **not** route character
+references through `Character.search` — it builds its own candidate list in
+`build_char_candidates()` and matches with whole-string, word-boundary
+regexes. To keep targeting consistent with the `look`/`attack` path
+(`world.search._match_assigned_name`, which matches assigned names by
+case-insensitive **substring**), `build_char_candidates()` additionally
+emits each whitespace-delimited **word** of an occupant's assigned
+recognition name as its own candidate. So an actor who remembers someone as
+`"Whimsical Wendy"` can target them with `.flick a nod at Wendy` (or
+`Whimsical`, or the full name). Only player-**assigned** names are
+tokenized — sdescs are not, so generic descriptors (`"lanky"`, `"man"`)
+never over-match free-form emote prose. The longest-match-first sort keeps
+the full assigned name winning when it is typed in full.
+
+`world.identity.get_assigned_name(observer, target)` is the single source
+of truth for "what name has the observer assigned to this target's current
+Apparent UID." It is consumed by `Character.get_display_name`,
+`world.search._match_assigned_name`, and `world.emote.build_char_candidates`
+so all three resolution paths agree.
+
 ---
 
 ## Staff Vision

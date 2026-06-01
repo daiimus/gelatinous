@@ -847,6 +847,108 @@ class TestCharacterReferences(TestCase):
 
 
 # ===================================================================
+# Tests: Assigned-name word-token targeting (Issue #260)
+# ===================================================================
+
+
+class TestAssignedNameTokenTargeting(TestCase):
+    """Targeting by a single word of a multi-word assigned name.
+
+    Parity with the ``look`` path (world.search._match_assigned_name),
+    which matches assigned names by case-insensitive substring.  The
+    emote engine resolves single words of the assigned name to the
+    remembered character.
+    """
+
+    def setUp(self):
+        self.actor = _make_character(
+            key="Jorge Jackson",
+            sex="male",
+            height="tall",
+            build="lean",
+            sdesc_keyword="man",
+            sleeve_uid="uid-jorge",
+        )
+        self.wendy = _make_character(
+            key="Gertrude Vance",
+            sex="female",
+            height="short",
+            build="athletic",
+            sdesc_keyword="woman",
+            sleeve_uid="uid-wendy",
+        )
+        # Actor remembers Gertrude under a two-word assigned name.
+        self.actor.recognition_memory = {
+            apparent_uid_for(self.wendy): {
+                "assigned_name": "Whimsical Wendy"
+            },
+        }
+
+    def _resolve(self, body):
+        tokens = tokenize_dot_pose(
+            body, self.actor, [self.actor, self.wendy]
+        )
+        return [t for t in tokens if isinstance(t, CharRefToken)]
+
+    def test_full_assigned_name_resolves(self) -> None:
+        """The complete assigned name still resolves."""
+        refs = self._resolve("flick a nod at Whimsical Wendy.")
+        self.assertTrue(refs)
+        self.assertIs(refs[0].character, self.wendy)
+
+    def test_last_word_resolves(self) -> None:
+        """A bare last word of the assigned name resolves (Wendy)."""
+        refs = self._resolve("flick a nod at Wendy.")
+        self.assertTrue(refs)
+        self.assertIs(refs[0].character, self.wendy)
+
+    def test_first_word_resolves(self) -> None:
+        """A bare first word of the assigned name resolves (Whimsical)."""
+        refs = self._resolve("flick a nod at Whimsical.")
+        self.assertTrue(refs)
+        self.assertIs(refs[0].character, self.wendy)
+
+    def test_full_name_wins_over_token(self) -> None:
+        """When the full name is typed, one ref spanning it is produced."""
+        refs = self._resolve("flick a nod at Whimsical Wendy.")
+        self.assertEqual(len(refs), 1)
+        self.assertEqual(refs[0].original_text, "Whimsical Wendy")
+
+    def test_candidate_tokens_present(self) -> None:
+        """build_char_candidates emits each assigned-name word."""
+        candidates = build_char_candidates(
+            self.actor, [self.actor, self.wendy]
+        )
+        names = [name for name, _char, _rc in candidates]
+        self.assertIn("Whimsical Wendy", names)
+        self.assertIn("Whimsical", names)
+        self.assertIn("Wendy", names)
+
+    def test_single_word_name_no_duplicate(self) -> None:
+        """A single-word assigned name is not added twice."""
+        self.actor.recognition_memory = {
+            apparent_uid_for(self.wendy): {"assigned_name": "Wendy"},
+        }
+        candidates = build_char_candidates(
+            self.actor, [self.actor, self.wendy]
+        )
+        names = [name for name, _char, _rc in candidates]
+        self.assertEqual(names.count("Wendy"), 1)
+
+    def test_sdesc_word_does_not_overmatch(self) -> None:
+        """Assigned-name tokenizing must not affect sdesc word matching.
+
+        An observer/actor who has NOT assigned a name still only matches
+        the target through deliberate sdesc/keyword candidates — a stray
+        sdesc adjective in lowercase prose must not resolve.
+        """
+        self.actor.recognition_memory = {}
+        refs = self._resolve("muse about something whimsical.")
+        self.assertEqual(refs, [])
+
+
+
+# ===================================================================
 # Tests: Full Spec Examples
 # ===================================================================
 
