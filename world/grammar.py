@@ -376,7 +376,7 @@ GENDER_MAP: dict[str, str] = {
 
 #: Default sdesc keyword assigned to new characters based on grammar gender.
 #: Used as a fallback when no keyword has been explicitly chosen via
-#: ``@shortdesc``.  Keyed by the grammar gender (output of ``GENDER_MAP``),
+#: ``describe keyword``.  Keyed by the grammar gender (output of ``GENDER_MAP``),
 #: not the raw ``sex`` attribute.
 DEFAULT_SDESC_KEYWORDS: dict[str, str] = {
     "male": "man",

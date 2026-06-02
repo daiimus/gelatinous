@@ -16,6 +16,7 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 
 
 from evennia import default_cmds, CmdSet
+from evennia.commands.default.general import CmdSetDesc
 from commands import CmdCharacter
 from commands import CmdInventory
 from commands import CmdAdmin
@@ -35,8 +36,8 @@ from commands.CmdExplosives import (
     CmdClearDetonator,
 )
 from commands.CmdGraffiti import CmdGraffiti, CmdPress
-from commands.CmdCharacter import CmdLongdesc, CmdSkintone
-from commands.CmdCharacter import CmdShortdesc, CmdRemember, CmdForget, CmdRecall, CmdMemory
+from commands.CmdCharacter import CmdDescribe, CmdSkintone
+from commands.CmdCharacter import CmdRemember, CmdForget, CmdRecall, CmdMemory
 from commands.CmdCommunication import CmdSay, CmdWhisper, CmdEmote, CmdDotPose
 from commands.forensics import CmdAutopsy, CmdHarvest, CmdSever
 from world.emote_templates import SOCIAL_COMMANDS
@@ -176,14 +177,17 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdGraffiti())
         self.add(CmdPress())
         
-        # Add longdesc system command
-        self.add(CmdLongdesc())
+        # Add unified describe command (short desc + keyword + longdesc).
+        # Replaces @longdesc, @shortdesc, and Evennia's default setdesc.
+        self.add(CmdDescribe())
+        # Remove Evennia's default setdesc; the Short Description menu option
+        # and `describe short <text>` now own the main description.
+        self.remove(CmdSetDesc())
         
         # Add skintone system command
         self.add(CmdSkintone())
         
         # Add identity system commands
-        self.add(CmdShortdesc())
         self.add(CmdRemember())
         self.add(CmdForget())
         self.add(CmdRecall())

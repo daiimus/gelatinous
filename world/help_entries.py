@@ -102,7 +102,7 @@ HELP_ENTRY_DICTS = [
             literally with its braces intact, so a typo like |w{thier}|n is easy
             to spot in the preview rather than silently vanishing.
 
-            See also: |whelp @longdesc|n.
+            See also: |whelp describe|n.
         """,
     },
     {

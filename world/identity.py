@@ -1022,7 +1022,7 @@ def get_apparent_gender(char: Any) -> str:
        * Match in the feminine list → ``"female"``
        * Match in the masculine list → ``"male"``
        * Match in the neutral list, **or no match anywhere** (custom
-         ``@shortdesc`` keyword carrying no gender metadata) →
+         ``describe keyword`` keyword carrying no gender metadata) →
          ``"neutral"``.
 
     2. Otherwise, fall through to the character's real grammar gender

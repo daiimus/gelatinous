@@ -2,7 +2,7 @@
 Tests for admin command identity targeting (PR δ).
 
 Verifies that staff commands ``@heal``, ``@testdeath``,
-``@testunconscious``, ``@resetmedical``, ``@longdesc`` (set & clear),
+``@testunconscious``, ``@resetmedical``, ``describe`` (set & clear),
 and ``@skintone`` route character-target resolution through
 ``commands._identity_targeting.resolve_admin_target``.
 
@@ -170,32 +170,32 @@ class TestCmdResetMedicalIdentity(TestCase):
 
 
 # ===================================================================
-# CmdLongdesc — set and clear paths both use helper for staff target
+# CmdDescribe — set and clear paths both use helper for staff target
 # ===================================================================
 
 
-class TestCmdLongdescIdentity(TestCase):
-    """``@longdesc`` set + clear use admin helper for staff targeting."""
+class TestCmdDescribeIdentity(TestCase):
+    """``describe`` set + clear use admin helper for staff targeting."""
 
     def _make_set_cmd(self, args='man head "scarred"'):
-        from commands.CmdCharacter import CmdLongdesc
+        from commands.CmdCharacter import CmdDescribe
 
-        cmd = CmdLongdesc()
-        cmd.key = "@longdesc"
+        cmd = CmdDescribe()
+        cmd.key = "describe"
         cmd.args = args
-        cmd.cmdstring = "@longdesc"
+        cmd.cmdstring = "describe"
         cmd.caller = MagicMock()
         cmd.caller.locks.check_lockstring = lambda *a, **kw: True
         cmd.caller.location = MagicMock()
         return cmd
 
     def _make_clear_cmd(self, args="man head"):
-        from commands.CmdCharacter import CmdLongdesc
+        from commands.CmdCharacter import CmdDescribe
 
-        cmd = CmdLongdesc()
-        cmd.key = "@longdesc"
+        cmd = CmdDescribe()
+        cmd.key = "describe"
         cmd.args = args
-        cmd.cmdstring = "@longdesc"
+        cmd.cmdstring = "describe"
         cmd.caller = MagicMock()
         cmd.caller.locks.check_lockstring = lambda *a, **kw: True
         cmd.caller.location = MagicMock()
@@ -233,7 +233,7 @@ class TestCmdLongdescIdentity(TestCase):
         target.longdesc = MagicMock()
         mock_resolve.return_value = target
         cmd = self._make_clear_cmd(args="man head")
-        # Force the clear path: @longdesc with no quotes is clear.
+        # Force the clear path: describe with no quotes is the view/clear path.
         try:
             cmd.func()
         except Exception:

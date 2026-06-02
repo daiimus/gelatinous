@@ -1,9 +1,9 @@
-"""Unit tests for the interactive ``@longdesc`` editor and shared helpers.
+"""Unit tests for the ``describe`` longdesc helpers and editor nodes.
 
 Covers slot construction (pair collapse, asymmetric sides, extended anatomy,
 anatomical ordering), slot-value reporting (matching vs diverged pairs),
 pair expansion, the rendered preview (plural + singular + stray-token
-warning), and the menu node goto-callables (slot selection and entry
+warning), and the menu node goto-callables (top-level routing and entry
 application, including ``clear``/``back``/length-guard paths).
 
 Run via::
@@ -22,8 +22,8 @@ from commands.CmdCharacter import (
     _longdesc_slot_value,
     _node_longdesc_entry,
     _node_longdesc_exit,
+    _process_describe_choice,
     _process_longdesc_entry,
-    _process_longdesc_slot,
     _render_longdesc_preview,
 )
 from world.combat.constants import (
@@ -34,6 +34,7 @@ from world.combat.constants import (
 
 class _DB:
     skintone = None
+    desc = ""
 
 
 class _NDB:
@@ -44,6 +45,7 @@ class FakeChar(AppearanceMixin):
     """Lightweight host implementing the longdesc surface + real renderer."""
 
     gender = "neutral"
+    sdesc_keyword = None
 
     def __init__(self, locations):
         self._longdesc = dict(locations)
@@ -70,6 +72,9 @@ class FakeChar(AppearanceMixin):
     # --- identity surface ---------------------------------------------
     def get_display_name(self, looker):
         return "Vasquez"
+
+    def get_sdesc(self):
+        return f"a {self.sdesc_keyword or 'person'}"
 
     def msg(self, text):
         self.messages.append(text)
@@ -207,26 +212,37 @@ class SlotSelectionTests(TestCase):
         char.ndb._longdesc_slots = _build_longdesc_slots(char)
         return char
 
+    def test_short_description_choice_routes_to_short_node(self):
+        char = self._char_with_slots()
+        result = _process_describe_choice(char, "1")
+        self.assertEqual(result, "node_describe_short")
+
+    def test_keyword_choice_routes_to_keyword_node(self):
+        char = self._char_with_slots()
+        result = _process_describe_choice(char, "2")
+        self.assertEqual(result, "node_describe_keyword")
+
     def test_valid_number_targets_slot(self):
         char = self._char_with_slots()
-        result = _process_longdesc_slot(char, "1")
+        # Slots begin at 3 (1=short desc, 2=keyword).
+        result = _process_describe_choice(char, "3")
         self.assertEqual(result, "node_longdesc_entry")
         self.assertEqual(char.ndb._longdesc_active_slot, char.ndb._longdesc_slots[0])
 
     def test_out_of_range_redisplays(self):
         char = self._char_with_slots()
-        result = _process_longdesc_slot(char, "999")
+        result = _process_describe_choice(char, "999")
         self.assertIsNone(result)
         self.assertTrue(any("Invalid number" in m for m in char.messages))
 
     def test_non_numeric_redisplays(self):
         char = self._char_with_slots()
-        result = _process_longdesc_slot(char, "eyes")
+        result = _process_describe_choice(char, "eyes")
         self.assertIsNone(result)
 
     def test_exit_choice_routes_to_end_node(self):
         char = self._char_with_slots()
-        result = _process_longdesc_slot(char, "x")
+        result = _process_describe_choice(char, "x")
         self.assertEqual(result, "node_longdesc_exit")
         self.assertFalse(hasattr(char.ndb, "_longdesc_active_slot"))
 
@@ -248,7 +264,7 @@ class EntryApplicationTests(TestCase):
     def test_set_fans_out_to_both_sides(self):
         char = self._char_editing("eyes")
         result = _process_longdesc_entry(char, "brown {eyes}")
-        self.assertEqual(result, "node_longdesc_list")
+        self.assertEqual(result, "node_describe_list")
         self.assertEqual(char.get_longdesc("left_eye"), "brown {eyes}")
         self.assertEqual(char.get_longdesc("right_eye"), "brown {eyes}")
         self.assertTrue(any("Preview" in m for m in char.messages))
@@ -258,7 +274,7 @@ class EntryApplicationTests(TestCase):
         char.set_longdesc("left_eye", "x")
         char.set_longdesc("right_eye", "x")
         result = _process_longdesc_entry(char, "clear")
-        self.assertEqual(result, "node_longdesc_list")
+        self.assertEqual(result, "node_describe_list")
         self.assertIsNone(char.get_longdesc("left_eye"))
         self.assertIsNone(char.get_longdesc("right_eye"))
 
@@ -266,14 +282,14 @@ class EntryApplicationTests(TestCase):
         char = self._char_editing("face")
         char.set_longdesc("face", "original")
         result = _process_longdesc_entry(char, "back")
-        self.assertEqual(result, "node_longdesc_list")
+        self.assertEqual(result, "node_describe_list")
         self.assertEqual(char.get_longdesc("face"), "original")
 
     def test_blank_returns_unchanged(self):
         char = self._char_editing("face")
         char.set_longdesc("face", "original")
         result = _process_longdesc_entry(char, "   ")
-        self.assertEqual(result, "node_longdesc_list")
+        self.assertEqual(result, "node_describe_list")
         self.assertEqual(char.get_longdesc("face"), "original")
 
     def test_too_long_redisplays_entry(self):
@@ -288,4 +304,4 @@ class EntryApplicationTests(TestCase):
         char.ndb._longdesc_slots = _build_longdesc_slots(char)
         # No active slot set: node falls back to rendering the list.
         text, options = _node_longdesc_entry(char, "")
-        self.assertIn("Select a body location", text)
+        self.assertIn("Select an item", text)

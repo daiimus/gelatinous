@@ -546,20 +546,27 @@ class CmdTempPlace(Command):
         return _parse_placement_description(raw_input)
 
 
-class CmdLongdesc(Command):
+class CmdDescribe(Command):
     """
-    Describe your character's body, part by part.
+    Describe how your character looks.
 
-    The easy way: just type |w@longdesc|n with no arguments to open the
-    interactive editor. It lists every body location with its current
-    description; pick a number, type what that part looks like, and you get
-    an instant preview of how others will see it.
+    The easy way: just type |wdescribe|n with no arguments to open the
+    interactive editor. It lists your short description, your keyword, and
+    every body location with its current value; pick a number, type the new
+    text, and you get an instant preview of how others will see it.
+
+    Your appearance has three parts:
+      |cShort Description|n  - the main paragraph shown when others look at you.
+      |cKeyword|n            - the noun strangers see in your sdesc, e.g. the
+                          "|wman|n" in "a lanky man in a Black Trenchcoat".
+      |cBody locations|n     - per-part longdesc text (eyes, hands, ...) woven
+                          into your description when looked at.
 
     |wTokens|n let one description read naturally whether a part is paired or
     a lone survivor. Wrap a number-flexible word in braces and it flexes to
     match: a pair renders plural, a single side renders singular.
 
-        @longdesc eyes "deep brown {eyes} that {accent} {their} skin"
+        describe eyes "deep brown {eyes} that {accent} {their} skin"
 
         both eyes  -> deep brown eyes that accent their skin
         one eye    -> a deep brown eye that accents their skin
@@ -571,16 +578,18 @@ class CmdLongdesc(Command):
     reference.
 
     Usage:
-        @longdesc                               - Open the interactive editor
-        @longdesc <location> "<description>"    - Set one location directly
-        @longdesc <location>                    - View one location
-        @longdesc/list                          - List available body locations
-        @longdesc/clear <location>              - Remove a description
+        describe                                - Open the interactive editor
+        describe short <description>            - Set your short description
+        describe keyword <word>                 - Set your sdesc keyword
+        describe <location> "<description>"     - Set one body location
+        describe <location>                     - View one body location
+        describe/list                           - List available body locations
+        describe/clear <location>               - Remove a body location
 
     Staff Usage:
-        @longdesc <character>                              - View another's
-        @longdesc <character> <location> "<description>"   - Set on another
-        @longdesc/clear <character> <location>             - Clear on another
+        describe <character>                              - View another's
+        describe <character> <location> "<description>"   - Set on another
+        describe/clear <character> <location>             - Clear on another
 
     Symmetric pairs (eyes, ears, arms, hands, thighs, shins, feet) are
     shorthands that set, view, and clear BOTH sides at once. When both sides
@@ -588,10 +597,12 @@ class CmdLongdesc(Command):
     right_eye, ...) if you want them to differ (e.g. heterochromia).
 
     Examples:
-        @longdesc face "weathered features with high cheekbones"
-        @longdesc eyes "piercing blue {eyes} flecked with gold"
-        @longdesc right_hand "a prosthetic metal hand, intricately engraved"
-        @longdesc/clear face
+        describe short "a lanky figure with restless hands"
+        describe keyword droog
+        describe face "weathered features with high cheekbones"
+        describe eyes "piercing blue {eyes} flecked with gold"
+        describe right_hand "a prosthetic metal hand, intricately engraved"
+        describe/clear face
 
     Body locations include: hair, head, face, left_eye, right_eye, left_ear,
     right_ear, neck, chest, back, abdomen, groin, left_arm, right_arm,
@@ -601,13 +612,13 @@ class CmdLongdesc(Command):
     integrated with your base description.
     """
 
-    key = "@longdesc"
+    key = "describe"
     aliases = []
     locks = "cmd:all()"
     help_category = "Character"
 
     def func(self):
-        """Execute the longdesc command."""
+        """Execute the describe command."""
         caller = self.caller
         raw_args = self.args.strip()
         
@@ -632,10 +643,30 @@ class CmdLongdesc(Command):
             self._handle_clear(caller, args)
             return
 
+        # Reserved one-off subcommands operate on the caller only. "keyword"
+        # and "short" are never valid body locations nor plausible character
+        # names, so they are safe to claim before staff target resolution.
+        first, _, rest = args.partition(" ")
+        if first.lower() == "keyword":
+            keyword = rest.strip().lower()
+            if not keyword:
+                caller.msg("Usage: |wdescribe keyword <word>|n")
+                return
+            self._set_keyword(caller, keyword)
+            return
+
+        if first.lower() == "short":
+            text = rest.strip()
+            if not text:
+                caller.msg("Usage: |wdescribe short <description>|n")
+                return
+            self._set_short(caller, text)
+            return
+
         # Parse arguments for main command
         if not args:
-            # Bare @longdesc (self) opens the interactive editor menu.
-            _show_longdesc_menu(caller)
+            # Bare describe (self) opens the interactive editor menu.
+            _show_describe_menu(caller)
             return
 
         # Check if this is staff targeting another character
@@ -682,6 +713,67 @@ class CmdLongdesc(Command):
                 self._view_longdesc(caller, target_char, location)
             else:
                 self._show_all_longdescs(caller, target_char)
+
+    def _set_keyword(self, caller, keyword):
+        """Validate and set an sdesc keyword directly (one-off path)."""
+        from world.identity import (
+            get_all_keywords,
+            is_valid_keyword,
+            log_custom_keyword,
+            validate_custom_keyword,
+        )
+
+        gender = caller.gender
+
+        # Approved-list keyword for this gender — accept immediately.
+        if is_valid_keyword(keyword, gender):
+            self._apply_keyword(caller, keyword)
+            return
+
+        # Gender-restricted approved keyword — reject with clear message.
+        if keyword in get_all_keywords():
+            caller.msg(
+                f"|r'{keyword}' is not available for your character.|n\n"
+                f"Use |wdescribe|n to see the full list."
+            )
+            return
+
+        # Not on any approved list — validate as a custom keyword.
+        valid, reason = validate_custom_keyword(keyword)
+        if not valid:
+            caller.msg(f"|r'{keyword}' is not a valid keyword.|n {reason}")
+            return
+
+        # Accept the custom keyword, log it to the catalog.
+        account = caller.account if caller.account else None
+        log_custom_keyword(keyword, caller.key, account=account)
+        self._apply_keyword(caller, keyword)
+
+    def _apply_keyword(self, caller, keyword):
+        """Set the keyword on the caller and show confirmation."""
+        old_keyword = caller.sdesc_keyword
+        caller.sdesc_keyword = keyword
+
+        sdesc = caller.get_sdesc()
+        if old_keyword:
+            caller.msg(
+                f"Changed keyword from |w{old_keyword}|n to |w{keyword}|n.\n"
+                f"You now appear as: |c{sdesc}|n"
+            )
+        else:
+            caller.msg(
+                f"Set keyword to |w{keyword}|n.\n"
+                f"You now appear as: |c{sdesc}|n"
+            )
+
+    def _set_short(self, caller, text):
+        """Set the caller's main (short) description and show a preview."""
+        caller.db.desc = text
+        caller.msg("Set your short description.")
+        rendered = caller._process_description_variables(
+            text, caller, force_third_person=True
+        )
+        caller.msg(f"|xPreview:|n {rendered}")
 
     def _handle_list_locations(self, caller):
         """Show all available body locations for the character."""
@@ -786,7 +878,7 @@ class CmdLongdesc(Command):
             caller.msg(f"'{location}' is not a valid body location for {target_char.get_display_name(caller)}.")
             available = ", ".join(target_char.get_available_locations()[:10])  # Show first 10
             caller.msg(f"Available locations include: {available}...")
-            caller.msg("Use '@longdesc/list' to see all available locations.")
+            caller.msg("Use 'describe/list' to see all available locations.")
             return
 
         # Validate description length
@@ -1063,8 +1155,8 @@ def _longdesc_slot_value(char, slot):
     return char.get_longdesc(slot), False
 
 
-class _LongdescEvMenu(EvMenu):
-    """EvMenu for the longdesc editor: no border separators, no auto options.
+class _DescribeEvMenu(EvMenu):
+    """EvMenu for the describe editor: no border separators, no auto options.
 
     The node text renders its own numbered list and explicit ``x Exit`` row,
     so the default EvMenu decorations (separator rules and the auto-formatted
@@ -1081,37 +1173,72 @@ class _LongdescEvMenu(EvMenu):
         return nodetext
 
 
-def _show_longdesc_menu(caller):
-    """Open the interactive longdesc editor menu for the caller (self only)."""
+def _show_describe_menu(caller):
+    """Open the interactive describe editor menu for the caller (self only)."""
     caller.ndb._longdesc_slots = _build_longdesc_slots(caller)
-    _LongdescEvMenu(
+    _DescribeEvMenu(
         caller,
         {
-            "node_longdesc_list": _node_longdesc_list,
+            "node_describe_list": _node_describe_list,
+            "node_describe_short": _node_describe_short,
+            "node_describe_keyword": _node_describe_keyword,
             "node_longdesc_entry": _node_longdesc_entry,
             "node_longdesc_exit": _node_longdesc_exit,
         },
-        startnode="node_longdesc_list",
-        cmd_on_exit=_longdesc_exit,
+        startnode="node_describe_list",
+        cmd_on_exit=_describe_exit,
     )
 
 
-def _longdesc_exit(caller, menu):
-    """Clean up ndb data when the longdesc menu closes."""
-    for attr in ("_longdesc_slots", "_longdesc_active_slot"):
+def _describe_exit(caller, menu):
+    """Clean up ndb data when the describe menu closes."""
+    for attr in (
+        "_longdesc_slots",
+        "_longdesc_active_slot",
+        "_shortdesc_keywords",
+        "_shortdesc_gender",
+    ):
         if hasattr(caller.ndb, attr):
             delattr(caller.ndb, attr)
 
 
-def _node_longdesc_list(caller, raw_string, **kwargs):
-    """EvMenu node: numbered list of slots with their current values."""
+def _describe_preview_oneline(text, width=60):
+    """Collapse a description to a single, length-capped preview line."""
+    flat = " ".join(text.split())
+    if len(flat) > width:
+        flat = flat[: width - 1] + "\u2026"
+    return flat
+
+
+def _node_describe_list(caller, raw_string, **kwargs):
+    """EvMenu node: short description, keyword, and body-location slots."""
+    from world.grammar import DEFAULT_SDESC_KEYWORDS
+
     slots = getattr(caller.ndb, "_longdesc_slots", None)
     if slots is None:
         slots = _build_longdesc_slots(caller)
         caller.ndb._longdesc_slots = slots
 
-    text = "\n|xSelect a body location by number to set its description.|n\n"
-    for idx, slot in enumerate(slots, 1):
+    text = "\n|xSelect an item by number to edit it.|n\n"
+
+    # 1) Short description (db.desc).
+    desc = caller.db.desc
+    if desc:
+        shown = f"\"{_describe_preview_oneline(desc)}\""
+    else:
+        shown = "|x(empty)|n"
+    text += f"  |w{1:>2}|n |cShort Description:|n {shown}\n"
+
+    # 2) Sdesc keyword.
+    gender = caller.gender
+    default_kw = DEFAULT_SDESC_KEYWORDS.get(gender, "person")
+    current_kw = caller.sdesc_keyword
+    shown_kw = current_kw if current_kw else f"{default_kw} (default)"
+    text += f"  |w{2:>2}|n |cKeyword:|n {shown_kw}\n"
+
+    # 3..N) Body-location longdesc slots.
+    for offset, slot in enumerate(slots):
+        idx = offset + 3
         value, diverged = _longdesc_slot_value(caller, slot)
         if diverged:
             shown = "|y(sides differ \u2014 editing sets both alike)|n"
@@ -1122,12 +1249,12 @@ def _node_longdesc_list(caller, raw_string, **kwargs):
         text += f"  |w{idx:>2}|n |c{slot}:|n {shown}\n"
     text += f"  |w{'x':>2}|n |cExit|n"
 
-    options = ({"key": "_default", "goto": _process_longdesc_slot},)
+    options = ({"key": "_default", "goto": _process_describe_choice},)
     return text, options
 
 
-def _process_longdesc_slot(caller, raw_string, **kwargs):
-    """Goto-callable: pick a slot to edit by number, or exit."""
+def _process_describe_choice(caller, raw_string, **kwargs):
+    """Goto-callable: route the top-level menu selection."""
     choice = raw_string.strip()
     slots = getattr(caller.ndb, "_longdesc_slots", [])
     if not choice:
@@ -1136,18 +1263,25 @@ def _process_longdesc_slot(caller, raw_string, **kwargs):
     if choice.lower() in ("x", "exit"):
         return "node_longdesc_exit"
 
+    last = len(slots) + 2
     try:
-        idx = int(choice) - 1
+        idx = int(choice)
     except ValueError:
-        caller.msg(f"|rEnter a number 1-{len(slots)}, or |yx|r to exit.|n")
+        caller.msg(f"|rEnter a number 1-{last}, or |yx|r to exit.|n")
         return None
 
-    if not (0 <= idx < len(slots)):
-        caller.msg(f"|rInvalid number. Enter 1-{len(slots)}.|n")
-        return None
+    if idx == 1:
+        return "node_describe_short"
+    if idx == 2:
+        return "node_describe_keyword"
 
-    caller.ndb._longdesc_active_slot = slots[idx]
-    return "node_longdesc_entry"
+    slot_idx = idx - 3
+    if 0 <= slot_idx < len(slots):
+        caller.ndb._longdesc_active_slot = slots[slot_idx]
+        return "node_longdesc_entry"
+
+    caller.msg(f"|rInvalid number. Enter 1-{last}.|n")
+    return None
 
 
 def _node_longdesc_exit(caller, raw_string, **kwargs):
@@ -1155,12 +1289,155 @@ def _node_longdesc_exit(caller, raw_string, **kwargs):
     return "", None
 
 
+def _node_describe_short(caller, raw_string, **kwargs):
+    """EvMenu node: prompt for the caller's main (short) description."""
+    desc = caller.db.desc
+    text = "\n|cEditing: Short Description|n\n"
+    if desc:
+        text += f"\n|xCurrent:|n \"{desc}\"\n"
+        rendered = caller._process_description_variables(
+            desc, caller, force_third_person=True
+        )
+        text += f"\n|xPreview:|n {rendered}\n"
+    else:
+        text += "\n|xCurrent:|n (empty)\n"
+
+    text += (
+        "\n|wType your main description \u2014 the first thing others see when"
+        "\nthey look at you. Use |y{their}/{they}|w for pronoun tokens that"
+        "\nadapt to the viewer; plain prose renders verbatim."
+        "\n\nType |yclear|w to remove it, or |yback|w to return unchanged.|n"
+    )
+
+    options = ({"key": "_default", "goto": _process_describe_short},)
+    return text, options
+
+
+def _process_describe_short(caller, raw_string, **kwargs):
+    """Goto-callable: apply the typed short description (or clear/back)."""
+    entry = raw_string.strip()
+    if not entry or entry.lower() == "back":
+        return "node_describe_list"
+
+    if entry.lower() == "clear":
+        caller.db.desc = ""
+        caller.msg("Cleared your short description.")
+        return "node_describe_list"
+
+    caller.db.desc = entry
+    caller.msg("Set your short description.")
+    rendered = caller._process_description_variables(
+        entry, caller, force_third_person=True
+    )
+    caller.msg(f"|xPreview:|n {rendered}")
+    return "node_describe_list"
+
+
+def _node_describe_keyword(caller, raw_string, **kwargs):
+    """EvMenu node: curated keyword list with a current marker."""
+    from world.identity import get_valid_keywords
+    from world.grammar import DEFAULT_SDESC_KEYWORDS
+
+    gender = getattr(caller.ndb, "_shortdesc_gender", caller.gender)
+    keywords = getattr(caller.ndb, "_shortdesc_keywords", None)
+    if keywords is None:
+        keywords = sorted(get_valid_keywords(gender))
+        caller.ndb._shortdesc_keywords = keywords
+        caller.ndb._shortdesc_gender = gender
+
+    current = caller.sdesc_keyword
+    default_kw = DEFAULT_SDESC_KEYWORDS.get(gender, "person")
+    display_current = current if current else f"{default_kw} (default)"
+
+    text = "\n|cEditing: Keyword|n\n"
+    text += f"\n|xCurrent:|n |w{display_current}|n\n\n"
+
+    # Render in 3 columns.
+    col_width = 26
+    cols = 3
+    rows = (len(keywords) + cols - 1) // cols
+    for row in range(rows):
+        line = "  "
+        for col in range(cols):
+            idx = col * rows + row
+            if idx < len(keywords):
+                kw = keywords[idx]
+                num = f"{idx + 1}"
+                marker = "|g*|n" if kw == current else " "
+                entry = f"|w{num:>3}|n{marker}{kw}"
+                padding = col_width - len(f"{num:>3} {kw}")
+                line += entry + " " * max(padding, 1)
+        text += line.rstrip() + "\n"
+
+    text += (
+        "\n|wEnter a number or keyword name to select. For a custom word, use"
+        "\n|ydescribe keyword <word>|w. Type |yback|w to return.|n"
+    )
+
+    options = ({"key": "_default", "goto": _process_describe_keyword},)
+    return text, options
+
+
+def _process_describe_keyword(caller, raw_string, **kwargs):
+    """Goto-callable: apply a numbered/named keyword (or back)."""
+    choice = raw_string.strip()
+    keywords = getattr(caller.ndb, "_shortdesc_keywords", [])
+    if not choice:
+        return None  # Re-display.
+
+    if choice.lower() == "back":
+        return "node_describe_list"
+
+    # Try as a number.
+    try:
+        idx = int(choice) - 1
+        if 0 <= idx < len(keywords):
+            _menu_apply_keyword(caller, keywords[idx])
+            return "node_describe_list"
+        caller.msg(f"|rInvalid number. Enter 1-{len(keywords)}.|n")
+        return None
+    except ValueError:
+        pass
+
+    # Try as a keyword name.
+    if choice.lower() in {kw.lower() for kw in keywords}:
+        keyword = next(kw for kw in keywords if kw.lower() == choice.lower())
+        _menu_apply_keyword(caller, keyword)
+        return "node_describe_list"
+
+    caller.msg(
+        f"|r'{choice}' is not in the list. Use "
+        f"|ydescribe keyword <word>|r for a custom keyword.|n"
+    )
+    return None
+
+
+def _menu_apply_keyword(caller, keyword):
+    """Set the keyword from the menu and show confirmation (stays in menu)."""
+    old = caller.sdesc_keyword
+    caller.sdesc_keyword = keyword
+    sdesc = caller.get_sdesc()
+
+    if old and old != keyword:
+        caller.msg(
+            f"\nChanged keyword from |w{old}|n to |w{keyword}|n."
+            f"\nYou now appear as: |c{sdesc}|n"
+        )
+    elif old == keyword:
+        caller.msg(f"\nKeyword is already |w{keyword}|n.")
+    else:
+        caller.msg(
+            f"\nSet keyword to |w{keyword}|n."
+            f"\nYou now appear as: |c{sdesc}|n"
+        )
+
+
 def _node_longdesc_entry(caller, raw_string, **kwargs):
     """EvMenu node: prompt for the description of the active slot."""
     slot = getattr(caller.ndb, "_longdesc_active_slot", None)
     if not slot:
         # Defensive: reached without a selection — show the list instead.
-        return _node_longdesc_list(caller, raw_string, **kwargs)
+        return _node_describe_list(caller, raw_string, **kwargs)
 
     value, diverged = _longdesc_slot_value(caller, slot)
     text = f"\n|cEditing: {slot}|n\n"
@@ -1187,22 +1464,22 @@ def _process_longdesc_entry(caller, raw_string, **kwargs):
     """Goto-callable: apply the typed description (or clear/back)."""
     slot = getattr(caller.ndb, "_longdesc_active_slot", None)
     if not slot:
-        return "node_longdesc_list"
+        return "node_describe_list"
 
     entry = raw_string.strip()
     if not entry or entry.lower() == "back":
-        return "node_longdesc_list"
+        return "node_describe_list"
 
     locations = _expand_longdesc_pair(caller, slot)
     if not locations:
         caller.msg(f"|r'{slot}' is no longer a valid location.|n")
-        return "node_longdesc_list"
+        return "node_describe_list"
 
     if entry.lower() == "clear":
         for loc in locations:
             caller.set_longdesc(loc, None)
         caller.msg(f"Cleared description for {slot}.")
-        return "node_longdesc_list"
+        return "node_describe_list"
 
     if len(entry) > MAX_DESCRIPTION_LENGTH:
         caller.msg(
@@ -1216,7 +1493,7 @@ def _process_longdesc_entry(caller, raw_string, **kwargs):
     caller.msg(f"Set description for {slot}.")
     for line in _render_longdesc_preview(caller, caller, slot, locations, entry):
         caller.msg(line)
-    return "node_longdesc_list"
+    return "node_describe_list"
 
 
 class CmdSkintone(Command):
@@ -1350,227 +1627,6 @@ class CmdSkintone(Command):
 # ===================================================================
 # IDENTITY SYSTEM COMMANDS
 # ===================================================================
-
-
-class CmdShortdesc(Command):
-    """
-    View or change your short description keyword.
-
-    Usage:
-      @shortdesc               - show current keyword and open selection menu
-      @shortdesc change        - open selection menu
-      @shortdesc <keyword>     - instantly set your keyword
-
-    Your short description (sdesc) is how strangers see you before they
-    learn your name.  It consists of a physical descriptor (derived from
-    your height and build), a keyword (set here), and a distinguishing
-    feature (auto-derived from what you're wielding or wearing).
-
-    Example sdesc: "a lanky man in a Black Trenchcoat"
-                         ^^^
-                      keyword
-
-    Available keywords depend on your character's gender.
-    """
-
-    key = "@shortdesc"
-    aliases = ["shortdesc"]
-    locks = "cmd:all()"
-    help_category = "Character"
-
-    def func(self):
-        caller = self.caller
-        args = self.args.strip().lower()
-
-        if not args or args == "change":
-            self._show_menu(caller)
-            return
-
-        # Instant-set mode
-        self._set_keyword(caller, args)
-
-    def _set_keyword(self, caller, keyword):
-        """Validate and set a keyword directly."""
-        from world.identity import (
-            get_all_keywords,
-            is_valid_keyword,
-            log_custom_keyword,
-            validate_custom_keyword,
-        )
-
-        gender = caller.gender
-
-        # Approved-list keyword for this gender — accept immediately.
-        if is_valid_keyword(keyword, gender):
-            self._apply_keyword(caller, keyword)
-            return
-
-        # Gender-restricted approved keyword — reject with clear message.
-        if keyword in get_all_keywords():
-            caller.msg(
-                f"|r'{keyword}' is not available for your character.|n\n"
-                f"Use |w@shortdesc|n to see the full list."
-            )
-            return
-
-        # Not on any approved list — validate as a custom keyword.
-        valid, reason = validate_custom_keyword(keyword)
-        if not valid:
-            caller.msg(f"|r'{keyword}' is not a valid keyword.|n {reason}")
-            return
-
-        # Accept the custom keyword, log it to the catalog.
-        account = caller.account if caller.account else None
-        log_custom_keyword(keyword, caller.key, account=account)
-        self._apply_keyword(caller, keyword)
-
-    def _apply_keyword(self, caller, keyword):
-        """Set the keyword on the caller and show confirmation."""
-        old_keyword = caller.sdesc_keyword
-        caller.sdesc_keyword = keyword
-
-        sdesc = caller.get_sdesc()
-        if old_keyword:
-            caller.msg(
-                f"Changed keyword from |w{old_keyword}|n to |w{keyword}|n.\n"
-                f"You now appear as: |c{sdesc}|n"
-            )
-        else:
-            caller.msg(
-                f"Set keyword to |w{keyword}|n.\n"
-                f"You now appear as: |c{sdesc}|n"
-            )
-
-    def _show_menu(self, caller):
-        """Open the EvMenu keyword selection interface."""
-        from evennia.utils.evmenu import EvMenu
-        from world.identity import get_valid_keywords
-        from world.grammar import DEFAULT_SDESC_KEYWORDS
-
-        gender = caller.gender
-        valid_keywords = sorted(get_valid_keywords(gender))
-        current = caller.sdesc_keyword
-        sdesc = caller.get_sdesc()
-
-        # Store data for the menu node
-        caller.ndb._shortdesc_keywords = valid_keywords
-        caller.ndb._shortdesc_gender = gender
-
-        EvMenu(
-            caller,
-            {"node_keyword_list": _node_keyword_list},
-            startnode="node_keyword_list",
-            cmd_on_exit=_shortdesc_exit,
-        )
-
-
-def _shortdesc_exit(caller, menu):
-    """Clean up ndb data when the menu closes."""
-    if hasattr(caller.ndb, "_shortdesc_keywords"):
-        del caller.ndb._shortdesc_keywords
-    if hasattr(caller.ndb, "_shortdesc_gender"):
-        del caller.ndb._shortdesc_gender
-
-
-def _node_keyword_list(caller, raw_string, **kwargs):
-    """EvMenu node: display keyword list and accept selection."""
-    from world.identity import get_valid_keywords
-    from world.grammar import DEFAULT_SDESC_KEYWORDS
-
-    gender = getattr(caller.ndb, "_shortdesc_gender", caller.gender)
-    keywords = getattr(caller.ndb, "_shortdesc_keywords", None)
-    if keywords is None:
-        keywords = sorted(get_valid_keywords(gender))
-        caller.ndb._shortdesc_keywords = keywords
-
-    current = caller.sdesc_keyword
-    default_kw = DEFAULT_SDESC_KEYWORDS.get(gender, "person")
-    display_current = current if current else f"{default_kw} (default)"
-    sdesc = caller.get_sdesc()
-
-    # Build numbered list in columns
-    text = f"\n|c=== Short Description Keyword ===|n\n"
-    text += f"\n  Current keyword: |w{display_current}|n"
-    text += f"  |xYou appear as: |c{sdesc}|n|x\n"
-    text += f"\n|yAvailable keywords for your character:|n\n"
-
-    # Render in 3 columns
-    col_width = 26
-    cols = 3
-    rows = (len(keywords) + cols - 1) // cols
-    for row in range(rows):
-        line = "  "
-        for col in range(cols):
-            idx = col * rows + row
-            if idx < len(keywords):
-                kw = keywords[idx]
-                num = f"{idx + 1}"
-                marker = "|g*|n" if kw == current else " "
-                entry = f"|w{num:>3}|n{marker}{kw}"
-                # Pad to column width (accounting for color codes)
-                padding = col_width - len(f"{num:>3} {kw}")
-                line += entry + " " * max(padding, 1)
-        text += line.rstrip() + "\n"
-
-    text += (
-        f"\n|wEnter a number (1-{len(keywords)}) or keyword name to select."
-        f"\nYou can also use |y@shortdesc <word>|w to set a custom keyword."
-        f"\nType |yquit|w to exit.|n"
-    )
-
-    options = ({"key": "_default", "goto": _process_keyword_choice},)
-    return text, options
-
-
-def _process_keyword_choice(caller, raw_string, **kwargs):
-    """Goto-callable: process numbered or text keyword input."""
-    choice = raw_string.strip().lower()
-    keywords = getattr(caller.ndb, "_shortdesc_keywords", [])
-
-    if not choice:
-        return None  # Re-display
-
-    # Try as a number
-    try:
-        idx = int(choice) - 1
-        if 0 <= idx < len(keywords):
-            keyword = keywords[idx]
-            return _apply_keyword(caller, keyword)
-        else:
-            caller.msg(f"|rInvalid number. Enter 1-{len(keywords)}.|n")
-            return None  # Re-display
-    except ValueError:
-        pass
-
-    # Try as a keyword name
-    if choice in {kw.lower() for kw in keywords}:
-        # Find the actual-case keyword
-        keyword = next(kw for kw in keywords if kw.lower() == choice)
-        return _apply_keyword(caller, keyword)
-
-    caller.msg(f"|r'{raw_string.strip()}' is not a valid keyword or number.|n")
-    return None  # Re-display
-
-
-def _apply_keyword(caller, keyword):
-    """Set the keyword and exit the menu."""
-    old = caller.sdesc_keyword
-    caller.sdesc_keyword = keyword
-    sdesc = caller.get_sdesc()
-
-    if old and old != keyword:
-        caller.msg(
-            f"\nChanged keyword from |w{old}|n to |w{keyword}|n."
-            f"\nYou now appear as: |c{sdesc}|n"
-        )
-    elif old == keyword:
-        caller.msg(f"\nKeyword is already |w{keyword}|n.")
-    else:
-        caller.msg(
-            f"\nSet keyword to |w{keyword}|n."
-            f"\nYou now appear as: |c{sdesc}|n"
-        )
-    return None  # Exit menu after setting
 
 
 class CmdRemember(Command):
@@ -2523,7 +2579,7 @@ class CmdAppear(Command):
     sleeve — that's a tell).
 
     A keyword override accepts any keyword from the full catalog
-    (gender restrictions don't apply to disguise).  Use |w@shortdesc|n
+    (gender restrictions don't apply to disguise).  Use |wdescribe keyword|n
     to introduce new keywords to the catalog.
 
     A persona is a previously saved snapshot of all three override axes
@@ -2615,8 +2671,8 @@ class CmdAppear(Command):
         if keyword not in {kw.lower() for kw in get_all_keywords()}:
             caller.msg(
                 f"|r'{raw_keyword}' isn't a recognized keyword or persona.|n  "
-                f"Use |w@shortdesc|n to introduce new keywords to the "
-                f"catalog first."
+                f"Use |wdescribe keyword <word>|n to introduce new keywords "
+                f"to the catalog first."
             )
             return
         self._maybe_break_persona(caller)

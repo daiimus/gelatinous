@@ -32,7 +32,7 @@ What strangers see instead of a name. Composed from observable physical traits:
 ```
 
 - **Physical descriptor** — auto-derived from height × build (immutable without a new sleeve)
-- **Keyword** — player-selected via `@shortdesc`, gender-gated
+- **Keyword** — player-selected via `describe keyword`, gender-gated
 - **Distinguishing feature** — auto-derived from visible state: clothing > hair > nothing
 
 Skintone is deliberately excluded from the sdesc. It appears only in the longdesc when someone `look`s at the character directly.
@@ -119,7 +119,7 @@ Derived from the cross-product of height and build. Players select height and bu
 
 ### Keyword List
 
-Players select their keyword via `@shortdesc`. Keywords are gender-gated: feminine-presenting and gender-neutral keywords are available to female characters, masculine-presenting and gender-neutral to male characters. The `appear` command allows selecting **any keyword from the full catalog** regardless of the character's gender — a male character can disguise as a "woman" and vice versa. This is available to all characters, not restricted by access level.
+Players select their keyword via `describe keyword`. Keywords are gender-gated: feminine-presenting and gender-neutral keywords are available to female characters, masculine-presenting and gender-neutral to male characters. The `appear` command allows selecting **any keyword from the full catalog** regardless of the character's gender — a male character can disguise as a "woman" and vice versa. This is available to all characters, not restricted by access level.
 
 **Feminine-presenting (24):**
 female, girl, lass, woman, matron, grandma, hag, granny, madam, tomboy, chick, gal, chica, vixen, diva, dame, sheila, mona, bimbo, bitch, lady, senorita, chola, devotchka
@@ -179,16 +179,22 @@ Two new attributes selected at character creation:
 
 Combined for display: `"{hair_color} {hair_style} hair"` → `"red dreaded hair"` or shorthand like `"red dreadlocks"`. The exact phrasing can use a small mapping table for natural-sounding combinations (e.g., "dreaded" + color → `"{color} dreadlocks"`).
 
-### `@shortdesc` Command
+### `describe keyword` Command
 
 ```
-@shortdesc <keyword>
+describe keyword <word>
 ```
 
 Changes the player's keyword component only. Validates against the gender-gated keyword list. The physical descriptor and distinguishing feature cannot be set this way — they reflect reality.
 
+The keyword is also editable from the interactive `describe` editor (bare
+`describe` → item `2 Keyword`), which presents the gender-gated catalog as a
+selectable list. The former standalone `@shortdesc` command has been merged
+into `describe` (issue #276); `describe keyword <word>` is its direct
+replacement and the only path for **custom** (off-catalog) keywords.
+
 ```
-> @shortdesc droog
+> describe keyword droog
 You will now appear as "a lanky droog in a leather jacket" to those who don't know you.
 ```
 
@@ -645,7 +651,7 @@ Pronouns must follow the disguise. A character presenting as "a woman" should be
 1. If the character has an active `keyword_override`, look the override up in the runtime keyword catalog (`ServerConfig` entries under keys `identity.feminine_keywords` / `identity.masculine_keywords` / `identity.neutral_keywords`, falling back to the `_DEFAULT_FEMININE_KEYWORDS` / `_DEFAULT_MASCULINE_KEYWORDS` / `_DEFAULT_NEUTRAL_KEYWORDS` frozensets in `world/identity.py` when a key is unset).
    - Match in the feminine list → render as `she/her/hers`.
    - Match in the masculine list → render as `he/him/his`.
-   - Match in the neutral list, **or no match anywhere** (e.g. a custom `@shortdesc` keyword such as `ronin` or `wraith`, which carries no gender metadata in `KeywordEvent`) → render as `they/them/theirs` (singular they).
+   - Match in the neutral list, **or no match anywhere** (e.g. a custom `describe keyword` keyword such as `ronin` or `wraith`, which carries no gender metadata in `KeywordEvent`) → render as `they/them/theirs` (singular they).
 2. If the character has **no** active `keyword_override`, pronouns derive from the character's real `gender` property as today (no behavior change for undisguised characters).
 
 **Implementation surface (engine PR):**
@@ -654,7 +660,7 @@ A single helper, conceptually `get_apparent_gender(char)`, returns one of `"male
 
 **No explicit `gender_override` axis in Phase 3.** Derivation is sufficient: a player who wants to be referred to with a different pronoun set picks a keyword from the desired gender list (the full catalog is available via `appear <keyword>`, gender filter bypassed). An explicit override axis is noted in Future Hooks for the case where a player wants a custom keyword *and* a non-neutral pronoun set.
 
-**Custom-keyword consequence:** Keywords minted via `@shortdesc` (logged as `KeywordEvent` rows) have no gender field on the model. They will always render neutral under this rule. This is acceptable — custom keywords are deliberately ambiguous, and forcing the player to also pick from the gendered catalog if they want gendered pronouns matches the deliberate-tradecraft theme of the system.
+**Custom-keyword consequence:** Keywords minted via `describe keyword` (logged as `KeywordEvent` rows) have no gender field on the model. They will always render neutral under this rule. This is acceptable — custom keywords are deliberately ambiguous, and forcing the player to also pick from the gendered catalog if they want gendered pronouns matches the deliberate-tradecraft theme of the system.
 
 ### Personas — Player-Facing Persona Recall
 
@@ -702,7 +708,7 @@ graph LR
 - `appear` — show current overrides + active persona
 - `appear taller | shorter` — nudge perceived height one step on the `HEIGHTS` scale; refuses at the extremes (an unreachable axis value is itself a tell)
 - `appear thinner | fatter` — same on the `BUILDS` scale
-- `appear <keyword>` — present as the given keyword; validated against the full keyword catalog (gender filter does not apply to disguise). New keywords are introduced via `@shortdesc`, not via `appear`.
+- `appear <keyword>` — present as the given keyword; validated against the full keyword catalog (gender filter does not apply to disguise). New keywords are introduced via `describe keyword`, not via `appear`.
 - `appear <persona name>` — restore a saved persona (clean swap)
 - `stop appearing` — clear all overrides and any adopted-persona pointer; the only canonical clear verb (no aliases)
 - `remember me as <persona name>` — snapshot current overrides as a persona; allowed even with no axes set (intentional — supports saving a baseline)
@@ -1041,7 +1047,7 @@ These are designed into the architecture but not implemented yet:
 - **Voice modulation**: Integration with say/whisper/communication so voice becomes part of the identity signature for observers who can hear but not see (or in addition to visual identification).
 - **Web UI integration**: Personas designed to mirror the planned identity/contact archive system; eventual web UI surface for managing personas, photos, and contact memory in one place.
 - **Salt-acquisition mechanics for true impersonation**: Stolen contact cards, hacked digital identities, and other adversarial means by which an impostor can acquire the original's salt and become auto-recognized as them.
-- **Explicit `gender_override` axis**: Phase 3 derives pronouns from `keyword_override` against the catalog's gender lists, so a player who wants gendered pronouns picks a gendered keyword. A future explicit override axis would let a player pair a custom (`@shortdesc`) keyword with a chosen pronoun set without forcing them through a catalog keyword. Deferred until a real player need surfaces.
+- **Explicit `gender_override` axis**: Phase 3 derives pronouns from `keyword_override` against the catalog's gender lists, so a player who wants gendered pronouns picks a gendered keyword. A future explicit override axis would let a player pair a custom (`describe keyword`) keyword with a chosen pronoun set without forcing them through a catalog keyword. Deferred until a real player need surfaces.
 - **Forensic linking of multiple Apparent UIDs to one real identity**: Investigation gameplay where a sufficiently-resourced investigator can correlate multiple recognition entries (different Apparent UIDs) and infer they refer to the same underlying `sleeve_uid`. Requires evidence-system integration (Phase 5+).
 - **Player-initiated lost-contact pruning**: A `forget --lost` (or similar) command letting players explicitly drop entries the system has marked `lost_contact`. Auto-pruning is deliberately not done; this gives the player the choice.
 
@@ -2420,7 +2426,7 @@ the decay-tier fallback until autopsied.
 | `db.build` | str | Selected at chargen | Chargen | Yes |
 | `db.hair_color` | str or None | Selected at chargen | Chargen / `@hair` | Yes |
 | `db.hair_style` | str or None | Selected at chargen | Chargen / `@hair` | Yes |
-| `db.sdesc_keyword` | str | Selected at chargen | `@shortdesc` | Yes |
+| `db.sdesc_keyword` | str | Selected at chargen | `describe keyword` | Yes |
 
 `sdesc_physical` is not stored — it is computed on access from `height` and `build` via the descriptor table.
 
@@ -2500,7 +2506,8 @@ gender-appropriate default (`DEFAULT_SDESC_KEYWORDS[gender]` —
 `"man"` / `"woman"` / `"person"`) via the lazy fallback in
 `Character.get_sdesc()` (`typeclasses/characters.py`). Players
 customize their keyword at any time post-chargen via the
-`@shortdesc` command, which presents the gender-gated approved list
+`describe keyword` command (or the interactive `describe` editor),
+which presents the gender-gated approved list
 and accepts custom alpha-only keywords (logged as
 `KeywordEvent(event_type="custom_set")`). This keeps the chargen
 flow short and defers a writing decision until the player has
@@ -2519,7 +2526,7 @@ Existing characters need identity attributes backfilled. Use the existing `@fixc
 
 1. Generate `sleeve_uid` for all existing characters (unique per character)
 2. Set default `height` = `"average"`, `build` = `"average"` (or derive from existing descriptive data if possible)
-3. Set default `hair_color` and `hair_style` = `None` (forces players to set via `@shortdesc` or `@hair`)
+3. Set default `hair_color` and `hair_style` = `None` (forces players to set via `describe keyword` or `@hair`)
 4. Set default `sdesc_keyword` based on existing `sex` attribute (`"man"` for male, `"woman"` for female, `"person"` for ambiguous)
 5. Initialize empty `recognition_memory` (Character AttributeProperty; defaults to `{}` automatically)
 6. Staff can run `@fixchar/all` to batch-process
@@ -2553,7 +2560,7 @@ Per-phase detail below.
 - Sdesc composition logic
 - `recognition_memory` AttributeProperty on Character (migration to brain organ deferred — see §Memory Architecture)
 - `Character.get_display_name(looker)` override
-- `@shortdesc` command
+- `describe keyword` command (keyword facet of the unified `describe`)
 - `remember` / `forget` / `recall` / `memory` commands
 - Grammar engine (articles, possessive, objective, self-perception)
 - Chargen updates

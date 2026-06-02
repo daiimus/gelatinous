@@ -1404,7 +1404,7 @@ class TestGetApparentGender(TestCase):
         self.assertEqual(get_apparent_gender(char), "neutral")
 
     def test_custom_keyword_override_returns_neutral(self) -> None:
-        """Custom ``@shortdesc`` keywords carry no gender metadata → neutral."""
+        """Custom ``describe keyword`` keywords carry no gender metadata → neutral."""
         from world.identity import get_apparent_gender
 
         char = _SignatureMockCharacter(

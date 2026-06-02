@@ -13,7 +13,7 @@ class KeywordEvent(models.Model):
     Tracks three kinds of events:
 
     * **custom_set** — A player set a custom (non-approved) keyword via
-      ``@shortdesc``.
+      ``describe keyword``.
     * **admin_add** — An admin added a keyword to the approved list via
       ``@keywords add``.
     * **admin_remove** — An admin removed a keyword from the approved

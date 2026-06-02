@@ -122,10 +122,10 @@ propagate to already-existing characters. Their stored dict keeps the key set
 
 Consequences for a body that predates a new default location:
 - The location is absent from `get_available_locations()`, so it never appears
-  in `@longdesc/list`.
-- `has_location()` returns `False` for it, so `@longdesc <new_location> "..."`
+  in `describe/list`.
+- `has_location()` returns `False` for it, so `describe <new_location> "..."`
   is rejected — the player cannot describe a body part they anatomically have.
-- `@longdesc/list` groups by region in **dict-insertion order**, so a key added
+- `describe/list` groups by region in **dict-insertion order**, so a key added
   out of canonical position can also display out of anatomical order.
 
 **Whenever `DEFAULT_LONGDESC_LOCATIONS` gains a location (or its order
@@ -155,26 +155,38 @@ print(f"Updated {updated} characters")
 ```
 
 Because the rebuild also reorders each dict into canonical order, it doubles
-as the fix for `@longdesc/list` showing a backfilled key (e.g. `hair`) out of
+as the fix for `describe/list` showing a backfilled key (e.g. `hair`) out of
 position. This procedure was used to propagate the `hair` location (added in
 #176) to the 155 pre-existing bodies that lacked it.
 
 ## Command Interface
 
-### Primary Command: `@longdesc`
+### Primary Command: `describe`
 
-**Syntax**: `@longdesc <location> "<description>"`
+As of the command-merge work (issue #276), the former `@longdesc`,
+`@shortdesc`, and Evennia's default `setdesc` are unified into a single
+`describe` command (`commands/CmdCharacter.py::CmdDescribe`, `key="describe"`,
+**no aliases**). It owns all three facets of a character's appearance:
+
+- **Short Description** — the main paragraph (`db.desc`), formerly `setdesc`.
+- **Keyword** — the sdesc noun (`sdesc_keyword`), formerly `@shortdesc`.
+- **Body locations** — per-part longdesc text (the subject of this spec).
+
+`describe` is **not** aliased to `desc` to avoid colliding with Evennia's
+builder `@desc`; that decision is deferred.
+
+**Syntax**: `describe <location> "<description>"`
 
 **Examples**:
 ```
-@longdesc face "weathered features with high cheekbones"
-@longdesc left_eye "a piercing blue eye with flecks of gold"
-@longdesc right_eye "a cybernetic replacement with a red LED"
-@longdesc left_hand "calloused hand with dirt under the fingernails"
-@longdesc right_hand "a prosthetic metal hand with intricate engravings"
-@longdesc chest "broad shoulders tapering to a narrow waist"
-@longdesc tail "a long, serpentine tail ending in a barbed tip"
-@longdesc left_wing "a massive feathered wing, midnight black"
+describe face "weathered features with high cheekbones"
+describe left_eye "a piercing blue eye with flecks of gold"
+describe right_eye "a cybernetic replacement with a red LED"
+describe left_hand "calloused hand with dirt under the fingernails"
+describe right_hand "a prosthetic metal hand with intricate engravings"
+describe chest "broad shoulders tapering to a narrow waist"
+describe tail "a long, serpentine tail ending in a barbed tip"
+describe left_wing "a massive feathered wing, midnight black"
 ```
 
 ### Command Behavior
@@ -187,38 +199,61 @@ position. This procedure was used to propagate the `hair` location (added in
 - **Staff override**: Staff with Builder+ permissions can target other characters
 
 ### Command Variations
-- `@longdesc <location>` - View current description for location
-- `@longdesc/list` - List all available body locations for this character
-- `@longdesc` - Open the interactive editor menu (self only)
-- `@longdesc/clear <location>` - Remove description for location (set to None)
+- `describe` - Open the interactive editor menu (self only)
+- `describe short <description>` - Set the short description (`db.desc`)
+- `describe keyword <word>` - Set the sdesc keyword (`sdesc_keyword`)
+- `describe <location> "<description>"` - Set one body location
+- `describe <location>` - View current description for location
+- `describe/list` - List all available body locations for this character
+- `describe/clear <location>` - Remove description for location (set to None)
+
+The `keyword` and `short` sub-words are reserved one-off forms that always
+operate on the caller; they are claimed before staff target resolution because
+they are neither valid body locations nor plausible character names.
 
 #### Staff Commands (Permission Override)
-- `@longdesc <character> <location> "<description>"` - Set longdesc on another character
-- `@longdesc <character>` - View all set longdescs on another character
-- `@longdesc/clear <character> <location>` - Clear specific location on another character
+- `describe <character> <location> "<description>"` - Set longdesc on another character
+- `describe <character>` - View all set longdescs on another character
+- `describe/clear <character> <location>` - Clear specific location on another character
 
 ### Interactive Editor (EvMenu)
 
-Bare `@longdesc` (acting on self) opens an EvMenu-driven editor instead of
-printing a static list. The flow:
+Bare `describe` (acting on self) opens an EvMenu-driven editor instead of
+printing a static list. The list is **flat**: the Short Description and Keyword
+sit above the anatomy slots so a player edits every facet of their appearance
+from one place. The flow:
 
-1. **List node** (`node_longdesc_list`): a one-per-line numbered list of
-   editable **slots** with each slot's current value. Slots are built by
-   `_build_longdesc_slots`:
-   - Symmetric pairs collapse to their shorthand (`eyes`, `hands`, ...) so the
-     dynamic anatomy reads as a clean, compact list.
-   - An asymmetric pair (only one side present) shows that side individually.
-   - Non-pair locations show as themselves; extended anatomy is appended after
-     the anatomical-order entries.
-   - A pair whose two sides currently diverge is flagged (editing it via the
-     shorthand sets both sides alike).
-2. **Entry node** (`node_longdesc_entry`): shows the slot's current value and a
+1. **List node** (`node_describe_list`): a one-per-line numbered list whose
+   first two rows are fixed and the rest are dynamic body slots:
+   - `1 Short Description:` — current `db.desc` (one-line preview, or `(empty)`).
+   - `2 Keyword:` — current `sdesc_keyword`, or the gendered default marked
+     `(default)`.
+   - `3..N` — editable longdesc **slots**, built by `_build_longdesc_slots`:
+     - Symmetric pairs collapse to their shorthand (`eyes`, `hands`, ...) so the
+       dynamic anatomy reads as a clean, compact list.
+     - An asymmetric pair (only one side present) shows that side individually.
+     - Non-pair locations show as themselves; extended anatomy is appended after
+       the anatomical-order entries.
+     - A pair whose two sides currently diverge is flagged (editing it via the
+       shorthand sets both sides alike).
+   - `x Exit` closes the menu cleanly.
+2. **Short Description node** (`node_describe_short`): shows the current value
+   and a live rendered preview (`_process_description_variables` with
+   `force_third_person=True`), then accepts new prose. `clear` empties it,
+   `back`/blank returns unchanged. No length cap is applied to the short
+   description.
+3. **Keyword node** (`node_describe_keyword`): a curated 3-column list of the
+   keywords valid for the character's grammar gender, with the current keyword
+   marked. Selection (by number or name) applies the keyword and **returns to
+   the list** (stays in the menu). Custom keywords are set via the one-off
+   `describe keyword <word>` command.
+4. **Entry node** (`node_longdesc_entry`): shows the slot's current value and a
    token hint, then accepts the new description. `clear` removes it, `back`/blank
    returns unchanged, over-length input is rejected and re-prompts.
-3. On save the description fans out to both sides of a pair (or the single
+5. On save the longdesc fans out to both sides of a pair (or the single
    location) and a **rendered preview** is shown.
 
-The one-off `@longdesc <location> "<description>"` form is retained and shares
+The one-off `describe <location> "<description>"` form is retained and shares
 the same preview output.
 
 ### Rendered Preview
@@ -230,7 +265,7 @@ singular form. Any brace token the resolver does not recognise survives in the
 rendered output and is surfaced as an explicit warning, so typos like
 `{thier}` are caught at authoring time rather than shipped silently. The
 preview fires after both the interactive editor save and the one-off
-`@longdesc <location> "..."` command.
+`describe <location> "..."` command.
 
 
 ## Implementation Details
@@ -362,7 +397,7 @@ Number tokens (see `GRAMMAR_ENGINE_SPEC.md` §Number-Flexing Tokens):
   logged — a stray brace no longer drops the whole substitution (the old
   `str.format` footgun is gone; substitution is now per-token via `re.sub`).
 
-**Authoring convenience — pair shorthand**: `@longdesc <pair> "..."` (where
+**Authoring convenience — pair shorthand**: `describe <pair> "..."` (where
 `<pair>` is a `PAIR_MERGE_KEYS` key: `eyes`, `ears`, `arms`, `hands`,
 `thighs`, `shins`, `feet`) sets, views, and clears **both** sides at once,
 guaranteeing the byte-for-byte identity collapse requires. The pair keys are
@@ -385,7 +420,7 @@ currently done.)
 `_substitute_longdesc_tokens`, and `_pair_base_nouns` in
 `typeclasses/appearance_mixin.py`, consulted by both passes of
 `_get_visible_body_descriptions`; pair shorthand fan-out in
-`CmdLongdesc._expand_pair_locations` (`commands/CmdCharacter.py`).
+`_expand_longdesc_pair` (`commands/CmdCharacter.py`, used by `CmdDescribe`).
 
 ### Visibility Rules ✅
 - **Default**: All body locations are visible unless covered by clothing

@@ -1,5 +1,5 @@
 """
-Tests for Identity Phase 1c commands: ``@shortdesc`` and the memory
+Tests for Identity Phase 1c commands: ``describe keyword`` and the memory
 verb cluster (``remember``, ``forget``, ``recall``, ``memory``).
 
 Tests the command logic and helper functions using mocks.
@@ -100,29 +100,29 @@ def _make_character(
 
 
 # ===================================================================
-# @shortdesc — instant set mode
+# describe keyword — instant set mode
 # ===================================================================
 
 
 class TestShortdescInstantSet(TestCase):
-    """Test the _set_keyword logic from CmdShortdesc."""
+    """Test the _set_keyword logic from CmdDescribe."""
 
     def test_valid_keyword_sets_attribute(self):
         """Valid keyword is stored on the character."""
-        from commands.CmdCharacter import CmdShortdesc
+        from commands.CmdCharacter import CmdDescribe
 
         char = _make_character(sex="male", sdesc_keyword=None)
-        cmd = CmdShortdesc()
+        cmd = CmdDescribe()
         cmd.caller = char
         cmd._set_keyword(char, "dude")
         self.assertEqual(char.sdesc_keyword, "dude")
 
     def test_invalid_keyword_rejected(self):
         """Non-alpha keyword produces error and does not change attribute."""
-        from commands.CmdCharacter import CmdShortdesc
+        from commands.CmdCharacter import CmdDescribe
 
         char = _make_character(sex="male", sdesc_keyword="man")
-        cmd = CmdShortdesc()
+        cmd = CmdDescribe()
         cmd.caller = char
         cmd._set_keyword(char, "cyber2punk")
         # Should still be "man"
@@ -133,7 +133,7 @@ class TestShortdescInstantSet(TestCase):
 
     def test_gender_gated_keyword(self):
         """Male character cannot use a feminine-only keyword."""
-        from commands.CmdCharacter import CmdShortdesc
+        from commands.CmdCharacter import CmdDescribe
         from world.identity import (
             _DEFAULT_FEMININE_KEYWORDS,
             _DEFAULT_NEUTRAL_KEYWORDS,
@@ -144,7 +144,7 @@ class TestShortdescInstantSet(TestCase):
         kw = sorted(feminine_only)[0]
 
         char = _make_character(sex="male", sdesc_keyword="man")
-        cmd = CmdShortdesc()
+        cmd = CmdDescribe()
         cmd.caller = char
         cmd._set_keyword(char, kw)
         # Should still be "man"
@@ -155,11 +155,11 @@ class TestShortdescInstantSet(TestCase):
 
     def test_neutral_keyword_available_to_all(self):
         """Neutral keywords are available to any gender."""
-        from commands.CmdCharacter import CmdShortdesc
+        from commands.CmdCharacter import CmdDescribe
 
         for sex in ("male", "female", "ambiguous"):
             char = _make_character(sex=sex, sdesc_keyword=None)
-            cmd = CmdShortdesc()
+            cmd = CmdDescribe()
             cmd.caller = char
             cmd._set_keyword(char, "person")
             self.assertEqual(char.sdesc_keyword, "person")
@@ -180,7 +180,7 @@ class TestShortdescInstantSet(TestCase):
 
 
 # ===================================================================
-# @shortdesc — EvMenu helpers
+# describe keyword — EvMenu helpers
 # ===================================================================
 
 
@@ -189,36 +189,36 @@ class TestShortdescMenuHelpers(TestCase):
 
     def test_numeric_selection(self):
         """Entering a number selects the keyword at that index."""
-        from commands.CmdCharacter import _process_keyword_choice
+        from commands.CmdCharacter import _process_describe_keyword
 
         char = _make_character(sex="male", sdesc_keyword=None)
         keywords = ["bro", "dude", "guy", "man", "person"]
         char.ndb._shortdesc_keywords = keywords
 
         # Select "2" → "dude" (index 1)
-        result = _process_keyword_choice(char, "2")
+        result = _process_describe_keyword(char, "2")
         self.assertEqual(char.sdesc_keyword, "dude")
 
     def test_name_selection(self):
         """Entering a keyword name selects it."""
-        from commands.CmdCharacter import _process_keyword_choice
+        from commands.CmdCharacter import _process_describe_keyword
 
         char = _make_character(sex="male", sdesc_keyword=None)
         keywords = ["bro", "dude", "guy", "man", "person"]
         char.ndb._shortdesc_keywords = keywords
 
-        result = _process_keyword_choice(char, "guy")
+        result = _process_describe_keyword(char, "guy")
         self.assertEqual(char.sdesc_keyword, "guy")
 
     def test_invalid_number_rejected(self):
         """Out-of-range number shows error and returns None (re-display)."""
-        from commands.CmdCharacter import _process_keyword_choice
+        from commands.CmdCharacter import _process_describe_keyword
 
         char = _make_character(sex="male", sdesc_keyword="man")
         keywords = ["bro", "dude", "guy", "man", "person"]
         char.ndb._shortdesc_keywords = keywords
 
-        result = _process_keyword_choice(char, "99")
+        result = _process_describe_keyword(char, "99")
         self.assertIsNone(result)
         char.msg.assert_called()
         msg_text = char.msg.call_args[0][0]
@@ -226,26 +226,26 @@ class TestShortdescMenuHelpers(TestCase):
 
     def test_invalid_text_rejected(self):
         """Unknown text shows error and returns None (re-display)."""
-        from commands.CmdCharacter import _process_keyword_choice
+        from commands.CmdCharacter import _process_describe_keyword
 
         char = _make_character(sex="male", sdesc_keyword="man")
         keywords = ["bro", "dude", "guy", "man", "person"]
         char.ndb._shortdesc_keywords = keywords
 
-        result = _process_keyword_choice(char, "xyzinvalid")
+        result = _process_describe_keyword(char, "xyzinvalid")
         self.assertIsNone(result)
         char.msg.assert_called()
         msg_text = char.msg.call_args[0][0]
-        self.assertIn("not a valid keyword", msg_text)
+        self.assertIn("not in the list", msg_text)
 
     def test_empty_input_redisplays(self):
         """Empty input returns None (re-display)."""
-        from commands.CmdCharacter import _process_keyword_choice
+        from commands.CmdCharacter import _process_describe_keyword
 
         char = _make_character(sex="male", sdesc_keyword="man")
         char.ndb._shortdesc_keywords = ["man"]
 
-        result = _process_keyword_choice(char, "   ")
+        result = _process_describe_keyword(char, "   ")
         self.assertIsNone(result)
 
 
@@ -1346,7 +1346,7 @@ class TestLostContactRenderAnnotation(TestCase):
 
 
 # ===================================================================
-# @shortdesc — custom keyword acceptance
+# describe keyword — custom keyword acceptance
 # ===================================================================
 
 
@@ -1455,14 +1455,14 @@ class TestAlsoKnownAsRendering(TestCase):
 
 
 
-    """Test that @shortdesc accepts arbitrary valid custom keywords."""
+    """Test that describe keyword accepts arbitrary valid custom keywords."""
 
     def test_custom_keyword_accepted(self):
         """A novel alpha-only word is accepted as a custom keyword."""
-        from commands.CmdCharacter import CmdShortdesc
+        from commands.CmdCharacter import CmdDescribe
 
         char = _make_character(sex="male", sdesc_keyword="man")
-        cmd = CmdShortdesc()
+        cmd = CmdDescribe()
         cmd.caller = char
         with patch("world.identity.log_custom_keyword") as mock_log:
             cmd._set_keyword(char, "ronin")
@@ -1473,10 +1473,10 @@ class TestAlsoKnownAsRendering(TestCase):
 
     def test_custom_keyword_not_logged_for_approved(self):
         """Approved keywords bypass the catalog entirely."""
-        from commands.CmdCharacter import CmdShortdesc
+        from commands.CmdCharacter import CmdDescribe
 
         char = _make_character(sex="male", sdesc_keyword="man")
-        cmd = CmdShortdesc()
+        cmd = CmdDescribe()
         cmd.caller = char
         with patch("world.identity.log_custom_keyword") as mock_log:
             cmd._set_keyword(char, "dude")
@@ -1485,10 +1485,10 @@ class TestAlsoKnownAsRendering(TestCase):
 
     def test_custom_keyword_rejected_with_digits(self):
         """Keywords containing digits are rejected."""
-        from commands.CmdCharacter import CmdShortdesc
+        from commands.CmdCharacter import CmdDescribe
 
         char = _make_character(sex="male", sdesc_keyword="man")
-        cmd = CmdShortdesc()
+        cmd = CmdDescribe()
         cmd.caller = char
         cmd._set_keyword(char, "r0nin")
         self.assertEqual(char.sdesc_keyword, "man")
@@ -1497,17 +1497,17 @@ class TestAlsoKnownAsRendering(TestCase):
 
     def test_custom_keyword_rejected_too_short(self):
         """Single-character keyword is rejected."""
-        from commands.CmdCharacter import CmdShortdesc
+        from commands.CmdCharacter import CmdDescribe
 
         char = _make_character(sex="male", sdesc_keyword="man")
-        cmd = CmdShortdesc()
+        cmd = CmdDescribe()
         cmd.caller = char
         cmd._set_keyword(char, "x")
         self.assertEqual(char.sdesc_keyword, "man")
 
     def test_custom_keyword_shows_sdesc(self):
         """Confirmation message includes updated sdesc."""
-        from commands.CmdCharacter import CmdShortdesc
+        from commands.CmdCharacter import CmdDescribe
 
         char = _make_character(
             sex="male",
@@ -1515,7 +1515,7 @@ class TestAlsoKnownAsRendering(TestCase):
             build="lean",
             sdesc_keyword="man",
         )
-        cmd = CmdShortdesc()
+        cmd = CmdDescribe()
         cmd.caller = char
         with patch("world.identity.log_custom_keyword"):
             cmd._set_keyword(char, "samurai")
@@ -1796,7 +1796,7 @@ class TestCmdAppearKeyword(TestCase):
         self.assertIsNone(caller.db.keyword_override)
         msg = caller.msg.call_args[0][0]
         self.assertIn("isn't a recognized keyword", msg)
-        self.assertIn("@shortdesc", msg)
+        self.assertIn("describe", msg)
 
 
 # ===================================================================
