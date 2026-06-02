@@ -646,15 +646,13 @@ window.plugin_handler.add("screensize", screensize_plugin);
 
 **Files to Create/Update:**
 - `web/static/webclient/js/plugins/README_SCREENSIZE.md` (plugin documentation)
-- `CHANGELOG.md` (add feature entry)
-- `COMMIT_READY_CHECKLIST.md` (verify against checklist)
 
 **Tasks:**
 1. ⬜ Document plugin architecture
 2. ⬜ Document configuration options
 3. ⬜ Document browser compatibility
 4. ⬜ Document known limitations
-5. ⬜ Update CHANGELOG with feature description
+5. ⬜ Update the relevant `specs/*.md` with the shipped feature
 6. ⬜ Update project documentation if needed
 
 ---
