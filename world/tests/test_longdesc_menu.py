@@ -168,11 +168,11 @@ class PreviewTests(TestCase):
         char = _full_body()
         lines = _render_longdesc_preview(
             char, char, "eyes", ["left_eye", "right_eye"],
-            "deep brown {eyes} that {accent} {their} skin",
+            "{Their} bright brown {eyes} {accent} {their} skin.",
         )
         joined = "\n".join(lines)
-        self.assertIn("brown eyes that accent", joined)
-        self.assertIn("brown eye that accents", joined)
+        self.assertIn("brown eyes accent", joined)
+        self.assertIn("brown eye accents", joined)
 
     def test_single_location_singular_only(self):
         char = _full_body()

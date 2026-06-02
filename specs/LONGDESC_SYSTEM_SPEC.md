@@ -179,14 +179,14 @@ builder `@desc`; that decision is deferred.
 
 **Examples**:
 ```
-describe face "weathered features with high cheekbones"
-describe left_eye "a piercing blue eye with flecks of gold"
-describe right_eye "a cybernetic replacement with a red LED"
-describe left_hand "calloused hand with dirt under the fingernails"
-describe right_hand "a prosthetic metal hand with intricate engravings"
-describe chest "broad shoulders tapering to a narrow waist"
-describe tail "a long, serpentine tail ending in a barbed tip"
-describe left_wing "a massive feathered wing, midnight black"
+describe face "High cheekbones and a defined jawline lend {their} face a rough calm."
+describe left_eye "A piercing blue eye glints with flecks of gold."
+describe right_eye "A cybernetic replacement glows with a steady red LED."
+describe left_hand "A calloused hand carries dirt under the fingernails."
+describe right_hand "A prosthetic metal hand ends in intricately engraved fingers."
+describe chest "Broad shoulders taper to a narrow waist."
+describe tail "A long, serpentine tail ends in a barbed tip."
+describe left_wing "A massive feathered wing spreads in midnight black."
 ```
 
 ### Command Behavior
@@ -360,12 +360,17 @@ With your administrative visibility, you see: item1 [#123], item2 [#456], weapon
 - **Overflow handling**: If single region exceeds threshold, break at most logical location within region
 - **Coverage integration**: Only visible descriptions (body longdescs + clothing longdescs) count toward thresholds
 - **Writer freedom**: No forced connecting words or narrative structure - writers control their own style
+- **Authoring convention**: Locations within a region are joined with single
+  spaces; the renderer adds no capitalization or punctuation. Author each
+  location as a **complete sentence** (capitalized, period-terminated) so the
+  joined output reads as prose — bare fragments run together into a run-on.
 - **Constants-driven**: Uses `PARAGRAPH_BREAK_THRESHOLD`, `REGION_BREAK_PRIORITY`, and `ANATOMICAL_REGIONS` for fine-tuning
 
 #### Paired Longdesc Collapse ✅
 Symmetric left/right paired appendages collapse into a single line when their
-descriptions are interchangeable, avoiding redundant repetition (e.g. two
-identical "a pale blue eye." lines becoming one "pale blue eyes." line).
+descriptions are interchangeable, avoiding redundant repetition (e.g. a single
+`{Their} {eyes} {are} pale blue.` rendering once as "Their eyes are pale blue."
+instead of repeating "Their eye is pale blue." for each side).
 
 **Pairs are derived dynamically** from `left_*` / `right_*` location keys
 (union of `longdesc` keys, `coverage_map`, `ANATOMICAL_DISPLAY_ORDER`, and
@@ -448,20 +453,20 @@ Following the Mr. Hands AttributeProperty pattern:
 ```python
 # Auto-created on character creation (like Mr. Hands)
 character.db.longdesc = {
-    "head": None, "face": "weathered features with high cheekbones", 
-    "left_eye": "a piercing blue eye with flecks of gold", "right_eye": "a cybernetic replacement with a red LED",
+    "head": None, "face": "High cheekbones and a defined jawline lend {their} face a rough calm.", 
+    "left_eye": "A piercing blue eye glints with flecks of gold.", "right_eye": "A cybernetic replacement glows with a steady red LED.",
     "left_ear": None, "right_ear": None, "neck": None,
-    "chest": "broad shoulders tapering to a narrow waist", 
+    "chest": "Broad shoulders taper to a narrow waist.", 
     "back": None, "abdomen": None, "groin": None,
     "left_arm": None, "right_arm": None,
-    "left_hand": "calloused hand with dirt under the fingernails",
-    "right_hand": "a prosthetic metal hand with intricate engravings",
+    "left_hand": "A calloused hand carries dirt under the fingernails.",
+    "right_hand": "A prosthetic metal hand ends in intricately engraved fingers.",
     "left_thigh": None, "right_thigh": None,
     "left_shin": None, "right_shin": None,
     "left_foot": None, "right_foot": None,
     # Extended anatomy (when added)
-    "tail": "a long, serpentine tail ending in a barbed tip",
-    "left_wing": "a massive feathered wing, midnight black"
+    "tail": "A long, serpentine tail ends in a barbed tip.",
+    "left_wing": "A massive feathered wing spreads in midnight black."
 }
 ```
 
@@ -755,9 +760,9 @@ longdesc = AttributeProperty(
 
 ```bash
 # Basic description setting
-@longdesc face "weathered features with high cheekbones"
-@longdesc left_eye "a piercing blue eye with flecks of gold"  
-@longdesc right_hand "a prosthetic metal hand with intricate engravings"
+@longdesc face "High cheekbones and a defined jawline lend {their} face a rough calm."
+@longdesc left_eye "A piercing blue eye glints with flecks of gold."  
+@longdesc right_hand "A prosthetic metal hand ends in intricately engraved fingers."
 
 # Discovery and management
 @longdesc/list           # Show available locations grouped by region

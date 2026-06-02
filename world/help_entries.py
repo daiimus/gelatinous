@@ -30,7 +30,7 @@ HELP_ENTRY_DICTS = [
         "aliases": ["token", "braces"],
         "category": "Character",
         "text": """
-            |cDescription Tokens|n
+            |wDescription Tokens|n
 
             Tokens are words wrapped in |w{braces}|n inside a description. When
             the description is shown, each token is replaced with the right word
@@ -60,10 +60,10 @@ HELP_ENTRY_DICTS = [
 
             Example:
 
-                a long scar runs down {their} cheek
+                A long scar runs down {their} cheek.
 
-                others see -> a long scar runs down her cheek
-                you see    -> a long scar runs down your cheek
+                others see -> A long scar runs down her cheek.
+                you see    -> A long scar runs down your cheek.
 
             ## number
 
@@ -74,10 +74,10 @@ HELP_ENTRY_DICTS = [
             Brace the |wbody-part noun|n and any |wverb|n that must agree with
             it:
 
-                deep brown {eyes} that {accent} {their} skin
+                {Their} bright brown {eyes} {accent} {their} skin.
 
-                both present -> deep brown eyes that accent their skin
-                one present  -> a deep brown eye that accents their skin
+                both present -> Their bright brown eyes accent their skin.
+                one present  -> Their bright brown eye accents their skin.
 
             The recognised part nouns are the symmetric pairs: eye, ear, arm,
             hand, thigh, shin, foot. A single braced word that is |wnot|n one of

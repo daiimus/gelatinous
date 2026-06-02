@@ -556,20 +556,24 @@ class CmdDescribe(Command):
     text, and you get an instant preview of how others will see it.
 
     Your appearance has three parts:
-      |cShort Description|n  - the main paragraph shown when others look at you.
-      |cKeyword|n            - the noun strangers see in your sdesc, e.g. the
+      |wShort Description|n  - the main paragraph shown when others look at you.
+      |wKeyword|n            - the noun strangers see in your sdesc, e.g. the
                           "|wman|n" in "a lanky man in a Black Trenchcoat".
-      |cBody locations|n     - per-part longdesc text (eyes, hands, ...) woven
+      |wBody locations|n     - per-part longdesc text (eyes, hands, ...) woven
                           into your description when looked at.
+
+    Write each body location as a |wcomplete sentence|n - capitalized, ending
+    in a period. Locations in the same region are joined with spaces, so full
+    sentences read as natural prose while bare fragments run together.
 
     |wTokens|n let one description read naturally whether a part is paired or
     a lone survivor. Wrap a number-flexible word in braces and it flexes to
     match: a pair renders plural, a single side renders singular.
 
-        describe eyes "deep brown {eyes} that {accent} {their} skin"
+        describe eyes "{Their} bright brown {eyes} {accent} {their} skin."
 
-        both eyes  -> deep brown eyes that accent their skin
-        one eye    -> a deep brown eye that accents their skin
+        both eyes  -> Their bright brown eyes accent their skin.
+        one eye    -> Their bright brown eye accents their skin.
 
     Brace the body-part noun ({eye} or {an eye} to control the article) and
     any verb that must agree with it ({accent}, {are}). Pronoun tokens
@@ -599,9 +603,9 @@ class CmdDescribe(Command):
     Examples:
         describe short "a lanky figure with restless hands"
         describe keyword droog
-        describe face "weathered features with high cheekbones"
-        describe eyes "piercing blue {eyes} flecked with gold"
-        describe right_hand "a prosthetic metal hand, intricately engraved"
+        describe face "High cheekbones and a day's worth of stubble lend {their} face a rough, unhurried calm."
+        describe eyes "{Their} bright brown {eyes} {accent} {their} sun-worn skin."
+        describe right_hand "A prosthetic forearm of brushed steel ends in five articulated fingers."
         describe/clear face
 
     Body locations include: hair, head, face, left_eye, right_eye, left_ear,

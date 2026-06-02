@@ -223,15 +223,15 @@ class TokenRenderTests(TestCase):
 
     def test_pair_renders_plural(self):
         out = self.obj.render(
-            "deep brown {eyes} that {accent} {their} skin", "plural"
+            "{Their} bright brown {eyes} {accent} {their} skin.", "plural"
         )
-        self.assertEqual(out, "deep brown eyes that accent their skin")
+        self.assertEqual(out, "Their bright brown eyes accent their skin.")
 
     def test_survivor_renders_singular(self):
         out = self.obj.render(
-            "deep brown {eyes} that {accent} {their} skin", "singular"
+            "{Their} bright brown {eyes} {accent} {their} skin.", "singular"
         )
-        self.assertEqual(out, "deep brown eye that accents their skin")
+        self.assertEqual(out, "Their bright brown eye accents their skin.")
 
     def test_article_noun_token_plural_drops_article(self):
         out = self.obj.render("{An eye} {gleams} coldly.", "plural")
