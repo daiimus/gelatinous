@@ -457,7 +457,7 @@ class CombatEventBus:
 
 ### Project-Specific Documentation
 - `README.md` - Project overview, architecture, and feature summary
-- `AGENTS.md` - Combat system architecture and agent reference
+- `AGENTS.md` - Agent operational reference: conventions, deploy workflow, file map
 - `specs/COMBAT_SYSTEM.md` - Combat system documentation
 - Module-specific README files
 

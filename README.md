@@ -159,7 +159,7 @@ gelatinous/
 ├── tests/                     # Test suite
 │   └── test_gmcp_websocket.py     # GMCP wire format validation
 ├── specs/                     # Design specifications (37 documents)
-└── AGENTS.md                  # Agent reference for combat system architecture
+└── AGENTS.md                  # Agent operational reference: conventions, workflow, file map
 ```
 
 ### Key Systems
@@ -244,7 +244,7 @@ See `specs/` for 37 detailed specifications covering implemented and planned fea
 
 ## Documentation
 
-- **[AGENTS.md](AGENTS.md)** -- Combat system architecture, patterns, and agent reference. The most comprehensive technical document in the project.
+- **[AGENTS.md](AGENTS.md)** -- Agent operational reference: project conventions, deploy workflow, and a file-to-concept map. Architecture details live in `specs/`.
 - **[specs/](specs/)** -- 37 design specifications covering combat, medical, identity, communication, grappling, proximity, shops, explosives, web integration, and planned features.
 - **[specs/IDENTITY_RECOGNITION_SPEC.md](specs/IDENTITY_RECOGNITION_SPEC.md)** -- Sleeve-based identity and recognition system design.
 - **[specs/EMOTE_POSE_SPEC.md](specs/EMOTE_POSE_SPEC.md)** -- Emote, pose, and communication system with identity integration.

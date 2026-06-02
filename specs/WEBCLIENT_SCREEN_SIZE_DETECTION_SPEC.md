@@ -1102,7 +1102,7 @@ Base: 1.0em = ~10px character width
 ---
 
 **Related Documents:**
-- `AGENTS.md` - G.R.I.M. Combat System architecture reference
+- `AGENTS.md` - Agent operational reference: conventions, deploy workflow, file map
 - `PROJECT_OVERVIEW.md` - Overall project context
 - `specs/COMBAT_SYSTEM.md` - Combat system user documentation
 - Evennia Documentation: [Web Client](https://www.evennia.com/docs/latest/Components/Webclient.html)

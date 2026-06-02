@@ -5,7 +5,7 @@ Game systems, data, and logic that aren't commands or typeclasses.
 ## Subsystems
 
 ### combat/
-Core combat system. Turn-based handler with initiative, proximity, grappling, and 96 weapon-specific message templates. Decomposed into focused modules: `handler.py` (turn loop), `attack.py` (hit resolution), `actions.py` (action processing), `movement_resolution.py` (tactical movement), `proximity.py` (melee/ranged positioning), `grappling.py` (restraint mechanics), `utils.py`, `dice.py`, `debug.py`, `explosives.py`, and `constants.py`. See [AGENTS.md](../AGENTS.md) for comprehensive architecture documentation.
+Core combat system. Turn-based handler with initiative, proximity, grappling, and 96 weapon-specific message templates. Decomposed into focused modules: `handler.py` (turn loop), `attack.py` (hit resolution), `actions.py` (action processing), `movement_resolution.py` (tactical movement), `proximity.py` (melee/ranged positioning), `grappling.py` (restraint mechanics), `utils.py`, `dice.py`, `debug.py`, `explosives.py`, and `constants.py`. See [specs/COMBAT_SYSTEM.md](../specs/COMBAT_SYSTEM.md) for comprehensive architecture documentation.
 
 ### medical/
 Medical trauma simulation with organ-level anatomy. Individual bone tracking, organ HP and functionality, body capacities (consciousness, blood pumping, breathing, manipulation), wound types, bleeding, pain, and death conditions. See `medical/README.md` for details.
