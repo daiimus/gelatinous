@@ -9,6 +9,7 @@ from world.namebank import (
 )
 from world.identity import HEIGHTS, BUILDS, HAIR_COLORS, HAIR_STYLES
 from world.identity_utils import msg_room_identity
+from world.mob_flavor import apply_random_flavor
 
 
 def roll_stat():
@@ -17,14 +18,23 @@ def roll_stat():
 
 class CmdSpawnMob(Command):
     """
-    Spawns an unpossessed Character with randomized name, stats, and sex.
+    Spawns an unpossessed Character with randomized identity, stats, and
+    flavor (short description, longdescs, look_place).
 
     Usage:
         @spawnmob [optional name]
+        @spawnmob/blank [optional name]
 
     If no name is given, one is generated based on randomized sex.
-    The mob receives randomized identity attributes (height, build,
-    hair) so it participates in the identity/recognition system.
+    The mob receives randomized identity attributes (height, build, hair)
+    plus a randomly selected short description, longdescs across every
+    body location with seed data, and a look_place — drawn from
+    ``world/mob_flavor/``.
+
+    Switches:
+        /blank   - skip the flavor pass; produces the legacy minimal mob
+                   (stock filler description, no longdescs, no look_place)
+                   for clean diagnostic spawns.
     """
 
     key = "@spawnmob"
@@ -32,6 +42,17 @@ class CmdSpawnMob(Command):
 
     def func(self):
         caller = self.caller
+
+        # Parse /blank switch
+        raw_args = self.args.strip()
+        blank = False
+        if raw_args.startswith('/'):
+            parts = raw_args[1:].split(None, 1)
+            if parts:
+                switches = [s.lower() for s in parts[0].split('/') if s]
+                if "blank" in switches:
+                    blank = True
+                raw_args = parts[1] if len(parts) > 1 else ""
 
         # Assign sex with chance of ambiguity
         sex = choice(["male", "female"])
@@ -49,7 +70,7 @@ class CmdSpawnMob(Command):
         last = choice(LAST_NAMES)
 
         # Use user-specified name if given, otherwise generate
-        mob_name = self.args.strip() or f"{first} {last}"
+        mob_name = raw_args or f"{first} {last}"
 
         # Create the character
         mob = create_object(
@@ -59,10 +80,6 @@ class CmdSpawnMob(Command):
             home=caller.location
         )
 
-        mob.db.desc = (
-            "A breathing body without an identity."
-            " Its eyes flicker, but it does not move."
-        )
         mob.sex = sex
 
         mob.grit = roll_stat()
@@ -85,6 +102,16 @@ class CmdSpawnMob(Command):
         else:
             mob.hair_color = choice(HAIR_COLORS)
             mob.hair_style = choice(HAIR_STYLES)
+
+        # Flavor pass — random short desc, longdescs, and look_place.
+        # /blank preserves the legacy minimal-flavor behavior.
+        if blank:
+            mob.db.desc = (
+                "A breathing body without an identity."
+                " Its eyes flicker, but it does not move."
+            )
+        else:
+            apply_random_flavor(mob)
 
         caller.msg(f"You manifest {mob_name} into the world.")
         msg_room_identity(
