@@ -21,7 +21,7 @@ The G.R.I.M. Combat System currently operates with dual proximity systems that e
 #### Combat Proximity Code Locations
 ```python
 # Primary usage in combat system
-world/combat/special_actions.py:
+commands/combat/special_actions.py:
 - CmdGrapple: Establishes proximity on successful grapple
 - CmdDisarm: Requires proximity for disarm attempts
 - CmdReleaseGrapple: Clears proximity relationships
@@ -172,7 +172,7 @@ grenade.ndb.proximity_relationships = [char1, char2, char3]
 
 #### Unified Proximity Utilities
 ```python
-# world/combat/proximity.py (new file)
+# world/combat/proximity.py
 def establish_proximity(entity1, entity2):
     """Establish bidirectional proximity between any two entities."""
 

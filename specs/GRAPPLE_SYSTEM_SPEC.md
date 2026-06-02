@@ -237,7 +237,7 @@ When a grenade explodes, before applying damage to characters in proximity:
 - **Observer Message**: `"{grappler} uses {victim} as a blast shield against the {grenade} explosion!"`
 
 #### **Implementation Gap**
-The grenade explosion system (`CmdThrow.py`) bypasses combat handler's `_process_attack()` method, using direct `apply_damage(character, damage, location, injury_type)` calls instead. Integration would require adding grappling shield checks within the explosion damage resolution before `apply_damage()` calls.
+The grenade explosion system (`CmdThrow.py`, with detonation logic now largely in `commands/CmdExplosives.py` and `commands/explosion_utils.py`) bypasses combat handler's `_process_attack()` method, using direct `apply_damage(character, damage, location, injury_type)` calls instead. Integration would require adding grappling shield checks within the explosion damage resolution before `apply_damage()` calls.
 
 ---
 

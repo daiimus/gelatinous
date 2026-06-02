@@ -118,10 +118,11 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 - **`disarm <target>`**: Attempt to remove target's weapon
 - **`aim <target>`**: Improve accuracy for next attack
 
-### Information Commands (`commands/combat/info_commands.py`)
-- **`look`**: Enhanced awareness during combat
-- **`combatants`**: List all active combatants
-- **`status`**: Check your combat condition
+### Information Commands (main character cmdset)
+There is no dedicated combat info-command module. Combat-aware `look` is provided
+by the main character cmdset (so it works both in and out of combat) rather than a
+separate `commands/combat/` file.
+- **`look`**: Enhanced awareness during combat (registered on the main character cmdset)
 
 ## Combat Flow
 

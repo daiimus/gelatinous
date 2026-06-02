@@ -8,8 +8,8 @@
 - ✅ **CmdThrow** - Complete 4-syntax throwing system
 - ✅ **CmdPull** - Pin pulling mechanism with timer management  
 - ✅ **CmdCatch** - Defensive object interception
-- ✅ **CmdRig** - Exit trapping system
-- ✅ **Enhanced CmdDrop** - Universal proximity assignment
+- ✅ **CmdRig** - Exit trapping system (lives in `commands/CmdExplosives.py`, not `CmdThrow.py`)
+- ✅ **Enhanced CmdDrop** - Universal proximity assignment (lives in `commands/CmdInventory.py`, not `CmdThrow.py`)
 
 ### **System Infrastructure**
 - ✅ **Flight mechanics** - 2-second flight with room description integration
@@ -392,7 +392,7 @@ Grenade B explodes: affects [Alice, Bob] (inherited proximity)
 ### Phase 4: Additional Commands ✅ **COMPLETED**
 - ✅ **CmdPull**: Pin pulling mechanism for grenade activation
 - ✅ **CmdCatch**: Defensive catching of thrown objects
-- ✅ **CmdRig**: Exit trap setup with immunity system
+- ✅ **CmdRig** (in `commands/CmdExplosives.py`): Exit trap setup with immunity system
 - ✅ **CmdDefuse**: Manual defuse with skill checks and time pressure
 - ✅ **Auto-defuse**: Automatic proximity-based defuse attempts
 - ✅ **Dual proximity cleanup**: Movement system integration

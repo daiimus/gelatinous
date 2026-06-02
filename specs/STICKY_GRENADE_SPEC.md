@@ -86,10 +86,10 @@ When dropped: grenade → armor → room
 - ✅ Stats: magnetic_strength=8, blast_damage=30, fuse_time=6s, dud_chance=0.02
 
 **Key Functions Implemented:**
-- ✅ `calculate_stick_chance(metal, magnetic, strength)` in world/combat/utils.py
-- ✅ `establish_stick(grenade, armor, hit_location)` in world/combat/utils.py
-- ✅ `get_outermost_armor_at_location(character, location)` in world/combat/utils.py
-- ✅ `get_stuck_grenades_on_character(character)` in world/combat/utils.py
+- ✅ `calculate_stick_chance(grenade, armor)` in world/combat/explosives.py
+- ✅ `establish_stick(grenade, armor, hit_location)` in world/combat/explosives.py
+- ✅ `get_outermost_armor_at_location(character, location)` in world/combat/explosives.py
+- ✅ `get_stuck_grenades_on_character(character)` in world/combat/explosives.py
 - ✅ `select_most_magnetic_target_in_room(room, grenade)` in commands/CmdThrow.py
 - ✅ `resolve_weapon_hit(weapon, target, thrower)` handles stick mechanics
 
@@ -99,8 +99,10 @@ When dropped: grenade → armor → room
 - **commands/CmdThrow.py lines ~790-880**: Stick check after throw hit determination
 - **commands/CmdThrow.py lines ~1918-1955**: Rigged grenade magnetic targeting
 - **commands/CmdThrow.py lines ~1968-2020**: Rigged grenade explosion with proximity fix
-- **world/combat/utils.py lines ~1248-1332**: `calculate_stick_chance()` implementation
-- **world/combat/utils.py lines ~1400-1460**: `establish_stick()` and helper functions
+- **world/combat/explosives.py lines ~144-323**: `calculate_stick_chance()` implementation
+- **world/combat/explosives.py lines ~325-483**: `establish_stick()` and helper functions (`get_outermost_armor_at_location`, `get_stuck_grenades_on_character`, `break_stick`)
+
+  Note: `world/combat/utils.py` only re-exports these symbols (`from .explosives import ...`); it does not define them.
 - **world/prototypes.py lines ~124-145**: SPDR M9 grenade prototype
 
 ### Testing Results
@@ -306,18 +308,26 @@ grenade.db.stuck_to_armor = Armor object or None  # The specific armor piece it'
 ### Stick Chance Calculation (Option C - Realistic)
 
 ```python
-def calculate_stick_chance(metal_level, magnetic_level, grenade_strength):
+def calculate_stick_chance(grenade, armor):
     """
     Calculate probability that grenade will stick to armor.
-    
+
+    Note: the shipped signature is ``calculate_stick_chance(grenade, armor)``.
+    ``grenade_strength`` is read from ``grenade.db.magnetic_strength`` and
+    ``metal_level`` / ``magnetic_level`` are read from ``armor`` (including the
+    highest values across installed plates for plate carriers).
+
     Requirements:
     - Magnetic level must be sufficient (ferrous metal present)
     - Metal level provides surface area for attachment
     - Both must meet minimum thresholds
-    
-    Returns: integer 0-100 (percentage chance)
+
+    Returns: integer 0-95 (percentage chance)
     """
-    
+    grenade_strength = grenade.db.magnetic_strength or 5
+    metal_level = armor.db.metal_level or 0
+    magnetic_level = armor.db.magnetic_level or 0
+
     # THRESHOLD CHECK: Is material magnetic enough?
     if magnetic_level < (grenade_strength - 3):
         return 0  # Not magnetic enough - no stick possible
@@ -397,10 +407,7 @@ def calculate_stick_chance(metal_level, magnetic_level, grenade_strength):
       - If no, attempt stick check
       
    d. Calculate stick chance:
-      metal_level = item.db.metal_level
-      magnetic_level = item.db.magnetic_level
-      grenade_strength = grenade.db.magnetic_strength
-      stick_chance = calculate_stick_chance(metal, magnetic, strength)
+      stick_chance = calculate_stick_chance(grenade, item)
       
    e. Roll for stick:
       roll = random(1, 100)
@@ -444,7 +451,7 @@ for item in sorted(layers_on_chest, key=lambda x: x.layer, reverse=True):
     if item.already_has_grenade:
         continue  # Skip, try next layer
     
-    stick_chance = calculate_stick_chance(item.metal, item.magnetic, grenade.strength)
+    stick_chance = calculate_stick_chance(grenade, item)
     if roll_stick(stick_chance):
         stick_to(item)
         break
@@ -1245,7 +1252,7 @@ class Item(DefaultObject):
         # Add stuck grenade check
 ```
 
-**typeclasses/explosives.py (new file or add to items.py)**
+**Sticky grenade typeclass/prototype** (no separate `typeclasses/explosives.py` was created; the stick logic itself lives in `world/combat/explosives.py`)
 - Create StickyGrenade class
 - Inherits from existing Grenade/Explosive class
 - Add is_sticky and magnetic_strength attributes
@@ -1273,11 +1280,7 @@ if obj.db.is_sticky:
     # Get armor covering hit location
     armor = get_outermost_armor_at_location(target, hit_location)
     if armor and not armor.db.stuck_grenade:
-        stick_chance = calculate_stick_chance(
-            armor.db.metal_level,
-            armor.db.magnetic_level,
-            obj.db.magnetic_strength
-        )
+        stick_chance = calculate_stick_chance(obj, armor)
         if random.randint(1, 100) <= stick_chance:
             establish_stick(obj, armor, target, hit_location)
             # Send stick success messages
@@ -1327,7 +1330,7 @@ if armor.db.stuck_grenade:
     # Grenade automatically moves with it (grenade.location = armor)
 ```
 
-**world/combat/utils.py (or new explosives_utils.py)**
+**world/combat/explosives.py**
 - Add calculate_stick_chance() function
 - Add get_stuck_grenades_on_character() helper
 - Add get_explosion_room() helper (for hierarchy traversal)
@@ -1335,8 +1338,8 @@ if armor.db.stuck_grenade:
 - Add find_best_stick_target() for multi-target (future)
 
 ```python
-def calculate_stick_chance(metal_level, magnetic_level, grenade_strength):
-    """Calculate stick probability. Returns 0-100."""
+def calculate_stick_chance(grenade, armor):
+    """Calculate stick probability. Returns 0-95."""
     # See Section 3 for full implementation
     
 def get_explosion_room(grenade):
@@ -1374,18 +1377,21 @@ These utility functions are essential for the sticky grenade system:
 
 ### calculate_stick_chance()
 ```python
-def calculate_stick_chance(metal_level, magnetic_level, grenade_strength):
+def calculate_stick_chance(grenade, armor):
     """
     Calculate probability that grenade will stick to armor.
-    
-    Args:
-        metal_level (int): Amount of metal in armor (0-10)
-        magnetic_level (int): Magnetic responsiveness (0-10)
-        grenade_strength (int): Magnet power level (1-10)
-    
+
+    Shipped signature is ``(grenade, armor)``. Internally derives
+    ``grenade_strength`` from ``grenade.db.magnetic_strength`` and
+    ``metal_level`` / ``magnetic_level`` from ``armor``.
+
     Returns:
-        int: Stick chance percentage (0-100)
+        int: Stick chance percentage (0-95)
     """
+    grenade_strength = grenade.db.magnetic_strength or 5
+    metal_level = armor.db.metal_level or 0
+    magnetic_level = armor.db.magnetic_level or 0
+
     # THRESHOLD CHECK: Is material magnetic enough?
     if magnetic_level < (grenade_strength - 3):
         return 0  # Not magnetic enough - no stick possible

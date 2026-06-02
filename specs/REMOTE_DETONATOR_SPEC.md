@@ -1,8 +1,10 @@
 # Remote Detonator System Specification
 
-## Status: 📋 SPECIFICATION - READY FOR IMPLEMENTATION
+## Status: ✅ IMPLEMENTED
 
-*All implementation questions resolved. Spec finalized 2025-01-13.*
+*Shipped. `RemoteDetonator` lives in `typeclasses/items.py`; the detonator
+commands (`CmdScan`, `CmdDetonate`, `CmdDetonateList`, `CmdClearDetonator`) live
+in `commands/CmdExplosives.py`. Spec finalized 2025-01-13.*
 
 ## Overview
 A handheld remote detonator device that can scan and remotely trigger explosive devices. The detonator maintains a list of up to 20 scanned explosives and can trigger them individually or simultaneously by pulling their pins and starting their normal fuse countdowns. This system integrates with all existing explosive types (sticky grenades, rigged explosives, standard grenades) and respects their unique behaviors.
@@ -618,9 +620,9 @@ def at_delete(self):
                 pass  # Already removed
 ```
 
-**3. New Commands** (`commands/CmdThrow.py` - add to existing file)
+**3. New Commands** (`commands/CmdExplosives.py`)
 ```python
-# NOTE: All detonator commands added to CmdThrow.py (monolithic explosives file)
+# NOTE: All detonator commands live in CmdExplosives.py (the explosives command file)
 # NOTE: Constants like DB_PIN_PULLED are already imported at top of file via:
 #       from world.combat.constants import *
 
@@ -741,9 +743,9 @@ These decisions were made during the specification phase to resolve implementati
 - **Implementation:** Check `DB_PIN_PULLED` flag before remote detonation (constant from `world.combat.constants`)
 
 **2. Code Organization**
-- **Decision:** Add all detonator commands to `commands/CmdThrow.py` (monolithic approach)
-- **Rationale:** "Throw and explosives work in tandem. So, that file needs to be monolithic."
-- **Implementation:** CmdScan, CmdDetonate, CmdDetonateList, CmdClearDetonator all in CmdThrow.py
+- **Decision:** Detonator commands live in `commands/CmdExplosives.py` (the dedicated explosives command file)
+- **Rationale:** Explosives commands are grouped together in their own module
+- **Implementation:** CmdScan, CmdDetonate, CmdDetonateList, CmdClearDetonator all in `commands/CmdExplosives.py`
 
 **3. Rigged Explosive Countdown Timing**
 - **Decision:** Use normal fuse_time (already 1 second from rigging process)

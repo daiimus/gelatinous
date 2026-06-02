@@ -2,7 +2,7 @@
 
 ## Overview
 
-This specification outlines a systematic refactor of the combat module to address technical debt accumulated through incremental LLM development. The refactor will transform both the monolithic `handler.py` (1,470 lines) and the oversized `utils.py` (1,007 lines) into a maintainable, modular system.
+This specification outlines a systematic refactor of the combat module to address technical debt accumulated through incremental LLM development. The refactor will transform both the monolithic `handler.py` (originally 1,470 lines; currently ~1,077) and the oversized `utils.py` (originally 1,007 lines; currently ~1,047) into a maintainable, modular system. **Status:** partially delivered — `dice.py`, `debug.py`, and `actions.py` were split out, but several proposed modules below were never created and the size-reduction targets have not yet been met.
 
 ## Problem Statement
 
@@ -11,8 +11,8 @@ The combat module has already undergone one refactoring attempt that extracted f
 
 ```
 Current Architecture:
-├── handler.py       # 1,470 lines - Combat orchestration + action processing  
-├── utils.py         # 1,007 lines - Mixed utilities (refactor dumping ground)
+├── handler.py       # ~1,077 lines (was 1,470) - Combat orchestration + action processing  
+├── utils.py         # ~1,047 lines (was 1,007) - Mixed utilities (refactor dumping ground)
 ├── grappling.py     # ~300 lines - Specialized grappling logic
 ├── proximity.py     # ~250 lines - Specialized proximity logic
 └── constants.py     # ~200 lines - Shared constants
@@ -21,7 +21,7 @@ Total: ~3,200 lines with significant cross-file duplication
 ```
 
 ### Current Issues
-- **Dual Monoliths**: Both `handler.py` (1,470 lines) and `utils.py` (1,007 lines) exceed maintainable size
+- **Dual Monoliths**: Both `handler.py` (~1,077 lines, was 1,470) and `utils.py` (~1,047 lines, was 1,007) exceed maintainable size
 - **Cross-File Duplication**: Same patterns repeated across both files
   - Contest patterns: `handler.py` (6 instances) + `utils.py` (inconsistent dice patterns)
   - Debug messages: `handler.py` (128) + `utils.py` (19) = 147 total splattercast calls
@@ -48,11 +48,11 @@ Total: ~3,200 lines with significant cross-file duplication
 5. **Maintainability**: Clear interfaces and minimal coupling
 
 ### Success Metrics
-- `handler.py` reduced to <500 lines (orchestration only)
-- `utils.py` broken down into focused modules (<300 lines each)
+- `handler.py` reduced to <500 lines (orchestration only) — **NOT yet met** (currently ~1,077)
+- `utils.py` broken down into focused modules (<300 lines each) — **NOT yet met** (still ~1,047)
 - No code duplication (0 repeated patterns across ALL files)
 - <10 debug messages per file
-- Each file <300 lines (fits in LLM context)
+- Each file <300 lines (fits in LLM context) — **target; not met for handler.py/utils.py**
 - Clear separation: orchestration vs implementation vs utilities
 
 ## Refactor Strategy
@@ -78,41 +78,43 @@ Given LLM limitations, we'll use **incremental extraction** with **validation at
 **Current (Post-Initial Refactor)**:
 ```
 world/combat/
-├── handler.py       # 1,470 lines - Mixed orchestration + processing
-├── utils.py         # 1,007 lines - Mixed utilities dumping ground
+├── handler.py       # ~1,077 lines (was 1,470) - Mixed orchestration + processing
+├── utils.py         # ~1,047 lines (was 1,007) - Mixed utilities dumping ground
 ├── grappling.py     # ~300 lines - Grappling logic  
 ├── proximity.py     # ~250 lines - Proximity system
 └── constants.py     # ~200 lines - Constants
 ```
 
 **Target (Responsibility-Based)**:
+
+Status legend: ✅ delivered (file exists) · ❌ NOT implemented (never split out).
 ```
 world/combat/
-├── handler.py              # <500 lines - Pure orchestration
-├── action_processors.py    # <300 lines - Combat action resolution
-├── contest_system.py       # <200 lines - Contest resolution (from both files)
-├── state_manager.py        # <300 lines - State manipulation (from both files)  
-├── debug_logger.py         # <100 lines - Centralized logging (from both files)
-├── dice_system.py          # <150 lines - Standardized dice rolling (from utils.py)
-├── weapon_utilities.py     # <200 lines - Weapon handling (from utils.py)
-├── character_attributes.py # <250 lines - Safe attribute access (from both files)
-├── grappling.py            # <300 lines - Grappling logic (refactored)
-├── proximity.py            # <250 lines - Proximity system
-└── constants.py            # <200 lines - Constants
+├── handler.py              # target <500 lines - Pure orchestration (❌ still ~1,077)
+├── actions.py              # ✅ delivered - Combat action resolution
+├── contest_system.py       # ❌ NOT implemented - contest logic still lives in handler.py/utils.py
+├── state_manager.py        # ❌ NOT implemented - state manipulation still in handler.py/utils.py
+├── debug.py                # ✅ delivered - Centralized logging
+├── dice.py                 # ✅ delivered - Standardized dice rolling
+├── weapon_utilities.py     # ❌ NOT implemented - weapon helpers still in utils.py
+├── character_attributes.py # ❌ NOT implemented - safe attribute access still inline
+├── grappling.py            # ✅ delivered - Grappling logic
+├── proximity.py            # ✅ delivered - Proximity system
+└── constants.py            # ✅ delivered - Constants
 ```
 
 ### Responsibility Matrix
 
-| Module | Primary Responsibility | Key Functions | Source Files |
-|--------|----------------------|---------------|--------------|
-| `handler.py` | Combat orchestration | Round management, script lifecycle | Current handler.py |
-| `action_processors.py` | Action resolution | Process attacks, grapples, movement | Current handler.py |
-| `contest_system.py` | Contest mechanics | Motorics rolls, opposed checks | Both handler.py + utils.py |
-| `state_manager.py` | State manipulation | Combatant entry management | Both handler.py + utils.py |
-| `debug_logger.py` | Logging coordination | Centralized debug system | Both handler.py + utils.py |
-| `dice_system.py` | Dice operations | Standardized rolling patterns | Current utils.py |
-| `weapon_utilities.py` | Weapon handling | Weapon access, validation | Current utils.py |
-| `character_attributes.py` | Safe attribute access | Defensive patterns | Both handler.py + utils.py |
+| Module | Primary Responsibility | Key Functions | Source Files | Status |
+|--------|----------------------|---------------|--------------|--------|
+| `handler.py` | Combat orchestration | Round management, script lifecycle | Current handler.py | ✅ exists (not yet slimmed) |
+| `actions.py` | Action resolution | Process attacks, grapples, movement | Current handler.py | ✅ delivered |
+| `contest_system.py` | Contest mechanics | Motorics rolls, opposed checks | Both handler.py + utils.py | ❌ NOT implemented |
+| `state_manager.py` | State manipulation | Combatant entry management | Both handler.py + utils.py | ❌ NOT implemented |
+| `debug.py` | Logging coordination | Centralized debug system | Both handler.py + utils.py | ✅ delivered |
+| `dice.py` | Dice operations | Standardized rolling patterns | Current utils.py | ✅ delivered |
+| `weapon_utilities.py` | Weapon handling | Weapon access, validation | Current utils.py | ❌ NOT implemented |
+| `character_attributes.py` | Safe attribute access | Defensive patterns | Both handler.py + utils.py | ❌ NOT implemented |
 
 ## Phase 1: Extract Cross-File Repeated Patterns
 
@@ -239,7 +241,7 @@ splattercast.msg(f"SOME_PREFIX: detailed message with {variables}")
 
 **Cross-File Impact**: Both files have identical channel access ceremonies, different message formats
 
-**New Interface** (`debug_logger.py`):
+**New Interface** (`debug.py`):
 ```python
 def combat_log(level, category, message, char=None, target=None, handler=None):
     """
@@ -267,7 +269,7 @@ combat_log("INFO", "ATTACK", "Hit for {damage} damage", char=attacker, target=vi
    grep -n "splattercast.msg" world/combat/utils.py | wc -l    # Should show 19
    grep -n "SPLATTERCAST_CHANNEL" world/combat/*.py
    ```
-2. Create unified `debug_logger.py` for ALL combat debug messages
+2. Create unified `debug.py` for ALL combat debug messages
 3. Replace `utils.py` debug calls first (19 instances, easier to validate)
    - **Manual Test**: Verify debug output appears correctly in splattercast channel
 4. Replace `handler.py` debug calls in batches of 15-20
@@ -413,7 +415,7 @@ roll_with_disadvantage(stat_value) # rolls twice, takes min
 standard_roll(stat_value)          # single roll
 ```
 
-**New Interface** (`dice_system.py`):
+**New Interface** (`dice.py`):
 ```python
 @dataclass
 class DiceResult:
@@ -518,7 +520,7 @@ def remove_combatant_from_handler(handler, character):
 - `_resolve_charge()`: 144 lines
 - `_resolve_disarm()`: 88 lines
 
-**New Interface** (`action_processors.py`):
+**New Interface** (`actions.py`):
 ```python
 def process_auto_resistance(handler, combatants_list):
     """Process automatic escape attempts for non-yielding victims"""
@@ -584,10 +586,10 @@ def _process_combat_round(self, combatants):
 - Combat state validation triggers
 
 **Extracted Responsibilities**:
-- ✅ Contest resolution → `contest_system.py`
-- ✅ Debug logging → `debug_logger.py`  
-- ✅ State manipulation → `state_manager.py`
-- ✅ Action processing → `action_processors.py`
+- ❌ Contest resolution → `contest_system.py` (NOT implemented; still inline in handler.py/utils.py)
+- ✅ Debug logging → `debug.py`  
+- ❌ State manipulation → `state_manager.py` (NOT implemented; still inline in handler.py/utils.py)
+- ✅ Action processing → `actions.py`
 
 ## LLM Reference Commands & Context Management
 
@@ -683,7 +685,7 @@ sed -n '402,833p' world/combat/handler.py | wc -l  # at_repeat() size
 
 ### Context Management for Large File Reads
 
-#### Reading handler.py (1,470 lines) in chunks:
+#### Reading handler.py (~1,077 lines, was 1,470) in chunks:
 ```bash
 # Method 1: By sections
 sed -n '1,200p' world/combat/handler.py      # Header and imports
@@ -696,7 +698,7 @@ sed -n '1100,1470p' world/combat/handler.py  # Resolve methods
 grep -n "def " world/combat/handler.py | head -10  # First 10 methods
 ```
 
-#### Reading utils.py (1,007 lines) in chunks:
+#### Reading utils.py (~1,047 lines, was 1,007) in chunks:
 ```bash
 # By function groups
 sed -n '1,100p' world/combat/utils.py       # Imports and constants
@@ -731,8 +733,8 @@ This reference section provides comprehensive command patterns for LLM context m
 - **Split**: If file grows >300 lines, split by responsibility
 - **Reference Commands**: 
   ```bash
-  wc -l world/combat/handler.py  # Current: 1,470 lines
-  wc -l world/combat/utils.py    # Current: 1,007 lines
+  wc -l world/combat/handler.py  # Current: ~1,077 lines (was 1,470)
+  wc -l world/combat/utils.py    # Current: ~1,047 lines (was 1,007)
   ```
 
 #### 2. **Single Change Principle**
@@ -976,8 +978,8 @@ def validate_db_key(key):
 ## Success Criteria
 
 ### Quantitative Goals
-- [ ] `handler.py` <500 lines (down from 1,470)
-- [ ] `utils.py` eliminated - broken into focused modules  
+- [ ] `handler.py` <500 lines — **NOT met** (currently ~1,077, was 1,470)
+- [ ] `utils.py` eliminated - broken into focused modules — **NOT met** (still ~1,047)
 - [ ] No code duplication (0 repeated patterns across ALL files)  
 - [ ] All files <300 lines
 - [ ] <10 debug messages per file
@@ -1001,17 +1003,17 @@ def validate_db_key(key):
 
 ### Immediate Priority (Phase 1 - Cross-File Consolidation)
 1. **Week 1**: Extract contest system (`contest_system.py`) - consolidate from both files
-2. **Week 1**: Extract debug logging (`debug_logger.py`) - consolidate 147 total messages  
+2. **Week 1**: Extract debug logging (`debug.py`) - consolidate 147 total messages  
 3. **Week 2**: Extract state management (`state_manager.py`) - cross-file patterns
 
 ### Medium Priority (Phase 2 - Utils Decomposition)
-4. **Week 2**: Extract dice system (`dice_system.py`) - standardize 6 patterns
+4. **Week 2**: Extract dice system (`dice.py`) - standardize 6 patterns
 5. **Week 2**: Extract weapon utilities (`weapon_utilities.py`) - clean interface
 6. **Week 3**: Extract combat entry management (`combat_entry_manager.py`)
 
 ### High Priority (Phase 3 - Handler Decomposition)  
-7. **Week 3**: Extract grapple processors (`action_processors.py`)
-8. **Week 3**: Extract combat processors (`action_processors.py`)
+7. **Week 3**: Extract grapple processors (`actions.py`)
+8. **Week 3**: Extract combat processors (`actions.py`)
 
 ### Final Priority (Phase 4 - Handler Simplification)
 9. **Week 4**: Simplify handler structure

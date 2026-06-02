@@ -180,8 +180,8 @@ def is_target_grappled(target):
 - `MSG_WREST_OBJECT_NOT_FOUND`
 
 ### Command Location
-- **File**: `commands/CmdWrest.py` (standalone command, not combat-specific)
-- **Import location**: General commands, not combat module
+- **File**: `commands/CmdInventory.py` — `CmdWrest` (key `"wrest"`), with related logic in `commands/combat/special_actions.py`
+- **Import location**: General inventory commands, not a standalone module
 - **Reason**: Works outside combat, different from combat commands
 
 ## Testing Scenarios
