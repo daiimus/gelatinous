@@ -46,6 +46,8 @@ class FakeChar(AppearanceMixin):
 
     gender = "neutral"
     sdesc_keyword = None
+    look_place = "standing here."
+    temp_place = ""
 
     def __init__(self, locations):
         self._longdesc = dict(locations)
@@ -224,8 +226,8 @@ class SlotSelectionTests(TestCase):
 
     def test_valid_number_targets_slot(self):
         char = self._char_with_slots()
-        # Slots begin at 3 (1=short desc, 2=keyword).
-        result = _process_describe_choice(char, "3")
+        # Slots begin at 5 (1=short desc, 2=keyword, 3=lookplace, 4=tempplace).
+        result = _process_describe_choice(char, "5")
         self.assertEqual(result, "node_longdesc_entry")
         self.assertEqual(char.ndb._longdesc_active_slot, char.ndb._longdesc_slots[0])
 
