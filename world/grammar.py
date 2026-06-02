@@ -14,6 +14,8 @@ See specs/GRAMMAR_ENGINE_SPEC.md for the full specification.
 
 from __future__ import annotations
 
+import re
+
 import inflect
 
 # ---------------------------------------------------------------------------
@@ -117,6 +119,132 @@ def pluralize_noun(noun: str) -> str:
     if noun[0].isupper():
         return plural[0].upper() + plural[1:]
     return plural
+
+
+def singularize_noun(noun: str) -> str:
+    """Return the singular form of a (possibly already-singular) noun.
+
+    Thin wrapper over the ``inflect`` engine. ``inflect.singular_noun``
+    returns ``False`` for a noun that is already singular, so this helper
+    normalises that to "return the input unchanged". Capitalization of the
+    first letter is preserved ("Eyes" → "Eye", "feet" → "foot").
+
+    Args:
+        noun: A noun, singular or plural (a single word, e.g. "eyes").
+
+    Returns:
+        The singular form, capitalized to match ``noun``'s first letter.
+    """
+    if not noun:
+        return noun
+
+    singular = _engine.singular_noun(noun)
+    # ``singular_noun`` returns False when the input is already singular.
+    if not singular:
+        return noun
+
+    if noun[0].isupper():
+        return singular[0].upper() + singular[1:]
+    return singular
+
+
+# ---------------------------------------------------------------------------
+# Number-Flexing Tokens (paired-longdesc collapse)
+# ---------------------------------------------------------------------------
+#
+# Authors write paired body-part prose in the plural and wrap the
+# number-flexible words in ``{braces}``. The engine re-renders those braced
+# words to match a render *number* — ``"plural"`` for a collapsed, both-sides
+# pair; ``"singular"`` for a lone survivor or a single side. Number tokens are
+# OPT-IN: untouched words render verbatim.
+#
+# Only words whose grammatical number tracks the body part itself should be
+# braced (the part noun and any verb whose subject *is* that part). A main
+# clause verb that agrees with the person-pronoun ("They have ...") is left
+# un-braced — its agreement is a gender/pronoun concern, not a pair concern.
+
+#: Closed table of irregular verb forms keyed by *any* recognised form.
+#: Maps to ``(third_person_singular, plural_or_base)``. Lets a braced verb be
+#: authored in either number and re-rendered to the needed one.
+_IRREGULAR_VERB_FORMS: dict[str, tuple[str, str]] = {
+    "is": ("is", "are"), "are": ("is", "are"), "be": ("is", "are"),
+    "was": ("was", "were"), "were": ("was", "were"),
+    "has": ("has", "have"), "have": ("has", "have"),
+    "does": ("does", "do"), "do": ("does", "do"),
+}
+
+#: Matches an indefinite article immediately leading a noun-token body, e.g.
+#: ``"an eye"`` or ``"A eye"``. The article is dropped on a plural render and
+#: re-agreed (a/an) on a singular render.
+_ARTICLE_NOUN_RE = re.compile(r"^(a|an)\s+(.+)$", re.IGNORECASE)
+
+
+def _match_leading_case(word: str, like: str) -> str:
+    """Capitalise *word*'s first letter iff *like*'s first letter is upper."""
+    if like[:1].isupper():
+        return word[:1].upper() + word[1:]
+    return word
+
+
+def flex_noun(body: str, number: str) -> str:
+    """Render a noun token to the requested grammatical *number*.
+
+    Input-form-agnostic: the noun may be authored singular or plural, with
+    or without a leading indefinite article. On a plural render the article
+    (if any) is dropped and the noun pluralised; on a singular render the
+    noun is singularised and the article re-agreed (``a``/``an``).
+
+    Args:
+        body: The token body, e.g. ``"eye"``, ``"eyes"``, ``"an eye"``.
+        number: ``"plural"`` or ``"singular"``.
+
+    Returns:
+        The flexed noun phrase, first-letter case matched to *body*.
+    """
+    match = _ARTICLE_NOUN_RE.match(body)
+    article = match.group(1) if match else None
+    word = match.group(2) if match else body
+
+    singular = singularize_noun(word)
+
+    if number == "plural":
+        # Plural drops the indefinite article entirely.
+        return _match_leading_case(pluralize_noun(singular), body)
+
+    if article:
+        agreed = get_article(singular)
+        agreed = _match_leading_case(agreed, body)
+        return f"{agreed} {singular}"
+    return _match_leading_case(singular, body)
+
+
+def flex_verb(word: str, number: str) -> str:
+    """Render a verb token to agree with the requested *number*.
+
+    Input-form-agnostic: ``{accents}`` and ``{accent}`` both work. A plural
+    render yields the base/plural form ("accent", "are"); a singular render
+    yields the third-person singular form ("accents", "is").
+
+    Args:
+        word: The single-word verb token body, e.g. ``"accents"``, ``"are"``.
+        number: ``"plural"`` or ``"singular"``.
+
+    Returns:
+        The flexed verb, first-letter case matched to *word*.
+    """
+    lower = word.lower()
+
+    if lower in _IRREGULAR_VERB_FORMS:
+        singular_form, plural_form = _IRREGULAR_VERB_FORMS[lower]
+        out = plural_form if number == "plural" else singular_form
+        return _match_leading_case(out, word)
+
+    # Regular verb: normalise to the base/plural form via inflect, then
+    # conjugate back down for the singular render.
+    base = _engine.plural_verb(lower) or lower
+    if number == "plural":
+        return _match_leading_case(base, word)
+    return _match_leading_case(conjugate_third_person(base), word)
 
 
 # ---------------------------------------------------------------------------

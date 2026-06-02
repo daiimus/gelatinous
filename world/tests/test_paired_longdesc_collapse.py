@@ -1,10 +1,11 @@
 """Unit tests for symmetric left/right longdesc collapse.
 
 A matched ``left_*``/``right_*`` pair with identical longdescs renders as one
-pluralized line (e.g. "Calloused hands."); a wound sits on its own side
+line (the prose rendered once at plural number); a wound sits on its own side
 without splitting the pair; a pair severed on both sides collapses to one
 plural stump line; and any divergence (coverage, severance of one side,
-differing prose) falls back to separate rendering.
+differing prose) falls back to separate rendering. Token rendering
+(``{eye}``/``{accents}`` number-flexing) is covered by ``TokenRenderTests``.
 
 Run via::
 
@@ -31,49 +32,31 @@ class _Body(AppearanceMixin):
         self._severed = set(severed or ())
 
     def _process_description_variables(self, desc, looker, **kwargs):
-        # Passthrough so tests can assert on the pluralized text directly.
+        # Passthrough so tests can assert which pairs collapse without
+        # exercising the token renderer (covered separately).
         return desc
 
     def _get_severed_locations(self):
         return set(self._severed)
 
 
-class PluralizePairLongdescTests(TestCase):
+class _Render(AppearanceMixin):
+    """Minimal host for exercising the real token renderer."""
 
-    def setUp(self):
-        self.obj = _Bare()
+    gender = "neutral"
 
-    def test_strips_article_and_pluralizes_with_capital(self):
-        out = self.obj._pluralize_pair_longdesc(
-            "A calloused hand with scarred knuckles.", "hand"
+    class _DB:
+        skintone = None
+
+    db = _DB()
+
+    def get_display_name(self, looker):
+        return "Vasquez"
+
+    def render(self, desc, number):
+        return self._process_description_variables(
+            desc, looker=object(), force_third_person=True, number=number,
         )
-        self.assertEqual(out, "Calloused hands with scarred knuckles.")
-
-    def test_lowercase_fragment_stays_lowercase(self):
-        out = self.obj._pluralize_pair_longdesc("a milky eye", "eye")
-        self.assertEqual(out, "milky eyes")
-
-    def test_irregular_plural_foot_to_feet(self):
-        out = self.obj._pluralize_pair_longdesc("A scarred foot.", "foot")
-        self.assertEqual(out, "Scarred feet.")
-
-    def test_definite_article_handled(self):
-        out = self.obj._pluralize_pair_longdesc("The gnarled hand.", "hand")
-        self.assertEqual(out, "Gnarled hands.")
-
-    def test_missing_noun_returns_none(self):
-        # The anatomical noun isn't present; cannot safely pluralize.
-        out = self.obj._pluralize_pair_longdesc(
-            "a sleek prosthetic appendage", "hand"
-        )
-        self.assertIsNone(out)
-
-    def test_only_first_occurrence_pluralized(self):
-        out = self.obj._pluralize_pair_longdesc(
-            "a hand, a working hand", "hand"
-        )
-        # Leading article stripped; only the first 'hand' becomes plural.
-        self.assertEqual(out, "hands, a working hand")
 
 
 class GetSeveredLocationsTests(TestCase):
@@ -113,7 +96,7 @@ class BuildPairedCollapseTests(TestCase):
             None, longdescs, coverage_map or {}
         )
 
-    def test_identical_pair_collapses_to_plural(self):
+    def test_identical_pair_collapses(self):
         longdescs = {
             "left_hand": "A calloused hand.",
             "right_hand": "A calloused hand.",
@@ -124,7 +107,8 @@ class BuildPairedCollapseTests(TestCase):
             collapse_map, skip = self._build(longdescs)
         self.assertIn("left_hand", collapse_map)
         self.assertIn("right_hand", skip)
-        self.assertEqual(collapse_map["left_hand"], "Calloused hands.")
+        # Rendered once, verbatim (the passthrough stub bypasses token flex).
+        self.assertEqual(collapse_map["left_hand"], "A calloused hand.")
 
     def test_wound_on_one_side_stays_merged(self):
         longdescs = {
@@ -143,7 +127,7 @@ class BuildPairedCollapseTests(TestCase):
             collapse_map, skip = self._build(longdescs)
         self.assertEqual(
             collapse_map["left_hand"],
-            "Calloused hands. A fresh laceration crosses the right hand.",
+            "A calloused hand. A fresh laceration crosses the right hand.",
         )
         self.assertIn("right_hand", skip)
 
@@ -171,7 +155,9 @@ class BuildPairedCollapseTests(TestCase):
             collapse_map, _skip = self._build(longdescs)
         self.assertEqual(collapse_map, {})
 
-    def test_non_pluralizable_pair_falls_back(self):
+    def test_untokenized_identical_pair_collapses_verbatim(self):
+        # Identity, not the presence of an anatomical noun, drives collapse:
+        # untokenized prose renders once, verbatim.
         longdescs = {
             "left_hand": "a sleek prosthetic appendage",
             "right_hand": "a sleek prosthetic appendage",
@@ -179,8 +165,11 @@ class BuildPairedCollapseTests(TestCase):
         with mock.patch(
             f"{WOUNDS}.get_standalone_wound_description", return_value=""
         ):
-            collapse_map, _skip = self._build(longdescs)
-        self.assertEqual(collapse_map, {})
+            collapse_map, skip = self._build(longdescs)
+        self.assertEqual(
+            collapse_map["left_hand"], "a sleek prosthetic appendage"
+        )
+        self.assertIn("right_hand", skip)
 
     def test_both_severed_collapses_to_plural_stump(self):
         self.obj = _Body(severed={"left_hand", "right_hand"})
@@ -213,8 +202,65 @@ class BuildPairedCollapseTests(TestCase):
             f"{WOUNDS}.get_standalone_wound_description", return_value=""
         ):
             collapse_map, skip = self._build(longdescs)
-        self.assertEqual(collapse_map["left_wing"], "Feathered wings.")
+        self.assertEqual(collapse_map["left_wing"], "A feathered wing.")
         self.assertIn("right_wing", skip)
+
+
+class TokenRenderTests(TestCase):
+    """The real token renderer: pronoun tokens plus number-flexing."""
+
+    def setUp(self):
+        self.obj = _Render()
+
+    def test_pronoun_token_unaffected_by_number(self):
+        # Pronoun number tracks gender, not the body-part render number.
+        self.assertEqual(
+            self.obj.render("{Their} gaze.", "plural"), "Their gaze."
+        )
+        self.assertEqual(
+            self.obj.render("{Their} gaze.", "singular"), "Their gaze."
+        )
+
+    def test_pair_renders_plural(self):
+        out = self.obj.render(
+            "deep brown {eyes} that {accent} {their} skin", "plural"
+        )
+        self.assertEqual(out, "deep brown eyes that accent their skin")
+
+    def test_survivor_renders_singular(self):
+        out = self.obj.render(
+            "deep brown {eyes} that {accent} {their} skin", "singular"
+        )
+        self.assertEqual(out, "deep brown eye that accents their skin")
+
+    def test_article_noun_token_plural_drops_article(self):
+        out = self.obj.render("{An eye} {gleams} coldly.", "plural")
+        self.assertEqual(out, "Eyes gleam coldly.")
+
+    def test_article_noun_token_singular_keeps_article(self):
+        out = self.obj.render("{An eye} {gleams} coldly.", "singular")
+        self.assertEqual(out, "An eye gleams coldly.")
+
+    def test_irregular_pair_noun(self):
+        self.assertEqual(
+            self.obj.render("scarred {feet}", "plural"), "scarred feet"
+        )
+        self.assertEqual(
+            self.obj.render("scarred {feet}", "singular"), "scarred foot"
+        )
+
+    def test_noun_vs_verb_autodetect(self):
+        # "arm" is a pair noun; "flex" is not, so it conjugates as a verb.
+        out = self.obj.render("{arms} that {flex}", "singular")
+        self.assertEqual(out, "arm that flexes")
+
+    def test_untokenized_prose_verbatim(self):
+        text = "a milky white orb, unseeing."
+        self.assertEqual(self.obj.render(text, "plural"), text)
+
+    def test_unknown_multiword_token_left_literal(self):
+        out = self.obj.render("a strange {foo bar} thing", "plural")
+        self.assertEqual(out, "a strange {foo bar} thing")
 
 
 class PairedSeveredDescriptionTests(TestCase):

@@ -58,6 +58,69 @@ cases emerge.
 
 ---
 
+## Noun Number
+
+```python
+def pluralize_noun(noun: str) -> str:
+    """Singular → plural ("hand" → "hands", "foot" → "feet")."""
+
+def singularize_noun(noun: str) -> str:
+    """Plural → singular ("eyes" → "eye", "feet" → "foot").
+
+    Returns the input unchanged when it is already singular (``inflect``
+    reports ``False``). First-letter capitalization is preserved.
+    """
+```
+
+Both wrap the `inflect` singleton and preserve leading capitalization. Note
+`inflect.plural_noun` mangles an already-plural input (`"eyes"` → `"eyess"`),
+so number-flexing first normalizes to the singular base.
+
+---
+
+## Number-Flexing Tokens
+
+Consumed by the paired-longdesc collapse (see `LONGDESC_SYSTEM_SPEC.md`).
+Authors write paired body-part prose in the plural and wrap the
+number-flexible words in `{braces}`; the renderer re-renders those braced
+words to a target **number** — `"plural"` for a collapsed both-sides pair,
+`"singular"` for a lone survivor or single side. Tokens are opt-in: untouched
+words render verbatim (the engine never rewrites un-braced prose).
+
+```python
+def flex_noun(body: str, number: str) -> str:
+    """Render a noun token ("eye", "eyes", "an eye") to *number*.
+
+    Input-form-agnostic. On a plural render a leading indefinite article is
+    dropped and the noun pluralised; on a singular render the noun is
+    singularised and the article re-agreed (a/an). Leading case preserved.
+    """
+
+def flex_verb(word: str, number: str) -> str:
+    """Render a verb token ("accents", "accent", "is", "are") to *number*.
+
+    Plural → base/plural form ("accent", "are"); singular → third-person
+    singular ("accents", "is"). Irregulars (be/have/do/was) use a closed
+    bidirectional table; regulars normalise via ``inflect.plural_verb`` then
+    re-conjugate. Leading case preserved.
+    """
+```
+
+**Noun-vs-verb autodetect (deterministic, closed-set rule)** — performed by
+the caller (`AppearanceMixin._substitute_longdesc_tokens`), not by POS
+tagging: a braced word is a **noun** iff its singular is in the closed set of
+pair base nouns (`eye`, `ear`, `arm`, `hand`, `thigh`, `shin`, `foot`,
+derived from `world.combat.constants.PAIR_MERGE_KEYS`), optionally preceded by
+`a`/`an`. Any other braced **single** word is a **verb**. A multi-word token
+that is not an article+pair-noun is left literal and logged.
+
+**Scope** — only brace words whose grammatical number tracks the body part
+(the part noun and verbs whose subject **is** that part). A main-clause verb
+agreeing with the person-pronoun ("They have …") is a gender/pronoun concern,
+not a pair concern, and is left un-braced.
+
+---
+
 ## Article Handling
 
 The engine exposes two article-related helpers:

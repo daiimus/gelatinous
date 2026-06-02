@@ -11,6 +11,7 @@ from world.combat.constants import (
     SKINTONE_PALETTE, VALID_SKINTONES,
     STAT_DESCRIPTORS, STAT_TIER_RANGES,
     ANATOMICAL_REGIONS, ANATOMICAL_DISPLAY_ORDER,
+    PAIR_MERGE_KEYS,
 )
 from world.medical.utils import get_medical_status_description
 import re
@@ -567,6 +568,20 @@ class CmdLongdesc(Command):
         @longdesc face
         @longdesc/list
 
+    Symmetric pairs (eyes, ears, arms, hands, thighs, shins, feet) are
+    shorthands that set, view, and clear BOTH sides at once:
+
+        @longdesc eyes "deep brown {eyes} that {accent} {their} skin"
+
+    When both sides match they collapse into one line; set the sides
+    individually if you want them to differ (e.g. heterochromia).
+
+    Braces mark number-flexible words so a pair reads naturally as plural
+    ("brown eyes that accent") while a lone survivor reads singular ("a brown
+    eye that accents"). Brace the body-part noun ({eye}/{an eye}) and any verb
+    that agrees with it ({accent}, {are}). Braces are optional — plain prose
+    renders verbatim. Pronoun tokens ({their}, {they}, ...) work as before.
+
     Body locations include: head, face, left_eye, right_eye, left_ear, right_ear,
     neck, chest, back, abdomen, groin, left_arm, right_arm, left_hand, right_hand,
     left_thigh, right_thigh, left_shin, right_shin, left_foot, right_foot.
@@ -730,14 +745,41 @@ class CmdLongdesc(Command):
             # Clear specific location
             self._clear_specific_location(caller, target_char, location)
 
+    def _expand_pair_locations(self, target_char, location):
+        """Resolve a typed location into the concrete locations to act on.
+
+        A symmetric pair shorthand (e.g. ``eyes``) expands to both underlying
+        sides (``left_eye``, ``right_eye``) so a single command fans out to
+        both. A normal location resolves to itself.
+
+        Args:
+            target_char: Character whose anatomy is being checked.
+            location: The location string the player typed.
+
+        Returns:
+            list[str] | None: Concrete locations to act on, or ``None`` if the
+            location is neither a valid single location nor a usable pair
+            shorthand for this character.
+        """
+        if location in PAIR_MERGE_KEYS:
+            left, right = PAIR_MERGE_KEYS[location]
+            if (target_char.has_location(left)
+                    and target_char.has_location(right)):
+                return [left, right]
+            return None
+        if target_char.has_location(location):
+            return [location]
+        return None
+
     def _set_longdesc(self, caller, target_char, location, description):
-        """Set a longdesc for a specific location."""
+        """Set a longdesc for a specific location (or both sides of a pair)."""
         if not location:
             caller.msg("Please specify a body location.")
             return
 
-        # Validate location exists on character
-        if not target_char.has_location(location):
+        # Validate location exists on character (pair shorthand fans out).
+        locations = self._expand_pair_locations(target_char, location)
+        if not locations:
             caller.msg(f"'{location}' is not a valid body location for {target_char.get_display_name(caller)}.")
             available = ", ".join(target_char.get_available_locations()[:10])  # Show first 10
             caller.msg(f"Available locations include: {available}...")
@@ -751,15 +793,19 @@ class CmdLongdesc(Command):
 
         if len(description.strip()) == 0:
             # Empty description means clear
-            target_char.set_longdesc(location, None)
+            for loc in locations:
+                target_char.set_longdesc(loc, None)
             if target_char == caller:
                 caller.msg(f"Cleared description for {location}.")
             else:
                 caller.msg(f"Cleared description for {location} on {target_char.get_display_name(caller)}.")
             return
 
-        # Set the description
-        success = target_char.set_longdesc(location, description.strip())
+        # Set the description (the same string on both sides of a pair).
+        success = all(
+            target_char.set_longdesc(loc, description.strip())
+            for loc in locations
+        )
         if success:
             if target_char == caller:
                 caller.msg(f"Set description for {location}: \"{description.strip()}\"")
@@ -769,22 +815,31 @@ class CmdLongdesc(Command):
             caller.msg("Failed to set description. Please try again.")
 
     def _view_longdesc(self, caller, target_char, location):
-        """View a specific longdesc."""
-        if not target_char.has_location(location):
+        """View a specific longdesc (or both sides of a pair)."""
+        locations = self._expand_pair_locations(target_char, location)
+        if not locations:
             caller.msg(f"'{location}' is not a valid body location.")
             return
 
-        description = target_char.get_longdesc(location)
-        if description:
-            if target_char == caller:
-                caller.msg(f"{location}: \"{description}\"")
+        owner_prefix = (
+            "" if target_char == caller
+            else f"{target_char.get_display_name(caller)}'s "
+        )
+
+        # A pair shorthand whose sides match collapses to one line under the
+        # shorthand; diverging sides (or a normal location) show per side.
+        descriptions = [(loc, target_char.get_longdesc(loc)) for loc in locations]
+        if len(descriptions) == 2 and descriptions[0][1] == descriptions[1][1]:
+            descriptions = [(location, descriptions[0][1])]
+
+        for loc, description in descriptions:
+            if description:
+                caller.msg(f"{owner_prefix}{loc}: \"{description}\"")
             else:
-                caller.msg(f"{target_char.get_display_name(caller)}'s {location}: \"{description}\"")
-        else:
-            if target_char == caller:
-                caller.msg(f"No description set for {location}.")
-            else:
-                caller.msg(f"No description set for {location} on {target_char.get_display_name(caller)}.")
+                if target_char == caller:
+                    caller.msg(f"No description set for {loc}.")
+                else:
+                    caller.msg(f"No description set for {loc} on {target_char.get_display_name(caller)}.")
 
     def _show_all_longdescs(self, caller, target_char=None):
         """Show all current longdescs for a character."""
@@ -819,20 +874,22 @@ class CmdLongdesc(Command):
                 caller.msg(f"  |c{location}:|n \"{description}\"")
 
     def _clear_specific_location(self, caller, target_char, location):
-        """Clear a specific location's longdesc."""
-        if not target_char.has_location(location):
+        """Clear a specific location's longdesc (or both sides of a pair)."""
+        locations = self._expand_pair_locations(target_char, location)
+        if not locations:
             caller.msg(f"'{location}' is not a valid body location.")
             return
 
-        current_desc = target_char.get_longdesc(location)
-        if not current_desc:
+        current = [(loc, target_char.get_longdesc(loc)) for loc in locations]
+        if not any(desc for _loc, desc in current):
             if target_char == caller:
                 caller.msg(f"No description set for {location}.")
             else:
                 caller.msg(f"No description set for {location} on {target_char.get_display_name(caller)}.")
             return
 
-        target_char.set_longdesc(location, None)
+        for loc in locations:
+            target_char.set_longdesc(loc, None)
         if target_char == caller:
             caller.msg(f"Cleared description for {location}.")
         else:

@@ -283,9 +283,9 @@ With your administrative visibility, you see: item1 [#123], item2 [#456], weapon
 - **Constants-driven**: Uses `PARAGRAPH_BREAK_THRESHOLD`, `REGION_BREAK_PRIORITY`, and `ANATOMICAL_REGIONS` for fine-tuning
 
 #### Paired Longdesc Collapse ✅
-Symmetric left/right paired appendages collapse into a single pluralized line
-when their descriptions are interchangeable, avoiding redundant repetition
-(e.g. two identical "a pale blue eye." lines becoming "Pale blue eyes.").
+Symmetric left/right paired appendages collapse into a single line when their
+descriptions are interchangeable, avoiding redundant repetition (e.g. two
+identical "a pale blue eye." lines becoming one "pale blue eyes." line).
 
 **Pairs are derived dynamically** from `left_*` / `right_*` location keys
 (union of `longdesc` keys, `coverage_map`, `ANATOMICAL_DISPLAY_ORDER`, and
@@ -303,16 +303,34 @@ When eligible, the pair renders as one line and the right-side entry is
 skipped. Asymmetric coverage (one side clothed), differing prose, or a single
 amputated limb all **fail** the identity test and render each side separately.
 
-**Pluralization** (`_pluralize_pair_longdesc`):
-- Pluralizes the first whole-word occurrence of the pair's anatomical base
-  noun (`eye`→`eyes`, `foot`→`feet`) via `world.grammar.pluralize_noun`
-  (wrapping `inflect`).
-- Strips one leading article (`a` / `an` / `the`), tolerating leading color
-  codes / `{tokens}`; recapitalizes via `grammar.capitalize_first` if the
-  article was capitalized.
-- **Safe fallback**: if the base noun is absent from the prose (e.g. "a
-  freckled forearm" for base "arm"), returns `None` → the pair renders
-  separately rather than producing malformed text.
+**Verbatim collapse + number tokens** (the system never rewrites player
+prose): the identical string is rendered **once, at plural number**, through
+`_process_description_variables(..., number="plural")`. Words the author
+wrapped in `{braces}` are flexed to plural; everything else renders verbatim.
+A lone survivor or single side renders the same string at `number="singular"`.
+This dissolves the old "can we safely pluralize?" failure mode — there is no
+heuristic noun-substitution and no `None` fallback; any identical pair
+collapses.
+
+Number tokens (see `GRAMMAR_ENGINE_SPEC.md` §Number-Flexing Tokens):
+- **Noun** — a braced word whose singular is a known pair noun (`eye`, `ear`,
+  `arm`, `hand`, `thigh`, `shin`, `foot`; the closed set derived from
+  `PAIR_MERGE_KEYS`). `{eye}`/`{eyes}` flex the noun; `{an eye}` additionally
+  drops the article on plural and re-agrees `a`/`an` on singular.
+- **Verb** — any other braced single word, conjugated to agree with the part:
+  plural `{accent}`/`{are}`, singular `{accents}`/`{is}`. Only brace verbs
+  whose subject **is** the body part; a main-clause verb agreeing with the
+  person-pronoun ("They have …") is left un-braced.
+- **Unrecognised** tokens (multi-word non-noun, typos) are left **literal** and
+  logged — a stray brace no longer drops the whole substitution (the old
+  `str.format` footgun is gone; substitution is now per-token via `re.sub`).
+
+**Authoring convenience — pair shorthand**: `@longdesc <pair> "..."` (where
+`<pair>` is a `PAIR_MERGE_KEYS` key: `eyes`, `ears`, `arms`, `hands`,
+`thighs`, `shins`, `feet`) sets, views, and clears **both** sides at once,
+guaranteeing the byte-for-byte identity collapse requires. The pair keys are
+write-conveniences only — not body locations, not wearable, not render keys.
+Set the sides individually to make them differ (e.g. heterochromia).
 
 **Both-severed stumps** render via `world.medical.wounds`
 `get_paired_severed_description` using the type-agnostic
@@ -326,9 +344,11 @@ wound sentences into "both hands" is a possible future refinement, not
 currently done.)
 
 **Implementation**: `_build_paired_longdesc_collapse`,
-`_merge_paired_location`, `_get_severed_locations`, and
-`_pluralize_pair_longdesc` in `typeclasses/appearance_mixin.py`, consulted by
-both passes of `_get_visible_body_descriptions`.
+`_merge_paired_location`, `_get_severed_locations`,
+`_substitute_longdesc_tokens`, and `_pair_base_nouns` in
+`typeclasses/appearance_mixin.py`, consulted by both passes of
+`_get_visible_body_descriptions`; pair shorthand fan-out in
+`CmdLongdesc._expand_pair_locations` (`commands/CmdCharacter.py`).
 
 ### Visibility Rules ✅
 - **Default**: All body locations are visible unless covered by clothing

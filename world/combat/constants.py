@@ -66,6 +66,30 @@ REGION_BREAK_PRIORITY = True     # Prefer breaking between anatomical regions
 # Valid location validation set (expandable)
 VALID_LONGDESC_LOCATIONS = set(DEFAULT_LONGDESC_LOCATIONS.keys())
 
+# Symmetric left/right body-part pairs.
+#
+# Maps a plural shorthand key (the form a player types into ``@longdesc`` and
+# the noun a collapsed pair reads as) to its two underlying ``left_*``/
+# ``right_*`` locations. Serves three roles:
+#   1. Write-convenience: ``@longdesc eyes "..."`` fans the same string out to
+#      both ``left_eye`` and ``right_eye``.
+#   2. Collapse aid: identifies which locations may merge into one line.
+#   3. Closed anatomical-noun set: the singular base nouns (eye, ear, ...) are
+#      the only words a longdesc number-token treats as the part noun rather
+#      than as a verb.
+#
+# These keys are NOT body locations themselves: they are not in the default
+# anatomy, are not wearable, and are not render keys.
+PAIR_MERGE_KEYS = {
+    "eyes": ("left_eye", "right_eye"),
+    "ears": ("left_ear", "right_ear"),
+    "arms": ("left_arm", "right_arm"),
+    "hands": ("left_hand", "right_hand"),
+    "thighs": ("left_thigh", "right_thigh"),
+    "shins": ("left_shin", "right_shin"),
+    "feet": ("left_foot", "right_foot"),
+}
+
 # Anatomical display order (head to toe). The head region mirrors how an
 # observer organically registers a person: hair first, then the eyes, after
 # which the head and face resolve into view, then the ears and neck.

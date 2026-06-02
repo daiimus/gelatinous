@@ -16,9 +16,12 @@ from world.grammar import (
     GENDER_MAP,
     capitalize_first,
     conjugate_third_person,
+    flex_noun,
+    flex_verb,
     get_article,
     is_pluralia_tantum,
     possessive,
+    singularize_noun,
     transform_pronoun,
     with_article,
 )
@@ -540,3 +543,95 @@ class TestCapitalizeFirst(TestCase):
             capitalize_first("a compact woman nods."),
             "A compact woman nods.",
         )
+
+
+# -----------------------------------------------------------------------
+# Singularization
+# -----------------------------------------------------------------------
+
+
+class TestSingularizeNoun(TestCase):
+    """Tests for ``singularize_noun``."""
+
+    def test_regular_plural(self) -> None:
+        self.assertEqual(singularize_noun("eyes"), "eye")
+
+    def test_irregular_plural(self) -> None:
+        self.assertEqual(singularize_noun("feet"), "foot")
+
+    def test_already_singular_unchanged(self) -> None:
+        self.assertEqual(singularize_noun("eye"), "eye")
+        self.assertEqual(singularize_noun("foot"), "foot")
+
+    def test_preserves_leading_capital(self) -> None:
+        self.assertEqual(singularize_noun("Eyes"), "Eye")
+        self.assertEqual(singularize_noun("Feet"), "Foot")
+
+    def test_empty_string(self) -> None:
+        self.assertEqual(singularize_noun(""), "")
+
+
+# -----------------------------------------------------------------------
+# Number-Flexing Tokens
+# -----------------------------------------------------------------------
+
+
+class TestFlexNoun(TestCase):
+    """Tests for ``flex_noun`` (input-form-agnostic noun number)."""
+
+    def test_singular_input_to_plural(self) -> None:
+        self.assertEqual(flex_noun("eye", "plural"), "eyes")
+
+    def test_plural_input_to_plural_no_double(self) -> None:
+        self.assertEqual(flex_noun("eyes", "plural"), "eyes")
+
+    def test_plural_input_to_singular(self) -> None:
+        self.assertEqual(flex_noun("eyes", "singular"), "eye")
+
+    def test_irregular_to_plural(self) -> None:
+        self.assertEqual(flex_noun("foot", "plural"), "feet")
+
+    def test_irregular_to_singular(self) -> None:
+        self.assertEqual(flex_noun("feet", "singular"), "foot")
+
+    def test_article_dropped_on_plural(self) -> None:
+        self.assertEqual(flex_noun("an eye", "plural"), "eyes")
+
+    def test_article_agreement_fixed_on_singular(self) -> None:
+        # "a eye" should re-agree to "an eye" in the singular render.
+        self.assertEqual(flex_noun("a eye", "singular"), "an eye")
+
+    def test_article_kept_on_singular(self) -> None:
+        self.assertEqual(flex_noun("an eye", "singular"), "an eye")
+
+    def test_leading_capital_preserved_plural(self) -> None:
+        self.assertEqual(flex_noun("An eye", "plural"), "Eyes")
+
+    def test_leading_capital_preserved_singular(self) -> None:
+        self.assertEqual(flex_noun("Feet", "singular"), "Foot")
+
+
+class TestFlexVerb(TestCase):
+    """Tests for ``flex_verb`` (input-form-agnostic verb agreement)."""
+
+    def test_regular_singular_input_to_plural(self) -> None:
+        self.assertEqual(flex_verb("accents", "plural"), "accent")
+
+    def test_regular_base_input_to_singular(self) -> None:
+        self.assertEqual(flex_verb("accent", "singular"), "accents")
+
+    def test_regular_y_verb(self) -> None:
+        self.assertEqual(flex_verb("carries", "plural"), "carry")
+        self.assertEqual(flex_verb("carry", "singular"), "carries")
+
+    def test_irregular_be(self) -> None:
+        self.assertEqual(flex_verb("is", "plural"), "are")
+        self.assertEqual(flex_verb("are", "singular"), "is")
+
+    def test_irregular_have(self) -> None:
+        self.assertEqual(flex_verb("has", "plural"), "have")
+        self.assertEqual(flex_verb("have", "singular"), "has")
+
+    def test_leading_capital_preserved(self) -> None:
+        self.assertEqual(flex_verb("Accents", "plural"), "Accent")
+        self.assertEqual(flex_verb("Are", "singular"), "Is")

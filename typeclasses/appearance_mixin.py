@@ -251,9 +251,8 @@ class AppearanceMixin:
             if left_loc in coverage_map or right_loc in coverage_map:
                 continue
 
-            base_noun = left_loc[len("left_"):].replace("_", " ")
             merged = self._merge_paired_location(
-                looker, left_loc, right_loc, base_noun, longdescs, severed_locs
+                looker, left_loc, right_loc, longdescs, severed_locs
             )
             if merged is not None:
                 collapse_map[left_loc] = merged
@@ -261,25 +260,25 @@ class AppearanceMixin:
 
         return collapse_map, skip_set
 
-    def _merge_paired_location(self, looker, left_loc, right_loc, base_noun,
+    def _merge_paired_location(self, looker, left_loc, right_loc,
                                longdescs, severed_locs):
         """
         Build the merged description for one collapsible pair, or ``None``.
 
-        Handles the two collapse cases: identical longdescs (pluralized, with
-        each side's wounds appended on its own side) and both-sides-severed
-        (a single plural stump line).
+        Handles the two collapse cases: identical longdescs (rendered once at
+        plural number, with each side's wounds appended on its own side) and
+        both-sides-severed (a single plural stump line). Identical prose is
+        rendered verbatim — number-flexible words the author wrapped in
+        ``{braces}`` are re-rendered to plural; everything else is unchanged.
         """
         left_desc = longdescs.get(left_loc)
         right_desc = longdescs.get(right_loc)
 
         # Case 1: identical, non-empty longdescs on both sides.
         if left_desc and right_desc and left_desc == right_desc:
-            plural = self._pluralize_pair_longdesc(left_desc, base_noun)
-            if plural is None:
-                return None
             processed = self._process_description_variables(
-                plural, looker, force_third_person=True, apply_skintone=True,
+                left_desc, looker, force_third_person=True,
+                apply_skintone=True, number="plural",
             )
             parts = [processed]
             # A wound simply sits on its own side without splitting the pair.
@@ -324,46 +323,6 @@ class AppearanceMixin:
             if all(w.get('stage') == 'severed' for w in location_wounds):
                 severed.add(location)
         return severed
-
-    def _pluralize_pair_longdesc(self, text, base_noun):
-        """
-        Pluralize an identical paired longdesc for a merged rendering.
-
-        Pluralizes the first whole-word occurrence of the anatomical noun
-        (e.g. "hand" -> "hands") and strips a single leading article,
-        preserving the article's capitalization onto the new first word.
-
-        Returns ``None`` when the anatomical noun is absent from the prose,
-        signalling the caller to render the two sides separately rather than
-        risk a grammatically broken merge.
-        """
-        import re
-        from world.grammar import pluralize_noun, capitalize_first
-
-        noun_pattern = re.compile(r'\b' + re.escape(base_noun) + r'\b',
-                                  re.IGNORECASE)
-        if not noun_pattern.search(text):
-            return None
-
-        plural = pluralize_noun(base_noun)
-        merged, _count = noun_pattern.subn(plural, text, count=1)
-
-        # Strip a single leading article, tolerating leading color codes or
-        # template tokens, and re-capitalize if the article was capitalized.
-        article_pattern = re.compile(
-            r'^((?:\|[a-zA-Z0-9]|\{[^}]+\}|\s)*)(a|an|the)\b[ \t]+',
-            re.IGNORECASE,
-        )
-        match = article_pattern.match(merged)
-        if match:
-            lead = match.group(1)
-            article_capitalized = match.group(2)[0].isupper()
-            remainder = merged[match.end():]
-            if article_capitalized:
-                remainder = capitalize_first(remainder)
-            merged = lead + remainder
-
-        return merged
 
     def _format_longdescs_with_paragraphs(self, longdesc_list):
         """
@@ -589,14 +548,86 @@ class AppearanceMixin:
         # Join all parts with appropriate spacing (blank lines between sections)
         return '\n\n'.join(parts)
 
+    @staticmethod
+    def _pair_base_nouns():
+        """Return the closed set of singular pair nouns (eye, ear, hand, ...).
+
+        These are the only words a longdesc number-token treats as the body's
+        part noun; any other braced single word is treated as a verb.
+        """
+        from world.combat.constants import PAIR_MERGE_KEYS
+
+        nouns = set()
+        for left_loc, _right_loc in PAIR_MERGE_KEYS.values():
+            # "left_eye" -> "eye", "left_foot" -> "foot"
+            nouns.add(left_loc.split("_", 1)[1])
+        return nouns
+
+    def _substitute_longdesc_tokens(self, desc, variables, number):
+        """Resolve brace tokens in a longdesc, one token at a time.
+
+        Resolution order per ``{token}``:
+          1. Pronoun / name token present in *variables*.
+          2. Number-flexible body-part token: a noun if its singular is a
+             known pair noun (optionally with a leading ``a``/``an``), else a
+             single-word verb. Both are flexed to *number*.
+          3. Anything else is left literal (the brace is preserved) and logged.
+
+        Args:
+            desc (str): Raw longdesc prose.
+            variables (dict): Pronoun/name token → replacement.
+            number (str): "singular" or "plural" for body-part tokens.
+
+        Returns:
+            str: Prose with recognised tokens substituted.
+        """
+        import re
+        from world.grammar import flex_noun, flex_verb, singularize_noun
+
+        pair_nouns = self._pair_base_nouns()
+        article_re = re.compile(r"^(?:a|an)\s+(.+)$", re.IGNORECASE)
+
+        def _resolve(match):
+            body = match.group(1)
+
+            # 1. Pronoun / name tokens.
+            if body in variables:
+                return str(variables[body])
+
+            # 2. Number-flexible body-part tokens.
+            art_match = article_re.match(body)
+            core = art_match.group(1) if art_match else body
+            if " " not in core:
+                core_base = singularize_noun(core).lower()
+                if core_base in pair_nouns:
+                    return flex_noun(body, number)
+                if art_match is None:
+                    # Single bareword that is not a pair noun → verb.
+                    return flex_verb(body, number)
+
+            # 3. Unrecognised token: leave it literal, but log it so authors
+            #    can spot typos instead of silently shipping a broken token.
+            print(
+                "Longdesc token not recognised, left literal: "
+                f"{{{body}}} (in: {desc[:80]!r})"
+            )
+            return match.group(0)
+
+        return re.sub(r"\{([^{}]+)\}", _resolve, desc)
+
     def _process_description_variables(
-        self, desc, looker, force_third_person=False, apply_skintone=False
+        self, desc, looker, force_third_person=False, apply_skintone=False,
+        number="singular",
     ):
         """
         Process template variables in descriptions for perspective-aware text.
 
-        Uses simple template variables like {their}, {they}, {name} similar
-        to {color}.
+        Uses simple brace tokens like {their}, {they}, {name} (like {color}).
+        In addition to pronoun/name tokens, number-flexible body-part words may
+        be wrapped in braces ({eye}, {an eye}, {accents}); these are rendered
+        to match *number* — "plural" for a collapsed pair, "singular" for a
+        single side or lone survivor. Tokens the resolver does not recognise
+        are left literal (a stray brace no longer drops the whole substitution).
 
         Args:
             desc (str): Description text with potential template variables.
@@ -604,6 +635,8 @@ class AppearanceMixin:
             force_third_person (bool): If True, always use 3rd person pronouns.
             apply_skintone (bool): If True, apply skintone coloring
                 (for longdescs only).
+            number (str): "singular" or "plural"; the grammatical number that
+                braced body-part tokens should render to.
 
         Returns:
             str: Description with variables substituted.
@@ -724,15 +757,13 @@ class AppearanceMixin:
             ),
         }
 
-        # Substitute all variables in the description
-        try:
-            processed_desc = desc.format(**variables)
-        except (KeyError, ValueError) as e:
-            # If there are template errors, use original description and log
-            processed_desc = desc
-            print(f"Template processing error in _process_description_variables: {e}")
-            print(f"Description: {desc[:100]}...")
-            print(f"Variables available: {list(variables.keys())}")
+        # Substitute all brace tokens one at a time. Pronoun/name tokens
+        # resolve from ``variables``; otherwise a token is a number-flexible
+        # body-part word (noun if its singular is a known pair noun, verb
+        # otherwise). Unresolvable tokens are left literal.
+        processed_desc = self._substitute_longdesc_tokens(
+            desc, variables, number
+        )
 
         # Apply skintone coloring only if requested (for longdescs only)
         if apply_skintone:
