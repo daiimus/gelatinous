@@ -69,7 +69,14 @@ char.db.archived = False
 
 ## Web Form Requirements
 
-### Phase 1: Minimal Form (Next Step)
+> **Status: Form COMPLETE.** Phases 1–4 were built incrementally and are now
+> live. The shipped `CharacterForm` in `web/website/forms.py` includes the split
+> name fields (`first_name`, `last_name`), `sex`, all four GRIM stats, and the
+> full 300-point + name-uniqueness validation. Phase 5 (respawn interface)
+> remains optional/future. The per-phase breakdown is retained below as the
+> historical implementation plan.
+
+### Phase 1: Minimal Form (COMPLETE)
 
 **Extend Evennia's CharacterForm with:**
 - `grit` (IntegerField, min=1, max=150, initial=75)
@@ -81,7 +88,7 @@ char.db.archived = False
 **Validation:**
 - No GRIM total validation yet (just testing single field)
 
-### Phase 2: Basic GRIM Form
+### Phase 2: Basic GRIM Form (COMPLETE)
 
 **Add all GRIM fields:**
 - `grit` (IntegerField, min=1, max=150, initial=75)
@@ -93,7 +100,7 @@ char.db.archived = False
 - Total must equal 300
 - Each stat 1-150
 
-### Phase 3: Name Structure
+### Phase 3: Name Structure (COMPLETE)
 
 **Split name into fields:**
 - `first_name` (CharField, max=30, required, pattern validation)
@@ -109,7 +116,7 @@ charname = f"{first_name} {last_name}"
 - Regex: `^[a-zA-Z][a-zA-Z\-']*[a-zA-Z]$`
 - Check uniqueness of full name
 
-### Phase 4: Sex/Gender
+### Phase 4: Sex/Gender (COMPLETE)
 
 **Add field:**
 - `sex` (ChoiceField: "male", "female", "ambiguous")
@@ -130,41 +137,49 @@ character.sex = form.cleaned_data['sex']
 ### Current State
 ✅ Template overrides working (`character_form.html`, `_menu.html`)
 ✅ "Decant Sleeve" / "Manage Sleeves" terminology applied
+✅ Full GRIM + name/sex form **implemented** in `web/website/forms.py`
+   (class `CharacterForm`): `first_name`, `last_name`, `sex`, `desc`, and all
+   four GRIM stats (`grit`, `resonance`, `intellect`, `motorics`)
+✅ `clean()` enforces the 300-point GRIM budget and full-name uniqueness;
+   `clean_first_name()`/`clean_last_name()` enforce the name regex
+✅ Custom `CharacterCreateView` wired via `web/website/urls.py`
+   (`characters/create/`)
 
-### Next Steps
+### Completed Work
 
-**Step 1: Single GRIM Field Test**
-- Create `web/website/forms.py`
-- Extend `CharacterForm` with just `grit` field
-- No custom view needed (use Evennia's default)
-- Verify field appears in form
-- Create test character with grit value
-- Confirm `character.grit` is set correctly
+Phases 1–4 below are **done**. The live form already collects name, sex, and the
+full GRIM distribution with server-side validation:
 
-**Step 2: Full GRIM Fields**
-- Add `resonance`, `intellect`, `motorics` to form
-- Add `clean()` method to validate 300-point total
-- Add client-side JavaScript for live point calculator
-- Test character creation end-to-end
+**Step 1: Single GRIM Field Test — DONE**
+- `web/website/forms.py` created
+- `CharacterForm` extends Evennia's `CharacterForm`
+- `character.grit` set correctly from the form
 
-**Step 3: Name Structure**
-- Add `first_name`, `last_name` fields to form
-- Override `save()` or view's `form_valid()` to combine names
-- Remove or hide `db_key` field from user input
-- Test name validation and uniqueness
+**Step 2: Full GRIM Fields — DONE**
+- `resonance`, `intellect`, `motorics` added
+- `clean()` validates the 300-point total
+- Live point calculator wired in the template's JavaScript
 
-**Step 4: Sex Field**
-- Add `sex` ChoiceField
-- Set `character.sex` in view
-- Test all three options
+**Step 3: Name Structure — DONE**
+- `first_name`, `last_name` fields added with regex + length validation
+- Names combined into the character key; uniqueness checked in `clean()`
 
-**Step 5: Respawn Interface**
+**Step 4: Sex Field — DONE**
+- `sex` ChoiceField (male/female/ambiguous) added and applied to the character
+
+### Remaining Work
+
+**Step 5: Respawn Interface (future/optional)**
 - Extend view with `get_context_data()` to detect archived characters
 - Update template to show flash clone + template options
 - Handle respawn choices in `form_valid()`
 - Integrate `create_flash_clone()` function
 
-## Form Example (Phase 2)
+## Form Example (as built)
+
+The form below reflects the live `web/website/forms.py`. The `first_name`,
+`last_name`, and `sex` field definitions are omitted here for brevity (see the
+source), but the `Meta.fields` tuple matches the real code exactly.
 
 ```python
 # web/website/forms.py
@@ -172,8 +187,11 @@ from django import forms
 from evennia.web.website.forms import CharacterForm as EvenniaCharacterForm
 
 class CharacterForm(EvenniaCharacterForm):
-    """Extended character form with GRIM stats."""
-    
+    """Extended character form with GRIM stats, name structure, and sex."""
+
+    # first_name / last_name (CharField, regex + length validated) and
+    # sex (ChoiceField) are also defined here — omitted for brevity.
+
     grit = forms.IntegerField(
         min_value=1, max_value=150, initial=75,
         label="Grit",
@@ -203,12 +221,11 @@ class CharacterForm(EvenniaCharacterForm):
     )
     
     class Meta(EvenniaCharacterForm.Meta):
-        fields = EvenniaCharacterForm.Meta.fields + (
-            'grit', 'resonance', 'intellect', 'motorics'
-        )
+        # Extend parent's fields with our custom fields
+        fields = ('first_name', 'last_name', 'sex', 'desc', 'grit', 'resonance', 'intellect', 'motorics')
     
     def clean(self):
-        """Validate GRIM total equals 300."""
+        """Validate GRIM total equals 300 and the full name is unique."""
         cleaned_data = super().clean()
         
         grit = cleaned_data.get('grit', 0)
@@ -226,7 +243,7 @@ class CharacterForm(EvenniaCharacterForm):
         return cleaned_data
 ```
 
-## View Example (Phase 2)
+## View Example (as built)
 
 ```python
 # web/website/views/characters.py
@@ -274,7 +291,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             return self.form_invalid(form)
 ```
 
-## URL Override (Phase 2)
+## URL Override (as built)
 
 ```python
 # web/website/urls.py
@@ -291,29 +308,29 @@ urlpatterns = urlpatterns + evennia_website_urlpatterns
 
 ## Testing Checklist
 
-### Phase 1 (Single Field)
-- [ ] Form displays with grit field
-- [ ] Can enter value 1-150
-- [ ] Value is saved to `character.grit`
-- [ ] Can retrieve value with `character.grit`
+### Phase 1 (Single Field) — COMPLETE
+- [x] Form displays with grit field
+- [x] Can enter value 1-150
+- [x] Value is saved to `character.grit`
+- [x] Can retrieve value with `character.grit`
 
-### Phase 2 (Full GRIM)
-- [ ] All four GRIM fields appear
-- [ ] JavaScript calculator shows total
-- [ ] Cannot submit if total ≠ 300
-- [ ] All four stats saved correctly
-- [ ] Can create multiple characters with different distributions
+### Phase 2 (Full GRIM) — COMPLETE
+- [x] All four GRIM fields appear
+- [x] JavaScript calculator shows total
+- [x] Cannot submit if total ≠ 300
+- [x] All four stats saved correctly
+- [x] Can create multiple characters with different distributions
 
-### Phase 3 (Name Structure)
-- [ ] First/last name fields appear
-- [ ] Name validation works (regex, length)
-- [ ] Names combined into `character.key`
-- [ ] Uniqueness check works
+### Phase 3 (Name Structure) — COMPLETE
+- [x] First/last name fields appear
+- [x] Name validation works (regex, length)
+- [x] Names combined into `character.key`
+- [x] Uniqueness check works
 
-### Phase 4 (Sex)
-- [ ] Sex dropdown appears with 3 options
-- [ ] Selection saved to `character.sex`
-- [ ] Gender property returns correct value
+### Phase 4 (Sex) — COMPLETE
+- [x] Sex dropdown appears with 3 options
+- [x] Selection saved to `character.sex`
+- [x] Gender property returns correct value
 
 ### Phase 5 (Respawn)
 - [ ] Flash clone option appears for accounts with dead characters

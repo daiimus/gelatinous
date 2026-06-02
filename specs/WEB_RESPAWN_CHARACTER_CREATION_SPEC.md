@@ -88,10 +88,10 @@ templates = [generate_random_template() for _ in range(3)]
 Reuse existing flash clone creation from `commands/charcreate.py`:
 
 ```python
-from commands.charcreate import create_flash_clone_character
+from commands.charcreate import create_flash_clone
 
 # When user selects flash clone option
-character = create_flash_clone_character(account, old_character)
+character = create_flash_clone(account, old_character)
 ```
 
 **Flash clone behavior:**
@@ -160,7 +160,7 @@ def post(self, request, *args, **kwargs):
     sex = request.POST.get('sex')
     
     if choice == 'flash_clone':
-        character = create_flash_clone_character(account, old_character)
+        character = create_flash_clone(account, old_character)
     else:
         template_idx = int(choice.split('_')[1])
         template = templates[template_idx]
@@ -195,7 +195,7 @@ User Selects Option + Sex
   ↓
 POST Handler Creates Character:
   - Template: create_character_from_template()
-  - Flash Clone: create_flash_clone_character()
+  - Flash Clone: create_flash_clone()
   ↓
 Redirect to Character Management
 ```
@@ -217,7 +217,7 @@ Redirect to Character Management
 
 ### Phase 3: Form Processing
 - [ ] Create respawn form handler in `post()` method
-- [ ] Import `create_flash_clone_character()` function
+- [ ] Import `create_flash_clone()` function
 - [ ] Import `create_character_from_template()` function
 - [ ] Handle template selection + creation
 - [ ] Handle flash clone selection + creation
@@ -284,7 +284,7 @@ Phase 1 was successfully implemented with respawn interface, template generation
    - ✅ `show_respawn_interface()` generates 3 templates + flash clone
    - ✅ `handle_respawn_submission()` processes template/clone selection
    - ✅ Sex selection integrated for all respawn paths
-   - ✅ Imports `generate_random_template()` and `create_flash_clone_character()`
+   - ✅ Imports `generate_random_template()` and `create_flash_clone()`
 
 2. **Template Creation** (`web/templates/website/character_respawn_create.html`)
    - ✅ Respawn interface matches dissolution aesthetic
@@ -349,13 +349,13 @@ r'^(.+?)\s+([IVXLCDM]+)$'
 #### 3. Flash Clone Sex Inheritance Bug
 **Issue:** Flash clone was overriding inherited sex with 'ambiguous' default from POST data, instead of preserving the original character's sex.
 
-**Root Cause:** `web/website/views/characters.py` `handle_respawn_submission()` was reading `sex` from POST data and applying it to both template-based characters AND flash clones. Flash clones already inherit sex automatically in `create_flash_clone_character()`.
+**Root Cause:** `web/website/views/characters.py` `handle_respawn_submission()` was reading `sex` from POST data and applying it to both template-based characters AND flash clones. Flash clones already inherit sex automatically in `create_flash_clone()`.
 
 **Fix:** Removed sex override for flash clone option (commit `00e2ff3`):
 ```python
 # For flash clone, don't read sex from POST
 if sleeve_choice == 'flash_clone':
-    character = create_flash_clone_character(account, old_character)
+    character = create_flash_clone(account, old_character)
     # Sex already inherited automatically
 else:
     # Template-based creation uses POST sex
