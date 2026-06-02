@@ -1210,6 +1210,15 @@ def _describe_preview_oneline(text, width=60):
     return flat
 
 
+def _describe_slot_label(slot):
+    """Human-readable label for a slot, display-only.
+
+    ``left_eye`` -> ``Left Eye``, ``eyes`` -> ``Eyes``. The internal slot
+    string is unchanged; this is purely for the menu's appearance.
+    """
+    return " ".join(word.capitalize() for word in slot.split("_"))
+
+
 def _node_describe_list(caller, raw_string, **kwargs):
     """EvMenu node: short description, keyword, and body-location slots."""
     from world.grammar import DEFAULT_SDESC_KEYWORDS
@@ -1219,35 +1228,43 @@ def _node_describe_list(caller, raw_string, **kwargs):
         slots = _build_longdesc_slots(caller)
         caller.ndb._longdesc_slots = slots
 
-    text = "\n|xSelect an item by number to edit it.|n\n"
+    # Build (number, label, value) rows first so the label column can be
+    # aligned and the "::" separators line up for readability.
+    rows = []
 
     # 1) Short description (db.desc).
     desc = caller.db.desc
     if desc:
-        shown = f"\"{_describe_preview_oneline(desc)}\""
+        shown = _describe_preview_oneline(desc)
     else:
-        shown = "|x(empty)|n"
-    text += f"  |w{1:>2}|n |cShort Description:|n {shown}\n"
+        shown = "(empty)"
+    rows.append(("1", "Short Description", shown))
 
     # 2) Sdesc keyword.
     gender = caller.gender
     default_kw = DEFAULT_SDESC_KEYWORDS.get(gender, "person")
     current_kw = caller.sdesc_keyword
     shown_kw = current_kw if current_kw else f"{default_kw} (default)"
-    text += f"  |w{2:>2}|n |cKeyword:|n {shown_kw}\n"
+    rows.append(("2", "Keyword", shown_kw))
 
     # 3..N) Body-location longdesc slots.
     for offset, slot in enumerate(slots):
         idx = offset + 3
         value, diverged = _longdesc_slot_value(caller, slot)
         if diverged:
-            shown = "|y(sides differ \u2014 editing sets both alike)|n"
+            shown = "(sides differ \u2014 editing sets both alike)"
         elif value:
-            shown = f"\"{value}\""
+            shown = value
         else:
-            shown = "|x(empty)|n"
-        text += f"  |w{idx:>2}|n |c{slot}:|n {shown}\n"
-    text += f"  |w{'x':>2}|n |cExit|n"
+            shown = "(empty)"
+        rows.append((str(idx), _describe_slot_label(slot), shown))
+
+    label_width = max(len(label) for _num, label, _val in rows)
+
+    text = "\n|wDescribe \u2014 select a number to edit.|n\n"
+    for num, label, value in rows:
+        text += f"  |w{num:>2}.|n |W{label:<{label_width}} :: {value}|n\n"
+    text += f"  |w{'x':>2}.|n |WExit|n"
 
     options = ({"key": "_default", "goto": _process_describe_choice},)
     return text, options
@@ -1292,21 +1309,21 @@ def _node_longdesc_exit(caller, raw_string, **kwargs):
 def _node_describe_short(caller, raw_string, **kwargs):
     """EvMenu node: prompt for the caller's main (short) description."""
     desc = caller.db.desc
-    text = "\n|cEditing: Short Description|n\n"
+    text = "\n|wEditing: Short Description|n\n"
     if desc:
-        text += f"\n|xCurrent:|n \"{desc}\"\n"
+        text += f"\n|WCurrent:|n |W{desc}|n\n"
         rendered = caller._process_description_variables(
             desc, caller, force_third_person=True
         )
-        text += f"\n|xPreview:|n {rendered}\n"
+        text += f"\n|WPreview:|n |W{rendered}|n\n"
     else:
-        text += "\n|xCurrent:|n (empty)\n"
+        text += "\n|WCurrent: (empty)|n\n"
 
     text += (
-        "\n|wType your main description \u2014 the first thing others see when"
-        "\nthey look at you. Use |y{their}/{they}|w for pronoun tokens that"
+        "\n|WType your main description \u2014 the first thing others see when"
+        "\nthey look at you. Use {their}/{they} for pronoun tokens that"
         "\nadapt to the viewer; plain prose renders verbatim."
-        "\n\nType |yclear|w to remove it, or |yback|w to return unchanged.|n"
+        "\n\nType clear to remove it, or back to return unchanged.|n"
     )
 
     options = ({"key": "_default", "goto": _process_describe_short},)
@@ -1329,7 +1346,7 @@ def _process_describe_short(caller, raw_string, **kwargs):
     rendered = caller._process_description_variables(
         entry, caller, force_third_person=True
     )
-    caller.msg(f"|xPreview:|n {rendered}")
+    caller.msg(f"|WPreview:|n |W{rendered}|n")
     return "node_describe_list"
 
 
@@ -1349,8 +1366,8 @@ def _node_describe_keyword(caller, raw_string, **kwargs):
     default_kw = DEFAULT_SDESC_KEYWORDS.get(gender, "person")
     display_current = current if current else f"{default_kw} (default)"
 
-    text = "\n|cEditing: Keyword|n\n"
-    text += f"\n|xCurrent:|n |w{display_current}|n\n\n"
+    text = "\n|wEditing: Keyword|n\n"
+    text += f"\n|WCurrent: {display_current}|n\n\n"
 
     # Render in 3 columns.
     col_width = 26
@@ -1363,15 +1380,15 @@ def _node_describe_keyword(caller, raw_string, **kwargs):
             if idx < len(keywords):
                 kw = keywords[idx]
                 num = f"{idx + 1}"
-                marker = "|g*|n" if kw == current else " "
-                entry = f"|w{num:>3}|n{marker}{kw}"
+                marker = "|W*|n" if kw == current else " "
+                entry = f"|w{num:>3}|n{marker}|W{kw}|n"
                 padding = col_width - len(f"{num:>3} {kw}")
                 line += entry + " " * max(padding, 1)
         text += line.rstrip() + "\n"
 
     text += (
-        "\n|wEnter a number or keyword name to select. For a custom word, use"
-        "\n|ydescribe keyword <word>|w. Type |yback|w to return.|n"
+        "\n|WEnter a number or keyword name to select. For a custom word, use"
+        "\ndescribe keyword <word>. Type back to return.|n"
     )
 
     options = ({"key": "_default", "goto": _process_describe_keyword},)
@@ -1440,20 +1457,20 @@ def _node_longdesc_entry(caller, raw_string, **kwargs):
         return _node_describe_list(caller, raw_string, **kwargs)
 
     value, diverged = _longdesc_slot_value(caller, slot)
-    text = f"\n|cEditing: {slot}|n\n"
+    text = f"\n|wEditing: {_describe_slot_label(slot)}|n\n"
     if diverged:
-        text += "\n|ySides currently differ; saving here sets both alike.|n\n"
+        text += "\n|WSides currently differ; saving here sets both alike.|n\n"
     elif value:
-        text += f"\n|xCurrent:|n \"{value}\"\n"
+        text += f"\n|WCurrent: {value}|n\n"
     else:
-        text += "\n|xCurrent:|n (empty)\n"
+        text += "\n|WCurrent: (empty)|n\n"
 
     text += (
-        "\n|wType the new description. Brace number-flexible words so a pair"
+        "\n|WType the new description. Brace number-flexible words so a pair"
         "\nreads plural and a lone side reads singular \u2014 e.g."
-        "\n  |ydeep brown {eyes} that {accent} {their} skin|w"
-        "\nUse |y{their}/{they}|w for pronouns; plain prose renders verbatim."
-        "\n\nType |yclear|w to remove it, or |yback|w to return unchanged.|n"
+        "\n  deep brown {eyes} that {accent} {their} skin"
+        "\nUse {their}/{they} for pronouns; plain prose renders verbatim."
+        "\n\nType clear to remove it, or back to return unchanged.|n"
     )
 
     options = ({"key": "_default", "goto": _process_longdesc_entry},)

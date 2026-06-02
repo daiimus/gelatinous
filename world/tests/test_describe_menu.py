@@ -4,10 +4,10 @@ description, and keyword nodes.
 The ``describe`` command merges the former ``@longdesc``, ``@shortdesc``, and
 Evennia ``setdesc`` surfaces into one flat EvMenu whose top-level list is::
 
-    1  Short Description   (db.desc)
-    2  Keyword             (sdesc_keyword)
-    3..N  body-location longdesc slots
-    x  Exit
+     1. Short Description :: (db.desc)
+     2. Keyword           :: (sdesc_keyword)
+     3..N. body-location longdesc slots (capitalized labels)
+     x. Exit
 
 These tests cover the combined-list numbering/rendering, the Short
 Description node (set / clear / back / preview and the one-off
@@ -28,6 +28,7 @@ from typeclasses.appearance_mixin import AppearanceMixin
 from commands.CmdCharacter import (
     CmdDescribe,
     _build_longdesc_slots,
+    _describe_slot_label,
     _menu_apply_keyword,
     _node_describe_keyword,
     _node_describe_list,
@@ -106,31 +107,31 @@ class ListNodeTests(TestCase):
     def test_short_description_is_item_one(self):
         char = _full_body(desc="a lanky figure")
         text, _ = _node_describe_list(char, "")
-        self.assertIn("Short Description:", text)
+        self.assertIn("Short Description", text)
         self.assertIn("a lanky figure", text)
         # The "1" marker precedes the Short Description label.
-        self.assertLess(text.index(" 1"), text.index("Short Description:"))
+        self.assertLess(text.index(" 1"), text.index("Short Description"))
 
     def test_empty_short_description_shows_placeholder(self):
         char = _full_body(desc="")
         text, _ = _node_describe_list(char, "")
         # Placeholder appears on the Short Description line.
         sd_line = next(
-            ln for ln in text.splitlines() if "Short Description:" in ln
+            ln for ln in text.splitlines() if "Short Description" in ln
         )
         self.assertIn("(empty)", sd_line)
 
     def test_keyword_is_item_two_with_default_marker(self):
         char = _full_body(sdesc_keyword=None)
         text, _ = _node_describe_list(char, "")
-        kw_line = next(ln for ln in text.splitlines() if "Keyword:" in ln)
+        kw_line = next(ln for ln in text.splitlines() if "Keyword" in ln)
         self.assertIn(" 2", kw_line)
         self.assertIn("(default)", kw_line)
 
     def test_keyword_shows_current_value(self):
         char = _full_body(sdesc_keyword="droog")
         text, _ = _node_describe_list(char, "")
-        kw_line = next(ln for ln in text.splitlines() if "Keyword:" in ln)
+        kw_line = next(ln for ln in text.splitlines() if "Keyword" in ln)
         self.assertIn("droog", kw_line)
         self.assertNotIn("(default)", kw_line)
 
@@ -138,12 +139,23 @@ class ListNodeTests(TestCase):
         char = _full_body()
         slots = _build_longdesc_slots(char)
         text, _ = _node_describe_list(char, "")
-        # First body slot is numbered 3 (1=short, 2=keyword).
-        first_slot = slots[0]
+        # First body slot is numbered 3 (1=short, 2=keyword) and shown with
+        # its capitalized display label.
+        first_label = _describe_slot_label(slots[0])
         slot_line = next(
-            ln for ln in text.splitlines() if f"{first_slot}:" in ln
+            ln for ln in text.splitlines() if first_label in ln
         )
         self.assertIn(" 3", slot_line)
+
+    def test_rows_use_double_colon_separator(self):
+        char = _full_body(desc="a lanky figure")
+        text, _ = _node_describe_list(char, "")
+        sd_line = next(
+            ln for ln in text.splitlines() if "Short Description" in ln
+        )
+        self.assertIn("::", sd_line)
+        # Values are no longer wrapped in quotes.
+        self.assertNotIn('"a lanky figure"', text)
 
     def test_exit_row_present(self):
         char = _full_body()

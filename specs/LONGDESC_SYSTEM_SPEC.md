@@ -224,10 +224,18 @@ sit above the anatomy slots so a player edits every facet of their appearance
 from one place. The flow:
 
 1. **List node** (`node_describe_list`): a one-per-line numbered list whose
-   first two rows are fixed and the rest are dynamic body slots:
-   - `1 Short Description:` — current `db.desc` (one-line preview, or `(empty)`).
-   - `2 Keyword:` — current `sdesc_keyword`, or the gendered default marked
-     `(default)`.
+   first two rows are fixed and the rest are dynamic body slots. Rows render
+   as `N. Label :: value` with the label column aligned so the `::` separators
+   line up. The menu is rendered all-white for readability: in this palette
+   `|w` is bold white and `|W` is unbold white, so **only the row numbers and
+   section headers are bold**; labels, values, and placeholders are unbold
+   white. Values are shown unquoted, and slot labels are capitalized for
+   display (`left_eye` -> `Left Eye`, `eyes` -> `Eyes`) via
+   `_describe_slot_label` — the internal slot strings are unchanged.
+   - `1. Short Description :: …` — current `db.desc` (one-line preview, or
+     `(empty)`).
+   - `2. Keyword :: …` — current `sdesc_keyword`, or the gendered default
+     marked `(default)`.
    - `3..N` — editable longdesc **slots**, built by `_build_longdesc_slots`:
      - Symmetric pairs collapse to their shorthand (`eyes`, `hands`, ...) so the
        dynamic anatomy reads as a clean, compact list.
@@ -236,7 +244,7 @@ from one place. The flow:
        the anatomical-order entries.
      - A pair whose two sides currently diverge is flagged (editing it via the
        shorthand sets both sides alike).
-   - `x Exit` closes the menu cleanly.
+   - `x. Exit` closes the menu cleanly.
 2. **Short Description node** (`node_describe_short`): shows the current value
    and a live rendered preview (`_process_description_variables` with
    `force_third_person=True`), then accepts new prose. `clear` empties it,
