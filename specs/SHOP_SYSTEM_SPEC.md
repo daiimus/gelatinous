@@ -839,7 +839,7 @@ if hasattr(target, 'validate_attack_target'):
 **Implementation:**
 
 ```python
-# typeclasses/containers.py
+# typeclasses/shopkeeper.py
 
 from evennia import DefaultObject
 from evennia.prototypes.spawner import spawn
@@ -1018,7 +1018,7 @@ class ShopContainer(DefaultObject):
 
 
 # Room integration example for builders:
-# @create/drop weapons_shelf:typeclasses.containers.ShopContainer
+# @create/drop weapons_shelf:typeclasses.shopkeeper.ShopContainer
 # @set weapons_shelf/container_type = "weapons rack"
 # @desc weapons_shelf = A sturdy rack displaying various weapons.
 # @py weapons_shelf.db.prototype_inventory = ["FRAG_GRENADE", "SWORD", "KEVLAR_VEST"]
@@ -1054,7 +1054,7 @@ A **VendingMachine** is a specialized ShopContainer that operates completely aut
 **Implementation:**
 
 ```python
-# typeclasses/containers.py (continued)
+# typeclasses/shopkeeper.py (continued)
 
 class VendingMachine(ShopContainer):
     """
@@ -1330,7 +1330,7 @@ class VendingMachine(ShopContainer):
 
 ```python
 # Medical Supply Vending Machine
-@create/drop medstation:typeclasses.containers.VendingMachine
+@create/drop medstation:typeclasses.shopkeeper.VendingMachine
 @desc medstation = A white vending machine with a red cross logo.
 @py medstation.db.brand_name = "MediCorp AutoVend"
 @py medstation.db.interface_color = "red"
@@ -1346,7 +1346,7 @@ class VendingMachine(ShopContainer):
 @py medstation.db.price_multiplier = 1.3  # 30% markup
 
 # Ammo Vending Machine (unlimited stock)
-@create/drop ammodispenser:typeclasses.containers.VendingMachine
+@create/drop ammodispenser:typeclasses.shopkeeper.VendingMachine
 @desc ammodispenser = A reinforced military-grade ammunition dispenser.
 @py ammodispenser.db.brand_name = "ArmaStock 3000"
 @py ammodispenser.db.interface_color = "yellow"
@@ -1360,7 +1360,7 @@ class VendingMachine(ShopContainer):
 @py ammodispenser.db.price_multiplier = 2.0  # Expensive but convenient
 
 # Food/Drink Vending Machine
-@create/drop snackmachine:typeclasses.containers.VendingMachine
+@create/drop snackmachine:typeclasses.shopkeeper.VendingMachine
 @desc snackmachine = A colorful vending machine filled with snacks and drinks.
 @py snackmachine.db.brand_name = "Snack-O-Matic"
 @py snackmachine.db.interface_color = "cyan"
@@ -1488,7 +1488,7 @@ class CmdBuy(Command):
     
     def buy_from_container(self, caller, item_name, container):
         """Buy from specific container."""
-        from typeclasses.containers import ShopContainer
+        from typeclasses.shopkeeper import ShopContainer
         
         if not isinstance(container, ShopContainer):
             caller.msg(f"{container.key} is not a shop container.")
@@ -1507,7 +1507,7 @@ class CmdBuy(Command):
     
     def buy_from_room(self, caller, item_name):
         """Search all containers in room."""
-        from typeclasses.containers import ShopContainer
+        from typeclasses.shopkeeper import ShopContainer
         
         containers = [obj for obj in caller.location.contents 
                      if isinstance(obj, ShopContainer)]

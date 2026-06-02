@@ -542,7 +542,7 @@ Total Protection Bonus: +12 armor rating
 
 ### Character Damage Processing
 
-**Modified `take_damage()` method in `typeclasses/characters.py`**:
+**`take_damage()` method in `typeclasses/armor_mixin.py`** (class `ArmorMixin`, mixed into `Character`):
 1. Calculate armor coverage for hit location
 2. Process armor layers sequentially (outermost first)  
 3. Apply damage reduction from each layer
@@ -598,7 +598,8 @@ Total Protection Bonus: +12 armor rating
 
 ### Core System Files
 
-**`typeclasses/characters.py`**:
+**`typeclasses/armor_mixin.py`** (class `ArmorMixin`, mixed into `Character`; `characters.py` only inherits it):
+- `take_damage()` - Entry point for armor + medical damage processing
 - `_calculate_armor_damage_reduction()` - Main armor processing
 - `_get_total_armor_rating()` - Calculates armor + plates
 - `_get_armor_effectiveness()` - Armor type vs damage type
@@ -648,7 +649,7 @@ Total Protection Bonus: +12 armor rating
 
 ### Performance Improvements
 
-**Coverage Caching** (`typeclasses/characters.py`):
+**Coverage Caching** (`typeclasses/armor_mixin.py`):
 ```python
 # Cache coverage calculations to avoid repeated function calls
 coverage_cache = {}
@@ -662,7 +663,7 @@ for item in armor_items:
 
 ### Safety Features
 
-**Null Safety Checks** (`typeclasses/characters.py`):
+**Null Safety Checks** (`typeclasses/armor_mixin.py`):
 ```python
 # Safety check: ensure item still exists (edge case: deleted mid-combat)
 if not item or not hasattr(item, 'pk') or not item.pk:
@@ -682,7 +683,7 @@ except Exception:
 
 ### Mathematical Accuracy
 
-**Rounding vs Truncation** (`typeclasses/characters.py`):
+**Rounding vs Truncation** (`typeclasses/armor_mixin.py`):
 ```python
 # Use round() instead of int() to avoid losing effectiveness on low damage
 layer_damage_reduction = round(remaining_damage * final_reduction_percent)
