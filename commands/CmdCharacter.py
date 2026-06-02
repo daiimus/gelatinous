@@ -547,47 +547,57 @@ class CmdTempPlace(Command):
 
 class CmdLongdesc(Command):
     """
-    Set or view detailed descriptions for your character's body parts.
+    Describe your character's body, part by part.
 
-    Usage:
-        @longdesc <location> "<description>"    - Set description for a body part
-        @longdesc <location>                    - View current description for location
-        @longdesc                               - List all your current longdescs
-        @longdesc/list                          - List all available body locations
-        @longdesc/clear <location>              - Remove description for location
+    The easy way: just type |w@longdesc|n with no arguments to open the
+    interactive editor. It lists every body location with its current
+    description; pick a number, type what that part looks like, and you get
+    an instant preview of how others will see it.
 
-    Staff Usage:
-        @longdesc <character> <location> "<description>"  - Set on another character
-        @longdesc/clear <character> <location>             - Clear on another character
-
-    Examples:
-        @longdesc face "weathered features with high cheekbones"
-        @longdesc left_eye "a piercing blue eye with flecks of gold"
-        @longdesc right_hand "a prosthetic metal hand with intricate engravings"
-        @longdesc/clear face
-        @longdesc face
-        @longdesc/list
-
-    Symmetric pairs (eyes, ears, arms, hands, thighs, shins, feet) are
-    shorthands that set, view, and clear BOTH sides at once:
+    |wTokens|n let one description read naturally whether a part is paired or
+    a lone survivor. Wrap a number-flexible word in braces and it flexes to
+    match: a pair renders plural, a single side renders singular.
 
         @longdesc eyes "deep brown {eyes} that {accent} {their} skin"
 
-    When both sides match they collapse into one line; set the sides
-    individually if you want them to differ (e.g. heterochromia).
+        both eyes  -> deep brown eyes that accent their skin
+        one eye    -> a deep brown eye that accents their skin
 
-    Braces mark number-flexible words so a pair reads naturally as plural
-    ("brown eyes that accent") while a lone survivor reads singular ("a brown
-    eye that accents"). Brace the body-part noun ({eye}/{an eye}) and any verb
-    that agrees with it ({accent}, {are}). Braces are optional — plain prose
-    renders verbatim. Pronoun tokens ({their}, {they}, ...) work as before.
+    Brace the body-part noun ({eye} or {an eye} to control the article) and
+    any verb that must agree with it ({accent}, {are}). Pronoun tokens
+    ({their}, {they}, {them}, ...) adapt to your gender and the viewer. Plain,
+    unbraced prose always renders verbatim. See |whelp tokens|n for the full
+    reference.
 
-    Body locations include: head, face, left_eye, right_eye, left_ear, right_ear,
-    neck, chest, back, abdomen, groin, left_arm, right_arm, left_hand, right_hand,
-    left_thigh, right_thigh, left_shin, right_shin, left_foot, right_foot.
+    Usage:
+        @longdesc                               - Open the interactive editor
+        @longdesc <location> "<description>"    - Set one location directly
+        @longdesc <location>                    - View one location
+        @longdesc/list                          - List available body locations
+        @longdesc/clear <location>              - Remove a description
 
-    Extended anatomy (tails, wings, etc.) is supported for modified characters.
-    Descriptions appear when others look at you, integrated with your base description.
+    Staff Usage:
+        @longdesc <character>                              - View another's
+        @longdesc <character> <location> "<description>"   - Set on another
+        @longdesc/clear <character> <location>             - Clear on another
+
+    Symmetric pairs (eyes, ears, arms, hands, thighs, shins, feet) are
+    shorthands that set, view, and clear BOTH sides at once. When both sides
+    match they collapse into one line; set the sides individually (left_eye,
+    right_eye, ...) if you want them to differ (e.g. heterochromia).
+
+    Examples:
+        @longdesc face "weathered features with high cheekbones"
+        @longdesc eyes "piercing blue {eyes} flecked with gold"
+        @longdesc right_hand "a prosthetic metal hand, intricately engraved"
+        @longdesc/clear face
+
+    Body locations include: hair, head, face, left_eye, right_eye, left_ear,
+    right_ear, neck, chest, back, abdomen, groin, left_arm, right_arm,
+    left_hand, right_hand, left_thigh, right_thigh, left_shin, right_shin,
+    left_foot, right_foot. Extended anatomy (tails, wings, etc.) is supported
+    for modified characters. Descriptions appear when others look at you,
+    integrated with your base description.
     """
 
     key = "@longdesc"
@@ -623,8 +633,8 @@ class CmdLongdesc(Command):
 
         # Parse arguments for main command
         if not args:
-            # Show all current longdescs
-            self._show_all_longdescs(caller)
+            # Bare @longdesc (self) opens the interactive editor menu.
+            _show_longdesc_menu(caller)
             return
 
         # Check if this is staff targeting another character
@@ -761,15 +771,7 @@ class CmdLongdesc(Command):
             location is neither a valid single location nor a usable pair
             shorthand for this character.
         """
-        if location in PAIR_MERGE_KEYS:
-            left, right = PAIR_MERGE_KEYS[location]
-            if (target_char.has_location(left)
-                    and target_char.has_location(right)):
-                return [left, right]
-            return None
-        if target_char.has_location(location):
-            return [location]
-        return None
+        return _expand_longdesc_pair(target_char, location)
 
     def _set_longdesc(self, caller, target_char, location, description):
         """Set a longdesc for a specific location (or both sides of a pair)."""
@@ -811,6 +813,10 @@ class CmdLongdesc(Command):
                 caller.msg(f"Set description for {location}: \"{description.strip()}\"")
             else:
                 caller.msg(f"Set description for {location} on {target_char.get_display_name(caller)}: \"{description.strip()}\"")
+            for line in _render_longdesc_preview(
+                caller, target_char, location, locations, description.strip()
+            ):
+                caller.msg(line)
         else:
             caller.msg("Failed to set description. Please try again.")
 
@@ -919,6 +925,273 @@ class CmdLongdesc(Command):
             caller.msg(f"Cleared all {count} longdesc descriptions.")
         else:
             caller.msg(f"Cleared all {count} longdesc descriptions from {target_char.get_display_name(caller)}.")
+
+
+# =============================================================================
+# LONGDESC SHARED HELPERS + INTERACTIVE EDITOR (EvMenu)
+# =============================================================================
+
+def _expand_longdesc_pair(char, location):
+    """Resolve a typed location into the concrete locations to act on.
+
+    A symmetric pair shorthand (e.g. ``eyes``) expands to both underlying
+    sides (``left_eye``, ``right_eye``). A normal location resolves to itself.
+
+    Args:
+        char: Character whose anatomy is being checked.
+        location: The location string the player typed.
+
+    Returns:
+        list[str] | None: Concrete locations to act on, or ``None`` if the
+        location is neither a valid single location nor a usable pair
+        shorthand for this character.
+    """
+    if location in PAIR_MERGE_KEYS:
+        left, right = PAIR_MERGE_KEYS[location]
+        if char.has_location(left) and char.has_location(right):
+            return [left, right]
+        return None
+    if char.has_location(location):
+        return [location]
+    return None
+
+
+def _render_longdesc_preview(viewer, target_char, location, locations, description):
+    """Build preview lines showing how a longdesc renders, flagging stray tokens.
+
+    For a symmetric pair the preview shows both the plural form (both sides
+    intact) and the singular form (a lone survivor). For a single location it
+    shows the singular render. Any brace tokens the resolver did not recognise
+    survive in the rendered output and are surfaced as a warning.
+
+    Args:
+        viewer: Character who will read the preview (the command caller).
+        target_char: Character the longdesc belongs to.
+        location: The slot/location label the player acted on.
+        locations: Concrete locations the description was written to.
+        description: The raw description string.
+
+    Returns:
+        list[str]: Message lines (no trailing newlines).
+    """
+    is_pair = location in PAIR_MERGE_KEYS and len(locations) == 2
+    brace_re = re.compile(r"\{[^{}]+\}")
+    unresolved = set()
+
+    def _render(number):
+        rendered = target_char._process_description_variables(
+            description, viewer, force_third_person=True, number=number,
+        )
+        unresolved.update(brace_re.findall(rendered))
+        return rendered
+
+    lines = ["|wPreview:|n"]
+    if is_pair:
+        lines.append(f"  |cboth sides:|n {_render('plural')}")
+        lines.append(f"  |clone side:|n {_render('singular')}")
+    else:
+        lines.append(f"  {_render('singular')}")
+
+    if unresolved:
+        tokens = ", ".join(sorted(unresolved))
+        lines.append(
+            f"  |yUnrecognized token(s) left literal: {tokens}|n"
+        )
+    return lines
+
+
+def _build_longdesc_slots(char):
+    """Ordered, de-duplicated list of editable longdesc slots.
+
+    Symmetric pairs collapse to their shorthand (``eyes`` rather than
+    ``left_eye``/``right_eye``); an asymmetric pair (only one side present)
+    shows that side individually. Non-pair locations show as themselves.
+    Slots follow anatomical order, with extended anatomy appended.
+
+    Args:
+        char: Character whose anatomy is being listed.
+
+    Returns:
+        list[str]: Slot labels a player can select and type into.
+    """
+    available = set(char.get_available_locations())
+
+    # side location -> (shorthand, partner side)
+    pair_of = {}
+    for shorthand, (left, right) in PAIR_MERGE_KEYS.items():
+        pair_of[left] = (shorthand, right)
+        pair_of[right] = (shorthand, left)
+
+    ordered = [loc for loc in ANATOMICAL_DISPLAY_ORDER if loc in available]
+    ordered += sorted(
+        loc for loc in available if loc not in ANATOMICAL_DISPLAY_ORDER
+    )
+
+    slots = []
+    seen = set()
+    for loc in ordered:
+        if loc in pair_of:
+            shorthand, partner = pair_of[loc]
+            if partner in available:
+                # Symmetric pair: one shorthand slot for both sides.
+                if shorthand not in seen:
+                    slots.append(shorthand)
+                    seen.add(shorthand)
+                continue
+            # Asymmetric: fall through and show this side on its own.
+        if loc not in seen:
+            slots.append(loc)
+            seen.add(loc)
+    return slots
+
+
+def _longdesc_slot_value(char, slot):
+    """Return ``(value, diverged)`` for a slot's current description.
+
+    For a pair shorthand whose sides match, ``value`` is that shared text and
+    ``diverged`` is ``False``. If the sides differ, ``value`` is one side's
+    text and ``diverged`` is ``True``. For a single location, ``diverged`` is
+    always ``False``.
+    """
+    if slot in PAIR_MERGE_KEYS:
+        left, right = PAIR_MERGE_KEYS[slot]
+        lval, rval = char.get_longdesc(left), char.get_longdesc(right)
+        if lval == rval:
+            return lval, False
+        return (lval or rval), True
+    return char.get_longdesc(slot), False
+
+
+def _show_longdesc_menu(caller):
+    """Open the interactive longdesc editor menu for the caller (self only)."""
+    from evennia.utils.evmenu import EvMenu
+
+    caller.ndb._longdesc_slots = _build_longdesc_slots(caller)
+    EvMenu(
+        caller,
+        {
+            "node_longdesc_list": _node_longdesc_list,
+            "node_longdesc_entry": _node_longdesc_entry,
+        },
+        startnode="node_longdesc_list",
+        cmd_on_exit=_longdesc_exit,
+    )
+
+
+def _longdesc_exit(caller, menu):
+    """Clean up ndb data when the longdesc menu closes."""
+    for attr in ("_longdesc_slots", "_longdesc_active_slot"):
+        if hasattr(caller.ndb, attr):
+            delattr(caller.ndb, attr)
+
+
+def _node_longdesc_list(caller, raw_string, **kwargs):
+    """EvMenu node: numbered list of slots with their current values."""
+    slots = getattr(caller.ndb, "_longdesc_slots", None)
+    if slots is None:
+        slots = _build_longdesc_slots(caller)
+        caller.ndb._longdesc_slots = slots
+
+    text = "\n|c=== Longdesc Editor ===|n\n"
+    text += "\n|xSelect a body location by number to set its description.|n\n"
+    for idx, slot in enumerate(slots, 1):
+        value, diverged = _longdesc_slot_value(caller, slot)
+        if diverged:
+            shown = "|y(sides differ \u2014 editing sets both alike)|n"
+        elif value:
+            shown = f"\"{value}\""
+        else:
+            shown = "|x(empty)|n"
+        text += f"  |w{idx:>2}|n |c{slot}:|n {shown}\n"
+    text += "\n|wEnter a number to edit, or |yquit|w to exit.|n"
+
+    options = ({"key": "_default", "goto": _process_longdesc_slot},)
+    return text, options
+
+
+def _process_longdesc_slot(caller, raw_string, **kwargs):
+    """Goto-callable: pick a slot to edit by number."""
+    choice = raw_string.strip()
+    slots = getattr(caller.ndb, "_longdesc_slots", [])
+    if not choice:
+        return None  # Re-display the list.
+
+    try:
+        idx = int(choice) - 1
+    except ValueError:
+        caller.msg(f"|rEnter a number 1-{len(slots)}, or |yquit|r to exit.|n")
+        return None
+
+    if not (0 <= idx < len(slots)):
+        caller.msg(f"|rInvalid number. Enter 1-{len(slots)}.|n")
+        return None
+
+    caller.ndb._longdesc_active_slot = slots[idx]
+    return "node_longdesc_entry"
+
+
+def _node_longdesc_entry(caller, raw_string, **kwargs):
+    """EvMenu node: prompt for the description of the active slot."""
+    slot = getattr(caller.ndb, "_longdesc_active_slot", None)
+    if not slot:
+        # Defensive: reached without a selection — show the list instead.
+        return _node_longdesc_list(caller, raw_string, **kwargs)
+
+    value, diverged = _longdesc_slot_value(caller, slot)
+    text = f"\n|c=== Editing: {slot} ===|n\n"
+    if diverged:
+        text += "\n|ySides currently differ; saving here sets both alike.|n\n"
+    elif value:
+        text += f"\n|xCurrent:|n \"{value}\"\n"
+    else:
+        text += "\n|xCurrent:|n (empty)\n"
+
+    text += (
+        "\n|wType the new description. Brace number-flexible words so a pair"
+        "\nreads plural and a lone side reads singular \u2014 e.g."
+        "\n  |ydeep brown {eyes} that {accent} {their} skin|w"
+        "\nUse |y{their}/{they}|w for pronouns; plain prose renders verbatim."
+        "\n\nType |yclear|w to remove it, or |yback|w to return unchanged.|n"
+    )
+
+    options = ({"key": "_default", "goto": _process_longdesc_entry},)
+    return text, options
+
+
+def _process_longdesc_entry(caller, raw_string, **kwargs):
+    """Goto-callable: apply the typed description (or clear/back)."""
+    slot = getattr(caller.ndb, "_longdesc_active_slot", None)
+    if not slot:
+        return "node_longdesc_list"
+
+    entry = raw_string.strip()
+    if not entry or entry.lower() == "back":
+        return "node_longdesc_list"
+
+    locations = _expand_longdesc_pair(caller, slot)
+    if not locations:
+        caller.msg(f"|r'{slot}' is no longer a valid location.|n")
+        return "node_longdesc_list"
+
+    if entry.lower() == "clear":
+        for loc in locations:
+            caller.set_longdesc(loc, None)
+        caller.msg(f"Cleared description for {slot}.")
+        return "node_longdesc_list"
+
+    if len(entry) > MAX_DESCRIPTION_LENGTH:
+        caller.msg(
+            f"|rDescription is too long ({len(entry)} characters). "
+            f"Maximum is {MAX_DESCRIPTION_LENGTH}.|n"
+        )
+        return None  # Re-display the entry node.
+
+    for loc in locations:
+        caller.set_longdesc(loc, entry)
+    caller.msg(f"Set description for {slot}.")
+    for line in _render_longdesc_preview(caller, caller, slot, locations, entry):
+        caller.msg(line)
+    return "node_longdesc_list"
 
 
 class CmdSkintone(Command):

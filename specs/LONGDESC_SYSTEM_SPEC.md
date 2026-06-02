@@ -189,12 +189,49 @@ position. This procedure was used to propagate the `hair` location (added in
 ### Command Variations
 - `@longdesc <location>` - View current description for location
 - `@longdesc/list` - List all available body locations for this character
-- `@longdesc` - List all set longdescs for character (only shows non-None values)
+- `@longdesc` - Open the interactive editor menu (self only)
 - `@longdesc/clear <location>` - Remove description for location (set to None)
 
 #### Staff Commands (Permission Override)
 - `@longdesc <character> <location> "<description>"` - Set longdesc on another character
+- `@longdesc <character>` - View all set longdescs on another character
 - `@longdesc/clear <character> <location>` - Clear specific location on another character
+
+### Interactive Editor (EvMenu)
+
+Bare `@longdesc` (acting on self) opens an EvMenu-driven editor instead of
+printing a static list. The flow:
+
+1. **List node** (`node_longdesc_list`): a one-per-line numbered list of
+   editable **slots** with each slot's current value. Slots are built by
+   `_build_longdesc_slots`:
+   - Symmetric pairs collapse to their shorthand (`eyes`, `hands`, ...) so the
+     dynamic anatomy reads as a clean, compact list.
+   - An asymmetric pair (only one side present) shows that side individually.
+   - Non-pair locations show as themselves; extended anatomy is appended after
+     the anatomical-order entries.
+   - A pair whose two sides currently diverge is flagged (editing it via the
+     shorthand sets both sides alike).
+2. **Entry node** (`node_longdesc_entry`): shows the slot's current value and a
+   token hint, then accepts the new description. `clear` removes it, `back`/blank
+   returns unchanged, over-length input is rejected and re-prompts.
+3. On save the description fans out to both sides of a pair (or the single
+   location) and a **rendered preview** is shown.
+
+The one-off `@longdesc <location> "<description>"` form is retained and shares
+the same preview output.
+
+### Rendered Preview
+
+`_render_longdesc_preview` shows how a freshly-set description will read. For a
+symmetric pair it renders both the **plural** form (both sides intact) and the
+**singular** form (a lone survivor); for a single location it renders the
+singular form. Any brace token the resolver does not recognise survives in the
+rendered output and is surfaced as an explicit warning, so typos like
+`{thier}` are caught at authoring time rather than shipped silently. The
+preview fires after both the interactive editor save and the one-off
+`@longdesc <location> "..."` command.
+
 
 ## Implementation Details
 
