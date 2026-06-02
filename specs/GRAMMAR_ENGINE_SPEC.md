@@ -108,11 +108,13 @@ def flex_verb(word: str, number: str) -> str:
 
 **Noun-vs-verb autodetect (deterministic, closed-set rule)** — performed by
 the caller (`AppearanceMixin._substitute_longdesc_tokens`), not by POS
-tagging: a braced word is a **noun** iff its singular is in the closed set of
-pair base nouns (`eye`, `ear`, `arm`, `hand`, `thigh`, `shin`, `foot`,
-derived from `world.combat.constants.PAIR_MERGE_KEYS`), optionally preceded by
-`a`/`an`. Any other braced **single** word is a **verb**. A multi-word token
-that is not an article+pair-noun is left literal and logged.
+tagging: a braced word is a **noun** iff its singular is in the flex-noun
+vocabulary — the pair base nouns (`eye`, `ear`, `arm`, `hand`, `thigh`,
+`shin`, `foot`, derived from `world.combat.constants.PAIR_MERGE_KEYS`) plus the
+curated `world.combat.constants.LONGDESC_FLEX_NOUNS` body-noun set (`leg`,
+`shoulder`, `hip`, `knee`, …) — optionally preceded by `a`/`an`. Any other
+braced **single** word is a **verb**. A multi-word token that is not an
+article+noun is left literal and logged.
 
 **Scope** — only brace words whose grammatical number tracks the body part
 (the part noun and verbs whose subject **is** that part). A main-clause verb

@@ -385,10 +385,14 @@ heuristic noun-substitution and no `None` fallback; any identical pair
 collapses.
 
 Number tokens (see `GRAMMAR_ENGINE_SPEC.md` §Number-Flexing Tokens):
-- **Noun** — a braced word whose singular is a known pair noun (`eye`, `ear`,
-  `arm`, `hand`, `thigh`, `shin`, `foot`; the closed set derived from
-  `PAIR_MERGE_KEYS`). `{eye}`/`{eyes}` flex the noun; `{an eye}` additionally
-  drops the article on plural and re-agrees `a`/`an` on singular.
+- **Noun** — a braced word whose singular is in the flex-noun vocabulary: the
+  pair nouns (`eye`, `ear`, `arm`, `hand`, `thigh`, `shin`, `foot`; derived
+  from `PAIR_MERGE_KEYS`) **plus** the curated `LONGDESC_FLEX_NOUNS` body-noun
+  set (`leg`, `shoulder`, `hip`, `knee`, …). `{eye}`/`{eyes}` flex the noun;
+  `{an eye}` additionally drops the article on plural and re-agrees `a`/`an` on
+  singular. `LONGDESC_FLEX_NOUNS` is **vocabulary only** — its words are not
+  anatomy locations, not pairs, and not `describe` shorthands; extend it freely
+  as players find gaps.
 - **Verb** — any other braced single word, conjugated to agree with the part:
   plural `{accent}`/`{are}`, singular `{accents}`/`{is}`. Only brace verbs
   whose subject **is** the body part; a main-clause verb agreeing with the
@@ -417,7 +421,7 @@ currently done.)
 
 **Implementation**: `_build_paired_longdesc_collapse`,
 `_merge_paired_location`, `_get_severed_locations`,
-`_substitute_longdesc_tokens`, and `_pair_base_nouns` in
+`_substitute_longdesc_tokens`, and `_flex_noun_vocabulary` in
 `typeclasses/appearance_mixin.py`, consulted by both passes of
 `_get_visible_body_descriptions`; pair shorthand fan-out in
 `_expand_longdesc_pair` (`commands/CmdCharacter.py`, used by `CmdDescribe`).

@@ -90,6 +90,31 @@ PAIR_MERGE_KEYS = {
     "feet": ("left_foot", "right_foot"),
 }
 
+# Curated vocabulary of singular body nouns the longdesc token resolver should
+# number-flex as NOUNS rather than conjugate as verbs. This is VOCABULARY ONLY:
+# these words are NOT anatomy locations, NOT render keys, and NOT `describe`
+# slot shorthands (that role belongs to PAIR_MERGE_KEYS, which must stay
+# anchored to real left_*/right_* slots). The resolver singularizes a token
+# before lookup, so every entry here is the SINGULAR form.
+#
+# Why a curated allow-list rather than "treat every braced word as a noun":
+# many body words are noun/verb homographs ("accent", "frame", "taper") that
+# longdescs legitimately brace as VERBS (e.g. "{eyes} that {accent} {their}
+# skin"). Defaulting unknown words to verbs keeps those working; we only add
+# words that are unambiguously body nouns. Extend freely as players find gaps.
+LONGDESC_FLEX_NOUNS = {
+    # Limbs / joints not covered by a PAIR_MERGE_KEYS pair.
+    "leg", "shoulder", "hip", "knee", "elbow", "wrist", "ankle",
+    "calf", "forearm", "thumb", "finger", "toe",
+    # Face / head detail.
+    "lip", "nostril", "eyebrow", "eyelash", "cheek", "dimple", "jaw", "tooth",
+    # Torso / rear.
+    "rib", "collarbone", "knuckle", "nail",
+    "breast", "tit", "nipple", "ass", "buttock",
+    # Skin features authors commonly pluralize.
+    "scar", "freckle",
+}
+
 # Anatomical display order (head to toe). The head region mirrors how an
 # observer organically registers a person: hair first, then the eyes, after
 # which the head and face resolve into view, then the ears and neck.

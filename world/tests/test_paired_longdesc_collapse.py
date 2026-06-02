@@ -254,6 +254,54 @@ class TokenRenderTests(TestCase):
         out = self.obj.render("{arms} that {flex}", "singular")
         self.assertEqual(out, "arm that flexes")
 
+    def test_curated_body_noun_flexes_as_noun(self):
+        # "leg" is not a PAIR_MERGE_KEYS pair, but is in LONGDESC_FLEX_NOUNS,
+        # so it must flex as a noun (plural->legs, singular->leg) rather than
+        # being conjugated backwards as a verb.
+        self.assertEqual(
+            self.obj.render("long {legs}", "plural"), "long legs"
+        )
+        self.assertEqual(
+            self.obj.render("long {legs}", "singular"), "long leg"
+        )
+
+    def test_curated_body_nouns_assorted(self):
+        for noun_plural, noun_singular in (
+            ("shoulders", "shoulder"),
+            ("hips", "hip"),
+            ("knees", "knee"),
+            ("eyebrows", "eyebrow"),
+        ):
+            self.assertEqual(
+                self.obj.render(f"broad {{{noun_plural}}}", "plural"),
+                f"broad {noun_plural}",
+            )
+            self.assertEqual(
+                self.obj.render(f"broad {{{noun_plural}}}", "singular"),
+                f"broad {noun_singular}",
+            )
+
+    def test_curated_body_noun_with_article(self):
+        # Article form drops the article on plural, keeps it on singular.
+        self.assertEqual(
+            self.obj.render("{a leg} {is} bare", "plural"), "legs are bare"
+        )
+        self.assertEqual(
+            self.obj.render("{a leg} {is} bare", "singular"), "a leg is bare"
+        )
+
+    def test_non_body_word_still_verb(self):
+        # A word that is neither a flex noun nor in variables stays a verb,
+        # preserving the {accent}-style braced-verb behavior.
+        self.assertEqual(
+            self.obj.render("{eyes} that {gleam}", "plural"),
+            "eyes that gleam",
+        )
+        self.assertEqual(
+            self.obj.render("{eyes} that {gleam}", "singular"),
+            "eye that gleams",
+        )
+
     def test_untokenized_prose_verbatim(self):
         text = "a milky white orb, unseeing."
         self.assertEqual(self.obj.render(text, "plural"), text)

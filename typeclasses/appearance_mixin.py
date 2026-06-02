@@ -549,15 +549,18 @@ class AppearanceMixin:
         return '\n\n'.join(parts)
 
     @staticmethod
-    def _pair_base_nouns():
-        """Return the closed set of singular pair nouns (eye, ear, hand, ...).
+    def _flex_noun_vocabulary():
+        """Return the singular nouns a longdesc number-token flexes as a noun.
 
-        These are the only words a longdesc number-token treats as the body's
+        Two sources, unioned: the symmetric pair nouns derived from
+        ``PAIR_MERGE_KEYS`` (eye, ear, arm, hand, thigh, shin, foot) plus the
+        curated ``LONGDESC_FLEX_NOUNS`` body-noun vocabulary (leg, shoulder,
+        hip, ...). These are the only words a number-token treats as the body's
         part noun; any other braced single word is treated as a verb.
         """
-        from world.combat.constants import PAIR_MERGE_KEYS
+        from world.combat.constants import LONGDESC_FLEX_NOUNS, PAIR_MERGE_KEYS
 
-        nouns = set()
+        nouns = set(LONGDESC_FLEX_NOUNS)
         for left_loc, _right_loc in PAIR_MERGE_KEYS.values():
             # "left_eye" -> "eye", "left_foot" -> "foot"
             nouns.add(left_loc.split("_", 1)[1])
@@ -568,9 +571,9 @@ class AppearanceMixin:
 
         Resolution order per ``{token}``:
           1. Pronoun / name token present in *variables*.
-          2. Number-flexible body-part token: a noun if its singular is a
-             known pair noun (optionally with a leading ``a``/``an``), else a
-             single-word verb. Both are flexed to *number*.
+          2. Number-flexible body-part token: a noun if its singular is in
+             the flex-noun vocabulary (optionally with a leading ``a``/``an``),
+             else a single-word verb. Both are flexed to *number*.
           3. Anything else is left literal (the brace is preserved) and logged.
 
         Args:
@@ -584,7 +587,7 @@ class AppearanceMixin:
         import re
         from world.grammar import flex_noun, flex_verb, singularize_noun
 
-        pair_nouns = self._pair_base_nouns()
+        flex_nouns = self._flex_noun_vocabulary()
         article_re = re.compile(r"^(?:a|an)\s+(.+)$", re.IGNORECASE)
 
         def _resolve(match):
@@ -599,10 +602,10 @@ class AppearanceMixin:
             core = art_match.group(1) if art_match else body
             if " " not in core:
                 core_base = singularize_noun(core).lower()
-                if core_base in pair_nouns:
+                if core_base in flex_nouns:
                     return flex_noun(body, number)
                 if art_match is None:
-                    # Single bareword that is not a pair noun → verb.
+                    # Single bareword that is not a flex noun → verb.
                     return flex_verb(body, number)
 
             # 3. Unrecognised token: leave it literal, but log it so authors
