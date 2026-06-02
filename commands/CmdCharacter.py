@@ -1261,7 +1261,7 @@ def _node_describe_list(caller, raw_string, **kwargs):
 
     label_width = max(len(label) for _num, label, _val in rows)
 
-    text = "\n|wDescribe \u2014 select a number to edit.|n\n"
+    text = "\n|wSelect a number to edit|n\n\n"
     for num, label, value in rows:
         text += f"  |w{num:>2}.|n |W{label:<{label_width}} :: {value}|n\n"
     text += f"  |w{'x':>2}.|n |WExit|n"

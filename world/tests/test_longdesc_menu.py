@@ -304,4 +304,4 @@ class EntryApplicationTests(TestCase):
         char.ndb._longdesc_slots = _build_longdesc_slots(char)
         # No active slot set: node falls back to rendering the list.
         text, options = _node_longdesc_entry(char, "")
-        self.assertIn("select a number to edit", text)
+        self.assertIn("Select a number to edit", text)
