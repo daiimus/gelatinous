@@ -1,5 +1,6 @@
 from evennia import Command
 from evennia.utils.search import search_object
+from evennia.utils.evmenu import EvMenu
 from commands._identity_targeting import resolve_admin_target
 from world.combat.constants import (
     PERM_BUILDER, PERM_DEVELOPER,
@@ -1062,12 +1063,28 @@ def _longdesc_slot_value(char, slot):
     return char.get_longdesc(slot), False
 
 
+class _LongdescEvMenu(EvMenu):
+    """EvMenu for the longdesc editor: no border separators, no auto options.
+
+    The node text renders its own numbered list and explicit ``x Exit`` row,
+    so the default EvMenu decorations (separator rules and the auto-formatted
+    option block) are suppressed for a clean, compact display.
+    """
+
+    def nodetext_formatter(self, nodetext):
+        return nodetext
+
+    def options_formatter(self, optionlist):
+        return ""
+
+    def node_formatter(self, nodetext, optionstext):
+        return nodetext
+
+
 def _show_longdesc_menu(caller):
     """Open the interactive longdesc editor menu for the caller (self only)."""
-    from evennia.utils.evmenu import EvMenu
-
     caller.ndb._longdesc_slots = _build_longdesc_slots(caller)
-    EvMenu(
+    _LongdescEvMenu(
         caller,
         {
             "node_longdesc_list": _node_longdesc_list,
@@ -1092,8 +1109,7 @@ def _node_longdesc_list(caller, raw_string, **kwargs):
         slots = _build_longdesc_slots(caller)
         caller.ndb._longdesc_slots = slots
 
-    text = "\n|c=== Longdesc Editor ===|n\n"
-    text += "\n|xSelect a body location by number to set its description.|n\n"
+    text = "\n|xSelect a body location by number to set its description.|n\n"
     for idx, slot in enumerate(slots, 1):
         value, diverged = _longdesc_slot_value(caller, slot)
         if diverged:
@@ -1103,23 +1119,28 @@ def _node_longdesc_list(caller, raw_string, **kwargs):
         else:
             shown = "|x(empty)|n"
         text += f"  |w{idx:>2}|n |c{slot}:|n {shown}\n"
-    text += "\n|wEnter a number to edit, or |yquit|w to exit.|n"
+    text += f"  |w{'x':>2}|n |cExit|n"
 
     options = ({"key": "_default", "goto": _process_longdesc_slot},)
     return text, options
 
 
 def _process_longdesc_slot(caller, raw_string, **kwargs):
-    """Goto-callable: pick a slot to edit by number."""
+    """Goto-callable: pick a slot to edit by number, or exit."""
     choice = raw_string.strip()
     slots = getattr(caller.ndb, "_longdesc_slots", [])
     if not choice:
         return None  # Re-display the list.
 
+    if choice.lower() in ("x", "exit"):
+        if hasattr(caller.ndb, "_evmenu"):
+            caller.ndb._evmenu.close_menu()
+        return None
+
     try:
         idx = int(choice) - 1
     except ValueError:
-        caller.msg(f"|rEnter a number 1-{len(slots)}, or |yquit|r to exit.|n")
+        caller.msg(f"|rEnter a number 1-{len(slots)}, or |yx|r to exit.|n")
         return None
 
     if not (0 <= idx < len(slots)):
@@ -1138,7 +1159,7 @@ def _node_longdesc_entry(caller, raw_string, **kwargs):
         return _node_longdesc_list(caller, raw_string, **kwargs)
 
     value, diverged = _longdesc_slot_value(caller, slot)
-    text = f"\n|c=== Editing: {slot} ===|n\n"
+    text = f"\n|cEditing: {slot}|n\n"
     if diverged:
         text += "\n|ySides currently differ; saving here sets both alike.|n\n"
     elif value:

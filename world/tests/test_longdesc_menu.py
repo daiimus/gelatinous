@@ -223,6 +223,14 @@ class SlotSelectionTests(TestCase):
         result = _process_longdesc_slot(char, "eyes")
         self.assertIsNone(result)
 
+    def test_exit_choice_closes_without_selecting(self):
+        char = self._char_with_slots()
+        # No _evmenu attached in the unit harness; must not raise and must
+        # not set an active slot.
+        result = _process_longdesc_slot(char, "x")
+        self.assertIsNone(result)
+        self.assertFalse(hasattr(char.ndb, "_longdesc_active_slot"))
+
 
 class EntryApplicationTests(TestCase):
 
@@ -275,4 +283,4 @@ class EntryApplicationTests(TestCase):
         char.ndb._longdesc_slots = _build_longdesc_slots(char)
         # No active slot set: node falls back to rendering the list.
         text, options = _node_longdesc_entry(char, "")
-        self.assertIn("Longdesc Editor", text)
+        self.assertIn("Select a body location", text)
