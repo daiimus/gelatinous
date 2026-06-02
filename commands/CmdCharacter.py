@@ -1089,6 +1089,7 @@ def _show_longdesc_menu(caller):
         {
             "node_longdesc_list": _node_longdesc_list,
             "node_longdesc_entry": _node_longdesc_entry,
+            "node_longdesc_exit": _node_longdesc_exit,
         },
         startnode="node_longdesc_list",
         cmd_on_exit=_longdesc_exit,
@@ -1133,9 +1134,7 @@ def _process_longdesc_slot(caller, raw_string, **kwargs):
         return None  # Re-display the list.
 
     if choice.lower() in ("x", "exit"):
-        if hasattr(caller.ndb, "_evmenu"):
-            caller.ndb._evmenu.close_menu()
-        return None
+        return "node_longdesc_exit"
 
     try:
         idx = int(choice) - 1
@@ -1149,6 +1148,11 @@ def _process_longdesc_slot(caller, raw_string, **kwargs):
 
     caller.ndb._longdesc_active_slot = slots[idx]
     return "node_longdesc_entry"
+
+
+def _node_longdesc_exit(caller, raw_string, **kwargs):
+    """EvMenu end node: returning no options makes EvMenu close cleanly."""
+    return "", None
 
 
 def _node_longdesc_entry(caller, raw_string, **kwargs):

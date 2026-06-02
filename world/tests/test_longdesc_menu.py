@@ -21,6 +21,7 @@ from commands.CmdCharacter import (
     _expand_longdesc_pair,
     _longdesc_slot_value,
     _node_longdesc_entry,
+    _node_longdesc_exit,
     _process_longdesc_entry,
     _process_longdesc_slot,
     _render_longdesc_preview,
@@ -223,13 +224,17 @@ class SlotSelectionTests(TestCase):
         result = _process_longdesc_slot(char, "eyes")
         self.assertIsNone(result)
 
-    def test_exit_choice_closes_without_selecting(self):
+    def test_exit_choice_routes_to_end_node(self):
         char = self._char_with_slots()
-        # No _evmenu attached in the unit harness; must not raise and must
-        # not set an active slot.
         result = _process_longdesc_slot(char, "x")
-        self.assertIsNone(result)
+        self.assertEqual(result, "node_longdesc_exit")
         self.assertFalse(hasattr(char.ndb, "_longdesc_active_slot"))
+
+    def test_exit_node_has_no_options(self):
+        # A node returning None options makes EvMenu close without re-display.
+        char = self._char_with_slots()
+        text, options = _node_longdesc_exit(char, "")
+        self.assertIsNone(options)
 
 
 class EntryApplicationTests(TestCase):
