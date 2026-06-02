@@ -1,19 +1,23 @@
 """Unit tests for the unified ``describe`` editor: combined list, short
-description, and keyword nodes.
+description, keyword, lookplace, tempplace, and body-location nodes.
 
-The ``describe`` command merges the former ``@longdesc``, ``@shortdesc``, and
-Evennia ``setdesc`` surfaces into one flat EvMenu whose top-level list is::
+The ``describe`` command merges the former ``@longdesc``, ``@shortdesc``,
+``@look_place``, ``@temp_place``, and Evennia ``setdesc`` surfaces into one
+flat EvMenu whose top-level list is::
 
      1. Short Description :: (db.desc)
      2. Keyword           :: (sdesc_keyword)
-     3..N. body-location longdesc slots (capitalized labels)
+     3. Look Place        :: (look_place)
+     4. Temp Place        :: (temp_place)
+     5..N. body-location longdesc slots (capitalized labels)
      x. Exit
 
 These tests cover the combined-list numbering/rendering, the Short
 Description node (set / clear / back / preview and the one-off
 ``describe short`` path), the Keyword node (numbered + named selection,
-return-to-list behaviour, invalid input), and verify that Evennia's default
-``setdesc`` is removed from the character cmdset.
+return-to-list behaviour, invalid input), the Look/Temp Place nodes (set /
+clear / back), and verify that Evennia's default ``setdesc`` is removed from
+the character cmdset.
 
 Run via::
 
@@ -33,8 +37,12 @@ from commands.CmdCharacter import (
     _node_describe_keyword,
     _node_describe_list,
     _node_describe_short,
+    _node_lookplace_entry,
+    _node_tempplace_entry,
     _process_describe_keyword,
     _process_describe_short,
+    _process_lookplace_entry,
+    _process_tempplace_entry,
 )
 from world.combat.constants import DEFAULT_LONGDESC_LOCATIONS
 
@@ -58,12 +66,15 @@ class FakeChar(AppearanceMixin):
 
     gender = "neutral"
 
-    def __init__(self, locations=None, *, desc="", sdesc_keyword=None):
+    def __init__(self, locations=None, *, desc="", sdesc_keyword=None,
+                 look_place="standing here.", temp_place=""):
         self._longdesc = dict(locations or {})
         self.db = _DB()
         self.db.desc = desc
         self.ndb = _NDB()
         self.sdesc_keyword = sdesc_keyword
+        self.look_place = look_place
+        self.temp_place = temp_place
         self.messages = []
 
     # --- longdesc storage surface -------------------------------------
@@ -135,17 +146,37 @@ class ListNodeTests(TestCase):
         self.assertIn("droog", kw_line)
         self.assertNotIn("(default)", kw_line)
 
-    def test_body_slots_start_at_three(self):
+    def test_lookplace_is_item_three(self):
+        char = _full_body(look_place="leaning on the wall.")
+        text, _ = _node_describe_list(char, "")
+        lp_line = next(ln for ln in text.splitlines() if "Look Place" in ln)
+        self.assertIn(" 3", lp_line)
+        self.assertIn("leaning on the wall.", lp_line)
+
+    def test_tempplace_is_item_four(self):
+        char = _full_body(temp_place="crouched behind the counter.")
+        text, _ = _node_describe_list(char, "")
+        tp_line = next(ln for ln in text.splitlines() if "Temp Place" in ln)
+        self.assertIn(" 4", tp_line)
+        self.assertIn("crouched behind the counter.", tp_line)
+
+    def test_tempplace_shows_none_when_empty(self):
+        char = _full_body(temp_place="")
+        text, _ = _node_describe_list(char, "")
+        tp_line = next(ln for ln in text.splitlines() if "Temp Place" in ln)
+        self.assertIn("(none)", tp_line)
+
+    def test_body_slots_start_at_five(self):
         char = _full_body()
         slots = _build_longdesc_slots(char)
         text, _ = _node_describe_list(char, "")
-        # First body slot is numbered 3 (1=short, 2=keyword) and shown with
-        # its capitalized display label.
+        # First body slot is numbered 5 (1=short, 2=keyword, 3=lookplace,
+        # 4=tempplace) and shown with its capitalized display label.
         first_label = _describe_slot_label(slots[0])
         slot_line = next(
             ln for ln in text.splitlines() if first_label in ln
         )
-        self.assertIn(" 3", slot_line)
+        self.assertIn(" 5", slot_line)
 
     def test_rows_use_double_colon_separator(self):
         char = _full_body(desc="a lanky figure")
@@ -293,6 +324,111 @@ class KeywordMenuTests(TestCase):
         self.assertIn("Keyword", text)
         self.assertIsNotNone(getattr(char.ndb, "_shortdesc_keywords", None))
         self.assertTrue(len(char.ndb._shortdesc_keywords) > 0)
+
+
+# =====================================================================
+# Look Place node
+# =====================================================================
+
+
+class LookPlaceNodeTests(TestCase):
+
+    def test_set_stores_and_returns_to_list(self):
+        char = _full_body()
+        result = _process_lookplace_entry(char, "sitting at the bar.")
+        self.assertEqual(result, "node_describe_list")
+        self.assertEqual(char.look_place, "sitting at the bar.")
+
+    def test_auto_appends_period(self):
+        char = _full_body()
+        _process_lookplace_entry(char, "leaning against the wall")
+        self.assertEqual(char.look_place, "leaning against the wall.")
+
+    def test_clear_resets_to_default(self):
+        char = _full_body(look_place="sitting.")
+        result = _process_lookplace_entry(char, "clear")
+        self.assertEqual(result, "node_describe_list")
+        self.assertEqual(char.look_place, "standing here.")
+        self.assertTrue(any("reset" in m for m in char.messages))
+
+    def test_back_returns_unchanged(self):
+        char = _full_body(look_place="original.")
+        result = _process_lookplace_entry(char, "back")
+        self.assertEqual(result, "node_describe_list")
+        self.assertEqual(char.look_place, "original.")
+
+    def test_blank_returns_unchanged(self):
+        char = _full_body(look_place="original.")
+        result = _process_lookplace_entry(char, "   ")
+        self.assertEqual(result, "node_describe_list")
+        self.assertEqual(char.look_place, "original.")
+
+    def test_too_long_redisplays(self):
+        char = _full_body()
+        result = _process_lookplace_entry(char, "x" * 201)
+        self.assertIsNone(result)
+        self.assertTrue(any("long" in m for m in char.messages))
+
+    def test_node_shows_current(self):
+        char = _full_body(look_place="standing in the corner.")
+        text, _ = _node_lookplace_entry(char, "")
+        self.assertIn("Look Place", text)
+        self.assertIn("standing in the corner.", text)
+
+
+# =====================================================================
+# Temp Place node
+# =====================================================================
+
+
+class TempPlaceNodeTests(TestCase):
+
+    def test_set_stores_and_returns_to_list(self):
+        char = _full_body()
+        result = _process_tempplace_entry(char, "crouched behind the crate.")
+        self.assertEqual(result, "node_describe_list")
+        self.assertEqual(char.temp_place, "crouched behind the crate.")
+
+    def test_auto_appends_period(self):
+        char = _full_body()
+        _process_tempplace_entry(char, "hiding in the shadows")
+        self.assertEqual(char.temp_place, "hiding in the shadows.")
+
+    def test_clear_empties(self):
+        char = _full_body(temp_place="something.")
+        result = _process_tempplace_entry(char, "clear")
+        self.assertEqual(result, "node_describe_list")
+        self.assertEqual(char.temp_place, "")
+        self.assertTrue(any("cleared" in m for m in char.messages))
+
+    def test_back_returns_unchanged(self):
+        char = _full_body(temp_place="original.")
+        result = _process_tempplace_entry(char, "back")
+        self.assertEqual(result, "node_describe_list")
+        self.assertEqual(char.temp_place, "original.")
+
+    def test_blank_returns_unchanged(self):
+        char = _full_body(temp_place="original.")
+        result = _process_tempplace_entry(char, "   ")
+        self.assertEqual(result, "node_describe_list")
+        self.assertEqual(char.temp_place, "original.")
+
+    def test_too_long_redisplays(self):
+        char = _full_body()
+        result = _process_tempplace_entry(char, "x" * 201)
+        self.assertIsNone(result)
+        self.assertTrue(any("long" in m for m in char.messages))
+
+    def test_node_shows_none_when_empty(self):
+        char = _full_body(temp_place="")
+        text, _ = _node_tempplace_entry(char, "")
+        self.assertIn("Temp Place", text)
+        self.assertIn("(none)", text)
+
+    def test_node_shows_current_when_set(self):
+        char = _full_body(temp_place="hiding behind a pillar.")
+        text, _ = _node_tempplace_entry(char, "")
+        self.assertIn("hiding behind a pillar.", text)
 
 
 # =====================================================================

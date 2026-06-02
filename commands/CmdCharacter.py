@@ -555,10 +555,12 @@ class CmdDescribe(Command):
     every body location with its current value; pick a number, type the new
     text, and you get an instant preview of how others will see it.
 
-    Your appearance has three parts:
+    Your appearance has five parts:
       |wShort Description|n  - the main paragraph shown when others look at you.
       |wKeyword|n            - the noun strangers see in your sdesc, e.g. the
                           "|wman|n" in "a lanky man in a Black Trenchcoat".
+      |wLook Place|n         - your default room positioning ("standing here.").
+      |wTemp Place|n         - a temporary override cleared on room exit.
       |wBody locations|n     - per-part longdesc text (eyes, hands, ...) woven
                           into your description when looked at.
 
@@ -585,6 +587,10 @@ class CmdDescribe(Command):
         describe                                - Open the interactive editor
         describe short <description>            - Set your short description
         describe keyword <word>                 - Set your sdesc keyword
+        describe lookplace <description>        - Set your look place
+        describe lookplace clear                - Reset look place to default
+        describe tempplace <description>        - Set your temp place
+        describe tempplace clear                - Clear temp place
         describe <location> "<description>"     - Set one body location
         describe <location>                     - View one body location
         describe/list                           - List available body locations
@@ -665,6 +671,14 @@ class CmdDescribe(Command):
                 caller.msg("Usage: |wdescribe short <description>|n")
                 return
             self._set_short(caller, text)
+            return
+
+        if first.lower() in ("lookplace", "look_place"):
+            self._set_lookplace(caller, rest.strip())
+            return
+
+        if first.lower() in ("tempplace", "temp_place"):
+            self._set_tempplace(caller, rest.strip())
             return
 
         # Parse arguments for main command
@@ -778,6 +792,53 @@ class CmdDescribe(Command):
             text, caller, force_third_person=True
         )
         caller.msg(f"|WPreview:|n |W{rendered}|n")
+
+    def _set_lookplace(self, caller, text):
+        """Set or display the caller's look_place."""
+        if not text:
+            current = caller.look_place or "standing here."
+            caller.msg(f"Your current look place: '{current}'")
+            return
+        if text.lower() in ("clear", "none", "remove"):
+            caller.look_place = "standing here."
+            caller.msg("Look place reset to 'standing here.'")
+            return
+        description = _parse_placement_description(text)
+        if not description:
+            caller.msg("Usage: |wdescribe lookplace <description>|n")
+            return
+        if len(description) > 200:
+            caller.msg(f"|rLook place too long ({len(description)} chars). Max 200.|n")
+            return
+        if not description.endswith(('.', '!', '?')):
+            description += '.'
+        caller.look_place = description
+        caller.msg(f"Look place set to: '{description}'")
+
+    def _set_tempplace(self, caller, text):
+        """Set or display the caller's temp_place."""
+        if not text:
+            current = caller.temp_place or ""
+            if current:
+                caller.msg(f"Your current temp place: '{current}'")
+            else:
+                caller.msg("No temp place set.")
+            return
+        if text.lower() in ("clear", "none", "remove"):
+            caller.temp_place = ""
+            caller.msg("Temp place cleared.")
+            return
+        description = _parse_placement_description(text)
+        if not description:
+            caller.msg("Usage: |wdescribe tempplace <description>|n")
+            return
+        if len(description) > 200:
+            caller.msg(f"|rTemp place too long ({len(description)} chars). Max 200.|n")
+            return
+        if not description.endswith(('.', '!', '?')):
+            description += '.'
+        caller.temp_place = description
+        caller.msg(f"Temp place set to: '{description}' (cleared on room exit)")
 
     def _handle_list_locations(self, caller):
         """Show all available body locations for the character."""
@@ -1186,6 +1247,8 @@ def _show_describe_menu(caller):
             "node_describe_list": _node_describe_list,
             "node_describe_short": _node_describe_short,
             "node_describe_keyword": _node_describe_keyword,
+            "node_lookplace_entry": _node_lookplace_entry,
+            "node_tempplace_entry": _node_tempplace_entry,
             "node_longdesc_entry": _node_longdesc_entry,
             "node_longdesc_exit": _node_longdesc_exit,
         },
@@ -1251,9 +1314,17 @@ def _node_describe_list(caller, raw_string, **kwargs):
     shown_kw = current_kw if current_kw else f"{default_kw} (default)"
     rows.append(("2", "Keyword", shown_kw))
 
-    # 3..N) Body-location longdesc slots.
+    # 3) Look place.
+    look_place = caller.look_place or "standing here."
+    rows.append(("3", "Look Place", look_place))
+
+    # 4) Temp place.
+    temp_place = caller.temp_place or "(none)"
+    rows.append(("4", "Temp Place", temp_place))
+
+    # 5..N) Body-location longdesc slots.
     for offset, slot in enumerate(slots):
-        idx = offset + 3
+        idx = offset + 5
         value, diverged = _longdesc_slot_value(caller, slot)
         if diverged:
             shown = "(sides differ \u2014 editing sets both alike)"
@@ -1284,7 +1355,7 @@ def _process_describe_choice(caller, raw_string, **kwargs):
     if choice.lower() in ("x", "exit"):
         return "node_longdesc_exit"
 
-    last = len(slots) + 2
+    last = len(slots) + 4
     try:
         idx = int(choice)
     except ValueError:
@@ -1295,8 +1366,12 @@ def _process_describe_choice(caller, raw_string, **kwargs):
         return "node_describe_short"
     if idx == 2:
         return "node_describe_keyword"
+    if idx == 3:
+        return "node_lookplace_entry"
+    if idx == 4:
+        return "node_tempplace_entry"
 
-    slot_idx = idx - 3
+    slot_idx = idx - 5
     if 0 <= slot_idx < len(slots):
         caller.ndb._longdesc_active_slot = slots[slot_idx]
         return "node_longdesc_entry"
@@ -1451,6 +1526,83 @@ def _menu_apply_keyword(caller, keyword):
             f"\nSet keyword to |w{keyword}|n."
             f"\nYou now appear as: |c{sdesc}|n"
         )
+
+
+def _node_lookplace_entry(caller, raw_string, **kwargs):
+    """EvMenu node: prompt for the caller's look place."""
+    current = caller.look_place or "standing here."
+    text = "\n|wEditing: Look Place|n\n"
+    text += f"\n|WCurrent: {current}|n\n"
+    text += (
+        "\n|WType your look place description — how you appear in a room by"
+        "\ndefault (e.g. 'leaning against the wall.'). Type |wclear|n to reset"
+        "\nto 'standing here.', or |wback|n to return unchanged.|n"
+    )
+    options = ({"key": "_default", "goto": _process_lookplace_entry},)
+    return text, options
+
+
+def _process_lookplace_entry(caller, raw_string, **kwargs):
+    """Goto-callable: apply the typed look place (or clear/back)."""
+    entry = raw_string.strip()
+    if not entry or entry.lower() == "back":
+        return "node_describe_list"
+    if entry.lower() in ("clear", "none", "remove"):
+        caller.look_place = "standing here."
+        caller.msg("Look place reset to 'standing here.'")
+        return "node_describe_list"
+    description = _parse_placement_description(entry)
+    if not description:
+        caller.msg("|rPlease enter a description.|n")
+        return None
+    if len(description) > 200:
+        caller.msg(f"|rToo long ({len(description)} chars). Max 200.|n")
+        return None
+    if not description.endswith(('.', '!', '?')):
+        description += '.'
+    caller.look_place = description
+    caller.msg(f"Look place set to: '{description}'")
+    return "node_describe_list"
+
+
+def _node_tempplace_entry(caller, raw_string, **kwargs):
+    """EvMenu node: prompt for the caller's temp place."""
+    current = caller.temp_place or ""
+    text = "\n|wEditing: Temp Place|n\n"
+    if current:
+        text += f"\n|WCurrent: {current}|n\n"
+    else:
+        text += "\n|WCurrent: (none)|n\n"
+    text += (
+        "\n|WType a temporary placement description — overrides your look place"
+        "\nuntil you move rooms (e.g. 'crouched behind the counter.'). Type"
+        "\n|wclear|n to remove it, or |wback|n to return unchanged.|n"
+    )
+    options = ({"key": "_default", "goto": _process_tempplace_entry},)
+    return text, options
+
+
+def _process_tempplace_entry(caller, raw_string, **kwargs):
+    """Goto-callable: apply the typed temp place (or clear/back)."""
+    entry = raw_string.strip()
+    if not entry or entry.lower() == "back":
+        return "node_describe_list"
+    if entry.lower() in ("clear", "none", "remove"):
+        caller.temp_place = ""
+        caller.msg("Temp place cleared.")
+        return "node_describe_list"
+    description = _parse_placement_description(entry)
+    if not description:
+        caller.msg("|rPlease enter a description.|n")
+        return None
+    if len(description) > 200:
+        caller.msg(f"|rToo long ({len(description)} chars). Max 200.|n")
+        return None
+    if not description.endswith(('.', '!', '?')):
+        description += '.'
+    caller.temp_place = description
+    caller.msg(f"Temp place set to: '{description}' (cleared on room exit)")
+    return "node_describe_list"
 
 
 def _node_longdesc_entry(caller, raw_string, **kwargs):
