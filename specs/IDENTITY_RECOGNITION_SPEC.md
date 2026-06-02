@@ -524,7 +524,7 @@ Disguise has three independent layers, each controllable on its own and combinin
 |-------|--------------|-----------------|
 | **Presentation overrides** | `appear` command | Per-axis: height, build, keyword, (future) voice |
 | **Disguise items** | Equipping/removing tagged clothing | Distinguishing feature + identity signature (when essential) |
-| **Body modification** (future) | Pharmaceuticals / cybernetics | `@longdesc` + identity signature |
+| **Body modification** (future) | Pharmaceuticals / cybernetics | `describe` + identity signature |
 
 The **sdesc** is always composed the same way regardless of disguise state:
 
@@ -638,7 +638,7 @@ The composed sdesc descriptor (`gaunt`, `burly`, etc.) is recomputed from the ov
 
 **What `appear` does NOT change:**
 - Distinguishing feature (auto-derived from worn items + hair)
-- `@longdesc` (looking directly reveals real physical detail until body-mod layers exist)
+- `describe` (looking directly reveals real physical detail until body-mod layers exist)
 - Voice (deferred to future communication-system integration)
 - The character's real `sleeve_uid` (the underlying body identity)
 
@@ -774,7 +774,7 @@ A disguise's effectiveness scales with the player's investment:
 | Add one essential item (e.g., balaclava) | Signature changes; "unmasking" possible if removed |
 | Full ensemble (all axes + multiple essentials) | Distinct identity; harder for observers to connect to real you |
 | All of the above + change non-essential clothing | Visual distinguishing feature also changes |
-| All of the above + body mod (future) | `@longdesc` no longer reveals the truth on close inspection |
+| All of the above + body mod (future) | `describe` no longer reveals the truth on close inspection |
 
 **Vector math — how completeness translates into pierce penalty.**
 
@@ -1042,7 +1042,7 @@ These are designed into the architecture but not implemented yet:
 - **Perception checks (shipped)**: See [Disguise Piercing](#disguise-piercing). Opposed Intellect-vs-Resonance with familiarity bonus and per-vector penalty.
 - **Active impersonation detection (Phase 5)**: Resonance-based hints when a *fresh* signature (different `sleeve_uid`) closely matches a known identity (e.g., *"this person reminds you of someone..."*).
 - **Forcible item removal via grapple**: Requires grapple-system integration for stripping equipment from a grappled character.
-- **Pharmaceutical / biomod items**: Consumable or implanted modifications that override `@longdesc` and contribute to the identity signature (extending the signature function with body-mod inputs). Closes the last gap: with body mods, even direct `look` reveals a different person. Pharmaceuticals would be temporary (wears off over time), potentially expensive/rare, and could carry side effects (stat penalties, addiction).
+- **Pharmaceutical / biomod items**: Consumable or implanted modifications that override `describe` and contribute to the identity signature (extending the signature function with body-mod inputs). Closes the last gap: with body mods, even direct `look` reveals a different person. Pharmaceuticals would be temporary (wears off over time), potentially expensive/rare, and could carry side effects (stat penalties, addiction).
 - **Photos / identity artifacts**: Captured signature snapshots usable as recipes (own personas) or investigation tools (others'). Salt-acquisition mechanics enable true impersonation gameplay. Ties into Phase 4 (cybernetics) where digital identity data becomes hackable and forgeable.
 - **Voice modulation**: Integration with say/whisper/communication so voice becomes part of the identity signature for observers who can hear but not see (or in addition to visual identification).
 - **Web UI integration**: Personas designed to mirror the planned identity/contact archive system; eventual web UI surface for managing personas, photos, and contact memory in one place.
@@ -1284,7 +1284,7 @@ if is_identity_match(caller, victim, name):
 
 #### Admin commands
 
-Staff commands that need cross-room reach (`@longdesc`, `@heal`, `@testdeath`, etc.) follow a **dual-path** convention: try `identity_match_characters` against the caller's room first (so disguised neighbors resolve via identity, not real key), then fall back to `evennia.search_object(query)` filtered to characters for global key matching. `commands._identity_targeting.resolve_admin_target(caller, query)` provides this pattern.
+Staff commands that need cross-room reach (`describe`, `@heal`, `@testdeath`, etc.) follow a **dual-path** convention: try `identity_match_characters` against the caller's room first (so disguised neighbors resolve via identity, not real key), then fall back to `evennia.search_object(query)` filtered to characters for global key matching. `commands._identity_targeting.resolve_admin_target(caller, query)` provides this pattern.
 
 Item targets (inventory, weapons, room objects) are out of scope for this rule — items do not participate in the identity system, so `caller.search(name, candidates=inventory)` and `caller.search(name, location=caller)` remain correct for item lookups.
 
@@ -1294,7 +1294,7 @@ Item targets (inventory, weapons, room objects) are out of scope for this rule �
 - **Same-room inventory exchange**: `commands/CmdInventory.py` (`CmdGive`)
 - **Same-room medical**: `commands/CmdConsumption.py` (`CmdInject`)
 - **Cross-room combat target**: `commands/combat/movement.py` (`CmdAdvance`, `CmdCharge`)
-- **Admin dual-path**: `commands/CmdCharacter.py` (`@longdesc`)
+- **Admin dual-path**: `commands/CmdCharacter.py` (`describe`)
 
 ### Ambiguity Resolution
 
@@ -2661,7 +2661,7 @@ Sites that broadcast **only** non-character text (item names, constant prose) ar
 - Distinguishing-feature interaction with disguise items (which items suppress which features) — **shipped** (#176): hair fallback suppression is driven by the unified clothing-coverage system (item lists `"hair"` in `coverage` → fallback skipped). The legacy `covers_hair` boolean has been removed. `"hair"` is now a first-class body location in `DEFAULT_LONGDESC_LOCATIONS` and leads the `ANATOMICAL_DISPLAY_ORDER` head region, which is ordered by organic recognition — hair, then eyes, then the head and face, followed by ears and neck (#238). Broader suppression conventions (e.g. mask-suppresses-face) follow naturally from coverage lists; no parallel flags required.
 - Item-driven sdesc fragment contributions (cohesion with `sdesc_short` from Phase 2) — **shipped** (#180): all 13 disguise prototypes' `worn_sdesc_short` values verified to produce grammatical `format_clothing_feature` clauses. Fixed `mirrorshades` slipping through `_PLURALIA_TANTUM_NOUNS` (would render as `"in a mirrorshades"`); added renderer-cohesion regression test that walks every prototype.
 - Sub-visible disguise items (`disguise_silent_feature`) — **shipped** (issue #174). Items flagged `disguise_silent_feature=True` are excluded from the distinguishing-feature partition in `get_distinguishing_feature` (`typeclasses/characters.py:908–925`) while remaining fully participant in the disguise / Apparent UID system (signature, recognition memory, swap detection). Sole current user: `COLORED_CONTACTS` — contacts sit on the eye, so observers register eye colour rather than "person in colored contacts." Extension point for future sub-visible items (dental prosthetics, scent maskers, etc.). Orthogonal to the Class A / Class B `disguise_adjective` axis (sdesc adjective injection) and to the `"hair"` coverage-list entry (hair feature suppression, #176).
-- Pharmaceutical / biomod items for `@longdesc` override — **deferred** (depends on body-mod system; tracked under Future Hooks).
+- Pharmaceutical / biomod items for `describe` override — **deferred** (depends on body-mod system; tracked under Future Hooks).
 - Photos / identity artifacts — **deferred** (tracked under Future Hooks).
 
 #### Taxonomy decisions (`disguise_type_id`)

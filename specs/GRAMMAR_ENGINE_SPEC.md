@@ -334,7 +334,7 @@ DEFAULT_SDESC_KEYWORDS = {
 ```
 
 Fallback keyword assigned to new characters based on grammar gender,
-when no explicit keyword has been chosen via `@shortdesc`. Keyed by the
+when no explicit keyword has been chosen via `describe keyword`. Keyed by the
 output of `GENDER_MAP`, not the raw `sex` attribute.
 
 ---

@@ -1,5 +1,7 @@
 # Pronoun System Deep Dive: Clothing & Longdesc Integration
 
+> **STATUS: SUPERSEDED / HISTORICAL.** The `$pron()`/FuncParser design proposed here was not implemented. Perspective-aware pronouns shipped via the grammar engine and `{their}`/`{they}` brace tokens instead. See `GRAMMAR_ENGINE_SPEC.md` and `LONGDESC_SYSTEM_SPEC.md` for the actual implementation. Retained for historical design context.
+
 ## Overview
 
 This specification focuses on integrating Evennia's `$pron()` system specifically with clothing and longdesc systems to create perspective-aware character descriptions. The goal is to make `look <character>` commands show different text based on who is looking - using "your" when examining yourself vs "his/her/their" when examining others.

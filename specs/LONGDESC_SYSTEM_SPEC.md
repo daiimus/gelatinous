@@ -493,7 +493,7 @@ longdesc = AttributeProperty(
 ### Current Layer: Base Longdescs
 - Player-set descriptions stored in database
 - Direct display when location is visible
-- Manual setting via @longdesc command
+- Manual setting via `describe` command
 
 ### Future Layer Integration Points
 
@@ -623,7 +623,7 @@ longdesc = AttributeProperty(
 
 ### Initial Implementation ✅ COMPLETED
 1. ✅ **Body location constants definition** - Added to `world/combat/constants.py`
-2. ✅ **@longdesc command implementation** - Complete command in `commands/CmdLongdesc.py`
+2. ✅ **`describe` command implementation** - Complete command (`CmdDescribe`) in `commands/CmdCharacter.py`
 3. ✅ **Character appearance integration** - Enhanced `typeclasses/characters.py`
 4. ✅ **Comprehensive testing and validation** - Full in-game testing completed
 
@@ -648,7 +648,7 @@ longdesc = AttributeProperty(
 ## Success Criteria
 
 ### Functional Requirements ✅ COMPLETED
-- ✅ **Players can set/view/modify longdescs** - Complete @longdesc command suite tested
+- ✅ **Players can set/view/modify longdescs** - Complete `describe` command suite tested
 - ✅ **Descriptions appear in character appearance** - `return_appearance()` integration working
 - ✅ **System integrates with existing look command** - Seamless Evennia integration confirmed
 - ✅ **Validation prevents invalid inputs** - Comprehensive error handling tested
@@ -700,22 +700,22 @@ longdesc = AttributeProperty(
 - `get_longdesc()` - Description retrieval with error handling
 - `return_appearance()` - Integration with Evennia's look system
 
-#### 3. Command System (`commands/CmdLongdesc.py`)
+#### 3. Command System (`commands/CmdCharacter.py`)
 **Status**: ✅ **IMPLEMENTED**  
-**Complete Command Suite**:
-- `@longdesc <location> "<description>"` - Set descriptions with validation
-- `@longdesc <location>` - View specific location descriptions
-- `@longdesc` - List all current character descriptions
-- `@longdesc/list` - Show available body locations grouped by anatomical regions
-- `@longdesc/clear <location>` - Clear specific location descriptions
-- `@longdesc/clear` - Clear all descriptions with confirmation
+**Complete Command Suite** (`describe`):
+- `describe` - Open the interactive editor (lists short desc, keyword, and every body location; pick a slot, type new text, see an instant preview)
+- `describe <location> "<description>"` - Set one body location with validation
+- `describe <location>` - View a specific location's description
+- `describe/list` - Show available body locations grouped by anatomical regions
+- `describe/clear <location>` - Clear a specific location's description
+- `describe/clear` - Clear all descriptions with confirmation
 - **Admin Commands**: Staff can target other characters with proper permission checking
 - **Comprehensive Validation**: Location existence, description length, anatomy verification
 - **User-Friendly Error Messages**: Clear feedback for all error conditions
 
 #### 4. Command Registration (`commands/default_cmdsets.py`)
 **Status**: ✅ **IMPLEMENTED**  
-- Added import and registration of `CmdLongdesc` in `CharacterCmdSet`
+- Added import and registration of `CmdDescribe` in `CharacterCmdSet`
 - Integrated with existing command structure
 
 ### Technical Architecture ✅ IMPLEMENTED
@@ -752,7 +752,7 @@ longdesc = AttributeProperty(
 
 #### Ready for Live Testing 🧪 PENDING
 - 🧪 **Character creation and longdesc initialization** - Auto-creation on character creation
-- 🧪 **@longdesc command functionality** - All command variations and switches
+- 🧪 **`describe` command functionality** - All command variations and switches
 - 🧪 **Character appearance integration** - Look command integration via `return_appearance()`
 - 🧪 **Error handling and edge cases** - Invalid locations, permission checks, validation
 
@@ -760,21 +760,23 @@ longdesc = AttributeProperty(
 
 ```bash
 # Basic description setting
-@longdesc face "High cheekbones and a defined jawline lend {their} face a rough calm."
-@longdesc left_eye "A piercing blue eye glints with flecks of gold."  
-@longdesc right_hand "A prosthetic metal hand ends in intricately engraved fingers."
+describe face "High cheekbones and a defined jawline lend {their} face a rough calm."
+describe left_eye "A piercing blue eye glints with flecks of gold."  
+describe right_hand "A prosthetic metal hand ends in intricately engraved fingers."
+
+# Interactive editor (lists short desc, keyword, and every body location for editing)
+describe
 
 # Discovery and management
-@longdesc/list           # Show available locations grouped by region
-@longdesc face           # View current face description
-@longdesc                # List all set descriptions in anatomical order
-@longdesc/clear face     # Clear specific location
-@longdesc/clear          # Clear all descriptions with confirmation
+describe/list           # Show available locations grouped by region
+describe face           # View current face description
+describe/clear face     # Clear specific location
+describe/clear          # Clear all descriptions with confirmation
 
 # Staff moderation commands  
-@longdesc PlayerName face "staff-modified description"
-@longdesc/clear PlayerName face
-@longdesc/clear PlayerName
+describe PlayerName face "staff-modified description"
+describe/clear PlayerName face
+describe/clear PlayerName
 ```
 
 ### Integration with Look System ✅ IMPLEMENTED
@@ -799,7 +801,7 @@ Broad shoulders taper to a narrow waist, clearly showing years of physical train
 
 1. **Start Evennia server** with implemented changes
 2. **Test character creation** - verify longdesc auto-initialization  
-3. **Test @longdesc commands** - all variations, switches, and edge cases
+3. **Test `describe` commands** - all variations, switches, and edge cases
 4. **Test look integration** - verify appearance assembly and formatting
 5. **Test admin commands** - staff permissions and character targeting
 6. **Validate error handling** - invalid inputs, permission failures
