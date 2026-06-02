@@ -181,7 +181,7 @@ class PreviewTests(TestCase):
         )
         # "face" is not a pair noun -> treated as verb-ish flex, but render
         # must succeed and show exactly one preview body line.
-        body_lines = [ln for ln in lines if not ln.startswith("|wPreview")]
+        body_lines = [ln for ln in lines if not ln.startswith("|WPreview")]
         self.assertEqual(len(body_lines), 1)
 
     def test_unrecognized_token_warned(self):

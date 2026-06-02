@@ -773,7 +773,7 @@ class CmdDescribe(Command):
         rendered = caller._process_description_variables(
             text, caller, force_third_person=True
         )
-        caller.msg(f"|xPreview:|n {rendered}")
+        caller.msg(f"|WPreview:|n |W{rendered}|n")
 
     def _handle_list_locations(self, caller):
         """Show all available body locations for the character."""
@@ -1078,17 +1078,17 @@ def _render_longdesc_preview(viewer, target_char, location, locations, descripti
         unresolved.update(brace_re.findall(rendered))
         return rendered
 
-    lines = ["|wPreview:|n"]
+    lines = ["|WPreview:|n"]
     if is_pair:
-        lines.append(f"  |cboth sides:|n {_render('plural')}")
-        lines.append(f"  |clone side:|n {_render('singular')}")
+        lines.append(f"  |Wboth sides:|n |W{_render('plural')}|n")
+        lines.append(f"  |Wlone side:|n |W{_render('singular')}|n")
     else:
-        lines.append(f"  {_render('singular')}")
+        lines.append(f"  |W{_render('singular')}|n")
 
     if unresolved:
         tokens = ", ".join(sorted(unresolved))
         lines.append(
-            f"  |yUnrecognized token(s) left literal: {tokens}|n"
+            f"  |WUnrecognized token(s) left literal: {tokens}|n"
         )
     return lines
 
