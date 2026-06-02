@@ -24,25 +24,28 @@ Two structural facts shape everything you do here:
 
 ## Project Layout & Deployment
 
-| Role | Location | Notes |
-|------|----------|-------|
-| **Dev repo** (edit here) | `/Users/rocket/Documents/Repositories/gelatinous/` | `git origin daiimus/gelatinous`, default branch `master`. Run all `git` here. |
-| **Live game** (runs here) | `/Users/rocket/gelatinous/game/` | Docker container `gelatinous`. Its own git checkout; deployed via hard-reset. **No `git` in the container** — run git on the host. |
+There are two checkouts. Set the concrete paths/names for your environment;
+this guide uses placeholders:
 
-The live container runs code from the **live** dir, not the dev repo. Nothing you
+| Role | Placeholder | Notes |
+|------|-------------|-------|
+| **Dev repo** (edit here) | `<DEV_REPO>` | Default branch `master`. Run all `git` here. |
+| **Live game** (runs here) | `<LIVE_DIR>` | Runs inside Docker container `<CONTAINER>`. Its own git checkout; deployed via hard-reset. **No `git` in the container** — run git on the host. |
+
+The container runs code from the **live** dir, not the dev repo. Nothing you
 edit takes effect until it is copied (during iteration) or merged-and-reset
 (for deploy).
 
 **Iterating / testing a change:**
 ```bash
 # 1. Edit in the dev repo, then copy changed files into the live dir
-cp commands/CmdFoo.py /Users/rocket/gelatinous/game/commands/CmdFoo.py
+cp commands/CmdFoo.py <LIVE_DIR>/commands/CmdFoo.py
 # 2. Run tests inside the container (evennia + inflect live in the Docker venv,
 #    NOT host python3; the host can only py_compile)
-docker exec gelatinous evennia test --settings settings.py world
-docker exec gelatinous evennia test --settings settings.py world.tests.test_foo
+docker exec <CONTAINER> evennia test --settings settings.py world
+docker exec <CONTAINER> evennia test --settings settings.py world.tests.test_foo
 # 3. Run Django-dependent Python via the container shell
-docker exec gelatinous evennia shell --settings settings.py -c "..."
+docker exec <CONTAINER> evennia shell --settings settings.py -c "..."
 ```
 
 **Deploy cycle (every change, even docs):**
@@ -55,15 +58,15 @@ git push -u origin <branch>
 gh pr create ...            # agent both creates AND merges PRs
 gh pr merge <n> --squash --delete-branch
 # hard-reset the live checkout to the merged master (git runs on the host)
-git -C /Users/rocket/gelatinous/game fetch origin --quiet
-git -C /Users/rocket/gelatinous/game reset --hard origin/master --quiet
+git -C <LIVE_DIR> fetch origin --quiet
+git -C <LIVE_DIR> reset --hard origin/master --quiet
 # reload only when code changed (skip for docs-only)
-docker exec gelatinous evennia reload --settings settings.py
-docker exec gelatinous evennia status --settings settings.py   # Portal + Server RUNNING
+docker exec <CONTAINER> evennia reload --settings settings.py
+docker exec <CONTAINER> evennia status --settings settings.py   # Portal + Server RUNNING
 ```
 
-Rules: **never force-push to `master`.** `gh` is authenticated as `daiimus`.
-Every change — including docs — goes issue → branch → PR → squash-merge.
+Rules: **never force-push to `master`.** `gh` must be authenticated for the
+repo. Every change — including docs — goes issue → branch → PR → squash-merge.
 
 ## Typeclasses and Attributes
 
@@ -205,5 +208,5 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 - Need an interactive menu? `evmenu`. Need custom layout? `evform`.
 - Naming a character in a room broadcast? `msg_room_identity`, not `msg_contents`.
 - Giving an item a description? Set `db.desc`; never override `return_appearance`.
-- Running tests? `docker exec gelatinous evennia test --settings settings.py world`.
+- Running tests? `docker exec <CONTAINER> evennia test --settings settings.py world`.
 - Deploying? issue → branch → PR → squash-merge → hard-reset live → reload (code only).
