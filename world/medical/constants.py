@@ -427,8 +427,13 @@ ORGANS = {
     },
 
     # STRUCTURAL ORGANS FOR MOVEMENT
+    # Pelvis is housed in the ``groin`` container (issue #325). Before this
+    # change it lived in ``abdomen`` — anatomically wrong, and it left the
+    # groin container with zero organs, making groin combat hits a free
+    # no-op (apply_anatomical_damage's distribution returned ``{}`` and no
+    # organ HP / wound / bleeding ever resulted).
     "pelvis": {
-        "container": "abdomen", "max_hp": 25, "hit_weight": "uncommon",
+        "container": "groin", "max_hp": 25, "hit_weight": "uncommon",
         "capacity": "moving", "contribution": "total", "vital": True
     }
 }
