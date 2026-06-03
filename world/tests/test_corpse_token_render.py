@@ -42,7 +42,6 @@ class _CorpseStub:
     _build_corpse_clothing_coverage_map = (
         Corpse._build_corpse_clothing_coverage_map
     )
-    _apply_decay_to_description = Corpse._apply_decay_to_description
     _build_decay_desc_paragraph = Corpse._build_decay_desc_paragraph
     get_preserved_wound_descriptions = Corpse.get_preserved_wound_descriptions
     get_decay_stage = Corpse.get_decay_stage
@@ -215,6 +214,36 @@ class PairCollapseTests(TestCase):
         # The braced {eyes} flexes to singular "eye"; surrounding plain
         # prose (the bare verb "hold") stays as authored.
         self.assertIn("His eye hold steady", eye_entries[0][1])
+
+    def test_no_per_location_decay_echo(self):
+        """Issue #323: the per-location decay modifier was being appended
+        to every longdesc line, producing the same sentence 20+ times.
+        Overall decay is conveyed by the corpse header paragraph
+        (_build_decay_desc_paragraph) — per-location longdescs must not
+        carry an echo.
+        """
+        c = _CorpseStub(
+            gender="male",
+            longdesc_data={
+                "hair": "It is cropped close.",
+                "face": "His face is unremarkable.",
+                "chest": "His chest is broad.",
+            },
+        )
+        descriptions = c._get_preserved_longdesc_descriptions()
+        # No location's rendered prose should contain the decay tagline.
+        decay_phrases = (
+            "early signs of pallor",
+            "Visible discoloration",
+            "Severe decomposition",
+            "skeletal remains",
+        )
+        for loc, text in descriptions:
+            for phrase in decay_phrases:
+                self.assertNotIn(
+                    phrase, text,
+                    f"Decay echo leaked into {loc} longdesc: {text!r}",
+                )
 
     def test_no_leaked_braces_anywhere(self):
         # End-to-end: load all the pair-key templates and confirm output

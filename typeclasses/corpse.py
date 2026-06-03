@@ -299,10 +299,12 @@ class Corpse(IdentityBearerMixin, Item):
             if left_desc != right_desc:
                 continue
             # Both sides match — render once at plural number.
+            # Overall decay state is conveyed by the corpse header
+            # paragraph (_build_decay_desc_paragraph); per-location
+            # echoes were dropped in issue #323.
             processed = self._process_corpse_description_variables(
                 left_desc, number="plural",
             )
-            processed = self._apply_decay_to_description(processed)
             collapse_anchor[left_loc] = processed
             collapse_skip.add(right_loc)
 
@@ -330,10 +332,10 @@ class Corpse(IdentityBearerMixin, Item):
                     final_desc = collapse_anchor[location]
                 elif location in longdesc_data and longdesc_data[location]:
                     description = longdesc_data[location]
-                    # Process template variables like living characters do
-                    processed_desc = self._process_corpse_description_variables(description)
-                    # Apply decay modifications to the description
-                    final_desc = self._apply_decay_to_description(processed_desc)
+                    # Process template variables like living characters do.
+                    # Overall decay is conveyed by the corpse header
+                    # paragraph; per-location echoes were dropped (#323).
+                    final_desc = self._process_corpse_description_variables(description)
 
                 # Add preserved wound descriptions for this location
                 wound_descriptions = self.get_preserved_wound_descriptions(location)
@@ -448,25 +450,26 @@ class Corpse(IdentityBearerMixin, Item):
             # Clear item context
             if hasattr(self, '_current_item_context'):
                 delattr(self, '_current_item_context')
-            
-            # Apply decay modifications
-            return self._apply_decay_to_description(corpse_desc)
-        
+
+            # Overall decay is conveyed by the corpse header paragraph;
+            # per-location echoes were dropped (#323).
+            return corpse_desc
+
         # Fallback to item description
         item_desc = clothing_item.db.desc
         if item_desc:
             # Process template variables
             processed_desc = self._process_corpse_description_variables(item_desc)
-            
+
             # Create a simple worn description
             item_name = clothing_item.get_display_name(None)
             corpse_desc = f"The corpse is wearing {item_name}."
-            
+
             # Clear item context
             if hasattr(self, '_current_item_context'):
                 delattr(self, '_current_item_context')
-                
-            return self._apply_decay_to_description(corpse_desc)
+
+            return corpse_desc
         
         # Clear item context
         if hasattr(self, '_current_item_context'):
@@ -629,21 +632,6 @@ class Corpse(IdentityBearerMixin, Item):
                 pass
         
         return processed_desc
-    
-    def _apply_decay_to_description(self, description):
-        """Modify a description based on current decay stage."""
-        stage = self.get_decay_stage()
-        
-        decay_modifiers = {
-            "fresh": "",  # No modification for fresh corpses
-            "early": " The area shows early signs of pallor and cooling.",
-            "moderate": " Visible discoloration and early decomposition changes are apparent.",
-            "advanced": " Severe decomposition changes have altered the appearance significantly.", 
-            "skeletal": " Only skeletal remains and dried tissue are visible."
-        }
-        
-        modifier = decay_modifiers.get(stage, "")
-        return f"{description}{modifier}"
     
     def return_appearance(self, looker, **kwargs):
         """Render the corpse without mutating any persistent state.
