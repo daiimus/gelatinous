@@ -43,6 +43,7 @@ class _CorpseStub:
         Corpse._build_corpse_clothing_coverage_map
     )
     _apply_decay_to_description = Corpse._apply_decay_to_description
+    _build_decay_desc_paragraph = Corpse._build_decay_desc_paragraph
     get_preserved_wound_descriptions = Corpse.get_preserved_wound_descriptions
     get_decay_stage = Corpse.get_decay_stage
     get_time_since_death = Corpse.get_time_since_death
@@ -63,6 +64,8 @@ class _CorpseStub:
             decay_stages={
                 "fresh": 1e9, "early": 2e9, "moderate": 3e9, "advanced": 4e9,
             },
+            species="human",
+            physical_description="A body.",
         )
         self.ndb = SimpleNamespace()
         self.contents = contents or []
@@ -111,6 +114,36 @@ class TokenSubstitutionTests(TestCase):
             "{Their} {eyes} {hold} steady.", number="singular"
         )
         self.assertEqual(out, "His eye holds steady.")
+
+
+class DecayParagraphVerbFlexTests(TestCase):
+    """``_build_decay_desc_paragraph`` picks verb number from the pronoun
+    bucket so neutral sleeves render plural verbs (issue #321).
+
+    Without this, a "{They} {hold} {themselves}" short_desc on a neutral
+    corpse rendered as "They holds themselves" — the verb flexed singular
+    against a plural pronoun subject.
+    """
+
+    SHORT = "{They} {hold} {themselves} loosely."
+
+    def _build_with_gender(self, gender):
+        c = _CorpseStub(gender=gender)
+        c.db.physical_description = self.SHORT
+        c.db.species = "human"
+        return c._build_decay_desc_paragraph("fresh")
+
+    def test_male_renders_singular_verb(self):
+        out = self._build_with_gender("male")
+        self.assertIn("He holds himself loosely.", out)
+
+    def test_female_renders_singular_verb(self):
+        out = self._build_with_gender("female")
+        self.assertIn("She holds herself loosely.", out)
+
+    def test_neutral_renders_plural_verb(self):
+        out = self._build_with_gender("neutral")
+        self.assertIn("They hold themselves loosely.", out)
 
 
 class PairCollapseTests(TestCase):

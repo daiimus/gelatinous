@@ -746,12 +746,20 @@ class Corpse(IdentityBearerMixin, Item):
         # death-time short description (e.g. ``mob_flavor`` entries that
         # use ``{Their}`` / ``{themselves}``).  Without this pass the
         # raw braces leak into the species template — see issue #319.
+        #
+        # The whole-body paragraph's braced verbs (``{hold}``, ``{carry}``,
+        # ...) have a pronoun subject, so verb flex must follow the
+        # pronoun's *number*: singular for he / she, plural for singular-
+        # they.  Without this, neutral sleeves render "They holds
+        # themselves" instead of "They hold themselves" (issue #321).
         original_gender = self.db.original_gender if self.db.original_gender is not None else 'neutral'
         original_name = self.db.original_character_name or "the corpse"
+        verb_number = "singular" if original_gender in ("male", "female") else "plural"
         base_desc = substitute_pronoun_tokens(
             base_desc,
             gender=original_gender,
             name=original_name,
+            number=verb_number,
         )
 
         return get_species_corpse_description(species, stage, base_desc)

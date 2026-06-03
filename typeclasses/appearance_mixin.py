@@ -476,10 +476,22 @@ class AppearanceMixin:
         # 1. Character name (header) + main description (no blank line between)
         name_and_desc = [self.get_look_header(looker)]
         if self.db.desc:
-            # Initial description should NOT have skintone applied
+            # Initial description should NOT have skintone applied.
+            # Braced verbs in the body paragraph (``{hold}``, ``{carry}``,
+            # ...) take the pronoun as their subject, so verb flex must
+            # follow the pronoun's *number*: singular for he / she, plural
+            # for singular-they.  Without this, neutral sleeves render
+            # "They holds themselves" instead of "They hold themselves"
+            # (issue #321).
+            body_number = (
+                "singular"
+                if (self.gender or "").lower() in ("male", "female")
+                else "plural"
+            )
             processed_desc = self._process_description_variables(
                 self.db.desc, looker,
                 force_third_person=True, apply_skintone=False,
+                number=body_number,
             )
             name_and_desc.append(processed_desc)
 
