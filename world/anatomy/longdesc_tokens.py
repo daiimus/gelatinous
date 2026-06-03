@@ -68,11 +68,22 @@ _PRONOUN_MAP = {
 }
 
 
-def substitute_pronoun_tokens(text, *, gender, name="the corpse"):
-    """Replace ``{pronoun}`` / ``{name}`` tokens in preserved prose.
+def substitute_pronoun_tokens(text, *, gender, name="the corpse",
+                              number="singular"):
+    """Replace ``{pronoun}`` / ``{name}`` / body-noun tokens in preserved prose.
 
     Always third-person (the subject is an inanimate corpse or severed
     part).  Unknown or ``None`` gender falls back to plural pronouns.
+
+    After pronoun + name substitution, a second pass resolves number-
+    flexible body-noun tokens (``{eyes}`` / ``{ears}`` / ``{arms}`` ...)
+    and braced verbs by delegating to ``world.grammar.flex_noun`` /
+    ``flex_verb``.  This mirrors the living-character renderer's
+    ``AppearanceMixin._substitute_longdesc_tokens`` so corpse and severed-
+    part prose render the same as it would on the living body.  Tokens
+    that match neither pronoun-table nor flex-vocabulary are left literal
+    so an upstream layer (corpse skintone / ``{color}``) can still claim
+    them.
 
     Args:
         text (str): Longdesc prose, possibly containing brace tokens.
@@ -80,11 +91,14 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse"):
             ``"female"``, ``"neutral"``, ``"nonbinary"``, ``"other"``).
         name (str): Display name substituted for ``{name}`` /
             ``{name's}``.  Defaults to ``"the corpse"``.
+        number (str): ``"singular"`` (default) or ``"plural"``.  Drives
+            body-noun and verb flexing — ``"plural"`` for a collapsed
+            symmetric pair (eyes/ears/...), ``"singular"`` for a lone
+            side or a singular location (face/neck/...).
 
     Returns:
-        str: ``text`` with pronoun and name tokens resolved.  Tokens
-        this helper does not recognise (e.g. ``{color}``) are left
-        untouched for an upstream layer to handle.
+        str: ``text`` with pronoun, name, and body-noun tokens resolved.
+        Anything else (e.g. ``{color}``) is left untouched.
     """
     if not text:
         return text
@@ -103,4 +117,46 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse"):
     processed = processed.replace("{name's}", f"{name}'s")
     processed = processed.replace("{name}", name)
 
+    # Body-noun / verb flex pass.  Done after pronouns so an unhandled
+    # leftover brace can fall through cleanly.
+    processed = _flex_body_tokens(processed, number)
+
     return processed
+
+
+def _flex_body_tokens(text, number):
+    """Flex remaining braced tokens as body nouns or verbs.
+
+    Mirrors the resolution order of
+    ``AppearanceMixin._substitute_longdesc_tokens``: a braced single word
+    (optionally with a leading ``a``/``an``) whose singular is in the
+    flex-noun vocabulary renders as a noun; any other single-word brace
+    renders as a verb.  Multi-word braces are left literal — that's the
+    "unknown token" case authors use for emphasis or future substitutions.
+    """
+    import re
+
+    from world.combat.constants import LONGDESC_FLEX_NOUNS, PAIR_MERGE_KEYS
+    from world.grammar import flex_noun, flex_verb, singularize_noun
+
+    flex_nouns = set(LONGDESC_FLEX_NOUNS)
+    for left_loc, _right_loc in PAIR_MERGE_KEYS.values():
+        # "left_eye" -> "eye"
+        flex_nouns.add(left_loc.split("_", 1)[1])
+
+    article_re = re.compile(r"^(?:a|an)\s+(.+)$", re.IGNORECASE)
+
+    def _resolve(match):
+        body = match.group(1)
+        art_match = article_re.match(body)
+        core = art_match.group(1) if art_match else body
+        if " " in core:
+            return match.group(0)
+        core_base = singularize_noun(core).lower()
+        if core_base in flex_nouns:
+            return flex_noun(body, number)
+        if art_match is None:
+            return flex_verb(body, number)
+        return match.group(0)
+
+    return re.sub(r"\{([^{}]+)\}", _resolve, text)

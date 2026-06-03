@@ -94,16 +94,82 @@ class TestSubstitutePronounTokens(TestCase):
             substitute_pronoun_tokens(text, gender="male"), text
         )
 
-    def test_unrecognised_tokens_left_untouched(self):
-        # {color} is handled by an upstream corpse/clothing layer, not
-        # here — the helper must leave it intact.
+    def test_multiword_braces_left_untouched(self):
+        # Multi-word braces aren't candidates for noun/verb flex, so the
+        # helper leaves them literal — useful for in-prose emphasis or
+        # future substitutions an upstream layer claims.
         out = substitute_pronoun_tokens(
-            "{color}A {their} coat.", gender="female"
+            "A {patch of red} on {their} jaw.", gender="female"
         )
-        self.assertEqual(out, "{color}A her coat.")
+        self.assertEqual(out, "A {patch of red} on her jaw.")
 
     def test_empty_string_passthrough(self):
         self.assertEqual(substitute_pronoun_tokens("", gender="male"), "")
 
     def test_none_text_passthrough(self):
         self.assertIsNone(substitute_pronoun_tokens(None, gender="male"))
+
+
+class TestBodyNounFlex(TestCase):
+    """Pair-noun and verb flexing — issue #319.
+
+    Body-noun tokens like ``{eyes}`` / ``{ears}`` and braced verbs like
+    ``{accent}`` / ``{move}`` resolve to the requested grammatical
+    *number*.  Pre-#319 the helper handled only pronouns and left these
+    literal, which leaked braces into corpse / Appendage prose.
+
+    Note on ``{color}``: the helper now flexes any single-word brace
+    that isn't a known body noun as a verb (mirroring the living
+    renderer).  Consumers that use ``{color}`` as a placeholder (corpse,
+    Appendage) substitute it BEFORE calling this helper.
+    """
+
+    def test_plural_body_noun_flexes(self):
+        out = substitute_pronoun_tokens(
+            "{Their} bright brown {eyes}.", gender="female", number="plural"
+        )
+        self.assertEqual(out, "Her bright brown eyes.")
+
+    def test_singular_body_noun_flexes(self):
+        out = substitute_pronoun_tokens(
+            "{Their} bright brown {eyes}.", gender="female", number="singular"
+        )
+        self.assertEqual(out, "Her bright brown eye.")
+
+    def test_braced_verb_flexes_plural(self):
+        out = substitute_pronoun_tokens(
+            "{Their} {hands} {move}.", gender="male", number="plural"
+        )
+        self.assertEqual(out, "His hands move.")
+
+    def test_braced_verb_flexes_singular(self):
+        out = substitute_pronoun_tokens(
+            "{Their} {hands} {move}.", gender="male", number="singular"
+        )
+        self.assertEqual(out, "His hand moves.")
+
+    def test_irregular_verb_are_to_is(self):
+        out = substitute_pronoun_tokens(
+            "{Their} {eyes} {are} bright.", gender="female",
+            number="singular",
+        )
+        self.assertEqual(out, "Her eye is bright.")
+
+    def test_number_default_is_singular(self):
+        # Existing callers (Appendage) don't pass ``number``; default
+        # must be singular to match their single-side semantics.
+        out = substitute_pronoun_tokens(
+            "{Their} {eyes}.", gender="female"
+        )
+        self.assertEqual(out, "Her eye.")
+
+    def test_all_pair_keys_flex_plural(self):
+        # Every PAIR_MERGE_KEYS noun must flex correctly so mob_flavor
+        # entries render across all paired locations.
+        for noun in ("eyes", "ears", "arms", "hands", "thighs", "shins",
+                     "feet"):
+            with self.subTest(noun=noun):
+                out = substitute_pronoun_tokens(
+                    f"{{Their}} {{{noun}}}.", gender="male", number="plural"
+                )
+                self.assertEqual(out, f"His {noun}.")

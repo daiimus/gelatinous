@@ -249,13 +249,24 @@ class Corpse(IdentityBearerMixin, Item):
         ]
 
     def _get_preserved_longdesc_descriptions(self):
-        """Get visible longdesc descriptions with clothing integration, like living characters."""
+        """Get visible longdesc descriptions with clothing integration, like living characters.
+
+        Symmetric ``left_*`` / ``right_*`` pairs collapse to a single
+        plural line when both sides carry the same preserved longdesc
+        and neither is covered by clothing — matching the living-
+        character collapse path (\``AppearanceMixin._build_paired_longdesc_collapse``\)
+        so braced body-noun tokens (``{eyes}`` / ``{ears}`` / ...) render
+        in plural form once, instead of leaking literal braces twice.
+        """
         if not self.db.longdesc_data:
             return []
-        
+
         # Import anatomical display order
         try:
-            from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
+            from world.combat.constants import (
+                ANATOMICAL_DISPLAY_ORDER,
+                PAIR_MERGE_KEYS,
+            )
         except ImportError:
             # Fallback order if constants not available
             ANATOMICAL_DISPLAY_ORDER = [
@@ -264,20 +275,47 @@ class Corpse(IdentityBearerMixin, Item):
                 "left_arm", "right_arm", "left_hand", "right_hand",
                 "left_thigh", "right_thigh", "left_shin", "right_shin", "left_foot", "right_foot"
             ]
-        
+            PAIR_MERGE_KEYS = {}
+
         descriptions = []
         longdesc_data = self.db.longdesc_data
-        
+
         # Build clothing coverage map from corpse contents
         coverage_map = self._build_corpse_clothing_coverage_map()
         added_clothing_items = set()
-        
+
+        # Pre-compute symmetric pair collapse: which left_* anchors absorb
+        # their right_* partner under a single plural render.
+        collapse_anchor = {}  # left_loc -> plural-rendered description
+        collapse_skip = set()  # right_loc partners to skip
+        for _pair_key, (left_loc, right_loc) in PAIR_MERGE_KEYS.items():
+            # Asymmetric clothing breaks the visual pairing.
+            if left_loc in coverage_map or right_loc in coverage_map:
+                continue
+            left_desc = longdesc_data.get(left_loc)
+            right_desc = longdesc_data.get(right_loc)
+            if not left_desc or not right_desc:
+                continue
+            if left_desc != right_desc:
+                continue
+            # Both sides match — render once at plural number.
+            processed = self._process_corpse_description_variables(
+                left_desc, number="plural",
+            )
+            processed = self._apply_decay_to_description(processed)
+            collapse_anchor[left_loc] = processed
+            collapse_skip.add(right_loc)
+
         # Process in anatomical order, integrating clothing like living characters
         for location in ANATOMICAL_DISPLAY_ORDER:
+            if location in collapse_skip:
+                # Right side of a collapsed pair — already rendered at the
+                # left anchor; do not render again.
+                continue
             if location in coverage_map:
                 # Location covered by clothing - use clothing description instead
                 clothing_item = coverage_map[location]
-                
+
                 # Only add each clothing item once, regardless of how many locations it covers
                 if clothing_item not in added_clothing_items:
                     # Get clothing description for corpse context
@@ -286,15 +324,17 @@ class Corpse(IdentityBearerMixin, Item):
                         descriptions.append((location, desc))
                         added_clothing_items.add(clothing_item)
             else:
-                # Location not covered - use preserved longdesc if available
                 final_desc = ""
-                if location in longdesc_data and longdesc_data[location]:
+                if location in collapse_anchor:
+                    # Symmetric pair collapse — already pre-rendered above.
+                    final_desc = collapse_anchor[location]
+                elif location in longdesc_data and longdesc_data[location]:
                     description = longdesc_data[location]
                     # Process template variables like living characters do
                     processed_desc = self._process_corpse_description_variables(description)
                     # Apply decay modifications to the description
                     final_desc = self._apply_decay_to_description(processed_desc)
-                
+
                 # Add preserved wound descriptions for this location
                 wound_descriptions = self.get_preserved_wound_descriptions(location)
                 if wound_descriptions:
@@ -304,10 +344,10 @@ class Corpse(IdentityBearerMixin, Item):
                     else:
                         # No base description, just use wound descriptions
                         final_desc = wound_text
-                
+
                 if final_desc:
                     descriptions.append((location, final_desc))
-        
+
         return descriptions
     
     def _build_corpse_clothing_coverage_map(self):
@@ -513,17 +553,25 @@ class Corpse(IdentityBearerMixin, Item):
             # Fallback if constants not available
             return "extended"
     
-    def _process_corpse_description_variables(self, description):
-        """Process template variables in corpse descriptions using preserved character data."""
+    def _process_corpse_description_variables(self, description, number="singular"):
+        """Process template variables in corpse descriptions using preserved character data.
+
+        Args:
+            description (str): Raw longdesc prose, possibly containing brace tokens.
+            number (str): ``"singular"`` (default) or ``"plural"`` — drives
+                body-noun and verb flexing in ``substitute_pronoun_tokens``.
+                Pass ``"plural"`` for a collapsed symmetric pair so
+                ``{eyes}`` / ``{ears}`` / ``{hands}`` render in plural form.
+        """
         if not description:
             return description
-            
+
         # Get preserved character data for template processing
         original_name = self.db.original_character_name or "the corpse"
-        
+
         # Manual processing using preserved character data (more reliable than character method)
         processed_desc = description
-        
+
         # Get preserved character data
         original_gender = self.db.original_gender if self.db.original_gender is not None else 'neutral'
         original_skintone = self.db.original_skintone
@@ -565,6 +613,7 @@ class Corpse(IdentityBearerMixin, Item):
             processed_desc,
             gender=original_gender,
             name=original_name,
+            number=number,
         )
         
         # Apply skintone coloring if preserved (only to body descriptions, not clothing items)
@@ -685,10 +734,26 @@ class Corpse(IdentityBearerMixin, Item):
         for debug / admin / forensic tooling (Option α from the #230
         design discussion).
         """
-        from world.anatomy import get_species_corpse_description
+        from world.anatomy import (
+            get_species_corpse_description,
+            substitute_pronoun_tokens,
+        )
 
         species = self.db.species or "human"
         base_desc = self.db.physical_description or "A lifeless body."
+
+        # Resolve any pronoun / name tokens carried over from the
+        # death-time short description (e.g. ``mob_flavor`` entries that
+        # use ``{Their}`` / ``{themselves}``).  Without this pass the
+        # raw braces leak into the species template — see issue #319.
+        original_gender = self.db.original_gender if self.db.original_gender is not None else 'neutral'
+        original_name = self.db.original_character_name or "the corpse"
+        base_desc = substitute_pronoun_tokens(
+            base_desc,
+            gender=original_gender,
+            name=original_name,
+        )
+
         return get_species_corpse_description(species, stage, base_desc)
 
     def _refresh_decay_key_if_changed(self):
