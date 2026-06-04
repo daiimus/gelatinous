@@ -69,7 +69,7 @@ _PRONOUN_MAP = {
 
 
 def substitute_pronoun_tokens(text, *, gender, name="the corpse",
-                              number="singular"):
+                              number="singular", side=None):
     """Replace ``{pronoun}`` / ``{name}`` / body-noun tokens in preserved prose.
 
     Always third-person (the subject is an inanimate corpse or severed
@@ -85,6 +85,11 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse",
     so an upstream layer (corpse skintone / ``{color}``) can still claim
     them.
 
+    Side-aware singular flex (issue #341): when ``side`` is provided
+    and a paired body-noun token flexes to singular, the side is
+    prefixed — ``{arms}`` becomes ``"right arm"`` instead of bare
+    ``"arm"``.
+
     Args:
         text (str): Longdesc prose, possibly containing brace tokens.
         gender (str | None): Preserved character gender (e.g. ``"male"``,
@@ -95,6 +100,10 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse",
             body-noun and verb flexing — ``"plural"`` for a collapsed
             symmetric pair (eyes/ears/...), ``"singular"`` for a lone
             side or a singular location (face/neck/...).
+        side (str | None): ``"left"`` / ``"right"`` / ``None``. When
+            set with ``number="singular"`` and the token is a pair-
+            keyed body noun, the side is prefixed onto the singular
+            form (#341).
 
     Returns:
         str: ``text`` with pronoun, name, and body-noun tokens resolved.
@@ -119,12 +128,12 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse",
 
     # Body-noun / verb flex pass.  Done after pronouns so an unhandled
     # leftover brace can fall through cleanly.
-    processed = _flex_body_tokens(processed, number)
+    processed = _flex_body_tokens(processed, number, side)
 
     return processed
 
 
-def _flex_body_tokens(text, number):
+def _flex_body_tokens(text, number, side=None):
     """Flex remaining braced tokens as body nouns or verbs.
 
     Mirrors the resolution order of
@@ -133,16 +142,28 @@ def _flex_body_tokens(text, number):
     flex-noun vocabulary renders as a noun; any other single-word brace
     renders as a verb.  Multi-word braces are left literal — that's the
     "unknown token" case authors use for emphasis or future substitutions.
+
+    Side-aware singular flex (#341) for pair-keyed nouns is applied
+    when ``side`` is provided AND number is singular.
     """
     import re
 
     from world.combat.constants import LONGDESC_FLEX_NOUNS, PAIR_MERGE_KEYS
-    from world.grammar import flex_noun, flex_verb, singularize_noun
+    from world.grammar import (
+        _match_leading_case,
+        flex_noun,
+        flex_verb,
+        get_article,
+        singularize_noun,
+    )
 
     flex_nouns = set(LONGDESC_FLEX_NOUNS)
+    pair_singulars = set()
     for left_loc, _right_loc in PAIR_MERGE_KEYS.values():
         # "left_eye" -> "eye"
-        flex_nouns.add(left_loc.split("_", 1)[1])
+        singular = left_loc.split("_", 1)[1]
+        flex_nouns.add(singular)
+        pair_singulars.add(singular)
 
     article_re = re.compile(r"^(?:a|an)\s+(.+)$", re.IGNORECASE)
 
@@ -154,6 +175,16 @@ def _flex_body_tokens(text, number):
             return match.group(0)
         core_base = singularize_noun(core).lower()
         if core_base in flex_nouns:
+            # Side-aware singular for pair nouns (#341).
+            if (number == "singular" and side
+                    and core_base in pair_singulars):
+                side_phrase = f"{side} {core_base}"
+                if art_match:
+                    article = get_article(side_phrase)
+                    rendered = f"{article} {side_phrase}"
+                else:
+                    rendered = side_phrase
+                return _match_leading_case(rendered, body)
             return flex_noun(body, number)
         if art_match is None:
             return flex_verb(body, number)

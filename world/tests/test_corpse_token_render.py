@@ -211,9 +211,11 @@ class PairCollapseTests(TestCase):
                        if loc in ("left_eye", "right_eye")]
         self.assertEqual(len(eye_entries), 1)
         self.assertEqual(eye_entries[0][0], "left_eye")
-        # The braced {eyes} flexes to singular "eye"; surrounding plain
-        # prose (the bare verb "hold") stays as authored.
-        self.assertIn("His eye hold steady", eye_entries[0][1])
+        # The braced {eyes} flexes to singular, and side-aware singular
+        # flex (#341) prefixes the side: "left eye" instead of bare
+        # "eye". Surrounding plain prose ("hold") stays as authored
+        # (verb-bracing is the deferred #331).
+        self.assertIn("His left eye hold steady", eye_entries[0][1])
 
     def test_no_per_location_decay_echo(self):
         """Issue #323: the per-location decay modifier was being appended

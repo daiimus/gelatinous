@@ -116,12 +116,18 @@ class AppearanceMixin:
                         added_clothing_items.add(clothing_item)
             else:
                 # Location not covered - use character's longdesc if set with
-                # template variable processing
+                # template variable processing.
+                # Per-location render path: this branch fires when the
+                # location renders independently (not as part of a paired
+                # collapse), which is the single-side case. Pass the
+                # side so paired body-noun tokens flex to the side-aware
+                # singular form (#341): "right arm" instead of "arm".
                 if location in longdescs and longdescs[location]:
                     # Longdesc should have skintone applied
                     processed_desc = self._process_description_variables(
                         longdescs[location], looker,
                         force_third_person=True, apply_skintone=True,
+                        side=self._side_from_location(location),
                     )
 
                     # Add wounds to this location if any exist
@@ -171,10 +177,13 @@ class AppearanceMixin:
                             added_clothing_items.add(clothing_item)
                 elif location in longdescs and longdescs[location]:
                     # Extended location with longdesc - apply template variable
-                    # processing and skintone
+                    # processing and skintone. Same side-aware singular
+                    # flex treatment as the standard-anatomy branch
+                    # above (#341).
                     processed_desc = self._process_description_variables(
                         longdescs[location], looker,
                         force_third_person=True, apply_skintone=True,
+                        side=self._side_from_location(location),
                     )
 
                     # Add wounds to this extended location if any exist
@@ -561,6 +570,23 @@ class AppearanceMixin:
         return '\n\n'.join(parts)
 
     @staticmethod
+    def _side_from_location(location):
+        """Return ``"left"``/``"right"``/``None`` for a body location.
+
+        Pure helper used by the per-location render path to drive
+        side-aware singular flex (issue #341). Extended anatomy keys
+        without a left/right prefix return ``None`` and skip the side
+        prefix entirely.
+        """
+        if not location:
+            return None
+        if location.startswith("left_"):
+            return "left"
+        if location.startswith("right_"):
+            return "right"
+        return None
+
+    @staticmethod
     def _flex_noun_vocabulary():
         """Return the singular nouns a longdesc number-token flexes as a noun.
 
@@ -578,7 +604,7 @@ class AppearanceMixin:
             nouns.add(left_loc.split("_", 1)[1])
         return nouns
 
-    def _substitute_longdesc_tokens(self, desc, variables, number):
+    def _substitute_longdesc_tokens(self, desc, variables, number, side=None):
         """Resolve brace tokens in a longdesc, one token at a time.
 
         Resolution order per ``{token}``:
@@ -588,18 +614,44 @@ class AppearanceMixin:
              else a single-word verb. Both are flexed to *number*.
           3. Anything else is left literal (the brace is preserved) and logged.
 
+        Side-aware singular flex (issue #341): when a paired body noun
+        (``arm``, ``hand``, ``eye``, ``ear``, ``thigh``, ``shin``, ``foot``)
+        flexes to singular AND ``side`` is provided, the side is prefixed
+        — ``{arms}`` becomes ``"right arm"`` instead of bare ``"arm"`` when
+        rendered from the ``right_arm`` location. Plural flex is unaffected
+        (both sides present → just ``"arms"``). Articles are re-agreed:
+        ``{an arm}`` with ``side="right"`` becomes ``"a right arm"``.
+
         Args:
             desc (str): Raw longdesc prose.
             variables (dict): Pronoun/name token → replacement.
             number (str): "singular" or "plural" for body-part tokens.
+            side (str | None): ``"left"`` / ``"right"`` / ``None``.
+                When set with ``number="singular"`` and the token is a
+                pair-keyed body noun, the side is prefixed onto the
+                singular form.
 
         Returns:
             str: Prose with recognised tokens substituted.
         """
         import re
-        from world.grammar import flex_noun, flex_verb, singularize_noun
+        from world.combat.constants import PAIR_MERGE_KEYS
+        from world.grammar import (
+            _match_leading_case,
+            flex_noun,
+            flex_verb,
+            get_article,
+            singularize_noun,
+        )
 
         flex_nouns = self._flex_noun_vocabulary()
+        # Singulars that come from a PAIR_MERGE_KEYS pair (eye, ear,
+        # arm, hand, thigh, shin, foot). Side prefix applies to these.
+        # Non-pair flex nouns (leg, shoulder, hip, ...) keep bare form.
+        pair_singulars = {
+            left.split("_", 1)[1]  # "left_eye" -> "eye"
+            for left, _right in PAIR_MERGE_KEYS.values()
+        }
         article_re = re.compile(r"^(?:a|an)\s+(.+)$", re.IGNORECASE)
 
         def _resolve(match):
@@ -615,6 +667,17 @@ class AppearanceMixin:
             if " " not in core:
                 core_base = singularize_noun(core).lower()
                 if core_base in flex_nouns:
+                    # Side-aware singular flex (#341): prefix the side
+                    # for pair-keyed nouns when rendering a single side.
+                    if (number == "singular" and side
+                            and core_base in pair_singulars):
+                        side_phrase = f"{side} {core_base}"
+                        if art_match:
+                            article = get_article(side_phrase)
+                            rendered = f"{article} {side_phrase}"
+                        else:
+                            rendered = side_phrase
+                        return _match_leading_case(rendered, body)
                     return flex_noun(body, number)
                 if art_match is None:
                     # Single bareword that is not a flex noun → verb.
@@ -632,7 +695,7 @@ class AppearanceMixin:
 
     def _process_description_variables(
         self, desc, looker, force_third_person=False, apply_skintone=False,
-        number="singular",
+        number="singular", side=None,
     ):
         """
         Process template variables in descriptions for perspective-aware text.
@@ -652,6 +715,12 @@ class AppearanceMixin:
                 (for longdescs only).
             number (str): "singular" or "plural"; the grammatical number that
                 braced body-part tokens should render to.
+            side (str | None): ``"left"`` / ``"right"`` / ``None``. When
+                ``number="singular"`` and the location is a paired body
+                location (left/right side of a PAIR_MERGE_KEYS pair) and
+                only this side remains, ``side`` carries the side info
+                so paired body nouns render as ``"right arm"`` instead
+                of bare ``"arm"`` (issue #341).
 
         Returns:
             str: Description with variables substituted.
@@ -777,7 +846,7 @@ class AppearanceMixin:
         # body-part word (noun if its singular is a known pair noun, verb
         # otherwise). Unresolvable tokens are left literal.
         processed_desc = self._substitute_longdesc_tokens(
-            desc, variables, number
+            desc, variables, number, side=side
         )
 
         # Apply skintone coloring only if requested (for longdescs only)

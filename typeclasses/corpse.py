@@ -335,7 +335,18 @@ class Corpse(IdentityBearerMixin, Item):
                     # Process template variables like living characters do.
                     # Overall decay is conveyed by the corpse header
                     # paragraph; per-location echoes were dropped (#323).
-                    final_desc = self._process_corpse_description_variables(description)
+                    # Side-aware singular flex for paired body nouns
+                    # (#341): when only one side of a pair remains on
+                    # the corpse, render as "right arm" instead of
+                    # bare "arm".
+                    side = None
+                    if location.startswith("left_"):
+                        side = "left"
+                    elif location.startswith("right_"):
+                        side = "right"
+                    final_desc = self._process_corpse_description_variables(
+                        description, side=side,
+                    )
 
                 # Add preserved wound descriptions for this location
                 wound_descriptions = self.get_preserved_wound_descriptions(location)
@@ -563,7 +574,8 @@ class Corpse(IdentityBearerMixin, Item):
             # Fallback if constants not available
             return "extended"
     
-    def _process_corpse_description_variables(self, description, number="singular"):
+    def _process_corpse_description_variables(self, description, number="singular",
+                                              side=None):
         """Process template variables in corpse descriptions using preserved character data.
 
         Args:
@@ -572,6 +584,10 @@ class Corpse(IdentityBearerMixin, Item):
                 body-noun and verb flexing in ``substitute_pronoun_tokens``.
                 Pass ``"plural"`` for a collapsed symmetric pair so
                 ``{eyes}`` / ``{ears}`` / ``{hands}`` render in plural form.
+            side (str | None): ``"left"`` / ``"right"`` / ``None`` (#341).
+                When set with ``number="singular"``, pair-keyed body
+                nouns flex to side-aware singular form (``"right arm"``
+                instead of ``"arm"``).
         """
         if not description:
             return description
@@ -624,6 +640,7 @@ class Corpse(IdentityBearerMixin, Item):
             gender=original_gender,
             name=original_name,
             number=number,
+            side=side,
         )
         
         # Apply skintone coloring if preserved (only to body descriptions, not clothing items)
