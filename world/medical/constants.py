@@ -261,190 +261,22 @@ LETHAL_CAPACITY_NAMES = (
 # ===================================================================
 # ORGAN DEFINITIONS
 # ===================================================================
-
-# Individual organ properties and characteristics
-ORGANS = {
-    # HEAD CONTAINER → ORGANS INSIDE
-    "brain": {
-        "container": "head", "max_hp": 10, "hit_weight": "very_rare",
-        "vital": True, "capacity": "consciousness", "contribution": "total",
-        "special": "damage_always_scars", "can_scar": True, "can_heal": False,
-        "can_be_harvested": True
-    },
-    "left_eye": {
-        "container": "head", "display_location": "left_eye",
-        "max_hp": 10, "hit_weight": "rare",
-        "capacity": "sight", "contribution": "major", "disfiguring_if_lost": True,
-        "damage_always_scars": True, "vulnerable_to_blunt": False,
-        "can_be_harvested": True
-    },
-    "right_eye": {
-        "container": "head", "display_location": "right_eye",
-        "max_hp": 10, "hit_weight": "rare",
-        "capacity": "sight", "contribution": "major", "disfiguring_if_lost": True,
-        "damage_always_scars": True, "vulnerable_to_blunt": False,
-        "can_be_harvested": True
-    },
-    "left_ear": {
-        "container": "head", "display_location": "left_ear",
-        "max_hp": 12, "hit_weight": "rare",
-        "capacity": "hearing", "contribution": "major", "disfiguring_if_lost": True,
-        "can_be_harvested": True
-    },
-    "right_ear": {
-        "container": "head", "display_location": "right_ear",
-        "max_hp": 12, "hit_weight": "rare",
-        "capacity": "hearing", "contribution": "major", "disfiguring_if_lost": True,
-        "can_be_harvested": True
-    },
-    "tongue": {
-        "container": "head", "max_hp": 20, "hit_weight": "rare",
-        "capacities": ["talking", "eating"], "talking_contribution": "major",
-        "eating_contribution": "major", "disfiguring_if_lost": True,
-        "can_be_harvested": True
-    },
-    "jaw": {
-        "container": "head", "max_hp": 10, "hit_weight": "rare",
-        "capacities": ["talking", "eating"], "talking_contribution": "major",
-        "eating_contribution": "moderate", "disfiguring_if_lost": True, "can_scar": False,
-        "can_be_harvested": True
-    },
-
-    # NECK CONTAINER → DECAPITATION STRUCTURE
-    # The cervical spine is the decapitation locus (combat-sever Phase A,
-    # #243). Unlike the "thoracolumbar_spine" organ in the "back"
-    # container (cannot_be_destroyed), this one CAN be destroyed: bringing
-    # it to 0 HP severs the head from the body. It is vital and gates the
-    # "neck_integrity" capacity (total contribution), so destruction is
-    # immediately fatal via is_dead().
-    "cervical_spine": {
-        "container": "neck", "max_hp": 12, "hit_weight": "rare",
-        "vital": True, "capacity": "neck_integrity", "contribution": "total",
-        "causes_pain_when_damaged": True, "can_be_destroyed": True
-    },
-
-    # CHEST CONTAINER → VITAL ORGANS INSIDE  
-    "heart": {
-        "container": "chest", "max_hp": 15, "hit_weight": "uncommon",
-        "vital": True, "capacity": "blood_pumping", "contribution": "total",
-        "can_be_harvested": True, "can_be_replaced": True
-    },
-    "left_lung": {
-        "container": "chest", "max_hp": 20, "hit_weight": "uncommon",
-        "capacity": "breathing", "contribution": "major", "can_be_harvested": False,
-        "backup_available": True  # Can survive with one lung
-    },
-    "right_lung": {
-        "container": "chest", "max_hp": 20, "hit_weight": "uncommon",
-        "capacity": "breathing", "contribution": "major", "can_be_harvested": False,
-        "backup_available": True
-    },
-
-    # ABDOMEN CONTAINER → DIGESTIVE/FILTER ORGANS INSIDE
-    "liver": {
-        "container": "abdomen", "max_hp": 20, "hit_weight": "uncommon",
-        "vital": True, "capacity": "digestion", "contribution": "total",
-        "can_be_harvested": True, "can_be_replaced": True
-    },
-    "left_kidney": {
-        "container": "abdomen", "max_hp": 15, "hit_weight": "uncommon",
-        "capacity": "blood_filtration", "contribution": "major",
-        "can_be_harvested": True, "backup_available": True
-    },
-    "right_kidney": {
-        "container": "abdomen", "max_hp": 15, "hit_weight": "uncommon",
-        "capacity": "blood_filtration", "contribution": "major",
-        "can_be_harvested": True, "backup_available": True
-    },
-    "stomach": {
-        "container": "abdomen", "max_hp": 20, "hit_weight": "uncommon",
-        "capacity": "digestion", "contribution": "moderate", "vital": False,
-        "can_survive_loss": True
-    },
-
-    # BACK CONTAINER → STRUCTURAL ORGANS INSIDE
-    # The thoracolumbar spine is the thoracic/lumbar vertebral column in the
-    # back. Distinct from cervical_spine (the neck decapitation locus); unlike
-    # that organ, it cannot be destroyed (its loss is paralysis, not death).
-    "thoracolumbar_spine": {
-        "container": "back", "max_hp": 25, "hit_weight": "uncommon",
-        "capacity": "moving", "contribution": "total", "cannot_be_destroyed": True,
-        "causes_pain_when_damaged": True, "paralysis_if_destroyed": True
-    },
-
-    # ARM BONES → MANIPULATION STRUCTURES
-    "left_humerus": {
-        "container": "left_arm", "max_hp": 25, "hit_weight": "common",
-        "capacity": "manipulation", "contribution": "major", "can_be_destroyed": True,
-        "fracture_vulnerable": True, "bone_type": "long_bone"
-    },
-    "right_humerus": {
-        "container": "right_arm", "max_hp": 25, "hit_weight": "common",
-        "capacity": "manipulation", "contribution": "major", "can_be_destroyed": True,
-        "fracture_vulnerable": True, "bone_type": "long_bone"
-    },
-
-    # HAND BONES → FINE MANIPULATION STRUCTURES
-    "left_metacarpals": {
-        "container": "left_hand", "max_hp": 15, "hit_weight": "uncommon",
-        "capacity": "manipulation", "contribution": "moderate", "can_be_destroyed": True,
-        "fracture_vulnerable": True, "bone_type": "small_bones"
-    },
-    "right_metacarpals": {
-        "container": "right_hand", "max_hp": 15, "hit_weight": "uncommon",
-        "capacity": "manipulation", "contribution": "moderate", "can_be_destroyed": True,
-        "fracture_vulnerable": True, "bone_type": "small_bones"
-    },
-
-    # LEG BONES → MOVEMENT STRUCTURES
-    "left_femur": {
-        "container": "left_thigh", "max_hp": 30, "hit_weight": "common",
-        "capacity": "moving", "contribution": "major", "can_be_destroyed": True,
-        "fracture_vulnerable": True, "bone_type": "long_bone"
-    },
-    "right_femur": {
-        "container": "right_thigh", "max_hp": 30, "hit_weight": "common", 
-        "capacity": "moving", "contribution": "major", "can_be_destroyed": True,
-        "fracture_vulnerable": True, "bone_type": "long_bone"
-    },
-    "left_tibia": {
-        "container": "left_shin", "max_hp": 25, "hit_weight": "common",
-        "capacity": "moving", "contribution": "major", "can_be_destroyed": True,
-        "fracture_vulnerable": True, "bone_type": "long_bone"
-    },
-    "right_tibia": {
-        "container": "right_shin", "max_hp": 25, "hit_weight": "common",
-        "capacity": "moving", "contribution": "major", "can_be_destroyed": True,
-        "fracture_vulnerable": True, "bone_type": "long_bone"
-    },
-
-    # FOOT BONES → BALANCE/MOBILITY STRUCTURES
-    "left_metatarsals": {
-        "container": "left_foot", "max_hp": 20, "hit_weight": "uncommon",
-        "capacity": "moving", "contribution": "minor", "can_be_destroyed": True,
-        "fracture_vulnerable": True, "bone_type": "small_bones"
-    },
-    "right_metatarsals": {
-        "container": "right_foot", "max_hp": 20, "hit_weight": "uncommon",
-        "capacity": "moving", "contribution": "minor", "can_be_destroyed": True,
-        "fracture_vulnerable": True, "bone_type": "small_bones"
-    },
-
-    # STRUCTURAL ORGANS FOR MOVEMENT
-    # Pelvis is housed in the ``groin`` container (issue #325). Before this
-    # change it lived in ``abdomen`` — anatomically wrong, and it left the
-    # groin container with zero organs, making groin combat hits a free
-    # no-op (apply_anatomical_damage's distribution returned ``{}`` and no
-    # organ HP / wound / bleeding ever resulted).
-    "pelvis": {
-        "container": "groin", "max_hp": 25, "hit_weight": "uncommon",
-        "capacity": "moving", "contribution": "total", "vital": True
-    }
-}
-
+#
+# Issue #356 Phase 1: the canonical source of truth for the organ
+# table now lives in the species registry
+# (``world.anatomy.species.SPECIES_DEFINITIONS[species]["organs"]``).
+# This global constant is derived from the human entry so existing
+# callers that import ``ORGANS`` keep working unchanged for human
+# characters.  Non-humans (rat, etc.) are constructed via
+# :func:`world.anatomy.get_species_organs` directly — that function
+# returns a species-aware organ table without going through this
+# human-only alias.
+from world.anatomy.species import SPECIES_DEFINITIONS as _SPECIES_DEFINITIONS
+ORGANS = dict(_SPECIES_DEFINITIONS["human"].get("organs") or {})
+del _SPECIES_DEFINITIONS
 
 # ===================================================================
-# INJURY TYPES AND MEDICAL CONDITIONS  
+# INJURY TYPES AND MEDICAL CONDITIONS
 # ===================================================================
 
 # Different types of damage that can occur

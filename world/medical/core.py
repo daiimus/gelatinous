@@ -21,16 +21,32 @@ class Organ:
     Integrates with the body capacity system to determine functional impact.
     """
     
-    def __init__(self, organ_name, organ_data=None):
+    def __init__(self, organ_name, organ_data=None, species=None):
         """
         Initialize an organ instance.
-        
+
         Args:
-            organ_name (str): Name of the organ (key in ORGANS dict)
-            organ_data (dict, optional): Override organ data, defaults to ORGANS[organ_name]
+            organ_name (str): Name of the organ (key in the species'
+                organ table).
+            organ_data (dict, optional): Override organ data, used
+                during ``from_dict`` deserialization and for tests that
+                want to inject a bespoke spec.  When absent, the spec
+                is looked up via
+                :func:`world.anatomy.get_organ_spec(organ_name, species)`.
+            species (str | None): Species identifier (issue #356
+                Phase 1).  When ``None``, falls back to the human
+                organ table — backwards-compatible with existing
+                callers that don't yet pass a species.
         """
         self.name = organ_name
-        self.data = organ_data or ORGANS.get(organ_name, {})
+        if organ_data is not None:
+            self.data = organ_data
+        else:
+            # Lazy import — world.anatomy imports world.medical at
+            # module load via the species table import; avoid the
+            # circle by deferring this lookup until __init__ time.
+            from world.anatomy import get_organ_spec
+            self.data = get_organ_spec(organ_name, species) or {}
         
         # Core properties
         self.max_hp = self.data.get("max_hp", 10)
@@ -313,14 +329,34 @@ class MedicalState:
         self._initialize_default_organs()
         
     def _initialize_default_organs(self):
-        """Initialize standard human organ set."""
-        for organ_name in ORGANS.keys():
-            self.organs[organ_name] = Organ(organ_name)
+        """Initialize the species-appropriate organ set (issue #356 Phase 1).
+
+        Reads the species from the owning character; ``None`` /
+        unknown species falls back to the human organ table.  Each
+        organ is constructed with the species so its spec lookup
+        targets the right table — a rat's medical state doesn't
+        accidentally get a left_humerus.
+        """
+        from world.anatomy import get_species_organs
+
+        species = None
+        if self.character is not None:
+            species = getattr(self.character.db, "species", None)
+        for organ_name in get_species_organs(species).keys():
+            self.organs[organ_name] = Organ(organ_name, species=species)
             
     def get_organ(self, organ_name):
-        """Get organ by name, creating if it doesn't exist."""
+        """Get organ by name, creating if it doesn't exist.
+
+        Species-aware (issue #356 Phase 1) — lazily-created organs
+        consult the owning character's species so the spec lookup
+        targets the right table.
+        """
         if organ_name not in self.organs:
-            self.organs[organ_name] = Organ(organ_name)
+            species = None
+            if self.character is not None:
+                species = getattr(self.character.db, "species", None)
+            self.organs[organ_name] = Organ(organ_name, species=species)
         return self.organs[organ_name]
         
     def get_conditions_by_location(self, location):

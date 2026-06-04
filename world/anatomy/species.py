@@ -118,6 +118,186 @@ SPECIES_DEFINITIONS = {
             "feet":   ("left_foot",  "right_foot"),
         },
 
+        # Organ table (issue #356 Phase 1). Each entry's data shape
+        # mirrors the historical global ``world.medical.constants.ORGANS``
+        # constant — that constant is now derived from this table so
+        # existing callers keep working. Non-humans declare their own
+        # organ table here (a rat's skeleton looks nothing like a
+        # human's even though both have hearts and livers).
+        #
+        # Keys are organ identifiers; the wound system uses these as
+        # the ``organ`` field on wound records.  Values declare the
+        # bulk container (which longdesc surface clothing covers them
+        # by), the optional ``display_location`` override (issue #346
+        # — sensory organs surface at a more specific longdesc line),
+        # max HP, hit weight (random-hit distribution), capacity
+        # contribution wiring, and various capability flags
+        # (vital / harvestable / scarring / etc.).
+        "organs": {
+            # HEAD CONTAINER → ORGANS INSIDE
+            "brain": {
+                "container": "head", "max_hp": 10, "hit_weight": "very_rare",
+                "vital": True, "capacity": "consciousness", "contribution": "total",
+                "special": "damage_always_scars", "can_scar": True, "can_heal": False,
+                "can_be_harvested": True
+            },
+            "left_eye": {
+                "container": "head", "display_location": "left_eye",
+                "max_hp": 10, "hit_weight": "rare",
+                "capacity": "sight", "contribution": "major", "disfiguring_if_lost": True,
+                "damage_always_scars": True, "vulnerable_to_blunt": False,
+                "can_be_harvested": True
+            },
+            "right_eye": {
+                "container": "head", "display_location": "right_eye",
+                "max_hp": 10, "hit_weight": "rare",
+                "capacity": "sight", "contribution": "major", "disfiguring_if_lost": True,
+                "damage_always_scars": True, "vulnerable_to_blunt": False,
+                "can_be_harvested": True
+            },
+            "left_ear": {
+                "container": "head", "display_location": "left_ear",
+                "max_hp": 12, "hit_weight": "rare",
+                "capacity": "hearing", "contribution": "major", "disfiguring_if_lost": True,
+                "can_be_harvested": True
+            },
+            "right_ear": {
+                "container": "head", "display_location": "right_ear",
+                "max_hp": 12, "hit_weight": "rare",
+                "capacity": "hearing", "contribution": "major", "disfiguring_if_lost": True,
+                "can_be_harvested": True
+            },
+            "tongue": {
+                "container": "head", "max_hp": 20, "hit_weight": "rare",
+                "capacities": ["talking", "eating"], "talking_contribution": "major",
+                "eating_contribution": "major", "disfiguring_if_lost": True,
+                "can_be_harvested": True
+            },
+            "jaw": {
+                "container": "head", "max_hp": 10, "hit_weight": "rare",
+                "capacities": ["talking", "eating"], "talking_contribution": "major",
+                "eating_contribution": "moderate", "disfiguring_if_lost": True, "can_scar": False,
+                "can_be_harvested": True
+            },
+
+            # NECK CONTAINER → DECAPITATION STRUCTURE
+            "cervical_spine": {
+                "container": "neck", "max_hp": 12, "hit_weight": "rare",
+                "vital": True, "capacity": "neck_integrity", "contribution": "total",
+                "causes_pain_when_damaged": True, "can_be_destroyed": True
+            },
+
+            # CHEST CONTAINER → VITAL ORGANS INSIDE
+            "heart": {
+                "container": "chest", "max_hp": 15, "hit_weight": "uncommon",
+                "vital": True, "capacity": "blood_pumping", "contribution": "total",
+                "can_be_harvested": True, "can_be_replaced": True
+            },
+            "left_lung": {
+                "container": "chest", "max_hp": 20, "hit_weight": "uncommon",
+                "capacity": "breathing", "contribution": "major", "can_be_harvested": False,
+                "backup_available": True
+            },
+            "right_lung": {
+                "container": "chest", "max_hp": 20, "hit_weight": "uncommon",
+                "capacity": "breathing", "contribution": "major", "can_be_harvested": False,
+                "backup_available": True
+            },
+
+            # ABDOMEN CONTAINER → DIGESTIVE/FILTER ORGANS INSIDE
+            "liver": {
+                "container": "abdomen", "max_hp": 20, "hit_weight": "uncommon",
+                "vital": True, "capacity": "digestion", "contribution": "total",
+                "can_be_harvested": True, "can_be_replaced": True
+            },
+            "left_kidney": {
+                "container": "abdomen", "max_hp": 15, "hit_weight": "uncommon",
+                "capacity": "blood_filtration", "contribution": "major",
+                "can_be_harvested": True, "backup_available": True
+            },
+            "right_kidney": {
+                "container": "abdomen", "max_hp": 15, "hit_weight": "uncommon",
+                "capacity": "blood_filtration", "contribution": "major",
+                "can_be_harvested": True, "backup_available": True
+            },
+            "stomach": {
+                "container": "abdomen", "max_hp": 20, "hit_weight": "uncommon",
+                "capacity": "digestion", "contribution": "moderate", "vital": False,
+                "can_survive_loss": True
+            },
+
+            # BACK CONTAINER → STRUCTURAL ORGANS INSIDE
+            "thoracolumbar_spine": {
+                "container": "back", "max_hp": 25, "hit_weight": "uncommon",
+                "capacity": "moving", "contribution": "total", "cannot_be_destroyed": True,
+                "causes_pain_when_damaged": True, "paralysis_if_destroyed": True
+            },
+
+            # ARM BONES
+            "left_humerus": {
+                "container": "left_arm", "max_hp": 25, "hit_weight": "common",
+                "capacity": "manipulation", "contribution": "major", "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "long_bone"
+            },
+            "right_humerus": {
+                "container": "right_arm", "max_hp": 25, "hit_weight": "common",
+                "capacity": "manipulation", "contribution": "major", "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "long_bone"
+            },
+
+            # HAND BONES
+            "left_metacarpals": {
+                "container": "left_hand", "max_hp": 15, "hit_weight": "uncommon",
+                "capacity": "manipulation", "contribution": "moderate", "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "small_bones"
+            },
+            "right_metacarpals": {
+                "container": "right_hand", "max_hp": 15, "hit_weight": "uncommon",
+                "capacity": "manipulation", "contribution": "moderate", "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "small_bones"
+            },
+
+            # LEG BONES
+            "left_femur": {
+                "container": "left_thigh", "max_hp": 30, "hit_weight": "common",
+                "capacity": "moving", "contribution": "major", "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "long_bone"
+            },
+            "right_femur": {
+                "container": "right_thigh", "max_hp": 30, "hit_weight": "common",
+                "capacity": "moving", "contribution": "major", "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "long_bone"
+            },
+            "left_tibia": {
+                "container": "left_shin", "max_hp": 25, "hit_weight": "common",
+                "capacity": "moving", "contribution": "major", "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "long_bone"
+            },
+            "right_tibia": {
+                "container": "right_shin", "max_hp": 25, "hit_weight": "common",
+                "capacity": "moving", "contribution": "major", "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "long_bone"
+            },
+
+            # FOOT BONES
+            "left_metatarsals": {
+                "container": "left_foot", "max_hp": 20, "hit_weight": "uncommon",
+                "capacity": "moving", "contribution": "minor", "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "small_bones"
+            },
+            "right_metatarsals": {
+                "container": "right_foot", "max_hp": 20, "hit_weight": "uncommon",
+                "capacity": "moving", "contribution": "minor", "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "small_bones"
+            },
+
+            # STRUCTURAL ORGAN FOR MOVEMENT (groin container — issue #325)
+            "pelvis": {
+                "container": "groin", "max_hp": 25, "hit_weight": "uncommon",
+                "capacity": "moving", "contribution": "total", "vital": True
+            },
+        },
+
         # Compound names used when severance carries downstream limb
         # parts off the body as a single Appendage (issue #339).
         # Severing at the thigh takes shin + foot, so the Appendage
@@ -233,6 +413,61 @@ def _resolve_species(species: str | None) -> dict:
     if not species:
         return SPECIES_DEFINITIONS["human"]
     return SPECIES_DEFINITIONS.get(species, SPECIES_DEFINITIONS["human"])
+
+
+def get_species_organs(species: str | None) -> dict:
+    """Return the organ table for a species.
+
+    Each entry maps an organ identifier to its spec dict (container,
+    max_hp, hit_weight, capacity wiring, capability flags, etc.).
+    The shape mirrors the historical global
+    :data:`world.medical.constants.ORGANS` constant; the constant is
+    now derived from the human entry of this registry so existing
+    callers keep working unchanged.
+
+    Species variation:
+
+    * Bilateral humanoids (humans, rat-people) declare the familiar
+      head / chest / abdomen / arm / leg organ set.
+    * Quadrupedal anatomies (rat, dog) declare fore/hind limb
+      organs and a tail; their internal organs collapse to the same
+      shape as humanoid (brain, heart, lungs, liver) since
+      mammalian physiology is shared.
+    * Non-mammalian anatomies (insectoid exoskeleton, plant-based)
+      declare radically different organ tables; the wound /
+      capacity / harvest pipelines all consume the species table
+      uniformly via this helper.
+
+    Args:
+        species: Species identifier (e.g. ``"human"``); ``None`` /
+            unknown species fall back to ``"human"``.
+
+    Returns:
+        Organ-name → spec mapping.  Returns a fresh dict so callers
+        can mutate without aliasing the registry.
+    """
+    spec = _resolve_species(species)
+    return dict(spec.get("organs") or {})
+
+
+def get_organ_spec(organ_name: str, species: str | None = None) -> dict:
+    """Return the spec dict for a single organ within a species.
+
+    Convenience wrapper around :func:`get_species_organs` for the
+    common single-organ lookup pattern.  Returns an empty dict when
+    the organ name isn't declared by the species, mirroring the
+    historical ``ORGANS.get(organ_name, {})`` behavior so callers
+    that defensively read against an unknown organ keep working.
+
+    Args:
+        organ_name: Organ identifier (e.g. ``"left_humerus"``).
+        species: Species identifier; ``None`` / unknown falls back to
+            ``"human"``.
+
+    Returns:
+        Spec dict or ``{}`` when the organ isn't declared.
+    """
+    return get_species_organs(species).get(organ_name, {})
 
 
 def get_species_pair_keys(species: str | None) -> dict:
