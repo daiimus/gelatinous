@@ -225,8 +225,13 @@ def get_character_wounds(character):
                 and organ.current_hp <= 0):
             severed_containers.add(organ.container)
 
+    # Issue #356 Phase 2: species-aware limb-parent map.  Rats have
+    # two-segment limbs (foreleg+forepaw, hindleg+hindpaw) so their
+    # parent map differs from human's three-segment chain.
     try:
-        from world.combat.constants import LIMB_PARENT
+        from world.anatomy import get_species_limb_parent
+        species = getattr(character.db, "species", None) if hasattr(character, "db") else None
+        LIMB_PARENT = get_species_limb_parent(species)
     except ImportError:
         LIMB_PARENT = {}
 

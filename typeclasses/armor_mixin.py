@@ -166,13 +166,17 @@ class ArmorMixin:
             location (str): Body location that was hit.
             injury_type (str): Injury type applied.
         """
-        from world.combat.constants import (
-            SEVERABLE_CONTAINERS,
-            SEVERING_INJURY_TYPES,
-        )
+        from world.anatomy import get_species_severable_containers
+        from world.combat.constants import SEVERING_INJURY_TYPES
 
         if injury_type not in SEVERING_INJURY_TYPES:
             return
+
+        # Issue #356 Phase 2: species-aware severable set.  Rats sever
+        # at fore/hindlimb containers, not arm/hand/thigh/etc.
+        severable_containers = get_species_severable_containers(
+            getattr(getattr(self, "db", None), "species", None)
+        )
 
         if location == "neck":
             if self._bone_freshly_destroyed("neck"):
@@ -206,7 +210,7 @@ class ArmorMixin:
 
         # Living limb severance: head is excluded (decapitation routes
         # through the neck → death path above), neck is handled above.
-        if location not in SEVERABLE_CONTAINERS or location == "head":
+        if location not in severable_containers or location == "head":
             return
         if not self._bone_freshly_destroyed(location):
             return

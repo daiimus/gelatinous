@@ -848,46 +848,23 @@ SEVER_CRIT_FAIL_SUM = 3
 # have moved, unwielded, entered combat, or the corpse may be gone).
 SEVER_TIME_SECONDS = 3
 
-# Severable body locations: the limb partition from
-# :meth:`world.medical.core.Organ._is_limb_container` plus ``head``
-# (the head is internal anatomy but severable as a discrete item per
-# the PR #190 contract; a future v2 severed-head super-item carrying
-# the full identity signature is documented as deferred).
-SEVERABLE_CONTAINERS = frozenset({
-    "head",
-    "left_arm", "right_arm",
-    "left_hand", "right_hand",
-    "left_thigh", "right_thigh",
-    "left_shin", "right_shin",
-    "left_foot", "right_foot",
-})
-
-# Body locations bundled with the severed-head super-item.  When the
-# head is severed (PR #198), the longdesc text and wound records for
-# all of these locations move from the corpse onto the SeveredHead,
-# since they are visually and anatomically part of the head cluster.
-# The corpse loses prose for every location in this set and gains a
-# single synthesized ``severed`` wound at ``head``.  "hair" is part of
-# the cluster (#236): it frames the head and visually leaves with it.
-SEVERED_HEAD_LOCATIONS = frozenset({
-    "hair", "head", "face", "neck",
-    "left_eye", "right_eye",
-    "left_ear", "right_ear",
-})
-
-# Maps a severable limb container to the hand side ("left" / "right")
-# whose wielded weapon travels onto the severed appendage.  When an arm
-# or hand is severed from a living character (Phase B, issue #245), any
-# item the character is wielding in the matching hand detaches with the
-# limb (you cannot keep gripping a weapon with a hand that just left your
-# body).  Containers absent from this map (thigh, shin, foot) carry no
-# hand and so never pull a wielded weapon.
-SEVER_HAND_BY_CONTAINER = {
-    "left_arm": "left",
-    "left_hand": "left",
-    "right_arm": "right",
-    "right_hand": "right",
-}
+# Severability tables (HUMAN defaults).
+#
+# Issue #356 Phase 2: the canonical source of truth lives in the
+# species registry at
+# ``world.anatomy.species.SPECIES_DEFINITIONS[species][...]``.  These
+# constants are derived from the human entry so existing callers that
+# import them keep working unchanged.  Species-aware callers should
+# use ``world.anatomy.get_species_severable_containers(species)`` /
+# ``get_species_severed_head_locations(species)`` /
+# ``get_species_sever_hand_by_container(species)`` /
+# ``get_species_limb_downstream_chain(species)`` /
+# ``get_species_limb_parent(species)`` directly.
+from world.anatomy.species import SPECIES_DEFINITIONS as _SPECIES_DEFINITIONS_S
+_HUMAN_SEVER = _SPECIES_DEFINITIONS_S["human"]
+SEVERABLE_CONTAINERS = frozenset(_HUMAN_SEVER.get("severable_containers") or ())
+SEVERED_HEAD_LOCATIONS = frozenset(_HUMAN_SEVER.get("severed_head_locations") or ())
+SEVER_HAND_BY_CONTAINER = dict(_HUMAN_SEVER.get("sever_hand_by_container") or {})
 
 # Edged / sharp injury types that can shear a body part clean off.  When
 # an attack of one of these types reduces a severable limb container's
@@ -897,35 +874,13 @@ SEVER_HAND_BY_CONTAINER = {
 # limb pulped by a hammer or boiled by fire stays grimly attached.
 SEVERING_INJURY_TYPES = frozenset({"cut", "stab", "laceration"})
 
-# Limb downstream chain: when a limb container is severed, everything
-# distal to the cut goes with it.  Cutting a thigh takes the shin and
-# foot; cutting a shin takes the foot; cutting a hand takes only the
-# hand.  Mirrors the head pattern (:data:`SEVERED_HEAD_LOCATIONS`) for
-# the limbs.  Each entry's tuple includes the primary container itself
-# so callers can iterate the full chain uniformly.  Issue #339.
-LIMB_DOWNSTREAM_CHAIN = {
-    "left_arm":    ("left_arm", "left_hand"),
-    "left_hand":   ("left_hand",),
-    "left_thigh":  ("left_thigh", "left_shin", "left_foot"),
-    "left_shin":   ("left_shin", "left_foot"),
-    "left_foot":   ("left_foot",),
-    "right_arm":   ("right_arm", "right_hand"),
-    "right_hand":  ("right_hand",),
-    "right_thigh": ("right_thigh", "right_shin", "right_foot"),
-    "right_shin":  ("right_shin", "right_foot"),
-    "right_foot":  ("right_foot",),
-}
+# Limb downstream chain (HUMAN default).  See
+# ``world.anatomy.species.SPECIES_DEFINITIONS[species]["limb_downstream_chain"]``
+# for the species-keyed source of truth (issue #356 Phase 2).
+LIMB_DOWNSTREAM_CHAIN = dict(_HUMAN_SEVER.get("limb_downstream_chain") or {})
 
-# Reverse view of :data:`LIMB_DOWNSTREAM_CHAIN` for the cut-point wound
-# filter.  When a downstream container's parent is also severed, the
-# downstream severance wound is suppressed so only the cut point shows.
-# Containers absent from this map have no parent in the chain (the
-# root containers: arms and thighs).  Issue #339.
-LIMB_PARENT = {
-    "left_hand":  "left_arm",
-    "right_hand": "right_arm",
-    "left_shin":  "left_thigh",
-    "right_shin": "right_thigh",
-    "left_foot":  "left_shin",
-    "right_foot": "right_shin",
-}
+# Reverse view of :data:`LIMB_DOWNSTREAM_CHAIN` (HUMAN default).
+LIMB_PARENT = dict(_HUMAN_SEVER.get("limb_parent") or {})
+
+del _HUMAN_SEVER
+del _SPECIES_DEFINITIONS_S

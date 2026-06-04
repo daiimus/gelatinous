@@ -298,13 +298,68 @@ SPECIES_DEFINITIONS = {
             },
         },
 
+        # Severability tables (issue #356 Phase 2).  Each of these
+        # was previously a global ``world.combat.constants`` constant
+        # that baked humanoid limb structure into combat / severance.
+        # Moved here so non-humans can declare their own anatomy
+        # (rat fore/hindlimbs instead of arms/legs, tail as a new
+        # severable container, etc.).
+        #
+        # ``severable_containers`` is the closed set of body locations
+        # that can be detached as discrete items.  ``severed_head_locations``
+        # is the head-cluster bundle that travels with a decapitation
+        # (face, neck, eyes, ears, hair).  ``sever_hand_by_container``
+        # maps a limb container to the hand-side whose wielded weapon
+        # detaches with it.  ``limb_downstream_chain`` and ``limb_parent``
+        # encode the proximal→distal chain (severing a thigh takes the
+        # shin and foot).
+        "severable_containers": frozenset({
+            "head",
+            "left_arm", "right_arm",
+            "left_hand", "right_hand",
+            "left_thigh", "right_thigh",
+            "left_shin", "right_shin",
+            "left_foot", "right_foot",
+        }),
+        "severed_head_locations": frozenset({
+            "hair", "head", "face", "neck",
+            "left_eye", "right_eye",
+            "left_ear", "right_ear",
+        }),
+        "sever_hand_by_container": {
+            "left_arm": "left",
+            "left_hand": "left",
+            "right_arm": "right",
+            "right_hand": "right",
+        },
+        "limb_downstream_chain": {
+            "left_arm":    ("left_arm", "left_hand"),
+            "left_hand":   ("left_hand",),
+            "left_thigh":  ("left_thigh", "left_shin", "left_foot"),
+            "left_shin":   ("left_shin", "left_foot"),
+            "left_foot":   ("left_foot",),
+            "right_arm":   ("right_arm", "right_hand"),
+            "right_hand":  ("right_hand",),
+            "right_thigh": ("right_thigh", "right_shin", "right_foot"),
+            "right_shin":  ("right_shin", "right_foot"),
+            "right_foot":  ("right_foot",),
+        },
+        "limb_parent": {
+            "left_hand":  "left_arm",
+            "right_hand": "right_arm",
+            "left_shin":  "left_thigh",
+            "right_shin": "right_thigh",
+            "left_foot":  "left_shin",
+            "right_foot": "right_shin",
+        },
+
         # Compound names used when severance carries downstream limb
         # parts off the body as a single Appendage (issue #339).
         # Severing at the thigh takes shin + foot, so the Appendage
         # reads "left leg" rather than "left thigh".  Severing at the
         # shin takes the foot, so it reads "left lower leg".  Severing
         # at the wrist or ankle is named for the cut location.  Keys
-        # mirror ``LIMB_DOWNSTREAM_CHAIN`` in world/combat/constants.py.
+        # mirror ``limb_downstream_chain`` above.
         "severed_chain_display": {
             "left_arm":    "left arm",
             "right_arm":   "right arm",
@@ -413,6 +468,73 @@ def _resolve_species(species: str | None) -> dict:
     if not species:
         return SPECIES_DEFINITIONS["human"]
     return SPECIES_DEFINITIONS.get(species, SPECIES_DEFINITIONS["human"])
+
+
+def get_species_severable_containers(species: str | None) -> frozenset:
+    """Return the closed set of severable body locations for a species.
+
+    Issue #356 Phase 2.  Previously a global
+    :data:`world.combat.constants.SEVERABLE_CONTAINERS`; species variation
+    means a rat has fore/hindlimb containers in place of arm/leg
+    containers, plus a tail.
+
+    Args:
+        species: Species identifier; ``None`` / unknown falls back to
+            ``"human"``.
+
+    Returns:
+        ``frozenset`` of canonical body-location names.
+    """
+    spec = _resolve_species(species)
+    value = spec.get("severable_containers") or frozenset()
+    return frozenset(value)
+
+
+def get_species_severed_head_locations(species: str | None) -> frozenset:
+    """Return the head-cluster bundle that travels with decapitation.
+
+    Issue #356 Phase 2.  Previously a global
+    :data:`world.combat.constants.SEVERED_HEAD_LOCATIONS`.  Rats
+    declare ``snout`` instead of ``face``, ``fur`` instead of ``hair``;
+    insectoids might bundle antennae here; etc.
+    """
+    spec = _resolve_species(species)
+    value = spec.get("severed_head_locations") or frozenset()
+    return frozenset(value)
+
+
+def get_species_sever_hand_by_container(species: str | None) -> dict:
+    """Return the limb-container → hand-side map for wielded-weapon
+    detachment (issue #356 Phase 2).
+
+    Previously :data:`world.combat.constants.SEVER_HAND_BY_CONTAINER`.
+    Species without wielding hands (most animals) declare an empty dict.
+    """
+    spec = _resolve_species(species)
+    return dict(spec.get("sever_hand_by_container") or {})
+
+
+def get_species_limb_downstream_chain(species: str | None) -> dict:
+    """Return the proximal→distal severance chain (issue #356 Phase 2).
+
+    Previously :data:`world.combat.constants.LIMB_DOWNSTREAM_CHAIN`.
+    Rats have a two-segment chain for fore/hind limbs (no three-segment
+    thigh→shin→foot); insectoids might declare no chain at all (whole
+    leg severs as one segment).
+    """
+    spec = _resolve_species(species)
+    return dict(spec.get("limb_downstream_chain") or {})
+
+
+def get_species_limb_parent(species: str | None) -> dict:
+    """Return the distal→proximal parent map (issue #356 Phase 2).
+
+    Previously :data:`world.combat.constants.LIMB_PARENT`.  Used by
+    the wound-rendering cut-point filter to suppress downstream
+    severance wounds when their parent is also severed.
+    """
+    spec = _resolve_species(species)
+    return dict(spec.get("limb_parent") or {})
 
 
 def get_species_organs(species: str | None) -> dict:

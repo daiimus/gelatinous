@@ -1135,13 +1135,17 @@ class Appendage(Item):
         """
         from world.anatomy import (
             get_severed_part_description,
+            get_species_limb_downstream_chain,
             get_species_part_name,
             get_species_severed_chain_name,
             prepend_condition_to_desc,
         )
-        from world.combat.constants import LIMB_DOWNSTREAM_CHAIN
 
-        chain = LIMB_DOWNSTREAM_CHAIN.get(location_name, (location_name,))
+        # Issue #356 Phase 2: species-aware downstream chain.
+        chain_map = get_species_limb_downstream_chain(
+            getattr(getattr(corpse, "db", None), "species", None)
+        )
+        chain = chain_map.get(location_name, (location_name,))
         self.db.location_name = location_name
         self.db.chain = chain
         self.db.condition = condition
@@ -1501,8 +1505,12 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
             Exposed for test injection.
     """
     if head_locations is None:
-        from world.combat.constants import SEVERED_HEAD_LOCATIONS
-        head_locations = SEVERED_HEAD_LOCATIONS
+        # Issue #356 Phase 2: species-aware head cluster (defaults to
+        # human when no species attribute is present on the corpse).
+        from world.anatomy import get_species_severed_head_locations
+        head_locations = get_species_severed_head_locations(
+            getattr(getattr(corpse, "db", None), "species", None)
+        )
 
     if location_arg == "head":
         locs = frozenset(head_locations)
@@ -1510,8 +1518,12 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
         # Issue #339: limb severance on a corpse should also clear the
         # downstream chain (severing a thigh on a corpse takes the
         # shin and foot). Mirrors the living-character chain semantics.
-        from world.combat.constants import LIMB_DOWNSTREAM_CHAIN
-        chain = LIMB_DOWNSTREAM_CHAIN.get(location_arg, (location_arg,))
+        # Issue #356 Phase 2: chain map is species-aware.
+        from world.anatomy import get_species_limb_downstream_chain
+        chain_map = get_species_limb_downstream_chain(
+            getattr(getattr(corpse, "db", None), "species", None)
+        )
+        chain = chain_map.get(location_arg, (location_arg,))
         locs = frozenset(chain)
 
     # Drop longdesc prose for the cleared locations.
@@ -1657,13 +1669,19 @@ def spawn_severed_head_for_living(character, *, injury_type="cut"):
         severed.
     """
     from evennia import create_object
-    from world.combat.constants import SEVERED_HEAD_LOCATIONS
+    from world.anatomy import get_species_severed_head_locations
 
     room = character.location
     if room is None:
         return None
     if character.db.head_severed_at_decap:
         return None
+
+    # Issue #356 Phase 2: species-aware head cluster.  Rats route
+    # ``snout`` / ``fur`` here in place of ``face`` / ``hair``.
+    severed_head_locations = get_species_severed_head_locations(
+        getattr(getattr(character, "db", None), "species", None)
+    )
 
     head = create_object(
         "typeclasses.items.SeveredHead",
@@ -1679,7 +1697,7 @@ def spawn_severed_head_for_living(character, *, injury_type="cut"):
     # ``wound_stage="severed"`` / ``current_hp=0`` — matching the limb
     # pathway. Vital-sign recomputation lets capacity loss take effect
     # so blood / consciousness reflect the headless state.
-    sever_character_body(character, SEVERED_HEAD_LOCATIONS)
+    sever_character_body(character, severed_head_locations)
     medical_state = character.medical_state
     update_vital_signs = getattr(medical_state, "update_vital_signs", None)
     if callable(update_vital_signs):
@@ -1862,7 +1880,11 @@ def detach_items_to_appendage(character, appendage, containers):
     Returns:
         list: Items moved onto the appendage (worn first, then wielded).
     """
-    from world.combat.constants import SEVER_HAND_BY_CONTAINER
+    # Issue #356 Phase 2: species-aware hand-side mapping.
+    from world.anatomy import get_species_sever_hand_by_container
+    sever_hand_by_container = get_species_sever_hand_by_container(
+        getattr(getattr(character, "db", None), "species", None)
+    )
 
     # Accept legacy single-string + new iterable signatures.
     if isinstance(containers, str):
@@ -1898,7 +1920,7 @@ def detach_items_to_appendage(character, appendage, containers):
     # --- Wielded weapons in any chain-hand --------------------------
     hands_to_clear = set()
     for chain_loc in chain:
-        hand = SEVER_HAND_BY_CONTAINER.get(chain_loc)
+        hand = sever_hand_by_container.get(chain_loc)
         if hand:
             hands_to_clear.add(hand)
 
@@ -1964,7 +1986,7 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
         no location to drop it into.
     """
     from evennia import create_object
-    from world.combat.constants import LIMB_DOWNSTREAM_CHAIN
+    from world.anatomy import get_species_limb_downstream_chain
 
     room = character.location
     if room is None:
@@ -1975,7 +1997,13 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
     # foot takes only itself. Containers not in the chain map fall
     # back to the single-container path for backwards compatibility
     # (and for the head, which routes through its own pipeline).
-    chain = LIMB_DOWNSTREAM_CHAIN.get(container, (container,))
+    # Issue #356 Phase 2: chain map is species-aware — rats have a
+    # two-segment fore/hindlimb chain, not the three-segment
+    # thigh→shin→foot.
+    chain_map = get_species_limb_downstream_chain(
+        getattr(getattr(character, "db", None), "species", None)
+    )
+    chain = chain_map.get(container, (container,))
 
     appendage = create_object(
         "typeclasses.items.Appendage",
@@ -2388,10 +2416,11 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         # Re-apply wound + longdesc overlay across the full head-cluster
         # (overrides the head-only set the Appendage super-call laid
         # down).  Per PR #198: face, neck, eyes, ears all visually leave
-        # with the head.
-        from world.combat.constants import SEVERED_HEAD_LOCATIONS
+        # with the head.  Issue #356 Phase 2: species-aware cluster.
+        from world.anatomy import get_species_severed_head_locations
         apply_wound_and_longdesc_overlay(
-            self, corpse, SEVERED_HEAD_LOCATIONS,
+            self, corpse,
+            get_species_severed_head_locations(corpse.db.species),
         )
 
     def configure_from_living_decap(self, *, character, injury_type="cut"):
@@ -2416,12 +2445,13 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         * Identity / decay / snapshot are overlaid via
           :func:`apply_severed_head_overlay_from_living`.
         """
+        # Issue #356 Phase 2: species-aware head cluster.
         from world.anatomy import (
             get_severed_part_description,
             get_species_part_name,
+            get_species_severed_head_locations,
             prepend_condition_to_desc,
         )
-        from world.combat.constants import SEVERED_HEAD_LOCATIONS
 
         condition = "pristine"
         self.db.location_name = "head"
@@ -2469,7 +2499,7 @@ class SeveredHead(IdentityBearerMixin, Appendage):
             self,
             longdescs=longdescs,
             wounds=wounds,
-            locations=SEVERED_HEAD_LOCATIONS,
+            locations=get_species_severed_head_locations(species),
         )
 
         # Identity / decay / trimmed head-container snapshot.
