@@ -203,6 +203,151 @@ SEVERED_PART_DESCRIPTIONS = {
 }
 
 
+SEVERED_PART_DESCRIPTIONS.setdefault("rat", {
+    "head": {
+        "pristine": (
+            "A severed rat's head, the snout still twitching as if "
+            "ready to sniff and the cut at the neck weeping fresh "
+            "blood."
+        ),
+        "damaged": (
+            "A discoloured rat's head, the fur matted and the neck "
+            "stump dried into a dark, leathery crust."
+        ),
+        "putrid": (
+            "A bloated rat's head, the features distorted and the "
+            "fur sliding off in soft, fetid patches."
+        ),
+    },
+    "left_foreleg": {
+        "pristine": (
+            "A small severed foreleg, the fur still soft and the "
+            "shoulder-cut weeping thin blood."
+        ),
+        "damaged": (
+            "A withered severed foreleg, the fur sparse and the "
+            "stump dark with dried matter."
+        ),
+        "putrid": (
+            "A bloated severed foreleg, the flesh going soft and the "
+            "fur sloughing in fetid clumps."
+        ),
+    },
+    "right_foreleg": {
+        "pristine": (
+            "A small severed foreleg, the fur still soft and the "
+            "shoulder-cut weeping thin blood."
+        ),
+        "damaged": (
+            "A withered severed foreleg, the fur sparse and the "
+            "stump dark with dried matter."
+        ),
+        "putrid": (
+            "A bloated severed foreleg, the flesh going soft and the "
+            "fur sloughing in fetid clumps."
+        ),
+    },
+    "left_forepaw": {
+        "pristine": (
+            "A tiny severed forepaw, the claws still neatly arranged "
+            "and the cut at the wrist edged with blood."
+        ),
+        "damaged": (
+            "A shrivelled severed forepaw, the claws curled inward "
+            "and the stump dried hard."
+        ),
+        "putrid": (
+            "A swollen severed forepaw, the small pads loose and the "
+            "claws coming free of the rotting flesh."
+        ),
+    },
+    "right_forepaw": {
+        "pristine": (
+            "A tiny severed forepaw, the claws still neatly arranged "
+            "and the cut at the wrist edged with blood."
+        ),
+        "damaged": (
+            "A shrivelled severed forepaw, the claws curled inward "
+            "and the stump dried hard."
+        ),
+        "putrid": (
+            "A swollen severed forepaw, the small pads loose and the "
+            "claws coming free of the rotting flesh."
+        ),
+    },
+    "left_hindleg": {
+        "pristine": (
+            "A small severed hindleg, the long thigh muscle still "
+            "twitching and the hip-cut weeping fresh blood."
+        ),
+        "damaged": (
+            "A withered severed hindleg, the muscle gone slack and "
+            "the cut dried dark."
+        ),
+        "putrid": (
+            "A bloated severed hindleg, the flesh going soft and "
+            "fetid where the cut once was."
+        ),
+    },
+    "right_hindleg": {
+        "pristine": (
+            "A small severed hindleg, the long thigh muscle still "
+            "twitching and the hip-cut weeping fresh blood."
+        ),
+        "damaged": (
+            "A withered severed hindleg, the muscle gone slack and "
+            "the cut dried dark."
+        ),
+        "putrid": (
+            "A bloated severed hindleg, the flesh going soft and "
+            "fetid where the cut once was."
+        ),
+    },
+    "left_hindpaw": {
+        "pristine": (
+            "A tiny severed hindpaw, the long toes still spread and "
+            "the cut at the ankle weeping."
+        ),
+        "damaged": (
+            "A shrivelled severed hindpaw, the toes curled inward "
+            "and the stump dried hard."
+        ),
+        "putrid": (
+            "A swollen severed hindpaw, the small pads loose and the "
+            "claws coming free of the rotting flesh."
+        ),
+    },
+    "right_hindpaw": {
+        "pristine": (
+            "A tiny severed hindpaw, the long toes still spread and "
+            "the cut at the ankle weeping."
+        ),
+        "damaged": (
+            "A shrivelled severed hindpaw, the toes curled inward "
+            "and the stump dried hard."
+        ),
+        "putrid": (
+            "A swollen severed hindpaw, the small pads loose and the "
+            "claws coming free of the rotting flesh."
+        ),
+    },
+    "tail": {
+        "pristine": (
+            "A long, ringed rat tail, severed at the base and "
+            "weeping a thin line of blood from the cut."
+        ),
+        "damaged": (
+            "A dried-out rat tail, the rings gone leathery and the "
+            "base-cut crusted hard."
+        ),
+        "putrid": (
+            "A swollen rat tail, the rings discoloured and the "
+            "flesh sloughing softly off the vertebrae."
+        ),
+    },
+})
+
+
 def get_severed_part_description(species, location, condition):
     """Return condition-keyed prose for a severed body part.
 

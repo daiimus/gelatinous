@@ -502,6 +502,323 @@ SPECIES_DEFINITIONS = {
             ),
         },
     },
+
+    # =================================================================
+    # RAT — first non-human species (issue #356 Phase 4).
+    # =================================================================
+    #
+    # Quadrupedal anatomy: fore/hindlimb pairs instead of arms/legs, a
+    # tail as an extra severable container, and snout/fur in place of
+    # face/hair on the head cluster.  Internal organs collapse to the
+    # same mammalian set as human (brain, heart, lungs, liver) since
+    # the physiology is shared — only the skeletal organs and HP
+    # values diverge.  Cannot wield items (no hand-side map), so
+    # severance never pulls a weapon onto a detached forepaw.
+    "rat": {
+        "display_name": "rat",
+
+        "location_display": {
+            "head": "head",
+            "snout": "snout",
+            "neck": "neck",
+            "fur": "fur",
+            "chest": "chest",
+            "abdomen": "abdomen",
+            "back": "back",
+            "groin": "groin",
+            "left_foreleg":  "left foreleg",
+            "right_foreleg": "right foreleg",
+            "left_forepaw":  "left forepaw",
+            "right_forepaw": "right forepaw",
+            "left_hindleg":  "left hindleg",
+            "right_hindleg": "right hindleg",
+            "left_hindpaw":  "left hindpaw",
+            "right_hindpaw": "right hindpaw",
+            "tail": "tail",
+            "left_eye":  "left eye",
+            "right_eye": "right eye",
+            "left_ear":  "left ear",
+            "right_ear": "right ear",
+        },
+
+        "severed_chain_display": {
+            "left_foreleg":  "left foreleg",
+            "right_foreleg": "right foreleg",
+            "left_forepaw":  "left forepaw",
+            "right_forepaw": "right forepaw",
+            "left_hindleg":  "left hindleg",
+            "right_hindleg": "right hindleg",
+            "left_hindpaw":  "left hindpaw",
+            "right_hindpaw": "right hindpaw",
+            "tail":          "tail",
+        },
+
+        "decay_part_prefixes": {
+            "fresh":    "{species} {part}",
+            "early":    "{species} {part}",
+            "moderate": "rotting {part}",
+            "advanced": "rotting {part}",
+            "skeletal": "skeletal {part}",
+        },
+        "decay_organ_prefixes": {
+            "fresh":    "{species} {organ}",
+            "early":    "{species} {organ}",
+            "moderate": "rotting {organ}",
+            "advanced": "rotting {organ}",
+            "skeletal": "desiccated {organ}",
+        },
+        "decay_corpse_names": {
+            "fresh":    "rat carcass",
+            "early":    "rat carcass",
+            "moderate": "rotting carcass",
+            "advanced": "rotting carcass",
+            "skeletal": "skeletal remains",
+        },
+        "decay_corpse_descriptions": {
+            "fresh": (
+                "A small {species} body, recently dead. {base_desc} "
+                "The fur is still in place and the body shows no signs "
+                "of decomposition yet."
+            ),
+            "early": (
+                "A small {species} carcass. {base_desc} The fur has "
+                "begun to mat and the small body has gone stiff."
+            ),
+            "moderate": (
+                "Decomposing small mammalian remains. The fur is "
+                "matted and falling away in patches, with a sharp odor "
+                "of rot rising from the bloated body."
+            ),
+            "advanced": (
+                "Putrid small mammalian remains. Most of the soft "
+                "tissue has liquefied; the skeleton is visible through "
+                "what is left of the fur."
+            ),
+            "skeletal": (
+                "Skeletal {species} remains. Tiny bones and the long, "
+                "ringed sweep of the tail are all that is left."
+            ),
+        },
+
+        "pair_keys": {
+            "eyes":      ("left_eye",      "right_eye"),
+            "ears":      ("left_ear",      "right_ear"),
+            "forelegs":  ("left_foreleg",  "right_foreleg"),
+            "forepaws":  ("left_forepaw",  "right_forepaw"),
+            "hindlegs":  ("left_hindleg",  "right_hindleg"),
+            "hindpaws":  ("left_hindpaw",  "right_hindpaw"),
+        },
+
+        # Rat organs — shared mammalian internals (brain, heart, etc.)
+        # plus rat-specific skeletal organs at fore/hindlimb / tail
+        # containers.  HP values scaled down for a small body.
+        "organs": {
+            # Head
+            "brain":     {"container": "head", "max_hp": 5, "hit_weight": "very_rare",
+                          "vital": True, "capacity": "consciousness",
+                          "contribution": "total"},
+            "left_eye":  {"container": "head", "display_location": "left_eye",
+                          "max_hp": 4, "hit_weight": "rare",
+                          "capacity": "sight", "contribution": "major",
+                          "disfiguring_if_lost": True},
+            "right_eye": {"container": "head", "display_location": "right_eye",
+                          "max_hp": 4, "hit_weight": "rare",
+                          "capacity": "sight", "contribution": "major",
+                          "disfiguring_if_lost": True},
+            "left_ear":  {"container": "head", "display_location": "left_ear",
+                          "max_hp": 5, "hit_weight": "rare",
+                          "capacity": "hearing", "contribution": "major",
+                          "disfiguring_if_lost": True},
+            "right_ear": {"container": "head", "display_location": "right_ear",
+                          "max_hp": 5, "hit_weight": "rare",
+                          "capacity": "hearing", "contribution": "major",
+                          "disfiguring_if_lost": True},
+            "jaw":       {"container": "head", "max_hp": 5, "hit_weight": "rare",
+                          "capacities": ["eating"],
+                          "eating_contribution": "major"},
+
+            # Neck
+            "cervical_spine": {"container": "neck", "max_hp": 5,
+                               "hit_weight": "rare", "vital": True,
+                               "capacity": "neck_integrity",
+                               "contribution": "total",
+                               "can_be_destroyed": True},
+
+            # Chest / abdomen / back / groin — mammalian universals
+            "heart":         {"container": "chest", "max_hp": 6,
+                              "hit_weight": "uncommon", "vital": True,
+                              "capacity": "blood_pumping", "contribution": "total"},
+            "left_lung":     {"container": "chest", "max_hp": 8,
+                              "hit_weight": "uncommon", "capacity": "breathing",
+                              "contribution": "major", "backup_available": True},
+            "right_lung":    {"container": "chest", "max_hp": 8,
+                              "hit_weight": "uncommon", "capacity": "breathing",
+                              "contribution": "major", "backup_available": True},
+            "liver":         {"container": "abdomen", "max_hp": 8,
+                              "hit_weight": "uncommon", "vital": True,
+                              "capacity": "digestion", "contribution": "total"},
+            "left_kidney":   {"container": "abdomen", "max_hp": 5,
+                              "hit_weight": "uncommon",
+                              "capacity": "blood_filtration",
+                              "contribution": "major",
+                              "backup_available": True},
+            "right_kidney":  {"container": "abdomen", "max_hp": 5,
+                              "hit_weight": "uncommon",
+                              "capacity": "blood_filtration",
+                              "contribution": "major",
+                              "backup_available": True},
+            "stomach":       {"container": "abdomen", "max_hp": 8,
+                              "hit_weight": "uncommon",
+                              "capacity": "digestion",
+                              "contribution": "moderate"},
+            "thoracolumbar_spine": {"container": "back", "max_hp": 10,
+                                    "hit_weight": "uncommon",
+                                    "capacity": "moving", "contribution": "total",
+                                    "cannot_be_destroyed": True,
+                                    "paralysis_if_destroyed": True},
+            "pelvis":        {"container": "groin", "max_hp": 10,
+                              "hit_weight": "uncommon",
+                              "capacity": "moving", "contribution": "total",
+                              "vital": True},
+
+            # Foreleg skeletal organs (analogous to humerus / metacarpals)
+            "left_foreleg_bone":   {"container": "left_foreleg", "max_hp": 10,
+                                    "hit_weight": "common",
+                                    "capacity": "manipulation",
+                                    "contribution": "major",
+                                    "can_be_destroyed": True,
+                                    "fracture_vulnerable": True,
+                                    "bone_type": "long_bone"},
+            "right_foreleg_bone":  {"container": "right_foreleg", "max_hp": 10,
+                                    "hit_weight": "common",
+                                    "capacity": "manipulation",
+                                    "contribution": "major",
+                                    "can_be_destroyed": True,
+                                    "fracture_vulnerable": True,
+                                    "bone_type": "long_bone"},
+            "left_forepaw_bones":  {"container": "left_forepaw", "max_hp": 6,
+                                    "hit_weight": "uncommon",
+                                    "capacity": "manipulation",
+                                    "contribution": "moderate",
+                                    "can_be_destroyed": True,
+                                    "bone_type": "small_bones"},
+            "right_forepaw_bones": {"container": "right_forepaw", "max_hp": 6,
+                                    "hit_weight": "uncommon",
+                                    "capacity": "manipulation",
+                                    "contribution": "moderate",
+                                    "can_be_destroyed": True,
+                                    "bone_type": "small_bones"},
+
+            # Hindleg skeletal organs
+            "left_hindleg_bone":   {"container": "left_hindleg", "max_hp": 12,
+                                    "hit_weight": "common",
+                                    "capacity": "moving",
+                                    "contribution": "major",
+                                    "can_be_destroyed": True,
+                                    "fracture_vulnerable": True,
+                                    "bone_type": "long_bone"},
+            "right_hindleg_bone":  {"container": "right_hindleg", "max_hp": 12,
+                                    "hit_weight": "common",
+                                    "capacity": "moving",
+                                    "contribution": "major",
+                                    "can_be_destroyed": True,
+                                    "fracture_vulnerable": True,
+                                    "bone_type": "long_bone"},
+            "left_hindpaw_bones":  {"container": "left_hindpaw", "max_hp": 8,
+                                    "hit_weight": "uncommon",
+                                    "capacity": "moving",
+                                    "contribution": "minor",
+                                    "can_be_destroyed": True,
+                                    "bone_type": "small_bones"},
+            "right_hindpaw_bones": {"container": "right_hindpaw", "max_hp": 8,
+                                    "hit_weight": "uncommon",
+                                    "capacity": "moving",
+                                    "contribution": "minor",
+                                    "can_be_destroyed": True,
+                                    "bone_type": "small_bones"},
+
+            # Tail — rat-unique
+            "tail_vertebrae": {"container": "tail", "max_hp": 6,
+                               "hit_weight": "uncommon",
+                               "can_be_destroyed": True,
+                               "bone_type": "long_bone"},
+        },
+
+        # Severability — rat can lose any limb or the tail; head
+        # severance handled like human.
+        "severable_containers": frozenset({
+            "head",
+            "left_foreleg", "right_foreleg",
+            "left_forepaw", "right_forepaw",
+            "left_hindleg", "right_hindleg",
+            "left_hindpaw", "right_hindpaw",
+            "tail",
+        }),
+        "severed_head_locations": frozenset({
+            "fur", "head", "snout", "neck",
+            "left_eye", "right_eye",
+            "left_ear", "right_ear",
+        }),
+        # Rats can't wield items.
+        "sever_hand_by_container": {},
+        # Two-segment limbs: foreleg+forepaw, hindleg+hindpaw.  No
+        # three-segment thigh→shin→foot chain.
+        "limb_downstream_chain": {
+            "left_foreleg":  ("left_foreleg",  "left_forepaw"),
+            "right_foreleg": ("right_foreleg", "right_forepaw"),
+            "left_forepaw":  ("left_forepaw",),
+            "right_forepaw": ("right_forepaw",),
+            "left_hindleg":  ("left_hindleg",  "left_hindpaw"),
+            "right_hindleg": ("right_hindleg", "right_hindpaw"),
+            "left_hindpaw":  ("left_hindpaw",),
+            "right_hindpaw": ("right_hindpaw",),
+            "tail":          ("tail",),
+        },
+        "limb_parent": {
+            "left_forepaw":  "left_foreleg",
+            "right_forepaw": "right_foreleg",
+            "left_hindpaw":  "left_hindleg",
+            "right_hindpaw": "right_hindleg",
+        },
+
+        # Render order: head-cluster, torso, forelegs, hindlegs, tail.
+        "anatomical_display_order": [
+            "fur",
+            "left_eye", "right_eye",
+            "head", "snout",
+            "left_ear", "right_ear",
+            "neck",
+            "chest", "back", "abdomen", "groin",
+            "left_foreleg", "right_foreleg",
+            "left_forepaw", "right_forepaw",
+            "left_hindleg", "right_hindleg",
+            "left_hindpaw", "right_hindpaw",
+            "tail",
+        ],
+        "anatomical_regions": {
+            "head_region": ["fur", "left_eye", "right_eye", "head", "snout",
+                            "left_ear", "right_ear", "neck"],
+            "torso_region": ["chest", "back", "abdomen", "groin"],
+            "foreleg_region": ["left_foreleg", "right_foreleg",
+                               "left_forepaw", "right_forepaw"],
+            "hindleg_region": ["left_hindleg", "right_hindleg",
+                               "left_hindpaw", "right_hindpaw"],
+            "tail_region": ["tail"],
+        },
+        "default_longdesc_locations": {
+            "fur": None,
+            "left_eye": None, "right_eye": None,
+            "head": None, "snout": None,
+            "left_ear": None, "right_ear": None,
+            "neck": None,
+            "chest": None, "back": None, "abdomen": None, "groin": None,
+            "left_foreleg": None, "right_foreleg": None,
+            "left_forepaw": None, "right_forepaw": None,
+            "left_hindleg": None, "right_hindleg": None,
+            "left_hindpaw": None, "right_hindpaw": None,
+            "tail": None,
+        },
+    },
 }
 
 
