@@ -146,33 +146,64 @@ def get_character_wounds(character):
     Analyze character's medical state and extract visible wounds.
     Only returns wounds that are not concealed by clothing/armor.
     Uses the flexible medical system to find actual damaged organs.
-    
+
+    Cut-point filter (issue #339): when a limb chain has been severed
+    (e.g. shin + foot, thigh + shin + foot), the medical state has
+    every chain organ flagged ``wound_stage='severed'``. To avoid
+    rendering multiple severance wounds for what was a single cut, we
+    suppress downstream severance wounds — only the cut point shows.
+    A wound at ``left_foot`` is suppressed if ``left_shin`` (its parent
+    container per :data:`world.combat.constants.LIMB_PARENT`) is also
+    severed.
+
     Args:
         character: Character object with medical state
-        
+
     Returns:
         list: List of wound data dictionaries for visible wounds
     """
     wounds = []
-    
+
     # Get character's medical state
     try:
         medical_state = character.medical_state
     except AttributeError:
         return wounds
-    
+
+    # First pass: build the set of severed containers so the cut-point
+    # filter knows whose parent is gone.
+    severed_containers = set()
+    for organ in medical_state.organs.values():
+        if (getattr(organ, "wound_stage", None) == "severed"
+                and organ.current_hp <= 0):
+            severed_containers.add(organ.container)
+
+    try:
+        from world.combat.constants import LIMB_PARENT
+    except ImportError:
+        LIMB_PARENT = {}
+
     # Check all organs in the character's medical state for damage
     for organ_name, organ in medical_state.organs.items():
         if organ.current_hp < organ.max_hp:  # Organ is damaged
             location = organ.container
-            
+
             # Only include if wound location is visible (not concealed by clothing)
             if _is_wound_visible(character, location):
                 # Determine injury type and stage based on organ condition
                 injury_type = _determine_injury_type_from_organ(organ)
                 stage = _determine_wound_stage_from_organ(organ)
                 severity = _determine_severity_from_damage(organ)
-                
+
+                # Cut-point filter: suppress severance wounds that are
+                # downstream of another severed container. Only the
+                # cut point renders a stump wound; the rest of the
+                # chain just went with it.
+                if stage == "severed":
+                    parent = LIMB_PARENT.get(location)
+                    if parent and parent in severed_containers:
+                        continue
+
                 wound_data = {
                     'injury_type': injury_type,
                     'location': location,
@@ -182,7 +213,7 @@ def get_character_wounds(character):
                     'organ_obj': organ
                 }
                 wounds.append(wound_data)
-    
+
     return wounds
 
 

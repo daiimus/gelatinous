@@ -893,3 +893,36 @@ SEVER_HAND_BY_CONTAINER = {
 # producing a clean detachment, so they are deliberately excluded: a
 # limb pulped by a hammer or boiled by fire stays grimly attached.
 SEVERING_INJURY_TYPES = frozenset({"cut", "stab", "laceration"})
+
+# Limb downstream chain: when a limb container is severed, everything
+# distal to the cut goes with it.  Cutting a thigh takes the shin and
+# foot; cutting a shin takes the foot; cutting a hand takes only the
+# hand.  Mirrors the head pattern (:data:`SEVERED_HEAD_LOCATIONS`) for
+# the limbs.  Each entry's tuple includes the primary container itself
+# so callers can iterate the full chain uniformly.  Issue #339.
+LIMB_DOWNSTREAM_CHAIN = {
+    "left_arm":    ("left_arm", "left_hand"),
+    "left_hand":   ("left_hand",),
+    "left_thigh":  ("left_thigh", "left_shin", "left_foot"),
+    "left_shin":   ("left_shin", "left_foot"),
+    "left_foot":   ("left_foot",),
+    "right_arm":   ("right_arm", "right_hand"),
+    "right_hand":  ("right_hand",),
+    "right_thigh": ("right_thigh", "right_shin", "right_foot"),
+    "right_shin":  ("right_shin", "right_foot"),
+    "right_foot":  ("right_foot",),
+}
+
+# Reverse view of :data:`LIMB_DOWNSTREAM_CHAIN` for the cut-point wound
+# filter.  When a downstream container's parent is also severed, the
+# downstream severance wound is suppressed so only the cut point shows.
+# Containers absent from this map have no parent in the chain (the
+# root containers: arms and thighs).  Issue #339.
+LIMB_PARENT = {
+    "left_hand":  "left_arm",
+    "right_hand": "right_arm",
+    "left_shin":  "left_thigh",
+    "right_shin": "right_thigh",
+    "left_foot":  "left_shin",
+    "right_foot": "right_shin",
+}

@@ -47,6 +47,7 @@ from .species import (
     get_species_location_display,
     get_species_organ_name,
     get_species_part_name,
+    get_species_severed_chain_name,
 )
 
 __all__ = (
@@ -63,6 +64,7 @@ __all__ = (
     "get_species_location_display",
     "get_species_organ_name",
     "get_species_part_name",
+    "get_species_severed_chain_name",
     "prepend_condition_to_desc",
     "substitute_pronoun_tokens",
 )

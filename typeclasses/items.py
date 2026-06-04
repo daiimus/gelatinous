@@ -1118,14 +1118,32 @@ class Appendage(Item):
     def configure_from_sever(self, *, location_name, condition, corpse):
         """Populate forensic-chain fields immediately after spawn.
 
+        Issue #339: corpse-side limb severance now also carries the
+        downstream limb chain — severing a thigh from a corpse takes
+        the shin and foot, just like the living-character path. The
+        Appendage is named with the compound anatomical key
+        (``"human left leg"`` rather than ``"human left thigh"``).
+        The head path is untouched — it has its own downstream cluster
+        (:data:`world.combat.constants.SEVERED_HEAD_LOCATIONS`) handled
+        by :class:`SeveredHead.configure_from_sever`.
+
         Args:
-            location_name (str): Canonical body-location identifier.
+            location_name (str): Canonical body-location identifier
+                (the cut point).
             condition (str): Freshness descriptor.
             corpse: The source :class:`typeclasses.corpse.Corpse`.
         """
-        from world.anatomy import get_species_part_name
+        from world.anatomy import (
+            get_severed_part_description,
+            get_species_part_name,
+            get_species_severed_chain_name,
+            prepend_condition_to_desc,
+        )
+        from world.combat.constants import LIMB_DOWNSTREAM_CHAIN
 
+        chain = LIMB_DOWNSTREAM_CHAIN.get(location_name, (location_name,))
         self.db.location_name = location_name
+        self.db.chain = chain
         self.db.condition = condition
         self.db.source_signature = corpse.db.signature_at_death
         self.db.source_apparent_uid = corpse.db.apparent_uid_at_death
@@ -1149,7 +1167,13 @@ class Appendage(Item):
             decay_stage = corpse.get_decay_stage()
         else:
             decay_stage = "fresh"
-        self.key = get_species_part_name(species, location_name, decay_stage)
+        # Compound name when the chain has downstream parts (#339).
+        if len(chain) > 1:
+            self.key = get_species_severed_chain_name(
+                species, location_name, decay_stage
+            )
+        else:
+            self.key = get_species_part_name(species, location_name, decay_stage)
         # PR #204: populate db.desc the Evennia-standard way so the
         # engine renderer handles it.  ``Appendage.return_appearance``
         # still composes wound + longdesc carry-forward dynamically on
@@ -1160,7 +1184,6 @@ class Appendage(Item):
         # look output explicitly surfaces the freshness state.  The
         # tagline travels in ``db.desc`` so the dynamic wound /
         # longdesc composition below still rides on top cleanly.
-        from world.anatomy import get_severed_part_description, prepend_condition_to_desc
         prose = get_severed_part_description(species, location_name, condition)
         composed = prepend_condition_to_desc(condition, prose)
         if composed:
@@ -1170,10 +1193,11 @@ class Appendage(Item):
         # (delete-from-source + synthesized stump wound) is handled by
         # :func:`commands.forensics._apply_sever_to_corpse` so this
         # helper stays a pure copy and is independently unit-testable.
-        apply_wound_and_longdesc_overlay(self, corpse, (location_name,))
+        # Chain support: carry data for every chain location.
+        apply_wound_and_longdesc_overlay(self, corpse, chain)
 
     def configure_from_living_sever(self, *, character, location_name,
-                                    injury_type="cut"):
+                                    injury_type="cut", chain=None):
         """Populate provenance + prose from a *living* character on sever.
 
         Living-character counterpart to :meth:`configure_from_sever`.
@@ -1185,19 +1209,35 @@ class Appendage(Item):
         same way (:func:`world.identity.get_identity_signature` /
         :func:`world.identity.get_apparent_uid`).
 
+        Issue #339: ``chain`` carries the full downstream limb chain so
+        the Appendage's name and carried prose reflect the multi-
+        location item (severed thigh + shin + foot reads as
+        ``"human left leg"``).
+
         Args:
             character: The living character losing the limb.
-            location_name (str): Canonical severed-limb location.
+            location_name (str): Canonical primary severed-limb location
+                (the cut point).
             injury_type (str): Edged injury that caused the cut.
+            chain (tuple | None): Full chain of locations travelling
+                with the cut. ``None`` → single-location legacy path
+                (chain becomes ``(location_name,)``).
         """
         from world.anatomy import (
             get_severed_part_description,
             get_species_part_name,
+            get_species_severed_chain_name,
             prepend_condition_to_desc,
         )
 
+        if chain is None:
+            chain = (location_name,)
+        else:
+            chain = tuple(chain)
+
         condition = "pristine"
         self.db.location_name = location_name
+        self.db.chain = chain  # Preserve for downstream consumers.
         self.db.condition = condition
         # No source corpse exists for a living sever.
         self.db.source_corpse_dbref = None
@@ -1219,8 +1259,15 @@ class Appendage(Item):
 
         species = character.db.species or "human"
         self.db.source_species = species
-        # Living sever → always the freshest naming tier.
-        self.key = get_species_part_name(species, location_name, "fresh")
+        # Living sever → always the freshest naming tier. When the chain
+        # has more than just the primary container, use the compound
+        # anatomical name (#339).
+        if len(chain) > 1:
+            self.key = get_species_severed_chain_name(
+                species, location_name, "fresh"
+            )
+        else:
+            self.key = get_species_part_name(species, location_name, "fresh")
 
         prose = get_severed_part_description(species, location_name, condition)
         composed = prepend_condition_to_desc(condition, prose)
@@ -1229,7 +1276,8 @@ class Appendage(Item):
 
         # Carry this location's longdesc prose + visible wounds onto the
         # part.  Read BEFORE the caller mutates the body so the source
-        # prose / wounds are still intact.
+        # prose / wounds are still intact. With chain support, the
+        # overlay carries data for every location in the chain.
         from world.medical.wounds import get_character_wounds
 
         longdescs = dict(character.longdesc or {})
@@ -1241,7 +1289,7 @@ class Appendage(Item):
             self,
             longdescs=longdescs,
             wounds=wounds,
-            locations=(location_name,),
+            locations=chain,
         )
 
     def return_appearance(self, looker, **kwargs):
@@ -1431,7 +1479,12 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
     if location_arg == "head":
         locs = frozenset(head_locations)
     else:
-        locs = frozenset({location_arg})
+        # Issue #339: limb severance on a corpse should also clear the
+        # downstream chain (severing a thigh on a corpse takes the
+        # shin and foot). Mirrors the living-character chain semantics.
+        from world.combat.constants import LIMB_DOWNSTREAM_CHAIN
+        chain = LIMB_DOWNSTREAM_CHAIN.get(location_arg, (location_arg,))
+        locs = frozenset(chain)
 
     # Drop longdesc prose for the cleared locations.
     src_longdescs = corpse.db.longdesc_data or {}
@@ -1607,58 +1660,87 @@ def apply_living_sever_overlay(appendage, *, longdescs, wounds, locations):
     appendage.db.wounds_at_death = carried
 
 
-def sever_character_body(character, container):
-    """Mutate a living ``character`` to reflect a limb severed at ``container``.
+def sever_character_body(character, containers):
+    """Mutate a living ``character`` to reflect a limb chain severed.
 
     Symmetric counterpart to :func:`apply_living_sever_overlay`: the
     overlay copies prose onto the detached limb, this strips the matching
     state from the source character.
 
-    * The longdesc prose for ``container`` is dropped (the limb is no
-      longer part of the body to describe) — reassigned, not mutated in
-      place, so the ``AttributeProperty`` persists the change.
-    * Every organ whose ``container`` matches is set to ``current_hp = 0``
-      with ``wound_stage = 'severed'`` (a clean amputation, distinct from
-      the ``'destroyed'`` mangling of in-place combat damage).  The
-      existing :func:`world.medical.wounds.get_character_wounds` renderer
-      then surfaces a ``severed`` stump wound at the location, and the
-      body-capacity recompute drops the limb's contribution automatically.
+    Issue #339: this helper accepts an iterable of containers so that
+    downstream limb parts travel with the cut. Severing a shin takes
+    the foot; severing a thigh takes the shin and foot. The caller
+    (:func:`apply_sever_to_character`) resolves the chain via
+    :data:`world.combat.constants.LIMB_DOWNSTREAM_CHAIN`. A single
+    container is still accepted as a string for backwards-compat with
+    older call sites and tests.
+
+    For every container in the chain:
+
+    * The longdesc prose is dropped (the limb is no longer part of the
+      body to describe) — reassigned, not mutated in place, so the
+      ``AttributeProperty`` persists the change.
+    * Every organ whose ``container`` matches is set to
+      ``current_hp = 0`` with ``wound_stage = 'severed'`` (a clean
+      amputation, distinct from the ``'destroyed'`` mangling of
+      in-place combat damage). The
+      :func:`world.medical.wounds.get_character_wounds` renderer's
+      cut-point filter (#339) suppresses downstream severance wounds
+      so the body shows ONE wound at the cut point, not one per chain
+      location.
 
     Persisting the medical state and recomputing vital signs is left to
-    the caller (:func:`apply_sever_to_character`) so this stays a pure,
-    stub-testable mutation with no Evennia side effects.
+    the caller so this stays a pure, stub-testable mutation with no
+    Evennia side effects.
 
     Args:
         character: The living character losing the limb.
-        container: Canonical severed-limb location (e.g. ``"left_arm"``).
+        containers: Canonical severed-limb locations. Either a single
+            container string (e.g. ``"left_arm"``) for the legacy
+            single-container path, or an iterable of containers for
+            the chain path (e.g. ``("left_shin", "left_foot")``).
     """
+    # Accept both legacy single-string and new iterable signatures.
+    if isinstance(containers, str):
+        chain = (containers,)
+    else:
+        chain = tuple(containers)
+    chain_set = set(chain)
+
     longdescs = character.longdesc
-    if longdescs and container in longdescs:
-        remaining = dict(longdescs)
-        del remaining[container]
-        character.longdesc = remaining
+    if longdescs:
+        remaining = {
+            loc: text
+            for loc, text in dict(longdescs).items()
+            if loc not in chain_set
+        }
+        if remaining != dict(longdescs):
+            character.longdesc = remaining
 
     medical_state = character.medical_state
     for organ in medical_state.organs.values():
-        if organ.container == container:
+        if organ.container in chain_set:
             organ.current_hp = 0
             organ.wound_stage = "severed"
 
 
-def detach_items_to_appendage(character, appendage, container):
-    """Move worn / wielded items belonging to ``container`` onto ``appendage``.
+def detach_items_to_appendage(character, appendage, containers):
+    """Move worn / wielded items belonging to the severed chain onto ``appendage``.
 
-    Item-retention rule (issue #245):
+    Item-retention rule (issue #245), extended for the limb downstream
+    chain (issue #339):
 
-    * A **worn** item travels onto the appendage only if **all** of the
-      body locations it is currently worn at are within the severed
-      cluster (for a limb, ``{container}``).  A glove worn solely at
-      ``left_hand`` follows a severed left hand; a jacket spanning
-      chest + both arms stays on the character when one arm is severed.
-    * A **wielded** weapon in the hand corresponding to the severed
-      limb (via :data:`world.combat.constants.SEVER_HAND_BY_CONTAINER`)
-      always follows the limb — you cannot keep gripping with a hand
-      that just left your body.
+    * A **worn** item travels onto the appendage if **all** of the body
+      locations it is currently worn at are within the severed cluster
+      (the full chain — e.g. for a severed shin, ``{left_shin,
+      left_foot}``). A glove worn solely at ``left_hand`` follows a
+      severed left arm; a boot worn solely at ``left_foot`` follows a
+      severed left shin; a jacket spanning chest + both arms stays on
+      the character when one arm is severed.
+    * A **wielded** weapon in *any* hand whose container is in the
+      severed chain (via :data:`world.combat.constants.SEVER_HAND_BY_CONTAINER`)
+      always follows the limb. Severing the upper arm carries the
+      sword that was in that hand.
 
     Bookkeeping (``worn_items`` / ``hands`` dicts) is updated purely and
     reassigned so the ``AttributeProperty`` persists.  The physical
@@ -1668,19 +1750,25 @@ def detach_items_to_appendage(character, appendage, container):
     Args:
         character: The living character losing the limb.
         appendage: Destination :class:`Appendage` item.
-        container: Canonical severed-limb location.
+        containers: Canonical severed-limb locations. Either a single
+            container string for the legacy single-container path, or
+            an iterable of containers for the chain path.
 
     Returns:
         list: Items moved onto the appendage (worn first, then wielded).
     """
     from world.combat.constants import SEVER_HAND_BY_CONTAINER
 
-    severed_locs = {container}
+    # Accept legacy single-string + new iterable signatures.
+    if isinstance(containers, str):
+        chain = (containers,)
+    else:
+        chain = tuple(containers)
+    severed_locs = set(chain)
     moved = []
 
     # --- Worn items fully contained within the severed cluster --------
     worn = character.worn_items or {}
-    # Map each worn item to the set of locations it currently occupies.
     item_locations = {}
     for loc, items in worn.items():
         for item in items or []:
@@ -1702,17 +1790,23 @@ def detach_items_to_appendage(character, appendage, container):
             _relocate_item(item, appendage)
             moved.append(item)
 
-    # --- Wielded weapon in the matching hand --------------------------
-    hand = SEVER_HAND_BY_CONTAINER.get(container)
-    if hand:
+    # --- Wielded weapons in any chain-hand --------------------------
+    hands_to_clear = set()
+    for chain_loc in chain:
+        hand = SEVER_HAND_BY_CONTAINER.get(chain_loc)
+        if hand:
+            hands_to_clear.add(hand)
+
+    if hands_to_clear:
         hands = character.hands or {}
-        held = hands.get(hand)
-        if held:
-            new_hands = dict(hands)
-            new_hands[hand] = None
-            character.hands = new_hands
-            _relocate_item(held, appendage)
-            moved.append(held)
+        new_hands = dict(hands)
+        for hand in hands_to_clear:
+            held = new_hands.get(hand)
+            if held:
+                new_hands[hand] = None
+                _relocate_item(held, appendage)
+                moved.append(held)
+        character.hands = new_hands
 
     return moved
 
@@ -1765,10 +1859,18 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
         no location to drop it into.
     """
     from evennia import create_object
+    from world.combat.constants import LIMB_DOWNSTREAM_CHAIN
 
     room = character.location
     if room is None:
         return None
+
+    # Issue #339: resolve the downstream limb chain. Severing at a
+    # thigh takes shin + foot; at a shin takes the foot; at a hand or
+    # foot takes only itself. Containers not in the chain map fall
+    # back to the single-container path for backwards compatibility
+    # (and for the head, which routes through its own pipeline).
+    chain = LIMB_DOWNSTREAM_CHAIN.get(container, (container,))
 
     appendage = create_object(
         "typeclasses.items.Appendage",
@@ -1779,16 +1881,17 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
         character=character,
         location_name=container,
         injury_type=injury_type,
+        chain=chain,
     )
 
-    sever_character_body(character, container)
+    sever_character_body(character, chain)
     medical_state = character.medical_state
     update_vital_signs = getattr(medical_state, "update_vital_signs", None)
     if callable(update_vital_signs):
         update_vital_signs()
     character.save_medical_state()
 
-    detach_items_to_appendage(character, appendage, container)
+    detach_items_to_appendage(character, appendage, chain)
 
     # Severance narrative — issue #332. Replaces the previous inline
     # template with a library lookup so each (location, injury_type,

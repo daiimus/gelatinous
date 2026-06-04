@@ -96,6 +96,26 @@ SPECIES_DEFINITIONS = {
             "right_ear": "right ear",
         },
 
+        # Compound names used when severance carries downstream limb
+        # parts off the body as a single Appendage (issue #339).
+        # Severing at the thigh takes shin + foot, so the Appendage
+        # reads "left leg" rather than "left thigh".  Severing at the
+        # shin takes the foot, so it reads "left lower leg".  Severing
+        # at the wrist or ankle is named for the cut location.  Keys
+        # mirror ``LIMB_DOWNSTREAM_CHAIN`` in world/combat/constants.py.
+        "severed_chain_display": {
+            "left_arm":    "left arm",
+            "right_arm":   "right arm",
+            "left_hand":   "left hand",
+            "right_hand":  "right hand",
+            "left_thigh":  "left leg",
+            "right_thigh": "right leg",
+            "left_shin":   "left lower leg",
+            "right_shin":  "right lower leg",
+            "left_foot":   "left foot",
+            "right_foot":  "right foot",
+        },
+
         # Decay-tier prefix templates for severed body parts.  Rendered
         # by :func:`get_species_part_name` with ``{species}`` and
         # ``{part}`` substitution.  Note "rotting" and "skeletal" drop
@@ -246,6 +266,47 @@ def get_species_part_name(
     template = prefixes.get(decay_stage) or prefixes.get("fresh") or "{part}"
     part = get_species_location_display(species, location)
     species_display = spec.get("display_name", "")
+    return template.format(species=species_display, part=part)
+
+
+def get_species_severed_chain_name(
+    species: str | None, primary_container: str, decay_stage: str
+) -> str:
+    """Return the decay-modulated name for a severed limb chain (#339).
+
+    When a limb is severed and pulls downstream parts off with it
+    (severing a shin takes the foot; severing a thigh takes the whole
+    leg), the resulting Appendage needs a compound anatomical name.
+    Severing at ``left_thigh`` should read ``"human left leg"`` rather
+    than ``"human left thigh"``; severing at ``left_shin`` should read
+    ``"human left lower leg"`` rather than ``"human left shin"``.
+
+    Falls back to :func:`get_species_part_name` (the single-container
+    name) when the species has no ``severed_chain_display`` mapping or
+    the container isn't listed in it. This keeps backwards compatibility
+    with species that haven't been updated yet and with chain entries
+    where the compound name happens to match the single name.
+
+    Args:
+        species: Species identifier; unknown / None → human.
+        primary_container: The cut-point body location
+            (e.g. ``"left_thigh"``).  The Appendage represents this
+            location plus everything downstream.
+        decay_stage: One of the standard decay-tier keys.
+
+    Returns:
+        Display string ready for use as ``appendage.key``.
+    """
+    spec = _resolve_species(species)
+    chain_display = spec.get("severed_chain_display") or {}
+    if primary_container not in chain_display:
+        # No compound name for this container — fall back to the
+        # canonical per-location naming.
+        return get_species_part_name(species, primary_container, decay_stage)
+    prefixes = spec.get("decay_part_prefixes") or {}
+    template = prefixes.get(decay_stage) or prefixes.get("fresh") or "{part}"
+    species_display = spec.get("display_name", "")
+    part = chain_display[primary_container]
     return template.format(species=species_display, part=part)
 
 
