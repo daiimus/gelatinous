@@ -172,6 +172,7 @@ class ArmorMixin:
         if location == "neck":
             if self._bone_freshly_destroyed("neck"):
                 self.db.decapitation_pending = True
+                self._broadcast_decapitation_message(injury_type)
             return
 
         # Living limb severance: head is excluded (decapitation routes
@@ -183,6 +184,74 @@ class ArmorMixin:
 
         from typeclasses.items import apply_sever_to_character
         apply_sever_to_character(self, location, injury_type=injury_type)
+
+    def _broadcast_decapitation_message(self, injury_type):
+        """Render the moment-of-decapitation narrative beat (issue #329).
+
+        Fires synchronously when the cervical spine is destroyed by an
+        edged hit. Mirrors the limb-severance broadcast in
+        :func:`typeclasses.items.apply_sever_to_character`, but for the
+        head — which can't be detached as an Appendage synchronously
+        (the corpse doesn't exist yet). The actual head item spawns at
+        ``_create_corpse_from_character``; this is the audible/visible
+        beat that tells the room what just happened.
+
+        Wrapped entirely in a try/except so unit-test stubs without
+        ``.ndb`` / ``.msg`` / ``.location`` don't crash combat. The
+        flag-setting (``db.decapitation_pending``) is the load-bearing
+        contract; this broadcast is decoration on top.
+
+        Args:
+            injury_type (str): Severing injury type
+                (``cut`` / ``stab`` / ``laceration``).
+        """
+        try:
+            # Resolve attacker from the most recent damage context. The
+            # combat handler stages this through ``ndb._last_damage_*``
+            # (set by the attack processor just before damage applies).
+            ndb = getattr(self, "ndb", None)
+            attacker = getattr(ndb, "_last_damage_attacker", None) if ndb else None
+            weapon = getattr(ndb, "_last_damage_weapon", None) if ndb else None
+
+            from world.combat.messages.severance import get_severance_message
+            from world.identity_utils import msg_room_identity
+
+            msgs = get_severance_message(
+                location="head",
+                injury_type=injury_type,
+                attacker=attacker,
+                target=self,
+                item=weapon,
+                severity="grievous",
+                hit_location="neck",
+            )
+            if attacker is not None:
+                attacker.msg(msgs["attacker_msg"])
+            self.msg(msgs["victim_msg"])
+            if self.location is not None:
+                exclude = [self]
+                if attacker is not None:
+                    exclude.append(attacker)
+                msg_room_identity(
+                    location=self.location,
+                    template=msgs["observer_template"],
+                    char_refs=msgs["observer_char_refs"],
+                    exclude=exclude,
+                )
+        except Exception:
+            # Don't break combat if the messaging layer hiccups.
+            try:
+                from evennia.comms.models import ChannelDB
+                from world.combat.constants import SPLATTERCAST_CHANNEL
+                splattercast = ChannelDB.objects.get_channel(
+                    SPLATTERCAST_CHANNEL
+                )
+                splattercast.msg(
+                    f"DECAPITATION_MSG_ERROR: {self.key} - failed to "
+                    f"broadcast decapitation message"
+                )
+            except Exception:
+                pass
 
     def _calculate_armor_damage_reduction(self, damage, location, injury_type):
         """

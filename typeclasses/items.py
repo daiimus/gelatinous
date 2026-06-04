@@ -1790,18 +1790,52 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
 
     detach_items_to_appendage(character, appendage, container)
 
-    from world.identity_utils import msg_room_identity
+    # Severance narrative — issue #332. Replaces the previous inline
+    # template with a library lookup so each (location, injury_type,
+    # severity) cell gets variant prose. Falls back gracefully to the
+    # old inline pattern if anything goes wrong.
+    attacker = getattr(character.ndb, "_last_damage_attacker", None)
+    weapon = getattr(character.ndb, "_last_damage_weapon", None)
+    try:
+        from world.combat.messages.severance import get_severance_message
+        from world.identity_utils import msg_room_identity
 
-    part_name = appendage.key
-    msg_room_identity(
-        location=room,
-        template=(
-            f"{{actor}}'s {part_name} is severed in a spray of blood "
-            f"and falls to the ground!"
-        ),
-        char_refs={"actor": character},
-        exclude=[],
-    )
+        msgs = get_severance_message(
+            location=container,
+            injury_type=injury_type,
+            attacker=attacker,
+            target=character,
+            item=weapon,
+            severity="grievous",
+            hit_location=container,
+        )
+        if attacker is not None:
+            attacker.msg(msgs["attacker_msg"])
+        character.msg(msgs["victim_msg"])
+        exclude = [character]
+        if attacker is not None:
+            exclude.append(attacker)
+        msg_room_identity(
+            location=room,
+            template=msgs["observer_template"],
+            char_refs=msgs["observer_char_refs"],
+            exclude=exclude,
+        )
+    except Exception:
+        # Library lookup hiccup — fall back to the legacy inline beat
+        # so we never silently swallow a severance moment.
+        from world.identity_utils import msg_room_identity
+
+        part_name = appendage.key
+        msg_room_identity(
+            location=room,
+            template=(
+                f"{{actor}}'s {part_name} is severed in a spray of blood "
+                f"and falls to the ground!"
+            ),
+            char_refs={"actor": character},
+            exclude=[],
+        )
 
     return appendage
 

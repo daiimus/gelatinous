@@ -480,14 +480,27 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
         if weapon and hasattr(weapon, "db") and weapon.db.weapon_type:
             weapon_type = weapon.db.weapon_type
 
-        # Apply damage first to determine if this is a killing blow
-        # take_damage now returns (died, actual_damage_applied)
-        target_died, actual_damage = target.take_damage(
-            damage,
-            location=hit_location,
-            injury_type=injury_type,
-            target_organ=target_organ,
-        )
+        # Stage attacker / weapon on target ndb so downstream severance
+        # messaging (issue #332, fired from _maybe_sever_from_damage) can
+        # attribute the moment-of-decapitation / moment-of-amputation
+        # narrative to the right character + weapon. Cleared after the
+        # damage call so this is strictly request-scoped.
+        target.ndb._last_damage_attacker = attacker
+        target.ndb._last_damage_weapon = weapon
+        try:
+            # Apply damage first to determine if this is a killing blow
+            # take_damage now returns (died, actual_damage_applied)
+            target_died, actual_damage = target.take_damage(
+                damage,
+                location=hit_location,
+                injury_type=injury_type,
+                target_organ=target_organ,
+            )
+        finally:
+            if hasattr(target.ndb, "_last_damage_attacker"):
+                del target.ndb._last_damage_attacker
+            if hasattr(target.ndb, "_last_damage_weapon"):
+                del target.ndb._last_damage_weapon
 
         if target_died:
             _handle_kill(
