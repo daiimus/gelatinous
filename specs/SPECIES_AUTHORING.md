@@ -126,8 +126,11 @@ If you add a new consumer that reads a global anatomy constant, ask whether it s
 
 ## Open follow-ups (not yet species-keyed)
 
-- `LONGDESC_FLEX_NOUNS` (vocabulary of body-noun singulars that flex as nouns vs verbs). Currently human-anchored; defer until a species has different flex vocabulary.
-- `ORGAN_DISPLAY` (organ display names). Currently shared; a future species with biologically distinct organs would need its own table.
-- `BODY_CAPACITIES` (capacity-to-organ wiring). Species use the same capacities (sight, hearing, breathing, etc.) today; if a species has fundamentally different vital systems, this'll need species-keying.
+The architecture is now complete enough to ship anatomically distinct species. The only remaining global is:
 
-These can be lifted incrementally as the species roster grows. The pattern is identical: add to `SPECIES_DEFINITIONS[species]`, write a `get_species_*` helper, derive the legacy global from the human entry.
+- `ORGAN_DISPLAY` (`world/anatomy/organs.py`). Per-organ display name and condition prose for autopsy / harvest rendering. Currently human-anchored. Rats fall through gracefully — shared organ names (brain / heart / left_lung / liver / etc.) get human prose which reads OK on a smaller body, and rat-specific bones (`left_foreleg_bone` / `tail_vertebrae`) get an underscore-stripped display name and empty prose (the renderer drops empty prose cleanly). A future species with biologically distinct organs (a synth with mechanical organs, an alien with non-mammalian systems) would need its own organ-prose table. Same migration pattern as the other follow-ups: add to `SPECIES_DEFINITIONS[species]`, write a `get_species_organ_display(species)` helper, derive the legacy global from the human entry.
+
+### Migrated follow-ups (now species-keyed)
+
+- `LONGDESC_FLEX_NOUNS` (`SPECIES_DEFINITIONS[species]["longdesc_flex_nouns"]`). Rats add `tail` / `snout` / `fur` / `whisker` / `paw` / `claw`; pair-keyed singulars flow through `pair_keys` automatically. Use `get_species_longdesc_flex_nouns(species)`.
+- `BODY_CAPACITIES` (`SPECIES_DEFINITIONS[species]["body_capacities"]`). Rat's `moving` references hindleg/hindpaw bones; `manipulation` references foreleg/forepaw bones; `talking` is intentionally absent (rats squeak, they don't talk). Use `get_species_body_capacities(species)`. Consumers updated: `MedicalState.calculate_body_capacity`, `world.medical.utils._get_vital_locations`.

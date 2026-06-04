@@ -385,8 +385,17 @@ class MedicalState:
         """
         if not self._cache_dirty and capacity_name in self._capacity_cache:
             return self._capacity_cache[capacity_name]
-            
-        capacity_data = BODY_CAPACITIES.get(capacity_name, {})
+
+        # Issue #356 follow-up: species-aware capacity wiring.  A
+        # rat's "moving" references hindleg/hindpaw bones, not human
+        # femur/tibia/metatarsals; without this lookup a damaged rat
+        # leg would never reduce moving capacity.
+        from world.anatomy import get_species_body_capacities
+        species = None
+        if self.character is not None:
+            species = getattr(self.character.db, "species", None)
+        species_capacities = get_species_body_capacities(species)
+        capacity_data = species_capacities.get(capacity_name, {})
         capacity_organs = capacity_data.get("organs", [])
         
         if not capacity_organs:

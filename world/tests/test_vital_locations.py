@@ -56,14 +56,31 @@ class TestVitalLocations(TestCase):
         # Patching a lethal capacity to reference an organ in a novel container
         # must surface that container in the result, proving the derivation is
         # dynamic rather than a constant literal.
-        patched_organs = dict(ORGANS)
+        #
+        # Issue #356 follow-up: ``_get_vital_locations`` now reads
+        # organ specs and capacity wiring through the species registry
+        # (``get_organ_spec`` / ``get_species_body_capacities``). The
+        # patch surface is therefore the human species entry rather
+        # than the legacy module globals.
+        from world.anatomy.species import SPECIES_DEFINITIONS
+
+        human = SPECIES_DEFINITIONS["human"]
+        patched_organs = dict(human["organs"])
         patched_organs["test_vital_organ"] = {"container": "tail"}
         patched_caps = {
-            name: dict(data) for name, data in BODY_CAPACITIES.items()
+            name: dict(data) for name, data in human["body_capacities"].items()
         }
         patched_caps["blood_pumping"] = {"organs": ["test_vital_organ"]}
-        with patch("world.medical.constants.ORGANS", patched_organs), patch(
-            "world.medical.constants.BODY_CAPACITIES", patched_caps
+        patched_human = dict(human)
+        patched_human["organs"] = patched_organs
+        patched_human["body_capacities"] = patched_caps
+        patched_registry = dict(SPECIES_DEFINITIONS)
+        patched_registry["human"] = patched_human
+
+        with patch.dict(
+            "world.anatomy.species.SPECIES_DEFINITIONS",
+            patched_registry,
+            clear=True,
         ):
             result = _get_vital_locations(None)
         self.assertIn("tail", result)

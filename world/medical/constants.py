@@ -145,103 +145,23 @@ CONTRIBUTION_VALUES = {
 # ===================================================================
 
 # Core body capacities that organs contribute to
+# Issue #356 follow-up: source of truth lives in the species registry
+# at ``SPECIES_DEFINITIONS[species]["body_capacities"]``.  This global
+# is derived from the human entry so existing callers keep working;
+# species-aware callers use
+# :func:`world.anatomy.get_species_body_capacities(species)` directly.
+# The legacy ``unconscious_threshold`` / ``fatal_threshold`` dict
+# values were declarative — the actual thresholds enforced by
+# ``is_dead()`` / ``is_unconscious()`` read the module constants
+# (``CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD`` / ``BLOOD_LOSS_DEATH_THRESHOLD``)
+# directly, so they are not preserved through the species derivation.
+from world.anatomy.species import SPECIES_DEFINITIONS as _SPECIES_DEFINITIONS_BC
 BODY_CAPACITIES = {
-    # Vital Capacities - Loss causes death or unconsciousness
-    "consciousness": {
-        "organs": ["brain"],
-        "modifiers": ["pain", "blood_pumping", "breathing", "blood_filtration"],
-        "unconscious_threshold": CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD,
-        "effect": "unconscious_flag",
-        "description": "Difference between functioning PC and unconscious state"
-    },
-    "blood_pumping": {
-        "organs": ["heart"],
-        "fatal_threshold": 0.0,
-        "directly_fatal": True,
-        "affects": ["consciousness", "moving"],
-        "description": "Circulation of blood through body - zero equals death"
-    },
-    "breathing": {
-        "organs": ["left_lung", "right_lung"],
-        "fatal_threshold": 0.0,  # Death if both lungs lost
-        "organ_contribution": 0.5,  # Each lung contributes 50%
-        "affects": ["consciousness", "moving"]
-    },
-    "digestion": {
-        "organs": ["liver", "stomach"],
-        "liver_contribution": 1.0,   # Liver is primary
-        "stomach_contribution": 0.5,  # Stomach is secondary
-        "fatal_threshold": 0.0  # Death if liver lost
-    },
-    "neck_integrity": {
-        # Decapitation gate. The cervical spine bundles the airway, the
-        # great vessels, and the spinal cord at the neck; severing it is
-        # immediately fatal. Modeled as its own vital capacity (rather
-        # than folding into "breathing") so destruction reads as a clean
-        # decapitation death without perturbing the lungs' contribution
-        # math. See is_dead() in core.py and combat-sever Phase A (#243).
-        "organs": ["cervical_spine"],
-        "fatal_threshold": 0.0,
-        "directly_fatal": True,
-        "affects": ["consciousness", "breathing", "moving"],
-        "description": "Integrity of the neck - zero equals decapitation/death"
-    },
-    
-    # Blood Loss System
-    "blood_loss": {
-        "source": "bleeding_injuries",
-        "fatal_threshold": BLOOD_LOSS_DEATH_THRESHOLD,
-        "directly_fatal": True,
-        "description": "Blood loss kills - exact threshold uses constants"
-    },
-    
-    # Functional Capacities - Loss reduces effectiveness but not fatal
-    "sight": {
-        "organs": ["left_eye", "right_eye"],
-        "organ_contribution": 0.5,  # Each eye contributes 50% 
-        "affects": ["shooting_accuracy", "melee_hit_chance", "work_speed"],
-        "total_loss_penalty": "blindness"
-    },
-    "hearing": {
-        "organs": ["left_ear", "right_ear"],
-        "organ_contribution": 0.5,
-        "affects": ["trade_price_improvement"],
-        "total_loss_penalty": "deafness"
-    },
-    "moving": {
-        "organs": ["thoracolumbar_spine", "pelvis", "left_femur", "right_femur", "left_tibia", "right_tibia", 
-                  "left_metatarsals", "right_metatarsals"],
-        "thoracolumbar_spine_contribution": 1.0,    # Spine damage = paralysis
-        "pelvis_contribution": 1.0,   # Essential for walking
-        "femur_contribution": 0.4,    # Each femur contributes 40%
-        "tibia_contribution": 0.4,    # Each tibia contributes 40%
-        "metatarsal_contribution": 0.1,  # Each foot contributes 10%
-        "incapacitation_threshold": 0.15,  # Below 15% = cannot move
-        "affects": ["movement_speed"]
-    },
-    "manipulation": {
-        "organs": ["left_humerus", "right_humerus", "left_metacarpals", "right_metacarpals"],
-        "humerus_contribution": 0.4,     # Each humerus contributes 40%
-        "metacarpal_contribution": 0.2,  # Each hand contributes 20%
-        "affects": ["work_speed", "melee_accuracy"]
-    },
-    "talking": {
-        "organs": ["jaw", "tongue"],
-        "affects": ["social_impact"],
-        "total_loss_effects": ["cannot_negotiate", "social_penalty"]
-    },
-    "eating": {
-        "organs": ["jaw", "tongue"],
-        "jaw_primary": True,
-        "affects": ["nutrition_efficiency"]
-    },
-    "blood_filtration": {
-        "organs": ["left_kidney", "right_kidney"],
-        "organ_contribution": 0.5,  # Each kidney contributes 50%
-        "affects": ["disease_resistance", "consciousness"],
-        "total_loss_fatal": True
-    }
+    k: dict(v) for k, v in (
+        _SPECIES_DEFINITIONS_BC["human"].get("body_capacities") or {}
+    ).items()
 }
+del _SPECIES_DEFINITIONS_BC
 
 # Capacities whose total loss kills or incapacitates the character. This is the
 # single source of truth for "what makes a body location vital": the union of

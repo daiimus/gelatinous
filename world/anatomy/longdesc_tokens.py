@@ -161,8 +161,11 @@ def _flex_body_tokens(text, number, side=None, *, species=None):
     """
     import re
 
-    from world.anatomy.species import get_species_pair_keys
-    from world.combat.constants import LONGDESC_FLEX_NOUNS
+    # Issue #356 follow-up: species-aware non-pair flex vocabulary.
+    from world.anatomy.species import (
+        get_species_longdesc_flex_nouns,
+        get_species_pair_keys,
+    )
     from world.grammar import (
         _match_leading_case,
         flex_noun,
@@ -171,7 +174,7 @@ def _flex_body_tokens(text, number, side=None, *, species=None):
         singularize_noun,
     )
 
-    flex_nouns = set(LONGDESC_FLEX_NOUNS)
+    flex_nouns = get_species_longdesc_flex_nouns(species)
     pair_singulars = set()
     pair_keys = get_species_pair_keys(species)
     for left_loc, _right_loc in pair_keys.values():

@@ -66,14 +66,19 @@ def _get_vital_locations(character):
     Returns:
         set: Set of vital body location names
     """
-    from .constants import BODY_CAPACITIES, LETHAL_CAPACITY_NAMES, ORGANS
+    # Issue #356 follow-up: species-aware capacity / organ lookups.
+    from .constants import LETHAL_CAPACITY_NAMES
+    from world.anatomy import get_organ_spec, get_species_body_capacities
+
+    species = getattr(getattr(character, "db", None), "species", None)
+    body_capacities = get_species_body_capacities(species)
 
     vital_locations = set()
 
     for capacity_name in LETHAL_CAPACITY_NAMES:
-        capacity_data = BODY_CAPACITIES.get(capacity_name, {})
+        capacity_data = body_capacities.get(capacity_name, {})
         for organ_name in capacity_data.get("organs", []):
-            organ_data = ORGANS.get(organ_name)
+            organ_data = get_organ_spec(organ_name, species)
             if not organ_data:
                 continue
             container = organ_data.get("container")

@@ -747,11 +747,18 @@ class AppearanceMixin:
         Species-aware via ``self.db.species`` (issue #350 / PR-A); unknown
         / None species falls through to the human pair table.
         """
-        from world.anatomy.species import get_species_pair_keys
-        from world.combat.constants import LONGDESC_FLEX_NOUNS
+        # Issue #356 follow-up: species-aware non-pair flex vocabulary.
+        # Pair-keyed singulars (eye / ear / paw / etc.) are derived
+        # from the species's ``pair_keys`` and unioned with the
+        # species's curated non-pair set (tail / snout / fur / ... for
+        # rats; leg / shoulder / hip / ... for humans).
+        from world.anatomy.species import (
+            get_species_longdesc_flex_nouns,
+            get_species_pair_keys,
+        )
 
-        nouns = set(LONGDESC_FLEX_NOUNS)
         species = getattr(self.db, "species", None) if hasattr(self, "db") else None
+        nouns = get_species_longdesc_flex_nouns(species)
         for left_loc, _right_loc in get_species_pair_keys(species).values():
             # "left_eye" -> "eye", "left_foot" -> "foot"
             nouns.add(left_loc.split("_", 1)[1])

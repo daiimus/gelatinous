@@ -103,18 +103,15 @@ del _SPECIES_DEFINITIONS
 # longdescs legitimately brace as VERBS (e.g. "{eyes} that {accent} {their}
 # skin"). Defaulting unknown words to verbs keeps those working; we only add
 # words that are unambiguously body nouns. Extend freely as players find gaps.
-LONGDESC_FLEX_NOUNS = {
-    # Limbs / joints not covered by a PAIR_MERGE_KEYS pair.
-    "leg", "shoulder", "hip", "knee", "elbow", "wrist", "ankle",
-    "calf", "forearm", "thumb", "finger", "toe",
-    # Face / head detail.
-    "lip", "nostril", "eyebrow", "eyelash", "cheek", "dimple", "jaw", "tooth",
-    # Torso / rear.
-    "rib", "collarbone", "knuckle", "nail",
-    "breast", "tit", "nipple", "ass", "buttock",
-    # Skin features authors commonly pluralize.
-    "scar", "freckle",
-}
+# LONGDESC_FLEX_NOUNS (HUMAN default).  Issue #356 follow-up:
+# canonical source of truth lives at
+# ``SPECIES_DEFINITIONS["human"]["longdesc_flex_nouns"]``.  Species-
+# aware callers use :func:`world.anatomy.get_species_longdesc_flex_nouns`.
+from world.anatomy.species import SPECIES_DEFINITIONS as _SPECIES_DEFINITIONS_F
+LONGDESC_FLEX_NOUNS = set(
+    _SPECIES_DEFINITIONS_F["human"].get("longdesc_flex_nouns") or ()
+)
+del _SPECIES_DEFINITIONS_F
 
 # Anatomical display order (HUMAN default).
 # Issue #356 Phase 3: derived from the species registry.

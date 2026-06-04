@@ -400,6 +400,133 @@ SPECIES_DEFINITIONS = {
             "left_foot": None, "right_foot": None,
         },
 
+        # Curated vocabulary of singular body nouns the longdesc
+        # token resolver flexes as NOUNS rather than verbs (issue
+        # #356 follow-up; previously
+        # :data:`world.combat.constants.LONGDESC_FLEX_NOUNS`).  Pair-
+        # keyed singulars (eye/ear/arm/hand/...) are derived
+        # automatically from ``pair_keys`` and need not be repeated
+        # here.  Add words that an author would brace inside a
+        # longdesc and that the renderer should number-flex; default
+        # behavior for unknown braced words is to flex as a verb.
+        "longdesc_flex_nouns": {
+            # Limbs / joints not covered by a pair entry.
+            "leg", "shoulder", "hip", "knee", "elbow", "wrist", "ankle",
+            "calf", "forearm", "thumb", "finger", "toe",
+            # Face / head detail.
+            "lip", "nostril", "eyebrow", "eyelash", "cheek", "dimple",
+            "jaw", "tooth",
+            # Torso / rear.
+            "rib", "collarbone", "knuckle", "nail",
+            "breast", "tit", "nipple", "ass", "buttock",
+            # Skin features authors commonly pluralize.
+            "scar", "freckle",
+        },
+
+        # Capacity → organ wiring (issue #356 follow-up).  Previously
+        # global ``world.medical.constants.BODY_CAPACITIES``.  The
+        # capacities themselves (sight, hearing, breathing, moving)
+        # are universal mammalian concepts; the organs that carry
+        # them differ across species — a rat's "moving" references
+        # hindleg/hindpaw bones, not human femur/tibia/metatarsals.
+        #
+        # Shape mirrors the legacy global verbatim — each entry
+        # carries the organ list plus capacity-specific thresholds,
+        # modifiers, and contribution wiring.
+        "body_capacities": {
+            "consciousness": {
+                "organs": ["brain"],
+                "modifiers": ["pain", "blood_pumping", "breathing",
+                              "blood_filtration"],
+                "effect": "unconscious_flag",
+                "description": "Difference between functioning PC and "
+                               "unconscious state",
+            },
+            "blood_pumping": {
+                "organs": ["heart"],
+                "fatal_threshold": 0.0,
+                "directly_fatal": True,
+                "affects": ["consciousness", "moving"],
+                "description": "Circulation of blood through body — "
+                               "zero equals death",
+            },
+            "breathing": {
+                "organs": ["left_lung", "right_lung"],
+                "fatal_threshold": 0.0,
+                "organ_contribution": 0.5,
+                "affects": ["consciousness", "moving"],
+            },
+            "digestion": {
+                "organs": ["liver", "stomach"],
+                "liver_contribution": 1.0,
+                "stomach_contribution": 0.5,
+                "fatal_threshold": 0.0,
+            },
+            "neck_integrity": {
+                "organs": ["cervical_spine"],
+                "fatal_threshold": 0.0,
+                "directly_fatal": True,
+                "affects": ["consciousness", "breathing", "moving"],
+                "description": "Integrity of the neck — zero equals "
+                               "decapitation/death",
+            },
+            "blood_loss": {
+                "source": "bleeding_injuries",
+                "directly_fatal": True,
+                "description": "Blood loss kills — exact threshold "
+                               "uses constants",
+            },
+            "sight": {
+                "organs": ["left_eye", "right_eye"],
+                "organ_contribution": 0.5,
+                "affects": ["shooting_accuracy", "melee_hit_chance",
+                            "work_speed"],
+                "total_loss_penalty": "blindness",
+            },
+            "hearing": {
+                "organs": ["left_ear", "right_ear"],
+                "organ_contribution": 0.5,
+                "affects": ["trade_price_improvement"],
+                "total_loss_penalty": "deafness",
+            },
+            "moving": {
+                "organs": ["thoracolumbar_spine", "pelvis",
+                           "left_femur", "right_femur",
+                           "left_tibia", "right_tibia",
+                           "left_metatarsals", "right_metatarsals"],
+                "thoracolumbar_spine_contribution": 1.0,
+                "pelvis_contribution": 1.0,
+                "femur_contribution": 0.4,
+                "tibia_contribution": 0.4,
+                "metatarsal_contribution": 0.1,
+                "incapacitation_threshold": 0.15,
+                "affects": ["movement_speed"],
+            },
+            "manipulation": {
+                "organs": ["left_humerus", "right_humerus",
+                           "left_metacarpals", "right_metacarpals"],
+                "humerus_contribution": 0.4,
+                "metacarpal_contribution": 0.2,
+                "affects": ["work_speed", "melee_accuracy"],
+            },
+            "talking": {
+                "organs": ["jaw", "tongue"],
+                "affects": ["social_impact"],
+                "total_loss_effects": ["cannot_negotiate", "social_penalty"],
+            },
+            "eating": {
+                "organs": ["jaw", "tongue"],
+                "jaw_primary": True,
+                "affects": ["nutrition_efficiency"],
+            },
+            "blood_filtration": {
+                "organs": ["left_kidney", "right_kidney"],
+                "organ_contribution": 0.5,
+                "affects": ["disease_resistance", "consciousness"],
+                "total_loss_fatal": True,
+            },
+        },
+
         # Compound names used when severance carries downstream limb
         # parts off the body as a single Appendage (issue #339).
         # Severing at the thigh takes shin + foot, so the Appendage
@@ -818,6 +945,111 @@ SPECIES_DEFINITIONS = {
             "left_hindpaw": None, "right_hindpaw": None,
             "tail": None,
         },
+
+        # Rat longdesc flex vocabulary (issue #356 follow-up).
+        # Pair-keyed singulars (foreleg / forepaw / hindleg /
+        # hindpaw / eye / ear) flow through ``pair_keys`` and don't
+        # need repeating here.  These are the rat-specific anatomy
+        # words an author might brace.
+        "longdesc_flex_nouns": {
+            # Rat anatomy detail.
+            "tail", "snout", "fur", "whisker", "paw", "claw",
+            "tooth", "incisor", "tuft",
+            # Shared mammalian detail still useful for rat prose.
+            "rib", "nostril", "lip", "nail", "scar",
+        },
+
+        # Rat capacity wiring — internal organs collapse to mammalian
+        # universals (heart / lungs / liver / kidneys identical to
+        # human); skeletal capacities re-wire to rat anatomy: moving
+        # references hindleg/hindpaw bones, manipulation references
+        # foreleg/forepaw bones (rats use forepaws for limited food
+        # handling and grooming, not fine tool use).  Talking removed
+        # — rats don't have a tongue/jaw vocalization capacity in our
+        # model; eating retains jaw only.
+        "body_capacities": {
+            "consciousness": {
+                "organs": ["brain"],
+                "modifiers": ["pain", "blood_pumping", "breathing",
+                              "blood_filtration"],
+                "effect": "unconscious_flag",
+            },
+            "blood_pumping": {
+                "organs": ["heart"],
+                "fatal_threshold": 0.0,
+                "directly_fatal": True,
+                "affects": ["consciousness", "moving"],
+            },
+            "breathing": {
+                "organs": ["left_lung", "right_lung"],
+                "fatal_threshold": 0.0,
+                "organ_contribution": 0.5,
+                "affects": ["consciousness", "moving"],
+            },
+            "digestion": {
+                "organs": ["liver", "stomach"],
+                "liver_contribution": 1.0,
+                "stomach_contribution": 0.5,
+                "fatal_threshold": 0.0,
+            },
+            "neck_integrity": {
+                "organs": ["cervical_spine"],
+                "fatal_threshold": 0.0,
+                "directly_fatal": True,
+                "affects": ["consciousness", "breathing", "moving"],
+            },
+            "blood_loss": {
+                "source": "bleeding_injuries",
+                "directly_fatal": True,
+            },
+            "sight": {
+                "organs": ["left_eye", "right_eye"],
+                "organ_contribution": 0.5,
+                "total_loss_penalty": "blindness",
+            },
+            "hearing": {
+                "organs": ["left_ear", "right_ear"],
+                "organ_contribution": 0.5,
+                "total_loss_penalty": "deafness",
+            },
+            "moving": {
+                # Rat locomotion: spine + pelvis + hindlegs +
+                # hindpaws.  Forelegs assist (climbing, balance) but
+                # aren't load-bearing in our model — they're under
+                # ``manipulation`` instead.
+                "organs": ["thoracolumbar_spine", "pelvis",
+                           "left_hindleg_bone", "right_hindleg_bone",
+                           "left_hindpaw_bones", "right_hindpaw_bones"],
+                "thoracolumbar_spine_contribution": 1.0,
+                "pelvis_contribution": 1.0,
+                "hindleg_bone_contribution": 0.4,
+                "hindpaw_bones_contribution": 0.1,
+                "incapacitation_threshold": 0.15,
+                "affects": ["movement_speed"],
+            },
+            "manipulation": {
+                # Forepaw food-handling / grooming.  Lower contribution
+                # weights than human — a rat with mangled forepaws can
+                # still bite/move; it just can't manipulate food.
+                "organs": ["left_foreleg_bone", "right_foreleg_bone",
+                           "left_forepaw_bones", "right_forepaw_bones"],
+                "foreleg_bone_contribution": 0.4,
+                "forepaw_bones_contribution": 0.1,
+                "affects": ["work_speed"],
+            },
+            "eating": {
+                # Rats eat with jaw + teeth; no tongue manipulation
+                # like humans have.
+                "organs": ["jaw"],
+                "jaw_primary": True,
+                "affects": ["nutrition_efficiency"],
+            },
+            "blood_filtration": {
+                "organs": ["left_kidney", "right_kidney"],
+                "organ_contribution": 0.5,
+                "total_loss_fatal": True,
+            },
+        },
     },
 }
 
@@ -832,6 +1064,58 @@ def _resolve_species(species: str | None) -> dict:
     if not species:
         return SPECIES_DEFINITIONS["human"]
     return SPECIES_DEFINITIONS.get(species, SPECIES_DEFINITIONS["human"])
+
+
+def get_species_longdesc_flex_nouns(species: str | None) -> set:
+    """Return the species's curated set of longdesc flex-nouns.
+
+    Issue #356 follow-up.  Previously
+    :data:`world.combat.constants.LONGDESC_FLEX_NOUNS`.  Pair-keyed
+    singulars (eye / ear / arm / etc.) flow through ``pair_keys`` and
+    are unioned with this set at lookup time; this set holds the
+    species's *non-pair* body vocabulary (limbs/joints, face detail,
+    skin features).
+
+    Rats add ``tail`` / ``snout`` / ``fur`` / ``whisker`` / ``paw`` /
+    ``claw`` etc.; non-mammals would replace the curated vocabulary
+    entirely.
+
+    Args:
+        species: Species identifier; ``None`` / unknown falls back to
+            ``"human"``.
+
+    Returns:
+        ``set[str]`` of singular body nouns.  Returns a fresh set so
+        callers can mutate without aliasing the registry.
+    """
+    spec = _resolve_species(species)
+    return set(spec.get("longdesc_flex_nouns") or ())
+
+
+def get_species_body_capacities(species: str | None) -> dict:
+    """Return the capacity → organ wiring table for a species.
+
+    Issue #356 follow-up.  Previously
+    :data:`world.medical.constants.BODY_CAPACITIES`.  Capacities
+    themselves (sight, hearing, breathing, moving, ...) are mammalian
+    universals; the organs that carry each capacity differ per
+    species (a rat's "moving" references hindleg/hindpaw bones, not
+    human femur/tibia/metatarsals).
+
+    Args:
+        species: Species identifier; ``None`` / unknown falls back
+            to ``"human"``.
+
+    Returns:
+        ``capacity_name → spec_dict`` mapping.  Each spec carries the
+        organ list plus capacity-specific thresholds, modifiers, and
+        contribution wiring.  Returns a fresh dict so callers can
+        mutate without aliasing the registry.
+    """
+    spec = _resolve_species(species)
+    return {
+        k: dict(v) for k, v in (spec.get("body_capacities") or {}).items()
+    }
 
 
 def get_species_anatomical_display_order(species: str | None) -> list:
