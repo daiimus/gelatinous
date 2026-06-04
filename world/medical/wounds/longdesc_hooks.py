@@ -30,6 +30,42 @@ from . import messages
 import random
 
 
+def get_destroyed_display_locations(wounds):
+    """Return the set of display locations with destroyed-stage wounds.
+
+    Issue #350 / PR-B: the longdesc renderer consults this set per
+    location and suppresses the authored longdesc whenever a destroyed
+    organ surfaces there.  The destruction wound is the canonical
+    description at a destroyed location; the authored prose
+    (``"His left eye is brown"``) would otherwise lie alongside it.
+
+    Universal — operates on the wound list shape produced by both
+    living characters (``get_character_wounds``) and corpses
+    (``db.wounds_at_death``).  No species knowledge is needed: organ
+    routing to a display location was handled by #346 and is already
+    baked into the wound dict's ``location`` field.
+
+    Coverage interaction: ``get_character_wounds`` filters by
+    clothing coverage at the visibility gate, so a destroyed organ
+    hidden under armor produces no wound in the input list, which
+    means the longdesc at that location is NOT suppressed — the
+    authored prose remains as a fallback when no destruction would
+    otherwise render.
+
+    Args:
+        wounds: Iterable of wound dicts with ``location`` and
+            ``stage`` fields.  ``None`` / empty → empty set.
+
+    Returns:
+        ``set[str]`` of display-location names.
+    """
+    return {
+        w["location"]
+        for w in (wounds or [])
+        if w.get("stage") == "destroyed" and w.get("location")
+    }
+
+
 def append_wounds_to_longdesc(original_desc, character, location, looker=None):
     """
     Append a wound summary to an existing longdesc for a body location.

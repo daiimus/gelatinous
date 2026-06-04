@@ -83,10 +83,21 @@ class AppearanceMixin:
         coverage_map = self._build_clothing_coverage_map()
         longdescs = self.longdesc or {}
 
+        # Issue #350 / PR-B: locations where an organ has been destroyed
+        # in place.  The authored longdesc at any such location is
+        # suppressed so the destruction wound (already in the visible
+        # wound list) is the sole description — the authored prose
+        # otherwise lies alongside it ("His left eye is brown" + "His
+        # left eye is a smoking crater"). Coverage handling is
+        # delegated to ``get_character_wounds``: a destroyed eye
+        # hidden under a helmet produces no wound to suppress against,
+        # so the authored prose remains as a fallback.
+        destroyed_locs = self._get_destroyed_locations()
+
         # Pre-compute symmetric left/right pairs that collapse into a single
         # pluralized line (identical longdescs, or both cleanly severed).
         collapse_map, collapse_skip = self._build_paired_longdesc_collapse(
-            looker, longdescs, coverage_map
+            looker, longdescs, coverage_map, destroyed_locs
         )
 
         # Track which clothing items we've already added to avoid duplicates
@@ -122,7 +133,13 @@ class AppearanceMixin:
                 # collapse), which is the single-side case. Pass the
                 # side so paired body-noun tokens flex to the side-aware
                 # singular form (#341): "right arm" instead of "arm".
-                if location in longdescs and longdescs[location]:
+                #
+                # Issue #350 / PR-B: at a destroyed location the
+                # authored longdesc is suppressed — the destruction
+                # wound (rendered below by the standalone-wound path)
+                # is the sole description.
+                if (location in longdescs and longdescs[location]
+                        and location not in destroyed_locs):
                     # Longdesc should have skintone applied
                     processed_desc = self._process_description_variables(
                         longdescs[location], looker,
@@ -215,7 +232,8 @@ class AppearanceMixin:
 
         return descriptions
 
-    def _build_paired_longdesc_collapse(self, looker, longdescs, coverage_map):
+    def _build_paired_longdesc_collapse(self, looker, longdescs, coverage_map,
+                                        destroyed_locs=None):
         """
         Compute which symmetric left/right pairs collapse into one line.
 
@@ -226,10 +244,20 @@ class AppearanceMixin:
         test and renders on its own — only a matched, intact (or matched,
         fully amputated) pair merges.
 
+        Issue #350 / PR-B: if either side carries a destroyed-stage organ,
+        the authored-longdesc collapse (case a) is suppressed for that
+        pair — the authored prose would lie alongside the destruction
+        wound. Per-side rendering takes over, and PR-C will introduce
+        wound-side pair-collapse for the both-sides-destroyed case.
+        Severance pair-collapse (case b) is unaffected.
+
         Args:
             looker: Character looking.
             longdescs (dict): The character's ``location -> desc`` mapping.
             coverage_map (dict): ``location -> clothing item`` coverage.
+            destroyed_locs (set | None): Locations with destroyed-stage
+                organs.  ``None`` is treated as empty (call sites that
+                predate PR-B).
 
         Returns:
             tuple: ``(collapse_map, skip_set)`` where ``collapse_map`` maps a
@@ -240,6 +268,7 @@ class AppearanceMixin:
 
         collapse_map = {}
         skip_set = set()
+        destroyed_locs = destroyed_locs or set()
 
         severed_locs = self._get_severed_locations()
         # Consider every left_* location the body could render this pass.
@@ -261,7 +290,8 @@ class AppearanceMixin:
                 continue
 
             merged = self._merge_paired_location(
-                looker, left_loc, right_loc, longdescs, severed_locs
+                looker, left_loc, right_loc, longdescs, severed_locs,
+                destroyed_locs,
             )
             if merged is not None:
                 collapse_map[left_loc] = merged
@@ -270,7 +300,7 @@ class AppearanceMixin:
         return collapse_map, skip_set
 
     def _merge_paired_location(self, looker, left_loc, right_loc,
-                               longdescs, severed_locs):
+                               longdescs, severed_locs, destroyed_locs=None):
         """
         Build the merged description for one collapsible pair, or ``None``.
 
@@ -279,12 +309,20 @@ class AppearanceMixin:
         both-sides-severed (a single plural stump line). Identical prose is
         rendered verbatim — number-flexible words the author wrapped in
         ``{braces}`` are re-rendered to plural; everything else is unchanged.
+
+        Issue #350 / PR-B: case 1 is suppressed when either side carries
+        a destroyed-stage organ.  Per-side rendering then handles the
+        destruction wounds independently; PR-C adds a paired destruction
+        collapse for the both-sides-destroyed-same-mechanism case.
         """
+        destroyed_locs = destroyed_locs or set()
         left_desc = longdescs.get(left_loc)
         right_desc = longdescs.get(right_loc)
 
         # Case 1: identical, non-empty longdescs on both sides.
-        if left_desc and right_desc and left_desc == right_desc:
+        if (left_desc and right_desc and left_desc == right_desc
+                and left_loc not in destroyed_locs
+                and right_loc not in destroyed_locs):
             processed = self._process_description_variables(
                 left_desc, looker, force_third_person=True,
                 apply_skintone=True, number="plural",
@@ -332,6 +370,27 @@ class AppearanceMixin:
             if all(w.get('stage') == 'severed' for w in location_wounds):
                 severed.add(location)
         return severed
+
+    def _get_destroyed_locations(self):
+        """Return the set of display locations with destroyed-stage wounds.
+
+        Issue #350 / PR-B: powers the longdesc-suppression rule — at any
+        location reported here the authored ``self.longdesc[location]``
+        is skipped so the destruction wound is the sole description.
+        Coverage interaction is inherited from
+        :func:`world.medical.wounds.get_character_wounds`, which already
+        filters by clothing visibility — destroyed organs hidden under
+        armor remain undeclared and the authored prose stays as a
+        fallback.
+        """
+        try:
+            from world.medical.wounds import (
+                get_character_wounds,
+                get_destroyed_display_locations,
+            )
+        except ImportError:
+            return set()
+        return get_destroyed_display_locations(get_character_wounds(self))
 
     def _format_longdescs_with_paragraphs(self, longdesc_list):
         """

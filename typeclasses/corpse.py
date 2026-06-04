@@ -283,6 +283,18 @@ class Corpse(IdentityBearerMixin, Item):
         coverage_map = self._build_corpse_clothing_coverage_map()
         added_clothing_items = set()
 
+        # Issue #350 / PR-B: destroyed display locations (preserved from
+        # the corpse's wound snapshot). Suppresses the authored longdesc
+        # at any such location so the destruction wound carries the
+        # description alone.
+        try:
+            from world.medical.wounds import get_destroyed_display_locations
+            destroyed_locs = get_destroyed_display_locations(
+                self.db.wounds_at_death or []
+            )
+        except ImportError:
+            destroyed_locs = set()
+
         # Pre-compute symmetric pair collapse: which left_* anchors absorb
         # their right_* partner under a single plural render.
         collapse_anchor = {}  # left_loc -> plural-rendered description
@@ -290,6 +302,12 @@ class Corpse(IdentityBearerMixin, Item):
         for _pair_key, (left_loc, right_loc) in pair_keys.items():
             # Asymmetric clothing breaks the visual pairing.
             if left_loc in coverage_map or right_loc in coverage_map:
+                continue
+            # Issue #350 / PR-B: a destroyed organ on either side
+            # suppresses the authored-longdesc pair collapse; per-side
+            # rendering takes over so the destruction wound carries
+            # the description.
+            if left_loc in destroyed_locs or right_loc in destroyed_locs:
                 continue
             left_desc = longdesc_data.get(left_loc)
             right_desc = longdesc_data.get(right_loc)
@@ -329,7 +347,12 @@ class Corpse(IdentityBearerMixin, Item):
                 if location in collapse_anchor:
                     # Symmetric pair collapse — already pre-rendered above.
                     final_desc = collapse_anchor[location]
-                elif location in longdesc_data and longdesc_data[location]:
+                elif (location in longdesc_data
+                        and longdesc_data[location]
+                        and location not in destroyed_locs):
+                    # Issue #350 / PR-B: destroyed location → authored
+                    # longdesc suppressed; the preserved wound below
+                    # carries the description alone.
                     description = longdesc_data[location]
                     # Process template variables like living characters do.
                     # Overall decay is conveyed by the corpse header
