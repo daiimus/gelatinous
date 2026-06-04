@@ -399,12 +399,19 @@ class Corpse(IdentityBearerMixin, Item):
             try:
                 from world.medical.wounds import get_wound_description
                 
-                # Generate wound description using preserved data
+                # Generate wound description using preserved data.
+                # Use the preserved wound stage so severed limbs render
+                # severed-stage prose, destroyed organs render destroyed
+                # prose, etc. Pre-fix this hardcoded ``stage='old'``,
+                # which doesn't exist in any wound-message dict —
+                # ``get_wound_description`` then fell back to ``fresh``,
+                # making every corpse wound read as an active injury
+                # regardless of the actual state at death (issue #335).
                 wound_desc = get_wound_description(
                     injury_type=wound_data['injury_type'],
                     location=wound_data['location'],
                     severity=wound_data['severity'],
-                    stage='old',  # Corpse wounds are considered 'old' stage
+                    stage=wound_data.get('stage', 'fresh'),
                     organ=wound_data.get('organ'),
                     character=self  # Pass corpse as character for any skintone processing
                 )
