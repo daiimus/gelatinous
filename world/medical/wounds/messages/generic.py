@@ -126,3 +126,34 @@ PAIRED_SEVERED_DESCRIPTIONS = [
     "once were|n",
     "{location} have been surgically removed with clinical precision|n",
 ]
+
+
+# Issue #347: destroyed-stage overlay keyed by location.  Used as the
+# ultimate fallback when the injury-type module is missing or has no
+# overlay entry — generic destruction prose for sensory surfaces.
+DESTROYED_BY_LOCATION = {
+    "left_eye": [
+        "|R{Their} left eye is a ruined socket, the orb destroyed beyond recognition|n",
+        "|RWhere {their} left eye sat, a wet wound weeps fluid and blood|n",
+        "|R{Their} left eye is gone, the socket a raw wound|n",
+        "|R{Their} left eye has been destroyed, leaving a hollow ruin|n",
+    ],
+    "right_eye": [
+        "|R{Their} right eye is a ruined socket, the orb destroyed beyond recognition|n",
+        "|RWhere {their} right eye sat, a wet wound weeps fluid and blood|n",
+        "|R{Their} right eye is gone, the socket a raw wound|n",
+        "|R{Their} right eye has been destroyed, leaving a hollow ruin|n",
+    ],
+    "left_ear": [
+        "|R{Their} left ear is destroyed, only a ragged wound remaining|n",
+        "|RWhere {their} left ear was, a torn wound bleeds slowly|n",
+        "|R{Their} left ear has been ruined, the canal exposed and weeping|n",
+        "|R{Their} left ear is a torn stump of cartilage and skin|n",
+    ],
+    "right_ear": [
+        "|R{Their} right ear is destroyed, only a ragged wound remaining|n",
+        "|RWhere {their} right ear was, a torn wound bleeds slowly|n",
+        "|R{Their} right ear has been ruined, the canal exposed and weeping|n",
+        "|R{Their} right ear is a torn stump of cartilage and skin|n",
+    ],
+}

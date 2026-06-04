@@ -96,3 +96,32 @@ COMPOUND_DESCRIPTIONS = {
         "{skintone}the {location} is mottled by a {severity} contusion scar among {others_phrase}|n",
     ],
 }
+
+
+# Issue #347: destroyed-stage overlay keyed by location.
+DESTROYED_BY_LOCATION = {
+    "left_eye": [
+        "|R{Their} left eye is pulped in its socket, the lid swollen black around the ruin|n",
+        "|RA crushing impact has burst {their} left eye, fluid weeping over the bruised cheek|n",
+        "|R{Their} left eye is collapsed inward, the socket caved and weeping|n",
+        "|RWhat was {their} left eye is a sunken pulp, the orbital bone pressed flat around it|n",
+    ],
+    "right_eye": [
+        "|R{Their} right eye is pulped in its socket, the lid swollen black around the ruin|n",
+        "|RA crushing impact has burst {their} right eye, fluid weeping over the bruised cheek|n",
+        "|R{Their} right eye is collapsed inward, the socket caved and weeping|n",
+        "|RWhat was {their} right eye is a sunken pulp, the orbital bone pressed flat around it|n",
+    ],
+    "left_ear": [
+        "|R{Their} left ear is mashed flat against the skull, the cartilage crushed and weeping|n",
+        "|RA heavy blow has pulped {their} left ear into the side of {their} head|n",
+        "|R{Their} left ear is reduced to a swollen lump of bruised tissue|n",
+        "|RWhat is left of {their} left ear is a flattened ruin, dark with bruise and blood|n",
+    ],
+    "right_ear": [
+        "|R{Their} right ear is mashed flat against the skull, the cartilage crushed and weeping|n",
+        "|RA heavy blow has pulped {their} right ear into the side of {their} head|n",
+        "|R{Their} right ear is reduced to a swollen lump of bruised tissue|n",
+        "|RWhat is left of {their} right ear is a flattened ruin, dark with bruise and blood|n",
+    ],
+}

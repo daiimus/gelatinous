@@ -96,3 +96,32 @@ COMPOUND_DESCRIPTIONS = {
         "{skintone}the {location} is stippled by a {severity} gunshot scar among {others_phrase}|n",
     ],
 }
+
+
+# Issue #347: destroyed-stage overlay keyed by location.
+DESTROYED_BY_LOCATION = {
+    "left_eye": [
+        "|R{Their} left eye is a smoking crater, the socket blown wide and weeping|n",
+        "|RA bullet has shot {their} left eye to wet pulp, fragments crusted on {their} cheek|n",
+        "|R{Their} left eye is gone, a ragged exit wound where the socket used to be|n",
+        "|RWhere {their} left eye sat, a powder-blackened crater oozes blood and matter|n",
+    ],
+    "right_eye": [
+        "|R{Their} right eye is a smoking crater, the socket blown wide and weeping|n",
+        "|RA bullet has shot {their} right eye to wet pulp, fragments crusted on {their} cheek|n",
+        "|R{Their} right eye is gone, a ragged exit wound where the socket used to be|n",
+        "|RWhere {their} right eye sat, a powder-blackened crater oozes blood and matter|n",
+    ],
+    "left_ear": [
+        "|R{Their} left ear is a ragged hole where cartilage used to be, the rim blown away|n",
+        "|RA bullet has torn {their} left ear off in passing, the wound charred at the edges|n",
+        "|R{Their} left ear is shredded down to a stump, the canal weeping blood|n",
+        "|RWhat remains of {their} left ear is a powder-burned ruin clinging to bone|n",
+    ],
+    "right_ear": [
+        "|R{Their} right ear is a ragged hole where cartilage used to be, the rim blown away|n",
+        "|RA bullet has torn {their} right ear off in passing, the wound charred at the edges|n",
+        "|R{Their} right ear is shredded down to a stump, the canal weeping blood|n",
+        "|RWhat remains of {their} right ear is a powder-burned ruin clinging to bone|n",
+    ],
+}

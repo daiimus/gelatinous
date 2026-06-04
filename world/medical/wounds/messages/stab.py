@@ -96,3 +96,32 @@ COMPOUND_DESCRIPTIONS = {
         "{skintone}the {location} is stippled by a {severity} puncture scar among {others_phrase}|n",
     ],
 }
+
+
+# Issue #347: destroyed-stage overlay keyed by location.
+DESTROYED_BY_LOCATION = {
+    "left_eye": [
+        "|R{Their} left eye is a punctured ruin, fluid leaking from the deep hole through it|n",
+        "|RA driven thrust has skewered {their} left eye, the socket bleeding around the puncture|n",
+        "|R{Their} left eye is collapsed inward around a deep puncture wound|n",
+        "|RWhere {their} left eye sat, a narrow ragged hole weeps fluid and dark blood|n",
+    ],
+    "right_eye": [
+        "|R{Their} right eye is a punctured ruin, fluid leaking from the deep hole through it|n",
+        "|RA driven thrust has skewered {their} right eye, the socket bleeding around the puncture|n",
+        "|R{Their} right eye is collapsed inward around a deep puncture wound|n",
+        "|RWhere {their} right eye sat, a narrow ragged hole weeps fluid and dark blood|n",
+    ],
+    "left_ear": [
+        "|R{Their} left ear is punctured through, a dark hole bored clean across the cartilage|n",
+        "|RA thrust has driven through {their} left ear, leaving a torn passage front to back|n",
+        "|R{Their} left ear hangs limp around a deep stab hole|n",
+        "|RWhat is left of {their} left ear surrounds a punched-through wound seeping blood|n",
+    ],
+    "right_ear": [
+        "|R{Their} right ear is punctured through, a dark hole bored clean across the cartilage|n",
+        "|RA thrust has driven through {their} right ear, leaving a torn passage front to back|n",
+        "|R{Their} right ear hangs limp around a deep stab hole|n",
+        "|RWhat is left of {their} right ear surrounds a punched-through wound seeping blood|n",
+    ],
+}

@@ -38,9 +38,26 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
         # Fallback to generic wound descriptions
         message_module = messages.generic
         wound_messages = message_module.WOUND_DESCRIPTIONS
-    
-    # Get descriptions for this stage
-    stage_descriptions = wound_messages.get(stage, wound_messages.get("fresh", []))
+
+    # Issue #347: destroyed-stage overlay keyed by (injury_type, location).
+    # Limb-vocabulary doesn't fit sensory destruction ("His left eye
+    # has been mangled into ribbons of flesh" reads wrong) so each
+    # injury-type module may declare a ``DESTROYED_BY_LOCATION`` dict
+    # mapping high-specificity surfaces (eyes, ears, ...) to bespoke
+    # prose. Falls through to the generic destroyed-stage list when no
+    # overlay exists for this (injury_type, location) cell, so authoring
+    # is incremental and a missing overlay never produces an unauthored
+    # template.
+    stage_descriptions = None
+    if stage == "destroyed":
+        overlay = getattr(message_module, "DESTROYED_BY_LOCATION", None)
+        if overlay and location in overlay:
+            stage_descriptions = overlay[location]
+
+    if stage_descriptions is None:
+        stage_descriptions = wound_messages.get(
+            stage, wound_messages.get("fresh", [])
+        )
     
     if not stage_descriptions:
         location_display = get_location_display_name(location, character)
@@ -85,12 +102,42 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
     from .constants import MEDICAL_COLORS
     format_vars.update(MEDICAL_COLORS)
     
-    # Format with parameters
-    formatted_description = description_data.format(**format_vars)
-    
+    # Format with parameters.  Issue #347: the destroyed-stage overlay
+    # uses pronoun tokens (``{Their}``, ``{their}``) that aren't in
+    # ``format_vars``; we use ``format_map`` with a fallback dict that
+    # preserves unknown ``{key}`` tokens for the pronoun pass below
+    # (a plain ``.format(**format_vars)`` would KeyError on them).
+    class _PreserveMissing(dict):
+        def __missing__(self, key):
+            return "{" + key + "}"
+
+    formatted_description = description_data.format_map(
+        _PreserveMissing(format_vars)
+    )
+
+    # Issue #347: pronoun pass for templates that use ``{Their}`` /
+    # ``{their}`` / ``{Them}`` etc.  Existing templates without
+    # pronoun tokens are no-ops through this pass.
+    if character is not None:
+        try:
+            from world.anatomy import substitute_pronoun_tokens
+            gender = (
+                getattr(character, "gender", None)
+                or character.db.original_gender
+            )
+            formatted_description = substitute_pronoun_tokens(
+                formatted_description,
+                gender=gender,
+                number="singular",
+            )
+        except (AttributeError, ImportError):
+            # Character stub without gender / Evennia not importable —
+            # leave tokens literal rather than crashing.
+            pass
+
     # Apply grammar formatting (capitalization and punctuation)
     formatted_description = _format_wound_grammar(formatted_description)
-    
+
     return formatted_description
 
 

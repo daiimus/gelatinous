@@ -102,3 +102,32 @@ COMPOUND_DESCRIPTIONS = {
         "{skintone}the {location} is etched by a {severity} laceration scar among {others_phrase}|n",
     ],
 }
+
+
+# Issue #347: destroyed-stage overlay keyed by location.
+DESTROYED_BY_LOCATION = {
+    "left_eye": [
+        "|R{Their} left eye is a jagged tear across the socket, vitreous fluid leaking through ragged flaps|n",
+        "|RA brutal rip has shredded {their} left eye, the lid hanging in torn strips|n",
+        "|R{Their} left eye is torn open across its width, the orb collapsed beneath ragged tissue|n",
+        "|RWhere {their} left eye sat, a ripped wound leaks fluid down the cheek|n",
+    ],
+    "right_eye": [
+        "|R{Their} right eye is a jagged tear across the socket, vitreous fluid leaking through ragged flaps|n",
+        "|RA brutal rip has shredded {their} right eye, the lid hanging in torn strips|n",
+        "|R{Their} right eye is torn open across its width, the orb collapsed beneath ragged tissue|n",
+        "|RWhere {their} right eye sat, a ripped wound leaks fluid down the cheek|n",
+    ],
+    "left_ear": [
+        "|R{Their} left ear is torn into ragged strips, the cartilage visible through shredded skin|n",
+        "|RA brutal rip has torn {their} left ear in two, the upper portion lost|n",
+        "|R{Their} left ear hangs in shredded ribbons of skin and cartilage|n",
+        "|RWhat is left of {their} left ear is a torn mess of cartilage and skin tags|n",
+    ],
+    "right_ear": [
+        "|R{Their} right ear is torn into ragged strips, the cartilage visible through shredded skin|n",
+        "|RA brutal rip has torn {their} right ear in two, the upper portion lost|n",
+        "|R{Their} right ear hangs in shredded ribbons of skin and cartilage|n",
+        "|RWhat is left of {their} right ear is a torn mess of cartilage and skin tags|n",
+    ],
+}

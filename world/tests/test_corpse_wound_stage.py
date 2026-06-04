@@ -58,8 +58,9 @@ class CorpseWoundStageTests(TestCase):
         # shredded, severance) rather than the old clinical wording
         # (amputation, surgically removed).
         severed_markers = (
-            "stump", "bone", "joint", "tear", "severance", "shredded",
-            "amputation", "severed", "amputated",
+            "stump", "bone", "joint", "tear", "torn", "severance",
+            "shredded", "amputation", "severed", "amputated",
+            "wreckage", "loose",
         )
         fresh_markers = (
             "showing damage", "traumatic wound", "requiring attention",

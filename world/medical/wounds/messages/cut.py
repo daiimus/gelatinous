@@ -67,6 +67,40 @@ WOUND_DESCRIPTIONS = {
 }
 
 
+# Issue #347: destroyed-stage overlay keyed by location.  Sensory
+# surfaces (eyes, ears) read wrong with limb-vocabulary destruction
+# prose, so these cells override the generic ``destroyed`` list with
+# anatomically appropriate templates.  Missing cells fall through to
+# ``WOUND_DESCRIPTIONS["destroyed"]`` — limb destruction reads
+# correctly through the existing prose.
+DESTROYED_BY_LOCATION = {
+    "left_eye": [
+        "|R{Their} left eye is split open, vitreous fluid weeping down {their} cheek|n",
+        "|RA cleaving cut has bisected {their} left eye, the lid hanging in a bloody flap|n",
+        "|R{Their} left eye is sliced through, the cornea opened along a single sharp seam|n",
+        "|RWhere {their} left eye sat, a slashed ruin weeps clear fluid and blood|n",
+    ],
+    "right_eye": [
+        "|R{Their} right eye is split open, vitreous fluid weeping down {their} cheek|n",
+        "|RA cleaving cut has bisected {their} right eye, the lid hanging in a bloody flap|n",
+        "|R{Their} right eye is sliced through, the cornea opened along a single sharp seam|n",
+        "|RWhere {their} right eye sat, a slashed ruin weeps clear fluid and blood|n",
+    ],
+    "left_ear": [
+        "|R{Their} left ear hangs in two pieces, cartilage exposed at the cut|n",
+        "|RA blade has cleaved {their} left ear nearly off, the cartilage pale through the slit|n",
+        "|R{Their} left ear is sliced in half, the upper portion lost and the lower bleeding freely|n",
+        "|RWhat remains of {their} left ear is a sliced ribbon of skin and cartilage|n",
+    ],
+    "right_ear": [
+        "|R{Their} right ear hangs in two pieces, cartilage exposed at the cut|n",
+        "|RA blade has cleaved {their} right ear nearly off, the cartilage pale through the slit|n",
+        "|R{Their} right ear is sliced in half, the upper portion lost and the lower bleeding freely|n",
+        "|RWhat remains of {their} right ear is a sliced ribbon of skin and cartilage|n",
+    ],
+}
+
+
 # Compound descriptions: two or more wounds at one location, worst-first.
 COMPOUND_DESCRIPTIONS = {
     "fresh": [
