@@ -1326,6 +1326,24 @@ class Appendage(Item):
         # was captured at sever time; falls back to "human" when absent.
         species = self.db.source_species or "human"
 
+        # Issue #350 follow-up: suppress the authored longdesc at any
+        # display location whose organ was destroyed at sever time.
+        # The carried wound list (``wounds_at_death``) is rewritten to
+        # ``stage="old"`` at sever overlay so a wound-list check would
+        # miss destroyed-stage entries; we read the preserved organ
+        # snapshot directly instead.  Without this, a head decapitated
+        # after an eye was pulped renders "His left eye is brown"
+        # alongside the carried eye wound (issue #350 PR-B parity).
+        try:
+            from world.medical.wounds import (
+                get_destroyed_locations_from_snapshot,
+            )
+            destroyed_locs = get_destroyed_locations_from_snapshot(
+                self.db.medical_state_at_death
+            )
+        except ImportError:
+            destroyed_locs = set()
+
         try:
             from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
         except ImportError:
@@ -1366,7 +1384,11 @@ class Appendage(Item):
         def _build_location_chunk(loc):
             pieces = []
             text = longdescs.get(loc)
-            if text:
+            if text and loc not in destroyed_locs:
+                # Suppression rule mirrors the living-character /
+                # corpse paths (PR-B): a destroyed organ surfaces its
+                # destruction through the wound layer, so the authored
+                # body-part prose is dropped to avoid contradicting it.
                 pieces.append(
                     substitute_pronoun_tokens(
                         text, gender=gender, name=name, species=species,

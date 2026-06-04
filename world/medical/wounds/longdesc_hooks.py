@@ -30,6 +30,57 @@ from . import messages
 import random
 
 
+def get_destroyed_locations_from_snapshot(snapshot):
+    """Return the set of display locations with destroyed-stage organs
+    in a preserved medical-state snapshot.
+
+    Used by severed-part renderers (``Appendage.return_appearance``,
+    including ``SeveredHead``) to drive the destroyed-organ longdesc
+    suppression (issue #350 follow-up).  These items can't use
+    :func:`get_destroyed_display_locations` because their carried
+    wound list (``db.wounds_at_death``) is rewritten to
+    ``stage="old"`` at sever time — the destroyed-stage signal lives
+    only in the preserved organ snapshot.
+
+    Snapshot shape (the dict produced by
+    :meth:`world.medical.core.MedicalState.to_dict`):
+
+    .. code-block:: python
+
+        {
+            "organs": {
+                "left_eye": {
+                    "container": "head",
+                    "display_location": "left_eye",
+                    "wound_stage": "destroyed",
+                    ...
+                },
+                ...
+            },
+            ...
+        }
+
+    Falls back to ``container`` when a snapshot entry omits
+    ``display_location`` (legacy snapshots pre-#346).
+
+    Args:
+        snapshot: ``dict`` produced by ``MedicalState.to_dict``, or
+            ``None``.
+
+    Returns:
+        ``set[str]`` of display-location names.
+    """
+    organs = (snapshot or {}).get("organs") or {}
+    locs = set()
+    for data in organs.values():
+        if data.get("wound_stage") != "destroyed":
+            continue
+        loc = data.get("display_location") or data.get("container")
+        if loc:
+            locs.add(loc)
+    return locs
+
+
 def get_destroyed_display_locations(wounds):
     """Return the set of display locations with destroyed-stage wounds.
 
