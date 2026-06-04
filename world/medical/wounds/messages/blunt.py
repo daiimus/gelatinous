@@ -125,3 +125,20 @@ DESTROYED_BY_LOCATION = {
         "|RWhat is left of {their} right ear is a flattened ruin, dark with bruise and blood|n",
     ],
 }
+
+
+# Issue #350 / PR-C: paired destruction overlay (blunt).
+DESTROYED_BY_PAIR = {
+    "eyes": [
+        "|RBoth of {their} eyes are pulped in their sockets, the lids swollen black around the twin ruins|n",
+        "|RCrushing impacts have burst both of {their} eyes, fluid weeping over the bruised cheeks|n",
+        "|R{Their} eyes are collapsed inward on both sides, the sockets caved and weeping|n",
+        "|RWhat was {their} eyes are sunken pulps, the orbital bones pressed flat around them|n",
+    ],
+    "ears": [
+        "|RBoth of {their} ears are mashed flat against the skull, the cartilage crushed and weeping|n",
+        "|RHeavy blows have pulped both of {their} ears into the sides of {their} head|n",
+        "|R{Their} ears are reduced to swollen lumps of bruised tissue on both sides|n",
+        "|RWhat is left of {their} ears are flattened ruins, dark with bruise and blood|n",
+    ],
+}

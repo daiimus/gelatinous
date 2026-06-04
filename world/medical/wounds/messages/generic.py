@@ -157,3 +157,22 @@ DESTROYED_BY_LOCATION = {
         "|R{Their} right ear is a torn stump of cartilage and skin|n",
     ],
 }
+
+
+# Issue #350 / PR-C: paired destruction overlay (generic fallback).
+# Used when the per-injury-type module has no entry for this pair,
+# or as the ultimate fallback when no per-side mechanism matches.
+DESTROYED_BY_PAIR = {
+    "eyes": [
+        "|RBoth of {their} eyes are ruined sockets, the orbs destroyed beyond recognition|n",
+        "|RWhere {their} eyes sat, twin wet wounds weep fluid and blood|n",
+        "|R{Their} eyes are gone, the sockets raw on both sides|n",
+        "|RBoth of {their} eyes have been destroyed, leaving hollow ruins|n",
+    ],
+    "ears": [
+        "|RBoth of {their} ears are destroyed, only ragged wounds remaining|n",
+        "|RWhere {their} ears were, torn wounds bleed slowly on both sides|n",
+        "|R{Their} ears have been ruined, the canals exposed and weeping|n",
+        "|RBoth of {their} ears are torn stumps of cartilage and skin|n",
+    ],
+}

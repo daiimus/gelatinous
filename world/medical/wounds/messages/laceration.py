@@ -131,3 +131,20 @@ DESTROYED_BY_LOCATION = {
         "|RWhat is left of {their} right ear is a torn mess of cartilage and skin tags|n",
     ],
 }
+
+
+# Issue #350 / PR-C: paired destruction overlay (laceration).
+DESTROYED_BY_PAIR = {
+    "eyes": [
+        "|RBoth of {their} eyes are jagged tears across the sockets, vitreous fluid leaking through ragged flaps|n",
+        "|RBrutal rips have shredded both of {their} eyes, the lids hanging in torn strips|n",
+        "|R{Their} eyes are torn open across their width, the orbs collapsed beneath ragged tissue|n",
+        "|RWhere {their} eyes sat, ripped wounds leak fluid down both cheeks|n",
+    ],
+    "ears": [
+        "|RBoth of {their} ears are torn into ragged strips, the cartilage visible through shredded skin|n",
+        "|RBrutal rips have torn both of {their} ears in two, the upper portions lost|n",
+        "|R{Their} ears hang in shredded ribbons of skin and cartilage on both sides|n",
+        "|RWhat is left of {their} ears are torn messes of cartilage and skin tags|n",
+    ],
+}

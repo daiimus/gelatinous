@@ -130,3 +130,23 @@ COMPOUND_DESCRIPTIONS = {
         "{skintone}the {location} is etched by a {severity} cutting scar among {others_phrase}|n",
     ],
 }
+
+
+# Issue #350 / PR-C: paired destruction overlay keyed by pair shorthand.
+# Used when both sides of a symmetric pair have been destroyed by a
+# CUT-class wound; collapses two per-side lines into one plural line
+# that reads anatomically natural.
+DESTROYED_BY_PAIR = {
+    "eyes": [
+        "|RBoth of {their} eyes have been split open, vitreous fluid weeping down {their} cheeks|n",
+        "|R{Their} eyes are sliced through, the lids hanging in bloody flaps on both sides|n",
+        "|RA cleaving stroke has bisected both of {their} eyes, the sockets weeping in tandem|n",
+        "|RWhere {their} eyes sat, twin slashed ruins drip fluid and blood|n",
+    ],
+    "ears": [
+        "|RBoth of {their} ears hang in pieces, cartilage exposed where blades crossed|n",
+        "|R{Their} ears have been cleaved nearly off on both sides, pale cartilage gleaming through the slits|n",
+        "|RA blade has sliced both of {their} ears, the upper portions lost and the lower ones bleeding freely|n",
+        "|RWhat remains of {their} ears are sliced ribbons of skin and cartilage on both sides|n",
+    ],
+}

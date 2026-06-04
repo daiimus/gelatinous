@@ -33,6 +33,7 @@ from .wound_descriptions import (
 from .longdesc_hooks import (
     append_wounds_to_longdesc,
     get_destroyed_display_locations,
+    get_paired_destroyed_description,
     get_paired_severed_description,
     get_standalone_wound_description,
 )
@@ -54,6 +55,7 @@ __all__ = [
     # Longdesc integration hooks
     'append_wounds_to_longdesc',
     'get_destroyed_display_locations',
+    'get_paired_destroyed_description',
     'get_paired_severed_description',
     'get_standalone_wound_description',
 

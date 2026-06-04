@@ -295,6 +295,30 @@ class Corpse(IdentityBearerMixin, Item):
         except ImportError:
             destroyed_locs = set()
 
+        # Issue #350 / PR-C: wound-side pair collapse for both-sides-
+        # destroyed-same-mechanism.  Uses the preserved wound snapshot
+        # (no live medical state on a corpse) by threading wounds=
+        # through ``get_paired_destroyed_description``.
+        destroyed_pair_anchor = {}
+        destroyed_pair_skip = set()
+        try:
+            from world.medical.wounds import get_paired_destroyed_description
+            snapshot_wounds = self.db.wounds_at_death or []
+            for pair_key, (l_loc, r_loc) in pair_keys.items():
+                if l_loc not in destroyed_locs or r_loc not in destroyed_locs:
+                    continue
+                if l_loc in coverage_map or r_loc in coverage_map:
+                    continue
+                rendered = get_paired_destroyed_description(
+                    self, pair_key, l_loc, r_loc,
+                    wounds=snapshot_wounds,
+                )
+                if rendered:
+                    destroyed_pair_anchor[l_loc] = rendered
+                    destroyed_pair_skip.add(r_loc)
+        except ImportError:
+            pass
+
         # Pre-compute symmetric pair collapse: which left_* anchors absorb
         # their right_* partner under a single plural render.
         collapse_anchor = {}  # left_loc -> plural-rendered description
@@ -330,6 +354,15 @@ class Corpse(IdentityBearerMixin, Item):
             if location in collapse_skip:
                 # Right side of a collapsed pair — already rendered at the
                 # left anchor; do not render again.
+                continue
+            if location in destroyed_pair_skip:
+                # Issue #350 / PR-C: right side of a destruction pair
+                # collapse; rendered at the left anchor below.
+                continue
+            if location in destroyed_pair_anchor:
+                descriptions.append(
+                    (location, destroyed_pair_anchor[location])
+                )
                 continue
             if location in coverage_map:
                 # Location covered by clothing - use clothing description instead

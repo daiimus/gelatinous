@@ -100,6 +100,16 @@ class AppearanceMixin:
             looker, longdescs, coverage_map, destroyed_locs
         )
 
+        # Issue #350 / PR-C: wound-side pair collapse for both-sides-
+        # destroyed-same-mechanism.  Pre-renders one pair line at the
+        # left location and skips the right; takes precedence over
+        # per-side wound rendering in the loop below.
+        destroyed_pair_anchor, destroyed_pair_skip = (
+            self._build_destroyed_pair_collapse(
+                looker, coverage_map, destroyed_locs,
+            )
+        )
+
         # Track which clothing items we've already added to avoid duplicates
         added_clothing_items = set()
 
@@ -107,6 +117,17 @@ class AppearanceMixin:
         for location in ANATOMICAL_DISPLAY_ORDER:
             if location in collapse_skip:
                 # Partner of a collapsed pair; rendered at the anchor location.
+                continue
+            if location in destroyed_pair_skip:
+                # Issue #350 / PR-C: right side of a destruction pair
+                # collapse; rendered at the left anchor.
+                continue
+            if location in destroyed_pair_anchor:
+                # Issue #350 / PR-C: both sides destroyed by same
+                # mechanism — single pluralized destruction line.
+                descriptions.append(
+                    (location, destroyed_pair_anchor[location])
+                )
                 continue
             if location in collapse_map:
                 descriptions.append((location, collapse_map[location]))
@@ -178,6 +199,13 @@ class AppearanceMixin:
         for location in all_locations:
             if location not in ANATOMICAL_DISPLAY_ORDER:
                 if location in collapse_skip:
+                    continue
+                if location in destroyed_pair_skip:
+                    continue
+                if location in destroyed_pair_anchor:
+                    descriptions.append(
+                        (location, destroyed_pair_anchor[location])
+                    )
                     continue
                 if location in collapse_map:
                     descriptions.append((location, collapse_map[location]))
@@ -370,6 +398,60 @@ class AppearanceMixin:
             if all(w.get('stage') == 'severed' for w in location_wounds):
                 severed.add(location)
         return severed
+
+    def _build_destroyed_pair_collapse(self, looker, coverage_map,
+                                       destroyed_locs):
+        """Pre-compute wound-side pair collapse for both-sides-destroyed
+        symmetric pairs (issue #350 / PR-C).
+
+        For each pair-key in the species pair table whose left+right
+        sides are both in ``destroyed_locs`` AND share an injury type,
+        we render one ``DESTROYED_BY_PAIR``-overlay pair line at the
+        left anchor and skip the right side in the main render loop.
+        Pairs with asymmetric coverage are excluded — clothing breaks
+        the visual pairing the same way it does for the longdesc
+        collapse pass.
+
+        Mismatched mechanisms (left eye cut, right eye shot) fail the
+        common-injury-type check inside
+        :func:`world.medical.wounds.get_paired_destroyed_description`
+        and the per-side rendering takes over.
+
+        Args:
+            looker: Reserved for permission checks.
+            coverage_map: ``location -> clothing_item`` mapping.
+            destroyed_locs: Set of locations with destroyed wounds
+                (pre-computed by :meth:`_get_destroyed_locations`).
+
+        Returns:
+            ``(anchor_map, skip_set)`` — left anchors to pair-line
+            strings and right partners to skip.
+        """
+        anchor = {}
+        skip = set()
+        try:
+            from world.anatomy.species import get_species_pair_keys
+            from world.medical.wounds import get_paired_destroyed_description
+        except ImportError:
+            return anchor, skip
+
+        species = getattr(self.db, "species", None)
+        for pair_key, (left_loc, right_loc) in get_species_pair_keys(species).items():
+            if left_loc not in destroyed_locs:
+                continue
+            if right_loc not in destroyed_locs:
+                continue
+            # Asymmetric clothing breaks the visual pairing — same rule
+            # as the longdesc-collapse pass.
+            if left_loc in coverage_map or right_loc in coverage_map:
+                continue
+            rendered = get_paired_destroyed_description(
+                self, pair_key, left_loc, right_loc, looker=looker,
+            )
+            if rendered:
+                anchor[left_loc] = rendered
+                skip.add(right_loc)
+        return anchor, skip
 
     def _get_destroyed_locations(self):
         """Return the set of display locations with destroyed-stage wounds.

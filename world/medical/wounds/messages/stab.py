@@ -125,3 +125,20 @@ DESTROYED_BY_LOCATION = {
         "|RWhat is left of {their} right ear surrounds a punched-through wound seeping blood|n",
     ],
 }
+
+
+# Issue #350 / PR-C: paired destruction overlay (stab).
+DESTROYED_BY_PAIR = {
+    "eyes": [
+        "|RBoth of {their} eyes are punctured ruins, fluid leaking from twin deep wounds|n",
+        "|RDriven thrusts have skewered both of {their} eyes, the sockets bleeding around the punctures|n",
+        "|R{Their} eyes are collapsed inward around deep puncture wounds on both sides|n",
+        "|RWhere {their} eyes sat, two narrow ragged holes weep fluid and dark blood|n",
+    ],
+    "ears": [
+        "|RBoth of {their} ears are punctured through, dark holes bored clean across the cartilage|n",
+        "|RThrusts have driven through both of {their} ears, leaving torn passages front to back|n",
+        "|R{Their} ears hang limp around deep stab holes on both sides|n",
+        "|RWhat is left of {their} ears surrounds punched-through wounds seeping blood|n",
+    ],
+}

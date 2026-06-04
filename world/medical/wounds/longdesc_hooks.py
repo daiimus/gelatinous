@@ -260,6 +260,150 @@ def get_paired_severed_description(character, left_location, right_location,
     return _format_wound_grammar(template.format(location=location_display))
 
 
+def get_paired_destroyed_description(character, pair_key,
+                                     left_location, right_location,
+                                     looker=None, wounds=None):
+    """Render one plural destruction line for both sides destroyed by
+    the same injury type (issue #350 / PR-C).
+
+    When both members of a ``left_*``/``right_*`` pair carry destroyed
+    wounds AND those wounds share an injury type, the per-side
+    destruction lines are collapsed into a single pair line keyed by
+    the pair shorthand (``"eyes"``, ``"ears"``, ...) on the injury-
+    type module's ``DESTROYED_BY_PAIR`` overlay.  Falls through to
+    ``messages.generic.DESTROYED_BY_PAIR`` when the per-injury-type
+    overlay has no entry; returns ``None`` when the generic also
+    lacks a template (caller then renders each side independently).
+
+    Mismatched mechanisms (e.g., left eye cut, right eye shot) do NOT
+    collapse — the per-side render reads more honestly than a
+    paper-thin \"both eyes destroyed\" generalization that hides which
+    mechanism took which.
+
+    Args:
+        character: Character / corpse object.  Used for gender /
+            species lookup (falls back across ``.gender`` and
+            ``.db.original_gender`` so both live characters and
+            corpses work) and for skintone if a template needs it.
+        pair_key (str): Pair shorthand from the species pair table
+            (``"eyes"``, ``"ears"``, ``"arms"``, ...).
+        left_location (str): The ``left_*`` member.
+        right_location (str): The ``right_*`` member.
+        looker: Reserved for future permission checks.
+        wounds: Optional wound-list override.  When ``None`` (the
+            living-character default) we call ``get_character_wounds``
+            which filters by clothing visibility.  Corpses pass
+            ``self.db.wounds_at_death`` so the preserved snapshot
+            drives the collapse decision without a live medical-state
+            lookup.
+
+    Returns:
+        str | None: A formatted pair-destruction sentence when both
+            sides are destroyed by a common injury type and an
+            overlay template exists, else ``None``.
+    """
+    if wounds is None:
+        wounds = get_character_wounds(character)
+    left_destroyed = [
+        w for w in wounds
+        if w["location"] == left_location and w.get("stage") == "destroyed"
+    ]
+    right_destroyed = [
+        w for w in wounds
+        if w["location"] == right_location and w.get("stage") == "destroyed"
+    ]
+    if not left_destroyed or not right_destroyed:
+        return None
+
+    # Common injury type: both sides destroyed by the same mechanism.
+    # Mismatched mechanisms fall through to per-side rendering — that
+    # reads more honestly than collapsing two different causes into
+    # one pair line.
+    left_types = {w["injury_type"] for w in left_destroyed}
+    right_types = {w["injury_type"] for w in right_destroyed}
+    common = left_types & right_types
+    if not common:
+        return None
+    # When more than one injury type matches both sides (e.g., both
+    # eyes carried cut AND blunt wounds, both destroyed), pick the
+    # alphabetical first for determinism — the variation between
+    # cells is mostly cosmetic and the per-side fallback is fine if
+    # this isn't a great match.
+    injury_type = sorted(common)[0]
+
+    # Overlay lookup: per-injury-type → generic fallback → None.
+    try:
+        message_module = getattr(messages, injury_type)
+    except AttributeError:
+        message_module = messages.generic
+    overlay = getattr(message_module, "DESTROYED_BY_PAIR", None) or {}
+    variants = overlay.get(pair_key)
+    if not variants:
+        generic_overlay = getattr(messages.generic, "DESTROYED_BY_PAIR", None) or {}
+        variants = generic_overlay.get(pair_key)
+    if not variants:
+        return None
+
+    template = random.choice(variants)
+
+    # Severity drive from the worst left+right wound (Critical wins).
+    severity_order = ("Light", "Moderate", "Severe", "Critical")
+    worst = max(
+        left_destroyed + right_destroyed,
+        key=lambda w: severity_order.index(w.get("severity", "Moderate"))
+        if w.get("severity") in severity_order else 1,
+    )
+
+    location_display = ""  # Pair templates address the body directly via
+    # pronouns / explicit pair noun; the {location} token is available if
+    # an author wants the species-routed pair noun.
+    try:
+        from world.grammar import pluralize_noun
+        # Pair shorthand IS already plural ("eyes", "ears"), but some
+        # authors may have built it from a singular stem. Be defensive.
+        location_display = pluralize_noun(
+            pair_key[:-1] if pair_key.endswith("s") else pair_key
+        )
+    except ImportError:
+        location_display = pair_key
+
+    format_vars = {
+        "severity": INJURY_SEVERITY_MAP.get(
+            worst.get("severity", "Moderate"),
+            worst.get("severity", "Moderate").lower(),
+        ),
+        "location": location_display,
+        "injury_type": injury_type,
+        "skintone": "",
+    }
+    format_vars.update(MEDICAL_COLORS)
+
+    class _PreserveMissing(dict):
+        def __missing__(self, key):
+            return "{" + key + "}"
+
+    rendered = template.format_map(_PreserveMissing(format_vars))
+
+    # Pronoun pass — pair-collapsed prose typically uses ``{Their}``,
+    # ``{their}``, ``{them}`` to read naturally.  Plural number so
+    # body-noun flex stays at the pair-shorthand level (``"eyes"``
+    # not ``"eye"``).
+    try:
+        from world.anatomy import substitute_pronoun_tokens
+        gender = (
+            getattr(character, "gender", None)
+            or character.db.original_gender
+        )
+        species = getattr(character.db, "species", None) or "human"
+        rendered = substitute_pronoun_tokens(
+            rendered, gender=gender, number="plural", species=species,
+        )
+    except (AttributeError, ImportError):
+        pass
+
+    return _format_wound_grammar(rendered)
+
+
 def _location_is_severed(character, location):
     """Return True if every wound at ``location`` is a clean severance."""
     location_wounds = [

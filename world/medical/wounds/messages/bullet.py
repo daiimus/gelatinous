@@ -125,3 +125,20 @@ DESTROYED_BY_LOCATION = {
         "|RWhat remains of {their} right ear is a powder-burned ruin clinging to bone|n",
     ],
 }
+
+
+# Issue #350 / PR-C: paired destruction overlay (bullet).
+DESTROYED_BY_PAIR = {
+    "eyes": [
+        "|RBoth of {their} eyes are smoking craters, the sockets blown wide and weeping|n",
+        "|RBullets have shot both of {their} eyes to wet pulp, fragments crusted on {their} cheeks|n",
+        "|R{Their} eyes are gone, ragged exit wounds where the sockets used to be|n",
+        "|RWhere {their} eyes sat, powder-blackened craters ooze blood and matter|n",
+    ],
+    "ears": [
+        "|RBoth of {their} ears are ragged holes where cartilage used to be, the rims blown away|n",
+        "|RBullets have torn both of {their} ears off in passing, the wounds charred at the edges|n",
+        "|R{Their} ears are shredded down to stumps on both sides, the canals weeping blood|n",
+        "|RWhat remains of {their} ears are powder-burned ruins clinging to bone|n",
+    ],
+}
