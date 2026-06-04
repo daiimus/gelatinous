@@ -51,11 +51,15 @@ class CorpseWoundStageTests(TestCase):
         descriptions = corpse.get_preserved_wound_descriptions()
         self.assertEqual(len(descriptions), 1)
         text = descriptions[0]
-        # The severed-stage templates describe stumps / amputations.
-        # Fresh-stage templates describe active injuries.
-        # The substantive marker words live in each.
+        # The severed-stage templates describe stumps and joint
+        # severance. Fresh-stage templates describe active injuries.
+        # Markers updated for #337's combat-flavored prose rewrite —
+        # the new templates use visceral vocabulary (stump, joint,
+        # shredded, severance) rather than the old clinical wording
+        # (amputation, surgically removed).
         severed_markers = (
-            "amputation", "severed", "amputated", "removed",
+            "stump", "bone", "joint", "tear", "severance", "shredded",
+            "amputation", "severed", "amputated",
         )
         fresh_markers = (
             "showing damage", "traumatic wound", "requiring attention",

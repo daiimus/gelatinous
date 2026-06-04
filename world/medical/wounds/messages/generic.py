@@ -46,13 +46,13 @@ WOUND_DESCRIPTIONS = {
     ],
     
     "severed": [
-        "A clean surgical amputation where the {location} once was, properly treated|n",
-        "The {location} has been medically severed with sterile bandaging|n",
-        "A professionally treated amputation site where the {location} was removed|n",
-        "The {location} has been cleanly amputated with proper medical closure|n",
-        "A sterile severance with surgical care where the {location} once was|n",
-        "The {location} has been surgically removed with clinical precision|n",
-        "A medically treated amputation where the {location} was cleanly severed|n"
+        "|RThe {location} has been severed at the joint, leaving a ragged stump|n",
+        "|RWhere the {location} once attached, only a raw wound and bare bone remain|n",
+        "|RA single brutal moment took the {location} away, the wound still weeping|n",
+        "|RThe {location} is gone — severed cleanly, the stump bright with fresh blood|n",
+        "|RA visceral amputation marks where the {location} once was, the wound raw|n",
+        "|RThe {location} has been taken off the body, leaving a ragged, weeping wound|n",
+        "|RBlood pools beneath the stump where the {location} used to be|n"
     ],
     
     "scarred": [

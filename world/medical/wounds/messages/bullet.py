@@ -46,13 +46,13 @@ WOUND_DESCRIPTIONS = {
     ],
     
     "severed": [
-        "A clean surgical amputation where the {location} once was, properly bandaged|n",
-        "The {location} has been medically severed with neat surgical dressing|n",
-        "A professionally treated amputation site where the {location} was removed|n",
-        "The {location} has been cleanly amputated with proper medical closure|n",
-        "A sterile amputation site with surgical sutures where the {location} once was|n",
-        "The {location} has been surgically removed with clinical precision|n",
-        "A medically treated severance where the {location} was cleanly amputated|n"
+        "|RThe {location} has been blown clean off, the stump shredded and ragged|n",
+        "|RWhere the {location} once attached, only torn flesh and shattered bone remain|n",
+        "|RHigh-velocity impact took the {location} away, the wound a ruin of meat and fragments|n",
+        "|RThe {location} is gone — torn off in a spray of red, the stump a shredded mess|n",
+        "|RA round took the {location} clean off, the bone end pulverized and the flesh torn|n",
+        "|RThe {location} has been ballistic-amputated, the wound a ragged crater|n",
+        "|RHeavy gunfire tore the {location} away, leaving a wound of mangled tissue and bone shards|n"
     ],
     
     "scarred": [

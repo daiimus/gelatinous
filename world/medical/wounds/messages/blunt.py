@@ -46,13 +46,13 @@ WOUND_DESCRIPTIONS = {
     ],
     
     "severed": [
-        "A clean surgical amputation where the {location} once was, properly bandaged|n",
-        "The {location} has been medically severed with sterile wound dressing|n",
-        "A professionally treated amputation site where the {location} was removed|n",
-        "The {location} has been cleanly amputated with surgical closure|n",
-        "A sterile severance with medical sutures where the {location} once was|n",
-        "The {location} has been surgically removed with proper medical care|n",
-        "A medically treated amputation where the {location} was cleanly severed|n"
+        "|RThe {location} has been pulped off the body, the stump shattered and ragged|n",
+        "|RWhere the {location} once attached, only a mangled mess of crushed tissue and splintered bone remains|n",
+        "|RBlunt force took the {location} away, the wound a ruin of crushed bone and pulped meat|n",
+        "|RThe {location} is gone — pounded loose from the joint, the stump torn and ragged|n",
+        "|RA crushing severance marks where the {location} once was, the bone end pulverized|n",
+        "|RThe {location} has been beaten off the body, the wound a brutal pulp|n",
+        "|RHeavy impact tore the {location} away, leaving a wreck of crushed bone and torn skin|n"
     ],
     
     "scarred": [
