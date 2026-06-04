@@ -96,6 +96,28 @@ SPECIES_DEFINITIONS = {
             "right_ear": "right ear",
         },
 
+        # Symmetric body-noun pair table (issue #350 / PR-A).  Each
+        # entry maps a pair shorthand (``"eyes"``, ``"arms"``, ...) to
+        # the ``(left_location, right_location)`` tuple it collapses.
+        # Consumed by the longdesc renderer's pair-collapse pass, the
+        # body-noun flex / side-aware singular routing, and the
+        # ``describe`` command's pair-shorthand expansion.  Previously
+        # this lived as a global ``world.combat.constants.PAIR_MERGE_KEYS``
+        # constant; moving it here lets non-humans declare their own
+        # anatomy (cyclops → ``{}``; insectoid compound eye → ``{}``;
+        # spider → ``{"eyes": ("anterior_eyes", "posterior_eyes"), ...}``;
+        # hydra → multi-head pairs).  The global constant in
+        # ``world.combat.constants`` is now derived from this table.
+        "pair_keys": {
+            "eyes":   ("left_eye",   "right_eye"),
+            "ears":   ("left_ear",   "right_ear"),
+            "arms":   ("left_arm",   "right_arm"),
+            "hands":  ("left_hand",  "right_hand"),
+            "thighs": ("left_thigh", "right_thigh"),
+            "shins":  ("left_shin",  "right_shin"),
+            "feet":   ("left_foot",  "right_foot"),
+        },
+
         # Compound names used when severance carries downstream limb
         # parts off the body as a single Appendage (issue #339).
         # Severing at the thigh takes shin + foot, so the Appendage
@@ -211,6 +233,41 @@ def _resolve_species(species: str | None) -> dict:
     if not species:
         return SPECIES_DEFINITIONS["human"]
     return SPECIES_DEFINITIONS.get(species, SPECIES_DEFINITIONS["human"])
+
+
+def get_species_pair_keys(species: str | None) -> dict:
+    """Return the symmetric pair table for a species.
+
+    Each entry maps a pair shorthand (``"eyes"``, ``"arms"``, ...) to
+    a ``(left_location, right_location)`` tuple.  The longdesc
+    renderer's pair-collapse pass, the body-noun flex / side-aware
+    singular routing, and the ``describe`` command's pair-shorthand
+    expansion all consult this table to decide which surfaces pair
+    on a given body.
+
+    Species variation:
+
+    * Bilateral humanoids (humans, rat-people, dogs) declare the
+      familiar ``left_*``/``right_*`` pairs.
+    * Single-instance organs (cyclops central eye, insectoid compound
+      eye) declare no pair for that surface — destruction at that
+      location is single-line by definition because the pair-collapse
+      pass never reaches it.
+    * Multi-pair anatomies (spider with anterior / posterior eye
+      clusters) can declare any number of pairs keyed by the species's
+      own anatomical vocabulary.
+
+    Args:
+        species: Species identifier (e.g. ``"human"``); ``None`` /
+            unknown species fall back to ``"human"``.
+
+    Returns:
+        Pair-shorthand → ``(left, right)`` mapping.  Empty dict on
+        species that declare no pairs (returns a fresh dict so callers
+        can mutate without aliasing the registry).
+    """
+    spec = _resolve_species(species)
+    return dict(spec.get("pair_keys") or {})
 
 
 def get_species_location_display(species: str | None, location: str) -> str:

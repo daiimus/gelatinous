@@ -66,7 +66,7 @@ REGION_BREAK_PRIORITY = True     # Prefer breaking between anatomical regions
 # Valid location validation set (expandable)
 VALID_LONGDESC_LOCATIONS = set(DEFAULT_LONGDESC_LOCATIONS.keys())
 
-# Symmetric left/right body-part pairs.
+# Symmetric left/right body-part pairs (HUMAN default).
 #
 # Maps a plural shorthand key (the form a player types into ``describe`` and
 # the noun a collapsed pair reads as) to its two underlying ``left_*``/
@@ -80,15 +80,18 @@ VALID_LONGDESC_LOCATIONS = set(DEFAULT_LONGDESC_LOCATIONS.keys())
 #
 # These keys are NOT body locations themselves: they are not in the default
 # anatomy, are not wearable, and are not render keys.
-PAIR_MERGE_KEYS = {
-    "eyes": ("left_eye", "right_eye"),
-    "ears": ("left_ear", "right_ear"),
-    "arms": ("left_arm", "right_arm"),
-    "hands": ("left_hand", "right_hand"),
-    "thighs": ("left_thigh", "right_thigh"),
-    "shins": ("left_shin", "right_shin"),
-    "feet": ("left_foot", "right_foot"),
-}
+#
+# As of issue #350 (PR-A) the canonical source of truth lives in the species
+# registry: ``world.anatomy.species.SPECIES_DEFINITIONS["human"]["pair_keys"]``.
+# This constant is derived from that table so existing callers that lack a
+# species context (admin commands, mob-flavor generators) continue to work
+# while species-aware callers (longdesc renderers, corpse, severance) consult
+# ``world.anatomy.get_species_pair_keys(species)`` directly.
+from world.anatomy.species import SPECIES_DEFINITIONS as _SPECIES_DEFINITIONS
+PAIR_MERGE_KEYS = dict(
+    _SPECIES_DEFINITIONS["human"].get("pair_keys") or {}
+)
+del _SPECIES_DEFINITIONS
 
 # Curated vocabulary of singular body nouns the longdesc token resolver should
 # number-flex as NOUNS rather than conjugate as verbs. This is VOCABULARY ONLY:

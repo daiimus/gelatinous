@@ -69,7 +69,8 @@ _PRONOUN_MAP = {
 
 
 def substitute_pronoun_tokens(text, *, gender, name="the corpse",
-                              number="singular", side=None):
+                              number="singular", side=None,
+                              species=None):
     """Replace ``{pronoun}`` / ``{name}`` / body-noun tokens in preserved prose.
 
     Always third-person (the subject is an inanimate corpse or severed
@@ -104,6 +105,12 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse",
             set with ``number="singular"`` and the token is a pair-
             keyed body noun, the side is prefixed onto the singular
             form (#341).
+        species (str | None): Species identifier used to pick the
+            pair-keyed noun set (issue #350 / PR-A).  Unknown / None
+            falls back to ``"human"`` via the species registry so
+            existing humanoid callers keep working without threading
+            a species argument; non-humans declare their own pair
+            table in :data:`world.anatomy.species.SPECIES_DEFINITIONS`.
 
     Returns:
         str: ``text`` with pronoun, name, and body-noun tokens resolved.
@@ -128,12 +135,12 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse",
 
     # Body-noun / verb flex pass.  Done after pronouns so an unhandled
     # leftover brace can fall through cleanly.
-    processed = _flex_body_tokens(processed, number, side)
+    processed = _flex_body_tokens(processed, number, side, species=species)
 
     return processed
 
 
-def _flex_body_tokens(text, number, side=None):
+def _flex_body_tokens(text, number, side=None, *, species=None):
     """Flex remaining braced tokens as body nouns or verbs.
 
     Mirrors the resolution order of
@@ -145,10 +152,17 @@ def _flex_body_tokens(text, number, side=None):
 
     Side-aware singular flex (#341) for pair-keyed nouns is applied
     when ``side`` is provided AND number is singular.
+
+    Pair-keyed nouns are species-aware (issue #350 / PR-A): the set is
+    derived from ``world.anatomy.get_species_pair_keys(species)``.
+    Unknown / None species fall back to the human pair table so
+    callers without species context (admin tooling, generic prose)
+    keep current behavior.
     """
     import re
 
-    from world.combat.constants import LONGDESC_FLEX_NOUNS, PAIR_MERGE_KEYS
+    from world.anatomy.species import get_species_pair_keys
+    from world.combat.constants import LONGDESC_FLEX_NOUNS
     from world.grammar import (
         _match_leading_case,
         flex_noun,
@@ -159,7 +173,8 @@ def _flex_body_tokens(text, number, side=None):
 
     flex_nouns = set(LONGDESC_FLEX_NOUNS)
     pair_singulars = set()
-    for left_loc, _right_loc in PAIR_MERGE_KEYS.values():
+    pair_keys = get_species_pair_keys(species)
+    for left_loc, _right_loc in pair_keys.values():
         # "left_eye" -> "eye"
         singular = left_loc.split("_", 1)[1]
         flex_nouns.add(singular)

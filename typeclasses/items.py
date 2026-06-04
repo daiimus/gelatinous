@@ -1321,6 +1321,10 @@ class Appendage(Item):
         wounds = self.db.wounds_at_death or []
         gender = self.db.original_gender
         name = self.db.original_character_name or "the corpse"
+        # Issue #350 / PR-A: thread species through so the body-noun
+        # flex pass consults the species pair table.  ``source_species``
+        # was captured at sever time; falls back to "human" when absent.
+        species = self.db.source_species or "human"
 
         try:
             from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
@@ -1364,7 +1368,9 @@ class Appendage(Item):
             text = longdescs.get(loc)
             if text:
                 pieces.append(
-                    substitute_pronoun_tokens(text, gender=gender, name=name)
+                    substitute_pronoun_tokens(
+                        text, gender=gender, name=name, species=species,
+                    )
                 )
             for idx, wound in enumerate(wounds):
                 if idx in handled_wounds or _wound_location(wound) != loc:

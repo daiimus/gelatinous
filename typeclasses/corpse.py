@@ -263,10 +263,9 @@ class Corpse(IdentityBearerMixin, Item):
 
         # Import anatomical display order
         try:
-            from world.combat.constants import (
-                ANATOMICAL_DISPLAY_ORDER,
-                PAIR_MERGE_KEYS,
-            )
+            from world.anatomy.species import get_species_pair_keys
+            from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
+            pair_keys = get_species_pair_keys(self.db.species)
         except ImportError:
             # Fallback order if constants not available
             ANATOMICAL_DISPLAY_ORDER = [
@@ -275,7 +274,7 @@ class Corpse(IdentityBearerMixin, Item):
                 "left_arm", "right_arm", "left_hand", "right_hand",
                 "left_thigh", "right_thigh", "left_shin", "right_shin", "left_foot", "right_foot"
             ]
-            PAIR_MERGE_KEYS = {}
+            pair_keys = {}
 
         descriptions = []
         longdesc_data = self.db.longdesc_data
@@ -288,7 +287,7 @@ class Corpse(IdentityBearerMixin, Item):
         # their right_* partner under a single plural render.
         collapse_anchor = {}  # left_loc -> plural-rendered description
         collapse_skip = set()  # right_loc partners to skip
-        for _pair_key, (left_loc, right_loc) in PAIR_MERGE_KEYS.items():
+        for _pair_key, (left_loc, right_loc) in pair_keys.items():
             # Asymmetric clothing breaks the visual pairing.
             if left_loc in coverage_map or right_loc in coverage_map:
                 continue
@@ -641,6 +640,7 @@ class Corpse(IdentityBearerMixin, Item):
             name=original_name,
             number=number,
             side=side,
+            species=self.db.species,
         )
         
         # Apply skintone coloring if preserved (only to body descriptions, not clothing items)
@@ -772,6 +772,7 @@ class Corpse(IdentityBearerMixin, Item):
             gender=original_gender,
             name=original_name,
             number=verb_number,
+            species=species,
         )
 
         return get_species_corpse_description(species, stage, base_desc)

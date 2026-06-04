@@ -586,20 +586,26 @@ class AppearanceMixin:
             return "right"
         return None
 
-    @staticmethod
-    def _flex_noun_vocabulary():
+    def _flex_noun_vocabulary(self):
         """Return the singular nouns a longdesc number-token flexes as a noun.
 
-        Two sources, unioned: the symmetric pair nouns derived from
-        ``PAIR_MERGE_KEYS`` (eye, ear, arm, hand, thigh, shin, foot) plus the
-        curated ``LONGDESC_FLEX_NOUNS`` body-noun vocabulary (leg, shoulder,
-        hip, ...). These are the only words a number-token treats as the body's
-        part noun; any other braced single word is treated as a verb.
+        Two sources, unioned: the symmetric pair nouns derived from the
+        species's pair table (eye, ear, arm, hand, thigh, shin, foot for
+        humans; a cyclops contributes nothing here, a spider contributes
+        its own multi-eye vocabulary) plus the curated ``LONGDESC_FLEX_NOUNS``
+        body-noun vocabulary (leg, shoulder, hip, ...). These are the only
+        words a number-token treats as the body's part noun; any other
+        braced single word is treated as a verb.
+
+        Species-aware via ``self.db.species`` (issue #350 / PR-A); unknown
+        / None species falls through to the human pair table.
         """
-        from world.combat.constants import LONGDESC_FLEX_NOUNS, PAIR_MERGE_KEYS
+        from world.anatomy.species import get_species_pair_keys
+        from world.combat.constants import LONGDESC_FLEX_NOUNS
 
         nouns = set(LONGDESC_FLEX_NOUNS)
-        for left_loc, _right_loc in PAIR_MERGE_KEYS.values():
+        species = getattr(self.db, "species", None) if hasattr(self, "db") else None
+        for left_loc, _right_loc in get_species_pair_keys(species).values():
             # "left_eye" -> "eye", "left_foot" -> "foot"
             nouns.add(left_loc.split("_", 1)[1])
         return nouns
@@ -635,7 +641,7 @@ class AppearanceMixin:
             str: Prose with recognised tokens substituted.
         """
         import re
-        from world.combat.constants import PAIR_MERGE_KEYS
+        from world.anatomy.species import get_species_pair_keys
         from world.grammar import (
             _match_leading_case,
             flex_noun,
@@ -645,12 +651,14 @@ class AppearanceMixin:
         )
 
         flex_nouns = self._flex_noun_vocabulary()
-        # Singulars that come from a PAIR_MERGE_KEYS pair (eye, ear,
-        # arm, hand, thigh, shin, foot). Side prefix applies to these.
-        # Non-pair flex nouns (leg, shoulder, hip, ...) keep bare form.
+        # Singulars that come from the species's pair table (eye, ear,
+        # arm, hand, thigh, shin, foot for humans; anything a non-human
+        # species declares). Side prefix applies to these. Non-pair
+        # flex nouns (leg, shoulder, hip, ...) keep bare form.
+        species = getattr(self.db, "species", None) if hasattr(self, "db") else None
         pair_singulars = {
             left.split("_", 1)[1]  # "left_eye" -> "eye"
-            for left, _right in PAIR_MERGE_KEYS.values()
+            for left, _right in get_species_pair_keys(species).values()
         }
         article_re = re.compile(r"^(?:a|an)\s+(.+)$", re.IGNORECASE)
 
