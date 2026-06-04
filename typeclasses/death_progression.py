@@ -683,15 +683,40 @@ class DeathProgressionScript(DefaultScript):
         
         # Combat-driven decapitation (Phase C, issue #245 follow-up): a
         # lethal edged neck hit set ``db.decapitation_pending`` on the
-        # dying character in ``ArmorMixin.take_damage``.  The death
-        # pipeline is asynchronous, so the actual head-item spawn waits
-        # until here, once the corpse is fully populated with longdesc /
-        # wound / identity snapshots.  ``spawn_severed_head_for_corpse``
-        # mirrors the manual ``CmdSever`` head path.
+        # dying character in ``ArmorMixin.take_damage``.
+        #
+        # Issue #343 split the spawn between two paths:
+        #
+        # * Preferred — the head spawns *immediately* at the killing
+        #   blow off the living character via
+        #   ``spawn_severed_head_for_living``, which sets
+        #   ``character.db.head_severed_at_decap``.  When that path took,
+        #   we only need to propagate the corpse-side bookkeeping
+        #   (``head_severed`` flag, ``severed_locations``, head-cluster
+        #   prose / wound cleanup) so the corpse renders headless and
+        #   the legacy spawn is a no-op.
+        # * Fallback — if the living-side spawn raised (test stub, DB
+        #   hiccup), the legacy ``spawn_severed_head_for_corpse`` builds
+        #   the head off the corpse exactly as it always did.
         if character.db.decapitation_pending:
             try:
-                from typeclasses.items import spawn_severed_head_for_corpse
-                spawn_severed_head_for_corpse(corpse)
+                from typeclasses.items import (
+                    apply_sever_to_corpse,
+                    spawn_severed_head_for_corpse,
+                )
+                if character.db.head_severed_at_decap:
+                    # Head item already exists in the world. Mirror the
+                    # corpse-side bookkeeping that ``spawn_severed_head_for_corpse``
+                    # would have laid down so the corpse renders as a
+                    # decapitated body (head_severed flag, severed_locations,
+                    # head-cluster prose / wound cleanup, synthesized stump).
+                    severed_list = list(corpse.db.severed_locations or ())
+                    if "head" not in severed_list:
+                        severed_list.append("head")
+                        corpse.db.severed_locations = severed_list
+                    apply_sever_to_corpse(corpse, "head")
+                else:
+                    spawn_severed_head_for_corpse(corpse)
             except Exception as e:
                 try:
                     splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)

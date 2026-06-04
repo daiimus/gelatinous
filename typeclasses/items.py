@@ -1586,6 +1586,83 @@ def spawn_severed_head_for_corpse(corpse):
     return head
 
 
+def spawn_severed_head_for_living(character, *, injury_type="cut"):
+    """Spawn + configure a :class:`SeveredHead` at the moment of decapitation.
+
+    Living counterpart to :func:`spawn_severed_head_for_corpse`: the
+    head item appears in the room synchronously with the killing blow
+    (issue #343), rather than ~90s later when death progression builds
+    the corpse.  The character then continues through the normal death
+    pipeline, but now visibly headless — the corpse-side spawn becomes
+    a no-op via the existing idempotency check on
+    ``corpse.db.severed_locations``.
+
+    Steps:
+
+    1. Spawn a :class:`SeveredHead` in the character's room.
+    2. Populate identity / decay / prose / trimmed snapshot via
+       :meth:`SeveredHead.configure_from_living_decap` (which reads
+       prose + wounds BEFORE the body is mutated).
+    3. Strip the head-cluster prose + organ wound stages from the
+       character via :func:`sever_character_body`, persist medical
+       state, and recompute vital signs so the headless body is
+       reflected immediately.
+    4. Set ``character.db.head_severed_at_decap = True`` so the
+       death-progression hook in
+       :meth:`death_progression.DeathProgressionScript._create_corpse_from_character`
+       knows to propagate the severed-head bookkeeping onto the corpse
+       (and skip the redundant corpse-side spawn).
+
+    Idempotent: if the character is already flagged as
+    ``head_severed_at_decap`` the call returns ``None`` without
+    re-spawning.
+
+    Args:
+        character: The character whose cervical spine just collapsed.
+        injury_type: Edged injury that caused the cut (default ``"cut"``).
+            Preserved for future use; the item itself is condition-tagged
+            ``"pristine"`` regardless.
+
+    Returns:
+        The spawned :class:`SeveredHead`, or ``None`` if the character
+        has no location to drop it into or the head has already been
+        severed.
+    """
+    from evennia import create_object
+    from world.combat.constants import SEVERED_HEAD_LOCATIONS
+
+    room = character.location
+    if room is None:
+        return None
+    if character.db.head_severed_at_decap:
+        return None
+
+    head = create_object(
+        "typeclasses.items.SeveredHead",
+        key="severed head",
+        location=room,
+    )
+    head.configure_from_living_decap(
+        character=character, injury_type=injury_type,
+    )
+
+    # Strip the head-cluster from the living body. ``sever_character_body``
+    # drops the longdesc entries and sets head-container organs to
+    # ``wound_stage="severed"`` / ``current_hp=0`` — matching the limb
+    # pathway. Vital-sign recomputation lets capacity loss take effect
+    # so blood / consciousness reflect the headless state.
+    sever_character_body(character, SEVERED_HEAD_LOCATIONS)
+    medical_state = character.medical_state
+    update_vital_signs = getattr(medical_state, "update_vital_signs", None)
+    if callable(update_vital_signs):
+        update_vital_signs()
+    character.save_medical_state()
+
+    character.db.head_severed_at_decap = True
+
+    return head
+
+
 # ---------------------------------------------------------------------
 # Living-character severance (PR Phase B, issue #245)
 # ---------------------------------------------------------------------
@@ -2027,6 +2104,84 @@ def apply_severed_head_overlay(head, corpse):
     # autopsy.  See issue #208.
 
 
+def apply_severed_head_overlay_from_living(head, character):
+    """Copy identity / decay / trimmed snapshot from a *living* character.
+
+    Living counterpart to :func:`apply_severed_head_overlay` (which reads
+    from a corpse).  Used by :func:`spawn_severed_head_for_living` so the
+    head item spawned the moment the cervical spine is destroyed carries
+    the same identity / recognition / trimmed-snapshot surface a
+    corpse-spawned head would (issue #343).
+
+    The head's decay clock starts *now* — there is no shared corpse clock
+    yet because the death-progression window has not begun.  When the
+    corpse is built ~90s later, both the corpse and the head will age on
+    their own clocks; in practice the head is slightly fresher than the
+    corpse by the length of the progression window, which is the right
+    storytelling: the head was detached first.
+
+    Contract — after this call ``head.db`` has:
+
+    * ``signature_at_death`` / ``apparent_uid_at_death`` derived from the
+      live character via :mod:`world.identity` (mirrors the corpse
+      snapshot in :meth:`death_progression.DeathProgressionScript._create_corpse_from_character`).
+    * ``sleeve_uid`` copied from ``character.sleeve_uid`` (the
+      ``AttributeProperty`` on :class:`typeclasses.characters.Character`).
+    * ``creation_time`` / ``death_time`` = ``time.time()``;
+      ``death_cause`` derived from ``character.get_death_cause()`` when
+      available, else ``"decapitation"``.
+    * ``medical_state_at_death`` = trimmed snapshot of head-container
+      organs from ``character.medical_state.to_dict()``; body-wide
+      fields blanked.
+    * ``removed_organs`` filtered to the head-container subset (no
+      living-character removed-organ list exists; defaults to empty).
+    """
+    import time
+
+    # Identity snapshot — same axes the corpse captures at death.
+    try:
+        from world.identity import get_apparent_uid, get_identity_signature
+        head.db.signature_at_death = get_identity_signature(character)
+        head.db.apparent_uid_at_death = get_apparent_uid(character)
+    except (AttributeError, TypeError, ValueError):
+        head.db.signature_at_death = None
+        head.db.apparent_uid_at_death = None
+
+    # ``sleeve_uid`` lives on a category="identity" AttributeProperty;
+    # reading the property (not ``db.sleeve_uid``) is required.
+    head.db.sleeve_uid = getattr(character, "sleeve_uid", None)
+
+    now = time.time()
+    head.db.creation_time = now
+    head.db.death_time = now
+    try:
+        cause = character.get_death_cause()
+    except (AttributeError, TypeError):
+        cause = None
+    head.db.death_cause = cause or "decapitation"
+
+    # Trimmed head-container medical snapshot — same shape the corpse
+    # path produces, so harvest / autopsy code consumes it identically.
+    head_organs = {}
+    try:
+        snapshot = character.medical_state.to_dict() or {}
+    except (AttributeError, TypeError):
+        snapshot = {}
+    organs = snapshot.get("organs") or {}
+    for name, data in organs.items():
+        if (data.get("container") or "") == "head":
+            head_organs[name] = dict(data)
+
+    head.db.medical_state_at_death = {
+        "organs": head_organs,
+        "conditions": [],
+        "blood_level": None,
+        "pain_level": None,
+        "consciousness": None,
+    }
+    head.db.removed_organs = []
+
+
 class SeveredHead(IdentityBearerMixin, Appendage):
     """A severed head — super-item spawned by ``sever head from <corpse>``.
 
@@ -2210,4 +2365,85 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         apply_wound_and_longdesc_overlay(
             self, corpse, SEVERED_HEAD_LOCATIONS,
         )
+
+    def configure_from_living_decap(self, *, character, injury_type="cut"):
+        """Populate head fields from a *living* decapitated character.
+
+        Living counterpart to :meth:`configure_from_sever` — invoked by
+        :func:`spawn_severed_head_for_living` the instant the cervical
+        spine is destroyed.  Sets provenance, condition, prose, identity,
+        decay, and the trimmed head-container snapshot directly off the
+        live character, without going through the death-progression
+        corpse pipeline (issue #343).
+
+        Bookkeeping mirrors :meth:`Appendage.configure_from_living_sever`:
+
+        * ``location_name`` is always ``"head"``.
+        * ``condition`` is always ``"pristine"`` (a fresh living sever
+          has no decay; the head ages from this moment forward).
+        * ``key`` is the species-aware fresh-tier head name.
+        * ``desc`` is the species-aware severed-part description.
+        * Longdesc + visible wounds for the head cluster are overlaid
+          via :func:`apply_living_sever_overlay`.
+        * Identity / decay / snapshot are overlaid via
+          :func:`apply_severed_head_overlay_from_living`.
+        """
+        from world.anatomy import (
+            get_severed_part_description,
+            get_species_part_name,
+            prepend_condition_to_desc,
+        )
+        from world.combat.constants import SEVERED_HEAD_LOCATIONS
+
+        condition = "pristine"
+        self.db.location_name = "head"
+        self.db.condition = condition
+        self.db.source_corpse_dbref = None
+
+        # Snapshot gender + name so carried longdesc pronoun / name tokens
+        # resolve at render time (parity with the limb living-sever path).
+        self.db.original_gender = character.gender
+        self.db.original_character_name = character.key
+
+        species = character.db.species or "human"
+        self.db.source_species = species
+        self.key = get_species_part_name(species, "head", "fresh")
+
+        prose = get_severed_part_description(species, "head", condition)
+        composed = prepend_condition_to_desc(condition, prose)
+        if composed:
+            self.db.desc = composed
+
+        # Forensic-chain provenance — also stamped by
+        # ``apply_severed_head_overlay_from_living`` as
+        # ``signature_at_death`` / ``apparent_uid_at_death``; the
+        # Appendage-layer ``source_*`` fields are kept in lockstep so
+        # the manual ``CmdSever`` and combat paths read the same.
+        try:
+            from world.identity import get_apparent_uid, get_identity_signature
+            self.db.source_signature = get_identity_signature(character)
+            self.db.source_apparent_uid = get_apparent_uid(character)
+        except (AttributeError, TypeError, ValueError):
+            self.db.source_signature = None
+            self.db.source_apparent_uid = None
+
+        # Carry the full head-cluster prose + wounds onto the head.
+        # Read BEFORE the caller mutates the body via
+        # ``sever_character_body`` so the source data is still intact.
+        from world.medical.wounds import get_character_wounds
+
+        longdescs = dict(character.longdesc or {})
+        try:
+            wounds = get_character_wounds(character) or []
+        except (AttributeError, TypeError, ValueError):
+            wounds = []
+        apply_living_sever_overlay(
+            self,
+            longdescs=longdescs,
+            wounds=wounds,
+            locations=SEVERED_HEAD_LOCATIONS,
+        )
+
+        # Identity / decay / trimmed head-container snapshot.
+        apply_severed_head_overlay_from_living(self, character)
 

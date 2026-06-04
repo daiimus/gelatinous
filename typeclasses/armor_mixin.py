@@ -148,11 +148,16 @@ class ArmorMixin:
         place without a clean detachment.  The body part must have just
         lost its representative bone (see :meth:`_bone_freshly_destroyed`).
 
-        * **Neck** — a destroyed cervical spine is already lethal via
-          ``neck_integrity`` collapse, so we cannot sever synchronously
-          (the corpse does not yet exist).  Instead we set
-          ``db.decapitation_pending``; the death → corpse pipeline reads
-          it and spawns the :class:`~typeclasses.items.SeveredHead`.
+        * **Neck** — a destroyed cervical spine is lethal via
+          ``neck_integrity`` collapse, but the :class:`~typeclasses.items.SeveredHead`
+          spawns synchronously off the *living* body via
+          :func:`~typeclasses.items.spawn_severed_head_for_living`
+          (issue #343) so the head appears in the room at the killing
+          blow rather than ~90s later when the corpse is built. We also
+          set ``db.decapitation_pending`` so the death → corpse pipeline
+          knows to propagate the severed-head bookkeeping onto the
+          corpse; that path's corpse-side spawn becomes an idempotent
+          no-op.
         * **Any other severable limb** — survivable.  We detach it
           immediately into an :class:`~typeclasses.items.Appendage` via
           :func:`~typeclasses.items.apply_sever_to_character`.
@@ -173,6 +178,30 @@ class ArmorMixin:
             if self._bone_freshly_destroyed("neck"):
                 self.db.decapitation_pending = True
                 self._broadcast_decapitation_message(injury_type)
+                try:
+                    from typeclasses.items import spawn_severed_head_for_living
+                    spawn_severed_head_for_living(
+                        self, injury_type=injury_type,
+                    )
+                except Exception:
+                    # Living-side spawn is the preferred path, but if it
+                    # raises (test stub without Evennia, transient DB
+                    # hiccup, etc.) the corpse-side spawn in
+                    # death_progression still fires as a fallback because
+                    # ``head_severed_at_decap`` was never set.
+                    try:
+                        from evennia.comms.models import ChannelDB
+                        from world.combat.constants import SPLATTERCAST_CHANNEL
+                        splattercast = ChannelDB.objects.get_channel(
+                            SPLATTERCAST_CHANNEL
+                        )
+                        splattercast.msg(
+                            f"DECAPITATION_LIVING_SPAWN_ERROR: "
+                            f"{getattr(self, 'key', '?')} - falling back "
+                            f"to corpse-side head spawn"
+                        )
+                    except Exception:
+                        pass
             return
 
         # Living limb severance: head is excluded (decapitation routes
