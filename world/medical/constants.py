@@ -272,24 +272,28 @@ ORGANS = {
         "can_be_harvested": True
     },
     "left_eye": {
-        "container": "head", "max_hp": 10, "hit_weight": "rare",
+        "container": "head", "display_location": "left_eye",
+        "max_hp": 10, "hit_weight": "rare",
         "capacity": "sight", "contribution": "major", "disfiguring_if_lost": True,
         "damage_always_scars": True, "vulnerable_to_blunt": False,
         "can_be_harvested": True
     },
     "right_eye": {
-        "container": "head", "max_hp": 10, "hit_weight": "rare",
+        "container": "head", "display_location": "right_eye",
+        "max_hp": 10, "hit_weight": "rare",
         "capacity": "sight", "contribution": "major", "disfiguring_if_lost": True,
         "damage_always_scars": True, "vulnerable_to_blunt": False,
         "can_be_harvested": True
     },
     "left_ear": {
-        "container": "head", "max_hp": 12, "hit_weight": "rare",
+        "container": "head", "display_location": "left_ear",
+        "max_hp": 12, "hit_weight": "rare",
         "capacity": "hearing", "contribution": "major", "disfiguring_if_lost": True,
         "can_be_harvested": True
     },
     "right_ear": {
-        "container": "head", "max_hp": 12, "hit_weight": "rare",
+        "container": "head", "display_location": "right_ear",
+        "max_hp": 12, "hit_weight": "rare",
         "capacity": "hearing", "contribution": "major", "disfiguring_if_lost": True,
         "can_be_harvested": True
     },

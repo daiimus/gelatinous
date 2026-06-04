@@ -36,6 +36,13 @@ class Organ:
         self.max_hp = self.data.get("max_hp", 10)
         self.current_hp = self.max_hp  # Start at full health
         self.container = self.data.get("container", "unknown")
+        # Display surface for wound rendering (issue #346).  Most organs
+        # render their wounds at the bulk container ("heart" wounds → the
+        # chest line) but sensory organs surface at a more specific
+        # location ("left_eye" wounds → the left_eye line) so the
+        # longdesc renderer can show destruction at the right anatomical
+        # surface.  Falls back to ``container`` when the spec omits it.
+        self.display_location = self.data.get("display_location") or self.container
         self.hit_weight = self.data.get("hit_weight", "common")
         
         # Functional properties
@@ -239,6 +246,7 @@ class Organ:
             "max_hp": self.max_hp,
             "conditions": self.conditions.copy(),
             "container": self.container,
+            "display_location": self.display_location,
             "wound_stage": self.wound_stage,
             "injury_type": self.injury_type,
             "wound_timestamp": self.wound_timestamp
@@ -262,6 +270,14 @@ class Organ:
         organ.wound_stage = data.get("wound_stage")
         organ.injury_type = data.get("injury_type")
         organ.wound_timestamp = data.get("wound_timestamp")
+        # Issue #346: persisted organs may predate ``display_location`` —
+        # the ``cls(data["name"])`` constructor already seeded it from
+        # the ORGANS spec, so only override when the snapshot carries
+        # a non-None value (preserves bespoke per-character routing if
+        # we ever add it; covers the legacy-snapshot case automatically).
+        snapshot_display = data.get("display_location")
+        if snapshot_display:
+            organ.display_location = snapshot_display
         return organ
 
 

@@ -186,10 +186,17 @@ def get_character_wounds(character):
     # Check all organs in the character's medical state for damage
     for organ_name, organ in medical_state.organs.items():
         if organ.current_hp < organ.max_hp:  # Organ is damaged
-            location = organ.container
+            # Issue #346: file the wound at the organ's display surface,
+            # not its bulk container. Most organs (heart, lungs, liver)
+            # have ``display_location == container``; sensory organs
+            # (left_eye, right_eye, left_ear, right_ear) route to a more
+            # specific longdesc surface so the destruction reads at the
+            # right anatomical line. Visibility / coverage checks still
+            # consult the container — clothing covers the bulk region.
+            location = getattr(organ, "display_location", None) or organ.container
 
             # Only include if wound location is visible (not concealed by clothing)
-            if _is_wound_visible(character, location):
+            if _is_wound_visible(character, organ.container):
                 # Determine injury type and stage based on organ condition
                 injury_type = _determine_injury_type_from_organ(organ)
                 stage = _determine_wound_stage_from_organ(organ)
