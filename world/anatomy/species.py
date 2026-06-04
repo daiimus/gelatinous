@@ -353,6 +353,53 @@ SPECIES_DEFINITIONS = {
             "right_foot": "right_shin",
         },
 
+        # Display order and region groupings (issue #356 Phase 3).
+        # Previously global ``ANATOMICAL_DISPLAY_ORDER`` and
+        # ``ANATOMICAL_REGIONS`` in world/combat/constants.py.  Non-
+        # humanoid anatomies have a different render order — rats add
+        # a tail at the end, insectoids might render thorax/abdomen
+        # differently, plants might not have a sensible head-to-toe
+        # axis at all.
+        "anatomical_display_order": [
+            # Head region
+            "hair", "left_eye", "right_eye", "head", "face",
+            "left_ear", "right_ear", "neck",
+            # Torso region
+            "chest", "back", "abdomen",
+            # Arm region
+            "left_arm", "right_arm", "left_hand", "right_hand",
+            # Leg region
+            "groin", "left_thigh", "right_thigh",
+            "left_shin", "right_shin", "left_foot", "right_foot",
+        ],
+        "anatomical_regions": {
+            "head_region": ["hair", "left_eye", "right_eye", "head", "face",
+                            "left_ear", "right_ear", "neck"],
+            "torso_region": ["chest", "back", "abdomen"],
+            "arm_region": ["left_arm", "right_arm",
+                           "left_hand", "right_hand"],
+            "leg_region": ["groin", "left_thigh", "right_thigh",
+                           "left_shin", "right_shin",
+                           "left_foot", "right_foot"],
+        },
+
+        # Default longdesc surfaces a fresh character is initialized
+        # with (issue #356 Phase 3).  Previously the global
+        # ``DEFAULT_LONGDESC_LOCATIONS`` in world/combat/constants.py.
+        # Each value defaults to ``None`` (no authored prose); the
+        # ``describe`` command fills these in over time.
+        "default_longdesc_locations": {
+            "hair": None,
+            "left_eye": None, "right_eye": None, "head": None, "face": None,
+            "left_ear": None, "right_ear": None, "neck": None,
+            "chest": None, "back": None, "abdomen": None, "groin": None,
+            "left_arm": None, "right_arm": None,
+            "left_hand": None, "right_hand": None,
+            "left_thigh": None, "right_thigh": None,
+            "left_shin": None, "right_shin": None,
+            "left_foot": None, "right_foot": None,
+        },
+
         # Compound names used when severance carries downstream limb
         # parts off the body as a single Appendage (issue #339).
         # Severing at the thigh takes shin + foot, so the Appendage
@@ -468,6 +515,40 @@ def _resolve_species(species: str | None) -> dict:
     if not species:
         return SPECIES_DEFINITIONS["human"]
     return SPECIES_DEFINITIONS.get(species, SPECIES_DEFINITIONS["human"])
+
+
+def get_species_anatomical_display_order(species: str | None) -> list:
+    """Return the canonical longdesc render order for a species.
+
+    Issue #356 Phase 3.  Previously
+    :data:`world.combat.constants.ANATOMICAL_DISPLAY_ORDER`.  Rats
+    place the tail at the end, insectoids might shift thorax/abdomen
+    around, etc.
+    """
+    spec = _resolve_species(species)
+    return list(spec.get("anatomical_display_order") or [])
+
+
+def get_species_anatomical_regions(species: str | None) -> dict:
+    """Return region groupings used by the paragraph-break formatter.
+
+    Issue #356 Phase 3.  Previously
+    :data:`world.combat.constants.ANATOMICAL_REGIONS`.
+    """
+    spec = _resolve_species(species)
+    return {k: list(v) for k, v in (spec.get("anatomical_regions") or {}).items()}
+
+
+def get_species_default_longdesc_locations(species: str | None) -> dict:
+    """Return the fresh-character default longdesc map.
+
+    Issue #356 Phase 3.  Previously
+    :data:`world.combat.constants.DEFAULT_LONGDESC_LOCATIONS`.  Used
+    by ``Character.at_object_creation`` to seed a new character's
+    longdesc dict with the species-appropriate surfaces.
+    """
+    spec = _resolve_species(species)
+    return dict(spec.get("default_longdesc_locations") or {})
 
 
 def get_species_severable_containers(species: str | None) -> frozenset:

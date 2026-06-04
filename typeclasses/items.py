@@ -1349,7 +1349,10 @@ class Appendage(Item):
             destroyed_locs = set()
 
         try:
-            from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
+            # Issue #356 Phase 3: species-aware display order.
+            # ``source_species`` was captured at sever time.
+            from world.anatomy import get_species_anatomical_display_order
+            ANATOMICAL_DISPLAY_ORDER = get_species_anatomical_display_order(species)
         except ImportError:
             ANATOMICAL_DISPLAY_ORDER = list(longdescs.keys())
 

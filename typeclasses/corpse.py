@@ -261,13 +261,19 @@ class Corpse(IdentityBearerMixin, Item):
         if not self.db.longdesc_data:
             return []
 
-        # Import anatomical display order
+        # Issue #356 Phase 3: species-aware display order + pair keys
+        # (PR-A).  Rats add tail at the end, etc.
         try:
-            from world.anatomy.species import get_species_pair_keys
-            from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
+            from world.anatomy.species import (
+                get_species_anatomical_display_order,
+                get_species_pair_keys,
+            )
+            ANATOMICAL_DISPLAY_ORDER = get_species_anatomical_display_order(
+                self.db.species
+            )
             pair_keys = get_species_pair_keys(self.db.species)
         except ImportError:
-            # Fallback order if constants not available
+            # Fallback order if anatomy package not available
             ANATOMICAL_DISPLAY_ORDER = [
                 "hair", "left_eye", "right_eye", "head", "face", "left_ear", "right_ear", "neck",
                 "chest", "back", "abdomen", "groin",

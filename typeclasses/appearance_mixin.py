@@ -77,7 +77,10 @@ class AppearanceMixin:
         Returns:
             list: List of (location, description) tuples in anatomical order.
         """
-        from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
+        # Issue #356 Phase 3: species-aware display order.
+        from world.anatomy import get_species_anatomical_display_order
+        species = getattr(getattr(self, "db", None), "species", None)
+        ANATOMICAL_DISPLAY_ORDER = get_species_anatomical_display_order(species)
 
         descriptions = []
         coverage_map = self._build_clothing_coverage_map()
@@ -292,7 +295,10 @@ class AppearanceMixin:
                 ``left_*`` anchor location to its merged description string and
                 ``skip_set`` holds the ``right_*`` partners to skip.
         """
-        from world.combat.constants import ANATOMICAL_DISPLAY_ORDER
+        # Issue #356 Phase 3: species-aware display order.
+        from world.anatomy import get_species_anatomical_display_order
+        species = getattr(getattr(self, "db", None), "species", None)
+        ANATOMICAL_DISPLAY_ORDER = get_species_anatomical_display_order(species)
 
         collapse_map = {}
         skip_set = set()

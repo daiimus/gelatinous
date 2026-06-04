@@ -119,10 +119,16 @@ class Character(
         """
         super().at_object_creation()
 
-        # Initialize longdesc system with default anatomy
-        from world.combat.constants import DEFAULT_LONGDESC_LOCATIONS
+        # Initialize longdesc system with species-appropriate anatomy
+        # (issue #356 Phase 3).  Default species at this point is None
+        # → falls back to human; chargen / spawn flows that set species
+        # before ``at_object_creation`` get rat-appropriate longdesc
+        # surfaces directly.
+        from world.anatomy import get_species_default_longdesc_locations
         if not self.longdesc:
-            self.longdesc = DEFAULT_LONGDESC_LOCATIONS.copy()
+            self.longdesc = get_species_default_longdesc_locations(
+                getattr(self.db, "species", None)
+            )
 
         # Initialize identity: assign a unique sleeve_uid for this body
         if self.sleeve_uid is None:

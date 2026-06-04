@@ -39,19 +39,17 @@ FALLBACK_WEAPON_NAME = "your fists"
 # ===================================================================
 
 # Default human anatomy (auto-created on character creation)
-# Head-region order mirrors how an observer organically registers a person:
-# hair first, then the eyes, after which the head and face resolve into view,
-# followed by the ears and neck. This sequence leads both the display order
-# and the longdesc default.
-DEFAULT_LONGDESC_LOCATIONS = {
-    "hair": None,
-    "left_eye": None, "right_eye": None, "head": None, "face": None,
-    "left_ear": None, "right_ear": None, "neck": None,
-    "chest": None, "back": None, "abdomen": None, "groin": None,
-    "left_arm": None, "right_arm": None, "left_hand": None, "right_hand": None,
-    "left_thigh": None, "right_thigh": None, "left_shin": None, "right_shin": None,
-    "left_foot": None, "right_foot": None
-}
+# Default longdesc surfaces (HUMAN default).
+#
+# Issue #356 Phase 3: source of truth lives in the species registry
+# at ``SPECIES_DEFINITIONS["human"]["default_longdesc_locations"]``.
+# Species-aware callers use
+# :func:`world.anatomy.get_species_default_longdesc_locations(species)`.
+from world.anatomy.species import SPECIES_DEFINITIONS as _SPECIES_DEFINITIONS_D
+DEFAULT_LONGDESC_LOCATIONS = dict(
+    _SPECIES_DEFINITIONS_D["human"].get("default_longdesc_locations") or {}
+)
+del _SPECIES_DEFINITIONS_D
 
 # Practical limit for total body locations per character
 MAX_LONGDESC_LOCATIONS = 50  # Very high, accommodates extensive modifications
@@ -118,27 +116,18 @@ LONGDESC_FLEX_NOUNS = {
     "scar", "freckle",
 }
 
-# Anatomical display order (head to toe). The head region mirrors how an
-# observer organically registers a person: hair first, then the eyes, after
-# which the head and face resolve into view, then the ears and neck.
-ANATOMICAL_DISPLAY_ORDER = [
-    # Head region
-    "hair", "left_eye", "right_eye", "head", "face", "left_ear", "right_ear", "neck",
-    # Torso region  
-    "chest", "back", "abdomen",
-    # Arm region
-    "left_arm", "right_arm", "left_hand", "right_hand",
-    # Leg region
-    "groin", "left_thigh", "right_thigh", "left_shin", "right_shin", "left_foot", "right_foot"
-]
-
-# Anatomical regions for paragraph breaking
+# Anatomical display order (HUMAN default).
+# Issue #356 Phase 3: derived from the species registry.
+from world.anatomy.species import SPECIES_DEFINITIONS as _SPECIES_DEFINITIONS_A
+ANATOMICAL_DISPLAY_ORDER = list(
+    _SPECIES_DEFINITIONS_A["human"].get("anatomical_display_order") or []
+)
 ANATOMICAL_REGIONS = {
-    "head_region": ["hair", "left_eye", "right_eye", "head", "face", "left_ear", "right_ear", "neck"],
-    "torso_region": ["chest", "back", "abdomen"],
-    "arm_region": ["left_arm", "right_arm", "left_hand", "right_hand"],
-    "leg_region": ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin", "left_foot", "right_foot"]
+    k: list(v) for k, v in (
+        _SPECIES_DEFINITIONS_A["human"].get("anatomical_regions") or {}
+    ).items()
 }
+del _SPECIES_DEFINITIONS_A
 
 # Coverage inheritance - parent locations can optionally cover their children
 # This is more for logical relationships where coverage naturally extends
