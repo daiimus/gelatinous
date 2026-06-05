@@ -136,20 +136,15 @@ class CmdSpawnMob(Command):
                 mob.hair_style = choice(HAIR_STYLES)
 
         # Flavor pass — random short desc, longdescs, and look_place.
-        # /blank preserves the legacy minimal-flavor behavior.  Non-
-        # humans skip mob_flavor entirely (the entries are humanoid-
-        # specific) and get a minimal species-aware description.
-        if blank or species != "human":
-            if species == "human":
-                mob.db.desc = (
-                    "A breathing body without an identity."
-                    " Its eyes flicker, but it does not move."
-                )
-            else:
-                mob.db.desc = (
-                    f"A small {species}, twitching its whiskers and "
-                    f"watching the room with wary eyes."
-                )
+        # /blank preserves the legacy minimal-flavor behavior.
+        # ``apply_random_flavor`` is now species-aware (it dispatches
+        # to ``mob.db.species``'s flavor tables), so non-humans get
+        # rat-shaped / etc. prose automatically.
+        if blank:
+            mob.db.desc = (
+                "A breathing body without an identity."
+                " Its eyes flicker, but it does not move."
+            )
         else:
             apply_random_flavor(mob)
 
