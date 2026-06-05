@@ -7,7 +7,7 @@ persistence. These form the foundation of the medical system.
 
 from evennia.comms.models import ChannelDB
 from .constants import (
-    ORGANS, BODY_CAPACITIES, CONTRIBUTION_VALUES, 
+    CONTRIBUTION_VALUES,
     CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD, BLOOD_LOSS_DEATH_THRESHOLD,
     PAIN_CONSCIOUSNESS_MODIFIER, PAIN_UNCONSCIOUS_THRESHOLD
 )

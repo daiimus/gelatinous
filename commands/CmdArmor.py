@@ -11,7 +11,6 @@ from world.combat.constants import (
     COLOR_SUCCESS,
     COLOR_NORMAL,
     COVERAGE_INHERITANCE,
-    ANATOMICAL_DISPLAY_ORDER,
     ARMOR_EFFECTIVENESS_MATRIX,
 )
 from world.identity_utils import msg_room_identity
@@ -268,15 +267,20 @@ class CmdArmor(Command):
         # Build coverage map - stores list of armor pieces per location
         coverage_map = {}
 
-        # Get all possible body locations from character
+        # Get all possible body locations from character — species-
+        # aware per #356 follow-up so non-human anatomies (rats with
+        # forelegs/hindlegs/tail, etc.) iterate their own location set
+        # instead of the humanoid default.
+        from world.anatomy import get_species_anatomical_display_order
+        species_order = get_species_anatomical_display_order(
+            getattr(caller.db, "species", None)
+        )
         if caller.longdesc:
             all_locations = [
-                loc
-                for loc in ANATOMICAL_DISPLAY_ORDER
-                if loc in caller.longdesc
+                loc for loc in species_order if loc in caller.longdesc
             ]
         else:
-            all_locations = ANATOMICAL_DISPLAY_ORDER
+            all_locations = species_order
 
         for armor in worn_armor:
             coverage = armor.get_current_coverage()
@@ -523,16 +527,19 @@ class CmdArmor(Command):
         if caller.worn_items:
             worn_by_location = dict(caller.worn_items)
 
-        # Get character's valid locations from longdesc
+        # Get character's valid locations from longdesc — species-
+        # aware per #356 follow-up.
+        from world.anatomy import get_species_anatomical_display_order
+        species_order = get_species_anatomical_display_order(
+            getattr(caller.db, "species", None)
+        )
         if caller.longdesc:
             # longdesc is a dict of {location: description}, check the keys
             valid_locations = [
-                loc
-                for loc in ANATOMICAL_DISPLAY_ORDER
-                if loc in caller.longdesc
+                loc for loc in species_order if loc in caller.longdesc
             ]
         else:
-            valid_locations = ANATOMICAL_DISPLAY_ORDER
+            valid_locations = species_order
 
         # Fixed widths for consistent box sizes
         LOCATION_BOX_WIDTH = 15

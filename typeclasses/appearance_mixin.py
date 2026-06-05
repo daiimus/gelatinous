@@ -657,9 +657,15 @@ class AppearanceMixin:
 
         # 2. Longdesc + clothing integration (uses automatic paragraph parsing)
         if self.longdesc is None:
+            # Issue #356 follow-up: species-aware default longdesc set.
+            # Character.at_object_creation normally seeds this already;
+            # this branch is a defensive fallback for objects somehow
+            # missing the initial seed.
             try:
-                from world.combat.constants import DEFAULT_LONGDESC_LOCATIONS
-                self.longdesc = DEFAULT_LONGDESC_LOCATIONS.copy()
+                from world.anatomy import get_species_default_longdesc_locations
+                self.longdesc = get_species_default_longdesc_locations(
+                    getattr(self.db, "species", None)
+                )
             except ImportError:
                 pass
 
