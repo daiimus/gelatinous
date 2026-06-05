@@ -1288,6 +1288,47 @@ Staff commands that need cross-room reach (`describe`, `@heal`, `@testdeath`, et
 
 Item targets (inventory, weapons, room objects) are out of scope for this rule — items do not participate in the identity system, so `caller.search(name, candidates=inventory)` and `caller.search(name, location=caller)` remain correct for item lookups.
 
+#### Room-scoped item fallbacks (#397 follow-up)
+
+Commands that resolve *either* a character *or* an item (surgical
+verbs operate on living patients OR corpses OR severed appendages;
+dress/undress operates on conscious-cooperators OR corpses OR
+severed limbs) typically layer two stages:
+
+1. Identity pipeline for the character path.
+2. Plain `caller.search(...)` for the item path.
+
+The item-path search MUST exclude Characters from its candidate
+set. Otherwise, when identity correctly returns `None` for a query
+that *isn't* a sdesc match (e.g. a player typing a real character
+key), Stage 2 finds the character by `.key` and bypasses the
+identity layer entirely — exactly the leak the identity pipeline
+exists to prevent.
+
+```python
+# WRONG — room fallback that lets character keys through.
+target = identity_pipeline(query) or caller.search(query)
+
+# CORRECT — room fallback restricted to non-character candidates.
+from typeclasses.characters import Character
+candidates = [
+    obj for obj in caller.location.contents
+    if not isinstance(obj, Character)
+]
+target = identity_pipeline(query) or caller.search(
+    query, candidates=candidates,
+)
+```
+
+The inventory fallback (Stage 2 in the common three-stage chain)
+doesn't need the filter — characters can't be in inventory — but
+the room fallback always does.
+
+Canonical implementations of this pattern:
+
+- `commands/CmdSurgical.py:_resolve_target`
+- `commands/CmdClothing.py:_resolve_clothing_target`
+
 #### Canonical examples
 
 - **Same-room combat**: `commands/combat/core_actions.py` (`CmdAttack`)
@@ -2464,6 +2505,11 @@ The table below tracks the original Phase 2 audit surface. All rows have been re
 | Room character listing | `typeclasses/rooms.py:410` | ✅ | Uses `get_display_name(looker)` |
 | Combat movement messages | `commands/combat/movement.py` | ✅ | First-person msgs use `get_display_name(observer)`; room broadcasts converted to `msg_room_identity` in Phase 2 Φ₃ (PR #160) |
 | Look command / appearance | `typeclasses/appearance_mixin.py` | ✅ | Uses `get_display_name(looker)` |
+| Surgical procedure verbs target resolution | `commands/CmdSurgical.py:_resolve_target` | ✅ | Three-stage chain: identity pipeline → inventory → room (Characters filtered). PRs #395, #397 |
+| Surgical procedure verbs broadcasts | `commands/CmdSurgical.py` (per verb) | ✅ | Per-verb `msg_room_identity` calls in `world/medical/procedures.py` resolvers |
+| Third-party clothing verbs target resolution | `commands/CmdClothing.py:_resolve_clothing_target` | ✅ | Same three-stage chain. PRs #396, #397 |
+| Third-party clothing verbs broadcasts | `commands/CmdClothing.py:CmdDress` / `CmdUndress` | ✅ | `msg_room_identity` with `{actor}` / `{target}` char_refs |
+| Wound-care application broadcasts | `commands/CmdConsumption.py:CmdApply` (wound_care path) | ✅ | Stabilization dispatch routes through `apply_wound_care` which doesn't broadcast; CmdApply's surrounding flow uses `msg_room_identity`. PR #383 |
 
 ### Systems Already Correct
 
