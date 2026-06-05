@@ -492,7 +492,17 @@ def _resolve_compound_template(injury_type, stage):
             template set is available (caller falls back to inline prose).
     """
     compound = None
-    module = getattr(messages, injury_type, None)
+    # Defensive: ``getattr`` requires a string attribute name.  Earlier
+    # callers occasionally produced a ``None`` ``injury_type`` for
+    # severed organs whose ``injury_type`` field was never populated
+    # (sever_character_body sets current_hp/wound_stage but not
+    # injury_type).  Fall through to the generic compound table when
+    # the injury type is missing or non-string.
+    module = (
+        getattr(messages, injury_type, None)
+        if isinstance(injury_type, str)
+        else None
+    )
     if module is not None:
         compound = getattr(module, 'COMPOUND_DESCRIPTIONS', None)
     if not compound:

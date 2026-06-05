@@ -302,8 +302,16 @@ def _determine_injury_type_from_organ(organ):
     Returns:
         str: Injury type (bullet, cut, blunt, etc.)
     """
-    # First check if the organ has stored injury type from when damage was applied
-    if hasattr(organ, 'injury_type') and organ.injury_type != "generic":
+    # First check if the organ has stored injury type from when damage
+    # was applied.  Guard against ``None`` — severed organs have their
+    # current_hp set to 0 by ``sever_character_body`` without going
+    # through ``take_damage``, so ``organ.injury_type`` is still its
+    # init-time ``None``.  Without the guard, ``None != "generic"`` is
+    # True and we return None, which downstream
+    # ``getattr(messages, None)`` rejects with a TypeError.
+    if (hasattr(organ, 'injury_type')
+            and organ.injury_type
+            and organ.injury_type != "generic"):
         return organ.injury_type
     
     # Check organ conditions for injury type clues
