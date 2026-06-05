@@ -122,7 +122,7 @@ class ConsumptionCommand(Command):
         if hasattr(target, 'is_unconscious') and target.is_unconscious():
             # Some procedures can be done on unconscious patients
             medical_type = get_medical_type(item)
-            if medical_type not in ["blood_restoration", "surgical_treatment", "wound_care", "antiseptic", "fracture_treatment"]:
+            if medical_type not in ["blood_restoration", "surgical_treatment", "wound_care", "antiseptic", "fracture_treatment", "organ_repair"]:
                 errors.append(f"{target.get_display_name(user)} is unconscious and cannot cooperate.")
                 
         return errors
@@ -405,7 +405,7 @@ class CmdApply(ConsumptionCommand):
         # Surgical kits are NOT applicable — they're tools for the
         # procedure verbs (incise / harvest / install / suture).
         # See ``help procedures``.
-        applicable_types = ["burn_treatment", "antiseptic", "healing_salve", "wound_care", "fracture_treatment"]
+        applicable_types = ["burn_treatment", "antiseptic", "healing_salve", "wound_care", "fracture_treatment", "organ_repair"]
         medical_type = get_medical_type(item)
         if medical_type not in applicable_types:
             caller.msg(f"{item.get_display_name(caller)} cannot be applied.")
@@ -422,7 +422,11 @@ class CmdApply(ConsumptionCommand):
         # both stabilizes the wound (always) and rolls per-category
         # for bleeding / infection / pain reduction.  Repeat-application
         # to a stabilized wound no-ops with a triage hint.
-        if medical_type == "wound_care" and location:
+        # PR-D (#307): organ_repair items also route here — the
+        # treatments dispatch resolves their organ_repair category
+        # alongside bleeding/infection/pain.  Substance tolerance
+        # principle keeps the surface uniform.
+        if medical_type in ("wound_care", "organ_repair") and location:
             from world.medical.treatments import apply_wound_care
             treatment_target_location = location
             # Resolve location → container if the player named an organ.

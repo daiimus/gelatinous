@@ -91,9 +91,12 @@ WOUND_CARE_PAIN_REDUCTION = 3          # severity points reduced on pain success
 #: Categories the wound_care dispatch resolves in parallel.  Each is
 #: one roll; failure of any one is stabilization-only for that
 #: category.  ``wound_healing`` is dressing-tick driven (PR-C, not
-#: a per-application roll); ``organ_repair`` lands in PR-D
-#: (surgical-grade direct repair).
-WOUND_CARE_PARALLEL_CATEGORIES = ("bleeding", "infection", "pain")
+#: a per-application roll).  ``organ_repair`` is the surgical-grade
+#: direct repair channel (PR-D) — instant HP refund on success,
+#: gated on an open incision at the wound's container.
+WOUND_CARE_PARALLEL_CATEGORIES = (
+    "bleeding", "infection", "pain", "organ_repair",
+)
 
 # ===================================================================
 # WOUND HEALING (DRESSING TICK) CONSTANTS (#307, PR-C)
@@ -117,6 +120,38 @@ WOUND_HEALING_DIVISOR = 5
 #: even with weak dressing, just very slowly.  Set to 0 to disable
 #: the floor and let only high-rated dressings heal.
 WOUND_HEALING_FLOOR_HP_PER_TICK = 0
+
+# ===================================================================
+# ORGAN REPAIR (SURGICAL DIRECT) CONSTANTS (#307, PR-D)
+# ===================================================================
+#
+# Organ repair is the surgical-grade direct channel: applying a
+# deep-treatment item during an open procedure restores HP to the
+# underlying organ on the spot, scaled by the item's
+# ``organ_repair`` effectiveness rating.  This is the third effect
+# channel under the wound_care umbrella:
+#
+#   * stabilization — freezes wound state (PR-B)
+#   * wound_healing — slow tick HP recovery (PR-C)
+#   * organ_repair  — instant HP refund per surgical application (PR-D)
+#
+# Gated on an open incision at the organ's container — sealant
+# applied to a closed chest doesn't reach the heart.  Substance
+# tolerance principle holds: the application still succeeds; the
+# effect simply doesn't land.
+
+#: HP restored per organ_repair effectiveness point on a success
+#: roll.  Integer division so the math is predictable.  Sealant
+#: rating 8 → 8 // ORGAN_REPAIR_DIVISOR HP per success.  Balance
+#: knob — small changes produce meaningful gameplay differences.
+ORGAN_REPAIR_DIVISOR = 3
+
+#: Partial-success scaling — fraction of full HP restored on a
+#: partial outcome.  Numerator divided by denominator gives the
+#: scaling; expressed as a pair so balance changes don't drift
+#: into floating-point territory.
+ORGAN_REPAIR_PARTIAL_NUMERATOR = 1
+ORGAN_REPAIR_PARTIAL_DENOMINATOR = 2
 
 # ===================================================================
 # MEDICAL CONDITION TICKER CONSTANTS (Phase 2.6)

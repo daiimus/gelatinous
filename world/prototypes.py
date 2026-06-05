@@ -1954,6 +1954,40 @@ SURGICAL_KIT = {
     ],
 }
 
+# Surgical Sealant (#307, PR-D) - In-procedure organ repair compound.
+# Single-dose ampule of biocompatible tissue sealant.  Applied
+# directly to damaged organ tissue during open surgical procedures
+# to bond and seal lacerations.  Inert and useless on closed skin —
+# the system tolerates the application per the substance-tolerance
+# principle, but the ``organ_repair`` effect only lands when the
+# wound's container has an open incision.  Apply via:
+#
+#     apply surgical sealant on bob's chest
+#
+# during an incise → harvest/install → suture procedure to repair
+# the damaged organ inside.
+SURGICAL_SEALANT = {
+    "key": "surgical sealant",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["sealant", "tissue sealant", "bioseal"],
+    "desc": "A single-dose ampule of biocompatible tissue sealant. Applied directly to damaged organ tissue during open procedures to bond and seal lacerations. Inert on closed skin; requires an active surgical field to do anything meaningful.",
+    "tags": [("medical_item", "item_type")],
+    "attrs": [
+        ("medical_type", "organ_repair"),
+        ("uses_left", 3),
+        ("max_uses", 3),
+        ("stat_requirement", 3),
+        ("application_time", 2),
+        ("effectiveness", {
+            "organ_repair":  8,  # Headline: instant HP refund on success
+            "infection":     7,  # Sterile bond reduces post-op infection
+            "wound_healing": 5,  # Modest slow-tick contribution
+            "bleeding":      3,  # Some bond-mediated bleeding control
+            "pain":          1,  # Negligible
+        })
+    ],
+}
+
 # Emergency Stimpak - Rapid healing injection
 STIMPAK = {
     "key": "stimpak",

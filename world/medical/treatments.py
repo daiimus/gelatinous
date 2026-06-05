@@ -376,6 +376,96 @@ def _apply_category_outcome(
                 f"reduced by {reduction}."
             )
 
+    elif category == "organ_repair":
+        # PR-D (#307): surgical-grade direct repair channel.  Gated
+        # on an open incision at the wound's container — sealant
+        # can't reach a closed organ.  Substance tolerance holds:
+        # the apply still happens, the effect simply doesn't land
+        # without surgical access.
+        _apply_organ_repair_outcome(target, location, outcome, result)
+
+
+def _apply_organ_repair_outcome(
+    target, location: str, outcome: str, result: dict
+) -> None:
+    """Restore HP to wounded organs at ``location`` when access is
+    open (incision present at the container).
+
+    Returns silently when:
+        * No wounded organs at the location
+        * Outcome is failure (no HP restored)
+        * No open incision at the wound's container (substance
+          accepted but effect doesn't reach the organ)
+    """
+    from world.medical.procedures import has_incision
+
+    medical_state = getattr(target, "medical_state", None)
+    if medical_state is None:
+        return
+
+    wounded = damaged_organs_at_location(target, location)
+    if not wounded:
+        return
+
+    # The roll's item rating drove the outcome; the per-organ HP
+    # restoration consults the stored ``organ_repair`` rating from
+    # the item that just triggered this category.  We pull it back
+    # out of result["rolls"] for the current category so the
+    # math stays anchored to the dispatched item.
+    roll_data = (result.get("rolls") or {}).get("organ_repair") or {}
+    rating = int(roll_data.get("item_rating", 0) or 0)
+    if rating <= 0:
+        return
+
+    hp_gain = _organ_repair_hp_gain(rating, outcome)
+    if hp_gain <= 0:
+        return
+
+    # Gate on open incision at each wound's container.  Wounds at
+    # surface-accessible organs (display_location distinct from
+    # container — eyes / ears / face on humans) are reachable
+    # without an incision; mirrors the harvest/install access rule
+    # settled in PR-A.
+    healed = []
+    for organ in wounded:
+        container = getattr(organ, "container", None)
+        display = getattr(organ, "display_location", None) or container
+        surface_accessible = display != container
+        if not surface_accessible:
+            if not has_incision(target, container):
+                continue
+        organ.heal(hp_gain)
+        healed.append(organ)
+
+    if healed:
+        result["messages"].append(
+            f"Surgical repair at {location.replace('_', ' ')} "
+            f"restored {hp_gain} HP to "
+            f"{len(healed)} organ(s)."
+        )
+
+
+def _organ_repair_hp_gain(rating: int, outcome: str) -> int:
+    """HP restored per organ on success / partial / failure.
+
+    Success: ``rating // DIVISOR``.  Partial: scaled by the partial
+    fraction.  Failure: zero.  Integer math throughout for
+    predictability.
+    """
+    from world.medical.constants import (
+        ORGAN_REPAIR_DIVISOR,
+        ORGAN_REPAIR_PARTIAL_DENOMINATOR,
+        ORGAN_REPAIR_PARTIAL_NUMERATOR,
+    )
+    base = int(rating) // max(1, ORGAN_REPAIR_DIVISOR)
+    if outcome == SUCCESS:
+        return base
+    if outcome == PARTIAL:
+        return (
+            base * ORGAN_REPAIR_PARTIAL_NUMERATOR
+        ) // max(1, ORGAN_REPAIR_PARTIAL_DENOMINATOR)
+    return 0
+
 
 def _category_reduction(category: str, outcome: str) -> int:
     """Effect amount for a category given its roll outcome.
