@@ -49,6 +49,35 @@ BUILDS: tuple[str, ...] = (
     "heavyset",
 )
 
+
+# Rat sdesc descriptors (#356 follow-up).  Rats don't fit the
+# HEIGHTS × BUILDS table (humanoid scale doesn't apply to a small
+# mammal), so they compose their key from a parallel size × coat
+# pool.  ``CmdSpawnMob/rat`` picks one of each and writes the
+# composed string ("a wiry brown rat") as the mob's key, which
+# Character.get_sdesc falls back to when humanoid identity axes
+# (height / build) aren't set.
+RAT_SIZES: tuple[str, ...] = (
+    "small",
+    "thin",
+    "lean",
+    "scrawny",
+    "wiry",
+    "stocky",
+    "long-bodied",
+)
+
+RAT_COATS: tuple[str, ...] = (
+    "grey",
+    "brown",
+    "dusky",
+    "ragged",
+    "patchy",
+    "sleek",
+    "matted",
+    "scarred",
+)
+
 #: Physical descriptor table.  ``PHYSICAL_DESCRIPTOR_TABLE[height][build]``
 #: yields a single adjective describing the character's silhouette.
 #:

@@ -7,7 +7,10 @@ from world.namebank import (
     FIRST_NAMES_AMBIGUOUS,
     LAST_NAMES
 )
-from world.identity import HEIGHTS, BUILDS, HAIR_COLORS, HAIR_STYLES
+from world.identity import (
+    HEIGHTS, BUILDS, HAIR_COLORS, HAIR_STYLES,
+    RAT_SIZES, RAT_COATS,
+)
 from world.identity_utils import msg_room_identity
 from world.mob_flavor import apply_random_flavor
 
@@ -70,8 +73,10 @@ class CmdSpawnMob(Command):
         if randint(1, 10) <= 2:  # 20% chance to use ambiguous
             sex = "ambiguous"
 
-        # Name: humans pull from the name banks; non-humans get a
-        # species-flavored default key ("a rat") unless overridden.
+        # Name: humans pull from the name banks; non-humans compose
+        # a rich species-flavored sdesc key (a rat gets a size + coat
+        # pair like "a wiry brown rat" rather than the bare "a rat").
+        # See world.identity.RAT_SIZES / RAT_COATS.
         if species == "human":
             if sex == "male":
                 first = choice(FIRST_NAMES_MALE)
@@ -81,6 +86,10 @@ class CmdSpawnMob(Command):
                 first = choice(FIRST_NAMES_AMBIGUOUS)
             last = choice(LAST_NAMES)
             mob_name = raw_args or f"{first} {last}"
+        elif species == "rat":
+            mob_name = raw_args or (
+                f"a {choice(RAT_SIZES)} {choice(RAT_COATS)} rat"
+            )
         else:
             mob_name = raw_args or f"a {species}"
 
