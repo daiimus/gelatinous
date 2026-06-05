@@ -539,29 +539,36 @@ def _can_third_party_clothing(target):
 
 
 def _resolve_clothing_target(caller, target_phrase):
-    """Resolve a third-party clothing target.
+    """Resolve a third-party clothing target with identity-layer
+    obfuscation.
 
     Three resolution stages, mirroring ``CmdSurgical._resolve_target``
     so the surface for ``dress`` / ``undress`` matches the rest of
     the medical / interaction verbs:
 
-    1. **Identity pipeline** — handles default sdescs ("towering",
-       "woman"), recognised-name keywords, and disguise overrides
-       for character targets in the same room.
-    2. **Inventory fallback** — catches severed appendages the caller
-       is carrying so they resolve without setting them down.
-    3. **Room fallback** — plain Evennia search for non-character
-       targets (corpses, items) that don't surface on the identity
-       bus.
+    1. **Identity pipeline** (``resolve_character_target``) — the
+       *only* path to a character target.  Handles default sdescs
+       ("towering", "woman"), recognised-name keywords, and disguise
+       overrides.  Has its own staff fallback for builders that
+       cannot find an identity match (key-based search), so the
+       privileged-key path is preserved for admins without leaking
+       through to ordinary players.
+    2. **Inventory fallback** — severed appendages the caller is
+       carrying.  Characters can't be in inventory, so naturally
+       character-free.
+    3. **Room fallback** — corpses and other non-character targets
+       in the same room.  Characters explicitly filtered so a
+       player can't bypass identity obfuscation by typing a real
+       character key.
 
-    Returns ``None`` on no match.  The identity helper / plain
-    search emit their own messages on ambiguity or not-found.
+    Returns ``None`` on no match.  The identity helper / search
+    emit their own messages on ambiguity or not-found.
     """
     raw = target_phrase.strip()
     if not raw:
         return None
 
-    # Identity pipeline — characters with sdescs or disguise overrides.
+    # Stage 1 — identity pipeline (only path to character targets).
     from commands._identity_targeting import resolve_character_target
     identity_match = resolve_character_target(
         caller, raw, allow_self=False,
@@ -569,7 +576,7 @@ def _resolve_clothing_target(caller, target_phrase):
     if identity_match is not None:
         return identity_match
 
-    # Inventory — severed parts the caller is carrying.
+    # Stage 2 — inventory fallback (severed limbs etc).
     candidates = list(caller.contents)
     if candidates:
         inventory_match = caller.search(
@@ -582,8 +589,19 @@ def _resolve_clothing_target(caller, target_phrase):
                 else inventory_match
             )
 
-    # Room — corpses and any other non-character targets.
-    return caller.search(raw)
+    # Stage 3 — room fallback, characters filtered out so identity
+    # is the only path to a character target.
+    from typeclasses.characters import Character
+    location = caller.location
+    if location is None:
+        return None
+    non_character_candidates = [
+        obj for obj in location.contents
+        if not isinstance(obj, Character)
+    ]
+    if not non_character_candidates:
+        return caller.search(raw, candidates=[], quiet=False)
+    return caller.search(raw, candidates=non_character_candidates)
 
 
 class CmdDress(Command):

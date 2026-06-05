@@ -69,24 +69,35 @@ def _find_surgical_kit(caller):
 
 
 def _resolve_target(caller, raw_name):
-    """Search the caller's location for a procedure target.
+    """Resolve a procedure target with identity-layer obfuscation.
 
-    Tries the identity pipeline first so default sdescs ("towering",
-    "woman", recognised-name keywords) and disguise overrides work
-    the same as for non-surgical commands.  Falls back to plain
-    ``caller.search`` when the identity helper returns nothing — that
-    catches non-character procedure targets like corpses and severed
-    appendages, which don't surface on the identity bus.
+    Three resolution stages, in order:
 
-    Returns the matched object or ``None``.  The identity helper /
-    plain search emit their own disambiguation messages.
+    1. **Identity pipeline** (``resolve_character_target``) — the
+       *only* path to a character target.  Handles default sdescs
+       ("towering", "woman"), recognised-name keywords, and disguise
+       overrides.  Has its own staff fallback for builders that
+       cannot find an identity match (key-based search), so the
+       privileged-key path is preserved for admins without leaking
+       through to ordinary players.
+    2. **Inventory fallback** — searches the caller's contents for
+       non-character targets (severed appendages held in hand,
+       corpses being carried, etc.).  Characters can't be in
+       inventory, so this is naturally character-free.
+    3. **Room fallback** — searches the caller's location for
+       non-character targets only.  Characters are filtered out so
+       a player can't bypass identity obfuscation by typing a real
+       character key.  Corpses, severed appendages, and items
+       resolve here.
+
+    Returns the matched object or ``None``.  The identity helper
+    emits its own messages on ambiguity; the search fallbacks emit
+    not-found messages.
     """
     if raw_name.lower() in ("me", "self", "myself"):
         return caller
 
-    # Identity pipeline — handles sdescs ("towering", "woman"),
-    # recognised-name keywords, and disguise overrides for
-    # character targets in the same room.
+    # Stage 1 — identity pipeline (only path to character targets).
     from commands._identity_targeting import resolve_character_target
     identity_match = resolve_character_target(
         caller, raw_name, allow_self=False,
@@ -94,10 +105,8 @@ def _resolve_target(caller, raw_name):
     if identity_match is not None:
         return identity_match
 
-    # Fallback — corpses, severed appendages, and other non-character
-    # procedure targets resolve via plain Evennia search.  Includes
-    # the caller's inventory so a held severed limb can be operated
-    # on without setting it down.
+    # Stage 2 — inventory fallback (non-character targets only;
+    # characters can't be held).
     inventory_match = caller.search(
         raw_name, location=caller, quiet=True,
     )
@@ -107,7 +116,27 @@ def _resolve_target(caller, raw_name):
             if isinstance(inventory_match, list)
             else inventory_match
         )
-    return caller.search(raw_name, location=caller.location)
+
+    # Stage 3 — room fallback, characters filtered out so the
+    # identity layer is the only path to a character target.
+    # Characters in the same room would otherwise match their real
+    # key here, leaking through identity obfuscation.
+    from typeclasses.characters import Character
+    location = caller.location
+    if location is None:
+        return None
+    non_character_candidates = [
+        obj for obj in location.contents
+        if not isinstance(obj, Character)
+    ]
+    if not non_character_candidates:
+        # Send a "not found" message via caller.search with the
+        # filtered candidate set — empty candidate list still
+        # triggers the standard not-found broadcast.
+        return caller.search(raw_name, candidates=[], quiet=False)
+    return caller.search(
+        raw_name, candidates=non_character_candidates,
+    )
 
 
 def _is_body_container(target) -> bool:
