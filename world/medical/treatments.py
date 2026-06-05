@@ -286,12 +286,33 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
     # current state — the act of dressing a wound stops it from
     # getting worse, even if the surgeon will need to redo the
     # work later.
+    #
+    # PR-C: also register the dressing's wound_healing rating on
+    # each stabilized organ so the medical script's healing tick
+    # can restore HP over time.  Rate is stored on the organ as a
+    # number (not an item reference) so item depletion doesn't
+    # affect ongoing recovery.
+    wound_healing_rating = int(effectiveness.get("wound_healing", 0) or 0)
     for organ in wounded_organs:
         organ.stabilized = True
+        organ.dressing_rate = wound_healing_rating
     result["stabilized"] = True
     result["messages"].append(
         f"The wound at {location.replace('_', ' ')} is stabilized."
     )
+
+    # PR-C: ensure the medical script is running so the healing
+    # tick can fire.  Idempotent — returns the existing script if
+    # one is already present.  Skips on test stubs that don't have
+    # the ``scripts`` accessor.
+    if wound_healing_rating > 0 and hasattr(target, "scripts"):
+        try:
+            from world.medical.script import start_medical_script
+            start_medical_script(target)
+        except Exception:
+            # Don't let script-start failures break the treatment
+            # outcome — the stabilization landed regardless.
+            pass
 
     # Consume one use of the item.
     _consume_use(item)

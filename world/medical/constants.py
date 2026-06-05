@@ -90,10 +90,33 @@ WOUND_CARE_PAIN_REDUCTION = 3          # severity points reduced on pain success
 
 #: Categories the wound_care dispatch resolves in parallel.  Each is
 #: one roll; failure of any one is stabilization-only for that
-#: category.  ``wound_healing`` and ``organ_repair`` are intentionally
-#: NOT in this list — wound_healing lands in PR-C (healing ticker);
-#: organ_repair lands in PR-D (surgical-grade direct repair).
+#: category.  ``wound_healing`` is dressing-tick driven (PR-C, not
+#: a per-application roll); ``organ_repair`` lands in PR-D
+#: (surgical-grade direct repair).
 WOUND_CARE_PARALLEL_CATEGORIES = ("bleeding", "infection", "pain")
+
+# ===================================================================
+# WOUND HEALING (DRESSING TICK) CONSTANTS (#307, PR-C)
+# ===================================================================
+#
+# Healing is the slow-recovery channel separate from stabilization.
+# An applied wound_care item registers its ``wound_healing``
+# effectiveness rating on the underlying organ; the medical script's
+# tick walks stabilized organs and restores HP proportional to the
+# stored rating.
+
+#: HP restored per medical tick per dressing-rate point.  Integer
+#: division — a low-rated dressing (rating 1-4) lands at 0 HP/tick
+#: which models the wound staying stable but not actively healing.
+#: Tuned for the existing 12s medical tick.  Balance knob.
+WOUND_HEALING_DIVISOR = 5
+
+#: Minimum HP recovered per tick when any dressing is registered
+#: (rating > 0).  Floor protects against integer-division-to-zero
+#: for low-rated dressings — a wound stays stable AND inches back
+#: even with weak dressing, just very slowly.  Set to 0 to disable
+#: the floor and let only high-rated dressings heal.
+WOUND_HEALING_FLOOR_HP_PER_TICK = 0
 
 # ===================================================================
 # MEDICAL CONDITION TICKER CONSTANTS (Phase 2.6)

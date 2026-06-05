@@ -10,6 +10,74 @@ from evennia.comms.models import ChannelDB
 from world.combat.constants import SPLATTERCAST_CHANNEL
 
 
+# ---------------------------------------------------------------------
+# Healing tick helpers (#307, PR-C)
+# ---------------------------------------------------------------------
+
+
+def _has_healing_work(medical_state) -> bool:
+    """True when any organ has stabilized + dressed wound that still
+    needs HP recovery.
+
+    Used by ``MedicalScript`` to decide whether to keep ticking after
+    all active conditions are gone — a freshly-dressed wound on an
+    otherwise-healthy character needs the tick to fire even with
+    zero conditions on the medical state.
+    """
+    organs = getattr(medical_state, "organs", None) or {}
+    for organ in organs.values():
+        if not getattr(organ, "stabilized", False):
+            continue
+        if getattr(organ, "dressing_rate", 0) <= 0:
+            continue
+        if organ.current_hp >= organ.max_hp:
+            continue
+        return True
+    return False
+
+
+def _hp_per_tick(dressing_rate: int) -> int:
+    """Calculate HP restored per tick for a given dressing rate.
+
+    Integer math: ``rating // DIVISOR``, then floored at
+    ``WOUND_HEALING_FLOOR_HP_PER_TICK`` so weak dressings still
+    inch wounds back when the floor is non-zero (default 0 keeps
+    them stable-but-not-healing).
+    """
+    from world.medical.constants import (
+        WOUND_HEALING_DIVISOR,
+        WOUND_HEALING_FLOOR_HP_PER_TICK,
+    )
+    base = int(dressing_rate) // max(1, WOUND_HEALING_DIVISOR)
+    return max(base, WOUND_HEALING_FLOOR_HP_PER_TICK)
+
+
+def _process_healing(character, medical_state) -> list:
+    """Walk stabilized + dressed organs; restore HP per dressing rate.
+
+    Returns the list of organs that received HP this tick (used by
+    the caller for logging).  Organs that reach full HP clear their
+    ``stabilized`` + ``dressing_rate`` automatically via the
+    ``Organ.heal`` code path.
+    """
+    healed = []
+    organs = getattr(medical_state, "organs", None) or {}
+    for organ in organs.values():
+        if not getattr(organ, "stabilized", False):
+            continue
+        rate = getattr(organ, "dressing_rate", 0)
+        if rate <= 0:
+            continue
+        if organ.current_hp >= organ.max_hp:
+            continue
+        hp_gain = _hp_per_tick(rate)
+        if hp_gain <= 0:
+            continue
+        organ.heal(hp_gain)
+        healed.append(organ)
+    return healed
+
+
 class MedicalScript(DefaultScript):
     """
     Per-character script that manages all medical conditions.
@@ -53,8 +121,15 @@ class MedicalScript(DefaultScript):
                 
             medical_state = self.obj.medical_state
             conditions = medical_state.conditions.copy()  # Copy to avoid modification during iteration
-            
-            if not conditions:
+
+            # PR-C (#307): stabilized wounds with a dressing rate
+            # keep the script alive so the healing tick can run
+            # even when there are no active conditions.  Without
+            # this check, dressing a wound on an otherwise-healthy
+            # character would never tick HP back.
+            has_healing_work = _has_healing_work(medical_state)
+
+            if not conditions and not has_healing_work:
                 splattercast.msg(f"MEDICAL_SCRIPT: {self.obj.key} has no conditions, stopping and deleting script")
                 self.stop()
                 self.delete()
@@ -106,7 +181,19 @@ class MedicalScript(DefaultScript):
             for condition in conditions_to_remove:
                 medical_state.conditions.remove(condition)
                 splattercast.msg(f"MEDICAL_SCRIPT: Removed {condition.condition_type}")
-            
+
+            # PR-C (#307): healing tick.  Walk stabilized organs that
+            # carry a dressing rate; restore HP proportional to the
+            # rate.  Cheap in-memory pass — no per-organ DB hits
+            # beyond the medical_state fetch already done above.
+            healed_organs = _process_healing(self.obj, medical_state)
+            if healed_organs:
+                splattercast.msg(
+                    f"MEDICAL_SCRIPT: Healing tick restored HP on "
+                    f"{len(healed_organs)} organ(s) for "
+                    f"{self.obj.key}"
+                )
+
             # Update vital signs after processing all conditions
             # This ensures consciousness includes all penalties (pain, blood loss, suppression)
             medical_state.update_vital_signs()
@@ -149,8 +236,11 @@ class MedicalScript(DefaultScript):
                         splattercast.msg(f"MEDICAL_SCRIPT_CLEAR_UNCONSCIOUS: Clearing unconscious override_place for {self.obj.key}")
                         self.obj.override_place = None
             
-            # Check if we should stop (no conditions left)
-            if not medical_state.conditions:
+            # Check if we should stop (no conditions left AND no
+            # stabilized wounds still healing).  PR-C: keep the
+            # script alive while there's healing work to do.
+            if (not medical_state.conditions
+                    and not _has_healing_work(medical_state)):
                 splattercast.msg(f"MEDICAL_SCRIPT: All conditions processed, stopping and deleting script for {self.obj.key}")
                 self.stop()
                 self.delete()

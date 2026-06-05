@@ -103,7 +103,8 @@ class Organ:
         # conditions at this organ's location stop draining blood,
         # severity can't escalate, wound stage doesn't progress
         # toward "old".  Healing is a separate channel (PR-C) driven
-        # by the dressed item's ``wound_healing`` rating.
+        # by the dressed item's ``wound_healing`` rating, stored in
+        # ``dressing_rate`` below.
         #
         # Re-application of wound_care to a stabilized wound is a
         # no-op with a "they're already stable — get them to a
@@ -111,6 +112,19 @@ class Organ:
         # until the wound is surgically treated or the organ is
         # replaced.
         self.stabilized = False
+
+        # Dressing rate (#307, PR-C).  ``wound_healing`` effectiveness
+        # rating from the item that was applied at stabilization
+        # time.  Read by the medical script's healing tick to
+        # restore organ HP at a rate proportional to this value:
+        #
+        #     hp_per_tick = max(rating // DIVISOR, FLOOR)
+        #
+        # Stored as a number (not an item reference) — the item may
+        # be uses-depleted and deleted before the wound fully heals,
+        # but the rate persists.  Cleared on full heal or organ
+        # replacement.
+        self.dressing_rate = 0
         
     def is_destroyed(self):
         """Returns True if organ HP is 0 or below."""
@@ -288,6 +302,10 @@ class Organ:
             # wound is resolved.  Lets a future re-injury start with
             # a clean stabilization slate.
             self.stabilized = False
+            # PR-C: dressing rate also clears on full heal — the
+            # dressing has served its purpose and a future re-injury
+            # starts undressed.
+            self.dressing_rate = 0
         
         return self.current_hp - old_hp
         
@@ -424,6 +442,7 @@ class Organ:
             "injury_type": self.injury_type,
             "wound_timestamp": self.wound_timestamp,
             "stabilized": self.stabilized,
+            "dressing_rate": self.dressing_rate,
         }
         
     @classmethod
@@ -459,6 +478,13 @@ class Organ:
         # Stabilization (#307, PR-B).  Defaults to False so legacy
         # snapshots predating the field behave as untreated.
         organ.stabilized = bool(data.get("stabilized", False))
+        # Dressing rate (#307, PR-C).  Defaults to 0 so legacy
+        # snapshots predating the field behave as untreated /
+        # not-healing.
+        try:
+            organ.dressing_rate = int(data.get("dressing_rate", 0) or 0)
+        except (TypeError, ValueError):
+            organ.dressing_rate = 0
         # Issue #346: persisted organs may predate ``display_location`` —
         # the ``cls(data["name"])`` constructor already seeded it from
         # the ORGANS spec, so only override when the snapshot carries
