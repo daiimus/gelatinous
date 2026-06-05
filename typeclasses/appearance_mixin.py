@@ -492,7 +492,6 @@ class AppearanceMixin:
         """
         from world.combat.constants import (
             PARAGRAPH_BREAK_THRESHOLD,
-            ANATOMICAL_REGIONS,
             REGION_BREAK_PRIORITY,
         )
 
@@ -547,9 +546,12 @@ class AppearanceMixin:
         Returns:
             str: Region name or 'extended' for non-standard anatomy.
         """
-        from world.combat.constants import ANATOMICAL_REGIONS
+        # Issue #356 follow-up: species-aware region grouping.  Rats
+        # have foreleg/hindleg/tail regions, not arm/leg.
+        from world.anatomy import get_species_anatomical_regions
 
-        for region_name, locations in ANATOMICAL_REGIONS.items():
+        species = getattr(getattr(self, "db", None), "species", None)
+        for region_name, locations in get_species_anatomical_regions(species).items():
             if location in locations:
                 return region_name
         return "extended"

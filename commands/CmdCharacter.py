@@ -847,36 +847,44 @@ class CmdDescribe(Command):
             caller.msg("No body locations available.")
             return
 
-        # Group locations by type for better display
+        # Group locations by type for better display.  Issue #356
+        # follow-up: regions are species-aware (rat has foreleg /
+        # hindleg / tail regions instead of arm / leg).  Display
+        # names derive from the region key so any species' regions
+        # render naturally (``foreleg_region`` → ``Foreleg Region``).
+        from world.anatomy import get_species_anatomical_regions
+
+        species_regions = get_species_anatomical_regions(
+            getattr(caller.db, "species", None)
+        )
+
         grouped_locations = {}
         extended_locations = []
 
         for location in locations:
             found_region = None
-            for region_name, region_locations in ANATOMICAL_REGIONS.items():
+            for region_name, region_locations in species_regions.items():
                 if location in region_locations:
                     if region_name not in grouped_locations:
                         grouped_locations[region_name] = []
                     grouped_locations[region_name].append(location)
                     found_region = True
                     break
-            
+
             if not found_region:
                 extended_locations.append(location)
 
         # Display grouped locations
         caller.msg("|wAvailable body locations:|n")
-        
-        region_display_names = {
-            "head_region": "Head Region",
-            "torso_region": "Torso Region", 
-            "arm_region": "Arm Region",
-            "leg_region": "Leg Region"
-        }
 
-        for region_name in ["head_region", "torso_region", "arm_region", "leg_region"]:
+        # Render in the order the species registry declared (preserves
+        # head-to-toe / head-to-tail ordering automatically).
+        for region_name in species_regions:
             if region_name in grouped_locations:
-                display_name = region_display_names[region_name]
+                # "foreleg_region" → "Foreleg Region"
+                display_name = " ".join(
+                    word.capitalize() for word in region_name.split("_")
+                )
                 locations_list = ", ".join(grouped_locations[region_name])
                 caller.msg(f"  |c{display_name}:|n {locations_list}")
 
@@ -1025,9 +1033,13 @@ class CmdDescribe(Command):
         else:
             caller.msg(f"|w{target_char.get_display_name(caller)}'s longdesc descriptions:|n")
 
-        # Show in anatomical order
+        # Show in anatomical order (species-aware per #356 follow-up).
+        from world.anatomy import get_species_anatomical_display_order
+        species_order = get_species_anatomical_display_order(
+            getattr(target_char.db, "species", None)
+        )
         displayed = set()
-        for location in ANATOMICAL_DISPLAY_ORDER:
+        for location in species_order:
             if location in set_descriptions:
                 caller.msg(f"  |c{location}:|n \"{set_descriptions[location]}\"")
                 displayed.add(location)
@@ -1104,8 +1116,12 @@ def _expand_longdesc_pair(char, location):
         location is neither a valid single location nor a usable pair
         shorthand for this character.
     """
-    if location in PAIR_MERGE_KEYS:
-        left, right = PAIR_MERGE_KEYS[location]
+    # Species-aware pair shorthand (issue #356 follow-up).  A rat's
+    # ``forelegs`` shorthand expands to ``(left_foreleg, right_foreleg)``.
+    from world.anatomy import get_species_pair_keys
+    pair_keys = get_species_pair_keys(getattr(char.db, "species", None))
+    if location in pair_keys:
+        left, right = pair_keys[location]
         if char.has_location(left) and char.has_location(right):
             return [left, right]
         return None
@@ -1174,15 +1190,24 @@ def _build_longdesc_slots(char):
     """
     available = set(char.get_available_locations())
 
+    # Species-aware pair table and display order (issue #356 follow-up).
+    from world.anatomy import (
+        get_species_anatomical_display_order,
+        get_species_pair_keys,
+    )
+    species = getattr(char.db, "species", None)
+    pair_keys = get_species_pair_keys(species)
+    display_order = get_species_anatomical_display_order(species)
+
     # side location -> (shorthand, partner side)
     pair_of = {}
-    for shorthand, (left, right) in PAIR_MERGE_KEYS.items():
+    for shorthand, (left, right) in pair_keys.items():
         pair_of[left] = (shorthand, right)
         pair_of[right] = (shorthand, left)
 
-    ordered = [loc for loc in ANATOMICAL_DISPLAY_ORDER if loc in available]
+    ordered = [loc for loc in display_order if loc in available]
     ordered += sorted(
-        loc for loc in available if loc not in ANATOMICAL_DISPLAY_ORDER
+        loc for loc in available if loc not in display_order
     )
 
     slots = []
@@ -1211,8 +1236,11 @@ def _longdesc_slot_value(char, slot):
     text and ``diverged`` is ``True``. For a single location, ``diverged`` is
     always ``False``.
     """
-    if slot in PAIR_MERGE_KEYS:
-        left, right = PAIR_MERGE_KEYS[slot]
+    # Species-aware pair shorthand (issue #356 follow-up).
+    from world.anatomy import get_species_pair_keys
+    pair_keys = get_species_pair_keys(getattr(char.db, "species", None))
+    if slot in pair_keys:
+        left, right = pair_keys[slot]
         lval, rval = char.get_longdesc(left), char.get_longdesc(right)
         if lval == rval:
             return lval, False

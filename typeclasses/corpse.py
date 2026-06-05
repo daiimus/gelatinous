@@ -624,15 +624,15 @@ class Corpse(IdentityBearerMixin, Item):
         Returns:
             str: Region name or 'extended' for non-standard anatomy
         """
+        # Issue #356 follow-up: species-aware region grouping.
         try:
-            from world.combat.constants import ANATOMICAL_REGIONS
-            
-            for region_name, locations in ANATOMICAL_REGIONS.items():
+            from world.anatomy import get_species_anatomical_regions
+            regions = get_species_anatomical_regions(self.db.species)
+            for region_name, locations in regions.items():
                 if location in locations:
                     return region_name
             return "extended"
         except ImportError:
-            # Fallback if constants not available
             return "extended"
     
     def _process_corpse_description_variables(self, description, number="singular",

@@ -46,7 +46,6 @@ from world.forensics import (
     render_forensic_report,
 )
 from world.identity_utils import msg_room_identity
-from world.medical.constants import ORGANS
 
 
 class CmdAutopsy(Command):
@@ -189,9 +188,14 @@ def _harvestable_organs(corpse) -> list[str]:
     removed = set(corpse.db.removed_organs or ())
     severed = set(corpse.db.severed_locations or ())
     organs = snapshot.get("organs") or {}
+    # Issue #356 follow-up: species-aware organ spec lookup so
+    # rat-specific organs (``tail_vertebrae``, ``left_foreleg_bone``)
+    # find their ``can_be_harvested`` flag in the rat table.
+    from world.anatomy import get_organ_spec
+    species = getattr(getattr(corpse, "db", None), "species", None)
     out: list[str] = []
     for name, organ_data in organs.items():
-        spec = ORGANS.get(name) or {}
+        spec = get_organ_spec(name, species) or {}
         if not spec.get("can_be_harvested"):
             continue
         if name in removed:
@@ -309,7 +313,12 @@ class CmdHarvest(Command):
             )
             return
 
-        spec = ORGANS.get(organ_arg) or {}
+        # Issue #356 follow-up: species-aware organ spec lookup.
+        from world.anatomy import get_organ_spec
+        spec = get_organ_spec(
+            organ_arg,
+            getattr(getattr(target, "db", None), "species", None),
+        )
         if spec.get("cannot_be_destroyed"):
             caller.msg(
                 f"The {organ_arg.replace('_', ' ')} is too deeply "

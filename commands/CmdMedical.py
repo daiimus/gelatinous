@@ -307,8 +307,17 @@ class CmdMedicalInfo(Command):
     def _show_capacities(self, caller, target, medical_state):
         """Show body capacity information."""
         table = EvTable("Capacity", "Level", "Status", border="cells")
-        
-        for capacity_name in BODY_CAPACITIES.keys():
+
+        # Species-aware capacity list (issue #356 follow-up).  A rat
+        # has no ``talking`` capacity (rats squeak); listing all
+        # human capacities on a rat would show "Non-functional"
+        # against capacities it doesn't have.
+        from world.anatomy import get_species_body_capacities
+        species_capacities = get_species_body_capacities(
+            getattr(target.db, "species", None)
+        )
+
+        for capacity_name in species_capacities.keys():
             level = medical_state.calculate_body_capacity(capacity_name)
             level_percent = level * 100
             
