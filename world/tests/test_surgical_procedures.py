@@ -27,7 +27,6 @@ from unittest.mock import patch
 from world.medical.procedures import (
     ANESTHETIZED_DIFFICULTY_BONUS,
     CONSCIOUS_PATIENT_DIFFICULTY,
-    INTERNAL_CONTAINERS,
     PROCEDURE_BASE_DIFFICULTY,
     calculate_procedure_difficulty,
     calculate_procedure_skill,
@@ -315,20 +314,72 @@ class SeedPain(TestCase):
 # ---------------------------------------------------------------------
 
 
-class InternalContainersSet(TestCase):
-    """Internal containers require incision before deep procedures
-    can target organs housed there.  This pins the membership."""
+class IncisionRequiredHelper(TestCase):
+    """Contract for ``CmdSurgical._incision_required``: organs with a
+    distinct ``display_location`` are surface-accessible (no incision
+    needed); organs whose display_location falls back to their
+    container live inside and need it opened first.
 
-    def test_known_internal(self):
-        for loc in ("head", "chest", "abdomen", "back", "neck", "groin"):
-            with self.subTest(loc=loc):
-                self.assertIn(loc, INTERNAL_CONTAINERS)
+    This is the canonical rule settled in the #307 design pass —
+    eyes / ears / nose / tongue / jaw on humans bypass; brain /
+    heart / kidneys / etc. require incision.  Applies symmetrically
+    to harvest and install via the same helper.
+    """
 
-    def test_limbs_external(self):
-        for loc in ("left_arm", "right_arm", "left_hand", "right_hand",
-                    "left_thigh", "left_shin", "left_foot"):
-            with self.subTest(loc=loc):
-                self.assertNotIn(loc, INTERNAL_CONTAINERS)
+    def _organ_data(self, container, display_location=None):
+        """Build a snapshot-shaped organ entry."""
+        return {
+            "container": container,
+            "display_location": display_location or container,
+        }
+
+    def test_surface_organ_with_distinct_display_skips_incision(self):
+        from commands.CmdSurgical import _incision_required
+        # left_eye: container=head, display_location=left_eye → distinct.
+        eye = self._organ_data("head", "left_eye")
+        self.assertFalse(_incision_required(eye))
+
+    def test_face_organ_skips_incision(self):
+        """tongue / jaw / nose share display_location=face on humans."""
+        from commands.CmdSurgical import _incision_required
+        for organ in ("tongue", "jaw", "nose"):
+            with self.subTest(organ=organ):
+                data = self._organ_data("head", "face")
+                self.assertFalse(_incision_required(data))
+
+    def test_buried_organ_requires_incision(self):
+        from commands.CmdSurgical import _incision_required
+        # brain: container=head, no distinct display_location.
+        brain = self._organ_data("head")
+        self.assertTrue(_incision_required(brain))
+
+    def test_chest_organ_requires_incision(self):
+        from commands.CmdSurgical import _incision_required
+        heart = self._organ_data("chest")
+        self.assertTrue(_incision_required(heart))
+
+    def test_limb_bone_requires_incision(self):
+        """Limbs are not internal-cavity but their bones are still
+        buried inside the limb — incision required to harvest the
+        humerus from inside an arm, attached or severed."""
+        from commands.CmdSurgical import _incision_required
+        humerus = self._organ_data("left_arm")
+        self.assertTrue(_incision_required(humerus))
+
+    def test_explicit_display_equal_to_container_still_requires(self):
+        """Defensive: even if the snapshot redundantly stores
+        display_location equal to container, the rule still
+        requires incision (matches the Organ default behaviour)."""
+        from commands.CmdSurgical import _incision_required
+        data = {"container": "chest", "display_location": "chest"}
+        self.assertTrue(_incision_required(data))
+
+    def test_missing_display_falls_back_to_container(self):
+        """Snapshot without display_location key at all → fall back
+        to container → incision required (safe default)."""
+        from commands.CmdSurgical import _incision_required
+        data = {"container": "abdomen"}
+        self.assertTrue(_incision_required(data))
 
 
 # ---------------------------------------------------------------------

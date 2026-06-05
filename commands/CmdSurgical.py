@@ -23,7 +23,6 @@ from __future__ import annotations
 from evennia import Command
 
 from world.medical.procedures import (
-    INTERNAL_CONTAINERS,
     PROCEDURE_DURATIONS,
     get_organ_snapshot,
     has_incision,
@@ -32,6 +31,26 @@ from world.medical.procedures import (
     organs_at_location,
     start_procedure,
 )
+
+
+def _incision_required(organ_data: dict) -> bool:
+    """Whether an organ at ``organ_data`` requires an open incision
+    at its container to be reached.
+
+    The rule, settled in the #307 design pass: an organ whose
+    ``display_location`` is *distinct* from its ``container`` has its
+    own surface (eyes, ears, nose, tongue, jaw on humans).  Those
+    organs are reachable without first opening the cavity that nominally
+    houses them.  Organs whose ``display_location`` falls back to their
+    ``container`` (the default when none is declared) live "inside"
+    and need the container incised before they can be touched.
+
+    Symmetric for harvest and install — the source/destination
+    location's slot data drives the call equally for either verb.
+    """
+    container = organ_data.get("container")
+    display = organ_data.get("display_location") or container
+    return display == container
 
 
 # ---------------------------------------------------------------------
@@ -309,8 +328,10 @@ class CmdHarvest(Command):
         organ_data = organs[organ_arg]
         container = organ_data.get("container")
 
-        # Incision requirement for internal containers.
-        if container in INTERNAL_CONTAINERS and not has_incision(target, container):
+        # Incision requirement: organs without a distinct display_location
+        # live inside the container and need it opened first.  Surface
+        # organs (eyes, ears, jaw, nose, tongue on humans) skip this.
+        if _incision_required(organ_data) and not has_incision(target, container):
             caller.msg(
                 f"You can't reach the {organ_arg.replace('_', ' ')} — "
                 f"{container.replace('_', ' ')} isn't open. "
@@ -412,7 +433,9 @@ class CmdInstall(Command):
 
         container = target_organ_data.get("container")
 
-        if container in INTERNAL_CONTAINERS and not has_incision(target, container):
+        # Symmetric to harvest: organs with a distinct display_location
+        # are surface-accessible and skip the incision requirement.
+        if _incision_required(target_organ_data) and not has_incision(target, container):
             caller.msg(
                 f"You can't reach the {organ_name.replace('_', ' ')} "
                 f"slot — {container.replace('_', ' ')} isn't open. "

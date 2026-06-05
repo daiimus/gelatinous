@@ -372,16 +372,14 @@ class CmdApply(ConsumptionCommand):
         is_self = (caller == target)
 
         # Location precision: if the player named a specific organ or
-        # internal container, gate it behind the incision requirement.
+        # body location, we still validate that the location is real on
+        # the target — but we don't gate on incision state.  Per the
+        # #307 design pass, substance application tolerates any delivery;
+        # the future drug-system rules will determine whether the item
+        # actually does anything useful at the chosen location.
         if location:
-            from world.medical.procedures import (
-                INTERNAL_CONTAINERS,
-                has_incision,
-                organs_at_location,
-            )
+            from world.medical.procedures import organs_at_location
 
-            # Resolve "location" — could be a body container OR an
-            # organ name.  If it's an organ, look up its container.
             container = location
             try:
                 state = target.medical_state
@@ -392,17 +390,10 @@ class CmdApply(ConsumptionCommand):
                 if organ is not None:
                     container = organ.container
 
-            if container in INTERNAL_CONTAINERS and not has_incision(target, container):
-                caller.msg(
-                    f"You can't reach {target.get_display_name(caller)}'s "
-                    f"{location.replace('_', ' ')} — "
-                    f"{container.replace('_', ' ')} isn't open. "
-                    f"Try ``incise {target.get_display_name(caller)} "
-                    f"at {container.replace('_', ' ')}`` first."
-                )
-                return
-
-            # Surface location with no organs at all → no target.
+            # Surface location with no organs at all → no anatomical
+            # slot on this target.  Reject as nonsense input rather
+            # than silently accepting an undefined location.  This is
+            # location-validity, not substance-gating.
             if not organs_at_location(target, container) and container == location:
                 caller.msg(
                     f"There's nothing at {location.replace('_', ' ')} on "

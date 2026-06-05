@@ -74,14 +74,6 @@ CONSCIOUS_PAIN_SEVERITY = {
 #: the body location; the resulting condition is location-bound.
 FAILURE_INFECTION_SEVERITY = 2
 
-#: Internal body containers that require an open incision before a
-#: deep procedure (harvest / install / treat) can target an organ
-#: housed there.  Limb containers are externally accessible and
-#: skip the requirement.
-INTERNAL_CONTAINERS = frozenset({
-    "head", "chest", "abdomen", "back", "neck", "groin",
-})
-
 
 # ---------------------------------------------------------------------
 # Target accessor — works on every container type
