@@ -191,19 +191,31 @@ class MedicalScript(DefaultScript):
                 # Death curtain will handle death-related messaging
                 pass
             else:
-                # Normal living character bleeding messages
+                # Personal prose (|.msg() to the character) is humanoid
+                # and only fires for PCs (NPCs without accounts drop
+                # the msg silently), so the humanoid voice is
+                # appropriate here.  Room prose is species-aware
+                # (#356 follow-up) so a bleeding rat reads with
+                # small-mammal imagery instead of generic humanoid
+                # "trail of blood" prose.
+                from world.medical.medical_messages import (
+                    get_bleeding_room_message,
+                )
+                species = getattr(
+                    getattr(self.obj, "db", None), "species", None,
+                )
+                room_template = get_bleeding_room_message(
+                    bleeding_severity, species,
+                )
                 if bleeding_severity <= 3:
                     personal_parts.append("|rYou feel warm blood trickling from your wounds.|n")
-                    room_parts.append("Small droplets of blood fall from {actor}'s wounds.")
                 elif bleeding_severity <= 7:
                     personal_parts.append("|rBlood flows freely from your wounds, leaving crimson trails.|n")
-                    room_parts.append("Blood steadily drips from {actor}, forming dark stains.")
                 elif bleeding_severity <= 12:
                     personal_parts.append("|rYou feel your life ebbing away as blood pours from your wounds.|n")
-                    room_parts.append("Crimson flows freely from {actor}'s wounds, pooling on the ground.")
                 else:  # 13+
                     personal_parts.append("|rYour vision dims as life-blood gushes from grievous wounds.|n")
-                    room_parts.append("{actor} leaves a trail of blood, their wounds gushing freely.")
+                room_parts.append(room_template)
         
         # Add pain components if present (only for living characters)
         if pain_severity > 0 and not is_dead:

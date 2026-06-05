@@ -272,33 +272,24 @@ class DeathCurtain:
         """Called when the animation completes."""
         from world.identity_utils import msg_room_identity
 
-        # Send a single, vivid death message that incorporates the cause
+        # Send a single, vivid death message that incorporates the cause.
+        # Species-aware (#356 follow-up): rats don't "clutch their
+        # chest" or "gasp" — the lookup routes to species overrides
+        # for the few cause-cells that need rat-flavored prose; the
+        # rest fall through to the human default which works for any
+        # small mammal ("eyes lose focus", "charred form crumples",
+        # etc.).
         if self.location:
             death_cause = None
             if hasattr(self.character, 'get_death_cause'):
                 death_cause = self.character.get_death_cause()
-            
-            if death_cause:
-                # Create vivid death descriptions based on cause
-                if 'blood loss' in death_cause.lower():
-                    death_template = "|R{actor}'s lifeblood pools crimson around their still form.|n"
-                elif 'heart failure' in death_cause.lower():
-                    death_template = "|R{actor} clutches their chest one last time before going still.|n"
-                elif 'head' in death_cause.lower() or 'brain' in death_cause.lower():
-                    death_template = "|R{actor}'s eyes lose focus as they collapse, unmoving.|n"
-                elif 'poison' in death_cause.lower():
-                    death_template = "|R{actor} convulses violently before falling silent.|n"
-                elif 'fire' in death_cause.lower() or 'burn' in death_cause.lower():
-                    death_template = "|R{actor}'s charred form crumples to the ground.|n"
-                elif 'stab' in death_cause.lower() or 'slash' in death_cause.lower():
-                    death_template = "|R{actor} gasps once, crimson flowing, then goes still.|n"
-                else:
-                    # Generic death message with cause hint
-                    death_template = "|R{actor} draws their final breath and grows still.|n"
-            else:
-                # No cause specified
-                death_template = "|R{actor} draws their final breath and grows still.|n"
-                
+
+            from world.medical.medical_messages import get_death_cause_template
+            species = getattr(
+                getattr(self.character, "db", None), "species", None,
+            )
+            death_template = get_death_cause_template(death_cause, species)
+
             msg_room_identity(
                 location=self.location,
                 template=death_template,
