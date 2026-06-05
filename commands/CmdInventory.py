@@ -248,13 +248,17 @@ class CmdInventory(Command):
                     lines.append(f"  {item_name}")
             lines.append("")
 
-        # Held (in hands)
+        # Held (in hands).  PR-H2: ``hand`` is the canonical
+        # anatomical key ("left_hand", "right_hand", ...) — humanize
+        # for display rather than appending a redundant " hand"
+        # suffix that would render "left_hand hand".
         lines.append("|wHeld:|n")
         for hand, item in hands.items():
+            display = hand.replace("_", " ")
             if item:
-                lines.append(f"A {item.get_display_name(caller)} is held in your {hand.lower()} hand.")
+                lines.append(f"A {item.get_display_name(caller)} is held in your {display}.")
             else:
-                lines.append(f"Nothing is in your {hand.lower()} hand.")
+                lines.append(f"Nothing is in your {display}.")
 
         caller.msg("\n".join(lines))
     
