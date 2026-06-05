@@ -173,6 +173,85 @@ class GetOrganSnapshot(TestCase):
         self.assertNotIn("sentinel_organ", organs)
 
 
+class _SaverDictLike(dict):
+    """Subclass of ``dict`` used to model Evennia's ``_SaverDict``.
+
+    The real ``_SaverDict`` (``evennia.utils.dbserialize._SaverDict``)
+    is NOT a dict subclass — it wraps a persisted attribute and
+    routes mutations back to the DB.  ``isinstance(saverdict, dict)``
+    returns False for the real thing.  We can't easily import it in
+    a unit test without setting up Evennia's full storage layer, so
+    we model the surface that matters: dict-like access via ``.get``
+    /``__getitem__``/``__setitem__``, but the isinstance check fails.
+    """
+
+    def __class__(self_cls):  # noqa: N804 — only used for the isinstance trick
+        # Reporting a sentinel class makes isinstance(x, dict) False
+        # even though we're factually a dict subclass.  This is the
+        # smallest stand-in I can build that catches the production
+        # bug; if real _SaverDict ever stops being dict-like, this
+        # test wouldn't catch a real regression but the surface
+        # contract (.get + __setitem__) would still be the right
+        # gate.
+        return _SaverDictLike
+
+
+class OrgansAtLocationDuckTyping(TestCase):
+    """Regression pin for #391-follow-up: ``organs_at_location`` must
+    duck-type rather than ``isinstance(data, dict)`` because Evennia's
+    persisted snapshots wrap nested dicts in ``_SaverDict`` (not a
+    dict subclass).  Pre-fix, every corpse-targeted procedure verb
+    rejected with "nothing at <location>" because every organ failed
+    the isinstance gate.
+    """
+
+    def test_dict_like_non_dict_entries_match(self):
+        """An organ entry that quacks like a dict (has ``.get``) but
+        isn't a ``dict`` instance must still match container/display
+        lookups."""
+        # Build a minimal dict-like object that behaves like
+        # _SaverDict for the surfaces ``organs_at_location`` touches.
+        class _NotADict:
+            def __init__(self, data):
+                self._data = data
+
+            def get(self, key, default=None):
+                return self._data.get(key, default)
+
+            def items(self):
+                return self._data.items()
+
+        heart_like = _NotADict({
+            "container": "chest", "display_location": "chest",
+            "current_hp": 15, "max_hp": 15,
+        })
+        target = SimpleNamespace()
+        target.get_medical_snapshot = lambda: {
+            "organs": {"heart": heart_like},
+        }
+        results = organs_at_location(target, "chest")
+        names = [n for n, _ in results]
+        self.assertIn(
+            "heart", names,
+            "Duck-typed organ data must match container lookup.",
+        )
+
+    def test_truly_non_dict_entries_skipped(self):
+        """Defensive: ``None`` or primitive values must still be
+        filtered out (no AttributeError, no false positives)."""
+        target = SimpleNamespace()
+        target.get_medical_snapshot = lambda: {
+            "organs": {
+                "garbage_string": "not a dict",
+                "garbage_none": None,
+                "garbage_int": 42,
+            },
+        }
+        # Should not raise, should return empty list.
+        results = organs_at_location(target, "chest")
+        self.assertEqual(results, [])
+
+
 class OrgansAtLocation(TestCase):
 
     def test_living_chest_organs(self):

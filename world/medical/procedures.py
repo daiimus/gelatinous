@@ -130,12 +130,25 @@ def organs_at_location(target, location: str) -> list[tuple[str, dict]]:
     ``display_location`` (the latter handles sensory organs like the
     eyes that surface at a more specific render location than their
     bulk container).
+
+    Duck-types the organ data rather than ``isinstance(data, dict)``
+    because Evennia wraps persisted dicts in ``_SaverDict``, which is
+    NOT a ``dict`` subclass for isinstance purposes.  Corpses store
+    their death-time snapshot through ``self.db.medical_state_at_death
+    = character.medical_state.to_dict()``; on read, Evennia recursively
+    wraps every nested dict.  The isinstance gate silently filtered
+    every organ out of corpse-targeted lookups, breaking every
+    procedure verb against any corpse (#391 follow-up).
     """
     snapshot = get_organ_snapshot(target)
     organs = snapshot.get("organs") or {}
     out = []
     for name, data in organs.items():
-        if not isinstance(data, dict):
+        # Duck-type: needs a ``.get`` method to look up container /
+        # display fields.  Regular dicts AND Evennia ``_SaverDict``
+        # both qualify; primitive values (None, strings, numbers)
+        # don't.
+        if not hasattr(data, "get"):
             continue
         container = data.get("container")
         display = data.get("display_location")
@@ -791,7 +804,11 @@ def _mark_organ_removed(target, organ_name: str) -> None:
     if snapshot:
         organs = snapshot.get("organs") or {}
         entry = organs.get(organ_name)
-        if isinstance(entry, dict):
+        # Duck-type: Evennia's ``_SaverDict`` for persisted nested
+        # snapshots fails ``isinstance(entry, dict)`` but supports
+        # ``get`` and ``__setitem__`` the same way.  Probe the surfaces
+        # we actually use rather than gating on Python type identity.
+        if entry is not None and hasattr(entry, "get") and hasattr(entry, "__setitem__"):
             entry["current_hp"] = 0
             entry["wound_stage"] = "severed"
             container = entry.get("container") or organ_name

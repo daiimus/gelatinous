@@ -282,7 +282,13 @@ class CmdHarvest(Command):
         )
         harvestable = []
         for name, data in organs.items():
-            if not isinstance(data, dict):
+            # Duck-type rather than ``isinstance(data, dict)`` —
+            # Evennia's ``_SaverDict`` wraps persisted snapshot
+            # entries and isn't a dict subclass, so isinstance
+            # would silently filter every organ on a corpse target.
+            # See ``world.medical.procedures.organs_at_location``
+            # for the original bug + fix this mirrors.
+            if not hasattr(data, "get"):
                 continue
             spec = get_organ_spec(name, species) or {}
             if not spec.get("can_be_harvested"):
