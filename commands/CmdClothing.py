@@ -486,3 +486,366 @@ class CmdZip(Command):
             )
         else:
             caller.msg(f"You can't {action} the {item.key}.")
+
+
+# =====================================================================
+# Third-party clothing manipulation (#307, PR-H3)
+# =====================================================================
+#
+# Two new verbs surface the third-party clothing interface settled
+# in the design discussion:
+#
+#   dress <target> in <item>     — put clothing on someone / something
+#   undress <target> [<item>]    — remove clothing from someone / something
+#
+# Both verbs gate on the target being unwilling-or-incapacitated:
+#
+#   * Severed appendages (worn-on-severed structure introduced in
+#     this PR)
+#   * Unconscious characters
+#   * Dead characters / corpses
+#
+# Conscious cooperative dressing is intentionally deferred to the
+# future trust/consent layer (per the project memory:
+# project_gelatinous_trust_consent).  Until that ships, conscious
+# targets get a clear rejection that hints at the future system.
+# Do not paint into a corner by hard-coding rejection logic that
+# the consent layer can't gracefully extend.
+
+
+def _can_third_party_clothing(target):
+    """Permission gate for dress / undress (#307 PR-H3 + memory).
+
+    Returns True when the target is in a state where third-party
+    clothing manipulation is allowed without explicit consent:
+    severed appendage, unconscious character, dead character.
+    The trust/consent layer will extend this contract to cover
+    conscious cooperative targets; until then it's the limit.
+    """
+    from typeclasses.items import Appendage
+    if isinstance(target, Appendage):
+        return True
+
+    medical_state = getattr(target, "medical_state", None)
+    if medical_state is None:
+        return False
+    is_dead = getattr(medical_state, "is_dead", None)
+    is_unconscious = getattr(medical_state, "is_unconscious", None)
+    if callable(is_dead) and is_dead():
+        return True
+    if callable(is_unconscious) and is_unconscious():
+        return True
+    return False
+
+
+def _resolve_clothing_target(caller, target_phrase):
+    """Resolve a third-party clothing target.
+
+    Searches the caller's inventory first (so a severed limb the
+    caller is carrying gets matched without setting it down) then
+    falls back to the room.  Returns ``None`` and lets the search
+    helpers message the caller on miss.
+    """
+    raw = target_phrase.strip()
+    if not raw:
+        return None
+    candidates = list(caller.contents)
+    if candidates:
+        match = caller.search(raw, candidates=candidates, quiet=True)
+        if match:
+            return match[0] if isinstance(match, list) else match
+    return caller.search(raw)
+
+
+class CmdDress(Command):
+    """Dress another character or severed body part in a clothing item.
+
+    Usage:
+        dress <target> in <item>
+
+    Examples:
+        dress unconscious bob in jacket
+        dress severed left arm in leather glove
+        dress corpse in burial shroud
+
+    Target must be unconscious, dead, or a severed appendage —
+    conscious cooperative dressing requires the trust/consent
+    system, which isn't implemented yet.  The clothing item must
+    be in your inventory; it transfers to the target along with
+    the worn registration.
+
+    Related: undress, wear, remove.
+    """
+
+    key = "dress"
+    locks = "cmd:all()"
+    help_category = "Inventory"
+
+    def func(self):
+        caller = self.caller
+        args = (self.args or "").strip()
+
+        if " in " not in args:
+            caller.msg("Usage: dress <target> in <item>")
+            return
+
+        target_phrase, _, item_phrase = args.partition(" in ")
+        target_phrase = target_phrase.strip()
+        item_phrase = item_phrase.strip()
+        if not target_phrase or not item_phrase:
+            caller.msg("Usage: dress <target> in <item>")
+            return
+
+        target = _resolve_clothing_target(caller, target_phrase)
+        if target is None:
+            return
+
+        item = caller.search(item_phrase, location=caller, quiet=True)
+        if not item:
+            caller.msg(f"You don't have '{item_phrase}'.")
+            return
+        if isinstance(item, list):
+            item = item[0]
+
+        if not _can_third_party_clothing(target):
+            caller.msg(
+                f"{target.get_display_name(caller)} is conscious "
+                f"and would resist. (Cooperative dressing of a "
+                f"conscious target requires the trust/consent system, "
+                f"which isn't implemented yet.)"
+            )
+            return
+
+        if not hasattr(item, "is_wearable") or not item.is_wearable():
+            caller.msg(f"{item.get_display_name(caller)} can't be worn.")
+            return
+
+        from typeclasses.items import Appendage
+        if isinstance(target, Appendage):
+            success, message = self._dress_appendage(target, item)
+        elif hasattr(target, "wear_item"):
+            success, message = self._dress_character(target, item)
+        else:
+            caller.msg(
+                f"You can't dress {target.get_display_name(caller)}."
+            )
+            return
+
+        if not success:
+            caller.msg(message)
+            return
+
+        item_name_d = item.get_display_name(caller)
+        target_name_d = target.get_display_name(caller)
+        caller.msg(f"You dress {target_name_d} in {item_name_d}.")
+        if (
+            hasattr(target, "has_account")
+            and getattr(target, "has_account", False)
+            and hasattr(target, "msg")
+        ):
+            target.msg(
+                f"{caller.get_display_name(target)} dresses you in "
+                f"{item.get_display_name(target)}."
+            )
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} dresses {{target}} in {item_name_d}.",
+            char_refs={"actor": caller, "target": target},
+            exclude=[caller, target],
+        )
+
+    def _dress_character(self, target, item):
+        """Move the item into ``target``'s inventory and call its
+        existing ``wear_item`` method.  On failure, roll the item
+        back to the caller so it isn't orphaned on a target that
+        wouldn't accept it."""
+        item.move_to(target, quiet=True)
+        success, message = target.wear_item(item)
+        if not success:
+            item.move_to(self.caller, quiet=True)
+        return success, message
+
+    def _dress_appendage(self, target, item):
+        """Worn-on-severed-appendage path.  Match the item's
+        coverage against the appendage's chain locations; wear at
+        the intersection.
+
+        Rejects items that don't cover any chain location (a right
+        glove can't wear on a severed left arm; a chest piece can't
+        wear on a severed leg).
+        """
+        chain = set(target.db.chain or (target.db.location_name,))
+        if hasattr(item, "get_current_coverage"):
+            coverage = set(item.get_current_coverage() or ())
+        else:
+            coverage = set()
+
+        applicable = coverage & chain
+        if not applicable:
+            return False, (
+                f"{item.get_display_name(self.caller)} doesn't fit on "
+                f"{target.get_display_name(self.caller)}."
+            )
+
+        item.move_to(target, quiet=True)
+        appendage_worn = dict(target.db.worn_items or {})
+        for loc in applicable:
+            existing = list(appendage_worn.get(loc) or ())
+            if item not in existing:
+                existing.append(item)
+                appendage_worn[loc] = existing
+        target.db.worn_items = appendage_worn
+        return True, ""
+
+
+class CmdUndress(Command):
+    """Remove clothing from another character or severed body part.
+
+    Usage:
+        undress <target>
+        undress <target> <item>
+
+    First form removes all worn items.  Second removes a single
+    item by name (substring match against the target's worn
+    items).  Removed items transfer to your inventory.
+
+    Target must be unconscious, dead, or a severed appendage —
+    same gate as ``dress``.
+
+    Related: dress, remove.
+    """
+
+    key = "undress"
+    locks = "cmd:all()"
+    help_category = "Inventory"
+
+    def func(self):
+        caller = self.caller
+        args = (self.args or "").strip()
+        if not args:
+            caller.msg("Usage: undress <target> [<item>]")
+            return
+
+        # Greedy on target first — multi-word targets like
+        # ``severed left arm`` work.  Only narrow if the whole
+        # phrase doesn't resolve.
+        target = _resolve_clothing_target(caller, args)
+        item_phrase = None
+        if target is None:
+            tokens = args.rsplit(" ", 1)
+            if len(tokens) == 2:
+                maybe_target = tokens[0].strip()
+                maybe_item = tokens[1].strip()
+                target = _resolve_clothing_target(caller, maybe_target)
+                if target is not None:
+                    item_phrase = maybe_item
+        if target is None:
+            return
+
+        if not _can_third_party_clothing(target):
+            caller.msg(
+                f"{target.get_display_name(caller)} is conscious "
+                f"and would resist. (Cooperative undressing of a "
+                f"conscious target requires the trust/consent "
+                f"system, which isn't implemented yet.)"
+            )
+            return
+
+        from typeclasses.items import Appendage
+        if isinstance(target, Appendage):
+            removed = self._undress_appendage(target, item_phrase)
+        elif hasattr(target, "get_worn_items"):
+            removed = self._undress_character(target, item_phrase)
+        else:
+            caller.msg(
+                f"You can't undress {target.get_display_name(caller)}."
+            )
+            return
+
+        if not removed:
+            if item_phrase:
+                caller.msg(
+                    f"{target.get_display_name(caller)} isn't wearing "
+                    f"'{item_phrase}'."
+                )
+            else:
+                caller.msg(
+                    f"{target.get_display_name(caller)} isn't wearing "
+                    f"anything."
+                )
+            return
+
+        for item in removed:
+            item.move_to(caller, quiet=True)
+
+        names = ", ".join(item.get_display_name(caller) for item in removed)
+        target_name = target.get_display_name(caller)
+        caller.msg(f"You undress {target_name}, taking: {names}.")
+        if (
+            hasattr(target, "has_account")
+            and getattr(target, "has_account", False)
+            and hasattr(target, "msg")
+        ):
+            target.msg(
+                f"{caller.get_display_name(target)} undresses you, "
+                f"taking your clothing."
+            )
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} undresses {{target}}.",
+            char_refs={"actor": caller, "target": target},
+            exclude=[caller, target],
+        )
+
+    def _undress_character(self, target, item_phrase):
+        """Strip worn items off ``target`` and return the removed
+        list.  Uses ``remove_item`` so layer-conflict / state
+        cleanup runs the same way it does for self-removal."""
+        worn = target.get_worn_items() or []
+        if not worn:
+            return []
+
+        if item_phrase:
+            phrase = item_phrase.lower()
+            worn = [it for it in worn if phrase in it.key.lower()]
+            if not worn:
+                return []
+
+        removed = []
+        for item in worn:
+            success, _msg = target.remove_item(item)
+            if success:
+                removed.append(item)
+        return removed
+
+    def _undress_appendage(self, target, item_phrase):
+        """Strip worn items off a severed appendage and return the
+        removed list.  Updates the appendage's ``worn_items`` dict
+        in place to reflect the removal."""
+        worn_dict = dict(target.db.worn_items or {})
+        if not worn_dict:
+            return []
+
+        all_items = []
+        for items in worn_dict.values():
+            for item in (items or []):
+                if item not in all_items:
+                    all_items.append(item)
+
+        if item_phrase:
+            phrase = item_phrase.lower()
+            all_items = [
+                it for it in all_items if phrase in it.key.lower()
+            ]
+        if not all_items:
+            return []
+
+        new_worn = {}
+        for loc, items in worn_dict.items():
+            kept = [
+                it for it in (items or []) if it not in all_items
+            ]
+            if kept:
+                new_worn[loc] = kept
+        target.db.worn_items = new_worn
+        return all_items

@@ -1131,6 +1131,18 @@ class Appendage(Item):
         # without ``None`` checks.
         self.db.wounds_at_death = []
         self.db.longdesc_data = {}
+        # #307 PR-H3: worn-items carry-forward.  Severed appendages
+        # remember which items were worn on which body location at
+        # the moment of severance.  Structure mirrors
+        # ``Character.worn_items``:
+        #
+        #     {"left_hand": [glove_obj], "left_arm": [bracer_obj]}
+        #
+        # Populated by ``detach_items_to_appendage`` for any worn
+        # item whose coverage was fully contained in the severed
+        # cluster.  Read by ``return_appearance`` (forensic prose)
+        # and the third-party ``undress`` verb.
+        self.db.worn_items = {}
 
     def configure_from_sever(self, *, location_name, condition, corpse):
         """Populate forensic-chain fields immediately after spawn.
@@ -1456,9 +1468,46 @@ class Appendage(Item):
                 chunks.append(rendered)
 
         body = " ".join(chunks)
+
+        # PR-H3 (#307): worn-items carry-forward.  Severed appendages
+        # remember the clothing that travelled with them and surface
+        # it in forensic prose ("the severed hand still wears a
+        # bloodstained glove").  Skip when nothing's there.
+        worn_line = self._build_worn_items_line(looker)
+        if worn_line:
+            body = f"{body} {worn_line}" if body else worn_line
+
         if not body:
             return base
         return f"{base} {body}" if base else body
+
+    def _build_worn_items_line(self, looker):
+        """Build the "still wearing ..." sentence for forensic prose.
+
+        Returns the empty string when no items are worn on the
+        appendage — keeps the calling renderer's whitespace handling
+        clean.
+        """
+        worn = self.db.worn_items or {}
+        # Collect each unique item once, preserving first-seen order
+        # (location iteration order, then within-list order).  A
+        # multi-location worn item (e.g. coat) wouldn't reach here in
+        # PR-H3 since the sever pipeline only registers items whose
+        # coverage was fully contained in the severed cluster, but
+        # the dedup is defensive for future expansion.
+        seen = []
+        for loc_items in worn.values():
+            for item in (loc_items or []):
+                if item not in seen:
+                    seen.append(item)
+        if not seen:
+            return ""
+        if len(seen) == 1:
+            name = seen[0].get_display_name(looker)
+            return f"It still wears {name}."
+        names = [item.get_display_name(looker) for item in seen]
+        joined = ", ".join(names[:-1]) + f", and {names[-1]}"
+        return f"It still wears {joined}."
 
 
 def apply_wound_and_longdesc_overlay(appendage, corpse, locations):
@@ -1939,9 +1988,33 @@ def detach_items_to_appendage(character, appendage, containers):
             if kept:
                 new_worn[loc] = kept
         character.worn_items = new_worn
+
+        # PR-H3 (#307): register the moved items in the appendage's
+        # own worn_items dict so they remain structurally "worn at
+        # location X of this severed part" rather than degrading to
+        # generic contents.  Each item lands at every location it
+        # was worn at on the original body (a glove worn solely at
+        # left_hand registers at left_hand on the appendage; a coat
+        # spanning chest+arms wouldn't reach this branch because its
+        # coverage isn't ⊆ severed_locs).
+        #
+        # Test stubs that don't carry a ``db`` surface skip the
+        # carry-forward bookkeeping; physical relocation still
+        # happens so the basic sever contract is preserved.
+        appendage_db = getattr(appendage, "db", None)
+        appendage_worn = None
+        if appendage_db is not None:
+            appendage_worn = dict(
+                getattr(appendage_db, 'worn_items', None) or {}
+            )
         for item in items_to_move:
             _relocate_item(item, appendage)
             moved.append(item)
+            if appendage_worn is not None:
+                for loc in item_locations.get(item, ()):
+                    appendage_worn.setdefault(loc, []).append(item)
+        if appendage_db is not None:
+            appendage_db.worn_items = appendage_worn
 
     # --- Wielded weapons in any chain-hand --------------------------
     hands_to_clear = set()

@@ -213,7 +213,14 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdClothing.CmdRemove())
         self.add(CmdClothing.CmdRollUp())
         self.add(CmdClothing.CmdZip())
-        
+
+        # Third-party clothing (#307, PR-H3).  Operates on
+        # unconscious / dead / severed-appendage targets; conscious
+        # cooperative path deferred to trust/consent layer.  See
+        # ``help dress`` and ``help undress``.
+        self.add(CmdClothing.CmdDress())
+        self.add(CmdClothing.CmdUndress())
+
         # Add armor system commands
         self.add(CmdArmor())
         self.add(CmdArmorRepair())

@@ -511,7 +511,10 @@ class CmdBandage(ConsumptionCommand):
     """
     
     key = "bandage"
-    aliases = ["wrap", "dress"]
+    # PR-H3 (#307): ``dress`` reclaimed for third-party clothing.
+    # CmdBandage keeps ``bandage`` primary + ``wrap`` for the verb
+    # space; "dressing a wound" is colloquial but still covered.
+    aliases = ["wrap"]
     help_category = "Medical"
     
     def parse(self):
