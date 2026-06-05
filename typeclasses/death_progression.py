@@ -271,10 +271,31 @@ class DeathProgressionScript(DefaultScript):
         self.stop()
         self.delete()
             
+    def _is_player_character(self):
+        """Return True when the dying character is a PC (has an account).
+
+        Issue #356 follow-up: the dying-experience prose (this
+        progression's signature surreal monologue about chewing-gum
+        time, hold music from the unemployment office, etc.) is
+        heavy-humanoid and reads as nonsense for NPC species like
+        rats.  Players never *play* a rat — rats are NPC-only — so
+        the prose surface is always either a humanoid PC (for whom
+        the prose works) or a non-player NPC (for whom we should
+        skip the prose entirely).  The death timer + corpse spawn
+        still fire either way; this gate only suppresses the
+        verbose player-facing prose.
+        """
+        character = self.obj
+        if character is None:
+            return False
+        return getattr(character, "account", None) is not None
+
     def _send_initial_message(self):
         """Send the initial message when death progression begins."""
         character = self.obj
         if not character:
+            return
+        if not self._is_player_character():
             return
             
         # Message to the dying character - use exact same approach as curtain DEATH message
@@ -306,6 +327,8 @@ class DeathProgressionScript(DefaultScript):
         """Send a message at specific intervals during death progression."""
         character = self.obj
         if not character:
+            return
+        if not self._is_player_character():
             return
             
         # Calculate remaining time
@@ -414,10 +437,12 @@ class DeathProgressionScript(DefaultScript):
         # Use exact same pattern as curtain: "|r" + text.center(message_width) + "|n"
         final_line1 = "|R" + "The darkness claims you completely...".center(message_width) + "|n"
         final_line2 = "|r" + "Your consciousness fades into the void.".center(message_width) + "|n"
-        
-        # Send each line with line breaks
-        centered_final_msg = final_line1 + "\n" + final_line2 + "\n"
-        character.msg(centered_final_msg, from_obj=self)
+
+        # Send each line with line breaks — PC-only; NPCs skip the
+        # verbose human-perspective prose.  See ``_is_player_character``.
+        if self._is_player_character():
+            centered_final_msg = final_line1 + "\n" + final_line2 + "\n"
+            character.msg(centered_final_msg, from_obj=self)
         
         # Send final death rattle to observers - this is the transition to permanent death
         if character.location:
@@ -518,7 +543,16 @@ class DeathProgressionScript(DefaultScript):
         corpse.db.original_character_dbref = character.dbref
         corpse.db.original_account_dbref = character.account.dbref if character.account else None
         corpse.db.death_time = time.time()
-        corpse.db.physical_description = character.db.desc if character.db.desc is not None else 'A person.'
+        # Species-neutral fallback when the character has no authored
+        # ``db.desc``.  The previous "A person." hardcoded humanoid
+        # vocabulary; "A body." is neutral and works for any species
+        # without leaking species-specific tokens into corpse prose
+        # for misclassified / unknown species.  Spawned characters get
+        # a real desc via ``apply_random_flavor``; this only fires when
+        # the desc was somehow stripped.
+        corpse.db.physical_description = (
+            character.db.desc if character.db.desc is not None else "A body."
+        )
         
         # Store identity data for identity-aware corpse description.
         # ``sleeve_uid`` is an AttributeProperty under category="identity", so
