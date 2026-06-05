@@ -124,6 +124,54 @@ class GetOrganSnapshot(TestCase):
         target = SimpleNamespace()
         self.assertEqual(get_organ_snapshot(target), {})
 
+    def test_corpse_with_empty_live_state_falls_through_to_snapshot(self):
+        """Regression: a corpse can expose ``medical_state`` through
+        Evennia's attribute resolution but with an empty ``organs``
+        dict (the live state was transferred to
+        ``medical_state_at_death`` at death time).  Without the
+        ``getattr(..., "organs", None)`` truthiness guard, the live
+        branch returned ``{"organs": {}}`` and the procedure verbs
+        saw a corpse as having no anatomy.
+
+        Reproduces the 2026-06-05 playtest report where
+        ``incise corpse at abdomen`` rejected with "nothing at
+        abdomen" despite the autopsy showing intact liver/kidney/
+        stomach in the snapshot.
+        """
+        # Build a corpse stub that surfaces BOTH paths: an empty
+        # live medical_state AND a populated death-time snapshot.
+        snapshot = {
+            "organs": {
+                "liver": {
+                    "container": "abdomen",
+                    "display_location": "abdomen",
+                    "current_hp": 20, "max_hp": 20, "conditions": [],
+                },
+            },
+        }
+        corpse = SimpleNamespace()
+        empty_state = SimpleNamespace(organs={})
+        corpse.medical_state = empty_state
+        corpse.get_medical_snapshot = lambda: snapshot
+        snap = get_organ_snapshot(corpse)
+        self.assertIn("liver", snap.get("organs") or {})
+
+    def test_living_with_populated_state_takes_live_path(self):
+        """Counter-test: a living character with populated organs
+        still uses the live medical_state path (not the
+        get_medical_snapshot fallback).  Pins the gate condition."""
+        char = _human_character()
+        # Sentinel snapshot that would shadow the live path if it
+        # ran — assert the live organs win.
+        sentinel_snapshot = {
+            "organs": {"sentinel_organ": {"container": "nowhere"}},
+        }
+        char.get_medical_snapshot = lambda: sentinel_snapshot
+        snap = get_organ_snapshot(char)
+        organs = snap.get("organs") or {}
+        self.assertIn("heart", organs)
+        self.assertNotIn("sentinel_organ", organs)
+
 
 class OrgansAtLocation(TestCase):
 

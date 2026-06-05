@@ -91,12 +91,23 @@ def get_organ_snapshot(target) -> dict:
     * **Corpse / SeveredHead / Appendage** → reads from
       ``target.get_medical_snapshot()`` (death-time dict snapshot).
 
+    The "live" branch is gated on ``medical_state.organs`` being
+    actually populated.  Corpses can expose a truthy-but-empty
+    ``medical_state`` attribute through Evennia's attribute
+    resolution (the live state was transferred to ``medical_state_
+    at_death`` when the character died); without this guard the
+    live branch would short-circuit to ``{"organs": {}}`` and the
+    real death-time snapshot would never be reached.
+
     Returns an empty dict when no snapshot is available (target
     predates the medical pipeline or isn't a body container).
     """
-    # Living: medical_state attribute with live organs.
+    # Living: medical_state attribute with live organs.  Gated on
+    # the organs dict being populated — corpse-shaped targets that
+    # surface ``medical_state`` but with empty organs fall through
+    # to the snapshot path so their death-time data is used.
     medical_state = getattr(target, "medical_state", None)
-    if medical_state is not None and hasattr(medical_state, "organs"):
+    if medical_state is not None and getattr(medical_state, "organs", None):
         return {
             "organs": {
                 name: organ.to_dict()
