@@ -111,7 +111,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} drags the edge across the ground. Sparks follow. So does certainty."
         },
         {
-            'attacker_msg': "You flip the shovel in your hand, blade first, like you're weighing more than steel.",
+            'attacker_msg': "You flip the shovel in your {hit_location}, blade first, like you're weighing more than steel.",
             'victim_msg': "{attacker_name} flips the shovel in their hand, blade first, like they're weighing more than steel.",
             'observer_msg': "{attacker_name} flips the shovel in their hand, blade first, like they're weighing more than steel."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} grips the shovel's splintered handle like an old friend they've buried secrets with."
         },
         {
-            'attacker_msg': "You hoist the shovel over your shoulder like a grave digger with different plans.",
+            'attacker_msg': "You hoist the shovel over your {hit_location} like a grave digger with different plans.",
             'victim_msg': "{attacker_name} hoists the shovel over their shoulder like a grave digger with different plans.",
             'observer_msg': "{attacker_name} hoists the shovel over their shoulder like a grave digger with different plans."
         },
@@ -351,8 +351,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The shovel clangs off a pipe above their head. Close — but not close enough.",
-            'victim_msg': "The shovel clangs off a pipe above your head. Close — but not close enough.",
-            'observer_msg': "The shovel clangs off a pipe above {target_name}'s head. Close — but not close enough."
+            'victim_msg': "The shovel clangs off a pipe above your {hit_location}. Close — but not close enough.",
+            'observer_msg': "The shovel clangs off a pipe above {target_name}'s {hit_location}. Close — but not close enough."
         },
         {
             'attacker_msg': "The shovel gouges the floor where they stood a second ago.",
@@ -406,8 +406,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "Your blade carves empty air where a head used to be.",
-            'victim_msg': "{attacker_name}'s blade carves empty air where your head used to be.",
-            'observer_msg': "{attacker_name}'s blade carves empty air where {target_name}'s head used to be."
+            'victim_msg': "{attacker_name}'s blade carves empty air where your {hit_location} used to be.",
+            'observer_msg': "{attacker_name}'s blade carves empty air where {target_name}'s {hit_location} used to be."
         },
         {
             'attacker_msg': "Your follow-through is flawless. The target is already gone.",
@@ -458,23 +458,23 @@ MESSAGES = {
     'kill': [
         {
             'attacker_msg': "A downward slam connects with the neck. The head jerks, then the body drops.",
-            'victim_msg': "A downward slam connects with your neck. Your head jerks, then your body drops.",
-            'observer_msg': "A downward slam connects with {target_name}'s neck. Their head jerks, then the body drops."
+            'victim_msg': "A downward slam connects with your {hit_location}. Your {hit_location} jerks, then your body drops.",
+            'observer_msg': "A downward slam connects with {target_name}'s {hit_location}. Their head jerks, then the body drops."
         },
         {
             'attacker_msg': "A full swing smashes into the head. The echo is brief. The result is forever.",
-            'victim_msg': "A full swing smashes into your head. The echo is brief. The result is forever.",
-            'observer_msg': "A full swing smashes into {target_name}'s head. The echo is brief. The result is forever."
+            'victim_msg': "A full swing smashes into your {hit_location}. The echo is brief. The result is forever.",
+            'observer_msg': "A full swing smashes into {target_name}'s {hit_location}. The echo is brief. The result is forever."
         },
         {
             'attacker_msg': "A rising swing caves in the jaw, then the silence. They are done.",
-            'victim_msg': "A rising swing caves in your jaw, then the silence. You are done.",
-            'observer_msg': "A rising swing caves in {target_name}'s jaw, then the silence. They are done."
+            'victim_msg': "A rising swing caves in your {hit_location}, then the silence. You are done.",
+            'observer_msg': "A rising swing caves in {target_name}'s {hit_location}, then the silence. They are done."
         },
         {
             'attacker_msg': "A sideways cleave to the head. They drop instantly, like the shovel hit the off switch.",
-            'victim_msg': "A sideways cleave to your head. You drop instantly, like the shovel hit the off switch.",
-            'observer_msg': "A sideways cleave to {target_name}'s head. They drop instantly, like the shovel hit the off switch."
+            'victim_msg': "A sideways cleave to your {hit_location}. You drop instantly, like the shovel hit the off switch.",
+            'observer_msg': "A sideways cleave to {target_name}'s {hit_location}. They drop instantly, like the shovel hit the off switch."
         },
         {
             'attacker_msg': "A vertical strike lands on the crown. They fold like fabric in a storm.",
@@ -483,8 +483,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "One crack to the side of the skull. The impact ends everything that came before.",
-            'victim_msg': "One crack to the side of your skull. The impact ends everything that came before.",
-            'observer_msg': "One crack to the side of {target_name}'s skull. The impact ends everything that came before."
+            'victim_msg': "One crack to the side of your {hit_location}. The impact ends everything that came before.",
+            'observer_msg': "One crack to the side of {target_name}'s {hit_location}. The impact ends everything that came before."
         },
         {
             'attacker_msg': "One jab under the chin and the edge tears upward. Blood arcs. They fall.",
@@ -493,28 +493,28 @@ MESSAGES = {
         },
         {
             'attacker_msg': "One sharp upward arc crashes into the chin. The head snaps back and never returns.",
-            'victim_msg': "One sharp upward arc crashes into your chin. Your head snaps back and never returns.",
+            'victim_msg': "One sharp upward arc crashes into your chin. Your {hit_location} snaps back and never returns.",
             'observer_msg': "One sharp upward arc crashes into {target_name}'s chin. Their head snaps back and never returns."
         },
         {
             'attacker_msg': "Steel crunches into their temple. What's left isn't standing.",
-            'victim_msg': "Steel crunches into your temple. What's left isn't standing.",
-            'observer_msg': "Steel crunches into {target_name}'s temple. What's left isn't standing."
+            'victim_msg': "Steel crunches into your {hit_location}. What's left isn't standing.",
+            'observer_msg': "Steel crunches into {target_name}'s {hit_location}. What's left isn't standing."
         },
         {
             'attacker_msg': "Steel hits spine. They collapse like architecture stripped of its load-bearing lie.",
-            'victim_msg': "Steel hits your spine. You collapse like architecture stripped of its load-bearing lie.",
-            'observer_msg': "Steel hits {target_name}'s spine. They collapse like architecture stripped of its load-bearing lie."
+            'victim_msg': "Steel hits your {hit_location}. You collapse like architecture stripped of its load-bearing lie.",
+            'observer_msg': "Steel hits {target_name}'s {hit_location}. They collapse like architecture stripped of its load-bearing lie."
         },
         {
             'attacker_msg': "Steel meets face. Face loses. What's left doesn't count as breathing.",
-            'victim_msg': "Steel meets your face. Your face loses. What's left doesn't count as breathing.",
-            'observer_msg': "Steel meets {target_name}'s face. Their face loses. What's left doesn't count as breathing."
+            'victim_msg': "Steel meets your {hit_location}. Your {hit_location} loses. What's left doesn't count as breathing.",
+            'observer_msg': "Steel meets {target_name}'s {hit_location}. Their face loses. What's left doesn't count as breathing."
         },
         {
             'attacker_msg': "The blade drives into the base of the spine. The fall is violent. The twitching, brief.",
-            'victim_msg': "The blade drives into the base of your spine. Your fall is violent. The twitching, brief.",
-            'observer_msg': "The blade drives into the base of {target_name}'s spine. Their fall is violent. The twitching, brief."
+            'victim_msg': "The blade drives into the base of your {hit_location}. Your fall is violent. The twitching, brief.",
+            'observer_msg': "The blade drives into the base of {target_name}'s {hit_location}. Their fall is violent. The twitching, brief."
         },
         {
             'attacker_msg': "The blade embeds in the gut. You wrench it sideways. They crumple in two.",
@@ -523,8 +523,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The blade lands in the chest with a wet crunch. They fall inward, like folding paper soaked in red.",
-            'victim_msg': "The blade lands in your chest with a wet crunch. You fall inward, like folding paper soaked in red.",
-            'observer_msg': "The blade lands in {target_name}'s chest with a wet crunch. They fall inward, like folding paper soaked in red."
+            'victim_msg': "The blade lands in your {hit_location} with a wet crunch. You fall inward, like folding paper soaked in red.",
+            'observer_msg': "The blade lands in {target_name}'s {hit_location} with a wet crunch. They fall inward, like folding paper soaked in red."
         },
         {
             'attacker_msg': "The edge of the shovel punches into the eye socket. The scream dies with the pressure.",
@@ -533,8 +533,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The edge tears through the temple. Their face goes slack before their legs.",
-            'victim_msg': "The edge tears through your temple. Your face goes slack before your legs.",
-            'observer_msg': "The edge tears through {target_name}'s temple. Their face goes slack before their legs."
+            'victim_msg': "The edge tears through your {hit_location}. Your {hit_location} goes slack before your legs.",
+            'observer_msg': "The edge tears through {target_name}'s {hit_location}. Their face goes slack before their legs."
         },
         {
             'attacker_msg': "The flat edge crushes the windpipe. They wheeze, choke, still.",
@@ -543,47 +543,47 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The flat smashes into the neck. Bone crumples. They don't breathe again.",
-            'victim_msg': "The flat smashes into your neck. Bone crumples. You don't breathe again.",
-            'observer_msg': "The flat smashes into {target_name}'s neck. Bone crumples. They don't breathe again."
+            'victim_msg': "The flat smashes into your {hit_location}. Bone crumples. You don't breathe again.",
+            'observer_msg': "The flat smashes into {target_name}'s {hit_location}. Bone crumples. They don't breathe again."
         },
         {
             'attacker_msg': "The handle punches into the base of the neck. The body seizes. Then drops.",
-            'victim_msg': "The handle punches into the base of your neck. Your body seizes. Then drops.",
-            'observer_msg': "The handle punches into the base of {target_name}'s neck. Their body seizes. Then drops."
+            'victim_msg': "The handle punches into the base of your {hit_location}. Your body seizes. Then drops.",
+            'observer_msg': "The handle punches into the base of {target_name}'s {hit_location}. Their body seizes. Then drops."
         },
         {
             'attacker_msg': "The shovel caves in the side of their skull. The rest follows gravity.",
-            'victim_msg': "The shovel caves in the side of your skull. The rest follows gravity.",
-            'observer_msg': "The shovel caves in the side of {target_name}'s skull. The rest follows gravity."
+            'victim_msg': "The shovel caves in the side of your {hit_location}. The rest follows gravity.",
+            'observer_msg': "The shovel caves in the side of {target_name}'s {hit_location}. The rest follows gravity."
         },
         {
             'attacker_msg': "The shovel spins once, then lands across the temple. The collapse is immediate — and permanent.",
-            'victim_msg': "The shovel spins once, then lands across your temple. The collapse is immediate — and permanent.",
-            'observer_msg': "The shovel spins once, then lands across {target_name}'s temple. The collapse is immediate — and permanent."
+            'victim_msg': "The shovel spins once, then lands across your {hit_location}. The collapse is immediate — and permanent.",
+            'observer_msg': "The shovel spins once, then lands across {target_name}'s {hit_location}. The collapse is immediate — and permanent."
         },
         {
             'attacker_msg': "You bury the blade into their skull. It doesn't come out clean.",
-            'victim_msg': "{attacker_name} buries the blade into your skull. It doesn't come out clean.",
-            'observer_msg': "{attacker_name} buries the blade into {target_name}'s skull. It doesn't come out clean."
+            'victim_msg': "{attacker_name} buries the blade into your {hit_location}. It doesn't come out clean.",
+            'observer_msg': "{attacker_name} buries the blade into {target_name}'s {hit_location}. It doesn't come out clean."
         },
         {
             'attacker_msg': "You bury the shovel in the throat. It gets quiet fast.",
-            'victim_msg': "{attacker_name} buries the shovel in your throat. It gets quiet fast.",
-            'observer_msg': "{attacker_name} buries the shovel in {target_name}'s throat. It gets quiet fast."
+            'victim_msg': "{attacker_name} buries the shovel in your {hit_location}. It gets quiet fast.",
+            'observer_msg': "{attacker_name} buries the shovel in {target_name}'s {hit_location}. It gets quiet fast."
         },
         {
             'attacker_msg': "You drive the blade into the chest and twist. The scream never makes it out.",
-            'victim_msg': "{attacker_name} drives the blade into your chest and twists. Your scream never makes it out.",
-            'observer_msg': "{attacker_name} drives the blade into {target_name}'s chest and twists. Their scream never makes it out."
+            'victim_msg': "{attacker_name} drives the blade into your {hit_location} and twists. Your scream never makes it out.",
+            'observer_msg': "{attacker_name} drives the blade into {target_name}'s {hit_location} and twists. Their scream never makes it out."
         },
         {
             'attacker_msg': "You drive the tool down onto the spine. The twitching stops before the shovel does.",
-            'victim_msg': "{attacker_name} drives the tool down onto your spine. The twitching stops before the shovel does.",
-            'observer_msg': "{attacker_name} drives the tool down onto {target_name}'s spine. The twitching stops before the shovel does."
+            'victim_msg': "{attacker_name} drives the tool down onto your {hit_location}. The twitching stops before the shovel does.",
+            'observer_msg': "{attacker_name} drives the tool down onto {target_name}'s {hit_location}. The twitching stops before the shovel does."
         },
         {
             'attacker_msg': "You hook the shovel behind their knees, yank, and drive it down across their head.",
-            'victim_msg': "{attacker_name} hooks the shovel behind your knees, yanks, and drives it down across your head.",
+            'victim_msg': "{attacker_name} hooks the shovel behind your knees, yanks, and drives it down across your {hit_location}.",
             'observer_msg': "{attacker_name} hooks the shovel behind {target_name}'s knees, yanks, and drives it down across their head."
         },
         {
@@ -593,18 +593,18 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You ram the flat into the throat. They drop mid-breath, still clutching.",
-            'victim_msg': "{attacker_name} rams the flat into your throat. You drop mid-breath, still clutching.",
-            'observer_msg': "{attacker_name} rams the flat into {target_name}'s throat. They drop mid-breath, still clutching."
+            'victim_msg': "{attacker_name} rams the flat into your {hit_location}. You drop mid-breath, still clutching.",
+            'observer_msg': "{attacker_name} rams the flat into {target_name}'s {hit_location}. They drop mid-breath, still clutching."
         },
         {
             'attacker_msg': "You stomp forward and slam the shovel into the chest. The ribs fold like cheap furniture.",
-            'victim_msg': "{attacker_name} stomps forward and slams the shovel into your chest. Your ribs fold like cheap furniture.",
-            'observer_msg': "{attacker_name} stomps forward and slams the shovel into {target_name}'s chest. Their ribs fold like cheap furniture."
+            'victim_msg': "{attacker_name} stomps forward and slams the shovel into your {hit_location}. Your {hit_location} fold like cheap furniture.",
+            'observer_msg': "{attacker_name} stomps forward and slams the shovel into {target_name}'s {hit_location}. Their ribs fold like cheap furniture."
         },
         {
             'attacker_msg': "You swing underhanded. The flat caves in the jaw. The scream never starts.",
-            'victim_msg': "{attacker_name} swings underhanded. The flat caves in your jaw. Your scream never starts.",
-            'observer_msg': "{attacker_name} swings underhanded. The flat caves in {target_name}'s jaw. Their scream never starts."
+            'victim_msg': "{attacker_name} swings underhanded. The flat caves in your {hit_location}. Your scream never starts.",
+            'observer_msg': "{attacker_name} swings underhanded. The flat caves in {target_name}'s {hit_location}. Their scream never starts."
         }
     ]
 }

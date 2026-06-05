@@ -41,7 +41,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} briefly struggles with the weight of the oversized shears before settling into a firm two-handed stance."
         },
         {
-            'attacker_msg': "You rest the heavy, long-handled shears on your shoulder, the formidable blades pointing skyward.",
+            'attacker_msg': "You rest the heavy, long-handled shears on your {hit_location}, the formidable blades pointing skyward.",
             'victim_msg': "{attacker_name} rests the heavy, long-handled shears on their shoulder, the formidable blades pointing skyward.",
             'observer_msg': "{attacker_name} rests the heavy, long-handled shears on their shoulder, the formidable blades pointing skyward."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} works the long handles, clicking the heavy shears open and shut, the rhythm a steady, menacing beat of impending action."
         },
         {
-            'attacker_msg': "You carefully trace one of the long, wickedly sharp edges of the shears along your forearm, a silent vow.",
+            'attacker_msg': "You carefully trace one of the long, wickedly sharp edges of the shears along your {hit_location}, a silent vow.",
             'victim_msg': "{attacker_name} carefully traces one of the long, wickedly sharp edges of the shears along their forearm, a silent vow.",
             'observer_msg': "{attacker_name} carefully traces one of the long, wickedly sharp edges of the shears along their forearm, a silent vow."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} leans on the long-handled shears, the heavy blades resting on the ground, a picture of grim readiness."
         },
         {
-            'attacker_msg': "You touch one of the cold, long blades of the heavy shears to your tongue, a savage grin spreading across your face.",
+            'attacker_msg': "You touch one of the cold, long blades of the heavy shears to your tongue, a savage grin spreading across your {hit_location}.",
             'victim_msg': "{attacker_name} touches one of the cold, long blades of the heavy shears to their tongue, a savage grin spreading across their face.",
             'observer_msg': "{attacker_name} touches one of the cold, long blades of the heavy shears to their tongue, a savage grin spreading across their face."
         },
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "You drive the heavy, two-handed shears into {target_name}'s throat with a final, brutal thrust. The fight ends abruptly.",
-            'victim_msg': "{attacker_name} drives the heavy, two-handed shears into your throat with a final, brutal thrust. The fight ends abruptly.",
-            'observer_msg': "{attacker_name} drives the heavy, two-handed shears into {target_name}'s throat with a final, brutal thrust. The fight ends abruptly."
+            'attacker_msg': "You drive the heavy, two-handed shears into {target_name}'s {hit_location} with a final, brutal thrust. The fight ends abruptly.",
+            'victim_msg': "{attacker_name} drives the heavy, two-handed shears into your {hit_location} with a final, brutal thrust. The fight ends abruptly.",
+            'observer_msg': "{attacker_name} drives the heavy, two-handed shears into {target_name}'s {hit_location} with a final, brutal thrust. The fight ends abruptly."
         },
         {
             'attacker_msg': "A quick, powerful snip from the oversized shears to {target_name}'s carotid artery, and they drop, the struggle ceasing.",
@@ -467,14 +467,14 @@ MESSAGES = {
             'observer_msg': "A quick, powerful snip from the oversized shears to {target_name}'s carotid artery, and they drop, the struggle ceasing."
         },
         {
-            'attacker_msg': "The long blades of the heavy shears slip between {target_name}'s ribs and into the heart. {target_name} collapses, the light leaving their eyes.",
-            'victim_msg': "The long blades of the heavy shears slip between your ribs and into the heart. You collapse, the light leaving your eyes.",
-            'observer_msg': "The long blades of the heavy shears slip between {target_name}'s ribs and into the heart. {target_name} collapses, the light leaving their eyes."
+            'attacker_msg': "The long blades of the heavy shears slip between {target_name}'s {hit_location} and into the heart. {target_name} collapses, the light leaving their eyes.",
+            'victim_msg': "The long blades of the heavy shears slip between your {hit_location} and into the heart. You collapse, the light leaving your eyes.",
+            'observer_msg': "The long blades of the heavy shears slip between {target_name}'s {hit_location} and into the heart. {target_name} collapses, the light leaving their eyes."
         },
         {
-            'attacker_msg': "You carve a deep line across {target_name}'s neck with one of the long shear blades. The end is swift and silent.",
-            'victim_msg': "{attacker_name} carves a deep line across your neck with one of the long shear blades. The end is swift and silent.",
-            'observer_msg': "{attacker_name} carves a deep line across {target_name}'s neck with one of the long shear blades. The end is swift and silent."
+            'attacker_msg': "You carve a deep line across {target_name}'s {hit_location} with one of the long shear blades. The end is swift and silent.",
+            'victim_msg': "{attacker_name} carves a deep line across your {hit_location} with one of the long shear blades. The end is swift and silent.",
+            'observer_msg': "{attacker_name} carves a deep line across {target_name}'s {hit_location} with one of the long shear blades. The end is swift and silent."
         },
         {
             'attacker_msg': "A devastating jab under the jaw with the closed points of the heavy shears sends {target_name} crumpling to the ground, motionless.",
@@ -492,24 +492,24 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slices deep into {target_name}'s femoral artery with a long shear blade. {target_name} doesn't last long."
         },
         {
-            'attacker_msg': "A quick, brutal snip from the heavy shears to {target_name}'s temple ends everything in an instant.",
-            'victim_msg': "A quick, brutal snip from the heavy shears to your temple ends everything in an instant.",
-            'observer_msg': "A quick, brutal snip from the heavy shears to {target_name}'s temple ends everything in an instant."
+            'attacker_msg': "A quick, brutal snip from the heavy shears to {target_name}'s {hit_location} ends everything in an instant.",
+            'victim_msg': "A quick, brutal snip from the heavy shears to your {hit_location} ends everything in an instant.",
+            'observer_msg': "A quick, brutal snip from the heavy shears to {target_name}'s {hit_location} ends everything in an instant."
         },
         {
-            'attacker_msg': "The long blades of the heavy shears slip under {target_name}'s sternum with a sickening crunch. {target_name} gasps, then nothing.",
-            'victim_msg': "The long blades of the heavy shears slip under your sternum with a sickening crunch. You gasp, then nothing.",
-            'observer_msg': "The long blades of the heavy shears slip under {target_name}'s sternum with a sickening crunch. {target_name} gasps, then nothing."
+            'attacker_msg': "The long blades of the heavy shears slip under {target_name}'s {hit_location} with a sickening crunch. {target_name} gasps, then nothing.",
+            'victim_msg': "The long blades of the heavy shears slip under your {hit_location} with a sickening crunch. You gasp, then nothing.",
+            'observer_msg': "The long blades of the heavy shears slip under {target_name}'s {hit_location} with a sickening crunch. {target_name} gasps, then nothing."
         },
         {
-            'attacker_msg': "You draw one long, sharp blade of the heavy shears across {target_name}'s throat. The silence that follows is absolute.",
-            'victim_msg': "{attacker_name} draws one long, sharp blade of the heavy shears across your throat. The silence that follows is absolute.",
-            'observer_msg': "{attacker_name} draws one long, sharp blade of the heavy shears across {target_name}'s throat. The silence that follows is absolute."
+            'attacker_msg': "You draw one long, sharp blade of the heavy shears across {target_name}'s {hit_location}. The silence that follows is absolute.",
+            'victim_msg': "{attacker_name} draws one long, sharp blade of the heavy shears across your {hit_location}. The silence that follows is absolute.",
+            'observer_msg': "{attacker_name} draws one long, sharp blade of the heavy shears across {target_name}'s {hit_location}. The silence that follows is absolute."
         },
         {
-            'attacker_msg': "A downward, two-handed snip buries the heavy blades of the shears deep in {target_name}'s chest. {target_name} shudders, then stills.",
-            'victim_msg': "A downward, two-handed snip buries the heavy blades of the shears deep in your chest. You shudder, then still.",
-            'observer_msg': "A downward, two-handed snip buries the heavy blades of the shears deep in {target_name}'s chest. {target_name} shudders, then stills."
+            'attacker_msg': "A downward, two-handed snip buries the heavy blades of the shears deep in {target_name}'s {hit_location}. {target_name} shudders, then stills.",
+            'victim_msg': "A downward, two-handed snip buries the heavy blades of the shears deep in your {hit_location}. You shudder, then still.",
+            'observer_msg': "A downward, two-handed snip buries the heavy blades of the shears deep in {target_name}'s {hit_location}. {target_name} shudders, then stills."
         },
         {
             'attacker_msg': "The long, pointed blades of the heavy shears slip between {target_name}'s vertebrae. {target_name} drops, a puppet with cut strings.",
@@ -532,9 +532,9 @@ MESSAGES = {
             'observer_msg': "The long blades of the heavy shears puncture a lung. {target_name}'s fight is over."
         },
         {
-            'attacker_msg': "You slice through {target_name}'s wrist with the powerful, two-handed shears. The outcome is grimly inevitable.",
-            'victim_msg': "{attacker_name} slices through your wrist with the powerful, two-handed shears. The outcome is grimly inevitable.",
-            'observer_msg': "{attacker_name} slices through {target_name}'s wrist with the powerful, two-handed shears. The outcome is grimly inevitable."
+            'attacker_msg': "You slice through {target_name}'s {hit_location} with the powerful, two-handed shears. The outcome is grimly inevitable.",
+            'victim_msg': "{attacker_name} slices through your {hit_location} with the powerful, two-handed shears. The outcome is grimly inevitable.",
+            'observer_msg': "{attacker_name} slices through {target_name}'s {hit_location} with the powerful, two-handed shears. The outcome is grimly inevitable."
         },
         {
             'attacker_msg': "A quick, brutal flick of the heavy shears opens {target_name}'s jugular. {target_name} drops in seconds, the fight finished.",
@@ -547,9 +547,9 @@ MESSAGES = {
             'observer_msg': "The long, pointed blades of the heavy shears slip behind {target_name}'s ear with deadly precision. {target_name} never sees it coming."
         },
         {
-            'attacker_msg': "A crushing snip to the base of {target_name}'s skull with the oversized shears ends the conflict instantly and decisively.",
-            'victim_msg': "A crushing snip to the base of your skull with the oversized shears ends the conflict instantly and decisively.",
-            'observer_msg': "A crushing snip to the base of {target_name}'s skull with the oversized shears ends the conflict instantly and decisively."
+            'attacker_msg': "A crushing snip to the base of {target_name}'s {hit_location} with the oversized shears ends the conflict instantly and decisively.",
+            'victim_msg': "A crushing snip to the base of your {hit_location} with the oversized shears ends the conflict instantly and decisively.",
+            'observer_msg': "A crushing snip to the base of {target_name}'s {hit_location} with the oversized shears ends the conflict instantly and decisively."
         },
         {
             'attacker_msg': "You, with a final, sweeping motion of the two-handed shears, ensure {target_name} will not rise again.",
@@ -562,14 +562,14 @@ MESSAGES = {
             'observer_msg': "The long blades of the heavy shears slip into {target_name}'s mouth with brutal force, silencing them forever."
         },
         {
-            'attacker_msg': "A quick, powerful snip from the oversized shears opens {target_name}'s abdomen. {target_name} folds, the fight draining out of them.",
-            'victim_msg': "A quick, powerful snip from the oversized shears opens your abdomen. You fold, the fight draining out of you.",
-            'observer_msg': "A quick, powerful snip from the oversized shears opens {target_name}'s abdomen. {target_name} folds, the fight draining out of them."
+            'attacker_msg': "A quick, powerful snip from the oversized shears opens {target_name}'s {hit_location}. {target_name} folds, the fight draining out of them.",
+            'victim_msg': "A quick, powerful snip from the oversized shears opens your {hit_location}. You fold, the fight draining out of you.",
+            'observer_msg': "A quick, powerful snip from the oversized shears opens {target_name}'s {hit_location}. {target_name} folds, the fight draining out of them."
         },
         {
-            'attacker_msg': "The heavy, pointed blades of the shears puncture {target_name}'s heart. {target_name} gasps a final breath, then nothing.",
-            'victim_msg': "The heavy, pointed blades of the shears puncture your heart. You gasp a final breath, then nothing.",
-            'observer_msg': "The heavy, pointed blades of the shears puncture {target_name}'s heart. {target_name} gasps a final breath, then nothing."
+            'attacker_msg': "The heavy, pointed blades of the shears puncture {target_name}'s {hit_location}. {target_name} gasps a final breath, then nothing.",
+            'victim_msg': "The heavy, pointed blades of the shears puncture your {hit_location}. You gasp a final breath, then nothing.",
+            'observer_msg': "The heavy, pointed blades of the shears puncture {target_name}'s {hit_location}. {target_name} gasps a final breath, then nothing."
         },
         {
             'attacker_msg': "You draw the long, sharp blades of the heavy shears across {target_name}'s eyes. Their world goes dark permanently.",
@@ -592,14 +592,14 @@ MESSAGES = {
             'observer_msg': "A quick, vicious flick of the oversized shears opens {target_name}'s femoral artery. Life drains away swiftly."
         },
         {
-            'attacker_msg': "The long blades of the heavy shears slip into {target_name}'s chest, you twisting the long handles with finality. {target_name} is gone.",
-            'victim_msg': "The long blades of the heavy shears slip into your chest, {attacker_name} twisting the long handles with finality. You are gone.",
-            'observer_msg': "The long blades of the heavy shears slip into {target_name}'s chest, {attacker_name} twisting the long handles with finality. {target_name} is gone."
+            'attacker_msg': "The long blades of the heavy shears slip into {target_name}'s {hit_location}, you twisting the long handles with finality. {target_name} is gone.",
+            'victim_msg': "The long blades of the heavy shears slip into your {hit_location}, {attacker_name} twisting the long handles with finality. You are gone.",
+            'observer_msg': "The long blades of the heavy shears slip into {target_name}'s {hit_location}, {attacker_name} twisting the long handles with finality. {target_name} is gone."
         },
         {
-            'attacker_msg': "You carve a deep, fatal line across {target_name}'s throat with one of the long shear blades. The end is abrupt and certain.",
-            'victim_msg': "{attacker_name} carves a deep, fatal line across your throat with one of the long shear blades. The end is abrupt and certain.",
-            'observer_msg': "{attacker_name} carves a deep, fatal line across {target_name}'s throat with one of the long shear blades. The end is abrupt and certain."
+            'attacker_msg': "You carve a deep, fatal line across {target_name}'s {hit_location} with one of the long shear blades. The end is abrupt and certain.",
+            'victim_msg': "{attacker_name} carves a deep, fatal line across your {hit_location} with one of the long shear blades. The end is abrupt and certain.",
+            'observer_msg': "{attacker_name} carves a deep, fatal line across {target_name}'s {hit_location} with one of the long shear blades. The end is abrupt and certain."
         },
         {
             'attacker_msg': "A final, crushing snip to the heart with the heavy, two-handed shears. {target_name} sags, then falls, motionless.",

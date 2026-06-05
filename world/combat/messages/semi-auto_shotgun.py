@@ -346,7 +346,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name} drops prone just as your semi-automatic shotgun fires a rapid series, pellets cracking the air inches above their head. The shotgun cycles, ready for {target_name} to reappear.",
-            'victim_msg': "You drop prone just as {attacker_name}'s semi-automatic shotgun fires a rapid series, pellets cracking the air inches above your head. The shotgun cycles, ready for you to reappear.",
+            'victim_msg': "You drop prone just as {attacker_name}'s semi-automatic shotgun fires a rapid series, pellets cracking the air inches above your {hit_location}. The shotgun cycles, ready for you to reappear.",
             'observer_msg': "{target_name} drops prone just as {attacker_name}'s semi-automatic shotgun fires a rapid series, pellets cracking the air inches above their head. The shotgun cycles, ready for {target_name} to reappear."
         },
         {
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s semi-automatic shotgun to punch a pattern of holes in a nearby wall with rapid fire. The shotgun cycles, {attacker_name} maintaining their aim, ready to fire again."
         },
         {
-            'attacker_msg': "The semi-automatic shotgun bucks in your shoulder as you send a volley wide. The shotgun cycles, chambering fresh rounds, you quickly compensating for muzzle climb.",
+            'attacker_msg': "The semi-automatic shotgun bucks in your {hit_location} as you send a volley wide. The shotgun cycles, chambering fresh rounds, you quickly compensating for muzzle climb.",
             'victim_msg': "The semi-automatic shotgun bucks in {attacker_name}'s shoulder as they send a volley wide. The shotgun cycles, chambering fresh rounds, {attacker_name} quickly compensating for muzzle climb.",
             'observer_msg': "The semi-automatic shotgun bucks in {attacker_name}'s shoulder as they send a volley wide. The shotgun cycles, chambering fresh rounds, {attacker_name} quickly compensating for muzzle climb."
         },
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "Your semi-automatic shotgun erupts in a rapid volley, stitching fatal impacts across {target_name}'s chest; they collapse, riddled. The action cycles with a final *CHLACK*, ejecting a casing, the threat decisively neutralized by overwhelming firepower.",
-            'victim_msg': "{attacker_name}'s semi-automatic shotgun erupts in a rapid volley, stitching fatal impacts across your chest; you collapse, riddled. The action cycles with a final *CHLACK*, ejecting a casing, the threat decisively neutralized by overwhelming firepower.",
-            'observer_msg': "{attacker_name}'s semi-automatic shotgun erupts in a rapid volley, stitching fatal impacts across {target_name}'s chest; they collapse, riddled. The action cycles with a final *CHLACK*, ejecting a casing, the threat decisively neutralized by overwhelming firepower."
+            'attacker_msg': "Your semi-automatic shotgun erupts in a rapid volley, stitching fatal impacts across {target_name}'s {hit_location}; they collapse, riddled. The action cycles with a final *CHLACK*, ejecting a casing, the threat decisively neutralized by overwhelming firepower.",
+            'victim_msg': "{attacker_name}'s semi-automatic shotgun erupts in a rapid volley, stitching fatal impacts across your {hit_location}; you collapse, riddled. The action cycles with a final *CHLACK*, ejecting a casing, the threat decisively neutralized by overwhelming firepower.",
+            'observer_msg': "{attacker_name}'s semi-automatic shotgun erupts in a rapid volley, stitching fatal impacts across {target_name}'s {hit_location}; they collapse, riddled. The action cycles with a final *CHLACK*, ejecting a casing, the threat decisively neutralized by overwhelming firepower."
         },
         {
             'attacker_msg': "The semi-automatic shotgun barks a deadly staccato, and {target_name} crumples as multiple heavy slugs or buckshot blasts tear through vital areas, ending their fight instantly. The shotgun ejects hot casings, bolt locking back or ready for the next foe.",

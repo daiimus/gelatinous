@@ -11,12 +11,12 @@ MESSAGES = {
             'observer_msg': "With a practiced motion, {attacker_name} checks the cylinder of the revolver, ensuring it's loaded."
         },
         {
-            'attacker_msg': "Your hand closes around the checkered grip of the revolver, thumbing back the hammer with a distinct *click*.",
+            'attacker_msg': "Your {hit_location} closes around the checkered grip of the revolver, thumbing back the hammer with a distinct *click*.",
             'victim_msg': "{attacker_name}'s hand closes around the checkered grip of the revolver, thumbing back the hammer with a distinct *click*.",
             'observer_msg': "{attacker_name}'s hand closes around the checkered grip of the revolver, thumbing back the hammer with a distinct *click*."
         },
         {
-            'attacker_msg': "The revolver appears in your hand, its muzzle a dark, ominous circle.",
+            'attacker_msg': "The revolver appears in your {hit_location}, its muzzle a dark, ominous circle.",
             'victim_msg': "The revolver appears in {attacker_name}'s hand, its muzzle a dark, ominous circle.",
             'observer_msg': "The revolver appears in {attacker_name}'s hand, its muzzle a dark, ominous circle."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air seems to still as {attacker_name} prepares to fire the revolver, anticipating the sharp crack of the shot."
         },
         {
-            'attacker_msg': "Your face is set in concentration, finger hovering near the revolver's trigger.",
+            'attacker_msg': "Your {hit_location} is set in concentration, finger hovering near the revolver's trigger.",
             'victim_msg': "{attacker_name}'s face is set in concentration, finger hovering near the revolver's trigger.",
             'observer_msg': "{attacker_name}'s face is set in concentration, finger hovering near the revolver's trigger."
         },
@@ -184,7 +184,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A direct hit! The revolver's bullet smashes into {target_name}'s {hit_location}, driving the air from their lungs.",
-            'victim_msg': "A direct hit! The revolver's bullet smashes into your {hit_location}, driving the air from your lungs.",
+            'victim_msg': "A direct hit! The revolver's bullet smashes into your {hit_location}, driving the air from your {hit_location}.",
             'observer_msg': "A direct hit! The revolver's bullet smashes into {target_name}'s {hit_location}, driving the air from their lungs."
         },
         {
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your revolver fires with a sharp *CRACK*, the bullet whining past {target_name}'s head and smacking into a wall.",
-            'victim_msg': "{attacker_name}'s revolver fires with a sharp *CRACK*, the bullet whining past your head and smacking into a wall.",
-            'observer_msg': "{attacker_name}'s revolver fires with a sharp *CRACK*, the bullet whining past {target_name}'s head and smacking into a wall."
+            'attacker_msg': "Your revolver fires with a sharp *CRACK*, the bullet whining past {target_name}'s {hit_location} and smacking into a wall.",
+            'victim_msg': "{attacker_name}'s revolver fires with a sharp *CRACK*, the bullet whining past your {hit_location} and smacking into a wall.",
+            'observer_msg': "{attacker_name}'s revolver fires with a sharp *CRACK*, the bullet whining past {target_name}'s {hit_location} and smacking into a wall."
         },
         {
             'attacker_msg': "{target_name} dives aside as the revolver barks, the bullet kicking up dirt where they just stood.",
@@ -346,7 +346,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name} ducks just as your revolver fires, the bullet searing the air where their head had been.",
-            'victim_msg': "You duck just as {attacker_name}'s revolver fires, the bullet searing the air where your head had been.",
+            'victim_msg': "You duck just as {attacker_name}'s revolver fires, the bullet searing the air where your {hit_location} had been.",
             'observer_msg': "{target_name} ducks just as {attacker_name}'s revolver fires, the bullet searing the air where their head had been."
         },
         {
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s revolver to punch a hole in an empty barrel."
         },
         {
-            'attacker_msg': "The revolver bucks in your hand as you miss, the recoil perhaps spoiling your aim.",
+            'attacker_msg': "The revolver bucks in your {hit_location} as you miss, the recoil perhaps spoiling your aim.",
             'victim_msg': "The revolver bucks in {attacker_name}'s hand as they miss, the recoil perhaps spoiling their aim.",
             'observer_msg': "The revolver bucks in {attacker_name}'s hand as they miss, the recoil perhaps spoiling their aim."
         },
@@ -463,18 +463,18 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The revolver barks, and {target_name} clutches their chest, a dark stain spreading rapidly before they fall, dead.",
-            'victim_msg': "The revolver barks, and you clutch your chest, a dark stain spreading rapidly before you fall, dead.",
+            'victim_msg': "The revolver barks, and you clutch your {hit_location}, a dark stain spreading rapidly before you fall, dead.",
             'observer_msg': "The revolver barks, and {target_name} clutches their chest, a dark stain spreading rapidly before they fall, dead."
         },
         {
-            'attacker_msg': "With a final, precise shot, your revolver sends a bullet into {target_name}'s heart, ending their struggles immediately.",
-            'victim_msg': "With a final, precise shot, {attacker_name}'s revolver sends a bullet into your heart, ending your struggles immediately.",
-            'observer_msg': "With a final, precise shot, {attacker_name}'s revolver sends a bullet into {target_name}'s heart, ending their struggles immediately."
+            'attacker_msg': "With a final, precise shot, your revolver sends a bullet into {target_name}'s {hit_location}, ending their struggles immediately.",
+            'victim_msg': "With a final, precise shot, {attacker_name}'s revolver sends a bullet into your {hit_location}, ending your struggles immediately.",
+            'observer_msg': "With a final, precise shot, {attacker_name}'s revolver sends a bullet into {target_name}'s {hit_location}, ending their struggles immediately."
         },
         {
-            'attacker_msg': "The bullet fired point-blank into {target_name}'s throat from the revolver causes them to gurgle and die in a pool of their own blood.",
-            'victim_msg': "The bullet fired point-blank into your throat from the revolver causes you to gurgle and die in a pool of your own blood.",
-            'observer_msg': "The bullet fired point-blank into {target_name}'s throat from the revolver causes them to gurgle and die in a pool of their own blood."
+            'attacker_msg': "The bullet fired point-blank into {target_name}'s {hit_location} from the revolver causes them to gurgle and die in a pool of their own blood.",
+            'victim_msg': "The bullet fired point-blank into your {hit_location} from the revolver causes you to gurgle and die in a pool of your own blood.",
+            'observer_msg': "The bullet fired point-blank into {target_name}'s {hit_location} from the revolver causes them to gurgle and die in a pool of their own blood."
         },
         {
             'attacker_msg': "Your sustained fire with the revolver riddles {target_name}; they slump, a lifeless puppet cut from its strings.",
@@ -492,9 +492,9 @@ MESSAGES = {
             'observer_msg': "A precise shot to the base of the skull from {attacker_name}'s revolver ends {target_name}'s life with clinical finality."
         },
         {
-            'attacker_msg': "You empty the revolver's cylinder into {target_name}'s torso, the multiple impacts ensuring a swift, brutal death.",
-            'victim_msg': "{attacker_name} empties the revolver's cylinder into your torso, the multiple impacts ensuring a swift, brutal death.",
-            'observer_msg': "{attacker_name} empties the revolver's cylinder into {target_name}'s torso, the multiple impacts ensuring a swift, brutal death."
+            'attacker_msg': "You empty the revolver's cylinder into {target_name}'s {hit_location}, the multiple impacts ensuring a swift, brutal death.",
+            'victim_msg': "{attacker_name} empties the revolver's cylinder into your {hit_location}, the multiple impacts ensuring a swift, brutal death.",
+            'observer_msg': "{attacker_name} empties the revolver's cylinder into {target_name}'s {hit_location}, the multiple impacts ensuring a swift, brutal death."
         },
         {
             'attacker_msg': "The unyielding lead from your revolver pierces a vital organ in {target_name}; they fall, dead before they hit the ground.",

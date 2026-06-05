@@ -81,7 +81,7 @@ MESSAGES = {
             'observer_msg': "The cold, unadorned steel of the metal pipe is visible, a testament to its crude but effective nature."
         },
         {
-            'attacker_msg': "You hold the metal pipe cocked over your shoulder, ready to bring its full, crushing weight down.",
+            'attacker_msg': "You hold the metal pipe cocked over your {hit_location}, ready to bring its full, crushing weight down.",
             'victim_msg': "{attacker_name} holds the metal pipe cocked over their shoulder, ready to bring its full, crushing weight down.",
             'observer_msg': "{attacker_name} holds the metal pipe cocked over their shoulder, ready to bring its full, crushing weight down."
         },
@@ -111,9 +111,9 @@ MESSAGES = {
             'observer_msg': "The metal pipe is a tool of raw, untamed aggression in {attacker_name}'s capable hands."
         },
         {
-            'attacker_msg': "You present the unyielding length of the metal pipe, its end aimed at {target_name}'s skull.",
-            'victim_msg': "{attacker_name} presents the unyielding length of the metal pipe, its end aimed at your skull.",
-            'observer_msg': "{attacker_name} presents the unyielding length of the metal pipe, its end aimed at {target_name}'s skull."
+            'attacker_msg': "You present the unyielding length of the metal pipe, its end aimed at {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name} presents the unyielding length of the metal pipe, its end aimed at your {hit_location}.",
+            'observer_msg': "{attacker_name} presents the unyielding length of the metal pipe, its end aimed at {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "A desperate measure, a brutal tool; you and the metal pipe are a dangerously crude combination.",
@@ -234,7 +234,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The metal pipe thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs and cracking {hit_location}.",
-            'victim_msg': "The metal pipe thuds heavily as it connects with your {hit_location}, driving the air from your lungs and cracking {hit_location}.",
+            'victim_msg': "The metal pipe thuds heavily as it connects with your {hit_location}, driving the air from your {hit_location} and cracking {hit_location}.",
             'observer_msg': "The metal pipe thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs and cracking {hit_location}."
         },
         {
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your metal pipe whistles through the air with considerable force, inches from {target_name}'s skull.",
-            'victim_msg': "{attacker_name}'s metal pipe whistles through the air with considerable force, inches from your skull.",
-            'observer_msg': "{attacker_name}'s metal pipe whistles through the air with considerable force, inches from {target_name}'s skull."
+            'attacker_msg': "Your metal pipe whistles through the air with considerable force, inches from {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name}'s metal pipe whistles through the air with considerable force, inches from your {hit_location}.",
+            'observer_msg': "{attacker_name}'s metal pipe whistles through the air with considerable force, inches from {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "{target_name} narrowly avoids the heavy arc of your metal pipe with a desperate, flailing dodge.",
@@ -457,29 +457,29 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "Your metal pipe connects with {target_name}'s temple with a sickening, final crack; they drop, instantly still and lifeless.",
-            'victim_msg': "{attacker_name}'s metal pipe connects with your temple with a sickening, final crack; you drop, instantly still and lifeless.",
-            'observer_msg': "{attacker_name}'s metal pipe connects with {target_name}'s temple with a sickening, final crack; {target_name} drops, instantly still and lifeless."
+            'attacker_msg': "Your metal pipe connects with {target_name}'s {hit_location} with a sickening, final crack; they drop, instantly still and lifeless.",
+            'victim_msg': "{attacker_name}'s metal pipe connects with your {hit_location} with a sickening, final crack; you drop, instantly still and lifeless.",
+            'observer_msg': "{attacker_name}'s metal pipe connects with {target_name}'s {hit_location} with a sickening, final crack; {target_name} drops, instantly still and lifeless."
         },
         {
-            'attacker_msg': "A devastating overhead swing from the metal pipe crushes {target_name}'s skull like an eggshell, ending the fight brutally and decisively.",
-            'victim_msg': "A devastating overhead swing from the metal pipe crushes your skull like an eggshell, ending the fight brutally and decisively.",
-            'observer_msg': "A devastating overhead swing from the metal pipe crushes {target_name}'s skull like an eggshell, ending the fight brutally and decisively."
+            'attacker_msg': "A devastating overhead swing from the metal pipe crushes {target_name}'s {hit_location} like an eggshell, ending the fight brutally and decisively.",
+            'victim_msg': "A devastating overhead swing from the metal pipe crushes your {hit_location} like an eggshell, ending the fight brutally and decisively.",
+            'observer_msg': "A devastating overhead swing from the metal pipe crushes {target_name}'s {hit_location} like an eggshell, ending the fight brutally and decisively."
         },
         {
-            'attacker_msg': "With a final, focused strike, your metal pipe shatters {target_name}'s sternum and drives them to the ground, unmoving and dead.",
-            'victim_msg': "With a final, focused strike, {attacker_name}'s metal pipe shatters your sternum and drives you to the ground, unmoving and dead.",
-            'observer_msg': "With a final, focused strike, {attacker_name}'s metal pipe shatters {target_name}'s sternum and drives them to the ground, unmoving and dead."
+            'attacker_msg': "With a final, focused strike, your metal pipe shatters {target_name}'s {hit_location} and drives them to the ground, unmoving and dead.",
+            'victim_msg': "With a final, focused strike, {attacker_name}'s metal pipe shatters your {hit_location} and drives you to the ground, unmoving and dead.",
+            'observer_msg': "With a final, focused strike, {attacker_name}'s metal pipe shatters {target_name}'s {hit_location} and drives them to the ground, unmoving and dead."
         },
         {
-            'attacker_msg': "The heavy, cold steel of the metal pipe strikes {target_name}'s throat with a sickening thud, a swift and brutal end, silencing them forever.",
-            'victim_msg': "The heavy, cold steel of the metal pipe strikes your throat with a sickening thud, a swift and brutal end, silencing you forever.",
-            'observer_msg': "The heavy, cold steel of the metal pipe strikes {target_name}'s throat with a sickening thud, a swift and brutal end, silencing them forever."
+            'attacker_msg': "The heavy, cold steel of the metal pipe strikes {target_name}'s {hit_location} with a sickening thud, a swift and brutal end, silencing them forever.",
+            'victim_msg': "The heavy, cold steel of the metal pipe strikes your {hit_location} with a sickening thud, a swift and brutal end, silencing you forever.",
+            'observer_msg': "The heavy, cold steel of the metal pipe strikes {target_name}'s {hit_location} with a sickening thud, a swift and brutal end, silencing them forever."
         },
         {
-            'attacker_msg': "Your powerful swing with the metal pipe caves in {target_name}'s chest; they collapse, blood bubbling from their lips as they expire.",
-            'victim_msg': "{attacker_name}'s powerful swing with the metal pipe caves in your chest; you collapse, blood bubbling from your lips as you expire.",
-            'observer_msg': "{attacker_name}'s powerful swing with the metal pipe caves in {target_name}'s chest; they collapse, blood bubbling from their lips as they expire."
+            'attacker_msg': "Your powerful swing with the metal pipe caves in {target_name}'s {hit_location}; they collapse, blood bubbling from their lips as they expire.",
+            'victim_msg': "{attacker_name}'s powerful swing with the metal pipe caves in your {hit_location}; you collapse, blood bubbling from your lips as you expire.",
+            'observer_msg': "{attacker_name}'s powerful swing with the metal pipe caves in {target_name}'s {hit_location}; they collapse, blood bubbling from their lips as they expire."
         },
         {
             'attacker_msg': "The metal pipe, a simple tool of deadly force, delivers a killing blow, and {target_name}'s struggles cease in a broken heap.",
@@ -497,9 +497,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} drives the end of the metal pipe into {target_name}'s eye socket with brutal, unthinking force, the outcome grimly certain and fatal."
         },
         {
-            'attacker_msg': "The unyielding metal pipe breaks {target_name}'s neck with a sharp, horrifying snap; they fall, a lifeless puppet with lolling head.",
-            'victim_msg': "The unyielding metal pipe breaks your neck with a sharp, horrifying snap; you fall, a lifeless puppet with lolling head.",
-            'observer_msg': "The unyielding metal pipe breaks {target_name}'s neck with a sharp, horrifying snap; they fall, a lifeless puppet with lolling head."
+            'attacker_msg': "The unyielding metal pipe breaks {target_name}'s {hit_location} with a sharp, horrifying snap; they fall, a lifeless puppet with lolling head.",
+            'victim_msg': "The unyielding metal pipe breaks your {hit_location} with a sharp, horrifying snap; you fall, a lifeless puppet with lolling head.",
+            'observer_msg': "The unyielding metal pipe breaks {target_name}'s {hit_location} with a sharp, horrifying snap; they fall, a lifeless puppet with lolling head."
         },
         {
             'attacker_msg': "With a final, savage grunt, you finish {target_name} with a decisive, crushing strike from the metal pipe, leaving no doubt.",

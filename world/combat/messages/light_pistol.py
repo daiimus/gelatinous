@@ -11,12 +11,12 @@ MESSAGES = {
             'observer_msg': "With a practiced motion, {attacker_name} checks the magazine of the pistol, then snaps it firmly into place."
         },
         {
-            'attacker_msg': "Your hand closes around the polymer or steel grip of the pistol, finger indexing along the slide.",
+            'attacker_msg': "Your {hit_location} closes around the polymer or steel grip of the pistol, finger indexing along the slide.",
             'victim_msg': "{attacker_name}'s hand closes around the polymer or steel grip of the pistol, finger indexing along the slide.",
             'observer_msg': "{attacker_name}'s hand closes around the polymer or steel grip of the pistol, finger indexing along the slide."
         },
         {
-            'attacker_msg': "The pistol appears in your hand, its muzzle a dark, efficient-looking circle.",
+            'attacker_msg': "The pistol appears in your {hit_location}, its muzzle a dark, efficient-looking circle.",
             'victim_msg': "The pistol appears in {attacker_name}'s hand, its muzzle a dark, efficient-looking circle.",
             'observer_msg': "The pistol appears in {attacker_name}'s hand, its muzzle a dark, efficient-looking circle."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air seems to still as {attacker_name} prepares to fire the pistol, anticipating the sharp *crack* of the shot."
         },
         {
-            'attacker_msg': "Your face is set in concentration, finger hovering near the pistol's trigger.",
+            'attacker_msg': "Your {hit_location} is set in concentration, finger hovering near the pistol's trigger.",
             'victim_msg': "{attacker_name}'s face is set in concentration, finger hovering near the pistol's trigger.",
             'observer_msg': "{attacker_name}'s face is set in concentration, finger hovering near the pistol's trigger."
         },
@@ -184,7 +184,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A direct hit! The pistol's bullet smashes into {target_name}'s {hit_location}, driving the air from their lungs with a sharp *crack*.",
-            'victim_msg': "A direct hit! The pistol's bullet smashes into your {hit_location}, driving the air from your lungs with a sharp *crack*.",
+            'victim_msg': "A direct hit! The pistol's bullet smashes into your {hit_location}, driving the air from your {hit_location} with a sharp *crack*.",
             'observer_msg': "A direct hit! The pistol's bullet smashes into {target_name}'s {hit_location}, driving the air from their lungs with a sharp *crack*."
         },
         {
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your pistol fires with a sharp *CRACK*, the bullet whining past {target_name}'s head and smacking into a wall, a casing ejecting.",
-            'victim_msg': "{attacker_name}'s pistol fires with a sharp *CRACK*, the bullet whining past your head and smacking into a wall, a casing ejecting.",
-            'observer_msg': "{attacker_name}'s pistol fires with a sharp *CRACK*, the bullet whining past {target_name}'s head and smacking into a wall, a casing ejecting."
+            'attacker_msg': "Your pistol fires with a sharp *CRACK*, the bullet whining past {target_name}'s {hit_location} and smacking into a wall, a casing ejecting.",
+            'victim_msg': "{attacker_name}'s pistol fires with a sharp *CRACK*, the bullet whining past your {hit_location} and smacking into a wall, a casing ejecting.",
+            'observer_msg': "{attacker_name}'s pistol fires with a sharp *CRACK*, the bullet whining past {target_name}'s {hit_location} and smacking into a wall, a casing ejecting."
         },
         {
             'attacker_msg': "{target_name} dives aside as the pistol barks, the bullet kicking up chips of concrete where they just stood, the slide cycling.",
@@ -346,7 +346,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name} ducks just as your pistol fires, the bullet searing the air where their head had been, the action cycling.",
-            'victim_msg': "You duck just as {attacker_name}'s pistol fires, the bullet searing the air where your head had been, the action cycling.",
+            'victim_msg': "You duck just as {attacker_name}'s pistol fires, the bullet searing the air where your {hit_location} had been, the action cycling.",
             'observer_msg': "{target_name} ducks just as {attacker_name}'s pistol fires, the bullet searing the air where their head had been, the action cycling."
         },
         {
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s pistol to punch a hole in an empty barrel, brass ejecting."
         },
         {
-            'attacker_msg': "The pistol bucks in your hand as you miss, the recoil spoiling your aim for a moment.",
+            'attacker_msg': "The pistol bucks in your {hit_location} as you miss, the recoil spoiling your aim for a moment.",
             'victim_msg': "The pistol bucks in {attacker_name}'s hand as they miss, the recoil spoiling their aim for a moment.",
             'observer_msg': "The pistol bucks in {attacker_name}'s hand as they miss, the recoil spoiling their aim for a moment."
         },
@@ -463,18 +463,18 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The pistol barks, and {target_name} clutches their chest, a dark stain spreading rapidly before they fall, dead, the slide locking back.",
-            'victim_msg': "The pistol barks, and you clutch your chest, a dark stain spreading rapidly before you fall, dead, the slide locking back.",
+            'victim_msg': "The pistol barks, and you clutch your {hit_location}, a dark stain spreading rapidly before you fall, dead, the slide locking back.",
             'observer_msg': "The pistol barks, and {target_name} clutches their chest, a dark stain spreading rapidly before they fall, dead, the slide locking back."
         },
         {
-            'attacker_msg': "With a final, precise shot, your pistol sends a bullet into {target_name}'s heart, ending their struggles immediately, a casing tinkling on the floor.",
-            'victim_msg': "With a final, precise shot, {attacker_name}'s pistol sends a bullet into your heart, ending your struggles immediately, a casing tinkling on the floor.",
-            'observer_msg': "With a final, precise shot, {attacker_name}'s pistol sends a bullet into {target_name}'s heart, ending their struggles immediately, a casing tinkling on the floor."
+            'attacker_msg': "With a final, precise shot, your pistol sends a bullet into {target_name}'s {hit_location}, ending their struggles immediately, a casing tinkling on the floor.",
+            'victim_msg': "With a final, precise shot, {attacker_name}'s pistol sends a bullet into your {hit_location}, ending your struggles immediately, a casing tinkling on the floor.",
+            'observer_msg': "With a final, precise shot, {attacker_name}'s pistol sends a bullet into {target_name}'s {hit_location}, ending their struggles immediately, a casing tinkling on the floor."
         },
         {
-            'attacker_msg': "The bullet fired point-blank into {target_name}'s throat from the pistol causes them to gurgle and die in a pool of their own blood, the slide cycling.",
-            'victim_msg': "The bullet fired point-blank into your throat from the pistol causes you to gurgle and die in a pool of your own blood, the slide cycling.",
-            'observer_msg': "The bullet fired point-blank into {target_name}'s throat from the pistol causes them to gurgle and die in a pool of their own blood, the slide cycling."
+            'attacker_msg': "The bullet fired point-blank into {target_name}'s {hit_location} from the pistol causes them to gurgle and die in a pool of their own blood, the slide cycling.",
+            'victim_msg': "The bullet fired point-blank into your {hit_location} from the pistol causes you to gurgle and die in a pool of your own blood, the slide cycling.",
+            'observer_msg': "The bullet fired point-blank into {target_name}'s {hit_location} from the pistol causes them to gurgle and die in a pool of their own blood, the slide cycling."
         },
         {
             'attacker_msg': "Your rapid fire with the pistol riddles {target_name}; they slump, a lifeless puppet cut from its strings, spent brass scattered around.",
@@ -492,9 +492,9 @@ MESSAGES = {
             'observer_msg': "A precise shot to the base of the skull from {attacker_name}'s pistol ends {target_name}'s life with clinical finality, the slide moving smoothly."
         },
         {
-            'attacker_msg': "You empty the pistol's magazine into {target_name}'s torso, the multiple impacts ensuring a swift, brutal death, the slide locking open.",
-            'victim_msg': "{attacker_name} empties the pistol's magazine into your torso, the multiple impacts ensuring a swift, brutal death, the slide locking open.",
-            'observer_msg': "{attacker_name} empties the pistol's magazine into {target_name}'s torso, the multiple impacts ensuring a swift, brutal death, the slide locking open."
+            'attacker_msg': "You empty the pistol's magazine into {target_name}'s {hit_location}, the multiple impacts ensuring a swift, brutal death, the slide locking open.",
+            'victim_msg': "{attacker_name} empties the pistol's magazine into your {hit_location}, the multiple impacts ensuring a swift, brutal death, the slide locking open.",
+            'observer_msg': "{attacker_name} empties the pistol's magazine into {target_name}'s {hit_location}, the multiple impacts ensuring a swift, brutal death, the slide locking open."
         },
         {
             'attacker_msg': "The unyielding lead from your pistol pierces a vital organ in {target_name}; they fall, dead before they hit the ground, a casing spinning.",

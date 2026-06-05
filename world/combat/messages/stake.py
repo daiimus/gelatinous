@@ -326,22 +326,22 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A jab toward the ribs comes up short. {target_name} leans back just enough.",
-            'victim_msg': "A jab toward your ribs comes up short. You lean back just enough.",
+            'victim_msg': "A jab toward your {hit_location} comes up short. You lean back just enough.",
             'observer_msg': "A jab toward the ribs comes up short. {target_name} leans back just enough."
         },
         {
             'attacker_msg': "A quick thrust seeks the stomach, but {target_name} twists away gracefully.",
-            'victim_msg': "A quick thrust seeks your stomach, but you twist away gracefully.",
+            'victim_msg': "A quick thrust seeks your {hit_location}, but you twist away gracefully.",
             'observer_msg': "A quick thrust seeks the stomach, but {target_name} twists away gracefully."
         },
         {
             'attacker_msg': "A savage jab aimed at the chest catches only fabric. {target_name} spins away.",
-            'victim_msg': "A savage jab aimed at your chest catches only fabric. You spin away.",
+            'victim_msg': "A savage jab aimed at your {hit_location} catches only fabric. You spin away.",
             'observer_msg': "A savage jab aimed at the chest catches only fabric. {target_name} spins away."
         },
         {
             'attacker_msg': "A strike toward the face meets nothing. {target_name} jerks backward.",
-            'victim_msg': "A strike toward your face meets nothing. You jerk backward.",
+            'victim_msg': "A strike toward your {hit_location} meets nothing. You jerk backward.",
             'observer_msg': "A strike toward the face meets nothing. {target_name} jerks backward."
         },
         {
@@ -360,9 +360,9 @@ MESSAGES = {
             'observer_msg': "The stake arcs through empty space. {target_name} weaves away like smoke."
         },
         {
-            'attacker_msg': "The stake cuts the air where {target_name}'s head was. They duck at the perfect moment.",
-            'victim_msg': "The stake cuts the air where your head was. You duck at the perfect moment.",
-            'observer_msg': "The stake cuts the air where {target_name}'s head was. They duck at the perfect moment."
+            'attacker_msg': "The stake cuts the air where {target_name}'s {hit_location} was. They duck at the perfect moment.",
+            'victim_msg': "The stake cuts the air where your {hit_location} was. You duck at the perfect moment.",
+            'observer_msg': "The stake cuts the air where {target_name}'s {hit_location} was. They duck at the perfect moment."
         },
         {
             'attacker_msg': "The stake grazes cloth but not skin. {target_name} pulls back, unharmed.",
@@ -380,9 +380,9 @@ MESSAGES = {
             'observer_msg': "The stake whistles past {target_name}'s ear. Close, but not close enough."
         },
         {
-            'attacker_msg': "The tip seeks the center of {target_name}'s chest, but they pivot away.",
-            'victim_msg': "The tip seeks the center of your chest, but you pivot away.",
-            'observer_msg': "The tip seeks the center of {target_name}'s chest, but they pivot away."
+            'attacker_msg': "The tip seeks the center of {target_name}'s {hit_location}, but they pivot away.",
+            'victim_msg': "The tip seeks the center of your {hit_location}, but you pivot away.",
+            'observer_msg': "The tip seeks the center of {target_name}'s {hit_location}, but they pivot away."
         },
         {
             'attacker_msg': "You drive the stake forward, but {target_name} slips to the side.",
@@ -420,19 +420,19 @@ MESSAGES = {
             'observer_msg': "{attacker_name} thrusts hard with the point, but {target_name} sidesteps gracefully."
         },
         {
-            'attacker_msg': "You thrust the stake toward {target_name}'s chest, but they lean back just enough.",
-            'victim_msg': "{attacker_name} thrusts the stake toward your chest, but you lean back just enough.",
-            'observer_msg': "{attacker_name} thrusts the stake toward {target_name}'s chest, but they lean back just enough."
+            'attacker_msg': "You thrust the stake toward {target_name}'s {hit_location}, but they lean back just enough.",
+            'victim_msg': "{attacker_name} thrusts the stake toward your {hit_location}, but you lean back just enough.",
+            'observer_msg': "{attacker_name} thrusts the stake toward {target_name}'s {hit_location}, but they lean back just enough."
         },
         {
-            'attacker_msg': "Your jab seeks {target_name}'s stomach, but they step back, staying safe.",
-            'victim_msg': "{attacker_name}'s jab seeks your stomach, but you step back, staying safe.",
-            'observer_msg': "{attacker_name}'s jab seeks {target_name}'s stomach, but they step back, staying safe."
+            'attacker_msg': "Your jab seeks {target_name}'s {hit_location}, but they step back, staying safe.",
+            'victim_msg': "{attacker_name}'s jab seeks your {hit_location}, but you step back, staying safe.",
+            'observer_msg': "{attacker_name}'s jab seeks {target_name}'s {hit_location}, but they step back, staying safe."
         },
         {
-            'attacker_msg': "Your stake arcs toward {target_name}'s head, but they duck at the perfect moment.",
-            'victim_msg': "{attacker_name}'s stake arcs toward your head, but you duck at the perfect moment.",
-            'observer_msg': "{attacker_name}'s stake arcs toward {target_name}'s head, but they duck at the perfect moment."
+            'attacker_msg': "Your stake arcs toward {target_name}'s {hit_location}, but they duck at the perfect moment.",
+            'victim_msg': "{attacker_name}'s stake arcs toward your {hit_location}, but you duck at the perfect moment.",
+            'observer_msg': "{attacker_name}'s stake arcs toward {target_name}'s {hit_location}, but they duck at the perfect moment."
         },
         {
             'attacker_msg': "Your stake cuts a deadly path through air, but {target_name} is no longer there.",
@@ -445,9 +445,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s stake seeks flesh but finds only the space {target_name} vacated."
         },
         {
-            'attacker_msg': "Your thrust aims for {target_name}'s ribs, but they weave away like water.",
-            'victim_msg': "{attacker_name}'s thrust aims for your ribs, but you weave away like water.",
-            'observer_msg': "{attacker_name}'s thrust aims for {target_name}'s ribs, but they weave away like water."
+            'attacker_msg': "Your thrust aims for {target_name}'s {hit_location}, but they weave away like water.",
+            'victim_msg': "{attacker_name}'s thrust aims for your {hit_location}, but you weave away like water.",
+            'observer_msg': "{attacker_name}'s thrust aims for {target_name}'s {hit_location}, but they weave away like water."
         },
         {
             'attacker_msg': "Your thrust comes swift and sure, but {target_name} is swifter.",
@@ -457,28 +457,28 @@ MESSAGES = {
     ],
     'kill': [
         {
-            'attacker_msg': "A brutal thrust pierces {target_name}'s heart. They drop instantly, stake buried deep.",
-            'victim_msg': "A brutal thrust pierces your heart. You drop instantly, stake buried deep.",
-            'observer_msg': "A brutal thrust pierces {target_name}'s heart. They drop instantly, stake buried deep."
+            'attacker_msg': "A brutal thrust pierces {target_name}'s {hit_location}. They drop instantly, stake buried deep.",
+            'victim_msg': "A brutal thrust pierces your {hit_location}. You drop instantly, stake buried deep.",
+            'observer_msg': "A brutal thrust pierces {target_name}'s {hit_location}. They drop instantly, stake buried deep."
         },
         {
-            'attacker_msg': "A downward strike drives the stake through {target_name}'s skull. Death is instant.",
-            'victim_msg': "A downward strike drives the stake through your skull. Death is instant.",
-            'observer_msg': "A downward strike drives the stake through {target_name}'s skull. Death is instant."
+            'attacker_msg': "A downward strike drives the stake through {target_name}'s {hit_location}. Death is instant.",
+            'victim_msg': "A downward strike drives the stake through your {hit_location}. Death is instant.",
+            'observer_msg': "A downward strike drives the stake through {target_name}'s {hit_location}. Death is instant."
         },
         {
-            'attacker_msg': "A savage thrust punches through {target_name}'s lung. They drown in their own blood.",
-            'victim_msg': "A savage thrust punches through your lung. You drown in your own blood.",
-            'observer_msg': "A savage thrust punches through {target_name}'s lung. They drown in their own blood."
+            'attacker_msg': "A savage thrust punches through {target_name}'s {hit_location}. They drown in their own blood.",
+            'victim_msg': "A savage thrust punches through your {hit_location}. You drown in your own blood.",
+            'observer_msg': "A savage thrust punches through {target_name}'s {hit_location}. They drown in their own blood."
         },
         {
             'attacker_msg': "A thrust to the base of the skull severs the spine. {target_name} crumples like a broken puppet.",
-            'victim_msg': "A thrust to the base of your skull severs your spine. You crumple like a broken puppet.",
+            'victim_msg': "A thrust to the base of your {hit_location} severs your {hit_location}. You crumple like a broken puppet.",
             'observer_msg': "A thrust to the base of the skull severs the spine. {target_name} crumples like a broken puppet."
         },
         {
             'attacker_msg': "A thrust to the throat crushes the windpipe. {target_name} gurgles once, then goes silent.",
-            'victim_msg': "A thrust to your throat crushes your windpipe. You gurgle once, then go silent.",
+            'victim_msg': "A thrust to your {hit_location} crushes your windpipe. You gurgle once, then go silent.",
             'observer_msg': "A thrust to the throat crushes the windpipe. {target_name} gurgles once, then goes silent."
         },
         {
@@ -492,34 +492,34 @@ MESSAGES = {
             'observer_msg': "The point drives deep into {target_name}'s eye socket. They convulse once, then still."
         },
         {
-            'attacker_msg': "The point penetrates {target_name}'s temple. They drop like a sack of meat.",
-            'victim_msg': "The point penetrates your temple. You drop like a sack of meat.",
-            'observer_msg': "The point penetrates {target_name}'s temple. They drop like a sack of meat."
+            'attacker_msg': "The point penetrates {target_name}'s {hit_location}. They drop like a sack of meat.",
+            'victim_msg': "The point penetrates your {hit_location}. You drop like a sack of meat.",
+            'observer_msg': "The point penetrates {target_name}'s {hit_location}. They drop like a sack of meat."
         },
         {
-            'attacker_msg': "The stake drives through {target_name}'s chest and out their back. Blood spatters the ground.",
-            'victim_msg': "The stake drives through your chest and out your back. Blood spatters the ground.",
-            'observer_msg': "The stake drives through {target_name}'s chest and out their back. Blood spatters the ground."
+            'attacker_msg': "The stake drives through {target_name}'s {hit_location} and out their back. Blood spatters the ground.",
+            'victim_msg': "The stake drives through your {hit_location} and out your {hit_location}. Blood spatters the ground.",
+            'observer_msg': "The stake drives through {target_name}'s {hit_location} and out their back. Blood spatters the ground."
         },
         {
             'attacker_msg': "The stake finds {target_name}'s jugular. They clutch their throat as life spurts away.",
-            'victim_msg': "The stake finds your jugular. You clutch your throat as life spurts away.",
+            'victim_msg': "The stake finds your jugular. You clutch your {hit_location} as life spurts away.",
             'observer_msg': "The stake finds {target_name}'s jugular. They clutch their throat as life spurts away."
         },
         {
-            'attacker_msg': "The stake penetrates {target_name}'s liver. They fold over the weapon and die slowly.",
-            'victim_msg': "The stake penetrates your liver. You fold over the weapon and die slowly.",
-            'observer_msg': "The stake penetrates {target_name}'s liver. They fold over the weapon and die slowly."
+            'attacker_msg': "The stake penetrates {target_name}'s {hit_location}. They fold over the weapon and die slowly.",
+            'victim_msg': "The stake penetrates your {hit_location}. You fold over the weapon and die slowly.",
+            'observer_msg': "The stake penetrates {target_name}'s {hit_location}. They fold over the weapon and die slowly."
         },
         {
-            'attacker_msg': "The stake pierces {target_name}'s spine. They collapse, paralyzed and dying.",
-            'victim_msg': "The stake pierces your spine. You collapse, paralyzed and dying.",
-            'observer_msg': "The stake pierces {target_name}'s spine. They collapse, paralyzed and dying."
+            'attacker_msg': "The stake pierces {target_name}'s {hit_location}. They collapse, paralyzed and dying.",
+            'victim_msg': "The stake pierces your {hit_location}. You collapse, paralyzed and dying.",
+            'observer_msg': "The stake pierces {target_name}'s {hit_location}. They collapse, paralyzed and dying."
         },
         {
-            'attacker_msg': "The stake punches through {target_name}'s sternum and into their heart. Death is instant.",
-            'victim_msg': "The stake punches through your sternum and into your heart. Death is instant.",
-            'observer_msg': "The stake punches through {target_name}'s sternum and into their heart. Death is instant."
+            'attacker_msg': "The stake punches through {target_name}'s {hit_location} and into their heart. Death is instant.",
+            'victim_msg': "The stake punches through your {hit_location} and into your {hit_location}. Death is instant.",
+            'observer_msg': "The stake punches through {target_name}'s {hit_location} and into their heart. Death is instant."
         },
         {
             'attacker_msg': "The tip finds the carotid artery. {target_name} bleeds out in seconds.",
@@ -527,34 +527,34 @@ MESSAGES = {
             'observer_msg': "The tip finds the carotid artery. {target_name} bleeds out in seconds."
         },
         {
-            'attacker_msg': "You drive the stake deep into {target_name}'s abdomen. They die clutching the wound.",
-            'victim_msg': "{attacker_name} drives the stake deep into your abdomen. You die clutching the wound.",
-            'observer_msg': "{attacker_name} drives the stake deep into {target_name}'s abdomen. They die clutching the wound."
+            'attacker_msg': "You drive the stake deep into {target_name}'s {hit_location}. They die clutching the wound.",
+            'victim_msg': "{attacker_name} drives the stake deep into your {hit_location}. You die clutching the wound.",
+            'observer_msg': "{attacker_name} drives the stake deep into {target_name}'s {hit_location}. They die clutching the wound."
         },
         {
             'attacker_msg': "You drive the stake through {target_name}'s ear and into their brain. They twitch once, then still.",
-            'victim_msg': "{attacker_name} drives the stake through your ear and into your brain. You twitch once, then still.",
+            'victim_msg': "{attacker_name} drives the stake through your ear and into your {hit_location}. You twitch once, then still.",
             'observer_msg': "{attacker_name} drives the stake through {target_name}'s ear and into their brain. They twitch once, then still."
         },
         {
             'attacker_msg': "You impale {target_name} through the chest. The stake emerges bloody from their back.",
-            'victim_msg': "{attacker_name} impales you through the chest. The stake emerges bloody from your back.",
+            'victim_msg': "{attacker_name} impales you through the chest. The stake emerges bloody from your {hit_location}.",
             'observer_msg': "{attacker_name} impales {target_name} through the chest. The stake emerges bloody from their back."
         },
         {
-            'attacker_msg': "You pierce {target_name}'s lung. They cough up blood, then collapse and die.",
-            'victim_msg': "{attacker_name} pierces your lung. You cough up blood, then collapse and die.",
-            'observer_msg': "{attacker_name} pierces {target_name}'s lung. They cough up blood, then collapse and die."
+            'attacker_msg': "You pierce {target_name}'s {hit_location}. They cough up blood, then collapse and die.",
+            'victim_msg': "{attacker_name} pierces your {hit_location}. You cough up blood, then collapse and die.",
+            'observer_msg': "{attacker_name} pierces {target_name}'s {hit_location}. They cough up blood, then collapse and die."
         },
         {
-            'attacker_msg': "You punch the stake through {target_name}'s ribs and into their heart. They die standing.",
-            'victim_msg': "{attacker_name} punches the stake through your ribs and into your heart. You die standing.",
-            'observer_msg': "{attacker_name} punches the stake through {target_name}'s ribs and into their heart. They die standing."
+            'attacker_msg': "You punch the stake through {target_name}'s {hit_location} and into their heart. They die standing.",
+            'victim_msg': "{attacker_name} punches the stake through your {hit_location} and into your {hit_location}. You die standing.",
+            'observer_msg': "{attacker_name} punches the stake through {target_name}'s {hit_location} and into their heart. They die standing."
         },
         {
-            'attacker_msg': "You slam the stake into {target_name}'s neck, severing the spinal cord. They drop instantly.",
-            'victim_msg': "{attacker_name} slams the stake into your neck, severing your spinal cord. You drop instantly.",
-            'observer_msg': "{attacker_name} slams the stake into {target_name}'s neck, severing the spinal cord. They drop instantly."
+            'attacker_msg': "You slam the stake into {target_name}'s {hit_location}, severing the spinal cord. They drop instantly.",
+            'victim_msg': "{attacker_name} slams the stake into your {hit_location}, severing your spinal cord. You drop instantly.",
+            'observer_msg': "{attacker_name} slams the stake into {target_name}'s {hit_location}, severing the spinal cord. They drop instantly."
         },
         {
             'attacker_msg': "You stab the stake deep into {target_name}'s kidney. They scream once, then die.",
@@ -563,38 +563,38 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You thrust the stake into {target_name}'s solar plexus, stopping their heart. Death is instant.",
-            'victim_msg': "{attacker_name} thrusts the stake into your solar plexus, stopping your heart. Death is instant.",
+            'victim_msg': "{attacker_name} thrusts the stake into your solar plexus, stopping your {hit_location}. Death is instant.",
             'observer_msg': "{attacker_name} thrusts the stake into {target_name}'s solar plexus, stopping their heart. Death is instant."
         },
         {
             'attacker_msg': "You thrust the stake through {target_name}'s eye and into their brain. They convulse, then die.",
-            'victim_msg': "{attacker_name} thrusts the stake through your eye and into your brain. You convulse, then die.",
+            'victim_msg': "{attacker_name} thrusts the stake through your eye and into your {hit_location}. You convulse, then die.",
             'observer_msg': "{attacker_name} thrusts the stake through {target_name}'s eye and into their brain. They convulse, then die."
         },
         {
-            'attacker_msg': "Your final thrust pierces {target_name}'s throat. They gurgle and collapse, drowning in blood.",
-            'victim_msg': "{attacker_name}'s final thrust pierces your throat. You gurgle and collapse, drowning in blood.",
-            'observer_msg': "{attacker_name}'s final thrust pierces {target_name}'s throat. They gurgle and collapse, drowning in blood."
+            'attacker_msg': "Your final thrust pierces {target_name}'s {hit_location}. They gurgle and collapse, drowning in blood.",
+            'victim_msg': "{attacker_name}'s final thrust pierces your {hit_location}. You gurgle and collapse, drowning in blood.",
+            'observer_msg': "{attacker_name}'s final thrust pierces {target_name}'s {hit_location}. They gurgle and collapse, drowning in blood."
         },
         {
-            'attacker_msg': "Your stake finds the gap between {target_name}'s ribs. Their lung collapses instantly.",
-            'victim_msg': "{attacker_name}'s stake finds the gap between your ribs. Your lung collapses instantly.",
-            'observer_msg': "{attacker_name}'s stake finds the gap between {target_name}'s ribs. Their lung collapses instantly."
+            'attacker_msg': "Your stake finds the gap between {target_name}'s {hit_location}. Their lung collapses instantly.",
+            'victim_msg': "{attacker_name}'s stake finds the gap between your {hit_location}. Your {hit_location} collapses instantly.",
+            'observer_msg': "{attacker_name}'s stake finds the gap between {target_name}'s {hit_location}. Their lung collapses instantly."
         },
         {
-            'attacker_msg': "Your stake penetrates {target_name}'s liver. They die slowly, bleeding internally.",
-            'victim_msg': "{attacker_name}'s stake penetrates your liver. You die slowly, bleeding internally.",
-            'observer_msg': "{attacker_name}'s stake penetrates {target_name}'s liver. They die slowly, bleeding internally."
+            'attacker_msg': "Your stake penetrates {target_name}'s {hit_location}. They die slowly, bleeding internally.",
+            'victim_msg': "{attacker_name}'s stake penetrates your {hit_location}. You die slowly, bleeding internally.",
+            'observer_msg': "{attacker_name}'s stake penetrates {target_name}'s {hit_location}. They die slowly, bleeding internally."
         },
         {
-            'attacker_msg': "Your stake pierces {target_name}'s abdomen, severing the aorta. They bleed out fast.",
-            'victim_msg': "{attacker_name}'s stake pierces your abdomen, severing the aorta. You bleed out fast.",
-            'observer_msg': "{attacker_name}'s stake pierces {target_name}'s abdomen, severing the aorta. They bleed out fast."
+            'attacker_msg': "Your stake pierces {target_name}'s {hit_location}, severing the aorta. They bleed out fast.",
+            'victim_msg': "{attacker_name}'s stake pierces your {hit_location}, severing the aorta. You bleed out fast.",
+            'observer_msg': "{attacker_name}'s stake pierces {target_name}'s {hit_location}, severing the aorta. They bleed out fast."
         },
         {
-            'attacker_msg': "Your stake punches a hole in {target_name}'s chest. They die gasping for air.",
-            'victim_msg': "{attacker_name}'s stake punches a hole in your chest. You die gasping for air.",
-            'observer_msg': "{attacker_name}'s stake punches a hole in {target_name}'s chest. They die gasping for air."
+            'attacker_msg': "Your stake punches a hole in {target_name}'s {hit_location}. They die gasping for air.",
+            'victim_msg': "{attacker_name}'s stake punches a hole in your {hit_location}. You die gasping for air.",
+            'observer_msg': "{attacker_name}'s stake punches a hole in {target_name}'s {hit_location}. They die gasping for air."
         },
         {
             'attacker_msg': "Your stake severs {target_name}'s carotid artery. Blood spurts in dying pulses.",
@@ -602,9 +602,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s stake severs {target_name}'s carotid artery. Blood spurts in dying pulses."
         },
         {
-            'attacker_msg': "Your thrust drives the stake through {target_name}'s skull and into their brain. Death is instant.",
-            'victim_msg': "{attacker_name}'s thrust drives the stake through your skull and into your brain. Death is instant.",
-            'observer_msg': "{attacker_name}'s thrust drives the stake through {target_name}'s skull and into their brain. Death is instant."
+            'attacker_msg': "Your thrust drives the stake through {target_name}'s {hit_location} and into their brain. Death is instant.",
+            'victim_msg': "{attacker_name}'s thrust drives the stake through your {hit_location} and into your {hit_location}. Death is instant.",
+            'observer_msg': "{attacker_name}'s thrust drives the stake through {target_name}'s {hit_location} and into their brain. Death is instant."
         }
     ]
 }

@@ -6,7 +6,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} unsheathes their katana with a whispering hiss, the blade singing a promise of blood as they step into a fluid stance."
         },
         {
-            'attacker_msg': "With a flick of your wrist and a dead stare, you bring the katana to bear, the edge glinting like a curse in motion.",
+            'attacker_msg': "With a flick of your {hit_location} and a dead stare, you bring the katana to bear, the edge glinting like a curse in motion.",
             'victim_msg': "With a flick of the wrist and a dead stare, {attacker_name} brings the katana to bear, the edge glinting like a curse in motion.",
             'observer_msg': "With a flick of the wrist and a dead stare, {attacker_name} brings the katana to bear, the edge glinting like a curse in motion."
         },
@@ -26,7 +26,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes narrow. The katana glides free of its scabbard, whispering through the air like it remembers old deaths."
         },
         {
-            'attacker_msg': "As if summoned from a dream, the katana materializes in your hand, cutting a line between now and what comes next.",
+            'attacker_msg': "As if summoned from a dream, the katana materializes in your {hit_location}, cutting a line between now and what comes next.",
             'victim_msg': "As if summoned from a dream, the katana materializes in {attacker_name}'s hand, cutting a line between now and what comes next.",
             'observer_msg': "As if summoned from a dream, the katana materializes in {attacker_name}'s hand, cutting a line between now and what comes next."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s shadow lengthens as the katana carves the air—something old and beautiful and wrong waking up."
         },
         {
-            'attacker_msg': "No emotion crosses your face. Only the katana moves, beckoning death like an old friend.",
+            'attacker_msg': "No emotion crosses your {hit_location}. Only the katana moves, beckoning death like an old friend.",
             'victim_msg': "No emotion crosses {attacker_name}'s face. Only the katana moves, beckoning death like an old friend.",
             'observer_msg': "No emotion crosses {attacker_name}'s face. Only the katana moves, beckoning death like an old friend."
         },
@@ -294,7 +294,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The katana catches light—and {target_name}'s {hit_location}—as you draw a long, ragged line down their face.",
-            'victim_msg': "The katana catches light—and your {hit_location}—as {attacker_name} draws a long, ragged line down your face.",
+            'victim_msg': "The katana catches light—and your {hit_location}—as {attacker_name} draws a long, ragged line down your {hit_location}.",
             'observer_msg': "The katana catches light—and {target_name}'s {hit_location}—as {attacker_name} draws a long, ragged line down their face."
         },
         {
@@ -310,9 +310,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s blade cuts air alone, a perfect stroke wasted on empty space."
         },
         {
-            'attacker_msg': "The katana whistles by {target_name}'s head as they duck, a near-death that smells like ozone.",
-            'victim_msg': "The katana whistles by your head as you duck, a near-death that smells like ozone.",
-            'observer_msg': "The katana whistles by {target_name}'s head as they duck, a near-death that smells like ozone."
+            'attacker_msg': "The katana whistles by {target_name}'s {hit_location} as they duck, a near-death that smells like ozone.",
+            'victim_msg': "The katana whistles by your {hit_location} as you duck, a near-death that smells like ozone.",
+            'observer_msg': "The katana whistles by {target_name}'s {hit_location} as they duck, a near-death that smells like ozone."
         },
         {
             'attacker_msg': "You swing wide, graceful but off the mark—{target_name} sidesteps just in time.",
@@ -371,7 +371,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name} tumbles to the side, the katana slicing the air where their chest had just been.",
-            'victim_msg': "You tumble to the side, the katana slicing the air where your chest had just been.",
+            'victim_msg': "You tumble to the side, the katana slicing the air where your {hit_location} had just been.",
             'observer_msg': "{target_name} tumbles to the side, the katana slicing the air where their chest had just been."
         },
         {
@@ -380,9 +380,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s blade arcs through the space beside {target_name}, trailing disappointment."
         },
         {
-            'attacker_msg': "Steel hums past {target_name}'s ribs—close enough to chill, but not cut.",
-            'victim_msg': "Steel hums past your ribs—close enough to chill, but not cut.",
-            'observer_msg': "Steel hums past {target_name}'s ribs—close enough to chill, but not cut."
+            'attacker_msg': "Steel hums past {target_name}'s {hit_location}—close enough to chill, but not cut.",
+            'victim_msg': "Steel hums past your {hit_location}—close enough to chill, but not cut.",
+            'observer_msg': "Steel hums past {target_name}'s {hit_location}—close enough to chill, but not cut."
         },
         {
             'attacker_msg': "A low step ruins your trajectory—{target_name} avoids the strike by pure instinct.",
@@ -421,7 +421,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name}'s dodge is messy but effective. The blade swings just over their shoulder.",
-            'victim_msg': "Your dodge is messy but effective. The blade swings just over your shoulder.",
+            'victim_msg': "Your dodge is messy but effective. The blade swings just over your {hit_location}.",
             'observer_msg': "{target_name}'s dodge is messy but effective. The blade swings just over their shoulder."
         },
         {
@@ -477,9 +477,9 @@ MESSAGES = {
             'observer_msg': "A gurgle, a flash of red, and {target_name} crumples. The katana barely slows."
         },
         {
-            'attacker_msg': "The blade glides through {target_name}'s neck with brutal grace, severing life like a whisper.",
-            'victim_msg': "The blade glides through your neck with brutal grace, severing life like a whisper.",
-            'observer_msg': "The blade glides through {target_name}'s neck with brutal grace, severing life like a whisper."
+            'attacker_msg': "The blade glides through {target_name}'s {hit_location} with brutal grace, severing life like a whisper.",
+            'victim_msg': "The blade glides through your {hit_location} with brutal grace, severing life like a whisper.",
+            'observer_msg': "The blade glides through {target_name}'s {hit_location} with brutal grace, severing life like a whisper."
         },
         {
             'attacker_msg': "You end it with one stroke—clean, cruel, final. {target_name}'s body doesn't resist the ground.",
@@ -503,7 +503,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name}'s last breath is a red mist as the katana exits their throat.",
-            'victim_msg': "Your last breath is a red mist as the katana exits your throat.",
+            'victim_msg': "Your last breath is a red mist as the katana exits your {hit_location}.",
             'observer_msg': "{target_name}'s last breath is a red mist as the katana exits their throat."
         },
         {
@@ -527,14 +527,14 @@ MESSAGES = {
             'observer_msg': "{attacker_name} doesn't look back. {target_name} hits the floor in several pieces."
         },
         {
-            'attacker_msg': "The katana carves a line through {target_name}'s chest—one heartbeat later, it splits open like fruit.",
-            'victim_msg': "The katana carves a line through your chest—one heartbeat later, it splits open like fruit.",
-            'observer_msg': "The katana carves a line through {target_name}'s chest—one heartbeat later, it splits open like fruit."
+            'attacker_msg': "The katana carves a line through {target_name}'s {hit_location}—one heartbeat later, it splits open like fruit.",
+            'victim_msg': "The katana carves a line through your {hit_location}—one heartbeat later, it splits open like fruit.",
+            'observer_msg': "The katana carves a line through {target_name}'s {hit_location}—one heartbeat later, it splits open like fruit."
         },
         {
-            'attacker_msg': "The blade bisects {target_name}'s skull in a clean vertical, their expression still caught mid-surprise.",
-            'victim_msg': "The blade bisects your skull in a clean vertical, your expression still caught mid-surprise.",
-            'observer_msg': "The blade bisects {target_name}'s skull in a clean vertical, their expression still caught mid-surprise."
+            'attacker_msg': "The blade bisects {target_name}'s {hit_location} in a clean vertical, their expression still caught mid-surprise.",
+            'victim_msg': "The blade bisects your {hit_location} in a clean vertical, your expression still caught mid-surprise.",
+            'observer_msg': "The blade bisects {target_name}'s {hit_location} in a clean vertical, their expression still caught mid-surprise."
         },
         {
             'attacker_msg': "The scream is brief. The silence after your final cut is eternal.",
@@ -557,9 +557,9 @@ MESSAGES = {
             'observer_msg': "A rising strike cleaves {target_name} open. They stagger, eyes wide, then tip over like a felled tree."
         },
         {
-            'attacker_msg': "You whisper something the katana obeys. {target_name}'s chest bursts open seconds later.",
-            'victim_msg': "{attacker_name} whispers something the katana obeys. Your chest bursts open seconds later.",
-            'observer_msg': "{attacker_name} whispers something the katana obeys. {target_name}'s chest bursts open seconds later."
+            'attacker_msg': "You whisper something the katana obeys. {target_name}'s {hit_location} bursts open seconds later.",
+            'victim_msg': "{attacker_name} whispers something the katana obeys. Your {hit_location} bursts open seconds later.",
+            'observer_msg': "{attacker_name} whispers something the katana obeys. {target_name}'s {hit_location} bursts open seconds later."
         },
         {
             'attacker_msg': "The blade exits spine and breath in one go. {target_name} falls twitching, face frozen in disbelief.",
@@ -582,9 +582,9 @@ MESSAGES = {
             'observer_msg': "{target_name}'s body collapses in stages, each part giving up in time with the dripping steel."
         },
         {
-            'attacker_msg': "A surgical decapitation—you leave {target_name}'s head still blinking at your feet.",
-            'victim_msg': "A surgical decapitation—{attacker_name} leaves your head still blinking at their feet.",
-            'observer_msg': "A surgical decapitation—{attacker_name} leaves {target_name}'s head still blinking at their feet."
+            'attacker_msg': "A surgical decapitation—you leave {target_name}'s {hit_location} still blinking at your feet.",
+            'victim_msg': "A surgical decapitation—{attacker_name} leaves your {hit_location} still blinking at their feet.",
+            'observer_msg': "A surgical decapitation—{attacker_name} leaves {target_name}'s {hit_location} still blinking at their feet."
         },
         {
             'attacker_msg': "{target_name}'s guts hit the floor first. Then the rest follows.",

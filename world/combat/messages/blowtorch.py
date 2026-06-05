@@ -66,7 +66,7 @@ MESSAGES = {
             "observer_msg": "The torch clicks, flares, and steadies into a whispering cone of heat. {attacker_name} steps forward without a word."
         },
         {
-            "attacker_msg": "The torch ignites with a bark of flame. Your hand is steady, your expression unreadable.",
+            "attacker_msg": "The torch ignites with a bark of flame. Your {hit_location} is steady, your expression unreadable.",
             "victim_msg": "The torch ignites with a bark of flame. {attacker_name}'s hand is steady, their expression unreadable.",
             "observer_msg": "The torch ignites with a bark of flame. {attacker_name}'s hand is steady, their expression unreadable."
         },
@@ -320,9 +320,9 @@ MESSAGES = {
             "observer_msg": "A flare of fire blasts past {target_name}'s side, close enough to melt the edge of their coat."
         },
         {
-            "attacker_msg": "A gout of fire roars just past {target_name}'s chest. They stumble — not from heat, but from the nearness of it.",
-            "victim_msg": "A gout of fire roars just past your chest. You stumble — not from heat, but from the nearness of it.",
-            "observer_msg": "A gout of fire roars just past {target_name}'s chest. They stumble — not from heat, but from the nearness of it."
+            "attacker_msg": "A gout of fire roars just past {target_name}'s {hit_location}. They stumble — not from heat, but from the nearness of it.",
+            "victim_msg": "A gout of fire roars just past your {hit_location}. You stumble — not from heat, but from the nearness of it.",
+            "observer_msg": "A gout of fire roars just past {target_name}'s {hit_location}. They stumble — not from heat, but from the nearness of it."
         },
         {
             "attacker_msg": "A hiss, a flash, a miss. The room fills with smoke and tension.",
@@ -346,13 +346,13 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The blowtorch hisses and misses. {target_name} flinches as heat brushes by their face.",
-            "victim_msg": "The blowtorch hisses and misses. You flinch as heat brushes by your face.",
+            "victim_msg": "The blowtorch hisses and misses. You flinch as heat brushes by your {hit_location}.",
             "observer_msg": "The blowtorch hisses and misses. {target_name} flinches as heat brushes by their face."
         },
         {
-            "attacker_msg": "The blowtorch spits a jet of fire that passes just over {target_name}'s shoulder. Close enough to smell burnt hair.",
-            "victim_msg": "The blowtorch spits a jet of fire that passes just over your shoulder. Close enough to smell burnt hair.",
-            "observer_msg": "The blowtorch spits a jet of fire that passes just over {target_name}'s shoulder. Close enough to smell burnt hair."
+            "attacker_msg": "The blowtorch spits a jet of fire that passes just over {target_name}'s {hit_location}. Close enough to smell burnt hair.",
+            "victim_msg": "The blowtorch spits a jet of fire that passes just over your {hit_location}. Close enough to smell burnt hair.",
+            "observer_msg": "The blowtorch spits a jet of fire that passes just over {target_name}'s {hit_location}. Close enough to smell burnt hair."
         },
         {
             "attacker_msg": "The fire flares, loud and angry, but finds only smoke and silence. {target_name} moves fast — for now.",
@@ -365,9 +365,9 @@ MESSAGES = {
             "observer_msg": "The fire scorches a pipe beside {target_name}. It hisses back, mocking the miss."
         },
         {
-            "attacker_msg": "The fire shoots past {target_name}'s hip. They stumble backward, heart pounding louder than the hiss of gas.",
-            "victim_msg": "The fire shoots past your hip. You stumble backward, heart pounding louder than the hiss of gas.",
-            "observer_msg": "The fire shoots past {target_name}'s hip. They stumble backward, heart pounding louder than the hiss of gas."
+            "attacker_msg": "The fire shoots past {target_name}'s {hit_location}. They stumble backward, heart pounding louder than the hiss of gas.",
+            "victim_msg": "The fire shoots past your {hit_location}. You stumble backward, heart pounding louder than the hiss of gas.",
+            "observer_msg": "The fire shoots past {target_name}'s {hit_location}. They stumble backward, heart pounding louder than the hiss of gas."
         },
         {
             "attacker_msg": "The flame grazes empty space. {target_name} blinks away sweat. That was too close.",
@@ -390,9 +390,9 @@ MESSAGES = {
             "observer_msg": "The flame streaks across the floor, chasing shadows. {target_name} dances away in time."
         },
         {
-            "attacker_msg": "The heat washes over {target_name}'s arm, but not close enough to catch. They stumble anyway.",
-            "victim_msg": "The heat washes over your arm, but not close enough to catch. You stumble anyway.",
-            "observer_msg": "The heat washes over {target_name}'s arm, but not close enough to catch. They stumble anyway."
+            "attacker_msg": "The heat washes over {target_name}'s {hit_location}, but not close enough to catch. They stumble anyway.",
+            "victim_msg": "The heat washes over your {hit_location}, but not close enough to catch. You stumble anyway.",
+            "observer_msg": "The heat washes over {target_name}'s {hit_location}, but not close enough to catch. They stumble anyway."
         },
         {
             "attacker_msg": "The torch cuts a line through the space between you and {target_name}. Your patience burns brighter than the flame.",
@@ -463,28 +463,28 @@ MESSAGES = {
         },
         {
             "attacker_msg": "A full blast to the face ends everything. Eyes boil. The voicebox scorches shut. {target_name} collapses as smoke pours skyward.",
-            "victim_msg": "A full blast to your face ends everything. Eyes boil. Your voicebox scorches shut. You collapse as smoke pours skyward.",
-            "observer_msg": "A full blast to {target_name}'s face ends everything. Eyes boil. The voicebox scorches shut. {target_name} collapses as smoke pours skyward."
+            "victim_msg": "A full blast to your {hit_location} ends everything. Eyes boil. Your voicebox scorches shut. You collapse as smoke pours skyward.",
+            "observer_msg": "A full blast to {target_name}'s {hit_location} ends everything. Eyes boil. The voicebox scorches shut. {target_name} collapses as smoke pours skyward."
         },
         {
             "attacker_msg": "A single blast to the stomach. {target_name} falls. The flame follows, and the smell of seared organs rises.",
-            "victim_msg": "A single blast to your stomach. You fall. The flame follows, and the smell of seared organs rises.",
-            "observer_msg": "A single blast to {target_name}'s stomach. They fall. The flame follows, and the smell of seared organs rises."
+            "victim_msg": "A single blast to your {hit_location}. You fall. The flame follows, and the smell of seared organs rises.",
+            "observer_msg": "A single blast to {target_name}'s {hit_location}. They fall. The flame follows, and the smell of seared organs rises."
         },
         {
             "attacker_msg": "A torrent of fire to the torso ends things quickly. {target_name} spasms, drops, and doesn’t rise.",
-            "victim_msg": "A torrent of fire to your torso ends things quickly. You spasm, drop, and don’t rise.",
-            "observer_msg": "A torrent of fire to {target_name}'s torso ends things quickly. They spasm, drop, and don’t rise."
+            "victim_msg": "A torrent of fire to your {hit_location} ends things quickly. You spasm, drop, and don’t rise.",
+            "observer_msg": "A torrent of fire to {target_name}'s {hit_location} ends things quickly. They spasm, drop, and don’t rise."
         },
         {
-            "attacker_msg": "Fire consumes the side of {target_name}'s head. The twitching doesn’t last. The flame keeps roaring.",
-            "victim_msg": "Fire consumes the side of your head. The twitching doesn’t last. The flame keeps roaring.",
-            "observer_msg": "Fire consumes the side of {target_name}'s head. The twitching doesn’t last. The flame keeps roaring."
+            "attacker_msg": "Fire consumes the side of {target_name}'s {hit_location}. The twitching doesn’t last. The flame keeps roaring.",
+            "victim_msg": "Fire consumes the side of your {hit_location}. The twitching doesn’t last. The flame keeps roaring.",
+            "observer_msg": "Fire consumes the side of {target_name}'s {hit_location}. The twitching doesn’t last. The flame keeps roaring."
         },
         {
-            "attacker_msg": "Fire finds {target_name}'s throat. The scream is instant — and then silenced. {target_name} hits the ground smoking.",
-            "victim_msg": "Fire finds your throat. Your scream is instant — and then silenced. You hit the ground smoking.",
-            "observer_msg": "Fire finds {target_name}'s throat. The scream is instant — and then silenced. {target_name} hits the ground smoking."
+            "attacker_msg": "Fire finds {target_name}'s {hit_location}. The scream is instant — and then silenced. {target_name} hits the ground smoking.",
+            "victim_msg": "Fire finds your {hit_location}. Your scream is instant — and then silenced. You hit the ground smoking.",
+            "observer_msg": "Fire finds {target_name}'s {hit_location}. The scream is instant — and then silenced. {target_name} hits the ground smoking."
         },
         {
             "attacker_msg": "Fire roars into {target_name}'s armpit, hitting organs underneath. Their body bucks once, then stops entirely.",
@@ -492,9 +492,9 @@ MESSAGES = {
             "observer_msg": "Fire roars into {target_name}'s armpit, hitting organs underneath. Their body bucks once, then stops entirely."
         },
         {
-            "attacker_msg": "Flame wraps around {target_name}'s head. They spin, slap at their own face, then fall — twitching, steaming.",
-            "victim_msg": "Flame wraps around your head. You spin, slap at your own face, then fall — twitching, steaming.",
-            "observer_msg": "Flame wraps around {target_name}'s head. They spin, slap at their own face, then fall — twitching, steaming."
+            "attacker_msg": "Flame wraps around {target_name}'s {hit_location}. They spin, slap at their own face, then fall — twitching, steaming.",
+            "victim_msg": "Flame wraps around your {hit_location}. You spin, slap at your own face, then fall — twitching, steaming.",
+            "observer_msg": "Flame wraps around {target_name}'s {hit_location}. They spin, slap at their own face, then fall — twitching, steaming."
         },
         {
             "attacker_msg": "One long blast — enough to ignite the clothes, the skin, the everything. {target_name} goes down aflame.",
@@ -507,34 +507,34 @@ MESSAGES = {
             "observer_msg": "One prolonged stream of flame catches {target_name} in the neck. The soft pop of bursting flesh ends it."
         },
         {
-            "attacker_msg": "One steady stream of flame to the side of {target_name}'s head. The skull blackens and splits. It’s over.",
-            "victim_msg": "One steady stream of flame to the side of your head. Your skull blackens and splits. It’s over.",
-            "observer_msg": "One steady stream of flame to the side of {target_name}'s head. Their skull blackens and splits. It’s over."
+            "attacker_msg": "One steady stream of flame to the side of {target_name}'s {hit_location}. The skull blackens and splits. It’s over.",
+            "victim_msg": "One steady stream of flame to the side of your {hit_location}. Your {hit_location} blackens and splits. It’s over.",
+            "observer_msg": "One steady stream of flame to the side of {target_name}'s {hit_location}. Their skull blackens and splits. It’s over."
         },
         {
-            "attacker_msg": "The blowtorch burns through {target_name}'s abdomen. They convulse, collapse, and cook where they lie.",
-            "victim_msg": "The blowtorch burns through your abdomen. You convulse, collapse, and cook where you lie.",
-            "observer_msg": "The blowtorch burns through {target_name}'s abdomen. They convulse, collapse, and cook where they lie."
+            "attacker_msg": "The blowtorch burns through {target_name}'s {hit_location}. They convulse, collapse, and cook where they lie.",
+            "victim_msg": "The blowtorch burns through your {hit_location}. You convulse, collapse, and cook where you lie.",
+            "observer_msg": "The blowtorch burns through {target_name}'s {hit_location}. They convulse, collapse, and cook where they lie."
         },
         {
-            "attacker_msg": "The blowtorch hits square in {target_name}'s chest. Clothing ignites. Their scream becomes smoke before it finishes.",
-            "victim_msg": "The blowtorch hits square in your chest. Clothing ignites. Your scream becomes smoke before it finishes.",
-            "observer_msg": "The blowtorch hits square in {target_name}'s chest. Clothing ignites. Their scream becomes smoke before it finishes."
+            "attacker_msg": "The blowtorch hits square in {target_name}'s {hit_location}. Clothing ignites. Their scream becomes smoke before it finishes.",
+            "victim_msg": "The blowtorch hits square in your {hit_location}. Clothing ignites. Your scream becomes smoke before it finishes.",
+            "observer_msg": "The blowtorch hits square in {target_name}'s {hit_location}. Clothing ignites. Their scream becomes smoke before it finishes."
         },
         {
-            "attacker_msg": "The blowtorch ignites {target_name}'s head. The scream is animal. The smell is unforgettable.",
-            "victim_msg": "The blowtorch ignites your head. Your scream is animal. The smell is unforgettable.",
-            "observer_msg": "The blowtorch ignites {target_name}'s head. The scream is animal. The smell is unforgettable."
+            "attacker_msg": "The blowtorch ignites {target_name}'s {hit_location}. The scream is animal. The smell is unforgettable.",
+            "victim_msg": "The blowtorch ignites your {hit_location}. Your scream is animal. The smell is unforgettable.",
+            "observer_msg": "The blowtorch ignites {target_name}'s {hit_location}. The scream is animal. The smell is unforgettable."
         },
         {
-            "attacker_msg": "The blowtorch turns {target_name}'s arm into ash and agony. They don’t recover — they just fall, twitching.",
-            "victim_msg": "The blowtorch turns your arm into ash and agony. You don’t recover — you just fall, twitching.",
-            "observer_msg": "The blowtorch turns {target_name}'s arm into ash and agony. They don’t recover — they just fall, twitching."
+            "attacker_msg": "The blowtorch turns {target_name}'s {hit_location} into ash and agony. They don’t recover — they just fall, twitching.",
+            "victim_msg": "The blowtorch turns your {hit_location} into ash and agony. You don’t recover — you just fall, twitching.",
+            "observer_msg": "The blowtorch turns {target_name}'s {hit_location} into ash and agony. They don’t recover — they just fall, twitching."
         },
         {
-            "attacker_msg": "The blue flame drills into {target_name}'s temple. They scream once, then fold, half their face still cooking.",
-            "victim_msg": "The blue flame drills into your temple. You scream once, then fold, half your face still cooking.",
-            "observer_msg": "The blue flame drills into {target_name}'s temple. They scream once, then fold, half their face still cooking."
+            "attacker_msg": "The blue flame drills into {target_name}'s {hit_location}. They scream once, then fold, half their face still cooking.",
+            "victim_msg": "The blue flame drills into your {hit_location}. You scream once, then fold, half your {hit_location} still cooking.",
+            "observer_msg": "The blue flame drills into {target_name}'s {hit_location}. They scream once, then fold, half their face still cooking."
         },
         {
             "attacker_msg": "The flame finds {target_name}'s open mouth. The scream is cut short, replaced by gurgling heat.",
@@ -552,9 +552,9 @@ MESSAGES = {
             "observer_msg": "The kill is surgical. The flame hits a nerve cluster. {target_name}'s reaction is fast. The death, faster."
         },
         {
-            "attacker_msg": "The torch eats into {target_name}'s skull from below the chin. They convulse, then slump, smoke rising from a ruined mouth.",
-            "victim_msg": "The torch eats into your skull from below the chin. You convulse, then slump, smoke rising from a ruined mouth.",
-            "observer_msg": "The torch eats into {target_name}'s skull from below the chin. They convulse, then slump, smoke rising from a ruined mouth."
+            "attacker_msg": "The torch eats into {target_name}'s {hit_location} from below the chin. They convulse, then slump, smoke rising from a ruined mouth.",
+            "victim_msg": "The torch eats into your {hit_location} from below the chin. You convulse, then slump, smoke rising from a ruined mouth.",
+            "observer_msg": "The torch eats into {target_name}'s {hit_location} from below the chin. They convulse, then slump, smoke rising from a ruined mouth."
         },
         {
             "attacker_msg": "The torch ignites hair, then skull, then silence. {target_name} collapses into themselves like a dying star.",
@@ -562,29 +562,29 @@ MESSAGES = {
             "observer_msg": "The torch ignites {target_name}'s hair, then skull, then silence. {target_name} collapses into themselves like a dying star."
         },
         {
-            "attacker_msg": "The torch is pressed against {target_name}'s heart. The scream doesn't last. The fire does.",
-            "victim_msg": "The torch is pressed against your heart. Your scream doesn't last. The fire does.",
-            "observer_msg": "The torch is pressed against {target_name}'s heart. The scream doesn't last. The fire does."
+            "attacker_msg": "The torch is pressed against {target_name}'s {hit_location}. The scream doesn't last. The fire does.",
+            "victim_msg": "The torch is pressed against your {hit_location}. Your scream doesn't last. The fire does.",
+            "observer_msg": "The torch is pressed against {target_name}'s {hit_location}. The scream doesn't last. The fire does."
         },
         {
-            "attacker_msg": "The torch sinks into {target_name}'s neck and lingers. They thrash, but only briefly.",
-            "victim_msg": "The torch sinks into your neck and lingers. You thrash, but only briefly.",
-            "observer_msg": "The torch sinks into {target_name}'s neck and lingers. They thrash, but only briefly."
+            "attacker_msg": "The torch sinks into {target_name}'s {hit_location} and lingers. They thrash, but only briefly.",
+            "victim_msg": "The torch sinks into your {hit_location} and lingers. You thrash, but only briefly.",
+            "observer_msg": "The torch sinks into {target_name}'s {hit_location} and lingers. They thrash, but only briefly."
         },
         {
-            "attacker_msg": "You force the torch into {target_name}'s chest and hold it. The flame doesn’t just kill — it consumes.",
-            "victim_msg": "{attacker_name} forces the torch into your chest and holds it. The flame doesn’t just kill — it consumes.",
-            "observer_msg": "{attacker_name} forces the torch into {target_name}'s chest and holds it. The flame doesn’t just kill — it consumes."
+            "attacker_msg": "You force the torch into {target_name}'s {hit_location} and hold it. The flame doesn’t just kill — it consumes.",
+            "victim_msg": "{attacker_name} forces the torch into your {hit_location} and holds it. The flame doesn’t just kill — it consumes.",
+            "observer_msg": "{attacker_name} forces the torch into {target_name}'s {hit_location} and holds it. The flame doesn’t just kill — it consumes."
         },
         {
-            "attacker_msg": "You hold the torch to {target_name}'s back until they stop moving. The smell alone confirms the job is done.",
-            "victim_msg": "{attacker_name} holds the torch to your back until you stop moving. The smell alone confirms the job is done.",
-            "observer_msg": "{attacker_name} holds the torch to {target_name}'s back until they stop moving. The smell alone confirms the job is done."
+            "attacker_msg": "You hold the torch to {target_name}'s {hit_location} until they stop moving. The smell alone confirms the job is done.",
+            "victim_msg": "{attacker_name} holds the torch to your {hit_location} until you stop moving. The smell alone confirms the job is done.",
+            "observer_msg": "{attacker_name} holds the torch to {target_name}'s {hit_location} until they stop moving. The smell alone confirms the job is done."
         },
         {
-            "attacker_msg": "You jam the flame into {target_name}'s face. Skin melts, bone sizzles, and the smell is unforgettable.",
-            "victim_msg": "{attacker_name} jams the flame into your face. Skin melts, bone sizzles, and the smell is unforgettable.",
-            "observer_msg": "{attacker_name} jams the flame into {target_name}'s face. Skin melts, bone sizzles, and the smell is unforgettable."
+            "attacker_msg": "You jam the flame into {target_name}'s {hit_location}. Skin melts, bone sizzles, and the smell is unforgettable.",
+            "victim_msg": "{attacker_name} jams the flame into your {hit_location}. Skin melts, bone sizzles, and the smell is unforgettable.",
+            "observer_msg": "{attacker_name} jams the flame into {target_name}'s {hit_location}. Skin melts, bone sizzles, and the smell is unforgettable."
         },
         {
             "attacker_msg": "You pin {target_name} down and bring the torch close. The writhing stops long before the fire does.",
@@ -597,14 +597,14 @@ MESSAGES = {
             "observer_msg": "{attacker_name} pins {target_name} down and shoves the flame beneath their chin. Smoke pours from {target_name}'s mouth. Nothing more follows."
         },
         {
-            "attacker_msg": "You push the flame into {target_name}'s chest until breath and motion both stop. The body glows before it drops.",
-            "victim_msg": "{attacker_name} pushes the flame into your chest until breath and motion both stop. Your body glows before it drops.",
-            "observer_msg": "{attacker_name} pushes the flame into {target_name}'s chest until breath and motion both stop. The body glows before it drops."
+            "attacker_msg": "You push the flame into {target_name}'s {hit_location} until breath and motion both stop. The body glows before it drops.",
+            "victim_msg": "{attacker_name} pushes the flame into your {hit_location} until breath and motion both stop. Your body glows before it drops.",
+            "observer_msg": "{attacker_name} pushes the flame into {target_name}'s {hit_location} until breath and motion both stop. The body glows before it drops."
         },
         {
-            "attacker_msg": "You scorch {target_name}'s spine. They jerk, twitch, and stop. The fire lingers on bone.",
-            "victim_msg": "{attacker_name} scorches your spine. You jerk, twitch, and stop. The fire lingers on bone.",
-            "observer_msg": "{attacker_name} scorches {target_name}'s spine. They jerk, twitch, and stop. The fire lingers on bone."
+            "attacker_msg": "You scorch {target_name}'s {hit_location}. They jerk, twitch, and stop. The fire lingers on bone.",
+            "victim_msg": "{attacker_name} scorches your {hit_location}. You jerk, twitch, and stop. The fire lingers on bone.",
+            "observer_msg": "{attacker_name} scorches {target_name}'s {hit_location}. They jerk, twitch, and stop. The fire lingers on bone."
         }
     ]
 }

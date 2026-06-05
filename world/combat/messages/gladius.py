@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the gladius in a forward-canted guard, ready to punch through defenses."
         },
         {
-            'attacker_msg': "The heavy, spherical pommel of the gladius is a solid counterweight in your hand.",
+            'attacker_msg': "The heavy, spherical pommel of the gladius is a solid counterweight in your {hit_location}.",
             'victim_msg': "The heavy, spherical pommel of the gladius is a solid counterweight in {attacker_name}'s hand.",
             'observer_msg': "The heavy, spherical pommel of the gladius is a solid counterweight in {attacker_name}'s hand."
         },
@@ -106,7 +106,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} yanks the gladius free, the sound a harsh rasp of steel on leather."
         },
         {
-            'attacker_msg': "The gladius is a soldier's weapon in your hand, built for effectiveness, not show.",
+            'attacker_msg': "The gladius is a soldier's weapon in your {hit_location}, built for effectiveness, not show.",
             'victim_msg': "The gladius is a soldier's weapon in {attacker_name}'s hand, built for effectiveness, not show.",
             'observer_msg': "The gladius is a soldier's weapon in {attacker_name}'s hand, built for effectiveness, not show."
         },
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your gladius chops the air violently, just missing {target_name}'s head.",
-            'victim_msg': "{attacker_name}'s gladius chops the air violently, just missing your head.",
-            'observer_msg': "{attacker_name}'s gladius chops the air violently, just missing {target_name}'s head."
+            'attacker_msg': "Your gladius chops the air violently, just missing {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name}'s gladius chops the air violently, just missing your {hit_location}.",
+            'observer_msg': "{attacker_name}'s gladius chops the air violently, just missing {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "{target_name} barely stumbles back, avoiding the brutal thrust of your gladius.",
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "Your gladius punches through {target_name}'s chest, a fatal, brutal end.",
-            'victim_msg': "{attacker_name}'s gladius punches through your chest, a fatal, brutal end.",
-            'observer_msg': "{attacker_name}'s gladius punches through {target_name}'s chest, a fatal, brutal end."
+            'attacker_msg': "Your gladius punches through {target_name}'s {hit_location}, a fatal, brutal end.",
+            'victim_msg': "{attacker_name}'s gladius punches through your {hit_location}, a fatal, brutal end.",
+            'observer_msg': "{attacker_name}'s gladius punches through {target_name}'s {hit_location}, a fatal, brutal end."
         },
         {
             'attacker_msg': "A savage chop from the gladius, and {target_name} falls, lifeblood gushing onto the ground.",
@@ -472,9 +472,9 @@ MESSAGES = {
             'observer_msg': "With a final, merciless thrust, {attacker_name}'s gladius silences {target_name} permanently."
         },
         {
-            'attacker_msg': "The broad blade of the gladius severs {target_name}'s throat, a swift and bloody conclusion.",
-            'victim_msg': "The broad blade of the gladius severs your throat, a swift and bloody conclusion.",
-            'observer_msg': "The broad blade of the gladius severs {target_name}'s throat, a swift and bloody conclusion."
+            'attacker_msg': "The broad blade of the gladius severs {target_name}'s {hit_location}, a swift and bloody conclusion.",
+            'victim_msg': "The broad blade of the gladius severs your {hit_location}, a swift and bloody conclusion.",
+            'observer_msg': "The broad blade of the gladius severs {target_name}'s {hit_location}, a swift and bloody conclusion."
         },
         {
             'attacker_msg': "Your powerful blow with the gladius leaves {target_name} mortally wounded, collapsing in a heap.",
@@ -492,9 +492,9 @@ MESSAGES = {
             'observer_msg': "A vicious upward thrust from {attacker_name}'s gladius ends {target_name}'s life with horrific efficiency."
         },
         {
-            'attacker_msg': "You drive the gladius deep into {target_name}'s abdomen, the outcome grimly inevitable.",
-            'victim_msg': "{attacker_name} drives the gladius deep into your abdomen, the outcome grimly inevitable.",
-            'observer_msg': "{attacker_name} drives the gladius deep into {target_name}'s abdomen, the outcome grimly inevitable."
+            'attacker_msg': "You drive the gladius deep into {target_name}'s {hit_location}, the outcome grimly inevitable.",
+            'victim_msg': "{attacker_name} drives the gladius deep into your {hit_location}, the outcome grimly inevitable.",
+            'observer_msg': "{attacker_name} drives the gladius deep into {target_name}'s {hit_location}, the outcome grimly inevitable."
         },
         {
             'attacker_msg': "The keen edge of the gladius opens a fatal wound, and {target_name} crumples, unmoving.",

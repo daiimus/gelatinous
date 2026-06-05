@@ -86,7 +86,7 @@ MESSAGES = {
             "observer_msg": "They don’t yell. They don’t threaten. {attacker_name} just lifts the brick with the casual cruelty of someone who's done this before."
         },
         {
-            "attacker_msg": "With a grunt, You pull the brick from a jacket pocket. It lands in your hand with a sound like punctuation.",
+            "attacker_msg": "With a grunt, You pull the brick from a jacket pocket. It lands in your {hit_location} with a sound like punctuation.",
             "victim_msg": "With a grunt, {attacker_name} pulls the brick from a jacket pocket. It lands in their hand with a sound like punctuation.",
             "observer_msg": "With a grunt, {attacker_name} pulls the brick from a jacket pocket. It lands in their hand with a sound like punctuation."
         },
@@ -121,7 +121,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} pulls the brick from a coat pocket. It’s chipped, dirty, and exactly what this moment calls for."
         },
         {
-            "attacker_msg": "You raise the brick and let it rest against your shoulder. It’s not a threat — it’s a promise.",
+            "attacker_msg": "You raise the brick and let it rest against your {hit_location}. It’s not a threat — it’s a promise.",
             "victim_msg": "{attacker_name} raises the brick and lets it rest against their shoulder. It’s not a threat — it’s a promise.",
             "observer_msg": "{attacker_name} raises the brick and lets it rest against their shoulder. It’s not a threat — it’s a promise."
         },
@@ -131,17 +131,17 @@ MESSAGES = {
             "observer_msg": "{attacker_name} rolls the brick across their knuckles like brass. It isn’t for show. It’s for momentum."
         },
         {
-            "attacker_msg": "You roll the brick in your hand like weighing dice. This game ends in fractures.",
+            "attacker_msg": "You roll the brick in your {hit_location} like weighing dice. This game ends in fractures.",
             "victim_msg": "{attacker_name} rolls the brick in their hand like weighing dice. This game ends in fractures.",
             "observer_msg": "{attacker_name} rolls the brick in their hand like weighing dice. This game ends in fractures."
         },
         {
-            "attacker_msg": "You roll your wrist, flexing fingers around the brick. The message is clear. This won’t take long.",
+            "attacker_msg": "You roll your {hit_location}, flexing fingers around the brick. The message is clear. This won’t take long.",
             "victim_msg": "{attacker_name} rolls their wrist, flexing fingers around the brick. The message is clear. This won’t take long.",
             "observer_msg": "{attacker_name} rolls their wrist, flexing fingers around the brick. The message is clear. This won’t take long."
         },
         {
-            "attacker_msg": "You rotate the brick in your hand, aligning the chipped corner forward like a blade. It’s blunt precision.",
+            "attacker_msg": "You rotate the brick in your {hit_location}, aligning the chipped corner forward like a blade. It’s blunt precision.",
             "victim_msg": "{attacker_name} rotates the brick in their hand, aligning the chipped corner forward like a blade. It’s blunt precision.",
             "observer_msg": "{attacker_name} rotates the brick in their hand, aligning the chipped corner forward like a blade. It’s blunt precision."
         },
@@ -305,7 +305,7 @@ MESSAGES = {
     ],
     'miss': [
         {
-            "attacker_msg": "A missed lunge twists Your torso off center. The recovery is fast. Too fast.",
+            "attacker_msg": "A missed lunge twists Your {hit_location} off center. The recovery is fast. Too fast.",
             "victim_msg": "A missed lunge twists {attacker_name}'s torso off center. The recovery is fast. Too fast.",
             "observer_msg": "A missed lunge twists {attacker_name}'s torso off center. The recovery is fast. Too fast."
         },
@@ -380,9 +380,9 @@ MESSAGES = {
             "observer_msg": "The brick thuds into the wall beside {target_name}. Dust and mortar explode from the impact."
         },
         {
-            "attacker_msg": "The brick whooshes just past {target_name}'s shoulder, close enough to rattle their sense of safety.",
-            "victim_msg": "The brick whooshes just past your shoulder, close enough to rattle your sense of safety.",
-            "observer_msg": "The brick whooshes just past {target_name}'s shoulder, close enough to rattle their sense of safety."
+            "attacker_msg": "The brick whooshes just past {target_name}'s {hit_location}, close enough to rattle their sense of safety.",
+            "victim_msg": "The brick whooshes just past your {hit_location}, close enough to rattle your sense of safety.",
+            "observer_msg": "The brick whooshes just past {target_name}'s {hit_location}, close enough to rattle their sense of safety."
         },
         {
             "attacker_msg": "The lunge misses. The message doesn’t. {target_name} backs away fast.",
@@ -435,9 +435,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} stumbles mid-swing. The brick hits nothing but the floor — loudly."
         },
         {
-            "attacker_msg": "You swing hard, but the brick catches only air. It whistles past {target_name}'s head like a warning.",
-            "victim_msg": "{attacker_name} swings hard, but the brick catches only air. It whistles past your head like a warning.",
-            "observer_msg": "{attacker_name} swings hard, but the brick catches only air. It whistles past {target_name}'s head like a warning."
+            "attacker_msg": "You swing hard, but the brick catches only air. It whistles past {target_name}'s {hit_location} like a warning.",
+            "victim_msg": "{attacker_name} swings hard, but the brick catches only air. It whistles past your {hit_location} like a warning.",
+            "observer_msg": "{attacker_name} swings hard, but the brick catches only air. It whistles past {target_name}'s {hit_location} like a warning."
         },
         {
             "attacker_msg": "You swing wild and low. The brick carves the floor instead of flesh.",
@@ -445,7 +445,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} swings wild and low. The brick carves the floor instead of flesh."
         },
         {
-            "attacker_msg": "Your strike veers wide. The force behind it leaves your shoulder aching.",
+            "attacker_msg": "Your strike veers wide. The force behind it leaves your {hit_location} aching.",
             "victim_msg": "{attacker_name}'s strike veers wide. The force behind it leaves their shoulder aching.",
             "observer_msg": "{attacker_name}'s strike veers wide. The force behind it leaves their shoulder aching."
         },
@@ -472,9 +472,9 @@ MESSAGES = {
             "observer_msg": "A final hit to the temple flattens part of the skull. {attacker_name} watches until the body stops moving."
         },
         {
-            "attacker_msg": "A side swing twists {target_name}'s head too far. Something snaps. Everything ends.",
-            "victim_msg": "A side swing twists your head too far. Something snaps. Everything ends.",
-            "observer_msg": "A side swing twists {target_name}'s head too far. Something snaps. Everything ends."
+            "attacker_msg": "A side swing twists {target_name}'s {hit_location} too far. Something snaps. Everything ends.",
+            "victim_msg": "A side swing twists your {hit_location} too far. Something snaps. Everything ends.",
+            "observer_msg": "A side swing twists {target_name}'s {hit_location} too far. Something snaps. Everything ends."
         },
         {
             "attacker_msg": "A single blow to the back of the head ends it. {target_name} drops like a puppet cut from strings.",
@@ -502,9 +502,9 @@ MESSAGES = {
             "observer_msg": "One strike to the side of the neck. {target_name} collapses mid-step, brain shutting down before breath."
         },
         {
-            "attacker_msg": "The brick caves in {target_name}'s skull with a single, horrible crunch. They fall before they scream.",
-            "victim_msg": "The brick caves in your skull with a single, horrible crunch. You fall before they scream.",
-            "observer_msg": "The brick caves in {target_name}'s skull with a single, horrible crunch. They fall before they scream."
+            "attacker_msg": "The brick caves in {target_name}'s {hit_location} with a single, horrible crunch. They fall before they scream.",
+            "victim_msg": "The brick caves in your {hit_location} with a single, horrible crunch. You fall before they scream.",
+            "observer_msg": "The brick caves in {target_name}'s {hit_location} with a single, horrible crunch. They fall before they scream."
         },
         {
             "attacker_msg": "The brick caves the chest inward. {target_name} stares for a second, then topples like a tree in a storm.",
@@ -527,9 +527,9 @@ MESSAGES = {
             "observer_msg": "The brick lands across the nose and eyes. Everything caves inward. {target_name} never stands again."
         },
         {
-            "attacker_msg": "The brick lands flat against {target_name}'s jaw. Teeth fly. Then the lights go out.",
-            "victim_msg": "The brick lands flat against your jaw. Teeth fly. Then the lights go out.",
-            "observer_msg": "The brick lands flat against {target_name}'s jaw. Teeth fly. Then the lights go out."
+            "attacker_msg": "The brick lands flat against {target_name}'s {hit_location}. Teeth fly. Then the lights go out.",
+            "victim_msg": "The brick lands flat against your {hit_location}. Teeth fly. Then the lights go out.",
+            "observer_msg": "The brick lands flat against {target_name}'s {hit_location}. Teeth fly. Then the lights go out."
         },
         {
             "attacker_msg": "The brick lands on the bridge of the nose. Eyes explode. So does life.",
@@ -547,9 +547,9 @@ MESSAGES = {
             "observer_msg": "The brick strikes like punctuation at the end of a scream. {target_name} slumps. There’s nothing left to say."
         },
         {
-            "attacker_msg": "The final blow hits the side of {target_name}'s head. They don’t even twitch after.",
-            "victim_msg": "The final blow hits the side of your head. You don’t even twitch after.",
-            "observer_msg": "The final blow hits the side of {target_name}'s head. They don’t even twitch after."
+            "attacker_msg": "The final blow hits the side of {target_name}'s {hit_location}. They don’t even twitch after.",
+            "victim_msg": "The final blow hits the side of your {hit_location}. You don’t even twitch after.",
+            "observer_msg": "The final blow hits the side of {target_name}'s {hit_location}. They don’t even twitch after."
         },
         {
             "attacker_msg": "The kill is fast. The brick drops like a judge’s gavel, and {target_name} drops like a sentence.",
@@ -572,9 +572,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} brings the brick down from overhead. It lands with a sickening finality. {target_name} doesn’t twitch."
         },
         {
-            "attacker_msg": "You drive the brick into {target_name}'s throat. The gurgle is brief. The collapse is final.",
-            "victim_msg": "{attacker_name} drives the brick into your throat. The gurgle is brief. The collapse is final.",
-            "observer_msg": "{attacker_name} drives the brick into {target_name}'s throat. The gurgle is brief. The collapse is final."
+            "attacker_msg": "You drive the brick into {target_name}'s {hit_location}. The gurgle is brief. The collapse is final.",
+            "victim_msg": "{attacker_name} drives the brick into your {hit_location}. The gurgle is brief. The collapse is final.",
+            "observer_msg": "{attacker_name} drives the brick into {target_name}'s {hit_location}. The gurgle is brief. The collapse is final."
         },
         {
             "attacker_msg": "You grip the brick in both hands and slam it home. The sound is pulp and nothing else.",
@@ -582,29 +582,29 @@ MESSAGES = {
             "observer_msg": "{attacker_name} grips the brick in both hands and slams it home. The sound is pulp and nothing else."
         },
         {
-            "attacker_msg": "You grip the brick in both hands and swing until {target_name}'s neck bends wrong. Then more.",
-            "victim_msg": "{attacker_name} grips the brick in both hands and swings until your neck bends wrong. Then more.",
-            "observer_msg": "{attacker_name} grips the brick in both hands and swings until {target_name}'s neck bends wrong. Then more."
+            "attacker_msg": "You grip the brick in both hands and swing until {target_name}'s {hit_location} bends wrong. Then more.",
+            "victim_msg": "{attacker_name} grips the brick in both hands and swings until your {hit_location} bends wrong. Then more.",
+            "observer_msg": "{attacker_name} grips the brick in both hands and swings until {target_name}'s {hit_location} bends wrong. Then more."
         },
         {
-            "attacker_msg": "You pound the brick into {target_name}'s head again and again until it’s over. Then once more, just to be sure.",
-            "victim_msg": "{attacker_name} pounds the brick into your head again and again until it’s over. Then once more, just to be sure.",
-            "observer_msg": "{attacker_name} pounds the brick into {target_name}'s head again and again until it’s over. Then once more, just to be sure."
+            "attacker_msg": "You pound the brick into {target_name}'s {hit_location} again and again until it’s over. Then once more, just to be sure.",
+            "victim_msg": "{attacker_name} pounds the brick into your {hit_location} again and again until it’s over. Then once more, just to be sure.",
+            "observer_msg": "{attacker_name} pounds the brick into {target_name}'s {hit_location} again and again until it’s over. Then once more, just to be sure."
         },
         {
-            "attacker_msg": "You smash the brick into {target_name}'s chest until the body stops jerking. It takes three hits. Maybe four.",
-            "victim_msg": "{attacker_name} smashes the brick into your chest until the body stops jerking. It takes three hits. Maybe four.",
-            "observer_msg": "{attacker_name} smashes the brick into {target_name}'s chest until the body stops jerking. It takes three hits. Maybe four."
+            "attacker_msg": "You smash the brick into {target_name}'s {hit_location} until the body stops jerking. It takes three hits. Maybe four.",
+            "victim_msg": "{attacker_name} smashes the brick into your {hit_location} until the body stops jerking. It takes three hits. Maybe four.",
+            "observer_msg": "{attacker_name} smashes the brick into {target_name}'s {hit_location} until the body stops jerking. It takes three hits. Maybe four."
         },
         {
-            "attacker_msg": "You smash the brick into {target_name}'s face until it’s no longer recognizable. It’s not a fight — it’s a finale.",
-            "victim_msg": "{attacker_name} smashes the brick into your face until it’s no longer recognizable. It’s not a fight — it’s a finale.",
-            "observer_msg": "{attacker_name} smashes the brick into {target_name}'s face until it’s no longer recognizable. It’s not a fight — it’s a finale."
+            "attacker_msg": "You smash the brick into {target_name}'s {hit_location} until it’s no longer recognizable. It’s not a fight — it’s a finale.",
+            "victim_msg": "{attacker_name} smashes the brick into your {hit_location} until it’s no longer recognizable. It’s not a fight — it’s a finale.",
+            "observer_msg": "{attacker_name} smashes the brick into {target_name}'s {hit_location} until it’s no longer recognizable. It’s not a fight — it’s a finale."
         },
         {
-            "attacker_msg": "You step in and drive the brick into the base of {target_name}'s neck. The legs fold. The spine agrees.",
-            "victim_msg": "{attacker_name} steps in and drives the brick into the base of your neck. The legs fold. The spine agrees.",
-            "observer_msg": "{attacker_name} steps in and drives the brick into the base of {target_name}'s neck. The legs fold. The spine agrees."
+            "attacker_msg": "You step in and drive the brick into the base of {target_name}'s {hit_location}. The legs fold. The spine agrees.",
+            "victim_msg": "{attacker_name} steps in and drives the brick into the base of your {hit_location}. The legs fold. The spine agrees.",
+            "observer_msg": "{attacker_name} steps in and drives the brick into the base of {target_name}'s {hit_location}. The legs fold. The spine agrees."
         }
     ]
 }

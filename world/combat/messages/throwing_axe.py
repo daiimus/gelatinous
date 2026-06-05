@@ -11,7 +11,7 @@ MESSAGES = {
             'observer_msg': "The throwing axe gleams wickedly as {attacker_name} grips the handle, eyes fixed on {target_name}."
         },
         {
-            'attacker_msg': "You test the balance of your throwing axe, then cock your arm back toward {target_name}.",
+            'attacker_msg': "You test the balance of your throwing axe, then cock your {hit_location} back toward {target_name}.",
             'victim_msg': "{attacker_name} tests the balance of their throwing axe, then cocks their arm back toward you.",
             'observer_msg': "{attacker_name} tests the balance of their throwing axe, then cocks their arm back toward {target_name}."
         },
@@ -41,7 +41,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} grips the axe handle firmly, muscles tensing as they prepare to hurl it at {target_name}."
         },
         {
-            'attacker_msg': "The throwing axe feels heavy in your hand as you line up your shot on {target_name}.",
+            'attacker_msg': "The throwing axe feels heavy in your {hit_location} as you line up your shot on {target_name}.",
             'victim_msg': "The throwing axe feels heavy in {attacker_name}'s hand as they line up their shot on you.",
             'observer_msg': "The throwing axe feels heavy in {attacker_name}'s hand as they line up their shot on {target_name}."
         },
@@ -157,18 +157,18 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "The throwing axe spins once before the blade cleaves through {target_name}'s skull with a wet crack. They drop instantly.",
-            'victim_msg': "The throwing axe spins once before the blade cleaves through your skull with a wet crack. You drop instantly.",
-            'observer_msg': "The throwing axe spins once before the blade cleaves through {target_name}'s skull with a wet crack. They drop instantly."
+            'attacker_msg': "The throwing axe spins once before the blade cleaves through {target_name}'s {hit_location} with a wet crack. They drop instantly.",
+            'victim_msg': "The throwing axe spins once before the blade cleaves through your {hit_location} with a wet crack. You drop instantly.",
+            'observer_msg': "The throwing axe spins once before the blade cleaves through {target_name}'s {hit_location} with a wet crack. They drop instantly."
         },
         {
-            'attacker_msg': "Perfect aim and devastating force - the axe splits {target_name}'s chest open, ending their life immediately.",
-            'victim_msg': "Perfect aim and devastating force - the axe splits your chest open, ending your life immediately.",
-            'observer_msg': "Perfect aim and devastating force - the axe splits {target_name}'s chest open, ending their life immediately."
+            'attacker_msg': "Perfect aim and devastating force - the axe splits {target_name}'s {hit_location} open, ending their life immediately.",
+            'victim_msg': "Perfect aim and devastating force - the axe splits your {hit_location} open, ending your life immediately.",
+            'observer_msg': "Perfect aim and devastating force - the axe splits {target_name}'s {hit_location} open, ending their life immediately."
         },
         {
             'attacker_msg': "{target_name} looks down in shock at the throwing axe buried in their torso before collapsing in a pool of blood.",
-            'victim_msg': "You look down in shock at the throwing axe buried in your torso before collapsing in a pool of blood.",
+            'victim_msg': "You look down in shock at the throwing axe buried in your {hit_location} before collapsing in a pool of blood.",
             'observer_msg': "{target_name} looks down in shock at the throwing axe buried in their torso before collapsing in a pool of blood."
         },
         {
@@ -178,13 +178,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A single, brutal throw. The axe takes {target_name} in the neck, nearly severing their head.",
-            'victim_msg': "A single, brutal throw. The axe takes you in the neck, nearly severing your head.",
+            'victim_msg': "A single, brutal throw. The axe takes you in the neck, nearly severing your {hit_location}.",
             'observer_msg': "A single, brutal throw. The axe takes {target_name} in the neck, nearly severing their head."
         },
         {
-            'attacker_msg': "The throwing axe buries itself to the eye in {target_name}'s chest. They fall without another breath.",
-            'victim_msg': "The throwing axe buries itself to the eye in your chest. You fall without another breath.",
-            'observer_msg': "The throwing axe buries itself to the eye in {target_name}'s chest. They fall without another breath."
+            'attacker_msg': "The throwing axe buries itself to the eye in {target_name}'s {hit_location}. They fall without another breath.",
+            'victim_msg': "The throwing axe buries itself to the eye in your {hit_location}. You fall without another breath.",
+            'observer_msg': "The throwing axe buries itself to the eye in {target_name}'s {hit_location}. They fall without another breath."
         },
         {
             'attacker_msg': "Your blade finds the perfect spot, cleaving {target_name} nearly in two with one devastating blow.",

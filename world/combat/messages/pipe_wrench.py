@@ -1,12 +1,12 @@
 MESSAGES = {
     "initiate": [
         {
-            'attacker_msg': "You hoist the heavy pipe wrench over one shoulder, letting it thud against your back with a dull, greasy smack.",
+            'attacker_msg': "You hoist the heavy pipe wrench over one shoulder, letting it thud against your {hit_location} with a dull, greasy smack.",
             'victim_msg': "{attacker_name} hoists the heavy pipe wrench over one shoulder, letting it thud against their back with a dull, greasy smack.",
             'observer_msg': "{attacker_name} hoists the heavy pipe wrench over one shoulder, letting it thud against their back with a dull, greasy smack."
         },
         {
-            'attacker_msg': "You spin the wrench once in your palm and crack your neck, eyes fixed on {target_name} with measured malice.",
+            'attacker_msg': "You spin the wrench once in your palm and crack your {hit_location}, eyes fixed on {target_name} with measured malice.",
             'victim_msg': "{attacker_name} spins the wrench once in their palm and cracks their neck, eyes fixed on you with measured malice.",
             'observer_msg': "{attacker_name} spins the wrench once in their palm and cracks their neck, eyes fixed on {target_name} with measured malice."
         },
@@ -31,7 +31,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} drags the wrench along a pipe behind them, raising a scream of metal on metal that echoes down the alley."
         },
         {
-            'attacker_msg': "You check the grip on the pipe wrench, rolling your shoulder like you're about to fix something—terminally.",
+            'attacker_msg': "You check the grip on the pipe wrench, rolling your {hit_location} like you're about to fix something—terminally.",
             'victim_msg': "{attacker_name} checks the grip on the pipe wrench, rolling their shoulder like they're about to fix something—terminally.",
             'observer_msg': "{attacker_name} checks the grip on the pipe wrench, rolling their shoulder like they're about to fix something—terminally."
         },
@@ -41,7 +41,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} brings the wrench up and lets it hang low, swinging with the weight of industrial intention."
         },
         {
-            'attacker_msg': "You rest the wrench across your forearm and grin at {target_name} with teeth too white for what's about to happen.",
+            'attacker_msg': "You rest the wrench across your {hit_location} and grin at {target_name} with teeth too white for what's about to happen.",
             'victim_msg': "{attacker_name} rests the wrench across their forearm and grins at you with teeth too white for what's about to happen.",
             'observer_msg': "{attacker_name} rests the wrench across their forearm and grins at {target_name} with teeth too white for what's about to happen."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} rolls their shoulders and exhales. The wrench starts to swing slowly side to side."
         },
         {
-            'attacker_msg': "You swing the wrench behind your back in a wide arc, cracking it into the ground with finality.",
+            'attacker_msg': "You swing the wrench behind your {hit_location} in a wide arc, cracking it into the ground with finality.",
             'victim_msg': "{attacker_name} swings the wrench behind their back in a wide arc, cracking it into the ground with finality.",
             'observer_msg': "{attacker_name} swings the wrench behind their back in a wide arc, cracking it into the ground with finality."
         },
@@ -76,7 +76,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} balances the wrench across their forearms like a steel altar, the ritual about to begin."
         },
         {
-            'attacker_msg': "You lean the wrench against your shoulder like a soldier at rest. This is anything but peace.",
+            'attacker_msg': "You lean the wrench against your {hit_location} like a soldier at rest. This is anything but peace.",
             'victim_msg': "{attacker_name} leans the wrench against their shoulder like a soldier at rest. This is anything but peace.",
             'observer_msg': "{attacker_name} leans the wrench against their shoulder like a soldier at rest. This is anything but peace."
         },
@@ -141,7 +141,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} closes the wrench jaws around a pipe, then lets go with a snap—just a warm-up."
         },
         {
-            'attacker_msg': "You roll the wrench along your forearm before letting it drop into your grip with a thud.",
+            'attacker_msg': "You roll the wrench along your {hit_location} before letting it drop into your grip with a thud.",
             'victim_msg': "{attacker_name} rolls the wrench along their forearm before letting it drop into their grip with a thud.",
             'observer_msg': "{attacker_name} rolls the wrench along their forearm before letting it drop into their grip with a thud."
         },
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your wrench whistles past {target_name}'s head, the wind alone enough to chill spines.",
-            'victim_msg': "{attacker_name}'s wrench whistles past your head, the wind alone enough to chill spines.",
-            'observer_msg': "{attacker_name}'s wrench whistles past {target_name}'s head, the wind alone enough to chill spines."
+            'attacker_msg': "Your wrench whistles past {target_name}'s {hit_location}, the wind alone enough to chill spines.",
+            'victim_msg': "{attacker_name}'s wrench whistles past your {hit_location}, the wind alone enough to chill spines.",
+            'observer_msg': "{attacker_name}'s wrench whistles past {target_name}'s {hit_location}, the wind alone enough to chill spines."
         },
         {
             'attacker_msg': "The heavy swing slams into the floor beside {target_name}, sending sparks and dust skyward.",
@@ -452,24 +452,24 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "You bring the wrench down on {target_name}'s head with a thud that silences everything.",
-            'victim_msg': "{attacker_name} brings the wrench down on your head with a thud that silences everything.",
-            'observer_msg': "{attacker_name} brings the wrench down on {target_name}'s head with a thud that silences everything."
+            'attacker_msg': "You bring the wrench down on {target_name}'s {hit_location} with a thud that silences everything.",
+            'victim_msg': "{attacker_name} brings the wrench down on your {hit_location} with a thud that silences everything.",
+            'observer_msg': "{attacker_name} brings the wrench down on {target_name}'s {hit_location} with a thud that silences everything."
         },
         {
-            'attacker_msg': "The wrench slams into {target_name}'s temple. They twitch, then drop in a heap.",
-            'victim_msg': "The wrench slams into your temple. You twitch, then drop in a heap.",
-            'observer_msg': "The wrench slams into {target_name}'s temple. They twitch, then drop in a heap."
+            'attacker_msg': "The wrench slams into {target_name}'s {hit_location}. They twitch, then drop in a heap.",
+            'victim_msg': "The wrench slams into your {hit_location}. You twitch, then drop in a heap.",
+            'observer_msg': "The wrench slams into {target_name}'s {hit_location}. They twitch, then drop in a heap."
         },
         {
-            'attacker_msg': "A final blow caves in {target_name}'s chest. Their scream dies with the echo.",
-            'victim_msg': "A final blow caves in your chest. Your scream dies with the echo.",
-            'observer_msg': "A final blow caves in {target_name}'s chest. Their scream dies with the echo."
+            'attacker_msg': "A final blow caves in {target_name}'s {hit_location}. Their scream dies with the echo.",
+            'victim_msg': "A final blow caves in your {hit_location}. Your scream dies with the echo.",
+            'observer_msg': "A final blow caves in {target_name}'s {hit_location}. Their scream dies with the echo."
         },
         {
-            'attacker_msg': "The wrench lands full force across {target_name}'s face. Their skull doesn't hold.",
-            'victim_msg': "The wrench lands full force across your face. Your skull doesn't hold.",
-            'observer_msg': "The wrench lands full force across {target_name}'s face. Their skull doesn't hold."
+            'attacker_msg': "The wrench lands full force across {target_name}'s {hit_location}. Their skull doesn't hold.",
+            'victim_msg': "The wrench lands full force across your {hit_location}. Your {hit_location} doesn't hold.",
+            'observer_msg': "The wrench lands full force across {target_name}'s {hit_location}. Their skull doesn't hold."
         },
         {
             'attacker_msg': "A jab to the throat shatters cartilage. {target_name} collapses in a gurgle.",
@@ -478,13 +478,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "Steel crashes into the base of the skull. {target_name} drops without ceremony.",
-            'victim_msg': "Steel crashes into the base of your skull. You drop without ceremony.",
+            'victim_msg': "Steel crashes into the base of your {hit_location}. You drop without ceremony.",
             'observer_msg': "Steel crashes into the base of the skull. {target_name} drops without ceremony."
         },
         {
-            'attacker_msg': "You drive the wrench into {target_name}'s neck. One twist. Done.",
-            'victim_msg': "{attacker_name} drives the wrench into your neck. One twist. Done.",
-            'observer_msg': "{attacker_name} drives the wrench into {target_name}'s neck. One twist. Done."
+            'attacker_msg': "You drive the wrench into {target_name}'s {hit_location}. One twist. Done.",
+            'victim_msg': "{attacker_name} drives the wrench into your {hit_location}. One twist. Done.",
+            'observer_msg': "{attacker_name} drives the wrench into {target_name}'s {hit_location}. One twist. Done."
         },
         {
             'attacker_msg': "A brutal swing folds {target_name} around the impact like paper.",
@@ -498,8 +498,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A clean hit to the back of the head ends everything immediately.",
-            'victim_msg': "A clean hit to the back of your head ends everything immediately.",
-            'observer_msg': "A clean hit to the back of {target_name}'s head ends everything immediately."
+            'victim_msg': "A clean hit to the back of your {hit_location} ends everything immediately.",
+            'observer_msg': "A clean hit to the back of {target_name}'s {hit_location} ends everything immediately."
         },
         {
             'attacker_msg': "One crushing downward swing caves in {target_name}'s ribcage. They die gasping.",
@@ -527,34 +527,34 @@ MESSAGES = {
             'observer_msg': "{attacker_name} grips the wrench with both hands and brings it down like a judge's gavel. Final."
         },
         {
-            'attacker_msg': "The jaws of the wrench crack open {target_name}'s skull. The floor gets painted.",
-            'victim_msg': "The jaws of the wrench crack open your skull. The floor gets painted.",
-            'observer_msg': "The jaws of the wrench crack open {target_name}'s skull. The floor gets painted."
+            'attacker_msg': "The jaws of the wrench crack open {target_name}'s {hit_location}. The floor gets painted.",
+            'victim_msg': "The jaws of the wrench crack open your {hit_location}. The floor gets painted.",
+            'observer_msg': "The jaws of the wrench crack open {target_name}'s {hit_location}. The floor gets painted."
         },
         {
             'attacker_msg': "The wrench lands square on the spine. {target_name} folds, twitches, stills.",
-            'victim_msg': "The wrench lands square on your spine. You fold, twitch, still.",
-            'observer_msg': "The wrench lands square on {target_name}'s spine. They fold, twitch, still."
+            'victim_msg': "The wrench lands square on your {hit_location}. You fold, twitch, still.",
+            'observer_msg': "The wrench lands square on {target_name}'s {hit_location}. They fold, twitch, still."
         },
         {
             'attacker_msg': "A twisting blow snaps the neck. {target_name}'s body folds and crumples.",
-            'victim_msg': "A twisting blow snaps your neck. Your body folds and crumples.",
-            'observer_msg': "A twisting blow snaps {target_name}'s neck. Their body folds and crumples."
+            'victim_msg': "A twisting blow snaps your {hit_location}. Your body folds and crumples.",
+            'observer_msg': "A twisting blow snaps {target_name}'s {hit_location}. Their body folds and crumples."
         },
         {
             'attacker_msg': "The wrench embeds in the face. You yank it loose with a grunt.",
-            'victim_msg': "The wrench embeds in your face. {attacker_name} yanks it loose with a grunt.",
-            'observer_msg': "The wrench embeds in {target_name}'s face. {attacker_name} yanks it loose with a grunt."
+            'victim_msg': "The wrench embeds in your {hit_location}. {attacker_name} yanks it loose with a grunt.",
+            'observer_msg': "The wrench embeds in {target_name}'s {hit_location}. {attacker_name} yanks it loose with a grunt."
         },
         {
             'attacker_msg': "A crushing strike to the chest caves it inward. The breathing stops.",
-            'victim_msg': "A crushing strike to your chest caves it inward. The breathing stops.",
-            'observer_msg': "A crushing strike to {target_name}'s chest caves it inward. The breathing stops."
+            'victim_msg': "A crushing strike to your {hit_location} caves it inward. The breathing stops.",
+            'observer_msg': "A crushing strike to {target_name}'s {hit_location} caves it inward. The breathing stops."
         },
         {
-            'attacker_msg': "You bring the wrench across {target_name}'s throat. The rest takes seconds.",
-            'victim_msg': "{attacker_name} brings the wrench across your throat. The rest takes seconds.",
-            'observer_msg': "{attacker_name} brings the wrench across {target_name}'s throat. The rest takes seconds."
+            'attacker_msg': "You bring the wrench across {target_name}'s {hit_location}. The rest takes seconds.",
+            'victim_msg': "{attacker_name} brings the wrench across your {hit_location}. The rest takes seconds.",
+            'observer_msg': "{attacker_name} brings the wrench across {target_name}'s {hit_location}. The rest takes seconds."
         },
         {
             'attacker_msg': "A wide swing lands square on {target_name}'s forehead. Lights out.",
@@ -563,8 +563,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The wrench crashes into the side of the head. Brain meets bone. Game over.",
-            'victim_msg': "The wrench crashes into the side of your head. Brain meets bone. Game over.",
-            'observer_msg': "The wrench crashes into the side of {target_name}'s head. Brain meets bone. Game over."
+            'victim_msg': "The wrench crashes into the side of your {hit_location}. Brain meets bone. Game over.",
+            'observer_msg': "The wrench crashes into the side of {target_name}'s {hit_location}. Brain meets bone. Game over."
         },
         {
             'attacker_msg': "Steel drives into the eye. {target_name} doesn't scream. They just fall.",
@@ -578,8 +578,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The blow breaks the skull—and whatever story {target_name} was going to tell.",
-            'victim_msg': "The blow breaks your skull—and whatever story you were going to tell.",
-            'observer_msg': "The blow breaks {target_name}'s skull—and whatever story they were going to tell."
+            'victim_msg': "The blow breaks your {hit_location}—and whatever story you were going to tell.",
+            'observer_msg': "The blow breaks {target_name}'s {hit_location}—and whatever story they were going to tell."
         },
         {
             'attacker_msg': "You swing hard. The body drops, limp and final.",
@@ -588,13 +588,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A fatal jab under the jaw. The wrench exits slick.",
-            'victim_msg': "A fatal jab under your jaw. The wrench exits slick.",
-            'observer_msg': "A fatal jab under {target_name}'s jaw. The wrench exits slick."
+            'victim_msg': "A fatal jab under your {hit_location}. The wrench exits slick.",
+            'observer_msg': "A fatal jab under {target_name}'s {hit_location}. The wrench exits slick."
         },
         {
             'attacker_msg': "You finish it with a heavy strike across the spine. Stillness.",
-            'victim_msg': "{attacker_name} finishes it with a heavy strike across your spine. Stillness.",
-            'observer_msg': "{attacker_name} finishes it with a heavy strike across {target_name}'s spine. Stillness."
+            'victim_msg': "{attacker_name} finishes it with a heavy strike across your {hit_location}. Stillness.",
+            'observer_msg': "{attacker_name} finishes it with a heavy strike across {target_name}'s {hit_location}. Stillness."
         },
         {
             'attacker_msg': "The wrench lands, and the fight ends with it.",

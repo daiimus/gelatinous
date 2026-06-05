@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "The weapon hangs heavy in {attacker_name}'s grip. The silence stretches to meet it."
         },
         {
-            'attacker_msg': "The weight rests against your shoulder. It's not heavy. It's familiar.",
+            'attacker_msg': "The weight rests against your {hit_location}. It's not heavy. It's familiar.",
             'victim_msg': "The weight rests against {attacker_name}'s shoulder. It's not heavy. It's familiar.",
             'observer_msg': "The weight rests against {attacker_name}'s shoulder. It's not heavy. It's familiar."
         },
@@ -136,7 +136,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} plants both feet and leans into the grip. This is happening."
         },
         {
-            'attacker_msg': "You roll your neck, then the hammer — both promise pain.",
+            'attacker_msg': "You roll your {hit_location}, then the hammer — both promise pain.",
             'victim_msg': "{attacker_name} rolls their neck, then the hammer — both promise pain.",
             'observer_msg': "{attacker_name} rolls their neck, then the hammer — both promise pain."
         },
@@ -159,7 +159,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A brutal upswing clips the {hit_location}. Their head snaps back too far.",
-            'victim_msg': "A brutal upswing clips your {hit_location}. Your head snaps back too far.",
+            'victim_msg': "A brutal upswing clips your {hit_location}. Your {hit_location} snaps back too far.",
             'observer_msg': "A brutal upswing clips {target_name}'s {hit_location}. Their head snaps back too far."
         },
         {
@@ -169,7 +169,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A heavy downward crush lands on the {hit_location}. The arm hangs wrong after.",
-            'victim_msg': "A heavy downward crush lands on your {hit_location}. Your arm hangs wrong after.",
+            'victim_msg': "A heavy downward crush lands on your {hit_location}. Your {hit_location} hangs wrong after.",
             'observer_msg': "A heavy downward crush lands on {target_name}'s {hit_location}. Their arm hangs wrong after."
         },
         {
@@ -458,8 +458,8 @@ MESSAGES = {
     'kill': [
         {
             'attacker_msg': "A charge and a slam to the spine. They drop mid-scream.",
-            'victim_msg': "A charge and a slam to your spine. You drop mid-scream.",
-            'observer_msg': "A charge and a slam to {target_name}'s spine. They drop mid-scream."
+            'victim_msg': "A charge and a slam to your {hit_location}. You drop mid-scream.",
+            'observer_msg': "A charge and a slam to {target_name}'s {hit_location}. They drop mid-scream."
         },
         {
             'attacker_msg': "A rising blow launches them off the ground. They come down wrong and never get up.",
@@ -468,8 +468,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A sideways arc crushes the jaw. They hit the ground with no plan to get up.",
-            'victim_msg': "A sideways arc crushes your jaw. You hit the ground with no plan to get up.",
-            'observer_msg': "A sideways arc crushes {target_name}'s jaw. They hit the ground with no plan to get up."
+            'victim_msg': "A sideways arc crushes your {hit_location}. You hit the ground with no plan to get up.",
+            'observer_msg': "A sideways arc crushes {target_name}'s {hit_location}. They hit the ground with no plan to get up."
         },
         {
             'attacker_msg': "A sideways smash folds them into the wall. They don't come off it alive.",
@@ -478,33 +478,33 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A sideways strike caves in the temple. Stillness blooms immediately.",
-            'victim_msg': "A sideways strike caves in your temple. Stillness blooms immediately.",
-            'observer_msg': "A sideways strike caves in {target_name}'s temple. Stillness blooms immediately."
+            'victim_msg': "A sideways strike caves in your {hit_location}. Stillness blooms immediately.",
+            'observer_msg': "A sideways strike caves in {target_name}'s {hit_location}. Stillness blooms immediately."
         },
         {
             'attacker_msg': "A spinning swing splits the side of the head. They drop in sections.",
-            'victim_msg': "A spinning swing splits the side of your head. You drop in sections.",
-            'observer_msg': "A spinning swing splits the side of {target_name}'s head. They drop in sections."
+            'victim_msg': "A spinning swing splits the side of your {hit_location}. You drop in sections.",
+            'observer_msg': "A spinning swing splits the side of {target_name}'s {hit_location}. They drop in sections."
         },
         {
             'attacker_msg': "One arc, one hit — the jaw explodes in red. They never finish the scream.",
-            'victim_msg': "One arc, one hit — your jaw explodes in red. You never finish the scream.",
-            'observer_msg': "One arc, one hit — {target_name}'s jaw explodes in red. They never finish the scream."
+            'victim_msg': "One arc, one hit — your {hit_location} explodes in red. You never finish the scream.",
+            'observer_msg': "One arc, one hit — {target_name}'s {hit_location} explodes in red. They never finish the scream."
         },
         {
             'attacker_msg': "One blow to the back of the head. No twitch. Just down.",
-            'victim_msg': "One blow to the back of your head. No twitch. Just down.",
-            'observer_msg': "One blow to the back of {target_name}'s head. No twitch. Just down."
+            'victim_msg': "One blow to the back of your {hit_location}. No twitch. Just down.",
+            'observer_msg': "One blow to the back of {target_name}'s {hit_location}. No twitch. Just down."
         },
         {
             'attacker_msg': "One clean shot to the jaw. They spin, fall, don't move again.",
-            'victim_msg': "One clean shot to your jaw. You spin, fall, don't move again.",
-            'observer_msg': "One clean shot to {target_name}'s jaw. They spin, fall, don't move again."
+            'victim_msg': "One clean shot to your {hit_location}. You spin, fall, don't move again.",
+            'observer_msg': "One clean shot to {target_name}'s {hit_location}. They spin, fall, don't move again."
         },
         {
             'attacker_msg': "Steel meets temple. There's no blood at first — just stillness. Then both.",
-            'victim_msg': "Steel meets your temple. There's no blood at first — just stillness. Then both.",
-            'observer_msg': "Steel meets {target_name}'s temple. There's no blood at first — just stillness. Then both."
+            'victim_msg': "Steel meets your {hit_location}. There's no blood at first — just stillness. Then both.",
+            'observer_msg': "Steel meets {target_name}'s {hit_location}. There's no blood at first — just stillness. Then both."
         },
         {
             'attacker_msg': "The final swing splits bone and noise alike. They fall apart in motion.",
@@ -513,53 +513,53 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The hammer crushes their skull. The body drops like a puppet that lost faith.",
-            'victim_msg': "The hammer crushes your skull. Your body drops like a puppet that lost faith.",
-            'observer_msg': "The hammer crushes {target_name}'s skull. The body drops like a puppet that lost faith."
+            'victim_msg': "The hammer crushes your {hit_location}. Your body drops like a puppet that lost faith.",
+            'observer_msg': "The hammer crushes {target_name}'s {hit_location}. The body drops like a puppet that lost faith."
         },
         {
             'attacker_msg': "The hammer finds the base of the skull. They drop, twitchless and quiet.",
-            'victim_msg': "The hammer finds the base of your skull. You drop, twitchless and quiet.",
-            'observer_msg': "The hammer finds the base of {target_name}'s skull. They drop, twitchless and quiet."
+            'victim_msg': "The hammer finds the base of your {hit_location}. You drop, twitchless and quiet.",
+            'observer_msg': "The hammer finds the base of {target_name}'s {hit_location}. They drop, twitchless and quiet."
         },
         {
             'attacker_msg': "The hammer hits temple. They blink once. Then never again.",
-            'victim_msg': "The hammer hits your temple. You blink once. Then never again.",
-            'observer_msg': "The hammer hits {target_name}'s temple. They blink once. Then never again."
+            'victim_msg': "The hammer hits your {hit_location}. You blink once. Then never again.",
+            'observer_msg': "The hammer hits {target_name}'s {hit_location}. They blink once. Then never again."
         },
         {
             'attacker_msg': "The hammer hits their chest like a wrecking ball. They stop mid-motion, forever.",
-            'victim_msg': "The hammer hits your chest like a wrecking ball. You stop mid-motion, forever.",
-            'observer_msg': "The hammer hits {target_name}'s chest like a wrecking ball. They stop mid-motion, forever."
+            'victim_msg': "The hammer hits your {hit_location} like a wrecking ball. You stop mid-motion, forever.",
+            'observer_msg': "The hammer hits {target_name}'s {hit_location} like a wrecking ball. They stop mid-motion, forever."
         },
         {
             'attacker_msg': "The head drives into their chest. Bones give. Heart stops. It's all downhill from there.",
-            'victim_msg': "The head drives into your chest. Bones give. Heart stops. It's all downhill from there.",
-            'observer_msg': "The head drives into {target_name}'s chest. Bones give. Heart stops. It's all downhill from there."
+            'victim_msg': "The head drives into your {hit_location}. Bones give. Heart stops. It's all downhill from there.",
+            'observer_msg': "The head drives into {target_name}'s {hit_location}. Bones give. Heart stops. It's all downhill from there."
         },
         {
             'attacker_msg': "The head lands against the spine. Their scream stops halfway out.",
-            'victim_msg': "The head lands against your spine. Your scream stops halfway out.",
-            'observer_msg': "The head lands against {target_name}'s spine. Their scream stops halfway out."
+            'victim_msg': "The head lands against your {hit_location}. Your scream stops halfway out.",
+            'observer_msg': "The head lands against {target_name}'s {hit_location}. Their scream stops halfway out."
         },
         {
             'attacker_msg': "The head lands on the spine. The rest never moves again.",
-            'victim_msg': "The head lands on your spine. The rest never moves again.",
-            'observer_msg': "The head lands on {target_name}'s spine. The rest never moves again."
+            'victim_msg': "The head lands on your {hit_location}. The rest never moves again.",
+            'observer_msg': "The head lands on {target_name}'s {hit_location}. The rest never moves again."
         },
         {
             'attacker_msg': "The impact turns the chest into pulp. They die mid-gasp.",
-            'victim_msg': "The impact turns your chest into pulp. You die mid-gasp.",
-            'observer_msg': "The impact turns {target_name}'s chest into pulp. They die mid-gasp."
+            'victim_msg': "The impact turns your {hit_location} into pulp. You die mid-gasp.",
+            'observer_msg': "The impact turns {target_name}'s {hit_location} into pulp. They die mid-gasp."
         },
         {
             'attacker_msg': "The skull caves beneath the impact. It doesn't get back up.",
-            'victim_msg': "Your skull caves beneath the impact. It doesn't get back up.",
-            'observer_msg': "{target_name}'s skull caves beneath the impact. It doesn't get back up."
+            'victim_msg': "Your {hit_location} caves beneath the impact. It doesn't get back up.",
+            'observer_msg': "{target_name}'s {hit_location} caves beneath the impact. It doesn't get back up."
         },
         {
             'attacker_msg': "The sledge drives into the ribs and stays there. The breath leaves with everything else.",
-            'victim_msg': "The sledge drives into your ribs and stays there. Your breath leaves with everything else.",
-            'observer_msg': "The sledge drives into {target_name}'s ribs and stays there. Their breath leaves with everything else."
+            'victim_msg': "The sledge drives into your {hit_location} and stays there. Your breath leaves with everything else.",
+            'observer_msg': "The sledge drives into {target_name}'s {hit_location} and stays there. Their breath leaves with everything else."
         },
         {
             'attacker_msg': "The sledge lands like judgment. Their ribcage opens and then closes around stillness.",
@@ -568,23 +568,23 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The sledge punches through the neck. The blood is fast. The death, faster.",
-            'victim_msg': "The sledge punches through your neck. The blood is fast. The death, faster.",
-            'observer_msg': "The sledge punches through {target_name}'s neck. The blood is fast. The death, faster."
+            'victim_msg': "The sledge punches through your {hit_location}. The blood is fast. The death, faster.",
+            'observer_msg': "The sledge punches through {target_name}'s {hit_location}. The blood is fast. The death, faster."
         },
         {
             'attacker_msg': "The strike crushes half the face. The rest just follows gravity.",
-            'victim_msg': "The strike crushes half your face. The rest just follows gravity.",
-            'observer_msg': "The strike crushes half {target_name}'s face. The rest just follows gravity."
+            'victim_msg': "The strike crushes half your {hit_location}. The rest just follows gravity.",
+            'observer_msg': "The strike crushes half {target_name}'s {hit_location}. The rest just follows gravity."
         },
         {
             'attacker_msg': "You bring it down on the neck. The sound is awful. The result is worse.",
-            'victim_msg': "{attacker_name} brings it down on your neck. The sound is awful. The result is worse.",
-            'observer_msg': "{attacker_name} brings it down on {target_name}'s neck. The sound is awful. The result is worse."
+            'victim_msg': "{attacker_name} brings it down on your {hit_location}. The sound is awful. The result is worse.",
+            'observer_msg': "{attacker_name} brings it down on {target_name}'s {hit_location}. The sound is awful. The result is worse."
         },
         {
             'attacker_msg': "You bring the hammer down on their skull. The collapse is silent. The echo isn't.",
-            'victim_msg': "{attacker_name} brings the hammer down on your skull. The collapse is silent. The echo isn't.",
-            'observer_msg': "{attacker_name} brings the hammer down on {target_name}'s skull. The collapse is silent. The echo isn't."
+            'victim_msg': "{attacker_name} brings the hammer down on your {hit_location}. The collapse is silent. The echo isn't.",
+            'observer_msg': "{attacker_name} brings the hammer down on {target_name}'s {hit_location}. The collapse is silent. The echo isn't."
         },
         {
             'attacker_msg': "You charge and swing from the hip. They are lifted, broken, done.",
@@ -593,13 +593,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You slam down into the sternum. The bones collapse. So does the fight.",
-            'victim_msg': "{attacker_name} slams down into your sternum. Your bones collapse. So does the fight.",
-            'observer_msg': "{attacker_name} slams down into {target_name}'s sternum. Their bones collapse. So does the fight."
+            'victim_msg': "{attacker_name} slams down into your {hit_location}. Your bones collapse. So does the fight.",
+            'observer_msg': "{attacker_name} slams down into {target_name}'s {hit_location}. Their bones collapse. So does the fight."
         },
         {
             'attacker_msg': "You spin, swing, and slam the hammer into their sternum. The world falls quiet.",
-            'victim_msg': "{attacker_name} spins, swings, and slams the hammer into your sternum. The world falls quiet.",
-            'observer_msg': "{attacker_name} spins, swings, and slams the hammer into {target_name}'s sternum. The world falls quiet."
+            'victim_msg': "{attacker_name} spins, swings, and slams the hammer into your {hit_location}. The world falls quiet.",
+            'observer_msg': "{attacker_name} spins, swings, and slams the hammer into {target_name}'s {hit_location}. The world falls quiet."
         },
         {
             'attacker_msg': "You swing from below. The head crushes the chin and what's behind it.",

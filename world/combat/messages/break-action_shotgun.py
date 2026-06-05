@@ -61,7 +61,7 @@ MESSAGES = {
             "observer_msg": "The air is tense as {attacker_name} prepares to fire the break-action shotgun, anticipating the deafening *BOOM* and the immediate need to reload."
         },
         {
-            "attacker_msg": "Your face is set, finger ready on the trigger of your break-action shotgun, poised to send a cloud of buckshot.",
+            "attacker_msg": "Your {hit_location} is set, finger ready on the trigger of your break-action shotgun, poised to send a cloud of buckshot.",
             "victim_msg": "{attacker_name}’s face is set, finger ready on the trigger of the break-action shotgun, poised to send a cloud of buckshot.",
             "observer_msg": "{attacker_name}’s face is set, finger ready on the trigger of the break-action shotgun, poised to send a cloud of buckshot."
         },
@@ -311,7 +311,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "{target_name} ducks as your break-action shotgun roars, the pellets shredding the air where their head just was. You crack open the shotgun, reload, and snap it shut, ready for another try.",
-            "victim_msg": "You duck as {attacker_name}'s break-action shotgun roars, the pellets shredding the air where your head just was. {attacker_name} cracks open the shotgun, reloads, and snaps it shut, ready for another try.",
+            "victim_msg": "You duck as {attacker_name}'s break-action shotgun roars, the pellets shredding the air where your {hit_location} just was. {attacker_name} cracks open the shotgun, reloads, and snaps it shut, ready for another try.",
             "observer_msg": "{target_name} ducks as {attacker_name}'s break-action shotgun roars, the pellets shredding the air where their head just was. {attacker_name} cracks open the shotgun, reloads, and snaps it shut, ready for another try."
         },
         {
@@ -335,9 +335,9 @@ MESSAGES = {
             "observer_msg": "A sudden movement from {target_name} causes {attacker_name}'s break-action shotgun blast to go wide, the pellets thudding harmlessly into a stack of crates. The action is broken, reloaded, and closed with a solid *clack* by {attacker_name}."
         },
         {
-            "attacker_msg": "Your break-action shotgun fires with a thunderous report, but your aim is off, the shot sailing harmlessly over {target_name}'s head. You break the shotgun open, reload, and snap it shut with practiced speed.",
-            "victim_msg": "{attacker_name}'s break-action shotgun fires with a thunderous report, but their aim is off, the shot sailing harmlessly over your head. The shotgun is broken open, reloaded, and snapped shut with practiced speed by {attacker_name}.",
-            "observer_msg": "{attacker_name}'s break-action shotgun fires with a thunderous report, but their aim is off, the shot sailing harmlessly over {target_name}'s head. The shotgun is broken open, reloaded, and snapped shut with practiced speed by {attacker_name}."
+            "attacker_msg": "Your break-action shotgun fires with a thunderous report, but your aim is off, the shot sailing harmlessly over {target_name}'s {hit_location}. You break the shotgun open, reload, and snap it shut with practiced speed.",
+            "victim_msg": "{attacker_name}'s break-action shotgun fires with a thunderous report, but their aim is off, the shot sailing harmlessly over your {hit_location}. The shotgun is broken open, reloaded, and snapped shut with practiced speed by {attacker_name}.",
+            "observer_msg": "{attacker_name}'s break-action shotgun fires with a thunderous report, but their aim is off, the shot sailing harmlessly over {target_name}'s {hit_location}. The shotgun is broken open, reloaded, and snapped shut with practiced speed by {attacker_name}."
         },
         {
             "attacker_msg": "Your shot is deflected by a piece of cover, the buckshot spraying harmlessly. You flick out spent shells as you reload, seeking a clearer shot.",
@@ -365,7 +365,7 @@ MESSAGES = {
             "observer_msg": "A quick sidestep from {target_name} leaves {attacker_name}'s break-action shotgun to punch a wide pattern of holes in an empty doorway. {attacker_name} reloads, unflinching."
         },
         {
-            "attacker_msg": "Your break-action shotgun jumps in your shoulder as you miss, the recoil spoiling the follow-through. You break the action, chambering fresh, potent shells.",
+            "attacker_msg": "Your break-action shotgun jumps in your {hit_location} as you miss, the recoil spoiling the follow-through. You break the action, chambering fresh, potent shells.",
             "victim_msg": "{attacker_name}'s break-action shotgun jumps in their shoulder as they miss, the recoil spoiling the follow-through. {attacker_name} breaks the action, chambering fresh, potent shells.",
             "observer_msg": "{attacker_name}'s break-action shotgun jumps in their shoulder as they miss, the recoil spoiling the follow-through. {attacker_name} breaks the action, chambering fresh, potent shells."
         },
@@ -462,9 +462,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s break-action shotgun erupts with a deafening *BOOM*, the concentrated blast of buckshot tearing {target_name} apart at close range; they collapse in a bloody heap. {attacker_name} breaks open the action, spent shells smoking as they're ejected, and calmly reloads."
         },
         {
-            "attacker_msg": "Your break-action shotgun roars, and a heavy slug slams into {target_name}'s chest with catastrophic force, ending their fight instantly. You crack open the shotgun, reload, and snap it shut, the job done.",
-            "victim_msg": "{attacker_name}'s break-action shotgun roars, and a heavy slug slams into your chest with catastrophic force, ending your fight instantly. {attacker_name} cracks open the shotgun, reloads, and snaps it shut, the job done.",
-            "observer_msg": "{attacker_name}'s break-action shotgun roars, and a heavy slug slams into {target_name}'s chest with catastrophic force, ending their fight instantly. {attacker_name} cracks open the shotgun, reloads, and snaps it shut, the job done."
+            "attacker_msg": "Your break-action shotgun roars, and a heavy slug slams into {target_name}'s {hit_location} with catastrophic force, ending their fight instantly. You crack open the shotgun, reload, and snap it shut, the job done.",
+            "victim_msg": "{attacker_name}'s break-action shotgun roars, and a heavy slug slams into your {hit_location} with catastrophic force, ending your fight instantly. {attacker_name} cracks open the shotgun, reloads, and snaps it shut, the job done.",
+            "observer_msg": "{attacker_name}'s break-action shotgun roars, and a heavy slug slams into {target_name}'s {hit_location} with catastrophic force, ending their fight instantly. {attacker_name} cracks open the shotgun, reloads, and snaps it shut, the job done."
         },
         {
             "attacker_msg": "With a final, brutal blast to the head, your break-action shotgun obliterates {target_name}, leaving a gruesome scene. Smoke curls from the muzzles as you reload with grim satisfaction.",
@@ -477,9 +477,9 @@ MESSAGES = {
             "observer_msg": "A devastating point-blank discharge from {attacker_name}'s break-action shotgun engulfs {target_name}, who is torn apart by the sheer force of the pellets. {attacker_name} breaks the action, inserts fresh shells, and stands ready."
         },
         {
-            "attacker_msg": "Your break-action shotgun's blast strikes {target_name}'s torso, the massive trauma instantly fatal. You quickly eject the smoking shells and reload, the air thick with the smell of cordite.",
-            "victim_msg": "{attacker_name}'s break-action shotgun's blast strikes your torso, the massive trauma instantly fatal. {attacker_name} quickly ejects the smoking shells and reloads, the air thick with the smell of cordite.",
-            "observer_msg": "{attacker_name}'s break-action shotgun's blast strikes {target_name}'s torso, the massive trauma instantly fatal. {attacker_name} quickly ejects the smoking shells and reloads, the air thick with the smell of cordite."
+            "attacker_msg": "Your break-action shotgun's blast strikes {target_name}'s {hit_location}, the massive trauma instantly fatal. You quickly eject the smoking shells and reload, the air thick with the smell of cordite.",
+            "victim_msg": "{attacker_name}'s break-action shotgun's blast strikes your {hit_location}, the massive trauma instantly fatal. {attacker_name} quickly ejects the smoking shells and reloads, the air thick with the smell of cordite.",
+            "observer_msg": "{attacker_name}'s break-action shotgun's blast strikes {target_name}'s {hit_location}, the massive trauma instantly fatal. {attacker_name} quickly ejects the smoking shells and reloads, the air thick with the smell of cordite."
         },
         {
             "attacker_msg": "Your break-action shotgun, an instrument of brutal close-quarters finality, delivers a killing blow as {target_name} is shredded by the wide, powerful blast. You break the action, reload, and close it with a solid *clack*.",
@@ -537,9 +537,9 @@ MESSAGES = {
             "observer_msg": "A devastating blast from {attacker_name}'s break-action shotgun to {target_name}'s center mass ends the conflict abruptly. {attacker_name} reloads, unflinching at the carnage."
         },
         {
-            "attacker_msg": "Your break-action shotgun's payload makes solid, brutal, and fatal contact with {target_name}'s torso. You break the action, chambering fresh, potent shells, the area now quiet.",
-            "victim_msg": "{attacker_name}'s break-action shotgun's payload makes solid, brutal, and fatal contact with your torso. {attacker_name} breaks the action, chambering fresh, potent shells, the area now quiet.",
-            "observer_msg": "{attacker_name}'s break-action shotgun's payload makes solid, brutal, and fatal contact with {target_name}'s torso. {attacker_name} breaks the action, chambering fresh, potent shells, the area now quiet."
+            "attacker_msg": "Your break-action shotgun's payload makes solid, brutal, and fatal contact with {target_name}'s {hit_location}. You break the action, chambering fresh, potent shells, the area now quiet.",
+            "victim_msg": "{attacker_name}'s break-action shotgun's payload makes solid, brutal, and fatal contact with your {hit_location}. {attacker_name} breaks the action, chambering fresh, potent shells, the area now quiet.",
+            "observer_msg": "{attacker_name}'s break-action shotgun's payload makes solid, brutal, and fatal contact with {target_name}'s {hit_location}. {attacker_name} breaks the action, chambering fresh, potent shells, the area now quiet."
         },
         {
             "attacker_msg": "Your break-action shotgun projectile cloud finds its mark with lethal precision, delivering a fatal pattern of wounds to {target_name}. Spent shells arc away as you reload.",
@@ -593,7 +593,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your break-action shotgun delivers a wide, penetrating, and fatal impact to {target_name}’s torso. You reload the shotgun, the grim task complete.",
-            "victim_msg": "{attacker_name}’s break-action shotgun delivers a wide, penetrating, and fatal impact to your torso. The shotgun is reloaded by {attacker_name}, the grim task complete.",
+            "victim_msg": "{attacker_name}’s break-action shotgun delivers a wide, penetrating, and fatal impact to your {hit_location}. The shotgun is reloaded by {attacker_name}, the grim task complete.",
             "observer_msg": "{attacker_name}’s break-action shotgun delivers a wide, penetrating, and fatal impact to {target_name}’s torso. The shotgun is reloaded by {attacker_name}, the grim task complete."
         },
         {

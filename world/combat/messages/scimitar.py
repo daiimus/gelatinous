@@ -11,7 +11,7 @@ SCIMITAR_MESSAGES = {
             'observer_msg': "With a flourish, {attacker_name} brings the scimitar to a flowing guard, its arc a deadly promise."
         },
         {
-            'attacker_msg': "You test the balance of the scimitar, the curved steel feeling light and swift in your hand.",
+            'attacker_msg': "You test the balance of the scimitar, the curved steel feeling light and swift in your {hit_location}.",
             'victim_msg': "{attacker_name} tests the balance of the scimitar, the curved steel feeling light and swift in their hand.",
             'observer_msg': "{attacker_name} tests the balance of the scimitar, the curved steel feeling light and swift in their hand."
         },
@@ -66,7 +66,7 @@ SCIMITAR_MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are like desert stars, sighting along the elegant curve of the scimitar."
         },
         {
-            'attacker_msg': "The scimitar feels like a living thing in your hand, a blade born for swift, decisive cuts.",
+            'attacker_msg': "The scimitar feels like a living thing in your {hit_location}, a blade born for swift, decisive cuts.",
             'victim_msg': "The scimitar feels like a living thing in {attacker_name}'s hand, a blade born for swift, decisive cuts.",
             'observer_msg': "The scimitar feels like a living thing in {attacker_name}'s hand, a blade born for swift, decisive cuts."
         },
@@ -385,9 +385,9 @@ SCIMITAR_MESSAGES = {
             'observer_msg': "A soft oath from {attacker_name} as their scimitar attack is neatly sidestepped."
         },
         {
-            'attacker_msg': "The scimitar scores a shallow arc in the dust beside {target_name}'s foot, but nothing more.",
-            'victim_msg': "The scimitar scores a shallow arc in the dust beside your foot, but nothing more.",
-            'observer_msg': "The scimitar scores a shallow arc in the dust beside {target_name}'s foot, but nothing more."
+            'attacker_msg': "The scimitar scores a shallow arc in the dust beside {target_name}'s {hit_location}, but nothing more.",
+            'victim_msg': "The scimitar scores a shallow arc in the dust beside your {hit_location}, but nothing more.",
+            'observer_msg': "The scimitar scores a shallow arc in the dust beside {target_name}'s {hit_location}, but nothing more."
         },
         {
             'attacker_msg': "Your intricate combination with the scimitar is read by {target_name}, who evades the deadly dance.",
@@ -462,9 +462,9 @@ SCIMITAR_MESSAGES = {
             'observer_msg': "With cold, flowing grace, {attacker_name}'s scimitar delivers a fatal cut, and {target_name} falls silent."
         },
         {
-            'attacker_msg': "The curved blade of the scimitar opens {target_name}'s throat from ear to ear, a swift and bloody end.",
-            'victim_msg': "The curved blade of the scimitar opens your throat from ear to ear, a swift and bloody end.",
-            'observer_msg': "The curved blade of the scimitar opens {target_name}'s throat from ear to ear, a swift and bloody end."
+            'attacker_msg': "The curved blade of the scimitar opens {target_name}'s {hit_location} from ear to ear, a swift and bloody end.",
+            'victim_msg': "The curved blade of the scimitar opens your {hit_location} from ear to ear, a swift and bloody end.",
+            'observer_msg': "The curved blade of the scimitar opens {target_name}'s {hit_location} from ear to ear, a swift and bloody end."
         },
         {
             'attacker_msg': "Your final, perfectly aimed slash with the scimitar leaves {target_name} mortally wounded.",

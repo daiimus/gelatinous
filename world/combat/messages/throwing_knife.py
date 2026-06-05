@@ -1,7 +1,7 @@
 MESSAGES = {
     "initiate": [
         {
-            'attacker_msg': "You draw back your arm, throwing knife glinting as you take aim at {target_name}.",
+            'attacker_msg': "You draw back your {hit_location}, throwing knife glinting as you take aim at {target_name}.",
             'victim_msg': "{attacker_name} draws back their arm, throwing knife glinting as they take aim at you.",
             'observer_msg': "{attacker_name} draws back their arm, throwing knife glinting as they take aim at {target_name}."
         },
@@ -26,12 +26,12 @@ MESSAGES = {
             'observer_msg': "Steel flashes as {attacker_name} prepares to hurl their throwing knife at {target_name}."
         },
         {
-            'attacker_msg': "You draw your arm back, throwing knife poised like a deadly dart aimed at {target_name}.",
+            'attacker_msg': "You draw your {hit_location} back, throwing knife poised like a deadly dart aimed at {target_name}.",
             'victim_msg': "{attacker_name} draws their arm back, throwing knife poised like a deadly dart aimed at you.",
             'observer_msg': "{attacker_name} draws their arm back, throwing knife poised like a deadly dart aimed at {target_name}."
         },
         {
-            'attacker_msg': "The throwing knife spins once in your hand before you cock your arm back toward {target_name}.",
+            'attacker_msg': "The throwing knife spins once in your {hit_location} before you cock your {hit_location} back toward {target_name}.",
             'victim_msg': "The throwing knife spins once in {attacker_name}'s hand before they cock their arm back toward you.",
             'observer_msg': "The throwing knife spins once in {attacker_name}'s hand before they cock their arm back toward {target_name}."
         },
@@ -105,9 +105,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "The throwing knife spins past {target_name}'s head, embedding itself in the wall with a sharp crack.",
-            'victim_msg': "The throwing knife spins past your head, embedding itself in the wall with a sharp crack.",
-            'observer_msg': "The throwing knife spins past {target_name}'s head, embedding itself in the wall with a sharp crack."
+            'attacker_msg': "The throwing knife spins past {target_name}'s {hit_location}, embedding itself in the wall with a sharp crack.",
+            'victim_msg': "The throwing knife spins past your {hit_location}, embedding itself in the wall with a sharp crack.",
+            'observer_msg': "The throwing knife spins past {target_name}'s {hit_location}, embedding itself in the wall with a sharp crack."
         },
         {
             'attacker_msg': "Your knife goes wide, clattering harmlessly across the ground.",
@@ -157,18 +157,18 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "The throwing knife spins once, twice, then drives deep into {target_name}'s throat. They collapse, crimson spreading.",
-            'victim_msg': "The throwing knife spins once, twice, then drives deep into your throat. You collapse, crimson spreading.",
-            'observer_msg': "The throwing knife spins once, twice, then drives deep into {target_name}'s throat. They collapse, crimson spreading."
+            'attacker_msg': "The throwing knife spins once, twice, then drives deep into {target_name}'s {hit_location}. They collapse, crimson spreading.",
+            'victim_msg': "The throwing knife spins once, twice, then drives deep into your {hit_location}. You collapse, crimson spreading.",
+            'observer_msg': "The throwing knife spins once, twice, then drives deep into {target_name}'s {hit_location}. They collapse, crimson spreading."
         },
         {
-            'attacker_msg': "Perfect aim. The blade finds {target_name}'s heart with surgical precision, dropping them instantly.",
-            'victim_msg': "Perfect aim. The blade finds your heart with surgical precision, dropping you instantly.",
-            'observer_msg': "Perfect aim. The blade finds {target_name}'s heart with surgical precision, dropping them instantly."
+            'attacker_msg': "Perfect aim. The blade finds {target_name}'s {hit_location} with surgical precision, dropping them instantly.",
+            'victim_msg': "Perfect aim. The blade finds your {hit_location} with surgical precision, dropping you instantly.",
+            'observer_msg': "Perfect aim. The blade finds {target_name}'s {hit_location} with surgical precision, dropping them instantly."
         },
         {
             'attacker_msg': "{target_name} staggers, the throwing knife protruding from their chest, before falling lifeless to the ground.",
-            'victim_msg': "You stagger, the throwing knife protruding from your chest, before falling lifeless to the ground.",
+            'victim_msg': "You stagger, the throwing knife protruding from your {hit_location}, before falling lifeless to the ground.",
             'observer_msg': "{target_name} staggers, the throwing knife protruding from their chest, before falling lifeless to the ground."
         },
         {
@@ -182,9 +182,9 @@ MESSAGES = {
             'observer_msg': "A single, perfect throw. The knife takes {target_name} in the eye, ending their struggles immediately."
         },
         {
-            'attacker_msg': "The throwing knife buries itself to the hilt in {target_name}'s neck. They fall without a sound.",
-            'victim_msg': "The throwing knife buries itself to the hilt in your neck. You fall without a sound.",
-            'observer_msg': "The throwing knife buries itself to the hilt in {target_name}'s neck. They fall without a sound."
+            'attacker_msg': "The throwing knife buries itself to the hilt in {target_name}'s {hit_location}. They fall without a sound.",
+            'victim_msg': "The throwing knife buries itself to the hilt in your {hit_location}. You fall without a sound.",
+            'observer_msg': "The throwing knife buries itself to the hilt in {target_name}'s {hit_location}. They fall without a sound."
         },
         {
             'attacker_msg': "Your blade finds the gap in {target_name}'s defenses, striking a fatal blow.",

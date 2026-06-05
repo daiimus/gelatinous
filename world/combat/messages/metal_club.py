@@ -51,7 +51,7 @@ MESSAGES = {
             'observer_msg': "The club rotates once before locking into a ready grip. {attacker_name} doesn't pose — they prepare."
         },
         {
-            'attacker_msg': "The club's handle fits like a memory in your hand. Bad ones. Repeatable ones.",
+            'attacker_msg': "The club's handle fits like a memory in your {hit_location}. Bad ones. Repeatable ones.",
             'victim_msg': "The club's handle fits like a memory in {attacker_name}'s hand. Bad ones. Repeatable ones.",
             'observer_msg': "The club's handle fits like a memory in {attacker_name}'s hand. Bad ones. Repeatable ones."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} hoists the club like it's not the first time. The dents say it's not the last either."
         },
         {
-            'attacker_msg': "You pull the club free from your back. Gravity does the rest.",
+            'attacker_msg': "You pull the club free from your {hit_location}. Gravity does the rest.",
             'victim_msg': "{attacker_name} pulls the club free from their back. Gravity does the rest.",
             'observer_msg': "{attacker_name} pulls the club free from their back. Gravity does the rest."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} raises the club with deliberate ease. They've been waiting for this moment."
         },
         {
-            'attacker_msg': "You roll the club in your hand like it's a coin flip that only ends one way.",
+            'attacker_msg': "You roll the club in your {hit_location} like it's a coin flip that only ends one way.",
             'victim_msg': "{attacker_name} rolls the club in their hand like it's a coin flip that only ends one way.",
             'observer_msg': "{attacker_name} rolls the club in their hand like it's a coin flip that only ends one way."
         },
@@ -370,9 +370,9 @@ MESSAGES = {
             'observer_msg': "The club bounces off a crate, sending splinters flying. {attacker_name} snarls and resets."
         },
         {
-            'attacker_msg': "The club hisses past {target_name}'s shoulder, brushing air but not skin.",
-            'victim_msg': "The club hisses past your shoulder, brushing air but not skin.",
-            'observer_msg': "The club hisses past {target_name}'s shoulder, brushing air but not skin."
+            'attacker_msg': "The club hisses past {target_name}'s {hit_location}, brushing air but not skin.",
+            'victim_msg': "The club hisses past your {hit_location}, brushing air but not skin.",
+            'observer_msg': "The club hisses past {target_name}'s {hit_location}, brushing air but not skin."
         },
         {
             'attacker_msg': "The club smashes a crate instead. The splinters spray like warning shrapnel.",
@@ -532,14 +532,14 @@ MESSAGES = {
             'observer_msg': "The club slams into the temple. The skull cracks. The eyes glaze. The body falls."
         },
         {
-            'attacker_msg': "The club slams into {target_name}'s skull. The crack echoes. The body drops before the blood does.",
-            'victim_msg': "The club slams into your skull. The crack echoes. The body drops before the blood does.",
-            'observer_msg': "The club slams into {target_name}'s skull. The crack echoes. The body drops before the blood does."
+            'attacker_msg': "The club slams into {target_name}'s {hit_location}. The crack echoes. The body drops before the blood does.",
+            'victim_msg': "The club slams into your {hit_location}. The crack echoes. The body drops before the blood does.",
+            'observer_msg': "The club slams into {target_name}'s {hit_location}. The crack echoes. The body drops before the blood does."
         },
         {
-            'attacker_msg': "The club smashes into {target_name}'s head. The skull cracks, then caves. No second hit needed.",
-            'victim_msg': "The club smashes into your head. The skull cracks, then caves. No second hit needed.",
-            'observer_msg': "The club smashes into {target_name}'s head. The skull cracks, then caves. No second hit needed."
+            'attacker_msg': "The club smashes into {target_name}'s {hit_location}. The skull cracks, then caves. No second hit needed.",
+            'victim_msg': "The club smashes into your {hit_location}. The skull cracks, then caves. No second hit needed.",
+            'observer_msg': "The club smashes into {target_name}'s {hit_location}. The skull cracks, then caves. No second hit needed."
         },
         {
             'attacker_msg': "The club sweeps sideways across the neck. Bone cracks. Blood sprays. {target_name} is finished.",

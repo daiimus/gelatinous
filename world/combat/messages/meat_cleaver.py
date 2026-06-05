@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the cleaver like a judge's gavel—sentence about to be passed."
         },
         {
-            'attacker_msg': "You let the cleaver rest on your shoulder, casual as a butcher at closing time.",
+            'attacker_msg': "You let the cleaver rest on your {hit_location}, casual as a butcher at closing time.",
             'victim_msg': "{attacker_name} lets the cleaver rest on their shoulder, casual as a butcher at closing time.",
             'observer_msg': "{attacker_name} lets the cleaver rest on their shoulder, casual as a butcher at closing time."
         },
@@ -136,7 +136,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the cleaver like a brush, ready to paint in red."
         },
         {
-            'attacker_msg': "You let the cleaver rest on your shoulder, eyes never leaving {target_name}.",
+            'attacker_msg': "You let the cleaver rest on your {hit_location}, eyes never leaving {target_name}.",
             'victim_msg': "{attacker_name} lets the cleaver rest on their shoulder, eyes never leaving you.",
             'observer_msg': "{attacker_name} lets the cleaver rest on their shoulder, eyes never leaving {target_name}."
         },
@@ -340,7 +340,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} hacks at {target_name}, but the blade glances off armor."
         },
         {
-            'attacker_msg': "A flick of your wrist misses, the blade slicing only air.",
+            'attacker_msg': "A flick of your {hit_location} misses, the blade slicing only air.",
             'victim_msg': "A flick of {attacker_name}'s wrist misses, the blade slicing only air.",
             'observer_msg': "A flick of the wrist misses, the blade slicing only air."
         },
@@ -445,7 +445,7 @@ MESSAGES = {
             'observer_msg': "The blade glances off a boot, doing nothing."
         },
         {
-            'attacker_msg': "A flick of your wrist misses, the blade humming in the air.",
+            'attacker_msg': "A flick of your {hit_location} misses, the blade humming in the air.",
             'victim_msg': "A flick of {attacker_name}'s wrist misses, the blade humming in the air.",
             'observer_msg': "A flick of the wrist misses, the blade humming in the air."
         },
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "You bring the cleaver down on {target_name}'s neck. Blood spurts in a thick, brutal arc.",
-            'victim_msg': "{attacker_name} brings the cleaver down on your neck. Blood spurts in a thick, brutal arc.",
-            'observer_msg': "{attacker_name} brings the cleaver down on {target_name}'s neck. Blood spurts in a thick, brutal arc."
+            'attacker_msg': "You bring the cleaver down on {target_name}'s {hit_location}. Blood spurts in a thick, brutal arc.",
+            'victim_msg': "{attacker_name} brings the cleaver down on your {hit_location}. Blood spurts in a thick, brutal arc.",
+            'observer_msg': "{attacker_name} brings the cleaver down on {target_name}'s {hit_location}. Blood spurts in a thick, brutal arc."
         },
         {
             'attacker_msg': "A heavy chop opens {target_name}'s carotid. They drop, clutching at a wound that won't close.",
@@ -472,9 +472,9 @@ MESSAGES = {
             'observer_msg': "The blade slips between ribs and into the heart. {target_name} collapses, twitching."
         },
         {
-            'attacker_msg': "You carve a line across {target_name}'s throat. The blood is bright and fast.",
-            'victim_msg': "{attacker_name} carves a line across your throat. The blood is bright and fast.",
-            'observer_msg': "{attacker_name} carves a line across {target_name}'s throat. The blood is bright and fast."
+            'attacker_msg': "You carve a line across {target_name}'s {hit_location}. The blood is bright and fast.",
+            'victim_msg': "{attacker_name} carves a line across your {hit_location}. The blood is bright and fast.",
+            'observer_msg': "{attacker_name} carves a line across {target_name}'s {hit_location}. The blood is bright and fast."
         },
         {
             'attacker_msg': "A chop under the jaw sends the cleaver into the brain. {target_name} goes limp instantly.",
@@ -517,9 +517,9 @@ MESSAGES = {
             'observer_msg': "The blade slips between vertebrae. {target_name} drops, boneless."
         },
         {
-            'attacker_msg': "You carve a smile across {target_name}'s face. The grin is permanent.",
-            'victim_msg': "{attacker_name} carves a smile across your face. The grin is permanent.",
-            'observer_msg': "{attacker_name} carves a smile across {target_name}'s face. The grin is permanent."
+            'attacker_msg': "You carve a smile across {target_name}'s {hit_location}. The grin is permanent.",
+            'victim_msg': "{attacker_name} carves a smile across your {hit_location}. The grin is permanent.",
+            'observer_msg': "{attacker_name} carves a smile across {target_name}'s {hit_location}. The grin is permanent."
         },
         {
             'attacker_msg': "A chop to the heart. {target_name} collapses, eyes wide and empty.",

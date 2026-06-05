@@ -27,7 +27,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} tests the rapier's flex, the thin blade quivering, eager for a thrust."
         },
         {
-            'attacker_msg': "The rapier flashes in your hand, a silver sliver ready to dance.",
+            'attacker_msg': "The rapier flashes in your {hit_location}, a silver sliver ready to dance.",
             'victim_msg': "The rapier flashes in {attacker_name}'s hand, a silver sliver ready to dance.",
             'observer_msg': "The rapier flashes in {attacker_name}'s hand, a silver sliver ready to dance."
         },
@@ -77,7 +77,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are like chips of ice, sighting down the length of the poised rapier."
         },
         {
-            'attacker_msg': "The rapier feels alive in your hand, a delicate instrument of deadly precision.",
+            'attacker_msg': "The rapier feels alive in your {hit_location}, a delicate instrument of deadly precision.",
             'victim_msg': "The rapier feels alive in {attacker_name}'s hand, a delicate instrument of deadly precision.",
             'observer_msg': "The rapier feels alive in {attacker_name}'s hand, a delicate instrument of deadly precision."
         },
@@ -122,9 +122,9 @@ MESSAGES = {
             'observer_msg': "The rapier is a surgeon's tool in {attacker_name}'s skilled hand, ready for precise incisions."
         },
         {
-            'attacker_msg': "You present the rapier, its slender blade aimed directly at {target_name}'s heart.",
-            'victim_msg': "{attacker_name} presents the rapier, its slender blade aimed directly at your heart.",
-            'observer_msg': "{attacker_name} presents the rapier, its slender blade aimed directly at {target_name}'s heart."
+            'attacker_msg': "You present the rapier, its slender blade aimed directly at {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name} presents the rapier, its slender blade aimed directly at your {hit_location}.",
+            'observer_msg': "{attacker_name} presents the rapier, its slender blade aimed directly at {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "A fencer's grace, a killer's intent; you and the rapier are perfectly matched.",
@@ -406,9 +406,9 @@ MESSAGES = {
             'observer_msg': "A soft curse from {attacker_name} as their rapier attack is neatly sidestepped."
         },
         {
-            'attacker_msg': "The rapier scores a thin line in the dirt beside {target_name}'s foot, but nothing more.",
-            'victim_msg': "The rapier scores a thin line in the dirt beside your foot, but nothing more.",
-            'observer_msg': "The rapier scores a thin line in the dirt beside {target_name}'s foot, but nothing more."
+            'attacker_msg': "The rapier scores a thin line in the dirt beside {target_name}'s {hit_location}, but nothing more.",
+            'victim_msg': "The rapier scores a thin line in the dirt beside your {hit_location}, but nothing more.",
+            'observer_msg': "The rapier scores a thin line in the dirt beside {target_name}'s {hit_location}, but nothing more."
         },
         {
             'attacker_msg': "Your intricate combination with the rapier is read by {target_name}, who evades.",
@@ -468,9 +468,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "Your rapier finds {target_name}'s heart with a single, perfect thrust, ending the duel.",
-            'victim_msg': "{attacker_name}'s rapier finds your heart with a single, perfect thrust, ending the duel.",
-            'observer_msg': "{attacker_name}'s rapier finds {target_name}'s heart with a single, perfect thrust, ending the duel."
+            'attacker_msg': "Your rapier finds {target_name}'s {hit_location} with a single, perfect thrust, ending the duel.",
+            'victim_msg': "{attacker_name}'s rapier finds your {hit_location} with a single, perfect thrust, ending the duel.",
+            'observer_msg': "{attacker_name}'s rapier finds {target_name}'s {hit_location} with a single, perfect thrust, ending the duel."
         },
         {
             'attacker_msg': "A lightning lunge, and the rapier pierces a vital organ; {target_name} collapses, silenced.",
@@ -483,9 +483,9 @@ MESSAGES = {
             'observer_msg': "With cold precision, {attacker_name}'s rapier delivers a fatal touch, and {target_name} falls."
         },
         {
-            'attacker_msg': "The slender blade of the rapier slides between {target_name}'s ribs, a swift and deadly conclusion.",
-            'victim_msg': "The slender blade of the rapier slides between your ribs, a swift and deadly conclusion.",
-            'observer_msg': "The slender blade of the rapier slides between {target_name}'s ribs, a swift and deadly conclusion."
+            'attacker_msg': "The slender blade of the rapier slides between {target_name}'s {hit_location}, a swift and deadly conclusion.",
+            'victim_msg': "The slender blade of the rapier slides between your {hit_location}, a swift and deadly conclusion.",
+            'observer_msg': "The slender blade of the rapier slides between {target_name}'s {hit_location}, a swift and deadly conclusion."
         },
         {
             'attacker_msg': "Your final, perfectly placed thrust with the rapier leaves {target_name} lifeless.",
@@ -543,9 +543,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} delivers a precise end with the rapier, ensuring {target_name} troubles them no further."
         },
         {
-            'attacker_msg': "Blood blossoms on {target_name}'s chest as your rapier finds its mark with fatal accuracy.",
-            'victim_msg': "Blood blossoms on your chest as {attacker_name}'s rapier finds its mark with fatal accuracy.",
-            'observer_msg': "Blood blossoms on {target_name}'s chest as {attacker_name}'s rapier finds its mark with fatal accuracy."
+            'attacker_msg': "Blood blossoms on {target_name}'s {hit_location} as your rapier finds its mark with fatal accuracy.",
+            'victim_msg': "Blood blossoms on your {hit_location} as {attacker_name}'s rapier finds its mark with fatal accuracy.",
+            'observer_msg': "Blood blossoms on {target_name}'s {hit_location} as {attacker_name}'s rapier finds its mark with fatal accuracy."
         },
         {
             'attacker_msg': "The point of the rapier slips through {target_name}'s guard, delivering a killing wound.",

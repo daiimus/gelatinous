@@ -1,7 +1,7 @@
 MESSAGES = {
     "initiate": [
         {
-            "attacker_msg": "You snap your assault rifle to your shoulder, its modern, utilitarian lines exuding efficiency as you aim at {target_name}.",
+            "attacker_msg": "You snap your assault rifle to your {hit_location}, its modern, utilitarian lines exuding efficiency as you aim at {target_name}.",
             "victim_msg": "{attacker_name} snaps an assault rifle to their shoulder, aiming at you; its modern, utilitarian lines exude efficiency.",
             "observer_msg": "{attacker_name} snaps an assault rifle to their shoulder, the weapon's modern, utilitarian lines exuding efficiency as they aim at {target_name}."
         },
@@ -346,7 +346,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "{target_name} drops prone just as your assault rifle fires a burst, bullets cracking the air inches above their head. Your rifle cycles, ready for {target_name} to reappear.",
-            "victim_msg": "You drop prone just as {attacker_name}'s assault rifle fires a burst, bullets cracking the air inches above your head! Their rifle cycles, ready for you to reappear.",
+            "victim_msg": "You drop prone just as {attacker_name}'s assault rifle fires a burst, bullets cracking the air inches above your {hit_location}! Their rifle cycles, ready for you to reappear.",
             "observer_msg": "{target_name} drops prone just as {attacker_name}'s assault rifle fires a burst, bullets cracking the air inches above their head. The rifle cycles, ready for {target_name} to reappear."
         },
         {
@@ -365,7 +365,7 @@ MESSAGES = {
             "observer_msg": "A quick sidestep from {target_name} leaves {attacker_name}'s assault rifle to punch a pattern of holes in a nearby wall. The rifle cycles, {attacker_name} maintaining their aim, ready to fire again."
         },
         {
-            "attacker_msg": "Your assault rifle bucks in your shoulder as you send a burst wide of {target_name}. Your rifle cycles, chambering fresh rounds, as you quickly compensate for muzzle climb.",
+            "attacker_msg": "Your assault rifle bucks in your {hit_location} as you send a burst wide of {target_name}. Your rifle cycles, chambering fresh rounds, as you quickly compensate for muzzle climb.",
             "victim_msg": "{attacker_name}'s assault rifle bucks in their shoulder as they send a burst wide of you! Their rifle cycles, chambering fresh rounds, as they quickly compensate for muzzle climb.",
             "observer_msg": "The assault rifle bucks in {attacker_name}'s shoulder as they send a burst wide of {target_name}. The rifle cycles, chambering fresh rounds, {attacker_name} quickly compensating for muzzle climb."
         },
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            "attacker_msg": "Your assault rifle erupts in a controlled burst, stitching a fatal line of impacts across {target_name}'s chest; they collapse in a heap, riddled. The action cycles with a final *CHING*, ejecting a casing, the threat decisively neutralized.",
-            "victim_msg": "{attacker_name}'s assault rifle erupts in a controlled burst, stitching a fatal line of impacts across your chest; you collapse in a heap, riddled! The action cycles with a final *CHING*, ejecting a casing.",
-            "observer_msg": "{attacker_name}'s assault rifle erupts in a controlled burst, stitching a fatal line of impacts across {target_name}'s chest; they collapse in a heap, riddled. The action cycles with a final *CHING*, ejecting a casing, the threat decisively neutralized."
+            "attacker_msg": "Your assault rifle erupts in a controlled burst, stitching a fatal line of impacts across {target_name}'s {hit_location}; they collapse in a heap, riddled. The action cycles with a final *CHING*, ejecting a casing, the threat decisively neutralized.",
+            "victim_msg": "{attacker_name}'s assault rifle erupts in a controlled burst, stitching a fatal line of impacts across your {hit_location}; you collapse in a heap, riddled! The action cycles with a final *CHING*, ejecting a casing.",
+            "observer_msg": "{attacker_name}'s assault rifle erupts in a controlled burst, stitching a fatal line of impacts across {target_name}'s {hit_location}; they collapse in a heap, riddled. The action cycles with a final *CHING*, ejecting a casing, the threat decisively neutralized."
         },
         {
             "attacker_msg": "Your assault rifle barks a deadly staccato, and {target_name} crumples as multiple high-velocity slugs tear through vital areas, ending their fight instantly. Your rifle ejects hot casings, bolt locking back on an empty magazine or ready for the next foe.",
@@ -468,7 +468,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "With a quick, aimed burst to the head, your assault rifle drops {target_name} like a stone, their life extinguished in a hail of lead. Brass casings spin away as the action cycles, the job done with brutal efficiency.",
-            "victim_msg": "With a quick, aimed burst to your head, {attacker_name}'s assault rifle drops you like a stone, your life extinguished in a hail of lead! Brass casings spin away as the action cycles.",
+            "victim_msg": "With a quick, aimed burst to your {hit_location}, {attacker_name}'s assault rifle drops you like a stone, your life extinguished in a hail of lead! Brass casings spin away as the action cycles.",
             "observer_msg": "With a quick, aimed burst to the head, {attacker_name}'s assault rifle drops {target_name} like a stone, their life extinguished in a hail of lead. Brass casings spin away as the action cycles, the job done with brutal efficiency."
         },
         {
@@ -488,7 +488,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "A precise burst to the throat from your assault rifle silences {target_name} permanently, their body collapsing. Your rifle ejects casings, as you already assess the battlefield.",
-            "victim_msg": "A precise burst to your throat from {attacker_name}'s assault rifle silences you permanently, your body collapsing! Their rifle ejects casings.",
+            "victim_msg": "A precise burst to your {hit_location} from {attacker_name}'s assault rifle silences you permanently, your body collapsing! Their rifle ejects casings.",
             "observer_msg": "A precise burst to the throat from {attacker_name}'s assault rifle silences {target_name} permanently, their body collapsing. The rifle ejects casings, {attacker_name} already assessing the battlefield."
         },
         {

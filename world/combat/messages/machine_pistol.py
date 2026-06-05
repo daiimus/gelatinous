@@ -11,12 +11,12 @@ MESSAGES = {
             'observer_msg': "With a jerky motion, {attacker_name} slams a long, thin stick magazine into the machine pistol, the simple weapon looking almost like a toy, but promising a terrifying rate of fire."
         },
         {
-            'attacker_msg': "Your hand barely contains the machine pistol's narrow grip, the other hand instinctively moving to brace the wildly jumping muzzle.",
+            'attacker_msg': "Your {hit_location} barely contains the machine pistol's narrow grip, the other hand instinctively moving to brace the wildly jumping muzzle.",
             'victim_msg': "{attacker_name}'s hand barely contains the machine pistol's narrow grip, the other hand instinctively moving to brace the wildly jumping muzzle.",
             'observer_msg': "{attacker_name}'s hand barely contains the machine pistol's narrow grip, the other hand instinctively moving to brace the wildly jumping muzzle."
         },
         {
-            'attacker_msg': "The machine pistol appears in your hand as if from nowhere, a crude assembly of stamped metal and plastic, built for one purpose: spewing lead.",
+            'attacker_msg': "The machine pistol appears in your {hit_location} as if from nowhere, a crude assembly of stamped metal and plastic, built for one purpose: spewing lead.",
             'victim_msg': "The machine pistol appears in {attacker_name}'s hand as if from nowhere, a crude assembly of stamped metal and plastic, built for one purpose: spewing lead.",
             'observer_msg': "The machine pistol appears in {attacker_name}'s hand as if from nowhere, a crude assembly of stamped metal and plastic, built for one purpose: spewing lead."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air feels charged with manic energy as {attacker_name} prepares to unleash the machine pistol's insane, almost unbelievable rate of fire, a blizzard of tiny bullets imminent."
         },
         {
-            'attacker_msg': "Your face is a grimace of pure, unadulterated 'here goes nothing,' ready to fight the machine pistol's vicious, unpredictable muzzle climb.",
+            'attacker_msg': "Your {hit_location} is a grimace of pure, unadulterated 'here goes nothing,' ready to fight the machine pistol's vicious, unpredictable muzzle climb.",
             'victim_msg': "{attacker_name}'s face is a grimace of pure, unadulterated 'here goes nothing,' ready to fight the machine pistol's vicious, unpredictable muzzle climb.",
             'observer_msg': "{attacker_name}'s face is a grimace of pure, unadulterated 'here goes nothing,' ready to fight the machine pistol's vicious, unpredictable muzzle climb."
         },
@@ -184,7 +184,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A direct hit! The machine pistol's sustained, point-blank burst smashes into {target_name}'s {hit_location}, driving the air from their lungs with a series of incredibly rapid, brutal *thuds* that merge into one long, wet, tearing sound.",
-            'victim_msg': "A direct hit! The machine pistol's sustained, point-blank burst smashes into your {hit_location}, driving the air from your lungs with a series of incredibly rapid, brutal *thuds* that merge into one long, wet, tearing sound.",
+            'victim_msg': "A direct hit! The machine pistol's sustained, point-blank burst smashes into your {hit_location}, driving the air from your {hit_location} with a series of incredibly rapid, brutal *thuds* that merge into one long, wet, tearing sound.",
             'observer_msg': "A direct hit! The machine pistol's sustained, point-blank burst smashes into {target_name}'s {hit_location}, driving the air from their lungs with a series of incredibly rapid, brutal *thuds* that merge into one long, wet, tearing sound."
         },
         {
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your machine pistol erupts with a screaming, deafening *BRRRRRRRRRRRRRRRAP*, the bullets whining wildly past {target_name}'s head and chewing up everything in a thirty-foot arc around them, a torrent of hot casings ejecting like metallic vomit.",
-            'victim_msg': "{attacker_name}'s machine pistol erupts with a screaming, deafening *BRRRRRRRRRRRRRRRAP*, the bullets whining wildly past your head and chewing up everything in a thirty-foot arc around you, a torrent of hot casings ejecting like metallic vomit.",
-            'observer_msg': "{attacker_name}'s machine pistol erupts with a screaming, deafening *BRRRRRRRRRRRRRRRAP*, the bullets whining wildly past {target_name}'s head and chewing up everything in a thirty-foot arc around them, a torrent of hot casings ejecting like metallic vomit."
+            'attacker_msg': "Your machine pistol erupts with a screaming, deafening *BRRRRRRRRRRRRRRRAP*, the bullets whining wildly past {target_name}'s {hit_location} and chewing up everything in a thirty-foot arc around them, a torrent of hot casings ejecting like metallic vomit.",
+            'victim_msg': "{attacker_name}'s machine pistol erupts with a screaming, deafening *BRRRRRRRRRRRRRRRAP*, the bullets whining wildly past your {hit_location} and chewing up everything in a thirty-foot arc around you, a torrent of hot casings ejecting like metallic vomit.",
+            'observer_msg': "{attacker_name}'s machine pistol erupts with a screaming, deafening *BRRRRRRRRRRRRRRRAP*, the bullets whining wildly past {target_name}'s {hit_location} and chewing up everything in a thirty-foot arc around them, a torrent of hot casings ejecting like metallic vomit."
         },
         {
             'attacker_msg': "{target_name} dives desperately aside as the machine pistol shrieks like a tortured soul, a wide, indiscriminate spray of bullets kicking up chips of concrete, wood, and metal everywhere *but* where they stood a nanosecond ago, the bolt cycling at an insane, blurring rate.",
@@ -346,7 +346,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name} ducks, trips, and falls just as your machine pistol fires, a horizontal, waist-high hail of bullets searing the air where their torso had been, the action cycling with a high-pitched, continuous, terrifying scream.",
-            'victim_msg': "You duck, trip, and fall just as {attacker_name}'s machine pistol fires, a horizontal, waist-high hail of bullets searing the air where your torso had been, the action cycling with a high-pitched, continuous, terrifying scream.",
+            'victim_msg': "You duck, trip, and fall just as {attacker_name}'s machine pistol fires, a horizontal, waist-high hail of bullets searing the air where your {hit_location} had been, the action cycling with a high-pitched, continuous, terrifying scream.",
             'observer_msg': "{target_name} ducks, trips, and falls just as {attacker_name}'s machine pistol fires, a horizontal, waist-high hail of bullets searing the air where their torso had been, the action cycling with a high-pitched, continuous, terrifying scream."
         },
         {
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick, panicked sidestep from {target_name} leaves {attacker_name}'s machine pistol to punch a ragged, dense line of hundreds upon hundreds of holes in an empty, parked bus, brass ejecting in a solid, unbroken arc of gold."
         },
         {
-            'attacker_msg': "The machine pistol bucks, writhes, and jumps in your hand like a landed fish on amphetamines as you miss, the recoil sending bullets everywhere except towards the intended {target_name}, who watches in horrified awe.",
+            'attacker_msg': "The machine pistol bucks, writhes, and jumps in your {hit_location} like a landed fish on amphetamines as you miss, the recoil sending bullets everywhere except towards the intended {target_name}, who watches in horrified awe.",
             'victim_msg': "The machine pistol bucks, writhes, and jumps in {attacker_name}'s hand like a landed fish on amphetamines as they miss, the recoil sending bullets everywhere except towards you, who watch in horrified awe.",
             'observer_msg': "The machine pistol bucks, writhes, and jumps in {attacker_name}'s hand like a landed fish on amphetamines as they miss, the recoil sending bullets everywhere except towards {target_name}, who watches in horrified awe."
         },

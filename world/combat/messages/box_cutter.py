@@ -76,7 +76,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} tests the edge on their thumb, drawing a bead of blood and a smile."
         },
         {
-            "attacker_msg": "You let the blade rest on your tongue for a heartbeat before spitting it into your hand.",
+            "attacker_msg": "You let the blade rest on your tongue for a heartbeat before spitting it into your {hit_location}.",
             "victim_msg": "{attacker_name} lets the blade rest on their tongue for a heartbeat before spitting it into their hand.",
             "observer_msg": "{attacker_name} lets the blade rest on their tongue for a heartbeat before spitting it into their hand."
         },
@@ -126,7 +126,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} lets the box cutter dangle from their fingers, blade swinging like a pendulum."
         },
         {
-            "attacker_msg": "You trace the blade along your forearm, leaving a thin red line.",
+            "attacker_msg": "You trace the blade along your {hit_location}, leaving a thin red line.",
             "victim_msg": "{attacker_name} traces the blade along their forearm, leaving a thin red line.",
             "observer_msg": "{attacker_name} traces the blade along their forearm, leaving a thin red line."
         },
@@ -340,7 +340,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} stabs at {target_name}, but the blade glances off armor."
         },
         {
-            "attacker_msg": "A flick of your wrist misses, the blade slicing only air.",
+            "attacker_msg": "A flick of your {hit_location} misses, the blade slicing only air.",
             "victim_msg": "A flick of {attacker_name}'s wrist misses, the blade slicing only air.",
             "observer_msg": "A flick of {attacker_name}'s wrist misses, the blade slicing only air."
         },
@@ -445,7 +445,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s blade glances off a boot, doing nothing."
         },
         {
-            "attacker_msg": "A flick of your wrist misses, the blade humming in the air.",
+            "attacker_msg": "A flick of your {hit_location} misses, the blade humming in the air.",
             "victim_msg": "A flick of {attacker_name}'s wrist misses, the blade humming in the air.",
             "observer_msg": "A flick of {attacker_name}'s wrist misses, the blade humming in the air."
         },
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            "attacker_msg": "You drive the box cutter into {target_name}'s throat. Blood spurts in a fine, surgical arc.",
-            "victim_msg": "{attacker_name} drives the box cutter into your throat. Blood spurts in a fine, surgical arc.",
-            "observer_msg": "{attacker_name} drives the box cutter into {target_name}'s throat. Blood spurts in a fine, surgical arc."
+            "attacker_msg": "You drive the box cutter into {target_name}'s {hit_location}. Blood spurts in a fine, surgical arc.",
+            "victim_msg": "{attacker_name} drives the box cutter into your {hit_location}. Blood spurts in a fine, surgical arc.",
+            "observer_msg": "{attacker_name} drives the box cutter into {target_name}'s {hit_location}. Blood spurts in a fine, surgical arc."
         },
         {
             "attacker_msg": "A quick slash from your box cutter opens {target_name}'s carotid. They drop, clutching at a wound that won’t close.",
@@ -467,19 +467,19 @@ MESSAGES = {
             "observer_msg": "A quick slash from {attacker_name}'s box cutter opens {target_name}'s carotid. They drop, clutching at a wound that won’t close."
         },
         {
-            "attacker_msg": "Your blade slips between {target_name}'s ribs and into their heart. They collapse, twitching.",
-            "victim_msg": "{attacker_name}'s blade slips between your ribs and into your heart. You collapse, twitching.",
-            "observer_msg": "{attacker_name}'s blade slips between {target_name}'s ribs and into their heart. They collapse, twitching."
+            "attacker_msg": "Your blade slips between {target_name}'s {hit_location} and into their heart. They collapse, twitching.",
+            "victim_msg": "{attacker_name}'s blade slips between your {hit_location} and into your {hit_location}. You collapse, twitching.",
+            "observer_msg": "{attacker_name}'s blade slips between {target_name}'s {hit_location} and into their heart. They collapse, twitching."
         },
         {
-            "attacker_msg": "You carve a line across {target_name}'s neck. The blood is bright and fast.",
-            "victim_msg": "{attacker_name} carves a line across your neck. The blood is bright and fast.",
-            "observer_msg": "{attacker_name} carves a line across {target_name}'s neck. The blood is bright and fast."
+            "attacker_msg": "You carve a line across {target_name}'s {hit_location}. The blood is bright and fast.",
+            "victim_msg": "{attacker_name} carves a line across your {hit_location}. The blood is bright and fast.",
+            "observer_msg": "{attacker_name} carves a line across {target_name}'s {hit_location}. The blood is bright and fast."
         },
         {
-            "attacker_msg": "A jab from you under the jaw sends the blade into {target_name}'s brain. They go limp instantly.",
-            "victim_msg": "A jab from {attacker_name} under the jaw sends the blade into your brain. You go limp instantly.",
-            "observer_msg": "A jab from {attacker_name} under the jaw sends the blade into {target_name}'s brain. They go limp instantly."
+            "attacker_msg": "A jab from you under the jaw sends the blade into {target_name}'s {hit_location}. They go limp instantly.",
+            "victim_msg": "A jab from {attacker_name} under the jaw sends the blade into your {hit_location}. You go limp instantly.",
+            "observer_msg": "A jab from {attacker_name} under the jaw sends the blade into {target_name}'s {hit_location}. They go limp instantly."
         },
         {
             "attacker_msg": "Your box cutter punctures {target_name}'s eye. They scream, then fall silent.",
@@ -492,24 +492,24 @@ MESSAGES = {
             "observer_msg": "{attacker_name} slices {target_name}'s femoral artery. Blood pools fast. They don’t last."
         },
         {
-            "attacker_msg": "A quick stab from your box cutter to {target_name}'s temple ends everything in a blink.",
-            "victim_msg": "A quick stab from {attacker_name}'s box cutter to your temple ends everything in a blink.",
-            "observer_msg": "A quick stab from {attacker_name}'s box cutter to {target_name}'s temple ends everything in a blink."
+            "attacker_msg": "A quick stab from your box cutter to {target_name}'s {hit_location} ends everything in a blink.",
+            "victim_msg": "A quick stab from {attacker_name}'s box cutter to your {hit_location} ends everything in a blink.",
+            "observer_msg": "A quick stab from {attacker_name}'s box cutter to {target_name}'s {hit_location} ends everything in a blink."
         },
         {
-            "attacker_msg": "Your blade slips under {target_name}'s sternum. They gasp, then nothing.",
-            "victim_msg": "{attacker_name}'s blade slips under your sternum. You gasp, then nothing.",
-            "observer_msg": "{attacker_name}'s blade slips under {target_name}'s sternum. They gasp, then nothing."
+            "attacker_msg": "Your blade slips under {target_name}'s {hit_location}. They gasp, then nothing.",
+            "victim_msg": "{attacker_name}'s blade slips under your {hit_location}. You gasp, then nothing.",
+            "observer_msg": "{attacker_name}'s blade slips under {target_name}'s {hit_location}. They gasp, then nothing."
         },
         {
-            "attacker_msg": "You draw the blade across {target_name}'s throat. The spray is arterial, the silence final.",
-            "victim_msg": "{attacker_name} draws the blade across your throat. The spray is arterial, the silence final.",
-            "observer_msg": "{attacker_name} draws the blade across {target_name}'s throat. The spray is arterial, the silence final."
+            "attacker_msg": "You draw the blade across {target_name}'s {hit_location}. The spray is arterial, the silence final.",
+            "victim_msg": "{attacker_name} draws the blade across your {hit_location}. The spray is arterial, the silence final.",
+            "observer_msg": "{attacker_name} draws the blade across {target_name}'s {hit_location}. The spray is arterial, the silence final."
         },
         {
-            "attacker_msg": "A downward stab from your box cutter buries the blade in {target_name}'s chest. They shudder, then still.",
-            "victim_msg": "A downward stab from {attacker_name}'s box cutter buries the blade in your chest. You shudder, then still.",
-            "observer_msg": "A downward stab from {attacker_name}'s box cutter buries the blade in {target_name}'s chest. They shudder, then still."
+            "attacker_msg": "A downward stab from your box cutter buries the blade in {target_name}'s {hit_location}. They shudder, then still.",
+            "victim_msg": "A downward stab from {attacker_name}'s box cutter buries the blade in your {hit_location}. You shudder, then still.",
+            "observer_msg": "A downward stab from {attacker_name}'s box cutter buries the blade in {target_name}'s {hit_location}. They shudder, then still."
         },
         {
             "attacker_msg": "Your blade slips between {target_name}'s vertebrae. They drop, boneless.",
@@ -517,24 +517,24 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s blade slips between {target_name}'s vertebrae. They drop, boneless."
         },
         {
-            "attacker_msg": "You carve a smile across {target_name}'s face. The grin is permanent.",
-            "victim_msg": "{attacker_name} carves a smile across your face. The grin is permanent.",
-            "observer_msg": "{attacker_name} carves a smile across {target_name}'s face. The grin is permanent."
+            "attacker_msg": "You carve a smile across {target_name}'s {hit_location}. The grin is permanent.",
+            "victim_msg": "{attacker_name} carves a smile across your {hit_location}. The grin is permanent.",
+            "observer_msg": "{attacker_name} carves a smile across {target_name}'s {hit_location}. The grin is permanent."
         },
         {
-            "attacker_msg": "A jab from your box cutter to {target_name}'s heart. They collapse, eyes wide and empty.",
-            "victim_msg": "A jab from {attacker_name}'s box cutter to your heart. You collapse, eyes wide and empty.",
-            "observer_msg": "A jab from {attacker_name}'s box cutter to {target_name}'s heart. They collapse, eyes wide and empty."
+            "attacker_msg": "A jab from your box cutter to {target_name}'s {hit_location}. They collapse, eyes wide and empty.",
+            "victim_msg": "A jab from {attacker_name}'s box cutter to your {hit_location}. You collapse, eyes wide and empty.",
+            "observer_msg": "A jab from {attacker_name}'s box cutter to {target_name}'s {hit_location}. They collapse, eyes wide and empty."
         },
         {
-            "attacker_msg": "Your blade punctures {target_name}'s lung. They drown on dry land.",
-            "victim_msg": "{attacker_name}'s blade punctures your lung. You drown on dry land.",
-            "observer_msg": "{attacker_name}'s blade punctures {target_name}'s lung. They drown on dry land."
+            "attacker_msg": "Your blade punctures {target_name}'s {hit_location}. They drown on dry land.",
+            "victim_msg": "{attacker_name}'s blade punctures your {hit_location}. You drown on dry land.",
+            "observer_msg": "{attacker_name}'s blade punctures {target_name}'s {hit_location}. They drown on dry land."
         },
         {
-            "attacker_msg": "You slice {target_name}'s wrist, blood spraying in pulses.",
-            "victim_msg": "{attacker_name} slices your wrist, blood spraying in pulses.",
-            "observer_msg": "{attacker_name} slices {target_name}'s wrist, blood spraying in pulses."
+            "attacker_msg": "You slice {target_name}'s {hit_location}, blood spraying in pulses.",
+            "victim_msg": "{attacker_name} slices your {hit_location}, blood spraying in pulses.",
+            "observer_msg": "{attacker_name} slices {target_name}'s {hit_location}, blood spraying in pulses."
         },
         {
             "attacker_msg": "A quick flick of your box cutter opens {target_name}'s jugular. They drop in seconds.",
@@ -547,14 +547,14 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s blade slips behind {target_name}'s ear. They never see it coming."
         },
         {
-            "attacker_msg": "A stab from your box cutter to the base of {target_name}'s skull ends it instantly.",
-            "victim_msg": "A stab from {attacker_name}'s box cutter to the base of your skull ends it instantly.",
-            "observer_msg": "A stab from {attacker_name}'s box cutter to the base of {target_name}'s skull ends it instantly."
+            "attacker_msg": "A stab from your box cutter to the base of {target_name}'s {hit_location} ends it instantly.",
+            "victim_msg": "A stab from {attacker_name}'s box cutter to the base of your {hit_location} ends it instantly.",
+            "observer_msg": "A stab from {attacker_name}'s box cutter to the base of {target_name}'s {hit_location} ends it instantly."
         },
         {
-            "attacker_msg": "You carve a spiral down {target_name}'s chest. The pattern is red and final.",
-            "victim_msg": "{attacker_name} carves a spiral down your chest. The pattern is red and final.",
-            "observer_msg": "{attacker_name} carves a spiral down {target_name}'s chest. The pattern is red and final."
+            "attacker_msg": "You carve a spiral down {target_name}'s {hit_location}. The pattern is red and final.",
+            "victim_msg": "{attacker_name} carves a spiral down your {hit_location}. The pattern is red and final.",
+            "observer_msg": "{attacker_name} carves a spiral down {target_name}'s {hit_location}. The pattern is red and final."
         },
         {
             "attacker_msg": "Your blade slips into {target_name}'s mouth, blood pouring out.",
@@ -562,14 +562,14 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s blade slips into {target_name}'s mouth, blood pouring out."
         },
         {
-            "attacker_msg": "A quick slash from your box cutter opens {target_name}'s abdomen. They fold, spilling.",
-            "victim_msg": "A quick slash from {attacker_name}'s box cutter opens your abdomen. You fold, spilling.",
-            "observer_msg": "A quick slash from {attacker_name}'s box cutter opens {target_name}'s abdomen. They fold, spilling."
+            "attacker_msg": "A quick slash from your box cutter opens {target_name}'s {hit_location}. They fold, spilling.",
+            "victim_msg": "A quick slash from {attacker_name}'s box cutter opens your {hit_location}. You fold, spilling.",
+            "observer_msg": "A quick slash from {attacker_name}'s box cutter opens {target_name}'s {hit_location}. They fold, spilling."
         },
         {
-            "attacker_msg": "Your blade punctures {target_name}'s heart. They gasp, then nothing.",
-            "victim_msg": "{attacker_name}'s blade punctures your heart. You gasp, then nothing.",
-            "observer_msg": "{attacker_name}'s blade punctures {target_name}'s heart. They gasp, then nothing."
+            "attacker_msg": "Your blade punctures {target_name}'s {hit_location}. They gasp, then nothing.",
+            "victim_msg": "{attacker_name}'s blade punctures your {hit_location}. You gasp, then nothing.",
+            "observer_msg": "{attacker_name}'s blade punctures {target_name}'s {hit_location}. They gasp, then nothing."
         },
         {
             "attacker_msg": "You draw the blade across {target_name}'s eyes. The world goes dark for them.",
@@ -592,19 +592,19 @@ MESSAGES = {
             "observer_msg": "A quick flick of {attacker_name}'s box cutter opens {target_name}'s femoral. Blood sprays, life drains."
         },
         {
-            "attacker_msg": "Your blade slips into {target_name}'s chest, twisting. They are gone before they hit the ground.",
-            "victim_msg": "{attacker_name}'s blade slips into your chest, twisting. You are gone before you hit the ground.",
-            "observer_msg": "{attacker_name}'s blade slips into {target_name}'s chest, twisting. They are gone before they hit the ground."
+            "attacker_msg": "Your blade slips into {target_name}'s {hit_location}, twisting. They are gone before they hit the ground.",
+            "victim_msg": "{attacker_name}'s blade slips into your {hit_location}, twisting. You are gone before you hit the ground.",
+            "observer_msg": "{attacker_name}'s blade slips into {target_name}'s {hit_location}, twisting. They are gone before they hit the ground."
         },
         {
-            "attacker_msg": "You carve a line across {target_name}'s throat. The spray is bright, the end abrupt.",
-            "victim_msg": "{attacker_name} carves a line across your throat. The spray is bright, the end abrupt.",
-            "observer_msg": "{attacker_name} carves a line across {target_name}'s throat. The spray is bright, the end abrupt."
+            "attacker_msg": "You carve a line across {target_name}'s {hit_location}. The spray is bright, the end abrupt.",
+            "victim_msg": "{attacker_name} carves a line across your {hit_location}. The spray is bright, the end abrupt.",
+            "observer_msg": "{attacker_name} carves a line across {target_name}'s {hit_location}. The spray is bright, the end abrupt."
         },
         {
-            "attacker_msg": "A final stab from your box cutter to {target_name}'s heart. They sag, then fall.",
-            "victim_msg": "A final stab from {attacker_name}'s box cutter to your heart. You sag, then fall.",
-            "observer_msg": "A final stab from {attacker_name}'s box cutter to {target_name}'s heart. They sag, then fall."
+            "attacker_msg": "A final stab from your box cutter to {target_name}'s {hit_location}. They sag, then fall.",
+            "victim_msg": "A final stab from {attacker_name}'s box cutter to your {hit_location}. You sag, then fall.",
+            "observer_msg": "A final stab from {attacker_name}'s box cutter to {target_name}'s {hit_location}. They sag, then fall."
         }
     ]
 }

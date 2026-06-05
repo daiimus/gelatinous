@@ -62,7 +62,7 @@ MESSAGES = {
             "observer_msg": "Corporate branding on the can seems to mock the coming violence as {attacker_name} prepares to strike {target_name}."
         },
         {
-            "attacker_msg": "You weigh the spray can in your hand, imagining the satisfying crunch it will make against {target_name}'s skull.",
+            "attacker_msg": "You weigh the spray can in your {hit_location}, imagining the satisfying crunch it will make against {target_name}'s {hit_location}.",
             "victim_msg": "{attacker_name} weighs a spray can in their hand, their expression suggesting unpleasant thoughts about you.",
             "observer_msg": "{attacker_name} weighs the spray can in their hand, their expression suggesting unpleasant thoughts about {target_name}."
         },
@@ -224,9 +224,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} miscalculates the spray pattern, the toxic mist forming a useless cloud beside {target_name}."
         },
         {
-            "attacker_msg": "The aerosol can's weight throws off your aim, sending your strike sailing over {target_name}'s head.",
-            "victim_msg": "An aerosol can's weight throws off {attacker_name}'s aim, sending their strike sailing over your head.",
-            "observer_msg": "The aerosol can's weight throws off {attacker_name}'s aim, sending their strike sailing over {target_name}'s head."
+            "attacker_msg": "The aerosol can's weight throws off your aim, sending your strike sailing over {target_name}'s {hit_location}.",
+            "victim_msg": "An aerosol can's weight throws off {attacker_name}'s aim, sending their strike sailing over your {hit_location}.",
+            "observer_msg": "The aerosol can's weight throws off {attacker_name}'s aim, sending their strike sailing over {target_name}'s {hit_location}."
         },
         {
             "attacker_msg": "Corporate engineering fails you as the safety mechanism engages, stopping your spray attack on {target_name}.",
@@ -244,9 +244,9 @@ MESSAGES = {
             "observer_msg": "The pressurized container slips from {attacker_name}'s grasp mid-swing, tumbling uselessly toward {target_name}'s feet."
         },
         {
-            "attacker_msg": "You aim for {target_name}'s torso but the chemical stream arcs too high, creating a brief toxic rainbow.",
-            "victim_msg": "{attacker_name} aims for your torso but the chemical stream arcs too high, creating a brief toxic rainbow.",
-            "observer_msg": "{attacker_name} aims for {target_name}'s torso but the chemical stream arcs too high, creating a brief toxic rainbow."
+            "attacker_msg": "You aim for {target_name}'s {hit_location} but the chemical stream arcs too high, creating a brief toxic rainbow.",
+            "victim_msg": "{attacker_name} aims for your {hit_location} but the chemical stream arcs too high, creating a brief toxic rainbow.",
+            "observer_msg": "{attacker_name} aims for {target_name}'s {hit_location} but the chemical stream arcs too high, creating a brief toxic rainbow."
         },
         {
             "attacker_msg": "Industrial-grade irony strikes as the corporate weapon jams at the moment of truth against {target_name}.",
@@ -286,9 +286,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} blasts {target_name} directly in the eyes with a sustained spray, the chemicals burning and blinding."
         },
         {
-            "attacker_msg": "Your spray can cracks against {target_name}'s skull with a metallic clang, leaving them dazed.",
-            "victim_msg": "A spray can cracks against your skull with a metallic clang, leaving you dazed.",
-            "observer_msg": "The spray can cracks against {target_name}'s skull with a metallic clang, leaving them dazed."
+            "attacker_msg": "Your spray can cracks against {target_name}'s {hit_location} with a metallic clang, leaving them dazed.",
+            "victim_msg": "A spray can cracks against your {hit_location} with a metallic clang, leaving you dazed.",
+            "observer_msg": "The spray can cracks against {target_name}'s {hit_location} with a metallic clang, leaving them dazed."
         },
         {
             "attacker_msg": "You bring your spray can down hard on {target_name}'s {hit_location}, the impact denting the metal and splitting scalp.",
@@ -417,7 +417,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You jab the spray can's bottom into {target_name}'s {hit_location}, knocking the wind from their lungs.",
-            "victim_msg": "{attacker_name} jabs a spray can's bottom into your {hit_location}, knocking the wind from your lungs.",
+            "victim_msg": "{attacker_name} jabs a spray can's bottom into your {hit_location}, knocking the wind from your {hit_location}.",
             "observer_msg": "{attacker_name} jabs the spray can's bottom into {target_name}'s {hit_location}, knocking the wind from their lungs."
         },
         {
@@ -453,29 +453,29 @@ MESSAGES = {
     ],
     "kill": [
         {
-            "attacker_msg": "You drive the spray can's nozzle deep into {target_name}'s throat, then depress it, flooding their windpipe with toxic chemicals.",
-            "victim_msg": "{attacker_name} drives a spray can's nozzle deep into your throat, then depresses it, flooding your windpipe with toxic chemicals.",
-            "observer_msg": "{attacker_name} drives the spray can's nozzle deep into {target_name}'s throat, then depresses it, flooding their windpipe with toxic chemicals."
+            "attacker_msg": "You drive the spray can's nozzle deep into {target_name}'s {hit_location}, then depress it, flooding their windpipe with toxic chemicals.",
+            "victim_msg": "{attacker_name} drives a spray can's nozzle deep into your {hit_location}, then depresses it, flooding your windpipe with toxic chemicals.",
+            "observer_msg": "{attacker_name} drives the spray can's nozzle deep into {target_name}'s {hit_location}, then depresses it, flooding their windpipe with toxic chemicals."
         },
         {
-            "attacker_msg": "Your spray can ruptures against {target_name}'s skull with explosive force, paint and bone fragments mixing in a grotesque spray.",
-            "victim_msg": "A spray can ruptures against your skull with explosive force, paint and bone fragments mixing in a grotesque spray.",
-            "observer_msg": "The spray can ruptures against {target_name}'s skull with explosive force, paint and bone fragments mixing in a grotesque spray."
+            "attacker_msg": "Your spray can ruptures against {target_name}'s {hit_location} with explosive force, paint and bone fragments mixing in a grotesque spray.",
+            "victim_msg": "A spray can ruptures against your {hit_location} with explosive force, paint and bone fragments mixing in a grotesque spray.",
+            "observer_msg": "The spray can ruptures against {target_name}'s {hit_location} with explosive force, paint and bone fragments mixing in a grotesque spray."
         },
         {
             "attacker_msg": "You shove the spray can into {target_name}'s mouth and empty the entire contents, watching them convulse as toxic paint fills their lungs.",
-            "victim_msg": "{attacker_name} shoves a spray can into your mouth and empties the entire contents, toxic paint filling your lungs as you convulse.",
+            "victim_msg": "{attacker_name} shoves a spray can into your mouth and empties the entire contents, toxic paint filling your {hit_location} as you convulse.",
             "observer_msg": "{attacker_name} shoves the spray can into {target_name}'s mouth and empties the entire contents, watching them convulse as toxic paint fills their lungs."
         },
         {
-            "attacker_msg": "The pressurized cylinder becomes a brutal club as you cave in {target_name}'s temple, chemical residue mixing with brain matter.",
-            "victim_msg": "A pressurized cylinder becomes a brutal club as {attacker_name} caves in your temple, chemical residue mixing with brain matter.",
-            "observer_msg": "The pressurized cylinder becomes a brutal club as {attacker_name} caves in {target_name}'s temple, chemical residue mixing with brain matter."
+            "attacker_msg": "The pressurized cylinder becomes a brutal club as you cave in {target_name}'s {hit_location}, chemical residue mixing with brain matter.",
+            "victim_msg": "A pressurized cylinder becomes a brutal club as {attacker_name} caves in your {hit_location}, chemical residue mixing with brain matter.",
+            "observer_msg": "The pressurized cylinder becomes a brutal club as {attacker_name} caves in {target_name}'s {hit_location}, chemical residue mixing with brain matter."
         },
         {
-            "attacker_msg": "You spray continuously into {target_name}'s face until the toxic chemicals dissolve their features into an unrecognizable mess.",
-            "victim_msg": "{attacker_name} sprays continuously into your face until the toxic chemicals dissolve your features into an unrecognizable mess.",
-            "observer_msg": "{attacker_name} sprays continuously into {target_name}'s face until the toxic chemicals dissolve their features into an unrecognizable mess."
+            "attacker_msg": "You spray continuously into {target_name}'s {hit_location} until the toxic chemicals dissolve their features into an unrecognizable mess.",
+            "victim_msg": "{attacker_name} sprays continuously into your {hit_location} until the toxic chemicals dissolve your features into an unrecognizable mess.",
+            "observer_msg": "{attacker_name} sprays continuously into {target_name}'s {hit_location} until the toxic chemicals dissolve their features into an unrecognizable mess."
         },
         {
             "attacker_msg": "The aerosol can explodes in your grip as you drive it through {target_name}'s ribcage, pressurized death erupting from within.",
@@ -493,39 +493,39 @@ MESSAGES = {
             "observer_msg": "The improvised weapon crushes {target_name}'s windpipe with a wet crunch, chemical propellant hissing from the ruptured can."
         },
         {
-            "attacker_msg": "Corporate toxins become your instrument of death as you flood {target_name}'s lungs with industrial solvents.",
-            "victim_msg": "Corporate toxins become {attacker_name}'s instrument of death as they flood your lungs with industrial solvents.",
-            "observer_msg": "Corporate toxins become {attacker_name}'s instrument of death as they flood {target_name}'s lungs with industrial solvents."
+            "attacker_msg": "Corporate toxins become your instrument of death as you flood {target_name}'s {hit_location} with industrial solvents.",
+            "victim_msg": "Corporate toxins become {attacker_name}'s instrument of death as they flood your {hit_location} with industrial solvents.",
+            "observer_msg": "Corporate toxins become {attacker_name}'s instrument of death as they flood {target_name}'s {hit_location} with industrial solvents."
         },
         {
-            "attacker_msg": "You beat {target_name}'s skull to pulp with the metal cylinder, each impact spraying chemical-tainted gore.",
-            "victim_msg": "{attacker_name} beats your skull to pulp with the metal cylinder, each impact spraying chemical-tainted gore.",
-            "observer_msg": "{attacker_name} beats {target_name}'s skull to pulp with the metal cylinder, each impact spraying chemical-tainted gore."
+            "attacker_msg": "You beat {target_name}'s {hit_location} to pulp with the metal cylinder, each impact spraying chemical-tainted gore.",
+            "victim_msg": "{attacker_name} beats your {hit_location} to pulp with the metal cylinder, each impact spraying chemical-tainted gore.",
+            "observer_msg": "{attacker_name} beats {target_name}'s {hit_location} to pulp with the metal cylinder, each impact spraying chemical-tainted gore."
         },
         {
             "attacker_msg": "The spray can's pressurized contents explode outward as you ram it through {target_name}'s eye socket into their brain.",
-            "victim_msg": "A spray can's pressurized contents explode outward as {attacker_name} rams it through your eye socket into your brain.",
+            "victim_msg": "A spray can's pressurized contents explode outward as {attacker_name} rams it through your eye socket into your {hit_location}.",
             "observer_msg": "The spray can's pressurized contents explode outward as {attacker_name} rams it through {target_name}'s eye socket into their brain."
         },
         {
-            "attacker_msg": "You crack {target_name}'s skull like an egg with repeated blows from the aerosol canister, toxic paint leaking into the wounds.",
-            "victim_msg": "{attacker_name} cracks your skull like an egg with repeated blows from the aerosol canister, toxic paint leaking into the wounds.",
-            "observer_msg": "{attacker_name} cracks {target_name}'s skull like an egg with repeated blows from the aerosol canister, toxic paint leaking into the wounds."
+            "attacker_msg": "You crack {target_name}'s {hit_location} like an egg with repeated blows from the aerosol canister, toxic paint leaking into the wounds.",
+            "victim_msg": "{attacker_name} cracks your {hit_location} like an egg with repeated blows from the aerosol canister, toxic paint leaking into the wounds.",
+            "observer_msg": "{attacker_name} cracks {target_name}'s {hit_location} like an egg with repeated blows from the aerosol canister, toxic paint leaking into the wounds."
         },
         {
-            "attacker_msg": "Chemical warfare reaches its logical conclusion as you force the nozzle down {target_name}'s throat and empty the canister.",
-            "victim_msg": "Chemical warfare reaches its logical conclusion as {attacker_name} forces the nozzle down your throat and empties the canister.",
-            "observer_msg": "Chemical warfare reaches its logical conclusion as {attacker_name} forces the nozzle down {target_name}'s throat and empties the canister."
+            "attacker_msg": "Chemical warfare reaches its logical conclusion as you force the nozzle down {target_name}'s {hit_location} and empty the canister.",
+            "victim_msg": "Chemical warfare reaches its logical conclusion as {attacker_name} forces the nozzle down your {hit_location} and empties the canister.",
+            "observer_msg": "Chemical warfare reaches its logical conclusion as {attacker_name} forces the nozzle down {target_name}'s {hit_location} and empties the canister."
         },
         {
             "attacker_msg": "You cave in {target_name}'s chest cavity with the pressurized cylinder, their ribs cracking like kindling.",
-            "victim_msg": "{attacker_name} caves in your chest cavity with the pressurized cylinder, your ribs cracking like kindling.",
+            "victim_msg": "{attacker_name} caves in your chest cavity with the pressurized cylinder, your {hit_location} cracking like kindling.",
             "observer_msg": "{attacker_name} caves in {target_name}'s chest cavity with the pressurized cylinder, their ribs cracking like kindling."
         },
         {
-            "attacker_msg": "The corporate logo becomes a death mask as you press the hot canister into {target_name}'s face until it melts through flesh and bone.",
-            "victim_msg": "A corporate logo becomes a death mask as {attacker_name} presses the hot canister into your face until it melts through flesh and bone.",
-            "observer_msg": "The corporate logo becomes a death mask as {attacker_name} presses the hot canister into {target_name}'s face until it melts through flesh and bone."
+            "attacker_msg": "The corporate logo becomes a death mask as you press the hot canister into {target_name}'s {hit_location} until it melts through flesh and bone.",
+            "victim_msg": "A corporate logo becomes a death mask as {attacker_name} presses the hot canister into your {hit_location} until it melts through flesh and bone.",
+            "observer_msg": "The corporate logo becomes a death mask as {attacker_name} presses the hot canister into {target_name}'s {hit_location} until it melts through flesh and bone."
         },
         {
             "attacker_msg": "You methodically spray industrial solvent into {target_name}'s wounds until their screaming stops and their body goes still.",
@@ -533,9 +533,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} methodically sprays industrial solvent into {target_name}'s wounds until their screaming stops and their body goes still."
         },
         {
-            "attacker_msg": "The aerosol can becomes a piston of death as you drive it repeatedly into {target_name}'s sternum until it caves inward.",
-            "victim_msg": "An aerosol can becomes a piston of death as {attacker_name} drives it repeatedly into your sternum until it caves inward.",
-            "observer_msg": "The aerosol can becomes a piston of death as {attacker_name} drives it repeatedly into {target_name}'s sternum until it caves inward."
+            "attacker_msg": "The aerosol can becomes a piston of death as you drive it repeatedly into {target_name}'s {hit_location} until it caves inward.",
+            "victim_msg": "An aerosol can becomes a piston of death as {attacker_name} drives it repeatedly into your {hit_location} until it caves inward.",
+            "observer_msg": "The aerosol can becomes a piston of death as {attacker_name} drives it repeatedly into {target_name}'s {hit_location} until it caves inward."
         },
         {
             "attacker_msg": "You spray toxic chemicals directly onto {target_name}'s exposed brain through their cracked skull, watching consciousness flicker and die.",
@@ -553,9 +553,9 @@ MESSAGES = {
             "observer_msg": "The improvised weapon punctures {target_name}'s jugular, chemical propellant mixing with arterial spray in a grotesque fountain."
         },
         {
-            "attacker_msg": "You force the entire aerosol can down {target_name}'s throat, then puncture it from the outside, internal pressure tearing them apart.",
-            "victim_msg": "{attacker_name} forces the entire aerosol can down your throat, then punctures it from the outside, internal pressure tearing you apart.",
-            "observer_msg": "{attacker_name} forces the entire aerosol can down {target_name}'s throat, then punctures it from the outside, internal pressure tearing them apart."
+            "attacker_msg": "You force the entire aerosol can down {target_name}'s {hit_location}, then puncture it from the outside, internal pressure tearing them apart.",
+            "victim_msg": "{attacker_name} forces the entire aerosol can down your {hit_location}, then punctures it from the outside, internal pressure tearing you apart.",
+            "observer_msg": "{attacker_name} forces the entire aerosol can down {target_name}'s {hit_location}, then punctures it from the outside, internal pressure tearing them apart."
         },
         {
             "attacker_msg": "Corporate violence reaches its logical endpoint as you beat {target_name} to death with their own branded toxins.",
@@ -563,9 +563,9 @@ MESSAGES = {
             "observer_msg": "Corporate violence reaches its logical endpoint as {attacker_name} beats {target_name} to death with their own branded toxins."
         },
         {
-            "attacker_msg": "The pressurized canister becomes an instrument of cranial destruction as you systematically cave in {target_name}'s skull.",
-            "victim_msg": "A pressurized canister becomes an instrument of cranial destruction as {attacker_name} systematically caves in your skull.",
-            "observer_msg": "The pressurized canister becomes an instrument of cranial destruction as {attacker_name} systematically caves in {target_name}'s skull."
+            "attacker_msg": "The pressurized canister becomes an instrument of cranial destruction as you systematically cave in {target_name}'s {hit_location}.",
+            "victim_msg": "A pressurized canister becomes an instrument of cranial destruction as {attacker_name} systematically caves in your {hit_location}.",
+            "observer_msg": "The pressurized canister becomes an instrument of cranial destruction as {attacker_name} systematically caves in {target_name}'s {hit_location}."
         },
         {
             "attacker_msg": "You empty the spray can's toxic contents into {target_name}'s open wounds, watching chemical necrosis spread until they expire.",
@@ -573,9 +573,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} empties the spray can's toxic contents into {target_name}'s open wounds, watching chemical necrosis spread until they expire."
         },
         {
-            "attacker_msg": "The metal cylinder becomes a jackhammer of death as you pulverize {target_name}'s spine with mechanical precision.",
-            "victim_msg": "A metal cylinder becomes a jackhammer of death as {attacker_name} pulverizes your spine with mechanical precision.",
-            "observer_msg": "The metal cylinder becomes a jackhammer of death as {attacker_name} pulverizes {target_name}'s spine with mechanical precision."
+            "attacker_msg": "The metal cylinder becomes a jackhammer of death as you pulverize {target_name}'s {hit_location} with mechanical precision.",
+            "victim_msg": "A metal cylinder becomes a jackhammer of death as {attacker_name} pulverizes your {hit_location} with mechanical precision.",
+            "observer_msg": "The metal cylinder becomes a jackhammer of death as {attacker_name} pulverizes {target_name}'s {hit_location} with mechanical precision."
         }
     ]
 }

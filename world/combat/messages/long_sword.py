@@ -11,7 +11,7 @@ MESSAGES = {
             'observer_msg': "With a fluid motion, {attacker_name} brings the long sword to a ready stance, its point unwavering."
         },
         {
-            'attacker_msg': "You test the balance of the long sword, the blade a silver extension of your arm.",
+            'attacker_msg': "You test the balance of the long sword, the blade a silver extension of your {hit_location}.",
             'victim_msg': "{attacker_name} tests the balance of the long sword, the blade a silver extension of their arm.",
             'observer_msg': "{attacker_name} tests the balance of the long sword, the blade a silver extension of their arm."
         },
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your long sword whistles through the air, inches from {target_name}'s head.",
-            'victim_msg': "{attacker_name}'s long sword whistles through the air, inches from your head.",
-            'observer_msg': "{attacker_name}'s long sword whistles through the air, inches from {target_name}'s head."
+            'attacker_msg': "Your long sword whistles through the air, inches from {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name}'s long sword whistles through the air, inches from your {hit_location}.",
+            'observer_msg': "{attacker_name}'s long sword whistles through the air, inches from {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "{target_name} narrowly avoids the flashing arc of your long sword.",
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "Your long sword finds {target_name}'s heart with a fatal thrust, ending the fight instantly.",
-            'victim_msg': "{attacker_name}'s long sword finds your heart with a fatal thrust, ending the fight instantly.",
-            'observer_msg': "{attacker_name}'s long sword finds {target_name}'s heart with a fatal thrust, ending the fight instantly."
+            'attacker_msg': "Your long sword finds {target_name}'s {hit_location} with a fatal thrust, ending the fight instantly.",
+            'victim_msg': "{attacker_name}'s long sword finds your {hit_location} with a fatal thrust, ending the fight instantly.",
+            'observer_msg': "{attacker_name}'s long sword finds {target_name}'s {hit_location} with a fatal thrust, ending the fight instantly."
         },
         {
             'attacker_msg': "A devastating cut from the long sword, and {target_name} crumples, lifeblood staining the ground.",
@@ -472,9 +472,9 @@ MESSAGES = {
             'observer_msg': "With a final, precise strike, {attacker_name}'s long sword silences {target_name} forever."
         },
         {
-            'attacker_msg': "The gleaming blade of the long sword pierces {target_name}'s throat, a swift and brutal end.",
-            'victim_msg': "The gleaming blade of the long sword pierces your throat, a swift and brutal end.",
-            'observer_msg': "The gleaming blade of the long sword pierces {target_name}'s throat, a swift and brutal end."
+            'attacker_msg': "The gleaming blade of the long sword pierces {target_name}'s {hit_location}, a swift and brutal end.",
+            'victim_msg': "The gleaming blade of the long sword pierces your {hit_location}, a swift and brutal end.",
+            'observer_msg': "The gleaming blade of the long sword pierces {target_name}'s {hit_location}, a swift and brutal end."
         },
         {
             'attacker_msg': "Your powerful blow with the long sword leaves {target_name} mortally wounded, falling heavily.",
@@ -492,9 +492,9 @@ MESSAGES = {
             'observer_msg': "A clean decapitating strike from {attacker_name}'s long sword ends {target_name}'s life in a heartbeat."
         },
         {
-            'attacker_msg': "You drive the long sword deep into {target_name}'s chest, the outcome grimly certain.",
-            'victim_msg': "{attacker_name} drives the long sword deep into your chest, the outcome grimly certain.",
-            'observer_msg': "{attacker_name} drives the long sword deep into {target_name}'s chest, the outcome grimly certain."
+            'attacker_msg': "You drive the long sword deep into {target_name}'s {hit_location}, the outcome grimly certain.",
+            'victim_msg': "{attacker_name} drives the long sword deep into your {hit_location}, the outcome grimly certain.",
+            'observer_msg': "{attacker_name} drives the long sword deep into {target_name}'s {hit_location}, the outcome grimly certain."
         },
         {
             'attacker_msg': "The keen edge of the long sword opens a fatal wound, and {target_name} collapses, unmoving.",

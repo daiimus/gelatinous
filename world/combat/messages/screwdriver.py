@@ -6,7 +6,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} pulls a battered screwdriver from their pocket, spinning it once in their palm."
         },
         {
-            "attacker_msg": "You tap the screwdriver against your thigh, eyes locked on {target_name}.",
+            "attacker_msg": "You tap the screwdriver against your {hit_location}, eyes locked on {target_name}.",
             "victim_msg": "{attacker_name} taps the screwdriver against their thigh, eyes locked on you.",
             "observer_msg": "{attacker_name} taps the screwdriver against their thigh, eyes locked on {target_name}."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} balances the screwdriver on a fingertip, then lets it drop into their grip."
         },
         {
-            "attacker_msg": "You trace the tip along your forearm, leaving a thin red line.",
+            "attacker_msg": "You trace the tip along your {hit_location}, leaving a thin red line.",
             "victim_msg": "{attacker_name} traces the tip along their forearm, leaving a thin red line.",
             "observer_msg": "{attacker_name} traces the tip along their forearm, leaving a thin red line."
         },
@@ -141,7 +141,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} holds the screwdriver like a brush, ready to paint in red."
         },
         {
-            "attacker_msg": "You let the screwdriver rest on your tongue for a heartbeat before spitting it into your hand.",
+            "attacker_msg": "You let the screwdriver rest on your tongue for a heartbeat before spitting it into your {hit_location}.",
             "victim_msg": "{attacker_name} lets the screwdriver rest on their tongue for a heartbeat before spitting it into their hand.",
             "observer_msg": "{attacker_name} lets the screwdriver rest on their tongue for a heartbeat before spitting it into their hand."
         },
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            "attacker_msg": "You drive the screwdriver into {target_name}'s throat. Blood spurts in a fine, ugly arc.",
-            "victim_msg": "{attacker_name} drives the screwdriver into your throat. Blood spurts in a fine, ugly arc.",
-            "observer_msg": "{attacker_name} drives the screwdriver into {target_name}'s throat. Blood spurts in a fine, ugly arc."
+            "attacker_msg": "You drive the screwdriver into {target_name}'s {hit_location}. Blood spurts in a fine, ugly arc.",
+            "victim_msg": "{attacker_name} drives the screwdriver into your {hit_location}. Blood spurts in a fine, ugly arc.",
+            "observer_msg": "{attacker_name} drives the screwdriver into {target_name}'s {hit_location}. Blood spurts in a fine, ugly arc."
         },
         {
             "attacker_msg": "A quick stab opens {target_name}'s carotid. They drop, clutching at a wound that won't close.",
@@ -472,9 +472,9 @@ MESSAGES = {
             "observer_msg": "The tip slips between ribs and into the heart. {target_name} collapses, twitching."
         },
         {
-            "attacker_msg": "You carve a line across {target_name}'s neck. The blood is bright and fast.",
-            "victim_msg": "{attacker_name} carves a line across your neck. The blood is bright and fast.",
-            "observer_msg": "{attacker_name} carves a line across {target_name}'s neck. The blood is bright and fast."
+            "attacker_msg": "You carve a line across {target_name}'s {hit_location}. The blood is bright and fast.",
+            "victim_msg": "{attacker_name} carves a line across your {hit_location}. The blood is bright and fast.",
+            "observer_msg": "{attacker_name} carves a line across {target_name}'s {hit_location}. The blood is bright and fast."
         },
         {
             "attacker_msg": "A jab under the jaw sends the screwdriver into the brain. {target_name} goes limp instantly.",
@@ -517,9 +517,9 @@ MESSAGES = {
             "observer_msg": "The tip slips between vertebrae. {target_name} drops, boneless."
         },
         {
-            "attacker_msg": "You carve a smile across {target_name}'s face. The grin is permanent.",
-            "victim_msg": "{attacker_name} carves a smile across your face. The grin is permanent.",
-            "observer_msg": "{attacker_name} carves a smile across {target_name}'s face. The grin is permanent."
+            "attacker_msg": "You carve a smile across {target_name}'s {hit_location}. The grin is permanent.",
+            "victim_msg": "{attacker_name} carves a smile across your {hit_location}. The grin is permanent.",
+            "observer_msg": "{attacker_name} carves a smile across {target_name}'s {hit_location}. The grin is permanent."
         },
         {
             "attacker_msg": "A jab to the heart. {target_name} collapses, eyes wide and empty.",

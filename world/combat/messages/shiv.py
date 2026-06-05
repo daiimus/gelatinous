@@ -27,8 +27,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name} catches a glint in your sleeve too late. By the time their brain processes it, the distance is already closed.",
-            'victim_msg': "You catch a glint in {attacker_name}'s sleeve too late. By the time your brain processes it, the distance is already closed.",
-            'observer_msg': "{target_name} catches a glint in {attacker_name}'s sleeve too late. By the time {target_name}'s brain processes it, the distance is already closed."
+            'victim_msg': "You catch a glint in {attacker_name}'s sleeve too late. By the time your {hit_location} processes it, the distance is already closed.",
+            'observer_msg': "{target_name} catches a glint in {attacker_name}'s sleeve too late. By the time {target_name}'s {hit_location} processes it, the distance is already closed."
         },
         {
             'attacker_msg': "You peel back your sleeve like you're unwrapping something sacred. The shiv slips into view, and it doesn't glint—it glares.",
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "There's a pause, like the world is giving {target_name} one last chance to walk away. Then {attacker_name} breathes out, and the blade begins to move."
         },
         {
-            'attacker_msg': "You breathe in deep, the way some people pray. The shiv is already in your hand, and the moment is already lost.",
+            'attacker_msg': "You breathe in deep, the way some people pray. The shiv is already in your {hit_location}, and the moment is already lost.",
             'victim_msg': "{attacker_name} breathes in deep, the way some people pray. The shiv is already in their hand, and the moment is already lost.",
             'observer_msg': "{attacker_name} breathes in deep, the way some people pray. The shiv is already in their hand, and the moment is already lost."
         },
@@ -96,7 +96,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} pulls the shiv with fingers that tremble—not from fear, but anticipation. The room tightens around them like a drumskin. The blade doesn't hum—it waits. It knows it will be fed soon."
         },
         {
-            'attacker_msg': "You crack your neck and breathe out slow, as if violence is the only language you ever learned fluently. The shiv is your punctuation. In that flicker of steel, you can almost hear it whisper.",
+            'attacker_msg': "You crack your {hit_location} and breathe out slow, as if violence is the only language you ever learned fluently. The shiv is your punctuation. In that flicker of steel, you can almost hear it whisper.",
             'victim_msg': "{attacker_name} cracks their neck and breathes out slow, as if violence is the only language they ever learned fluently. The shiv is their punctuation. In that flicker of steel, you can almost hear it whisper.",
             'observer_msg': "{attacker_name} cracks their neck and breathes out slow, as if violence is the only language they ever learned fluently. The shiv is their punctuation. In that flicker of steel, you can almost hear it whisper."
         },
@@ -111,7 +111,7 @@ MESSAGES = {
             'observer_msg': "No theatrics. {attacker_name} just steps forward and opens the scene with a flick of steel. It's not a warning. It's a promise. The silence around them becomes dense, syrupy. The violence is implied."
         },
         {
-            'attacker_msg': "You tilt your head like you're listening to something distant. Then the shiv is in your hand, and the silence ends. You feel it, too—that crackle of static before something ruptures.",
+            'attacker_msg': "You tilt your {hit_location} like you're listening to something distant. Then the shiv is in your {hit_location}, and the silence ends. You feel it, too—that crackle of static before something ruptures.",
             'victim_msg': "{attacker_name} tilts their head like they're listening to something distant. Then the shiv is in their hand, and the silence ends. You feel it, too—that crackle of static before something ruptures.",
             'observer_msg': "{attacker_name} tilts their head like they're listening to something distant. Then the shiv is in their hand, and the silence ends. You feel it, too—that crackle of static before something ruptures."
         },
@@ -126,7 +126,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws the shiv like a memory they wish they could forget. The blade is crude, worn down to jagged metal. Their eyes say they don't plan to miss. Nothing about this is casual. The weight of the moment stains the air."
         },
         {
-            'attacker_msg': "You move slow, savoring the moment. The shiv glints like a broken promise in your grip, catching the light—and maybe {target_name}'s reflection. There's no tremble in your wrist. Just inevitability.",
+            'attacker_msg': "You move slow, savoring the moment. The shiv glints like a broken promise in your grip, catching the light—and maybe {target_name}'s reflection. There's no tremble in your {hit_location}. Just inevitability.",
             'victim_msg': "{attacker_name} moves slow, savoring the moment. The shiv glints like a broken promise in their grip, catching the light—and maybe your reflection. There's no tremble in their wrist. Just inevitability.",
             'observer_msg': "{attacker_name} moves slow, savoring the moment. The shiv glints like a broken promise in their grip, catching the light—and maybe {target_name}'s reflection. There's no tremble in their wrist. Just inevitability."
         },
@@ -218,9 +218,9 @@ MESSAGES = {
             'observer_msg': "The shiv finds the soft spot below {target_name}'s {hit_location} and whispers its way deeper. Their eyes flutter like they're trying to wake up from a dream they can't escape."
         },
         {
-            'attacker_msg': "You feel the resistance give way as the blade pierces {target_name}'s lung. Their breath becomes shallow, urgent—like they're trying to fill a bag with holes.",
-            'victim_msg': "You feel the resistance give way as the blade pierces your lung. Your breath becomes shallow, urgent—like you're trying to fill a bag with holes.",
-            'observer_msg': "You feel the resistance give way as the blade pierces {target_name}'s lung. Their breath becomes shallow, urgent—like they're trying to fill a bag with holes."
+            'attacker_msg': "You feel the resistance give way as the blade pierces {target_name}'s {hit_location}. Their breath becomes shallow, urgent—like they're trying to fill a bag with holes.",
+            'victim_msg': "You feel the resistance give way as the blade pierces your {hit_location}. Your breath becomes shallow, urgent—like you're trying to fill a bag with holes.",
+            'observer_msg': "You feel the resistance give way as the blade pierces {target_name}'s {hit_location}. Their breath becomes shallow, urgent—like they're trying to fill a bag with holes."
         },
         {
             'attacker_msg': "The thrust is intimate, almost tender. You guide the shiv between {target_name}'s {hit_location} like you're tucking them into bed. Forever.",
@@ -338,9 +338,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} guides the blade between {target_name}'s {hit_location} with the precision of someone threading a needle in dim light. {target_name} exhales once, long and slow, like they're letting go of something heavy they've been carrying for years."
         },
         {
-            'attacker_msg': "The tip finds {target_name}'s lung with surgical precision, and their breath becomes a wheeze, then a whisper, then nothing at all. You hold the hilt steady as their life drains away around the edges.",
-            'victim_msg': "The tip finds your lung with surgical precision, and your breath becomes a wheeze, then a whisper, then nothing at all. {attacker_name} holds the hilt steady as your life drains away around the edges.",
-            'observer_msg': "The tip finds {target_name}'s lung with surgical precision, and their breath becomes a wheeze, then a whisper, then nothing at all. {attacker_name} holds the hilt steady as {target_name}'s life drains away around the edges."
+            'attacker_msg': "The tip finds {target_name}'s {hit_location} with surgical precision, and their breath becomes a wheeze, then a whisper, then nothing at all. You hold the hilt steady as their life drains away around the edges.",
+            'victim_msg': "The tip finds your {hit_location} with surgical precision, and your breath becomes a wheeze, then a whisper, then nothing at all. {attacker_name} holds the hilt steady as your life drains away around the edges.",
+            'observer_msg': "The tip finds {target_name}'s {hit_location} with surgical precision, and their breath becomes a wheeze, then a whisper, then nothing at all. {attacker_name} holds the hilt steady as {target_name}'s life drains away around the edges."
         },
         {
             'attacker_msg': "You slide the shiv up under {target_name}'s {hit_location} with the tenderness of someone tucking a child into bed. They look at you with eyes that are already somewhere else, and their lips move around a word they can't quite form.",
@@ -365,9 +365,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s thrust slides past {target_name} like smoke through fingers. The shiv tastes only air, hungry and unsatisfied."
         },
         {
-            'attacker_msg': "The blade whispers past {target_name}'s ribs, close enough to count their heartbeats. Next time, you think. Next time.",
-            'victim_msg': "The blade whispers past your ribs, close enough to count your heartbeats. Next time, you think {attacker_name} thinks. Next time.",
-            'observer_msg': "The blade whispers past {target_name}'s ribs, close enough to count their heartbeats. Next time, {attacker_name} seems to think. Next time."
+            'attacker_msg': "The blade whispers past {target_name}'s {hit_location}, close enough to count their heartbeats. Next time, you think. Next time.",
+            'victim_msg': "The blade whispers past your {hit_location}, close enough to count your heartbeats. Next time, you think {attacker_name} thinks. Next time.",
+            'observer_msg': "The blade whispers past {target_name}'s {hit_location}, close enough to count their heartbeats. Next time, {attacker_name} seems to think. Next time."
         },
         {
             'attacker_msg': "{target_name} twists away at the last second, and your shiv cuts only shadow. The moment hangs in the air like smoke.",
@@ -425,9 +425,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slices through the space {target_name} occupied a moment ago. The shiv trembles in {attacker_name}'s grip, frustrated by the absence of contact."
         },
         {
-            'attacker_msg': "The blade whispers past {target_name}'s throat, close enough to fog with their breath. Almost. Almost is the cruelest word.",
-            'victim_msg': "The blade whispers past your throat, close enough to fog with your breath. Almost. Almost is the cruelest word.",
-            'observer_msg': "The blade whispers past {target_name}'s throat, close enough to fog with their breath. Almost. Almost is the cruelest word."
+            'attacker_msg': "The blade whispers past {target_name}'s {hit_location}, close enough to fog with their breath. Almost. Almost is the cruelest word.",
+            'victim_msg': "The blade whispers past your {hit_location}, close enough to fog with your breath. Almost. Almost is the cruelest word.",
+            'observer_msg': "The blade whispers past {target_name}'s {hit_location}, close enough to fog with their breath. Almost. Almost is the cruelest word."
         },
         {
             'attacker_msg': "{target_name} flows around your strike like water around a rock. The shiv finds only empty space and the echo of possibility.",
@@ -490,9 +490,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s thrust goes wide, and the shiv parts air that tastes of missed opportunities. {target_name} is already three steps ahead of {attacker_name}'s intentions."
         },
         {
-            'attacker_msg': "The blade whispers past {target_name}'s ribs, close enough to steal warmth from their skin. Your jaw tightens—proximity is not contact.",
-            'victim_msg': "The blade whispers past your ribs, close enough to steal warmth from your skin. {attacker_name}'s jaw tightens—proximity is not contact.",
-            'observer_msg': "The blade whispers past {target_name}'s ribs, close enough to steal warmth from their skin. {attacker_name}'s jaw tightens—proximity is not contact."
+            'attacker_msg': "The blade whispers past {target_name}'s {hit_location}, close enough to steal warmth from their skin. Your {hit_location} tightens—proximity is not contact.",
+            'victim_msg': "The blade whispers past your {hit_location}, close enough to steal warmth from your skin. {attacker_name}'s jaw tightens—proximity is not contact.",
+            'observer_msg': "The blade whispers past {target_name}'s {hit_location}, close enough to steal warmth from their skin. {attacker_name}'s jaw tightens—proximity is not contact."
         },
         {
             'attacker_msg': "{target_name} weaves through your strike like smoke through a screen door. The shiv finds only empty space and the echo of what might have been violence.",
@@ -587,14 +587,14 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "The shiv finds {target_name}'s heart with the precision of a key finding its lock. They exhale once, long and slow, and the light goes out of their eyes like candles in a sudden wind.",
-            'victim_msg': "The shiv finds your heart with the precision of a key finding its lock. You exhale once, long and slow, and the light goes out of your eyes like candles in a sudden wind.",
-            'observer_msg': "The shiv finds {target_name}'s heart with the precision of a key finding its lock. {target_name} exhales once, long and slow, and the light goes out of their eyes like candles in a sudden wind."
+            'attacker_msg': "The shiv finds {target_name}'s {hit_location} with the precision of a key finding its lock. They exhale once, long and slow, and the light goes out of their eyes like candles in a sudden wind.",
+            'victim_msg': "The shiv finds your {hit_location} with the precision of a key finding its lock. You exhale once, long and slow, and the light goes out of your eyes like candles in a sudden wind.",
+            'observer_msg': "The shiv finds {target_name}'s {hit_location} with the precision of a key finding its lock. {target_name} exhales once, long and slow, and the light goes out of their eyes like candles in a sudden wind."
         },
         {
-            'attacker_msg': "You slide the blade up under {target_name}'s ribs with surgical precision. They look at you with eyes that are already somewhere else, and then they aren't looking at anything at all.",
-            'victim_msg': "{attacker_name} slides the blade up under your ribs with surgical precision. You look at them with eyes that are already somewhere else, and then you aren't looking at anything at all.",
-            'observer_msg': "{attacker_name} slides the blade up under {target_name}'s ribs with surgical precision. {target_name} looks at them with eyes that are already somewhere else, and then they aren't looking at anything at all."
+            'attacker_msg': "You slide the blade up under {target_name}'s {hit_location} with surgical precision. They look at you with eyes that are already somewhere else, and then they aren't looking at anything at all.",
+            'victim_msg': "{attacker_name} slides the blade up under your {hit_location} with surgical precision. You look at them with eyes that are already somewhere else, and then you aren't looking at anything at all.",
+            'observer_msg': "{attacker_name} slides the blade up under {target_name}'s {hit_location} with surgical precision. {target_name} looks at them with eyes that are already somewhere else, and then they aren't looking at anything at all."
         },
         {
             'attacker_msg': "The shiv parts {target_name}'s flesh like water, finding the space between heartbeats and staying there. They crumple like paper in rain, all structure suddenly gone.",
@@ -607,9 +607,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} feels {target_name}'s life leak out around the blade like secrets through cracked lips. {target_name}'s knees buckle, and they fold into the shape of surrender."
         },
         {
-            'attacker_msg': "The blade finds {target_name}'s lung with intimate precision. Their breath becomes a wheeze, then a whisper, then nothing. They collapse like a building whose foundation has been cut away.",
-            'victim_msg': "The blade finds your lung with intimate precision. Your breath becomes a wheeze, then a whisper, then nothing. You collapse like a building whose foundation has been cut away.",
-            'observer_msg': "The blade finds {target_name}'s lung with intimate precision. Their breath becomes a wheeze, then a whisper, then nothing. {target_name} collapses like a building whose foundation has been cut away."
+            'attacker_msg': "The blade finds {target_name}'s {hit_location} with intimate precision. Their breath becomes a wheeze, then a whisper, then nothing. They collapse like a building whose foundation has been cut away.",
+            'victim_msg': "The blade finds your {hit_location} with intimate precision. Your breath becomes a wheeze, then a whisper, then nothing. You collapse like a building whose foundation has been cut away.",
+            'observer_msg': "The blade finds {target_name}'s {hit_location} with intimate precision. Their breath becomes a wheeze, then a whisper, then nothing. {target_name} collapses like a building whose foundation has been cut away."
         },
         {
             'attacker_msg': "You twist the shiv like you're turning off a tap, and {target_name}'s life spills out around your fingers. They look at you with fading eyes that still hold questions they'll never get to ask.",
@@ -617,9 +617,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} twists the shiv like they're turning off a tap, and {target_name}'s life spills out around their fingers. {target_name} looks at them with fading eyes that still hold questions they'll never get to ask."
         },
         {
-            'attacker_msg': "The shiv slides between {target_name}'s ribs like a lover's promise. They exhale once, sharp and surprised, and then the sound fades like an echo in an empty room.",
-            'victim_msg': "The shiv slides between your ribs like a lover's promise. You exhale once, sharp and surprised, and then the sound fades like an echo in an empty room.",
-            'observer_msg': "The shiv slides between {target_name}'s ribs like a lover's promise. {target_name} exhales once, sharp and surprised, and then the sound fades like an echo in an empty room."
+            'attacker_msg': "The shiv slides between {target_name}'s {hit_location} like a lover's promise. They exhale once, sharp and surprised, and then the sound fades like an echo in an empty room.",
+            'victim_msg': "The shiv slides between your {hit_location} like a lover's promise. You exhale once, sharp and surprised, and then the sound fades like an echo in an empty room.",
+            'observer_msg': "The shiv slides between {target_name}'s {hit_location} like a lover's promise. {target_name} exhales once, sharp and surprised, and then the sound fades like an echo in an empty room."
         },
         {
             'attacker_msg': "You feel {target_name}'s heartbeat through the steel, rapid and urgent, then slower, then gone. They sink to the ground like they're genuflecting before death itself.",
@@ -627,9 +627,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} feels {target_name}'s heartbeat through the steel, rapid and urgent, then slower, then gone. {target_name} sinks to the ground like they're genuflecting before death itself."
         },
         {
-            'attacker_msg': "The blade finds the soft space below {target_name}'s sternum and whispers its way to their heart. They look down at the growing red stain with the detached curiosity of someone reading their own obituary.",
-            'victim_msg': "The blade finds the soft space below your sternum and whispers its way to your heart. You look down at the growing red stain with the detached curiosity of someone reading their own obituary.",
-            'observer_msg': "The blade finds the soft space below {target_name}'s sternum and whispers its way to their heart. {target_name} looks down at the growing red stain with the detached curiosity of someone reading their own obituary."
+            'attacker_msg': "The blade finds the soft space below {target_name}'s {hit_location} and whispers its way to their heart. They look down at the growing red stain with the detached curiosity of someone reading their own obituary.",
+            'victim_msg': "The blade finds the soft space below your {hit_location} and whispers its way to your {hit_location}. You look down at the growing red stain with the detached curiosity of someone reading their own obituary.",
+            'observer_msg': "The blade finds the soft space below {target_name}'s {hit_location} and whispers its way to their heart. {target_name} looks down at the growing red stain with the detached curiosity of someone reading their own obituary."
         },
         {
             'attacker_msg': "You slide the shiv home with the tenderness of someone tucking a child into bed. {target_name}'s eyes flutter once, twice, then go still as pond water on windless day.",
@@ -637,9 +637,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slides the shiv home with the tenderness of someone tucking a child into bed. {target_name}'s eyes flutter once, twice, then go still as pond water on windless day."
         },
         {
-            'attacker_msg': "The shiv parts {target_name}'s ribs like curtains, and behind them you find the darkness they've been hiding. They collapse into it gratefully, like coming home.",
-            'victim_msg': "The shiv parts your ribs like curtains, and behind them {attacker_name} finds the darkness you've been hiding. You collapse into it gratefully, like coming home.",
-            'observer_msg': "The shiv parts {target_name}'s ribs like curtains, and behind them {attacker_name} finds the darkness they've been hiding. {target_name} collapses into it gratefully, like coming home."
+            'attacker_msg': "The shiv parts {target_name}'s {hit_location} like curtains, and behind them you find the darkness they've been hiding. They collapse into it gratefully, like coming home.",
+            'victim_msg': "The shiv parts your {hit_location} like curtains, and behind them {attacker_name} finds the darkness you've been hiding. You collapse into it gratefully, like coming home.",
+            'observer_msg': "The shiv parts {target_name}'s {hit_location} like curtains, and behind them {attacker_name} finds the darkness they've been hiding. {target_name} collapses into it gratefully, like coming home."
         },
         {
             'attacker_msg': "You twist the blade with surgical precision, and {target_name}'s life unravels like a sweater with a pulled thread. They fold to the ground as if gravity has finally remembered them.",
@@ -647,19 +647,19 @@ MESSAGES = {
             'observer_msg': "{attacker_name} twists the blade with surgical precision, and {target_name}'s life unravels like a sweater with a pulled thread. {target_name} folds to the ground as if gravity has finally remembered them."
         },
         {
-            'attacker_msg': "The shiv finds {target_name}'s heart with the inevitability of water finding the sea. They breathe out once, long and slow, and the sound carries everything they'll never say again.",
-            'victim_msg': "The shiv finds your heart with the inevitability of water finding the sea. You breathe out once, long and slow, and the sound carries everything you'll never say again.",
-            'observer_msg': "The shiv finds {target_name}'s heart with the inevitability of water finding the sea. {target_name} breathes out once, long and slow, and the sound carries everything they'll never say again."
+            'attacker_msg': "The shiv finds {target_name}'s {hit_location} with the inevitability of water finding the sea. They breathe out once, long and slow, and the sound carries everything they'll never say again.",
+            'victim_msg': "The shiv finds your {hit_location} with the inevitability of water finding the sea. You breathe out once, long and slow, and the sound carries everything you'll never say again.",
+            'observer_msg': "The shiv finds {target_name}'s {hit_location} with the inevitability of water finding the sea. {target_name} breathes out once, long and slow, and the sound carries everything they'll never say again."
         },
         {
-            'attacker_msg': "You feel the resistance give way as the blade punctures {target_name}'s lung. They gasp like fish on dry land, and then the gasping stops, and the silence is complete.",
-            'victim_msg': "You feel the resistance give way as the blade punctures your lung. You gasp like fish on dry land, and then the gasping stops, and the silence is complete.",
-            'observer_msg': "The resistance gives way as the blade punctures {target_name}'s lung. {target_name} gasps like fish on dry land, and then the gasping stops, and the silence is complete."
+            'attacker_msg': "You feel the resistance give way as the blade punctures {target_name}'s {hit_location}. They gasp like fish on dry land, and then the gasping stops, and the silence is complete.",
+            'victim_msg': "You feel the resistance give way as the blade punctures your {hit_location}. You gasp like fish on dry land, and then the gasping stops, and the silence is complete.",
+            'observer_msg': "The resistance gives way as the blade punctures {target_name}'s {hit_location}. {target_name} gasps like fish on dry land, and then the gasping stops, and the silence is complete."
         },
         {
-            'attacker_msg': "The shiv disappears into {target_name}'s chest with a sound like tearing silk. They look at you with eyes that are already going somewhere else, and then they arrive.",
-            'victim_msg': "The shiv disappears into your chest with a sound like tearing silk. You look at {attacker_name} with eyes that are already going somewhere else, and then you arrive.",
-            'observer_msg': "The shiv disappears into {target_name}'s chest with a sound like tearing silk. {target_name} looks at {attacker_name} with eyes that are already going somewhere else, and then they arrive."
+            'attacker_msg': "The shiv disappears into {target_name}'s {hit_location} with a sound like tearing silk. They look at you with eyes that are already going somewhere else, and then they arrive.",
+            'victim_msg': "The shiv disappears into your {hit_location} with a sound like tearing silk. You look at {attacker_name} with eyes that are already going somewhere else, and then you arrive.",
+            'observer_msg': "The shiv disappears into {target_name}'s {hit_location} with a sound like tearing silk. {target_name} looks at {attacker_name} with eyes that are already going somewhere else, and then they arrive."
         },
         {
             'attacker_msg': "You guide the blade between {target_name}'s fourth and fifth ribs like threading a needle in dim light. They exhale in syllables that spell surrender, and then there are no more words.",
@@ -672,9 +672,9 @@ MESSAGES = {
             'observer_msg': "The shiv finds the space between {target_name}'s heartbeats and stays there. {target_name} crumples like origami in rain, all their careful folds coming undone at once."
         },
         {
-            'attacker_msg': "You slide the blade up under {target_name}'s sternum with the precision of someone unlocking a door. They look at you with eyes that say they understand the joke, and then the laughter dies in their throat.",
-            'victim_msg': "{attacker_name} slides the blade up under your sternum with the precision of someone unlocking a door. You look at them with eyes that say you understand the joke, and then the laughter dies in your throat.",
-            'observer_msg': "{attacker_name} slides the blade up under {target_name}'s sternum with the precision of someone unlocking a door. {target_name} looks at them with eyes that say they understand the joke, and then the laughter dies in their throat."
+            'attacker_msg': "You slide the blade up under {target_name}'s {hit_location} with the precision of someone unlocking a door. They look at you with eyes that say they understand the joke, and then the laughter dies in their throat.",
+            'victim_msg': "{attacker_name} slides the blade up under your {hit_location} with the precision of someone unlocking a door. You look at them with eyes that say you understand the joke, and then the laughter dies in your {hit_location}.",
+            'observer_msg': "{attacker_name} slides the blade up under {target_name}'s {hit_location} with the precision of someone unlocking a door. {target_name} looks at them with eyes that say they understand the joke, and then the laughter dies in their throat."
         },
         {
             'attacker_msg': "The shiv parts {target_name}'s flesh like water, and behind it you find the silence they've been carrying. They sink into it like stones into a still pond.",
@@ -687,9 +687,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} feels {target_name}'s pulse through the hilt, rapid and frightened, then slower, then gone entirely. {target_name} folds to the ground as if they're genuflecting before something vast and dark."
         },
         {
-            'attacker_msg': "The blade finds {target_name}'s lung with surgical precision. Their breath becomes shallow, urgent, then stops entirely, like a song that's forgotten its next note.",
-            'victim_msg': "The blade finds your lung with surgical precision. Your breath becomes shallow, urgent, then stops entirely, like a song that's forgotten its next note.",
-            'observer_msg': "The blade finds {target_name}'s lung with surgical precision. Their breath becomes shallow, urgent, then stops entirely, like a song that's forgotten its next note."
+            'attacker_msg': "The blade finds {target_name}'s {hit_location} with surgical precision. Their breath becomes shallow, urgent, then stops entirely, like a song that's forgotten its next note.",
+            'victim_msg': "The blade finds your {hit_location} with surgical precision. Your breath becomes shallow, urgent, then stops entirely, like a song that's forgotten its next note.",
+            'observer_msg': "The blade finds {target_name}'s {hit_location} with surgical precision. Their breath becomes shallow, urgent, then stops entirely, like a song that's forgotten its next note."
         },
         {
             'attacker_msg': "You twist the shiv with the patience of someone solving a puzzle, and {target_name}'s life comes apart in your hands. They look at you with eyes that are already cataloguing their regrets.",
@@ -697,19 +697,19 @@ MESSAGES = {
             'observer_msg': "{attacker_name} twists the shiv with the patience of someone solving a puzzle, and {target_name}'s life comes apart in their hands. {target_name} looks at them with eyes that are already cataloguing their regrets."
         },
         {
-            'attacker_msg': "The shiv slides between {target_name}'s ribs like it belongs there, finding home in the spaces between certainties. They exhale everything they'll never say again.",
-            'victim_msg': "The shiv slides between your ribs like it belongs there, finding home in the spaces between certainties. You exhale everything you'll never say again.",
-            'observer_msg': "The shiv slides between {target_name}'s ribs like it belongs there, finding home in the spaces between certainties. {target_name} exhales everything they'll never say again."
+            'attacker_msg': "The shiv slides between {target_name}'s {hit_location} like it belongs there, finding home in the spaces between certainties. They exhale everything they'll never say again.",
+            'victim_msg': "The shiv slides between your {hit_location} like it belongs there, finding home in the spaces between certainties. You exhale everything you'll never say again.",
+            'observer_msg': "The shiv slides between {target_name}'s {hit_location} like it belongs there, finding home in the spaces between certainties. {target_name} exhales everything they'll never say again."
         },
         {
-            'attacker_msg': "You guide the blade to {target_name}'s heart with the tenderness of someone delivering a letter. They read it with their eyes, and understanding arrives just before the darkness.",
-            'victim_msg': "{attacker_name} guides the blade to your heart with the tenderness of someone delivering a letter. You read it with your eyes, and understanding arrives just before the darkness.",
-            'observer_msg': "{attacker_name} guides the blade to {target_name}'s heart with the tenderness of someone delivering a letter. {target_name} reads it with their eyes, and understanding arrives just before the darkness."
+            'attacker_msg': "You guide the blade to {target_name}'s {hit_location} with the tenderness of someone delivering a letter. They read it with their eyes, and understanding arrives just before the darkness.",
+            'victim_msg': "{attacker_name} guides the blade to your {hit_location} with the tenderness of someone delivering a letter. You read it with your eyes, and understanding arrives just before the darkness.",
+            'observer_msg': "{attacker_name} guides the blade to {target_name}'s {hit_location} with the tenderness of someone delivering a letter. {target_name} reads it with their eyes, and understanding arrives just before the darkness."
         },
         {
-            'attacker_msg': "The shiv finds the soft space below {target_name}'s ribs and whispers its way deeper. They collapse like a marionette whose strings have been cut all at once.",
-            'victim_msg': "The shiv finds the soft space below your ribs and whispers its way deeper. You collapse like a marionette whose strings have been cut all at once.",
-            'observer_msg': "The shiv finds the soft space below {target_name}'s ribs and whispers its way deeper. {target_name} collapses like a marionette whose strings have been cut all at once."
+            'attacker_msg': "The shiv finds the soft space below {target_name}'s {hit_location} and whispers its way deeper. They collapse like a marionette whose strings have been cut all at once.",
+            'victim_msg': "The shiv finds the soft space below your {hit_location} and whispers its way deeper. You collapse like a marionette whose strings have been cut all at once.",
+            'observer_msg': "The shiv finds the soft space below {target_name}'s {hit_location} and whispers its way deeper. {target_name} collapses like a marionette whose strings have been cut all at once."
         },
         {
             'attacker_msg': "You feel {target_name}'s heartbeat through the steel, desperate and rapid, then slower, then quiet as snow falling on abandoned streets. They sink to their knees like they're praying to gravity.",
@@ -727,9 +727,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slides the shiv up under {target_name}'s ribcage like picking a lock to a door they've opened before. {target_name} exhales in broken syllables that spell regret, and then there's nothing left to spell."
         },
         {
-            'attacker_msg': "The shiv finds {target_name}'s heart with the inevitability of water finding cracks in concrete. They crumple like paper in rain, all their careful structure dissolving at once.",
-            'victim_msg': "The shiv finds your heart with the inevitability of water finding cracks in concrete. You crumple like paper in rain, all your careful structure dissolving at once.",
-            'observer_msg': "The shiv finds {target_name}'s heart with the inevitability of water finding cracks in concrete. {target_name} crumples like paper in rain, all their careful structure dissolving at once."
+            'attacker_msg': "The shiv finds {target_name}'s {hit_location} with the inevitability of water finding cracks in concrete. They crumple like paper in rain, all their careful structure dissolving at once.",
+            'victim_msg': "The shiv finds your {hit_location} with the inevitability of water finding cracks in concrete. You crumple like paper in rain, all your careful structure dissolving at once.",
+            'observer_msg': "The shiv finds {target_name}'s {hit_location} with the inevitability of water finding cracks in concrete. {target_name} crumples like paper in rain, all their careful structure dissolving at once."
         },
         {
             'attacker_msg': "You twist the blade with surgical precision, and {target_name}'s life unravels like thread pulled from cloth. They look at you with eyes that are already reading the punchline to a joke they don't want to understand.",
@@ -737,9 +737,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} twists the blade with surgical precision, and {target_name}'s life unravels like thread pulled from cloth. {target_name} looks at them with eyes that are already reading the punchline to a joke they don't want to understand."
         },
         {
-            'attacker_msg': "The shiv parts {target_name}'s ribs like curtains being drawn back, and behind them you find the darkness they've been hiding from. They step into it like coming home after a long, hard day.",
-            'victim_msg': "The shiv parts your ribs like curtains being drawn back, and behind them {attacker_name} finds the darkness you've been hiding from. You step into it like coming home after a long, hard day.",
-            'observer_msg': "The shiv parts {target_name}'s ribs like curtains being drawn back, and behind them {attacker_name} finds the darkness they've been hiding from. {target_name} steps into it like coming home after a long, hard day."
+            'attacker_msg': "The shiv parts {target_name}'s {hit_location} like curtains being drawn back, and behind them you find the darkness they've been hiding from. They step into it like coming home after a long, hard day.",
+            'victim_msg': "The shiv parts your {hit_location} like curtains being drawn back, and behind them {attacker_name} finds the darkness you've been hiding from. You step into it like coming home after a long, hard day.",
+            'observer_msg': "The shiv parts {target_name}'s {hit_location} like curtains being drawn back, and behind them {attacker_name} finds the darkness they've been hiding from. {target_name} steps into it like coming home after a long, hard day."
         },
         {
             'attacker_msg': "You feel {target_name}'s pulse through the hilt, rapid and frightened, then slower, then gone like echoes in an empty cathedral. They collapse as if they're genuflecting before something too vast to comprehend.",
@@ -757,9 +757,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slides the shiv home with the precision of someone threading a needle in perfect darkness. {target_name} looks at them with eyes that are already somewhere else, somewhere quiet and far away from the sound of breaking."
         },
         {
-            'attacker_msg': "The shiv finds {target_name}'s lung with intimate precision. Their breath becomes shallow, urgent, then stops entirely, like a song that's forgotten how to continue. They fold to the ground as if gravity has finally won an argument they've been having their entire life.",
-            'victim_msg': "The shiv finds your lung with intimate precision. Your breath becomes shallow, urgent, then stops entirely, like a song that's forgotten how to continue. You fold to the ground as if gravity has finally won an argument you've been having your entire life.",
-            'observer_msg': "The shiv finds {target_name}'s lung with intimate precision. Their breath becomes shallow, urgent, then stops entirely, like a song that's forgotten how to continue. {target_name} folds to the ground as if gravity has finally won an argument they've been having their entire life."
+            'attacker_msg': "The shiv finds {target_name}'s {hit_location} with intimate precision. Their breath becomes shallow, urgent, then stops entirely, like a song that's forgotten how to continue. They fold to the ground as if gravity has finally won an argument they've been having their entire life.",
+            'victim_msg': "The shiv finds your {hit_location} with intimate precision. Your breath becomes shallow, urgent, then stops entirely, like a song that's forgotten how to continue. You fold to the ground as if gravity has finally won an argument you've been having your entire life.",
+            'observer_msg': "The shiv finds {target_name}'s {hit_location} with intimate precision. Their breath becomes shallow, urgent, then stops entirely, like a song that's forgotten how to continue. {target_name} folds to the ground as if gravity has finally won an argument they've been having their entire life."
         },
         {
             'attacker_msg': "You twist the blade like turning a page in a book you've read before, and {target_name}'s story comes to its inevitable conclusion. They look at you with eyes that hold all their unfinished sentences, and then the sentences dissolve into silence.",
@@ -767,9 +767,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} twists the blade like turning a page in a book they've read before, and {target_name}'s story comes to its inevitable conclusion. {target_name} looks at them with eyes that hold all their unfinished sentences, and then the sentences dissolve into silence."
         },
         {
-            'attacker_msg': "The shiv disappears into {target_name}'s chest with a sound like silk tearing in slow motion. They exhale everything they are and everything they might have been, and then there's nothing left to exhale.",
-            'victim_msg': "The shiv disappears into your chest with a sound like silk tearing in slow motion. You exhale everything you are and everything you might have been, and then there's nothing left to exhale.",
-            'observer_msg': "The shiv disappears into {target_name}'s chest with a sound like silk tearing in slow motion. {target_name} exhales everything they are and everything they might have been, and then there's nothing left to exhale."
+            'attacker_msg': "The shiv disappears into {target_name}'s {hit_location} with a sound like silk tearing in slow motion. They exhale everything they are and everything they might have been, and then there's nothing left to exhale.",
+            'victim_msg': "The shiv disappears into your {hit_location} with a sound like silk tearing in slow motion. You exhale everything you are and everything you might have been, and then there's nothing left to exhale.",
+            'observer_msg': "The shiv disappears into {target_name}'s {hit_location} with a sound like silk tearing in slow motion. {target_name} exhales everything they are and everything they might have been, and then there's nothing left to exhale."
         },
         {
             'attacker_msg': "You feel {target_name}'s heartbeat through the steel, desperate and rapid, then slower, then quiet as prayer in an empty church. They sink to their knees like they're finally surrendering to something they can't name.",

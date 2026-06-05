@@ -22,7 +22,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} scrapes the rebar across the ground, raising sparks and a warning."
         },
         {
-            'attacker_msg': "You twirl the rebar once and rest it against your shoulder, steel humming with promise.",
+            'attacker_msg': "You twirl the rebar once and rest it against your {hit_location}, steel humming with promise.",
             'victim_msg': "{attacker_name} twirls the rebar once and rests it against their shoulder, steel humming with promise.",
             'observer_msg': "{attacker_name} twirls the rebar once and rests it against their shoulder, steel humming with promise."
         },
@@ -42,7 +42,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} gives the rebar a lazy spin before cracking it against their palm with a dull, heavy sound."
         },
         {
-            'attacker_msg': "You roll your neck, then raise the rebar like you're about to knock on death's front door.",
+            'attacker_msg': "You roll your {hit_location}, then raise the rebar like you're about to knock on death's front door.",
             'victim_msg': "{attacker_name} rolls their neck, then raises the rebar like they're about to knock on death's front door.",
             'observer_msg': "{attacker_name} rolls their neck, then raises the rebar like they're about to knock on death's front door."
         },
@@ -127,7 +127,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} twitches the bar slightly—enough to make anyone watching tense."
         },
         {
-            'attacker_msg': "You tap the bar against your shoulder. A casual threat. A promise.",
+            'attacker_msg': "You tap the bar against your {hit_location}. A casual threat. A promise.",
             'victim_msg': "{attacker_name} taps the bar against their shoulder. A casual threat. A promise.",
             'observer_msg': "{attacker_name} taps the bar against their shoulder. A casual threat. A promise."
         },
@@ -189,9 +189,9 @@ MESSAGES = {
             'observer_msg': "The bar whistles before striking {target_name}'s {hit_location}. They buckle like steel under pressure."
         },
         {
-            'attacker_msg': "You bring the bar down hard. It bounces off {target_name}'s skull with a sickening thunk.",
-            'victim_msg': "{attacker_name} brings the bar down hard. It bounces off your skull with a sickening thunk.",
-            'observer_msg': "{attacker_name} brings the bar down hard. It bounces off {target_name}'s skull with a sickening thunk."
+            'attacker_msg': "You bring the bar down hard. It bounces off {target_name}'s {hit_location} with a sickening thunk.",
+            'victim_msg': "{attacker_name} brings the bar down hard. It bounces off your {hit_location} with a sickening thunk.",
+            'observer_msg': "{attacker_name} brings the bar down hard. It bounces off {target_name}'s {hit_location} with a sickening thunk."
         },
         {
             'attacker_msg': "Steel meets {hit_location}. {target_name} drops instantly, breath escaping like steam from a pipe.",
@@ -366,9 +366,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} jabs, but {target_name} shifts just enough to make it hurt less."
         },
         {
-            'attacker_msg': "The hook end of the bar misses {target_name}'s temple by a breath.",
-            'victim_msg': "The hook end of the bar misses your temple by a breath.",
-            'observer_msg': "The hook end of the bar misses {target_name}'s temple by a breath."
+            'attacker_msg': "The hook end of the bar misses {target_name}'s {hit_location} by a breath.",
+            'victim_msg': "The hook end of the bar misses your {hit_location} by a breath.",
+            'observer_msg': "The hook end of the bar misses {target_name}'s {hit_location} by a breath."
         },
         {
             'attacker_msg': "You pivot too late. The bar cuts through silence only.",
@@ -421,7 +421,7 @@ MESSAGES = {
             'observer_msg': "The rebar glances off a support beam. No damage. Just warning."
         },
         {
-            'attacker_msg': "Your strike clips a brick wall. The jolt runs up your arm.",
+            'attacker_msg': "Your strike clips a brick wall. The jolt runs up your {hit_location}.",
             'victim_msg': "{attacker_name}'s strike clips a brick wall. The jolt runs up their arm.",
             'observer_msg': "{attacker_name}'s strike clips a brick wall. The jolt runs up their arm."
         },
@@ -463,9 +463,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "You bring the rebar down on {target_name}'s skull. The sound is final.",
-            'victim_msg': "{attacker_name} brings the rebar down on your skull. The sound is final.",
-            'observer_msg': "{attacker_name} brings the rebar down on {target_name}'s skull. The sound is final."
+            'attacker_msg': "You bring the rebar down on {target_name}'s {hit_location}. The sound is final.",
+            'victim_msg': "{attacker_name} brings the rebar down on your {hit_location}. The sound is final.",
+            'observer_msg': "{attacker_name} brings the rebar down on {target_name}'s {hit_location}. The sound is final."
         },
         {
             'attacker_msg': "Steel meets temple. {target_name} drops like a sack of wet cement.",
@@ -473,9 +473,9 @@ MESSAGES = {
             'observer_msg': "Steel meets temple. {target_name} drops like a sack of wet cement."
         },
         {
-            'attacker_msg': "A wide swing crashes into {target_name}'s chest. They crumple, mouth frozen in shock.",
-            'victim_msg': "A wide swing crashes into your chest. You crumple, mouth frozen in shock.",
-            'observer_msg': "A wide swing crashes into {target_name}'s chest. They crumple, mouth frozen in shock."
+            'attacker_msg': "A wide swing crashes into {target_name}'s {hit_location}. They crumple, mouth frozen in shock.",
+            'victim_msg': "A wide swing crashes into your {hit_location}. You crumple, mouth frozen in shock.",
+            'observer_msg': "A wide swing crashes into {target_name}'s {hit_location}. They crumple, mouth frozen in shock."
         },
         {
             'attacker_msg': "The bar punctures ribs and keeps going. {target_name} doesn't scream—they seize, then stop.",
@@ -488,14 +488,14 @@ MESSAGES = {
             'observer_msg': "A thrust to the throat caves in everything. {target_name} drops with a ragged wheeze."
         },
         {
-            'attacker_msg': "You hook the bar behind {target_name}'s neck and yank—hard enough to end it.",
-            'victim_msg': "{attacker_name} hooks the bar behind your neck and yanks—hard enough to end it.",
-            'observer_msg': "{attacker_name} hooks the bar behind {target_name}'s neck and yanks—hard enough to end it."
+            'attacker_msg': "You hook the bar behind {target_name}'s {hit_location} and yank—hard enough to end it.",
+            'victim_msg': "{attacker_name} hooks the bar behind your {hit_location} and yanks—hard enough to end it.",
+            'observer_msg': "{attacker_name} hooks the bar behind {target_name}'s {hit_location} and yanks—hard enough to end it."
         },
         {
-            'attacker_msg': "The bar caves in {target_name}'s chest like a kicked door. They fold.",
-            'victim_msg': "The bar caves in your chest like a kicked door. You fold.",
-            'observer_msg': "The bar caves in {target_name}'s chest like a kicked door. They fold."
+            'attacker_msg': "The bar caves in {target_name}'s {hit_location} like a kicked door. They fold.",
+            'victim_msg': "The bar caves in your {hit_location} like a kicked door. You fold.",
+            'observer_msg': "The bar caves in {target_name}'s {hit_location} like a kicked door. They fold."
         },
         {
             'attacker_msg': "A full-force swing cracks the spine. {target_name} doesn't rise.",
@@ -518,9 +518,9 @@ MESSAGES = {
             'observer_msg': "The bar lands square on the nose, driving bone deep. {target_name} convulses once, then nothing."
         },
         {
-            'attacker_msg': "One last backswing flattens {target_name}'s ribs. Their lungs collapse along with them.",
-            'victim_msg': "One last backswing flattens your ribs. Your lungs collapse along with you.",
-            'observer_msg': "One last backswing flattens {target_name}'s ribs. Their lungs collapse along with them."
+            'attacker_msg': "One last backswing flattens {target_name}'s {hit_location}. Their lungs collapse along with them.",
+            'victim_msg': "One last backswing flattens your {hit_location}. Your {hit_location} collapse along with you.",
+            'observer_msg': "One last backswing flattens {target_name}'s {hit_location}. Their lungs collapse along with them."
         },
         {
             'attacker_msg': "The bar crushes the windpipe. {target_name} dies trying to breathe around it.",
@@ -568,9 +568,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} swings upward. The bar enters beneath the ribs and rips."
         },
         {
-            'attacker_msg': "The bar smashes into the side of the head. {target_name}'s neck bends, then snaps.",
-            'victim_msg': "The bar smashes into the side of the head. Your neck bends, then snaps.",
-            'observer_msg': "The bar smashes into the side of the head. {target_name}'s neck bends, then snaps."
+            'attacker_msg': "The bar smashes into the side of the head. {target_name}'s {hit_location} bends, then snaps.",
+            'victim_msg': "The bar smashes into the side of the head. Your {hit_location} bends, then snaps.",
+            'observer_msg': "The bar smashes into the side of the head. {target_name}'s {hit_location} bends, then snaps."
         },
         {
             'attacker_msg': "The hook snags flesh and pulls. What remains isn't alive.",

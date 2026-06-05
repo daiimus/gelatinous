@@ -56,7 +56,7 @@ MESSAGES = {
             'observer_msg': "The claws flick out with a click. {attacker_name} exhales slowly. The dance begins."
         },
         {
-            'attacker_msg': "The claws hum faintly as they lock. You roll your neck. Ready.",
+            'attacker_msg': "The claws hum faintly as they lock. You roll your {hit_location}. Ready.",
             'victim_msg': "The claws hum faintly as they lock. {attacker_name} rolls their neck. Ready.",
             'observer_msg': "The claws hum faintly as they lock. {attacker_name} rolls their neck. Ready."
         },
@@ -458,13 +458,13 @@ MESSAGES = {
     'kill': [
         {
             'attacker_msg': "A clean slash across the face leaves nothing behind the eyes.",
-            'victim_msg': "A clean slash across your face leaves nothing behind your eyes.",
-            'observer_msg': "A clean slash across {target_name}'s face leaves nothing behind their eyes."
+            'victim_msg': "A clean slash across your {hit_location} leaves nothing behind your eyes.",
+            'observer_msg': "A clean slash across {target_name}'s {hit_location} leaves nothing behind their eyes."
         },
         {
             'attacker_msg': "A clean stab to the temple. No blood right away. No breathing afterward.",
-            'victim_msg': "A clean stab to your temple. No blood right away. No breathing afterward.",
-            'observer_msg': "A clean stab to {target_name}'s temple. No blood right away. No breathing afterward."
+            'victim_msg': "A clean stab to your {hit_location}. No blood right away. No breathing afterward.",
+            'observer_msg': "A clean stab to {target_name}'s {hit_location}. No blood right away. No breathing afterward."
         },
         {
             'attacker_msg': "A full jab into the eye. The socket fills. The rest fades out.",
@@ -473,8 +473,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A lunge and hook drives the claws into the chest. {target_name} twitches, then slumps in place.",
-            'victim_msg': "A lunge and hook drives the claws into your chest. You twitch, then slump in place.",
-            'observer_msg': "A lunge and hook drives the claws into {target_name}'s chest. They twitch, then slump in place."
+            'victim_msg': "A lunge and hook drives the claws into your {hit_location}. You twitch, then slump in place.",
+            'observer_msg': "A lunge and hook drives the claws into {target_name}'s {hit_location}. They twitch, then slump in place."
         },
         {
             'attacker_msg': "A rising slash opens the ribcage. Everything inside starts spilling outside.",
@@ -483,38 +483,38 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A savage swipe opens the throat. Red decorates the floor before the body finds it.",
-            'victim_msg': "A savage swipe opens your throat. Red decorates the floor before your body finds it.",
-            'observer_msg': "A savage swipe opens {target_name}'s throat. Red decorates the floor before their body finds it."
+            'victim_msg': "A savage swipe opens your {hit_location}. Red decorates the floor before your body finds it.",
+            'observer_msg': "A savage swipe opens {target_name}'s {hit_location}. Red decorates the floor before their body finds it."
         },
         {
             'attacker_msg': "A single jab punctures the heart. The shock is fast. The end, faster.",
-            'victim_msg': "A single jab punctures your heart. The shock is fast. The end, faster.",
-            'observer_msg': "A single jab punctures {target_name}'s heart. The shock is fast. The end, faster."
+            'victim_msg': "A single jab punctures your {hit_location}. The shock is fast. The end, faster.",
+            'observer_msg': "A single jab punctures {target_name}'s {hit_location}. The shock is fast. The end, faster."
         },
         {
             'attacker_msg': "A stab to the heart. The twitching ends fast. The bleeding takes its time.",
-            'victim_msg': "A stab to your heart. Your twitching ends fast. The bleeding takes its time.",
-            'observer_msg': "A stab to {target_name}'s heart. Their twitching ends fast. The bleeding takes its time."
+            'victim_msg': "A stab to your {hit_location}. Your twitching ends fast. The bleeding takes its time.",
+            'observer_msg': "A stab to {target_name}'s {hit_location}. Their twitching ends fast. The bleeding takes its time."
         },
         {
-            'attacker_msg': "A vicious upswing opens {target_name}'s stomach. They drop, cradling nothing.",
-            'victim_msg': "A vicious upswing opens your stomach. You drop, cradling nothing.",
-            'observer_msg': "A vicious upswing opens {target_name}'s stomach. They drop, cradling nothing."
+            'attacker_msg': "A vicious upswing opens {target_name}'s {hit_location}. They drop, cradling nothing.",
+            'victim_msg': "A vicious upswing opens your {hit_location}. You drop, cradling nothing.",
+            'observer_msg': "A vicious upswing opens {target_name}'s {hit_location}. They drop, cradling nothing."
         },
         {
             'attacker_msg': "One clean strike across the spine. {target_name} folds like they were erased.",
-            'victim_msg': "One clean strike across your spine. You fold like you were erased.",
-            'observer_msg': "One clean strike across {target_name}'s spine. They fold like they were erased."
+            'victim_msg': "One clean strike across your {hit_location}. You fold like you were erased.",
+            'observer_msg': "One clean strike across {target_name}'s {hit_location}. They fold like they were erased."
         },
         {
             'attacker_msg': "One stab finds the temple. The claws sink deep. The thoughts stop immediately.",
-            'victim_msg': "One stab finds your temple. The claws sink deep. Your thoughts stop immediately.",
-            'observer_msg': "One stab finds {target_name}'s temple. The claws sink deep. Their thoughts stop immediately."
+            'victim_msg': "One stab finds your {hit_location}. The claws sink deep. Your thoughts stop immediately.",
+            'observer_msg': "One stab finds {target_name}'s {hit_location}. The claws sink deep. Their thoughts stop immediately."
         },
         {
             'attacker_msg': "Steel hooks the face. Skin, then bone, then stillness.",
-            'victim_msg': "Steel hooks your face. Skin, then bone, then stillness.",
-            'observer_msg': "Steel hooks {target_name}'s face. Skin, then bone, then stillness."
+            'victim_msg': "Steel hooks your {hit_location}. Skin, then bone, then stillness.",
+            'observer_msg': "Steel hooks {target_name}'s {hit_location}. Skin, then bone, then stillness."
         },
         {
             'attacker_msg': "The blades drive into the belly and lift. What comes out doesn't go back in.",
@@ -523,18 +523,18 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The claws bury into the back. The spine snaps like old wood.",
-            'victim_msg': "The claws bury into your back. Your spine snaps like old wood.",
-            'observer_msg': "The claws bury into {target_name}'s back. Their spine snaps like old wood."
+            'victim_msg': "The claws bury into your {hit_location}. Your {hit_location} snaps like old wood.",
+            'observer_msg': "The claws bury into {target_name}'s {hit_location}. Their spine snaps like old wood."
         },
         {
-            'attacker_msg': "The claws catch the jawline and pull. {target_name}'s head tilts, then topples.",
-            'victim_msg': "The claws catch your jawline and pull. Your head tilts, then topples.",
+            'attacker_msg': "The claws catch the jawline and pull. {target_name}'s {hit_location} tilts, then topples.",
+            'victim_msg': "The claws catch your jawline and pull. Your {hit_location} tilts, then topples.",
             'observer_msg': "The claws catch {target_name}'s jawline and pull. Their head tilts, then topples."
         },
         {
             'attacker_msg': "The claws drive into the neck. The body thrashes, then stills.",
-            'victim_msg': "The claws drive into your neck. Your body thrashes, then stills.",
-            'observer_msg': "The claws drive into {target_name}'s neck. Their body thrashes, then stills."
+            'victim_msg': "The claws drive into your {hit_location}. Your body thrashes, then stills.",
+            'observer_msg': "The claws drive into {target_name}'s {hit_location}. Their body thrashes, then stills."
         },
         {
             'attacker_msg': "The claws hook under the chin and yank. The snap is final. The fall is slow.",
@@ -543,8 +543,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The claws pierce the throat. {target_name} gargles red and falls silent.",
-            'victim_msg': "The claws pierce your throat. You gargle red and fall silent.",
-            'observer_msg': "The claws pierce {target_name}'s throat. They gargle red and fall silent."
+            'victim_msg': "The claws pierce your {hit_location}. You gargle red and fall silent.",
+            'observer_msg': "The claws pierce {target_name}'s {hit_location}. They gargle red and fall silent."
         },
         {
             'attacker_msg': "The claws pin {target_name} to the wall. What follows is silence, and slumping.",
@@ -553,23 +553,23 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The claws plunge into the chest. {target_name} makes a sound — almost.",
-            'victim_msg': "The claws plunge into your chest. You make a sound — almost.",
-            'observer_msg': "The claws plunge into {target_name}'s chest. They make a sound — almost."
+            'victim_msg': "The claws plunge into your {hit_location}. You make a sound — almost.",
+            'observer_msg': "The claws plunge into {target_name}'s {hit_location}. They make a sound — almost."
         },
         {
             'attacker_msg': "The claws rip the chest open in a cross. The body folds around the gesture.",
-            'victim_msg': "The claws rip your chest open in a cross. Your body folds around the gesture.",
-            'observer_msg': "The claws rip {target_name}'s chest open in a cross. Their body folds around the gesture."
+            'victim_msg': "The claws rip your {hit_location} open in a cross. Your body folds around the gesture.",
+            'observer_msg': "The claws rip {target_name}'s {hit_location} open in a cross. Their body folds around the gesture."
         },
         {
             'attacker_msg': "The claws sink into both lungs. {target_name} tries to speak. They shouldn't have.",
-            'victim_msg': "The claws sink into both your lungs. You try to speak. You shouldn't have.",
-            'observer_msg': "The claws sink into both {target_name}'s lungs. They try to speak. They shouldn't have."
+            'victim_msg': "The claws sink into both your {hit_location}. You try to speak. You shouldn't have.",
+            'observer_msg': "The claws sink into both {target_name}'s {hit_location}. They try to speak. They shouldn't have."
         },
         {
             'attacker_msg': "The curved blades bite into the spine. {target_name} arches once, then stays down.",
-            'victim_msg': "The curved blades bite into your spine. You arch once, then stay down.",
-            'observer_msg': "The curved blades bite into {target_name}'s spine. They arch once, then stay down."
+            'victim_msg': "The curved blades bite into your {hit_location}. You arch once, then stay down.",
+            'observer_msg': "The curved blades bite into {target_name}'s {hit_location}. They arch once, then stay down."
         },
         {
             'attacker_msg': "The final hit lands under the chin. The claws rise into silence.",
@@ -583,13 +583,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You drive all five points into the neck. The collapse is wet and absolute.",
-            'victim_msg': "{attacker_name} drives all five points into your neck. Your collapse is wet and absolute.",
-            'observer_msg': "{attacker_name} drives all five points into {target_name}'s neck. Their collapse is wet and absolute."
+            'victim_msg': "{attacker_name} drives all five points into your {hit_location}. Your collapse is wet and absolute.",
+            'observer_msg': "{attacker_name} drives all five points into {target_name}'s {hit_location}. Their collapse is wet and absolute."
         },
         {
             'attacker_msg': "You rake the chest in a cross pattern. Blood fountains from the intersect.",
-            'victim_msg': "{attacker_name} rakes your chest in a cross pattern. Blood fountains from the intersect.",
-            'observer_msg': "{attacker_name} rakes {target_name}'s chest in a cross pattern. Blood fountains from the intersect."
+            'victim_msg': "{attacker_name} rakes your {hit_location} in a cross pattern. Blood fountains from the intersect.",
+            'observer_msg': "{attacker_name} rakes {target_name}'s {hit_location} in a cross pattern. Blood fountains from the intersect."
         },
         {
             'attacker_msg': "You rip upward from gut to sternum. The insides lose their home.",
@@ -598,13 +598,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You slash side to side across the face. {target_name} crumples, identity gone.",
-            'victim_msg': "{attacker_name} slashes side to side across your face. You crumple, identity gone.",
-            'observer_msg': "{attacker_name} slashes side to side across {target_name}'s face. They crumple, identity gone."
+            'victim_msg': "{attacker_name} slashes side to side across your {hit_location}. You crumple, identity gone.",
+            'observer_msg': "{attacker_name} slashes side to side across {target_name}'s {hit_location}. They crumple, identity gone."
         },
         {
             'attacker_msg': "You tear through the throat. {target_name} stumbles backward — hands grasping at a wound that wins.",
-            'victim_msg': "{attacker_name} tears through your throat. You stumble backward — hands grasping at a wound that wins.",
-            'observer_msg': "{attacker_name} tears through {target_name}'s throat. They stumble backward — hands grasping at a wound that wins."
+            'victim_msg': "{attacker_name} tears through your {hit_location}. You stumble backward — hands grasping at a wound that wins.",
+            'observer_msg': "{attacker_name} tears through {target_name}'s {hit_location}. They stumble backward — hands grasping at a wound that wins."
         }
     ]
 }

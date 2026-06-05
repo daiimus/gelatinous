@@ -106,7 +106,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws the weapon in silence. The chain sways like a serpent learning hunger."
         },
         {
-            'attacker_msg': "You flick the chain once against your back. It snaps into readiness.",
+            'attacker_msg': "You flick the chain once against your {hit_location}. It snaps into readiness.",
             'victim_msg': "{attacker_name} flicks the chain once against their back. It snaps into readiness.",
             'observer_msg': "{attacker_name} flicks the chain once against their back. It snaps into readiness."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} flicks the nunchaku upward and catches them again — no wasted motion, no wasted mercy."
         },
         {
-            'attacker_msg': "You let the chain coil around your forearm, then snap it free with surgical precision.",
+            'attacker_msg': "You let the chain coil around your {hit_location}, then snap it free with surgical precision.",
             'victim_msg': "{attacker_name} lets the chain coil around their forearm, then snaps it free with surgical precision.",
             'observer_msg': "{attacker_name} lets the chain coil around their forearm, then snaps it free with surgical precision."
         },
@@ -345,7 +345,7 @@ MESSAGES = {
             'observer_msg': "A whirling arc slams into a crate. Wood splinters. {target_name} doesn't wait around."
         },
         {
-            'attacker_msg': "One strike hits a railing. The vibration travels up your arm.",
+            'attacker_msg': "One strike hits a railing. The vibration travels up your {hit_location}.",
             'victim_msg': "One strike hits a railing. The vibration travels up {attacker_name}'s arm.",
             'observer_msg': "One strike hits a railing. The vibration travels up {attacker_name}'s arm."
         },
@@ -462,19 +462,19 @@ MESSAGES = {
             'observer_msg': "A brutal whip across {target_name}'s eyes. They collapse mid-scream, blood flowing from everywhere."
         },
         {
-            'attacker_msg': "A crack to {target_name}'s temple is all it takes. They stiffen — then fall, unmoving.",
-            'victim_msg': "A crack to your temple is all it takes. You stiffen — then fall, unmoving.",
-            'observer_msg': "A crack to {target_name}'s temple is all it takes. They stiffen — then fall, unmoving."
+            'attacker_msg': "A crack to {target_name}'s {hit_location} is all it takes. They stiffen — then fall, unmoving.",
+            'victim_msg': "A crack to your {hit_location} is all it takes. You stiffen — then fall, unmoving.",
+            'observer_msg': "A crack to {target_name}'s {hit_location} is all it takes. They stiffen — then fall, unmoving."
         },
         {
-            'attacker_msg': "A double spin ends with a crack to {target_name}'s temple. The lights go out for good.",
-            'victim_msg': "A double spin ends with a crack to your temple. The lights go out for good.",
-            'observer_msg': "A double spin ends with a crack to {target_name}'s temple. The lights go out for good."
+            'attacker_msg': "A double spin ends with a crack to {target_name}'s {hit_location}. The lights go out for good.",
+            'victim_msg': "A double spin ends with a crack to your {hit_location}. The lights go out for good.",
+            'observer_msg': "A double spin ends with a crack to {target_name}'s {hit_location}. The lights go out for good."
         },
         {
-            'attacker_msg': "A double-arc strike lands on both sides of {target_name}'s skull. They collapse in a heap.",
-            'victim_msg': "A double-arc strike lands on both sides of your skull. You collapse in a heap.",
-            'observer_msg': "A double-arc strike lands on both sides of {target_name}'s skull. They collapse in a heap."
+            'attacker_msg': "A double-arc strike lands on both sides of {target_name}'s {hit_location}. They collapse in a heap.",
+            'victim_msg': "A double-arc strike lands on both sides of your {hit_location}. You collapse in a heap.",
+            'observer_msg': "A double-arc strike lands on both sides of {target_name}'s {hit_location}. They collapse in a heap."
         },
         {
             'attacker_msg': "A downward slam snaps {target_name}'s clavicle — and something deeper. They are still before they hit the ground.",
@@ -482,59 +482,59 @@ MESSAGES = {
             'observer_msg': "A downward slam snaps {target_name}'s clavicle — and something deeper. They are still before they hit the ground."
         },
         {
-            'attacker_msg': "A downward smash caves in the top of {target_name}'s head. The follow-up never comes — it isn't needed.",
-            'victim_msg': "A downward smash caves in the top of your head. The follow-up never comes — it isn't needed.",
-            'observer_msg': "A downward smash caves in the top of {target_name}'s head. The follow-up never comes — it isn't needed."
+            'attacker_msg': "A downward smash caves in the top of {target_name}'s {hit_location}. The follow-up never comes — it isn't needed.",
+            'victim_msg': "A downward smash caves in the top of your {hit_location}. The follow-up never comes — it isn't needed.",
+            'observer_msg': "A downward smash caves in the top of {target_name}'s {hit_location}. The follow-up never comes — it isn't needed."
         },
         {
-            'attacker_msg': "A downward whip caves in the top of {target_name}'s head. You don't look away.",
-            'victim_msg': "A downward whip caves in the top of your head. {attacker_name} doesn't look away.",
-            'observer_msg': "A downward whip caves in the top of {target_name}'s head. {attacker_name} doesn't look away."
+            'attacker_msg': "A downward whip caves in the top of {target_name}'s {hit_location}. You don't look away.",
+            'victim_msg': "A downward whip caves in the top of your {hit_location}. {attacker_name} doesn't look away.",
+            'observer_msg': "A downward whip caves in the top of {target_name}'s {hit_location}. {attacker_name} doesn't look away."
         },
         {
-            'attacker_msg': "A rising strike drives into {target_name}'s face. Red sprays. The silence is immediate.",
-            'victim_msg': "A rising strike drives into your face. Red sprays. The silence is immediate.",
-            'observer_msg': "A rising strike drives into {target_name}'s face. Red sprays. The silence is immediate."
+            'attacker_msg': "A rising strike drives into {target_name}'s {hit_location}. Red sprays. The silence is immediate.",
+            'victim_msg': "A rising strike drives into your {hit_location}. Red sprays. The silence is immediate.",
+            'observer_msg': "A rising strike drives into {target_name}'s {hit_location}. Red sprays. The silence is immediate."
         },
         {
-            'attacker_msg': "A spinning strike slams into {target_name}'s neck. They fall like a felled post, twitching once.",
-            'victim_msg': "A spinning strike slams into your neck. You fall like a felled post, twitching once.",
-            'observer_msg': "A spinning strike slams into {target_name}'s neck. They fall like a felled post, twitching once."
+            'attacker_msg': "A spinning strike slams into {target_name}'s {hit_location}. They fall like a felled post, twitching once.",
+            'victim_msg': "A spinning strike slams into your {hit_location}. You fall like a felled post, twitching once.",
+            'observer_msg': "A spinning strike slams into {target_name}'s {hit_location}. They fall like a felled post, twitching once."
         },
         {
-            'attacker_msg': "One brutal jab to {target_name}'s chest sends ribs inward. They exhale their last.",
-            'victim_msg': "One brutal jab to your chest sends ribs inward. You exhale your last.",
-            'observer_msg': "One brutal jab to {target_name}'s chest sends ribs inward. They exhale their last."
+            'attacker_msg': "One brutal jab to {target_name}'s {hit_location} sends ribs inward. They exhale their last.",
+            'victim_msg': "One brutal jab to your {hit_location} sends ribs inward. You exhale your last.",
+            'observer_msg': "One brutal jab to {target_name}'s {hit_location} sends ribs inward. They exhale their last."
         },
         {
-            'attacker_msg': "One final blow to the base of {target_name}'s neck severs motion. They drop like a puppet cut free.",
-            'victim_msg': "One final blow to the base of your neck severs motion. You drop like a puppet cut free.",
-            'observer_msg': "One final blow to the base of {target_name}'s neck severs motion. They drop like a puppet cut free."
+            'attacker_msg': "One final blow to the base of {target_name}'s {hit_location} severs motion. They drop like a puppet cut free.",
+            'victim_msg': "One final blow to the base of your {hit_location} severs motion. You drop like a puppet cut free.",
+            'observer_msg': "One final blow to the base of {target_name}'s {hit_location} severs motion. They drop like a puppet cut free."
         },
         {
-            'attacker_msg': "One rising strike breaks {target_name}'s jaw. The next caves in the skull. The third isn't needed.",
-            'victim_msg': "One rising strike breaks your jaw. The next caves in your skull. The third isn't needed.",
-            'observer_msg': "One rising strike breaks {target_name}'s jaw. The next caves in the skull. The third isn't needed."
+            'attacker_msg': "One rising strike breaks {target_name}'s {hit_location}. The next caves in the skull. The third isn't needed.",
+            'victim_msg': "One rising strike breaks your {hit_location}. The next caves in your {hit_location}. The third isn't needed.",
+            'observer_msg': "One rising strike breaks {target_name}'s {hit_location}. The next caves in the skull. The third isn't needed."
         },
         {
-            'attacker_msg': "One savage blow caves the back of {target_name}'s skull inward. You don't stop to admire.",
-            'victim_msg': "One savage blow caves the back of your skull inward. {attacker_name} doesn't stop to admire.",
-            'observer_msg': "One savage blow caves the back of {target_name}'s skull inward. {attacker_name} doesn't stop to admire."
+            'attacker_msg': "One savage blow caves the back of {target_name}'s {hit_location} inward. You don't stop to admire.",
+            'victim_msg': "One savage blow caves the back of your {hit_location} inward. {attacker_name} doesn't stop to admire.",
+            'observer_msg': "One savage blow caves the back of {target_name}'s {hit_location} inward. {attacker_name} doesn't stop to admire."
         },
         {
-            'attacker_msg': "Steel and wood crash into {target_name}'s sternum. They fold over, then don't unfold.",
-            'victim_msg': "Steel and wood crash into your sternum. You fold over, then don't unfold.",
-            'observer_msg': "Steel and wood crash into {target_name}'s sternum. They fold over, then don't unfold."
+            'attacker_msg': "Steel and wood crash into {target_name}'s {hit_location}. They fold over, then don't unfold.",
+            'victim_msg': "Steel and wood crash into your {hit_location}. You fold over, then don't unfold.",
+            'observer_msg': "Steel and wood crash into {target_name}'s {hit_location}. They fold over, then don't unfold."
         },
         {
-            'attacker_msg': "The chain wraps around {target_name}'s neck and pulls. The fall is twitching and terminal.",
-            'victim_msg': "The chain wraps around your neck and pulls. The fall is twitching and terminal.",
-            'observer_msg': "The chain wraps around {target_name}'s neck and pulls. The fall is twitching and terminal."
+            'attacker_msg': "The chain wraps around {target_name}'s {hit_location} and pulls. The fall is twitching and terminal.",
+            'victim_msg': "The chain wraps around your {hit_location} and pulls. The fall is twitching and terminal.",
+            'observer_msg': "The chain wraps around {target_name}'s {hit_location} and pulls. The fall is twitching and terminal."
         },
         {
-            'attacker_msg': "The chain wraps briefly around {target_name}'s head before the sticks crush inward. Silence.",
-            'victim_msg': "The chain wraps briefly around your head before the sticks crush inward. Silence.",
-            'observer_msg': "The chain wraps briefly around {target_name}'s head before the sticks crush inward. Silence."
+            'attacker_msg': "The chain wraps briefly around {target_name}'s {hit_location} before the sticks crush inward. Silence.",
+            'victim_msg': "The chain wraps briefly around your {hit_location} before the sticks crush inward. Silence.",
+            'observer_msg': "The chain wraps briefly around {target_name}'s {hit_location} before the sticks crush inward. Silence."
         },
         {
             'attacker_msg': "The nunchaku blur in your hands. {target_name} catches every consequence.",
@@ -543,13 +543,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The nunchaku catch {target_name}'s nose and eye. The face crumples. So does everything else.",
-            'victim_msg': "The nunchaku catch your nose and eye. Your face crumples. So does everything else.",
+            'victim_msg': "The nunchaku catch your nose and eye. Your {hit_location} crumples. So does everything else.",
             'observer_msg': "The nunchaku catch {target_name}'s nose and eye. The face crumples. So does everything else."
         },
         {
-            'attacker_msg': "The nunchaku land across {target_name}'s throat. The chain crushes the windpipe. They drop silently.",
-            'victim_msg': "The nunchaku land across your throat. The chain crushes your windpipe. You drop silently.",
-            'observer_msg': "The nunchaku land across {target_name}'s throat. The chain crushes the windpipe. They drop silently."
+            'attacker_msg': "The nunchaku land across {target_name}'s {hit_location}. The chain crushes the windpipe. They drop silently.",
+            'victim_msg': "The nunchaku land across your {hit_location}. The chain crushes your windpipe. You drop silently.",
+            'observer_msg': "The nunchaku land across {target_name}'s {hit_location}. The chain crushes the windpipe. They drop silently."
         },
         {
             'attacker_msg': "The sticks land again and again. By the third hit, {target_name} is still. You are not.",
@@ -562,24 +562,24 @@ MESSAGES = {
             'observer_msg': "The sticks whip across {target_name}'s temples. Both sides. Both deadly."
         },
         {
-            'attacker_msg': "The weapon lands against {target_name}'s throat. They gag once and fold, motionless.",
-            'victim_msg': "The weapon lands against your throat. You gag once and fold, motionless.",
-            'observer_msg': "The weapon lands against {target_name}'s throat. They gag once and fold, motionless."
+            'attacker_msg': "The weapon lands against {target_name}'s {hit_location}. They gag once and fold, motionless.",
+            'victim_msg': "The weapon lands against your {hit_location}. You gag once and fold, motionless.",
+            'observer_msg': "The weapon lands against {target_name}'s {hit_location}. They gag once and fold, motionless."
         },
         {
-            'attacker_msg': "The weapon twists, wraps, and cracks against the side of {target_name}'s head. They are gone before gravity decides how.",
-            'victim_msg': "The weapon twists, wraps, and cracks against the side of your head. You are gone before gravity decides how.",
-            'observer_msg': "The weapon twists, wraps, and cracks against the side of {target_name}'s head. They are gone before gravity decides how."
+            'attacker_msg': "The weapon twists, wraps, and cracks against the side of {target_name}'s {hit_location}. They are gone before gravity decides how.",
+            'victim_msg': "The weapon twists, wraps, and cracks against the side of your {hit_location}. You are gone before gravity decides how.",
+            'observer_msg': "The weapon twists, wraps, and cracks against the side of {target_name}'s {hit_location}. They are gone before gravity decides how."
         },
         {
-            'attacker_msg': "The weapon wraps around {target_name}'s head and yanks them into the ground. The crack is final.",
-            'victim_msg': "The weapon wraps around your head and yanks you into the ground. The crack is final.",
-            'observer_msg': "The weapon wraps around {target_name}'s head and yanks them into the ground. The crack is final."
+            'attacker_msg': "The weapon wraps around {target_name}'s {hit_location} and yanks them into the ground. The crack is final.",
+            'victim_msg': "The weapon wraps around your {hit_location} and yanks you into the ground. The crack is final.",
+            'observer_msg': "The weapon wraps around {target_name}'s {hit_location} and yanks them into the ground. The crack is final."
         },
         {
-            'attacker_msg': "Two fast strikes to {target_name}'s skull drop them mid-step. They hit the ground wrong and don't rise.",
-            'victim_msg': "Two fast strikes to your skull drop you mid-step. You hit the ground wrong and don't rise.",
-            'observer_msg': "Two fast strikes to {target_name}'s skull drop them mid-step. They hit the ground wrong and don't rise."
+            'attacker_msg': "Two fast strikes to {target_name}'s {hit_location} drop them mid-step. They hit the ground wrong and don't rise.",
+            'victim_msg': "Two fast strikes to your {hit_location} drop you mid-step. You hit the ground wrong and don't rise.",
+            'observer_msg': "Two fast strikes to {target_name}'s {hit_location} drop them mid-step. They hit the ground wrong and don't rise."
         },
         {
             'attacker_msg': "You crash the weapon into both {target_name}'s temples in a flurry. They go rigid, then slack.",
@@ -587,9 +587,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} crashes the weapon into both {target_name}'s temples in a flurry. They go rigid, then slack."
         },
         {
-            'attacker_msg': "You land a clean blow to {target_name}'s throat. They clutch, convulse, collapse.",
-            'victim_msg': "{attacker_name} lands a clean blow to your throat. You clutch, convulse, collapse.",
-            'observer_msg': "{attacker_name} lands a clean blow to {target_name}'s throat. They clutch, convulse, collapse."
+            'attacker_msg': "You land a clean blow to {target_name}'s {hit_location}. They clutch, convulse, collapse.",
+            'victim_msg': "{attacker_name} lands a clean blow to your {hit_location}. You clutch, convulse, collapse.",
+            'observer_msg': "{attacker_name} lands a clean blow to {target_name}'s {hit_location}. They clutch, convulse, collapse."
         },
         {
             'attacker_msg': "You lash out with a blur of motion. The sticks land again, again, again. {target_name} stops moving after the second.",
@@ -597,9 +597,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} lashes out with a blur of motion. The sticks land again, again, again. {target_name} stops moving after the second."
         },
         {
-            'attacker_msg': "You slam the nunchaku into the back of {target_name}'s neck. The drop is limp and instant.",
-            'victim_msg': "{attacker_name} slams the nunchaku into the back of your neck. The drop is limp and instant.",
-            'observer_msg': "{attacker_name} slams the nunchaku into the back of {target_name}'s neck. The drop is limp and instant."
+            'attacker_msg': "You slam the nunchaku into the back of {target_name}'s {hit_location}. The drop is limp and instant.",
+            'victim_msg': "{attacker_name} slams the nunchaku into the back of your {hit_location}. The drop is limp and instant.",
+            'observer_msg': "{attacker_name} slams the nunchaku into the back of {target_name}'s {hit_location}. The drop is limp and instant."
         },
         {
             'attacker_msg': "You spin, leap, and end it mid-arc. The nunchaku do what they were made for.",

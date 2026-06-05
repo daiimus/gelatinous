@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} shifts their weight, then explodes into motion, {item} aimed at {target_name}."
         },
         {
-            'attacker_msg': "A grim expression settles on your face as you engage {target_name} with {item}.",
+            'attacker_msg': "A grim expression settles on your {hit_location} as you engage {target_name} with {item}.",
             'victim_msg': "A grim expression settles on {attacker_name}'s face as they engage you with {item}.",
             'observer_msg': "A grim expression settles on {attacker_name}'s face as they engage {target_name} with {item}."
         },

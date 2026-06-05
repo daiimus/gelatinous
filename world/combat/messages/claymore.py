@@ -477,9 +477,9 @@ MESSAGES = {
             "observer_msg": "The massive blade of the claymore decapitates {target_name} with a single, brutal chop."
         },
         {
-            "attacker_msg": "Your powerful overhead smash with the claymore caves in {target_name}'s skull and chest cavity.",
-            "victim_msg": "{attacker_name}'s powerful overhead smash with the claymore caves in your skull and chest cavity.",
-            "observer_msg": "{attacker_name}'s powerful overhead smash with the claymore caves in {target_name}'s skull and chest cavity."
+            "attacker_msg": "Your powerful overhead smash with the claymore caves in {target_name}'s {hit_location} and chest cavity.",
+            "victim_msg": "{attacker_name}'s powerful overhead smash with the claymore caves in your {hit_location} and chest cavity.",
+            "observer_msg": "{attacker_name}'s powerful overhead smash with the claymore caves in {target_name}'s {hit_location} and chest cavity."
         },
         {
             "attacker_msg": "The claymore, an avalanche of steel, delivers a killing blow, and {target_name}'s struggles cease in a torrent of gore.",
@@ -492,9 +492,9 @@ MESSAGES = {
             "observer_msg": "A vicious upward swing from {attacker_name}'s claymore nearly tears {target_name} asunder, ending their life instantly."
         },
         {
-            "attacker_msg": "You drive the claymore through {target_name}'s torso, impaling them like a grotesque trophy.",
-            "victim_msg": "{attacker_name} drives the claymore through your torso, impaling you like a grotesque trophy.",
-            "observer_msg": "{attacker_name} drives the claymore through {target_name}'s torso, impaling them like a grotesque trophy."
+            "attacker_msg": "You drive the claymore through {target_name}'s {hit_location}, impaling them like a grotesque trophy.",
+            "victim_msg": "{attacker_name} drives the claymore through your {hit_location}, impaling you like a grotesque trophy.",
+            "observer_msg": "{attacker_name} drives the claymore through {target_name}'s {hit_location}, impaling them like a grotesque trophy."
         },
         {
             "attacker_msg": "The keen edge of the claymore opens a fatal, body-length wound, and {target_name} collapses, unmoving.",
@@ -537,9 +537,9 @@ MESSAGES = {
             "observer_msg": "Blood sprays in a torrent as {attacker_name}'s claymore severs multiple limbs, and {target_name} quickly expires."
         },
         {
-            "attacker_msg": "The point of the claymore, driven by your full weight, punches through armor and out {target_name}'s back.",
-            "victim_msg": "The point of the claymore, driven by {attacker_name}'s full weight, punches through armor and out your back.",
-            "observer_msg": "The point of the claymore, driven by {attacker_name}'s full weight, punches through armor and out {target_name}'s back."
+            "attacker_msg": "The point of the claymore, driven by your full weight, punches through armor and out {target_name}'s {hit_location}.",
+            "victim_msg": "The point of the claymore, driven by {attacker_name}'s full weight, punches through armor and out your {hit_location}.",
+            "observer_msg": "The point of the claymore, driven by {attacker_name}'s full weight, punches through armor and out {target_name}'s {hit_location}."
         },
         {
             "attacker_msg": "You stand panting over {target_name}, claymore dripping, the victor of a terrifyingly brutal contest.",

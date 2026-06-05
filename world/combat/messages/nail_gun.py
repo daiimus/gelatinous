@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your nail gun fires with a sharp *thwack-hiss*, the nail embedding itself in the wall beside {target_name}'s head.",
-            'victim_msg': "{attacker_name}'s nail gun fires with a sharp *thwack-hiss*, the nail embedding itself in the wall beside your head.",
-            'observer_msg': "{attacker_name}'s nail gun fires with a sharp *thwack-hiss*, the nail embedding itself in the wall beside {target_name}'s head."
+            'attacker_msg': "Your nail gun fires with a sharp *thwack-hiss*, the nail embedding itself in the wall beside {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name}'s nail gun fires with a sharp *thwack-hiss*, the nail embedding itself in the wall beside your {hit_location}.",
+            'observer_msg': "{attacker_name}'s nail gun fires with a sharp *thwack-hiss*, the nail embedding itself in the wall beside {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "{target_name} narrowly avoids a nail from your nail gun, which punches into a nearby crate.",
@@ -462,19 +462,19 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s nail gun drives a nail straight into {target_name}'s eye; they collapse, twitching, life extinguished."
         },
         {
-            'attacker_msg': "A rapid burst from the nail gun riddles {target_name}'s chest, each nail a fatal puncture, and they fall silent.",
-            'victim_msg': "A rapid burst from the nail gun riddles your chest, each nail a fatal puncture, and you fall silent.",
-            'observer_msg': "A rapid burst from the nail gun riddles {target_name}'s chest, each nail a fatal puncture, and they fall silent."
+            'attacker_msg': "A rapid burst from the nail gun riddles {target_name}'s {hit_location}, each nail a fatal puncture, and they fall silent.",
+            'victim_msg': "A rapid burst from the nail gun riddles your {hit_location}, each nail a fatal puncture, and you fall silent.",
+            'observer_msg': "A rapid burst from the nail gun riddles {target_name}'s {hit_location}, each nail a fatal puncture, and they fall silent."
         },
         {
-            'attacker_msg': "With a final, grim shot, your nail gun sends a nail into {target_name}'s temple, ending their struggles instantly.",
-            'victim_msg': "With a final, grim shot, {attacker_name}'s nail gun sends a nail into your temple, ending your struggles instantly.",
-            'observer_msg': "With a final, grim shot, {attacker_name}'s nail gun sends a nail into {target_name}'s temple, ending their struggles instantly."
+            'attacker_msg': "With a final, grim shot, your nail gun sends a nail into {target_name}'s {hit_location}, ending their struggles instantly.",
+            'victim_msg': "With a final, grim shot, {attacker_name}'s nail gun sends a nail into your {hit_location}, ending your struggles instantly.",
+            'observer_msg': "With a final, grim shot, {attacker_name}'s nail gun sends a nail into {target_name}'s {hit_location}, ending their struggles instantly."
         },
         {
-            'attacker_msg': "The nail gun fires point-blank into {target_name}'s throat, a wet gurgle their only response as they die.",
-            'victim_msg': "The nail gun fires point-blank into your throat, a wet gurgle your only response as you die.",
-            'observer_msg': "The nail gun fires point-blank into {target_name}'s throat, a wet gurgle their only response as they die."
+            'attacker_msg': "The nail gun fires point-blank into {target_name}'s {hit_location}, a wet gurgle their only response as they die.",
+            'victim_msg': "The nail gun fires point-blank into your {hit_location}, a wet gurgle your only response as you die.",
+            'observer_msg': "The nail gun fires point-blank into {target_name}'s {hit_location}, a wet gurgle their only response as they die."
         },
         {
             'attacker_msg': "Your sustained fire with the nail gun turns {target_name} into a macabre pincushion; they slump, lifeless.",
@@ -492,14 +492,14 @@ MESSAGES = {
             'observer_msg': "A precise shot to the base of the skull with {attacker_name}'s nail gun ends {target_name}'s life with a sickening thud."
         },
         {
-            'attacker_msg': "You empty the nail gun into {target_name}'s torso, the multiple impacts ensuring a swift, brutal death.",
-            'victim_msg': "{attacker_name} empties the nail gun into your torso, the multiple impacts ensuring a swift, brutal death.",
-            'observer_msg': "{attacker_name} empties the nail gun into {target_name}'s torso, the multiple impacts ensuring a swift, brutal death."
+            'attacker_msg': "You empty the nail gun into {target_name}'s {hit_location}, the multiple impacts ensuring a swift, brutal death.",
+            'victim_msg': "{attacker_name} empties the nail gun into your {hit_location}, the multiple impacts ensuring a swift, brutal death.",
+            'observer_msg': "{attacker_name} empties the nail gun into {target_name}'s {hit_location}, the multiple impacts ensuring a swift, brutal death."
         },
         {
-            'attacker_msg': "The unyielding steel nails from your nail gun pierce {target_name}'s heart; they fall, dead before they hit the ground.",
-            'victim_msg': "The unyielding steel nails from {attacker_name}'s nail gun pierce your heart; you fall, dead before you hit the ground.",
-            'observer_msg': "The unyielding steel nails from {attacker_name}'s nail gun pierce {target_name}'s heart; they fall, dead before they hit the ground."
+            'attacker_msg': "The unyielding steel nails from your nail gun pierce {target_name}'s {hit_location}; they fall, dead before they hit the ground.",
+            'victim_msg': "The unyielding steel nails from {attacker_name}'s nail gun pierce your {hit_location}; you fall, dead before you hit the ground.",
+            'observer_msg': "The unyielding steel nails from {attacker_name}'s nail gun pierce {target_name}'s {hit_location}; they fall, dead before they hit the ground."
         },
         {
             'attacker_msg': "With a final, sharp hiss, you finish {target_name} with a nail through the forehead from the nail gun.",

@@ -11,7 +11,7 @@ MESSAGES = {
             'observer_msg': "With a desperate look, {attacker_name} brandishes a sharp piece of broken mirror, ready to slash and stab, {target_name}'s own twisted face reflected within."
         },
         {
-            'attacker_msg': "Your hand is wrapped precariously around a mirror shard, its razor edge reflecting a grim, fragmented light.",
+            'attacker_msg': "Your {hit_location} is wrapped precariously around a mirror shard, its razor edge reflecting a grim, fragmented light.",
             'victim_msg': "{attacker_name}'s hand is wrapped precariously around a mirror shard, its razor edge reflecting a grim, fragmented light.",
             'observer_msg': "{attacker_name}'s hand is wrapped precariously around a mirror shard, its razor edge reflecting a grim, fragmented light."
         },
@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} points the jagged end of the mirror shard towards {target_name}, a clear, vicious threat, a sliver of {target_name}'s own fear staring back."
         },
         {
-            'attacker_msg': "Light catches the irregular, razor-sharp edges of the mirror shard in your hand, throwing distorted slivers of light.",
+            'attacker_msg': "Light catches the irregular, razor-sharp edges of the mirror shard in your {hit_location}, throwing distorted slivers of light.",
             'victim_msg': "Light catches the irregular, razor-sharp edges of the mirror shard in {attacker_name}'s hand, throwing distorted slivers of light.",
             'observer_msg': "Light catches the irregular, razor-sharp edges of the mirror shard in {attacker_name}'s hand, throwing distorted slivers of light."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are narrowed, sighting along the sharpest edge of the mirror towards {target_name}, their own reflection a grim mask."
         },
         {
-            'attacker_msg': "The mirror shard feels dangerously sharp and fragile in your hand, a tool of pure desperation, reflecting a broken world.",
+            'attacker_msg': "The mirror shard feels dangerously sharp and fragile in your {hit_location}, a tool of pure desperation, reflecting a broken world.",
             'victim_msg': "The mirror shard feels dangerously sharp and fragile in {attacker_name}'s hand, a tool of pure desperation, reflecting a broken world.",
             'observer_msg': "The mirror shard feels dangerously sharp and fragile in {attacker_name}'s hand, a tool of pure desperation, reflecting a broken world."
         },
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your mirror shard whistles through the air, its jagged edge narrowly missing {target_name}'s face, reflecting a streak of light.",
-            'victim_msg': "{attacker_name}'s mirror shard whistles through the air, its jagged edge narrowly missing your face, reflecting a streak of light.",
-            'observer_msg': "{attacker_name}'s mirror shard whistles through the air, its jagged edge narrowly missing {target_name}'s face, reflecting a streak of light."
+            'attacker_msg': "Your mirror shard whistles through the air, its jagged edge narrowly missing {target_name}'s {hit_location}, reflecting a streak of light.",
+            'victim_msg': "{attacker_name}'s mirror shard whistles through the air, its jagged edge narrowly missing your {hit_location}, reflecting a streak of light.",
+            'observer_msg': "{attacker_name}'s mirror shard whistles through the air, its jagged edge narrowly missing {target_name}'s {hit_location}, reflecting a streak of light."
         },
         {
             'attacker_msg': "{target_name} stumbles back, avoiding the desperate slash of your mirror shard, seeing their own wide eyes in its passing glint.",
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick retreat from {target_name} leaves {attacker_name}'s mirror shard to cut nothing but air, reflecting {attacker_name}'s own angry face."
         },
         {
-            'attacker_msg': "The mirror shard feels dangerously slippery in your hand as the intended cutting blow fails, reflecting your own fumbling.",
+            'attacker_msg': "The mirror shard feels dangerously slippery in your {hit_location} as the intended cutting blow fails, reflecting your own fumbling.",
             'victim_msg': "The mirror shard feels dangerously slippery in {attacker_name}'s hand as the intended cutting blow fails, reflecting their own fumbling.",
             'observer_msg': "The mirror shard feels dangerously slippery in {attacker_name}'s hand as the intended cutting blow fails, reflecting their own fumbling."
         },
@@ -395,9 +395,9 @@ MESSAGES = {
             'observer_msg': "A growl of frustration from {attacker_name} as their mirror shard attack is evaded, their angry face caught in the glass."
         },
         {
-            'attacker_msg': "The mirror shard scratches a line on the ground beside {target_name}'s foot, reflecting a sliver of their boot.",
-            'victim_msg': "The mirror shard scratches a line on the ground beside your foot, reflecting a sliver of your boot.",
-            'observer_msg': "The mirror shard scratches a line on the ground beside {target_name}'s foot, reflecting a sliver of their boot."
+            'attacker_msg': "The mirror shard scratches a line on the ground beside {target_name}'s {hit_location}, reflecting a sliver of their boot.",
+            'victim_msg': "The mirror shard scratches a line on the ground beside your {hit_location}, reflecting a sliver of your boot.",
+            'observer_msg': "The mirror shard scratches a line on the ground beside {target_name}'s {hit_location}, reflecting a sliver of their boot."
         },
         {
             'attacker_msg': "Your straightforward attack with the mirror shard is anticipated and dodged by {target_name}, who sees their own relief in its passing.",
@@ -457,14 +457,14 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "You shove the jagged mirror shard into {target_name}'s throat; they collapse, gurgling, their dying eyes reflected in the bloody glass.",
-            'victim_msg': "{attacker_name} shoves the jagged mirror shard into your throat; you collapse, gurgling, your dying eyes reflected in the bloody glass.",
-            'observer_msg': "{attacker_name} shoves the jagged mirror shard into {target_name}'s throat; they collapse, gurgling, their dying eyes reflected in the bloody glass."
+            'attacker_msg': "You shove the jagged mirror shard into {target_name}'s {hit_location}; they collapse, gurgling, their dying eyes reflected in the bloody glass.",
+            'victim_msg': "{attacker_name} shoves the jagged mirror shard into your {hit_location}; you collapse, gurgling, your dying eyes reflected in the bloody glass.",
+            'observer_msg': "{attacker_name} shoves the jagged mirror shard into {target_name}'s {hit_location}; they collapse, gurgling, their dying eyes reflected in the bloody glass."
         },
         {
-            'attacker_msg': "The mirror shard, driven deep into {target_name}'s chest, pierces their heart, and they fall silent, their last reflection a rictus of pain.",
-            'victim_msg': "The mirror shard, driven deep into your chest, pierces your heart, and you fall silent, your last reflection a rictus of pain.",
-            'observer_msg': "The mirror shard, driven deep into {target_name}'s chest, pierces their heart, and they fall silent, their last reflection a rictus of pain."
+            'attacker_msg': "The mirror shard, driven deep into {target_name}'s {hit_location}, pierces their heart, and they fall silent, their last reflection a rictus of pain.",
+            'victim_msg': "The mirror shard, driven deep into your {hit_location}, pierces your {hit_location}, and you fall silent, your last reflection a rictus of pain.",
+            'observer_msg': "The mirror shard, driven deep into {target_name}'s {hit_location}, pierces their heart, and they fall silent, their last reflection a rictus of pain."
         },
         {
             'attacker_msg': "With a final, brutal thrust, you embed the mirror shard in {target_name}'s eye, and they drop, their vacant stare mirrored in the shard.",
@@ -487,14 +487,14 @@ MESSAGES = {
             'observer_msg': "The mirror shard, a desperate tool of death, delivers a killing blow, {target_name} overcome by wounds, their last sight their own demise in the glass."
         },
         {
-            'attacker_msg': "A precise, savage thrust with the mirror shard to {target_name}'s temple ends their life, a final, bloody image captured in its surface.",
-            'victim_msg': "A precise, savage thrust with the mirror shard to your temple ends your life, a final, bloody image captured in its surface.",
-            'observer_msg': "A precise, savage thrust with the mirror shard to {target_name}'s temple ends their life, a final, bloody image captured in its surface."
+            'attacker_msg': "A precise, savage thrust with the mirror shard to {target_name}'s {hit_location} ends their life, a final, bloody image captured in its surface.",
+            'victim_msg': "A precise, savage thrust with the mirror shard to your {hit_location} ends your life, a final, bloody image captured in its surface.",
+            'observer_msg': "A precise, savage thrust with the mirror shard to {target_name}'s {hit_location} ends their life, a final, bloody image captured in its surface."
         },
         {
-            'attacker_msg': "You press the mirror shard against {target_name}'s neck until they stop moving, the glass dark with blood, reflecting nothing but the end.",
-            'victim_msg': "{attacker_name} presses the mirror shard against your neck until you stop moving, the glass dark with blood, reflecting nothing but the end.",
-            'observer_msg': "{attacker_name} presses the mirror shard against {target_name}'s neck until they stop moving, the glass dark with blood, reflecting nothing but the end."
+            'attacker_msg': "You press the mirror shard against {target_name}'s {hit_location} until they stop moving, the glass dark with blood, reflecting nothing but the end.",
+            'victim_msg': "{attacker_name} presses the mirror shard against your {hit_location} until you stop moving, the glass dark with blood, reflecting nothing but the end.",
+            'observer_msg': "{attacker_name} presses the mirror shard against {target_name}'s {hit_location} until they stop moving, the glass dark with blood, reflecting nothing but the end."
         },
         {
             'attacker_msg': "The unyielding sharpness of the mirror shard severs something vital in {target_name}, who crumples, their still face a pale reflection.",
@@ -522,7 +522,7 @@ MESSAGES = {
             'observer_msg': "A merciless, deep stab with the mirror shard, and {target_name} is no more, their vacant eyes reflected in the bloody surface."
         },
         {
-            'attacker_msg': "The mirror shard, now slick and dark, drops from your hand as {target_name} lies lifeless, reflecting only the aftermath.",
+            'attacker_msg': "The mirror shard, now slick and dark, drops from your {hit_location} as {target_name} lies lifeless, reflecting only the aftermath.",
             'victim_msg': "The mirror shard, now slick and dark, drops from {attacker_name}'s hand as you lie lifeless, reflecting only the aftermath.",
             'observer_msg': "The mirror shard, now slick and dark, drops from {attacker_name}'s hand as {target_name} lies lifeless, reflecting only the aftermath."
         },

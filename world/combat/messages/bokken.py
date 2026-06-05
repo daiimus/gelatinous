@@ -234,7 +234,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The bokken thuds heavily as it connects with {target_name}, driving the air from their lungs.",
-            "victim_msg": "The bokken thuds heavily as it connects with you, driving the air from your lungs.",
+            "victim_msg": "The bokken thuds heavily as it connects with you, driving the air from your {hit_location}.",
             "observer_msg": "The bokken thuds heavily as it connects with {target_name}, driving the air from their lungs."
         },
         {
@@ -458,12 +458,12 @@ MESSAGES = {
     "kill": [
         {
             "attacker_msg": "Your bokken connects with {target_name}’s temple with a sickening crack; {target_name} drops, instantly still.",
-            "victim_msg": "{attacker_name}’s bokken connects with your temple with a sickening crack; you drop, instantly still.",
+            "victim_msg": "{attacker_name}’s bokken connects with your {hit_location} with a sickening crack; you drop, instantly still.",
             "observer_msg": "{attacker_name}’s bokken connects with {target_name}’s temple with a sickening crack; {target_name} drops, instantly still."
         },
         {
             "attacker_msg": "A devastating two-handed blow from the bokken crushes {target_name}’s skull, ending the fight brutally.",
-            "victim_msg": "A devastating two-handed blow from the bokken crushes your skull, ending the fight brutally.",
+            "victim_msg": "A devastating two-handed blow from the bokken crushes your {hit_location}, ending the fight brutally.",
             "observer_msg": "A devastating two-handed blow from the bokken crushes {target_name}’s skull, ending the fight brutally."
         },
         {
@@ -473,12 +473,12 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The heavy wood of the bokken strikes {target_name}’s throat, a swift and brutal end.",
-            "victim_msg": "The heavy wood of the bokken strikes your throat, a swift and brutal end.",
+            "victim_msg": "The heavy wood of the bokken strikes your {hit_location}, a swift and brutal end.",
             "observer_msg": "The heavy wood of the bokken strikes {target_name}’s throat, a swift and brutal end."
         },
         {
             "attacker_msg": "Your powerful swing with the bokken caves in {target_name}’s chest; they collapse, gasping their last.",
-            "victim_msg": "{attacker_name}’s powerful swing with the bokken caves in your chest; you collapse, gasping your last.",
+            "victim_msg": "{attacker_name}’s powerful swing with the bokken caves in your {hit_location}; you collapse, gasping your last.",
             "observer_msg": "{attacker_name}’s powerful swing with the bokken caves in {target_name}’s chest; they collapse, gasping their last."
         },
         {
@@ -498,7 +498,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The unyielding wood of the bokken breaks {target_name}’s neck with a sharp snap; they fall, lifeless.",
-            "victim_msg": "The unyielding wood of the bokken breaks your neck with a sharp snap; you fall, lifeless.",
+            "victim_msg": "The unyielding wood of the bokken breaks your {hit_location} with a sharp snap; you fall, lifeless.",
             "observer_msg": "The unyielding wood of the bokken breaks {target_name}’s neck with a sharp snap; they fall, lifeless."
         },
         {

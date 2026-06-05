@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "This isn't a combat knife — it's a tool turned legend. {attacker_name} grips the machete with both hands."
         },
         {
-            'attacker_msg': "With a flick, you free the machete from your back. It's heavy, brutal, perfect.",
+            'attacker_msg': "With a flick, you free the machete from your {hit_location}. It's heavy, brutal, perfect.",
             'victim_msg': "With a flick, {attacker_name} frees the machete from their back. It's heavy, brutal, perfect.",
             'observer_msg': "With a flick, {attacker_name} frees the machete from their back. It's heavy, brutal, perfect."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} grips the machete in both hands. The weight settles like a sentence passed."
         },
         {
-            'attacker_msg': "You pull the machete from behind your back like a secret you've been waiting to tell.",
+            'attacker_msg': "You pull the machete from behind your {hit_location} like a secret you've been waiting to tell.",
             'victim_msg': "{attacker_name} pulls the machete from behind their back like a secret they've been waiting to tell.",
             'observer_msg': "{attacker_name} pulls the machete from behind their back like a secret they've been waiting to tell."
         },
@@ -126,7 +126,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} pulls the machete from its sheath with a long metallic rasp. Everyone hears it."
         },
         {
-            'attacker_msg': "You rest the flat of the machete against your shoulder. The edge points forward, already deciding the outcome.",
+            'attacker_msg': "You rest the flat of the machete against your {hit_location}. The edge points forward, already deciding the outcome.",
             'victim_msg': "{attacker_name} rests the flat of the machete against their shoulder. The edge points forward, already deciding the outcome.",
             'observer_msg': "{attacker_name} rests the flat of the machete against their shoulder. The edge points forward, already deciding the outcome."
         },
@@ -279,7 +279,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You chop into the {hit_location} joint. The arm dangles like a marionette's mistake.",
-            'victim_msg': "{attacker_name} chops into your {hit_location} joint. Your arm dangles like a marionette's mistake.",
+            'victim_msg': "{attacker_name} chops into your {hit_location} joint. Your {hit_location} dangles like a marionette's mistake.",
             'observer_msg': "{attacker_name} chops into {target_name}'s {hit_location} joint. The arm dangles like a marionette's mistake."
         },
         {
@@ -326,8 +326,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A low chop misses the ankle. It finds dirt instead — and leaves a scar in the ground.",
-            'victim_msg': "A low chop misses your ankle. It finds dirt instead — and leaves a scar in the ground.",
-            'observer_msg': "A low chop misses {target_name}'s ankle. It finds dirt instead — and leaves a scar in the ground."
+            'victim_msg': "A low chop misses your {hit_location}. It finds dirt instead — and leaves a scar in the ground.",
+            'observer_msg': "A low chop misses {target_name}'s {hit_location}. It finds dirt instead — and leaves a scar in the ground."
         },
         {
             'attacker_msg': "A missed strike cleaves a chair in two. {target_name} doesn't wait to see the next one.",
@@ -450,9 +450,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} overcommits. The machete buries in the floor instead of flesh."
         },
         {
-            'attacker_msg': "You swing wide. The blade whistles past {target_name}'s face.",
-            'victim_msg': "{attacker_name} swings wide. The blade whistles past your face.",
-            'observer_msg': "{attacker_name} swings wide. The blade whistles past {target_name}'s face."
+            'attacker_msg': "You swing wide. The blade whistles past {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name} swings wide. The blade whistles past your {hit_location}.",
+            'observer_msg': "{attacker_name} swings wide. The blade whistles past {target_name}'s {hit_location}."
         }
     ],
     'kill': [
@@ -463,8 +463,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A clean sweep across the throat. {target_name} drops mid-stride, voice lost in red.",
-            'victim_msg': "A clean sweep across your throat. You drop mid-stride, voice lost in red.",
-            'observer_msg': "A clean sweep across {target_name}'s throat. {target_name} drops mid-stride, voice lost in red."
+            'victim_msg': "A clean sweep across your {hit_location}. You drop mid-stride, voice lost in red.",
+            'observer_msg': "A clean sweep across {target_name}'s {hit_location}. {target_name} drops mid-stride, voice lost in red."
         },
         {
             'attacker_msg': "A cleaving strike separates shoulder from soul. {target_name} doesn't argue with gravity.",
@@ -473,23 +473,23 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A diagonal chop splits the chest. {target_name} collapses mid-scream.",
-            'victim_msg': "A diagonal chop splits your chest. You collapse mid-scream.",
-            'observer_msg': "A diagonal chop splits {target_name}'s chest. {target_name} collapses mid-scream."
+            'victim_msg': "A diagonal chop splits your {hit_location}. You collapse mid-scream.",
+            'observer_msg': "A diagonal chop splits {target_name}'s {hit_location}. {target_name} collapses mid-scream."
         },
         {
             'attacker_msg': "A final chop splits the sternum. {target_name}'s heartbeat stops mid-beat.",
-            'victim_msg': "A final chop splits your sternum. Your heartbeat stops mid-beat.",
-            'observer_msg': "A final chop splits {target_name}'s sternum. {target_name}'s heartbeat stops mid-beat."
+            'victim_msg': "A final chop splits your {hit_location}. Your heartbeat stops mid-beat.",
+            'observer_msg': "A final chop splits {target_name}'s {hit_location}. {target_name}'s heartbeat stops mid-beat."
         },
         {
-            'attacker_msg': "A full-force strike caves in ribs. {target_name}'s heart stops before the second swing.",
-            'victim_msg': "A full-force strike caves in your ribs. Your heart stops before the second swing.",
-            'observer_msg': "A full-force strike caves in {target_name}'s ribs. {target_name}'s heart stops before the second swing."
+            'attacker_msg': "A full-force strike caves in ribs. {target_name}'s {hit_location} stops before the second swing.",
+            'victim_msg': "A full-force strike caves in your {hit_location}. Your {hit_location} stops before the second swing.",
+            'observer_msg': "A full-force strike caves in {target_name}'s {hit_location}. {target_name}'s {hit_location} stops before the second swing."
         },
         {
             'attacker_msg': "A low swing removes a leg. The shock does the rest. {target_name} never makes a sound.",
-            'victim_msg': "A low swing removes your leg. The shock does the rest. You never make a sound.",
-            'observer_msg': "A low swing removes {target_name}'s leg. The shock does the rest. {target_name} never makes a sound."
+            'victim_msg': "A low swing removes your {hit_location}. The shock does the rest. You never make a sound.",
+            'observer_msg': "A low swing removes {target_name}'s {hit_location}. The shock does the rest. {target_name} never makes a sound."
         },
         {
             'attacker_msg': "A rising slash opens {target_name} from hip to ribs. There's nothing left to say.",
@@ -498,23 +498,23 @@ MESSAGES = {
         },
         {
             'attacker_msg': "One clean blow to the heart. {target_name} stiffens — then folds.",
-            'victim_msg': "One clean blow to your heart. You stiffen — then fold.",
-            'observer_msg': "One clean blow to {target_name}'s heart. {target_name} stiffens — then folds."
+            'victim_msg': "One clean blow to your {hit_location}. You stiffen — then fold.",
+            'observer_msg': "One clean blow to {target_name}'s {hit_location}. {target_name} stiffens — then folds."
         },
         {
             'attacker_msg': "One rising slash opens the neck. Blood fountains. {target_name} collapses backward, twitching.",
-            'victim_msg': "One rising slash opens your neck. Blood fountains. You collapse backward, twitching.",
-            'observer_msg': "One rising slash opens {target_name}'s neck. Blood fountains. {target_name} collapses backward, twitching."
+            'victim_msg': "One rising slash opens your {hit_location}. Blood fountains. You collapse backward, twitching.",
+            'observer_msg': "One rising slash opens {target_name}'s {hit_location}. Blood fountains. {target_name} collapses backward, twitching."
         },
         {
             'attacker_msg': "One vertical chop splits the chest. {target_name} falls backward, bleeding in beats.",
-            'victim_msg': "One vertical chop splits your chest. You fall backward, bleeding in beats.",
-            'observer_msg': "One vertical chop splits {target_name}'s chest. {target_name} falls backward, bleeding in beats."
+            'victim_msg': "One vertical chop splits your {hit_location}. You fall backward, bleeding in beats.",
+            'observer_msg': "One vertical chop splits {target_name}'s {hit_location}. {target_name} falls backward, bleeding in beats."
         },
         {
             'attacker_msg': "Steel cracks the skull. The sound is hollow. The result is not.",
-            'victim_msg': "Steel cracks your skull. The sound is hollow. The result is not.",
-            'observer_msg': "Steel cracks {target_name}'s skull. The sound is hollow. The result is not."
+            'victim_msg': "Steel cracks your {hit_location}. The sound is hollow. The result is not.",
+            'observer_msg': "Steel cracks {target_name}'s {hit_location}. The sound is hollow. The result is not."
         },
         {
             'attacker_msg': "Steel drives through collarbone and lung. The scream ends halfway out.",
@@ -523,8 +523,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "Steel meets spine. The body falls in halves. You just watch.",
-            'victim_msg': "Steel meets your spine. Your body falls in halves. {attacker_name} just watches.",
-            'observer_msg': "Steel meets {target_name}'s spine. The body falls in halves. {attacker_name} just watches."
+            'victim_msg': "Steel meets your {hit_location}. Your body falls in halves. {attacker_name} just watches.",
+            'observer_msg': "Steel meets {target_name}'s {hit_location}. The body falls in halves. {attacker_name} just watches."
         },
         {
             'attacker_msg': "The blade sinks into the gut and stays. {target_name} quivers, then goes still.",
@@ -538,38 +538,38 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The last cut is slow and purposeful — across the neck. Red follows, then quiet.",
-            'victim_msg': "The last cut is slow and purposeful — across your neck. Red follows, then quiet.",
-            'observer_msg': "The last cut is slow and purposeful — across {target_name}'s neck. Red follows, then quiet."
+            'victim_msg': "The last cut is slow and purposeful — across your {hit_location}. Red follows, then quiet.",
+            'observer_msg': "The last cut is slow and purposeful — across {target_name}'s {hit_location}. Red follows, then quiet."
         },
         {
             'attacker_msg': "The machete hacks down into the shoulder, cleaving into the chest. {target_name} crumples like collapsed scaffolding.",
-            'victim_msg': "The machete hacks down into your shoulder, cleaving into your chest. You crumple like collapsed scaffolding.",
-            'observer_msg': "The machete hacks down into {target_name}'s shoulder, cleaving into the chest. {target_name} crumples like collapsed scaffolding."
+            'victim_msg': "The machete hacks down into your {hit_location}, cleaving into your {hit_location}. You crumple like collapsed scaffolding.",
+            'observer_msg': "The machete hacks down into {target_name}'s {hit_location}, cleaving into the chest. {target_name} crumples like collapsed scaffolding."
         },
         {
             'attacker_msg': "The machete lands in the back of the skull. You let go. The body drops first.",
-            'victim_msg': "The machete lands in the back of your skull. {attacker_name} lets go. Your body drops first.",
-            'observer_msg': "The machete lands in the back of {target_name}'s skull. {attacker_name} lets go. The body drops first."
+            'victim_msg': "The machete lands in the back of your {hit_location}. {attacker_name} lets go. Your body drops first.",
+            'observer_msg': "The machete lands in the back of {target_name}'s {hit_location}. {attacker_name} lets go. The body drops first."
         },
         {
             'attacker_msg': "The machete lands on the side of the head. The skull folds. {target_name} drops like a marionette cut mid-scene.",
-            'victim_msg': "The machete lands on the side of your head. Your skull folds. You drop like a marionette cut mid-scene.",
-            'observer_msg': "The machete lands on the side of {target_name}'s head. The skull folds. {target_name} drops like a marionette cut mid-scene."
+            'victim_msg': "The machete lands on the side of your {hit_location}. Your {hit_location} folds. You drop like a marionette cut mid-scene.",
+            'observer_msg': "The machete lands on the side of {target_name}'s {hit_location}. The skull folds. {target_name} drops like a marionette cut mid-scene."
         },
         {
             'attacker_msg': "The machete lands on the spine with surgical force. {target_name} goes limp before they hit the floor.",
-            'victim_msg': "The machete lands on your spine with surgical force. You go limp before you hit the floor.",
-            'observer_msg': "The machete lands on {target_name}'s spine with surgical force. {target_name} goes limp before they hit the floor."
+            'victim_msg': "The machete lands on your {hit_location} with surgical force. You go limp before you hit the floor.",
+            'observer_msg': "The machete lands on {target_name}'s {hit_location} with surgical force. {target_name} goes limp before they hit the floor."
         },
         {
-            'attacker_msg': "The machete slams into {target_name}'s neck. One strike. One spray. One fall.",
-            'victim_msg': "The machete slams into your neck. One strike. One spray. One fall.",
-            'observer_msg': "The machete slams into {target_name}'s neck. One strike. One spray. One fall."
+            'attacker_msg': "The machete slams into {target_name}'s {hit_location}. One strike. One spray. One fall.",
+            'victim_msg': "The machete slams into your {hit_location}. One strike. One spray. One fall.",
+            'observer_msg': "The machete slams into {target_name}'s {hit_location}. One strike. One spray. One fall."
         },
         {
             'attacker_msg': "The machete slices across the face. When it stops, {target_name} is gone.",
-            'victim_msg': "The machete slices across your face. When it stops, you are gone.",
-            'observer_msg': "The machete slices across {target_name}'s face. When it stops, {target_name} is gone."
+            'victim_msg': "The machete slices across your {hit_location}. When it stops, you are gone.",
+            'observer_msg': "The machete slices across {target_name}'s {hit_location}. When it stops, {target_name} is gone."
         },
         {
             'attacker_msg': "The weapon cleaves through collar and bone. {target_name} drops like meat on a butcher's table.",
@@ -578,13 +578,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You bury the blade in the skull. It takes effort to pull it free.",
-            'victim_msg': "{attacker_name} buries the blade in your skull. It takes effort to pull it free.",
-            'observer_msg': "{attacker_name} buries the blade in {target_name}'s skull. It takes effort to pull it free."
+            'victim_msg': "{attacker_name} buries the blade in your {hit_location}. It takes effort to pull it free.",
+            'observer_msg': "{attacker_name} buries the blade in {target_name}'s {hit_location}. It takes effort to pull it free."
         },
         {
             'attacker_msg': "You bury the blade in the stomach and drag upward. {target_name} splits like overripe fruit.",
-            'victim_msg': "{attacker_name} buries the blade in your stomach and drags upward. You split like overripe fruit.",
-            'observer_msg': "{attacker_name} buries the blade in {target_name}'s stomach and drags upward. {target_name} splits like overripe fruit."
+            'victim_msg': "{attacker_name} buries the blade in your {hit_location} and drags upward. You split like overripe fruit.",
+            'observer_msg': "{attacker_name} buries the blade in {target_name}'s {hit_location} and drags upward. {target_name} splits like overripe fruit."
         },
         {
             'attacker_msg': "You hack through the chest cavity. The body falls open like a book no one should read.",
@@ -598,8 +598,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You step in close and drive the blade into the sternum. The noise it makes is wet and final.",
-            'victim_msg': "{attacker_name} steps in close and drives the blade into your sternum. The noise it makes is wet and final.",
-            'observer_msg': "{attacker_name} steps in close and drives the blade into {target_name}'s sternum. The noise it makes is wet and final."
+            'victim_msg': "{attacker_name} steps in close and drives the blade into your {hit_location}. The noise it makes is wet and final.",
+            'observer_msg': "{attacker_name} steps in close and drives the blade into {target_name}'s {hit_location}. The noise it makes is wet and final."
         },
         {
             'attacker_msg': "You swing low, take out both knees, then bring the blade down. {target_name} doesn't rise.",

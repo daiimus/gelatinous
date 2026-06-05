@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air itself seems to grow heavy as {attacker_name} prepares to fire the heavy machine gun, anticipating the bone-jarring *THUD-THUD-THUD* and the shockwaves."
         },
         {
-            'attacker_msg': "Your face is a grim mask of focus, thumbs or finger hovering over the butterfly trigger or heavy trigger of the HMG.",
+            'attacker_msg': "Your {hit_location} is a grim mask of focus, thumbs or finger hovering over the butterfly trigger or heavy trigger of the HMG.",
             'victim_msg': "{attacker_name}'s face is a grim mask of focus, thumbs or finger hovering over the butterfly trigger or heavy trigger of the HMG.",
             'observer_msg': "{attacker_name}'s face is a grim mask of focus, thumbs or finger hovering over the butterfly trigger or heavy trigger of the HMG."
         },
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s heavy machine gun bullets make impact, leaving another catastrophic, instantly fatal series of punctures, if 'puncture' can describe the massive craters. A continuous stream of enormous spent casings hits the ground as the bolt cycles."
         },
         {
-            'attacker_msg': "A painful, echoing, ground-shaking series of cracks as bullets from your heavy machine gun strike {target_name}'s {hit_location}, which, along with most of their {hit_location} cavity, are instantly atomized by the multiple hits. You continue the burst, chambering more heavy, destructive rounds.",
-            'victim_msg': "A painful, echoing, ground-shaking series of cracks as bullets from {attacker_name}'s heavy machine gun strike your {hit_location}, which, along with most of your {hit_location} cavity, are instantly atomized by the multiple hits. {attacker_name} continues the burst, chambering more heavy, destructive rounds.",
-            'observer_msg': "A painful, echoing, ground-shaking series of cracks as bullets from {attacker_name}'s heavy machine gun strike {target_name}'s {hit_location}, which, along with most of their {hit_location} cavity, are instantly atomized by the multiple hits. {attacker_name} continues the burst, chambering more heavy, destructive rounds."
+            'attacker_msg': "A painful, echoing, ground-shaking series of cracks as bullets from your heavy machine gun strike {target_name}'s {hit_location}, which, along with most of their chest cavity, are instantly atomized by the multiple hits. You continue the burst, chambering more heavy, destructive rounds.",
+            'victim_msg': "A painful, echoing, ground-shaking series of cracks as bullets from {attacker_name}'s heavy machine gun strike your {hit_location}, which, along with most of your chest cavity, are instantly atomized by the multiple hits. {attacker_name} continues the burst, chambering more heavy, destructive rounds.",
+            'observer_msg': "A painful, echoing, ground-shaking series of cracks as bullets from {attacker_name}'s heavy machine gun strike {target_name}'s {hit_location}, which, along with most of their chest cavity, are instantly atomized by the multiple hits. {attacker_name} continues the burst, chambering more heavy, destructive rounds."
         },
         {
             'attacker_msg': "The projectiles from your heavy machine gun hit {target_name}'s {hit_location}; their entire upper {hit_location} explodes outward in a cloud of red under the sustained fire. The bolt cycles, ejecting casings with violent flicks.",
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     'miss': [
         {
-            'attacker_msg': "Your heavy machine gun fires with a deafening, earth-shattering *THOOM-THOOM-THOOM*, the massive bullets thundering past {target_name}'s head and blasting car-sized craters out of a distant concrete wall, showering the area with debris. You traverse slightly, empty links and smoking casings spewing from the ejection port.",
-            'victim_msg': "{attacker_name}'s heavy machine gun fires with a deafening, earth-shattering *THOOM-THOOM-THOOM*, the massive bullets thundering past your head and blasting car-sized craters out of a distant concrete wall, showering the area with debris. {attacker_name} traverses slightly, empty links and smoking casings spewing from the ejection port.",
-            'observer_msg': "{attacker_name}'s heavy machine gun fires with a deafening, earth-shattering *THOOM-THOOM-THOOM*, the massive bullets thundering past {target_name}'s head and blasting car-sized craters out of a distant concrete wall, showering the area with debris. {attacker_name} traverses slightly, empty links and smoking casings spewing from the ejection port."
+            'attacker_msg': "Your heavy machine gun fires with a deafening, earth-shattering *THOOM-THOOM-THOOM*, the massive bullets thundering past {target_name}'s {hit_location} and blasting car-sized craters out of a distant concrete wall, showering the area with debris. You traverse slightly, empty links and smoking casings spewing from the ejection port.",
+            'victim_msg': "{attacker_name}'s heavy machine gun fires with a deafening, earth-shattering *THOOM-THOOM-THOOM*, the massive bullets thundering past your {hit_location} and blasting car-sized craters out of a distant concrete wall, showering the area with debris. {attacker_name} traverses slightly, empty links and smoking casings spewing from the ejection port.",
+            'observer_msg': "{attacker_name}'s heavy machine gun fires with a deafening, earth-shattering *THOOM-THOOM-THOOM*, the massive bullets thundering past {target_name}'s {hit_location} and blasting car-sized craters out of a distant concrete wall, showering the area with debris. {attacker_name} traverses slightly, empty links and smoking casings spewing from the ejection port."
         },
         {
             'attacker_msg': "{target_name} flinches violently, ears ringing, as the heavy machine gun roars like a vengeful god, the stream of .50 caliber or larger bullets gouging deep, smoking trenches in the ground where they just stood, kicking up ten-foot plumes of earth. You fight the muzzle climb, adjusting the stream of fire.",
@@ -346,7 +346,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name} ducks, terrified, just as your heavy machine gun fires, the stream of bullets searing the air where their head had been with palpable force and a deafening sonic crack. You walk the fire across the target area, the ground still vibrating.",
-            'victim_msg': "You duck, terrified, just as {attacker_name}'s heavy machine gun fires, the stream of bullets searing the air where your head had been with palpable force and a deafening sonic crack. {attacker_name} walks the fire across the target area, the ground still vibrating.",
+            'victim_msg': "You duck, terrified, just as {attacker_name}'s heavy machine gun fires, the stream of bullets searing the air where your {hit_location} had been with palpable force and a deafening sonic crack. {attacker_name} walks the fire across the target area, the ground still vibrating.",
             'observer_msg': "{target_name} ducks, terrified, just as {attacker_name}'s heavy machine gun fires, the stream of bullets searing the air where their head had been with palpable force and a deafening sonic crack. {attacker_name} walks the fire across the target area, the ground still vibrating."
         },
         {
@@ -458,28 +458,28 @@ MESSAGES = {
     'kill': [
         {
             'attacker_msg': "Your heavy machine gun bullets strike {target_name} square in the forehead; their head, and indeed most of their upper body, simply explodes into a cloud of red mist and bone shrapnel under the sustained, brutal impacts, instantly obliterating them. You calmly cease fire, the barrel smoking, the job done.",
-            'victim_msg': "{attacker_name}'s heavy machine gun bullets strike you square in the forehead; your head, and indeed most of your upper body, simply explodes into a cloud of red mist and bone shrapnel under the sustained, brutal impacts, instantly obliterating you. {attacker_name} calmly ceases fire, the barrel smoking, the job done.",
+            'victim_msg': "{attacker_name}'s heavy machine gun bullets strike you square in the forehead; your {hit_location}, and indeed most of your upper body, simply explodes into a cloud of red mist and bone shrapnel under the sustained, brutal impacts, instantly obliterating you. {attacker_name} calmly ceases fire, the barrel smoking, the job done.",
             'observer_msg': "{attacker_name}'s heavy machine gun bullets strike {target_name} square in the forehead; their head, and indeed most of their upper body, simply explodes into a cloud of red mist and bone shrapnel under the sustained, brutal impacts, instantly obliterating them. {attacker_name} calmly ceases fire, the barrel smoking, the job done."
         },
         {
             'attacker_msg': "The heavy machine gun roars like an artillery piece, and {target_name} clutches their chest as a massive, gaping hole appears from multiple impacts, their entire torso erupting outwards before they collapse, utterly destroyed. You smoothly traverse to the next target, the HMG ready again.",
-            'victim_msg': "The heavy machine gun roars like an artillery piece, and you clutch your chest as a massive, gaping hole appears from multiple impacts, your entire torso erupting outwards before you collapse, utterly destroyed. {attacker_name} smoothly traverses to the next target, the HMG ready again.",
+            'victim_msg': "The heavy machine gun roars like an artillery piece, and you clutch your {hit_location} as a massive, gaping hole appears from multiple impacts, your entire torso erupting outwards before you collapse, utterly destroyed. {attacker_name} smoothly traverses to the next target, the HMG ready again.",
             'observer_msg': "The heavy machine gun roars like an artillery piece, and {target_name} clutches their chest as a massive, gaping hole appears from multiple impacts, their entire torso erupting outwards before they collapse, utterly destroyed. {attacker_name} smoothly traverses to the next target, the HMG ready again."
         },
         {
-            'attacker_msg': "With a final, precise burst, your heavy machine gun sends a stream of heavy, armor-piercing bullets through {target_name}'s heart; their body is torn apart by the hydrostatic shock of multiple impacts, ending their struggles catastrophically and instantly. A stream of huge brass casings clatters out.",
-            'victim_msg': "With a final, precise burst, {attacker_name}'s heavy machine gun sends a stream of heavy, armor-piercing bullets through your heart; your body is torn apart by the hydrostatic shock of multiple impacts, ending your struggles catastrophically and instantly. A stream of huge brass casings clatters out.",
-            'observer_msg': "With a final, precise burst, {attacker_name}'s heavy machine gun sends a stream of heavy, armor-piercing bullets through {target_name}'s heart; their body is torn apart by the hydrostatic shock of multiple impacts, ending their struggles catastrophically and instantly. A stream of huge brass casings clatters out."
+            'attacker_msg': "With a final, precise burst, your heavy machine gun sends a stream of heavy, armor-piercing bullets through {target_name}'s {hit_location}; their body is torn apart by the hydrostatic shock of multiple impacts, ending their struggles catastrophically and instantly. A stream of huge brass casings clatters out.",
+            'victim_msg': "With a final, precise burst, {attacker_name}'s heavy machine gun sends a stream of heavy, armor-piercing bullets through your {hit_location}; your body is torn apart by the hydrostatic shock of multiple impacts, ending your struggles catastrophically and instantly. A stream of huge brass casings clatters out.",
+            'observer_msg': "With a final, precise burst, {attacker_name}'s heavy machine gun sends a stream of heavy, armor-piercing bullets through {target_name}'s {hit_location}; their body is torn apart by the hydrostatic shock of multiple impacts, ending their struggles catastrophically and instantly. A stream of huge brass casings clatters out."
         },
         {
-            'attacker_msg': "The stream of massive bullets fired point-blank into {target_name}'s throat from the heavy machine gun nearly severs their head and continues on to obliterate whatever was behind them; they die in a horrific, explosive spray of gore. You release the trigger, the belt feeding smoothly to a stop.",
-            'victim_msg': "The stream of massive bullets fired point-blank into your throat from the heavy machine gun nearly severs your head and continues on to obliterate whatever was behind you; you die in a horrific, explosive spray of gore. {attacker_name} releases the trigger, the belt feeding smoothly to a stop.",
-            'observer_msg': "The stream of massive bullets fired point-blank into {target_name}'s throat from the heavy machine gun nearly severs their head and continues on to obliterate whatever was behind them; they die in a horrific, explosive spray of gore. {attacker_name} releases the trigger, the belt feeding smoothly to a stop."
+            'attacker_msg': "The stream of massive bullets fired point-blank into {target_name}'s {hit_location} from the heavy machine gun nearly severs their head and continues on to obliterate whatever was behind them; they die in a horrific, explosive spray of gore. You release the trigger, the belt feeding smoothly to a stop.",
+            'victim_msg': "The stream of massive bullets fired point-blank into your {hit_location} from the heavy machine gun nearly severs your {hit_location} and continues on to obliterate whatever was behind you; you die in a horrific, explosive spray of gore. {attacker_name} releases the trigger, the belt feeding smoothly to a stop.",
+            'observer_msg': "The stream of massive bullets fired point-blank into {target_name}'s {hit_location} from the heavy machine gun nearly severs their head and continues on to obliterate whatever was behind them; they die in a horrific, explosive spray of gore. {attacker_name} releases the trigger, the belt feeding smoothly to a stop."
         },
         {
-            'attacker_msg': "Your carefully placed burst with the heavy machine gun tears through {target_name}'s spine and out the other side with multiple impacts, taking most of their internal organs with it; they slump, a lifeless, eviscerated puppet. The bolt cycles with relentless, heavy thuds, then silence.",
-            'victim_msg': "{attacker_name}'s carefully placed burst with the heavy machine gun tears through your spine and out the other side with multiple impacts, taking most of your internal organs with it; you slump, a lifeless, eviscerated puppet. The bolt cycles with relentless, heavy thuds, then silence.",
-            'observer_msg': "{attacker_name}'s carefully placed burst with the heavy machine gun tears through {target_name}'s spine and out the other side with multiple impacts, taking most of their internal organs with it; they slump, a lifeless, eviscerated puppet. The bolt cycles with relentless, heavy thuds, then silence."
+            'attacker_msg': "Your carefully placed burst with the heavy machine gun tears through {target_name}'s {hit_location} and out the other side with multiple impacts, taking most of their internal organs with it; they slump, a lifeless, eviscerated puppet. The bolt cycles with relentless, heavy thuds, then silence.",
+            'victim_msg': "{attacker_name}'s carefully placed burst with the heavy machine gun tears through your {hit_location} and out the other side with multiple impacts, taking most of your internal organs with it; you slump, a lifeless, eviscerated puppet. The bolt cycles with relentless, heavy thuds, then silence.",
+            'observer_msg': "{attacker_name}'s carefully placed burst with the heavy machine gun tears through {target_name}'s {hit_location} and out the other side with multiple impacts, taking most of their internal organs with it; they slump, a lifeless, eviscerated puppet. The bolt cycles with relentless, heavy thuds, then silence."
         },
         {
             'attacker_msg': "The heavy machine gun, an instrument of precise, overwhelming death, delivers a killing blow as {target_name} is overcome by the catastrophic, explosive bullet wounds from the sustained fire, their form ceasing to resemble anything human. You scan for other threats, the HMG still hot.",
@@ -492,9 +492,9 @@ MESSAGES = {
             'observer_msg': "A precise burst to the base of the skull from {attacker_name}'s heavy machine gun vaporizes the target area and a significant portion of the surrounding anatomy with multiple impacts, ending {target_name}'s life with absolute, gory finality. {attacker_name} continues firing for a second, ensuring total destruction."
         },
         {
-            'attacker_msg': "Your sustained burst from the heavy machine gun pierces {target_name}'s lung; the resulting cavitation from multiple large-caliber rounds blows their chest cavity apart, and they collapse, dying swiftly and messily. A river of massive spent casings is ejected as you maintain fire until {target_name} is still.",
-            'victim_msg': "{attacker_name}'s sustained burst from the heavy machine gun pierces your lung; the resulting cavitation from multiple large-caliber rounds blows your chest cavity apart, and you collapse, dying swiftly and messily. A river of massive spent casings is ejected as {attacker_name} maintains fire until you are still.",
-            'observer_msg': "{attacker_name}'s sustained burst from the heavy machine gun pierces {target_name}'s lung; the resulting cavitation from multiple large-caliber rounds blows their chest cavity apart, and they collapse, dying swiftly and messily. A river of massive spent casings is ejected as {attacker_name} maintains fire until {target_name} is still."
+            'attacker_msg': "Your sustained burst from the heavy machine gun pierces {target_name}'s {hit_location}; the resulting cavitation from multiple large-caliber rounds blows their chest cavity apart, and they collapse, dying swiftly and messily. A river of massive spent casings is ejected as you maintain fire until {target_name} is still.",
+            'victim_msg': "{attacker_name}'s sustained burst from the heavy machine gun pierces your {hit_location}; the resulting cavitation from multiple large-caliber rounds blows your chest cavity apart, and you collapse, dying swiftly and messily. A river of massive spent casings is ejected as {attacker_name} maintains fire until you are still.",
+            'observer_msg': "{attacker_name}'s sustained burst from the heavy machine gun pierces {target_name}'s {hit_location}; the resulting cavitation from multiple large-caliber rounds blows their chest cavity apart, and they collapse, dying swiftly and messily. A river of massive spent casings is ejected as {attacker_name} maintains fire until {target_name} is still."
         },
         {
             'attacker_msg': "The unyielding, armor-piercing slugs from your heavy machine gun pierce a vital organ in {target_name}, which ruptures with explosive force from the multiple impacts, tearing them apart from the inside; they fall, dead before they hit the ground, or what's left of them does. Hot, oversized casings are ejected in a continuous stream.",
@@ -503,7 +503,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "With a final, thunderous, concussive roar, you finish {target_name} with a stream of heavy bullets through the eye from the heavy machine gun; the back of their skull, and much of the wall behind them, erupts outwards. The bolt cycles with smooth, powerful, and terrifying efficiency, then stops.",
-            'victim_msg': "With a final, thunderous, concussive roar, {attacker_name} finishes you with a stream of heavy bullets through the eye from the heavy machine gun; the back of your skull, and much of the wall behind you, erupts outwards. The bolt cycles with smooth, powerful, and terrifying efficiency, then stops.",
+            'victim_msg': "With a final, thunderous, concussive roar, {attacker_name} finishes you with a stream of heavy bullets through the eye from the heavy machine gun; the back of your {hit_location}, and much of the wall behind you, erupts outwards. The bolt cycles with smooth, powerful, and terrifying efficiency, then stops.",
             'observer_msg': "With a final, thunderous, concussive roar, {attacker_name} finishes {target_name} with a stream of heavy bullets through the eye from the heavy machine gun; the back of their skull, and much of the wall behind them, erupts outwards. The bolt cycles with smooth, powerful, and terrifying efficiency, then stops."
         },
         {

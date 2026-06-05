@@ -81,7 +81,7 @@ MESSAGES = {
             "observer_msg": "The distinctive shape of the cricket bat – broad and flat – is clearly visible, a testament to its unique design."
         },
         {
-            "attacker_msg": "You hold the cricket bat angled over your shoulder, ready to bring its full width down upon {target_name}.",
+            "attacker_msg": "You hold the cricket bat angled over your {hit_location}, ready to bring its full width down upon {target_name}.",
             "victim_msg": "{attacker_name} holds the cricket bat angled over their shoulder, ready to bring its full width down upon you.",
             "observer_msg": "{attacker_name} holds the cricket bat angled over their shoulder, ready to bring its full width down upon {target_name}."
         },
@@ -234,7 +234,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The cricket bat thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs.",
-            "victim_msg": "The cricket bat thuds heavily as it connects with your {hit_location}, driving the air from your lungs.",
+            "victim_msg": "The cricket bat thuds heavily as it connects with your {hit_location}, driving the air from your {hit_location}.",
             "observer_msg": "The cricket bat thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs."
         },
         {
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            "attacker_msg": "Your cricket bat whistles through the air with considerable force, the broad face missing {target_name}'s head by inches.",
-            "victim_msg": "{attacker_name}'s cricket bat whistles through the air with considerable force, the broad face missing your head by inches.",
-            "observer_msg": "{attacker_name}'s cricket bat whistles through the air with considerable force, the broad face missing {target_name}'s head by inches."
+            "attacker_msg": "Your cricket bat whistles through the air with considerable force, the broad face missing {target_name}'s {hit_location} by inches.",
+            "victim_msg": "{attacker_name}'s cricket bat whistles through the air with considerable force, the broad face missing your {hit_location} by inches.",
+            "observer_msg": "{attacker_name}'s cricket bat whistles through the air with considerable force, the broad face missing {target_name}'s {hit_location} by inches."
         },
         {
             "attacker_msg": "{target_name} narrowly avoids the heavy, flat arc of your cricket bat with a desperate lurch.",
@@ -457,29 +457,29 @@ MESSAGES = {
     ],
     "kill": [
         {
-            "attacker_msg": "Your cricket bat connects with {target_name}'s temple with a sickening, flat crack; {target_name} drops, instantly lifeless.",
-            "victim_msg": "{attacker_name}'s cricket bat connects with your temple with a sickening, flat crack; you drop, instantly lifeless.",
-            "observer_msg": "{attacker_name}'s cricket bat connects with {target_name}'s temple with a sickening, flat crack; {target_name} drops, instantly lifeless."
+            "attacker_msg": "Your cricket bat connects with {target_name}'s {hit_location} with a sickening, flat crack; {target_name} drops, instantly lifeless.",
+            "victim_msg": "{attacker_name}'s cricket bat connects with your {hit_location} with a sickening, flat crack; you drop, instantly lifeless.",
+            "observer_msg": "{attacker_name}'s cricket bat connects with {target_name}'s {hit_location} with a sickening, flat crack; {target_name} drops, instantly lifeless."
         },
         {
-            "attacker_msg": "A devastating swing from the cricket bat crushes {target_name}'s skull, ending the fight with brutal finality.",
-            "victim_msg": "A devastating swing from the cricket bat crushes your skull, ending the fight with brutal finality.",
-            "observer_msg": "A devastating swing from the cricket bat crushes {target_name}'s skull, ending the fight with brutal finality."
+            "attacker_msg": "A devastating swing from the cricket bat crushes {target_name}'s {hit_location}, ending the fight with brutal finality.",
+            "victim_msg": "A devastating swing from the cricket bat crushes your {hit_location}, ending the fight with brutal finality.",
+            "observer_msg": "A devastating swing from the cricket bat crushes {target_name}'s {hit_location}, ending the fight with brutal finality."
         },
         {
-            "attacker_msg": "With a final, focused stroke, your cricket bat shatters {target_name}'s sternum, and they collapse, unmoving.",
-            "victim_msg": "With a final, focused stroke, {attacker_name}'s cricket bat shatters your sternum, and you collapse, unmoving.",
-            "observer_msg": "With a final, focused stroke, {attacker_name}'s cricket bat shatters {target_name}'s sternum, and they collapse, unmoving."
+            "attacker_msg": "With a final, focused stroke, your cricket bat shatters {target_name}'s {hit_location}, and they collapse, unmoving.",
+            "victim_msg": "With a final, focused stroke, {attacker_name}'s cricket bat shatters your {hit_location}, and you collapse, unmoving.",
+            "observer_msg": "With a final, focused stroke, {attacker_name}'s cricket bat shatters {target_name}'s {hit_location}, and they collapse, unmoving."
         },
         {
-            "attacker_msg": "The heavy willow of the cricket bat strikes {target_name}'s throat with a sickening thud, a swift and brutal end.",
-            "victim_msg": "The heavy willow of the cricket bat strikes your throat with a sickening thud, a swift and brutal end.",
-            "observer_msg": "The heavy willow of the cricket bat strikes {target_name}'s throat with a sickening thud, a swift and brutal end."
+            "attacker_msg": "The heavy willow of the cricket bat strikes {target_name}'s {hit_location} with a sickening thud, a swift and brutal end.",
+            "victim_msg": "The heavy willow of the cricket bat strikes your {hit_location} with a sickening thud, a swift and brutal end.",
+            "observer_msg": "The heavy willow of the cricket bat strikes {target_name}'s {hit_location} with a sickening thud, a swift and brutal end."
         },
         {
-            "attacker_msg": "Your powerful swing with the cricket bat caves in {target_name}'s chest; they fall, breath rattling to a stop.",
-            "victim_msg": "{attacker_name}'s powerful swing with the cricket bat caves in your chest; you fall, breath rattling to a stop.",
-            "observer_msg": "{attacker_name}'s powerful swing with the cricket bat caves in {target_name}'s chest; they fall, breath rattling to a stop."
+            "attacker_msg": "Your powerful swing with the cricket bat caves in {target_name}'s {hit_location}; they fall, breath rattling to a stop.",
+            "victim_msg": "{attacker_name}'s powerful swing with the cricket bat caves in your {hit_location}; you fall, breath rattling to a stop.",
+            "observer_msg": "{attacker_name}'s powerful swing with the cricket bat caves in {target_name}'s {hit_location}; they fall, breath rattling to a stop."
         },
         {
             "attacker_msg": "The cricket bat, a simple sporting tool turned deadly, delivers a killing blow, and {target_name}'s struggles cease.",
@@ -497,9 +497,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} drives the toe of the cricket bat into {target_name}'s eye socket with brutal force, the outcome grimly certain."
         },
         {
-            "attacker_msg": "The unyielding cricket bat breaks {target_name}'s neck with a sharp, horrifying snap; they fall, a broken puppet.",
-            "victim_msg": "The unyielding cricket bat breaks your neck with a sharp, horrifying snap; you fall, a broken puppet.",
-            "observer_msg": "The unyielding cricket bat breaks {target_name}'s neck with a sharp, horrifying snap; they fall, a broken puppet."
+            "attacker_msg": "The unyielding cricket bat breaks {target_name}'s {hit_location} with a sharp, horrifying snap; they fall, a broken puppet.",
+            "victim_msg": "The unyielding cricket bat breaks your {hit_location} with a sharp, horrifying snap; you fall, a broken puppet.",
+            "observer_msg": "The unyielding cricket bat breaks {target_name}'s {hit_location} with a sharp, horrifying snap; they fall, a broken puppet."
         },
         {
             "attacker_msg": "With a final, savage grunt, you finish {target_name} with a decisive, crushing strike from the cricket bat.",

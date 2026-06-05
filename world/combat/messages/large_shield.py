@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     'kill': [
         {
-            'attacker_msg': "A brutal downward blow flattens {target_name}'s head into an unrecognizable red smear.",
-            'victim_msg': "A brutal downward blow flattens your head into an unrecognizable red smear.",
-            'observer_msg': "A brutal downward blow flattens {target_name}'s head into an unrecognizable red smear."
+            'attacker_msg': "A brutal downward blow flattens {target_name}'s {hit_location} into an unrecognizable red smear.",
+            'victim_msg': "A brutal downward blow flattens your {hit_location} into an unrecognizable red smear.",
+            'observer_msg': "A brutal downward blow flattens {target_name}'s {hit_location} into an unrecognizable red smear."
         },
         {
             'attacker_msg': "A crushing downward blow breaks neck, spine, and noise alike.",
@@ -473,18 +473,18 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A full-bodied slam to the chest compresses {target_name} until breathing isn't an option.",
-            'victim_msg': "A full-bodied slam to your chest compresses you until breathing isn't an option.",
-            'observer_msg': "A full-bodied slam to {target_name}'s chest compresses {target_name} until breathing isn't an option."
+            'victim_msg': "A full-bodied slam to your {hit_location} compresses you until breathing isn't an option.",
+            'observer_msg': "A full-bodied slam to {target_name}'s {hit_location} compresses {target_name} until breathing isn't an option."
         },
         {
             'attacker_msg': "A lunging bash snaps the spine mid-charge. {target_name} drops mid-step, lifeless.",
-            'victim_msg': "A lunging bash snaps your spine mid-charge. You drop mid-step, lifeless.",
-            'observer_msg': "A lunging bash snaps {target_name}'s spine mid-charge. {target_name} drops mid-step, lifeless."
+            'victim_msg': "A lunging bash snaps your {hit_location} mid-charge. You drop mid-step, lifeless.",
+            'observer_msg': "A lunging bash snaps {target_name}'s {hit_location} mid-charge. {target_name} drops mid-step, lifeless."
         },
         {
             'attacker_msg': "A relentless press against the ribs. They snap like dry reeds. {target_name} makes no sound at the end.",
-            'victim_msg': "A relentless press against your ribs. They snap like dry reeds. You make no sound at the end.",
-            'observer_msg': "A relentless press against {target_name}'s ribs. They snap like dry reeds. {target_name} makes no sound at the end."
+            'victim_msg': "A relentless press against your {hit_location}. They snap like dry reeds. You make no sound at the end.",
+            'observer_msg': "A relentless press against {target_name}'s {hit_location}. They snap like dry reeds. {target_name} makes no sound at the end."
         },
         {
             'attacker_msg': "A rising blow flips {target_name} backwards. Their body lands wrong. Their spirit doesn't return.",
@@ -498,8 +498,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A savage bash to the temple wipes out everything behind the eyes.",
-            'victim_msg': "A savage bash to your temple wipes out everything behind the eyes.",
-            'observer_msg': "A savage bash to {target_name}'s temple wipes out everything behind the eyes."
+            'victim_msg': "A savage bash to your {hit_location} wipes out everything behind the eyes.",
+            'observer_msg': "A savage bash to {target_name}'s {hit_location} wipes out everything behind the eyes."
         },
         {
             'attacker_msg': "One final swing topples {target_name} like scaffolding in a quake. The dust settles faster than they do.",
@@ -508,8 +508,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "One long shove across the chest caves it in. {target_name} exhales everything they ever were.",
-            'victim_msg': "One long shove across your chest caves it in. You exhale everything you ever were.",
-            'observer_msg': "One long shove across {target_name}'s chest caves it in. {target_name} exhales everything they ever were."
+            'victim_msg': "One long shove across your {hit_location} caves it in. You exhale everything you ever were.",
+            'observer_msg': "One long shove across {target_name}'s {hit_location} caves it in. {target_name} exhales everything they ever were."
         },
         {
             'attacker_msg': "One shove — full force — sends {target_name} into a wall so hard it leaves a dent in both.",
@@ -523,13 +523,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The entire edge crashes into the base of the skull. {target_name} falls like a dropped sack.",
-            'victim_msg': "The entire edge crashes into the base of your skull. You fall like a dropped sack.",
-            'observer_msg': "The entire edge crashes into the base of {target_name}'s skull. {target_name} falls like a dropped sack."
+            'victim_msg': "The entire edge crashes into the base of your {hit_location}. You fall like a dropped sack.",
+            'observer_msg': "The entire edge crashes into the base of {target_name}'s {hit_location}. {target_name} falls like a dropped sack."
         },
         {
-            'attacker_msg': "The entire front edge is brought down on {target_name}'s head. There's no second strike.",
-            'victim_msg': "The entire front edge is brought down on your head. There's no second strike.",
-            'observer_msg': "The entire front edge is brought down on {target_name}'s head. There's no second strike."
+            'attacker_msg': "The entire front edge is brought down on {target_name}'s {hit_location}. There's no second strike.",
+            'victim_msg': "The entire front edge is brought down on your {hit_location}. There's no second strike.",
+            'observer_msg': "The entire front edge is brought down on {target_name}'s {hit_location}. There's no second strike."
         },
         {
             'attacker_msg': "The massive shield comes down like judgment. {target_name} folds beneath it, every sound final.",
@@ -538,13 +538,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The rim crashes into the skull. There's a snap. Then a collapse. Then stillness.",
-            'victim_msg': "The rim crashes into your skull. There's a snap. Then a collapse. Then stillness.",
-            'observer_msg': "The rim crashes into {target_name}'s skull. There's a snap. Then a collapse. Then stillness."
+            'victim_msg': "The rim crashes into your {hit_location}. There's a snap. Then a collapse. Then stillness.",
+            'observer_msg': "The rim crashes into {target_name}'s {hit_location}. There's a snap. Then a collapse. Then stillness."
         },
         {
             'attacker_msg': "The rim punches the throat. The collapse is instant. The breathing isn't.",
-            'victim_msg': "The rim punches your throat. The collapse is instant. The breathing isn't.",
-            'observer_msg': "The rim punches {target_name}'s throat. The collapse is instant. The breathing isn't."
+            'victim_msg': "The rim punches your {hit_location}. The collapse is instant. The breathing isn't.",
+            'observer_msg': "The rim punches {target_name}'s {hit_location}. The collapse is instant. The breathing isn't."
         },
         {
             'attacker_msg': "The shield comes down like judgment. {target_name} is pinned, pulped, and forgotten.",
@@ -553,13 +553,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The shield hits the skull at full tilt. The twitch afterward is purely reflex.",
-            'victim_msg': "The shield hits your skull at full tilt. The twitch afterward is purely reflex.",
-            'observer_msg': "The shield hits {target_name}'s skull at full tilt. The twitch afterward is purely reflex."
+            'victim_msg': "The shield hits your {hit_location} at full tilt. The twitch afterward is purely reflex.",
+            'observer_msg': "The shield hits {target_name}'s {hit_location} at full tilt. The twitch afterward is purely reflex."
         },
         {
             'attacker_msg': "The shield slams into the neck. {target_name} staggers, gurgles, then hits the floor like meat.",
-            'victim_msg': "The shield slams into your neck. You stagger, gurgle, then hit the floor like meat.",
-            'observer_msg': "The shield slams into {target_name}'s neck. {target_name} staggers, gurgles, then hits the floor like meat."
+            'victim_msg': "The shield slams into your {hit_location}. You stagger, gurgle, then hit the floor like meat.",
+            'observer_msg': "The shield slams into {target_name}'s {hit_location}. {target_name} staggers, gurgles, then hits the floor like meat."
         },
         {
             'attacker_msg': "The slab folds {target_name} backward over a crate. When they fall, they stay folded.",
@@ -578,7 +578,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You pin them down and drive the shield into the chest until breathing is academic.",
-            'victim_msg': "{attacker_name} pins you down and drives the shield into your chest until breathing is academic.",
+            'victim_msg': "{attacker_name} pins you down and drives the shield into your {hit_location} until breathing is academic.",
             'observer_msg': "{attacker_name} pins {target_name} down and drives the shield into the chest until breathing is academic."
         },
         {
@@ -602,9 +602,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} rams until resistance fades. They only stop when nothing pushes back."
         },
         {
-            'attacker_msg': "You swing upward. The edge of the shield caves in {target_name}'s jaw and leaves silence behind.",
-            'victim_msg': "{attacker_name} swings upward. The edge of the shield caves in your jaw and leaves silence behind.",
-            'observer_msg': "{attacker_name} swings upward. The edge of the shield caves in {target_name}'s jaw and leaves silence behind."
+            'attacker_msg': "You swing upward. The edge of the shield caves in {target_name}'s {hit_location} and leaves silence behind.",
+            'victim_msg': "{attacker_name} swings upward. The edge of the shield caves in your {hit_location} and leaves silence behind.",
+            'observer_msg': "{attacker_name} swings upward. The edge of the shield caves in {target_name}'s {hit_location} and leaves silence behind."
         },
     ],
 }

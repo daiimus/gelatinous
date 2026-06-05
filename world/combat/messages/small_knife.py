@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "No sheath. No belt. Just a hidden pocket and a moment's warning before violence begins."
         },
         {
-            'attacker_msg': "The blade is barely the length of a finger — but in your hand, it means so much more.",
+            'attacker_msg': "The blade is barely the length of a finger — but in your {hit_location}, it means so much more.",
             'victim_msg': "The blade is barely the length of a finger — but in {attacker_name}'s hand, it means so much more.",
             'observer_msg': "The blade is barely the length of a finger — but in {attacker_name}'s hand, it means so much more."
         },
@@ -46,7 +46,7 @@ MESSAGES = {
             'observer_msg': "The blade is barely visible — until {attacker_name} brings it to the light. Then it's all that exists."
         },
         {
-            'attacker_msg': "The blade is hidden until it's not. You lift your hand, and the light finds it instantly.",
+            'attacker_msg': "The blade is hidden until it's not. You lift your {hit_location}, and the light finds it instantly.",
             'victim_msg': "The blade is hidden until it's not. {attacker_name} lifts their hand, and the light finds it instantly.",
             'observer_msg': "The blade is hidden until it's not. {attacker_name} lifts their hand, and the light finds it instantly."
         },
@@ -56,7 +56,7 @@ MESSAGES = {
             'observer_msg': "The glint is brief. The danger is not. {attacker_name}'s stance changes the air."
         },
         {
-            'attacker_msg': "The handle barely fits your hand, but you make it work like an artist with a scalpel.",
+            'attacker_msg': "The handle barely fits your {hit_location}, but you make it work like an artist with a scalpel.",
             'victim_msg': "The handle barely fits the hand, but {attacker_name} makes it work like an artist with a scalpel.",
             'observer_msg': "The handle barely fits the hand, but {attacker_name} makes it work like an artist with a scalpel."
         },
@@ -146,7 +146,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slips the small knife from a hidden pocket. It glints only once before vanishing into motion."
         },
         {
-            'attacker_msg': "You snap open the small knife with a flick of your wrist. The sound is soft, but final.",
+            'attacker_msg': "You snap open the small knife with a flick of your {hit_location}. The sound is soft, but final.",
             'victim_msg': "{attacker_name} snaps open the small knife with a flick of their wrist. The sound is soft, but final.",
             'observer_msg': "{attacker_name} snaps open the small knife with a flick of their wrist. The sound is soft, but final."
         }
@@ -316,12 +316,12 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A quick slash across the chest — but the blade finds only empty space.",
-            'victim_msg': "A quick slash across your chest — but the blade finds only empty space.",
+            'victim_msg': "A quick slash across your {hit_location} — but the blade finds only empty space.",
             'observer_msg': "A quick slash across the chest — but the blade finds only empty space."
         },
         {
             'attacker_msg': "A stab toward the shoulder glances off, harmless. The angle was wrong.",
-            'victim_msg': "A stab toward your shoulder glances off, harmless. The angle was wrong.",
+            'victim_msg': "A stab toward your {hit_location} glances off, harmless. The angle was wrong.",
             'observer_msg': "A stab toward the shoulder glances off, harmless. The angle was wrong."
         },
         {
@@ -331,7 +331,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "An attempt at the ribs goes wide. The blade skims harmlessly past.",
-            'victim_msg': "An attempt at your ribs goes wide. The blade skims harmlessly past.",
+            'victim_msg': "An attempt at your {hit_location} goes wide. The blade skims harmlessly past.",
             'observer_msg': "An attempt at the ribs goes wide. The blade skims harmlessly past."
         },
         {
@@ -366,12 +366,12 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The knife slides past the ribs, missing by millimeters. {target_name} gasps but remains uncut.",
-            'victim_msg': "The knife slides past your ribs, missing by millimeters. You gasp but remain uncut.",
+            'victim_msg': "The knife slides past your {hit_location}, missing by millimeters. You gasp but remain uncut.",
             'observer_msg': "The knife slides past the ribs, missing by millimeters. {target_name} gasps but remains uncut."
         },
         {
             'attacker_msg': "The knife swipes at the throat — but {target_name} ducks at exactly the right moment.",
-            'victim_msg': "The knife swipes at your throat — but you duck at exactly the right moment.",
+            'victim_msg': "The knife swipes at your {hit_location} — but you duck at exactly the right moment.",
             'observer_msg': "The knife swipes at the throat — but {target_name} ducks at exactly the right moment."
         },
         {
@@ -396,7 +396,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You aim for the arm, but the knife finds only air. {target_name} jerks back, safe.",
-            'victim_msg': "{attacker_name} aims for your arm, but the knife finds only air. You jerk back, safe.",
+            'victim_msg': "{attacker_name} aims for your {hit_location}, but the knife finds only air. You jerk back, safe.",
             'observer_msg': "{attacker_name} aims for the arm, but the knife finds only air. {target_name} jerks back, safe."
         },
         {
@@ -416,7 +416,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You flick the blade at the neck, but {target_name} pulls back in time.",
-            'victim_msg': "{attacker_name} flicks the blade at your neck, but you pull back in time.",
+            'victim_msg': "{attacker_name} flicks the blade at your {hit_location}, but you pull back in time.",
             'observer_msg': "{attacker_name} flicks the blade at the neck, but {target_name} pulls back in time."
         },
         {
@@ -426,22 +426,22 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You make a quick thrust toward the ribs, but the angle is off. The blade skims past.",
-            'victim_msg': "{attacker_name} makes a quick thrust toward your ribs, but the angle is off. The blade skims past.",
+            'victim_msg': "{attacker_name} makes a quick thrust toward your {hit_location}, but the angle is off. The blade skims past.",
             'observer_msg': "{attacker_name} makes a quick thrust toward the ribs, but the angle is off. The blade skims past."
         },
         {
             'attacker_msg': "You slice toward the shoulder, but {target_name} ducks under the blade.",
-            'victim_msg': "{attacker_name} slices toward your shoulder, but you duck under the blade.",
+            'victim_msg': "{attacker_name} slices toward your {hit_location}, but you duck under the blade.",
             'observer_msg': "{attacker_name} slices toward the shoulder, but {target_name} ducks under the blade."
         },
         {
             'attacker_msg': "You stab toward the chest, but {target_name} pivots away, leaving you grasping air.",
-            'victim_msg': "{attacker_name} stabs toward your chest, but you pivot away, leaving them grasping air.",
+            'victim_msg': "{attacker_name} stabs toward your {hit_location}, but you pivot away, leaving them grasping air.",
             'observer_msg': "{attacker_name} stabs toward the chest, but {target_name} pivots away, leaving {attacker_name} grasping air."
         },
         {
             'attacker_msg': "You strike for the stomach, but the blade meets nothing. {target_name} has moved.",
-            'victim_msg': "{attacker_name} strikes for your stomach, but the blade meets nothing. You have moved.",
+            'victim_msg': "{attacker_name} strikes for your {hit_location}, but the blade meets nothing. You have moved.",
             'observer_msg': "{attacker_name} strikes for the stomach, but the blade meets nothing. {target_name} has moved."
         },
         {
@@ -451,7 +451,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You thrust the blade toward the heart, but {target_name} twists aside. The knife tastes only wind.",
-            'victim_msg': "{attacker_name} thrusts the blade toward your heart, but you twist aside. The knife tastes only wind.",
+            'victim_msg': "{attacker_name} thrusts the blade toward your {hit_location}, but you twist aside. The knife tastes only wind.",
             'observer_msg': "{attacker_name} thrusts the blade toward the heart, but {target_name} twists aside. The knife tastes only wind."
         }
     ],
@@ -463,12 +463,12 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A nick to the artery. {target_name} clutches their throat as life spills red between their fingers.",
-            'victim_msg': "A nick to the artery. You clutch your throat as life spills red between your fingers.",
+            'victim_msg': "A nick to the artery. You clutch your {hit_location} as life spills red between your fingers.",
             'observer_msg': "A nick to the artery. {target_name} clutches their throat as life spills red between their fingers."
         },
         {
             'attacker_msg': "A quick slice along the throat. {target_name} gurgles once, then falls silent forever.",
-            'victim_msg': "A quick slice along your throat. You gurgle once, then fall silent forever.",
+            'victim_msg': "A quick slice along your {hit_location}. You gurgle once, then fall silent forever.",
             'observer_msg': "A quick slice along the throat. {target_name} gurgles once, then falls silent forever."
         },
         {
@@ -478,12 +478,12 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A swift jab to the temple. {target_name} drops like a stone, blade buried to the hilt.",
-            'victim_msg': "A swift jab to your temple. You drop like a stone, blade buried to the hilt.",
+            'victim_msg': "A swift jab to your {hit_location}. You drop like a stone, blade buried to the hilt.",
             'observer_msg': "A swift jab to the temple. {target_name} drops like a stone, blade buried to the hilt."
         },
         {
             'attacker_msg': "A thrust under the ribs finds the heart. {target_name} gasps once, then slumps forward, still.",
-            'victim_msg': "A thrust under your ribs finds your heart. You gasp once, then slump forward, still.",
+            'victim_msg': "A thrust under your {hit_location} finds your {hit_location}. You gasp once, then slump forward, still.",
             'observer_msg': "A thrust under the ribs finds the heart. {target_name} gasps once, then slumps forward, still."
         },
         {
@@ -503,12 +503,12 @@ MESSAGES = {
         },
         {
             'attacker_msg': "One thrust into the base of the skull. {target_name} doesn't even have time to scream.",
-            'victim_msg': "One thrust into the base of your skull. You don't even have time to scream.",
+            'victim_msg': "One thrust into the base of your {hit_location}. You don't even have time to scream.",
             'observer_msg': "One thrust into the base of the skull. {target_name} doesn't even have time to scream."
         },
         {
             'attacker_msg': "The blade enters just below the sternum and slides upward. {target_name} dies with a whimper.",
-            'victim_msg': "The blade enters just below your sternum and slides upward. You die with a whimper.",
+            'victim_msg': "The blade enters just below your {hit_location} and slides upward. You die with a whimper.",
             'observer_msg': "The blade enters just below the sternum and slides upward. {target_name} dies with a whimper."
         },
         {
@@ -518,17 +518,17 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The blade finds the soft spot beneath the jaw. {target_name} convulses once, then goes limp.",
-            'victim_msg': "The blade finds the soft spot beneath your jaw. You convulse once, then go limp.",
+            'victim_msg': "The blade finds the soft spot beneath your {hit_location}. You convulse once, then go limp.",
             'observer_msg': "The blade finds the soft spot beneath the jaw. {target_name} convulses once, then goes limp."
         },
         {
             'attacker_msg': "The blade pierces the lung. {target_name} drowns in their own blood, gasping for air that won't come.",
-            'victim_msg': "The blade pierces your lung. You drown in your own blood, gasping for air that won't come.",
+            'victim_msg': "The blade pierces your {hit_location}. You drown in your own blood, gasping for air that won't come.",
             'observer_msg': "The blade pierces the lung. {target_name} drowns in their own blood, gasping for air that won't come."
         },
         {
             'attacker_msg': "The blade slides between vertebrae. {target_name} crumples instantly, their spine severed.",
-            'victim_msg': "The blade slides between vertebrae. You crumple instantly, your spine severed.",
+            'victim_msg': "The blade slides between vertebrae. You crumple instantly, your {hit_location} severed.",
             'observer_msg': "The blade slides between vertebrae. {target_name} crumples instantly, their spine severed."
         },
         {
@@ -538,7 +538,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The knife punches through the ribs and into the heart. {target_name} dies before they hit the ground.",
-            'victim_msg': "The knife punches through your ribs and into your heart. You die before you hit the ground.",
+            'victim_msg': "The knife punches through your {hit_location} and into your {hit_location}. You die before you hit the ground.",
             'observer_msg': "The knife punches through the ribs and into the heart. {target_name} dies before they hit the ground."
         },
         {
@@ -563,7 +563,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You find the artery in the thigh. {target_name} tries to stanch the bleeding, but there's too much, too fast.",
-            'victim_msg': "{attacker_name} finds the artery in your thigh. You try to stanch the bleeding, but there's too much, too fast.",
+            'victim_msg': "{attacker_name} finds the artery in your {hit_location}. You try to stanch the bleeding, but there's too much, too fast.",
             'observer_msg': "{attacker_name} finds the artery in the thigh. {target_name} tries to stanch the bleeding, but there's too much, too fast."
         },
         {
@@ -572,38 +572,38 @@ MESSAGES = {
             'observer_msg': "{attacker_name} pierces the left lung. {target_name} coughs up blood, then collapses, gasping their last."
         },
         {
-            'attacker_msg': "You plant the blade in the small of {target_name}'s back. They arch, scream once, then slump forward, dead.",
-            'victim_msg': "{attacker_name} plants the blade in the small of your back. You arch, scream once, then slump forward, dead.",
-            'observer_msg': "{attacker_name} plants the blade in the small of {target_name}'s back. They arch, scream once, then slump forward, dead."
+            'attacker_msg': "You plant the blade in the small of {target_name}'s {hit_location}. They arch, scream once, then slump forward, dead.",
+            'victim_msg': "{attacker_name} plants the blade in the small of your {hit_location}. You arch, scream once, then slump forward, dead.",
+            'observer_msg': "{attacker_name} plants the blade in the small of {target_name}'s {hit_location}. They arch, scream once, then slump forward, dead."
         },
         {
             'attacker_msg': "You puncture the carotid artery. {target_name} clutches their neck, blood spurting between their fingers.",
-            'victim_msg': "{attacker_name} punctures your carotid artery. You clutch your neck, blood spurting between your fingers.",
+            'victim_msg': "{attacker_name} punctures your carotid artery. You clutch your {hit_location}, blood spurting between your fingers.",
             'observer_msg': "{attacker_name} punctures the carotid artery. {target_name} clutches their neck, blood spurting between their fingers."
         },
         {
             'attacker_msg': "You slide the knife between the ribs and into the liver. {target_name} doubles over and dies in agony.",
-            'victim_msg': "{attacker_name} slides the knife between your ribs and into your liver. You double over and die in agony.",
+            'victim_msg': "{attacker_name} slides the knife between your {hit_location} and into your {hit_location}. You double over and die in agony.",
             'observer_msg': "{attacker_name} slides the knife between the ribs and into the liver. {target_name} doubles over and dies in agony."
         },
         {
-            'attacker_msg': "You slice open {target_name}'s throat in one fluid motion. They fall to their knees, choking on blood.",
-            'victim_msg': "{attacker_name} slices open your throat in one fluid motion. You fall to your knees, choking on blood.",
-            'observer_msg': "{attacker_name} slices open {target_name}'s throat in one fluid motion. They fall to their knees, choking on blood."
+            'attacker_msg': "You slice open {target_name}'s {hit_location} in one fluid motion. They fall to their knees, choking on blood.",
+            'victim_msg': "{attacker_name} slices open your {hit_location} in one fluid motion. You fall to your knees, choking on blood.",
+            'observer_msg': "{attacker_name} slices open {target_name}'s {hit_location} in one fluid motion. They fall to their knees, choking on blood."
         },
         {
             'attacker_msg': "You stab upward under the ribcage, seeking the heart. You find it. {target_name} dies instantly.",
-            'victim_msg': "{attacker_name} stabs upward under your ribcage, seeking your heart. They find it. You die instantly.",
+            'victim_msg': "{attacker_name} stabs upward under your ribcage, seeking your {hit_location}. They find it. You die instantly.",
             'observer_msg': "{attacker_name} stabs upward under the ribcage, seeking the heart. They find it. {target_name} dies instantly."
         },
         {
-            'attacker_msg': "You thrust the blade into {target_name}'s temple. They drop like a marionette with cut strings.",
-            'victim_msg': "{attacker_name} thrusts the blade into your temple. You drop like a marionette with cut strings.",
-            'observer_msg': "{attacker_name} thrusts the blade into {target_name}'s temple. They drop like a marionette with cut strings."
+            'attacker_msg': "You thrust the blade into {target_name}'s {hit_location}. They drop like a marionette with cut strings.",
+            'victim_msg': "{attacker_name} thrusts the blade into your {hit_location}. You drop like a marionette with cut strings.",
+            'observer_msg': "{attacker_name} thrusts the blade into {target_name}'s {hit_location}. They drop like a marionette with cut strings."
         },
         {
             'attacker_msg': "You twist the blade as it enters the chest. {target_name}'s eyes roll back as life leaves them.",
-            'victim_msg': "{attacker_name} twists the blade as it enters your chest. Your eyes roll back as life leaves you.",
+            'victim_msg': "{attacker_name} twists the blade as it enters your {hit_location}. Your eyes roll back as life leaves you.",
             'observer_msg': "{attacker_name} twists the blade as it enters the chest. {target_name}'s eyes roll back as life leaves them."
         }
     ]

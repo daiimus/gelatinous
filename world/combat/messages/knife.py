@@ -6,7 +6,7 @@ MESSAGES = {
             "observer_msg": "A flash of steel. That's all {attacker_name} offers before stepping forward, knife low and ready."
         },
         {
-            "attacker_msg": "A flick of your wrist brings the blade into view. You step closer with intent stitched into your stride.",
+            "attacker_msg": "A flick of your {hit_location} brings the blade into view. You step closer with intent stitched into your stride.",
             "victim_msg": "A flick of the wrist, and the blade appears. {attacker_name} steps closer with intent stitched into their stride.",
             "observer_msg": "A flick of the wrist, and the blade appears. {attacker_name} steps closer with intent stitched into their stride."
         },
@@ -31,7 +31,7 @@ MESSAGES = {
             "observer_msg": "A small weapon for a personal job. {attacker_name} grips it like they're writing a final sentence."
         },
         {
-            "attacker_msg": "It's not big. It's not loud. But in your hand, the knife becomes a conclusion.",
+            "attacker_msg": "It's not big. It's not loud. But in your {hit_location}, the knife becomes a conclusion.",
             "victim_msg": "It's not big. It's not loud. But in {attacker_name}'s hand, the knife becomes a conclusion.",
             "observer_msg": "It's not big. It's not loud. But in {attacker_name}'s hand, the knife becomes a conclusion."
         },
@@ -41,7 +41,7 @@ MESSAGES = {
             "observer_msg": "No speech. Just steel. {attacker_name} draws the knife with the calm of someone already decided."
         },
         {
-            "attacker_msg": "Steel meets your hand. The connection is instinctive. You already know how this ends.",
+            "attacker_msg": "Steel meets your {hit_location}. The connection is instinctive. You already know how this ends.",
             "victim_msg": "Steel meets hand. The connection is instinctive. {attacker_name} already knows how this ends.",
             "observer_msg": "Steel meets hand. The connection is instinctive. {attacker_name} already knows how this ends."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} draws the knife from their boot with a smooth, silent motion. It's not showy — it's certain."
         },
         {
-            "attacker_msg": "You draw the knife so smoothly it's like it was always in your hand, just waiting to be noticed.",
+            "attacker_msg": "You draw the knife so smoothly it's like it was always in your {hit_location}, just waiting to be noticed.",
             "victim_msg": "{attacker_name} draws the knife so smoothly it's like it was always in hand, just waiting to be noticed.",
             "observer_msg": "{attacker_name} draws the knife so smoothly it's like it was always in hand, just waiting to be noticed."
         },
@@ -250,8 +250,8 @@ MESSAGES = {
             "observer_msg": "A fast jab misses. The wind it leaves behind still rattles nerves."
         },
         {
-            "attacker_msg": "A flick of your wrist sends the knife off-course. It whistles past their neck like a warning.",
-            "victim_msg": "A flick of the wrist sends the knife off-course. It whistles past your neck like a warning.",
+            "attacker_msg": "A flick of your {hit_location} sends the knife off-course. It whistles past their neck like a warning.",
+            "victim_msg": "A flick of the wrist sends the knife off-course. It whistles past your {hit_location} like a warning.",
             "observer_msg": "A flick of the wrist sends the knife off-course. It whistles past the neck like a warning."
         },
         {
@@ -276,7 +276,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "A quick twist brings your blade past their throat. It leaves a whisper, not a wound.",
-            "victim_msg": "A quick twist brings the blade past your throat. It leaves a whisper, not a wound.",
+            "victim_msg": "A quick twist brings the blade past your {hit_location}. It leaves a whisper, not a wound.",
             "observer_msg": "A quick twist brings the blade past the throat. It leaves a whisper, not a wound."
         },
         {
@@ -286,7 +286,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your slash aimed for their neck misses by inches. The breath that follows is all fear.",
-            "victim_msg": "A slash aimed for your neck misses by inches. The breath that follows is all fear.",
+            "victim_msg": "A slash aimed for your {hit_location} misses by inches. The breath that follows is all fear.",
             "observer_msg": "A slash aimed for the neck misses by inches. The breath that follows is all fear."
         },
         {
@@ -311,7 +311,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your blade hisses by their thigh. Close enough to feel wind. Too close to relax.",
-            "victim_msg": "The blade hisses by your thigh. Close enough to feel wind. Too close to relax.",
+            "victim_msg": "The blade hisses by your {hit_location}. Close enough to feel wind. Too close to relax.",
             "observer_msg": "The blade hisses by the thigh. Close enough to feel wind. Too close to relax."
         },
         {
@@ -331,7 +331,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your knife skates over their shoulder. No blood — this time.",
-            "victim_msg": "The knife skates over your shoulder. No blood — this time.",
+            "victim_msg": "The knife skates over your {hit_location}. No blood — this time.",
             "observer_msg": "The knife skates over a shoulder. No blood — this time."
         },
         {
@@ -388,11 +388,11 @@ MESSAGES = {
     'kill': [
         {
             "attacker_msg": "A deep stab to their heart. It's not theatrical. Just final.",
-            "victim_msg": "A deep stab to your heart. It's not theatrical. Just final. Darkness takes you.",
+            "victim_msg": "A deep stab to your {hit_location}. It's not theatrical. Just final. Darkness takes you.",
             "observer_msg": "A deep stab to the heart. It's not theatrical. Just final."
         },
         {
-            "attacker_msg": "A flash of steel. A jerk of your wrist. {target_name} drops before they know what happened.",
+            "attacker_msg": "A flash of steel. A jerk of your {hit_location}. {target_name} drops before they know what happened.",
             "victim_msg": "A flash of steel. A jerk of the wrist. You drop before you know what happened.",
             "observer_msg": "A flash of steel. A jerk of the wrist. {target_name} drops before they know what happened."
         },
@@ -408,17 +408,17 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your stab to their temple drops {target_name} like a switch was flipped. Darkness comes fast.",
-            "victim_msg": "A stab to your temple drops you like a switch was flipped. Darkness comes fast.",
+            "victim_msg": "A stab to your {hit_location} drops you like a switch was flipped. Darkness comes fast.",
             "observer_msg": "A stab to the temple drops {target_name} like a switch was flipped. Darkness comes fast."
         },
         {
             "attacker_msg": "Your strike to their neck opens a red smile. The grin doesn't last long.",
-            "victim_msg": "A strike to your neck opens a red smile. The grin doesn't last long. You fade away.",
+            "victim_msg": "A strike to your {hit_location} opens a red smile. The grin doesn't last long. You fade away.",
             "observer_msg": "A strike to the neck opens a red smile. The grin doesn't last long."
         },
         {
             "attacker_msg": "Your swift, brutal puncture to their lungs. {target_name} tries to breathe. Then doesn't.",
-            "victim_msg": "A swift, brutal puncture to your lungs. You try to breathe. Then don't.",
+            "victim_msg": "A swift, brutal puncture to your {hit_location}. You try to breathe. Then don't.",
             "observer_msg": "A swift, brutal puncture to the lungs. {target_name} tries to breathe. Then doesn't."
         },
         {
@@ -428,17 +428,17 @@ MESSAGES = {
         },
         {
             "attacker_msg": "One clean jab to their heart. Blood leaks slow, but the lights go fast.",
-            "victim_msg": "One clean jab to your heart. Blood leaks slow, but the lights go fast.",
+            "victim_msg": "One clean jab to your {hit_location}. Blood leaks slow, but the lights go fast.",
             "observer_msg": "One clean jab to the heart. Blood leaks slow, but the lights go fast."
         },
         {
             "attacker_msg": "One deep thrust into their throat ends it. No scream. Just silence.",
-            "victim_msg": "One deep thrust into your throat ends it. No scream. Just silence.",
+            "victim_msg": "One deep thrust into your {hit_location} ends it. No scream. Just silence.",
             "observer_msg": "One deep thrust into the throat ends it. No scream. Just silence."
         },
         {
             "attacker_msg": "One jab under their ribs. {target_name} drops, gasping their last into the floor.",
-            "victim_msg": "One jab under your ribs. You drop, gasping your last into the floor.",
+            "victim_msg": "One jab under your {hit_location}. You drop, gasping your last into the floor.",
             "observer_msg": "One jab under the ribs. {target_name} drops, gasping their last into the floor."
         },
         {
@@ -448,12 +448,12 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your blade finds the base of their spine. {target_name} seizes — then slumps like an unplugged puppet.",
-            "victim_msg": "The blade finds the base of your spine. You seize — then slump like an unplugged puppet.",
+            "victim_msg": "The blade finds the base of your {hit_location}. You seize — then slump like an unplugged puppet.",
             "observer_msg": "The blade finds the base of the spine. {target_name} seizes — then slumps like an unplugged puppet."
         },
         {
             "attacker_msg": "Your blade slashes across their neck. Blood erupts like a fountain of silence.",
-            "victim_msg": "The blade slashes across your neck. Blood erupts like a fountain as silence takes you.",
+            "victim_msg": "The blade slashes across your {hit_location}. Blood erupts like a fountain as silence takes you.",
             "observer_msg": "The blade slashes across the neck. Blood erupts like a fountain of silence."
         },
         {
@@ -468,7 +468,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your knife carves up into their jaw, slipping through bone. {target_name} twitches, then topples.",
-            "victim_msg": "The knife carves up into your jaw, slipping through bone. You twitch, then topple into darkness.",
+            "victim_msg": "The knife carves up into your {hit_location}, slipping through bone. You twitch, then topple into darkness.",
             "observer_msg": "The knife carves up into the jaw, slipping through bone. {target_name} twitches, then topples."
         },
         {
@@ -478,12 +478,12 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your knife drives into their throat. {target_name} chokes, stumbles, and falls — eyes wide, mouth red.",
-            "victim_msg": "The knife drives into your throat. You choke, stumble, and fall — eyes wide, mouth red.",
+            "victim_msg": "The knife drives into your {hit_location}. You choke, stumble, and fall — eyes wide, mouth red.",
             "observer_msg": "The knife drives into the throat. {target_name} chokes, stumbles, and falls — eyes wide, mouth red."
         },
         {
             "attacker_msg": "Your knife slices up into their spine. {target_name} drops with a strange gasp and no control.",
-            "victim_msg": "The knife slices up into your spine. You drop with a strange gasp and no control.",
+            "victim_msg": "The knife slices up into your {hit_location}. You drop with a strange gasp and no control.",
             "observer_msg": "The knife slices up into the spine. {target_name} drops with a strange gasp and no control."
         },
         {
@@ -498,17 +498,17 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You bury the blade in their chest and leave it there. {target_name} folds around it.",
-            "victim_msg": "{attacker_name} buries the blade in your chest and leaves it there. You fold around it as life fades.",
+            "victim_msg": "{attacker_name} buries the blade in your {hit_location} and leaves it there. You fold around it as life fades.",
             "observer_msg": "{attacker_name} buries the blade in the chest and leaves it there. {target_name} folds around it."
         },
         {
             "attacker_msg": "You drive the knife up beneath their ribs and twist. {target_name} exhales once, then nothing.",
-            "victim_msg": "{attacker_name} drives the knife up beneath your ribs and twists. You exhale once, then nothing.",
+            "victim_msg": "{attacker_name} drives the knife up beneath your {hit_location} and twists. You exhale once, then nothing.",
             "observer_msg": "{attacker_name} drives the knife up beneath the ribs and twists. {target_name} exhales once, then nothing."
         },
         {
             "attacker_msg": "You grab, pull close, and finish it with one jab to their liver. {target_name} collapses instantly.",
-            "victim_msg": "{attacker_name} grabs, pulls close, and finishes it with one jab to your liver. You collapse instantly into darkness.",
+            "victim_msg": "{attacker_name} grabs, pulls close, and finishes it with one jab to your {hit_location}. You collapse instantly into darkness.",
             "observer_msg": "{attacker_name} grabs, pulls close, and finishes it with one jab to the liver. {target_name} collapses instantly."
         },
         {
@@ -528,7 +528,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You slip the knife under their ribs and into the heart. Their body twitches once. Then stills.",
-            "victim_msg": "{attacker_name} slips the knife under your ribs and into the heart. Your body twitches once. Then stills.",
+            "victim_msg": "{attacker_name} slips the knife under your {hit_location} and into the heart. Your body twitches once. Then stills.",
             "observer_msg": "{attacker_name} slips the knife under the ribs and into the heart. The body twitches once. Then stills."
         },
         {

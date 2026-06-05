@@ -26,7 +26,7 @@ MESSAGES = {
             "observer_msg": "Rust flakes from the hook as {attacker_name} rotates it slowly. The weapon remembers pain."
         },
         {
-            "attacker_msg": "The bar rests across your forearm as you survey the field. Casual violence in posture alone.",
+            "attacker_msg": "The bar rests across your {hit_location} as you survey the field. Casual violence in posture alone.",
             "victim_msg": "The bar rests across {attacker_name}'s forearm as they survey the field. Casual violence in posture alone.",
             "observer_msg": "The bar rests across {attacker_name}'s forearm as they survey the field. Casual violence in posture alone."
         },
@@ -36,7 +36,7 @@ MESSAGES = {
             "observer_msg": "The bar swings lightly at {attacker_name}'s side, every step marking the countdown toward violence."
         },
         {
-            "attacker_msg": "The crowbar rests against your shoulder like an old friend — mean, ugly, loyal.",
+            "attacker_msg": "The crowbar rests against your {hit_location} like an old friend — mean, ugly, loyal.",
             "victim_msg": "The crowbar rests against {attacker_name}'s shoulder like an old friend — mean, ugly, loyal.",
             "observer_msg": "The crowbar rests against {attacker_name}'s shoulder like an old friend — mean, ugly, loyal."
         },
@@ -121,7 +121,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} draws the crowbar from their belt, letting the sound announce what's next."
         },
         {
-            "attacker_msg": "You flex the crowbar in your hand like it's a living thing. It rattles once, eager.",
+            "attacker_msg": "You flex the crowbar in your {hit_location} like it's a living thing. It rattles once, eager.",
             "victim_msg": "{attacker_name} flexes the crowbar in their hand like it's a living thing. It rattles once, eager.",
             "observer_msg": "{attacker_name} flexes the crowbar in their hand like it's a living thing. It rattles once, eager."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} hefts the crowbar with one hand and taps it against their palm. It's not subtle. It's not meant to be."
         },
         {
-            "attacker_msg": "You lean the bar across your shoulders, flexing your neck like you're just warming up.",
+            "attacker_msg": "You lean the bar across your shoulders, flexing your {hit_location} like you're just warming up.",
             "victim_msg": "{attacker_name} leans the bar across their shoulders, flexing their neck like they're just warming up.",
             "observer_msg": "{attacker_name} leans the bar across their shoulders, flexing their neck like they're just warming up."
         },
@@ -325,9 +325,9 @@ MESSAGES = {
             "observer_msg": "A quick step back saves {target_name} from a crushed knee. Barely."
         },
         {
-            "attacker_msg": "A tight swing whistles through space where {target_name}'s head was half a second ago.",
-            "victim_msg": "A tight swing whistles through space where your head was half a second ago.",
-            "observer_msg": "A tight swing whistles through space where {target_name}'s head was half a second ago."
+            "attacker_msg": "A tight swing whistles through space where {target_name}'s {hit_location} was half a second ago.",
+            "victim_msg": "A tight swing whistles through space where your {hit_location} was half a second ago.",
+            "observer_msg": "A tight swing whistles through space where {target_name}'s {hit_location} was half a second ago."
         },
         {
             "attacker_msg": "A wide sweep whistles through nothing, but the speed rattles {target_name}'s nerves.",
@@ -405,9 +405,9 @@ MESSAGES = {
             "observer_msg": "The hook gets caught briefly on a railing. {attacker_name} jerks it free with a snarl."
         },
         {
-            "attacker_msg": "The metal sings through the space beside {target_name}'s head. Close. Too close.",
-            "victim_msg": "The metal sings through the space beside your head. Close. Too close.",
-            "observer_msg": "The metal sings through the space beside {target_name}'s head. Close. Too close."
+            "attacker_msg": "The metal sings through the space beside {target_name}'s {hit_location}. Close. Too close.",
+            "victim_msg": "The metal sings through the space beside your {hit_location}. Close. Too close.",
+            "observer_msg": "The metal sings through the space beside {target_name}'s {hit_location}. Close. Too close."
         },
         {
             "attacker_msg": "The steel rings against concrete. The echo haunts the space.",
@@ -532,9 +532,9 @@ MESSAGES = {
             "observer_msg": "The crowbar lands across the throat. The crunch that follows is not survivable."
         },
         {
-            "attacker_msg": "The crowbar lands flat across {target_name}'s temple. They drop mid-motion, the floor catching what's left.",
-            "victim_msg": "The crowbar lands flat across your temple. You drop mid-motion, the floor catching what's left.",
-            "observer_msg": "The crowbar lands flat across {target_name}'s temple. They drop mid-motion, the floor catching what's left."
+            "attacker_msg": "The crowbar lands flat across {target_name}'s {hit_location}. They drop mid-motion, the floor catching what's left.",
+            "victim_msg": "The crowbar lands flat across your {hit_location}. You drop mid-motion, the floor catching what's left.",
+            "observer_msg": "The crowbar lands flat across {target_name}'s {hit_location}. They drop mid-motion, the floor catching what's left."
         },
         {
             "attacker_msg": "The curved end catches the spine. The legs drop. Then everything else.",
@@ -542,9 +542,9 @@ MESSAGES = {
             "observer_msg": "The curved end catches the spine. The legs drop. Then everything else."
         },
         {
-            "attacker_msg": "The curved end digs into {target_name}'s throat. When it comes out, silence follows.",
-            "victim_msg": "The curved end digs into your throat. When it comes out, silence follows.",
-            "observer_msg": "The curved end digs into {target_name}'s throat. When it comes out, silence follows."
+            "attacker_msg": "The curved end digs into {target_name}'s {hit_location}. When it comes out, silence follows.",
+            "victim_msg": "The curved end digs into your {hit_location}. When it comes out, silence follows.",
+            "observer_msg": "The curved end digs into {target_name}'s {hit_location}. When it comes out, silence follows."
         },
         {
             "attacker_msg": "The curved end enters at the jaw. It exits somewhere worse. {target_name} falls in pieces.",
@@ -592,9 +592,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} ends it with a hook to the temple. It sticks a second longer than it should."
         },
         {
-            "attacker_msg": "You hook the crowbar behind {target_name}'s head and yank. The body drops. The soul doesn't linger.",
-            "victim_msg": "{attacker_name} hooks the crowbar behind your head and yanks. The body drops. The soul doesn't linger.",
-            "observer_msg": "{attacker_name} hooks the crowbar behind {target_name}'s head and yanks. The body drops. The soul doesn't linger."
+            "attacker_msg": "You hook the crowbar behind {target_name}'s {hit_location} and yank. The body drops. The soul doesn't linger.",
+            "victim_msg": "{attacker_name} hooks the crowbar behind your {hit_location} and yanks. The body drops. The soul doesn't linger.",
+            "observer_msg": "{attacker_name} hooks the crowbar behind {target_name}'s {hit_location} and yanks. The body drops. The soul doesn't linger."
         },
         {
             "attacker_msg": "You hook the neck and yank. {target_name} hits the ground and stays there.",

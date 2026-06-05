@@ -11,7 +11,7 @@ MESSAGES = {
             'observer_msg': "With a desperate look, {attacker_name} brandishes a sharp piece of broken glass, ready to slash and stab."
         },
         {
-            'attacker_msg': "Your hand is wrapped precariously around a shard of glass, its razor edge reflecting a grim light.",
+            'attacker_msg': "Your {hit_location} is wrapped precariously around a shard of glass, its razor edge reflecting a grim light.",
             'victim_msg': "{attacker_name}'s hand is wrapped precariously around a shard of glass, its razor edge reflecting a grim light.",
             'observer_msg': "{attacker_name}'s hand is wrapped precariously around a shard of glass, its razor edge reflecting a grim light."
         },
@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} points the jagged end of the glass shard towards {target_name}, a clear, vicious threat."
         },
         {
-            'attacker_msg': "Light catches the irregular, razor-sharp edges of the glass shard in your hand.",
+            'attacker_msg': "Light catches the irregular, razor-sharp edges of the glass shard in your {hit_location}.",
             'victim_msg': "Light catches the irregular, razor-sharp edges of the glass shard in {attacker_name}'s hand.",
             'observer_msg': "Light catches the irregular, razor-sharp edges of the glass shard in {attacker_name}'s hand."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are narrowed, sighting along the sharpest edge of the glass towards {target_name}."
         },
         {
-            'attacker_msg': "The shard of glass feels dangerously sharp and fragile in your hand, a tool of pure desperation.",
+            'attacker_msg': "The shard of glass feels dangerously sharp and fragile in your {hit_location}, a tool of pure desperation.",
             'victim_msg': "The shard of glass feels dangerously sharp and fragile in {attacker_name}'s hand, a tool of pure desperation.",
             'observer_msg': "The shard of glass feels dangerously sharp and fragile in {attacker_name}'s hand, a tool of pure desperation."
         },
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your shard of glass whistles through the air, its jagged edge narrowly missing {target_name}'s face.",
-            'victim_msg': "{attacker_name}'s shard of glass whistles through the air, its jagged edge narrowly missing your face.",
-            'observer_msg': "{attacker_name}'s shard of glass whistles through the air, its jagged edge narrowly missing {target_name}'s face."
+            'attacker_msg': "Your shard of glass whistles through the air, its jagged edge narrowly missing {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name}'s shard of glass whistles through the air, its jagged edge narrowly missing your {hit_location}.",
+            'observer_msg': "{attacker_name}'s shard of glass whistles through the air, its jagged edge narrowly missing {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "{target_name} stumbles back, avoiding the desperate slash of your shard of glass by a hair's breadth.",
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick retreat from {target_name} leaves {attacker_name}'s shard of glass to cut nothing but air."
         },
         {
-            'attacker_msg': "The shard of glass feels dangerously slippery in your hand as the intended cutting blow fails to connect.",
+            'attacker_msg': "The shard of glass feels dangerously slippery in your {hit_location} as the intended cutting blow fails to connect.",
             'victim_msg': "The shard of glass feels dangerously slippery in {attacker_name}'s hand as the intended cutting blow fails to connect.",
             'observer_msg': "The shard of glass feels dangerously slippery in {attacker_name}'s hand as the intended cutting blow fails to connect."
         },
@@ -395,9 +395,9 @@ MESSAGES = {
             'observer_msg': "A growl of frustration from {attacker_name} as their shard of glass attack is evaded by a nimble {target_name}."
         },
         {
-            'attacker_msg': "The shard of glass scratches a line on the ground beside {target_name}'s foot, but draws no blood.",
-            'victim_msg': "The shard of glass scratches a line on the ground beside your foot, but draws no blood.",
-            'observer_msg': "The shard of glass scratches a line on the ground beside {target_name}'s foot, but draws no blood."
+            'attacker_msg': "The shard of glass scratches a line on the ground beside {target_name}'s {hit_location}, but draws no blood.",
+            'victim_msg': "The shard of glass scratches a line on the ground beside your {hit_location}, but draws no blood.",
+            'observer_msg': "The shard of glass scratches a line on the ground beside {target_name}'s {hit_location}, but draws no blood."
         },
         {
             'attacker_msg': "Your straightforward attack with the shard of glass is anticipated and dodged by {target_name}, who looks terrified.",
@@ -457,14 +457,14 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "You shove the jagged shard of glass into {target_name}'s throat; they collapse, gurgling, succumbing to massive blood loss.",
-            'victim_msg': "{attacker_name} shoves the jagged shard of glass into your throat; you collapse, gurgling, succumbing to massive blood loss.",
-            'observer_msg': "{attacker_name} shoves the jagged shard of glass into {target_name}'s throat; they collapse, gurgling, succumbing to massive blood loss."
+            'attacker_msg': "You shove the jagged shard of glass into {target_name}'s {hit_location}; they collapse, gurgling, succumbing to massive blood loss.",
+            'victim_msg': "{attacker_name} shoves the jagged shard of glass into your {hit_location}; you collapse, gurgling, succumbing to massive blood loss.",
+            'observer_msg': "{attacker_name} shoves the jagged shard of glass into {target_name}'s {hit_location}; they collapse, gurgling, succumbing to massive blood loss."
         },
         {
-            'attacker_msg': "The shard of glass, driven deep into {target_name}'s chest, pierces their heart, and they fall silent, life extinguished.",
-            'victim_msg': "The shard of glass, driven deep into your chest, pierces your heart, and you fall silent, life extinguished.",
-            'observer_msg': "The shard of glass, driven deep into {target_name}'s chest, pierces their heart, and they fall silent, life extinguished."
+            'attacker_msg': "The shard of glass, driven deep into {target_name}'s {hit_location}, pierces their heart, and they fall silent, life extinguished.",
+            'victim_msg': "The shard of glass, driven deep into your {hit_location}, pierces your {hit_location}, and you fall silent, life extinguished.",
+            'observer_msg': "The shard of glass, driven deep into {target_name}'s {hit_location}, pierces their heart, and they fall silent, life extinguished."
         },
         {
             'attacker_msg': "With a final, brutal thrust, you embed the shard of glass in {target_name}'s eye, and they drop, twitching, then still.",
@@ -487,14 +487,14 @@ MESSAGES = {
             'observer_msg': "The shard of glass, a desperate tool of death, delivers a killing blow as {target_name} is overcome by catastrophic, bleeding wounds."
         },
         {
-            'attacker_msg': "A precise, savage thrust with the shard of glass to {target_name}'s temple ends their life in a spray of blood.",
-            'victim_msg': "A precise, savage thrust with the shard of glass to your temple ends your life in a spray of blood.",
-            'observer_msg': "A precise, savage thrust with the shard of glass to {target_name}'s temple ends their life in a spray of blood."
+            'attacker_msg': "A precise, savage thrust with the shard of glass to {target_name}'s {hit_location} ends their life in a spray of blood.",
+            'victim_msg': "A precise, savage thrust with the shard of glass to your {hit_location} ends your life in a spray of blood.",
+            'observer_msg': "A precise, savage thrust with the shard of glass to {target_name}'s {hit_location} ends their life in a spray of blood."
         },
         {
-            'attacker_msg': "You press the shard of glass against {target_name}'s neck until they stop moving, the flesh torn and bloodied, life extinguished.",
-            'victim_msg': "{attacker_name} presses the shard of glass against your neck until you stop moving, the flesh torn and bloodied, life extinguished.",
-            'observer_msg': "{attacker_name} presses the shard of glass against {target_name}'s neck until they stop moving, the flesh torn and bloodied, life extinguished."
+            'attacker_msg': "You press the shard of glass against {target_name}'s {hit_location} until they stop moving, the flesh torn and bloodied, life extinguished.",
+            'victim_msg': "{attacker_name} presses the shard of glass against your {hit_location} until you stop moving, the flesh torn and bloodied, life extinguished.",
+            'observer_msg': "{attacker_name} presses the shard of glass against {target_name}'s {hit_location} until they stop moving, the flesh torn and bloodied, life extinguished."
         },
         {
             'attacker_msg': "The unyielding sharpness of the glass shard severs something vital in {target_name}, who crumples, unmoving, amidst the spreading bloodstain.",
@@ -522,7 +522,7 @@ MESSAGES = {
             'observer_msg': "A merciless, deep stab with the shard of glass, and {target_name} is no more, overcome by the vicious, tearing wound."
         },
         {
-            'attacker_msg': "The shard of glass, now slick with gore, drops from your hand as {target_name} lies lifeless.",
+            'attacker_msg': "The shard of glass, now slick with gore, drops from your {hit_location} as {target_name} lies lifeless.",
             'victim_msg': "The shard of glass, now slick with gore, drops from {attacker_name}'s hand as you lie lifeless.",
             'observer_msg': "The shard of glass, now slick with gore, drops from {attacker_name}'s hand as {target_name} lies lifeless."
         },

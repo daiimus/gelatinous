@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are sharp and unwavering, sighting down the curved length of the kukri towards {target_name}."
         },
         {
-            'attacker_msg': "The kukri feels like an extension of your arm, a tool of devastating efficiency and storied lethality.",
+            'attacker_msg': "The kukri feels like an extension of your {hit_location}, a tool of devastating efficiency and storied lethality.",
             'victim_msg': "The kukri feels like an extension of {attacker_name}'s arm, a tool of devastating efficiency and storied lethality.",
             'observer_msg': "The kukri feels like an extension of {attacker_name}'s arm, a tool of devastating efficiency and storied lethality."
         },
@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the kukri in a traditional Gurkha grip, ready to bring its full, devastating force to bear."
         },
         {
-            'attacker_msg': "The smooth, often horn or hardwood hilt of the kukri fits your hand perfectly, a familiar, dangerous weight.",
+            'attacker_msg': "The smooth, often horn or hardwood hilt of the kukri fits your {hit_location} perfectly, a familiar, dangerous weight.",
             'victim_msg': "The smooth, often horn or hardwood hilt of the kukri fits {attacker_name}'s hand perfectly, a familiar, dangerous weight.",
             'observer_msg': "The smooth, often horn or hardwood hilt of the kukri fits {attacker_name}'s hand perfectly, a familiar, dangerous weight."
         },
@@ -234,7 +234,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The kukri thuds heavily as it connects with {target_name}, driving the air from their lungs and leaving a horrific injury.",
-            'victim_msg': "The kukri thuds heavily as it connects with you, driving the air from your lungs and leaving a horrific injury.",
+            'victim_msg': "The kukri thuds heavily as it connects with you, driving the air from your {hit_location} and leaving a horrific injury.",
             'observer_msg': "The kukri thuds heavily as it connects with {target_name}, driving the air from their lungs and leaving a horrific injury."
         },
         {
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     'miss': [
         {
-            'attacker_msg': "Your kukri whistles through the air with considerable force, inches from {target_name}'s throat.",
-            'victim_msg': "{attacker_name}'s kukri whistles through the air with considerable force, inches from your throat.",
-            'observer_msg': "{attacker_name}'s kukri whistles through the air with considerable force, inches from {target_name}'s throat."
+            'attacker_msg': "Your kukri whistles through the air with considerable force, inches from {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name}'s kukri whistles through the air with considerable force, inches from your {hit_location}.",
+            'observer_msg': "{attacker_name}'s kukri whistles through the air with considerable force, inches from {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "{target_name} narrowly avoids the heavy, chopping arc of your kukri with a desperate dive.",
@@ -457,29 +457,29 @@ MESSAGES = {
     ],
     'kill': [
         {
-            'attacker_msg': "Your kukri connects with {target_name}'s neck with a sickening chop; they drop, instantly still, nearly decapitated.",
-            'victim_msg': "{attacker_name}'s kukri connects with your neck with a sickening chop; you drop, instantly still, nearly decapitated.",
-            'observer_msg': "{attacker_name}'s kukri connects with {target_name}'s neck with a sickening chop; they drop, instantly still, nearly decapitated."
+            'attacker_msg': "Your kukri connects with {target_name}'s {hit_location} with a sickening chop; they drop, instantly still, nearly decapitated.",
+            'victim_msg': "{attacker_name}'s kukri connects with your {hit_location} with a sickening chop; you drop, instantly still, nearly decapitated.",
+            'observer_msg': "{attacker_name}'s kukri connects with {target_name}'s {hit_location} with a sickening chop; they drop, instantly still, nearly decapitated."
         },
         {
-            'attacker_msg': "A devastating two-handed blow from the kukri crushes {target_name}'s skull, ending the fight brutally and decisively.",
-            'victim_msg': "A devastating two-handed blow from the kukri crushes your skull, ending the fight brutally and decisively.",
-            'observer_msg': "A devastating two-handed blow from the kukri crushes {target_name}'s skull, ending the fight brutally and decisively."
+            'attacker_msg': "A devastating two-handed blow from the kukri crushes {target_name}'s {hit_location}, ending the fight brutally and decisively.",
+            'victim_msg': "A devastating two-handed blow from the kukri crushes your {hit_location}, ending the fight brutally and decisively.",
+            'observer_msg': "A devastating two-handed blow from the kukri crushes {target_name}'s {hit_location}, ending the fight brutally and decisively."
         },
         {
             'attacker_msg': "With a final, focused strike, your kukri shatters {target_name}'s collarbone and drives deep into their chest, felling them.",
-            'victim_msg': "With a final, focused strike, {attacker_name}'s kukri shatters your collarbone and drives deep into your chest, felling you.",
+            'victim_msg': "With a final, focused strike, {attacker_name}'s kukri shatters your collarbone and drives deep into your {hit_location}, felling you.",
             'observer_msg': "With a final, focused strike, {attacker_name}'s kukri shatters {target_name}'s collarbone and drives deep into their chest, felling them."
         },
         {
-            'attacker_msg': "The heavy, curved blade of the kukri strikes {target_name}'s throat, a swift and brutal end, blood fountaining.",
-            'victim_msg': "The heavy, curved blade of the kukri strikes your throat, a swift and brutal end, blood fountaining.",
-            'observer_msg': "The heavy, curved blade of the kukri strikes {target_name}'s throat, a swift and brutal end, blood fountaining."
+            'attacker_msg': "The heavy, curved blade of the kukri strikes {target_name}'s {hit_location}, a swift and brutal end, blood fountaining.",
+            'victim_msg': "The heavy, curved blade of the kukri strikes your {hit_location}, a swift and brutal end, blood fountaining.",
+            'observer_msg': "The heavy, curved blade of the kukri strikes {target_name}'s {hit_location}, a swift and brutal end, blood fountaining."
         },
         {
-            'attacker_msg': "Your powerful swing with the kukri caves in {target_name}'s chest; they collapse, gasping their last breath.",
-            'victim_msg': "{attacker_name}'s powerful swing with the kukri caves in your chest; you collapse, gasping your last breath.",
-            'observer_msg': "{attacker_name}'s powerful swing with the kukri caves in {target_name}'s chest; they collapse, gasping their last breath."
+            'attacker_msg': "Your powerful swing with the kukri caves in {target_name}'s {hit_location}; they collapse, gasping their last breath.",
+            'victim_msg': "{attacker_name}'s powerful swing with the kukri caves in your {hit_location}; you collapse, gasping your last breath.",
+            'observer_msg': "{attacker_name}'s powerful swing with the kukri caves in {target_name}'s {hit_location}; they collapse, gasping their last breath."
         },
         {
             'attacker_msg': "The kukri, a tool of deadly force, delivers a killing blow, and {target_name}'s struggles cease in a pool of their own blood.",
@@ -488,7 +488,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A precise, savage chop to the base of the skull with your kukri ends {target_name}'s life in an instant.",
-            'victim_msg': "A precise, savage chop to the base of your skull with {attacker_name}'s kukri ends your life in an instant.",
+            'victim_msg': "A precise, savage chop to the base of your {hit_location} with {attacker_name}'s kukri ends your life in an instant.",
             'observer_msg': "A precise, savage chop to the base of the skull with {attacker_name}'s kukri ends {target_name}'s life in an instant."
         },
         {
@@ -497,9 +497,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} drives the kukri's point into {target_name}'s eye socket with a brutal thrust, the outcome grimly certain."
         },
         {
-            'attacker_msg': "The unyielding steel of the kukri breaks {target_name}'s neck with a sharp snap; they fall, lifeless.",
-            'victim_msg': "The unyielding steel of the kukri breaks your neck with a sharp snap; you fall, lifeless.",
-            'observer_msg': "The unyielding steel of the kukri breaks {target_name}'s neck with a sharp snap; they fall, lifeless."
+            'attacker_msg': "The unyielding steel of the kukri breaks {target_name}'s {hit_location} with a sharp snap; they fall, lifeless.",
+            'victim_msg': "The unyielding steel of the kukri breaks your {hit_location} with a sharp snap; you fall, lifeless.",
+            'observer_msg': "The unyielding steel of the kukri breaks {target_name}'s {hit_location} with a sharp snap; they fall, lifeless."
         },
         {
             'attacker_msg': "With a final, fierce kiai, you finish {target_name} with a decisive, crushing strike from the kukri.",

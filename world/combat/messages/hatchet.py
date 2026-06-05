@@ -16,7 +16,7 @@ MESSAGES = {
             'observer_msg': "A whisper of rust and wood fills the air as {attacker_name} lifts the hatchet from their belt."
         },
         {
-            'attacker_msg': "It's not much, but in your hand, the hatchet looks holy. In a terrible way.",
+            'attacker_msg': "It's not much, but in your {hit_location}, the hatchet looks holy. In a terrible way.",
             'victim_msg': "It's not much, but in {attacker_name}'s hand, the hatchet looks holy. In a terrible way.",
             'observer_msg': "It's not much, but in {attacker_name}'s hand, the hatchet looks holy. In a terrible way."
         },
@@ -61,12 +61,12 @@ MESSAGES = {
             'observer_msg': "The hatchet hangs low in {attacker_name}'s grip, heavy with history and blood yet to be shed."
         },
         {
-            'attacker_msg': "The hatchet rests on your shoulder like a burden you've carried before — and loved.",
+            'attacker_msg': "The hatchet rests on your {hit_location} like a burden you've carried before — and loved.",
             'victim_msg': "The hatchet rests on {attacker_name}'s shoulder like a burden they've carried before — and loved.",
             'observer_msg': "The hatchet rests on {attacker_name}'s shoulder like a burden they've carried before — and loved."
         },
         {
-            'attacker_msg': "The hatchet spins once, then lands blade-down in your hand. The movement is fluid. Familiar.",
+            'attacker_msg': "The hatchet spins once, then lands blade-down in your {hit_location}. The movement is fluid. Familiar.",
             'victim_msg': "The hatchet spins once, then lands blade-down in {attacker_name}'s hand. The movement is fluid. Familiar.",
             'observer_msg': "The hatchet spins once, then lands blade-down in {attacker_name}'s hand. The movement is fluid. Familiar."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} flips the hatchet lazily, catching it by the handle with practiced ease. The edge never stops gleaming."
         },
         {
-            'attacker_msg': "You flip the hatchet once in your hand, testing the edge with a glance that cuts deeper than the blade.",
+            'attacker_msg': "You flip the hatchet once in your {hit_location}, testing the edge with a glance that cuts deeper than the blade.",
             'victim_msg': "{attacker_name} flips the hatchet once in their hand, testing the edge with a glance that cuts deeper than the blade.",
             'observer_msg': "{attacker_name} flips the hatchet once in their hand, testing the edge with a glance that cuts deeper than the blade."
         },
@@ -527,9 +527,9 @@ MESSAGES = {
             'observer_msg': "The blade cleaves the collarbone, opening {target_name} to the heart. The end is immediate."
         },
         {
-            'attacker_msg': "The final blow caves in ribs. {target_name}'s chest becomes a hollow place.",
-            'victim_msg': "The final blow caves in ribs. Your chest becomes a hollow place.",
-            'observer_msg': "The final blow caves in ribs. {target_name}'s chest becomes a hollow place."
+            'attacker_msg': "The final blow caves in ribs. {target_name}'s {hit_location} becomes a hollow place.",
+            'victim_msg': "The final blow caves in ribs. Your {hit_location} becomes a hollow place.",
+            'observer_msg': "The final blow caves in ribs. {target_name}'s {hit_location} becomes a hollow place."
         },
         {
             'attacker_msg': "The hatchet bites deep into the chest. {target_name} breathes their last in bubbles of blood.",
@@ -557,14 +557,14 @@ MESSAGES = {
             'observer_msg': "The last strike severs the head completely. It hits the ground and rolls."
         },
         {
-            'attacker_msg': "The weapon carves through ribs like they're kindling. {target_name}'s heart stops mid-beat.",
-            'victim_msg': "The weapon carves through ribs like they're kindling. Your heart stops mid-beat.",
-            'observer_msg': "The weapon carves through ribs like they're kindling. {target_name}'s heart stops mid-beat."
+            'attacker_msg': "The weapon carves through ribs like they're kindling. {target_name}'s {hit_location} stops mid-beat.",
+            'victim_msg': "The weapon carves through ribs like they're kindling. Your {hit_location} stops mid-beat.",
+            'observer_msg': "The weapon carves through ribs like they're kindling. {target_name}'s {hit_location} stops mid-beat."
         },
         {
-            'attacker_msg': "You bury the hatchet in {target_name}'s skull. They drop instantly, twitching once before stillness.",
-            'victim_msg': "{attacker_name} buries the hatchet in your skull. You drop instantly, twitching once before stillness.",
-            'observer_msg': "{attacker_name} buries the hatchet in {target_name}'s skull. They drop instantly, twitching once before stillness."
+            'attacker_msg': "You bury the hatchet in {target_name}'s {hit_location}. They drop instantly, twitching once before stillness.",
+            'victim_msg': "{attacker_name} buries the hatchet in your {hit_location}. You drop instantly, twitching once before stillness.",
+            'observer_msg': "{attacker_name} buries the hatchet in {target_name}'s {hit_location}. They drop instantly, twitching once before stillness."
         },
         {
             'attacker_msg': "You chop downward into the crown of the head. {target_name} collapses like a demolished building.",
@@ -572,19 +572,19 @@ MESSAGES = {
             'observer_msg': "{attacker_name} chops downward into the crown of the head. {target_name} collapses like a demolished building."
         },
         {
-            'attacker_msg': "You drive the blade deep into {target_name}'s chest. Their eyes widen, then close forever.",
-            'victim_msg': "{attacker_name} drives the blade deep into your chest. Your eyes widen, then close forever.",
-            'observer_msg': "{attacker_name} drives the blade deep into {target_name}'s chest. Their eyes widen, then close forever."
+            'attacker_msg': "You drive the blade deep into {target_name}'s {hit_location}. Their eyes widen, then close forever.",
+            'victim_msg': "{attacker_name} drives the blade deep into your {hit_location}. Your eyes widen, then close forever.",
+            'observer_msg': "{attacker_name} drives the blade deep into {target_name}'s {hit_location}. Their eyes widen, then close forever."
         },
         {
-            'attacker_msg': "You hack straight through the neck. {target_name}'s head separates cleanly. The body follows a moment later.",
-            'victim_msg': "{attacker_name} hacks straight through the neck. Your head separates cleanly. The body follows a moment later.",
-            'observer_msg': "{attacker_name} hacks straight through the neck. {target_name}'s head separates cleanly. The body follows a moment later."
+            'attacker_msg': "You hack straight through the neck. {target_name}'s {hit_location} separates cleanly. The body follows a moment later.",
+            'victim_msg': "{attacker_name} hacks straight through the neck. Your {hit_location} separates cleanly. The body follows a moment later.",
+            'observer_msg': "{attacker_name} hacks straight through the neck. {target_name}'s {hit_location} separates cleanly. The body follows a moment later."
         },
         {
-            'attacker_msg': "You sink the hatchet deep into {target_name}'s torso. They fold around it, then slide off.",
-            'victim_msg': "{attacker_name} sinks the hatchet deep into your torso. You fold around it, then slide off.",
-            'observer_msg': "{attacker_name} sinks the hatchet deep into {target_name}'s torso. They fold around it, then slide off."
+            'attacker_msg': "You sink the hatchet deep into {target_name}'s {hit_location}. They fold around it, then slide off.",
+            'victim_msg': "{attacker_name} sinks the hatchet deep into your {hit_location}. You fold around it, then slide off.",
+            'observer_msg': "{attacker_name} sinks the hatchet deep into {target_name}'s {hit_location}. They fold around it, then slide off."
         },
         {
             'attacker_msg': "You split {target_name} cleanly from shoulder to opposite hip. They fall in precise halves.",
@@ -592,14 +592,14 @@ MESSAGES = {
             'observer_msg': "{attacker_name} splits {target_name} cleanly from shoulder to opposite hip. They fall in precise halves."
         },
         {
-            'attacker_msg': "You split {target_name}'s skull with a wet crack. Blood fountains. They topple backward.",
-            'victim_msg': "{attacker_name} splits your skull with a wet crack. Blood fountains. You topple backward.",
-            'observer_msg': "{attacker_name} splits {target_name}'s skull with a wet crack. Blood fountains. They topple backward."
+            'attacker_msg': "You split {target_name}'s {hit_location} with a wet crack. Blood fountains. They topple backward.",
+            'victim_msg': "{attacker_name} splits your {hit_location} with a wet crack. Blood fountains. You topple backward.",
+            'observer_msg': "{attacker_name} splits {target_name}'s {hit_location} with a wet crack. Blood fountains. They topple backward."
         },
         {
-            'attacker_msg': "You swing the hatchet in a wide arc that opens {target_name}'s throat completely. They gurgle once, then silence.",
-            'victim_msg': "{attacker_name} swings the hatchet in a wide arc that opens your throat completely. You gurgle once, then silence.",
-            'observer_msg': "{attacker_name} swings the hatchet in a wide arc that opens {target_name}'s throat completely. They gurgle once, then silence."
+            'attacker_msg': "You swing the hatchet in a wide arc that opens {target_name}'s {hit_location} completely. They gurgle once, then silence.",
+            'victim_msg': "{attacker_name} swings the hatchet in a wide arc that opens your {hit_location} completely. You gurgle once, then silence.",
+            'observer_msg': "{attacker_name} swings the hatchet in a wide arc that opens {target_name}'s {hit_location} completely. They gurgle once, then silence."
         },
         {
             'attacker_msg': "Your final blow cleaves {target_name} from crown to groin. They become two things that were once one.",
@@ -607,9 +607,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s final blow cleaves {target_name} from crown to groin. They become two things that were once one."
         },
         {
-            'attacker_msg': "Your final strike opens {target_name}'s chest like a door. Inside, everything has stopped working.",
-            'victim_msg': "{attacker_name}'s final strike opens your chest like a door. Inside, everything has stopped working.",
-            'observer_msg': "{attacker_name}'s final strike opens {target_name}'s chest like a door. Inside, everything has stopped working."
+            'attacker_msg': "Your final strike opens {target_name}'s {hit_location} like a door. Inside, everything has stopped working.",
+            'victim_msg': "{attacker_name}'s final strike opens your {hit_location} like a door. Inside, everything has stopped working.",
+            'observer_msg': "{attacker_name}'s final strike opens {target_name}'s {hit_location} like a door. Inside, everything has stopped working."
         }
     ]
 }

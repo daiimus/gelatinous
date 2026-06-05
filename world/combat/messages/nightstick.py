@@ -56,7 +56,7 @@ MESSAGES = {
             'observer_msg': "The nightstick extends with a click and a hiss. {attacker_name} doesn't smile. They don't need to."
         },
         {
-            'attacker_msg': "The nightstick rests against your forearm, a calm before a storm made of plastic and pain.",
+            'attacker_msg': "The nightstick rests against your {hit_location}, a calm before a storm made of plastic and pain.",
             'victim_msg': "The nightstick rests against {attacker_name}'s forearm, a calm before a storm made of plastic and pain.",
             'observer_msg': "The nightstick rests against {attacker_name}'s forearm, a calm before a storm made of plastic and pain."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "The nightstick spins once before locking into place. {attacker_name} doesn't look down — only forward."
         },
         {
-            'attacker_msg': "The polymer baton spins once in your hand. You catch it without looking.",
+            'attacker_msg': "The polymer baton spins once in your {hit_location}. You catch it without looking.",
             'victim_msg': "The polymer baton spins once in {attacker_name}'s hand. They catch it without looking.",
             'observer_msg': "The polymer baton spins once in {attacker_name}'s hand. They catch it without looking."
         },
@@ -76,7 +76,7 @@ MESSAGES = {
             'observer_msg': "The weapon extends with the practiced precision of someone who's done this before — and enjoyed it."
         },
         {
-            'attacker_msg': "The weapon is deceptively plain. In your hand, it becomes doctrine.",
+            'attacker_msg': "The weapon is deceptively plain. In your {hit_location}, it becomes doctrine.",
             'victim_msg': "The weapon is deceptively plain. In {attacker_name}'s hand, it becomes doctrine.",
             'observer_msg': "The weapon is deceptively plain. In {attacker_name}'s hand, it becomes doctrine."
         },
@@ -111,7 +111,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the nightstick like a judge holds a gavel. The verdict is violence."
         },
         {
-            'attacker_msg': "You roll your wrist once, letting the stick spin into a ready grip. Control. Tension. Command.",
+            'attacker_msg': "You roll your {hit_location} once, letting the stick spin into a ready grip. Control. Tension. Command.",
             'victim_msg': "{attacker_name} rolls their wrist once, letting the stick spin into a ready grip. Control. Tension. Command.",
             'observer_msg': "{attacker_name} rolls their wrist once, letting the stick spin into a ready grip. Control. Tension. Command."
         },
@@ -141,7 +141,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} spins the nightstick in a slow circle, testing weight, distance, control — all dialed in."
         },
         {
-            'attacker_msg': "You tap the nightstick against your leg. Each knock feels like a countdown.",
+            'attacker_msg': "You tap the nightstick against your {hit_location}. Each knock feels like a countdown.",
             'victim_msg': "{attacker_name} taps the nightstick against their leg. Each knock feels like a countdown.",
             'observer_msg': "{attacker_name} taps the nightstick against their leg. Each knock feels like a countdown."
         },
@@ -274,7 +274,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You drive the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come {hit_location} quickly.",
-            'victim_msg': "{attacker_name} drives the baton into your {hit_location}. The breath leaves your lungs — and doesn't come {hit_location} quickly.",
+            'victim_msg': "{attacker_name} drives the baton into your {hit_location}. The breath leaves your {hit_location} — and doesn't come {hit_location} quickly.",
             'observer_msg': "{attacker_name} drives the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come {hit_location} quickly."
         },
         {
@@ -445,9 +445,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} lunges, but the stick glances off a pillar instead of skin."
         },
         {
-            'attacker_msg': "You spin too far. The stick whistles past {target_name}'s head by inches.",
-            'victim_msg': "{attacker_name} spins too far. The stick whistles past your head by inches.",
-            'observer_msg': "{attacker_name} spins too far. The stick whistles past {target_name}'s head by inches."
+            'attacker_msg': "You spin too far. The stick whistles past {target_name}'s {hit_location} by inches.",
+            'victim_msg': "{attacker_name} spins too far. The stick whistles past your {hit_location} by inches.",
+            'observer_msg': "{attacker_name} spins too far. The stick whistles past {target_name}'s {hit_location} by inches."
         },
         {
             'attacker_msg': "Your swing claps into a support beam. Steel-on-steel echoes in retreat.",
@@ -462,29 +462,29 @@ MESSAGES = {
             'observer_msg': "A brutal jab to {target_name}'s eye sends the body into seizures. The stillness afterward is eternal."
         },
         {
-            'attacker_msg': "A downward strike caves {target_name}'s chest in. They gasp, bleed, expire.",
-            'victim_msg': "A downward strike caves your chest in. You gasp, bleed, expire.",
-            'observer_msg': "A downward strike caves {target_name}'s chest in. They gasp, bleed, expire."
+            'attacker_msg': "A downward strike caves {target_name}'s {hit_location} in. They gasp, bleed, expire.",
+            'victim_msg': "A downward strike caves your {hit_location} in. You gasp, bleed, expire.",
+            'observer_msg': "A downward strike caves {target_name}'s {hit_location} in. They gasp, bleed, expire."
         },
         {
-            'attacker_msg': "A flurry of brutal jabs breaks {target_name}'s ribs, collapses lungs. They never recover.",
-            'victim_msg': "A flurry of brutal jabs breaks your ribs, collapses lungs. You never recover.",
-            'observer_msg': "A flurry of brutal jabs breaks {target_name}'s ribs, collapses lungs. They never recover."
+            'attacker_msg': "A flurry of brutal jabs breaks {target_name}'s {hit_location}, collapses lungs. They never recover.",
+            'victim_msg': "A flurry of brutal jabs breaks your {hit_location}, collapses lungs. You never recover.",
+            'observer_msg': "A flurry of brutal jabs breaks {target_name}'s {hit_location}, collapses lungs. They never recover."
         },
         {
-            'attacker_msg': "A savage strike to {target_name}'s jaw dislocates it with a pop. They fall, twitching, then still.",
-            'victim_msg': "A savage strike to your jaw dislocates it with a pop. You fall, twitching, then still.",
-            'observer_msg': "A savage strike to {target_name}'s jaw dislocates it with a pop. They fall, twitching, then still."
+            'attacker_msg': "A savage strike to {target_name}'s {hit_location} dislocates it with a pop. They fall, twitching, then still.",
+            'victim_msg': "A savage strike to your {hit_location} dislocates it with a pop. You fall, twitching, then still.",
+            'observer_msg': "A savage strike to {target_name}'s {hit_location} dislocates it with a pop. They fall, twitching, then still."
         },
         {
-            'attacker_msg': "A savage two-handed blow lands on {target_name}'s spine. They seize, then slump.",
-            'victim_msg': "A savage two-handed blow lands on your spine. You seize, then slump.",
-            'observer_msg': "A savage two-handed blow lands on {target_name}'s spine. They seize, then slump."
+            'attacker_msg': "A savage two-handed blow lands on {target_name}'s {hit_location}. They seize, then slump.",
+            'victim_msg': "A savage two-handed blow lands on your {hit_location}. You seize, then slump.",
+            'observer_msg': "A savage two-handed blow lands on {target_name}'s {hit_location}. They seize, then slump."
         },
         {
-            'attacker_msg': "A side-swing catches {target_name}'s jaw. Bone snaps. Brain bleeds. Death follows.",
-            'victim_msg': "A side-swing catches your jaw. Bone snaps. Brain bleeds. Death follows.",
-            'observer_msg': "A side-swing catches {target_name}'s jaw. Bone snaps. Brain bleeds. Death follows."
+            'attacker_msg': "A side-swing catches {target_name}'s {hit_location}. Bone snaps. Brain bleeds. Death follows.",
+            'victim_msg': "A side-swing catches your {hit_location}. Bone snaps. Brain bleeds. Death follows.",
+            'observer_msg': "A side-swing catches {target_name}'s {hit_location}. Bone snaps. Brain bleeds. Death follows."
         },
         {
             'attacker_msg': "A spinning blow lands behind {target_name}'s ear. The sound it makes is sickly, the silence afterward sicker.",
@@ -492,34 +492,34 @@ MESSAGES = {
             'observer_msg': "A spinning blow lands behind {target_name}'s ear. The sound it makes is sickly, the silence afterward sicker."
         },
         {
-            'attacker_msg': "A spinning strike crashes into {target_name}'s throat. The silence is immediate and complete.",
-            'victim_msg': "A spinning strike crashes into your throat. The silence is immediate and complete.",
-            'observer_msg': "A spinning strike crashes into {target_name}'s throat. The silence is immediate and complete."
+            'attacker_msg': "A spinning strike crashes into {target_name}'s {hit_location}. The silence is immediate and complete.",
+            'victim_msg': "A spinning strike crashes into your {hit_location}. The silence is immediate and complete.",
+            'observer_msg': "A spinning strike crashes into {target_name}'s {hit_location}. The silence is immediate and complete."
         },
         {
-            'attacker_msg': "A strike to {target_name}'s temple ends the movement mid-scream. It's over before it echoes.",
-            'victim_msg': "A strike to your temple ends the movement mid-scream. It's over before it echoes.",
-            'observer_msg': "A strike to {target_name}'s temple ends the movement mid-scream. It's over before it echoes."
+            'attacker_msg': "A strike to {target_name}'s {hit_location} ends the movement mid-scream. It's over before it echoes.",
+            'victim_msg': "A strike to your {hit_location} ends the movement mid-scream. It's over before it echoes.",
+            'observer_msg': "A strike to {target_name}'s {hit_location} ends the movement mid-scream. It's over before it echoes."
         },
         {
-            'attacker_msg': "One blow to the back of {target_name}'s skull. The collapse is total. Instant.",
-            'victim_msg': "One blow to the back of your skull. The collapse is total. Instant.",
-            'observer_msg': "One blow to the back of {target_name}'s skull. The collapse is total. Instant."
+            'attacker_msg': "One blow to the back of {target_name}'s {hit_location}. The collapse is total. Instant.",
+            'victim_msg': "One blow to the back of your {hit_location}. The collapse is total. Instant.",
+            'observer_msg': "One blow to the back of {target_name}'s {hit_location}. The collapse is total. Instant."
         },
         {
-            'attacker_msg': "One clean jab to {target_name}'s temple. They drop like a string was cut.",
-            'victim_msg': "One clean jab to your temple. You drop like a string was cut.",
-            'observer_msg': "One clean jab to {target_name}'s temple. They drop like a string was cut."
+            'attacker_msg': "One clean jab to {target_name}'s {hit_location}. They drop like a string was cut.",
+            'victim_msg': "One clean jab to your {hit_location}. You drop like a string was cut.",
+            'observer_msg': "One clean jab to {target_name}'s {hit_location}. They drop like a string was cut."
         },
         {
-            'attacker_msg': "One spinning strike. The stick collides with the base of {target_name}'s skull. They go stiff — then limp.",
-            'victim_msg': "One spinning strike. The stick collides with the base of your skull. You go stiff — then limp.",
-            'observer_msg': "One spinning strike. The stick collides with the base of {target_name}'s skull. They go stiff — then limp."
+            'attacker_msg': "One spinning strike. The stick collides with the base of {target_name}'s {hit_location}. They go stiff — then limp.",
+            'victim_msg': "One spinning strike. The stick collides with the base of your {hit_location}. You go stiff — then limp.",
+            'observer_msg': "One spinning strike. The stick collides with the base of {target_name}'s {hit_location}. They go stiff — then limp."
         },
         {
-            'attacker_msg': "One upward jab to {target_name}'s jaw. Their neck snaps. Their eyes don't blink again.",
-            'victim_msg': "One upward jab to your jaw. Your neck snaps. Your eyes don't blink again.",
-            'observer_msg': "One upward jab to {target_name}'s jaw. Their neck snaps. Their eyes don't blink again."
+            'attacker_msg': "One upward jab to {target_name}'s {hit_location}. Their neck snaps. Their eyes don't blink again.",
+            'victim_msg': "One upward jab to your {hit_location}. Your {hit_location} snaps. Your eyes don't blink again.",
+            'observer_msg': "One upward jab to {target_name}'s {hit_location}. Their neck snaps. Their eyes don't blink again."
         },
         {
             'attacker_msg': "Steel drives into {target_name}'s eye socket. The scream is brief. The stillness is longer.",
@@ -532,14 +532,14 @@ MESSAGES = {
             'observer_msg': "Steel-reinforced polymer drives into {target_name}'s eye socket. They collapse mid-scream."
         },
         {
-            'attacker_msg': "The baton breaks {target_name}'s jaw, the rhythm, the resistance. They go down and don't rise.",
-            'victim_msg': "The baton breaks your jaw, the rhythm, the resistance. You go down and don't rise.",
-            'observer_msg': "The baton breaks {target_name}'s jaw, the rhythm, the resistance. They go down and don't rise."
+            'attacker_msg': "The baton breaks {target_name}'s {hit_location}, the rhythm, the resistance. They go down and don't rise.",
+            'victim_msg': "The baton breaks your {hit_location}, the rhythm, the resistance. You go down and don't rise.",
+            'observer_msg': "The baton breaks {target_name}'s {hit_location}, the rhythm, the resistance. They go down and don't rise."
         },
         {
-            'attacker_msg': "The baton caves in the side of {target_name}'s skull. They don't fall — they drop like dead weight.",
-            'victim_msg': "The baton caves in the side of your skull. You don't fall — you drop like dead weight.",
-            'observer_msg': "The baton caves in the side of {target_name}'s skull. They don't fall — they drop like dead weight."
+            'attacker_msg': "The baton caves in the side of {target_name}'s {hit_location}. They don't fall — they drop like dead weight.",
+            'victim_msg': "The baton caves in the side of your {hit_location}. You don't fall — you drop like dead weight.",
+            'observer_msg': "The baton caves in the side of {target_name}'s {hit_location}. They don't fall — they drop like dead weight."
         },
         {
             'attacker_msg': "The baton comes down like a gavel. Final. {target_name} doesn't appeal.",
@@ -547,9 +547,9 @@ MESSAGES = {
             'observer_msg': "The baton comes down like a gavel. Final. {target_name} doesn't appeal."
         },
         {
-            'attacker_msg': "The baton comes down like a hammer to {target_name}'s chest. They stop moving, breathing, existing.",
-            'victim_msg': "The baton comes down like a hammer to your chest. You stop moving, breathing, existing.",
-            'observer_msg': "The baton comes down like a hammer to {target_name}'s chest. They stop moving, breathing, existing."
+            'attacker_msg': "The baton comes down like a hammer to {target_name}'s {hit_location}. They stop moving, breathing, existing.",
+            'victim_msg': "The baton comes down like a hammer to your {hit_location}. You stop moving, breathing, existing.",
+            'observer_msg': "The baton comes down like a hammer to {target_name}'s {hit_location}. They stop moving, breathing, existing."
         },
         {
             'attacker_msg': "The baton hits again. And again. And again. The floor ends the argument.",
@@ -557,23 +557,23 @@ MESSAGES = {
             'observer_msg': "The baton hits again. And again. And again. The floor ends the argument."
         },
         {
-            'attacker_msg': "The baton smashes {target_name}'s spine mid-run. They fold inward, legs twitching, then nothing.",
-            'victim_msg': "The baton smashes your spine mid-run. You fold inward, legs twitching, then nothing.",
-            'observer_msg': "The baton smashes {target_name}'s spine mid-run. They fold inward, legs twitching, then nothing."
+            'attacker_msg': "The baton smashes {target_name}'s {hit_location} mid-run. They fold inward, legs twitching, then nothing.",
+            'victim_msg': "The baton smashes your {hit_location} mid-run. You fold inward, legs twitching, then nothing.",
+            'observer_msg': "The baton smashes {target_name}'s {hit_location} mid-run. They fold inward, legs twitching, then nothing."
         },
         {
-            'attacker_msg': "The nightstick cracks down on the base of {target_name}'s skull. The lights go out. Permanently.",
-            'victim_msg': "The nightstick cracks down on the base of your skull. The lights go out. Permanently.",
-            'observer_msg': "The nightstick cracks down on the base of {target_name}'s skull. The lights go out. Permanently."
+            'attacker_msg': "The nightstick cracks down on the base of {target_name}'s {hit_location}. The lights go out. Permanently.",
+            'victim_msg': "The nightstick cracks down on the base of your {hit_location}. The lights go out. Permanently.",
+            'observer_msg': "The nightstick cracks down on the base of {target_name}'s {hit_location}. The lights go out. Permanently."
         },
         {
-            'attacker_msg': "The nightstick cracks {target_name}'s temple. They jerk once, then collapse, puppet strings cut.",
-            'victim_msg': "The nightstick cracks your temple. You jerk once, then collapse, puppet strings cut.",
-            'observer_msg': "The nightstick cracks {target_name}'s temple. They jerk once, then collapse, puppet strings cut."
+            'attacker_msg': "The nightstick cracks {target_name}'s {hit_location}. They jerk once, then collapse, puppet strings cut.",
+            'victim_msg': "The nightstick cracks your {hit_location}. You jerk once, then collapse, puppet strings cut.",
+            'observer_msg': "The nightstick cracks {target_name}'s {hit_location}. They jerk once, then collapse, puppet strings cut."
         },
         {
             'attacker_msg': "The nightstick crushes {target_name}'s windpipe. They clutch their throat and fall, soundless.",
-            'victim_msg': "The nightstick crushes your windpipe. You clutch your throat and fall, soundless.",
+            'victim_msg': "The nightstick crushes your windpipe. You clutch your {hit_location} and fall, soundless.",
             'observer_msg': "The nightstick crushes {target_name}'s windpipe. They clutch their throat and fall, soundless."
         },
         {
@@ -583,27 +583,27 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The spine gives. The collapse is awkward and permanent.",
-            'victim_msg': "Your spine gives. The collapse is awkward and permanent.",
+            'victim_msg': "Your {hit_location} gives. The collapse is awkward and permanent.",
             'observer_msg': "The spine gives. The collapse is awkward and permanent."
         },
         {
-            'attacker_msg': "You hook the baton around {target_name}'s neck and yank. The body drops. The soul doesn't linger.",
-            'victim_msg': "{attacker_name} hooks the baton around your neck and yanks. Your body drops. Your soul doesn't linger.",
-            'observer_msg': "{attacker_name} hooks the baton around {target_name}'s neck and yanks. The body drops. The soul doesn't linger."
+            'attacker_msg': "You hook the baton around {target_name}'s {hit_location} and yank. The body drops. The soul doesn't linger.",
+            'victim_msg': "{attacker_name} hooks the baton around your {hit_location} and yanks. Your body drops. Your soul doesn't linger.",
+            'observer_msg': "{attacker_name} hooks the baton around {target_name}'s {hit_location} and yanks. The body drops. The soul doesn't linger."
         },
         {
-            'attacker_msg': "You hook the stick around {target_name}'s head and pull. The slam to the ground does the rest.",
-            'victim_msg': "{attacker_name} hooks the stick around your head and pulls. The slam to the ground does the rest.",
-            'observer_msg': "{attacker_name} hooks the stick around {target_name}'s head and pulls. The slam to the ground does the rest."
+            'attacker_msg': "You hook the stick around {target_name}'s {hit_location} and pull. The slam to the ground does the rest.",
+            'victim_msg': "{attacker_name} hooks the stick around your {hit_location} and pulls. The slam to the ground does the rest.",
+            'observer_msg': "{attacker_name} hooks the stick around {target_name}'s {hit_location} and pulls. The slam to the ground does the rest."
         },
         {
-            'attacker_msg': "You slam the stick into {target_name}'s throat. They gurgle, claw, die in silence.",
-            'victim_msg': "{attacker_name} slams the stick into your throat. You gurgle, claw, die in silence.",
-            'observer_msg': "{attacker_name} slams the stick into {target_name}'s throat. They gurgle, claw, die in silence."
+            'attacker_msg': "You slam the stick into {target_name}'s {hit_location}. They gurgle, claw, die in silence.",
+            'victim_msg': "{attacker_name} slams the stick into your {hit_location}. You gurgle, claw, die in silence.",
+            'observer_msg': "{attacker_name} slams the stick into {target_name}'s {hit_location}. They gurgle, claw, die in silence."
         },
         {
             'attacker_msg': "You sweep {target_name}'s legs and drive the baton into their throat. They choke, jerk, die.",
-            'victim_msg': "{attacker_name} sweeps your legs and drives the baton into your throat. You choke, jerk, die.",
+            'victim_msg': "{attacker_name} sweeps your legs and drives the baton into your {hit_location}. You choke, jerk, die.",
             'observer_msg': "{attacker_name} sweeps {target_name}'s legs and drives the baton into their throat. They choke, jerk, die."
         }
     ]

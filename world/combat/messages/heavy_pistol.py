@@ -11,12 +11,12 @@ MESSAGES = {
             "observer_msg": "With a deliberate, forceful motion, {attacker_name} slams a magazine of large-caliber rounds into the pistol, the weapon's weight evident."
         },
         {
-            "attacker_msg": "Your hand struggles slightly to encompass the wide grip of your pistol, thumbing off the stiff safety with a loud *CLICK*.",
+            "attacker_msg": "Your {hit_location} struggles slightly to encompass the wide grip of your pistol, thumbing off the stiff safety with a loud *CLICK*.",
             "victim_msg": "{attacker_name}'s hand struggles slightly to encompass the wide grip of their pistol, thumbing off the stiff safety with a loud *CLICK*.",
             "observer_msg": "{attacker_name}'s hand struggles slightly to encompass the wide grip of the pistol, thumbing off the stiff safety with a loud *CLICK*."
         },
         {
-            "attacker_msg": "The pistol that appears in your hand is a beast, its large-bore muzzle a dark, terrifying void.",
+            "attacker_msg": "The pistol that appears in your {hit_location} is a beast, its large-bore muzzle a dark, terrifying void.",
             "victim_msg": "The pistol that appears in {attacker_name}'s hand is a beast, its large-bore muzzle a dark, terrifying void, and it seems to be pointed at you.",
             "observer_msg": "The pistol that appears in {attacker_name}'s hand is a beast, its large-bore muzzle a dark, terrifying void."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             "observer_msg": "The air seems to thicken with tension as {attacker_name} prepares to fire the pistol, anticipating the deafening *BOOM* and violent kick."
         },
         {
-            "attacker_msg": "Your face is a mask of grim concentration, finger deliberately taking up your pistol's long, heavy trigger pull.",
+            "attacker_msg": "Your {hit_location} is a mask of grim concentration, finger deliberately taking up your pistol's long, heavy trigger pull.",
             "victim_msg": "{attacker_name}’s face is a mask of grim concentration, finger deliberately taking up the pistol's long, heavy trigger pull, aimed at you.",
             "observer_msg": "{attacker_name}’s face is a mask of grim concentration, finger deliberately taking up the pistol's long, heavy trigger pull."
         },
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            "attacker_msg": "Your pistol erupts with a deafening *KABLAM*, the heavy bullet thundering past {target_name}'s head and blasting a car-sized chunk out of a concrete wall, a large casing ejecting with force.",
-            "victim_msg": "{attacker_name}'s pistol erupts with a deafening *KABLAM*, the heavy bullet thundering past your head and blasting a car-sized chunk out of a concrete wall! A large casing ejects with force.",
-            "observer_msg": "{attacker_name}'s pistol erupts with a deafening *KABLAM*, the heavy bullet thundering past {target_name}'s head and blasting a car-sized chunk out of a concrete wall, a large casing ejecting with force."
+            "attacker_msg": "Your pistol erupts with a deafening *KABLAM*, the heavy bullet thundering past {target_name}'s {hit_location} and blasting a car-sized chunk out of a concrete wall, a large casing ejecting with force.",
+            "victim_msg": "{attacker_name}'s pistol erupts with a deafening *KABLAM*, the heavy bullet thundering past your {hit_location} and blasting a car-sized chunk out of a concrete wall! A large casing ejects with force.",
+            "observer_msg": "{attacker_name}'s pistol erupts with a deafening *KABLAM*, the heavy bullet thundering past {target_name}'s {hit_location} and blasting a car-sized chunk out of a concrete wall, a large casing ejecting with force."
         },
         {
             "attacker_msg": "You fire, but {target_name} throws themselves aside with a yell as your pistol roars like artillery, the bullet gouging a deep, smoking furrow in the ground where they just stood, the slide cycling violently.",
@@ -346,7 +346,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "{target_name} ducks just as your pistol fires, the bullet searing the air where their head had been with palpable, burning force, the action cycling with a heavy *thump*.",
-            "victim_msg": "You duck just as {attacker_name}'s pistol fires, the bullet searing the air where your head had been with palpable, burning force, the action cycling with a heavy *thump*.",
+            "victim_msg": "You duck just as {attacker_name}'s pistol fires, the bullet searing the air where your {hit_location} had been with palpable, burning force, the action cycling with a heavy *thump*.",
             "observer_msg": "{target_name} ducks just as {attacker_name}'s pistol fires, the bullet searing the air where their head had been with palpable, burning force, the action cycling with a heavy *thump*."
         },
         {
@@ -365,7 +365,7 @@ MESSAGES = {
             "observer_msg": "A quick sidestep from {target_name} leaves {attacker_name}'s pistol to punch a massive, ragged hole in an empty oil drum, which visibly deforms from the impact, brass ejecting."
         },
         {
-            "attacker_msg": "Your pistol bucks violently and almost uncontrollably in your hand as you miss {target_name}, the powerful recoil throwing your arm sharply upwards, nearly hitting you in the face.",
+            "attacker_msg": "Your pistol bucks violently and almost uncontrollably in your {hit_location} as you miss {target_name}, the powerful recoil throwing your {hit_location} sharply upwards, nearly hitting you in the face.",
             "victim_msg": "{attacker_name}'s pistol bucks violently and almost uncontrollably in their hand as they miss you, the powerful recoil throwing their arm sharply upwards, nearly hitting them in the face.",
             "observer_msg": "{attacker_name}'s pistol bucks violently and almost uncontrollably in their hand as they miss {target_name}, the powerful recoil throwing their arm sharply upwards, nearly hitting them in the face."
         },
@@ -458,23 +458,23 @@ MESSAGES = {
     "kill": [
         {
             "attacker_msg": "Your pistol bullet strikes {target_name} square in the forehead; their head explodes in a catastrophic shower of gore, bone, and brain matter, and they drop, instantly obliterated. A final large casing ejects with a heavy *ping*.",
-            "victim_msg": "{attacker_name}'s pistol bullet strikes you square in the forehead; your head explodes in a catastrophic shower of gore, bone, and brain matter. You drop, instantly obliterated... Darkness claims you.",
+            "victim_msg": "{attacker_name}'s pistol bullet strikes you square in the forehead; your {hit_location} explodes in a catastrophic shower of gore, bone, and brain matter. You drop, instantly obliterated... Darkness claims you.",
             "observer_msg": "{attacker_name}'s pistol bullet strikes {target_name} square in the forehead; their head explodes in a catastrophic shower of gore, bone, and brain matter, and they drop, instantly obliterated, a final large casing ejecting with a heavy *ping*."
         },
         {
             "attacker_msg": "Your pistol roars like a vengeful god, and {target_name} clutches their chest as a massive, smoking hole appears, blood fountaining before they collapse, utterly destroyed. The slide locks back with a heavy, final *CLUNK*.",
-            "victim_msg": "{attacker_name}'s pistol roars like a vengeful god! You clutch your chest as a massive, smoking hole appears, blood fountaining before you collapse, utterly destroyed... It's over.",
+            "victim_msg": "{attacker_name}'s pistol roars like a vengeful god! You clutch your {hit_location} as a massive, smoking hole appears, blood fountaining before you collapse, utterly destroyed... It's over.",
             "observer_msg": "{attacker_name}'s pistol roars like a vengeful god, and {target_name} clutches their chest as a massive, smoking hole appears, blood fountaining before they collapse, utterly destroyed, the slide locking back with a heavy, final *CLUNK*."
         },
         {
-            "attacker_msg": "With a final, precise shot, your pistol sends a large bullet into {target_name}'s heart, which bursts like an overripe fruit, ending their struggles catastrophically and instantly, a heavy casing tinkling on the floor.",
-            "victim_msg": "With a final, precise shot, {attacker_name}'s pistol sends a large bullet into your heart, which bursts like an overripe fruit, ending your struggles catastrophically and instantly. You are slain.",
-            "observer_msg": "With a final, precise shot, {attacker_name}'s pistol sends a large bullet into {target_name}'s heart, which bursts like an overripe fruit, ending their struggles catastrophically and instantly, a heavy casing tinkling on the floor."
+            "attacker_msg": "With a final, precise shot, your pistol sends a large bullet into {target_name}'s {hit_location}, which bursts like an overripe fruit, ending their struggles catastrophically and instantly, a heavy casing tinkling on the floor.",
+            "victim_msg": "With a final, precise shot, {attacker_name}'s pistol sends a large bullet into your {hit_location}, which bursts like an overripe fruit, ending your struggles catastrophically and instantly. You are slain.",
+            "observer_msg": "With a final, precise shot, {attacker_name}'s pistol sends a large bullet into {target_name}'s {hit_location}, which bursts like an overripe fruit, ending their struggles catastrophically and instantly, a heavy casing tinkling on the floor."
         },
         {
-            "attacker_msg": "The heavy bullet fired point-blank into {target_name}'s throat from your pistol nearly decapitates them; they die in a horrific, gushing spray of blood, the slide cycling violently and ejecting a smoking shell.",
-            "victim_msg": "The heavy bullet fired point-blank into your throat from {attacker_name}'s pistol nearly decapitates you; you die in a horrific, gushing spray of blood. Your life fades...",
-            "observer_msg": "The heavy bullet fired point-blank into {target_name}'s throat from {attacker_name}'s pistol nearly decapitates them; they die in a horrific, gushing spray of blood, the slide cycling violently and ejecting a smoking shell."
+            "attacker_msg": "The heavy bullet fired point-blank into {target_name}'s {hit_location} from your pistol nearly decapitates them; they die in a horrific, gushing spray of blood, the slide cycling violently and ejecting a smoking shell.",
+            "victim_msg": "The heavy bullet fired point-blank into your {hit_location} from {attacker_name}'s pistol nearly decapitates you; you die in a horrific, gushing spray of blood. Your life fades...",
+            "observer_msg": "The heavy bullet fired point-blank into {target_name}'s {hit_location} from {attacker_name}'s pistol nearly decapitates them; they die in a horrific, gushing spray of blood, the slide cycling violently and ejecting a smoking shell."
         },
         {
             "attacker_msg": "Your sustained fire with the pistol tears {target_name} apart piece by piece; they slump, a mangled, unrecognizable, lifeless ruin, spent large brass scattered around like fallen monuments.",
@@ -488,13 +488,13 @@ MESSAGES = {
         },
         {
             "attacker_msg": "A precise shot to the base of the skull from your pistol vaporizes the target area, sending a shockwave through their body, ending {target_name}'s life with absolute, brutal finality, the slide moving with grim force.",
-            "victim_msg": "A precise shot to the base of your skull from {attacker_name}'s pistol vaporizes the target area, sending a shockwave through your body, ending your life with absolute, brutal finality. You are dead.",
+            "victim_msg": "A precise shot to the base of your {hit_location} from {attacker_name}'s pistol vaporizes the target area, sending a shockwave through your body, ending your life with absolute, brutal finality. You are dead.",
             "observer_msg": "A precise shot to the base of the skull from {attacker_name}'s pistol vaporizes the target area, sending a shockwave through their body, ending {target_name}'s life with absolute, brutal finality, the slide moving with grim force."
         },
         {
-            "attacker_msg": "You empty your pistol's magazine into {target_name}'s torso, the multiple massive, concussive impacts ensuring a swift, brutal, and messy obliteration, the slide locking open with a resounding *CLACK*.",
-            "victim_msg": "{attacker_name} empties their pistol's magazine into your torso, the multiple massive, concussive impacts ensuring your swift, brutal, and messy obliteration. Darkness envelops you.",
-            "observer_msg": "{attacker_name} empties the pistol's magazine into {target_name}'s torso, the multiple massive, concussive impacts ensuring a swift, brutal, and messy obliteration, the slide locking open with a resounding *CLACK*."
+            "attacker_msg": "You empty your pistol's magazine into {target_name}'s {hit_location}, the multiple massive, concussive impacts ensuring a swift, brutal, and messy obliteration, the slide locking open with a resounding *CLACK*.",
+            "victim_msg": "{attacker_name} empties their pistol's magazine into your {hit_location}, the multiple massive, concussive impacts ensuring your swift, brutal, and messy obliteration. Darkness envelops you.",
+            "observer_msg": "{attacker_name} empties the pistol's magazine into {target_name}'s {hit_location}, the multiple massive, concussive impacts ensuring a swift, brutal, and messy obliteration, the slide locking open with a resounding *CLACK*."
         },
         {
             "attacker_msg": "The unyielding, massive slug from your pistol pierces a vital organ in {target_name}, which ruptures explosively; they fall, dead before they hit the ground, a heavy casing spinning and clattering.",
@@ -503,7 +503,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "With a final, thunderous crack that echoes through the area, you finish {target_name} with a heavy bullet through the eye from your pistol, the back of their skull erupting in a spray of red mist, the slide cycling one last, brutal time.",
-            "victim_msg": "With a final, thunderous crack that echoes through the area, {attacker_name} finishes you with a heavy bullet through the eye from their pistol, the back of your skull erupting in a spray of red mist. You have perished.",
+            "victim_msg": "With a final, thunderous crack that echoes through the area, {attacker_name} finishes you with a heavy bullet through the eye from their pistol, the back of your {hit_location} erupting in a spray of red mist. You have perished.",
             "observer_msg": "With a final, thunderous crack that echoes through the area, {attacker_name} finishes {target_name} with a heavy bullet through the eye from the pistol, the back of their skull erupting in a spray of red mist, the slide cycling one last, brutal time."
         },
         {

@@ -21,7 +21,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} dangles the hook from a chain-wrapped wrist, letting gravity speak first."
         },
         {
-            'attacker_msg': "The meat hook glints in flickering light as you roll your neck and step forward.",
+            'attacker_msg': "The meat hook glints in flickering light as you roll your {hit_location} and step forward.",
             'victim_msg': "The meat hook glints in flickering light as {attacker_name} rolls their neck and steps forward.",
             'observer_msg': "The meat hook glints in flickering light as {attacker_name} rolls their neck and steps forward."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "A grunt, a glare, and then the hook rises—{attacker_name} speaks fluent brutality."
         },
         {
-            'attacker_msg': "You test the weight of the hook in your hand, as if remembering how much damage it used to do.",
+            'attacker_msg': "You test the weight of the hook in your {hit_location}, as if remembering how much damage it used to do.",
             'victim_msg': "{attacker_name} tests the weight of the hook in their hand, as if remembering how much damage it used to do.",
             'observer_msg': "{attacker_name} tests the weight of the hook in their hand, as if remembering how much damage it used to do."
         },
@@ -229,7 +229,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A nasty gash opens along {target_name}'s {hit_location} as the hook rakes across their face.",
-            'victim_msg': "A nasty gash opens along your {hit_location} as the hook rakes across your face.",
+            'victim_msg': "A nasty gash opens along your {hit_location} as the hook rakes across your {hit_location}.",
             'observer_msg': "A nasty gash opens along {target_name}'s {hit_location} as the hook rakes across their face."
         },
         {
@@ -248,9 +248,9 @@ MESSAGES = {
             'observer_msg': "The hook arcs in and rips a flap of skin from {target_name}'s {hit_location}. The wound steams in cold air."
         },
         {
-            'attacker_msg': "One clean shot to the {hit_location} makes {target_name}'s arm useless and trembling.",
-            'victim_msg': "One clean shot to the {hit_location} makes your arm useless and trembling.",
-            'observer_msg': "One clean shot to the {hit_location} makes {target_name}'s arm useless and trembling."
+            'attacker_msg': "One clean shot to the {hit_location} makes {target_name}'s {hit_location} useless and trembling.",
+            'victim_msg': "One clean shot to the {hit_location} makes your {hit_location} useless and trembling.",
+            'observer_msg': "One clean shot to the {hit_location} makes {target_name}'s {hit_location} useless and trembling."
         },
         {
             'attacker_msg': "A whipping blow lands in the {hit_location}. The hook catches and pulls something that shouldn't come loose.",
@@ -298,7 +298,7 @@ MESSAGES = {
             'observer_msg': "{target_name} tries to block. The hook still gets in."
         },
         {
-            'attacker_msg': "A twist of your wrist and the hook digs deeper than anyone expected. {target_name}'s eyes say the rest.",
+            'attacker_msg': "A twist of your {hit_location} and the hook digs deeper than anyone expected. {target_name}'s eyes say the rest.",
             'victim_msg': "A twist of {attacker_name}'s wrist and the hook digs deeper than anyone expected. Your eyes say the rest.",
             'observer_msg': "A twist of the wrist and the hook digs deeper than anyone expected. {target_name}'s eyes say the rest."
         }
@@ -310,9 +310,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} swings wide. The hook slams into a wall, sending flakes of rust flying."
         },
         {
-            'attacker_msg': "The hook hisses past {target_name}'s head—close enough to taste metal in the air.",
-            'victim_msg': "The hook hisses past your head—close enough to taste metal in the air.",
-            'observer_msg': "The hook hisses past {target_name}'s head—close enough to taste metal in the air."
+            'attacker_msg': "The hook hisses past {target_name}'s {hit_location}—close enough to taste metal in the air.",
+            'victim_msg': "The hook hisses past your {hit_location}—close enough to taste metal in the air.",
+            'observer_msg': "The hook hisses past {target_name}'s {hit_location}—close enough to taste metal in the air."
         },
         {
             'attacker_msg': "A wide arc misses completely. The chain sings, but {target_name} is untouched.",
@@ -335,9 +335,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} whips the hook forward, but {target_name} stumbles out of reach at the last second."
         },
         {
-            'attacker_msg': "The hook sails harmlessly past {target_name}'s ribs, dragging only air behind it.",
-            'victim_msg': "The hook sails harmlessly past your ribs, dragging only air behind it.",
-            'observer_msg': "The hook sails harmlessly past {target_name}'s ribs, dragging only air behind it."
+            'attacker_msg': "The hook sails harmlessly past {target_name}'s {hit_location}, dragging only air behind it.",
+            'victim_msg': "The hook sails harmlessly past your {hit_location}, dragging only air behind it.",
+            'observer_msg': "The hook sails harmlessly past {target_name}'s {hit_location}, dragging only air behind it."
         },
         {
             'attacker_msg': "A grunt and a miss—your footwork is off. The strike fails.",
@@ -430,7 +430,7 @@ MESSAGES = {
             'observer_msg': "The hook bounces off a metal railing as {target_name} sidesteps."
         },
         {
-            'attacker_msg': "A flick of your wrist gone wrong—steel meets pavement.",
+            'attacker_msg': "A flick of your {hit_location} gone wrong—steel meets pavement.",
             'victim_msg': "A flick of {attacker_name}'s wrist gone wrong—steel meets pavement.",
             'observer_msg': "A flick of the wrist gone wrong—steel meets pavement."
         },
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "You plunge the hook into {target_name}'s chest and lift. Something vital tears loose as they scream.",
-            'victim_msg': "{attacker_name} plunges the hook into your chest and lifts. Something vital tears loose as you scream.",
-            'observer_msg': "{attacker_name} plunges the hook into {target_name}'s chest and lifts. Something vital tears loose as they scream."
+            'attacker_msg': "You plunge the hook into {target_name}'s {hit_location} and lift. Something vital tears loose as they scream.",
+            'victim_msg': "{attacker_name} plunges the hook into your {hit_location} and lifts. Something vital tears loose as you scream.",
+            'observer_msg': "{attacker_name} plunges the hook into {target_name}'s {hit_location} and lifts. Something vital tears loose as they scream."
         },
         {
             'attacker_msg': "The point sinks under {target_name}'s chin. You hoist them off their feet like a trophy.",
@@ -467,9 +467,9 @@ MESSAGES = {
             'observer_msg': "The point sinks under {target_name}'s chin. {attacker_name} hoists them off their feet like a trophy."
         },
         {
-            'attacker_msg': "The hook buries deep in {target_name}'s ribs. One twist. One final breath.",
-            'victim_msg': "The hook buries deep in your ribs. One twist. One final breath.",
-            'observer_msg': "The hook buries deep in {target_name}'s ribs. One twist. One final breath."
+            'attacker_msg': "The hook buries deep in {target_name}'s {hit_location}. One twist. One final breath.",
+            'victim_msg': "The hook buries deep in your {hit_location}. One twist. One final breath.",
+            'observer_msg': "The hook buries deep in {target_name}'s {hit_location}. One twist. One final breath."
         },
         {
             'attacker_msg': "You jerk the hook back, dragging viscera with it. {target_name} slumps like wet cloth.",
@@ -477,9 +477,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} jerks the hook back, dragging viscera with it. {target_name} slumps like wet cloth."
         },
         {
-            'attacker_msg': "A full swing caves in {target_name}'s skull. The hook stays buried as their body collapses.",
-            'victim_msg': "A full swing caves in your skull. The hook stays buried as your body collapses.",
-            'observer_msg': "A full swing caves in {target_name}'s skull. The hook stays buried as their body collapses."
+            'attacker_msg': "A full swing caves in {target_name}'s {hit_location}. The hook stays buried as their body collapses.",
+            'victim_msg': "A full swing caves in your {hit_location}. The hook stays buried as your body collapses.",
+            'observer_msg': "A full swing caves in {target_name}'s {hit_location}. The hook stays buried as their body collapses."
         },
         {
             'attacker_msg': "The hook pierces the heart. {target_name} freezes, then drops like a puppet unstrung.",
@@ -487,9 +487,9 @@ MESSAGES = {
             'observer_msg': "The hook pierces the heart. {target_name} freezes, then drops like a puppet unstrung."
         },
         {
-            'attacker_msg': "You slash across {target_name}'s throat. Blood spurts. The silence after is deafening.",
-            'victim_msg': "{attacker_name} slashes across your throat. Blood spurts. The silence after is deafening.",
-            'observer_msg': "{attacker_name} slashes across {target_name}'s throat. Blood spurts. The silence after is deafening."
+            'attacker_msg': "You slash across {target_name}'s {hit_location}. Blood spurts. The silence after is deafening.",
+            'victim_msg': "{attacker_name} slashes across your {hit_location}. Blood spurts. The silence after is deafening.",
+            'observer_msg': "{attacker_name} slashes across {target_name}'s {hit_location}. Blood spurts. The silence after is deafening."
         },
         {
             'attacker_msg': "The meat hook stabs through {target_name}'s gut and out the back. They fold over the chain and die shaking.",
@@ -507,14 +507,14 @@ MESSAGES = {
             'observer_msg': "One upward rip opens {target_name} from stomach to sternum. The floor catches everything else."
         },
         {
-            'attacker_msg': "A sickening crack as the hook breaks through {target_name}'s spine. They don't even fall right.",
-            'victim_msg': "A sickening crack as the hook breaks through your spine. You don't even fall right.",
-            'observer_msg': "A sickening crack as the hook breaks through {target_name}'s spine. They don't even fall right."
+            'attacker_msg': "A sickening crack as the hook breaks through {target_name}'s {hit_location}. They don't even fall right.",
+            'victim_msg': "A sickening crack as the hook breaks through your {hit_location}. You don't even fall right.",
+            'observer_msg': "A sickening crack as the hook breaks through {target_name}'s {hit_location}. They don't even fall right."
         },
         {
-            'attacker_msg': "You swing in a wide arc, catching {target_name}'s neck. The body spins, then crumples.",
-            'victim_msg': "{attacker_name} swings in a wide arc, catching your neck. The body spins, then crumples.",
-            'observer_msg': "{attacker_name} swings in a wide arc, catching {target_name}'s neck. The body spins, then crumples."
+            'attacker_msg': "You swing in a wide arc, catching {target_name}'s {hit_location}. The body spins, then crumples.",
+            'victim_msg': "{attacker_name} swings in a wide arc, catching your {hit_location}. The body spins, then crumples.",
+            'observer_msg': "{attacker_name} swings in a wide arc, catching {target_name}'s {hit_location}. The body spins, then crumples."
         },
         {
             'attacker_msg': "The hook goes in beneath the ribs. You pull up. {target_name} doesn't scream—they gurgle.",
@@ -537,9 +537,9 @@ MESSAGES = {
             'observer_msg': "The chain coils tight as {attacker_name} reels in the kill. {target_name} arrives in pieces."
         },
         {
-            'attacker_msg': "A brutal hook to the temple caves half of {target_name}'s face inward. Death follows fast.",
-            'victim_msg': "A brutal hook to the temple caves half of your face inward. Death follows fast.",
-            'observer_msg': "A brutal hook to the temple caves half of {target_name}'s face inward. Death follows fast."
+            'attacker_msg': "A brutal hook to the temple caves half of {target_name}'s {hit_location} inward. Death follows fast.",
+            'victim_msg': "A brutal hook to the temple caves half of your {hit_location} inward. Death follows fast.",
+            'observer_msg': "A brutal hook to the temple caves half of {target_name}'s {hit_location} inward. Death follows fast."
         },
         {
             'attacker_msg': "The hook enters low and exits high. {target_name}'s scream becomes static.",
@@ -582,9 +582,9 @@ MESSAGES = {
             'observer_msg': "A quick stab to the base of the skull ends {target_name} instantly."
         },
         {
-            'attacker_msg': "You whirl the chain overhead and bring it down. {target_name}'s head folds sideways.",
-            'victim_msg': "{attacker_name} whirls the chain overhead and brings it down. Your head folds sideways.",
-            'observer_msg': "{attacker_name} whirls the chain overhead and brings it down. {target_name}'s head folds sideways."
+            'attacker_msg': "You whirl the chain overhead and bring it down. {target_name}'s {hit_location} folds sideways.",
+            'victim_msg': "{attacker_name} whirls the chain overhead and brings it down. Your {hit_location} folds sideways.",
+            'observer_msg': "{attacker_name} whirls the chain overhead and brings it down. {target_name}'s {hit_location} folds sideways."
         },
         {
             'attacker_msg': "The hook lands, and you let it go. It stays with the body.",

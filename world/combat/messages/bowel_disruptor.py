@@ -8,22 +8,22 @@ MESSAGES = {
     "initiate": [
         {
             "attacker_msg": "You grin, a wide, shark-like rictus, aiming the humming, gurgling obscenity of the {item_name} at {target_name}'s tender bits. A silent promise of imminent, unspeakable violation hangs in the air.",
-            "victim_msg": "{attacker_name} levels a truly unholy device – a {item_name} – at your midsection! A faint, wet gurgling sound emanates from it, a sound that promises nothing but regret and laundry bills. Your stomach clenches in preemptive horror.",
+            "victim_msg": "{attacker_name} levels a truly unholy device – a {item_name} – at your midsection! A faint, wet gurgling sound emanates from it, a sound that promises nothing but regret and laundry bills. Your {hit_location} clenches in preemptive horror.",
             "observer_msg": "{attacker_name} takes aim with a strange, gurgling contraption – a {item_name} – pointed directly at {target_name}. An almost palpable wave of impending disaster, and a faint, foul odor, emanates from the weapon.",
         },
         {
             "attacker_msg": "With a wet, throaty chuckle that seems to bubble up from a place of profound misanthropy, you bring the {item_name} to bear on {target_name}. Your eyes, wide and bloodshot, fix on their midsection with predatory intensity.",
-            "victim_msg": "A wet chuckle escapes {attacker_name} as they aim a horrifying device, the {item_name}, squarely at you. Your stomach performs a preemptive Olympic dive. A cold dread, centered in your lower abdomen, begins to spread.",
+            "victim_msg": "A wet chuckle escapes {attacker_name} as they aim a horrifying device, the {item_name}, squarely at you. Your {hit_location} performs a preemptive Olympic dive. A cold dread, centered in your lower abdomen, begins to spread.",
             "observer_msg": "{attacker_name} chuckles wetly, aiming their {item_name} at {target_name}. A palpable sense of dread fills the air, thick and cloying, as {target_name}'s fate seems sealed in a truly disgusting fashion.",
         },
         {
-            "attacker_msg": "You heft the {item_name}, its ominous, squelching hum a prelude to {target_name}'s imminent digestive Armageddon. A look of grim satisfaction settles on your face.",
+            "attacker_msg": "You heft the {item_name}, its ominous, squelching hum a prelude to {target_name}'s imminent digestive Armageddon. A look of grim satisfaction settles on your {hit_location}.",
             "victim_msg": "{attacker_name} hefts the humming, gurgling {item_name}. You feel a preemptive clench deep within your core, a primal terror usually reserved for tax audits or existential crises, but somehow much, much worse.",
             "observer_msg": "The ominous hum of a {item_name} fills the air as {attacker_name} targets {target_name}. The weapon itself seems to pulse with a malevolent, brown energy.",
         },
         {
             "attacker_msg": "You sight down the barrel of the {item_name} at {target_name}, a manic glint in your eyes. The madness is definitely setting in, and it feels disturbingly good.",
-            "victim_msg": "{attacker_name} sights down the barrel of a {item_name}, aimed directly at you. You have a sinking feeling – literally. Your sphincter sends a desperate SOS to your brain, which is currently offline due to panic.",
+            "victim_msg": "{attacker_name} sights down the barrel of a {item_name}, aimed directly at you. You have a sinking feeling – literally. Your sphincter sends a desperate SOS to your {hit_location}, which is currently offline due to panic.",
             "observer_msg": "{attacker_name} aims a {item_name} at {target_name}, a look of unhinged glee on their face. The air crackles with a terrible, brown energy, promising a truly unforgettable spectacle.",
         },
         {
@@ -32,13 +32,13 @@ MESSAGES = {
             "observer_msg": "A look of grim, almost ecstatic satisfaction crosses {attacker_name}'s face as they prepare to fire their {item_name} at {target_name}. This is clearly their art form, a symphony of suffering about to begin.",
         },
         {
-            "attacker_msg": "The {item_name} whirs to life, its targeting laser painting a sickly, pulsating green dot on {target_name}'s abdomen. A silent jeer plays on your lips.",
-            "victim_msg": "A sickly green targeting laser from {attacker_name}'s {item_name} dances over your abdomen like a harbinger of doom. You feel a sudden, overwhelming urge to be anywhere else but here, preferably on a different planet.",
+            "attacker_msg": "The {item_name} whirs to life, its targeting laser painting a sickly, pulsating green dot on {target_name}'s {hit_location}. A silent jeer plays on your lips.",
+            "victim_msg": "A sickly green targeting laser from {attacker_name}'s {item_name} dances over your {hit_location} like a harbinger of doom. You feel a sudden, overwhelming urge to be anywhere else but here, preferably on a different planet.",
             "observer_msg": "{attacker_name}'s {item_name} whirs, a green laser dot appearing on {target_name}. The scene is set for a messy, clinically catastrophic event.",
         },
         {
             "attacker_msg": "You adjust the settings on your {item_name}, cranking it up to a level that promises maximum splatter, and take aim at {target_name}. A vision of abstract expressionist horror fills your mind.",
-            "victim_msg": "{attacker_name} fiddles with their {item_name}, a look of intense concentration on their face, before aiming it at you. Your bowels send urgent, panicked signals to your brain.",
+            "victim_msg": "{attacker_name} fiddles with their {item_name}, a look of intense concentration on their face, before aiming it at you. Your bowels send urgent, panicked signals to your {hit_location}.",
             "observer_msg": "{attacker_name} adjusts their {item_name}, a look of intense, almost surgical concentration on their face as they target {target_name}. They're not just aiming; they're composing a masterpiece of misery.",
         },
         {
@@ -47,8 +47,8 @@ MESSAGES = {
             "observer_msg": "A low thrum from {attacker_name}'s {item_name} signals imminent, unpleasant consequences for {target_name}. A precautionary step back, or perhaps several, seems prudent.",
         },
         {
-            "attacker_msg": "Your finger tightens on the trigger of the {item_name}. {target_name} is about to experience a revelation, a full-body confession. A silent, manic scream builds in your chest.",
-            "victim_msg": "The world narrows to the grotesque nozzle of {attacker_name}'s {item_name}. Your life isn't flashing before your eyes, but your last meal certainly is making a reappearance bid. Your stomach churns with a dread that is both existential and very, very physical.",
+            "attacker_msg": "Your finger tightens on the trigger of the {item_name}. {target_name} is about to experience a revelation, a full-body confession. A silent, manic scream builds in your {hit_location}.",
+            "victim_msg": "The world narrows to the grotesque nozzle of {attacker_name}'s {item_name}. Your life isn't flashing before your eyes, but your last meal certainly is making a reappearance bid. Your {hit_location} churns with a dread that is both existential and very, very physical.",
             "observer_msg": "{attacker_name} looks like a prophet of some forgotten, filthy god, preparing to deliver a sermon of pure, unadulterated gastrointestinal chaos upon {target_name}. The air is thick with anticipation and a faint, sewage-like aroma.",
         },
         {
@@ -62,8 +62,8 @@ MESSAGES = {
             "observer_msg": "{attacker_name} cradles the {item_name} like a diseased infant, its obscene pulsing a clear omen of {target_name}'s impending, very personal, apocalypse. The weapon seems to almost breathe with anticipation.",
         },
         {
-            "attacker_msg": "You calibrate the Disruptor to a setting that promises pure, unadulterated colonic chaos. {target_name} is about to question every life choice that led them to this messy, messy moment. A flicker of cruel amusement crosses your face.",
-            "victim_msg": "{attacker_name} is making adjustments to that... *thing*. Their expression is one of focused malice. Your bowels feel a sudden, sympathetic dread, a cold knot forming in your stomach.",
+            "attacker_msg": "You calibrate the Disruptor to a setting that promises pure, unadulterated colonic chaos. {target_name} is about to question every life choice that led them to this messy, messy moment. A flicker of cruel amusement crosses your {hit_location}.",
+            "victim_msg": "{attacker_name} is making adjustments to that... *thing*. Their expression is one of focused malice. Your bowels feel a sudden, sympathetic dread, a cold knot forming in your {hit_location}.",
             "observer_msg": "{attacker_name} seems to be fine-tuning the {item_name}, a look of profound, almost philosophical inquiry on their face. {target_name} just looks like they're about to have a very bad trip, one that ends in a puddle of regret.",
         },
         {
@@ -88,12 +88,12 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You switch the {item_name} to a setting that promises an abstract masterpiece of questionable taste and even more questionable substances. {target_name}'s insides are the canvas.",
-            "victim_msg": "{attacker_name} adjusts a dial on that... *device*. Their eyes gleam with a disturbing artistic fervor. Your stomach is doing backflips of pure terror. You need an adult. And a priest. And a new pair of pants.",
+            "victim_msg": "{attacker_name} adjusts a dial on that... *device*. Their eyes gleam with a disturbing artistic fervor. Your {hit_location} is doing backflips of pure terror. You need an adult. And a priest. And a new pair of pants.",
             "observer_msg": "{attacker_name} selects a new setting on the {item_name}, a wild, artistic gleam in their eye. {target_name} is about to become the canvas for a truly visceral, and utterly disgusting, piece.",
         },
         {
             "attacker_msg": "The {item_name} whines, a high-pitched, nauseating sound that promises a symphony of suffering for {target_name}. A silent overture to a brown opera.",
-            "victim_msg": "A high-pitched whine emanates from {attacker_name}'s {item_name}, a sound that drills into your skull and makes your intestines quiver. You feel a terrible premonition of... gurgling. And worse.",
+            "victim_msg": "A high-pitched whine emanates from {attacker_name}'s {item_name}, a sound that drills into your {hit_location} and makes your intestines quiver. You feel a terrible premonition of... gurgling. And worse.",
             "observer_msg": "The {item_name} emits a sound that could curdle milk at fifty paces as {attacker_name} targets {target_name}. This is going to be an auditory experience as much as a visual one, unfortunately for everyone nearby.",
         },
         {
@@ -118,7 +118,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The {item_name} practically vibrates out of your hands with pent-up energy, aimed squarely at {target_name}. A silent roar of anticipation builds within you.",
-            "victim_msg": "{attacker_name} is struggling to control the device in their hands, which looks like it could cause a flood of... well, you don't want to think about it. Your stomach just hit the panic button, hard.",
+            "victim_msg": "{attacker_name} is struggling to control the device in their hands, which looks like it could cause a flood of... well, you don't want to think about it. Your {hit_location} just hit the panic button, hard.",
             "observer_msg": "{attacker_name} brandishes the {item_name} at {target_name}, the weapon thrumming with barely contained power. This is escalating into a truly epic display of poor taste and imminent disaster.",
         },
         {
@@ -128,7 +128,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You sight down the barrel, the world a brown-tinged haze of anticipation. {target_name} is a canvas, and you are about to paint your masterpiece of misery. A tremor of excitement runs through you.",
-            "victim_msg": "{attacker_name} has a thousand-yard stare, and it's fixed on your abdomen. The {item_name} hums a dirge for your dignity. You're starting to feel faint, and a little bit nauseous.",
+            "victim_msg": "{attacker_name} has a thousand-yard stare, and it's fixed on your {hit_location}. The {item_name} hums a dirge for your dignity. You're starting to feel faint, and a little bit nauseous.",
             "observer_msg": "There's a terrifying focus in {attacker_name}'s eyes as they aim the {item_name}. {target_name} is about to be the subject of some truly horrific, and deeply personal, art.",
         },
         {
@@ -157,13 +157,13 @@ MESSAGES = {
             "observer_msg": "{attacker_name} struggles to aim the wildly vibrating {item_name} at {target_name}. This is going to be a wild ride, in the worst possible way, for everyone in the blast radius.",
         },
         {
-            "attacker_msg": "A low, ominous whine builds from the {item_name}, resonating deep in your chest and, you hope, in {target_name}'s soon-to-be-ravaged guts. Your eyes narrow.",
-            "victim_msg": "The whine from {attacker_name}'s weapon is escalating, vibrating through your bones, making your teeth ache and your stomach churn. A wave of nausea washes over you.",
+            "attacker_msg": "A low, ominous whine builds from the {item_name}, resonating deep in your {hit_location} and, you hope, in {target_name}'s soon-to-be-ravaged guts. Your eyes narrow.",
+            "victim_msg": "The whine from {attacker_name}'s weapon is escalating, vibrating through your bones, making your teeth ache and your {hit_location} churn. A wave of nausea washes over you.",
             "observer_msg": "The {item_name} emits an increasingly high-pitched and nauseating whine as {attacker_name} prepares to fire on {target_name}. The sound itself is an assault.",
         },
         {
             "attacker_msg": "The weapon feels cold and wet in your hands, an instrument of pure, unadulterated biological warfare. {target_name} is the unfortunate test subject.",
-            "victim_msg": "{attacker_name} hefts the {item_name}, its surface glistening with some unidentifiable, foul slime. The sight alone is enough to make your stomach revolt.",
+            "victim_msg": "{attacker_name} hefts the {item_name}, its surface glistening with some unidentifiable, foul slime. The sight alone is enough to make your {hit_location} revolt.",
             "observer_msg": "The {item_name}, slick and pulsating in {attacker_name}'s grip, is aimed at {target_name}. The sheer wrongness of the device is palpable.",
         },
         {
@@ -178,7 +178,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "A faint, oily sheen coats the nozzle of the {item_name} as it powers up, aimed at {target_name}. The promise of a truly greasy demise hangs in the air.",
-            "victim_msg": "You see a disgusting, oily substance weeping from the nozzle of {attacker_name}'s weapon. Your stomach lurches, and a cold sweat breaks out on your skin.",
+            "victim_msg": "You see a disgusting, oily substance weeping from the nozzle of {attacker_name}'s weapon. Your {hit_location} lurches, and a cold sweat breaks out on your skin.",
             "observer_msg": "The {item_name} glistens with a foul, oily discharge as {attacker_name} prepares to fire at {target_name}. The impending mess promises to be uniquely difficult to clean.",
         },
         {
@@ -188,7 +188,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You feel a perverse sense of calm as you aim. This is your art. {target_name} is your canvas. And the {item_name} is your brush, ready to paint a masterpiece of misery.",
-            "victim_msg": "{attacker_name} has an unnervingly serene expression as they aim that... *thing*. It's the look of a true artist. A very sick, very twisted artist. Your stomach churns with a dread that is both existential and very, very physical.",
+            "victim_msg": "{attacker_name} has an unnervingly serene expression as they aim that... *thing*. It's the look of a true artist. A very sick, very twisted artist. Your {hit_location} churns with a dread that is both existential and very, very physical.",
             "observer_msg": "{attacker_name} approaches the act of firing the {item_name} with a chilling, artistic focus. {target_name} is about to be immortalized in a truly unforgettable, and deeply unpleasant, way.",
         },
         {
@@ -472,7 +472,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The {item_name} sings its swan song, and {target_name} collapses in a heap of existential regret and bodily fluids. Bravo! A standing ovation from an audience of one: you.",
-            "victim_msg": "The song... it's a brown note... a symphony of suffering... and then... blessed, if slightly stained, silence. You are free. And very, very messy. Your heart flutters, then stops.",
+            "victim_msg": "The song... it's a brown note... a symphony of suffering... and then... blessed, if slightly stained, silence. You are free. And very, very messy. Your {hit_location} flutters, then stops.",
             "observer_msg": "{target_name} has expired in a truly spectacular, if horrifyingly undignified, manner. The {item_name} is a weapon of terrible, terrible beauty. And appalling stench.",
         },
         {
@@ -599,7 +599,7 @@ MESSAGES = {
     "miss": [
         {
             "attacker_msg": "Damn and blast! Your shot from the {item_name} goes wide, merely causing a nearby potted fern to explosively, tragically void its soil all over a priceless antique rug. A costly miss.",
-            "victim_msg": "You narrowly avoid a disgusting-looking pulse of pure, weaponized indigestion from {attacker_name}'s {item_name}! You feel a faint, unpleasant rumble pass by, and the air smells faintly of regret and compost. Your heart pounds.",
+            "victim_msg": "You narrowly avoid a disgusting-looking pulse of pure, weaponized indigestion from {attacker_name}'s {item_name}! You feel a faint, unpleasant rumble pass by, and the air smells faintly of regret and compost. Your {hit_location} pounds.",
             "observer_msg": "A sickly beam from {attacker_name}'s {item_name} misses {target_name}, instead hitting a brick wall with a wet, resounding splat and a lingering, questionable odor that will outlast civilizations. The wall weeps brown tears.",
         },
         {
@@ -634,7 +634,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your aim was off! The Disruptor's beam harmlessly (to {target_name}, anyway) excavates a new, suspiciously steaming trench in the floor. The landlord is not going to be happy. And the smell is already terrible.",
-            "victim_msg": "The ground beside you erupts in a geyser of filth and displaced earth! You leap back, your heart hammering. That could have been your everything! Your everything could have been... that.",
+            "victim_msg": "The ground beside you erupts in a geyser of filth and displaced earth! You leap back, your {hit_location} hammering. That could have been your everything! Your everything could have been... that.",
             "observer_msg": "A near miss! {attacker_name}'s {item_name} carves a smoking, stinking furrow in the ground next to {target_name}. The structural integrity of this place is now questionable, as is the air quality.",
         },
         {
@@ -703,7 +703,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} misses {target_name} and ruptures a fire hydrant, which, due to some quirk of municipal plumbing, unleashes a tidal wave of raw sewage. The entire block is now a biohazard. And smells like one.",
         },
         {
-            "attacker_msg": "{target_name} was standing in front of a mirror! You almost gave yourself a colonic. That was too close. You need to be more careful with this thing. Your heart pounds in your chest.",
+            "attacker_msg": "{target_name} was standing in front of a mirror! You almost gave yourself a colonic. That was too close. You need to be more careful with this thing. Your {hit_location} pounds in your {hit_location}.",
             "victim_msg": "You leap aside, and the beam hits a mirror behind you! {attacker_name} looks horrified for a split second. You almost feel a flicker of sympathy. Then you remember they're trying to liquefy your insides. The sympathy vanishes.",
             "observer_msg": "{attacker_name}'s shot misses {target_name} and nearly hits their own reflection. The look of terror on {attacker_name}'s face was priceless. And a little bit understandable. Friendly fire isn't friendly when it's a {item_name}.",
         },
@@ -783,7 +783,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} misses {target_name} and instead creates a new, terrifying form of cheese. It's probably sentient. And very, very angry. And smells like the devil's gym socks after a marathon in Hell.",
         },
         {
-            "attacker_msg": "So close! The beam vaporizes a swarm of flies that were buzzing around {target_name}'s head. Pest control, {item_name} style! Still, a miss is a miss. And the smell of burnt flies is... unique.",
+            "attacker_msg": "So close! The beam vaporizes a swarm of flies that were buzzing around {target_name}'s {hit_location}. Pest control, {item_name} style! Still, a miss is a miss. And the smell of burnt flies is... unique.",
             "victim_msg": "You feel a wave of heat as the beam passes close, and a cloud of... something... vaporizes above you. The smell of burnt insects and... other things... fills the air. You cough, and try not to inhale too deeply.",
             "observer_msg": "{attacker_name}'s missed shot inadvertently performs a very localized, very messy form of pest control. The flies are gone. So is the pleasant aroma of... anything else. The air is now thick with the stench of incinerated insects and pure evil.",
         },

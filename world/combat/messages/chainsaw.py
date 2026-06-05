@@ -6,7 +6,7 @@ MESSAGES = {
             'observer_msg': "A guttural sound fills the room as {attacker_name} turns over their saw. It doesn't want to start — it *needs* to."
         },
         {
-            'attacker_msg': "A single rev makes the air vibrate. You tilt your head, like you're listening for the exact moment fear begins.",
+            'attacker_msg': "A single rev makes the air vibrate. You tilt your {hit_location}, like you're listening for the exact moment fear begins.",
             'victim_msg': "A single rev makes the air vibrate. {attacker_name} tilts their head, like they're listening for the exact moment fear begins.",
             'observer_msg': "A single rev makes the air vibrate. {attacker_name} tilts their head, like they're listening for the exact moment fear begins."
         },
@@ -436,7 +436,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "No contact — just momentum and noise. {target_name} doesn't flinch, but their heart races.",
-            'victim_msg': "No contact — just momentum and noise. You don't flinch, but your heart races.",
+            'victim_msg': "No contact — just momentum and noise. You don't flinch, but your {hit_location} races.",
             'observer_msg': "No contact — just momentum and noise. {target_name} doesn't flinch, but their heart races."
         },
         {
@@ -505,9 +505,9 @@ MESSAGES = {
             'observer_msg': "The saw bites into drywall instead, throwing up dust and sparks. {target_name} stumbles away, coughing relief."
         },
         {
-            'attacker_msg': "The teeth flash past {target_name}'s shoulder, close enough to slice their coat. The noise still rings in their ears.",
-            'victim_msg': "The teeth flash past your shoulder, close enough to slice your coat. The noise still rings in your ears.",
-            'observer_msg': "The teeth flash past {target_name}'s shoulder, close enough to slice their coat. The noise still rings in their ears."
+            'attacker_msg': "The teeth flash past {target_name}'s {hit_location}, close enough to slice their coat. The noise still rings in their ears.",
+            'victim_msg': "The teeth flash past your {hit_location}, close enough to slice your coat. The noise still rings in your ears.",
+            'observer_msg': "The teeth flash past {target_name}'s {hit_location}, close enough to slice their coat. The noise still rings in their ears."
         },
         {
             'attacker_msg': "There's a screech, a scrape — and then stillness. Your eyes burn brighter than the motor.",
@@ -607,9 +607,9 @@ MESSAGES = {
             'observer_msg': "The blade enters between shoulder and throat. By the time it exits, {target_name} is already a memory."
         },
         {
-            'attacker_msg': "Your chain chews its way through {target_name}'s torso, pulling organs into daylight. Their feet leave the floor.",
-            'victim_msg': "The chain chews its way through your torso, pulling organs into daylight. Your feet leave the floor.",
-            'observer_msg': "The chain chews its way through {target_name}'s torso, pulling organs into daylight. Their feet leave the floor."
+            'attacker_msg': "Your chain chews its way through {target_name}'s {hit_location}, pulling organs into daylight. Their feet leave the floor.",
+            'victim_msg': "The chain chews its way through your {hit_location}, pulling organs into daylight. Your feet leave the floor.",
+            'observer_msg': "The chain chews its way through {target_name}'s {hit_location}, pulling organs into daylight. Their feet leave the floor."
         },
         {
             'attacker_msg': "The chain hits vertebrae and keeps going. {target_name}'s body drops in segments, no longer part of a single story.",
@@ -617,9 +617,9 @@ MESSAGES = {
             'observer_msg': "The chain hits vertebrae and keeps going. {target_name}'s body drops in segments, no longer part of a single story."
         },
         {
-            'attacker_msg': "Your chainsaw embeds into {target_name}'s skull with a sickening crunch. When it's over, there's nothing left to identify.",
-            'victim_msg': "The chainsaw embeds into your skull with a sickening crunch. When it's over, there's nothing left to identify.",
-            'observer_msg': "The chainsaw embeds into {target_name}'s skull with a sickening crunch. When it's over, there's nothing left to identify."
+            'attacker_msg': "Your chainsaw embeds into {target_name}'s {hit_location} with a sickening crunch. When it's over, there's nothing left to identify.",
+            'victim_msg': "The chainsaw embeds into your {hit_location} with a sickening crunch. When it's over, there's nothing left to identify.",
+            'observer_msg': "The chainsaw embeds into {target_name}'s {hit_location} with a sickening crunch. When it's over, there's nothing left to identify."
         },
         {
             'attacker_msg': "Your chainsaw enters at the neck and exits at the pelvis. What's left is meat and echo.",
@@ -627,14 +627,14 @@ MESSAGES = {
             'observer_msg': "The chainsaw enters at the neck and exits at the pelvis. What's left is meat and echo."
         },
         {
-            'attacker_msg': "Your chainsaw plunges through {target_name}'s torso with a sickening crunch. They don't fall — they *disintegrate*.",
-            'victim_msg': "The chainsaw plunges through your torso with a sickening crunch. You don't fall — you *disintegrate*.",
-            'observer_msg': "The chainsaw plunges through {target_name}'s torso with a sickening crunch. They don't fall — they *disintegrate*."
+            'attacker_msg': "Your chainsaw plunges through {target_name}'s {hit_location} with a sickening crunch. They don't fall — they *disintegrate*.",
+            'victim_msg': "The chainsaw plunges through your {hit_location} with a sickening crunch. You don't fall — you *disintegrate*.",
+            'observer_msg': "The chainsaw plunges through {target_name}'s {hit_location} with a sickening crunch. They don't fall — they *disintegrate*."
         },
         {
-            'attacker_msg': "Your chainsaw tears through {target_name}'s chest, blood arcing high in a final salute. Their collapse is less a fall than a surrender.",
-            'victim_msg': "The chainsaw tears through your chest, blood arcing high in a final salute. Your collapse is less a fall than a surrender.",
-            'observer_msg': "The chainsaw tears through {target_name}'s chest, blood arcing high in a final salute. Their collapse is less a fall than a surrender."
+            'attacker_msg': "Your chainsaw tears through {target_name}'s {hit_location}, blood arcing high in a final salute. Their collapse is less a fall than a surrender.",
+            'victim_msg': "The chainsaw tears through your {hit_location}, blood arcing high in a final salute. Your collapse is less a fall than a surrender.",
+            'observer_msg': "The chainsaw tears through {target_name}'s {hit_location}, blood arcing high in a final salute. Their collapse is less a fall than a surrender."
         },
         {
             'attacker_msg': "The cut is diagonal, disrespectful. {target_name} falls in two directions, their blood trying to hold them together.",
@@ -652,9 +652,9 @@ MESSAGES = {
             'observer_msg': "The kill isn't clean. It's cruel. {target_name} twitches, then stops, the saw still humming beside them."
         },
         {
-            'attacker_msg': "Your saw finds {target_name}'s neck and keeps going. What's left isn't a wound — it's a border between life and never again.",
-            'victim_msg': "The saw finds your neck and keeps going. What's left isn't a wound — it's a border between life and never again.",
-            'observer_msg': "The saw finds {target_name}'s neck and keeps going. What's left isn't a wound — it's a border between life and never again."
+            'attacker_msg': "Your saw finds {target_name}'s {hit_location} and keeps going. What's left isn't a wound — it's a border between life and never again.",
+            'victim_msg': "The saw finds your {hit_location} and keeps going. What's left isn't a wound — it's a border between life and never again.",
+            'observer_msg': "The saw finds {target_name}'s {hit_location} and keeps going. What's left isn't a wound — it's a border between life and never again."
         },
         {
             'attacker_msg': "There's a sound like snapping wood. {target_name}'s body folds in half, steam rising from the ruin.",
@@ -677,19 +677,19 @@ MESSAGES = {
             'observer_msg': "With a full-body shove, {attacker_name} drives the blade in deep. {target_name} seizes, then vanishes beneath the noise."
         },
         {
-            'attacker_msg': "With one final rev, you bury the blade in {target_name}'s sternum. Their scream ends before the motor does.",
-            'victim_msg': "With one final rev, {attacker_name} buries the blade in your sternum. Your scream ends before the motor does.",
-            'observer_msg': "With one final rev, {attacker_name} buries the blade in {target_name}'s sternum. Their scream ends before the motor does."
+            'attacker_msg': "With one final rev, you bury the blade in {target_name}'s {hit_location}. Their scream ends before the motor does.",
+            'victim_msg': "With one final rev, {attacker_name} buries the blade in your {hit_location}. Your scream ends before the motor does.",
+            'observer_msg': "With one final rev, {attacker_name} buries the blade in {target_name}'s {hit_location}. Their scream ends before the motor does."
         },
         {
-            'attacker_msg': "You drag the saw across {target_name}'s chest and don't stop. There's no final scream — just static.",
-            'victim_msg': "{attacker_name} drags the saw across your chest and doesn't stop. There's no final scream — just static.",
-            'observer_msg': "{attacker_name} drags the saw across {target_name}'s chest and doesn't stop. There's no final scream — just static."
+            'attacker_msg': "You drag the saw across {target_name}'s {hit_location} and don't stop. There's no final scream — just static.",
+            'victim_msg': "{attacker_name} drags the saw across your {hit_location} and doesn't stop. There's no final scream — just static.",
+            'observer_msg': "{attacker_name} drags the saw across {target_name}'s {hit_location} and doesn't stop. There's no final scream — just static."
         },
         {
-            'attacker_msg': "You drive your chainsaw into {target_name}'s chest, leaning in like you're pushing through a heavy door. Blood erupts, spraying across everything with no mercy.",
-            'victim_msg': "{attacker_name} drives the chainsaw into your chest, leaning in like they're pushing through a heavy door. Blood erupts, spraying across everything with no mercy.",
-            'observer_msg': "{attacker_name} drives the chainsaw into {target_name}'s chest, leaning in like they're pushing through a heavy door. Blood erupts, spraying across everything with no mercy."
+            'attacker_msg': "You drive your chainsaw into {target_name}'s {hit_location}, leaning in like you're pushing through a heavy door. Blood erupts, spraying across everything with no mercy.",
+            'victim_msg': "{attacker_name} drives the chainsaw into your {hit_location}, leaning in like they're pushing through a heavy door. Blood erupts, spraying across everything with no mercy.",
+            'observer_msg': "{attacker_name} drives the chainsaw into {target_name}'s {hit_location}, leaning in like they're pushing through a heavy door. Blood erupts, spraying across everything with no mercy."
         },
         {
             'attacker_msg': "You plant the blade and lift. What's left of {target_name} slaps against the floor with a sound that won't be forgotten.",

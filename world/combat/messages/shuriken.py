@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} grips the throwing star lightly, wrist coiled like a spring, ready to strike {target_name}."
         },
         {
-            'attacker_msg': "The shuriken spins once in your palm before you cock your arm back toward {target_name}.",
+            'attacker_msg': "The shuriken spins once in your palm before you cock your {hit_location} back toward {target_name}.",
             'victim_msg': "The shuriken spins once in {attacker_name}'s palm before they cock their arm back toward you.",
             'observer_msg': "The shuriken spins once in {attacker_name}'s palm before they cock their arm back toward {target_name}."
         },
@@ -158,8 +158,8 @@ MESSAGES = {
     "kill": [
         {
             'attacker_msg': "The shuriken spins once before one of its points finds their throat. They clutch their neck and fall.",
-            'victim_msg': "The shuriken spins once before one of its points finds your throat. You clutch your neck and fall.",
-            'observer_msg': "The shuriken spins once before one of its points finds {target_name}'s throat. They clutch their neck and fall."
+            'victim_msg': "The shuriken spins once before one of its points finds your {hit_location}. You clutch your {hit_location} and fall.",
+            'observer_msg': "The shuriken spins once before one of its points finds {target_name}'s {hit_location}. They clutch their neck and fall."
         },
         {
             'attacker_msg': "Silent death. The throwing star takes them in the temple, dropping them without a sound.",
@@ -168,7 +168,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "They gasp as the shuriken embeds itself between their ribs, puncturing something vital.",
-            'victim_msg': "You gasp as the shuriken embeds itself between your ribs, puncturing something vital.",
+            'victim_msg': "You gasp as the shuriken embeds itself between your {hit_location}, puncturing something vital.",
             'observer_msg': "{target_name} gasps as the shuriken embeds itself between their ribs, puncturing something vital."
         },
         {
@@ -183,8 +183,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The throwing star buries itself in their neck. They fall silently, blood pooling beneath them.",
-            'victim_msg': "The throwing star buries itself in your neck. You fall silently, blood pooling beneath you.",
-            'observer_msg': "The throwing star buries itself in {target_name}'s neck. They fall silently, blood pooling beneath them."
+            'victim_msg': "The throwing star buries itself in your {hit_location}. You fall silently, blood pooling beneath you.",
+            'observer_msg': "The throwing star buries itself in {target_name}'s {hit_location}. They fall silently, blood pooling beneath them."
         },
         {
             'attacker_msg': "Your blade finds its mark with lethal accuracy, the shuriken claiming their life.",
@@ -203,8 +203,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "One throw, one kill. The shuriken settles in their heart as they crumple to the ground.",
-            'victim_msg': "One throw, one kill. The shuriken settles in your heart as you crumple to the ground.",
-            'observer_msg': "One throw, one kill. The shuriken settles in {target_name}'s heart as they crumple to the ground."
+            'victim_msg': "One throw, one kill. The shuriken settles in your {hit_location} as you crumple to the ground.",
+            'observer_msg': "One throw, one kill. The shuriken settles in {target_name}'s {hit_location} as they crumple to the ground."
         }
     ]
 }

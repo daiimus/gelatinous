@@ -457,9 +457,9 @@ SCALPEL_MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "You drive the scalpel into {target_name}'s throat. Blood spurts in a fine, surgical arc.",
-            'victim_msg': "The scalpel pierces your throat, blood arcing out in a surgical spray.",
-            'observer_msg': "Blood arcs from {target_name}'s throat as the scalpel finds its mark."
+            'attacker_msg': "You drive the scalpel into {target_name}'s {hit_location}. Blood spurts in a fine, surgical arc.",
+            'victim_msg': "The scalpel pierces your {hit_location}, blood arcing out in a surgical spray.",
+            'observer_msg': "Blood arcs from {target_name}'s {hit_location} as the scalpel finds its mark."
         },
         {
             'attacker_msg': "A quick slash opens {target_name}'s carotid. They drop, clutching at a wound that won't close.",
@@ -468,18 +468,18 @@ SCALPEL_MESSAGES = {
         },
         {
             'attacker_msg': "The blade slips between ribs and into the heart. {target_name} collapses, twitching.",
-            'victim_msg': "You feel the scalpel slide between your ribs and pierce your heart.",
-            'observer_msg': "The scalpel disappears between {target_name}'s ribs. They collapse, twitching once."
+            'victim_msg': "You feel the scalpel slide between your {hit_location} and pierce your {hit_location}.",
+            'observer_msg': "The scalpel disappears between {target_name}'s {hit_location}. They collapse, twitching once."
         },
         {
-            'attacker_msg': "You carve a line across {target_name}'s neck. The blood is bright and fast.",
-            'victim_msg': "The blade traces fire across your throat—bright arterial blood flows freely.",
-            'observer_msg': "A clean line appears across {target_name}'s throat, blood flowing in bright spurts."
+            'attacker_msg': "You carve a line across {target_name}'s {hit_location}. The blood is bright and fast.",
+            'victim_msg': "The blade traces fire across your {hit_location}—bright arterial blood flows freely.",
+            'observer_msg': "A clean line appears across {target_name}'s {hit_location}, blood flowing in bright spurts."
         },
         {
             'attacker_msg': "A jab under the jaw sends the scalpel into the brain. {target_name} goes limp instantly.",
-            'victim_msg': "The scalpel punches up through your jaw into your brain. Everything goes dark.",
-            'observer_msg': "The blade disappears under {target_name}'s jaw. They go limp immediately."
+            'victim_msg': "The scalpel punches up through your {hit_location} into your {hit_location}. Everything goes dark.",
+            'observer_msg': "The blade disappears under {target_name}'s {hit_location}. They go limp immediately."
         },
         {
             'attacker_msg': "The scalpel punctures the eye. {target_name} screams, then falls silent.",
@@ -493,38 +493,38 @@ SCALPEL_MESSAGES = {
         },
         {
             'attacker_msg': "A quick stab to the temple ends everything in a blink.",
-            'victim_msg': "The scalpel pierces your temple. Darkness comes instantly.",
-            'observer_msg': "The scalpel finds {target_name}'s temple. They drop without a sound."
+            'victim_msg': "The scalpel pierces your {hit_location}. Darkness comes instantly.",
+            'observer_msg': "The scalpel finds {target_name}'s {hit_location}. They drop without a sound."
         },
         {
             'attacker_msg': "The blade slips under the sternum. {target_name} gasps, then nothing.",
-            'victim_msg': "You feel the scalpel slide under your sternum, piercing your heart.",
-            'observer_msg': "The blade disappears beneath {target_name}'s sternum. They gasp once and still."
+            'victim_msg': "You feel the scalpel slide under your {hit_location}, piercing your {hit_location}.",
+            'observer_msg': "The blade disappears beneath {target_name}'s {hit_location}. They gasp once and still."
         },
         {
             'attacker_msg': "You draw the scalpel across the throat. The spray is arterial, the silence final.",
-            'victim_msg': "The blade opens your throat wide. Blood sprays as your voice dies forever.",
-            'observer_msg': "Arterial spray follows the scalpel across {target_name}'s throat. Silence follows."
+            'victim_msg': "The blade opens your {hit_location} wide. Blood sprays as your voice dies forever.",
+            'observer_msg': "Arterial spray follows the scalpel across {target_name}'s {hit_location}. Silence follows."
         },
         {
             'attacker_msg': "A downward stab buries the blade in the chest. {target_name} shudders, then stills.",
-            'victim_msg': "The scalpel drives down into your chest, piercing lung and heart alike.",
-            'observer_msg': "The scalpel buries itself in {target_name}'s chest. They shudder once and lie still."
+            'victim_msg': "The scalpel drives down into your {hit_location}, piercing lung and heart alike.",
+            'observer_msg': "The scalpel buries itself in {target_name}'s {hit_location}. They shudder once and lie still."
         },
         {
             'attacker_msg': "The scalpel slips between vertebrae. {target_name} drops, boneless.",
-            'victim_msg': "Your spine parts under the surgical blade. Your body simply shuts down.",
+            'victim_msg': "Your {hit_location} parts under the surgical blade. Your body simply shuts down.",
             'observer_msg': "The scalpel finds the gap between vertebrae. {target_name} collapses like a cut string."
         },
         {
-            'attacker_msg': "You carve a smile across {target_name}'s face. The grin is permanent.",
+            'attacker_msg': "You carve a smile across {target_name}'s {hit_location}. The grin is permanent.",
             'victim_msg': "The blade traces a grotesque smile from ear to ear. Your last expression is a grin.",
-            'observer_msg': "The scalpel carves a permanent smile across {target_name}'s face."
+            'observer_msg': "The scalpel carves a permanent smile across {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "A jab to the heart. {target_name} collapses, eyes wide and empty.",
-            'victim_msg': "The scalpel pierces your heart. You collapse as your eyes lose focus.",
-            'observer_msg': "The blade finds {target_name}'s heart. They fall, eyes staring at nothing."
+            'victim_msg': "The scalpel pierces your {hit_location}. You collapse as your eyes lose focus.",
+            'observer_msg': "The blade finds {target_name}'s {hit_location}. They fall, eyes staring at nothing."
         },
         {
             'attacker_msg': "The blade punctures a lung. {target_name} drowns on dry land.",
@@ -533,7 +533,7 @@ SCALPEL_MESSAGES = {
         },
         {
             'attacker_msg': "You slice the wrist, blood spraying in pulses.",
-            'victim_msg': "Your wrist opens wide, blood pulsing out with each failing heartbeat.",
+            'victim_msg': "Your {hit_location} opens wide, blood pulsing out with each failing heartbeat.",
             'observer_msg': "Blood pulses from {target_name}'s opened wrist in weakening spurts."
         },
         {
@@ -543,18 +543,18 @@ SCALPEL_MESSAGES = {
         },
         {
             'attacker_msg': "The scalpel slips behind the ear. {target_name} never sees it coming.",
-            'victim_msg': "You never see the blade that slides behind your ear into your brain.",
+            'victim_msg': "You never see the blade that slides behind your ear into your {hit_location}.",
             'observer_msg': "The scalpel disappears behind {target_name}'s ear. They never knew what happened."
         },
         {
             'attacker_msg': "A stab to the base of the skull ends it instantly.",
-            'victim_msg': "The scalpel finds the base of your skull. Death comes instantly.",
-            'observer_msg': "The blade pierces {target_name}'s skull at the base. Death is immediate."
+            'victim_msg': "The scalpel finds the base of your {hit_location}. Death comes instantly.",
+            'observer_msg': "The blade pierces {target_name}'s {hit_location} at the base. Death is immediate."
         },
         {
             'attacker_msg': "You carve a spiral down the chest. The pattern is red and final.",
-            'victim_msg': "The scalpel traces a spiral of death down your chest, each cut deeper than the last.",
-            'observer_msg': "The blade etches a deadly spiral down {target_name}'s chest, blood following each line."
+            'victim_msg': "The scalpel traces a spiral of death down your {hit_location}, each cut deeper than the last.",
+            'observer_msg': "The blade etches a deadly spiral down {target_name}'s {hit_location}, blood following each line."
         },
         {
             'attacker_msg': "The blade slips into the mouth, blood pouring out.",
@@ -563,13 +563,13 @@ SCALPEL_MESSAGES = {
         },
         {
             'attacker_msg': "A quick slash opens the abdomen. {target_name} folds, spilling.",
-            'victim_msg': "Your abdomen opens wide under the blade. You fold forward, contents spilling.",
+            'victim_msg': "Your {hit_location} opens wide under the blade. You fold forward, contents spilling.",
             'observer_msg': "{target_name} folds forward as the scalpel opens their abdomen, everything spilling."
         },
         {
             'attacker_msg': "The scalpel punctures the heart. {target_name} gasps, then nothing.",
-            'victim_msg': "You feel the scalpel pierce your heart. One final gasp, then peace.",
-            'observer_msg': "The blade finds {target_name}'s heart. They gasp once and are still."
+            'victim_msg': "You feel the scalpel pierce your {hit_location}. One final gasp, then peace.",
+            'observer_msg': "The blade finds {target_name}'s {hit_location}. They gasp once and are still."
         },
         {
             'attacker_msg': "You draw the blade across the eyes. The world goes dark.",
@@ -593,18 +593,18 @@ SCALPEL_MESSAGES = {
         },
         {
             'attacker_msg': "The blade slips into the chest, twisting. {target_name} is gone before they hit the ground.",
-            'victim_msg': "The scalpel enters your chest and twists. You're gone before you fall.",
-            'observer_msg': "The scalpel twists in {target_name}'s chest. They die before hitting the ground."
+            'victim_msg': "The scalpel enters your {hit_location} and twists. You're gone before you fall.",
+            'observer_msg': "The scalpel twists in {target_name}'s {hit_location}. They die before hitting the ground."
         },
         {
             'attacker_msg': "You carve a line across the throat. The spray is bright, the end abrupt.",
-            'victim_msg': "The blade opens your throat in one smooth line. The end comes in a bright spray.",
+            'victim_msg': "The blade opens your {hit_location} in one smooth line. The end comes in a bright spray.",
             'observer_msg': "One clean line across the throat. The spray is bright, {target_name}'s end abrupt."
         },
         {
             'attacker_msg': "A final stab to the heart. {target_name} sags, then falls.",
-            'victim_msg': "The scalpel finds your heart one last time. You sag, then fall into darkness.",
-            'observer_msg': "The final thrust pierces {target_name}'s heart. They sag and fall still."
+            'victim_msg': "The scalpel finds your {hit_location} one last time. You sag, then fall into darkness.",
+            'observer_msg': "The final thrust pierces {target_name}'s {hit_location}. They sag and fall still."
         }
     ]
 }

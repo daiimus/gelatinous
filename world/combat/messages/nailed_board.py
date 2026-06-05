@@ -46,7 +46,7 @@ MESSAGES = {
             'observer_msg': "The board creaks. The nails click. {attacker_name} smiles faintly. This is going to get messy."
         },
         {
-            'attacker_msg': "The board leans against your shoulder. You tap it gently, like coaxing it to remember how it kills.",
+            'attacker_msg': "The board leans against your {hit_location}. You tap it gently, like coaxing it to remember how it kills.",
             'victim_msg': "The board leans against {attacker_name}'s shoulder. They tap it gently, like coaxing it to remember how it kills.",
             'observer_msg': "The board leans against {attacker_name}'s shoulder. They tap it gently, like coaxing it to remember how it kills."
         },
@@ -370,9 +370,9 @@ MESSAGES = {
             'observer_msg': "The board whistles past {target_name}. The nails bite air — but the threat stays."
         },
         {
-            'attacker_msg': "The board whooshes past {target_name}'s head, nails humming. They flinch, but the damage is in their heartbeat.",
-            'victim_msg': "The board whooshes past your head, nails humming. You flinch, but the damage is in your heartbeat.",
-            'observer_msg': "The board whooshes past {target_name}'s head, nails humming. They flinch, but the damage is in their heartbeat."
+            'attacker_msg': "The board whooshes past {target_name}'s {hit_location}, nails humming. They flinch, but the damage is in their heartbeat.",
+            'victim_msg': "The board whooshes past your {hit_location}, nails humming. You flinch, but the damage is in your heartbeat.",
+            'observer_msg': "The board whooshes past {target_name}'s {hit_location}, nails humming. They flinch, but the damage is in their heartbeat."
         },
         {
             'attacker_msg': "The nails catch the edge of a table and stick. You rip it loose, spraying splinters.",
@@ -380,9 +380,9 @@ MESSAGES = {
             'observer_msg': "The nails catch the edge of a table and stick. {attacker_name} rips it loose, spraying splinters."
         },
         {
-            'attacker_msg': "The nails cut the air where {target_name}'s face used to be. They retreat, eyes wide and blinking.",
-            'victim_msg': "The nails cut the air where your face used to be. You retreat, eyes wide and blinking.",
-            'observer_msg': "The nails cut the air where {target_name}'s face used to be. They retreat, eyes wide and blinking."
+            'attacker_msg': "The nails cut the air where {target_name}'s {hit_location} used to be. They retreat, eyes wide and blinking.",
+            'victim_msg': "The nails cut the air where your {hit_location} used to be. You retreat, eyes wide and blinking.",
+            'observer_msg': "The nails cut the air where {target_name}'s {hit_location} used to be. They retreat, eyes wide and blinking."
         },
         {
             'attacker_msg': "The nails tear a poster from the wall instead. You keep moving, undeterred.",
@@ -405,9 +405,9 @@ MESSAGES = {
             'observer_msg': "The swing hits empty space. The nails scream against wind, hungry and unsatisfied."
         },
         {
-            'attacker_msg': "The swing sails over {target_name}'s shoulder. Close enough that their skin tightens anyway.",
-            'victim_msg': "The swing sails over your shoulder. Close enough that your skin tightens anyway.",
-            'observer_msg': "The swing sails over {target_name}'s shoulder. Close enough that their skin tightens anyway."
+            'attacker_msg': "The swing sails over {target_name}'s {hit_location}. Close enough that their skin tightens anyway.",
+            'victim_msg': "The swing sails over your {hit_location}. Close enough that your skin tightens anyway.",
+            'observer_msg': "The swing sails over {target_name}'s {hit_location}. Close enough that their skin tightens anyway."
         },
         {
             'attacker_msg': "The weapon whistles by like a crude comet. {target_name} backs away, eyes wide, lucky for now.",
@@ -462,48 +462,48 @@ MESSAGES = {
             'observer_msg': "A crack, a crunch, a collapse. {attacker_name} doesn't even need to check. They know."
         },
         {
-            'attacker_msg': "A downward slam embeds nails into {target_name}'s chest. The removal rips out more than blood.",
-            'victim_msg': "A downward slam embeds nails into your chest. The removal rips out more than blood.",
-            'observer_msg': "A downward slam embeds nails into {target_name}'s chest. The removal rips out more than blood."
+            'attacker_msg': "A downward slam embeds nails into {target_name}'s {hit_location}. The removal rips out more than blood.",
+            'victim_msg': "A downward slam embeds nails into your {hit_location}. The removal rips out more than blood.",
+            'observer_msg': "A downward slam embeds nails into {target_name}'s {hit_location}. The removal rips out more than blood."
         },
         {
-            'attacker_msg': "A full swing caves in the side of {target_name}'s head. One nail enters the eye. Everything stops.",
-            'victim_msg': "A full swing caves in the side of your head. One nail enters the eye. Everything stops.",
-            'observer_msg': "A full swing caves in the side of {target_name}'s head. One nail enters the eye. Everything stops."
+            'attacker_msg': "A full swing caves in the side of {target_name}'s {hit_location}. One nail enters the eye. Everything stops.",
+            'victim_msg': "A full swing caves in the side of your {hit_location}. One nail enters the eye. Everything stops.",
+            'observer_msg': "A full swing caves in the side of {target_name}'s {hit_location}. One nail enters the eye. Everything stops."
         },
         {
-            'attacker_msg': "A nail pierces {target_name}'s throat. They gurgle. Fall. And then — silence.",
-            'victim_msg': "A nail pierces your throat. You gurgle. Fall. And then — silence.",
-            'observer_msg': "A nail pierces {target_name}'s throat. They gurgle. Fall. And then — silence."
+            'attacker_msg': "A nail pierces {target_name}'s {hit_location}. They gurgle. Fall. And then — silence.",
+            'victim_msg': "A nail pierces your {hit_location}. You gurgle. Fall. And then — silence.",
+            'observer_msg': "A nail pierces {target_name}'s {hit_location}. They gurgle. Fall. And then — silence."
         },
         {
             'attacker_msg': "A sharp upward jab lands under {target_name}'s chin. The nails exit through the top of their head.",
-            'victim_msg': "A sharp upward jab lands under your chin. The nails exit through the top of your head.",
+            'victim_msg': "A sharp upward jab lands under your chin. The nails exit through the top of your {hit_location}.",
             'observer_msg': "A sharp upward jab lands under {target_name}'s chin. The nails exit through the top of their head."
         },
         {
-            'attacker_msg': "A spinning strike caves in {target_name}'s skull. Nails disappear. They follow.",
-            'victim_msg': "A spinning strike caves in your skull. Nails disappear. You follow.",
-            'observer_msg': "A spinning strike caves in {target_name}'s skull. Nails disappear. They follow."
+            'attacker_msg': "A spinning strike caves in {target_name}'s {hit_location}. Nails disappear. They follow.",
+            'victim_msg': "A spinning strike caves in your {hit_location}. Nails disappear. You follow.",
+            'observer_msg': "A spinning strike caves in {target_name}'s {hit_location}. Nails disappear. They follow."
         },
         {
-            'attacker_msg': "A strike to the back of {target_name}'s head ends the argument. They drop, blood pooling into stillness.",
-            'victim_msg': "A strike to the back of your head ends the argument. You drop, blood pooling into stillness.",
-            'observer_msg': "A strike to the back of {target_name}'s head ends the argument. They drop, blood pooling into stillness."
+            'attacker_msg': "A strike to the back of {target_name}'s {hit_location} ends the argument. They drop, blood pooling into stillness.",
+            'victim_msg': "A strike to the back of your {hit_location} ends the argument. You drop, blood pooling into stillness.",
+            'observer_msg': "A strike to the back of {target_name}'s {hit_location} ends the argument. They drop, blood pooling into stillness."
         },
         {
             'attacker_msg': "A sweeping strike knocks {target_name} to their knees. The next embeds the nails in their spine. The fall is final.",
-            'victim_msg': "A sweeping strike knocks you to your knees. The next embeds the nails in your spine. The fall is final.",
+            'victim_msg': "A sweeping strike knocks you to your knees. The next embeds the nails in your {hit_location}. The fall is final.",
             'observer_msg': "A sweeping strike knocks {target_name} to their knees. The next embeds the nails in their spine. The fall is final."
         },
         {
-            'attacker_msg': "One nail pierces {target_name}'s heart. It wasn't aimed. It just happened. They fold in half and don't unfold.",
-            'victim_msg': "One nail pierces your heart. It wasn't aimed. It just happened. You fold in half and don't unfold.",
-            'observer_msg': "One nail pierces {target_name}'s heart. It wasn't aimed. It just happened. They fold in half and don't unfold."
+            'attacker_msg': "One nail pierces {target_name}'s {hit_location}. It wasn't aimed. It just happened. They fold in half and don't unfold.",
+            'victim_msg': "One nail pierces your {hit_location}. It wasn't aimed. It just happened. You fold in half and don't unfold.",
+            'observer_msg': "One nail pierces {target_name}'s {hit_location}. It wasn't aimed. It just happened. They fold in half and don't unfold."
         },
         {
             'attacker_msg': "One nail punctures {target_name}'s eye. The body crumples before the scream even leaves the lungs.",
-            'victim_msg': "One nail punctures your eye. Your body crumples before the scream even leaves your lungs.",
+            'victim_msg': "One nail punctures your eye. Your body crumples before the scream even leaves your {hit_location}.",
             'observer_msg': "One nail punctures {target_name}'s eye. The body crumples before the scream even leaves the lungs."
         },
         {
@@ -512,64 +512,64 @@ MESSAGES = {
             'observer_msg': "The blow catches {target_name} mid-breath. The nails cut off sound and life in one sickening gesture."
         },
         {
-            'attacker_msg': "The board crushes {target_name}'s ribs, then lung. They gasp once and breathe out steam. Then nothing.",
-            'victim_msg': "The board crushes your ribs, then lung. You gasp once and breathe out steam. Then nothing.",
-            'observer_msg': "The board crushes {target_name}'s ribs, then lung. They gasp once and breathe out steam. Then nothing."
+            'attacker_msg': "The board crushes {target_name}'s {hit_location}, then lung. They gasp once and breathe out steam. Then nothing.",
+            'victim_msg': "The board crushes your {hit_location}, then lung. You gasp once and breathe out steam. Then nothing.",
+            'observer_msg': "The board crushes {target_name}'s {hit_location}, then lung. They gasp once and breathe out steam. Then nothing."
         },
         {
-            'attacker_msg': "The board lands atop {target_name}'s skull. Nails punch in deep and stay. You let go. It holds itself.",
-            'victim_msg': "The board lands atop your skull. Nails punch in deep and stay. {attacker_name} lets go. It holds itself.",
-            'observer_msg': "The board lands atop {target_name}'s skull. Nails punch in deep and stay. {attacker_name} lets go. It holds itself."
+            'attacker_msg': "The board lands atop {target_name}'s {hit_location}. Nails punch in deep and stay. You let go. It holds itself.",
+            'victim_msg': "The board lands atop your {hit_location}. Nails punch in deep and stay. {attacker_name} lets go. It holds itself.",
+            'observer_msg': "The board lands atop {target_name}'s {hit_location}. Nails punch in deep and stay. {attacker_name} lets go. It holds itself."
         },
         {
-            'attacker_msg': "The board slaps across {target_name}'s jaw, and the nails do the rest. Teeth scatter like dice. Life flees.",
-            'victim_msg': "The board slaps across your jaw, and the nails do the rest. Teeth scatter like dice. Life flees.",
-            'observer_msg': "The board slaps across {target_name}'s jaw, and the nails do the rest. Teeth scatter like dice. Life flees."
+            'attacker_msg': "The board slaps across {target_name}'s {hit_location}, and the nails do the rest. Teeth scatter like dice. Life flees.",
+            'victim_msg': "The board slaps across your {hit_location}, and the nails do the rest. Teeth scatter like dice. Life flees.",
+            'observer_msg': "The board slaps across {target_name}'s {hit_location}, and the nails do the rest. Teeth scatter like dice. Life flees."
         },
         {
-            'attacker_msg': "The final blow rakes across {target_name}'s chest. Nails drag until they find something vital — and end it.",
-            'victim_msg': "The final blow rakes across your chest. Nails drag until they find something vital — and end it.",
-            'observer_msg': "The final blow rakes across {target_name}'s chest. Nails drag until they find something vital — and end it."
+            'attacker_msg': "The final blow rakes across {target_name}'s {hit_location}. Nails drag until they find something vital — and end it.",
+            'victim_msg': "The final blow rakes across your {hit_location}. Nails drag until they find something vital — and end it.",
+            'observer_msg': "The final blow rakes across {target_name}'s {hit_location}. Nails drag until they find something vital — and end it."
         },
         {
-            'attacker_msg': "The final hit is low, cruel, and sharp. Nails rupture {target_name}'s neck. Blood pours like confession.",
-            'victim_msg': "The final hit is low, cruel, and sharp. Nails rupture your neck. Blood pours like confession.",
-            'observer_msg': "The final hit is low, cruel, and sharp. Nails rupture {target_name}'s neck. Blood pours like confession."
+            'attacker_msg': "The final hit is low, cruel, and sharp. Nails rupture {target_name}'s {hit_location}. Blood pours like confession.",
+            'victim_msg': "The final hit is low, cruel, and sharp. Nails rupture your {hit_location}. Blood pours like confession.",
+            'observer_msg': "The final hit is low, cruel, and sharp. Nails rupture {target_name}'s {hit_location}. Blood pours like confession."
         },
         {
-            'attacker_msg': "The nailed board crashes into {target_name}'s skull. One nail buries deep. They drop mid-scream, twitching.",
-            'victim_msg': "The nailed board crashes into your skull. One nail buries deep. You drop mid-scream, twitching.",
-            'observer_msg': "The nailed board crashes into {target_name}'s skull. One nail buries deep. They drop mid-scream, twitching."
+            'attacker_msg': "The nailed board crashes into {target_name}'s {hit_location}. One nail buries deep. They drop mid-scream, twitching.",
+            'victim_msg': "The nailed board crashes into your {hit_location}. One nail buries deep. You drop mid-scream, twitching.",
+            'observer_msg': "The nailed board crashes into {target_name}'s {hit_location}. One nail buries deep. They drop mid-scream, twitching."
         },
         {
-            'attacker_msg': "The nails hit {target_name}'s throat and stay. They make a sound like a clogged drain. Then collapse.",
-            'victim_msg': "The nails hit your throat and stay. You make a sound like a clogged drain. Then collapse.",
-            'observer_msg': "The nails hit {target_name}'s throat and stay. They make a sound like a clogged drain. Then collapse."
+            'attacker_msg': "The nails hit {target_name}'s {hit_location} and stay. They make a sound like a clogged drain. Then collapse.",
+            'victim_msg': "The nails hit your {hit_location} and stay. You make a sound like a clogged drain. Then collapse.",
+            'observer_msg': "The nails hit {target_name}'s {hit_location} and stay. They make a sound like a clogged drain. Then collapse."
         },
         {
-            'attacker_msg': "The nails sink deep into {target_name}'s neck. When you pull away, nothing moves but red.",
-            'victim_msg': "The nails sink deep into your neck. When {attacker_name} pulls away, nothing moves but red.",
-            'observer_msg': "The nails sink deep into {target_name}'s neck. When {attacker_name} pulls away, nothing moves but red."
+            'attacker_msg': "The nails sink deep into {target_name}'s {hit_location}. When you pull away, nothing moves but red.",
+            'victim_msg': "The nails sink deep into your {hit_location}. When {attacker_name} pulls away, nothing moves but red.",
+            'observer_msg': "The nails sink deep into {target_name}'s {hit_location}. When {attacker_name} pulls away, nothing moves but red."
         },
         {
-            'attacker_msg': "The plank crashes into the back of {target_name}'s head. They slump like strings were cut. Blood bubbles from the mouth.",
-            'victim_msg': "The plank crashes into the back of your head. You slump like strings were cut. Blood bubbles from your mouth.",
-            'observer_msg': "The plank crashes into the back of {target_name}'s head. They slump like strings were cut. Blood bubbles from the mouth."
+            'attacker_msg': "The plank crashes into the back of {target_name}'s {hit_location}. They slump like strings were cut. Blood bubbles from the mouth.",
+            'victim_msg': "The plank crashes into the back of your {hit_location}. You slump like strings were cut. Blood bubbles from your mouth.",
+            'observer_msg': "The plank crashes into the back of {target_name}'s {hit_location}. They slump like strings were cut. Blood bubbles from the mouth."
         },
         {
-            'attacker_msg': "The plank lands like judgment. Three nails find {target_name}'s heart. The fourth? Just mean.",
-            'victim_msg': "The plank lands like judgment. Three nails find your heart. The fourth? Just mean.",
-            'observer_msg': "The plank lands like judgment. Three nails find {target_name}'s heart. The fourth? Just mean."
+            'attacker_msg': "The plank lands like judgment. Three nails find {target_name}'s {hit_location}. The fourth? Just mean.",
+            'victim_msg': "The plank lands like judgment. Three nails find your {hit_location}. The fourth? Just mean.",
+            'observer_msg': "The plank lands like judgment. Three nails find {target_name}'s {hit_location}. The fourth? Just mean."
         },
         {
-            'attacker_msg': "The third strike is the kill. The board lands across {target_name}'s neck with enough force to fold the body like laundry.",
-            'victim_msg': "The third strike is the kill. The board lands across your neck with enough force to fold your body like laundry.",
-            'observer_msg': "The third strike is the kill. The board lands across {target_name}'s neck with enough force to fold the body like laundry."
+            'attacker_msg': "The third strike is the kill. The board lands across {target_name}'s {hit_location} with enough force to fold the body like laundry.",
+            'victim_msg': "The third strike is the kill. The board lands across your {hit_location} with enough force to fold your body like laundry.",
+            'observer_msg': "The third strike is the kill. The board lands across {target_name}'s {hit_location} with enough force to fold the body like laundry."
         },
         {
-            'attacker_msg': "You bring the board down on {target_name}'s skull. The nails bury deep. The twitching stops before the board is pulled free.",
-            'victim_msg': "{attacker_name} brings the board down on your skull. The nails bury deep. Your twitching stops before the board is pulled free.",
-            'observer_msg': "{attacker_name} brings the board down on {target_name}'s skull. The nails bury deep. The twitching stops before the board is pulled free."
+            'attacker_msg': "You bring the board down on {target_name}'s {hit_location}. The nails bury deep. The twitching stops before the board is pulled free.",
+            'victim_msg': "{attacker_name} brings the board down on your {hit_location}. The nails bury deep. Your twitching stops before the board is pulled free.",
+            'observer_msg': "{attacker_name} brings the board down on {target_name}'s {hit_location}. The nails bury deep. The twitching stops before the board is pulled free."
         },
         {
             'attacker_msg': "You bury the board in {target_name}'s gut and yank upward. Their body opens like a zipper.",
@@ -577,9 +577,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} buries the board in {target_name}'s gut and yanks upward. Their body opens like a zipper."
         },
         {
-            'attacker_msg': "You drive the board into {target_name}'s throat. The nails tear through voice and artery. Silence follows.",
-            'victim_msg': "{attacker_name} drives the board into your throat. The nails tear through voice and artery. Silence follows.",
-            'observer_msg': "{attacker_name} drives the board into {target_name}'s throat. The nails tear through voice and artery. Silence follows."
+            'attacker_msg': "You drive the board into {target_name}'s {hit_location}. The nails tear through voice and artery. Silence follows.",
+            'victim_msg': "{attacker_name} drives the board into your {hit_location}. The nails tear through voice and artery. Silence follows.",
+            'observer_msg': "{attacker_name} drives the board into {target_name}'s {hit_location}. The nails tear through voice and artery. Silence follows."
         },
         {
             'attacker_msg': "You hook the board into {target_name}'s gut and *yank*. What's left can't be called alive.",
@@ -587,19 +587,19 @@ MESSAGES = {
             'observer_msg': "{attacker_name} hooks the board into {target_name}'s gut and *yanks*. What's left can't be called alive."
         },
         {
-            'attacker_msg': "You slam the board into {target_name}'s face. The nose breaks, then the cheek, then everything. The silence after is pure.",
-            'victim_msg': "{attacker_name} slams the board into your face. The nose breaks, then the cheek, then everything. The silence after is pure.",
-            'observer_msg': "{attacker_name} slams the board into {target_name}'s face. The nose breaks, then the cheek, then everything. The silence after is pure."
+            'attacker_msg': "You slam the board into {target_name}'s {hit_location}. The nose breaks, then the cheek, then everything. The silence after is pure.",
+            'victim_msg': "{attacker_name} slams the board into your {hit_location}. The nose breaks, then the cheek, then everything. The silence after is pure.",
+            'observer_msg': "{attacker_name} slams the board into {target_name}'s {hit_location}. The nose breaks, then the cheek, then everything. The silence after is pure."
         },
         {
-            'attacker_msg': "You smash the board into {target_name}'s ribs, then again. The third strike leaves nothing but stillness.",
-            'victim_msg': "{attacker_name} smashes the board into your ribs, then again. The third strike leaves nothing but stillness.",
-            'observer_msg': "{attacker_name} smashes the board into {target_name}'s ribs, then again. The third strike leaves nothing but stillness."
+            'attacker_msg': "You smash the board into {target_name}'s {hit_location}, then again. The third strike leaves nothing but stillness.",
+            'victim_msg': "{attacker_name} smashes the board into your {hit_location}, then again. The third strike leaves nothing but stillness.",
+            'observer_msg': "{attacker_name} smashes the board into {target_name}'s {hit_location}, then again. The third strike leaves nothing but stillness."
         },
         {
-            'attacker_msg': "You swing down, and the nails meet {target_name}'s spine. They fold at the waist, dead before the bend finishes.",
-            'victim_msg': "{attacker_name} swings down, and the nails meet your spine. You fold at the waist, dead before the bend finishes.",
-            'observer_msg': "{attacker_name} swings down, and the nails meet {target_name}'s spine. They fold at the waist, dead before the bend finishes."
+            'attacker_msg': "You swing down, and the nails meet {target_name}'s {hit_location}. They fold at the waist, dead before the bend finishes.",
+            'victim_msg': "{attacker_name} swings down, and the nails meet your {hit_location}. You fold at the waist, dead before the bend finishes.",
+            'observer_msg': "{attacker_name} swings down, and the nails meet {target_name}'s {hit_location}. They fold at the waist, dead before the bend finishes."
         },
         {
             'attacker_msg': "You swing upward, embedding nails in {target_name}'s lower jaw. You pull. They don't scream.",

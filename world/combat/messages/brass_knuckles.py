@@ -6,7 +6,7 @@ MESSAGES = {
             "observer_msg": "A low grunt. A breath. Then {attacker_name} steps forward, the sound of their knuckles clinking together the only herald needed."
         },
         {
-            "attacker_msg": "You tilt your head, take a subtle inhale. Your brass is ready to meet bone. The dance is already starting.",
+            "attacker_msg": "You tilt your {hit_location}, take a subtle inhale. Your brass is ready to meet bone. The dance is already starting.",
             "victim_msg": "A tilt of {attacker_name}'s head. A subtle inhale. Then brass meets bone — not yours, not yet, but soon. The dance is already starting.",
             "observer_msg": "A tilt of {attacker_name}'s head. A subtle inhale. Then brass meets bone — not {target_name}'s, not yet, but soon. The dance is already starting."
         },
@@ -41,7 +41,7 @@ MESSAGES = {
             "observer_msg": "Nothing theatrical. Just {attacker_name} standing there, hands clenched, the brass dull and worn, like it's been through a hundred exits."
         },
         {
-            "attacker_msg": "One ring at a time, you slide your knuckles into place. The sound is soft metal, but it thuds in your chest like a threat.",
+            "attacker_msg": "One ring at a time, you slide your knuckles into place. The sound is soft metal, but it thuds in your {hit_location} like a threat.",
             "victim_msg": "One ring at a time, the knuckles slide into place. The sound is soft metal, but it thuds in the chest like a threat as {attacker_name} readies them.",
             "observer_msg": "One ring at a time, the knuckles slide into place. The sound is soft metal, but it thuds in the chest like a threat as {attacker_name} readies them."
         },
@@ -51,7 +51,7 @@ MESSAGES = {
             "observer_msg": "The air seems to change as {attacker_name} raises their hands. No blade. No flash. Just fists wrapped in the cold shine of brass and an aura that says they’ve ended things with less."
         },
         {
-            "attacker_msg": "Your brass clinks as you rotate your wrist. Not flashy. Not elegant. Just deliberate — like punctuation at the end of a sentence.",
+            "attacker_msg": "Your brass clinks as you rotate your {hit_location}. Not flashy. Not elegant. Just deliberate — like punctuation at the end of a sentence.",
             "victim_msg": "The brass clinks as {attacker_name} rotates their wrist. Not flashy. Not elegant. Just deliberate — like punctuation at the end of a sentence.",
             "observer_msg": "The brass clinks as {attacker_name} rotates their wrist. Not flashy. Not elegant. Just deliberate — like punctuation at the end of a sentence."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} cracks their knuckles — flesh against metal, a promise made audible. There's no flash of steel, just the dull gleam of pain made personal."
         },
         {
-            "attacker_msg": "You crack your neck and slide your brass knuckles on with a solemn kind of ritual. Not flashy — just final.",
+            "attacker_msg": "You crack your {hit_location} and slide your brass knuckles on with a solemn kind of ritual. Not flashy — just final.",
             "victim_msg": "{attacker_name} cracks their neck and slides the brass knuckles on with a solemn kind of ritual. Not flashy — just final.",
             "observer_msg": "{attacker_name} cracks their neck and slides the brass knuckles on with a solemn kind of ritual. Not flashy — just final."
         },
@@ -156,12 +156,12 @@ MESSAGES = {
             "observer_msg": "{attacker_name} rolls their fingers into a ball, testing the weight. The brass hums with muscle memory and old grudges."
         },
         {
-            "attacker_msg": "You roll your neck with a soft pop and slide your brass into place like a relic returned. You can feel the weight of memory in the way you tighten your fist — this isn’t the first time you’ve buried your past in someone else's face.",
-            "victim_msg": "{attacker_name} rolls their neck with a soft pop and slides the brass into place like a relic returned. You can feel the weight of memory in the way they tighten their fist — this isn’t the first time they’ve buried their past in your face.",
-            "observer_msg": "{attacker_name} rolls their neck with a soft pop and slides the brass into place like a relic returned. You can feel the weight of memory in the way they tighten their fist — this isn’t the first time they’ve buried their past in {target_name}'s face."
+            "attacker_msg": "You roll your {hit_location} with a soft pop and slide your brass into place like a relic returned. You can feel the weight of memory in the way you tighten your fist — this isn’t the first time you’ve buried your past in someone else's face.",
+            "victim_msg": "{attacker_name} rolls their neck with a soft pop and slides the brass into place like a relic returned. You can feel the weight of memory in the way they tighten their fist — this isn’t the first time they’ve buried their past in your {hit_location}.",
+            "observer_msg": "{attacker_name} rolls their neck with a soft pop and slides the brass into place like a relic returned. You can feel the weight of memory in the way they tighten their fist — this isn’t the first time they’ve buried their past in {target_name}'s {hit_location}."
         },
         {
-            "attacker_msg": "You rotate your wrist, your brass gleaming like old teeth. The sound echoes louder than it should.",
+            "attacker_msg": "You rotate your {hit_location}, your brass gleaming like old teeth. The sound echoes louder than it should.",
             "victim_msg": "{attacker_name} rotates their wrist, the brass gleaming like old teeth. The sound echoes louder than it should.",
             "observer_msg": "{attacker_name} rotates their wrist, the brass gleaming like old teeth. The sound echoes louder than it should."
         },
@@ -228,9 +228,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s knuckles meet {target_name}'s {hit_location} and the result is immediate — their {hit_location} whips sideways, a fine mist of spit and red trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of knees losing faith."
         },
         {
-            "attacker_msg": "No wasted motion from you — just the brutal truth of metal meeting {target_name}'s skull. They blink, then sway, then drop to a {hit_location}.",
-            "victim_msg": "No wasted motion from {attacker_name} — just the brutal truth of metal meeting your skull. You blink, then sway, then drop to a {hit_location}.",
-            "observer_msg": "No wasted motion from {attacker_name} — just the brutal truth of metal meeting {target_name}'s skull. They blink, then sway, then drop to a {hit_location}."
+            "attacker_msg": "No wasted motion from you — just the brutal truth of metal meeting {target_name}'s {hit_location}. They blink, then sway, then drop to a {hit_location}.",
+            "victim_msg": "No wasted motion from {attacker_name} — just the brutal truth of metal meeting your {hit_location}. You blink, then sway, then drop to a {hit_location}.",
+            "observer_msg": "No wasted motion from {attacker_name} — just the brutal truth of metal meeting {target_name}'s {hit_location}. They blink, then sway, then drop to a {hit_location}."
         },
         {
             "attacker_msg": "Your blow crunches into {target_name}'s {hit_location}. For a moment, everything pauses. Then the blood starts.",
@@ -380,9 +380,9 @@ MESSAGES = {
             "observer_msg": "A miss from {attacker_name}, but not a mistake. They recalibrate instantly, brass knuckles still shining like unfinished business."
         },
         {
-            "attacker_msg": "Your mistimed jab flies past {target_name}'s head. The punch doesn't land, but the message still does.",
-            "victim_msg": "A mistimed jab from {attacker_name} flies past your head. The punch doesn't land, but the message still does.",
-            "observer_msg": "A mistimed jab from {attacker_name} flies past {target_name}'s head. The punch doesn't land, but the message still does."
+            "attacker_msg": "Your mistimed jab flies past {target_name}'s {hit_location}. The punch doesn't land, but the message still does.",
+            "victim_msg": "A mistimed jab from {attacker_name} flies past your {hit_location}. The punch doesn't land, but the message still does.",
+            "observer_msg": "A mistimed jab from {attacker_name} flies past {target_name}'s {hit_location}. The punch doesn't land, but the message still does."
         },
         {
             "attacker_msg": "You swing and hit nothing more. You don't flinch. You've missed before. You'll correct.",
@@ -431,7 +431,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The ground vibrates faintly where your punch should’ve landed on {target_name}. They sidestep, but their face is pale — they felt the future.",
-            "victim_msg": "The ground vibrates faintly where {attacker_name}'s punch should’ve landed on you. You sidestep, but your face is pale — you felt the future.",
+            "victim_msg": "The ground vibrates faintly where {attacker_name}'s punch should’ve landed on you. You sidestep, but your {hit_location} is pale — you felt the future.",
             "observer_msg": "The ground vibrates faintly where {attacker_name}'s punch should’ve landed on {target_name}. They sidestep, but their face is pale — they felt the future."
         },
         {
@@ -471,7 +471,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your swing is sharp, practiced, but still wrong. {target_name} shifts low, and your knuckles pass inches from their face. You can almost hear the sigh of relief that never quite reaches their lungs.",
-            "victim_msg": "{attacker_name}'s swing is sharp, practiced, but still wrong. You shift low, and the knuckles pass inches from your face. You can almost hear your sigh of relief that never quite reaches your lungs.",
+            "victim_msg": "{attacker_name}'s swing is sharp, practiced, but still wrong. You shift low, and the knuckles pass inches from your {hit_location}. You can almost hear your sigh of relief that never quite reaches your {hit_location}.",
             "observer_msg": "{attacker_name}'s swing is sharp, practiced, but still wrong. {target_name} shifts low, and the knuckles pass inches from their face. You can almost hear the sigh of relief that never quite reaches their lungs."
         },
         {
@@ -496,7 +496,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You lunge with force, your momentum dragging the blow too far. {target_name} slides past, breath catching in their throat, mind already recalculating how many more of those they can afford to dodge.",
-            "victim_msg": "{attacker_name} lunges with force, momentum dragging the blow too far. You slide past, breath catching in your throat, mind already recalculating how many more of those you can afford to dodge.",
+            "victim_msg": "{attacker_name} lunges with force, momentum dragging the blow too far. You slide past, breath catching in your {hit_location}, mind already recalculating how many more of those you can afford to dodge.",
             "observer_msg": "{attacker_name} lunges with force, momentum dragging the blow too far. {target_name} slides past, breath catching in their throat, mind already recalculating how many more of those they can afford to dodge."
         },
         {
@@ -530,9 +530,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} swings wide, the brass catching nothing but air and frustration. {target_name} breathes a little harder, a little faster."
         },
         {
-            "attacker_msg": "You swing with raw intention, your brass whistling through the space where {target_name}'s head was a second ago. The silence that follows is laced with anticipation and regret.",
-            "victim_msg": "{attacker_name} swings with raw intention, the brass whistling through the space where your head was a second ago. The silence that follows is laced with anticipation and regret.",
-            "observer_msg": "{attacker_name} swings with raw intention, the brass whistling through the space where {target_name}'s head was a second ago. The silence that follows is laced with anticipation and regret."
+            "attacker_msg": "You swing with raw intention, your brass whistling through the space where {target_name}'s {hit_location} was a second ago. The silence that follows is laced with anticipation and regret.",
+            "victim_msg": "{attacker_name} swings with raw intention, the brass whistling through the space where your {hit_location} was a second ago. The silence that follows is laced with anticipation and regret.",
+            "observer_msg": "{attacker_name} swings with raw intention, the brass whistling through the space where {target_name}'s {hit_location} was a second ago. The silence that follows is laced with anticipation and regret."
         },
         {
             "attacker_msg": "You throw a haymaker that finds only wind and your bad intentions. {target_name} stares, heart pounding.",
@@ -571,7 +571,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "{target_name} ducks just in time as you swing, the metal brushing past their temple like a whisper with bad intentions.",
-            "victim_msg": "You duck just in time as {attacker_name} swings, the metal brushing past your temple like a whisper with bad intentions.",
+            "victim_msg": "You duck just in time as {attacker_name} swings, the metal brushing past your {hit_location} like a whisper with bad intentions.",
             "observer_msg": "{target_name} ducks just in time as {attacker_name} swings, the metal brushing past their temple like a whisper with bad intentions."
         },
         {
@@ -581,7 +581,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "{target_name} pivots just enough to let your punch pass beside them, the force of it tugging air like a promise unfulfilled. Their heart pounds — they were a breath away from blackout.",
-            "victim_msg": "You pivot just enough to let {attacker_name}'s punch pass beside you, the force of it tugging air like a promise unfulfilled. Your heart pounds — you were a breath away from blackout.",
+            "victim_msg": "You pivot just enough to let {attacker_name}'s punch pass beside you, the force of it tugging air like a promise unfulfilled. Your {hit_location} pounds — you were a breath away from blackout.",
             "observer_msg": "{target_name} pivots just enough to let {attacker_name}'s punch pass beside them, the force of it tugging air like a promise unfulfilled. Their heart pounds — they were a breath away from blackout."
         },
         {
@@ -592,29 +592,29 @@ MESSAGES = {
     ],
     "kill": [
         {
-            "attacker_msg": "Your hook to the side of {target_name}'s head ends the debate. They collapse into themselves like a question answered too late.",
-            "victim_msg": "A hook to the side of your head from {attacker_name} ends the debate. You collapse into yourself like a question answered too late.",
-            "observer_msg": "A hook to the side of {target_name}'s head from {attacker_name} ends the debate. They collapse into themselves like a question answered too late."
+            "attacker_msg": "Your hook to the side of {target_name}'s {hit_location} ends the debate. They collapse into themselves like a question answered too late.",
+            "victim_msg": "A hook to the side of your {hit_location} from {attacker_name} ends the debate. You collapse into yourself like a question answered too late.",
+            "observer_msg": "A hook to the side of {target_name}'s {hit_location} from {attacker_name} ends the debate. They collapse into themselves like a question answered too late."
         },
         {
-            "attacker_msg": "Your last uppercut snaps {target_name}'s head back. It stays there for a moment, as if trying to detach. Then it all comes down.",
-            "victim_msg": "A last uppercut from {attacker_name} snaps your head back. It stays there for a moment, as if trying to detach. Then it all comes down.",
-            "observer_msg": "A last uppercut from {attacker_name} snaps {target_name}'s head back. It stays there for a moment, as if trying to detach. Then it all comes down."
+            "attacker_msg": "Your last uppercut snaps {target_name}'s {hit_location} back. It stays there for a moment, as if trying to detach. Then it all comes down.",
+            "victim_msg": "A last uppercut from {attacker_name} snaps your {hit_location} back. It stays there for a moment, as if trying to detach. Then it all comes down.",
+            "observer_msg": "A last uppercut from {attacker_name} snaps {target_name}'s {hit_location} back. It stays there for a moment, as if trying to detach. Then it all comes down."
         },
         {
-            "attacker_msg": "A straight shot from you to {target_name}'s temple. Lights out. No encore.",
-            "victim_msg": "A straight shot from {attacker_name} to your temple. Lights out. No encore.",
-            "observer_msg": "A straight shot from {attacker_name} to {target_name}'s temple. Lights out. No encore."
+            "attacker_msg": "A straight shot from you to {target_name}'s {hit_location}. Lights out. No encore.",
+            "victim_msg": "A straight shot from {attacker_name} to your {hit_location}. Lights out. No encore.",
+            "observer_msg": "A straight shot from {attacker_name} to {target_name}'s {hit_location}. Lights out. No encore."
         },
         {
-            "attacker_msg": "Your brass crashes into {target_name}'s temple. Their legs give out, arms limp. They fold like a blueprint someone stopped believing in.",
-            "victim_msg": "{attacker_name}'s brass crashes into your temple. Your legs give out, arms limp. You fold like a blueprint someone stopped believing in.",
-            "observer_msg": "{attacker_name}'s brass crashes into {target_name}'s temple. Their legs give out, arms limp. They fold like a blueprint someone stopped believing in."
+            "attacker_msg": "Your brass crashes into {target_name}'s {hit_location}. Their legs give out, arms limp. They fold like a blueprint someone stopped believing in.",
+            "victim_msg": "{attacker_name}'s brass crashes into your {hit_location}. Your legs give out, arms limp. You fold like a blueprint someone stopped believing in.",
+            "observer_msg": "{attacker_name}'s brass crashes into {target_name}'s {hit_location}. Their legs give out, arms limp. They fold like a blueprint someone stopped believing in."
         },
         {
-            "attacker_msg": "Your brass slams into {target_name}'s spine. Their body folds inward like a bad plan under pressure.",
-            "victim_msg": "{attacker_name}'s brass slams into your spine. Your body folds inward like a bad plan under pressure.",
-            "observer_msg": "{attacker_name}'s brass slams into {target_name}'s spine. Their body folds inward like a bad plan under pressure."
+            "attacker_msg": "Your brass slams into {target_name}'s {hit_location}. Their body folds inward like a bad plan under pressure.",
+            "victim_msg": "{attacker_name}'s brass slams into your {hit_location}. Your body folds inward like a bad plan under pressure.",
+            "observer_msg": "{attacker_name}'s brass slams into {target_name}'s {hit_location}. Their body folds inward like a bad plan under pressure."
         },
         {
             "attacker_msg": "It’s not rage — it’s ritual. Your punch is slow, final, full of silence. {target_name} offers no resistance to the dark.",
@@ -623,7 +623,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "It’s not your punch that kills {target_name} — it’s the fall, the angle, the way their skull meets the curb afterward. Your brass just lit the fuse.",
-            "victim_msg": "It’s not the punch from {attacker_name} that kills you — it’s the fall, the angle, the way your skull meets the curb afterward. Brass just lit the fuse.",
+            "victim_msg": "It’s not the punch from {attacker_name} that kills you — it’s the fall, the angle, the way your {hit_location} meets the curb afterward. Brass just lit the fuse.",
             "observer_msg": "It’s not the punch from {attacker_name} that kills {target_name} — it’s the fall, the angle, the way their skull meets the curb afterward. Brass just lit the fuse."
         },
         {
@@ -632,9 +632,9 @@ MESSAGES = {
             "observer_msg": "No scream. No flailing. Just a twitch, a slump, and a red smear across the floor that won’t ask for explanation after {attacker_name}'s blow to {target_name}."
         },
         {
-            "attacker_msg": "No scream. No theatrics. Just a hard, efficient end from you — brass into {target_name}'s throat, collapse into stillness. You don’t gloat. You just exhale, letting the silence finish the sentence you started.",
-            "victim_msg": "No scream. No theatrics. Just a hard, efficient end — {attacker_name}'s brass into your throat, collapse into stillness. {attacker_name} doesn’t gloat. They just exhale, letting the silence finish the sentence they started.",
-            "observer_msg": "No scream. No theatrics. Just a hard, efficient end — {attacker_name}'s brass into {target_name}'s throat, collapse into stillness. {attacker_name} doesn’t gloat. They just exhale, letting the silence finish the sentence they started."
+            "attacker_msg": "No scream. No theatrics. Just a hard, efficient end from you — brass into {target_name}'s {hit_location}, collapse into stillness. You don’t gloat. You just exhale, letting the silence finish the sentence you started.",
+            "victim_msg": "No scream. No theatrics. Just a hard, efficient end — {attacker_name}'s brass into your {hit_location}, collapse into stillness. {attacker_name} doesn’t gloat. They just exhale, letting the silence finish the sentence they started.",
+            "observer_msg": "No scream. No theatrics. Just a hard, efficient end — {attacker_name}'s brass into {target_name}'s {hit_location}, collapse into stillness. {attacker_name} doesn’t gloat. They just exhale, letting the silence finish the sentence they started."
         },
         {
             "attacker_msg": "No theatrics. No wind-up from you. Just brass, velocity, and inevitability. {target_name} won’t be getting back up.",
@@ -647,9 +647,9 @@ MESSAGES = {
             "observer_msg": "One last blow from {attacker_name} — brutal and merciful in equal measure. {target_name} hits the ground before the echo fades."
         },
         {
-            "attacker_msg": "One last hit from you to {target_name}'s ribs. They wheeze, cough, and drop. The pool that spreads is the punctuation.",
-            "victim_msg": "One last hit from {attacker_name} to your ribs. You wheeze, cough, and drop. The pool that spreads is the punctuation.",
-            "observer_msg": "One last hit from {attacker_name} to {target_name}'s ribs. They wheeze, cough, and drop. The pool that spreads is the punctuation."
+            "attacker_msg": "One last hit from you to {target_name}'s {hit_location}. They wheeze, cough, and drop. The pool that spreads is the punctuation.",
+            "victim_msg": "One last hit from {attacker_name} to your {hit_location}. You wheeze, cough, and drop. The pool that spreads is the punctuation.",
+            "observer_msg": "One last hit from {attacker_name} to {target_name}'s {hit_location}. They wheeze, cough, and drop. The pool that spreads is the punctuation."
         },
         {
             "attacker_msg": "One last punch from you, low and upward, catches {target_name} under the jaw. The sound is sick, wet, intimate. Their eyes roll back, and they crumple like a paper model doused in regret.",
@@ -672,9 +672,9 @@ MESSAGES = {
             "observer_msg": "The crunch of {target_name}'s bone from {attacker_name}'s blow, the spray of their blood, and then stillness. The scene exhales."
         },
         {
-            "attacker_msg": "Your final blow is delivered with no fanfare — just your brass meeting {target_name}'s temple in a clean, echoing note of collapse. Their body goes rigid, then slack, as though the string suspending them from life has finally snapped.",
-            "victim_msg": "The final blow from {attacker_name} is delivered with no fanfare — just brass meeting your temple in a clean, echoing note of collapse. Your body goes rigid, then slack, as though the string suspending you from life has finally snapped.",
-            "observer_msg": "The final blow from {attacker_name} is delivered with no fanfare — just brass meeting {target_name}'s temple in a clean, echoing note of collapse. Their body goes rigid, then slack, as though the string suspending them from life has finally snapped."
+            "attacker_msg": "Your final blow is delivered with no fanfare — just your brass meeting {target_name}'s {hit_location} in a clean, echoing note of collapse. Their body goes rigid, then slack, as though the string suspending them from life has finally snapped.",
+            "victim_msg": "The final blow from {attacker_name} is delivered with no fanfare — just brass meeting your {hit_location} in a clean, echoing note of collapse. Your body goes rigid, then slack, as though the string suspending you from life has finally snapped.",
+            "observer_msg": "The final blow from {attacker_name} is delivered with no fanfare — just brass meeting {target_name}'s {hit_location} in a clean, echoing note of collapse. Their body goes rigid, then slack, as though the string suspending them from life has finally snapped."
         },
         {
             "attacker_msg": "Your final blow is short, ugly, and complete. {target_name}’s breath stops trying. Their body agrees.",
@@ -682,9 +682,9 @@ MESSAGES = {
             "observer_msg": "The final blow from {attacker_name} is short, ugly, and complete. {target_name}’s breath stops trying. Their body agrees."
         },
         {
-            "attacker_msg": "Your final punch lands square on {target_name}'s jaw. There’s a sharp sound, then nothing. They fall in silence, eyes open, soul gone.",
-            "victim_msg": "{attacker_name}'s final punch lands square on your jaw. There’s a sharp sound, then nothing. You fall in silence, eyes open, soul gone.",
-            "observer_msg": "{attacker_name}'s final punch lands square on {target_name}'s jaw. There’s a sharp sound, then nothing. They fall in silence, eyes open, soul gone."
+            "attacker_msg": "Your final punch lands square on {target_name}'s {hit_location}. There’s a sharp sound, then nothing. They fall in silence, eyes open, soul gone.",
+            "victim_msg": "{attacker_name}'s final punch lands square on your {hit_location}. There’s a sharp sound, then nothing. You fall in silence, eyes open, soul gone.",
+            "observer_msg": "{attacker_name}'s final punch lands square on {target_name}'s {hit_location}. There’s a sharp sound, then nothing. They fall in silence, eyes open, soul gone."
         },
         {
             "attacker_msg": "Your final punch lands with a sound that makes the air recoil. {target_name} crumples like scaffolding losing faith in architecture.",
@@ -693,12 +693,12 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your final punch leaves {target_name} sagging. Not dead yet, but beyond return. Their eyes say what their lungs can’t.",
-            "victim_msg": "{attacker_name}'s final punch leaves you sagging. Not dead yet, but beyond return. Your eyes say what your lungs can’t.",
+            "victim_msg": "{attacker_name}'s final punch leaves you sagging. Not dead yet, but beyond return. Your eyes say what your {hit_location} can’t.",
             "observer_msg": "{attacker_name}'s final punch leaves {target_name} sagging. Not dead yet, but beyond return. Their eyes say what their lungs can’t."
         },
         {
             "attacker_msg": "Your hit doesn't kill {target_name} immediately. It's the fall — the way their skull hits the concrete like a gavel.",
-            "victim_msg": "{attacker_name}'s hit doesn't kill you immediately. It's the fall — the way your skull hits the concrete like a gavel.",
+            "victim_msg": "{attacker_name}'s hit doesn't kill you immediately. It's the fall — the way your {hit_location} hits the concrete like a gavel.",
             "observer_msg": "{attacker_name}'s hit doesn't kill {target_name} immediately. It's the fall — the way their skull hits the concrete like a gavel."
         },
         {
@@ -727,14 +727,14 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s strike is clean, final, and horrible. {target_name} drops with a slack-jawed expression that reads like an unfinished sentence."
         },
         {
-            "attacker_msg": "You bury your fist in {target_name}'s throat. The gasp is wet and short. The silence after is clinical.",
-            "victim_msg": "{attacker_name} buries their fist in your throat. The gasp is wet and short. The silence after is clinical.",
-            "observer_msg": "{attacker_name} buries their fist in {target_name}'s throat. The gasp is wet and short. The silence after is clinical."
+            "attacker_msg": "You bury your fist in {target_name}'s {hit_location}. The gasp is wet and short. The silence after is clinical.",
+            "victim_msg": "{attacker_name} buries their fist in your {hit_location}. The gasp is wet and short. The silence after is clinical.",
+            "observer_msg": "{attacker_name} buries their fist in {target_name}'s {hit_location}. The gasp is wet and short. The silence after is clinical."
         },
         {
-            "attacker_msg": "You don’t even breathe hard. You just withdraw your fist from the ruin of {target_name}'s face and let gravity do the rest.",
-            "victim_msg": "{attacker_name} doesn’t even breathe hard. They just withdraw their fist from the ruin of your face and let gravity do the rest.",
-            "observer_msg": "{attacker_name} doesn’t even breathe hard. They just withdraw their fist from the ruin of {target_name}'s face and let gravity do the rest."
+            "attacker_msg": "You don’t even breathe hard. You just withdraw your fist from the ruin of {target_name}'s {hit_location} and let gravity do the rest.",
+            "victim_msg": "{attacker_name} doesn’t even breathe hard. They just withdraw their fist from the ruin of your {hit_location} and let gravity do the rest.",
+            "observer_msg": "{attacker_name} doesn’t even breathe hard. They just withdraw their fist from the ruin of {target_name}'s {hit_location} and let gravity do the rest."
         },
         {
             "attacker_msg": "You hit {target_name} hard enough to silence a thought mid-formation. They don’t even finish falling before the lights go out.",
@@ -747,9 +747,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} steps back as {target_name} falls, letting gravity and brass write the ending together."
         },
         {
-            "attacker_msg": "Your fist buries deep into {target_name}'s temple. There's no scream, just a twitch, then silence. Heavy. Permanent.",
-            "victim_msg": "{attacker_name}'s fist buries deep into your temple. There's no scream, just a twitch, then silence. Heavy. Permanent.",
-            "observer_msg": "{attacker_name}'s fist buries deep into {target_name}'s temple. There's no scream, just a twitch, then silence. Heavy. Permanent."
+            "attacker_msg": "Your fist buries deep into {target_name}'s {hit_location}. There's no scream, just a twitch, then silence. Heavy. Permanent.",
+            "victim_msg": "{attacker_name}'s fist buries deep into your {hit_location}. There's no scream, just a twitch, then silence. Heavy. Permanent.",
+            "observer_msg": "{attacker_name}'s fist buries deep into {target_name}'s {hit_location}. There's no scream, just a twitch, then silence. Heavy. Permanent."
         },
         {
             "attacker_msg": "Your fist connects with surgical malice. Your brass comes back red. {target_name} doesn’t come back at all.",
@@ -757,14 +757,14 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s fist connects with surgical malice. The brass comes back red. {target_name} doesn’t come back at all."
         },
         {
-            "attacker_msg": "Your fist connects with {target_name}'s throat. The sound they make isn’t human. Then there’s no sound at all.",
-            "victim_msg": "{attacker_name}'s fist connects with your throat. The sound you make isn’t human. Then there’s no sound at all.",
-            "observer_msg": "{attacker_name}'s fist connects with {target_name}'s throat. The sound they make isn’t human. Then there’s no sound at all."
+            "attacker_msg": "Your fist connects with {target_name}'s {hit_location}. The sound they make isn’t human. Then there’s no sound at all.",
+            "victim_msg": "{attacker_name}'s fist connects with your {hit_location}. The sound you make isn’t human. Then there’s no sound at all.",
+            "observer_msg": "{attacker_name}'s fist connects with {target_name}'s {hit_location}. The sound they make isn’t human. Then there’s no sound at all."
         },
         {
-            "attacker_msg": "Your knuckles dig into the side of {target_name}'s skull, and something inside gives way. The light leaves their eyes not as a flicker, but as a retreat — swift, permanent, and uncaring.",
-            "victim_msg": "{attacker_name}'s knuckles dig into the side of your skull, and something inside gives way. The light leaves your eyes not as a flicker, but as a retreat — swift, permanent, and uncaring.",
-            "observer_msg": "{attacker_name}'s knuckles dig into the side of {target_name}'s skull, and something inside gives way. The light leaves their eyes not as a flicker, but as a retreat — swift, permanent, and uncaring."
+            "attacker_msg": "Your knuckles dig into the side of {target_name}'s {hit_location}, and something inside gives way. The light leaves their eyes not as a flicker, but as a retreat — swift, permanent, and uncaring.",
+            "victim_msg": "{attacker_name}'s knuckles dig into the side of your {hit_location}, and something inside gives way. The light leaves your eyes not as a flicker, but as a retreat — swift, permanent, and uncaring.",
+            "observer_msg": "{attacker_name}'s knuckles dig into the side of {target_name}'s {hit_location}, and something inside gives way. The light leaves their eyes not as a flicker, but as a retreat — swift, permanent, and uncaring."
         }
     ]
 }

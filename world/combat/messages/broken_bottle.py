@@ -11,7 +11,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} produces a bottle, smashes it against the floor, and brandishes the jagged remains like a primal knife."
         },
         {
-            "attacker_msg": "You don’t bother with theatrics. You just slam the bottle on concrete until the shards glitter in your hand.",
+            "attacker_msg": "You don’t bother with theatrics. You just slam the bottle on concrete until the shards glitter in your {hit_location}.",
             "victim_msg": "{attacker_name} doesn’t bother with theatrics. They just slam the bottle on concrete until the shards glitter in their hand.",
             "observer_msg": "{attacker_name} doesn’t bother with theatrics. They just slam the bottle on concrete until the shards glitter in their hand."
         },
@@ -26,17 +26,17 @@ MESSAGES = {
             "observer_msg": "{attacker_name} yanks the bottle from a trash pile and snaps it clean on a steel edge—ready, improvised, lethal."
         },
         {
-            "attacker_msg": "You break the neck of the bottle on your knee and hold it like a sacred relic of violence.",
+            "attacker_msg": "You break the neck of the bottle on your {hit_location} and hold it like a sacred relic of violence.",
             "victim_msg": "{attacker_name} breaks the neck of the bottle on their knee and holds it like a sacred relic of violence.",
             "observer_msg": "{attacker_name} breaks the neck of the bottle on their knee and holds it like a sacred relic of violence."
         },
         {
-            "attacker_msg": "You tighten your hand around the busted glass, knuckles white, eyes locked on {target_name}.",
+            "attacker_msg": "You tighten your {hit_location} around the busted glass, knuckles white, eyes locked on {target_name}.",
             "victim_msg": "{attacker_name} tightens their hand around the busted glass, knuckles white, eyes locked on you.",
             "observer_msg": "{attacker_name} tightens their hand around the busted glass, knuckles white, eyes locked on {target_name}."
         },
         {
-            "attacker_msg": "You flip the bottle in your hand, catch it mid-air, and crush the base against a rusted beam.",
+            "attacker_msg": "You flip the bottle in your {hit_location}, catch it mid-air, and crush the base against a rusted beam.",
             "victim_msg": "{attacker_name} flips the bottle in their hand, catches it mid-air, and crushes the base against a rusted beam.",
             "observer_msg": "{attacker_name} flips the bottle in their hand, catches it mid-air, and crushes the base against a rusted beam."
         },
@@ -435,7 +435,7 @@ MESSAGES = {
             "observer_msg": "A clumsy slash hits a doorframe. {target_name} slips past."
         },
         {
-            "attacker_msg": "Your hand jerks. The aim is wrong. The glass is sharp. The target is safe.",
+            "attacker_msg": "Your {hit_location} jerks. The aim is wrong. The glass is sharp. The target is safe.",
             "victim_msg": "{attacker_name}'s hand jerks. The aim is wrong. The glass is sharp. You are safe.",
             "observer_msg": "{attacker_name}'s hand jerks. The aim is wrong. The glass is sharp. {target_name} is safe."
         },
@@ -452,19 +452,19 @@ MESSAGES = {
     ],
     "kill": [
         {
-            "attacker_msg": "You drive the broken bottle deep into {target_name}'s throat. Blood floods out faster than breath.",
-            "victim_msg": "{attacker_name} drives the broken bottle deep into your throat. Blood floods out faster than breath.",
-            "observer_msg": "{attacker_name} drives the broken bottle deep into {target_name}'s throat. Blood floods out faster than breath."
+            "attacker_msg": "You drive the broken bottle deep into {target_name}'s {hit_location}. Blood floods out faster than breath.",
+            "victim_msg": "{attacker_name} drives the broken bottle deep into your {hit_location}. Blood floods out faster than breath.",
+            "observer_msg": "{attacker_name} drives the broken bottle deep into {target_name}'s {hit_location}. Blood floods out faster than breath."
         },
         {
-            "attacker_msg": "One final slash opens {target_name}'s neck. They drop before the scream finishes. You watch them fall.",
-            "victim_msg": "One final slash opens your neck. You drop before the scream finishes. {attacker_name} watches you fall.",
-            "observer_msg": "One final slash opens {target_name}'s neck. They drop before the scream finishes. {attacker_name} watches them fall."
+            "attacker_msg": "One final slash opens {target_name}'s {hit_location}. They drop before the scream finishes. You watch them fall.",
+            "victim_msg": "One final slash opens your {hit_location}. You drop before the scream finishes. {attacker_name} watches you fall.",
+            "observer_msg": "One final slash opens {target_name}'s {hit_location}. They drop before the scream finishes. {attacker_name} watches them fall."
         },
         {
-            "attacker_msg": "The glass plunges into {target_name}'s chest. Their body convulses, then collapses. You step back.",
-            "victim_msg": "The glass plunges into your chest. Your body convulses, then collapses. {attacker_name} steps back.",
-            "observer_msg": "The glass plunges into {target_name}'s chest. Their body convulses, then collapses. {attacker_name} steps back."
+            "attacker_msg": "The glass plunges into {target_name}'s {hit_location}. Their body convulses, then collapses. You step back.",
+            "victim_msg": "The glass plunges into your {hit_location}. Your body convulses, then collapses. {attacker_name} steps back.",
+            "observer_msg": "The glass plunges into {target_name}'s {hit_location}. Their body convulses, then collapses. {attacker_name} steps back."
         },
         {
             "attacker_msg": "A jagged arc across the face blinds {target_name} just before they fall, twitching. You ensure they're down.",
@@ -483,8 +483,8 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The bottle enters below the ribs. You twist. {target_name} folds.",
-            "victim_msg": "The bottle enters below your ribs. {attacker_name} twists. You fold.",
-            "observer_msg": "The bottle enters below {target_name}'s ribs. {attacker_name} twists. {target_name} folds."
+            "victim_msg": "The bottle enters below your {hit_location}. {attacker_name} twists. You fold.",
+            "observer_msg": "The bottle enters below {target_name}'s {hit_location}. {attacker_name} twists. {target_name} folds."
         },
         {
             "attacker_msg": "Glass punches through temple. {target_name} falls like a bag of wet bricks. You don't look away.",
@@ -503,13 +503,13 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You carve across the throat. {target_name} spasms, then stills.",
-            "victim_msg": "{attacker_name} carves across your throat. You spasm, then still.",
-            "observer_msg": "{attacker_name} carves across {target_name}'s throat. They spasm, then still."
+            "victim_msg": "{attacker_name} carves across your {hit_location}. You spasm, then still.",
+            "observer_msg": "{attacker_name} carves across {target_name}'s {hit_location}. They spasm, then still."
         },
         {
-            "attacker_msg": "The final blow lands in the stomach. Blood rushes out. Life drains with it. You wipe your hand.",
-            "victim_msg": "The final blow lands in your stomach. Blood rushes out. Life drains with it. {attacker_name} wipes their hand.",
-            "observer_msg": "The final blow lands in {target_name}'s stomach. Blood rushes out. Life drains with it. {attacker_name} wipes their hand."
+            "attacker_msg": "The final blow lands in the stomach. Blood rushes out. Life drains with it. You wipe your {hit_location}.",
+            "victim_msg": "The final blow lands in your {hit_location}. Blood rushes out. Life drains with it. {attacker_name} wipes their hand.",
+            "observer_msg": "The final blow lands in {target_name}'s {hit_location}. Blood rushes out. Life drains with it. {attacker_name} wipes their hand."
         },
         {
             "attacker_msg": "A stab to the heart ends everything mid-sentence for {target_name}. You hear the silence.",
@@ -518,7 +518,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You pin {target_name} down and drive the bottle into the chest, deep and deliberate.",
-            "victim_msg": "{attacker_name} pins you down and drives the bottle into your chest, deep and deliberate.",
+            "victim_msg": "{attacker_name} pins you down and drives the bottle into your {hit_location}, deep and deliberate.",
             "observer_msg": "{attacker_name} pins {target_name} down and drives the bottle into the chest, deep and deliberate."
         },
         {
@@ -537,9 +537,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} uses both hands to drive the glass home. It doesn’t take long for {target_name} to stop moving."
         },
         {
-            "attacker_msg": "The final slash removes most of {target_name}'s throat. The rest collapses. You step away from the mess.",
-            "victim_msg": "The final slash removes most of your throat. The rest collapses. {attacker_name} steps away from the mess.",
-            "observer_msg": "The final slash removes most of {target_name}'s throat. The rest collapses. {attacker_name} steps away from the mess."
+            "attacker_msg": "The final slash removes most of {target_name}'s {hit_location}. The rest collapses. You step away from the mess.",
+            "victim_msg": "The final slash removes most of your {hit_location}. The rest collapses. {attacker_name} steps away from the mess.",
+            "observer_msg": "The final slash removes most of {target_name}'s {hit_location}. The rest collapses. {attacker_name} steps away from the mess."
         },
         {
             "attacker_msg": "Glass tears into a lung. {target_name} drowns without water. You listen to the gurgle.",
@@ -548,8 +548,8 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The bottle crunches into the skull with a finality only steel should have. {target_name} is gone.",
-            "victim_msg": "The bottle crunches into your skull with a finality only steel should have. You are gone.",
-            "observer_msg": "The bottle crunches into {target_name}'s skull with a finality only steel should have. They are gone."
+            "victim_msg": "The bottle crunches into your {hit_location} with a finality only steel should have. You are gone.",
+            "observer_msg": "The bottle crunches into {target_name}'s {hit_location} with a finality only steel should have. They are gone."
         },
         {
             "attacker_msg": "Blood arcs like fireworks as You make the last cut on {target_name}.",

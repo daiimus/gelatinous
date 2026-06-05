@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air grows palpably hotter as {attacker_name} prepares to fire the flamethrower, anticipating the deafening *ROAR* of ignited fuel."
         },
         {
-            'attacker_msg': "Your face is grim, finger tightening on the flamethrower's trigger, ready to unleash a hellish torrent.",
+            'attacker_msg': "Your {hit_location} is grim, finger tightening on the flamethrower's trigger, ready to unleash a hellish torrent.",
             'victim_msg': "{attacker_name}'s face is grim, finger tightening on the flamethrower's trigger, ready to unleash a hellish torrent.",
             'observer_msg': "{attacker_name}'s face is grim, finger tightening on the flamethrower's trigger, ready to unleash a hellish torrent."
         },
@@ -189,7 +189,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The flamethrower's fiery payload sticks to {target_name}, turning them into a human torch. Their screams are cut short as the flames sear their lungs. The heat haze distorts the horrific scene.",
-            'victim_msg': "The flamethrower's fiery payload sticks to you, turning you into a human torch. Your screams are cut short as the flames sear your lungs. The heat haze distorts the horrific scene.",
+            'victim_msg': "The flamethrower's fiery payload sticks to you, turning you into a human torch. Your screams are cut short as the flames sear your {hit_location}. The heat haze distorts the horrific scene.",
             'observer_msg': "The flamethrower's fiery payload sticks to {target_name}, turning them into a human torch. Their screams are cut short as the flames sear their lungs. The heat haze distorts the horrific scene."
         },
         {
@@ -346,7 +346,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name} drops prone just as your flamethrower fires, the jet of burning fuel passing inches above their head with a terrifying roar and a wave of searing heat. The ground above them is scorched black.",
-            'victim_msg': "You drop prone just as {attacker_name}'s flamethrower fires, the jet of burning fuel passing inches above your head with a terrifying roar and a wave of searing heat. The ground above you is scorched black.",
+            'victim_msg': "You drop prone just as {attacker_name}'s flamethrower fires, the jet of burning fuel passing inches above your {hit_location} with a terrifying roar and a wave of searing heat. The ground above you is scorched black.",
             'observer_msg': "{target_name} drops prone just as {attacker_name}'s flamethrower fires, the jet of burning fuel passing inches above their head with a terrifying roar and a wave of searing heat. The ground above them is scorched black."
         },
         {
@@ -487,9 +487,9 @@ MESSAGES = {
             'observer_msg': "The flamethrower, an instrument of pure terror, delivers a killing blow as {target_name} is caught in the searing jet. Their flesh is instantly incinerated, and they fall, a grotesque monument to the fire's fury."
         },
         {
-            'attacker_msg': "A precise gout of liquid fire to the head from your flamethrower, and {target_name}'s skull is instantly blackened and cooked, their life extinguished in a horrific, fiery flash. The smell is nauseating.",
-            'victim_msg': "A precise gout of liquid fire to the head from {attacker_name}'s flamethrower, and your skull is instantly blackened and cooked, your life extinguished in a horrific, fiery flash. The smell is nauseating.",
-            'observer_msg': "A precise gout of liquid fire to the head from {attacker_name}'s flamethrower, and {target_name}'s skull is instantly blackened and cooked, their life extinguished in a horrific, fiery flash. The smell is nauseating."
+            'attacker_msg': "A precise gout of liquid fire to the head from your flamethrower, and {target_name}'s {hit_location} is instantly blackened and cooked, their life extinguished in a horrific, fiery flash. The smell is nauseating.",
+            'victim_msg': "A precise gout of liquid fire to the head from {attacker_name}'s flamethrower, and your {hit_location} is instantly blackened and cooked, your life extinguished in a horrific, fiery flash. The smell is nauseating.",
+            'observer_msg': "A precise gout of liquid fire to the head from {attacker_name}'s flamethrower, and {target_name}'s {hit_location} is instantly blackened and cooked, their life extinguished in a horrific, fiery flash. The smell is nauseating."
         },
         {
             'attacker_msg': "Your blast from the flamethrower is brutally fatal; {target_name} is engulfed, their desperate attempts to escape futile as the fire consumes them from the outside in, leaving only a smoking, charred corpse.",

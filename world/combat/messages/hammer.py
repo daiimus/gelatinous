@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} wipes the cue on their sleeve, as if it matters."
         },
         {
-            'attacker_msg': "You let the cue rest on your shoulder, casual as a hustler at closing time.",
+            'attacker_msg': "You let the cue rest on your {hit_location}, casual as a hustler at closing time.",
             'victim_msg': "{attacker_name} lets the cue rest on their shoulder, casual as a hustler at closing time.",
             'observer_msg': "{attacker_name} lets the cue rest on their shoulder, casual as a hustler at closing time."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the cue like a brush, ready to paint in red."
         },
         {
-            'attacker_msg': "You let the cue rest on your shoulder, eyes never leaving {target_name}.",
+            'attacker_msg': "You let the cue rest on your {hit_location}, eyes never leaving {target_name}.",
             'victim_msg': "{attacker_name} lets the cue rest on their shoulder, eyes never leaving you.",
             'observer_msg': "{attacker_name} lets the cue rest on their shoulder, eyes never leaving {target_name}."
         },
@@ -457,24 +457,24 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "You bring the pool cue down on {target_name}'s skull. The wood splinters, blood and bone mixing.",
-            'victim_msg': "{attacker_name} brings the pool cue down on your skull. The wood splinters, blood and bone mixing.",
-            'observer_msg': "{attacker_name} brings the pool cue down on {target_name}'s skull. The wood splinters, blood and bone mixing."
+            'attacker_msg': "You bring the pool cue down on {target_name}'s {hit_location}. The wood splinters, blood and bone mixing.",
+            'victim_msg': "{attacker_name} brings the pool cue down on your {hit_location}. The wood splinters, blood and bone mixing.",
+            'observer_msg': "{attacker_name} brings the pool cue down on {target_name}'s {hit_location}. The wood splinters, blood and bone mixing."
         },
         {
-            'attacker_msg': "A heavy swing cracks {target_name}'s temple. They drop, twitching.",
-            'victim_msg': "A heavy swing cracks your temple. You drop, twitching.",
-            'observer_msg': "A heavy swing cracks {target_name}'s temple. They drop, twitching."
+            'attacker_msg': "A heavy swing cracks {target_name}'s {hit_location}. They drop, twitching.",
+            'victim_msg': "A heavy swing cracks your {hit_location}. You drop, twitching.",
+            'observer_msg': "A heavy swing cracks {target_name}'s {hit_location}. They drop, twitching."
         },
         {
-            'attacker_msg': "The tip jabs into {target_name}'s throat. They collapse, gasping for air that won't come.",
-            'victim_msg': "The tip jabs into your throat. You collapse, gasping for air that won't come.",
-            'observer_msg': "The tip jabs into {target_name}'s throat. They collapse, gasping for air that won't come."
+            'attacker_msg': "The tip jabs into {target_name}'s {hit_location}. They collapse, gasping for air that won't come.",
+            'victim_msg': "The tip jabs into your {hit_location}. You collapse, gasping for air that won't come.",
+            'observer_msg': "The tip jabs into {target_name}'s {hit_location}. They collapse, gasping for air that won't come."
         },
         {
-            'attacker_msg': "You carve a line across {target_name}'s neck. The blood is bright and fast.",
-            'victim_msg': "{attacker_name} carves a line across your neck. The blood is bright and fast.",
-            'observer_msg': "{attacker_name} carves a line across {target_name}'s neck. The blood is bright and fast."
+            'attacker_msg': "You carve a line across {target_name}'s {hit_location}. The blood is bright and fast.",
+            'victim_msg': "{attacker_name} carves a line across your {hit_location}. The blood is bright and fast.",
+            'observer_msg': "{attacker_name} carves a line across {target_name}'s {hit_location}. The blood is bright and fast."
         },
         {
             'attacker_msg': "A jab under the jaw sends the cue splintering into the brain. {target_name} goes limp instantly.",
@@ -517,9 +517,9 @@ MESSAGES = {
             'observer_msg': "The shaft slips between vertebrae. {target_name} drops, boneless."
         },
         {
-            'attacker_msg': "You carve a smile across {target_name}'s face. The grin is permanent.",
-            'victim_msg': "{attacker_name} carves a smile across your face. The grin is permanent.",
-            'observer_msg': "{attacker_name} carves a smile across {target_name}'s face. The grin is permanent."
+            'attacker_msg': "You carve a smile across {target_name}'s {hit_location}. The grin is permanent.",
+            'victim_msg': "{attacker_name} carves a smile across your {hit_location}. The grin is permanent.",
+            'observer_msg': "{attacker_name} carves a smile across {target_name}'s {hit_location}. The grin is permanent."
         },
         {
             'attacker_msg': "A jab to the heart. {target_name} collapses, eyes wide and empty.",

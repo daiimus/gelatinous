@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "A soft glint and the ice pick appears in {attacker_name}'s grip, cold and deliberate."
         },
         {
-            'attacker_msg': "You roll your wrist lazily, the pick spinning into position like it remembers the last kill.",
+            'attacker_msg': "You roll your {hit_location} lazily, the pick spinning into position like it remembers the last kill.",
             'victim_msg': "{attacker_name} rolls their wrist lazily, the pick spinning into position like it remembers the last kill.",
             'observer_msg': "{attacker_name} rolls their wrist lazily, the pick spinning into position like it remembers the last kill."
         },
@@ -91,7 +91,7 @@ MESSAGES = {
             'observer_msg': "The weapon isn't flashy. Just deadly. {attacker_name} lifts it like it's nothing—and everything."
         },
         {
-            'attacker_msg': "The pick twitches in your hand, an extension of your thoughts—sharp ones.",
+            'attacker_msg': "The pick twitches in your {hit_location}, an extension of your thoughts—sharp ones.",
             'victim_msg': "The pick twitches in {attacker_name}'s hand, an extension of their thoughts—sharp ones.",
             'observer_msg': "The pick twitches in {attacker_name}'s hand, an extension of their thoughts—sharp ones."
         },
@@ -141,7 +141,7 @@ MESSAGES = {
             'observer_msg': "There's no noise except the slight 'ting' as the pick hits a belt buckle on its way out."
         },
         {
-            'attacker_msg': "Your face softens—like an artist before a masterpiece. The pick is your brush.",
+            'attacker_msg': "Your {hit_location} softens—like an artist before a masterpiece. The pick is your brush.",
             'victim_msg': "{attacker_name}'s face softens—like an artist before a masterpiece. The pick is their brush.",
             'observer_msg': "{attacker_name}'s face softens—like an artist before a masterpiece. The pick is their brush."
         },
@@ -325,12 +325,12 @@ MESSAGES = {
             'observer_msg': "The pick snaps through open space. {target_name} spins away like smoke."
         },
         {
-            'attacker_msg': "A tight jab skims past {target_name}'s ribs—no purchase, just a whisper of death denied.",
-            'victim_msg': "A tight jab skims past your ribs—no purchase, just a whisper of death denied.",
-            'observer_msg': "A tight jab skims past {target_name}'s ribs—no purchase, just a whisper of death denied."
+            'attacker_msg': "A tight jab skims past {target_name}'s {hit_location}—no purchase, just a whisper of death denied.",
+            'victim_msg': "A tight jab skims past your {hit_location}—no purchase, just a whisper of death denied.",
+            'observer_msg': "A tight jab skims past {target_name}'s {hit_location}—no purchase, just a whisper of death denied."
         },
         {
-            'attacker_msg': "Your wrist flicks, but {target_name} has already ducked beneath the strike.",
+            'attacker_msg': "Your {hit_location} flicks, but {target_name} has already ducked beneath the strike.",
             'victim_msg': "{attacker_name}'s wrist flicks, but you have already ducked beneath the strike.",
             'observer_msg': "{attacker_name}'s wrist flicks, but {target_name} has already ducked beneath the strike."
         },
@@ -355,9 +355,9 @@ MESSAGES = {
             'observer_msg': "The jab goes wide, {target_name} stepping back with a grin."
         },
         {
-            'attacker_msg': "You overextend and the pick whistles past {target_name}'s shoulder.",
-            'victim_msg': "{attacker_name} overextends and the pick whistles past your shoulder.",
-            'observer_msg': "{attacker_name} overextends and the pick whistles past {target_name}'s shoulder."
+            'attacker_msg': "You overextend and the pick whistles past {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name} overextends and the pick whistles past your {hit_location}.",
+            'observer_msg': "{attacker_name} overextends and the pick whistles past {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "A twisting jab ends in nothing but the wind.",
@@ -405,7 +405,7 @@ MESSAGES = {
             'observer_msg': "The weapon slices through fog. {target_name} fades back."
         },
         {
-            'attacker_msg': "A flick of your wrist sends the pick skyward. You regain control—barely.",
+            'attacker_msg': "A flick of your {hit_location} sends the pick skyward. You regain control—barely.",
             'victim_msg': "A flick of {attacker_name}'s wrist sends the pick skyward. They regain control—barely.",
             'observer_msg': "A flick of {attacker_name}'s wrist sends the pick skyward. They regain control—barely."
         },
@@ -435,7 +435,7 @@ MESSAGES = {
             'observer_msg': "A quick dodge saves {target_name}'s spleen from becoming street art."
         },
         {
-            'attacker_msg': "Your foot slips. The strike veers harmlessly off target.",
+            'attacker_msg': "Your {hit_location} slips. The strike veers harmlessly off target.",
             'victim_msg': "{attacker_name}'s foot slips. The strike veers harmlessly off target.",
             'observer_msg': "{attacker_name}'s foot slips. The strike veers harmlessly off target."
         },
@@ -467,9 +467,9 @@ MESSAGES = {
             'observer_msg': "A final jab splits {target_name}'s eye socket. They collapse like a puppet with its strings cut."
         },
         {
-            'attacker_msg': "The pick drives into the side of {target_name}'s neck. Blood pulses, then stills.",
-            'victim_msg': "The pick drives into the side of your neck. Blood pulses, then stills.",
-            'observer_msg': "The pick drives into the side of {target_name}'s neck. Blood pulses, then stills."
+            'attacker_msg': "The pick drives into the side of {target_name}'s {hit_location}. Blood pulses, then stills.",
+            'victim_msg': "The pick drives into the side of your {hit_location}. Blood pulses, then stills.",
+            'observer_msg': "The pick drives into the side of {target_name}'s {hit_location}. Blood pulses, then stills."
         },
         {
             'attacker_msg': "You find the soft gap between ribs. One stab. One scream. Then silence.",
@@ -477,14 +477,14 @@ MESSAGES = {
             'observer_msg': "{attacker_name} finds the soft gap between ribs. One stab. One scream. Then silence."
         },
         {
-            'attacker_msg': "The pick vanishes into {target_name}'s temple. They slump forward like their strings were cut.",
-            'victim_msg': "The pick vanishes into your temple. You slump forward like your strings were cut.",
-            'observer_msg': "The pick vanishes into {target_name}'s temple. They slump forward like their strings were cut."
+            'attacker_msg': "The pick vanishes into {target_name}'s {hit_location}. They slump forward like their strings were cut.",
+            'victim_msg': "The pick vanishes into your {hit_location}. You slump forward like your strings were cut.",
+            'observer_msg': "The pick vanishes into {target_name}'s {hit_location}. They slump forward like their strings were cut."
         },
         {
-            'attacker_msg': "A savage uppercut with the pick leaves {target_name}'s throat gurgling red.",
-            'victim_msg': "A savage uppercut with the pick leaves your throat gurgling red.",
-            'observer_msg': "A savage uppercut with the pick leaves {target_name}'s throat gurgling red."
+            'attacker_msg': "A savage uppercut with the pick leaves {target_name}'s {hit_location} gurgling red.",
+            'victim_msg': "A savage uppercut with the pick leaves your {hit_location} gurgling red.",
+            'observer_msg': "A savage uppercut with the pick leaves {target_name}'s {hit_location} gurgling red."
         },
         {
             'attacker_msg': "The strike lands beneath {target_name}'s ear. They convulse—then die.",
@@ -492,9 +492,9 @@ MESSAGES = {
             'observer_msg': "The strike lands beneath {target_name}'s ear. They convulse—then die."
         },
         {
-            'attacker_msg': "You stab through {target_name}'s heart with surgical indifference.",
-            'victim_msg': "{attacker_name} stabs through your heart with surgical indifference.",
-            'observer_msg': "{attacker_name} stabs through {target_name}'s heart with surgical indifference."
+            'attacker_msg': "You stab through {target_name}'s {hit_location} with surgical indifference.",
+            'victim_msg': "{attacker_name} stabs through your {hit_location} with surgical indifference.",
+            'observer_msg': "{attacker_name} stabs through {target_name}'s {hit_location} with surgical indifference."
         },
         {
             'attacker_msg': "The pick disappears into {target_name}'s eye. There's a wet pop, then nothing.",
@@ -508,17 +508,17 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A deep plunge into the skull ends {target_name}'s thoughts permanently.",
-            'victim_msg': "A deep plunge into your skull ends your thoughts permanently.",
+            'victim_msg': "A deep plunge into your {hit_location} ends your thoughts permanently.",
             'observer_msg': "A deep plunge into the skull ends {target_name}'s thoughts permanently."
         },
         {
-            'attacker_msg': "You bury the pick into the nape of {target_name}'s neck. They crumple wordlessly.",
-            'victim_msg': "{attacker_name} buries the pick into the nape of your neck. You crumple wordlessly.",
-            'observer_msg': "{attacker_name} buries the pick into the nape of {target_name}'s neck. They crumple wordlessly."
+            'attacker_msg': "You bury the pick into the nape of {target_name}'s {hit_location}. They crumple wordlessly.",
+            'victim_msg': "{attacker_name} buries the pick into the nape of your {hit_location}. You crumple wordlessly.",
+            'observer_msg': "{attacker_name} buries the pick into the nape of {target_name}'s {hit_location}. They crumple wordlessly."
         },
         {
             'attacker_msg': "The blow severs the spine. {target_name} spasms, then lies still.",
-            'victim_msg': "The blow severs your spine. You spasm, then lie still.",
+            'victim_msg': "The blow severs your {hit_location}. You spasm, then lie still.",
             'observer_msg': "The blow severs the spine. {target_name} spasms, then lies still."
         },
         {
@@ -552,9 +552,9 @@ MESSAGES = {
             'observer_msg': "A gasp, a tremble, a fall. The pick did its job."
         },
         {
-            'attacker_msg': "You slide the pick out of {target_name}'s chest with a squelch and walk on.",
-            'victim_msg': "{attacker_name} slides the pick out of your chest with a squelch and walks on.",
-            'observer_msg': "{attacker_name} slides the pick out of {target_name}'s chest with a squelch and walks on."
+            'attacker_msg': "You slide the pick out of {target_name}'s {hit_location} with a squelch and walk on.",
+            'victim_msg': "{attacker_name} slides the pick out of your {hit_location} with a squelch and walks on.",
+            'observer_msg': "{attacker_name} slides the pick out of {target_name}'s {hit_location} with a squelch and walks on."
         },
         {
             'attacker_msg': "Steel punctures the windpipe. {target_name} drops gasping and doesn't rise.",
@@ -568,7 +568,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A clean jab to the base of the skull. {target_name}'s body crumples like laundry.",
-            'victim_msg': "A clean jab to the base of your skull. Your body crumples like laundry.",
+            'victim_msg': "A clean jab to the base of your {hit_location}. Your body crumples like laundry.",
             'observer_msg': "A clean jab to the base of the skull. {target_name}'s body crumples like laundry."
         },
         {
@@ -593,7 +593,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The pick punctures the lung. The gurgle stops with a sigh.",
-            'victim_msg': "The pick punctures your lung. The gurgle stops with a sigh.",
+            'victim_msg': "The pick punctures your {hit_location}. The gurgle stops with a sigh.",
             'observer_msg': "The pick punctures the lung. The gurgle stops with a sigh."
         },
         {

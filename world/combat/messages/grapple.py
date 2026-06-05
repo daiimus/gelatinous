@@ -213,19 +213,19 @@ MESSAGES = {
     # --- Messages for ATTACKS/DAMAGE while ALREADY grappling ---
     "grapple_damage_hit": [  # Action: Successfully damaging a grappled opponent
         {
-            "attacker_msg": "You squeeze the air from {target_name}'s lungs in the grapple.",
-            "victim_msg": "{attacker_name} squeezes the air from your lungs in the grapple!",
-            "observer_msg": "{attacker_name} squeezes the air from {target_name}'s lungs in the grapple."
+            "attacker_msg": "You squeeze the air from {target_name}'s {hit_location} in the grapple.",
+            "victim_msg": "{attacker_name} squeezes the air from your {hit_location} in the grapple!",
+            "observer_msg": "{attacker_name} squeezes the air from {target_name}'s {hit_location} in the grapple."
         },
         {
-            "attacker_msg": "Locked tight, you drive a knee into {target_name}'s ribs.",
-            "victim_msg": "Locked tight, {attacker_name} drives a knee into your ribs!",
-            "observer_msg": "Locked tight, {attacker_name} drives a knee into {target_name}'s ribs."
+            "attacker_msg": "Locked tight, you drive a knee into {target_name}'s {hit_location}.",
+            "victim_msg": "Locked tight, {attacker_name} drives a knee into your {hit_location}!",
+            "observer_msg": "Locked tight, {attacker_name} drives a knee into {target_name}'s {hit_location}."
         },
         {
-            "attacker_msg": "You grind your forearm across {target_name}'s throat.",
-            "victim_msg": "{attacker_name} grinds their forearm across your throat!",
-            "observer_msg": "{attacker_name} grinds their forearm across {target_name}'s throat."
+            "attacker_msg": "You grind your {hit_location} across {target_name}'s {hit_location}.",
+            "victim_msg": "{attacker_name} grinds their forearm across your {hit_location}!",
+            "observer_msg": "{attacker_name} grinds their forearm across {target_name}'s {hit_location}."
         },
         {
             "attacker_msg": "While grappling, you land a series of short, brutal punches to {target_name}'s side.",
@@ -248,9 +248,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} chokes {target_name}, who claws desperately at their arms."
         },
         {
-            "attacker_msg": "In the clinch, you slam an elbow into {target_name}'s temple.",
-            "victim_msg": "In the clinch, {attacker_name} slams an elbow into your temple!",
-            "observer_msg": "In the clinch, {attacker_name} slams an elbow into {target_name}'s temple."
+            "attacker_msg": "In the clinch, you slam an elbow into {target_name}'s {hit_location}.",
+            "victim_msg": "In the clinch, {attacker_name} slams an elbow into your {hit_location}!",
+            "observer_msg": "In the clinch, {attacker_name} slams an elbow into {target_name}'s {hit_location}."
         },
         {
             "attacker_msg": "You use your leverage to crush {target_name} against the ground.",
@@ -268,9 +268,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} bites down hard on {target_name} amidst the struggle."
         },
         {
-            "attacker_msg": "You smash {target_name}'s face into the pavement while maintaining the hold.",
-            "victim_msg": "{attacker_name} smashes your face into the pavement while maintaining the hold!",
-            "observer_msg": "{attacker_name} smashes {target_name}'s face into the pavement while maintaining the hold."
+            "attacker_msg": "You smash {target_name}'s {hit_location} into the pavement while maintaining the hold.",
+            "victim_msg": "{attacker_name} smashes your {hit_location} into the pavement while maintaining the hold!",
+            "observer_msg": "{attacker_name} smashes {target_name}'s {hit_location} into the pavement while maintaining the hold."
         },
         {
             "attacker_msg": "Trapped in the grapple, {target_name} takes a nasty shot to the kidney from you.",
@@ -278,9 +278,9 @@ MESSAGES = {
             "observer_msg": "Trapped in the grapple, {target_name} takes a nasty shot to the kidney from {attacker_name}."
         },
         {
-            "attacker_msg": "You wrench {target_name}'s neck, drawing a choked cry.",
-            "victim_msg": "{attacker_name} wrenches your neck, drawing a choked cry from you!",
-            "observer_msg": "{attacker_name} wrenches {target_name}'s neck, drawing a choked cry."
+            "attacker_msg": "You wrench {target_name}'s {hit_location}, drawing a choked cry.",
+            "victim_msg": "{attacker_name} wrenches your {hit_location}, drawing a choked cry from you!",
+            "observer_msg": "{attacker_name} wrenches {target_name}'s {hit_location}, drawing a choked cry."
         },
         {
             "attacker_msg": "With {target_name} immobilized, you land a precise, painful strike.",
@@ -293,9 +293,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} digs their knuckles into a pressure point on {target_name}."
         },
         {
-            "attacker_msg": "A short, sharp elbow from you cracks against {target_name}'s jaw.",
-            "victim_msg": "A short, sharp elbow from {attacker_name} cracks against your jaw!",
-            "observer_msg": "A short, sharp elbow from {attacker_name} cracks against {target_name}'s jaw."
+            "attacker_msg": "A short, sharp elbow from you cracks against {target_name}'s {hit_location}.",
+            "victim_msg": "A short, sharp elbow from {attacker_name} cracks against your {hit_location}!",
+            "observer_msg": "A short, sharp elbow from {attacker_name} cracks against {target_name}'s {hit_location}."
         },
         {
             "attacker_msg": "You use the grapple to slam {target_name} into a nearby object.",
@@ -308,9 +308,9 @@ MESSAGES = {
             "observer_msg": "{target_name} groans as {attacker_name} applies a painful submission hold."
         },
         {
-            "attacker_msg": "You drive your shoulder repeatedly into {target_name}'s chest.",
-            "victim_msg": "{attacker_name} drives their shoulder repeatedly into your chest!",
-            "observer_msg": "{attacker_name} drives their shoulder repeatedly into {target_name}'s chest."
+            "attacker_msg": "You drive your {hit_location} repeatedly into {target_name}'s {hit_location}.",
+            "victim_msg": "{attacker_name} drives their shoulder repeatedly into your {hit_location}!",
+            "observer_msg": "{attacker_name} drives their shoulder repeatedly into {target_name}'s {hit_location}."
         },
         {
             "attacker_msg": "In the tight confines of the grapple, you gouge at {target_name}'s eyes.",
@@ -319,7 +319,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You pull {target_name}'s hair, yanking their head into a knee strike.",
-            "victim_msg": "{attacker_name} pulls your hair, yanking your head into a knee strike!",
+            "victim_msg": "{attacker_name} pulls your hair, yanking your {hit_location} into a knee strike!",
             "observer_msg": "{attacker_name} pulls {target_name}'s hair, yanking their head into a knee strike."
         },
         {

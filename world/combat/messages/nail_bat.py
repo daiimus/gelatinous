@@ -26,7 +26,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slams the bat against the ground once, spikes digging into the floor with a hungry sound."
         },
         {
-            'attacker_msg': "You tilt your head and smirk, bat held low like an afterthought. The nails are not.",
+            'attacker_msg': "You tilt your {hit_location} and smirk, bat held low like an afterthought. The nails are not.",
             'victim_msg': "{attacker_name} tilts their head and smirks, bat held low like an afterthought. The nails are not.",
             'observer_msg': "{attacker_name} tilts their head and smirks, bat held low like an afterthought. The nails are not."
         },
@@ -36,12 +36,12 @@ MESSAGES = {
             'observer_msg': "A grunt escapes {attacker_name} as they lift the bat high and take a low stance, ready to bring the pain."
         },
         {
-            'attacker_msg': "You crack your neck to one side, then the other, before raising the nail-studded bat to chest level.",
+            'attacker_msg': "You crack your {hit_location} to one side, then the other, before raising the nail-studded bat to chest level.",
             'victim_msg': "{attacker_name} cracks their neck to one side, then the other, before raising the nail-studded bat to chest level.",
             'observer_msg': "{attacker_name} cracks their neck to one side, then the other, before raising the nail-studded bat to chest level."
         },
         {
-            'attacker_msg': "You rest the nail bat against your shoulder, tapping the head in a slow, rhythmic beat of what's to come.",
+            'attacker_msg': "You rest the nail bat against your {hit_location}, tapping the head in a slow, rhythmic beat of what's to come.",
             'victim_msg': "{attacker_name} rests the nail bat against their shoulder, tapping the head in a slow, rhythmic beat of what's to come.",
             'observer_msg': "{attacker_name} rests the nail bat against their shoulder, tapping the head in a slow, rhythmic beat of what's to come."
         },
@@ -71,7 +71,7 @@ MESSAGES = {
             'observer_msg': "Nails clink against stone as {attacker_name} drags the bat forward like a butcher with a trophy."
         },
         {
-            'attacker_msg': "You lift the bat over your head, letting the nails catch the light like tiny fangs.",
+            'attacker_msg': "You lift the bat over your {hit_location}, letting the nails catch the light like tiny fangs.",
             'victim_msg': "{attacker_name} lifts the bat over their head, letting the nails catch the light like tiny fangs.",
             'observer_msg': "{attacker_name} lifts the bat over their head, letting the nails catch the light like tiny fangs."
         },
@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "With a casual swing, {attacker_name} warms up the bat on the air, testing its thirst."
         },
         {
-            'attacker_msg': "You step in, dragging the bat across your shoulder like a war drum stick.",
+            'attacker_msg': "You step in, dragging the bat across your {hit_location} like a war drum stick.",
             'victim_msg': "{attacker_name} steps in, dragging the bat across their shoulder like a war drum stick.",
             'observer_msg': "{attacker_name} steps in, dragging the bat across their shoulder like a war drum stick."
         },
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "You swing hard but find only air, the bat whistling past {target_name}'s head.",
-            'victim_msg': "{attacker_name} swings hard but finds only air, the bat whistling past your head.",
-            'observer_msg': "{attacker_name} swings hard but finds only air, the bat whistling past {target_name}'s head."
+            'attacker_msg': "You swing hard but find only air, the bat whistling past {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name} swings hard but finds only air, the bat whistling past your {hit_location}.",
+            'observer_msg': "{attacker_name} swings hard but finds only air, the bat whistling past {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "Nails scrape the wall behind {target_name}, a shower of sparks chasing their dodge.",
@@ -457,24 +457,24 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "The bat lands square in {target_name}'s temple. They crumple like wet paper, skull caved inward.",
-            'victim_msg': "The bat lands square in your temple. You crumple like wet paper, skull caved inward.",
-            'observer_msg': "The bat lands square in {target_name}'s temple. They crumple like wet paper, skull caved inward."
+            'attacker_msg': "The bat lands square in {target_name}'s {hit_location}. They crumple like wet paper, skull caved inward.",
+            'victim_msg': "The bat lands square in your {hit_location}. You crumple like wet paper, skull caved inward.",
+            'observer_msg': "The bat lands square in {target_name}'s {hit_location}. They crumple like wet paper, skull caved inward."
         },
         {
-            'attacker_msg': "A jagged arc crushes {target_name}'s chest. Ribs splinter. Breathing stops.",
-            'victim_msg': "A jagged arc crushes your chest. Ribs splinter. Breathing stops.",
-            'observer_msg': "A jagged arc crushes {target_name}'s chest. Ribs splinter. Breathing stops."
+            'attacker_msg': "A jagged arc crushes {target_name}'s {hit_location}. Ribs splinter. Breathing stops.",
+            'victim_msg': "A jagged arc crushes your {hit_location}. Ribs splinter. Breathing stops.",
+            'observer_msg': "A jagged arc crushes {target_name}'s {hit_location}. Ribs splinter. Breathing stops."
         },
         {
-            'attacker_msg': "The nails punch into {target_name}'s face and stay there. They fall, still twitching.",
-            'victim_msg': "The nails punch into your face and stay there. You fall, still twitching.",
-            'observer_msg': "The nails punch into {target_name}'s face and stay there. They fall, still twitching."
+            'attacker_msg': "The nails punch into {target_name}'s {hit_location} and stay there. They fall, still twitching.",
+            'victim_msg': "The nails punch into your {hit_location} and stay there. You fall, still twitching.",
+            'observer_msg': "The nails punch into {target_name}'s {hit_location} and stay there. They fall, still twitching."
         },
         {
-            'attacker_msg': "A low swing caves in {target_name}'s knee—then a second shatters their spine. Done.",
-            'victim_msg': "A low swing caves in your knee—then a second shatters your spine. Done.",
-            'observer_msg': "A low swing caves in {target_name}'s knee—then a second shatters their spine. Done."
+            'attacker_msg': "A low swing caves in {target_name}'s {hit_location}—then a second shatters their spine. Done.",
+            'victim_msg': "A low swing caves in your {hit_location}—then a second shatters your {hit_location}. Done.",
+            'observer_msg': "A low swing caves in {target_name}'s {hit_location}—then a second shatters their spine. Done."
         },
         {
             'attacker_msg': "You plant the bat into {target_name}'s gut and lift. Guts trail after.",
@@ -492,14 +492,14 @@ MESSAGES = {
             'observer_msg': "The bat lands with a final, echoing thud. {target_name} stops moving. The blood doesn't."
         },
         {
-            'attacker_msg': "A sideways smash unhinges {target_name}'s jaw. Then the lights go out.",
-            'victim_msg': "A sideways smash unhinges your jaw. Then the lights go out.",
-            'observer_msg': "A sideways smash unhinges {target_name}'s jaw. Then the lights go out."
+            'attacker_msg': "A sideways smash unhinges {target_name}'s {hit_location}. Then the lights go out.",
+            'victim_msg': "A sideways smash unhinges your {hit_location}. Then the lights go out.",
+            'observer_msg': "A sideways smash unhinges {target_name}'s {hit_location}. Then the lights go out."
         },
         {
-            'attacker_msg': "Nails embed deep into {target_name}'s chest. You twist. The scream dies fast.",
-            'victim_msg': "Nails embed deep into your chest. {attacker_name} twists. The scream dies fast.",
-            'observer_msg': "Nails embed deep into {target_name}'s chest. {attacker_name} twists. The scream dies fast."
+            'attacker_msg': "Nails embed deep into {target_name}'s {hit_location}. You twist. The scream dies fast.",
+            'victim_msg': "Nails embed deep into your {hit_location}. {attacker_name} twists. The scream dies fast.",
+            'observer_msg': "Nails embed deep into {target_name}'s {hit_location}. {attacker_name} twists. The scream dies fast."
         },
         {
             'attacker_msg': "The blow knocks {target_name}'s feet out from under them—along with their last breath.",
@@ -507,9 +507,9 @@ MESSAGES = {
             'observer_msg': "The blow knocks {target_name}'s feet out from under them—along with their last breath."
         },
         {
-            'attacker_msg': "With a grunt, you drive the bat into {target_name}'s throat. They gargle, then collapse.",
-            'victim_msg': "With a grunt, {attacker_name} drives the bat into your throat. You gargle, then collapse.",
-            'observer_msg': "With a grunt, {attacker_name} drives the bat into {target_name}'s throat. They gargle, then collapse."
+            'attacker_msg': "With a grunt, you drive the bat into {target_name}'s {hit_location}. They gargle, then collapse.",
+            'victim_msg': "With a grunt, {attacker_name} drives the bat into your {hit_location}. You gargle, then collapse.",
+            'observer_msg': "With a grunt, {attacker_name} drives the bat into {target_name}'s {hit_location}. They gargle, then collapse."
         },
         {
             'attacker_msg': "The bat descends. {target_name} doesn't rise.",
@@ -517,9 +517,9 @@ MESSAGES = {
             'observer_msg': "The bat descends. {target_name} doesn't rise."
         },
         {
-            'attacker_msg': "One clean arc takes the top half of {target_name}'s skull off like a lid.",
-            'victim_msg': "One clean arc takes the top half of your skull off like a lid.",
-            'observer_msg': "One clean arc takes the top half of {target_name}'s skull off like a lid."
+            'attacker_msg': "One clean arc takes the top half of {target_name}'s {hit_location} off like a lid.",
+            'victim_msg': "One clean arc takes the top half of your {hit_location} off like a lid.",
+            'observer_msg': "One clean arc takes the top half of {target_name}'s {hit_location} off like a lid."
         },
         {
             'attacker_msg': "You swing three times. The last connects. {target_name} drops in pieces.",
@@ -542,9 +542,9 @@ MESSAGES = {
             'observer_msg': "The impact is so severe {target_name} bounces off the wall—dead midair."
         },
         {
-            'attacker_msg': "A single vertical blow collapses {target_name}'s spine like kindling.",
-            'victim_msg': "A single vertical blow collapses your spine like kindling.",
-            'observer_msg': "A single vertical blow collapses {target_name}'s spine like kindling."
+            'attacker_msg': "A single vertical blow collapses {target_name}'s {hit_location} like kindling.",
+            'victim_msg': "A single vertical blow collapses your {hit_location} like kindling.",
+            'observer_msg': "A single vertical blow collapses {target_name}'s {hit_location} like kindling."
         },
         {
             'attacker_msg': "The floor catches {target_name} gently. The bat was not so kind.",
@@ -557,9 +557,9 @@ MESSAGES = {
             'observer_msg': "A splatter, a twitch, and stillness. {attacker_name} doesn't even look down."
         },
         {
-            'attacker_msg': "The nails find {target_name}'s heart. There's a moment. Then just silence.",
-            'victim_msg': "The nails find your heart. There's a moment. Then just silence.",
-            'observer_msg': "The nails find {target_name}'s heart. There's a moment. Then just silence."
+            'attacker_msg': "The nails find {target_name}'s {hit_location}. There's a moment. Then just silence.",
+            'victim_msg': "The nails find your {hit_location}. There's a moment. Then just silence.",
+            'observer_msg': "The nails find {target_name}'s {hit_location}. There's a moment. Then just silence."
         },
         {
             'attacker_msg': "You step away. {target_name} stays down. Permanently.",
@@ -573,13 +573,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A whirling swing removes {target_name}'s ear—and most of their brain.",
-            'victim_msg': "A whirling swing removes your ear—and most of your brain.",
+            'victim_msg': "A whirling swing removes your ear—and most of your {hit_location}.",
             'observer_msg': "A whirling swing removes {target_name}'s ear—and most of their brain."
         },
         {
-            'attacker_msg': "The bat splits {target_name}'s head like a melon, then some.",
-            'victim_msg': "The bat splits your head like a melon, then some.",
-            'observer_msg': "The bat splits {target_name}'s head like a melon, then some."
+            'attacker_msg': "The bat splits {target_name}'s {hit_location} like a melon, then some.",
+            'victim_msg': "The bat splits your {hit_location} like a melon, then some.",
+            'observer_msg': "The bat splits {target_name}'s {hit_location} like a melon, then some."
         },
         {
             'attacker_msg': "The final hit echoes for a long time. {target_name} doesn't hear it.",

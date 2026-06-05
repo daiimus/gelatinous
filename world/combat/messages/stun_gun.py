@@ -76,7 +76,7 @@ MESSAGES = {
             'observer_msg': "The stun gun crackles in rhythm with {attacker_name}'s heartbeat. A duet of malice."
         },
         {
-            'attacker_msg': "The stun gun hums to life in your hand, eager and impatient.",
+            'attacker_msg': "The stun gun hums to life in your {hit_location}, eager and impatient.",
             'victim_msg': "The stun gun hums to life in {attacker_name}'s hand, eager and impatient.",
             'observer_msg': "The stun gun hums to life in {attacker_name}'s hand, eager and impatient."
         },
@@ -179,7 +179,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A tight press to the base of the skull ends coordination. {target_name} folds.",
-            'victim_msg': "A tight press to the base of your skull ends coordination. You fold.",
+            'victim_msg': "A tight press to the base of your {hit_location} ends coordination. You fold.",
             'observer_msg': "A tight press to the base of the skull ends coordination. {target_name} folds."
         },
         {
@@ -288,9 +288,9 @@ MESSAGES = {
             'observer_msg': "Voltage cascades down {target_name}'s {hit_location}. The weapon clatters away."
         },
         {
-            'attacker_msg': "Voltage floods the {hit_location} cavity. {target_name} convulses, then crumples.",
-            'victim_msg': "Voltage floods your {hit_location} cavity. You convulse, then crumple.",
-            'observer_msg': "Voltage floods the {hit_location} cavity. {target_name} convulses, then crumples."
+            'attacker_msg': "Voltage floods the chest cavity. {target_name} convulses, then crumples.",
+            'victim_msg': "Voltage floods your chest cavity. You convulse, then crumple.",
+            'observer_msg': "Voltage floods the chest cavity. {target_name} convulses, then crumples."
         },
         {
             'attacker_msg': "Voltage pours into the {hit_location}. {target_name} staggers, then drops hard.",
@@ -310,9 +310,9 @@ MESSAGES = {
             'observer_msg': "A desperate jab glances off a bench. Static crackles — not pain."
         },
         {
-            'attacker_msg': "A jolt erupts an inch from {target_name}'s arm. Close isn't enough.",
-            'victim_msg': "A jolt erupts an inch from your arm. Close isn't enough.",
-            'observer_msg': "A jolt erupts an inch from {target_name}'s arm. Close isn't enough."
+            'attacker_msg': "A jolt erupts an inch from {target_name}'s {hit_location}. Close isn't enough.",
+            'victim_msg': "A jolt erupts an inch from your {hit_location}. Close isn't enough.",
+            'observer_msg': "A jolt erupts an inch from {target_name}'s {hit_location}. Close isn't enough."
         },
         {
             'attacker_msg': "A mistimed strike hits a railing. Sparks bite steel instead of skin.",
@@ -458,7 +458,7 @@ MESSAGES = {
     'kill': [
         {
             'attacker_msg': "A brutal hit to the chest. The body shakes once — then never again.",
-            'victim_msg': "A brutal hit to your chest. Your body shakes once — then never again.",
+            'victim_msg': "A brutal hit to your {hit_location}. Your body shakes once — then never again.",
             'observer_msg': "A brutal hit to the chest. The body shakes once — then never again."
         },
         {
@@ -468,7 +468,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A direct hit to the chest. The body spasms, jerks — then doesn't move again.",
-            'victim_msg': "A direct hit to your chest. Your body spasms, jerks — then doesn't move again.",
+            'victim_msg': "A direct hit to your {hit_location}. Your body spasms, jerks — then doesn't move again.",
             'observer_msg': "A direct hit to the chest. The body spasms, jerks — then doesn't move again."
         },
         {
@@ -478,22 +478,22 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A sharp jab to the throat ends with smoke and silence.",
-            'victim_msg': "A sharp jab to your throat ends with smoke and silence.",
+            'victim_msg': "A sharp jab to your {hit_location} ends with smoke and silence.",
             'observer_msg': "A sharp jab to the throat ends with smoke and silence."
         },
         {
             'attacker_msg': "Electricity dances across the spine. {target_name} seizes, then slumps hard.",
-            'victim_msg': "Electricity dances across your spine. You seize, then slump hard.",
+            'victim_msg': "Electricity dances across your {hit_location}. You seize, then slump hard.",
             'observer_msg': "Electricity dances across the spine. {target_name} seizes, then slumps hard."
         },
         {
             'attacker_msg': "Electricity roars through the spine. {target_name} drops mid-convulsion.",
-            'victim_msg': "Electricity roars through your spine. You drop mid-convulsion.",
+            'victim_msg': "Electricity roars through your {hit_location}. You drop mid-convulsion.",
             'observer_msg': "Electricity roars through the spine. {target_name} drops mid-convulsion."
         },
         {
             'attacker_msg': "One final burst floods the brain. The eyes go glassy. The rest is still.",
-            'victim_msg': "One final burst floods your brain. Your eyes go glassy. The rest is still.",
+            'victim_msg': "One final burst floods your {hit_location}. Your eyes go glassy. The rest is still.",
             'observer_msg': "One final burst floods the brain. The eyes go glassy. The rest is still."
         },
         {
@@ -513,7 +513,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "Sparks bloom against the skull. When it's done, so is {target_name}.",
-            'victim_msg': "Sparks bloom against your skull. When it's done, so are you.",
+            'victim_msg': "Sparks bloom against your {hit_location}. When it's done, so are you.",
             'observer_msg': "Sparks bloom against the skull. When it's done, so is {target_name}."
         },
         {
@@ -523,17 +523,17 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The arc snaps across the temple. {target_name} seizes, then slumps against silence.",
-            'victim_msg': "The arc snaps across your temple. You seize, then slump against silence.",
+            'victim_msg': "The arc snaps across your {hit_location}. You seize, then slump against silence.",
             'observer_msg': "The arc snaps across the temple. {target_name} seizes, then slumps against silence."
         },
         {
-            'attacker_msg': "The charge rips through {target_name}'s head. Smoke curls. Nothing else moves.",
-            'victim_msg': "The charge rips through your head. Smoke curls. Nothing else moves.",
-            'observer_msg': "The charge rips through {target_name}'s head. Smoke curls. Nothing else moves."
+            'attacker_msg': "The charge rips through {target_name}'s {hit_location}. Smoke curls. Nothing else moves.",
+            'victim_msg': "The charge rips through your {hit_location}. Smoke curls. Nothing else moves.",
+            'observer_msg': "The charge rips through {target_name}'s {hit_location}. Smoke curls. Nothing else moves."
         },
         {
             'attacker_msg': "The current arcs into the heart. The beat stutters. Then stops.",
-            'victim_msg': "The current arcs into your heart. The beat stutters. Then stops.",
+            'victim_msg': "The current arcs into your {hit_location}. The beat stutters. Then stops.",
             'observer_msg': "The current arcs into the heart. The beat stutters. Then stops."
         },
         {
@@ -543,43 +543,43 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The prongs dig into the neck. The scream warps, then cuts off entirely.",
-            'victim_msg': "The prongs dig into your neck. Your scream warps, then cuts off entirely.",
+            'victim_msg': "The prongs dig into your {hit_location}. Your scream warps, then cuts off entirely.",
             'observer_msg': "The prongs dig into the neck. The scream warps, then cuts off entirely."
         },
         {
             'attacker_msg': "The stun gun locks against the heart. One long squeeze — and {target_name} goes still forever.",
-            'victim_msg': "The stun gun locks against your heart. One long squeeze — and you go still forever.",
+            'victim_msg': "The stun gun locks against your {hit_location}. One long squeeze — and you go still forever.",
             'observer_msg': "The stun gun locks against the heart. One long squeeze — and {target_name} goes still forever."
         },
         {
             'attacker_msg': "The stun gun presses to the temple. The shock shuts down everything. {target_name} slumps.",
-            'victim_msg': "The stun gun presses to your temple. The shock shuts down everything. You slump.",
+            'victim_msg': "The stun gun presses to your {hit_location}. The shock shuts down everything. You slump.",
             'observer_msg': "The stun gun presses to the temple. The shock shuts down everything. {target_name} slumps."
         },
         {
             'attacker_msg': "The stun gun rests against the jaw. The convulsions stop mid-sentence.",
-            'victim_msg': "The stun gun rests against your jaw. Your convulsions stop mid-sentence.",
+            'victim_msg': "The stun gun rests against your {hit_location}. Your convulsions stop mid-sentence.",
             'observer_msg': "The stun gun rests against the jaw. The convulsions stop mid-sentence."
         },
         {
             'attacker_msg': "The weapon buzzes through the spine. {target_name} twitches, stiffens, and falls like a snapped wire.",
-            'victim_msg': "The weapon buzzes through your spine. You twitch, stiffen, and fall like a snapped wire.",
+            'victim_msg': "The weapon buzzes through your {hit_location}. You twitch, stiffen, and fall like a snapped wire.",
             'observer_msg': "The weapon buzzes through the spine. {target_name} twitches, stiffens, and falls like a snapped wire."
         },
         {
-            'attacker_msg': "The zap is held too long. {target_name}'s heart forgets how to beat.",
-            'victim_msg': "The zap is held too long. Your heart forgets how to beat.",
-            'observer_msg': "The zap is held too long. {target_name}'s heart forgets how to beat."
+            'attacker_msg': "The zap is held too long. {target_name}'s {hit_location} forgets how to beat.",
+            'victim_msg': "The zap is held too long. Your {hit_location} forgets how to beat.",
+            'observer_msg': "The zap is held too long. {target_name}'s {hit_location} forgets how to beat."
         },
         {
             'attacker_msg': "Voltage pours through the chest. The breath catches — and never comes back.",
-            'victim_msg': "Voltage pours through your chest. Your breath catches — and never comes back.",
+            'victim_msg': "Voltage pours through your {hit_location}. Your breath catches — and never comes back.",
             'observer_msg': "Voltage pours through the chest. The breath catches — and never comes back."
         },
         {
-            'attacker_msg': "You drive the stun gun into {target_name}'s throat. One long jolt. One final breath.",
-            'victim_msg': "{attacker_name} drives the stun gun into your throat. One long jolt. One final breath.",
-            'observer_msg': "{attacker_name} drives the stun gun into {target_name}'s throat. One long jolt. One final breath."
+            'attacker_msg': "You drive the stun gun into {target_name}'s {hit_location}. One long jolt. One final breath.",
+            'victim_msg': "{attacker_name} drives the stun gun into your {hit_location}. One long jolt. One final breath.",
+            'observer_msg': "{attacker_name} drives the stun gun into {target_name}'s {hit_location}. One long jolt. One final breath."
         },
         {
             'attacker_msg': "You hold the current until even the twitching runs out.",
@@ -603,7 +603,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You press the arc into the skull. The lights flicker — in the room and behind {target_name}'s eyes.",
-            'victim_msg': "{attacker_name} presses the arc into your skull. The lights flicker — in the room and behind your eyes.",
+            'victim_msg': "{attacker_name} presses the arc into your {hit_location}. The lights flicker — in the room and behind your eyes.",
             'observer_msg': "{attacker_name} presses the arc into the skull. The lights flicker — in the room and behind {target_name}'s eyes."
         }
     ]

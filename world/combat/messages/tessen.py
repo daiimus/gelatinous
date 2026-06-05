@@ -56,7 +56,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} flicks the fan open with a snap, its blades shimmering like a predator’s smile.",
         },
         {
-            "attacker_msg": "The fan arcs in your hand, each blade a note in a deadly symphony.",
+            "attacker_msg": "The fan arcs in your {hit_location}, each blade a note in a deadly symphony.",
             "victim_msg": "The fan arcs in {attacker_name}'s hand, each blade a note in a deadly symphony.",
             "observer_msg": "The fan arcs in {attacker_name}'s hand, each blade a note in a deadly symphony.",
         },
@@ -93,7 +93,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} whirls in a sudden spin, steel petals carving a sharp line across {target_name}.",
         },
         {
-            "attacker_msg": "The fan dances in your hand, its edge kissing {target_name}'s {hit_location} with cold steel.",
+            "attacker_msg": "The fan dances in your {hit_location}, its edge kissing {target_name}'s {hit_location} with cold steel.",
             "victim_msg": "The fan dances in {attacker_name}'s hand, its edge kissing your {hit_location} with cold steel.",
             "observer_msg": "The fan dances in {attacker_name}'s hand, its edge kissing {target_name}'s {hit_location} with cold steel.",
         },

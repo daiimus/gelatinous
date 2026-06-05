@@ -126,12 +126,12 @@ MESSAGES = {
             "observer_msg": "{attacker_name} holds the knife in both hands for a moment. Then just one. That's all it takes."
         },
         {
-            "attacker_msg": "You pull the combat knife from a sheath strapped to your leg. It moves like part of you.",
+            "attacker_msg": "You pull the combat knife from a sheath strapped to your {hit_location}. It moves like part of you.",
             "victim_msg": "{attacker_name} pulls the combat knife from a sheath strapped to their leg. It moves like part of them.",
             "observer_msg": "{attacker_name} pulls the combat knife from a sheath strapped to their leg. It moves like part of them."
         },
         {
-            "attacker_msg": "You roll your wrist once, knife gliding effortlessly between fingers. A warm-up for blood.",
+            "attacker_msg": "You roll your {hit_location} once, knife gliding effortlessly between fingers. A warm-up for blood.",
             "victim_msg": "{attacker_name} rolls their wrist once, knife gliding effortlessly between fingers. A warm-up for blood.",
             "observer_msg": "{attacker_name} rolls their wrist once, knife gliding effortlessly between fingers. A warm-up for blood."
         },
@@ -229,7 +229,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The edge sinks into the {hit_location}. {target_name} howls as their arm falls slack.",
-            "victim_msg": "The edge sinks into the {hit_location}. You howl as your arm falls slack.",
+            "victim_msg": "The edge sinks into the {hit_location}. You howl as your {hit_location} falls slack.",
             "observer_msg": "The edge sinks into the {hit_location}. {target_name} howls as their arm falls slack."
         },
         {
@@ -335,9 +335,9 @@ MESSAGES = {
             "observer_msg": "A slash across space, missing by inches but carrying all the threat."
         },
         {
-            "attacker_msg": "A slash whistles past {target_name}'s face, close enough to blur their vision.",
-            "victim_msg": "A slash whistles past your face, close enough to blur your vision.",
-            "observer_msg": "A slash whistles past {target_name}'s face, close enough to blur their vision."
+            "attacker_msg": "A slash whistles past {target_name}'s {hit_location}, close enough to blur their vision.",
+            "victim_msg": "A slash whistles past your {hit_location}, close enough to blur your vision.",
+            "observer_msg": "A slash whistles past {target_name}'s {hit_location}, close enough to blur their vision."
         },
         {
             "attacker_msg": "One overextended jab gives {target_name} the second they needed to retreat.",
@@ -425,9 +425,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} goes low — too low. The knife hits tile and glances away."
         },
         {
-            "attacker_msg": "You lunge and miss, the knife whistling past {target_name}'s ribs.",
-            "victim_msg": "{attacker_name} lunges and misses, the knife whistling past your ribs.",
-            "observer_msg": "{attacker_name} lunges and misses, the knife whistling past {target_name}'s ribs."
+            "attacker_msg": "You lunge and miss, the knife whistling past {target_name}'s {hit_location}.",
+            "victim_msg": "{attacker_name} lunges and misses, the knife whistling past your {hit_location}.",
+            "observer_msg": "{attacker_name} lunges and misses, the knife whistling past {target_name}'s {hit_location}."
         },
         {
             "attacker_msg": "You stab too early. The knife grazes nothing. {target_name} grins and steps back.",
@@ -527,9 +527,9 @@ MESSAGES = {
             "observer_msg": "Steel slides into the base of the skull. {target_name}'s body freezes, then falls."
         },
         {
-            "attacker_msg": "The blade drives deep into {target_name}'s heart. The collapse is quiet — definitive.",
-            "victim_msg": "The blade drives deep into your heart. The collapse is quiet — definitive.",
-            "observer_msg": "The blade drives deep into {target_name}'s heart. The collapse is quiet — definitive."
+            "attacker_msg": "The blade drives deep into {target_name}'s {hit_location}. The collapse is quiet — definitive.",
+            "victim_msg": "The blade drives deep into your {hit_location}. The collapse is quiet — definitive.",
+            "observer_msg": "The blade drives deep into {target_name}'s {hit_location}. The collapse is quiet — definitive."
         },
         {
             "attacker_msg": "The blade lands in the base of the skull. You don't pull it out until you're sure.",
@@ -547,9 +547,9 @@ MESSAGES = {
             "observer_msg": "The combat knife punches upward under the chin. {target_name} stiffens, then topples backwards."
         },
         {
-            "attacker_msg": "The knife drives into {target_name}'s heart. No theatrics. Just collapse.",
-            "victim_msg": "The knife drives into your heart. No theatrics. Just collapse.",
-            "observer_msg": "The knife drives into {target_name}'s heart. No theatrics. Just collapse."
+            "attacker_msg": "The knife drives into {target_name}'s {hit_location}. No theatrics. Just collapse.",
+            "victim_msg": "The knife drives into your {hit_location}. No theatrics. Just collapse.",
+            "observer_msg": "The knife drives into {target_name}'s {hit_location}. No theatrics. Just collapse."
         },
         {
             "attacker_msg": "The knife enters under the jaw and exits through the tongue. Words die with it.",

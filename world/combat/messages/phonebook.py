@@ -11,7 +11,7 @@ MESSAGES = {
             'observer_msg': "With a desperate look, {attacker_name} grabs a nearby phonebook, preparing to use its bulk as a weapon."
         },
         {
-            'attacker_msg': "Your hand closes around the spine of a heavy phonebook, its cover crinkling.",
+            'attacker_msg': "Your {hit_location} closes around the spine of a heavy phonebook, its cover crinkling.",
             'victim_msg': "{attacker_name}'s hand closes around the spine of a heavy phonebook, its cover crinkling.",
             'observer_msg': "{attacker_name}'s hand closes around the spine of a heavy phonebook, its cover crinkling."
         },
@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} swings the phonebook experimentally, its weight and unwieldiness apparent."
         },
         {
-            'attacker_msg': "Dust and the faint smell of old paper emanate from the phonebook in your hand.",
+            'attacker_msg': "Dust and the faint smell of old paper emanate from the phonebook in your {hit_location}.",
             'victim_msg': "Dust and the faint smell of old paper emanate from the phonebook in {attacker_name}'s hand.",
             'observer_msg': "Dust and the faint smell of old paper emanate from the phonebook in {attacker_name}'s hand."
         },
@@ -61,12 +61,12 @@ MESSAGES = {
             'observer_msg': "The air around the phonebook seems to thrum with the threat of sudden, dull, and painful impacts."
         },
         {
-            'attacker_msg': "Your eyes are narrowed, sighting along the edge of the phonebook towards {target_name}'s head.",
-            'victim_msg': "{attacker_name}'s eyes are narrowed, sighting along the edge of the phonebook towards your head.",
-            'observer_msg': "{attacker_name}'s eyes are narrowed, sighting along the edge of the phonebook towards {target_name}'s head."
+            'attacker_msg': "Your eyes are narrowed, sighting along the edge of the phonebook towards {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name}'s eyes are narrowed, sighting along the edge of the phonebook towards your {hit_location}.",
+            'observer_msg': "{attacker_name}'s eyes are narrowed, sighting along the edge of the phonebook towards {target_name}'s {hit_location}."
         },
         {
-            'attacker_msg': "The phonebook feels surprisingly heavy and unforgiving in your hand, a tool of pure, blunt desperation.",
+            'attacker_msg': "The phonebook feels surprisingly heavy and unforgiving in your {hit_location}, a tool of pure, blunt desperation.",
             'victim_msg': "The phonebook feels surprisingly heavy and unforgiving in {attacker_name}'s hand, a tool of pure, blunt desperation.",
             'observer_msg': "The phonebook feels surprisingly heavy and unforgiving in {attacker_name}'s hand, a tool of pure, blunt desperation."
         },
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your phonebook whooshes through the air, its heavy mass narrowly missing {target_name}'s head.",
-            'victim_msg': "{attacker_name}'s phonebook whooshes through the air, its heavy mass narrowly missing your head.",
-            'observer_msg': "{attacker_name}'s phonebook whooshes through the air, its heavy mass narrowly missing {target_name}'s head."
+            'attacker_msg': "Your phonebook whooshes through the air, its heavy mass narrowly missing {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name}'s phonebook whooshes through the air, its heavy mass narrowly missing your {hit_location}.",
+            'observer_msg': "{attacker_name}'s phonebook whooshes through the air, its heavy mass narrowly missing {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "{target_name} stumbles back, avoiding the desperate swing of your phonebook by a hair's breadth, pages fluttering.",
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick retreat from {target_name} leaves {attacker_name}'s phonebook to impact nothing but air with a soft *whoomph*."
         },
         {
-            'attacker_msg': "The phonebook feels dangerously unwieldy in your hand as the intended crushing blow fails to connect.",
+            'attacker_msg': "The phonebook feels dangerously unwieldy in your {hit_location} as the intended crushing blow fails to connect.",
             'victim_msg': "The phonebook feels dangerously unwieldy in {attacker_name}'s hand as the intended crushing blow fails to connect.",
             'observer_msg': "The phonebook feels dangerously unwieldy in {attacker_name}'s hand as the intended crushing blow fails to connect."
         },
@@ -395,9 +395,9 @@ MESSAGES = {
             'observer_msg': "A growl of frustration from {attacker_name} as their phonebook attack is evaded by a nimble {target_name}."
         },
         {
-            'attacker_msg': "The phonebook kicks up dirt beside {target_name}'s foot, but draws no blood, only a cloud of dust.",
-            'victim_msg': "The phonebook kicks up dirt beside your foot, but draws no blood, only a cloud of dust.",
-            'observer_msg': "The phonebook kicks up dirt beside {target_name}'s foot, but draws no blood, only a cloud of dust."
+            'attacker_msg': "The phonebook kicks up dirt beside {target_name}'s {hit_location}, but draws no blood, only a cloud of dust.",
+            'victim_msg': "The phonebook kicks up dirt beside your {hit_location}, but draws no blood, only a cloud of dust.",
+            'observer_msg': "The phonebook kicks up dirt beside {target_name}'s {hit_location}, but draws no blood, only a cloud of dust."
         },
         {
             'attacker_msg': "Your straightforward attack with the phonebook is anticipated and dodged by {target_name}, who looks almost amused.",
@@ -457,24 +457,24 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "You repeatedly smash the phonebook into {target_name}'s temple; they collapse, skull audibly cracking under the relentless, dull blows, succumbing to massive trauma.",
-            'victim_msg': "{attacker_name} repeatedly smashes the phonebook into your temple; you collapse, skull audibly cracking under the relentless, dull blows, succumbing to massive trauma.",
-            'observer_msg': "{attacker_name} repeatedly smashes the phonebook into {target_name}'s temple; they collapse, skull audibly cracking under the relentless, dull blows, succumbing to massive trauma."
+            'attacker_msg': "You repeatedly smash the phonebook into {target_name}'s {hit_location}; they collapse, skull audibly cracking under the relentless, dull blows, succumbing to massive trauma.",
+            'victim_msg': "{attacker_name} repeatedly smashes the phonebook into your {hit_location}; you collapse, skull audibly cracking under the relentless, dull blows, succumbing to massive trauma.",
+            'observer_msg': "{attacker_name} repeatedly smashes the phonebook into {target_name}'s {hit_location}; they collapse, skull audibly cracking under the relentless, dull blows, succumbing to massive trauma."
         },
         {
-            'attacker_msg': "The phonebook, driven again and again into {target_name}'s chest, crushes ribs and pulps organs, and they fall silent, life extinguished by blunt force.",
-            'victim_msg': "The phonebook, driven again and again into your chest, crushes ribs and pulps organs, and you fall silent, life extinguished by blunt force.",
-            'observer_msg': "The phonebook, driven again and again into {target_name}'s chest, crushes ribs and pulps organs, and they fall silent, life extinguished by blunt force."
+            'attacker_msg': "The phonebook, driven again and again into {target_name}'s {hit_location}, crushes ribs and pulps organs, and they fall silent, life extinguished by blunt force.",
+            'victim_msg': "The phonebook, driven again and again into your {hit_location}, crushes ribs and pulps organs, and you fall silent, life extinguished by blunt force.",
+            'observer_msg': "The phonebook, driven again and again into {target_name}'s {hit_location}, crushes ribs and pulps organs, and they fall silent, life extinguished by blunt force."
         },
         {
-            'attacker_msg': "With a final, brutal swing, you bring the phonebook down on {target_name}'s head with a sickening crunch, and they drop, twitching, then still.",
-            'victim_msg': "With a final, brutal swing, {attacker_name} brings the phonebook down on your head with a sickening crunch, and you drop, twitching, then still.",
-            'observer_msg': "With a final, brutal swing, {attacker_name} brings the phonebook down on {target_name}'s head with a sickening crunch, and they drop, twitching, then still."
+            'attacker_msg': "With a final, brutal swing, you bring the phonebook down on {target_name}'s {hit_location} with a sickening crunch, and they drop, twitching, then still.",
+            'victim_msg': "With a final, brutal swing, {attacker_name} brings the phonebook down on your {hit_location} with a sickening crunch, and you drop, twitching, then still.",
+            'observer_msg': "With a final, brutal swing, {attacker_name} brings the phonebook down on {target_name}'s {hit_location} with a sickening crunch, and they drop, twitching, then still."
         },
         {
-            'attacker_msg': "The heavy impact of the phonebook against {target_name}'s throat crushes their windpipe, causing them to asphyxiate in moments under the papery assault.",
-            'victim_msg': "The heavy impact of the phonebook against your throat crushes your windpipe, causing you to asphyxiate in moments under the papery assault.",
-            'observer_msg': "The heavy impact of the phonebook against {target_name}'s throat crushes their windpipe, causing them to asphyxiate in moments under the papery assault."
+            'attacker_msg': "The heavy impact of the phonebook against {target_name}'s {hit_location} crushes their windpipe, causing them to asphyxiate in moments under the papery assault.",
+            'victim_msg': "The heavy impact of the phonebook against your {hit_location} crushes your windpipe, causing you to asphyxiate in moments under the papery assault.",
+            'observer_msg': "The heavy impact of the phonebook against {target_name}'s {hit_location} crushes their windpipe, causing them to asphyxiate in moments under the papery assault."
         },
         {
             'attacker_msg': "You relentlessly bludgeon {target_name} with the phonebook until they slump, lifeless, in a bruised and broken heap.",
@@ -487,14 +487,14 @@ MESSAGES = {
             'observer_msg': "The phonebook, a desperate tool of death, delivers a killing blow as {target_name} is overcome by catastrophic, internal injuries from the repeated bludgeoning."
         },
         {
-            'attacker_msg': "A precise, savage blow with the edge of the phonebook to {target_name}'s spine ends their life with a sickening, dull crack.",
-            'victim_msg': "A precise, savage blow with the edge of the phonebook to your spine ends your life with a sickening, dull crack.",
-            'observer_msg': "A precise, savage blow with the edge of the phonebook to {target_name}'s spine ends their life with a sickening, dull crack."
+            'attacker_msg': "A precise, savage blow with the edge of the phonebook to {target_name}'s {hit_location} ends their life with a sickening, dull crack.",
+            'victim_msg': "A precise, savage blow with the edge of the phonebook to your {hit_location} ends your life with a sickening, dull crack.",
+            'observer_msg': "A precise, savage blow with the edge of the phonebook to {target_name}'s {hit_location} ends their life with a sickening, dull crack."
         },
         {
-            'attacker_msg': "You bring the phonebook down on {target_name}'s face until they stop moving, the features a bruised ruin, life extinguished by the mundane weapon.",
-            'victim_msg': "{attacker_name} brings the phonebook down on your face until you stop moving, the features a bruised ruin, life extinguished by the mundane weapon.",
-            'observer_msg': "{attacker_name} brings the phonebook down on {target_name}'s face until they stop moving, the features a bruised ruin, life extinguished by the mundane weapon."
+            'attacker_msg': "You bring the phonebook down on {target_name}'s {hit_location} until they stop moving, the features a bruised ruin, life extinguished by the mundane weapon.",
+            'victim_msg': "{attacker_name} brings the phonebook down on your {hit_location} until you stop moving, the features a bruised ruin, life extinguished by the mundane weapon.",
+            'observer_msg': "{attacker_name} brings the phonebook down on {target_name}'s {hit_location} until they stop moving, the features a bruised ruin, life extinguished by the mundane weapon."
         },
         {
             'attacker_msg': "The unyielding weight of the phonebook, slammed repeatedly, shatters something vital in {target_name}, who crumples, unmoving.",
@@ -502,9 +502,9 @@ MESSAGES = {
             'observer_msg': "The unyielding weight of the phonebook, slammed repeatedly, shatters something vital in {target_name}, who crumples, unmoving."
         },
         {
-            'attacker_msg': "With a final, desperate act, you use the phonebook to inflict a fatal, crushing wound to {target_name}'s skull.",
-            'victim_msg': "With a final, desperate act, {attacker_name} uses the phonebook to inflict a fatal, crushing wound to your skull.",
-            'observer_msg': "With a final, desperate act, {attacker_name} uses the phonebook to inflict a fatal, crushing wound to {target_name}'s skull."
+            'attacker_msg': "With a final, desperate act, you use the phonebook to inflict a fatal, crushing wound to {target_name}'s {hit_location}.",
+            'victim_msg': "With a final, desperate act, {attacker_name} uses the phonebook to inflict a fatal, crushing wound to your {hit_location}.",
+            'observer_msg': "With a final, desperate act, {attacker_name} uses the phonebook to inflict a fatal, crushing wound to {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "The phonebook, wielded with grim intent, turns {target_name} into a broken mess, their struggles quickly ceasing under the heavy, dull impacts.",
@@ -522,13 +522,13 @@ MESSAGES = {
             'observer_msg': "A merciless, heavy blow with the phonebook to the back of the head, and {target_name} is no more, overcome by the vicious, blunt trauma."
         },
         {
-            'attacker_msg': "The phonebook, now tattered and perhaps bloodied, drops from your hand as {target_name} lies lifeless and broken.",
+            'attacker_msg': "The phonebook, now tattered and perhaps bloodied, drops from your {hit_location} as {target_name} lies lifeless and broken.",
             'victim_msg': "The phonebook, now tattered and perhaps bloodied, drops from {attacker_name}'s hand as you lie lifeless and broken.",
             'observer_msg': "The phonebook, now tattered and perhaps bloodied, drops from {attacker_name}'s hand as {target_name} lies lifeless and broken."
         },
         {
             'attacker_msg': "You ensure {target_name} will not rise by repeatedly smashing their head with the phonebook until it's a bloody pulp.",
-            'victim_msg': "{attacker_name} ensures you will not rise by repeatedly smashing your head with the phonebook until it's a bloody pulp.",
+            'victim_msg': "{attacker_name} ensures you will not rise by repeatedly smashing your {hit_location} with the phonebook until it's a bloody pulp.",
             'observer_msg': "{attacker_name} ensures {target_name} will not rise by repeatedly smashing their head with the phonebook until it's a bloody pulp."
         },
         {
@@ -573,13 +573,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name}'s eyes widen in terror as your phonebook delivers the final, agonizing, crushing blow to their head.",
-            'victim_msg': "Your eyes widen in terror as {attacker_name}'s phonebook delivers the final, agonizing, crushing blow to your head.",
+            'victim_msg': "Your eyes widen in terror as {attacker_name}'s phonebook delivers the final, agonizing, crushing blow to your {hit_location}.",
             'observer_msg': "{target_name}'s eyes widen in terror as {attacker_name}'s phonebook delivers the final, agonizing, crushing blow to their head."
         },
         {
-            'attacker_msg': "A sickening crunch echoes as your phonebook fatally smashes {target_name}'s skull, ending their life.",
-            'victim_msg': "A sickening crunch echoes as {attacker_name}'s phonebook fatally smashes your skull, ending your life.",
-            'observer_msg': "A sickening crunch echoes as {attacker_name}'s phonebook fatally smashes {target_name}'s skull, ending their life."
+            'attacker_msg': "A sickening crunch echoes as your phonebook fatally smashes {target_name}'s {hit_location}, ending their life.",
+            'victim_msg': "A sickening crunch echoes as {attacker_name}'s phonebook fatally smashes your {hit_location}, ending your life.",
+            'observer_msg': "A sickening crunch echoes as {attacker_name}'s phonebook fatally smashes {target_name}'s {hit_location}, ending their life."
         },
         {
             'attacker_msg': "You discard the battered phonebook beside {target_name}'s corpse, a grim testament to its makeshift lethality.",

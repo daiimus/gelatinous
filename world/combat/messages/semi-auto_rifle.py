@@ -61,7 +61,7 @@ SEMI_AUTO_RIFLE_MESSAGES = {
             'observer_msg': "The air is tense as {attacker_name} prepares to fire the semi-automatic rifle, anticipating the sharp *CRACK* and the immediate cycling of the action."
         },
         {
-            'attacker_msg': "Your face is a mask of concentration, finger ready to make multiple, deliberate pulls on the semi-automatic rifle's trigger.",
+            'attacker_msg': "Your {hit_location} is a mask of concentration, finger ready to make multiple, deliberate pulls on the semi-automatic rifle's trigger.",
             'victim_msg': "{attacker_name}'s face is a mask of concentration, finger ready to make multiple, deliberate pulls on the semi-automatic rifle's trigger.",
             'observer_msg': "{attacker_name}'s face is a mask of concentration, finger ready to make multiple, deliberate pulls on the semi-automatic rifle's trigger."
         },
@@ -350,9 +350,9 @@ SEMI_AUTO_RIFLE_MESSAGES = {
             'observer_msg': "{attacker_name} fires the semi-automatic rifle, but their aim is off and {target_name} escapes harm. The rifle cycles, ready again."
         },
         {
-            'attacker_msg': "The semi-automatic rifle's bullet whizzes past {target_name}'s head. The rifle cycles, ejecting the spent case.",
-            'victim_msg': "The semi-automatic rifle's bullet whizzes past your head. The rifle cycles, ejecting the spent case.",
-            'observer_msg': "The semi-automatic rifle's bullet whizzes past {target_name}'s head. The rifle cycles, ejecting the spent case."
+            'attacker_msg': "The semi-automatic rifle's bullet whizzes past {target_name}'s {hit_location}. The rifle cycles, ejecting the spent case.",
+            'victim_msg': "The semi-automatic rifle's bullet whizzes past your {hit_location}. The rifle cycles, ejecting the spent case.",
+            'observer_msg': "The semi-automatic rifle's bullet whizzes past {target_name}'s {hit_location}. The rifle cycles, ejecting the spent case."
         },
         {
             'attacker_msg': "Your semi-automatic rifle shot goes astray, missing {target_name} entirely. The action cycles smoothly.",
@@ -395,9 +395,9 @@ SEMI_AUTO_RIFLE_MESSAGES = {
             'observer_msg': "The semi-automatic rifle barks, but the bullet misses {target_name} completely. The rifle cycles, ready for immediate follow-up."
         },
         {
-            'attacker_msg': "Your shot from the semi-automatic rifle sails over {target_name}'s shoulder. The rifle's action cycles with mechanical precision.",
-            'victim_msg': "{attacker_name}'s shot from the semi-automatic rifle sails over your shoulder. The rifle's action cycles with mechanical precision.",
-            'observer_msg': "{attacker_name}'s shot from the semi-automatic rifle sails over {target_name}'s shoulder. The rifle's action cycles with mechanical precision."
+            'attacker_msg': "Your shot from the semi-automatic rifle sails over {target_name}'s {hit_location}. The rifle's action cycles with mechanical precision.",
+            'victim_msg': "{attacker_name}'s shot from the semi-automatic rifle sails over your {hit_location}. The rifle's action cycles with mechanical precision.",
+            'observer_msg': "{attacker_name}'s shot from the semi-automatic rifle sails over {target_name}'s {hit_location}. The rifle's action cycles with mechanical precision."
         },
         {
             'attacker_msg': "The semi-automatic rifle's bullet misses {target_name}, striking a nearby wall. The rifle ejects and chambers smoothly.",

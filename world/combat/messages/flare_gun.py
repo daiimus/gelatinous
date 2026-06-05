@@ -26,7 +26,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} cocks the hammer or action of the flare gun, its simple mechanism ready to launch a burning projectile."
         },
         {
-            'attacker_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in your hand.",
+            'attacker_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in your {hit_location}.",
             'victim_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in {attacker_name}'s hand.",
             'observer_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in {attacker_name}'s hand."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air seems to still as {attacker_name} prepares to fire the flare gun, anticipating the sudden eruption of light and sound."
         },
         {
-            'attacker_msg': "Your face is set in concentration, finger tightening on the flare gun's trigger.",
+            'attacker_msg': "Your {hit_location} is set in concentration, finger tightening on the flare gun's trigger.",
             'victim_msg': "{attacker_name}'s face is set in concentration, finger tightening on the flare gun's trigger.",
             'observer_msg': "{attacker_name}'s face is set in concentration, finger tightening on the flare gun's trigger."
         },
@@ -305,9 +305,9 @@ MESSAGES = {
     ],
     "miss": [
         {
-            'attacker_msg': "Your flare gun fires with a loud *THUMP*, the fiery projectile streaking past {target_name}'s head and exploding against a far wall.",
-            'victim_msg': "{attacker_name}'s flare gun fires with a loud *THUMP*, the fiery projectile streaking past your head and exploding against a far wall.",
-            'observer_msg': "{attacker_name}'s flare gun fires with a loud *THUMP*, the fiery projectile streaking past {target_name}'s head and exploding against a far wall."
+            'attacker_msg': "Your flare gun fires with a loud *THUMP*, the fiery projectile streaking past {target_name}'s {hit_location} and exploding against a far wall.",
+            'victim_msg': "{attacker_name}'s flare gun fires with a loud *THUMP*, the fiery projectile streaking past your {hit_location} and exploding against a far wall.",
+            'observer_msg': "{attacker_name}'s flare gun fires with a loud *THUMP*, the fiery projectile streaking past {target_name}'s {hit_location} and exploding against a far wall."
         },
         {
             'attacker_msg': "{target_name} dives aside as the flare arcs through the air, impacting the ground nearby and burning fiercely.",
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s flare gun to launch its payload into an empty doorway."
         },
         {
-            'attacker_msg': "The flare gun bucks in your hand as you miss, the recoil throwing off your aim for a follow-up (if you had one).",
+            'attacker_msg': "The flare gun bucks in your {hit_location} as you miss, the recoil throwing off your aim for a follow-up (if you had one).",
             'victim_msg': "The flare gun bucks in {attacker_name}'s hand as they miss, the recoil throwing off their aim for a follow-up (if they had one).",
             'observer_msg': "The flare gun bucks in {attacker_name}'s hand as they miss, the recoil throwing off their aim for a follow-up (if they had one)."
         },
@@ -492,9 +492,9 @@ MESSAGES = {
             'observer_msg': "A precise, savage shot from the flare gun to {target_name}'s exposed throat ends their life in a cloud of smoke and searing, melting agony."
         },
         {
-            'attacker_msg': "You fire the flare into {target_name}'s torso, where it burns uncontrollably until they stop moving, flesh blackened and smoking.",
-            'victim_msg': "{attacker_name} fires the flare into your torso, where it burns uncontrollably until you stop moving, flesh blackened and smoking.",
-            'observer_msg': "{attacker_name} fires the flare into {target_name}'s torso, where it burns uncontrollably until they stop moving, flesh blackened and smoking."
+            'attacker_msg': "You fire the flare into {target_name}'s {hit_location}, where it burns uncontrollably until they stop moving, flesh blackened and smoking.",
+            'victim_msg': "{attacker_name} fires the flare into your {hit_location}, where it burns uncontrollably until you stop moving, flesh blackened and smoking.",
+            'observer_msg': "{attacker_name} fires the flare into {target_name}'s {hit_location}, where it burns uncontrollably until they stop moving, flesh blackened and smoking."
         },
         {
             'attacker_msg': "The unyielding chemical fire from the flare projectile consumes {target_name}, who crumples, unmoving, amidst the spreading flames.",

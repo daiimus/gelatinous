@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air is tense as {attacker_name} prepares to fire the lever-action shotgun, anticipating the powerful *BOOM* and the immediate, fluid cycle of the lever."
         },
         {
-            'attacker_msg': "Your face is set, finger ready on the trigger of the lever-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
+            'attacker_msg': "Your {hit_location} is set, finger ready on the trigger of the lever-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
             'victim_msg': "{attacker_name}'s face is set, finger ready on the trigger of the lever-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
             'observer_msg': "{attacker_name}'s face is set, finger ready on the trigger of the lever-action shotgun, poised to send a cloud of buckshot or a heavy slug."
         },
@@ -346,7 +346,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "{target_name} drops low just as your lever-action shotgun fires, pellets whistling over their head. You cycle the lever methodically, scanning.",
-            'victim_msg': "You drop low just as {attacker_name}'s lever-action shotgun fires, pellets whistling over your head. {attacker_name} cycles the lever methodically, scanning.",
+            'victim_msg': "You drop low just as {attacker_name}'s lever-action shotgun fires, pellets whistling over your {hit_location}. {attacker_name} cycles the lever methodically, scanning.",
             'observer_msg': "{target_name} drops low just as {attacker_name}'s lever-action shotgun fires, pellets whistling over their head. {attacker_name} cycles the lever methodically, scanning."
         },
         {
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s lever-action shotgun to blast a pattern into a wall. {attacker_name} cycles the lever, unflinching, ready to fire again."
         },
         {
-            'attacker_msg': "The lever-action shotgun jumps in your shoulder as you miss. You cycle the lever, chambering a fresh, potent shell, correcting your stance.",
+            'attacker_msg': "The lever-action shotgun jumps in your {hit_location} as you miss. You cycle the lever, chambering a fresh, potent shell, correcting your stance.",
             'victim_msg': "The lever-action shotgun jumps in {attacker_name}'s shoulder as they miss. {attacker_name} cycles the lever, chambering a fresh, potent shell, correcting their stance.",
             'observer_msg': "The lever-action shotgun jumps in {attacker_name}'s shoulder as they miss. {attacker_name} cycles the lever, chambering a fresh, potent shell, correcting their stance."
         },
@@ -462,9 +462,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s lever-action shotgun erupts with a deafening *BOOM*, the concentrated blast tearing {target_name} apart; they collapse, lifeless. With a swift *SHINK-KLAK*, {attacker_name} cycles the lever, ejecting a smoking shell, the threat eliminated."
         },
         {
-            'attacker_msg': "The lever-action shotgun roars, and a heavy slug slams into {target_name}'s chest with fatal force, ending their fight instantly. You work the lever with a satisfying *CHAK-CHUNK*, the job done.",
-            'victim_msg': "The lever-action shotgun roars, and a heavy slug slams into your chest with fatal force, ending your fight instantly. {attacker_name} works the lever with a satisfying *CHAK-CHUNK*, the job done.",
-            'observer_msg': "The lever-action shotgun roars, and a heavy slug slams into {target_name}'s chest with fatal force, ending their fight instantly. {attacker_name} works the lever with a satisfying *CHAK-CHUNK*, the job done."
+            'attacker_msg': "The lever-action shotgun roars, and a heavy slug slams into {target_name}'s {hit_location} with fatal force, ending their fight instantly. You work the lever with a satisfying *CHAK-CHUNK*, the job done.",
+            'victim_msg': "The lever-action shotgun roars, and a heavy slug slams into your {hit_location} with fatal force, ending your fight instantly. {attacker_name} works the lever with a satisfying *CHAK-CHUNK*, the job done.",
+            'observer_msg': "The lever-action shotgun roars, and a heavy slug slams into {target_name}'s {hit_location} with fatal force, ending their fight instantly. {attacker_name} works the lever with a satisfying *CHAK-CHUNK*, the job done."
         },
         {
             'attacker_msg': "With a final, brutal blast to the head, your lever-action shotgun obliterates {target_name}. Smoke curls from the muzzle as you cycle the action with a forceful, final lever throw.",
@@ -477,9 +477,9 @@ MESSAGES = {
             'observer_msg': "A devastating point-blank discharge from {attacker_name}'s lever-action shotgun engulfs {target_name}, who is torn apart by the pellets. {attacker_name} works the lever, ejecting a spent shell, standing over the fallen."
         },
         {
-            'attacker_msg': "The lever-action shotgun's blast strikes {target_name}'s torso, the massive trauma instantly fatal. You quickly cycle the lever, another shell ready, though unneeded.",
-            'victim_msg': "The lever-action shotgun's blast strikes your torso, the massive trauma instantly fatal. {attacker_name} quickly cycles the lever, another shell ready, though unneeded.",
-            'observer_msg': "The lever-action shotgun's blast strikes {target_name}'s torso, the massive trauma instantly fatal. {attacker_name} quickly cycles the lever, another shell ready, though unneeded."
+            'attacker_msg': "The lever-action shotgun's blast strikes {target_name}'s {hit_location}, the massive trauma instantly fatal. You quickly cycle the lever, another shell ready, though unneeded.",
+            'victim_msg': "The lever-action shotgun's blast strikes your {hit_location}, the massive trauma instantly fatal. {attacker_name} quickly cycles the lever, another shell ready, though unneeded.",
+            'observer_msg': "The lever-action shotgun's blast strikes {target_name}'s {hit_location}, the massive trauma instantly fatal. {attacker_name} quickly cycles the lever, another shell ready, though unneeded."
         },
         {
             'attacker_msg': "The lever-action shotgun, an instrument of classic, brutal finality, delivers a killing blow as {target_name} is shredded. The action is cycled with a smooth, powerful *SHINK-THUNK*, silence falling.",
@@ -537,9 +537,9 @@ MESSAGES = {
             'observer_msg': "A devastating blast from the lever-action shotgun to {target_name}'s center mass ends the conflict. {attacker_name} cycles the lever, unflinching at the carnage."
         },
         {
-            'attacker_msg': "The lever-action shotgun's payload makes solid, brutal, and fatal contact with {target_name}'s torso. You cycle the lever, chambering a fresh shell, the area now quiet.",
-            'victim_msg': "The lever-action shotgun's payload makes solid, brutal, and fatal contact with your torso. {attacker_name} cycles the lever, chambering a fresh shell, the area now quiet.",
-            'observer_msg': "The lever-action shotgun's payload makes solid, brutal, and fatal contact with {target_name}'s torso. {attacker_name} cycles the lever, chambering a fresh shell, the area now quiet."
+            'attacker_msg': "The lever-action shotgun's payload makes solid, brutal, and fatal contact with {target_name}'s {hit_location}. You cycle the lever, chambering a fresh shell, the area now quiet.",
+            'victim_msg': "The lever-action shotgun's payload makes solid, brutal, and fatal contact with your {hit_location}. {attacker_name} cycles the lever, chambering a fresh shell, the area now quiet.",
+            'observer_msg': "The lever-action shotgun's payload makes solid, brutal, and fatal contact with {target_name}'s {hit_location}. {attacker_name} cycles the lever, chambering a fresh shell, the area now quiet."
         },
         {
             'attacker_msg': "Your lever-action shotgun projectile cloud finds its mark with lethal precision. A spent shell arcs away as you cycle the lever over {target_name}'s still form.",
@@ -592,9 +592,9 @@ MESSAGES = {
             'observer_msg': "The projectile cloud from {attacker_name}'s lever-action shotgun hits {target_name} with overwhelming force, dropping them. The action is cycled, ejecting the shell smartly."
         },
         {
-            'attacker_msg': "Your lever-action shotgun delivers a wide, penetrating, and fatal impact to {target_name}'s torso. The shotgun is cycled, the grim task complete.",
-            'victim_msg': "{attacker_name}'s lever-action shotgun delivers a wide, penetrating, and fatal impact to your torso. The shotgun is cycled, the grim task complete.",
-            'observer_msg': "{attacker_name}'s lever-action shotgun delivers a wide, penetrating, and fatal impact to {target_name}'s torso. The shotgun is cycled, the grim task complete."
+            'attacker_msg': "Your lever-action shotgun delivers a wide, penetrating, and fatal impact to {target_name}'s {hit_location}. The shotgun is cycled, the grim task complete.",
+            'victim_msg': "{attacker_name}'s lever-action shotgun delivers a wide, penetrating, and fatal impact to your {hit_location}. The shotgun is cycled, the grim task complete.",
+            'observer_msg': "{attacker_name}'s lever-action shotgun delivers a wide, penetrating, and fatal impact to {target_name}'s {hit_location}. The shotgun is cycled, the grim task complete."
         },
         {
             'attacker_msg': "A well-placed, devastating blast from the lever-action shotgun leaves {target_name} lifeless. You cycle the lever, the weapon's classic efficiency clear.",

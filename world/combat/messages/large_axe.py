@@ -463,18 +463,18 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A brutal backswing removes the jaw. The body drops before the blood hits floor.",
-            'victim_msg': "A brutal backswing removes your jaw. The body drops before the blood hits floor.",
-            'observer_msg': "A brutal backswing removes {target_name}'s jaw. The body drops before the blood hits floor."
+            'victim_msg': "A brutal backswing removes your {hit_location}. The body drops before the blood hits floor.",
+            'observer_msg': "A brutal backswing removes {target_name}'s {hit_location}. The body drops before the blood hits floor."
         },
         {
             'attacker_msg': "A chop through the hip spins {target_name} before gravity takes over.",
-            'victim_msg': "A chop through your hip spins you before gravity takes over.",
-            'observer_msg': "A chop through {target_name}'s hip spins {target_name} before gravity takes over."
+            'victim_msg': "A chop through your {hit_location} spins you before gravity takes over.",
+            'observer_msg': "A chop through {target_name}'s {hit_location} spins {target_name} before gravity takes over."
         },
         {
             'attacker_msg': "A crushing overhead swing cracks the skull in two. Silence reigns.",
-            'victim_msg': "A crushing overhead swing cracks your skull in two. Silence reigns.",
-            'observer_msg': "A crushing overhead swing cracks {target_name}'s skull in two. Silence reigns."
+            'victim_msg': "A crushing overhead swing cracks your {hit_location} in two. Silence reigns.",
+            'observer_msg': "A crushing overhead swing cracks {target_name}'s {hit_location} in two. Silence reigns."
         },
         {
             'attacker_msg': "A downward chop ends mid-breath. The last word never arrives.",
@@ -483,28 +483,28 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A full-bodied arc cleaves the torso. {target_name} is no longer one piece.",
-            'victim_msg': "A full-bodied arc cleaves your torso. You are no longer one piece.",
-            'observer_msg': "A full-bodied arc cleaves {target_name}'s torso. {target_name} is no longer one piece."
+            'victim_msg': "A full-bodied arc cleaves your {hit_location}. You are no longer one piece.",
+            'observer_msg': "A full-bodied arc cleaves {target_name}'s {hit_location}. {target_name} is no longer one piece."
         },
         {
             'attacker_msg': "A savage strike splits skull from jaw. {target_name} slumps in two stages.",
-            'victim_msg': "A savage strike splits your skull from jaw. You slump in two stages.",
-            'observer_msg': "A savage strike splits {target_name}'s skull from jaw. {target_name} slumps in two stages."
+            'victim_msg': "A savage strike splits your {hit_location} from jaw. You slump in two stages.",
+            'observer_msg': "A savage strike splits {target_name}'s {hit_location} from jaw. {target_name} slumps in two stages."
         },
         {
             'attacker_msg': "A spin and chop lands square in the spine. {target_name} stiffens, then falls like scaffolding.",
-            'victim_msg': "A spin and chop lands square in your spine. You stiffen, then fall like scaffolding.",
-            'observer_msg': "A spin and chop lands square in {target_name}'s spine. {target_name} stiffens, then falls like scaffolding."
+            'victim_msg': "A spin and chop lands square in your {hit_location}. You stiffen, then fall like scaffolding.",
+            'observer_msg': "A spin and chop lands square in {target_name}'s {hit_location}. {target_name} stiffens, then falls like scaffolding."
         },
         {
-            'attacker_msg': "One horizontal swing takes {target_name}'s head clean. The silence is shocked and total.",
-            'victim_msg': "One horizontal swing takes your head clean. The silence is shocked and total.",
-            'observer_msg': "One horizontal swing takes {target_name}'s head clean. The silence is shocked and total."
+            'attacker_msg': "One horizontal swing takes {target_name}'s {hit_location} clean. The silence is shocked and total.",
+            'victim_msg': "One horizontal swing takes your {hit_location} clean. The silence is shocked and total.",
+            'observer_msg': "One horizontal swing takes {target_name}'s {hit_location} clean. The silence is shocked and total."
         },
         {
             'attacker_msg': "One wide arc severs the arm — and the will to live.",
-            'victim_msg': "One wide arc severs your arm — and the will to live.",
-            'observer_msg': "One wide arc severs {target_name}'s arm — and the will to live."
+            'victim_msg': "One wide arc severs your {hit_location} — and the will to live.",
+            'observer_msg': "One wide arc severs {target_name}'s {hit_location} — and the will to live."
         },
         {
             'attacker_msg': "Ribs split under the force. Organs follow. You barely notice.",
@@ -513,8 +513,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "Steel bites through heart and keeps going. So does the scream, until it doesn't.",
-            'victim_msg': "Steel bites through your heart and keeps going. So does the scream, until it doesn't.",
-            'observer_msg': "Steel bites through {target_name}'s heart and keeps going. So does the scream, until it doesn't."
+            'victim_msg': "Steel bites through your {hit_location} and keeps going. So does the scream, until it doesn't.",
+            'observer_msg': "Steel bites through {target_name}'s {hit_location} and keeps going. So does the scream, until it doesn't."
         },
         {
             'attacker_msg': "Steel drives into the gut. The twist afterward makes death linger longer.",
@@ -523,38 +523,38 @@ MESSAGES = {
         },
         {
             'attacker_msg': "Steel meets spine with a crack like lightning. {target_name} folds, lifeless.",
-            'victim_msg': "Steel meets your spine with a crack like lightning. You fold, lifeless.",
-            'observer_msg': "Steel meets {target_name}'s spine with a crack like lightning. {target_name} folds, lifeless."
+            'victim_msg': "Steel meets your {hit_location} with a crack like lightning. You fold, lifeless.",
+            'observer_msg': "Steel meets {target_name}'s {hit_location} with a crack like lightning. {target_name} folds, lifeless."
         },
         {
             'attacker_msg': "The axe bites into the temple. Lights out. Permanently.",
-            'victim_msg': "The axe bites into your temple. Lights out. Permanently.",
-            'observer_msg': "The axe bites into {target_name}'s temple. Lights out. Permanently."
+            'victim_msg': "The axe bites into your {hit_location}. Lights out. Permanently.",
+            'observer_msg': "The axe bites into {target_name}'s {hit_location}. Lights out. Permanently."
         },
         {
             'attacker_msg': "The axe crashes through the neck. {target_name} collapses headless and irrelevant.",
-            'victim_msg': "The axe crashes through your neck. You collapse headless and irrelevant.",
-            'observer_msg': "The axe crashes through {target_name}'s neck. {target_name} collapses headless and irrelevant."
+            'victim_msg': "The axe crashes through your {hit_location}. You collapse headless and irrelevant.",
+            'observer_msg': "The axe crashes through {target_name}'s {hit_location}. {target_name} collapses headless and irrelevant."
         },
         {
             'attacker_msg': "The axe crushes the face. There's nothing left to recognize.",
-            'victim_msg': "The axe crushes your face. There's nothing left to recognize.",
-            'observer_msg': "The axe crushes {target_name}'s face. There's nothing left to recognize."
+            'victim_msg': "The axe crushes your {hit_location}. There's nothing left to recognize.",
+            'observer_msg': "The axe crushes {target_name}'s {hit_location}. There's nothing left to recognize."
         },
         {
             'attacker_msg': "The axe lands in the neck. It doesn't leave. {target_name} does.",
-            'victim_msg': "The axe lands in your neck. It doesn't leave. You do.",
-            'observer_msg': "The axe lands in {target_name}'s neck. It doesn't leave. {target_name} does."
+            'victim_msg': "The axe lands in your {hit_location}. It doesn't leave. You do.",
+            'observer_msg': "The axe lands in {target_name}'s {hit_location}. It doesn't leave. {target_name} does."
         },
         {
             'attacker_msg': "The axe splits the chest. Everything inside spills and stills.",
-            'victim_msg': "The axe splits your chest. Everything inside spills and stills.",
-            'observer_msg': "The axe splits {target_name}'s chest. Everything inside spills and stills."
+            'victim_msg': "The axe splits your {hit_location}. Everything inside spills and stills.",
+            'observer_msg': "The axe splits {target_name}'s {hit_location}. Everything inside spills and stills."
         },
         {
             'attacker_msg': "The blade lands in the hip, then slides deeper. {target_name} twitches, then stops.",
-            'victim_msg': "The blade lands in your hip, then slides deeper. You twitch, then stop.",
-            'observer_msg': "The blade lands in {target_name}'s hip, then slides deeper. {target_name} twitches, then stops."
+            'victim_msg': "The blade lands in your {hit_location}, then slides deeper. You twitch, then stop.",
+            'observer_msg': "The blade lands in {target_name}'s {hit_location}, then slides deeper. {target_name} twitches, then stops."
         },
         {
             'attacker_msg': "The blade lands with such force it lifts {target_name} before letting them drop.",
@@ -563,8 +563,8 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The blade tears through the chest. {target_name} falls in halves — emotionally and physically.",
-            'victim_msg': "The blade tears through your chest. You fall in halves — emotionally and physically.",
-            'observer_msg': "The blade tears through {target_name}'s chest. {target_name} falls in halves — emotionally and physically."
+            'victim_msg': "The blade tears through your {hit_location}. You fall in halves — emotionally and physically.",
+            'observer_msg': "The blade tears through {target_name}'s {hit_location}. {target_name} falls in halves — emotionally and physically."
         },
         {
             'attacker_msg': "The final strike breaks everything. {target_name} doesn't move again.",
@@ -578,13 +578,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The spine severs with one crack. {target_name} hits the ground like a switch flipped off.",
-            'victim_msg': "Your spine severs with one crack. You hit the ground like a switch flipped off.",
-            'observer_msg': "{target_name}'s spine severs with one crack. {target_name} hits the ground like a switch flipped off."
+            'victim_msg': "Your {hit_location} severs with one crack. You hit the ground like a switch flipped off.",
+            'observer_msg': "{target_name}'s {hit_location} severs with one crack. {target_name} hits the ground like a switch flipped off."
         },
         {
             'attacker_msg': "The weapon carves through ribs like butter. {target_name} barely gets to react.",
-            'victim_msg': "The weapon carves through your ribs like butter. You barely get to react.",
-            'observer_msg': "The weapon carves through {target_name}'s ribs like butter. {target_name} barely gets to react."
+            'victim_msg': "The weapon carves through your {hit_location} like butter. You barely get to react.",
+            'observer_msg': "The weapon carves through {target_name}'s {hit_location} like butter. {target_name} barely gets to react."
         },
         {
             'attacker_msg': "You bring it down one last time. The silence after is thick with respect.",
@@ -598,13 +598,13 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You hack deep into the neck. {target_name} drops mid-gurgle.",
-            'victim_msg': "{attacker_name} hacks deep into your neck. You drop mid-gurgle.",
-            'observer_msg': "{attacker_name} hacks deep into {target_name}'s neck. {target_name} drops mid-gurgle."
+            'victim_msg': "{attacker_name} hacks deep into your {hit_location}. You drop mid-gurgle.",
+            'observer_msg': "{attacker_name} hacks deep into {target_name}'s {hit_location}. {target_name} drops mid-gurgle."
         },
         {
             'attacker_msg': "You swing down hard. The chest caves in like a kicked door.",
-            'victim_msg': "{attacker_name} swings down hard. Your chest caves in like a kicked door.",
-            'observer_msg': "{attacker_name} swings down hard. {target_name}'s chest caves in like a kicked door."
+            'victim_msg': "{attacker_name} swings down hard. Your {hit_location} caves in like a kicked door.",
+            'observer_msg': "{attacker_name} swings down hard. {target_name}'s {hit_location} caves in like a kicked door."
         },
     ],
 }
