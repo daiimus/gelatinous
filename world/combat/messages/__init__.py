@@ -70,21 +70,38 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
         "observer_msg": f"{{attacker_name}} {third_person_verb} {{target_name}} with {{item_name}}."
     }
 
+    # Issue #356 follow-up: species-aware unarmed combat messages.
+    # Humanoid unarmed prose (fists / knuckles / knees / brass-knuckle
+    # mannerisms) reads wrong for non-humans.  For ``unarmed``
+    # specifically we try a species-suffixed module first
+    # (``unarmed_rat`` for rats) and fall back to the canonical
+    # ``unarmed.py`` (human-anchored) when no species-specific file
+    # exists.  All other weapon_types are species-agnostic.
     chosen_template_set = None
-    try:
-        module_path = f"world.combat.messages.{weapon_type}"
-        module = importlib.import_module(module_path)
-        messages_for_weapon = getattr(module, "MESSAGES", {})
-        templates_for_phase = messages_for_weapon.get(phase, [])
-        
-        if templates_for_phase and isinstance(templates_for_phase, list):
-            valid_templates = [t for t in templates_for_phase if isinstance(t, dict)]
-            if valid_templates:
-                chosen_template_set = random.choice(valid_templates)
-    except ModuleNotFoundError:
-        pass  # chosen_template_set remains None, will use fallback
-    except Exception:
-        pass  # chosen_template_set remains None, will use fallback
+    module_candidates = [weapon_type]
+    if weapon_type == "unarmed" and attacker is not None:
+        species = getattr(getattr(attacker, "db", None), "species", None)
+        if species and species != "human":
+            module_candidates.insert(0, f"unarmed_{species}")
+
+    for candidate in module_candidates:
+        try:
+            module_path = f"world.combat.messages.{candidate}"
+            module = importlib.import_module(module_path)
+            messages_for_weapon = getattr(module, "MESSAGES", {})
+            templates_for_phase = messages_for_weapon.get(phase, [])
+
+            if templates_for_phase and isinstance(templates_for_phase, list):
+                valid_templates = [
+                    t for t in templates_for_phase if isinstance(t, dict)
+                ]
+                if valid_templates:
+                    chosen_template_set = random.choice(valid_templates)
+                    break
+        except ModuleNotFoundError:
+            continue
+        except Exception:
+            continue
 
     # If no specific template was loaded (or error), use the fallback set
     if not chosen_template_set:
