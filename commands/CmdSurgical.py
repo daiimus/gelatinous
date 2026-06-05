@@ -71,11 +71,42 @@ def _find_surgical_kit(caller):
 def _resolve_target(caller, raw_name):
     """Search the caller's location for a procedure target.
 
-    Returns the matched object or ``None`` (search() already
-    messages on ambiguity / not-found).
+    Tries the identity pipeline first so default sdescs ("towering",
+    "woman", recognised-name keywords) and disguise overrides work
+    the same as for non-surgical commands.  Falls back to plain
+    ``caller.search`` when the identity helper returns nothing — that
+    catches non-character procedure targets like corpses and severed
+    appendages, which don't surface on the identity bus.
+
+    Returns the matched object or ``None``.  The identity helper /
+    plain search emit their own disambiguation messages.
     """
     if raw_name.lower() in ("me", "self", "myself"):
         return caller
+
+    # Identity pipeline — handles sdescs ("towering", "woman"),
+    # recognised-name keywords, and disguise overrides for
+    # character targets in the same room.
+    from commands._identity_targeting import resolve_character_target
+    identity_match = resolve_character_target(
+        caller, raw_name, allow_self=False,
+    )
+    if identity_match is not None:
+        return identity_match
+
+    # Fallback — corpses, severed appendages, and other non-character
+    # procedure targets resolve via plain Evennia search.  Includes
+    # the caller's inventory so a held severed limb can be operated
+    # on without setting it down.
+    inventory_match = caller.search(
+        raw_name, location=caller, quiet=True,
+    )
+    if inventory_match:
+        return (
+            inventory_match[0]
+            if isinstance(inventory_match, list)
+            else inventory_match
+        )
     return caller.search(raw_name, location=caller.location)
 
 
