@@ -530,14 +530,25 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
                 f"{actual_damage} damage."
             )
     else:
-        # Miss — get miss messages from the message system
+        # Miss — get miss messages from the message system.
+        # Issue #333 follow-up: miss templates may reference
+        # ``{hit_location}`` to narrate the intended target location
+        # ("lunges for {target_name}'s shoulder and skids past").
+        # The attacker still chose where to swing; only the contact
+        # failed.  Compute the intended location with the same
+        # selector used for hits — it surfaces as the attacker's
+        # *aim*, not the actual contact.
         weapon_type = WEAPON_TYPE_UNARMED
         if weapon and hasattr(weapon, "db") and weapon.db.weapon_type:
             weapon_type = weapon.db.weapon_type
 
+        intended_hit_location = select_hit_location(
+            target, attacker_roll - target_roll, attacker,
+        )
         miss_messages = get_combat_message(
             weapon_type, "miss",
             attacker=attacker, target=target, item=weapon,
+            hit_location=intended_hit_location,
         )
 
         attacker.msg(miss_messages["attacker_msg"])
