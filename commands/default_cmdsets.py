@@ -39,7 +39,8 @@ from commands.CmdGraffiti import CmdGraffiti, CmdPress
 from commands.CmdCharacter import CmdDescribe, CmdSkintone
 from commands.CmdCharacter import CmdRemember, CmdForget, CmdRecall, CmdMemory
 from commands.CmdCommunication import CmdSay, CmdWhisper, CmdEmote, CmdDotPose
-from commands.forensics import CmdAutopsy, CmdHarvest, CmdSever
+from commands.forensics import CmdAutopsy, CmdSever
+from commands import CmdSurgical
 from world.emote_templates import SOCIAL_COMMANDS
 from commands.CmdArmor import CmdArmor, CmdArmorRepair, CmdSlot, CmdUnslot
 from commands.shop import CmdBuy
@@ -251,8 +252,17 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
 
         # Add forensic command surfaces (PR-E)
         self.add(CmdAutopsy())
-        self.add(CmdHarvest())
         self.add(CmdSever())
+
+        # Surgical procedure commands (#307 follow-up).
+        # Replaces the legacy ``surgery`` / ``operate`` aliases with
+        # the procedural verb set: incise → harvest / install →
+        # suture.  ``apply`` is now location-precision aware for
+        # deep treatments.  See ``help procedures``.
+        self.add(CmdSurgical.CmdIncise())
+        self.add(CmdSurgical.CmdHarvest())
+        self.add(CmdSurgical.CmdInstall())
+        self.add(CmdSurgical.CmdSuture())
 
 class AccountCmdSet(default_cmds.AccountCmdSet):
     """

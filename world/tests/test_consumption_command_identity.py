@@ -88,83 +88,12 @@ class TestGetItemAndTargetIdentity(TestCase):
 
 
 # ===================================================================
-# CmdApply — surgery/operate branch (separate from get_item_and_target)
+# CmdApply surgery / operate aliases removed (#307 follow-up).
+# Surgical procedures are now the explicit verb set:
+# incise / harvest / install / suture.  ``apply`` is for surface
+# treatments and location-precision deep treatments only.  Tests
+# for the removed surgery alias path were dropped.
 # ===================================================================
-
-
-class TestCmdApplySurgeryIdentity(TestCase):
-    """``surgery`` / ``operate`` target lookup uses identity helper."""
-
-    def _make_cmd(self, key="surgery", args="man"):
-        from commands.CmdConsumption import CmdApply
-
-        cmd = CmdApply()
-        cmd.key = key
-        cmd.cmdstring = key
-        cmd.args = args
-        cmd.caller = MagicMock()
-        cmd.caller.location = MagicMock()
-        # Provide a surgical kit in caller's contents.
-        kit = MagicMock()
-        kit.attributes.get = lambda name: (
-            "surgical_treatment" if name == "medical_type" else None
-        )
-        cmd.caller.contents = [kit]
-        return cmd, kit
-
-    @patch("commands.CmdConsumption.apply_medical_effects")
-    @patch("commands.CmdConsumption.calculate_treatment_success")
-    @patch("commands.CmdConsumption.get_medical_type",
-           return_value="surgical_treatment")
-    @patch("commands.CmdConsumption.is_medical_item", return_value=True)
-    @patch("commands.CmdConsumption.resolve_character_target")
-    def test_surgery_uses_identity_helper(
-        self, mock_resolve, _is_med, _gmt, _cts, _ame
-    ):
-        target = MagicMock()
-        target.medical_state = MagicMock()
-        target.is_unconscious = lambda: False
-        mock_resolve.return_value = target
-        cmd, _kit = self._make_cmd(args="man")
-        # Best-effort func call; short-circuit on first downstream error.
-        try:
-            cmd.func()
-        except Exception:
-            pass
-        mock_resolve.assert_called_with(cmd.caller, "man")
-
-    @patch("commands.CmdConsumption.is_medical_item", return_value=True)
-    @patch("commands.CmdConsumption.get_medical_type",
-           return_value="surgical_treatment")
-    @patch("commands.CmdConsumption.resolve_character_target")
-    def test_surgery_self_token_skips_helper(
-        self, mock_resolve, _gmt, _is_med
-    ):
-        cmd, _kit = self._make_cmd(args="myself")
-        try:
-            cmd.func()
-        except Exception:
-            pass
-        mock_resolve.assert_not_called()
-
-    @patch("commands.CmdConsumption.is_medical_item", return_value=True)
-    @patch("commands.CmdConsumption.get_medical_type",
-           return_value="surgical_treatment")
-    @patch("commands.CmdConsumption.resolve_character_target")
-    def test_surgery_target_not_found_messages_caller(
-        self, mock_resolve, _gmt, _is_med
-    ):
-        mock_resolve.return_value = None
-        cmd, _kit = self._make_cmd(args="ghost")
-        try:
-            cmd.func()
-        except Exception:
-            pass
-        msg_calls = [c.args[0] for c in cmd.caller.msg.call_args_list]
-        self.assertTrue(
-            any("ghost" in m for m in msg_calls),
-            f"messages={msg_calls}",
-        )
 
 
 # ===================================================================

@@ -311,77 +311,110 @@ class CmdInject(ConsumptionCommand):
 class CmdApply(ConsumptionCommand):
     """
     Apply a medical treatment to yourself or another character.
-    
+
     Usage:
-        apply <item>
-        apply <item> <target>
-        apply <item> to <target>
-        
+        apply <item> on <target>
+        apply <item> on <target>'s <location>
+        apply <item> on <target>'s <organ>
+
     Examples:
-        apply burn gel
-        apply antiseptic to Alice
-        apply surgical kit to Bob
-        apply splint to Charlie
-        
-    Applicable items include burn gel, antiseptic, healing salves, surgical
-    kits, splints, and other medical treatments. Takes time to apply properly.
-    Surgery requires high medical skill (Intellect 3+).
+        apply burn gel on Alice
+        apply bandage on bob's chest
+        apply antibiotic on bob's heart      (needs open chest incision)
+        apply splint on charlie's left arm
+
+    Surface treatments (bandages, salves, antiseptics on skin) work
+    on any external location.  Deep treatments targeting internal
+    organs (heart, lungs, liver, etc.) require an open incision at
+    the organ's container — see ``incise``.
+
+    For actual surgical procedures (opening, harvesting organs,
+    installing organs, closing) see ``help procedures``.
+
+    Related:  incise, harvest, install, suture, inject, spray.
     """
-    
+
     key = "apply"
-    aliases = ["rub", "spread", "operate", "surgery"]
+    aliases = ["rub", "spread"]
     help_category = "Medical"
-    
+
     def func(self):
         """Execute the apply command."""
         caller = self.caller
-        
-        # Handle special surgery/operate aliases that auto-find surgical kits
-        if self.cmdstring.lower() in ["surgery", "operate"]:
-            # Look for surgical kit in caller's inventory
-            surgical_kits = [obj for obj in caller.contents 
-                           if hasattr(obj, 'attributes') and 
-                           obj.attributes.get('medical_type') == 'surgical_treatment']
-            
-            if not surgical_kits:
-                caller.msg("You don't have a surgical kit to perform surgery.")
-                return
-                
-            # Use the first surgical kit found
-            surgical_kit = surgical_kits[0]
-            
-            # Parse target (surgery/operate only takes target, no item name needed)
-            if not self.args.strip():
-                caller.msg("Surgery on whom? Usage: surgery <target>")
-                return
-                
-            # Get target via identity pipeline (allow self via me/self/myself).
-            target_name = self.args.strip()
-            if target_name.lower() in ("me", "myself", "self"):
-                target = caller
-            else:
-                target = resolve_character_target(caller, target_name)
-            if not target:
-                caller.msg(f"Cannot find '{target_name}'.")
-                return
-                
-            item = surgical_kit
-            is_self = (caller == target)
+
+        # Normalize "apply X to Y" → "apply X on Y" so both prepositions
+        # work.  The location-precision parser below splits on "on" or
+        # the possessive.
+        raw = (self.args or "").replace(" to ", " on ")
+
+        # Parse "<item> on <target>" / "<item> on <target>'s <location>"
+        # via a quick precision-aware split before falling through to
+        # the legacy item/target resolver.
+        location: str | None = None
+        if " on " in raw:
+            item_phrase, _, target_phrase = raw.partition(" on ")
+            target_phrase = target_phrase.strip()
+            if "'s " in target_phrase:
+                tname, _, location = target_phrase.partition("'s ")
+                target_phrase = tname.strip()
+                location = location.strip().replace(" ", "_")
+            args = f"{item_phrase.strip()} {target_phrase}"
         else:
-            # Handle normal "apply item to target" syntax
-            args = self.args.replace(" to ", " ")
-            
-            # Parse arguments
-            result = self.get_item_and_target(args)
-            if result["errors"]:
-                caller.msg(result["errors"][0])
+            args = raw
+
+        # Hand off to the legacy item/target parser.
+        result = self.get_item_and_target(args)
+        if result["errors"]:
+            caller.msg(result["errors"][0])
+            return
+
+        item, target = result["item"], result["target"]
+        is_self = (caller == target)
+
+        # Location precision: if the player named a specific organ or
+        # internal container, gate it behind the incision requirement.
+        if location:
+            from world.medical.procedures import (
+                INTERNAL_CONTAINERS,
+                has_incision,
+                organs_at_location,
+            )
+
+            # Resolve "location" — could be a body container OR an
+            # organ name.  If it's an organ, look up its container.
+            container = location
+            try:
+                state = target.medical_state
+            except AttributeError:
+                state = None
+            if state is not None and hasattr(state, "organs"):
+                organ = state.organs.get(location)
+                if organ is not None:
+                    container = organ.container
+
+            if container in INTERNAL_CONTAINERS and not has_incision(target, container):
+                caller.msg(
+                    f"You can't reach {target.get_display_name(caller)}'s "
+                    f"{location.replace('_', ' ')} — "
+                    f"{container.replace('_', ' ')} isn't open. "
+                    f"Try ``incise {target.get_display_name(caller)} "
+                    f"at {container.replace('_', ' ')}`` first."
+                )
                 return
-                
-            item, target = result["item"], result["target"]
-            is_self = (caller == target)
+
+            # Surface location with no organs at all → no target.
+            if not organs_at_location(target, container) and container == location:
+                caller.msg(
+                    f"There's nothing at {location.replace('_', ' ')} on "
+                    f"{target.get_display_name(caller)} to treat."
+                )
+                return
         
-        # Check if item can be applied (topically, surgically, or orthopedically)
-        applicable_types = ["burn_treatment", "antiseptic", "healing_salve", "wound_care", "surgical_treatment", "fracture_treatment"]
+        # Check if item can be applied topically or orthopedically.
+        # Surgical kits are NOT applicable — they're tools for the
+        # procedure verbs (incise / harvest / install / suture).
+        # See ``help procedures``.
+        applicable_types = ["burn_treatment", "antiseptic", "healing_salve", "wound_care", "fracture_treatment"]
         medical_type = get_medical_type(item)
         if medical_type not in applicable_types:
             caller.msg(f"{item.get_display_name(caller)} cannot be applied.")
