@@ -332,20 +332,13 @@ class CmdDrop(Command):
                 hand_name = hand
                 break
 
-        # Move the item to the room
-        obj.move_to(caller.location, quiet=True)
-
-        # Apply gravity if item is dropped in a sky room
-        from commands.combat.movement import apply_gravity_to_items
-        apply_gravity_to_items(caller.location)
-        
-        # Universal proximity assignment for all dropped objects
-        if not hasattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL):
-            setattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, [])
+        # Canonical "item lands on ground" pipeline — move + gravity
+        # + proximity scaffolding.  Caller-specific proximity is added
+        # below since CmdDrop wants the dropper themselves listed as
+        # near the dropped object.
+        from commands.combat.jump import drop_to_room
+        drop_to_room(obj, caller.location)
         proximity_list = getattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, [])
-        if proximity_list is None:
-            proximity_list = []
-            setattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, proximity_list)
         if caller not in proximity_list:
             proximity_list.append(caller)
         

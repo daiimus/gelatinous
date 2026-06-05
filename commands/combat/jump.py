@@ -1327,11 +1327,52 @@ def apply_gravity_to_items(room):
         try:
             splattercast.msg(f"GRAVITY_ITEMS: Moving {item.key} from {room.key} to {ground_room.key} (fell {fall_distance} levels)")
             item.move_to(ground_room, quiet=True)
-            
+
             # Announce the item falling to the ground room
             ground_room.msg_contents(f"A {item.key} falls from above and lands with a clatter.")
             splattercast.msg(f"GRAVITY_ITEMS: Successfully moved {item.key} to {ground_room.key}")
-            
+
         except Exception as e:
             splattercast.msg(f"GRAVITY_ITEMS_ERROR: Failed to move {item.key}: {e}")
             # Continue with other items even if one fails
+
+
+def drop_to_room(item, room):
+    """Canonical "item lands on the ground" pipeline.
+
+    Performs the three physical effects that should happen whenever
+    an item ends up on the floor of a room, regardless of *why*:
+
+    1. Physical relocation via ``item.move_to(room, quiet=True)``.
+    2. Sky-room gravity check via :func:`apply_gravity_to_items` so
+       items dropped into a mid-air location fall to the ground room.
+    3. Proximity tracking via ``NDB_PROXIMITY_UNIVERSAL`` so the item
+       participates correctly in combat / throw / grappling distance
+       checks at its new resting location.
+
+    This helper deliberately does **not** emit player-facing messages.
+    Each caller has its own narrative context — a player ``drop``
+    command says "you drop the shiv", a sever pipeline says "the
+    shiv slips from her severed hand", a thrown-grenade resolution
+    says "the grenade clatters to the floor".  Centralising the
+    physics here lets each call site own the prose.
+
+    Args:
+        item: The object that should end up in ``room``.
+        room: The destination room (typically the actor's current
+            ``location``).  Sky-room gravity is applied to ``room``
+            after the move, so if ``room`` is mid-air the item will
+            continue falling automatically.
+    """
+    item.move_to(room, quiet=True)
+    apply_gravity_to_items(room)
+
+    # Universal proximity assignment so the item participates in
+    # combat / throw / grappling proximity checks at its new
+    # resting location.  Mirrors the assignment block previously
+    # inlined in CmdDrop.
+    from world.combat.constants import NDB_PROXIMITY_UNIVERSAL
+    proximity_list = getattr(item.ndb, NDB_PROXIMITY_UNIVERSAL, None)
+    if proximity_list is None:
+        proximity_list = []
+        setattr(item.ndb, NDB_PROXIMITY_UNIVERSAL, proximity_list)

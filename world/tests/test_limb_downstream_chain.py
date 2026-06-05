@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from unittest import TestCase
+from unittest.mock import patch
 
 from typeclasses.items import (
     detach_items_to_appendage,
@@ -315,14 +316,20 @@ class DetachItemsChainTests(TestCase):
         self.assertIn(boot, moved)
         self.assertNotIn("left_foot", char.worn_items)
 
-    def test_severing_arm_takes_wielded_weapon(self):
+    def test_severing_arm_drops_wielded_weapon_to_room(self):
+        """PR-H0: wielded weapon falls free of the severed limb chain
+        to the character's location, not onto the appendage."""
         sword = _FakeItem()
+        room = SimpleNamespace()
         char = self._char(hands={"left": sword, "right": None})
+        char.location = room
         app = self._appendage()
-        moved = detach_items_to_appendage(
-            char, app, ("left_arm", "left_hand")
-        )
-        self.assertIn(sword, moved)
+        with patch("commands.combat.jump.drop_to_room") as mock_drop:
+            moved = detach_items_to_appendage(
+                char, app, ("left_arm", "left_hand")
+            )
+        mock_drop.assert_called_once_with(sword, room)
+        self.assertNotIn(sword, moved)
         self.assertIsNone(char.hands["left"])
         # Right hand untouched.
         self.assertIsNone(char.hands["right"])

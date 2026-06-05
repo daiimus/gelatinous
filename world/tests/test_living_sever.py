@@ -23,7 +23,9 @@ Run via::
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest import TestCase
+from unittest.mock import patch
 
 from typeclasses.items import (
     apply_living_sever_overlay,
@@ -256,21 +258,53 @@ class DetachItemsToAppendageTests(TestCase):
         self.assertIn(jacket, char.worn_items["left_arm"])
         self.assertIn(jacket, char.worn_items["chest"])
 
-    def test_wielded_weapon_in_matching_hand_follows_limb(self):
+    def test_wielded_weapon_drops_to_room_when_hand_severed(self):
+        """PR-H0: weapon held in severed hand drops to the character's
+        location rather than travelling onto the appendage."""
         knife = _FakeItem("knife")
+        room = SimpleNamespace()
         char = _FakeCharacter(hands={"left": None, "right": knife})
+        char.location = room
         appendage = _FakeAppendage()
-        moved = detach_items_to_appendage(char, appendage, "right_hand")
-        self.assertIn(knife, moved)
-        self.assertEqual(knife.moved_to, appendage)
+        with patch("commands.combat.jump.drop_to_room") as mock_drop:
+            moved = detach_items_to_appendage(
+                char, appendage, "right_hand"
+            )
+        # Weapon dropped to the room, not relocated onto the appendage.
+        mock_drop.assert_called_once_with(knife, room)
+        # Weapon is NOT in the moved list (moved tracks items that
+        # travel WITH the appendage).
+        self.assertNotIn(knife, moved)
+        # Hand slot cleared.
         self.assertIsNone(char.hands["right"])
 
-    def test_wielded_weapon_follows_when_arm_severed(self):
+    def test_wielded_weapon_drops_to_room_when_arm_severed(self):
+        """Same drop-to-room rule when severance happens upstream of
+        the hand container (whole arm severed)."""
+        knife = _FakeItem("knife")
+        room = SimpleNamespace()
+        char = _FakeCharacter(hands={"left": None, "right": knife})
+        char.location = room
+        appendage = _FakeAppendage()
+        with patch("commands.combat.jump.drop_to_room") as mock_drop:
+            moved = detach_items_to_appendage(
+                char, appendage, "right_arm"
+            )
+        mock_drop.assert_called_once_with(knife, room)
+        self.assertNotIn(knife, moved)
+        self.assertIsNone(char.hands["right"])
+
+    def test_wielded_weapon_falls_back_to_appendage_without_location(self):
+        """Defensive: if the character has no location (orphaned test
+        stub, edge case), fall back to the legacy appendage-relocate
+        path so the weapon isn't lost."""
         knife = _FakeItem("knife")
         char = _FakeCharacter(hands={"left": None, "right": knife})
+        # No location attribute set on this character stub.
         appendage = _FakeAppendage()
-        moved = detach_items_to_appendage(char, appendage, "right_arm")
-        self.assertIn(knife, moved)
+        moved = detach_items_to_appendage(char, appendage, "right_hand")
+        # Legacy behaviour: weapon relocates to appendage.
+        self.assertEqual(knife.moved_to, appendage)
         self.assertIsNone(char.hands["right"])
 
     def test_wielded_weapon_in_other_hand_unaffected(self):
@@ -295,16 +329,26 @@ class DetachItemsToAppendageTests(TestCase):
         self.assertNotIn(knife, moved)
         self.assertEqual(char.hands["left"], knife)
 
-    def test_worn_and_wielded_both_move(self):
+    def test_worn_follows_limb_wielded_drops_to_room(self):
+        """PR-H0: combined case — worn glove travels with the
+        severed hand; wielded knife falls to the ground.  ``moved``
+        only contains the worn item; the knife is dispatched to
+        ``drop_to_room`` instead."""
         glove = _FakeItem("glove")
         knife = _FakeItem("knife")
+        room = SimpleNamespace()
         char = _FakeCharacter(
             worn_items={"right_hand": [glove]},
             hands={"left": None, "right": knife},
         )
+        char.location = room
         appendage = _FakeAppendage()
-        moved = detach_items_to_appendage(char, appendage, "right_hand")
-        self.assertEqual(set(moved), {glove, knife})
+        with patch("commands.combat.jump.drop_to_room") as mock_drop:
+            moved = detach_items_to_appendage(
+                char, appendage, "right_hand"
+            )
+        self.assertEqual(set(moved), {glove})
+        mock_drop.assert_called_once_with(knife, room)
 
 
 # ---------------------------------------------------------------------

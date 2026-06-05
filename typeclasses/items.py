@@ -1882,8 +1882,14 @@ def detach_items_to_appendage(character, appendage, containers):
       the character when one arm is severed.
     * A **wielded** weapon in *any* hand whose container is in the
       severed chain (via :data:`world.combat.constants.SEVER_HAND_BY_CONTAINER`)
-      always follows the limb. Severing the upper arm carries the
-      sword that was in that hand.
+      **drops to the ground** at the character's current location
+      (PR-H0, #307). Severance loosens the dead hand's grip; the weapon
+      lands separately from the severed limb. Uses
+      :func:`commands.combat.jump.drop_to_room` so gravity / sky-room /
+      proximity tracking apply uniformly with the player ``drop``
+      command. Prior behaviour (weapon carried on the appendage) was
+      surprising during salvage — players couldn't pick up the sword
+      without first interacting with the severed arm.
 
     Bookkeeping (``worn_items`` / ``hands`` dicts) is updated purely and
     reassigned so the ``AttributeProperty`` persists.  The physical
@@ -1947,12 +1953,32 @@ def detach_items_to_appendage(character, appendage, containers):
     if hands_to_clear:
         hands = character.hands or {}
         new_hands = dict(hands)
+        # PR-H0: held items drop to the character's current location
+        # rather than relocating onto the severed appendage.  The
+        # severed limb is bookkept as "had a weapon in it before the
+        # cut", but the weapon itself falls free.  Use the canonical
+        # drop-to-room pipeline for gravity / proximity parity with
+        # the player ``drop`` command.
+        drop_room = getattr(character, "location", None)
         for hand in hands_to_clear:
             held = new_hands.get(hand)
             if held:
                 new_hands[hand] = None
-                _relocate_item(held, appendage)
-                moved.append(held)
+                if drop_room is not None:
+                    # Deferred import — ``commands.combat.jump`` pulls
+                    # in evennia.commands.Command which we don't want
+                    # at module load time for this typeclasses file.
+                    from commands.combat.jump import drop_to_room as _drop
+                    _drop(held, drop_room)
+                else:
+                    # Fall back to the legacy relocation if the
+                    # character has no location (test stubs, edge
+                    # cases) — keeps the dropped item somewhere
+                    # findable rather than orphaning it.
+                    _relocate_item(held, appendage)
+                # ``moved`` historically tracked items that travelled
+                # WITH the appendage.  Held weapons no longer travel
+                # there, so they are intentionally not appended.
         character.hands = new_hands
 
     return moved
