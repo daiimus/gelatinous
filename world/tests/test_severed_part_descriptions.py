@@ -154,11 +154,10 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertTrue(app.db.desc)
         self.assertIn("left arm", app.db.desc.lower())
-        # Issue #221 / #223 / #225: plain sentence joined to prose with
-        # a single space (one continuous paragraph).
-        self.assertTrue(
-            app.db.desc.startswith("It is a pristine specimen. ")
-        )
+        # Condition prefix is no longer prepended (overbearing
+        # redundant signal — decay-tier prose already conveys
+        # freshness).  Just confirm desc contains location prose.
+        self.assertNotIn("specimen", app.db.desc)
 
     def test_damaged_right_thigh_populates_desc(self):
         app = self._fake_appendage()
@@ -168,9 +167,7 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertTrue(app.db.desc)
         self.assertIn("right thigh", app.db.desc.lower())
-        self.assertTrue(
-            app.db.desc.startswith("It is a damaged specimen. ")
-        )
+        self.assertNotIn("specimen", app.db.desc)
 
     def test_putrid_head_populates_desc(self):
         app = self._fake_appendage()
@@ -180,9 +177,7 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertTrue(app.db.desc)
         self.assertIn("head", app.db.desc.lower())
-        self.assertTrue(
-            app.db.desc.startswith("It is a putrid specimen. ")
-        )
+        self.assertNotIn("specimen", app.db.desc)
 
     def test_unknown_location_leaves_desc_untouched(self):
         app = self._fake_appendage()
@@ -190,9 +185,9 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
             location_name="tentacle", condition="pristine",
             corpse=self._fake_corpse(),
         )
-        # Issue #221: even without registered prose, the condition
-        # sentence alone surfaces — a meaningful freshness signal.
-        self.assertEqual(app.db.desc, "It is a pristine specimen.")
+        # No registered prose for an unknown location + condition
+        # prefix is no longer surfaced → desc stays empty.
+        self.assertNotIn("specimen", app.db.desc or "")
 
     def test_key_still_assigned_alongside_desc(self):
         # Regression guard for the species-aware key path.

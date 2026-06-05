@@ -267,11 +267,10 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         )
         self.assertTrue(organ.db.desc)
         self.assertIn("heart", organ.db.desc.lower())
-        # Issue #221 / #223 / #225: plain condition sentence joined to
-        # the prose with a single space (one continuous paragraph).
-        self.assertTrue(
-            organ.db.desc.startswith("It is a pristine specimen. ")
-        )
+        # Condition prefix is no longer prepended (overbearing
+        # redundant signal — decay-tier prose already conveys
+        # freshness).  Just confirm desc contains organ prose.
+        self.assertNotIn("specimen", organ.db.desc)
 
     def test_damaged_condition_uses_damaged_prose(self):
         organ = self._fake_organ()
@@ -282,9 +281,7 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         self.assertTrue(organ.db.desc)
         # Damaged prose typically signals decay-onset vocabulary.
         self.assertIn("liver", organ.db.desc.lower())
-        self.assertTrue(
-            organ.db.desc.startswith("It is a damaged specimen. ")
-        )
+        self.assertNotIn("specimen", organ.db.desc)
 
     def test_putrid_condition_uses_putrid_prose(self):
         organ = self._fake_organ()
@@ -294,9 +291,7 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
         )
         self.assertTrue(organ.db.desc)
         self.assertIn("brain", organ.db.desc.lower())
-        self.assertTrue(
-            organ.db.desc.startswith("It is a putrid specimen. ")
-        )
+        self.assertNotIn("specimen", organ.db.desc)
 
     def test_unknown_organ_leaves_desc_untouched(self):
         organ = self._fake_organ()
@@ -304,10 +299,10 @@ class TestOrganConfigureFromHarvestPopulatesDesc(TestCase):
             organ_name="flux_capacitor", condition="pristine",
             corpse=self._fake_corpse(),
         )
-        # Issue #221: even when no prose is registered, the condition
-        # sentence alone surfaces so the player gets *some* freshness
-        # signal in the look output.
-        self.assertEqual(organ.db.desc, "It is a pristine specimen.")
+        # No registered prose for an unknown organ + condition prefix
+        # is no longer surfaced → desc stays empty (or whatever the
+        # default-renderer fallback was).
+        self.assertNotIn("specimen", organ.db.desc or "")
 
     def test_refuse_condition_leaves_desc_untouched(self):
         organ = self._fake_organ()

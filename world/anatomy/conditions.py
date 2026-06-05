@@ -1,97 +1,49 @@
-"""Freshness-condition presentation helpers (issue #221, #223).
+"""Freshness-condition presentation helpers.
 
-Centralises the condition sentence prepended to an item's
-``db.desc`` so the ``look`` output explicitly conveys the freshness
-state (``pristine`` / ``damaged`` / ``putrid`` / ``desiccated``).
+Originally (#221 / #223) prepended an explicit condition sentence
+("It is a pristine specimen.") to every severed / harvested item's
+``db.desc``, on the theory that the prose alone wouldn't convey
+freshness.  In playtest the sentence read as overbearing — the
+decay-tier prose (``pristine`` vs ``damaged`` vs ``putrid`` in
+``ORGAN_DISPLAY`` / ``SEVERED_PART_DESCRIPTIONS``) was already
+self-describing: "A glistening pinkish-grey mass..." vs "A dulled
+brain, its folds slack...".  Prepending "It is a damaged specimen."
+on top of "A dulled brain..." just doubled up the signal.
 
-Design notes
-============
+Both helpers are now no-ops: ``format_condition_tagline`` returns
+the empty string for every condition, and ``prepend_condition_to_desc``
+returns the desc untouched.  The ``condition`` argument is still
+the upstream signal that selects which decay-tier prose to fetch
+(via ``get_organ_default_description`` / ``get_severed_part_description``);
+these helpers used to *also* mention it in player-facing prose,
+which was the redundancy.
 
-* **Single source of truth**: both :class:`typeclasses.items.Organ`
-  and :class:`typeclasses.items.Appendage` consume this helper at
-  ``configure_from_harvest`` / ``configure_from_sever`` time so the
-  sentence travels in ``self.db.desc`` and the engine renderer slots
-  it in naturally (AGENTS.md "populate ``db.desc`` the Evennia-
-  standard way" contract; cf. PR #204).
-
-* **Decoupled from key composition**: the condition word was removed
-  from the item key in issue #212 (keys now carry species + decay
-  tier).  This helper surfaces the condition information that the
-  key intentionally dropped.
-
-* **Plain sentence form** (issue #223): the original #221 cut used a
-  colour-coded standalone tagline (``|gPristine.|n``) separated from
-  the prose by a blank line.  In practice that read as two distinct
-  blocks rather than one description.  The replacement is a single
-  uniform sentence (``"It is a pristine specimen."``) joined to the
-  prose with a single space (issue #225) so the whole description
-  flows as one paragraph rather than two visible lines.
-
-* **Defensive empty for unknown / refuse**: callers prepend the
-  helper's output unconditionally; an empty string means "no
-  sentence" and the engine renderer falls through to the prose
-  alone.  ``refuse`` is the gameplay-internal condition for
-  skeletal-stage harvest (refused at the command gate), so leaking
-  the term would be a UX bug.
+Kept as no-op shims rather than deleted because four configure-time
+call sites (Organ, Appendage corpse / living, SeveredHead) still
+import them.  Each can drop the call independently; the helper API
+stays stable in the meantime.
 """
 
 from __future__ import annotations
 
-#: Set of condition identifiers the helper recognises.  Any other
-#: value (``None``, ``""``, ``"refuse"``, ``"phlegmatic"``, ...)
-#: yields an empty sentence.  Kept as a frozenset rather than an
-#: explicit per-condition mapping because the rendered sentence is
-#: now purely formulaic — ``"It is a {condition} specimen."`` — so a
-#: dict would just duplicate the keys.
-_RECOGNISED_CONDITIONS = frozenset(
-    {"pristine", "damaged", "putrid", "desiccated"}
-)
-
 
 def format_condition_tagline(condition: str | None) -> str:
-    """Return a plain condition sentence for the given freshness state.
+    """Return ``""`` for every condition (kept as no-op shim).
 
-    Args:
-        condition: One of ``pristine`` / ``damaged`` / ``putrid`` /
-            ``desiccated``.  ``None``, empty, ``refuse``, or any
-            unregistered condition returns an empty string so callers
-            can prepend the output unconditionally without leaking
-            internal vocabulary.
-
-    Returns:
-        The sentence (e.g. ``"It is a pristine specimen."``) or ``""``.
+    Callers used to receive a sentence like ``"It is a pristine
+    specimen."`` that they prepended to the item's prose.  The decay-
+    tier prose is now the sole vehicle for communicating freshness.
     """
-    if not condition or condition not in _RECOGNISED_CONDITIONS:
-        return ""
-    return f"It is a {condition} specimen."
+    return ""
 
 
 def prepend_condition_to_desc(condition: str | None, desc: str | None) -> str:
-    """Compose a final ``db.desc`` value with a condition sentence prefix.
+    """Return ``desc`` untouched (kept as no-op shim).
 
-    Centralised so both :class:`typeclasses.items.Organ` and
-    :class:`typeclasses.items.Appendage` produce identical formatting:
-    sentence joined to the prose with a single space so the whole
-    description renders as one continuous paragraph on a single line
-    (issue #225 — the prior ``"\\n"`` join broke onto two visible
-    lines, which read as two separate blocks).
-
-    Args:
-        condition: Freshness condition identifier.
-        desc: The base prose description, typically from
-            :func:`world.anatomy.organs.get_organ_default_description`
-            or :func:`world.anatomy.severed_parts.get_severed_part_description`.
-            May be empty / ``None`` when no prose is registered.
-
-    Returns:
-        ``"{sentence} {desc}"`` when both are present; ``sentence``
-        alone when prose is empty; ``desc`` alone when the condition
-        has no sentence; ``""`` when both are empty.
+    The condition is no longer surfaced as a separate sentence — the
+    decay-tier prose carries the freshness signal alone.  The
+    ``condition`` argument is preserved in the signature because
+    callers pass it through other channels (organ name composition,
+    key choice); only the prose-prepend behaviour is gone.
     """
-    sentence = format_condition_tagline(condition)
-    body = desc or ""
-    if sentence and body:
-        return f"{sentence} {body}"
-    if sentence:
-        return sentence
-    return body
+    return desc or ""
