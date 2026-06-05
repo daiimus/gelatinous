@@ -76,7 +76,33 @@ class MedicalCondition:
     def get_blood_loss_rate(self):
         """Return blood loss rate from this condition. Override in subclasses."""
         return 0  # Base conditions don't cause blood loss by default
-        
+
+    def disables_organ_at_severity(self):
+        """Return ``True`` when this condition's current state fully
+        disables organs in its location (#307).
+
+        Default ``False`` — most conditions degrade function gradually
+        via :meth:`get_organ_functionality_modifier` rather than
+        flipping a binary cutoff.  Subclasses with a clear "tissue is
+        no longer working" threshold (e.g. critical infection)
+        override.
+        """
+        return False
+
+    def get_organ_functionality_modifier(self):
+        """Return a multiplier in ``[0.0, 1.0]`` applied to organ
+        functionality at this condition's location (#307).
+
+        Default ``1.0`` — no effect.  Body-wide conditions (pain,
+        blood loss, consciousness suppression) keep the default since
+        their impact propagates through other channels (pain →
+        consciousness, blood loss → blood_level → consciousness, etc.)
+        rather than directly reducing individual organ output.
+        Location-bound conditions whose biology actually impairs the
+        tissue at that site (infection inflammation) override.
+        """
+        return 1.0
+
     @property
     def type(self):
         """Alias for condition_type for backward compatibility."""
@@ -290,7 +316,38 @@ class InfectionCondition(MedicalCondition):
     def should_end(self):
         """Infection ends when severity reaches 0."""
         return self.severity <= 0
-        
+
+    def disables_organ_at_severity(self):
+        """Critical infection (severity ≥ 10) disables organs at the
+        affected location entirely — inflammation has overwhelmed
+        the tissue (#307).
+        """
+        return self.severity >= 10
+
+    def get_organ_functionality_modifier(self):
+        """Inflammation progressively impairs organ function (#307).
+
+        Severity ladder, matching the 1-10 scale used elsewhere:
+
+        * 0:   ``1.0`` — cleared, awaiting removal
+        * 1-3: ``0.9`` — minor; small functional drag
+        * 4-6: ``0.75`` — moderate; noticeable impairment
+        * 7-9: ``0.5`` — severe; organ at half-function
+        * 10+: ``0.0`` — handled via :meth:`disables_organ_at_severity`
+
+        Numbers are scaffolding — balance pass owed (proof-of-concept
+        per the user; spec line 1418 also defers exact mechanics).
+        """
+        if self.severity <= 0:
+            return 1.0
+        if self.severity <= 3:
+            return 0.9
+        if self.severity <= 6:
+            return 0.75
+        if self.severity <= 9:
+            return 0.5
+        return 0.0  # severity 10+ — disabling check catches it too
+
     def apply_treatment(self, treatment_quality="adequate"):
         """Apply medical treatment to infection."""
         super().apply_treatment(treatment_quality)

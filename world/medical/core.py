@@ -67,8 +67,30 @@ class Organ:
         self.capacities = self.data.get("capacities", [])
         self.contribution = self.data.get("contribution", "minor")
         
-        # Medical conditions affecting this organ
+        # Medical conditions affecting this organ.  Kept for legacy
+        # callers (``add_condition`` / ``remove_condition``) — the
+        # canonical source of truth is ``MedicalState.conditions``
+        # (body-wide list).  ``_has_disabling_conditions`` and
+        # ``get_functionality_percentage`` scan the parent state via
+        # ``self.medical_state`` rather than mirroring conditions
+        # here.  See :meth:`_iter_relevant_conditions`.
         self.conditions = []
+
+        # Back-reference to the owning ``MedicalState``, set by
+        # ``MedicalState`` at organ-creation / restore time so the
+        # organ can scan the body-wide condition list for entries
+        # matching its location.  ``None`` until wired — methods
+        # degrade gracefully when absent (e.g. organ instantiated
+        # outside a MedicalState in a test stub).
+        #
+        # Scan-based design (over mirroring) is the cyberware-safe
+        # answer: replacing this flesh organ with a cyberware
+        # equivalent leaves any chest / abdomen / etc. infections
+        # in place on the body without sync logic, since conditions
+        # never lived on the organ.  See spec line 564 ("Prosthetic
+        # Integration: New artificial limbs add new hit locations
+        # with their own organ mappings").
+        self.medical_state = None
         
         # Wound state tracking for longdesc integration
         self.wound_stage = None      # fresh, treated, healing, scarred
@@ -83,29 +105,76 @@ class Organ:
         """Returns True if organ can perform its function."""
         return not self.is_destroyed() and not self._has_disabling_conditions()
         
-    def _has_disabling_conditions(self):
-        """Check if any conditions disable this organ's function."""
-        # For now, return False - will be expanded in later phases
-        return False
-        
-    def get_functionality_percentage(self):
+    def _iter_relevant_conditions(self):
+        """Yield body-wide conditions whose location applies to this
+        organ (#307).
+
+        Scans ``self.medical_state.conditions`` and filters by the
+        condition's ``location`` field:
+
+        * ``None`` / unset location → body-wide condition; included.
+          Its default ``get_organ_functionality_modifier`` is
+          ``1.0`` (no effect) unless the subclass overrides for an
+          organ-meaningful body-wide effect.
+        * Matches ``self.container`` OR ``self.display_location`` →
+          included.  Sensory organs (left_eye / right_eye) match on
+          display_location so a "left_eye" condition only affects
+          the left eye, not the right.
+        * Anything else → skipped.
+
+        Degrades gracefully (empty iterator) when
+        ``self.medical_state`` is ``None`` — handles test stubs that
+        instantiate Organ standalone without a parent state.
         """
-        Returns the percentage of normal function this organ provides.
-        
+        state = self.medical_state
+        if state is None:
+            return
+        relevant_locs = (self.container, self.display_location)
+        for condition in state.conditions:
+            loc = getattr(condition, "location", None)
+            if loc and loc not in relevant_locs:
+                continue
+            yield condition
+
+    def _has_disabling_conditions(self):
+        """Return True when any relevant condition is at a severity
+        that fully disables this organ (#307).
+
+        Consults ``disables_organ_at_severity()`` on each condition
+        matching this organ's location.  Base
+        :class:`world.medical.conditions.MedicalCondition` returns
+        ``False`` by default; subclasses with a clear cutoff
+        (e.g. critical infection) override.
+        """
+        for condition in self._iter_relevant_conditions():
+            if condition.disables_organ_at_severity():
+                return True
+        return False
+
+    def get_functionality_percentage(self):
+        """Return the percentage of normal function this organ
+        provides (#307).
+
+        Multiplies HP-driven base function by the product of each
+        relevant condition's ``get_organ_functionality_modifier()``
+        — so an inflamed organ runs below capacity even when its HP
+        is intact.  Body-wide conditions whose modifier defaults to
+        ``1.0`` (pain, blood loss, consciousness suppression) leave
+        the result untouched.
+
         Returns:
-            float: 0.0 to 1.0 representing functional capacity
+            float: ``0.0`` to ``1.0`` representing functional capacity.
         """
         if self.is_destroyed():
             return 0.0
-            
-        # Base functionality based on current HP
+
         base_function = self.current_hp / self.max_hp
-        
-        # TODO: Apply condition modifiers in later phases
-        # condition_modifier = self._get_condition_penalty()
-        # return max(0.0, base_function * condition_modifier)
-        
-        return base_function
+
+        modifier = 1.0
+        for condition in self._iter_relevant_conditions():
+            modifier *= condition.get_organ_functionality_modifier()
+
+        return max(0.0, base_function * modifier)
         
     def take_damage(self, amount, injury_type="generic"):
         """
@@ -197,18 +266,52 @@ class Organ:
         """
         Apply medical treatment to this organ's wound.
         Future-proofing method for medical treatment system.
-        
+
         Args:
             treatment_type (str): Type of treatment applied
+
+        Deferred design (#307 follow-up).  The current implementation
+        only advances the wound stage; the spec describes a much
+        richer treatment pipeline that's deferred to a deeper pass
+        because exact mechanics need balance work first.  See
+        ``specs/HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md``:
+
+        * **G.R.I.M. skill roll** (line 1432-1478):
+          ``medical_effectiveness = (intellect * 0.75) + (motorics * 0.25)``;
+          d20 + skill vs difficulty threshold.
+        * **Tri-modal outcomes** (line 1473): success /
+          partial_success / failure with distinct effects.
+        * **Tool appropriateness table** (line 1396-1419): each
+          tool has per-condition effectiveness; mismatched tools
+          either fail or have ``failure_consequences`` (e.g.
+          ``"infection_risk_scar_tissue"``).
+        * **Healing bonuses** belong here once the heal-rate
+          plumbing exists (currently absent; gated on the Time
+          System #301 for time-based healing ticks anyway).
+
+        For the destroyed → severed branch (clean amputation), the
+        deferred design space is wider still:
+
+        * **Order of operations**: tourniquet placement before vs
+          after the cut changes blood-loss outcome.
+        * **Care quality**: clean surgical amputation vs field-cut
+          drives pain reduction, infection arrest at the site, and
+          long-term wound stage.
+        * **Painkiller interaction**: prior / concurrent painkiller
+          use modifies pain consequences (spec line 1092).
+        * **``amputation_risk`` injury types** (spec line 925):
+          frostbite explicitly triggers amputation as a treatment
+          path, not just as a sever-from-damage path.
+
+        Until that pass, this method only flips the stage so the
+        wound rendering picks the correct decay tier.
         """
         if hasattr(self, 'wound_stage'):
             if self.wound_stage == 'fresh':
                 self.wound_stage = 'treated'
-                # TODO: Add treatment effects, healing bonuses, etc.
             elif self.wound_stage == 'destroyed':
                 # Medical treatment of destroyed organs results in clean amputation/severance
                 self.wound_stage = 'severed'
-                # TODO: Add surgical amputation effects, pain management, etc.
     
     def advance_healing_stage(self):
         """
@@ -231,13 +334,30 @@ class Organ:
         }
         
         self.wound_stage = stage_progression.get(self.wound_stage, self.wound_stage)
-        
+
         # Scarred stage only applies to organs that still have HP (non-destroyed)
         if self.wound_stage == 'scarred' and self.current_hp <= 0:
             # Destroyed organs can't become scars - they stay destroyed
             self.wound_stage = 'destroyed'
-            # TODO: Consider if we want visible scars for non-destroyed organs
-            pass
+
+        # Scar policy (#307 follow-up): scars are **cosmetic only**.
+        # Scarred-stage organs render the scarred wound prose via the
+        # existing message modules (``world/medical/wounds/messages/<itype>.py``
+        # ``"scarred"`` cell) and do NOT carry a functionality penalty.
+        # This is intentionally distinct from two related but separate
+        # mechanics the spec calls out as deferred design space:
+        #
+        # * **Permanent damage** (spec line 879, 923): some injury
+        #   types (burn, frostbite) have ``permanent_damage_chance``.
+        #   Permanent damage is FUNCTIONAL — likely modelled as
+        #   reduced max_hp or a persistent functionality multiplier.
+        #   Separate from scarring.
+        # * **Improper healing** (spec line 1149): a failed splint
+        #   has ``failure_consequences = "improper_healing_permanent_reduced_function"``.
+        #   Also functional, triggered by failed treatment.
+        #
+        # Auto-progression from healing → scarred is gated on the
+        # Time System (#301) for time-based ticks.
         
     def add_condition(self, condition):
         """Add a medical condition to this organ."""
@@ -335,7 +455,9 @@ class MedicalState:
         unknown species falls back to the human organ table.  Each
         organ is constructed with the species so its spec lookup
         targets the right table — a rat's medical state doesn't
-        accidentally get a left_humerus.
+        accidentally get a left_humerus.  Sets the back-reference
+        (#307) so the organ can scan ``self.conditions`` for
+        location-matching entries during functionality checks.
         """
         from world.anatomy import get_species_organs
 
@@ -343,20 +465,25 @@ class MedicalState:
         if self.character is not None:
             species = getattr(self.character.db, "species", None)
         for organ_name in get_species_organs(species).keys():
-            self.organs[organ_name] = Organ(organ_name, species=species)
+            organ = Organ(organ_name, species=species)
+            organ.medical_state = self
+            self.organs[organ_name] = organ
             
     def get_organ(self, organ_name):
         """Get organ by name, creating if it doesn't exist.
 
         Species-aware (issue #356 Phase 1) — lazily-created organs
         consult the owning character's species so the spec lookup
-        targets the right table.
+        targets the right table.  Sets the parent back-reference
+        (#307) on newly-created organs.
         """
         if organ_name not in self.organs:
             species = None
             if self.character is not None:
                 species = getattr(self.character.db, "species", None)
-            self.organs[organ_name] = Organ(organ_name, species=species)
+            organ = Organ(organ_name, species=species)
+            organ.medical_state = self
+            self.organs[organ_name] = organ
         return self.organs[organ_name]
         
     def get_conditions_by_location(self, location):
@@ -685,10 +812,16 @@ class MedicalState:
         """Deserialize medical state from persistence."""
         medical_state = cls(character)
         
-        # Restore organs
+        # Restore organs.  Wire the back-reference (#307) so restored
+        # organs can scan ``medical_state.conditions`` for relevant
+        # entries — needed for ``get_functionality_percentage`` /
+        # ``_has_disabling_conditions`` to fire correctly on
+        # post-restore organs.
         organ_data = data.get("organs", {})
         for organ_name, organ_dict in organ_data.items():
-            medical_state.organs[organ_name] = Organ.from_dict(organ_dict)
+            organ = Organ.from_dict(organ_dict)
+            organ.medical_state = medical_state
+            medical_state.organs[organ_name] = organ
             
         # Restore conditions - using proper deserialization
         condition_data = data.get("conditions", [])
