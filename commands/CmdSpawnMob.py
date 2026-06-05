@@ -24,17 +24,25 @@ class CmdSpawnMob(Command):
     Usage:
         @spawnmob [optional name]
         @spawnmob/blank [optional name]
+        @spawnmob/rat [optional name]
 
-    If no name is given, one is generated based on randomized sex.
-    The mob receives randomized identity attributes (height, build, hair)
-    plus a randomly selected short description, longdescs across every
-    body location with seed data, and a look_place — drawn from
-    ``world/mob_flavor/``.
+    If no name is given, one is generated based on randomized sex (for
+    humans) or defaulted to a species-flavored key (for non-humans).
+    Humanoid mobs receive randomized identity attributes (height, build,
+    hair) plus a randomly selected short description, longdescs, and a
+    look_place — drawn from ``world/mob_flavor/``.
 
     Switches:
         /blank   - skip the flavor pass; produces the legacy minimal mob
                    (stock filler description, no longdescs, no look_place)
                    for clean diagnostic spawns.
+        /rat     - spawn an anatomically distinct rat instead of a
+                   humanoid. Skips the human-flavored short-description,
+                   longdesc, and look_place pass (it's all humanoid
+                   vocabulary).  Medical state initializes with rat
+                   organs; longdesc surfaces seed to the rat default set
+                   (snout / fur / forelegs / tail / etc.).  See
+                   ``SPECIES_AUTHORING.md`` for adding more species.
     """
 
     key = "@spawnmob"
@@ -43,15 +51,18 @@ class CmdSpawnMob(Command):
     def func(self):
         caller = self.caller
 
-        # Parse /blank switch
+        # Parse switches
         raw_args = self.args.strip()
         blank = False
+        species = "human"
         if raw_args.startswith('/'):
             parts = raw_args[1:].split(None, 1)
             if parts:
                 switches = [s.lower() for s in parts[0].split('/') if s]
                 if "blank" in switches:
                     blank = True
+                if "rat" in switches:
+                    species = "rat"
                 raw_args = parts[1] if len(parts) > 1 else ""
 
         # Assign sex with chance of ambiguity
@@ -59,18 +70,19 @@ class CmdSpawnMob(Command):
         if randint(1, 10) <= 2:  # 20% chance to use ambiguous
             sex = "ambiguous"
 
-        # Select appropriate name bank
-        if sex == "male":
-            first = choice(FIRST_NAMES_MALE)
-        elif sex == "female":
-            first = choice(FIRST_NAMES_FEMALE)
+        # Name: humans pull from the name banks; non-humans get a
+        # species-flavored default key ("a rat") unless overridden.
+        if species == "human":
+            if sex == "male":
+                first = choice(FIRST_NAMES_MALE)
+            elif sex == "female":
+                first = choice(FIRST_NAMES_FEMALE)
+            else:
+                first = choice(FIRST_NAMES_AMBIGUOUS)
+            last = choice(LAST_NAMES)
+            mob_name = raw_args or f"{first} {last}"
         else:
-            first = choice(FIRST_NAMES_AMBIGUOUS)
-
-        last = choice(LAST_NAMES)
-
-        # Use user-specified name if given, otherwise generate
-        mob_name = raw_args or f"{first} {last}"
+            mob_name = raw_args or f"a {species}"
 
         # Create the character
         mob = create_object(
@@ -80,6 +92,23 @@ class CmdSpawnMob(Command):
             home=caller.location
         )
 
+        # Set species before re-initializing the species-dependent
+        # surfaces (longdesc default set, medical state).
+        # ``at_object_creation`` already ran with the default species
+        # (None → human), so for non-human spawns we must overwrite
+        # those surfaces with species-aware values.
+        if species != "human":
+            mob.db.species = species
+            # Re-seed longdesc with the species default surface set.
+            from world.anatomy import get_species_default_longdesc_locations
+            mob.longdesc = get_species_default_longdesc_locations(species)
+            # Re-initialize medical state so organs come from the
+            # species table (humans got the human organ set during
+            # at_object_creation; rats need rat organs).
+            from world.medical.core import MedicalState
+            mob._medical_state = MedicalState(mob)
+            mob.db.medical_state = mob._medical_state.to_dict()
+
         mob.sex = sex
 
         mob.grit = roll_stat()
@@ -87,29 +116,40 @@ class CmdSpawnMob(Command):
         mob.intellect = roll_stat()
         mob.motorics = roll_stat()
 
-        # Identity attributes — randomize so the mob gets a proper
-        # sdesc (e.g. "a gaunt man with blonde braids") instead of
-        # falling back to its .key.
-        mob.height = choice(HEIGHTS)
-        mob.build = choice(BUILDS)
-        # sdesc_keyword defaults via get_sdesc() based on gender
-        # (man / woman / person), so we leave it unset.
-
-        # 20% chance of bald (None), otherwise random hair
-        if randint(1, 5) == 1:
-            mob.hair_color = None
-            mob.hair_style = None
-        else:
-            mob.hair_color = choice(HAIR_COLORS)
-            mob.hair_style = choice(HAIR_STYLES)
+        # Humanoid-only identity attributes — rats don't have human
+        # height / build / hair properties.  Sdesc rendering for non-
+        # humans falls back to ``.key`` ("a rat") naturally.
+        if species == "human":
+            # Randomize so the mob gets a proper sdesc (e.g. "a gaunt
+            # man with blonde braids") instead of falling back to
+            # ``.key``.
+            mob.height = choice(HEIGHTS)
+            mob.build = choice(BUILDS)
+            # sdesc_keyword defaults via get_sdesc() based on gender
+            # (man / woman / person), so we leave it unset.
+            # 20% chance of bald (None), otherwise random hair
+            if randint(1, 5) == 1:
+                mob.hair_color = None
+                mob.hair_style = None
+            else:
+                mob.hair_color = choice(HAIR_COLORS)
+                mob.hair_style = choice(HAIR_STYLES)
 
         # Flavor pass — random short desc, longdescs, and look_place.
-        # /blank preserves the legacy minimal-flavor behavior.
-        if blank:
-            mob.db.desc = (
-                "A breathing body without an identity."
-                " Its eyes flicker, but it does not move."
-            )
+        # /blank preserves the legacy minimal-flavor behavior.  Non-
+        # humans skip mob_flavor entirely (the entries are humanoid-
+        # specific) and get a minimal species-aware description.
+        if blank or species != "human":
+            if species == "human":
+                mob.db.desc = (
+                    "A breathing body without an identity."
+                    " Its eyes flicker, but it does not move."
+                )
+            else:
+                mob.db.desc = (
+                    f"A small {species}, twitching its whiskers and "
+                    f"watching the room with wary eyes."
+                )
         else:
             apply_random_flavor(mob)
 
