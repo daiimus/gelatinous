@@ -569,11 +569,17 @@ class CmdThrow(Command):
         self.start_flight(obj, destination, target, is_weapon=False)
     
     def remove_from_hand(self, obj):
-        """Remove object from caller's hand."""
-        caller_hands = getattr(self.caller, 'hands', {})
+        """Remove object from caller's hand.
+
+        PR-H2: ``caller.hands`` is a derived view; mutate a
+        snapshot then assign through the setter to persist via
+        the held_items backing store.
+        """
+        caller_hands = dict(getattr(self.caller, 'hands', {}))
         for hand_name, wielded_obj in caller_hands.items():
             if wielded_obj == obj:
                 caller_hands[hand_name] = None
+                self.caller.hands = caller_hands
                 break
     
     def start_flight(self, obj, destination, target, is_weapon=False):
@@ -1618,10 +1624,13 @@ class CmdCatch(Command):
         if obj in flying_objects:
             flying_objects.remove(obj)
         
-        # Cancel flight timer by moving to caller and wielding
+        # Cancel flight timer by moving to caller and wielding.
+        # PR-H2: snapshot + mutate + setter so the held_items
+        # backing store persists.
         obj.move_to(self.caller)
-        caller_hands = getattr(self.caller, 'hands', {})
+        caller_hands = dict(getattr(self.caller, 'hands', {}))
         caller_hands[hand_name] = obj
+        self.caller.hands = caller_hands
         
         # Announce success
         self.caller.msg(MSG_CATCH_SUCCESS.format(object=obj.key))

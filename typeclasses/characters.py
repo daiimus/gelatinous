@@ -21,6 +21,48 @@ from .clothing_mixin import ClothingMixin
 from .appearance_mixin import AppearanceMixin
 
 
+# ---------------------------------------------------------------------
+# Mr. Hands name aliases (#307, PR-H2)
+# ---------------------------------------------------------------------
+#: User-facing shorthand → canonical anatomical container name.
+#: Lets ``wield baton in left`` continue to work while the underlying
+#: storage uses the anatomical key (``left_hand``).  Aliases that
+#: don't resolve fall through unchanged, so callers can pass a
+#: canonical key directly without a round-trip.
+HAND_NAME_ALIASES = {
+    "left": "left_hand",
+    "right": "right_hand",
+    "l": "left_hand",
+    "r": "right_hand",
+}
+
+
+def _canonical_hand(hand):
+    """Resolve user-facing ``hand`` shorthand to canonical
+    anatomical container name.
+
+    Lower-cases the input, then maps via :data:`HAND_NAME_ALIASES`.
+    Unmapped values pass through unchanged (so canonical inputs
+    like ``"left_hand"`` are no-ops).
+    """
+    if not isinstance(hand, str):
+        return hand
+    lowered = hand.strip().lower()
+    return HAND_NAME_ALIASES.get(lowered, lowered)
+
+
+def _humanize_hand(canonical):
+    """Render a canonical container name for player-facing prose.
+
+    ``left_hand`` → ``"left hand"``.  Generic fallback: underscores
+    to spaces.  Future species-aware rendering can consult
+    ``get_species_location_display`` if needed.
+    """
+    if not isinstance(canonical, str):
+        return str(canonical)
+    return canonical.replace("_", " ")
+
+
 class Character(
     ArmorMixin, ClothingMixin, AppearanceMixin, ObjectParent, DefaultCharacter
 ):
@@ -1507,14 +1549,114 @@ class Character(
         return None
 
     # ===================================================================
-    # MR. HANDS SYSTEM
+    # MR. HANDS SYSTEM (#307, PR-H2)
     # ===================================================================
-    # Persistent hand slots: supports dynamic anatomy eventually
-    hands = AttributeProperty(
-        {"left": None, "right": None},
+    # ``held_items`` is the persistent backing store, keyed by the
+    # canonical anatomical container name (e.g. ``"left_hand"``,
+    # ``"right_hand"`` on humans; future tentacle / claw / prehensile-
+    # tail variants extend the keyspace naturally).
+    #
+    # ``hands`` is a derived ``@property`` view: it walks the species'
+    # ``grasping_containers`` set against the current severance state,
+    # so a character who has lost their left arm sees ``hands`` as
+    # ``{"right_hand": <item or None>}`` — the severed slot is gone,
+    # not just empty.  This drives correct UX: ``wield baton in left``
+    # on someone missing a left arm responds "you don't have a left
+    # hand — it's been severed."
+    #
+    # Writes accept the derived shape AND the legacy
+    # ``{"left": ..., "right": ...}`` shorthand for backward compat
+    # with consumers that haven't migrated yet.
+    held_items = AttributeProperty(
+        {},
         category="equipment",
-        autocreate=True
+        autocreate=True,
     )
+
+    @property
+    def hands(self):
+        """Derived view of grasping appendage slots.
+
+        Returns a dict keyed by canonical container name (e.g.
+        ``"left_hand"``) mapping to the held item or ``None``.
+        The set of slots is computed each read from:
+
+        * The species' ``grasping_containers`` declaration
+        * Minus any container currently severed
+        * Backing values from ``self.held_items``
+
+        Reads are cheap (one species lookup + one severance scan)
+        and intentionally not cached — severance state can change
+        at any time, and over-caching here was the root cause of
+        the pre-PR-H2 "wield in severed hand" bug.
+        """
+        # One-shot legacy migration: if old ``hands`` AttributeProperty
+        # data exists, fold it into ``held_items`` with anatomical
+        # keys.  Safe to call on every read — short-circuits after
+        # the first run.
+        self._migrate_legacy_hands_if_needed()
+
+        from world.anatomy import get_species_grasping_containers
+
+        species = getattr(self.db, "species", None)
+        grasping = get_species_grasping_containers(species)
+        severed = (
+            self._get_severed_locations()
+            if hasattr(self, "_get_severed_locations") else set()
+        )
+        held = self.held_items or {}
+        return {
+            location: held.get(location)
+            for location in grasping
+            if location not in severed
+        }
+
+    @hands.setter
+    def hands(self, value):
+        """Compat setter: route writes through to ``held_items``.
+
+        Existing consumers do ``character.hands = updated_dict``;
+        this setter accepts that and writes through to the new
+        backing store.  Keys may be either canonical
+        (``"left_hand"``) or legacy shorthand (``"left"``); both
+        resolve to the canonical anatomical container name.
+
+        Keys that don't correspond to any species container pass
+        through unchanged — defensive in case future systems use
+        the dict for ad-hoc storage.
+        """
+        if not isinstance(value, dict):
+            return
+        held = dict(self.held_items or {})
+        for key, item in value.items():
+            held[_canonical_hand(key)] = item
+        self.held_items = held
+
+    def _migrate_legacy_hands_if_needed(self):
+        """Move legacy ``{"left": ..., "right": ...}`` data from the
+        old ``hands`` AttributeProperty into ``held_items`` with
+        canonical anatomical keys.
+
+        Pre-PR-H2 characters have a persisted ``hands`` attribute
+        in the ``equipment`` category.  Once migrated, the legacy
+        attribute is removed so subsequent reads short-circuit.
+
+        No-op if the legacy attribute is absent or non-dict.  Only
+        carries forward slots that aren't already populated in
+        ``held_items`` (avoids clobbering newer writes during the
+        transition window).
+        """
+        legacy = self.attributes.get("hands", category="equipment")
+        if not isinstance(legacy, dict):
+            return
+
+        held = dict(self.held_items or {})
+        for legacy_key, item in legacy.items():
+            canonical = _canonical_hand(legacy_key)
+            if canonical not in held:
+                held[canonical] = item
+        self.held_items = held
+        self.attributes.remove("hands", category="equipment")
 
     # ===================================================================
     # LONGDESC SYSTEM
@@ -1540,54 +1682,89 @@ class Character(
     # }
 
     def wield_item(self, item, hand="right"):
-        hands = self.hands
-        if hand not in hands:
-            return f"You don't have a {hand} hand."
+        """Wield ``item`` in ``hand``.
 
-        if hands[hand]:
-            return f"You're already holding something in your {hand}."
-        
+        ``hand`` may be either the canonical anatomical key
+        (``"left_hand"``) or a user-facing shorthand
+        (``"left"`` / ``"l"``).  Severed slots return a specific
+        rejection so the player knows the limb is missing rather
+        than just empty.
+        """
+        canonical = _canonical_hand(hand)
+        display = _humanize_hand(canonical)
+        current = self.hands  # triggers migration + severance scan
+
+        if canonical not in current:
+            # Either the species doesn't have this slot, or it's
+            # severed.  Distinguish the two for legibility.
+            from world.anatomy import get_species_grasping_containers
+            species = getattr(self.db, "species", None)
+            grasping = get_species_grasping_containers(species)
+            if canonical in grasping:
+                # Slot exists on species but is missing in current
+                # view → severed.
+                return f"You don't have a {display} — it's been severed."
+            return f"You don't have a {display}."
+
+        if current[canonical] is not None:
+            return f"You're already holding something in your {display}."
+
         # Check if item is already in another hand
-        for other_hand, held_item in hands.items():
-            if held_item == item:
-                if other_hand == hand:
-                    return f"You're already wielding {item.get_display_name(self)} in your {hand} hand."
-                else:
-                    return f"You're already wielding {item.get_display_name(self)} in your {other_hand} hand."
+        for other_canonical, held in current.items():
+            if held == item:
+                other_display = _humanize_hand(other_canonical)
+                return (
+                    f"You're already wielding "
+                    f"{item.get_display_name(self)} in your "
+                    f"{other_display}."
+                )
 
         if item.location != self:
             return "You're not carrying that item."
-        
+
         # Check if item is currently worn
         if hasattr(self, 'is_item_worn') and self.is_item_worn(item):
             return "You can't wield something you're wearing. Remove it first."
 
-        hands[hand] = item
-        # Keep item.location = self (wielded items stay in inventory location-wise)
-        # They're just tracked separately in the hands dict
-        self.hands = hands  # Save updated hands dict
-        return f"You wield {item.get_display_name(self)} in your {hand} hand."
-    
-    def unwield_item(self, hand="right"):
-        hands = self.hands
-        item = hands.get(hand, None)
+        held = dict(self.held_items or {})
+        held[canonical] = item
+        # Keep item.location = self (wielded items stay in inventory
+        # location-wise) — they're just tracked separately in held_items.
+        self.held_items = held
+        return f"You wield {item.get_display_name(self)} in your {display}."
 
+    def unwield_item(self, hand="right"):
+        canonical = _canonical_hand(hand)
+        display = _humanize_hand(canonical)
+        current = self.hands
+
+        if canonical not in current:
+            from world.anatomy import get_species_grasping_containers
+            species = getattr(self.db, "species", None)
+            grasping = get_species_grasping_containers(species)
+            if canonical in grasping:
+                return f"You don't have a {display} — it's been severed."
+            return f"You don't have a {display}."
+
+        item = current[canonical]
         if not item:
-            return f"You're not holding anything in your {hand} hand."
+            return f"You're not holding anything in your {display}."
 
         item.move_to(self, quiet=True)
-        hands[hand] = None
-        self.hands = hands
-        return f"You unwield {item.get_display_name(self)} from your {hand} hand."
-    
+        held = dict(self.held_items or {})
+        held[canonical] = None
+        self.held_items = held
+        return f"You unwield {item.get_display_name(self)} from your {display}."
+
     def list_held_items(self):
-        hands = self.hands
+        current = self.hands
         lines = []
-        for hand, item in hands.items():
+        for canonical, item in current.items():
+            display = _humanize_hand(canonical).title()
             if item:
-                lines.append(f"{hand.title()} Hand: {item.get_display_name(self)}")
+                lines.append(f"{display}: {item.get_display_name(self)}")
             else:
-                lines.append(f"{hand.title()} Hand: (empty)")
+                lines.append(f"{display}: (empty)")
         return lines
 
     # ===================================================================

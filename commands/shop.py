@@ -181,17 +181,18 @@ class CmdBuy(Command):
             buyer: Character who bought the item
             item: Item to give
         """
-        # Item location is set to buyer in purchase_item
-        # Try to wield in right hand first, then left
+        # Item location is set to buyer in purchase_item.
+        # PR-H2: ``hands`` is now anatomy-derived with canonical keys
+        # ("left_hand" / "right_hand").  Walk the derived view and
+        # pick the first empty slot — handles severed-hand buyers
+        # automatically (their derived view won't include the
+        # severed slot, so we won't try to wield into thin air).
         hands = buyer.hands
-        
-        if hands.get('right') is None:
-            # Right hand empty - wield there
-            buyer.wield_item(item, hand='right')
-        elif hands.get('left') is None:
-            # Left hand empty - wield there
-            buyer.wield_item(item, hand='left')
-        # else: both hands full, item stays in inventory
+        for hand_key, held in hands.items():
+            if held is None:
+                buyer.wield_item(item, hand=hand_key)
+                return
+        # All slots full — item stays in inventory.
     
     def _notify_merchant(self, buyer, item, price, container):
         """

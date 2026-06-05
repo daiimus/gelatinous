@@ -322,37 +322,36 @@ class CmdDrop(Command):
             caller.msg("You can't drop something you're wearing. Remove it first.")
             return
 
-        # If it's wielded, remove it from the hand
+        # If it's wielded, remove it from the hand.  PR-H2:
+        # ``caller.hands`` is now a derived view, so we snapshot,
+        # mutate the snapshot, then assign through the setter to
+        # persist via the held_items backing store.
         was_wielded = False
         hand_name = None
-        for hand, item in caller.hands.items():
+        hands_snapshot = dict(caller.hands)
+        for hand, item in hands_snapshot.items():
             if item == obj:
-                caller.hands[hand] = None
+                hands_snapshot[hand] = None
+                caller.hands = hands_snapshot
                 was_wielded = True
                 hand_name = hand
                 break
 
-        # Move the item to the room
-        obj.move_to(caller.location, quiet=True)
-
-        # Apply gravity if item is dropped in a sky room
-        from commands.combat.movement import apply_gravity_to_items
-        apply_gravity_to_items(caller.location)
-        
-        # Universal proximity assignment for all dropped objects
-        if not hasattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL):
-            setattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, [])
+        # Canonical "item lands on ground" pipeline — move + gravity
+        # + proximity scaffolding.  Caller-specific proximity is added
+        # below since CmdDrop wants the dropper themselves listed as
+        # near the dropped object.
+        from commands.combat.jump import drop_to_room
+        drop_to_room(obj, caller.location)
         proximity_list = getattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, [])
-        if proximity_list is None:
-            proximity_list = []
-            setattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, proximity_list)
         if caller not in proximity_list:
             proximity_list.append(caller)
         
         # Send appropriate message based on whether it was wielded
         item_name = obj.get_display_name(caller)
         if was_wielded:
-            caller.msg(f"You release {item_name} from your {hand_name} hand and drop it.")
+            hand_display = hand_name.replace("_", " ")
+            caller.msg(f"You release {item_name} from your {hand_display} and drop it.")
         else:
             caller.msg(f"You drop {item_name}.")
         msg_room_identity(
@@ -502,14 +501,18 @@ class CmdGet(Command):
         item_name = item.get_display_name(caller)
         container_name = from_container.get_display_name(caller) if from_container else None
 
-        # Try to put it in a free hand
-        for hand, held in caller.hands.items():
+        # Try to put it in a free hand.  PR-H2: snapshot + mutate +
+        # setter assignment for the derived hands view.
+        hands_snapshot = dict(caller.hands)
+        for hand, held in hands_snapshot.items():
             if held is None:
-                caller.hands[hand] = item
+                hands_snapshot[hand] = item
+                caller.hands = hands_snapshot
                 item.move_to(caller, quiet=True)
-                
+
+                hand_display = hand.replace("_", " ")
                 if from_container:
-                    caller.msg(f"You take {item_name} from {container_name} and hold it in your {hand} hand.")
+                    caller.msg(f"You take {item_name} from {container_name} and hold it in your {hand_display}.")
                     msg_room_identity(
                         location=caller.location,
                         template=f"{{actor}} takes {item_name} from {container_name}.",
@@ -517,27 +520,30 @@ class CmdGet(Command):
                         exclude=[caller],
                     )
                 else:
-                    caller.msg(f"You pick up {item_name} and hold it in your {hand} hand.")
+                    caller.msg(f"You pick up {item_name} and hold it in your {hand_display}.")
                     msg_room_identity(
                         location=caller.location,
-                        template=f"{{actor}} picks up {item_name} and holds it in {hand} hand.",
+                        template=f"{{actor}} picks up {item_name} and holds it in {hand_display}.",
                         char_refs={"actor": caller},
                         exclude=[caller],
                     )
                 return
 
-        # No free hands — move the first held item to inventory
-        for hand, held in caller.hands.items():
+        # No free hands — move the first held item to inventory.
+        hands_snapshot = dict(caller.hands)
+        for hand, held in hands_snapshot.items():
             if held:
                 held_name = held.get_display_name(caller)
                 held.move_to(caller, quiet=True)  # move to inventory
-                caller.hands[hand] = item
+                hands_snapshot[hand] = item
+                caller.hands = hands_snapshot
                 item.move_to(caller, quiet=True)
                 
+                hand_display = hand.replace("_", " ")
                 if from_container:
                     caller.msg(
                         f"Your hands are full. You move {held_name} to inventory "
-                        f"and hold {item_name} from {container_name} in your {hand} hand."
+                        f"and hold {item_name} from {container_name} in your {hand_display}."
                     )
                     msg_room_identity(
                         location=caller.location,
@@ -548,7 +554,7 @@ class CmdGet(Command):
                 else:
                     caller.msg(
                         f"Your hands are full. You move {held_name} to inventory "
-                        f"and hold {item_name} in your {hand} hand."
+                        f"and hold {item_name} in your {hand_display}."
                     )
                     msg_room_identity(
                         location=caller.location,
@@ -713,15 +719,22 @@ class CmdGive(Command):
             
             from_hand = caller_free_hand
 
-        # Now transfer from caller's hand to target's hand
-        caller.hands[from_hand] = None
-        target_hands[free_hand] = item
+        # Now transfer from caller's hand to target's hand.  PR-H2:
+        # snapshot + mutate + setter assignment so the held_items
+        # backing store stays consistent on both sides.
+        caller_snapshot = dict(caller.hands)
+        caller_snapshot[from_hand] = None
+        caller.hands = caller_snapshot
+        target_snapshot = dict(target_hands)
+        target_snapshot[free_hand] = item
+        target.hands = target_snapshot
         item.move_to(target, quiet=True)
-        
+
         # Success messages
+        free_hand_display = free_hand.replace("_", " ")
         item_name = item.get_display_name(caller)
         caller.msg(f"You give {item_name} to {target.get_display_name(caller)}.")
-        target.msg(f"{caller.get_display_name(target)} gives you {item_name}. You hold it in your {free_hand} hand.")
+        target.msg(f"{caller.get_display_name(target)} gives you {item_name}. You hold it in your {free_hand_display}.")
         msg_room_identity(
             location=caller.location,
             template=f"{{actor}} gives {item_name} to {{target}}.",

@@ -696,10 +696,12 @@ class DeathProgressionScript(DefaultScript):
             # Clear the worn_items structure
             character.worn_items = {}
         
-        # Clear hands (items already moved via contents transfer above)
-        if hasattr(character, 'hands') and character.hands:
-            for hand_name in character.hands:
-                character.hands[hand_name] = None
+        # Clear hands (items already moved via contents transfer above).
+        # PR-H2: ``hands`` is now a derived view; clearing via the
+        # backing store keeps the bookkeeping simple and avoids the
+        # pre-PR-H2 mutation-of-derived-view footgun.
+        if hasattr(character, 'held_items'):
+            character.held_items = {}
         
         # Debug logging for item transfer
         try:
