@@ -1,7 +1,8 @@
 """Unit tests for the ``harvested`` injury type (PR #200 / PR-F).
 
-Synthesized by :class:`commands.forensics.CmdHarvest` after a
-successful organ extraction and rendered through the standard
+Synthesized by :func:`world.medical.procedures._mark_organ_removed`
+after a successful ``harvest`` procedure verb (PR #380 / #307) and
+rendered through the standard
 :func:`world.medical.wounds.get_wound_description` pipeline so the
 same templates flow to corpse autopsies and (via PR-D's overlay) to
 severed-item ``return_appearance`` output when the harvested organ's

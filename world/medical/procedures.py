@@ -749,17 +749,27 @@ def _apply_collateral_damage(target, location: str, amount: int) -> None:
 
 
 def _mark_organ_removed(target, organ_name: str) -> None:
-    """Append ``organ_name`` to the target's removed-organ list and
-    zero its snapshot HP.  Mirrors what ``CmdHarvest`` does today on
-    a corpse so post-harvest renders show the organ as gone.
+    """Mark ``organ_name`` as removed from ``target``.
+
+    Three persistence paths covered:
+
+    1. ``removed_organs`` list — gates repeat-harvest on the same source.
+    2. Live ``medical_state`` organ HP — zero / ``severed`` so downstream
+       rendering and capacity math reflect the absence on living targets.
+    3. Death-time snapshot organ HP — same zero / ``severed`` mutation so
+       autopsy and repeat-harvest agree on corpse-shaped sources.
+    4. ``wounds_at_death`` ``harvested`` wound entry — feeds autopsy
+       narrative and PR #200's sever-overlay carry-forward (when the
+       organ's container location is later severed, the wound rides
+       along onto the severed item).  Only synthesised when the target
+       carries the ``wounds_at_death`` attribute (corpses / severed
+       parts); living targets get the live-organ mutation instead.
     """
     removed = getattr(target.db, "removed_organs", None) or []
     if organ_name not in removed:
         removed = list(removed) + [organ_name]
         target.db.removed_organs = removed
 
-    # Living: zero HP on the live organ so downstream rendering / capacity
-    # math reflects the absence.
     state = getattr(target, "medical_state", None)
     if state is not None and hasattr(state, "organs"):
         organ = state.organs.get(organ_name)
@@ -767,8 +777,6 @@ def _mark_organ_removed(target, organ_name: str) -> None:
             organ.current_hp = 0
             organ.wound_stage = "severed"
 
-    # Corpse / severed item: mutate the snapshot organ entry the same
-    # way CmdHarvest does today so autopsy / repeat-harvest agree.
     snapshot = None
     accessor = getattr(target, "get_medical_snapshot", None)
     if callable(accessor):
@@ -776,12 +784,37 @@ def _mark_organ_removed(target, organ_name: str) -> None:
             snapshot = accessor()
         except Exception:
             snapshot = None
+    container = organ_name
     if snapshot:
         organs = snapshot.get("organs") or {}
         entry = organs.get(organ_name)
         if isinstance(entry, dict):
             entry["current_hp"] = 0
             entry["wound_stage"] = "severed"
+            container = entry.get("container") or organ_name
+
+    # Corpse-shaped sources (Corpse, SeveredHead, SeveredAppendage) carry
+    # ``medical_state_at_death`` — use that as the duck check rather than
+    # isinstance-ing every concrete class.  Living targets don't have a
+    # death snapshot and don't need a wound-at-death entry.
+    target_db = getattr(target, "db", None)
+    if target_db is not None and getattr(target_db, "medical_state_at_death", None) is not None:
+        wounds = list(getattr(target_db, "wounds_at_death", None) or ())
+        wounds.append({
+            "injury_type": "harvested",
+            "location": container,
+            "severity": "Critical",
+            "stage": "old",
+            "organ": organ_name,
+            "organ_damage": {
+                "current_hp": 0,
+                "max_hp": 0,
+                "container": container,
+            },
+        })
+        target_db.wounds_at_death = wounds
+        if snapshot:
+            target_db.medical_state_at_death = snapshot
 
 
 def _configure_harvested_item(item, *, organ_name: str, condition: str,

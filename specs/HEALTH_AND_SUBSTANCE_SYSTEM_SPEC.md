@@ -100,13 +100,15 @@ CONSUMPTION_RULES = {
 }
 ```
 
-**NEXT: Organ Harvesting and Biotech Foundation (Phase 3.1):**
-- **🎯 Death progression message themes refinement** - Enhance narrative consistency and emotional progression
-- **🎯 Organ viability system** - Time-based organ deterioration after death for harvesting mechanics
-- **🎯 Corpse examination enhancement** - Detailed organ status and harvest viability assessment commands
-- **🎯 Organ harvesting commands** - `harvest <organ> from <corpse>` with skill requirements and failure consequences
-- **🎯 Harvested organ inventory** - Storage, preservation, and viability tracking systems
-- **🎯 Foundation for cybernetics** - Organ replacement demand system setting up prosthetic/cybernetic integration
+**Organ Harvesting and Biotech Foundation (Phase 3.1 → shipped as Phase 2.8):**
+- **✅ Organ viability system** - Time-based organ deterioration after death drives harvested-organ condition (`ORGAN_CONDITION_BY_DECAY`)
+- **✅ Corpse examination** - `autopsy <corpse>` renders organ inventory with harvested / severed marked absent (PR #186)
+- **✅ Organ harvesting commands** - `harvest <organ> from <target>` works on corpses, severed parts, unconscious, AND conscious living targets via the procedure verb set (PR #380, #307)
+- **✅ Harvested organ inventory** - Organ items spawn with condition (`pristine` / `damaged` / `putrid`) tracking decay tier at extraction time
+- **✅ Foundation for cybernetics** - `install <organ> in <target>` is the inverse of harvest; organ-bound conditions travel with the organ on transfer (PR #379)
+- **🎯 Death progression message themes refinement** - Narrative consistency and emotional progression pass still pending
+
+*See ``Phase 2.8: Procedural Surgery System`` below for the full shipped model.*
 
 **Medical System Testing and Validation (Completed September 2025):**
 - **✅ Medical conditions** - Extensive testing of bleeding, pain, infection condition preservation and treatment
@@ -464,22 +466,22 @@ def _process_delayed_attack(self, attacker, target, attacker_entry, combatants_l
 - **Evidence Chain of Custody**: Proper evidence handling and legal admissibility mechanics
 - **Time-Based Degradation**: Evidence quality decreases over time, affecting analysis accuracy
 
-**Phase 3.1 - Organ Harvesting & Biotech Foundation (🎯 NEXT PRIORITY):**
-- **Death progression message enhancement** - Refine narrative themes and emotional progression
-- **Progressive organ failure system** - Time-based organ deterioration after character death
-- **Realistic organ deterioration timelines** - Brain dies in 3 rounds, heart in 8, liver in 12, etc.
-- **Organ harvesting commands** - `harvest <organ> from <corpse>` with medical skill requirements
-- **Corpse examination system** - `examine corpse <target>` with detailed organ viability reports
-- **Harvested organ inventory management** - `viability`, `organs`, preservation mechanics
-- **Foundation for cybernetics integration** - Organ replacement demand system
+**Phase 3.1 - Organ Harvesting & Biotech Foundation (✅ MOSTLY SHIPPED — see Phase 2.8):**
+- **✅ Organ harvesting commands** - `harvest <organ> from <target>` via procedure verb set (PR #380); works on corpses, severed parts, unconscious, and conscious targets
+- **✅ Corpse examination system** - `autopsy <corpse>` (PR #186); organ inventory with absent / damaged status
+- **✅ Harvested organ inventory management** - Organ items spawn with decay-tier condition; PR #200's sever-overlay carries harvest provenance onto severed items
+- **✅ Foundation for cybernetics integration** - `install` is the inverse of `harvest`; three-tier condition model (PR #378/#379) ensures organ-bound conditions travel correctly during transfer
+- **🎯 Death progression message enhancement** - Narrative theme refinement still pending
+- **🎯 Progressive organ failure system** - Time-based post-death organ deterioration with realistic timelines (brain ~3 rounds, heart ~8, liver ~12, etc.)
 
-**Phase 3.2 - Cybernetics & Prosthetics (🔮 FOLLOW-UP):**
-- **Organ transplant procedures** - Living organ replacement using harvested organs
-- **Limb replacement mechanics** - Prosthetics and cybernetic limb systems
-- **Advanced surgical procedures** - Complex medical equipment and high-skill operations  
-- **Cybernetic enhancement systems** - Performance-boosting implants and modifications
-- **Bio-compatibility mechanics** - Rejection, adaptation, and maintenance systems
-- **Mr. Hands integration** - Seamless body modification system compatibility
+**Phase 3.2 - Cybernetics & Prosthetics (✅ FOUNDATION SHIPPED, 🔮 ELABORATION PENDING):**
+- **✅ Organ transplant procedures** - `incise → harvest → install → suture` chain (PR #380); scan-based architecture (PR #378) ensures replaced organs immediately reflect functional state
+- **✅ Procedure verb framework** - Extensible dispatch (`world/medical/procedures.py`) supports new verbs (e.g., future `graft`) without architectural rework
+- **🎯 ``operate`` charting menu** - Menu-driven planner over the procedure dispatch (see Phase 5)
+- **🔮 Limb replacement mechanics** - Prosthetics and cybernetic limb systems built on the install/harvest flow
+- **🔮 Cybernetic enhancement systems** - Performance-boosting implants and modifications
+- **🔮 Bio-compatibility mechanics** - Rejection, adaptation, and maintenance systems
+- **🔮 Mr. Hands integration** - Seamless body modification system compatibility
 
 ## Overview
 
@@ -2437,6 +2439,81 @@ if character.has_condition("bleeding") and character.has_condition("burning"):
 - **Performance Efficient**: Leverages Evennia's optimized ticker system
 - **Persistent**: Conditions survive server restarts via ticker persistence
 
+### Phase 2.8: Procedural Surgery System - ✅ COMPLETED (June 2026)
+
+PRs #378 / #379 / #380 (issue #307) replaced the open-ended ``surgery <target>`` button with a procedural verb set that hands order-of-operations onus to the player. The system is anchored on a three-tier condition model and a scan-based architecture so organ replacement (cybernetics included) flows naturally through the same mechanics.
+
+#### Three-Tier Condition Model (PR #378 / #379)
+
+Conditions now bind at one of three scopes:
+
+* **Body-bound** — systemic state (blood level, total pain, consciousness). Persists across organ replacement; swapping a kidney does not reset a sepsis condition.
+* **Location-bound** — attached to a body location (chest infection, leg fracture). Treatments target the location. Carries forward through PR #200's sever-overlay when the location is severed.
+* **Organ-bound** — attached to an individual organ (heart arrhythmia, damaged liver). Travels with the organ on harvest and install — install a damaged heart and the recipient inherits its arrhythmia.
+
+The three tiers share a common ``MedicalCondition`` base but specialise treatment-correlation: splints resolve location-bound fractures; organ-specific treatments resolve organ-bound damage; systemic drugs resolve body-bound infection. See ``world/medical/conditions.py``.
+
+#### Scan-Based Architecture (PR #378)
+
+Per #378, condition modifiers re-derive from the current organ snapshot on each scan rather than mirroring an internal table. Replacing an organ rolls the modifier set forward automatically — no cleanup pass required. This was the predicate for shipping harvest/install without organ-state leak across transplants.
+
+#### Procedure Verb Set (PR #380)
+
+Four verbs, all gated on a surgical kit in inventory:
+
+| Verb | Syntax | Delay |
+| --- | --- | --- |
+| ``incise`` | ``incise <target> at <location>`` | 6s |
+| ``harvest`` | ``harvest <organ> from <target>`` | 18s |
+| ``install`` | ``install <organ> in <target>`` | 18s |
+| ``suture`` (alias ``stitch``) | ``suture <target>`` | 9s |
+
+All four operate on a unified ``get_organ_snapshot`` accessor that handles living characters, corpses, severed heads, and severed appendages identically. Consistency is the learning surface — practising on corpses transfers directly to operating on living patients.
+
+Skill formula (G.R.I.M., matching the formula at "Medical Treatment Formula" below):
+
+```python
+medical_effectiveness = (intellect * 0.75) + (motorics * 0.25)
+```
+
+Procedure base difficulty is **12** (``PROCEDURE_BASE_DIFFICULTY``), with **+5** when the patient is conscious (resistance) and **−3** when anesthetized / corpse / severed (no resistance, full focus). The legacy ``SURGERY_BASE_DIFFICULTY = 75`` constant remains in ``world/medical/constants.py`` for the moment but is dead — the procedure dispatch reads the new constants from ``world/medical/procedures.py``. Future cleanup pass can remove it.
+
+#### Tri-Modal Outcomes
+
+Each verb resolves to success / partial / failure on a ``3d6 + skill`` vs. difficulty roll. Failure modes seed conditions on the patient:
+
+* ``incise`` failure → no incision opens + location-bound ``InfectionCondition`` seed
+* ``harvest`` failure → organ extracted but condition tier worse, plus ``InfectionCondition`` and ``PainCondition`` seeds (pain skipped on unconscious targets)
+* ``install`` failure → organ doesn't take + ``InfectionCondition`` seed
+* ``suture`` failure → closes but seeded ``InfectionCondition``
+
+Failure-consequence *paths* are real and tested; *severity values* are placeholders pending treatment-depth calibration.
+
+#### Anesthesia Is a Drug, Not a Verb
+
+There is no ``anesthetize`` verb. Anesthesia goes through the existing consumption surfaces (``inject anesthetic into <target>``, etc.). The procedure dispatch reads ``target.is_unconscious()`` to apply the difficulty bonus and skip pain seeding — the unconscious state itself is the contract, not its cause.
+
+Conscious-patient procedures accumulate ``PainCondition`` seeds during each verb's resolution, scaled by the verb's invasiveness (``CONSCIOUS_PAIN_SEVERITY`` in ``procedures.py``).
+
+#### CmdApply Upgrade
+
+``apply`` is now location-precision aware: ``apply <item> on <target>'s <location>`` targets a specific body location. When the location is an internal container (``head``, ``chest``, ``abdomen``, ``back``, ``neck``, ``groin``), ``apply`` rejects unless an incision is currently open at that location. Surface treatments (bandages on skin) skip the requirement. The legacy ``surgery`` / ``operate`` aliases on ``apply`` were removed — the procedure verbs replace them entirely.
+
+Note that the ``TOOL_APPROPRIATENESS`` table below still records surgical kits as effective for severe internal bleeding, infection cleaning, and complex fractures — but surgical kits are now consumed as a *tool prerequisite* for the procedure verbs, not by ``apply``. The effectiveness mapping is design intent; the consumption surface moved.
+
+#### Forensics Pipeline Continuity
+
+The ``harvested`` injury type (``world/medical/wounds/messages/harvested.py``) is synthesised by ``world.medical.procedures._mark_organ_removed`` after a successful harvest on a corpse-shaped source. This feeds autopsy narrative and PR #200's sever-overlay carry-forward unchanged. The legacy ``commands/forensics.py:CmdHarvest`` was retired in the cleanup pass following PR #380; its forensics-side responsibilities moved into the procedure dispatch.
+
+#### Files
+
+* ``world/medical/procedures.py`` — dispatch module
+* ``commands/CmdSurgical.py`` — four command classes
+* ``commands/CmdConsumption.py`` — ``CmdApply`` location-precision upgrade
+* ``world/tests/test_surgical_procedures.py`` — 34 tests covering snapshot accessor, incision lifecycle, skill/difficulty, roll outcomes, failure seeders, resolver outcomes, and ``_mark_organ_removed`` wound synthesis
+
+See also: Phase 5 "Proposed: ``operate`` Charting Command" — a future menu-driven planner that drives the same procedure dispatch as a higher-level surface.
+
 ### Phase 3: Combat Integration & Stat Penalties - 🔲 IN PROGRESS
 - [x] **Smart hit location system** based on attack success margin and precision targeting - ✅ COMPLETED
 - [ ] **Organ density-based targeting** - vital organ areas harder to hit precisely
@@ -2832,6 +2909,297 @@ class Prosthetic:
 - [ ] Infection and complication systems
 - [ ] Prosthetics and permanent disabilities
 - [ ] Advanced surgical procedures
+- [ ] `operate` charting menu (see below)
+
+### Proposed: `operate` Charting Command (Future)
+
+The procedural verbs (`incise` / `harvest` / `install` / `suture` — see #307 / PR #380) give players direct, low-level control over surgery in real time. `operate` is the proposed high-level companion: a menu-driven UI, modelled on `describe`, that lets a surgeon build and persist a **medical chart** on a patient. The verbs stay the canonical "what's happening right now" layer; `operate` is the canonical "here is the plan" layer.
+
+#### Intent and Positioning
+
+`operate <target>` opens an EvMenu (per `EVMENU_PATTERNS_SPEC.md`) where a surgeon can **diagnose** the patient, **chart** a sequence of procedures and treatments, then either **commence** the plan or **leave the chart** on the patient for asynchronous handoff. Same dispatch as the verbs underneath; different ergonomic surface.
+
+The two surfaces serve different play modes:
+
+| Layer | When it's right | What it optimises for |
+| --- | --- | --- |
+| Procedure verbs (`incise`, `harvest`, `install`, `suture`) | Back-alley triage, mid-combat field work, single-step improvisation | Tension, immediacy, per-step risk |
+| `operate` chart | Planned multi-step transplants, training, async handoff, complex diagnoses | Deliberation, sequencing, persistence across sessions |
+
+A surgeon mid-firefight uses the verbs. A surgeon at a hospital bed plans with `operate`, optionally hands the chart to a colleague, and either party can switch to the verbs when the situation demands it. The chart is never compulsory — it's a planning aid the procedural layer is happy to ignore.
+
+#### Visual Design Conventions
+
+The menu inherits two existing conventions and breaks from a third:
+
+**EvMenu patterns from ``describe`` (``commands/CmdCharacter.py`` ``_DescribeEvMenu``).**
+
+* Custom ``EvMenu`` subclass that suppresses the default decorations — ``nodetext_formatter`` / ``options_formatter`` / ``node_formatter`` collapse to pass-through, so each node owns its full visual.
+* Top-level node renders its own numbered list with column-aligned label and ``::`` separators:
+  ``  |w 1.|n |WLabel column     :: value preview|n``
+* ``x`` is the universal exit token; ``_default`` is the sole option, routing through a ``_process_*_choice`` dispatcher that validates the input and returns the next node name.
+* All transient menu state lives on ``caller.ndb._operate_*`` and is cleared by a ``cmd_on_exit`` callback.
+* Per ``EVMENU_PATTERNS_SPEC.md``: text-input nodes guard ``if raw_string and raw_string.strip():`` (not bare ``if raw_string:``) to avoid the blank-input regression.
+
+**Chrome from ``score`` (``commands/CmdCharacter.py`` ``CmdStats``).**
+
+* Box-drawn frame using the shared ``BOX_TOP_LEFT`` / ``BOX_HORIZONTAL`` / ``BOX_VERTICAL`` / ``BOX_TEE_RIGHT`` / ``BOX_TEE_LEFT`` / ``BOX_BOTTOM_LEFT`` constants.
+* ``COLOR_SUCCESS`` (medical-green) for the chrome — the colour says *medical readout* the same way ``score`` says *evaluation report*.
+* Fixed 48-character visible content width inside the box, with row content left-padded to keep the right border aligned.
+* Tee separators (``BOX_TEE_RIGHT … BOX_TEE_LEFT``) divide the readout into logical bands: header → diagnose summary → chart steps → action options.
+* A header band with the title and patient-identity row, mirroring the ``score`` subject + file-reference layout. ``operate`` substitutes patient identity and chart status for those rows.
+
+**The break from ``score``: NOT centered.**
+
+``score`` wraps its output in ``_center_text`` and renders flush-centre. ``operate`` does **not**. Rationale: the chart is a working document, not a presentation. A surgeon scans, edits, and re-scans many times in one session — centering forces the eye to re-anchor on every refresh, whereas a left-flush block sits in a stable reading column and matches the editing posture of ``describe``. Operationally, ``operate`` skips the ``_center_text`` call and emits the box flush to the left margin.
+
+A practical consequence: the box width is set from the menu's content needs (48 inside chrome, matching ``score``), not from terminal-width centering math. Lines longer than the content width wrap inside cells; the chrome stays square.
+
+#### Chart Data Structure
+
+Chart persists on `target.db.medical_chart` as a dict:
+
+```python
+target.db.medical_chart = {
+    "version": 1,
+    "authored_by": <surgeon dbref>,
+    "authored_at": <timestamp>,
+    "last_modified_by": <surgeon dbref>,
+    "last_modified_at": <timestamp>,
+    "status": "draft" | "in_progress" | "completed" | "aborted",
+    "steps": [
+        {
+            "id": <int, stable across edits>,
+            "verb": "incise" | "harvest" | "install" | "suture"
+                  | "inject" | "apply" | "spray" | "inhale",
+            "args": {...},          # verb-specific, mirrors the command argspec
+            "notes": <str>,         # surgeon's free-text annotation
+            "status": "pending" | "running" | "done" | "skipped" | "failed",
+            "outcome": <str|None>,  # populated after execution
+        },
+        ...
+    ],
+    "diagnoses": [
+        {"location": "chest", "finding": "...", "noted_by": <dbref>, "at": <ts>},
+        ...
+    ],
+}
+```
+
+Survives reload/restart per Evennia attribute semantics. Step IDs are stable so a surgeon resuming an interrupted plan can reorder and edit individual steps without losing references. `args` mirrors each command's existing argument shape — the dispatcher reconstructs the same call the verb would make at the prompt, so there's only one execution path to test and maintain.
+
+#### Menu Wireframe
+
+Top-level node rendered with ``score``-style box chrome (``BOX_*`` constants, ``COLOR_SUCCESS`` chrome colour, 48-char content width, tee separators between bands), flush-left (no ``_center_text``). Row content follows the ``describe`` numbered-list pattern (``num. label :: value``). The ``x`` exit token is universal.
+
+```
+┌────────────────────────────────────────────────┐
+│ SURGICAL CHART                                 │
+│ Patient: a battered drifter                    │
+│ Chart:   draft · 3 steps · Dr. Vance, 14m ago  │
+├────────────────────────────────────────────────┤
+│ Vitals:  unconscious                           │
+│ Notes:   severe bleeding (chest) · pain 3      │
+│ Open incisions: none                           │
+├────────────────────────────────────────────────┤
+│ Steps charted:                                 │
+│   1. incise chest                   [pending]  │
+│   2. harvest left lung              [pending]  │
+│   3. suture chest                   [pending]  │
+├────────────────────────────────────────────────┤
+│  1. Diagnose patient                           │
+│  2. Add procedure step                         │
+│  3. Add treatment step                         │
+│  4. Reorder / remove steps                     │
+│  5. Annotate step                              │
+│  6. Commence chart                             │
+│  7. Save chart and exit                        │
+│  8. Discard chart                              │
+│  x. Exit                                       │
+└────────────────────────────────────────────────┘
+```
+
+Production rendering substitutes the ASCII box-drawing characters for the project's ``BOX_*`` Unicode constants and wraps each cell line in ``COLOR_SUCCESS``…``COLOR_NORMAL``. The whole block emits flush-left; no ``_center_text`` call.
+
+Child nodes follow the same EvMenu text-input patterns ``describe`` uses (``if raw_string and raw_string.strip():`` guards, ``_default`` routing, ``cmd_on_exit`` cleanup). Reordering uses a numbered swap-target pattern rather than freeform input. "Add procedure step" walks the surgeon through verb → target → location → notes; each prompt validates against the patient's current state (e.g., the location picker for `harvest` shows only locations with extractable organs).
+
+#### Diagnose Pane
+
+The diagnose node is the consolidation surface for medical observation. Today the same data is scattered across `medical info`, autopsy output, and inferred-from-flavor text. The pane should aggregate:
+
+- **Organ snapshot** — every container with its organ contents and per-organ condition tier
+- **Condition stack** — bleeding / pain / infection / fractures / organ-bound conditions, with severity and location
+- **Open incisions** — locations currently incised, who opened them, how long ago
+- **Cybernetic vs. biological tags** — visible to surgeons with the appropriate skill
+- **Prior chart history** — previous chart runs on this patient, who authored, outcomes
+- **Recent vitals trajectory** — unconscious/conscious transitions, recent damage events
+
+Surgeon's medical skill (G.R.I.M. — `(intellect * 0.75) + (motorics * 0.25)`) gates the depth of the reveal. Low skill shows surface findings (visible bleeding, gross fractures); higher skill surfaces internal organ condition and cybernetic identification. This is the same difficulty ladder as the procedure verbs — consistency for learning.
+
+The pane is read-only as a diagnostic surface but offers a "note a finding" action that appends to the chart's `diagnoses` list, giving the surgeon a place to record observations that other surgeons can see on handoff.
+
+#### Step Validation and Prerequisites
+
+The dispatcher validates each step against the patient's current state at the moment of execution, not at the moment of charting. This matters because the patient's state can change between sessions. Validation rules:
+
+| Verb | Prerequisite check |
+| --- | --- |
+| `incise <loc>` | location is a valid internal container; not already incised |
+| `harvest <organ>` from internal location | location currently incised; organ still present |
+| `harvest <organ>` from external (severed parts, corpse) | organ still present |
+| `install <organ>` in internal location | location currently incised; donor organ on hand; recipient slot vacant |
+| `suture <loc>` | location currently incised |
+| `inject` / `apply` / `spray` / `inhale` | item still on hand; target reachable |
+
+Failure modes per step:
+
+- **Hard fail** (step cannot run): mark `status: "skipped"`, surface a prompt-or-continue choice to the surgeon ("the left lung is no longer present — skip step or abort chart?")
+- **Soft fail** (verb dispatch fails its roll): mark `status: "failed"`, record `outcome`, continue to next step (surgeon's plan accounted for risk; subsequent steps may compensate)
+
+Charting *can* enqueue steps that aren't currently valid (e.g., chart `harvest` before the prior `incise` has executed) — the validation runs at execution time, not chart time, so plans can include future state.
+
+#### Example Session: Lung Transplant
+
+Walk-through of a routine multi-step procedure:
+
+```
+> operate patient
+
+[ menu opens, status: empty, vitals: unconscious post-anesthetic ]
+
+→ Add procedure step
+  Verb? incise
+  Location? chest
+  Notes? "midline approach"
+
+→ Add procedure step
+  Verb? harvest
+  Organ? left lung
+  Notes? "diseased — discard"
+
+→ Add procedure step
+  Verb? install
+  Organ? donor lung (from inventory)
+  Location? chest
+  Notes? "cross-match confirmed"
+
+→ Add procedure step
+  Verb? suture
+  Location? chest
+  Notes? ""
+
+→ Add treatment step
+  Verb? inject
+  Item? antibiotic
+  Notes? "post-op prophylaxis"
+
+→ Commence chart
+  Confirm? yes
+
+[ dispatcher executes step 1 (incise, 6s delay) → step 2 (harvest, 18s)
+  → step 3 (install, 18s) → step 4 (suture, 9s) → step 5 (inject, instant) ]
+
+Chart completed. 5/5 steps succeeded. Patient stable.
+```
+
+If the patient regained consciousness between charting and execution (anesthesia wore off), step 1 picks up the conscious-patient +5 difficulty automatically. If the donor lung was lost between charting and execution, step 3 hard-fails and prompts the surgeon.
+
+#### Execution Flow ("Commence")
+
+The dispatcher is a thin wrapper around the existing per-verb resolvers in `world/medical/procedures.py`:
+
+```python
+def commence_chart(surgeon, target):
+    chart = target.db.medical_chart
+    chart["status"] = "in_progress"
+    _run_next_step(surgeon, target, chart, step_idx=0)
+
+def _run_next_step(surgeon, target, chart, step_idx):
+    if step_idx >= len(chart["steps"]):
+        chart["status"] = "completed"
+        return
+    step = chart["steps"][step_idx]
+    if not _validate_step(target, step):
+        step["status"] = "skipped"
+        # prompt surgeon: skip-and-continue / abort
+        return
+    step["status"] = "running"
+    # Dispatch into the same path the verb would take, with a
+    # continuation callback so the next step fires after delay.
+    start_procedure(
+        surgeon, target, step["verb"], step["args"],
+        on_complete=lambda outcome: _step_finished(
+            surgeon, target, chart, step_idx, outcome,
+        ),
+    )
+
+def _step_finished(surgeon, target, chart, step_idx, outcome):
+    step = chart["steps"][step_idx]
+    step["status"] = "done" if outcome.ok else "failed"
+    step["outcome"] = outcome.summary
+    _run_next_step(surgeon, target, chart, step_idx + 1)
+```
+
+The `on_complete` callback is the only extension to the existing procedure dispatch — verbs already use `evennia.utils.delay`, so the chart runner hooks the same staging.
+
+#### Interruption Semantics
+
+- **Surgeon disconnect mid-chart.** The currently-running step continues to its resolver (the existing verb behaviour). Subsequent steps do not auto-resume. Chart status flips to `aborted` with `last_step_completed` recorded. Another surgeon can pick up the chart and resume from the next pending step.
+- **Combat interrupts surgeon.** The current step is interrupted via the existing `interrupt_procedure` path. Chart aborts. No automatic recovery — the surgeon must re-`operate` and resume manually.
+- **Patient moves / dies.** Death halts the chart immediately and flips status to `aborted`; subsequent diagnostic value of the chart is preserved for autopsy. Movement aborts the current step per the existing procedure interrupt rules.
+- **Resume by a different surgeon.** Any surgeon with permission can open `operate` on the patient, see the chart's pending steps, and choose *Commence (resume from step N)*. This is the explicit handoff path.
+
+#### Permissions and Visibility
+
+| Action | Who can do it |
+| --- | --- |
+| Read the chart (diagnose pane) | Any character with non-zero medical skill in line of sight of the patient |
+| Author / edit a chart | The character who initiated `operate` (becomes `authored_by`); subsequent edits permitted to anyone with edit permission (see below) |
+| Grant edit permission | The chart author, via a menu action; defaults to author-only |
+| Commence the chart | Anyone with edit permission |
+| Resume an aborted chart | Anyone with edit permission |
+| Annotate diagnoses | Anyone with read permission (additive only) |
+| Patient's own visibility | The patient sees the chart in `operate` when conscious (consent model); unconscious patients have no recourse — narrative tension is intentional |
+
+The patient-consent model is intentionally light: there's no hard block on charting an unconscious or unwilling patient, and the resulting chart sits on `target.db.medical_chart` regardless. The fiction is that consent and ethics are roleplay concerns, not enforced mechanics — paralleling how the procedure verbs themselves don't require consent.
+
+#### Display Surface
+
+The chart surfaces in three places beyond the menu itself:
+
+1. **`medical info <target>`** — gains a "Active chart" footer if one is present, naming the author and step count. Full chart contents require opening `operate`.
+2. **Look at patient** — characters with sufficient medical skill see a subtle observable cue, e.g., *"a paper chart is clipped to a board at the foot of the bed"* or *"a tablet rests on her chest, displaying surgical annotations"*. Flavour scales with setting.
+3. **Autopsy** — completed and aborted charts are surfaced in autopsy output as the medical history record, providing forensic narrative even when the patient died on the table.
+
+The chart is *not* surfaced in standard `look` output to non-medical observers — it requires skill or `operate` access.
+
+#### Integration with Existing Systems
+
+- **Procedure verbs.** Single execution path: chart dispatcher and direct verb invocation both go through `start_procedure`. Adding new verbs (e.g., a future `graft`) automatically makes them chartable with no menu changes beyond surfacing them in the verb picker.
+- **Consumption commands.** Treatment steps (`inject`, `apply`, `spray`, `inhale`) reuse the existing consumption command implementations via internal dispatch. The chart's `args` carries the same item/target/location parameters the player would have typed at the prompt.
+- **Conditions and tickers.** No new condition types required. Failure-mode seeding (infection, pain, organ damage) already lives in the procedure resolvers and applies identically whether the verb was invoked directly or via chart.
+- **Forensics / autopsy.** Completed chart records become first-class evidence in autopsy output. Aborted charts on a deceased patient provide narrative context for cause of death.
+- **G.R.I.M. skill.** Diagnose-pane reveal depth and procedure success rolls share the same formula; surgeons don't learn separate skill ladders for planning vs. execution.
+
+#### Phased Implementation Plan
+
+The proposal naturally factors into shippable slices, each with its own value:
+
+1. **MVP: Read-only chart + manual commence.** Add `target.db.medical_chart` schema, a minimal menu with Diagnose / Add step / Commence / Save, and the chart-runner dispatcher. No edit permissions, no annotations, no autopsy integration. Single surgeon, single chart, basic flow.
+2. **Handoff + resume.** Add edit-permission delegation, resume-from-step-N, multi-author chart edits, status transitions through `aborted` and back.
+3. **Diagnostic depth.** Skill-gated reveal in the diagnose pane, cybernetic identification, diagnosis-note recording, vitals trajectory.
+4. **Display integration.** `medical info` footer, look-at-patient cue, autopsy integration.
+5. **Stretch: templates and recipes.** Saved procedure templates ("standard appendectomy"), faction-shared chart libraries, billing hooks — all explicitly out of scope for #307-followup but architecturally compatible.
+
+Each phase is independently useful and testable; nothing in a later phase requires a redesign of earlier phases.
+
+#### Open Questions
+
+- **Should aborted charts auto-purge after some time, or persist indefinitely?** Leaning persist — narrative value outweighs storage cost, and autopsy use depends on retention.
+- **Chart-driven anesthesia loop.** If anesthesia wears off mid-chart and pain spikes, should the dispatcher pause and prompt for re-anesthetizing, or just barrel through with the conscious-patient penalty? Probably prompt-with-default-continue, surgeon's call.
+- **Multiple concurrent charts on the same patient.** Realistically only one active chart at a time; should drafts queue, or does the menu enforce single-active-chart? Single-active is simpler.
+- **Patient-authored "advance directives."** A patient pre-authors a chart on themselves while conscious (DNR, organ donor flags, allergies); other surgeons see it on diagnose. Probably stretch, but the schema accommodates it.
+- **NPC use.** Should NPC surgeons (faction medics, hospital staff) chart on patients to telegraph intent? Could be a strong narrative tool; needs AI behaviour design beyond this spec's scope.
 
 ## Medical System Summary
 

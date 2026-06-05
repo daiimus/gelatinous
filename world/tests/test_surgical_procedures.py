@@ -432,3 +432,84 @@ class ResolveSuture(TestCase):
             if isinstance(c, InfectionCondition) and c.location == "chest"
         ]
         self.assertEqual(len(infections), 1)
+
+
+# ---------------------------------------------------------------------
+# _mark_organ_removed — wounds_at_death synthesis (legacy CmdHarvest
+# behavior ported here when the forensics command was retired).  The
+# wound-at-death entry is what test_sever_overlay and test_wound_
+# descriptions_harvested rely on for the ``harvested`` injury type.
+# ---------------------------------------------------------------------
+
+
+class MarkOrganRemovedWoundSynthesis(TestCase):
+
+    def _corpse_with_death_state(self):
+        snapshot = {
+            "organs": {
+                "heart": {
+                    "container": "chest", "current_hp": 15, "max_hp": 15,
+                    "conditions": [],
+                },
+                "left_eye": {
+                    "container": "head", "current_hp": 5, "max_hp": 5,
+                    "conditions": [],
+                },
+            },
+        }
+        corpse = SimpleNamespace()
+        corpse.get_medical_snapshot = lambda: snapshot
+        corpse.db = SimpleNamespace(
+            surgical_state=None,
+            removed_organs=None, severed_locations=None,
+            species="human",
+            medical_state_at_death=snapshot,
+            wounds_at_death=None,
+        )
+        corpse.key = "the corpse"
+        return corpse
+
+    def test_corpse_gets_harvested_wound_at_container(self):
+        from world.medical.procedures import _mark_organ_removed
+        corpse = self._corpse_with_death_state()
+        _mark_organ_removed(corpse, "heart")
+        wounds = corpse.db.wounds_at_death or []
+        self.assertEqual(len(wounds), 1)
+        wound = wounds[0]
+        self.assertEqual(wound["injury_type"], "harvested")
+        self.assertEqual(wound["location"], "chest")
+        self.assertEqual(wound["organ"], "heart")
+        self.assertEqual(wound["stage"], "old")
+
+    def test_eye_harvest_locates_wound_at_head_container(self):
+        # Eye container is head — wound rides on the head so PR #200's
+        # sever-overlay carries it onto a severed head.
+        from world.medical.procedures import _mark_organ_removed
+        corpse = self._corpse_with_death_state()
+        _mark_organ_removed(corpse, "left_eye")
+        wound = (corpse.db.wounds_at_death or [])[0]
+        self.assertEqual(wound["location"], "head")
+        self.assertEqual(wound["organ"], "left_eye")
+
+    def test_living_target_skips_wounds_at_death(self):
+        char = _human_character()
+        # No medical_state_at_death on the live char.
+        from world.medical.procedures import _mark_organ_removed
+        _mark_organ_removed(char, "left_kidney")
+        # Living characters don't carry wounds_at_death.
+        self.assertFalse(
+            getattr(char.db, "wounds_at_death", None),
+            "Living target should not receive a wounds_at_death entry.",
+        )
+
+    def test_preserves_existing_wounds_at_death(self):
+        from world.medical.procedures import _mark_organ_removed
+        corpse = self._corpse_with_death_state()
+        corpse.db.wounds_at_death = [
+            {"injury_type": "blunt", "location": "chest", "severity": "Minor"},
+        ]
+        _mark_organ_removed(corpse, "heart")
+        wounds = corpse.db.wounds_at_death or []
+        self.assertEqual(len(wounds), 2)
+        self.assertEqual(wounds[0]["injury_type"], "blunt")
+        self.assertEqual(wounds[1]["injury_type"], "harvested")
