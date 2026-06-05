@@ -96,6 +96,21 @@ class Organ:
         self.wound_stage = None      # fresh, treated, healing, scarred
         self.injury_type = None      # bullet, cut, stab, blunt, generic
         self.wound_timestamp = None  # When the wound occurred (for future healing)
+
+        # Stabilization flag (#307, PR-B).  Set True when wound_care
+        # has been applied to a damaged organ at this location.  A
+        # stabilized organ does not deteriorate further — bleeding
+        # conditions at this organ's location stop draining blood,
+        # severity can't escalate, wound stage doesn't progress
+        # toward "old".  Healing is a separate channel (PR-C) driven
+        # by the dressed item's ``wound_healing`` rating.
+        #
+        # Re-application of wound_care to a stabilized wound is a
+        # no-op with a "they're already stable — get them to a
+        # surgeon" hint to the caller.  The stable state persists
+        # until the wound is surgically treated or the organ is
+        # replaced.
+        self.stabilized = False
         
     def is_destroyed(self):
         """Returns True if organ HP is 0 or below."""
@@ -269,6 +284,10 @@ class Organ:
         if self.current_hp == self.max_hp and hasattr(self, 'wound_stage'):
             self.wound_stage = None  # No wound if fully healed
             self.injury_type = None
+            # PR-B: stabilization is wound-scoped; clears when the
+            # wound is resolved.  Lets a future re-injury start with
+            # a clean stabilization slate.
+            self.stabilized = False
         
         return self.current_hp - old_hp
         
@@ -403,7 +422,8 @@ class Organ:
             "display_location": self.display_location,
             "wound_stage": self.wound_stage,
             "injury_type": self.injury_type,
-            "wound_timestamp": self.wound_timestamp
+            "wound_timestamp": self.wound_timestamp,
+            "stabilized": self.stabilized,
         }
         
     @classmethod
@@ -436,6 +456,9 @@ class Organ:
         organ.wound_stage = data.get("wound_stage")
         organ.injury_type = data.get("injury_type")
         organ.wound_timestamp = data.get("wound_timestamp")
+        # Stabilization (#307, PR-B).  Defaults to False so legacy
+        # snapshots predating the field behave as untreated.
+        organ.stabilized = bool(data.get("stabilized", False))
         # Issue #346: persisted organs may predate ``display_location`` —
         # the ``cls(data["name"])`` constructor already seeded it from
         # the ORGANS spec, so only override when the snapshot carries

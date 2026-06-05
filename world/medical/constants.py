@@ -47,6 +47,55 @@ SURGERY_BASE_DIFFICULTY = 75          # Base difficulty for surgery
 INFECTION_CHANCE_BASE = 10            # Base infection chance %
 
 # ===================================================================
+# WOUND CARE TREATMENT CONSTANTS (#307, PR-B stabilization channel)
+# ===================================================================
+#
+# Roll math for wound_care application:
+#
+#     roll   = 3d6 + medical_effectiveness + item.effectiveness[category]
+#     target = WOUND_CARE_BASE_DIFFICULTY + severity_modifier + depth_modifier
+#
+# Outcome thresholds mirror the procedure verbs (success / partial /
+# failure).  Numbers below are placeholders for early playtesting —
+# all live in this single module so balancing is one-file work.
+
+WOUND_CARE_BASE_DIFFICULTY = 12        # Matches PROCEDURE_BASE_DIFFICULTY for parity
+
+#: Severity modifier added to the difficulty target.  Keys map the
+#: wound's string severity ("Minor" / "Moderate" / "Severe" / "Critical")
+#: as set by ``_determine_severity_from_damage`` in wound rendering.
+#: Unknown severities default to MODERATE.
+WOUND_CARE_SEVERITY_MODIFIERS = {
+    "Minor":    0,
+    "Moderate": 3,
+    "Severe":   6,
+    "Critical": 9,
+}
+
+#: Depth modifier added when the wound is at an internal-cavity
+#: container and the item lacks an internal-effectiveness rating.
+#: Soft scale per design — desperate medics get diminishing returns
+#: rather than outright refusal.
+WOUND_CARE_DEPTH_MODIFIER = 5
+
+#: Outcome thresholds vs final roll.  Success: full effect; partial:
+#: half effect; failure: stabilization only.
+WOUND_CARE_SUCCESS_THRESHOLD = 18      # >= → success
+WOUND_CARE_PARTIAL_THRESHOLD = 12      # >= → partial; < → failure
+
+#: Per-category effect amounts on success.  Numbers are knobs.
+WOUND_CARE_BLEEDING_REDUCTION = 2      # severity points reduced on bleeding success
+WOUND_CARE_INFECTION_REDUCTION = 2     # severity points reduced on infection success
+WOUND_CARE_PAIN_REDUCTION = 3          # severity points reduced on pain success
+
+#: Categories the wound_care dispatch resolves in parallel.  Each is
+#: one roll; failure of any one is stabilization-only for that
+#: category.  ``wound_healing`` and ``organ_repair`` are intentionally
+#: NOT in this list — wound_healing lands in PR-C (healing ticker);
+#: organ_repair lands in PR-D (surgical-grade direct repair).
+WOUND_CARE_PARALLEL_CATEGORIES = ("bleeding", "infection", "pain")
+
+# ===================================================================
 # MEDICAL CONDITION TICKER CONSTANTS (Phase 2.6)
 # ===================================================================
 

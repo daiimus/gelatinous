@@ -155,29 +155,66 @@ class BleedingCondition(MedicalCondition):
     def tick_effect(self, character):
         """Apply blood loss and potentially reduce severity."""
         from world.combat.constants import SPLATTERCAST_CHANNEL
-        
+
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        
+
         if not hasattr(character, 'medical_state'):
             return
-            
+
         medical_state = character.medical_state
-        
+
+        # PR-B (#307): if any damaged organ at this bleeding's location
+        # has been stabilized via wound_care, the bleeding is held in
+        # place — no further blood loss, no severity drift.  The
+        # surgeon still needs to address the underlying wound;
+        # stabilization is the "buying time" channel.
+        if self._location_stabilized(medical_state):
+            return
+
         # Calculate blood loss
         blood_loss = self.blood_loss_rate
         if self.treated:
             blood_loss = int(blood_loss * 0.3)  # Treated bleeding loses less blood
-            
+
         # Apply blood loss
         old_blood = medical_state.blood_level
         medical_state.blood_level = max(0, medical_state.blood_level - blood_loss)
-        
+
         splattercast.msg(f"BLOOD_LOSS: {character.key} loses {blood_loss} blood ({old_blood} -> {medical_state.blood_level})")
-        
+
         # Check for natural healing (random chance to reduce severity)
         if not self.treated and random.randint(1, 100) <= 10:  # 10% chance per tick
             self.severity = max(0, self.severity - 1)
             splattercast.msg(f"BLEEDING_HEAL: {character.key} bleeding severity reduced to {self.severity}")
+
+    def _location_stabilized(self, medical_state) -> bool:
+        """True when any damaged organ at this condition's location is
+        flagged ``stabilized``.
+
+        Stabilization is per-organ but bleeding is per-location;
+        this maps the two: a chest BleedingCondition is considered
+        stabilized when *any* damaged chest organ has been dressed.
+        Multiple damaged organs at one location can be stabilized
+        independently — once one is dressed, the location-level
+        bleeding stops because the soft-tissue site is sealed.
+        """
+        if self.location is None:
+            return False
+        organs = getattr(medical_state, "organs", None)
+        if not organs:
+            return False
+        for organ in organs.values():
+            container = getattr(organ, "container", None)
+            display = getattr(organ, "display_location", None)
+            if self.location not in (container, display):
+                continue
+            if getattr(organ, "stabilized", False):
+                # Only count stabilization on actually-damaged organs;
+                # a stabilized-but-undamaged organ shouldn't shield an
+                # unrelated bleeding source at the same location.
+                if organ.current_hp < organ.max_hp:
+                    return True
+        return False
             
         # Note: Individual bleeding messages removed - now handled by consolidated messaging in medical script
                 

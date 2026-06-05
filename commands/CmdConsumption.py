@@ -416,8 +416,56 @@ class CmdApply(ConsumptionCommand):
         if errors:
             caller.msg(errors[0])
             return
-            
-        # Execute application
+
+        # PR-B (#307): wound_care items applied with location precision
+        # route through the stabilization dispatch.  Single application
+        # both stabilizes the wound (always) and rolls per-category
+        # for bleeding / infection / pain reduction.  Repeat-application
+        # to a stabilized wound no-ops with a triage hint.
+        if medical_type == "wound_care" and location:
+            from world.medical.treatments import apply_wound_care
+            treatment_target_location = location
+            # Resolve location → container if the player named an organ.
+            try:
+                state = target.medical_state
+            except AttributeError:
+                state = None
+            if state is not None and hasattr(state, "organs"):
+                organ = state.organs.get(location)
+                if organ is not None:
+                    treatment_target_location = organ.container
+            outcome = apply_wound_care(
+                actor=caller, target=target, item=item,
+                location=treatment_target_location,
+            )
+            if is_self:
+                msg_room_identity(
+                    location=caller.location,
+                    template=(
+                        f"{{actor}} applies {item.key} to their "
+                        f"{treatment_target_location.replace('_', ' ')}."
+                    ),
+                    char_refs={"actor": caller},
+                    exclude=[caller],
+                )
+            else:
+                msg_room_identity(
+                    location=caller.location,
+                    template=(
+                        f"{{actor}} applies {item.key} to {{target}}'s "
+                        f"{treatment_target_location.replace('_', ' ')}."
+                    ),
+                    char_refs={"actor": caller, "target": target},
+                    exclude=[caller, target],
+                )
+            for line in outcome["messages"]:
+                caller.msg(line)
+                if not is_self:
+                    target.msg(line)
+            return
+
+        # Execute application (legacy flow — no location precision or
+        # non-wound_care medical types).
         if is_self:
             caller.msg(f"You carefully apply {item.get_display_name(caller)} to your wounds.")
             msg_room_identity(
@@ -435,11 +483,11 @@ class CmdApply(ConsumptionCommand):
                 char_refs={"actor": caller, "target": target},
                 exclude=[caller, target],
             )
-            
+
         # Apply treatment effects
         result_msg = self.execute_treatment(item, caller, target)
         caller.msg(f"Application result: {result_msg}")
-        
+
         if not is_self:
             target.msg(f"Treatment result: {result_msg}")
 
