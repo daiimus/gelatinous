@@ -541,19 +541,48 @@ def _can_third_party_clothing(target):
 def _resolve_clothing_target(caller, target_phrase):
     """Resolve a third-party clothing target.
 
-    Searches the caller's inventory first (so a severed limb the
-    caller is carrying gets matched without setting it down) then
-    falls back to the room.  Returns ``None`` and lets the search
-    helpers message the caller on miss.
+    Three resolution stages, mirroring ``CmdSurgical._resolve_target``
+    so the surface for ``dress`` / ``undress`` matches the rest of
+    the medical / interaction verbs:
+
+    1. **Identity pipeline** — handles default sdescs ("towering",
+       "woman"), recognised-name keywords, and disguise overrides
+       for character targets in the same room.
+    2. **Inventory fallback** — catches severed appendages the caller
+       is carrying so they resolve without setting them down.
+    3. **Room fallback** — plain Evennia search for non-character
+       targets (corpses, items) that don't surface on the identity
+       bus.
+
+    Returns ``None`` on no match.  The identity helper / plain
+    search emit their own messages on ambiguity or not-found.
     """
     raw = target_phrase.strip()
     if not raw:
         return None
+
+    # Identity pipeline — characters with sdescs or disguise overrides.
+    from commands._identity_targeting import resolve_character_target
+    identity_match = resolve_character_target(
+        caller, raw, allow_self=False,
+    )
+    if identity_match is not None:
+        return identity_match
+
+    # Inventory — severed parts the caller is carrying.
     candidates = list(caller.contents)
     if candidates:
-        match = caller.search(raw, candidates=candidates, quiet=True)
-        if match:
-            return match[0] if isinstance(match, list) else match
+        inventory_match = caller.search(
+            raw, candidates=candidates, quiet=True,
+        )
+        if inventory_match:
+            return (
+                inventory_match[0]
+                if isinstance(inventory_match, list)
+                else inventory_match
+            )
+
+    # Room — corpses and any other non-character targets.
     return caller.search(raw)
 
 
