@@ -37,7 +37,6 @@ from world.combat.constants import (
     SEVER_CRIT_FAIL_SUM,
     SEVER_DC_INT_MOT,
     SEVER_TIME_SECONDS,
-    SEVERABLE_CONTAINERS,
 )
 from world.combat.dice import roll_stat
 from world.combat.utils import get_wielded_weapon
@@ -479,8 +478,15 @@ def _severable_locations(corpse) -> list[str]:
         for data in organs.values()
     }
     severed = set(corpse.db.severed_locations or ())
+    # Issue #356 Phase 2: species-aware severable set.  Rats sever at
+    # foreleg / forepaw / hindleg / hindpaw / tail, not human arm /
+    # hand / thigh / shin / foot.
+    from world.anatomy import get_species_severable_containers
+    severable = get_species_severable_containers(
+        getattr(getattr(corpse, "db", None), "species", None)
+    )
     out = [
-        loc for loc in SEVERABLE_CONTAINERS
+        loc for loc in severable
         if loc in present_containers and loc not in severed
     ]
     out.sort()
@@ -594,8 +600,14 @@ class CmdSever(Command):
             )
             return
 
-        # Specific location requested.
-        if location_arg not in SEVERABLE_CONTAINERS:
+        # Specific location requested.  Issue #356 Phase 2: consult
+        # the species-aware severable set so rat tails / forelegs are
+        # recognised.
+        from world.anatomy import get_species_severable_containers
+        target_severable = get_species_severable_containers(
+            getattr(getattr(target, "db", None), "species", None)
+        )
+        if location_arg not in target_severable:
             caller.msg(
                 f"You cannot sever the {location_arg.replace('_', ' ')} "
                 f"— it is not a detachable body location."
@@ -716,8 +728,13 @@ class CmdSever(Command):
             )
             return
 
-        # Location still severable and not already taken.
-        if location_arg not in SEVERABLE_CONTAINERS:
+        # Location still severable and not already taken (species-
+        # aware per #356 Phase 2 — rats sever at tail / fore-/hindleg
+        # not human containers).
+        from world.anatomy import get_species_severable_containers
+        if location_arg not in get_species_severable_containers(
+            getattr(getattr(target, "db", None), "species", None)
+        ):
             return
         if location_arg in (target.db.severed_locations or ()):
             caller.msg(
