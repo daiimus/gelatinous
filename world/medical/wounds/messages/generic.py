@@ -156,6 +156,13 @@ DESTROYED_BY_LOCATION = {
         "|R{Their} right ear has been ruined, the canal exposed and weeping|n",
         "|R{Their} right ear is a torn stump of cartilage and skin|n",
     ],
+    # Face — issue #355 generic fallback.
+    "face": [
+        "|R{Their} {organ} is destroyed, leaving a ruined wound|n",
+        "|RWhere {their} {organ} sat, a raw wound weeps blood|n",
+        "|R{Their} {organ} is gone, the surrounding flesh torn|n",
+        "|R{Their} {organ} has been destroyed beyond recognition|n",
+    ],
 }
 
 

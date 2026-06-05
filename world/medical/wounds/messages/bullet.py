@@ -124,6 +124,13 @@ DESTROYED_BY_LOCATION = {
         "|R{Their} right ear is shredded down to a stump, the canal weeping blood|n",
         "|RWhat remains of {their} right ear is a powder-burned ruin clinging to bone|n",
     ],
+    # Face — issue #355.
+    "face": [
+        "|R{Their} {organ} is a smoking crater, the flesh blown wide and weeping|n",
+        "|RA bullet has shot {their} {organ} to wet pulp, fragments crusted on {their} cheek|n",
+        "|R{Their} {organ} is gone, a ragged exit wound where it used to be|n",
+        "|RWhere {their} {organ} sat, a powder-blackened crater oozes blood and matter|n",
+    ],
 }
 
 

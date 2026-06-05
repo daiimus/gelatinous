@@ -130,6 +130,13 @@ DESTROYED_BY_LOCATION = {
         "|R{Their} right ear hangs in shredded ribbons of skin and cartilage|n",
         "|RWhat is left of {their} right ear is a torn mess of cartilage and skin tags|n",
     ],
+    # Face — issue #355.
+    "face": [
+        "|R{Their} {organ} is a jagged tear across the flesh, ragged flaps hanging loose|n",
+        "|RA brutal rip has shredded {their} {organ}, leaving torn strips of skin and tissue|n",
+        "|R{Their} {organ} is torn open across its width, the underlying structure collapsed beneath ragged tissue|n",
+        "|RWhere {their} {organ} sat, a ripped wound leaks blood down {their} cheek|n",
+    ],
 }
 
 

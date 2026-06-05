@@ -124,6 +124,13 @@ DESTROYED_BY_LOCATION = {
         "|R{Their} right ear is reduced to a swollen lump of bruised tissue|n",
         "|RWhat is left of {their} right ear is a flattened ruin, dark with bruise and blood|n",
     ],
+    # Face — issue #355.
+    "face": [
+        "|R{Their} {organ} is pulped, the flesh swollen black around the ruin|n",
+        "|RA crushing impact has burst {their} {organ}, fluid weeping down the bruised cheek|n",
+        "|R{Their} {organ} is collapsed inward, the bone caved beneath the impact|n",
+        "|RWhat was {their} {organ} is a sunken pulp, the surrounding flesh pressed flat|n",
+    ],
 }
 
 

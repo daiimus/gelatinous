@@ -133,6 +133,14 @@ ORGAN_DISPLAY = {
             "putrid": "A blackened tongue, swollen and weeping, its papillae lost to a uniform decaying slime.",
         },
     },
+    "nose": {
+        "display_name": "nose",
+        "default_descriptions": {
+            "pristine": "A neatly excised nose, the cartilage springy and the skin still naturally toned.",
+            "damaged": "A discoloured nose, the cartilage stiffening and the nostrils crusted dark.",
+            "putrid": "A blackening nose, the cartilage slumping inward and the tissue beginning to slough.",
+        },
+    },
     "jaw": {
         "display_name": "jaw",
         "default_descriptions": {

@@ -98,6 +98,16 @@ DESTROYED_BY_LOCATION = {
         "|R{Their} right ear is sliced in half, the upper portion lost and the lower bleeding freely|n",
         "|RWhat remains of {their} right ear is a sliced ribbon of skin and cartilage|n",
     ],
+    # Face — issue #355.  Nose / jaw / tongue all surface here.  The
+    # ``{organ}`` token is humanized at render time
+    # (``"left_eye"`` → ``"left eye"``) so each organ's destruction
+    # reads with its own name in the same template.
+    "face": [
+        "|R{Their} {organ} is split open, the flesh cleaved through and weeping|n",
+        "|RA cleaving cut has bisected {their} {organ}, leaving a deep ragged gash|n",
+        "|R{Their} {organ} is sliced through along a single sharp seam, blood welling at the edges|n",
+        "|RWhere {their} {organ} sat, a slashed ruin weeps freely down {their} cheek|n",
+    ],
 }
 
 

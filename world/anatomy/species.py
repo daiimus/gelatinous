@@ -168,16 +168,28 @@ SPECIES_DEFINITIONS = {
                 "can_be_harvested": True
             },
             "tongue": {
-                "container": "head", "max_hp": 20, "hit_weight": "rare",
+                "container": "head", "display_location": "face",
+                "max_hp": 20, "hit_weight": "rare",
                 "capacities": ["talking", "eating"], "talking_contribution": "major",
                 "eating_contribution": "major", "disfiguring_if_lost": True,
                 "can_be_harvested": True
             },
             "jaw": {
-                "container": "head", "max_hp": 10, "hit_weight": "rare",
+                "container": "head", "display_location": "face",
+                "max_hp": 10, "hit_weight": "rare",
                 "capacities": ["talking", "eating"], "talking_contribution": "major",
                 "eating_contribution": "moderate", "disfiguring_if_lost": True, "can_scar": False,
                 "can_be_harvested": True
+            },
+            # Nose — issue #355.  Surfaces at the ``face`` longdesc
+            # the same way jaw and tongue do.  Damage doesn't affect a
+            # named capacity (no smell capacity in scope), but it's
+            # disfiguring and harvestable.
+            "nose": {
+                "container": "head", "display_location": "face",
+                "max_hp": 8, "hit_weight": "rare",
+                "disfiguring_if_lost": True,
+                "can_be_harvested": True,
             },
 
             # NECK CONTAINER → DECAPITATION STRUCTURE

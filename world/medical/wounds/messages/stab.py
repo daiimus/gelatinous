@@ -124,6 +124,15 @@ DESTROYED_BY_LOCATION = {
         "|R{Their} right ear hangs limp around a deep stab hole|n",
         "|RWhat is left of {their} right ear surrounds a punched-through wound seeping blood|n",
     ],
+    # Face — issue #355.  Nose / jaw / tongue surface here via the
+    # ``{organ}`` token, which humanizes to the destroyed organ's
+    # name in each rendered line.
+    "face": [
+        "|R{Their} {organ} is a punctured ruin, dark blood welling from the deep hole|n",
+        "|RA driven thrust has skewered {their} {organ}, the wound bleeding around the puncture|n",
+        "|R{Their} {organ} is collapsed inward around a deep puncture wound|n",
+        "|RWhere {their} {organ} sat, a narrow ragged hole weeps dark blood|n",
+    ],
 }
 
 
