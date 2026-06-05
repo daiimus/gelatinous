@@ -23,7 +23,6 @@ from __future__ import annotations
 from evennia import Command
 
 from world.medical.procedures import (
-    PROCEDURE_DURATIONS,
     get_organ_snapshot,
     has_incision,
     is_procedure_active,
@@ -200,10 +199,9 @@ class CmdIncise(Command):
             target, verb="incise", actor=caller,
             location=location,
         )
-        duration = PROCEDURE_DURATIONS["incise"]
         caller.msg(
             f"You begin cutting into {target.get_display_name(caller)}'s "
-            f"{location.replace('_', ' ')}... ({duration}s)"
+            f"{location.replace('_', ' ')}..."
         )
 
 
@@ -357,10 +355,9 @@ class CmdHarvest(Command):
             target, verb="harvest", actor=caller,
             organ_name=organ_arg, location=container or "",
         )
-        duration = PROCEDURE_DURATIONS["harvest"]
         caller.msg(
             f"You begin extracting the {organ_arg.replace('_', ' ')} "
-            f"from {target.get_display_name(caller)}... ({duration}s)"
+            f"from {target.get_display_name(caller)}..."
         )
 
 
@@ -461,10 +458,9 @@ class CmdInstall(Command):
             target, verb="install", actor=caller,
             organ_item=organ_item, location=container or "",
         )
-        duration = PROCEDURE_DURATIONS["install"]
         caller.msg(
             f"You begin installing the {organ_item.key} into "
-            f"{target.get_display_name(caller)}... ({duration}s)"
+            f"{target.get_display_name(caller)}..."
         )
 
 
@@ -543,8 +539,7 @@ class CmdSuture(Command):
             target, verb="suture", actor=caller,
             location=location,
         )
-        duration = PROCEDURE_DURATIONS["suture"]
         caller.msg(
             f"You begin suturing "
-            f"{target.get_display_name(caller)}'s wound... ({duration}s)"
+            f"{target.get_display_name(caller)}'s wound..."
         )
