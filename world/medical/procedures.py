@@ -677,6 +677,13 @@ def _resolve_install(actor, target, *, organ_item, location: str,
     except Exception:
         pass
 
+    # PR-393 follow-up: re-evaluate vitals on living recipient.
+    # Installing a vital organ (heart, brain replacement) during the
+    # death-progression window should fire the revival check
+    # immediately rather than waiting for the next medical-script
+    # tick — the dramatic transplant timing depends on this.
+    apply_vital_consequences(target)
+
 
 def _resolve_suture(actor, target, *, location: Optional[str] = None,
                     **_) -> None:
@@ -764,6 +771,85 @@ def _apply_collateral_damage(target, location: str, amount: int) -> None:
                 organ.wound_stage = "fresh"
 
 
+def apply_vital_consequences(target) -> bool:
+    """Re-evaluate ``target``'s vital state after a structural change.
+
+    Called by any code path that mutates organ HP / wound stage on a
+    living target — harvest, install, future destruction effects, the
+    sever pipeline (which should adopt this too).  Does four things:
+
+    1. ``update_vital_signs`` — recomputes pain / blood / consciousness
+       from the current organ HP, capacity contributions, and active
+       conditions.
+    2. ``save_medical_state`` — persists the change so it survives
+       reload / hand-off to the script.
+    3. ``is_dead`` check + ``at_death`` trigger — the procedure verbs
+       can lethally change a body's state directly (heart removed,
+       brain harvested) and the medical-script tick is *not*
+       guaranteed to be running on the target.  If the structural
+       change crosses the death threshold we surface that immediately
+       rather than waiting for whatever next tick happens to fire.
+       Guards against double-fire via ``ndb.death_processed``.
+    4. ``start_medical_script`` — ensures the per-character tick loop
+       runs so ongoing effects (bleeding from open wounds, infection
+       progression, healing on dressed wounds) continue to process.
+       Idempotent — returns the existing script if one's present.
+
+    Returns True if death was triggered this call; False otherwise.
+
+    Safe on test stubs that lack one or more of the surfaces — each
+    step is guarded.
+    """
+    state = getattr(target, "medical_state", None)
+    if state is None:
+        return False
+
+    update_vital_signs = getattr(state, "update_vital_signs", None)
+    if callable(update_vital_signs):
+        try:
+            update_vital_signs()
+        except Exception:
+            pass
+
+    save = getattr(target, "save_medical_state", None)
+    if callable(save):
+        try:
+            save()
+        except Exception:
+            pass
+
+    is_dead = getattr(state, "is_dead", None)
+    if callable(is_dead):
+        try:
+            if is_dead():
+                already_processed = bool(
+                    getattr(getattr(target, "ndb", None),
+                            "death_processed", False)
+                )
+                if not already_processed:
+                    at_death = getattr(target, "at_death", None)
+                    if callable(at_death):
+                        try:
+                            at_death()
+                            return True
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+    # Even if not dead, keep the medical script ticking so any
+    # subsequent effects (bleeding, infection, dressing healing) get
+    # processed on the existing cadence.  Idempotent.
+    if hasattr(target, "scripts"):
+        try:
+            from world.medical.script import start_medical_script
+            start_medical_script(target)
+        except Exception:
+            pass
+
+    return False
+
+
 def _mark_organ_removed(target, organ_name: str) -> None:
     """Mark ``organ_name`` as removed from ``target``.
 
@@ -780,6 +866,12 @@ def _mark_organ_removed(target, organ_name: str) -> None:
        along onto the severed item).  Only synthesised when the target
        carries the ``wounds_at_death`` attribute (corpses / severed
        parts); living targets get the live-organ mutation instead.
+
+    For living targets, finishes by calling
+    :func:`apply_vital_consequences` so vital-organ removal
+    immediately triggers death detection rather than waiting for the
+    next medical-script tick (which may not be running on the
+    target — see #393 follow-up).
     """
     removed = getattr(target.db, "removed_organs", None) or []
     if organ_name not in removed:
@@ -835,6 +927,16 @@ def _mark_organ_removed(target, organ_name: str) -> None:
         target_db.wounds_at_death = wounds
         if snapshot:
             target_db.medical_state_at_death = snapshot
+
+    # PR-393 follow-up: re-evaluate vitals on living targets.  Vital
+    # organ removal needs immediate death detection — the medical
+    # script may not be running yet (fresh-spawned mob, fully-healed
+    # character with no conditions, etc.), so a tick-delay alone
+    # would leave the target indefinitely "walking dead".  Skip on
+    # corpse-shaped sources (already dead, no vitals to re-check).
+    if not (target_db is not None
+            and getattr(target_db, "medical_state_at_death", None) is not None):
+        apply_vital_consequences(target)
 
 
 def _configure_harvested_item(item, *, organ_name: str, condition: str,

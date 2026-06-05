@@ -252,6 +252,99 @@ class OrgansAtLocationDuckTyping(TestCase):
         self.assertEqual(results, [])
 
 
+# ---------------------------------------------------------------------
+# apply_vital_consequences (#393 follow-up — death detection on
+# vital-organ removal when the medical script isn't running)
+# ---------------------------------------------------------------------
+
+
+class ApplyVitalConsequences(TestCase):
+    """Pin the contract that ``apply_vital_consequences`` fires the
+    death pipeline immediately after a structural change, rather
+    than depending on a medical-script tick that may not be running.
+    """
+
+    def _target(self, dead=False, organs_truthy=True):
+        """Build a target stub exposing the surfaces the helper reads."""
+        calls = []
+
+        class _State:
+            def __init__(self):
+                self.organs = {} if not organs_truthy else {"sentinel": object()}
+
+            def update_vital_signs(self):
+                calls.append("update_vital_signs")
+
+            def is_dead(self):
+                calls.append("is_dead")
+                return dead
+
+        target = SimpleNamespace()
+        target.medical_state = _State()
+        target.ndb = SimpleNamespace()
+        target.scripts = SimpleNamespace()
+
+        def _save():
+            calls.append("save_medical_state")
+
+        def _at_death():
+            calls.append("at_death")
+            target.ndb.death_processed = True
+
+        target.save_medical_state = _save
+        target.at_death = _at_death
+        target._calls = calls
+        return target
+
+    def test_living_with_vitals_intact_does_not_trigger_death(self):
+        from world.medical.procedures import apply_vital_consequences
+        target = self._target(dead=False)
+        died = apply_vital_consequences(target)
+        self.assertFalse(died)
+        self.assertIn("update_vital_signs", target._calls)
+        self.assertIn("save_medical_state", target._calls)
+        self.assertIn("is_dead", target._calls)
+        self.assertNotIn("at_death", target._calls)
+
+    def test_living_with_dead_state_triggers_at_death(self):
+        from world.medical.procedures import apply_vital_consequences
+        target = self._target(dead=True)
+        died = apply_vital_consequences(target)
+        self.assertTrue(died)
+        self.assertIn("at_death", target._calls)
+        # Order matters: update -> save -> is_dead -> at_death.
+        idx = target._calls.index
+        self.assertLess(idx("update_vital_signs"), idx("at_death"))
+        self.assertLess(idx("save_medical_state"), idx("at_death"))
+
+    def test_double_call_does_not_double_trigger_at_death(self):
+        """The ndb.death_processed guard prevents at_death from firing
+        twice if a follow-up structural change calls the helper
+        again after death already fired."""
+        from world.medical.procedures import apply_vital_consequences
+        target = self._target(dead=True)
+        apply_vital_consequences(target)
+        # Second call — at_death should not fire again.
+        target._calls.clear()
+        apply_vital_consequences(target)
+        self.assertNotIn("at_death", target._calls)
+
+    def test_no_medical_state_is_no_op(self):
+        from world.medical.procedures import apply_vital_consequences
+        target = SimpleNamespace()
+        # No medical_state surface.
+        died = apply_vital_consequences(target)
+        self.assertFalse(died)
+
+    def test_missing_save_method_does_not_raise(self):
+        from world.medical.procedures import apply_vital_consequences
+        target = self._target(dead=False)
+        del target.save_medical_state
+        # Should not raise.
+        apply_vital_consequences(target)
+        self.assertIn("update_vital_signs", target._calls)
+
+
 class OrgansAtLocation(TestCase):
 
     def test_living_chest_organs(self):
