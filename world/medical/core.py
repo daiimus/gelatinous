@@ -106,34 +106,44 @@ class Organ:
         return not self.is_destroyed() and not self._has_disabling_conditions()
         
     def _iter_relevant_conditions(self):
-        """Yield body-wide conditions whose location applies to this
-        organ (#307).
+        """Yield conditions that apply to this organ (#307).
 
-        Scans ``self.medical_state.conditions`` and filters by the
-        condition's ``location`` field:
+        Two sources, both included so modifiers compound:
 
-        * ``None`` / unset location → body-wide condition; included.
-          Its default ``get_organ_functionality_modifier`` is
-          ``1.0`` (no effect) unless the subclass overrides for an
-          organ-meaningful body-wide effect.
-        * Matches ``self.container`` OR ``self.display_location`` →
-          included.  Sensory organs (left_eye / right_eye) match on
-          display_location so a "left_eye" condition only affects
-          the left eye, not the right.
-        * Anything else → skipped.
+        1. **Body / location-bound** — entries on
+           ``self.medical_state.conditions``.  Filtered by
+           ``condition.location``: ``None`` (body-wide) always
+           matches; otherwise the location must equal this organ's
+           ``container`` or ``display_location``.  These live on the
+           body and stay with it when an organ is harvested or
+           swapped — sepsis doesn't follow a transplanted heart.
+        2. **Organ-bound** — entries on ``self.conditions``.  These
+           live on the organ itself and travel with it through
+           harvest / install pipelines — endocarditis goes with the
+           heart, kidney stones go with the kidney.  No location
+           filtering needed; if it's on this organ it applies.
 
-        Degrades gracefully (empty iterator) when
+        Degrades gracefully (no body-wide sweep) when
         ``self.medical_state`` is ``None`` — handles test stubs that
-        instantiate Organ standalone without a parent state.
+        instantiate Organ standalone without a parent state.  Organ-
+        bound conditions still surface in that case since they live
+        directly on ``self``.
+
+        See ``specs/HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`` line 1396+
+        for the per-condition treatment mapping that pairs with the
+        condition subclasses; the three-tier model categorises which
+        treatments target which conditions.
         """
         state = self.medical_state
-        if state is None:
-            return
-        relevant_locs = (self.container, self.display_location)
-        for condition in state.conditions:
-            loc = getattr(condition, "location", None)
-            if loc and loc not in relevant_locs:
-                continue
+        if state is not None:
+            relevant_locs = (self.container, self.display_location)
+            for condition in state.conditions:
+                loc = getattr(condition, "location", None)
+                if loc and loc not in relevant_locs:
+                    continue
+                yield condition
+        # Organ-bound (#307) — always applies, no location filter.
+        for condition in self.conditions:
             yield condition
 
     def _has_disabling_conditions(self):
@@ -372,7 +382,7 @@ class Organ:
     def to_dict(self):
         """
         Serialize organ state for persistence.
-        
+
         Returns:
             dict: Serialized organ state
         """
@@ -380,7 +390,15 @@ class Organ:
             "name": self.name,
             "current_hp": self.current_hp,
             "max_hp": self.max_hp,
-            "conditions": self.conditions.copy(),
+            # Organ-bound conditions (#307 three-tier model: body /
+            # location / organ).  Serialized via each condition's
+            # ``to_dict`` so the data round-trips cleanly through
+            # harvest / install / persistence layers rather than
+            # pickling the in-memory objects.
+            "conditions": [
+                c.to_dict() for c in self.conditions
+                if hasattr(c, "to_dict")
+            ],
             "container": self.container,
             "display_location": self.display_location,
             "wound_stage": self.wound_stage,
@@ -402,7 +420,19 @@ class Organ:
         organ = cls(data["name"])
         organ.current_hp = data.get("current_hp", organ.max_hp)
         organ.max_hp = data.get("max_hp", organ.max_hp)
-        organ.conditions = data.get("conditions", [])
+        # Restore organ-bound conditions through the proper factory
+        # (#307).  Each entry is either a serialized dict (post-#307)
+        # or a legacy MedicalCondition instance pickled by Evennia's
+        # attribute layer (pre-#307 snapshots).  Skip anything that
+        # doesn't recognise as one of those shapes — preserves
+        # forward-compat without choking on legacy data.
+        organ.conditions = []
+        from .conditions import MedicalCondition, deserialize_condition
+        for entry in data.get("conditions", []):
+            if isinstance(entry, dict):
+                organ.conditions.append(deserialize_condition(entry))
+            elif isinstance(entry, MedicalCondition):
+                organ.conditions.append(entry)
         organ.wound_stage = data.get("wound_stage")
         organ.injury_type = data.get("injury_type")
         organ.wound_timestamp = data.get("wound_timestamp")
@@ -823,40 +853,20 @@ class MedicalState:
             organ.medical_state = medical_state
             medical_state.organs[organ_name] = organ
             
-        # Restore conditions - using proper deserialization
-        condition_data = data.get("conditions", [])
-        for condition_dict in condition_data:
+        # Restore conditions via the shared factory (#307) so harvest /
+        # install / persistence layers all reconstruct conditions the
+        # same way.
+        from .conditions import deserialize_condition
+        for condition_dict in data.get("conditions", []):
             try:
-                # Import condition classes
-                from .conditions import (
-                    MedicalCondition, BleedingCondition, PainCondition,
-                    InfectionCondition, ConsciousnessSuppressionCondition,
-                )
-                
-                # Get condition type
-                condition_type = condition_dict.get("condition_type", "minor_bleeding")
-                
-                # Create appropriate condition using its from_dict method
-                if condition_type == "minor_bleeding":
-                    condition = BleedingCondition.from_dict(condition_dict)
-                elif condition_type == "pain":
-                    condition = PainCondition.from_dict(condition_dict) 
-                elif condition_type == "infection":
-                    condition = InfectionCondition.from_dict(condition_dict)
-                elif condition_type == "consciousness_suppression":
-                    condition = ConsciousnessSuppressionCondition.from_dict(condition_dict)
-                else:
-                    # Fallback to base class
-                    condition = MedicalCondition.from_dict(condition_dict)
-                
+                condition = deserialize_condition(condition_dict)
                 medical_state.conditions.append(condition)
                 # Re-start condition ticker if character is available and not archived
                 # Archived characters are permanently dead; dying characters can still be resuscitated
                 if character and not character.db.archived:
                     condition.start_condition(character)
-                    
-            except Exception as e:
-                # If condition restoration fails, skip it
+            except Exception:
+                # If condition restoration fails, skip it.
                 pass
             
         # Restore vital signs

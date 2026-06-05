@@ -1068,6 +1068,23 @@ class Organ(Item):
         if composed:
             self.db.desc = composed
 
+        # Carry organ-bound conditions from the source corpse onto
+        # the harvested item (#307 three-tier model).  The corpse's
+        # medical snapshot stores each organ's ``conditions`` list
+        # in serialized-dict form via ``Organ.to_dict``; we copy it
+        # verbatim onto the harvested item so a future install
+        # pipeline (Phase 3.2 cybernetics in the spec) can re-attach
+        # the conditions to the recipient's organ slot.  Body-bound
+        # and location-bound conditions stay on the source corpse —
+        # only organ-bound state travels with the harvest.
+        try:
+            snapshot = corpse.get_medical_snapshot() or {}
+            organs = snapshot.get("organs") or {}
+            organ_data = organs.get(organ_name) or {}
+            self.db.organ_conditions = list(organ_data.get("conditions") or [])
+        except (AttributeError, TypeError):
+            self.db.organ_conditions = []
+
 
 class Appendage(Item):
     """A severed limb (or head) detached from a corpse via ``sever``.

@@ -261,12 +261,29 @@ class PainCondition(MedicalCondition):
     def apply_treatment(self, treatment_quality="adequate"):
         """Apply medical treatment to pain."""
         super().apply_treatment(treatment_quality)
-        
+
         # Pain treatment is very effective
         effectiveness = HEALING_EFFECTIVENESS.get(treatment_quality, 0.5)
         severity_reduction = max(1, int(self.severity * effectiveness * 1.5))  # Extra effective
-        
+
         self.severity = max(0, self.severity - severity_reduction)
+
+    @classmethod
+    def from_dict(cls, data):
+        """Deserialize a pain condition from persistence.
+
+        Subclass override — same signature mismatch issue as
+        ``InfectionCondition.from_dict``.
+        """
+        condition = cls(
+            data.get("severity", 1),
+            data.get("location"),
+        )
+        condition.max_severity = data.get("max_severity", condition.severity)
+        condition.tick_interval = data.get("tick_interval", 120)
+        condition.requires_ticker = data.get("requires_ticker", True)
+        condition.treated = data.get("treated", False)
+        return condition
 
 
 class InfectionCondition(MedicalCondition):
@@ -316,6 +333,25 @@ class InfectionCondition(MedicalCondition):
     def should_end(self):
         """Infection ends when severity reaches 0."""
         return self.severity <= 0
+
+    @classmethod
+    def from_dict(cls, data):
+        """Deserialize an infection condition from persistence.
+
+        Overrides ``MedicalCondition.from_dict`` because the base
+        signature passes ``condition_type`` as the first positional,
+        but ``InfectionCondition.__init__`` takes ``(severity,
+        location)``.  Matches the pattern ``BleedingCondition`` uses.
+        """
+        condition = cls(
+            data.get("severity", 1),
+            data.get("location"),
+        )
+        condition.max_severity = data.get("max_severity", condition.severity)
+        condition.tick_interval = data.get("tick_interval", 300)
+        condition.requires_ticker = data.get("requires_ticker", True)
+        condition.treated = data.get("treated", False)
+        return condition
 
     def disables_organ_at_severity(self):
         """Critical infection (severity ≥ 10) disables organs at the
@@ -474,6 +510,35 @@ class ConsciousnessSuppressionCondition(MedicalCondition):
         condition.requires_ticker = data.get("requires_ticker", True)
         condition.treated = data.get("treated", False)
         return condition
+
+
+def deserialize_condition(condition_dict):
+    """Reconstruct a ``MedicalCondition`` from its ``to_dict`` form.
+
+    Centralises the condition-type → class dispatch that
+    ``MedicalState.from_dict`` used to do inline so any persistence
+    pipeline (organ snapshot, harvest item, install pipeline, etc.)
+    can deserialize a condition without reimplementing the factory.
+
+    Args:
+        condition_dict: Dict produced by ``MedicalCondition.to_dict``
+            (or a subclass's override).
+
+    Returns:
+        A condition instance of the appropriate subclass.  Unknown
+        condition types fall back to the ``MedicalCondition`` base
+        class so the data round-trips without crashing.
+    """
+    condition_type = condition_dict.get("condition_type", "unknown")
+    if condition_type == "minor_bleeding":
+        return BleedingCondition.from_dict(condition_dict)
+    if condition_type == "pain":
+        return PainCondition.from_dict(condition_dict)
+    if condition_type == "infection":
+        return InfectionCondition.from_dict(condition_dict)
+    if condition_type == "consciousness_suppression":
+        return ConsciousnessSuppressionCondition.from_dict(condition_dict)
+    return MedicalCondition.from_dict(condition_dict)
 
 
 def remove_condition_by_type(character, condition_type):
