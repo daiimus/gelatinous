@@ -344,6 +344,22 @@ SPECIES_DEFINITIONS = {
             "right_arm": "right",
             "right_hand": "right",
         },
+        # Grasping appendages (#307, PR-H1).  Container locations that
+        # can wield items — the canonical source of truth for what the
+        # Mr. Hands system treats as a hand slot.  Generalised beyond
+        # "hand" from day one so prehensile tails, grasping feet, and
+        # multi-armed anatomies declare their own without renaming the
+        # concept (a humanoid robot's three claws are
+        # ``grasping_containers``; a monkey's prehensile tail joins
+        # this set on monkey-species variants; an octopus declares
+        # eight tentacle locations here).  Severance / install /
+        # ``dress`` flows consult this to decide which containers are
+        # wieldable slots.  Future PR-H2 makes ``character.hands`` a
+        # derived view that walks this set against the current
+        # severance state.
+        "grasping_containers": frozenset({
+            "left_hand", "right_hand",
+        }),
         "limb_downstream_chain": {
             "left_arm":    ("left_arm", "left_hand"),
             "left_hand":   ("left_hand",),
@@ -900,6 +916,11 @@ SPECIES_DEFINITIONS = {
         }),
         # Rats can't wield items.
         "sever_hand_by_container": {},
+        # Rats have no grasping appendages (#307, PR-H1).  Forepaws
+        # can manipulate but the system doesn't model rodent
+        # dexterity as wielding — they don't have an opposable grip.
+        # Empty set means Mr. Hands surfaces no slots on a rat.
+        "grasping_containers": frozenset(),
         # Two-segment limbs: foreleg+forepaw, hindleg+hindpaw.  No
         # three-segment thigh→shin→foot chain.
         "limb_downstream_chain": {
@@ -1194,6 +1215,31 @@ def get_species_severed_head_locations(species: str | None) -> frozenset:
     """
     spec = _resolve_species(species)
     value = spec.get("severed_head_locations") or frozenset()
+    return frozenset(value)
+
+
+def get_species_grasping_containers(species: str | None) -> frozenset:
+    """Return the set of container locations that can grasp items.
+
+    #307, PR-H1.  The canonical source of truth for what the Mr.
+    Hands system treats as a hand slot.  Generalised beyond the
+    literal "hand" concept so prehensile tails, grasping feet, and
+    multi-armed anatomies can declare their own grasping containers
+    without redefining vocabulary.  A humanoid robot with three
+    claws declares those three claw containers here; an octopus
+    declares eight tentacle containers; a quadruped with no
+    opposable grip declares an empty set.
+
+    Args:
+        species: Species identifier; ``None`` / unknown falls back
+            to ``"human"``.
+
+    Returns:
+        ``frozenset`` of canonical container names.  Empty when the
+        species has no grasping appendages (most animals).
+    """
+    spec = _resolve_species(species)
+    value = spec.get("grasping_containers") or frozenset()
     return frozenset(value)
 
 
