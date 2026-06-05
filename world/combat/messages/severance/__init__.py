@@ -49,6 +49,7 @@ from world.grammar import capitalize_first
 
 # Pair-key shorthands accepted as location aliases for the limb files.
 _LIMB_ALIASES = {
+    # Human limbs.
     "left_arm": "arms",
     "right_arm": "arms",
     "left_hand": "hands",
@@ -60,9 +61,22 @@ _LIMB_ALIASES = {
     "left_foot": "feet",
     "right_foot": "feet",
     # The neck container is the routing site for decapitation;
-    # narrative lives in head.py.
+    # narrative lives in head.py (works for any species — head /
+    # neck severance prose is generic).
     "neck": "head",
     "head": "head",
+    # Rat limbs (#356 follow-up).  Rat severance fires through
+    # the same lookup; species-specific module names route the
+    # rat anatomy.
+    "left_foreleg": "forelegs",
+    "right_foreleg": "forelegs",
+    "left_forepaw": "forepaws",
+    "right_forepaw": "forepaws",
+    "left_hindleg": "hindlegs",
+    "right_hindleg": "hindlegs",
+    "left_hindpaw": "hindpaws",
+    "right_hindpaw": "hindpaws",
+    "tail": "tail",
 }
 
 _VALID_SEVERITIES = ("grievous", "minor")
@@ -74,7 +88,12 @@ def _resolve_module_name(location: str) -> str:
     if location in _LIMB_ALIASES:
         return _LIMB_ALIASES[location]
     # Already a module name (e.g. ``"arms"``) or a singular pair key.
-    if location in ("arms", "hands", "thighs", "shins", "feet"):
+    if location in (
+        # Human pair keys.
+        "arms", "hands", "thighs", "shins", "feet",
+        # Rat pair keys (#356 follow-up).
+        "forelegs", "hindlegs", "forepaws", "hindpaws", "tail",
+    ):
         return location
     return location  # Caller passed something we don't recognise — fall
                     # through and the importlib lookup below will fail
