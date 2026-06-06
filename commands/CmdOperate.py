@@ -76,8 +76,12 @@ LABEL_BOX_WIDTH = 15                # Content width inside ║...║
 LABEL_BOX_TOTAL = LABEL_BOX_WIDTH + 2  # Including ║ borders
 BRANCH_CORNER = "──┐"               # Emerge from label box, turn
                                     # down into the trunk
-INLINE_STEM = "────"                # Inline-first: short stem to
-                                    # content on the box-mid row
+INLINE_STEM = "────"                # Inline-first w/ no trunk
+                                    # below — simple horizontal stem
+INLINE_TEE = "──┬──"                # Inline-first w/ trunk below —
+                                    # tee splits content rightward
+                                    # and trunk downward in one
+                                    # connected glyph
 JOIN_MID = "├──"                    # Trunk continues
 JOIN_END = "└──"                    # Trunk terminates
 EMPTY_GUTTER = " " * (LABEL_BOX_TOTAL + 2)  # Aligns trunk under the corner
@@ -150,15 +154,21 @@ def _render_section(
     if inline_first:
         first = lines[0]
         rest = lines[1:]
+        if not rest:
+            # No conditions — simple inline stem, box closes cleanly.
+            return [
+                top,
+                f"{mid}{INLINE_STEM} {first}",
+                bot,
+            ]
+        # Conditions follow — use a tee (``──┬──``) so the identity
+        # on the right and the trunk to the conditions below share
+        # one connected glyph rather than a disconnected stem.
         out = [
             top,
-            f"{mid}{INLINE_STEM} {first}",
+            f"{mid}{INLINE_TEE} {first}",
+            f"{bot}  │",
         ]
-        if not rest:
-            # No conditions; close the box and we're done.
-            out.append(bot)
-            return out
-        out.append(f"{bot}  │")
         for line in rest[:-1]:
             out.append(f"{EMPTY_GUTTER}{JOIN_MID} {line}")
         out.append(f"{EMPTY_GUTTER}{JOIN_END} {rest[-1]}")
