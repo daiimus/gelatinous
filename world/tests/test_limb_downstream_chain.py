@@ -404,6 +404,61 @@ class CutPointFilterTests(TestCase):
         self.assertIn("left_shin", locations)
         self.assertNotIn("left_foot", locations)
 
+    def test_head_severance_collapses_cluster_to_single_wound(self):
+        # Decapitation: ``sever_character_body`` zeros every organ in
+        # the head cluster.  Without the cluster filter, every cluster
+        # peer (eyes, ears, neck) renders its own severance wound on
+        # the headless body — confusing both visually and narratively
+        # ("the left ear is missing" on a body whose entire head is
+        # gone).  The cluster filter collapses every peer wound into
+        # a single wound at the "head" cut point, mirroring the
+        # corpse-side cleanup in ``apply_sever_to_corpse``.
+        from world.medical.wounds import get_character_wounds
+
+        # Eyes and ears live in ``container="head"`` but render at a
+        # specific ``display_location``; need both fields wired here.
+        def _head_organ(name, *, display_location=None):
+            organ = _FakeOrgan("head", name=name)
+            organ.current_hp = 0
+            organ.wound_stage = "severed"
+            if display_location is not None:
+                organ.display_location = display_location
+            return organ
+
+        organs = {
+            "brain": _head_organ("brain"),
+            "left_eye": _head_organ("left_eye",
+                                     display_location="left_eye"),
+            "right_eye": _head_organ("right_eye",
+                                      display_location="right_eye"),
+            "left_ear": _head_organ("left_ear",
+                                     display_location="left_ear"),
+            "right_ear": _head_organ("right_ear",
+                                      display_location="right_ear"),
+        }
+        # Cervical spine lives in container="neck" — also severed by
+        # the head-cluster cut, and we want its wound suppressed too.
+        spine = _FakeOrgan("neck", name="cervical_spine")
+        spine.current_hp = 0
+        spine.wound_stage = "severed"
+        organs["cervical_spine"] = spine
+
+        char = SimpleNamespace(
+            medical_state=_FakeMedical(organs),
+            is_location_covered=lambda loc: False,
+            db=SimpleNamespace(skintone=None, species="human"),
+        )
+        wounds = get_character_wounds(char)
+        locations = {w["location"] for w in wounds}
+        # Single cut-point wound at "head" — everything else suppressed.
+        self.assertIn("head", locations)
+        for hidden in ("left_eye", "right_eye", "left_ear",
+                       "right_ear", "neck", "face"):
+            self.assertNotIn(
+                hidden, locations,
+                f"{hidden} should be suppressed when head cluster is severed",
+            )
+
     def test_solo_foot_sever_still_renders(self):
         # If only the foot is severed (foot directly cut, not as
         # downstream of shin), the wound should still render — the

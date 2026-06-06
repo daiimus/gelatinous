@@ -228,12 +228,32 @@ def get_character_wounds(character):
     # Issue #356 Phase 2: species-aware limb-parent map.  Rats have
     # two-segment limbs (foreleg+forepaw, hindleg+hindpaw) so their
     # parent map differs from human's three-segment chain.
+    species = getattr(character.db, "species", None) if hasattr(character, "db") else None
     try:
         from world.anatomy import get_species_limb_parent
-        species = getattr(character.db, "species", None) if hasattr(character, "db") else None
         LIMB_PARENT = get_species_limb_parent(species)
     except ImportError:
         LIMB_PARENT = {}
+
+    # Head-cluster cut-point: when the head has been severed off the
+    # body (decapitation — combat- or chart-driven), every cluster
+    # peer (face / neck / eyes / ears / hair-or-fur / snout, depending
+    # on species) collapses into a single wound at the "head" cut
+    # point.  The cluster forms a bundle, not a parent tree, so it
+    # doesn't fit the limb-parent shape — handled separately here.
+    # Detection: the brain sits in container="head" and gets zeroed
+    # by ``sever_character_body`` during head severance, so its
+    # presence in ``severed_containers`` is a reliable signal that
+    # the cluster left the body.
+    head_cluster_collapsed = "head" in severed_containers
+    if head_cluster_collapsed:
+        try:
+            from world.anatomy import get_species_severed_head_locations
+            head_cluster = get_species_severed_head_locations(species)
+        except ImportError:
+            head_cluster = frozenset()
+    else:
+        head_cluster = frozenset()
 
     # Check all organs in the character's medical state for damage
     for organ_name, organ in medical_state.organs.items():
@@ -261,6 +281,13 @@ def get_character_wounds(character):
                 if stage == "severed":
                     parent = LIMB_PARENT.get(location)
                     if parent and parent in severed_containers:
+                        continue
+                    # Head-cluster collapse — see preamble.  Every
+                    # cluster peer rolls up into the single wound at
+                    # the "head" cut point.
+                    if (head_cluster_collapsed
+                            and location in head_cluster
+                            and location != "head"):
                         continue
 
                 wound_data = {
