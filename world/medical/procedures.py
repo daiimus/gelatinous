@@ -55,19 +55,21 @@ ANESTHETIZED_DIFFICULTY_BONUS = 3
 #: interactive; long enough that mid-combat surgery is genuinely
 #: tense.  Balance numbers — adjust freely.
 PROCEDURE_DURATIONS = {
-    "incise": 6,
-    "harvest": 18,
-    "install": 18,
-    "suture": 9,
+    "incise":   6,
+    "harvest":  18,
+    "install":  18,
+    "suture":   9,
+    "amputate": 12,
 }
 
 #: Pain severity seeded on a conscious patient when a procedure
 #: completes on them (per verb).  Unconscious patients skip this.
 CONSCIOUS_PAIN_SEVERITY = {
-    "incise": 3,
-    "harvest": 5,
-    "install": 4,
-    "suture": 2,
+    "incise":   3,
+    "harvest":  5,
+    "install":  4,
+    "suture":   2,
+    "amputate": 8,   # severance is the most painful procedure
 }
 
 #: Infection severity seeded as a failure consequence.  Caller passes
@@ -883,12 +885,118 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
         )
 
 
+def _resolve_amputate(actor, target, *, location: str, **_) -> None:
+    """Resolve an ``amputate`` attempt — surgical limb removal.
+
+    Wraps the existing severance pipeline
+    (``typeclasses.items.apply_sever_to_character`` for living
+    targets, ``apply_sever_to_corpse`` for the dead) in the
+    procedure-verb dispatch shape so charts can include
+    ``amputate <location>`` steps.
+
+    The CmdSever command path expects a wielded edged weapon, but
+    amputation in a surgical context is performed with the kit;
+    we skip the weapon check at the resolver level (the chart
+    runner already requires the surgical kit at chart-author
+    time via the procedure-verb infrastructure).
+
+    Failure consequences are placeholder per design: infection
+    seed on partial / failure rolls, pain on conscious patient.
+    Severance itself either lands or doesn't — partial-success
+    semantics for "almost cut it off" don't model cleanly, so
+    we treat partial as success-with-infection-seed.
+    """
+    from world.identity_utils import msg_room_identity
+
+    result = roll_procedure(actor, target)
+    outcome = result["outcome"]
+
+    if outcome == "failure":
+        # Botched cut — no severance, infection + pain seeded.
+        seed_infection(target, location)
+        seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["amputate"])
+        actor.msg(
+            f"Your cut goes wrong — you tear at "
+            f"{target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')} but the bone holds.  "
+            f"Blood and mess; no severance."
+        )
+        return
+
+    # Dispatch to the right severance pipeline based on target shape.
+    appendage = None
+    is_living = (
+        getattr(target, "medical_state", None) is not None
+        and getattr(target.medical_state, "organs", None)
+    )
+    if is_living:
+        from typeclasses.items import apply_sever_to_character
+        try:
+            appendage = apply_sever_to_character(
+                target, location, injury_type="cut",
+            )
+        except Exception as exc:
+            actor.msg(
+                f"The cut cannot proceed: {exc}"
+            )
+            return
+    else:
+        # Corpse-shaped target.
+        from typeclasses.items import apply_sever_to_corpse
+        try:
+            appendage = apply_sever_to_corpse(target, location)
+        except Exception as exc:
+            actor.msg(f"The cut cannot proceed: {exc}")
+            return
+
+    if appendage is None:
+        actor.msg(
+            f"The cut won't take — "
+            f"{target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')} can't be severed here."
+        )
+        return
+
+    # Partial success: severance landed but infection seeded.
+    if outcome == "partial":
+        seed_infection(target, location)
+        seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["amputate"])
+        actor.msg(
+            f"You hack through {target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')} — the cut holds but the "
+            f"edges are ragged."
+        )
+    else:
+        seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["amputate"])
+        actor.msg(
+            f"You sever {target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')} cleanly at the joint."
+        )
+
+    room = actor.location
+    if room is not None:
+        msg_room_identity(
+            location=room,
+            template=(
+                f"{{actor}} severs {{patient}}'s "
+                f"{location.replace('_', ' ')}."
+            ),
+            char_refs={"actor": actor, "patient": target},
+            exclude=[actor, target] if target is not actor else [actor],
+        )
+
+    # Vital-consequences pass — severance can be lethal (decapitation,
+    # spine-bearing cuts).  Re-uses the same path harvest goes through.
+    apply_vital_consequences(target)
+
+
 # Mapping consumed by ``_resolve_procedure_callback``.
 _VERB_RESOLVERS = {
-    "incise": _resolve_incise,
-    "harvest": _resolve_harvest,
-    "install": _resolve_install,
-    "suture": _resolve_suture,
+    "incise":   _resolve_incise,
+    "harvest":  _resolve_harvest,
+    "install":  _resolve_install,
+    "suture":   _resolve_suture,
+    "amputate": _resolve_amputate,
 }
 
 

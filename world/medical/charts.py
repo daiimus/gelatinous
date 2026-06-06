@@ -84,7 +84,9 @@ STEP_STATUSES = (PENDING, RUNNING, DONE, SKIPPED, FAILED)
 # Each verb declares its required and optional args so the menu
 # UI can validate input at chart-authoring time.
 
-PROCEDURE_VERBS = ("incise", "harvest", "install", "suture")
+PROCEDURE_VERBS = (
+    "incise", "harvest", "install", "suture", "amputate",
+)
 TREATMENT_VERBS = ("apply", "inject")
 ALL_VERBS = PROCEDURE_VERBS + TREATMENT_VERBS
 
@@ -93,6 +95,7 @@ VERB_ARG_SPEC = {
     "harvest":  {"required": ("organ_name",),             "optional": ()},
     "install":  {"required": ("organ_item_key", "location"), "optional": ()},
     "suture":   {"required": (),                          "optional": ("location",)},
+    "amputate": {"required": ("location",),               "optional": ()},
     "apply":    {"required": ("item_key", "location"),    "optional": ()},
     "inject":   {"required": ("item_key",),               "optional": ("location",)},
 }
@@ -368,6 +371,8 @@ def render_step_summary(step: dict) -> str:
     args = step.get("args") or {}
     if verb == "incise":
         return f"incise {_humanize(args.get('location'))}"
+    if verb == "amputate":
+        return f"amputate {_humanize(args.get('location'))}"
     if verb == "harvest":
         return f"harvest {_humanize(args.get('organ_name'))}"
     if verb == "install":
@@ -548,6 +553,11 @@ def _resolve_step_args(verb: str, chart_args: dict, target, actor) -> dict:
     if verb == "incise":
         if "location" not in chart_args:
             raise _StepResolutionError("incise requires a location")
+        return {"location": chart_args["location"]}
+
+    if verb == "amputate":
+        if "location" not in chart_args:
+            raise _StepResolutionError("amputate requires a location")
         return {"location": chart_args["location"]}
 
     if verb == "harvest":

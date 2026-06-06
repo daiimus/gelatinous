@@ -382,6 +382,7 @@ def _node_add_verb(caller, raw_string, **kwargs):
         "  2. harvest\n"
         "  3. install\n"
         "  4. suture\n"
+        "  5. amputate\n"
         "  x. Cancel\n\n"
         "|wWhich verb?|n"
     )
@@ -394,14 +395,15 @@ def _process_verb_choice(caller, raw_string, **kwargs):
     if choice in ("x", "exit", "cancel"):
         return "node_top"
     verb_map = {
-        "1": "incise", "incise": "incise",
-        "2": "harvest", "harvest": "harvest",
-        "3": "install", "install": "install",
-        "4": "suture", "suture": "suture",
+        "1": "incise",   "incise":   "incise",
+        "2": "harvest",  "harvest":  "harvest",
+        "3": "install",  "install":  "install",
+        "4": "suture",   "suture":   "suture",
+        "5": "amputate", "amputate": "amputate",
     }
     verb = verb_map.get(choice)
     if verb is None:
-        caller.msg("|rPick 1-4 or x to cancel.|n")
+        caller.msg("|rPick 1-5 or x to cancel.|n")
         return None
     caller.ndb._operate_pending_verb = verb
     # Suture has optional location; the rest are required.
@@ -413,6 +415,8 @@ def _process_verb_choice(caller, raw_string, **kwargs):
         return "node_harvest_organ"
     if verb == "install":
         return "node_install_organ"
+    if verb == "amputate":
+        return "node_amputate_location"
     return "node_top"
 
 
@@ -594,6 +598,61 @@ def _process_incise_location(caller, raw_string, **kwargs):
         caller.msg("|rPick a number from the list, or type the name.|n")
         return None
     _add_step_to_chart(caller, "incise", {"location": pick})
+    return "node_top"
+
+
+# ===================================================================
+# Amputate picker
+# ===================================================================
+
+
+def _list_severable_containers(target):
+    """Return sorted list of severable containers for ``target``'s
+    species — limbs and head per the species table."""
+    from world.anatomy import get_species_severable_containers
+    species = getattr(getattr(target, "db", None), "species", None)
+    try:
+        return sorted(get_species_severable_containers(species))
+    except Exception:
+        return []
+
+
+def _node_amputate_location(caller, raw_string, **kwargs):
+    target = caller.ndb._operate_target
+    locations = _list_severable_containers(target)
+    if not locations:
+        caller.msg(
+            "|rNo severable locations on this target.  Amputation "
+            "requires species anatomy that declares severable "
+            "containers (limbs / head).|n"
+        )
+        return "node_top"
+    caller.ndb._operate_pickable = locations
+    listing = _render_numbered(
+        locations, lambda loc: loc.replace("_", " "),
+    )
+    text = (
+        "\n|wAmputate location|n\n\n"
+        "Pick a body location to amputate:\n\n"
+        f"{listing}\n\n"
+        "  x. Cancel\n\n"
+        "|wWhich location?|n (number or name)"
+    )
+    options = ({"key": "_default", "goto": _process_amputate_location},)
+    return text, options
+
+
+def _process_amputate_location(caller, raw_string, **kwargs):
+    raw = (raw_string or "").strip()
+    if raw.lower() in ("x", "exit", "cancel"):
+        return "node_top"
+    if not raw:
+        return None
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [])
+    if pick is None:
+        caller.msg("|rPick a number from the list, or type the name.|n")
+        return None
+    _add_step_to_chart(caller, "amputate", {"location": pick})
     return "node_top"
 
 
@@ -1157,6 +1216,7 @@ class CmdOperate(Command):
                 "node_install_organ":    _node_install_organ,
                 "node_install_location": _node_install_location,
                 "node_suture_location":  _node_suture_location,
+                "node_amputate_location":_node_amputate_location,
                 "node_edit_chart":       _node_edit_chart,
                 "node_commence":         _node_commence,
                 "node_save_exit":        _node_save_exit,

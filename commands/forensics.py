@@ -254,7 +254,12 @@ class CmdSever(Command):
     """
 
     key = "sever"
-    aliases = ()
+    # ``amputate`` is the medical-context alias.  Same command,
+    # same dispatch — the operate menu uses ``amputate`` as the
+    # procedure-verb name to align with surgical vocabulary, and
+    # direct-command users can reach the same severance from
+    # either verb.
+    aliases = ("amputate",)
     locks = "cmd:all()"
     help_category = "Forensics"
 

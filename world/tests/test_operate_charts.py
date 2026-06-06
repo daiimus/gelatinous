@@ -670,6 +670,47 @@ class ResolveStepArgs(TestCase):
         )
         self.assertEqual(result, {})
 
+    def test_amputate_passes_location_through(self):
+        from world.medical.charts import _resolve_step_args
+        result = _resolve_step_args(
+            "amputate", {"location": "left_arm"},
+            target=None, actor=None,
+        )
+        self.assertEqual(result, {"location": "left_arm"})
+
+    def test_amputate_missing_location_raises(self):
+        from world.medical.charts import (
+            _resolve_step_args, _StepResolutionError,
+        )
+        with self.assertRaises(_StepResolutionError):
+            _resolve_step_args(
+                "amputate", {}, target=None, actor=None,
+            )
+
+
+class AmputateInVerbSpec(TestCase):
+    """``amputate`` is a procedure verb (chartable + dispatched
+    via the procedure infrastructure, not a treatment verb)."""
+
+    def test_amputate_in_procedure_verbs(self):
+        self.assertIn("amputate", charts.PROCEDURE_VERBS)
+
+    def test_amputate_in_all_verbs(self):
+        self.assertIn("amputate", charts.ALL_VERBS)
+
+    def test_amputate_arg_spec_requires_location(self):
+        spec = charts.VERB_ARG_SPEC["amputate"]
+        self.assertEqual(spec["required"], ("location",))
+
+    def test_amputate_step_renders_with_location(self):
+        chart = charts.new_chart(_surgeon())
+        step = charts.add_step(
+            chart, "amputate", {"location": "left_arm"},
+        )
+        self.assertEqual(
+            charts.render_step_summary(step), "amputate left arm",
+        )
+
 
 class InterruptMarksRunningStepFailed(TestCase):
     """``interrupt_procedure`` should mark any RUNNING chart step
