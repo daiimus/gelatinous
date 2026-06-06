@@ -1,19 +1,34 @@
 """
 Severed wound descriptions.
 
-These render on a corpse where a limb has been removed (PR #198).
-The wound record is synthesized by
-:func:`commands.forensics._apply_sever_to_corpse` immediately after
-``CmdSever`` succeeds, with ``injury_type='severed'`` and the
-canonical body-location name (e.g. ``left_arm``, ``head``).
+These render on a corpse where a limb has been removed (PR #198), AND
+on living characters at the cut point after an amputation — the
+synthetic ``injury_type="severed"`` cut-point wound emitted by
+:func:`world.medical.wounds.wound_descriptions.get_character_wounds`
+on a freshly-amputated body routes through this module so the live
+view and the eventual corpse view share prose.
 
 Stages:
-    fresh: Used immediately after sever (the cut is recent prose-wise).
-    old:   Used on long-dead corpses; the stump is dried / desiccated.
+    fresh:   Just cut.  Raw stump.  Default on a living body until
+             the suture verb runs, and on a fresh corpse spawned by
+             :func:`commands.forensics._apply_sever_to_corpse`.
+    treated: Recently sutured.  Bandaged stump, stitches visible.
+             Lives only on a living body — transitioned from ``fresh``
+             by ``_resolve_suture`` via ``character.db.sutured_stumps``.
+    healing: Sutures dissolving, new tissue knitting over.  Future
+             use — slotted for the time-based progression tick.
+    scarred: Long-healed.  Future use — terminal stage of progression.
+    old:     Corpse-preserved variant.  Frozen at death.  Renders the
+             dried / desiccated stump on long-dead corpses.
+    destroyed: Catastrophic mangling (e.g. blast amputation that
+             didn't leave a clean cut).
 
-All templates expect the ``{location}`` token, which resolves through
-:func:`world.medical.wounds.constants.get_location_display_name` and
-yields readable strings like ``"left arm"`` or ``"head"``.
+All templates expect the ``{location}`` token; the
+``{skintone}`` / ``{severity}`` / ``{organ}`` / ``{injury_type}``
+tokens are also available.  The renderer
+(:func:`world.medical.wounds.wound_descriptions.get_wound_description`)
+auto-prepends a skintone colour code for ``treated`` / ``healing`` /
+``scarred`` stages when a character context is supplied.
 """
 
 WOUND_DESCRIPTIONS = {
@@ -29,16 +44,23 @@ WOUND_DESCRIPTIONS = {
         "|rThe {location} is missing — the stump long since congealed and stiff|n",
         "|rA stump marks where the {location} used to be, the wound long dry|n",
     ],
-    # Aliases so the renderer's defensive stage fallbacks don't fall
-    # through to a different injury_type's templates.
     "treated": [
+        "|rThe {location} stump has been carefully sutured shut, the dressing clean|n",
+        "{skintone}neat rows of stitches close the {location} stump, the bandage still fresh|n",
+        "{skintone}a {severity} sutured stump where the {location} used to be, the cut held closed|n",
         "|rThe stump where the {location} used to be has been crudely bandaged|n",
     ],
     "healing": [
-        "|rThe stump where the {location} used to be shows callused, knotted scar tissue|n",
+        "{skintone}the {location} stump shows pink new tissue knitting over the closed wound|n",
+        "{skintone}healing flesh covers the {location} stump, the sutures long since dissolved|n",
+        "{skintone}the {location} stump is closing well, the scar still pink and tight|n",
+        "{skintone}callused, knotted tissue forms the {location} stump, the wound nearly closed|n",
     ],
     "scarred": [
-        "|rA smooth, pale scar marks where the {location} was severed long ago|n",
+        "{skintone}a smooth, pale scar marks where the {location} was lost long ago|n",
+        "{skintone}a faded, ridged scar tells of the {location} severed years past|n",
+        "{skintone}the {location} ends in a smooth healed stump, the flesh long since closed|n",
+        "{skintone}a pale, knotted scar caps the old severance site at the {location}|n",
     ],
     "destroyed": [
         "|RThe {location} has been violently torn away, leaving a mangled, ruined stump|n",

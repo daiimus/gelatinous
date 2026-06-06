@@ -72,6 +72,42 @@ class SeveredStageProseTests(TestCase):
                         )
 
 
+class SeveredStumpProgressionStagesTests(TestCase):
+    """``severed.py`` carries the post-amputation stump progression
+    (``treated`` / ``healing`` / ``scarred``) — previously single-line
+    placeholders, now real prose so suture / healing / time-progressed
+    stumps render distinct flavour."""
+
+    def setUp(self):
+        import world.medical.wounds.messages.severed as severed
+        self.descriptions = severed.WOUND_DESCRIPTIONS
+
+    def test_treated_stage_has_multiple_variants(self):
+        # Suture transitions the synthetic cut-point wound from
+        # ``fresh`` to ``treated``; the renderer picks one at random
+        # — so multiple variants prevent repetitive prose on a body
+        # with multiple amputations.
+        self.assertGreaterEqual(len(self.descriptions["treated"]), 3)
+
+    def test_healing_stage_has_multiple_variants(self):
+        # Slotted for the time-based progression tick (future work).
+        # Prose stocked now so the tick has somewhere to land.
+        self.assertGreaterEqual(len(self.descriptions["healing"]), 3)
+
+    def test_scarred_stage_has_multiple_variants(self):
+        # Terminal stage of stump progression.
+        self.assertGreaterEqual(len(self.descriptions["scarred"]), 3)
+
+    def test_progression_templates_reference_location(self):
+        # Every stump-progression template must accept the
+        # ``{location}`` token — the renderer fills it with the
+        # cut-point body part ("left arm", "head") at format time.
+        for stage in ("treated", "healing", "scarred"):
+            for template in self.descriptions[stage]:
+                with self.subTest(stage=stage, template=template):
+                    self.assertIn("{location}", template)
+
+
 class LacerationFileTests(TestCase):
     """The laceration injury type now has its own wound-message file."""
 

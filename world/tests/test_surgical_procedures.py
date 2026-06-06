@@ -689,6 +689,40 @@ class ResolveSuture(TestCase):
         _resolve_suture(self.actor, self.target, location="chest")
         self.assertEqual(open_incision_locations(self.target), ["abdomen"])
 
+    @patch("world.medical.procedures.random.randint", return_value=6)
+    def test_suture_at_stump_records_sutured_stump(self, _r):
+        # Suture closing an incision at a location whose organs are
+        # all severed (wound_stage="severed") records the location in
+        # ``target.db.sutured_stumps`` so the wound renderer
+        # transitions the synthetic cut-point wound from ``fresh`` to
+        # ``treated``.  Mirrors the harvested-organ ``fresh→treated``
+        # transition the same verb already does — same idea applied
+        # to the stump-prose progression.
+        from world.medical.procedures import _resolve_suture
+        # Mark every organ in the left_arm container as severed,
+        # mimicking what ``sever_character_body`` does post-amputation.
+        for organ in self.target.medical_state.organs.values():
+            if organ.container == "left_arm":
+                organ.current_hp = 0
+                organ.wound_stage = "severed"
+        open_incision(self.target, "left_arm", surgeon=self.actor)
+        _resolve_suture(self.actor, self.target, location="left_arm")
+        sutured = self.target.db.sutured_stumps or []
+        self.assertIn("left_arm", sutured)
+
+    @patch("world.medical.procedures.random.randint", return_value=6)
+    def test_suture_at_unsevered_location_does_not_mark_stump(self, _r):
+        # Closing an incision at a location with intact organs (the
+        # normal surgical case — opened for harvest / install) must
+        # not pollute ``sutured_stumps`` with locations that aren't
+        # actually amputation sites.  Only locations whose organs are
+        # ``wound_stage="severed"`` qualify.
+        from world.medical.procedures import _resolve_suture
+        open_incision(self.target, "chest", surgeon=self.actor)
+        _resolve_suture(self.actor, self.target, location="chest")
+        sutured = getattr(self.target.db, "sutured_stumps", None) or []
+        self.assertNotIn("chest", sutured)
+
     @patch("world.medical.procedures.random.randint", return_value=1)
     def test_failure_seeds_infection_but_still_closes(self, _r):
         # Per design: botched suture closes but seeds infection.  The

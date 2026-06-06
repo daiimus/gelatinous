@@ -836,13 +836,21 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
     # harvested-injury organs from ``fresh`` to ``treated`` so the
     # wound renderer reads as "surgical opening has been crudely
     # bandaged" rather than "still wet and red".  Severance wounds
-    # (limb-loss injury_type, not "harvested") are untouched —
-    # suturing the stump doesn't undo the limb loss but the
-    # ``harvested`` injury type IS appropriate for an organ
-    # extracted via the procedure pipeline.
+    # (limb-loss injury_type, not "harvested") leave the limb gone
+    # — suture won't grow it back — but the *stump prose* should
+    # progress from raw to bandaged.  Tracked separately on
+    # ``target.db.sutured_stumps`` (see ``_stump_stage`` in
+    # world.medical.wounds.wound_descriptions) so the synthetic
+    # cut-point wound emitted by ``get_character_wounds`` reads
+    # "treated" once this fires.
     state = getattr(target, "medical_state", None)
     if state is not None and hasattr(state, "organs"):
+        sutured = list(
+            getattr(target.db, "sutured_stumps", None) or ()
+        )
+        sutured_dirty = False
         for loc in closed:
+            stump_at_loc = False
             for organ in state.organs.values():
                 container = getattr(organ, "container", None)
                 display = getattr(organ, "display_location", None)
@@ -851,6 +859,17 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
                 if getattr(organ, "injury_type", None) == "harvested":
                     if getattr(organ, "wound_stage", None) == "fresh":
                         organ.wound_stage = "treated"
+                # Detect severance: ``sever_character_body`` zeroes
+                # chain organs and sets ``wound_stage="severed"``.
+                # Any such organ whose container / display surface
+                # matches the closed incision marks this as a stump.
+                if getattr(organ, "wound_stage", None) == "severed":
+                    stump_at_loc = True
+            if stump_at_loc and loc not in sutured:
+                sutured.append(loc)
+                sutured_dirty = True
+        if sutured_dirty:
+            target.db.sutured_stumps = sutured
 
     seed_pain(target, closed[0], CONSCIOUS_PAIN_SEVERITY["suture"])
 

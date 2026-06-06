@@ -188,6 +188,26 @@ def _format_wound_grammar(description):
     return result
 
 
+def _stump_stage(character, location: str) -> str:
+    """Return the renderer stage for a severance cut point.
+
+    Today this is binary: ``"treated"`` if the cut point has been
+    sutured (recorded in ``character.db.sutured_stumps``), else
+    ``"fresh"``.  The suture verb populates the set after closing an
+    incision at a location whose organs are all severed.
+
+    Time-based progression past ``treated`` (``"healing"`` /
+    ``"scarred"``) is future work — when the per-cut-point stage
+    store grows from a flat membership set to a per-location stage
+    value, the lookup will replace this helper without rippling
+    through the synthesis call sites.
+    """
+    sutured = getattr(
+        getattr(character, "db", None), "sutured_stumps", None,
+    ) or ()
+    return "treated" if location in sutured else "fresh"
+
+
 def get_character_wounds(character):
     """
     Analyze character's medical state and extract visible wounds.
@@ -328,7 +348,7 @@ def get_character_wounds(character):
             "injury_type": "severed",
             "location": "head",
             "severity": "Critical",
-            "stage": "old",
+            "stage": _stump_stage(character, "head"),
             "organ": None,
             "organ_obj": None,
         })
@@ -352,7 +372,7 @@ def get_character_wounds(character):
                 "injury_type": "severed",
                 "location": container,
                 "severity": "Critical",
-                "stage": "old",
+                "stage": _stump_stage(character, container),
                 "organ": None,
                 "organ_obj": None,
             })

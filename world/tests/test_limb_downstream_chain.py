@@ -485,6 +485,32 @@ class CutPointFilterTests(TestCase):
         self.assertEqual(shin_wounds[0]["injury_type"], "severed")
         self.assertIsNone(shin_wounds[0]["organ"])
 
+    def test_stump_renders_fresh_when_unsutured(self):
+        # A freshly-severed limb cut point has no entry in
+        # ``db.sutured_stumps``; the synthetic stump wound should
+        # render at stage="fresh" so the renderer routes through
+        # severed.py's raw / weeping prose.
+        from world.medical.wounds import get_character_wounds
+
+        char = self._char_with_severed_chain()
+        # No sutured_stumps attribute at all → behave as empty set.
+        wounds = get_character_wounds(char)
+        shin_wounds = [w for w in wounds if w["location"] == "left_shin"]
+        self.assertEqual(shin_wounds[0]["stage"], "fresh")
+
+    def test_stump_renders_treated_when_sutured(self):
+        # Once the cut point is recorded in ``db.sutured_stumps`` (by
+        # ``_resolve_suture`` closing an incision at a severance
+        # location), the renderer transitions to stage="treated" so
+        # severed.py's bandaged-stump prose fires instead.
+        from world.medical.wounds import get_character_wounds
+
+        char = self._char_with_severed_chain()
+        char.db.sutured_stumps = ["left_shin"]
+        wounds = get_character_wounds(char)
+        shin_wounds = [w for w in wounds if w["location"] == "left_shin"]
+        self.assertEqual(shin_wounds[0]["stage"], "treated")
+
     def test_solo_foot_sever_still_renders(self):
         # If only the foot is severed (foot directly cut, not as
         # downstream of shin), the wound should still render — the
