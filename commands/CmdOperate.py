@@ -76,6 +76,8 @@ LABEL_BOX_WIDTH = 15                # Content width inside ║...║
 LABEL_BOX_TOTAL = LABEL_BOX_WIDTH + 2  # Including ║ borders
 BRANCH_CORNER = "──┐"               # Emerge from label box, turn
                                     # down into the trunk
+INLINE_STEM = "────"                # Inline-first: short stem to
+                                    # content on the box-mid row
 JOIN_MID = "├──"                    # Trunk continues
 JOIN_END = "└──"                    # Trunk terminates
 EMPTY_GUTTER = " " * (LABEL_BOX_TOTAL + 2)  # Aligns trunk under the corner
@@ -117,15 +119,27 @@ def _label_box(label: str) -> tuple[str, str, str]:
     return top, mid, bot
 
 
-def _render_section(label: str, lines: list[str]) -> list[str]:
+def _render_section(
+    label: str,
+    lines: list[str],
+    *,
+    inline_first: bool = False,
+) -> list[str]:
     """Render one labeled section.
 
-    Single uniform treatment for all non-empty cases: label box
-    emits ``──┐`` from its middle row, turns down through ``│``
-    past the box bottom, and content hangs off the trunk as
-    ``├── …`` / ``└── …`` rows.  Single-item sections still get
-    the trunk for visual consistency — every section reads the
-    same way regardless of content count.
+    Two layout modes:
+
+    * **Default (equidistant)** — ``──┐`` corner emerges from the
+      box-middle row, trunk continues through ``│`` past the
+      box bottom, every content line hangs off the trunk as
+      ``├── …`` / ``└── …``.  Used by CHART and OPTIONS.
+
+    * **inline_first** — first content line sits on the box-mid
+      row via a short ``────`` stem; remaining lines drop below
+      the box bottom and trunk down as before.  Used by PATIENT
+      where the identity (sdesc or recognised name, per the
+      identity pipeline) reads as the section header rather than
+      a list entry, and conditions hang below.
 
     Empty ``lines`` renders the box alone with no branch.
     """
@@ -133,6 +147,24 @@ def _render_section(label: str, lines: list[str]) -> list[str]:
     if not lines:
         return [top, mid, bot]
 
+    if inline_first:
+        first = lines[0]
+        rest = lines[1:]
+        out = [
+            top,
+            f"{mid}{INLINE_STEM} {first}",
+        ]
+        if not rest:
+            # No conditions; close the box and we're done.
+            out.append(bot)
+            return out
+        out.append(f"{bot}  │")
+        for line in rest[:-1]:
+            out.append(f"{EMPTY_GUTTER}{JOIN_MID} {line}")
+        out.append(f"{EMPTY_GUTTER}{JOIN_END} {rest[-1]}")
+        return out
+
+    # Default: every item drops below the box, uniform tree.
     out = [
         top,
         f"{mid}{BRANCH_CORNER}",
@@ -184,14 +216,9 @@ def _render_patient_lines(caller, target) -> list[str]:
 
 def _render_chart_lines(chart: dict | None) -> list[str]:
     """Render the chart's step list (or a placeholder when empty)."""
-    if not chart:
-        return ["no active chart — pick option 1 to add a step"]
-    steps = chart.get("steps") or []
-    if not steps:
-        return [
-            f"{chart.get('status', 'draft')} · 0 steps "
-            f"(empty — add procedure steps)"
-        ]
+    if not chart or not (chart.get("steps") or []):
+        return ["|x0 documented procedures|n"]
+    steps = chart["steps"]
     out = []
     for idx, step in enumerate(steps, start=1):
         roman = _roman(idx).rjust(4)
@@ -236,8 +263,13 @@ def render_top_level(caller, target) -> str:
     ]
 
     blocks = []
-    blocks.append(_render_section("PATIENT",
-                                  _render_patient_lines(caller, target)))
+    # PATIENT uses the inline-first layout so the identity reads as
+    # the section header (per identity pipeline — sdesc or
+    # recognised name), with conditions hanging below.
+    blocks.append(_render_section(
+        "PATIENT", _render_patient_lines(caller, target),
+        inline_first=True,
+    ))
     blocks.append(_render_section("CHART", _render_chart_lines(chart)))
     blocks.append(_render_section("OPTIONS", _render_options_lines(options)))
 
