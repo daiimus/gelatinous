@@ -283,9 +283,11 @@ def render_top_level(caller, target) -> str:
     blocks.append(_render_section("CHART", _render_chart_lines(chart)))
     blocks.append(_render_section("OPTIONS", _render_options_lines(options)))
 
-    header = "|wSURGICAL CHART|n"
-    rule = "═" * 60
-    parts = [header, rule, ""]
+    # No header — the PATIENT box leads directly.  Flavour text /
+    # thematic framing (clipboard?  HUD overlay?  cyberbrain
+    # interface?) can land here once we settle on what the chart
+    # IS in the fiction.
+    parts = []
     for block in blocks:
         parts.extend(block)
         parts.append("")
