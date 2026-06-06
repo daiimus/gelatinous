@@ -458,6 +458,14 @@ class CutPointFilterTests(TestCase):
                 hidden, locations,
                 f"{hidden} should be suppressed when head cluster is severed",
             )
+        # Exactly one head wound, and it carries the synthetic
+        # cut-point shape (matches ``apply_sever_to_corpse``):
+        # injury_type="severed", organ=None — so the renderer routes
+        # to the severance prose, not the per-organ destruction prose.
+        head_wounds = [w for w in wounds if w["location"] == "head"]
+        self.assertEqual(len(head_wounds), 1)
+        self.assertEqual(head_wounds[0]["injury_type"], "severed")
+        self.assertIsNone(head_wounds[0]["organ"])
 
     def test_solo_foot_sever_still_renders(self):
         # If only the foot is severed (foot directly cut, not as

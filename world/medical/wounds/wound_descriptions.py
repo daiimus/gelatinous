@@ -274,6 +274,20 @@ def get_character_wounds(character):
                 stage = _determine_wound_stage_from_organ(organ)
                 severity = _determine_severity_from_damage(organ)
 
+                # Head-cluster collapse — suppress every wound at any
+                # cluster location (including peers like "left_eye" /
+                # "neck" AND the head itself).  We emit one synthetic
+                # cut-point wound after the loop, matching the corpse
+                # path in ``apply_sever_to_corpse``.  Mirroring that
+                # contract here means the live-body view and the
+                # eventual corpse view render with the same prose
+                # ("the head has been taken off the body") instead of
+                # the live body listing every cluster organ's own
+                # injury separately ("the brain is destroyed", "the
+                # left eye is destroyed", …) — see preamble.
+                if head_cluster_collapsed and location in head_cluster:
+                    continue
+
                 # Cut-point filter: suppress severance wounds that are
                 # downstream of another severed container. Only the
                 # cut point renders a stump wound; the rest of the
@@ -281,13 +295,6 @@ def get_character_wounds(character):
                 if stage == "severed":
                     parent = LIMB_PARENT.get(location)
                     if parent and parent in severed_containers:
-                        continue
-                    # Head-cluster collapse — see preamble.  Every
-                    # cluster peer rolls up into the single wound at
-                    # the "head" cut point.
-                    if (head_cluster_collapsed
-                            and location in head_cluster
-                            and location != "head"):
                         continue
 
                 wound_data = {
@@ -299,6 +306,24 @@ def get_character_wounds(character):
                     'organ_obj': organ
                 }
                 wounds.append(wound_data)
+
+    # Head-cluster collapse — emit the single synthetic cut-point
+    # wound that ``apply_sever_to_corpse`` would have laid down on the
+    # corpse-side path.  Same shape (injury_type="severed",
+    # location="head", organ=None) so the renderer routes to the
+    # severance prose ("the head has been taken off the body") rather
+    # than the per-organ-destruction prose the live body would have
+    # produced.  Visibility-gated on the head location so concealment
+    # via headwear (theoretical edge case) still works.
+    if head_cluster_collapsed and _is_wound_visible(character, "head"):
+        wounds.append({
+            "injury_type": "severed",
+            "location": "head",
+            "severity": "Critical",
+            "stage": "old",
+            "organ": None,
+            "organ_obj": None,
+        })
 
     return wounds
 
