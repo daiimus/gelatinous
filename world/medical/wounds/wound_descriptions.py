@@ -288,14 +288,22 @@ def get_character_wounds(character):
                 if head_cluster_collapsed and location in head_cluster:
                     continue
 
-                # Cut-point filter: suppress severance wounds that are
-                # downstream of another severed container. Only the
-                # cut point renders a stump wound; the rest of the
-                # chain just went with it.
-                if stage == "severed":
-                    parent = LIMB_PARENT.get(location)
-                    if parent and parent in severed_containers:
-                        continue
+                # Limb-chain collapse — symmetric with head cluster:
+                # suppress every wound at any severed limb container
+                # (cut point, downstream chain, *and* pre-existing
+                # wounds that left with the limb).  One synthetic
+                # severance wound per chain root is emitted after the
+                # loop.  Without this, a severed humerus rendered as
+                # "blunt" / "left_humerus" / "severed" — keyed on
+                # the bone's own injury heuristic — while the corpse
+                # path lays down ``injury_type="severed"`` /
+                # ``organ=None`` and gets cleaner severance prose.
+                # Head-cluster locations are excluded so this doesn't
+                # double-handle anything the cluster block above
+                # already dropped.
+                if (location in severed_containers
+                        and location not in head_cluster):
+                    continue
 
                 wound_data = {
                     'injury_type': injury_type,
@@ -324,6 +332,30 @@ def get_character_wounds(character):
             "organ": None,
             "organ_obj": None,
         })
+
+    # Limb-chain cut-point wounds — symmetric with the head cluster
+    # synthesis above.  For every severed limb chain we emit exactly
+    # one wound at the chain root (the cut point: a severed container
+    # whose parent per ``LIMB_PARENT`` is either undefined or not
+    # itself severed).  Head-cluster containers are skipped so
+    # decapitation doesn't double-emit alongside the head wound.
+    # Same shape ``apply_sever_to_corpse`` writes so the live-body
+    # view and the corpse view render identical limb-severance prose.
+    for container in severed_containers:
+        if container in head_cluster:
+            continue
+        parent = LIMB_PARENT.get(container)
+        if parent and parent in severed_containers:
+            continue
+        if _is_wound_visible(character, container):
+            wounds.append({
+                "injury_type": "severed",
+                "location": container,
+                "severity": "Critical",
+                "stage": "old",
+                "organ": None,
+                "organ_obj": None,
+            })
 
     return wounds
 

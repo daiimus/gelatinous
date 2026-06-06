@@ -467,6 +467,24 @@ class CutPointFilterTests(TestCase):
         self.assertEqual(head_wounds[0]["injury_type"], "severed")
         self.assertIsNone(head_wounds[0]["organ"])
 
+    def test_limb_sever_emits_synthetic_cut_point_wound(self):
+        # The single surviving wound at the limb chain root must
+        # match the corpse-side ``apply_sever_to_corpse`` shape so
+        # the renderer routes through the same severance prose key:
+        # injury_type="severed", organ=None.  Without the synthesis,
+        # the wound's injury_type came from the bone organ's heuristic
+        # (e.g. "blunt" for a humerus) and the per-organ destruction
+        # prose rendered instead of the severance prose — the same
+        # mismatch the head cluster collapse already fixes.
+        from world.medical.wounds import get_character_wounds
+
+        char = self._char_with_severed_chain()
+        wounds = get_character_wounds(char)
+        shin_wounds = [w for w in wounds if w["location"] == "left_shin"]
+        self.assertEqual(len(shin_wounds), 1)
+        self.assertEqual(shin_wounds[0]["injury_type"], "severed")
+        self.assertIsNone(shin_wounds[0]["organ"])
+
     def test_solo_foot_sever_still_renders(self):
         # If only the foot is severed (foot directly cut, not as
         # downstream of shin), the wound should still render — the
