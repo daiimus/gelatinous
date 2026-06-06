@@ -711,6 +711,35 @@ class ResolveSuture(TestCase):
         self.assertIn("left_arm", sutured)
 
     @patch("world.medical.procedures.random.randint", return_value=6)
+    def test_suture_all_treats_unincised_stumps(self, _r):
+        # Combat-driven amputation bypasses the ``open_incision`` call
+        # that ``_resolve_amputate`` makes — so the body carries
+        # severed organs with no surgical state to match.  The verb
+        # must still treat those stumps when ``suture all`` is run,
+        # not bail with "nothing to suture."
+        from world.medical.procedures import _resolve_suture
+        # Mark left_arm organs severed but DON'T open an incision.
+        for organ in self.target.medical_state.organs.values():
+            if organ.container == "left_arm":
+                organ.current_hp = 0
+                organ.wound_stage = "severed"
+        _resolve_suture(self.actor, self.target)  # location=None
+        sutured = self.target.db.sutured_stumps or []
+        self.assertIn("left_arm", sutured)
+
+    @patch("world.medical.procedures.random.randint", return_value=6)
+    def test_suture_specific_unincised_stump_treats_it(self, _r):
+        # Same scenario but the surgeon names the stump explicitly.
+        from world.medical.procedures import _resolve_suture
+        for organ in self.target.medical_state.organs.values():
+            if organ.container == "left_arm":
+                organ.current_hp = 0
+                organ.wound_stage = "severed"
+        _resolve_suture(self.actor, self.target, location="left_arm")
+        sutured = self.target.db.sutured_stumps or []
+        self.assertIn("left_arm", sutured)
+
+    @patch("world.medical.procedures.random.randint", return_value=6)
     def test_suture_at_unsevered_location_does_not_mark_stump(self, _r):
         # Closing an incision at a location with intact organs (the
         # normal surgical case — opened for harvest / install) must

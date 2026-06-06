@@ -755,3 +755,72 @@ class InterruptMarksRunningStepFailed(TestCase):
         }
         # No chart on target — should no-op cleanly.
         interrupt_procedure(target, reason="combat")
+
+
+# ===================================================================
+# Suture picker: severed-organ inference
+# ===================================================================
+
+
+class _FakeOrgan:
+    def __init__(self, container, *, wound_stage=None):
+        self.container = container
+        self.wound_stage = wound_stage
+
+
+class _FakeMedical:
+    def __init__(self, organs):
+        self.organs = organs
+
+
+class ListSeveredLocations(TestCase):
+    """``_list_severed_locations`` is the third source feeding the
+    suture picker.  Without it, combat-driven amputation (which
+    doesn't go through ``_resolve_amputate``'s ``open_incision`` call)
+    leaves the picker showing nothing to suture even though the body
+    clearly has stumps."""
+
+    def _target(self, organs, sutured_stumps=None):
+        target = SimpleNamespace()
+        target.medical_state = _FakeMedical(organs)
+        target.db = SimpleNamespace(sutured_stumps=sutured_stumps)
+        return target
+
+    def test_finds_severed_organ_containers(self):
+        from commands.CmdOperate import _list_severed_locations
+        target = self._target({
+            "left_humerus": _FakeOrgan("left_arm", wound_stage="severed"),
+            "heart": _FakeOrgan("chest"),  # intact, no stage
+        })
+        self.assertEqual(_list_severed_locations(target), ["left_arm"])
+
+    def test_dedups_multi_organ_chains(self):
+        # Multiple severed organs in the same container yield one entry.
+        from commands.CmdOperate import _list_severed_locations
+        target = self._target({
+            "brain": _FakeOrgan("head", wound_stage="severed"),
+            "left_eye": _FakeOrgan("head", wound_stage="severed"),
+            "right_eye": _FakeOrgan("head", wound_stage="severed"),
+        })
+        self.assertEqual(_list_severed_locations(target), ["head"])
+
+    def test_filters_already_sutured_stumps(self):
+        # A stump that's been sutured shouldn't re-appear in the
+        # picker; the surgeon already treated it.
+        from commands.CmdOperate import _list_severed_locations
+        target = self._target(
+            {"left_humerus": _FakeOrgan("left_arm", wound_stage="severed")},
+            sutured_stumps=["left_arm"],
+        )
+        self.assertEqual(_list_severed_locations(target), [])
+
+    def test_empty_when_no_severed_organs(self):
+        from commands.CmdOperate import _list_severed_locations
+        target = self._target({"heart": _FakeOrgan("chest")})
+        self.assertEqual(_list_severed_locations(target), [])
+
+    def test_handles_missing_medical_state(self):
+        from commands.CmdOperate import _list_severed_locations
+        target = SimpleNamespace(medical_state=None,
+                                 db=SimpleNamespace(sutured_stumps=None))
+        self.assertEqual(_list_severed_locations(target), [])

@@ -501,6 +501,37 @@ def _list_open_incisions(target):
         return []
 
 
+def _list_severed_locations(target):
+    """Return every container on ``target`` carrying a severed organ.
+
+    Direct read off the live medical state — catches stumps the chart
+    can't infer from pending steps (combat-driven amputation, prior
+    surgical amputation whose chart step is no longer ``PENDING``,
+    or any other path that bypasses chart authoring entirely).
+    Already-sutured stumps are filtered out so the picker doesn't
+    re-offer them.
+    """
+    state = getattr(target, "medical_state", None)
+    if state is None or not hasattr(state, "organs"):
+        return []
+    already_sutured = set(
+        getattr(getattr(target, "db", None), "sutured_stumps", None) or ()
+    )
+    seen = set()
+    out = []
+    for organ in state.organs.values():
+        if getattr(organ, "wound_stage", None) != "severed":
+            continue
+        container = getattr(organ, "container", None)
+        if not container or container in seen:
+            continue
+        if container in already_sutured:
+            continue
+        seen.add(container)
+        out.append(container)
+    return out
+
+
 def _list_planned_incisions(caller):
     """Return locations slated to have an open wound after pending
     chart steps fire.
@@ -828,7 +859,8 @@ def _node_suture_location(caller, raw_string, **kwargs):
     target = caller.ndb._operate_target
     open_locs = set(_list_open_incisions(target))
     planned_locs = set(_list_planned_incisions(caller))
-    all_locs = sorted(open_locs | planned_locs)
+    stump_locs = set(_list_severed_locations(target))
+    all_locs = sorted(open_locs | planned_locs | stump_locs)
     if not all_locs:
         text = (
             "\n|wSuture|n\n\n"
@@ -844,18 +876,22 @@ def _node_suture_location(caller, raw_string, **kwargs):
         return text, options
 
     # Label each entry with its source so the surgeon can see at
-    # a glance which are live state vs planned-by-chart.
+    # a glance which are live state vs planned-by-chart vs already-
+    # severed (combat or prior procedure).
     options_list = [
-        (f"|wall|n  {MUTED}(open + planned)|n", "all open incisions"),
+        (f"|wall|n  {MUTED}(open + planned + stumps)|n",
+         "all open incisions"),
     ]
     for loc in all_locs:
         humanized = loc.replace("_", " ")
-        if loc in open_locs and loc in planned_locs:
-            tag = f"{MUTED}(open + planned)|n"
-        elif loc in open_locs:
-            tag = f"{MUTED}(open)|n"
-        else:
-            tag = f"{MUTED}(planned)|n"
+        tags = []
+        if loc in open_locs:
+            tags.append("open")
+        if loc in planned_locs:
+            tags.append("planned")
+        if loc in stump_locs:
+            tags.append("stump")
+        tag = f"{MUTED}({' + '.join(tags)})|n"
         options_list.append((f"{humanized}  {tag}", loc))
 
     caller.ndb._operate_pickable = options_list

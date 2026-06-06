@@ -820,10 +820,38 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
     result = roll_procedure(actor, target)
     outcome = result["outcome"]
 
+    # Build the set of un-sutured stump containers so the verb can
+    # progress stump prose even when no open incision exists at the
+    # location.  Covers combat-driven amputation (which bypasses the
+    # ``open_incision`` call in ``_resolve_amputate``) and any
+    # already-amputated state the chart can't infer from pending
+    # steps.  Already-sutured stumps are filtered out so the verb
+    # doesn't claim to suture them twice.
+    state_for_stumps = getattr(target, "medical_state", None)
+    already_sutured = set(
+        getattr(target.db, "sutured_stumps", None) or ()
+    )
+    untreated_stumps = set()
+    if state_for_stumps is not None and hasattr(state_for_stumps, "organs"):
+        for organ in state_for_stumps.organs.values():
+            if getattr(organ, "wound_stage", None) != "severed":
+                continue
+            container = getattr(organ, "container", None)
+            if container and container not in already_sutured:
+                untreated_stumps.add(container)
+
     if location is None:
-        closed = close_all_incisions(target)
+        closed_incisions = close_all_incisions(target)
+        # Stumps without open incisions still get the suture
+        # treatment — they don't contribute to ``closed_incisions``
+        # but they DO need a row of stitches.
+        closed = sorted(set(closed_incisions) | untreated_stumps)
     else:
-        closed = [location] if close_incision(target, location) else []
+        opened_then_closed = close_incision(target, location)
+        if opened_then_closed or location in untreated_stumps:
+            closed = [location]
+        else:
+            closed = []
 
     if not closed:
         actor.msg(
