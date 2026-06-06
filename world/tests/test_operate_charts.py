@@ -192,6 +192,135 @@ class FindStep(TestCase):
         )
 
 
+class MoveStep(TestCase):
+
+    def _chart_with_three(self):
+        chart = charts.new_chart(_surgeon())
+        charts.add_step(chart, "incise", {"location": "chest"})
+        charts.add_step(chart, "harvest", {"organ_name": "heart"})
+        charts.add_step(chart, "suture", {"location": "chest"})
+        return chart
+
+    def test_move_up_swaps_with_previous(self):
+        chart = self._chart_with_three()
+        # Move step 2 (harvest) up — should swap with step 1 (incise).
+        self.assertTrue(charts.move_step(chart, 2, -1))
+        verbs = [s["verb"] for s in chart["steps"]]
+        self.assertEqual(verbs, ["harvest", "incise", "suture"])
+
+    def test_move_down_swaps_with_next(self):
+        chart = self._chart_with_three()
+        self.assertTrue(charts.move_step(chart, 2, +1))
+        verbs = [s["verb"] for s in chart["steps"]]
+        self.assertEqual(verbs, ["incise", "suture", "harvest"])
+
+    def test_move_top_up_no_op(self):
+        chart = self._chart_with_three()
+        self.assertFalse(charts.move_step(chart, 1, -1))
+        verbs = [s["verb"] for s in chart["steps"]]
+        self.assertEqual(verbs, ["incise", "harvest", "suture"])
+
+    def test_move_bottom_down_no_op(self):
+        chart = self._chart_with_three()
+        self.assertFalse(charts.move_step(chart, 3, +1))
+        verbs = [s["verb"] for s in chart["steps"]]
+        self.assertEqual(verbs, ["incise", "harvest", "suture"])
+
+    def test_move_unknown_id_no_op(self):
+        chart = self._chart_with_three()
+        self.assertFalse(charts.move_step(chart, 999, -1))
+
+    def test_invalid_direction_no_op(self):
+        chart = self._chart_with_three()
+        self.assertFalse(charts.move_step(chart, 2, 0))
+        self.assertFalse(charts.move_step(chart, 2, 5))
+
+
+class InsertStep(TestCase):
+
+    def _chart_with_two(self):
+        chart = charts.new_chart(_surgeon())
+        charts.add_step(chart, "incise", {"location": "chest"})
+        charts.add_step(chart, "suture", {"location": "chest"})
+        return chart
+
+    def test_insert_before_existing_step(self):
+        chart = self._chart_with_two()
+        # Insert harvest before suture (step 2).
+        charts.insert_step(
+            chart, "harvest", {"organ_name": "heart"}, before_id=2,
+        )
+        verbs = [s["verb"] for s in chart["steps"]]
+        self.assertEqual(verbs, ["incise", "harvest", "suture"])
+
+    def test_insert_at_position_1(self):
+        chart = self._chart_with_two()
+        charts.insert_step(
+            chart, "harvest", {"organ_name": "heart"}, before_id=1,
+        )
+        verbs = [s["verb"] for s in chart["steps"]]
+        self.assertEqual(verbs, ["harvest", "incise", "suture"])
+
+    def test_insert_with_none_appends(self):
+        chart = self._chart_with_two()
+        charts.insert_step(
+            chart, "harvest", {"organ_name": "heart"}, before_id=None,
+        )
+        verbs = [s["verb"] for s in chart["steps"]]
+        self.assertEqual(verbs, ["incise", "suture", "harvest"])
+
+    def test_insert_with_unknown_id_appends(self):
+        """Defensive: unknown before_id appends at the end."""
+        chart = self._chart_with_two()
+        charts.insert_step(
+            chart, "harvest", {"organ_name": "heart"}, before_id=999,
+        )
+        verbs = [s["verb"] for s in chart["steps"]]
+        self.assertEqual(verbs, ["incise", "suture", "harvest"])
+
+    def test_insert_assigns_unique_id(self):
+        chart = self._chart_with_two()
+        new_step = charts.insert_step(
+            chart, "harvest", {"organ_name": "heart"}, before_id=1,
+        )
+        existing_ids = {s["id"] for s in chart["steps"] if s is not new_step}
+        self.assertNotIn(new_step["id"], existing_ids)
+
+    def test_insert_validates_required_args(self):
+        chart = self._chart_with_two()
+        with self.assertRaises(ValueError):
+            charts.insert_step(chart, "incise", {}, before_id=1)
+
+
+class MarkRunningStepFailed(TestCase):
+
+    def test_marks_running_step_failed(self):
+        target = _target()
+        chart = charts.new_chart(_surgeon())
+        step = charts.add_step(chart, "harvest", {"organ_name": "heart"})
+        step["status"] = charts.RUNNING
+        charts.save_chart(target, chart)
+        self.assertTrue(charts.mark_running_step_failed(
+            target, outcome="no incision — harvest blocked",
+        ))
+        latest = charts.get_chart(target)
+        self.assertEqual(latest["steps"][0]["status"], charts.FAILED)
+        self.assertIn("blocked", latest["steps"][0]["outcome"])
+
+    def test_no_chart_returns_false(self):
+        target = _target()
+        # No chart saved.
+        self.assertFalse(charts.mark_running_step_failed(target, "x"))
+
+    def test_no_running_step_returns_false(self):
+        target = _target()
+        chart = charts.new_chart(_surgeon())
+        charts.add_step(chart, "harvest", {"organ_name": "heart"})
+        # Step is PENDING, not RUNNING.
+        charts.save_chart(target, chart)
+        self.assertFalse(charts.mark_running_step_failed(target, "x"))
+
+
 # ===================================================================
 # Summary helpers
 # ===================================================================

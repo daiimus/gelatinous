@@ -226,6 +226,102 @@ def find_step(chart: dict, step_id: int) -> Optional[dict]:
     return None
 
 
+def move_step(chart: dict, step_id: int, direction: int) -> bool:
+    """Swap step ``step_id`` with its neighbour in ``direction``.
+
+    ``direction`` is -1 (up / earlier) or +1 (down / later).
+    Returns True when the move succeeded, False when the step is
+    already at the edge or doesn't exist.
+    """
+    if direction not in (-1, 1):
+        return False
+    steps = chart.get("steps", [])
+    for idx, step in enumerate(steps):
+        if step.get("id") != step_id:
+            continue
+        new_idx = idx + direction
+        if not (0 <= new_idx < len(steps)):
+            return False
+        steps[idx], steps[new_idx] = steps[new_idx], steps[idx]
+        return True
+    return False
+
+
+def insert_step(
+    chart: dict,
+    verb: str,
+    args: Optional[dict] = None,
+    notes: str = "",
+    before_id: Optional[int] = None,
+) -> dict:
+    """Insert a new step before ``before_id`` (or append when None).
+
+    Identical to :func:`add_step` except for the insertion point.
+    Validates ``verb`` and required args; raises ``ValueError`` on
+    failure so the UI can surface it cleanly.
+
+    When ``before_id`` is None or no step matches, the step
+    appends to the end (matches ``add_step`` semantics).
+    """
+    if verb not in ALL_VERBS:
+        raise ValueError(
+            f"Unknown verb {verb!r}; expected one of {ALL_VERBS}."
+        )
+    spec = VERB_ARG_SPEC[verb]
+    args = dict(args or {})
+    missing = [key for key in spec["required"] if key not in args]
+    if missing:
+        raise ValueError(f"Verb {verb!r} requires args {missing}.")
+
+    step_id = chart.get("next_step_id", 1)
+    step = {
+        "id":      step_id,
+        "verb":    verb,
+        "args":    args,
+        "notes":   notes,
+        "status":  PENDING,
+        "outcome": None,
+    }
+    chart["next_step_id"] = step_id + 1
+    steps = chart.setdefault("steps", [])
+
+    insert_idx = len(steps)
+    if before_id is not None:
+        for idx, s in enumerate(steps):
+            if s.get("id") == before_id:
+                insert_idx = idx
+                break
+
+    steps.insert(insert_idx, step)
+    return step
+
+
+def mark_running_step_failed(target, outcome: str) -> bool:
+    """Find any RUNNING step in ``target``'s chart and mark it FAILED
+    with ``outcome``.  Returns True when a step was mutated.
+
+    Used by resolvers that early-return without performing the
+    actual procedure work (e.g. access-gate denials).  Without
+    this, the on_complete chain hook would advance the step from
+    RUNNING → DONE, masking the failure as success.
+
+    No-op when the target has no chart or no RUNNING step.
+    """
+    chart = get_chart(target)
+    if not chart:
+        return False
+    mutated = False
+    for step in chart.get("steps") or ():
+        if step.get("status") == RUNNING:
+            step["status"] = FAILED
+            step["outcome"] = outcome
+            mutated = True
+            break
+    if mutated:
+        save_chart(target, chart)
+    return mutated
+
+
 # ===================================================================
 # CHART SUMMARY HELPERS — UI-friendly accessors
 # ===================================================================

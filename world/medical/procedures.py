@@ -616,6 +616,16 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
             f"{container.replace('_', ' ')} isn't open — there's no "
             f"incision to work through."
         )
+        # Mark any running chart step as failed so the auto-chain
+        # surfaces the gate accurately rather than reporting "done".
+        from world.medical.charts import mark_running_step_failed
+        mark_running_step_failed(
+            target,
+            outcome=(
+                f"no incision at {container.replace('_', ' ')} — "
+                f"harvest blocked"
+            ),
+        )
         return
 
     # Decay tier → harvested condition.
@@ -709,6 +719,14 @@ def _resolve_install(actor, target, *, organ_item, location: str,
                 f"You try to slot the {organ_item.key} in but "
                 f"{target.get_display_name(actor)}'s "
                 f"{location.replace('_', ' ')} isn't open."
+            )
+            from world.medical.charts import mark_running_step_failed
+            mark_running_step_failed(
+                target,
+                outcome=(
+                    f"no incision at {location.replace('_', ' ')} — "
+                    f"install blocked"
+                ),
             )
             return
 

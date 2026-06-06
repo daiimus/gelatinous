@@ -228,7 +228,7 @@ def render_top_level(caller, target) -> str:
 
     options = [
         ("1", "Add procedure step"),
-        ("2", "View chart detail"),
+        ("2", "Edit chart  |x(view / reorder / remove)|n"),
         ("3", "Commence next step"),
         ("4", "Save and exit"),
         ("5", "Discard chart"),
@@ -281,6 +281,7 @@ def _menu_exit(caller, menu):
         "_operate_pickable",
         "_operate_install_donor",
         "_operate_pending_verb",
+        "_operate_insert_before",
     ):
         if hasattr(caller.ndb, attr):
             delattr(caller.ndb, attr)
@@ -313,7 +314,7 @@ def _process_top_choice(caller, raw_string, **kwargs):
     if choice == "1":
         return "node_add_verb"
     if choice == "2":
-        return "node_view_chart"
+        return "node_edit_chart"
     if choice == "3":
         return "node_commence"
     if choice == "4":
@@ -793,19 +794,37 @@ def _process_suture_location(caller, raw_string, **kwargs):
 
 
 def _add_step_to_chart(caller, verb: str, args: dict) -> None:
-    """Append a step to the chart on the active target, creating
-    the chart if absent.  Persists immediately."""
+    """Add a step to the chart on the active target.
+
+    Consults ``caller.ndb._operate_insert_before`` — when set by
+    the edit-chart node's ``i <N>`` command, inserts the new step
+    before the targeted step rather than appending.  The flag is
+    cleared after consumption so the next "Add procedure step"
+    invocation appends normally.
+
+    Creates the chart on demand if absent.  Persists immediately.
+    """
     target = caller.ndb._operate_target
     chart = chart_lib.get_chart(target) or chart_lib.new_chart(caller)
+    before_id = getattr(caller.ndb, "_operate_insert_before", None)
     try:
-        step = chart_lib.add_step(chart, verb, args)
+        if before_id is not None:
+            step = chart_lib.insert_step(
+                chart, verb, args, before_id=before_id,
+            )
+        else:
+            step = chart_lib.add_step(chart, verb, args)
     except ValueError as exc:
         caller.msg(f"|r{exc}|n")
         return
     chart_lib.save_chart(target, chart)
-    caller.msg(
-        f"|wStep added:|n {chart_lib.render_step_summary(step)}"
-    )
+    summary = chart_lib.render_step_summary(step)
+    if before_id is not None:
+        caller.msg(f"|wStep inserted:|n {summary}")
+        # Clear the insertion point so subsequent adds append.
+        delattr(caller.ndb, "_operate_insert_before")
+    else:
+        caller.msg(f"|wStep added:|n {summary}")
 
 
 # -------------------------------------------------------------------
@@ -813,31 +832,131 @@ def _add_step_to_chart(caller, verb: str, args: dict) -> None:
 # -------------------------------------------------------------------
 
 
-def _node_view_chart(caller, raw_string, **kwargs):
+def _node_edit_chart(caller, raw_string, **kwargs):
+    """Edit-chart node — view steps, reorder, remove, insert.
+
+    Steps are listed with Roman-numeral indices.  Action commands
+    are short prefix+number forms so editing is one keystroke per
+    step shuffled:
+
+      u <N>   move step N up
+      d <N>   move step N down
+      r <N>   remove step N
+      i <N>   insert a new step before step N
+      x       back to top
+
+    Insertion routes into the same verb-pick flow as ``Add
+    procedure step``; the insertion point is held on
+    ``caller.ndb._operate_insert_before`` and consumed when the
+    step is added.
+    """
     target = caller.ndb._operate_target
     chart = chart_lib.get_chart(target)
     if not chart or not (chart.get("steps") or []):
         text = (
-            "\n|wChart detail|n\n\n"
-            "The chart is empty.  Add steps from the top-level menu.\n\n"
+            "\n|wEdit chart|n\n\n"
+            "The chart is empty.  Add steps from the top-level "
+            "menu.\n\n"
             "|wEnter to return.|n"
         )
         options = ({"key": "_default", "goto": "node_top"},)
         return text, options
-    parts = ["\n|wChart detail|n\n"]
+    parts = ["\n|wEdit chart|n\n"]
     for idx, step in enumerate(chart["steps"], start=1):
-        roman = _roman(idx)
+        roman = _roman(idx).rjust(4)
         summary = chart_lib.render_step_summary(step)
         status = step.get("status", "pending")
         outcome = step.get("outcome")
-        line = f"  {roman}. {summary}  [{status}]"
+        if status == chart_lib.DONE:
+            tag = "|gdone|n"
+        elif status == chart_lib.FAILED:
+            tag = "|rfailed|n"
+        elif status == chart_lib.SKIPPED:
+            tag = "|yskipped|n"
+        elif status == chart_lib.RUNNING:
+            tag = "|crunning|n"
+        else:
+            tag = "pending"
+        line = f"  {roman}. {summary.ljust(36)} [{tag}]"
         if outcome:
-            line += f"\n     └── outcome: {outcome}"
+            line += f"\n          └── {outcome}"
         parts.append(line)
-    parts.append("\n|wEnter to return.|n")
+    parts.append("")
+    parts.append("|wActions|n  (lowercase):")
+    parts.append("  |wu|n <N>    move step |wN|n up")
+    parts.append("  |wd|n <N>    move step |wN|n down")
+    parts.append("  |wr|n <N>    remove step |wN|n")
+    parts.append("  |wi|n <N>    insert a new step before step |wN|n")
+    parts.append("  |wx|n        back to top")
+    parts.append("")
+    parts.append("|wAction?|n")
     text = "\n".join(parts)
-    options = ({"key": "_default", "goto": "node_top"},)
+    options = ({"key": "_default", "goto": _process_edit_choice},)
     return text, options
+
+
+def _process_edit_choice(caller, raw_string, **kwargs):
+    raw = (raw_string or "").strip().lower()
+    if raw in ("", "x", "exit", "back", "cancel"):
+        return "node_top"
+
+    parts = raw.split()
+    if len(parts) != 2 or parts[0] not in ("u", "d", "r", "i"):
+        caller.msg(
+            "|rExpected: |wu N|r, |wd N|r, |wr N|r, |wi N|r, or |wx|r.|n"
+        )
+        return None
+
+    cmd, num_str = parts
+    try:
+        num = int(num_str)
+    except ValueError:
+        caller.msg("|rN must be a number.|n")
+        return None
+
+    target = caller.ndb._operate_target
+    chart = chart_lib.get_chart(target)
+    if not chart:
+        return "node_top"
+    steps = chart.get("steps") or []
+    if not (1 <= num <= len(steps)):
+        caller.msg(f"|rNo step {num} in chart (1-{len(steps)}).|n")
+        return None
+
+    step = steps[num - 1]
+    step_id = step["id"]
+
+    if cmd == "u":
+        if chart_lib.move_step(chart, step_id, -1):
+            chart_lib.save_chart(target, chart)
+            caller.msg(f"|wMoved step {num} up.|n")
+        else:
+            caller.msg("|yAlready at top.|n")
+        return "node_edit_chart"
+
+    if cmd == "d":
+        if chart_lib.move_step(chart, step_id, +1):
+            chart_lib.save_chart(target, chart)
+            caller.msg(f"|wMoved step {num} down.|n")
+        else:
+            caller.msg("|yAlready at bottom.|n")
+        return "node_edit_chart"
+
+    if cmd == "r":
+        if chart_lib.remove_step(chart, step_id):
+            chart_lib.save_chart(target, chart)
+            caller.msg(f"|wRemoved step {num}.|n")
+        return "node_edit_chart"
+
+    if cmd == "i":
+        # Stash the insertion point and route into the verb-pick
+        # flow.  ``_add_step_to_chart`` reads
+        # ``_operate_insert_before`` and uses ``insert_step``
+        # instead of ``add_step``.
+        caller.ndb._operate_insert_before = step_id
+        return "node_add_verb"
+
+    return None
 
 
 def _node_commence(caller, raw_string, **kwargs):
@@ -994,7 +1113,7 @@ class CmdOperate(Command):
                 "node_install_organ":    _node_install_organ,
                 "node_install_location": _node_install_location,
                 "node_suture_location":  _node_suture_location,
-                "node_view_chart":       _node_view_chart,
+                "node_edit_chart":       _node_edit_chart,
                 "node_commence":         _node_commence,
                 "node_save_exit":        _node_save_exit,
                 "node_discard_confirm":  _node_discard_confirm,
