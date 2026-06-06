@@ -74,11 +74,10 @@ from world.medical import charts as chart_lib
 
 LABEL_BOX_WIDTH = 15                # Content width inside ║...║
 LABEL_BOX_TOTAL = LABEL_BOX_WIDTH + 2  # Including ║ borders
-STEM = "────"                       # Single-item simple stem
-BRANCH_CORNER = "──┐"               # Multi-item: emerge from label box,
-                                    # turn down into the trunk
-JOIN_MID = "├──"
-JOIN_END = "└──"
+BRANCH_CORNER = "──┐"               # Emerge from label box, turn
+                                    # down into the trunk
+JOIN_MID = "├──"                    # Trunk continues
+JOIN_END = "└──"                    # Trunk terminates
 EMPTY_GUTTER = " " * (LABEL_BOX_TOTAL + 2)  # Aligns trunk under the corner
 
 
@@ -121,32 +120,24 @@ def _label_box(label: str) -> tuple[str, str, str]:
 def _render_section(label: str, lines: list[str]) -> list[str]:
     """Render one labeled section.
 
-    ``lines`` is the list of content lines that should branch off
-    the right side of the label box.  Single-line content uses a
-    simple ──── stem; multi-line uses ──┬── / ├── / └── tree.
+    Single uniform treatment for all non-empty cases: label box
+    emits ``──┐`` from its middle row, turns down through ``│``
+    past the box bottom, and content hangs off the trunk as
+    ``├── …`` / ``└── …`` rows.  Single-item sections still get
+    the trunk for visual consistency — every section reads the
+    same way regardless of content count.
+
     Empty ``lines`` renders the box alone with no branch.
     """
+    top, mid, bot = _label_box(label)
     if not lines:
-        top, mid, bot = _label_box(label)
         return [top, mid, bot]
 
-    top, mid, bot = _label_box(label)
-    out = []
-    if len(lines) == 1:
-        out.append(top)
-        out.append(f"{mid}{STEM} {lines[0]}")
-        out.append(bot)
-        return out
-
-    # Multi-line: branched tree, equidistant rows.  Every item
-    # hangs off the trunk uniformly — no special treatment for the
-    # first item.  The label box emits ``──┐`` from its middle
-    # row, turns down through ``│`` past the box bottom, and the
-    # items follow as ``├── …`` / ``└── …`` rows.  Trade one extra
-    # row for a cleaner read.
-    out.append(top)
-    out.append(f"{mid}{BRANCH_CORNER}")
-    out.append(f"{bot}  │")
+    out = [
+        top,
+        f"{mid}{BRANCH_CORNER}",
+        f"{bot}  │",
+    ]
     for line in lines[:-1]:
         out.append(f"{EMPTY_GUTTER}{JOIN_MID} {line}")
     out.append(f"{EMPTY_GUTTER}{JOIN_END} {lines[-1]}")
@@ -559,7 +550,11 @@ def _node_commence(caller, raw_string, **kwargs):
         f"|yFirst step in flight:|n {summary}.  Subsequent steps "
         "auto-chain on completion."
     )
-    return "node_exit"
+    # Exit cleanly — empty text + None options is EvMenu's "close
+    # without re-prompting" signal.  Returning the string
+    # ``"node_exit"`` from a *node* function would be rendered as
+    # display text, not interpreted as a goto.
+    return "", None
 
 
 def _node_save_exit(caller, raw_string, **kwargs):
@@ -570,7 +565,9 @@ def _node_save_exit(caller, raw_string, **kwargs):
     else:
         chart_lib.save_chart(target, chart)
         caller.msg("|wChart saved on patient.|n")
-    return "node_exit"
+    # Empty text + None options exits cleanly — see note in
+    # ``_node_commence`` above.
+    return "", None
 
 
 def _node_discard_confirm(caller, raw_string, **kwargs):
