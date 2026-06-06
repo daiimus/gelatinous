@@ -600,6 +600,24 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
     snapshot_organs = get_organ_snapshot(target).get("organs", {}) or {}
     organ_data = snapshot_organs.get(organ_name) or {}
 
+    # Access gate (#307 follow-up): the CmdHarvest command checks for
+    # an open incision before dispatch, but chart-commenced harvests
+    # call ``start_procedure`` directly and would otherwise bypass
+    # the gate.  Re-check at resolver time so both paths fail
+    # gracefully on closed-cavity targets.  Surface-accessible
+    # organs (display_location distinct from container — eyes, ears,
+    # face on humans) skip the requirement.
+    container = organ_data.get("container") or location
+    display = organ_data.get("display_location") or container
+    if display == container and not has_incision(target, container):
+        actor.msg(
+            f"You reach for the {organ_name.replace('_', ' ')} but "
+            f"{target.get_display_name(actor)}'s "
+            f"{container.replace('_', ' ')} isn't open — there's no "
+            f"incision to work through."
+        )
+        return
+
     # Decay tier → harvested condition.
     decay_stage = "fresh"
     stage_getter = getattr(target, "get_decay_stage", None)
@@ -673,6 +691,26 @@ def _resolve_install(actor, target, *, organ_item, location: str,
     """Resolve an ``install`` attempt: slot ``organ_item`` into
     ``target`` at ``location``."""
     from world.identity_utils import msg_room_identity
+
+    # Access gate (#307 follow-up): symmetric to harvest — chart-
+    # commenced installs that bypass CmdInstall's pre-dispatch
+    # gate must still fail gracefully on closed-cavity targets.
+    # Look up the destination organ's display_location from the
+    # snapshot to determine whether the location needs incising
+    # or is surface-accessible.
+    snapshot_organs = get_organ_snapshot(target).get("organs", {}) or {}
+    organ_name = getattr(getattr(organ_item, "db", None),
+                         "organ_name", None) or organ_item.key
+    slot = snapshot_organs.get(organ_name)
+    if slot is not None and hasattr(slot, "get"):
+        slot_display = slot.get("display_location") or location
+        if slot_display == location and not has_incision(target, location):
+            actor.msg(
+                f"You try to slot the {organ_item.key} in but "
+                f"{target.get_display_name(actor)}'s "
+                f"{location.replace('_', ' ')} isn't open."
+            )
+            return
 
     result = roll_procedure(actor, target)
     outcome = result["outcome"]

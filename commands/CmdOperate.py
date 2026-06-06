@@ -443,6 +443,35 @@ def _list_open_incisions(target):
         return []
 
 
+def _list_planned_incisions(caller):
+    """Return locations slated to be opened by pending chart steps.
+
+    Walks the chart on the active target and returns
+    ``incise`` locations whose step is still in ``PENDING`` status.
+    Lets the suture picker include locations that *will* be open
+    by the time the suture step fires — important because the
+    chart authors planning a back-to-back ``incise → harvest →
+    suture`` chain has nothing currently open at the time they
+    pick the suture target.
+    """
+    target = getattr(caller.ndb, "_operate_target", None)
+    if target is None:
+        return []
+    chart = chart_lib.get_chart(target)
+    if not chart:
+        return []
+    out = []
+    for step in chart.get("steps", []) or ():
+        if step.get("status") != chart_lib.PENDING:
+            continue
+        if step.get("verb") != "incise":
+            continue
+        loc = (step.get("args") or {}).get("location")
+        if loc:
+            out.append(loc)
+    return out
+
+
 def _render_numbered(items, render_fn):
     """Format a numbered pickable list.
 
@@ -678,13 +707,15 @@ def _process_install_location(caller, raw_string, **kwargs):
 
 def _node_suture_location(caller, raw_string, **kwargs):
     target = caller.ndb._operate_target
-    open_locs = _list_open_incisions(target)
-    if not open_locs:
+    open_locs = set(_list_open_incisions(target))
+    planned_locs = set(_list_planned_incisions(caller))
+    all_locs = sorted(open_locs | planned_locs)
+    if not all_locs:
         text = (
             "\n|wSuture|n\n\n"
-            "No incisions currently open on this target.  Adding "
-            "a 'suture all' step anyway — useful if your chart "
-            "incises before suturing.\n\n"
+            "No incisions currently open and no incise steps in your "
+            "chart.  Adding a 'suture all' step anyway — useful if you "
+            "plan to add incise steps later.\n\n"
             "  |wEnter|n - add 'suture all' step\n"
             "  |wx|n     - Cancel"
         )
@@ -692,9 +723,21 @@ def _node_suture_location(caller, raw_string, **kwargs):
             {"key": "_default", "goto": _process_suture_no_open},
         )
         return text, options
-    options_list = [("|wall|n", "all open incisions")] + [
-        (loc.replace("_", " "), loc) for loc in open_locs
-    ]
+
+    # Label each entry with its source so the surgeon can see at
+    # a glance which are live state vs planned-by-chart.
+    options_list = [("|wall|n  |x(open + planned)|n",
+                     "all open incisions")]
+    for loc in all_locs:
+        humanized = loc.replace("_", " ")
+        if loc in open_locs and loc in planned_locs:
+            tag = "|x(open + planned)|n"
+        elif loc in open_locs:
+            tag = "|x(open)|n"
+        else:
+            tag = "|x(planned)|n"
+        options_list.append((f"{humanized}  {tag}", loc))
+
     caller.ndb._operate_pickable = options_list
     listing = "\n".join(
         f"  {idx}. {label}"
