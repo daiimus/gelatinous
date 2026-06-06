@@ -520,12 +520,16 @@ def _node_view_chart(caller, raw_string, **kwargs):
 
 
 def _node_commence(caller, raw_string, **kwargs):
-    """Dispatch the next pending step and return to the top.
+    """Commence the chart — auto-chains all pending steps back-to-
+    back via :func:`world.medical.charts.commence_chart`.
 
-    MVP design: fires ONE step per invocation.  Surgeon re-enters
-    ``operate`` between steps; chart state persists.  Auto-chaining
-    is deferred until we can hook completion callbacks into
-    ``start_procedure`` cleanly.
+    The runner registers an ``on_complete`` hook on
+    ``start_procedure`` so each step advances to the next when its
+    resolver fires.  Interruption (combat, target movement, death)
+    halts the chain via the procedure dispatch's
+    ``interrupt_procedure`` path; the running step gets marked
+    ``failed`` with outcome ``"interrupted"`` so the surgeon can
+    see the abort reason on re-entry.
     """
     target = caller.ndb._operate_target
     chart = chart_lib.get_chart(target)
@@ -541,35 +545,19 @@ def _node_commence(caller, raw_string, **kwargs):
         )
         return "node_top"
 
-    step = pending[0]
-    verb = step.get("verb")
-    args = dict(step.get("args") or {})
-
-    if verb not in chart_lib.PROCEDURE_VERBS:
-        caller.msg(
-            f"|rStep verb {verb!r} not supported yet.  "
-            f"Procedure verbs only in PR-OP1.|n"
-        )
+    step = chart_lib.commence_chart(target, caller)
+    if step is None:
+        caller.msg("|wChart complete.|n")
         return "node_top"
 
-    from world.medical.procedures import start_procedure
-    try:
-        start_procedure(target, verb=verb, actor=caller, **args)
-    except Exception as exc:
-        step["status"] = chart_lib.FAILED
-        step["outcome"] = f"dispatch error: {exc}"
-        chart_lib.save_chart(target, chart)
-        caller.msg(f"|rStep dispatch failed: {exc}|n")
-        return "node_top"
-
-    step["status"] = chart_lib.RUNNING
-    chart_lib.save_chart(target, chart)
+    summary = chart_lib.render_step_summary(step)
     caller.msg(
-        f"|wDispatched step:|n {chart_lib.render_step_summary(step)}"
+        f"|wDispatched chart:|n {len(pending)} pending steps, "
+        f"running back-to-back."
     )
     caller.msg(
-        "|yRe-enter|n |woperate|n |yon this patient after the step "
-        "resolves to commence the next one.|n"
+        f"|yFirst step in flight:|n {summary}.  Subsequent steps "
+        "auto-chain on completion."
     )
     return "node_exit"
 

@@ -312,3 +312,172 @@ class RomanHelper(TestCase):
         ]:
             with self.subTest(n=n):
                 self.assertEqual(_roman(n), r)
+
+
+# ===================================================================
+# commence_chart runner — auto-chain pending steps
+# ===================================================================
+
+
+class CommenceChartRunner(TestCase):
+    """The chart runner dispatches the first pending step via
+    ``start_procedure`` with an ``on_complete`` hook that advances
+    to the next step.  Tests stub ``start_procedure`` so the
+    procedure dispatch isn't exercised — we just verify the chain
+    bookkeeping."""
+
+    def _chart_target_with_steps(self, *verb_args):
+        target = _target()
+        chart = charts.new_chart(_surgeon())
+        for verb, args in verb_args:
+            charts.add_step(chart, verb, args)
+        charts.save_chart(target, chart)
+        return target
+
+    def _patch_start(self, calls):
+        """Patch start_procedure to capture calls and remember the
+        on_complete hook for manual invocation."""
+        from unittest.mock import patch
+
+        def _fake(target, *, verb, actor, on_complete=None, **kwargs):
+            calls.append({
+                "target": target, "verb": verb, "actor": actor,
+                "on_complete": on_complete, "kwargs": kwargs,
+            })
+        return patch("world.medical.procedures.start_procedure", _fake)
+
+    def test_empty_chart_returns_none(self):
+        target = _target()
+        charts.save_chart(target, charts.new_chart(_surgeon()))
+        self.assertIsNone(charts.commence_chart(target, _surgeon()))
+
+    def test_no_chart_returns_none(self):
+        target = _target()
+        self.assertIsNone(charts.commence_chart(target, _surgeon()))
+
+    def test_dispatches_first_pending_step(self):
+        target = self._chart_target_with_steps(
+            ("incise", {"location": "chest"}),
+            ("harvest", {"organ_name": "heart"}),
+        )
+        calls = []
+        with self._patch_start(calls):
+            step = charts.commence_chart(target, _surgeon())
+        self.assertEqual(step["verb"], "incise")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["verb"], "incise")
+        self.assertEqual(calls[0]["kwargs"], {"location": "chest"})
+
+    def test_dispatched_step_marked_running(self):
+        target = self._chart_target_with_steps(
+            ("incise", {"location": "chest"}),
+        )
+        calls = []
+        with self._patch_start(calls):
+            charts.commence_chart(target, _surgeon())
+        chart = charts.get_chart(target)
+        self.assertEqual(chart["steps"][0]["status"], charts.RUNNING)
+        self.assertEqual(chart["status"], charts.IN_PROGRESS)
+
+    def test_on_complete_advances_to_next_step(self):
+        target = self._chart_target_with_steps(
+            ("incise", {"location": "chest"}),
+            ("harvest", {"organ_name": "heart"}),
+        )
+        calls = []
+        with self._patch_start(calls):
+            charts.commence_chart(target, _surgeon())
+            # Simulate the procedure finishing — invoke the hook.
+            hook = calls[0]["on_complete"]
+            self.assertIsNotNone(hook)
+            hook(target, _surgeon())
+
+        # First step done; second step dispatched.
+        chart = charts.get_chart(target)
+        self.assertEqual(chart["steps"][0]["status"], charts.DONE)
+        self.assertEqual(chart["steps"][1]["status"], charts.RUNNING)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[1]["verb"], "harvest")
+
+    def test_chain_completes_chart_after_last_step(self):
+        target = self._chart_target_with_steps(
+            ("incise", {"location": "chest"}),
+        )
+        calls = []
+        with self._patch_start(calls):
+            charts.commence_chart(target, _surgeon())
+            calls[0]["on_complete"](target, _surgeon())
+
+        chart = charts.get_chart(target)
+        self.assertEqual(chart["status"], charts.COMPLETED)
+        self.assertEqual(chart["steps"][0]["status"], charts.DONE)
+
+    def test_treatment_verbs_skip_and_advance(self):
+        """``apply`` / ``inject`` aren't dispatchable yet — the
+        runner skips them and continues to the next step."""
+        target = _target()
+        chart = charts.new_chart(_surgeon())
+        charts.add_step(chart, "apply",
+                        {"item_key": "gauze", "location": "chest"})
+        charts.add_step(chart, "incise", {"location": "chest"})
+        charts.save_chart(target, chart)
+        calls = []
+        with self._patch_start(calls):
+            step = charts.commence_chart(target, _surgeon())
+
+        # The treatment step is skipped; incise is dispatched.
+        chart = charts.get_chart(target)
+        self.assertEqual(chart["steps"][0]["status"], charts.SKIPPED)
+        self.assertEqual(chart["steps"][1]["status"], charts.RUNNING)
+        self.assertEqual(step["verb"], "incise")
+        self.assertEqual(len(calls), 1)
+
+
+# ===================================================================
+# Interrupt path
+# ===================================================================
+
+
+class InterruptMarksRunningStepFailed(TestCase):
+    """``interrupt_procedure`` should mark any RUNNING chart step
+    as FAILED with outcome ``"interrupted"`` so the surgeon can
+    see why the chain halted on re-entry to ``operate``."""
+
+    def test_interrupt_marks_running_step_failed(self):
+        from world.medical.procedures import interrupt_procedure
+
+        target = _target()
+        target.dbref = "#5000"
+        target.db.surgical_state = {
+            "active_procedure": {
+                "verb": "incise",
+                "actor_dbref": "#42",
+                "started_at": 0.0,
+                "duration_s": 6,
+                "kwargs": {"location": "chest"},
+            },
+            "incisions": [],
+        }
+        chart = charts.new_chart(_surgeon())
+        step = charts.add_step(chart, "incise", {"location": "chest"})
+        step["status"] = charts.RUNNING
+        chart["status"] = charts.IN_PROGRESS
+        charts.save_chart(target, chart)
+
+        interrupt_procedure(target, reason="combat")
+
+        latest = charts.get_chart(target)
+        self.assertEqual(latest["steps"][0]["status"], charts.FAILED)
+        self.assertIn("interrupted", latest["steps"][0]["outcome"])
+        self.assertEqual(latest["status"], charts.ABORTED)
+
+    def test_interrupt_no_chart_doesnt_explode(self):
+        from world.medical.procedures import interrupt_procedure
+        target = _target()
+        target.dbref = "#5001"
+        target.db.surgical_state = {
+            "active_procedure": None,
+            "incisions": [],
+        }
+        # No chart on target — should no-op cleanly.
+        interrupt_procedure(target, reason="combat")

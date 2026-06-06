@@ -300,3 +300,109 @@ def _humanize(value) -> str:
     if not isinstance(value, str):
         return "?"
     return value.replace("_", " ")
+
+
+# ===================================================================
+# CHART RUNNER — auto-chain pending steps back-to-back
+# ===================================================================
+#
+# Single entry point: :func:`commence_chart`.  Dispatches the first
+# pending step via ``start_procedure`` with an ``on_complete`` hook
+# that recursively advances to the next pending step.  Stops when:
+#
+#   * No pending steps remain → chart marked ``COMPLETED``
+#   * A step's verb isn't a procedure verb yet (treatment verbs
+#     ``apply`` / ``inject``) → step marked ``SKIPPED``, chain
+#     continues to the next step
+#   * The procedure is interrupted → ``interrupt_procedure`` clears
+#     the hook AND marks the running step as ``FAILED``; chain
+#     dies cleanly because the hook never fires
+#   * Process restart mid-chain → hook is in-memory only, chain
+#     dies but chart state persists so the surgeon can re-commence
+
+
+def commence_chart(target, actor) -> Optional[dict]:
+    """Run the chart on ``target`` from its first pending step.
+
+    Dispatches one procedure step via
+    ``world.medical.procedures.start_procedure`` with an
+    ``on_complete`` hook that re-enters ``commence_chart`` after
+    the step's resolver fires.  The full chain executes back-to-
+    back without further input from the surgeon.
+
+    Returns the dispatched step dict (so callers can render
+    "dispatching step X" prose), or ``None`` when the chart was
+    already complete / had no dispatchable steps.
+
+    Treatment verbs (``apply`` / ``inject``) aren't dispatched
+    through ``start_procedure`` — they're skipped with an outcome
+    note so the chain continues to whatever procedure step comes
+    next.  Treatment-step dispatch is deferred to a follow-on PR.
+    """
+    chart = get_chart(target)
+    if chart is None:
+        return None
+
+    pending = pending_steps(chart)
+    if not pending:
+        chart["status"] = COMPLETED
+        save_chart(target, chart)
+        return None
+
+    step = pending[0]
+    verb = step.get("verb")
+    args = dict(step.get("args") or {})
+
+    # Treatment verbs aren't wired yet — skip them and chain forward.
+    if verb in TREATMENT_VERBS:
+        step["status"] = SKIPPED
+        step["outcome"] = (
+            f"treatment verb {verb!r} not yet dispatchable from "
+            "chart — deferred to PR-OP3"
+        )
+        save_chart(target, chart)
+        return commence_chart(target, actor)
+
+    if verb not in PROCEDURE_VERBS:
+        step["status"] = SKIPPED
+        step["outcome"] = f"unknown verb {verb!r}"
+        save_chart(target, chart)
+        return commence_chart(target, actor)
+
+    step["status"] = RUNNING
+    chart["status"] = IN_PROGRESS
+    save_chart(target, chart)
+
+    def _advance(target_arg, actor_arg):
+        """on_complete hook — mark the running step done, then
+        chain to the next pending step."""
+        latest = get_chart(target_arg)
+        if latest is None:
+            return
+        # Find the step that was running and mark it done.
+        for s in latest.get("steps") or ():
+            if s.get("status") == RUNNING:
+                s["status"] = DONE
+                break
+        save_chart(target_arg, latest)
+        # Recursive advancement — runs the next pending step, or
+        # finalises the chart status if none remain.
+        commence_chart(target_arg, actor_arg)
+
+    from world.medical.procedures import start_procedure
+    try:
+        start_procedure(
+            target, verb=verb, actor=actor,
+            on_complete=_advance, **args,
+        )
+    except Exception as exc:
+        # Dispatch failure (e.g. surgeon dropped their kit between
+        # chart authoring and commence).  Mark the step failed and
+        # advance to the next so a recoverable later step still gets
+        # a shot.
+        step["status"] = FAILED
+        step["outcome"] = f"dispatch error: {exc}"
+        save_chart(target, chart)
+        return commence_chart(target, actor)
+
+    return step

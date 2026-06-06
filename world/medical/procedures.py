@@ -231,7 +231,21 @@ def is_procedure_active(target) -> bool:
     return state.get("active_procedure") is not None
 
 
-def start_procedure(target, *, verb: str, actor, **kwargs) -> dict:
+#: In-memory map of ``target.dbref`` → ``on_complete`` callable.
+#: Populated by :func:`start_procedure` when an ``on_complete`` hook
+#: is provided; consumed by :func:`_resolve_procedure_callback` after
+#: the verb resolver runs; cleared by :func:`interrupt_procedure`.
+#:
+#: Not persisted — the hook is in-memory only, so process restarts
+#: mid-procedure drop the chain.  Acceptable for the chart-runner
+#: use case since restarts are rare and the chart state itself is
+#: persistent (a surgeon can re-commence after restart).
+_PROCEDURE_COMPLETE_HOOKS = {}
+
+
+def start_procedure(
+    target, *, verb: str, actor, on_complete=None, **kwargs,
+) -> dict:
     """Stage an active procedure on ``target``.
 
     Schedules :func:`_resolve_procedure_callback` to fire after the
@@ -244,6 +258,12 @@ def start_procedure(target, *, verb: str, actor, **kwargs) -> dict:
     resolution callback can re-fetch the actor / tool / target_organ
     without closures over Python objects that may not survive a
     process restart.
+
+    ``on_complete`` (optional) — a callable ``fn(target, actor)``
+    invoked after the verb resolver runs.  Used by the chart runner
+    (``world.medical.charts.commence_chart``) to chain successive
+    steps back-to-back.  Stored in-memory only; interruption clears
+    it (chain dies on combat / disconnect / death).
     """
     duration = PROCEDURE_DURATIONS.get(verb, 6)
     record = {
@@ -256,6 +276,11 @@ def start_procedure(target, *, verb: str, actor, **kwargs) -> dict:
     state = _state(target)
     state["active_procedure"] = record
     target.db.surgical_state = state
+
+    if on_complete is not None:
+        dbref = getattr(target, "dbref", None)
+        if dbref:
+            _PROCEDURE_COMPLETE_HOOKS[dbref] = on_complete
 
     evennia_delay(
         duration,
@@ -271,11 +296,41 @@ def interrupt_procedure(target, reason: str = "interrupted") -> Optional[dict]:
 
     Used by combat / movement / death hooks.  Returns the cleared
     record so callers can render an interruption message.
+
+    Also clears any pending ``on_complete`` hook so a chart chain
+    in progress halts cleanly.  The chart's currently-running step
+    is marked as ``FAILED`` with outcome ``"interrupted"`` so the
+    surgeon can see why the chain stopped on re-entry.
     """
     state = _state(target)
     record = state.get("active_procedure")
     state["active_procedure"] = None
     target.db.surgical_state = state
+
+    dbref = getattr(target, "dbref", None)
+    if dbref:
+        _PROCEDURE_COMPLETE_HOOKS.pop(dbref, None)
+
+    # Mark a running chart step as failed-with-interrupted outcome
+    # so the surgeon sees the abort reason on re-entry to ``operate``.
+    target_db = getattr(target, "db", None)
+    if target_db is not None:
+        chart = getattr(target_db, "medical_chart", None)
+        if chart:
+            chart = dict(chart)
+            steps = list(chart.get("steps") or ())
+            mutated = False
+            for step in steps:
+                if step.get("status") == "running":
+                    step["status"] = "failed"
+                    step["outcome"] = f"interrupted: {reason}"
+                    mutated = True
+                    break
+            if mutated:
+                chart["steps"] = steps
+                chart["status"] = "aborted"
+                target_db.medical_chart = chart
+
     return record
 
 
@@ -318,6 +373,19 @@ def _resolve_procedure_callback(target) -> None:
     if resolver is None:
         return
     resolver(actor, target, **kwargs)
+
+    # Fire the chart-runner advancement hook if one's registered.
+    # Cleared from the map regardless so a re-entered chain doesn't
+    # double-fire.  Errors swallowed so a buggy hook can't break
+    # the procedure resolution it's tacked onto.
+    dbref = getattr(target, "dbref", None)
+    if dbref:
+        hook = _PROCEDURE_COMPLETE_HOOKS.pop(dbref, None)
+        if hook is not None:
+            try:
+                hook(target, actor)
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------
