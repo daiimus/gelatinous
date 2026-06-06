@@ -72,6 +72,15 @@ from world.medical import charts as chart_lib
 # VISUAL CONSTANTS
 # ===================================================================
 
+# Muted accent colour used for secondary / parenthetical info.
+# Was |x (dark grey / near-black) which read as illegible on most
+# clients.  Burnt orange via XTERM-256 (|520 = R5 G2 B0) reads
+# clean against both dark and light backgrounds while still
+# de-emphasising the text.  Eventually persistent per-player
+# colour preferences can override this default — for now it's
+# a single module-level knob so swapping shades is one-line work.
+MUTED = "|520"
+
 LABEL_BOX_WIDTH = 15                # Content width inside ║...║
 LABEL_BOX_TOTAL = LABEL_BOX_WIDTH + 2  # Including ║ borders
 BRANCH_CORNER = "──┐"               # Emerge from label box, turn
@@ -227,7 +236,7 @@ def _render_patient_lines(caller, target) -> list[str]:
 def _render_chart_lines(chart: dict | None) -> list[str]:
     """Render the chart's step list (or a placeholder when empty)."""
     if not chart or not (chart.get("steps") or []):
-        return ["|x0 documented procedures|n"]
+        return [f"{MUTED}0 documented procedures|n"]
     steps = chart["steps"]
     out = []
     for idx, step in enumerate(steps, start=1):
@@ -265,7 +274,7 @@ def render_top_level(caller, target) -> str:
 
     options = [
         ("1", "Add procedure step"),
-        ("2", "Edit chart  |x(view / reorder / remove)|n"),
+        ("2", f"Edit chart  {MUTED}(view / reorder / remove)|n"),
         ("3", "Commence next step"),
         ("4", "Save and exit"),
         ("5", "Discard chart"),
@@ -677,7 +686,7 @@ def _node_harvest_organ(caller, raw_string, **kwargs):
     listing = _render_numbered(
         organs,
         lambda nc: f"{nc[0].replace('_', ' ').ljust(18)}  "
-                   f"|x({nc[1].replace('_', ' ')})|n",
+                   f"{MUTED}({nc[1].replace('_', ' ')})|n",
     )
     text = (
         "\n|wHarvest organ|n\n\n"
@@ -836,16 +845,17 @@ def _node_suture_location(caller, raw_string, **kwargs):
 
     # Label each entry with its source so the surgeon can see at
     # a glance which are live state vs planned-by-chart.
-    options_list = [("|wall|n  |x(open + planned)|n",
-                     "all open incisions")]
+    options_list = [
+        (f"|wall|n  {MUTED}(open + planned)|n", "all open incisions"),
+    ]
     for loc in all_locs:
         humanized = loc.replace("_", " ")
         if loc in open_locs and loc in planned_locs:
-            tag = "|x(open + planned)|n"
+            tag = f"{MUTED}(open + planned)|n"
         elif loc in open_locs:
-            tag = "|x(open)|n"
+            tag = f"{MUTED}(open)|n"
         else:
-            tag = "|x(planned)|n"
+            tag = f"{MUTED}(planned)|n"
         options_list.append((f"{humanized}  {tag}", loc))
 
     caller.ndb._operate_pickable = options_list
