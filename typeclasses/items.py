@@ -1131,6 +1131,14 @@ class Appendage(Item):
         # without ``None`` checks.
         self.db.wounds_at_death = []
         self.db.longdesc_data = {}
+        # Trimmed organ snapshot — populated by ``configure_from_sever`` /
+        # ``configure_from_living_sever`` via ``apply_organ_snapshot_overlay``.
+        # Shape matches the corpse / head contract so ``get_organ_snapshot``
+        # can route harvest / autopsy uniformly across every severed part.
+        self.db.medical_state_at_death = None
+        # Subset of the source's ``removed_organs`` whose organs ended up
+        # in this appendage's chain — feeds repeat-harvest gating + autopsy.
+        self.db.removed_organs = []
         # #307 PR-H3: worn-items carry-forward.  Severed appendages
         # remember which items were worn on which body location at
         # the moment of severance.  Structure mirrors
@@ -1229,6 +1237,23 @@ class Appendage(Item):
         # Chain support: carry data for every chain location.
         apply_wound_and_longdesc_overlay(self, corpse, chain)
 
+        # Trimmed organ snapshot — generalization of the head-only
+        # pattern in ``apply_severed_head_overlay`` to every severed
+        # appendage.  Lets harvest / autopsy find organs on a severed
+        # arm or forepaw the same way they find them on a severed head.
+        corpse_snapshot = None
+        if hasattr(corpse, "get_medical_snapshot"):
+            try:
+                corpse_snapshot = corpse.get_medical_snapshot()
+            except (AttributeError, TypeError):
+                corpse_snapshot = None
+        apply_organ_snapshot_overlay(
+            self,
+            source_snapshot=corpse_snapshot,
+            containers=chain,
+            source_removed_organs=getattr(corpse.db, "removed_organs", None),
+        )
+
     def configure_from_living_sever(self, *, character, location_name,
                                     injury_type="cut", chain=None):
         """Populate provenance + prose from a *living* character on sever.
@@ -1324,6 +1349,37 @@ class Appendage(Item):
             wounds=wounds,
             locations=chain,
         )
+
+        # Trimmed organ snapshot — read live medical state *before* the
+        # caller (apply_sever_to_character) mutates the body.  Mirrors
+        # the head living-sever path (apply_severed_head_overlay_from_living)
+        # so harvest / autopsy find organs on every severed appendage.
+        try:
+            live_snapshot = character.medical_state.to_dict() or {}
+        except (AttributeError, TypeError, ValueError):
+            live_snapshot = {}
+        live_removed = getattr(
+            getattr(character, "db", None), "removed_organs", None,
+        )
+        apply_organ_snapshot_overlay(
+            self,
+            source_snapshot=live_snapshot,
+            containers=chain,
+            source_removed_organs=live_removed,
+        )
+
+    def get_medical_snapshot(self):
+        """Return the trimmed organ snapshot carried at severance.
+
+        Same contract as :meth:`typeclasses.corpse.Corpse.get_medical_snapshot`
+        and :meth:`SeveredHead.get_medical_snapshot`.  Consumed by
+        :func:`world.medical.procedures.get_organ_snapshot` so harvest /
+        autopsy route uniformly against any severed part regardless of
+        whether it's a head, an arm, or a forepaw — the snapshot is
+        populated at severance by
+        :func:`apply_organ_snapshot_overlay`.
+        """
+        return self.db.medical_state_at_death
 
     def return_appearance(self, looker, **kwargs):
         """Compose appearance from base desc + carried longdesc + wounds.
@@ -1546,6 +1602,63 @@ def apply_wound_and_longdesc_overlay(appendage, corpse, locations):
     appendage.db.longdesc_data = {
         loc: text for loc, text in src_longdescs.items() if loc in locs
     }
+
+
+def apply_organ_snapshot_overlay(appendage, *, source_snapshot,
+                                  containers, source_removed_organs=None):
+    """Copy a trimmed organ snapshot from a corpse / character → appendage.
+
+    Generalization of the head-only pattern in
+    :func:`apply_severed_head_overlay`: any severed appendage carries
+    forward the subset of organs whose ``container`` falls inside the
+    severed chain.  Same dict shape as the corpse / head snapshot so
+    :func:`world.medical.procedures.get_organ_snapshot` can route
+    harvest / autopsy uniformly against any severed part.
+
+    Body-wide fields (conditions, blood, pain, consciousness) are
+    blanked because they describe the whole body and would lie if
+    reported off a disembodied limb — matching the head contract.
+    Organ entries are shallow-copied to prevent aliasing with the
+    source snapshot on subsequent mutations.
+
+    Args:
+        appendage: Object whose ``db`` receives ``medical_state_at_death``
+            and (optionally) ``removed_organs``.
+        source_snapshot: A medical-state snapshot dict (the shape
+            returned by ``MedicalState.to_dict()`` or
+            ``Corpse.get_medical_snapshot()``).  ``None`` → empty
+            snapshot written.
+        containers: Iterable of canonical container names — organs
+            whose ``container`` is in this set are carried forward.
+            For limbs this is the severed chain; for the head pipeline
+            it's the head-cluster container set.
+        source_removed_organs: Optional iterable of organ names removed
+            from the source prior to severance.  When provided, the
+            appendage's ``removed_organs`` is filtered to organs that
+            actually carried forward into this part — gates repeat
+            harvest + feeds autopsy.
+    """
+    locs = frozenset(containers)
+    organs = (source_snapshot or {}).get("organs") or {}
+    trimmed = {}
+    for name, data in organs.items():
+        # Duck-type: _SaverDict isn't a dict subclass but supports .get.
+        if not hasattr(data, "get"):
+            continue
+        if (data.get("container") or "") in locs:
+            trimmed[name] = dict(data)
+    appendage.db.medical_state_at_death = {
+        "organs": trimmed,
+        "conditions": [],
+        "blood_level": None,
+        "pain_level": None,
+        "consciousness": None,
+    }
+    if source_removed_organs is not None:
+        appendage.db.removed_organs = [
+            name for name in (source_removed_organs or ())
+            if name in trimmed
+        ]
 
 
 def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):

@@ -24,6 +24,7 @@ from __future__ import annotations
 from unittest import TestCase
 
 from typeclasses.items import (
+    apply_organ_snapshot_overlay,
     apply_sever_to_corpse,
     apply_wound_and_longdesc_overlay,
 )
@@ -168,6 +169,131 @@ class ApplyWoundAndLongdescOverlayTests(TestCase):
         apply_wound_and_longdesc_overlay(appendage, corpse, ("left_arm",))
         self.assertEqual(appendage.db.wounds_at_death, [])
         self.assertEqual(appendage.db.longdesc_data, {})
+
+
+# ---------------------------------------------------------------------
+# apply_organ_snapshot_overlay
+# ---------------------------------------------------------------------
+
+
+def _organ(container, *, current_hp=10, max_hp=10):
+    """Build an organ snapshot dict matching MedicalState.to_dict shape."""
+    return {
+        "container": container,
+        "current_hp": current_hp,
+        "max_hp": max_hp,
+        "injury_type": None,
+        "wound_stage": None,
+    }
+
+
+class ApplyOrganSnapshotOverlayTests(TestCase):
+    """Trimmed-organ snapshot carried onto every severed appendage."""
+
+    def test_filters_organs_by_container_set(self):
+        snapshot = {
+            "organs": {
+                "left_humerus": _organ("left_arm", current_hp=8),
+                "left_radius": _organ("left_arm", current_hp=12),
+                "heart": _organ("chest"),
+                "brain": _organ("head"),
+            },
+        }
+        appendage = _FakeAppendage()
+        apply_organ_snapshot_overlay(
+            appendage, source_snapshot=snapshot, containers=("left_arm",),
+        )
+        carried = appendage.db.medical_state_at_death["organs"]
+        self.assertEqual(set(carried), {"left_humerus", "left_radius"})
+        self.assertEqual(carried["left_humerus"]["current_hp"], 8)
+        self.assertEqual(carried["left_radius"]["current_hp"], 12)
+
+    def test_body_wide_fields_blanked(self):
+        appendage = _FakeAppendage()
+        apply_organ_snapshot_overlay(
+            appendage, source_snapshot={"organs": {}}, containers=(),
+        )
+        snap = appendage.db.medical_state_at_death
+        self.assertIsNone(snap["blood_level"])
+        self.assertIsNone(snap["pain_level"])
+        self.assertIsNone(snap["consciousness"])
+        self.assertEqual(snap["conditions"], [])
+
+    def test_none_snapshot_yields_empty_organs(self):
+        appendage = _FakeAppendage()
+        apply_organ_snapshot_overlay(
+            appendage, source_snapshot=None, containers=("left_arm",),
+        )
+        self.assertEqual(
+            appendage.db.medical_state_at_death["organs"], {},
+        )
+
+    def test_chain_locations_carry_full_subset(self):
+        # Severing the thigh takes shin + foot too — every organ whose
+        # container is in the chain should ride along, not just the
+        # primary cut point.
+        snapshot = {
+            "organs": {
+                "left_femur": _organ("left_thigh"),
+                "left_tibia": _organ("left_shin"),
+                "left_foot_bones": _organ("left_foot"),
+                "right_femur": _organ("right_thigh"),
+            },
+        }
+        appendage = _FakeAppendage()
+        apply_organ_snapshot_overlay(
+            appendage, source_snapshot=snapshot,
+            containers=("left_thigh", "left_shin", "left_foot"),
+        )
+        self.assertEqual(
+            set(appendage.db.medical_state_at_death["organs"]),
+            {"left_femur", "left_tibia", "left_foot_bones"},
+        )
+
+    def test_organ_entries_are_shallow_copies(self):
+        # Subsequent mutation of the appendage snapshot must not bleed
+        # back into the source snapshot — matches the head overlay's
+        # aliasing-protection contract.
+        organ_data = _organ("left_arm", current_hp=10)
+        snapshot = {"organs": {"left_humerus": organ_data}}
+        appendage = _FakeAppendage()
+        apply_organ_snapshot_overlay(
+            appendage, source_snapshot=snapshot, containers=("left_arm",),
+        )
+        appendage.db.medical_state_at_death["organs"]["left_humerus"][
+            "current_hp"
+        ] = 0
+        self.assertEqual(organ_data["current_hp"], 10)
+
+    def test_removed_organs_filtered_to_chain_subset(self):
+        snapshot = {
+            "organs": {
+                "left_humerus": _organ("left_arm"),
+                "heart": _organ("chest"),
+            },
+        }
+        appendage = _FakeAppendage()
+        apply_organ_snapshot_overlay(
+            appendage,
+            source_snapshot=snapshot,
+            containers=("left_arm",),
+            source_removed_organs=["heart", "left_humerus"],
+        )
+        # Only the organ that actually carried over should appear.
+        self.assertEqual(appendage.db.removed_organs, ["left_humerus"])
+
+    def test_removed_organs_omitted_leaves_appendage_default(self):
+        # Living-sever path may pass None — overlay should not touch the
+        # appendage's removed_organs in that case.
+        appendage = _FakeAppendage()
+        appendage.db.removed_organs = ["sentinel"]
+        apply_organ_snapshot_overlay(
+            appendage,
+            source_snapshot={"organs": {}},
+            containers=("left_arm",),
+            source_removed_organs=None,
+        )
+        self.assertEqual(appendage.db.removed_organs, ["sentinel"])
 
 
 # ---------------------------------------------------------------------
