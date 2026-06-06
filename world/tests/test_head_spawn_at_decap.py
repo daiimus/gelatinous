@@ -317,6 +317,18 @@ class SpawnSeveredHeadForLivingTests(TestCase):
         spawn_severed_head_for_living(char)
         self.assertTrue(char.db.head_severed_at_decap)
 
+    def test_decapitation_pending_flag_set(self):
+        # The death-progression hook in
+        # ``_create_corpse_from_character`` gates corpse-side cleanup
+        # (head-cluster prose / wound stripping, synthesised neck
+        # stump) on ``decapitation_pending``.  Combat sets this flag
+        # before calling the spawn, but chart-driven amputation routes
+        # straight through here — owning the flag inside the spawn
+        # makes the cleanup fire for both pipelines.
+        char = _FakeCharacter(organs=_head_organs())
+        spawn_severed_head_for_living(char)
+        self.assertTrue(char.db.decapitation_pending)
+
     def test_vital_signs_recomputed(self):
         char = _FakeCharacter(organs=_head_organs())
         spawn_severed_head_for_living(char)

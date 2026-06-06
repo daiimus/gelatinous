@@ -1887,6 +1887,17 @@ def spawn_severed_head_for_living(character, *, injury_type="cut"):
     character.save_medical_state()
 
     character.db.head_severed_at_decap = True
+    # The death-progression hook in
+    # ``DeathProgressionScript._create_corpse_from_character`` gates
+    # corpse-side cleanup (head-cluster prose / wound removal +
+    # synthesised neck stump) on ``decapitation_pending``.  Combat sets
+    # this flag *before* calling us, but chart-driven amputation goes
+    # straight through this function — without the flag the corpse
+    # would render wounds at every head-cluster location even though
+    # those organs left with the severed head.  Owning both flags here
+    # makes "head severed off a living body" a single coherent state
+    # change regardless of caller.
+    character.db.decapitation_pending = True
 
     return head
 
