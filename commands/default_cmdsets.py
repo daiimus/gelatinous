@@ -271,6 +271,13 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdSurgical.CmdInstall())
         self.add(CmdSurgical.CmdSuture())
 
+        # Surgical charting menu (#307, PR-OP1).  EvMenu-driven
+        # planner over the procedure verbs — surgeon builds a
+        # multi-step chart on the patient and commences it.  See
+        # ``help operate``.
+        from commands.CmdOperate import CmdOperate
+        self.add(CmdOperate())
+
 class AccountCmdSet(default_cmds.AccountCmdSet):
     """
     This is the cmdset available to the Account at all times. It is
