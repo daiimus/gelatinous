@@ -396,6 +396,30 @@ class TestIdentityMatchCharacters(TestCase):
         # get_sdesc() returns self.key when height/build missing
         self.assertEqual(result, [npc])
 
+    def test_npc_fallback_falls_through_to_word_boundary(self):
+        # Spawned mobs (rats, etc.) get a key like "a scrawny ragged rat"
+        # with no explicit sdesc — so ``get_sdesc()`` returns the key.
+        # Players type "rat" to target them; the NPC-fallback prefix
+        # path ("rat" vs. "a scrawny...") doesn't fire, so the matcher
+        # must continue to the word-boundary check.  Without that
+        # fall-through, identity-based commands like ``operate rat``
+        # silently failed to find mobs whose keys start with an
+        # article, and surgical resolvers fell through to the
+        # room-search stage which returned a severed limb or head
+        # item instead — that's how decapitation-recovery surgery
+        # ended up targeting the wrong thing.
+        rat = _make_character(
+            key="a scrawny ragged rat",
+            height=None,
+            build=None,
+            sleeve_uid="uid-rat",
+        )
+        candidates = [self.searcher, rat]
+        result = identity_match_characters(
+            self.searcher, "rat", candidates,
+        )
+        self.assertEqual(result, [rat])
+
     def test_match_droog_keyword(self):
         """Setting-specific keyword 'droog' matches Viktor."""
         result = identity_match_characters(

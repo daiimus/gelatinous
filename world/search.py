@@ -202,10 +202,19 @@ def _match_sdesc(target: object, query: str) -> bool:
     query_lower = query.lower()
     sdesc_lower = sdesc.lower()
 
-    # If sdesc is just the key (NPC fallback), allow prefix matching
+    # NPC fallback (sdesc defaults to key): try prefix first — covers
+    # "tom" → "Tom Hanks".  Fall through to the word-boundary check
+    # below if prefix doesn't fire, so "rat" still matches a mob
+    # whose key is "a scrawny ragged rat" (the leading article on
+    # the key would otherwise defeat the prefix path).  Before this
+    # fall-through the NPC-fallback path early-returned False on a
+    # prefix miss, so identity-based commands like ``operate rat``
+    # silently couldn't reach mobs whose sdesc/key starts with an
+    # article — even though the body was clearly in the room.
     target_key = getattr(target, "key", "")
     if sdesc == target_key:
-        return target_key.lower().startswith(query_lower)
+        if target_key.lower().startswith(query_lower):
+            return True
 
     # Word-boundary match: every word in the query must appear as a
     # complete word in the sdesc.

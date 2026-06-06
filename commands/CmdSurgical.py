@@ -98,9 +98,34 @@ def _resolve_target(caller, raw_name):
         return caller
 
     # Stage 1 — identity pipeline (only path to character targets).
+    #
+    # Detached body parts (``SeveredHead``, ``Appendage``) participate in
+    # identity for forensic chain / autopsy purposes — they have a
+    # ``get_sdesc`` and carry an ``apparent_uid_at_death``.  But surgical
+    # commands target whole-body patients, not detached parts.  When
+    # both a body and its severed head are in the room (e.g.
+    # ``operate 1st rat`` after decapitation), the ordinal pick from
+    # the identity match would silently land on whichever the room
+    # iteration orders first — usually the head, since severed parts
+    # spawn after the body.  Filtering detached parts out at this
+    # stage means the identity matcher's candidate set only contains
+    # whole-body patients, so the ordinal picks among them
+    # unambiguously and detached parts route through stages 2/3 (where
+    # ``autopsy`` / ``sever`` / ``harvest`` find them).
     from commands._identity_targeting import resolve_character_target
+    from typeclasses.items import Appendage  # base for SeveredHead too
+    location = caller.location
+    if location is not None:
+        whole_body_candidates = [
+            obj for obj in location.contents
+            if not isinstance(obj, Appendage)
+        ]
+    else:
+        whole_body_candidates = None
     identity_match = resolve_character_target(
-        caller, raw_name, allow_self=False,
+        caller, raw_name,
+        candidates=whole_body_candidates,
+        allow_self=False,
     )
     if identity_match is not None:
         return identity_match
