@@ -774,6 +774,26 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
         )
         return
 
+    # Walk organs at each closed location and transition any
+    # harvested-injury organs from ``fresh`` to ``treated`` so the
+    # wound renderer reads as "surgical opening has been crudely
+    # bandaged" rather than "still wet and red".  Severance wounds
+    # (limb-loss injury_type, not "harvested") are untouched —
+    # suturing the stump doesn't undo the limb loss but the
+    # ``harvested`` injury type IS appropriate for an organ
+    # extracted via the procedure pipeline.
+    state = getattr(target, "medical_state", None)
+    if state is not None and hasattr(state, "organs"):
+        for loc in closed:
+            for organ in state.organs.values():
+                container = getattr(organ, "container", None)
+                display = getattr(organ, "display_location", None)
+                if loc not in (container, display):
+                    continue
+                if getattr(organ, "injury_type", None) == "harvested":
+                    if getattr(organ, "wound_stage", None) == "fresh":
+                        organ.wound_stage = "treated"
+
     seed_pain(target, closed[0], CONSCIOUS_PAIN_SEVERITY["suture"])
 
     if outcome == "failure":
@@ -951,7 +971,21 @@ def _mark_organ_removed(target, organ_name: str) -> None:
         organ = state.organs.get(organ_name)
         if organ is not None:
             organ.current_hp = 0
-            organ.wound_stage = "severed"
+            # PR follow-up: route the wound renderer to
+            # ``messages/harvested.py`` rather than letting it fall
+            # through to ``generic.py``'s "severed at the joint"
+            # prose.  Severance (limb-fell-off) and harvest
+            # (organ-was-surgically-removed) are different events
+            # narratively; the same misnamed ``wound_stage`` was
+            # routing both into the limb-loss vocabulary.
+            #
+            # Fresh stage gets the open-extraction-site prose
+            # ("a precise incision marks where the stomach was
+            # extracted").  The suture verb transitions this to
+            # ``treated`` so post-op prose reads as
+            # surgically-closed rather than limb-lost.
+            organ.injury_type = "harvested"
+            organ.wound_stage = "fresh"
 
     snapshot = None
     accessor = getattr(target, "get_medical_snapshot", None)
