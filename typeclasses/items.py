@@ -1834,6 +1834,14 @@ def apply_living_sever_overlay(appendage, *, longdescs, wounds, locations):
         if wound.get("location") not in locs:
             continue
         organ_obj = wound.get("organ_obj")
+        # Read live HP *before* the caller mutates the body — mirrors
+        # the corpse-side death snapshot in
+        # ``death_progression._create_corpse_from_character`` which
+        # captures ``organ_obj.current_hp`` at the instant of death.
+        # Hardcoding zero here destroyed every carried organ on
+        # severance, breaking parity with the corpse-sever contract
+        # the comment below claims.
+        current_hp = getattr(organ_obj, "current_hp", 0) if organ_obj else 0
         max_hp = getattr(organ_obj, "max_hp", 0) if organ_obj else 0
         carried.append({
             "injury_type": wound.get("injury_type", "generic"),
@@ -1844,7 +1852,7 @@ def apply_living_sever_overlay(appendage, *, longdescs, wounds, locations):
             "stage": "old",
             "organ": wound.get("organ"),
             "organ_damage": {
-                "current_hp": 0,
+                "current_hp": current_hp,
                 "max_hp": max_hp,
                 "container": wound.get("location"),
             },

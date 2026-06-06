@@ -150,6 +150,30 @@ class ApplyLivingSeverOverlayTests(TestCase):
         self.assertEqual(carried["organ_damage"]["current_hp"], 0)
         self.assertEqual(carried["organ_damage"]["max_hp"], 12)
 
+    def test_carried_organ_hp_preserves_live_value(self):
+        # Parity with the corpse-side death snapshot, which captures
+        # ``organ_obj.current_hp`` at the instant of death rather than
+        # zeroing it.  Severing a still-healthy arm should carry the
+        # arm's organs onto the appendage at their live HP, not at 0.
+        appendage = _FakeAppendage()
+        healthy_wound = {
+            "injury_type": "cut",
+            "location": "left_arm",
+            "severity": "Moderate",
+            "stage": "fresh",
+            "organ": "left_humerus",
+            "organ_obj": _FakeOrgan("left_arm", current_hp=8, max_hp=12),
+        }
+        apply_living_sever_overlay(
+            appendage,
+            longdescs={},
+            wounds=[healthy_wound],
+            locations=("left_arm",),
+        )
+        carried = appendage.db.wounds_at_death[0]
+        self.assertEqual(carried["organ_damage"]["current_hp"], 8)
+        self.assertEqual(carried["organ_damage"]["max_hp"], 12)
+
     def test_empty_text_longdesc_skipped(self):
         appendage = _FakeAppendage()
         apply_living_sever_overlay(
