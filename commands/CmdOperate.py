@@ -74,11 +74,12 @@ from world.medical import charts as chart_lib
 
 LABEL_BOX_WIDTH = 15                # Content width inside ║...║
 LABEL_BOX_TOTAL = LABEL_BOX_WIDTH + 2  # Including ║ borders
-STEM = "────"
-JOIN_T = "──┬──"
+STEM = "────"                       # Single-item simple stem
+BRANCH_CORNER = "──┐"               # Multi-item: emerge from label box,
+                                    # turn down into the trunk
 JOIN_MID = "├──"
 JOIN_END = "└──"
-EMPTY_GUTTER = " " * (LABEL_BOX_TOTAL + 2)  # Aligns sub-branches under stem
+EMPTY_GUTTER = " " * (LABEL_BOX_TOTAL + 2)  # Aligns trunk under the corner
 
 
 # ===================================================================
@@ -137,15 +138,16 @@ def _render_section(label: str, lines: list[str]) -> list[str]:
         out.append(bot)
         return out
 
-    # Multi-line: branched tree.  The bottom border of the label
-    # box gets a ``  │`` tail so the vertical connector lines up
-    # with the ``┬`` glyph on the middle-row branch above and the
-    # ``├`` / ``└`` glyphs on the subsequent rows below.  Mirrors
-    # ``armor comprehensive``'s ``loc_box_bot + "  │"`` line.
+    # Multi-line: branched tree, equidistant rows.  Every item
+    # hangs off the trunk uniformly — no special treatment for the
+    # first item.  The label box emits ``──┐`` from its middle
+    # row, turns down through ``│`` past the box bottom, and the
+    # items follow as ``├── …`` / ``└── …`` rows.  Trade one extra
+    # row for a cleaner read.
     out.append(top)
-    out.append(f"{mid}{JOIN_T} {lines[0]}")
+    out.append(f"{mid}{BRANCH_CORNER}")
     out.append(f"{bot}  │")
-    for line in lines[1:-1]:
+    for line in lines[:-1]:
         out.append(f"{EMPTY_GUTTER}{JOIN_MID} {line}")
     out.append(f"{EMPTY_GUTTER}{JOIN_END} {lines[-1]}")
     return out
