@@ -191,21 +191,32 @@ def _format_wound_grammar(description):
 def _stump_stage(character, location: str) -> str:
     """Return the renderer stage for a severance cut point.
 
-    Today this is binary: ``"treated"`` if the cut point has been
-    sutured (recorded in ``character.db.sutured_stumps``), else
-    ``"fresh"``.  The suture verb populates the set after closing an
-    incision at a location whose organs are all severed.
+    Reads ``character.db.sutured_stumps`` and maps the recorded
+    suture outcome (``"success"`` / ``"partial"`` / ``"failure"``)
+    into one of three flavoured stages — ``"treated_success"`` /
+    ``"treated_partial"`` / ``"treated_failure"`` — so the renderer
+    picks variants that match the actual quality of the job.
 
-    Time-based progression past ``treated`` (``"healing"`` /
-    ``"scarred"``) is future work — when the per-cut-point stage
-    store grows from a flat membership set to a per-location stage
-    value, the lookup will replace this helper without rippling
-    through the synthesis call sites.
+    Backward-compat: legacy entries stored as a flat list
+    (``["head", "left_arm"]``) treat membership as success — that's
+    the same flavour that was rendered before outcome propagation
+    landed.
+
+    No record at all → ``"fresh"`` (raw stump prose).
     """
-    sutured = getattr(
+    raw = getattr(
         getattr(character, "db", None), "sutured_stumps", None,
-    ) or ()
-    return "treated" if location in sutured else "fresh"
+    )
+    if raw is None:
+        return "fresh"
+    if hasattr(raw, "get"):
+        outcome = raw.get(location)
+        if outcome is None:
+            return "fresh"
+        if outcome in ("success", "partial", "failure"):
+            return f"treated_{outcome}"
+        return "treated"
+    return "treated" if location in raw else "fresh"
 
 
 def get_character_wounds(character):

@@ -501,8 +501,10 @@ class CutPointFilterTests(TestCase):
     def test_stump_renders_treated_when_sutured(self):
         # Once the cut point is recorded in ``db.sutured_stumps`` (by
         # ``_resolve_suture`` closing an incision at a severance
-        # location), the renderer transitions to stage="treated" so
-        # severed.py's bandaged-stump prose fires instead.
+        # location), the renderer transitions to a treated-flavoured
+        # stage so severed.py's bandaged-stump prose fires instead.
+        # Legacy list shape → generic ``"treated"`` (the success
+        # variant subset, preserving prior renderer behaviour).
         from world.medical.wounds import get_character_wounds
 
         char = self._char_with_severed_chain()
@@ -510,6 +512,25 @@ class CutPointFilterTests(TestCase):
         wounds = get_character_wounds(char)
         shin_wounds = [w for w in wounds if w["location"] == "left_shin"]
         self.assertEqual(shin_wounds[0]["stage"], "treated")
+
+    def test_stump_outcome_routes_to_flavoured_stage(self):
+        # Dict-shape ``sutured_stumps`` records the suture outcome;
+        # the renderer picks an outcome-flavoured subgroup so a
+        # successful close reads clean, a partial close reads rough,
+        # and a botched close reads dirty.  Same prose module routes
+        # through different stage keys in severed.py.
+        from world.medical.wounds import get_character_wounds
+
+        for outcome in ("success", "partial", "failure"):
+            with self.subTest(outcome=outcome):
+                char = self._char_with_severed_chain()
+                char.db.sutured_stumps = {"left_shin": outcome}
+                wounds = get_character_wounds(char)
+                shin_wounds = [w for w in wounds
+                               if w["location"] == "left_shin"]
+                self.assertEqual(
+                    shin_wounds[0]["stage"], f"treated_{outcome}",
+                )
 
     def test_solo_foot_sever_still_renders(self):
         # If only the foot is severed (foot directly cut, not as

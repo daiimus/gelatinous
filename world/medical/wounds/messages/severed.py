@@ -9,19 +9,29 @@ on a freshly-amputated body routes through this module so the live
 view and the eventual corpse view share prose.
 
 Stages:
-    fresh:   Just cut.  Raw stump.  Default on a living body until
-             the suture verb runs, and on a fresh corpse spawned by
-             :func:`commands.forensics._apply_sever_to_corpse`.
-    treated: Recently sutured.  Bandaged stump, stitches visible.
-             Lives only on a living body — transitioned from ``fresh``
-             by ``_resolve_suture`` via ``character.db.sutured_stumps``.
-    healing: Sutures dissolving, new tissue knitting over.  Future
-             use — slotted for the time-based progression tick.
-    scarred: Long-healed.  Future use — terminal stage of progression.
-    old:     Corpse-preserved variant.  Frozen at death.  Renders the
-             dried / desiccated stump on long-dead corpses.
-    destroyed: Catastrophic mangling (e.g. blast amputation that
-             didn't leave a clean cut).
+    fresh:             Just cut.  Raw stump.  Default on a living
+                       body until the suture verb runs, and on a
+                       fresh corpse spawned by
+                       :func:`commands.forensics._apply_sever_to_corpse`.
+    treated_success:   Sutured cleanly.  Picked when the roll
+                       outcome was ``"success"``.
+    treated_partial:   Sutured but the seam is rough.  Picked when
+                       the outcome was ``"partial"``.
+    treated_failure:   Botched suture — dirty seam, infection seeded
+                       by ``_resolve_suture``.  Picked when the
+                       outcome was ``"failure"``.
+    treated:           Generic-treated fallback — covers legacy
+                       ``sutured_stumps`` entries stored as a flat
+                       list (no outcome recorded) and any other
+                       caller that lands here without a flavour.
+    healing:           Sutures dissolving, new tissue knitting over.
+                       Stocked now; time-based progression to come.
+    scarred:           Long-healed.  Terminal stage of progression.
+    old:               Corpse-preserved variant.  Frozen at death.
+                       Renders the dried / desiccated stump on
+                       long-dead corpses.
+    destroyed:         Catastrophic mangling (e.g. blast amputation
+                       that didn't leave a clean cut).
 
 All templates expect the ``{location}`` token; the
 ``{skintone}`` / ``{severity}`` / ``{organ}`` / ``{injury_type}``
@@ -44,11 +54,31 @@ WOUND_DESCRIPTIONS = {
         "|rThe {location} is missing — the stump long since congealed and stiff|n",
         "|rA stump marks where the {location} used to be, the wound long dry|n",
     ],
+    "treated_success": [
+        "|rThe {location} stump has been carefully sutured shut, the dressing clean|n",
+        "{skintone}neat rows of stitches close the {location} stump, the bandage still fresh|n",
+        "{skintone}a {severity} sutured stump where the {location} used to be, the cut held closed|n",
+        "{skintone}the {location} stump is bound in clean gauze, the suture line straight and tight|n",
+    ],
+    "treated_partial": [
+        "|rThe {location} stump has been sutured shut, the line of stitches uneven but holding|n",
+        "{skintone}the {location} stump shows a rough seam, the bandage stained but secure|n",
+        "{skintone}a {severity} stump where the {location} once was, the suture line ragged but closed|n",
+        "{skintone}the {location} stump is closed with stitches that wander, the dressing patchy|n",
+    ],
+    "treated_failure": [
+        "|rThe stump where the {location} used to be has been crudely bandaged, the seam pulling dirty|n",
+        "{skintone}the {location} stump is closed with uneven stitches and the dressing is already weeping|n",
+        "{skintone}a {severity} stump at the {location} site, the suture line dirty and the bandage stained|n",
+        "{skintone}the {location} stump has been hastily bound, the wound clearly leaking under the gauze|n",
+    ],
+    # Backward-compat fallback for legacy ``sutured_stumps`` list-shaped
+    # entries (no recorded outcome) — mirrors the success variants
+    # since that's the implicit flavour the older code path produced.
     "treated": [
         "|rThe {location} stump has been carefully sutured shut, the dressing clean|n",
         "{skintone}neat rows of stitches close the {location} stump, the bandage still fresh|n",
         "{skintone}a {severity} sutured stump where the {location} used to be, the cut held closed|n",
-        "|rThe stump where the {location} used to be has been crudely bandaged|n",
     ],
     "healing": [
         "{skintone}the {location} stump shows pink new tissue knitting over the closed wound|n",

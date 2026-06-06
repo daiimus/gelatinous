@@ -763,9 +763,14 @@ class InterruptMarksRunningStepFailed(TestCase):
 
 
 class _FakeOrgan:
-    def __init__(self, container, *, wound_stage=None):
+    def __init__(self, container, *, wound_stage=None, current_hp=0):
         self.container = container
         self.wound_stage = wound_stage
+        # ``_list_severed_locations`` gates on ``current_hp <= 0``
+        # for severed-stage organs (matches the wound renderer's
+        # gate in ``get_character_wounds``).  Default zero so the
+        # fixture lines up with the "severed and gone" shape.
+        self.current_hp = current_hp
 
 
 class _FakeMedical:
@@ -813,6 +818,57 @@ class ListSeveredLocations(TestCase):
             sutured_stumps=["left_arm"],
         )
         self.assertEqual(_list_severed_locations(target), [])
+
+    def test_dict_shape_sutured_stumps_also_filtered(self):
+        # ``sutured_stumps`` is dict-shaped after PR-outcomes —
+        # ``{location: outcome}``.  The picker honours that too.
+        from commands.CmdOperate import _list_severed_locations
+        target = self._target(
+            {"left_humerus": _FakeOrgan("left_arm", wound_stage="severed")},
+            sutured_stumps={"left_arm": "success"},
+        )
+        self.assertEqual(_list_severed_locations(target), [])
+
+    def test_head_cluster_collapses_to_head_only(self):
+        # Decapitation: brain (container=head) AND cervical_spine
+        # (container=neck) both flagged severed.  The picker should
+        # show ONE entry — "head" — not head + neck.  Mirrors the
+        # wound renderer's head-cluster collapse (PR #421) so the
+        # surgeon doesn't see "neck (stump)" as a second option for
+        # what is anatomically one wound.
+        from commands.CmdOperate import _list_severed_locations
+        target = self._target(
+            {
+                "brain": _FakeOrgan("head", wound_stage="severed"),
+                "cervical_spine": _FakeOrgan("neck", wound_stage="severed"),
+                "left_eye": _FakeOrgan("head", wound_stage="severed"),
+            },
+        )
+        # _target() defaults species to None; explicitly set human
+        # so get_species_severed_head_locations resolves.
+        target.db.species = "human"
+        # Spell-out: brain triggers head_cluster_collapsed, neck is
+        # a cluster peer and gets suppressed.
+        self.assertEqual(_list_severed_locations(target), ["head"])
+
+    def test_limb_chain_collapses_to_root(self):
+        # Thigh amputation: chain organs at thigh + shin + foot all
+        # severed.  Picker shows ONE entry at the chain root
+        # (left_thigh) — same cut-point rule the wound renderer
+        # applies via LIMB_PARENT.
+        from commands.CmdOperate import _list_severed_locations
+        target = self._target(
+            {
+                "left_femur": _FakeOrgan("left_thigh",
+                                          wound_stage="severed"),
+                "left_tibia": _FakeOrgan("left_shin",
+                                          wound_stage="severed"),
+                "left_metatarsals": _FakeOrgan("left_foot",
+                                                wound_stage="severed"),
+            },
+        )
+        target.db.species = "human"
+        self.assertEqual(_list_severed_locations(target), ["left_thigh"])
 
     def test_empty_when_no_severed_organs(self):
         from commands.CmdOperate import _list_severed_locations

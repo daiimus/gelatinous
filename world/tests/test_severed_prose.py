@@ -107,6 +107,27 @@ class SeveredStumpProgressionStagesTests(TestCase):
                 with self.subTest(stage=stage, template=template):
                     self.assertIn("{location}", template)
 
+    def test_treated_outcome_subgroups_present(self):
+        # Suture roll outcome (``success`` / ``partial`` /
+        # ``failure``) routes the renderer into an outcome-flavoured
+        # subgroup so the prose matches the actual quality of the
+        # job.  Each subgroup needs at least a couple of variants so
+        # multiple amputations don't read identically.
+        for subgroup in ("treated_success", "treated_partial",
+                         "treated_failure"):
+            with self.subTest(subgroup=subgroup):
+                self.assertIn(subgroup, self.descriptions)
+                self.assertGreaterEqual(
+                    len(self.descriptions[subgroup]), 3,
+                )
+
+    def test_treated_subgroups_reference_location(self):
+        for subgroup in ("treated_success", "treated_partial",
+                         "treated_failure"):
+            for template in self.descriptions[subgroup]:
+                with self.subTest(subgroup=subgroup, template=template):
+                    self.assertIn("{location}", template)
+
 
 class LacerationFileTests(TestCase):
     """The laceration injury type now has its own wound-message file."""

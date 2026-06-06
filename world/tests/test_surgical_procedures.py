@@ -707,8 +707,58 @@ class ResolveSuture(TestCase):
                 organ.wound_stage = "severed"
         open_incision(self.target, "left_arm", surgeon=self.actor)
         _resolve_suture(self.actor, self.target, location="left_arm")
-        sutured = self.target.db.sutured_stumps or []
+        sutured = self.target.db.sutured_stumps or {}
         self.assertIn("left_arm", sutured)
+
+    @patch("world.medical.procedures.random.randint", return_value=6)
+    def test_suture_records_outcome_in_sutured_stumps(self, _r):
+        # Records are dict-shaped: ``{location: outcome}`` so the
+        # renderer can pick an outcome-flavoured variant subset.
+        # A success roll → ``"success"`` recorded.
+        from world.medical.procedures import _resolve_suture
+        for organ in self.target.medical_state.organs.values():
+            if organ.container == "left_arm":
+                organ.current_hp = 0
+                organ.wound_stage = "severed"
+        open_incision(self.target, "left_arm", surgeon=self.actor)
+        _resolve_suture(self.actor, self.target, location="left_arm")
+        sutured = self.target.db.sutured_stumps
+        self.assertEqual(sutured.get("left_arm"), "success")
+
+    @patch("world.medical.procedures.random.randint", return_value=1)
+    def test_suture_failure_records_failure_outcome(self, _r):
+        # A botched suture still closes the wound (per design) but
+        # the outcome lands as ``"failure"`` so the renderer picks
+        # the dirty-seam variant subset.
+        from world.medical.procedures import _resolve_suture
+        for organ in self.target.medical_state.organs.values():
+            if organ.container == "left_arm":
+                organ.current_hp = 0
+                organ.wound_stage = "severed"
+        open_incision(self.target, "left_arm", surgeon=self.actor)
+        _resolve_suture(self.actor, self.target, location="left_arm")
+        sutured = self.target.db.sutured_stumps
+        self.assertEqual(sutured.get("left_arm"), "failure")
+
+    @patch("world.medical.procedures.random.randint", return_value=6)
+    def test_legacy_list_sutured_stumps_migrated_to_dict(self, _r):
+        # Earlier PR shipped a flat list of locations.  Reads must
+        # still load it; writes upgrade to the dict shape so future
+        # reads see the new schema.  Legacy entries get ``"success"``
+        # as their outcome — matches the implicit flavour the older
+        # renderer picked.
+        from world.medical.procedures import _resolve_suture
+        self.target.db.sutured_stumps = ["right_arm"]  # legacy shape
+        for organ in self.target.medical_state.organs.values():
+            if organ.container == "left_arm":
+                organ.current_hp = 0
+                organ.wound_stage = "severed"
+        open_incision(self.target, "left_arm", surgeon=self.actor)
+        _resolve_suture(self.actor, self.target, location="left_arm")
+        sutured = self.target.db.sutured_stumps
+        self.assertTrue(hasattr(sutured, "keys"))
+        self.assertEqual(sutured.get("right_arm"), "success")  # migrated
+        self.assertEqual(sutured.get("left_arm"), "success")  # new
 
     @patch("world.medical.procedures.random.randint", return_value=6)
     def test_suture_all_treats_unincised_stumps(self, _r):
