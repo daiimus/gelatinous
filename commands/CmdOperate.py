@@ -276,7 +276,12 @@ class _OperateMenu(EvMenu):
 
 def _menu_exit(caller, menu):
     """Cleanup callback when the menu exits."""
-    for attr in ("_operate_target",):
+    for attr in (
+        "_operate_target",
+        "_operate_pickable",
+        "_operate_install_donor",
+        "_operate_pending_verb",
+    ):
         if hasattr(caller.ndb, attr):
             delattr(caller.ndb, attr)
 
@@ -366,98 +371,380 @@ def _process_verb_choice(caller, raw_string, **kwargs):
     return "node_top"
 
 
+# ===================================================================
+# PICKABLE LIST HELPERS
+# ===================================================================
+#
+# Each "add step" flow renders a numbered list of valid choices
+# pulled live from the target / surgeon state, so the surgeon
+# picks rather than types.  Free-text fallback is still accepted
+# (a surgeon who knows the canonical name can short-circuit), but
+# the default flow is point-and-shoot.
+
+
+def _list_containers(target):
+    """Return the sorted unique container names from ``target``'s
+    organ snapshot — the set of body locations that can be
+    incised."""
+    from world.medical.procedures import get_organ_snapshot
+    snapshot = get_organ_snapshot(target)
+    organs = snapshot.get("organs") or {}
+    containers = set()
+    for data in organs.values():
+        if not hasattr(data, "get"):
+            continue
+        container = data.get("container")
+        if container:
+            containers.add(container)
+    return sorted(containers)
+
+
+def _list_organs(target):
+    """Return ``(organ_name, container)`` pairs from ``target``'s
+    snapshot, sorted by container then organ name.  Drops organs
+    already in ``removed_organs``."""
+    from world.medical.procedures import get_organ_snapshot
+    snapshot = get_organ_snapshot(target)
+    organs = snapshot.get("organs") or {}
+    removed = set(
+        getattr(getattr(target, "db", None), "removed_organs", None)
+        or ()
+    )
+    out = []
+    for name, data in organs.items():
+        if name in removed:
+            continue
+        if not hasattr(data, "get"):
+            continue
+        container = data.get("container") or "?"
+        out.append((name, container))
+    out.sort(key=lambda nc: (nc[1], nc[0]))
+    return out
+
+
+def _list_donor_organs(caller):
+    """Return ``(item, organ_name)`` pairs — Organ items in the
+    caller's inventory that came from a harvest and can be installed."""
+    out = []
+    for obj in (getattr(caller, "contents", None) or ()):
+        organ_name = getattr(getattr(obj, "db", None), "organ_name", None)
+        if organ_name:
+            out.append((obj, organ_name))
+    return out
+
+
+def _list_open_incisions(target):
+    """Return sorted list of locations with open incisions on
+    ``target``."""
+    from world.medical.procedures import open_incision_locations
+    try:
+        return sorted(open_incision_locations(target))
+    except Exception:
+        return []
+
+
+def _render_numbered(items, render_fn):
+    """Format a numbered pickable list.
+
+    ``items`` is any iterable; ``render_fn(item)`` returns the
+    display string for each.  Renders as ``  1. label`` rows with
+    1-based indices.
+    """
+    return "\n".join(
+        f"  {idx}. {render_fn(item)}"
+        for idx, item in enumerate(items, start=1)
+    )
+
+
+def _parse_pick(raw, items):
+    """Resolve a user pick (numeric index or substring match)
+    against ``items``.
+
+    Returns the chosen item or ``None`` if no match.  Numeric
+    picks are 1-based.  String picks match case-insensitively
+    against ``str(item)``; for tuples, the *first* element is
+    matched (organ name, container name).
+    """
+    if not raw or not raw.strip():
+        return None
+    raw = raw.strip().lower()
+    # Numeric pick.
+    if raw.isdigit():
+        idx = int(raw) - 1
+        if 0 <= idx < len(items):
+            return items[idx]
+        return None
+    # String pick — substring match against str() of the first
+    # tuple element (or the whole value).
+    for item in items:
+        haystack = item[0] if isinstance(item, tuple) else item
+        if raw in str(haystack).lower():
+            return item
+    return None
+
+
+# ===================================================================
+# Incise picker
+# ===================================================================
+
+
 def _node_incise_location(caller, raw_string, **kwargs):
+    target = caller.ndb._operate_target
+    containers = _list_containers(target)
+    if not containers:
+        caller.msg("|rNo incisable locations on this target.|n")
+        return "node_top"
+    caller.ndb._operate_pickable = containers
+    listing = _render_numbered(
+        containers, lambda loc: loc.replace("_", " "),
+    )
     text = (
         "\n|wIncise location|n\n\n"
-        "Enter the body location to incise (e.g. chest, abdomen, head).\n"
-        "Underscores will be normalised from spaces automatically.\n\n"
-        "|wLocation|n (or |yx|n to cancel):"
+        "Pick a body location to incise:\n\n"
+        f"{listing}\n\n"
+        "  x. Cancel\n\n"
+        "|wWhich location?|n (number or name)"
     )
     options = ({"key": "_default", "goto": _process_incise_location},)
     return text, options
 
 
 def _process_incise_location(caller, raw_string, **kwargs):
-    if raw_string and raw_string.strip().lower() in ("x", "exit", "cancel"):
+    raw = (raw_string or "").strip()
+    if raw.lower() in ("x", "exit", "cancel"):
         return "node_top"
-    if not raw_string or not raw_string.strip():
+    if not raw:
         return None
-    location = raw_string.strip().lower().replace(" ", "_")
-    _add_step_to_chart(caller, "incise", {"location": location})
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [])
+    if pick is None:
+        caller.msg("|rPick a number from the list, or type the name.|n")
+        return None
+    _add_step_to_chart(caller, "incise", {"location": pick})
     return "node_top"
 
 
+# ===================================================================
+# Harvest picker
+# ===================================================================
+
+
 def _node_harvest_organ(caller, raw_string, **kwargs):
+    target = caller.ndb._operate_target
+    organs = _list_organs(target)
+    if not organs:
+        caller.msg("|rNo harvestable organs on this target.|n")
+        return "node_top"
+    caller.ndb._operate_pickable = organs
+    listing = _render_numbered(
+        organs,
+        lambda nc: f"{nc[0].replace('_', ' ').ljust(18)}  "
+                   f"|x({nc[1].replace('_', ' ')})|n",
+    )
     text = (
         "\n|wHarvest organ|n\n\n"
-        "Enter the organ name to harvest (e.g. heart, left lung, "
-        "left kidney).\n\n"
-        "|wOrgan|n (or |yx|n to cancel):"
+        "Pick an organ to harvest:\n\n"
+        f"{listing}\n\n"
+        "  x. Cancel\n\n"
+        "|wWhich organ?|n (number or name)"
     )
     options = ({"key": "_default", "goto": _process_harvest_organ},)
     return text, options
 
 
 def _process_harvest_organ(caller, raw_string, **kwargs):
-    if raw_string and raw_string.strip().lower() in ("x", "exit", "cancel"):
+    raw = (raw_string or "").strip()
+    if raw.lower() in ("x", "exit", "cancel"):
         return "node_top"
-    if not raw_string or not raw_string.strip():
+    if not raw:
         return None
-    organ = raw_string.strip().lower().replace(" ", "_")
-    _add_step_to_chart(caller, "harvest", {"organ_name": organ})
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [])
+    if pick is None:
+        caller.msg("|rPick a number from the list, or type the organ name.|n")
+        return None
+    organ_name = pick[0]  # First tuple element is the organ name.
+    _add_step_to_chart(caller, "harvest", {"organ_name": organ_name})
     return "node_top"
+
+
+# ===================================================================
+# Install picker — donor organ + target location
+# ===================================================================
 
 
 def _node_install_organ(caller, raw_string, **kwargs):
-    text = (
-        "\n|wInstall organ|n\n\n"
-        "Enter the donor-organ key from your inventory followed by "
-        "'in' and the target location.  Example:\n\n"
-        "  donor heart in chest\n\n"
-        "|wOrgan and location|n (or |yx|n to cancel):"
+    donors = _list_donor_organs(caller)
+    if not donors:
+        caller.msg(
+            "|rNo donor organs in your inventory.  Harvest one "
+            "first, then re-enter operate to install.|n"
+        )
+        return "node_top"
+    caller.ndb._operate_pickable = donors
+    listing = _render_numbered(
+        donors, lambda item_organ: item_organ[0].key,
     )
-    options = ({"key": "_default", "goto": _process_install_organ},)
+    text = (
+        "\n|wInstall organ — pick the donor|n\n\n"
+        "Pick which donor organ to install:\n\n"
+        f"{listing}\n\n"
+        "  x. Cancel\n\n"
+        "|wWhich donor?|n (number or name)"
+    )
+    options = ({"key": "_default", "goto": _process_install_donor},)
     return text, options
 
 
-def _process_install_organ(caller, raw_string, **kwargs):
-    if raw_string and raw_string.strip().lower() in ("x", "exit", "cancel"):
+def _process_install_donor(caller, raw_string, **kwargs):
+    raw = (raw_string or "").strip()
+    if raw.lower() in ("x", "exit", "cancel"):
         return "node_top"
-    if not raw_string or not raw_string.strip():
+    if not raw:
         return None
-    raw = raw_string.strip()
-    if " in " not in raw:
-        caller.msg("|rExpected: <organ key> in <location>|n")
+    donors = caller.ndb._operate_pickable or []
+    # _parse_pick matches against the FIRST tuple element (Item key).
+    # We need to match against item.key text; adapt by building a
+    # name-keyed list for parse_pick.
+    name_pairs = [
+        (item.key, (item, name)) for item, name in donors
+    ]
+    if raw.isdigit():
+        idx = int(raw) - 1
+        if not (0 <= idx < len(name_pairs)):
+            caller.msg("|rOut of range.|n")
+            return None
+        pick = name_pairs[idx][1]
+    else:
+        pick = None
+        for key, payload in name_pairs:
+            if raw.lower() in key.lower():
+                pick = payload
+                break
+        if pick is None:
+            caller.msg("|rNo donor matches.|n")
+            return None
+    item, organ_name = pick
+    caller.ndb._operate_install_donor = item.key
+    # Now ask for the install location.
+    return "node_install_location"
+
+
+def _node_install_location(caller, raw_string, **kwargs):
+    target = caller.ndb._operate_target
+    containers = _list_containers(target)
+    donor_key = getattr(caller.ndb, "_operate_install_donor", "?")
+    if not containers:
+        caller.msg("|rNo install locations on this target.|n")
+        return "node_top"
+    caller.ndb._operate_pickable = containers
+    listing = _render_numbered(
+        containers, lambda loc: loc.replace("_", " "),
+    )
+    text = (
+        f"\n|wInstall {donor_key} — pick the location|n\n\n"
+        f"Pick where to install {donor_key}:\n\n"
+        f"{listing}\n\n"
+        "  x. Cancel\n\n"
+        "|wWhich location?|n (number or name)"
+    )
+    options = ({"key": "_default", "goto": _process_install_location},)
+    return text, options
+
+
+def _process_install_location(caller, raw_string, **kwargs):
+    raw = (raw_string or "").strip()
+    if raw.lower() in ("x", "exit", "cancel"):
+        return "node_top"
+    if not raw:
         return None
-    organ_key, _, location = raw.partition(" in ")
-    organ_key = organ_key.strip().lower()
-    location = location.strip().lower().replace(" ", "_")
-    if not organ_key or not location:
-        caller.msg("|rBoth organ key and location are required.|n")
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [])
+    if pick is None:
+        caller.msg("|rPick a number or location name.|n")
         return None
-    _add_step_to_chart(caller, "install",
-                       {"organ_item_key": organ_key, "location": location})
+    donor_key = getattr(caller.ndb, "_operate_install_donor", None)
+    if not donor_key:
+        caller.msg("|rDonor selection lost; please retry from the top.|n")
+        return "node_top"
+    _add_step_to_chart(
+        caller, "install",
+        {"organ_item_key": donor_key, "location": pick},
+    )
     return "node_top"
 
 
+# ===================================================================
+# Suture picker
+# ===================================================================
+
+
 def _node_suture_location(caller, raw_string, **kwargs):
+    target = caller.ndb._operate_target
+    open_locs = _list_open_incisions(target)
+    if not open_locs:
+        text = (
+            "\n|wSuture|n\n\n"
+            "No incisions currently open on this target.  Adding "
+            "a 'suture all' step anyway — useful if your chart "
+            "incises before suturing.\n\n"
+            "  |wEnter|n - add 'suture all' step\n"
+            "  |wx|n     - Cancel"
+        )
+        options = (
+            {"key": "_default", "goto": _process_suture_no_open},
+        )
+        return text, options
+    options_list = [("|wall|n", "all open incisions")] + [
+        (loc.replace("_", " "), loc) for loc in open_locs
+    ]
+    caller.ndb._operate_pickable = options_list
+    listing = "\n".join(
+        f"  {idx}. {label}"
+        for idx, (label, _val) in enumerate(options_list, start=1)
+    )
     text = (
-        "\n|wSuture location|n\n\n"
-        "Enter the location to suture, or press Enter to suture "
-        "all open incisions.\n\n"
-        "|wLocation|n (or |yx|n to cancel):"
+        "\n|wSuture|n\n\n"
+        "Pick what to suture:\n\n"
+        f"{listing}\n\n"
+        "  x. Cancel\n\n"
+        "|wWhich?|n (number or name)"
     )
     options = ({"key": "_default", "goto": _process_suture_location},)
     return text, options
 
 
-def _process_suture_location(caller, raw_string, **kwargs):
-    if raw_string and raw_string.strip().lower() in ("x", "exit", "cancel"):
+def _process_suture_no_open(caller, raw_string, **kwargs):
+    raw = (raw_string or "").strip().lower()
+    if raw in ("x", "exit", "cancel"):
         return "node_top"
+    _add_step_to_chart(caller, "suture", {})
+    return "node_top"
+
+
+def _process_suture_location(caller, raw_string, **kwargs):
     raw = (raw_string or "").strip()
-    args = {}
-    if raw:
-        args["location"] = raw.lower().replace(" ", "_")
+    if raw.lower() in ("x", "exit", "cancel"):
+        return "node_top"
+    if not raw:
+        return None
+    options_list = caller.ndb._operate_pickable or []
+    # Numeric index.
+    if raw.isdigit():
+        idx = int(raw) - 1
+        if not (0 <= idx < len(options_list)):
+            caller.msg("|rOut of range.|n")
+            return None
+        _label, val = options_list[idx]
+    else:
+        # Substring against display label.
+        match = None
+        for label, val in options_list:
+            if raw.lower() in label.lower():
+                match = val
+                break
+        if match is None:
+            caller.msg("|rNo match.|n")
+            return None
+        val = match
+    args = {} if val == "all open incisions" else {"location": val}
     _add_step_to_chart(caller, "suture", args)
     return "node_top"
 
@@ -662,6 +949,7 @@ class CmdOperate(Command):
                 "node_incise_location":  _node_incise_location,
                 "node_harvest_organ":    _node_harvest_organ,
                 "node_install_organ":    _node_install_organ,
+                "node_install_location": _node_install_location,
                 "node_suture_location":  _node_suture_location,
                 "node_view_chart":       _node_view_chart,
                 "node_commence":         _node_commence,
