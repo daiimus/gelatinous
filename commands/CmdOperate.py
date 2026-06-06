@@ -137,10 +137,14 @@ def _render_section(label: str, lines: list[str]) -> list[str]:
         out.append(bot)
         return out
 
-    # Multi-line: branched tree.
+    # Multi-line: branched tree.  The bottom border of the label
+    # box gets a ``  │`` tail so the vertical connector lines up
+    # with the ``┬`` glyph on the middle-row branch above and the
+    # ``├`` / ``└`` glyphs on the subsequent rows below.  Mirrors
+    # ``armor comprehensive``'s ``loc_box_bot + "  │"`` line.
     out.append(top)
     out.append(f"{mid}{JOIN_T} {lines[0]}")
-    out.append(bot)
+    out.append(f"{bot}  │")
     for line in lines[1:-1]:
         out.append(f"{EMPTY_GUTTER}{JOIN_MID} {line}")
     out.append(f"{EMPTY_GUTTER}{JOIN_END} {lines[-1]}")
