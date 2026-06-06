@@ -930,16 +930,36 @@ def _resolve_amputate(actor, target, *, location: str, **_) -> None:
         and getattr(target.medical_state, "organs", None)
     )
     if is_living:
-        from typeclasses.items import apply_sever_to_character
-        try:
-            appendage = apply_sever_to_character(
-                target, location, injury_type="cut",
-            )
-        except Exception as exc:
-            actor.msg(
-                f"The cut cannot proceed: {exc}"
-            )
-            return
+        if location == "head":
+            # Decapitation has its own pipeline.  The limb-severance
+            # chain map has no "head" entry, so routing head through
+            # ``apply_sever_to_character`` only zeros head-container
+            # organs (brain, eyes) — the cervical_spine sits in
+            # container "neck" and ``is_dead()`` keys off
+            # ``neck_integrity``, so the patient ends up unconscious
+            # but alive.  ``spawn_severed_head_for_living`` uses the
+            # species head-cluster (which includes "neck") so the
+            # spine collapses and ``apply_vital_consequences`` below
+            # triggers death.  Also yields a proper ``SeveredHead``.
+            from typeclasses.items import spawn_severed_head_for_living
+            try:
+                appendage = spawn_severed_head_for_living(
+                    target, injury_type="cut",
+                )
+            except Exception as exc:
+                actor.msg(f"The cut cannot proceed: {exc}")
+                return
+        else:
+            from typeclasses.items import apply_sever_to_character
+            try:
+                appendage = apply_sever_to_character(
+                    target, location, injury_type="cut",
+                )
+            except Exception as exc:
+                actor.msg(
+                    f"The cut cannot proceed: {exc}"
+                )
+                return
     else:
         # Corpse-shaped target.
         from typeclasses.items import apply_sever_to_corpse
