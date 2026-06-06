@@ -328,6 +328,17 @@ class CommenceChartRunner(TestCase):
 
     def _chart_target_with_steps(self, *verb_args):
         target = _target()
+        # Stub a snapshot so harvest args can resolve cleanly —
+        # ``_resolve_step_args`` reads it to find each organ's
+        # container.  Heart at chest is enough to cover the
+        # tests in this class.
+        target.get_medical_snapshot = lambda: {
+            "organs": {
+                "heart": {
+                    "container": "chest", "display_location": "chest",
+                },
+            },
+        }
         chart = charts.new_chart(_surgeon())
         for verb, args in verb_args:
             charts.add_step(chart, verb, args)
@@ -436,6 +447,99 @@ class CommenceChartRunner(TestCase):
 # ===================================================================
 # Interrupt path
 # ===================================================================
+
+
+class ResolveStepArgs(TestCase):
+    """The chart stores user-typed intent (e.g.
+    ``{"organ_name": "heart"}``) but the resolvers want richer
+    kwargs (``organ_name`` + ``location`` for harvest, an actual
+    item object for install).  ``_resolve_step_args`` translates
+    chart args to resolver kwargs at dispatch time.
+
+    This was the failure mode that broke auto-chaining in the
+    initial PR-OP1.1 ship — without the translation, harvest's
+    resolver raised TypeError ('missing required keyword argument
+    location') inside the procedure callback, the exception killed
+    the callback before the on_complete hook fired, and the chain
+    died silently.
+    """
+
+    def test_incise_passes_location_through(self):
+        from world.medical.charts import _resolve_step_args
+        result = _resolve_step_args(
+            "incise", {"location": "chest"}, target=None, actor=None,
+        )
+        self.assertEqual(result, {"location": "chest"})
+
+    def test_harvest_resolves_container_from_snapshot(self):
+        from world.medical.charts import _resolve_step_args
+        target = SimpleNamespace()
+        target.get_medical_snapshot = lambda: {
+            "organs": {
+                "heart": {
+                    "container": "chest",
+                    "display_location": "chest",
+                },
+            },
+        }
+        result = _resolve_step_args(
+            "harvest", {"organ_name": "heart"},
+            target=target, actor=None,
+        )
+        self.assertEqual(
+            result, {"organ_name": "heart", "location": "chest"}
+        )
+
+    def test_harvest_missing_organ_raises(self):
+        from world.medical.charts import (
+            _resolve_step_args, _StepResolutionError,
+        )
+        target = SimpleNamespace()
+        target.get_medical_snapshot = lambda: {"organs": {}}
+        with self.assertRaises(_StepResolutionError):
+            _resolve_step_args(
+                "harvest", {"organ_name": "ghost_organ"},
+                target=target, actor=None,
+            )
+
+    def test_install_finds_organ_item_in_actor_inventory(self):
+        from world.medical.charts import _resolve_step_args
+        donor = SimpleNamespace(key="donor heart")
+        actor = SimpleNamespace(contents=[donor])
+        result = _resolve_step_args(
+            "install",
+            {"organ_item_key": "heart", "location": "chest"},
+            target=None, actor=actor,
+        )
+        self.assertEqual(result["location"], "chest")
+        self.assertIs(result["organ_item"], donor)
+
+    def test_install_missing_donor_raises(self):
+        from world.medical.charts import (
+            _resolve_step_args, _StepResolutionError,
+        )
+        actor = SimpleNamespace(contents=[])
+        with self.assertRaises(_StepResolutionError):
+            _resolve_step_args(
+                "install",
+                {"organ_item_key": "heart", "location": "chest"},
+                target=None, actor=actor,
+            )
+
+    def test_suture_with_location_passes_through(self):
+        from world.medical.charts import _resolve_step_args
+        result = _resolve_step_args(
+            "suture", {"location": "chest"},
+            target=None, actor=None,
+        )
+        self.assertEqual(result, {"location": "chest"})
+
+    def test_suture_without_location_returns_empty(self):
+        from world.medical.charts import _resolve_step_args
+        result = _resolve_step_args(
+            "suture", {}, target=None, actor=None,
+        )
+        self.assertEqual(result, {})
 
 
 class InterruptMarksRunningStepFailed(TestCase):

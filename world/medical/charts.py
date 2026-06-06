@@ -369,6 +369,22 @@ def commence_chart(target, actor) -> Optional[dict]:
         save_chart(target, chart)
         return commence_chart(target, actor)
 
+    # Translate the chart-stored verb args into the kwargs the
+    # resolver actually expects.  Chart authoring captures the
+    # player's intent ("harvest brain"); the resolver dispatch
+    # needs richer context (container location for harvest /
+    # install, the actual item object for install).  Resolving
+    # at dispatch time — rather than at chart-author time —
+    # means a chart authored before a transplant donor was on
+    # hand can still find it later when the surgeon picks it up.
+    try:
+        resolved_args = _resolve_step_args(verb, args, target, actor)
+    except _StepResolutionError as exc:
+        step["status"] = FAILED
+        step["outcome"] = f"resolution error: {exc}"
+        save_chart(target, chart)
+        return commence_chart(target, actor)
+
     step["status"] = RUNNING
     chart["status"] = IN_PROGRESS
     save_chart(target, chart)
@@ -393,7 +409,7 @@ def commence_chart(target, actor) -> Optional[dict]:
     try:
         start_procedure(
             target, verb=verb, actor=actor,
-            on_complete=_advance, **args,
+            on_complete=_advance, **resolved_args,
         )
     except Exception as exc:
         # Dispatch failure (e.g. surgeon dropped their kit between
@@ -406,3 +422,85 @@ def commence_chart(target, actor) -> Optional[dict]:
         return commence_chart(target, actor)
 
     return step
+
+
+class _StepResolutionError(Exception):
+    """Raised when a chart step's args can't be resolved into the
+    kwargs the resolver expects (e.g. organ not in snapshot, donor
+    organ no longer in surgeon's inventory).  Caller handles by
+    marking the step ``FAILED`` and advancing to the next."""
+
+
+def _resolve_step_args(verb: str, chart_args: dict, target, actor) -> dict:
+    """Translate chart-stored args to resolver kwargs.
+
+    The chart captures user intent ("harvest brain") and stores
+    minimal args (``organ_name``).  Resolvers want richer context:
+
+    * ``incise``  — needs ``location``; passes through unchanged
+    * ``harvest`` — needs ``organ_name`` + ``location`` (container);
+      we look up the container from the target's organ snapshot
+    * ``install`` — needs ``organ_item`` (object) + ``location``;
+      we look up the organ item from the actor's inventory by key
+      and pass through the chart's ``location``
+    * ``suture``  — optional ``location``; passes through
+
+    Raises :class:`_StepResolutionError` when a required lookup
+    fails so the chart runner can mark the step failed cleanly
+    and chain to the next step.
+    """
+    if verb == "incise":
+        if "location" not in chart_args:
+            raise _StepResolutionError("incise requires a location")
+        return {"location": chart_args["location"]}
+
+    if verb == "harvest":
+        organ_name = chart_args.get("organ_name")
+        if not organ_name:
+            raise _StepResolutionError("harvest requires an organ name")
+        # Resolve the container from the target's snapshot.  Falls
+        # back to organ_name as the location string if the snapshot
+        # doesn't carry it (defensive — the resolver gracefully
+        # handles that case).
+        from world.medical.procedures import get_organ_snapshot
+        snapshot = get_organ_snapshot(target)
+        organs = snapshot.get("organs") or {}
+        entry = organs.get(organ_name)
+        if entry is None or not hasattr(entry, "get"):
+            raise _StepResolutionError(
+                f"no organ {organ_name!r} on target"
+            )
+        container = entry.get("container") or organ_name
+        return {"organ_name": organ_name, "location": container}
+
+    if verb == "install":
+        organ_item_key = chart_args.get("organ_item_key")
+        location = chart_args.get("location")
+        if not organ_item_key or not location:
+            raise _StepResolutionError(
+                "install requires organ_item_key + location"
+            )
+        # Find the matching organ item in the actor's inventory.
+        # Case-insensitive substring match on key.
+        contents = getattr(actor, "contents", None) or ()
+        match = None
+        needle = organ_item_key.lower()
+        for obj in contents:
+            key = getattr(obj, "key", "")
+            if isinstance(key, str) and needle in key.lower():
+                match = obj
+                break
+        if match is None:
+            raise _StepResolutionError(
+                f"no donor organ matching {organ_item_key!r} in "
+                "your inventory"
+            )
+        return {"organ_item": match, "location": location}
+
+    if verb == "suture":
+        out = {}
+        if chart_args.get("location"):
+            out["location"] = chart_args["location"]
+        return out
+
+    raise _StepResolutionError(f"unknown verb {verb!r}")
