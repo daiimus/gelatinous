@@ -493,15 +493,21 @@ def _list_open_incisions(target):
 
 
 def _list_planned_incisions(caller):
-    """Return locations slated to be opened by pending chart steps.
+    """Return locations slated to have an open wound after pending
+    chart steps fire.
 
-    Walks the chart on the active target and returns
-    ``incise`` locations whose step is still in ``PENDING`` status.
-    Lets the suture picker include locations that *will* be open
-    by the time the suture step fires — important because the
-    chart authors planning a back-to-back ``incise → harvest →
-    suture`` chain has nothing currently open at the time they
-    pick the suture target.
+    Walks the chart on the active target and returns locations
+    from pending ``incise`` *and* ``amputate`` steps — both leave
+    open wounds that need suturing.  Amputation stumps are
+    registered in the incisions list by ``_resolve_amputate`` so
+    the existing suture machinery handles them uniformly with
+    surgical openings.
+
+    Lets the suture picker include locations that *will* be
+    sutureable by the time the suture step fires — important for
+    chart-authoring flows like ``incise chest → harvest heart →
+    suture chest`` or ``amputate leg → suture leg`` where nothing
+    is currently open at chart-author time.
     """
     target = getattr(caller.ndb, "_operate_target", None)
     if target is None:
@@ -513,7 +519,7 @@ def _list_planned_incisions(caller):
     for step in chart.get("steps", []) or ():
         if step.get("status") != chart_lib.PENDING:
             continue
-        if step.get("verb") != "incise":
+        if step.get("verb") not in ("incise", "amputate"):
             continue
         loc = (step.get("args") or {}).get("location")
         if loc:

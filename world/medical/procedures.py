@@ -973,6 +973,12 @@ def _resolve_amputate(actor, target, *, location: str, **_) -> None:
             f"{location.replace('_', ' ')} cleanly at the joint."
         )
 
+    # Severance leaves an open stump — register it as an
+    # "incision" so the existing suture machinery can close it.
+    # Overloads the incisions list slightly but keeps the suture
+    # surface unified: any open wound at a location is sutureable.
+    open_incision(target, location, surgeon=actor)
+
     room = actor.location
     if room is not None:
         msg_room_identity(
