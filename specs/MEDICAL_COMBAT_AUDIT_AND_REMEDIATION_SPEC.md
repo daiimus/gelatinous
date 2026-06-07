@@ -44,6 +44,19 @@ remain the right next focus for an audit-aligned arc.
 The audit's Core Insight ("schema without consumers") still stands and
 sequences correctly: build substrate before wiring schema to it.
 
+**On the "unconsumed flag" findings** — the validation pass against
+current code (June 2026) confirmed all 13 of the Category B flag
+read-counts still hold: those flags really are sitting un-consumed by
+runtime code. But the framing was wrong to call them drift. They aren't
+half-finished code waiting for cleanup; they are **declarative metadata
+deliberately authored ahead of the consumer systems that will read them**,
+exactly as the Core Insight describes. The audit is acting as a
+substrate-readiness map: each flag advertises a design hook for a system
+that hasn't been scoped yet (movement policing, senses, chronic
+conditions, social policing, equipment-handling). Treat the audit doc as
+a *forward-looking design index*, not a bug list. The phased remediation
+plan still applies whenever any of those substrates does get scoped.
+
 ---
 
 ## Core Insight — Schema Without Consumers
@@ -121,12 +134,13 @@ the form of declarative metadata**.
 | Brain destruction → unconsciousness, not death | Yes | Yes (L732 "consciousness is unconsciousness, not death") | **Intentional** |
 | Brain destruction eventually kills via secondary bleeding | Yes (head wound → `BleedingCondition` → blood loss → `is_dead`) | Implicit | **Works** |
 | Kidney loss is fatal | **No** (`is_dead` never reads `blood_filtration`) | Schema says `total_loss_fatal: True` | **DRIFT** |
-| Comment above `LETHAL_CAPACITY_NAMES` "Keep in sync with is_dead()" | Misleading — it's actually a superset (adds `consciousness` for vital-location bias) | Spec clarifies | **Wording bug** |
+| Comment above `LETHAL_CAPACITY_NAMES` "Keep in sync with is_dead()" | Misleading — it's actually a superset (adds `consciousness` for vital-location bias) | Spec clarifies | **✅ RESOLVED** (Phase 1 Task 1 — comment at `world/medical/constants.py:273-279` now explicitly documents the union role) |
 
-**Action**: Rewrite the `LETHAL_CAPACITY_NAMES` comment to explicitly say
-"this is the union of `is_dead()` lethal capacities PLUS `consciousness`,
-which makes the head a vital target but is unconsciousness rather than
-death". This stops future devs from incorrectly "syncing" `consciousness`
+**Action**: ~~Rewrite the `LETHAL_CAPACITY_NAMES` comment to explicitly say~~
+~~"this is the union of `is_dead()` lethal capacities PLUS `consciousness`,~~
+~~which makes the head a vital target but is unconsciousness rather than~~
+~~death".~~ ✅ **Done.** The comment now explicitly states the
+union-of-lethal-and-targeting role and notes consciousness drives unconsciousness, not death. ~~This stops future devs from incorrectly "syncing" `consciousness`~~
 into `is_dead`. **Resolve kidney case** as a separate design call (below).
 
 ### Category B — Declarative Metadata Awaiting Substrate
@@ -207,7 +221,7 @@ as future work or "could be added".
 | **Conditions / `MedicalScript`** | 12-second per-character ticker, drives bleeding-out, pain decay, infection progression | Works. Calls `is_dead()` after each tick → triggers `at_death()` if conditions push body past threshold. This is the path that makes brain destruction *eventually* lethal. |
 | **Death Progression** (`typeclasses/death_progression.py`) | 360s revival window with 11 narrative messages; `_check_medical_revival_conditions` calls `is_dead()` to detect treatment success | Works, but doesn't check brain HP for revival blocking (per Category C). |
 | **Corpse** (`typeclasses/corpse.py`) | Death-time snapshot of `physical_description`, `longdesc_data`, `wounds_at_death`, `apparent_uid_at_death`, `signature_at_death`, medical snapshot | Works. Recently de-bugged (#319, #320, #323, #324). |
-| **Forensics** (`world/forensics.py`) | Reads corpse signature for autopsy; blood-pool extractor exists but has no command | Engine ready, blood-pool surface command outstanding (separate spec). |
+| **Forensics** (`world/forensics.py`) | Reads corpse signature for autopsy; blood-pool extractor exists but has no command | **Partially overtaken**: corpse-side surfaces shipped (`commands/forensics.py` carries `CmdAutopsy` / `CmdSever` / `CmdHarvest`, and the procedural surgery verbs read the same snapshots). Blood-pool surface command is still the outstanding piece — `extract_subject_from_blood_pool_incident` is engine-ready but has no player-facing command. |
 | **Hit Selection** (`select_hit_location`) | Data-driven from organ schema; vital-location bias from `_get_vital_locations` (which derives from `LETHAL_CAPACITY_NAMES`) | Works. |
 
 ### Category F — Architectural Tensions
@@ -247,7 +261,7 @@ as future work or "could be added".
 
 ## Drift Quick Reference (Headline Items)
 
-* `LETHAL_CAPACITY_NAMES` comment overstates synchrony with `is_dead`.
+* ~~`LETHAL_CAPACITY_NAMES` comment overstates synchrony with `is_dead`.~~ ✅ Resolved — comment now documents the union role.
 * `blood_filtration.total_loss_fatal` is data-true but code-false (kidney loss is "fatal" in spec, ignored in runtime).
 * `incapacitation_threshold` on `moving` is documented but never enforced.
 * `total_loss_penalty` on `sight`/`hearing` describes blindness/deafness; neither is produced as a condition.
