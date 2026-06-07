@@ -78,6 +78,20 @@ graph LR
 >
 > When Bruce walks into the Batcave in a tux, `get_display_name(Alfred)` hashes the bare signature, hits Entry A, returns `"Bruce"`. When he steps out in the suit, the same code hashes the costumed signature, hits Entry B, returns `"Batman"`. Alfred's `recall` surfaces "Batman, also known as Bruce" via `get_linked_aliases`. A stranger watching the same scene sees `"a tall figure in dark armor"` either way — no entries in their memory, no linkage, the sdesc renderer takes over.
 
+### Identity Across Surfaces (Propagation Rule)
+
+When a body is transformed — death, decapitation, limb severance, organ harvest, blood spilled, future cyberware harvested — the question that has historically prompted per-surface design decisions ("does this thing carry identity?") collapses to a single rule with a single exception:
+
+**Default — forensic chain only.** Every body-derived surface carries `apparent_uid_at_death` and `source_signature` stamped at the moment of transformation. Investigators reach the original character through `autopsy`, `sever`, blood-pool extraction, or any future tracing surface. Look-time recognition (the "this is someone I know" surface) does NOT fire for these — there's no face to recognise. Applies to: severed limbs (`Appendage`), harvested organs (`Organ`), blood pools, future cyberware items, and any future scene-attribution surface (graffiti spray, fingerprints, etc.).
+
+**Exception — the head carries the face.** `SeveredHead` is the only surface that propagates face-side identity (`sleeve_uid` + the full identity-signature axes a face contributes to) alongside the forensic chain. Look-time recognition fires on a severed head the same way it does on a live body: an observer who remembers the source character sees the assigned name; a stranger sees the head's sdesc. The body, post-decapitation, falls back to forensic-only — `Corpse.get_display_name` short-circuits tertiary recognition when `db.head_severed` is True, exactly because the face left with the head.
+
+**Why this is the only rule needed.** A corpse with an intact head is just the live-body case continuing post-death: face still visible, recognition still fires until decay obscures it. A corpse with a severed head is the default case (forensic-only) with the head as a separate carrier of face-side identity. No other transformation in the system propagates a face — limbs don't have one, organs don't have one, blood doesn't have one, a prosthetic arm doesn't have one. So no other surface needs face-side propagation.
+
+**When the rule will need a second exception.** A future "face-overlay" cyberware item — a synthetic mask that lets the wearer adopt someone else's apparent identity — would carry face-side identity *the wearer presents*, not the wearer's own. That's a second exception: a face that isn't tied to a sleeve, just worn. Mechanically it slots into the same overlay machinery `apply_severed_head_overlay` uses; design-wise it's a separate conversation about how it interacts with disguise, consent, and the identity-signature pipeline. Until it exists, the head stays the only exception.
+
+**Practical consequence for new surfaces.** Adding a body-derived surface means stamping `apparent_uid_at_death` and `source_signature` at the transformation event. No identity-pipeline change, no recognition-system change, no `_resolve_target` change. If the new surface should *also* participate in surgical / identity-pipeline target resolution (the way `Corpse` does and the way `Appendage` deliberately doesn't — see §Room-scoped item fallbacks → Detached-parts filter), that's a separate flag question, but it isn't an identity question.
+
 ---
 
 ## Short Description (sdesc) System
