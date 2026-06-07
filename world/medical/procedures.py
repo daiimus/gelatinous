@@ -180,11 +180,21 @@ def has_incision(target, location: str) -> bool:
     return location in state["incisions"]
 
 
-def open_incision(target, location: str, surgeon, tool=None) -> None:
+def open_incision(target, location: str, surgeon=None, tool=None) -> None:
     """Record a new incision at ``location``.
 
     Multiple simultaneous incisions are allowed — useful for
     thoracoabdominal procedures and other multi-cavity work.
+
+    ``surgeon`` is optional — defaults to ``None`` so combat-driven
+    severance (which calls this from inside
+    ``apply_sever_to_character`` / ``spawn_severed_head_for_living``
+    where the attacker isn't always a surgeon) can record an
+    incision without a surgical attribution.  The chart-driven path
+    in ``_resolve_amputate`` calls ``open_incision`` again after the
+    severance returns, overwriting with the actual surgeon as
+    ``opened_by`` — that's the right semantic since the field is
+    forensic-chain attribution.
     """
     state = _state(target)
     state["incisions"][location] = {

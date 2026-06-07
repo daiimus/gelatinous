@@ -329,6 +329,22 @@ class SpawnSeveredHeadForLivingTests(TestCase):
         spawn_severed_head_for_living(char)
         self.assertTrue(char.db.decapitation_pending)
 
+    def test_open_incision_recorded_at_head(self):
+        # Severance leaves a stump.  Recording the incision *inside*
+        # the spawn (rather than relying on every caller to do it)
+        # means the suture verb finds an open wound to close whether
+        # the decap came from combat (this is the only call) or from
+        # ``_resolve_amputate`` (which calls again afterward to
+        # attribute the surgeon as ``opened_by`` — both writes target
+        # the same location so the second wins on attribution).
+        char = _FakeCharacter(organs=_head_organs())
+        # Surgical state must exist for ``_state`` to lazy-init it.
+        char.db.surgical_state = None
+        char.ndb = SimpleNamespace(_last_damage_attacker=None)
+        spawn_severed_head_for_living(char)
+        incisions = char.db.surgical_state["incisions"]
+        self.assertIn("head", incisions)
+
     def test_vital_signs_recomputed(self):
         char = _FakeCharacter(organs=_head_organs())
         spawn_severed_head_for_living(char)

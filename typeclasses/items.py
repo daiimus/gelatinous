@@ -1899,6 +1899,20 @@ def spawn_severed_head_for_living(character, *, injury_type="cut"):
     # change regardless of caller.
     character.db.decapitation_pending = True
 
+    # Severance leaves an open stump at the cut point.  Recording it
+    # in ``surgical_state["incisions"]`` makes the suture verb work
+    # uniformly across combat-driven decap (which goes through here)
+    # and chart-driven amputation (which double-records via
+    # ``_resolve_amputate`` — second call overwrites with the
+    # surgeon as ``opened_by``, the right semantic).  Attacker
+    # attribution is forensic-only; ``opened_by`` is write-only state.
+    try:
+        from world.medical.procedures import open_incision
+        attacker = getattr(character.ndb, "_last_damage_attacker", None)
+        open_incision(character, "head", surgeon=attacker)
+    except Exception:
+        pass
+
     return head
 
 
@@ -2274,6 +2288,20 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
     if callable(update_vital_signs):
         update_vital_signs()
     character.save_medical_state()
+
+    # Severance leaves an open stump at the cut point.  Recording the
+    # incision here means the suture verb finds the same open wound
+    # whether the severance came from combat (which calls us
+    # directly via ``ArmorMixin.take_damage``) or from chart-driven
+    # amputation (``_resolve_amputate`` calls us, then double-records
+    # via its own ``open_incision`` to attribute the surgeon as
+    # ``opened_by``).  Attacker attribution is forensic-only here.
+    try:
+        from world.medical.procedures import open_incision
+        attacker = getattr(character.ndb, "_last_damage_attacker", None)
+        open_incision(character, container, surgeon=attacker)
+    except Exception:
+        pass
 
     detach_items_to_appendage(character, appendage, chain)
 
