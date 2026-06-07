@@ -161,6 +161,78 @@ class ComputeSeveredContainers(TestCase):
 
 
 # ---------------------------------------------------------------------
+# stump_stage_for_corpse — JIT decay → severed.py stage mapping
+# ---------------------------------------------------------------------
+
+
+class StumpStageForCorpse(TestCase):
+    """``stump_stage_for_corpse`` consults the corpse's *current* decay
+    tier on each call, so the renderer can pick the right stage at
+    look time without a write-back to the stored wound dict.  Lets a
+    fresh corpse that's severed-then-decayed render the correct tier
+    on subsequent looks — the JIT-feels contract.
+    """
+
+    def _corpse(self, decay_stage):
+        return SimpleNamespace(get_decay_stage=lambda: decay_stage)
+
+    def test_fresh_decay_maps_to_fresh_stage(self):
+        from world.medical.severance import stump_stage_for_corpse
+        self.assertEqual(
+            stump_stage_for_corpse(self._corpse("fresh")), "fresh",
+        )
+
+    def test_early_decay_still_maps_to_fresh_stage(self):
+        from world.medical.severance import stump_stage_for_corpse
+        self.assertEqual(
+            stump_stage_for_corpse(self._corpse("early")), "fresh",
+        )
+
+    def test_moderate_decay_maps_to_old_stage(self):
+        from world.medical.severance import stump_stage_for_corpse
+        self.assertEqual(
+            stump_stage_for_corpse(self._corpse("moderate")), "old",
+        )
+
+    def test_advanced_decay_maps_to_old_stage(self):
+        from world.medical.severance import stump_stage_for_corpse
+        self.assertEqual(
+            stump_stage_for_corpse(self._corpse("advanced")), "old",
+        )
+
+    def test_skeletal_decay_maps_to_old_stage(self):
+        from world.medical.severance import stump_stage_for_corpse
+        self.assertEqual(
+            stump_stage_for_corpse(self._corpse("skeletal")), "old",
+        )
+
+    def test_missing_decay_accessor_defaults_to_old(self):
+        # Defensive: severed.py "old" prose is safer than weeping
+        # prose on something whose decay we can't read.
+        from world.medical.severance import stump_stage_for_corpse
+        self.assertEqual(
+            stump_stage_for_corpse(SimpleNamespace()), "old",
+        )
+
+    def test_decay_accessor_raising_defaults_to_old(self):
+        # Defensive: corpse stubs or DB hiccups shouldn't crash the
+        # renderer; fall back to old prose.
+        from world.medical.severance import stump_stage_for_corpse
+        def raising_getter():
+            raise RuntimeError("DB hiccup")
+        target = SimpleNamespace(get_decay_stage=raising_getter)
+        self.assertEqual(stump_stage_for_corpse(target), "old")
+
+    def test_unknown_decay_tier_defaults_to_old(self):
+        # Defensive: unknown tier (a hypothetical future stage)
+        # falls back to old until the mapping table is extended.
+        from world.medical.severance import stump_stage_for_corpse
+        self.assertEqual(
+            stump_stage_for_corpse(self._corpse("mummified")), "old",
+        )
+
+
+# ---------------------------------------------------------------------
 # compute_cut_points
 # ---------------------------------------------------------------------
 

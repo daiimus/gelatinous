@@ -1735,29 +1735,22 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
         if wound.get("location") not in locs
     ]
     # Synthesized stump wound — single entry at the canonical sever
-    # location, regardless of head-cluster size.  Stage tracks the
-    # corpse's current decay tier so a freshly-killed corpse just
-    # severed reads as a raw weeping stump (severed.py "fresh") and
-    # an old corpse reads as the dried / desiccated prose
-    # ("old").  Two-tier mapping matches the existing severed.py
-    # cells; a finer gradient would need new stages.  Subsequent
-    # corpse-side suturing overrides this at render time via
-    # ``sutured_stumps`` (see ``Corpse.get_wound_descriptions_for_location``).
-    decay_to_stump_stage = {
-        "fresh":    "fresh",
-        "early":    "fresh",
-        "moderate": "old",
-        "advanced": "old",
-        "skeletal": "old",
-    }
-    decay_getter = getattr(corpse, "get_decay_stage", None)
-    decay_stage = decay_getter() if callable(decay_getter) else "fresh"
-    stump_stage = decay_to_stump_stage.get(decay_stage, "old")
+    # location, regardless of head-cluster size.  Stage at this
+    # moment is captured as a sever-time snapshot (useful for any
+    # forensics consumer that wants "what did this look like when
+    # severed"), but the corpse renderer ignores this stored stage
+    # for severance wounds and recomputes JIT via
+    # :func:`world.medical.severance.stump_stage_for_corpse` — so a
+    # fresh-then-decayed corpse renders the correct tier on each
+    # look without write-back.  Sutured stumps override at render
+    # time via ``sutured_stumps`` (see
+    # ``Corpse.get_wound_descriptions_for_location``).
+    from world.medical.severance import stump_stage_for_corpse
     remaining.append({
         "injury_type": "severed",
         "location": location_arg,
         "severity": "Critical",
-        "stage": stump_stage,
+        "stage": stump_stage_for_corpse(corpse),
         "organ": None,
         "organ_damage": {
             "current_hp": 0,

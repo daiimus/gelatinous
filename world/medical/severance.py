@@ -104,6 +104,49 @@ def compute_severed_containers(target) -> set:
 
 
 # ---------------------------------------------------------------------
+# Corpse stump prose stage
+# ---------------------------------------------------------------------
+
+
+# Two-tier mapping between the corpse's decay tier and the severed.py
+# prose stage for an unsutured stump.  Defined here so the JIT renderer
+# (``Corpse.get_wound_descriptions_for_location``) and the sever-time
+# writer (``apply_sever_to_corpse``) both consult the same table.
+_DECAY_TO_STUMP_STAGE = {
+    "fresh":    "fresh",
+    "early":    "fresh",
+    "moderate": "old",
+    "advanced": "old",
+    "skeletal": "old",
+}
+
+
+def stump_stage_for_corpse(corpse) -> str:
+    """Return the severed.py prose stage for ``corpse``'s current
+    decay tier — JIT computed.
+
+    Falls back to ``"old"`` when the corpse lacks a decay accessor
+    or returns an unknown tier (defensive — old prose is the safer
+    miss; weeping prose on a long-dead corpse would be jarring).
+
+    Consumed at render time by
+    :meth:`typeclasses.corpse.Corpse.get_wound_descriptions_for_location`
+    so a corpse severed when fresh and later decayed to ``advanced``
+    renders the dried-stump prose on subsequent looks, without any
+    write-back to the stored wound dict.  Wounds-as-time-stamped-state
+    + JIT presentation: forensics-friendly contract.
+    """
+    decay_getter = getattr(corpse, "get_decay_stage", None)
+    if not callable(decay_getter):
+        return "old"
+    try:
+        decay_stage = decay_getter() or "fresh"
+    except Exception:
+        return "old"
+    return _DECAY_TO_STUMP_STAGE.get(decay_stage, "old")
+
+
+# ---------------------------------------------------------------------
 # Cut-point computation
 # ---------------------------------------------------------------------
 

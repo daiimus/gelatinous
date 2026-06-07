@@ -489,16 +489,25 @@ class Corpse(IdentityBearerMixin, Item):
             unique_wounds.append(wound_data)
         relevant_wounds = unique_wounds
 
-        # Suture progression for corpse stumps — when ``sutured_stumps``
-        # records a treatment outcome at a severance location, override
-        # the wound's stored stage with the outcome-flavoured variant.
-        # Same pattern as the living-body renderer's ``_stump_stage``
-        # but applied at corpse render time (the live wound data on
-        # the corpse stays unchanged — this is a presentation overlay).
-        # Lets a surgeon's post-death suture work visibly progress the
-        # stump prose without mutating the death-preserved wound dict.
-        from world.medical.severance import normalize_sutured_stumps
+        # Severance-wound stage is JIT-computed at render time, not
+        # read off the stored dict.  Two ways the stage resolves:
+        #
+        # * **Sutured** — ``sutured_stumps`` carries an outcome at the
+        #   severance location → override to ``treated_<outcome>``.
+        # * **Unsutured** — recompute from the corpse's current decay
+        #   tier via ``stump_stage_for_corpse``.  A fresh corpse
+        #   severed-then-decayed renders the new tier on subsequent
+        #   looks (raw weeping → dried/desiccated as the corpse ages),
+        #   no write-back to the stored wound dict required.
+        #
+        # Non-severance wounds (bullet / cut / blunt / etc.) keep
+        # using the stored ``stage`` — those are death-preserved
+        # records of the killing injury, not actively evolving state.
+        from world.medical.severance import (
+            normalize_sutured_stumps, stump_stage_for_corpse,
+        )
         sutured = normalize_sutured_stumps(self)
+        current_decay_stump_stage = stump_stage_for_corpse(self)
 
         # Generate descriptions for each wound
         for wound_data in relevant_wounds:
@@ -506,17 +515,23 @@ class Corpse(IdentityBearerMixin, Item):
                 from world.medical.wounds import get_wound_description
 
                 # Default stage: the death-preserved value on the
-                # wound dict.  Severance wounds at sutured cut points
-                # are overridden to ``treated_<outcome>`` so corpse
-                # stumps progress visually after suture.
+                # wound dict.  Severance wounds get JIT-recomputed
+                # below so the rendered stage tracks current state
+                # (decay tier or suture progression).
                 render_stage = wound_data.get('stage', 'fresh')
-                if (wound_data.get('injury_type') == 'severed'
-                        and wound_data.get('location') in sutured):
-                    outcome = sutured.get(wound_data.get('location'))
-                    if outcome in ("success", "partial", "failure"):
-                        render_stage = f"treated_{outcome}"
+                if wound_data.get('injury_type') == 'severed':
+                    if wound_data.get('location') in sutured:
+                        outcome = sutured.get(wound_data.get('location'))
+                        if outcome in ("success", "partial", "failure"):
+                            render_stage = f"treated_{outcome}"
+                        else:
+                            render_stage = "treated"
                     else:
-                        render_stage = "treated"
+                        # JIT decay-derived stage — re-evaluated on
+                        # every look, so a corpse that decays after
+                        # severance renders the right tier without
+                        # any stored-state write-back.
+                        render_stage = current_decay_stump_stage
 
                 # Generate wound description using preserved data.
                 # Use the preserved wound stage so severed limbs render
