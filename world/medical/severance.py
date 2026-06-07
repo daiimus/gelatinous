@@ -123,18 +123,16 @@ _DECAY_TO_STUMP_STAGE = {
 
 def stump_stage_for_corpse(corpse) -> str:
     """Return the severed.py prose stage for ``corpse``'s current
-    decay tier — JIT computed.
+    decay tier.
 
     Falls back to ``"old"`` when the corpse lacks a decay accessor
     or returns an unknown tier (defensive — old prose is the safer
     miss; weeping prose on a long-dead corpse would be jarring).
 
-    Consumed at render time by
-    :meth:`typeclasses.corpse.Corpse.get_wound_descriptions_for_location`
-    so a corpse severed when fresh and later decayed to ``advanced``
-    renders the dried-stump prose on subsequent looks, without any
-    write-back to the stored wound dict.  Wounds-as-time-stamped-state
-    + JIT presentation: forensics-friendly contract.
+    Consumed by :func:`sync_severance_wound_stages` when refreshing
+    the stored stage on a corpse's severance wounds, and by
+    :func:`typeclasses.items.apply_sever_to_corpse` to set the
+    initial stored stage at sever time.
     """
     decay_getter = getattr(corpse, "get_decay_stage", None)
     if not callable(decay_getter):
@@ -144,6 +142,82 @@ def stump_stage_for_corpse(corpse) -> str:
     except Exception:
         return "old"
     return _DECAY_TO_STUMP_STAGE.get(decay_stage, "old")
+
+
+def severance_wound_stage_for(corpse, location: str) -> str:
+    """Return the *current correct* stored stage for a severance wound
+    on ``corpse`` at ``location``.
+
+    Resolution order:
+      1. ``sutured_stumps[location]`` → ``"treated_<outcome>"``
+         (or generic ``"treated"`` for unknown outcomes).
+      2. Otherwise decay-tier-derived from
+         :func:`stump_stage_for_corpse`.
+
+    Used by :func:`sync_severance_wound_stages` as the per-wound
+    target stage when walking ``wounds_at_death``.
+    """
+    sutured = normalize_sutured_stumps(corpse)
+    if location in sutured:
+        outcome = sutured.get(location)
+        if outcome in ("success", "partial", "failure"):
+            return f"treated_{outcome}"
+        return "treated"
+    return stump_stage_for_corpse(corpse)
+
+
+def sync_severance_wound_stages(corpse) -> bool:
+    """Refresh stored ``stage`` on every severance wound in
+    ``corpse.db.wounds_at_death`` to match current state.
+
+    The "current state" combines:
+      * Corpse decay tier (drives the fresh/old prose split for
+        untreated stumps).
+      * ``sutured_stumps`` mapping (overrides decay-derived stage with
+        a ``treated_<outcome>`` flavour for sutured cut points).
+
+    Event-driven contract: the stored ``stage`` on each severance
+    wound is treated as authoritative by readers (corpse renderer,
+    autopsy, anything formatting wound dicts).  This helper is the
+    single writer that keeps that contract honest.  Idempotent —
+    safe to call repeatedly; only mutates wounds whose stored stage
+    is already out of date.
+
+    Called from:
+      * :meth:`typeclasses.corpse.Corpse.return_appearance` (renderer)
+      * :func:`world.medical.procedures._resolve_suture` (post-write)
+      * Any future consumer that needs fresh stages without going
+        through the renderer.
+
+    Returns True if any wound was updated (useful for logging /
+    event hooks); False if everything was already current.
+    """
+    db = getattr(corpse, "db", None)
+    if db is None:
+        return False
+    wounds = getattr(db, "wounds_at_death", None)
+    if not wounds:
+        return False
+
+    changed = False
+    refreshed = list(wounds)
+    for i, wound in enumerate(refreshed):
+        if not hasattr(wound, "get"):
+            continue
+        if wound.get("injury_type") != "severed":
+            continue
+        location = wound.get("location")
+        if not location:
+            continue
+        target_stage = severance_wound_stage_for(corpse, location)
+        if wound.get("stage") != target_stage:
+            updated = dict(wound)
+            updated["stage"] = target_stage
+            refreshed[i] = updated
+            changed = True
+    if changed:
+        corpse.db.wounds_at_death = refreshed
+    return changed
 
 
 # ---------------------------------------------------------------------

@@ -900,6 +900,15 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
         for loc in just_treated:
             sutured[loc] = outcome
         target.db.sutured_stumps = sutured
+        # Corpse-shaped targets: refresh stored severance-wound stages
+        # so a subsequent render reads the ``treated_<outcome>`` value
+        # without round-tripping through the corpse renderer first.
+        # No-op for living targets (their stage routes through
+        # ``_stump_stage`` in ``get_character_wounds`` — no stored
+        # field to update).  Helper is defensive on missing
+        # ``wounds_at_death`` so it's safe to call unconditionally.
+        from world.medical.severance import sync_severance_wound_stages
+        sync_severance_wound_stages(target)
 
     seed_pain(target, closed[0], CONSCIOUS_PAIN_SEVERITY["suture"])
 

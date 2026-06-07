@@ -233,6 +233,189 @@ class StumpStageForCorpse(TestCase):
 
 
 # ---------------------------------------------------------------------
+# severance_wound_stage_for — per-wound stored-stage resolver
+# ---------------------------------------------------------------------
+
+
+class SeveranceWoundStageFor(TestCase):
+    """Resolution table for the *correct stored stage* at any moment.
+    Combines suture state with decay tier — the same logic
+    ``sync_severance_wound_stages`` writes back onto wound dicts.
+    """
+
+    def _corpse(self, decay_stage="fresh", sutured_stumps=None):
+        return SimpleNamespace(
+            get_decay_stage=lambda: decay_stage,
+            db=SimpleNamespace(sutured_stumps=sutured_stumps),
+        )
+
+    def test_unsutured_fresh_corpse_returns_fresh(self):
+        from world.medical.severance import severance_wound_stage_for
+        self.assertEqual(
+            severance_wound_stage_for(self._corpse("fresh"), "head"),
+            "fresh",
+        )
+
+    def test_unsutured_decayed_corpse_returns_old(self):
+        from world.medical.severance import severance_wound_stage_for
+        self.assertEqual(
+            severance_wound_stage_for(self._corpse("advanced"), "head"),
+            "old",
+        )
+
+    def test_sutured_overrides_decay(self):
+        # Even on a long-dead corpse, a sutured stump renders the
+        # treatment outcome — sutured wins over decay.
+        from world.medical.severance import severance_wound_stage_for
+        target = self._corpse(
+            "skeletal",
+            sutured_stumps={"head": "success"},
+        )
+        self.assertEqual(
+            severance_wound_stage_for(target, "head"), "treated_success",
+        )
+
+    def test_partial_outcome_routes_to_treated_partial(self):
+        from world.medical.severance import severance_wound_stage_for
+        target = self._corpse(
+            "fresh",
+            sutured_stumps={"left_arm": "partial"},
+        )
+        self.assertEqual(
+            severance_wound_stage_for(target, "left_arm"),
+            "treated_partial",
+        )
+
+    def test_failure_outcome_routes_to_treated_failure(self):
+        from world.medical.severance import severance_wound_stage_for
+        target = self._corpse(
+            "fresh",
+            sutured_stumps={"left_arm": "failure"},
+        )
+        self.assertEqual(
+            severance_wound_stage_for(target, "left_arm"),
+            "treated_failure",
+        )
+
+    def test_unknown_outcome_routes_to_generic_treated(self):
+        # Legacy / corrupted data falls back to the generic
+        # ``treated`` stage rather than crashing.
+        from world.medical.severance import severance_wound_stage_for
+        target = self._corpse(
+            "fresh",
+            sutured_stumps={"head": "mystery"},
+        )
+        self.assertEqual(
+            severance_wound_stage_for(target, "head"), "treated",
+        )
+
+
+# ---------------------------------------------------------------------
+# sync_severance_wound_stages — event-driven stored-stage refresh
+# ---------------------------------------------------------------------
+
+
+class SyncSeveranceWoundStages(TestCase):
+    """Event-driven write-back contract: stored ``stage`` on
+    severance wounds tracks current corpse state, refreshed at the
+    suture write event and corpse render event."""
+
+    def _corpse(self, *, decay_stage="fresh", sutured_stumps=None,
+                wounds=None):
+        target = SimpleNamespace(get_decay_stage=lambda: decay_stage)
+        target.db = SimpleNamespace(
+            sutured_stumps=sutured_stumps,
+            wounds_at_death=wounds or [],
+        )
+        return target
+
+    def test_no_wounds_returns_false(self):
+        from world.medical.severance import sync_severance_wound_stages
+        target = self._corpse(wounds=None)
+        self.assertFalse(sync_severance_wound_stages(target))
+
+    def test_already_current_returns_false(self):
+        from world.medical.severance import sync_severance_wound_stages
+        target = self._corpse(
+            decay_stage="fresh",
+            wounds=[
+                {"injury_type": "severed", "location": "head",
+                 "stage": "fresh"},
+            ],
+        )
+        self.assertFalse(sync_severance_wound_stages(target))
+
+    def test_stale_decay_stage_updated(self):
+        # Corpse stored "fresh" at sever time, then decayed.  Sync
+        # writes back "old".
+        from world.medical.severance import sync_severance_wound_stages
+        target = self._corpse(
+            decay_stage="advanced",
+            wounds=[
+                {"injury_type": "severed", "location": "head",
+                 "stage": "fresh"},
+            ],
+        )
+        self.assertTrue(sync_severance_wound_stages(target))
+        self.assertEqual(
+            target.db.wounds_at_death[0]["stage"], "old",
+        )
+
+    def test_suture_writes_treated_outcome(self):
+        # Sutured + decayed corpse: sutured wins, writes back the
+        # outcome-flavoured stage.
+        from world.medical.severance import sync_severance_wound_stages
+        target = self._corpse(
+            decay_stage="advanced",
+            sutured_stumps={"head": "success"},
+            wounds=[
+                {"injury_type": "severed", "location": "head",
+                 "stage": "old"},
+            ],
+        )
+        self.assertTrue(sync_severance_wound_stages(target))
+        self.assertEqual(
+            target.db.wounds_at_death[0]["stage"], "treated_success",
+        )
+
+    def test_non_severance_wounds_untouched(self):
+        # Bullet / cut / blunt wounds keep their death-preserved
+        # stage — they're records of the killing injury, not
+        # evolving state.
+        from world.medical.severance import sync_severance_wound_stages
+        target = self._corpse(
+            decay_stage="advanced",
+            wounds=[
+                {"injury_type": "bullet", "location": "chest",
+                 "stage": "old"},
+                {"injury_type": "cut", "location": "left_arm",
+                 "stage": "fresh"},
+            ],
+        )
+        self.assertFalse(sync_severance_wound_stages(target))
+        # Same stages back.
+        self.assertEqual(
+            target.db.wounds_at_death[0]["stage"], "old",
+        )
+        self.assertEqual(
+            target.db.wounds_at_death[1]["stage"], "fresh",
+        )
+
+    def test_idempotent_repeated_calls(self):
+        # Second call after a successful sync should be a no-op.
+        from world.medical.severance import sync_severance_wound_stages
+        target = self._corpse(
+            decay_stage="advanced",
+            wounds=[
+                {"injury_type": "severed", "location": "head",
+                 "stage": "fresh"},
+            ],
+        )
+        self.assertTrue(sync_severance_wound_stages(target))
+        self.assertFalse(sync_severance_wound_stages(target))
+
+
+# ---------------------------------------------------------------------
 # compute_cut_points
 # ---------------------------------------------------------------------
 

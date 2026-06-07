@@ -489,63 +489,53 @@ class Corpse(IdentityBearerMixin, Item):
             unique_wounds.append(wound_data)
         relevant_wounds = unique_wounds
 
-        # Severance-wound stage is JIT-computed at render time, not
-        # read off the stored dict.  Two ways the stage resolves:
-        #
-        # * **Sutured** — ``sutured_stumps`` carries an outcome at the
-        #   severance location → override to ``treated_<outcome>``.
-        # * **Unsutured** — recompute from the corpse's current decay
-        #   tier via ``stump_stage_for_corpse``.  A fresh corpse
-        #   severed-then-decayed renders the new tier on subsequent
-        #   looks (raw weeping → dried/desiccated as the corpse ages),
-        #   no write-back to the stored wound dict required.
-        #
-        # Non-severance wounds (bullet / cut / blunt / etc.) keep
-        # using the stored ``stage`` — those are death-preserved
-        # records of the killing injury, not actively evolving state.
-        from world.medical.severance import (
-            normalize_sutured_stumps, stump_stage_for_corpse,
-        )
-        sutured = normalize_sutured_stumps(self)
-        current_decay_stump_stage = stump_stage_for_corpse(self)
+        # Event-driven sync: refresh the stored severance-wound
+        # stages against current state (decay tier + sutured_stumps)
+        # before reading.  Suture writes also trigger this from
+        # ``_resolve_suture``, so most renders are a no-op (nothing
+        # changed since the last sync).  Renderer then trusts
+        # ``wound_data["stage"]`` directly — no JIT recomputation,
+        # no override.
+        from world.medical.severance import sync_severance_wound_stages
+        sync_severance_wound_stages(self)
+        # ``wounds_at_death`` may have been reassigned in place;
+        # re-read so ``relevant_wounds`` reflects the synced values.
+        wounds_at_death = self.db.wounds_at_death or []
+        relevant_wounds = wounds_at_death
+        if location:
+            relevant_wounds = [
+                w for w in wounds_at_death
+                if w.get('location') == location
+            ]
+        # Re-apply the dedupe pass against the freshly-synced list.
+        seen_keys = set()
+        unique_wounds = []
+        for wound_data in relevant_wounds:
+            key = (
+                wound_data.get('injury_type'),
+                wound_data.get('location'),
+                wound_data.get('stage'),
+            )
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            unique_wounds.append(wound_data)
+        relevant_wounds = unique_wounds
 
-        # Generate descriptions for each wound
         for wound_data in relevant_wounds:
             try:
                 from world.medical.wounds import get_wound_description
 
-                # Default stage: the death-preserved value on the
-                # wound dict.  Severance wounds get JIT-recomputed
-                # below so the rendered stage tracks current state
-                # (decay tier or suture progression).
-                render_stage = wound_data.get('stage', 'fresh')
-                if wound_data.get('injury_type') == 'severed':
-                    if wound_data.get('location') in sutured:
-                        outcome = sutured.get(wound_data.get('location'))
-                        if outcome in ("success", "partial", "failure"):
-                            render_stage = f"treated_{outcome}"
-                        else:
-                            render_stage = "treated"
-                    else:
-                        # JIT decay-derived stage — re-evaluated on
-                        # every look, so a corpse that decays after
-                        # severance renders the right tier without
-                        # any stored-state write-back.
-                        render_stage = current_decay_stump_stage
-
-                # Generate wound description using preserved data.
-                # Use the preserved wound stage so severed limbs render
-                # severed-stage prose, destroyed organs render destroyed
-                # prose, etc. Pre-fix this hardcoded ``stage='old'``,
-                # which doesn't exist in any wound-message dict —
-                # ``get_wound_description`` then fell back to ``fresh``,
-                # making every corpse wound read as an active injury
-                # regardless of the actual state at death (issue #335).
+                # Generate wound description using stored stage —
+                # severance stages are kept current by the sync hook
+                # in ``return_appearance``; non-severance stages are
+                # death-preserved records of the killing injury and
+                # don't evolve.
                 wound_desc = get_wound_description(
                     injury_type=wound_data['injury_type'],
                     location=wound_data['location'],
                     severity=wound_data['severity'],
-                    stage=render_stage,
+                    stage=wound_data.get('stage', 'fresh'),
                     organ=wound_data.get('organ'),
                     character=self  # Pass corpse as character for any skintone processing
                 )
