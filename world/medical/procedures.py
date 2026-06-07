@@ -820,60 +820,19 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
     result = roll_procedure(actor, target)
     outcome = result["outcome"]
 
-    # Build the set of un-sutured stump *cut points* so the verb can
-    # progress stump prose even when no open incision exists at the
-    # location.  Covers combat-driven amputation (which bypasses the
-    # ``open_incision`` call in ``_resolve_amputate``) and any
-    # already-amputated state the chart can't infer from pending
-    # steps.  Already-sutured stumps are filtered out so the verb
-    # doesn't claim to suture them twice.
-    #
-    # Cluster + chain collapse mirrors the picker
-    # (``_list_severed_locations``) and the wound renderer
-    # (``get_character_wounds``) — one cut point per severance, not
-    # one per chain organ.  Without this, ``suture all`` after a
-    # decapitation would record both ``head`` and ``neck`` into
-    # ``sutured_stumps``, and a leg amputation would record the
-    # thigh + shin + foot triple.
-    state_for_stumps = getattr(target, "medical_state", None)
-    sutured_raw = getattr(target.db, "sutured_stumps", None) or ()
-    if hasattr(sutured_raw, "keys"):
-        already_sutured = set(sutured_raw.keys())
-    else:
-        already_sutured = set(sutured_raw)
-    severed_containers = set()
-    if state_for_stumps is not None and hasattr(state_for_stumps, "organs"):
-        for organ in state_for_stumps.organs.values():
-            if getattr(organ, "wound_stage", None) != "severed":
-                continue
-            container = getattr(organ, "container", None)
-            if container:
-                severed_containers.add(container)
-
-    species = getattr(target.db, "species", None)
-    head_cluster = frozenset()
-    if "head" in severed_containers:
-        try:
-            from world.anatomy import get_species_severed_head_locations
-            head_cluster = get_species_severed_head_locations(species)
-        except ImportError:
-            pass
-    try:
-        from world.anatomy import get_species_limb_parent
-        limb_parent = get_species_limb_parent(species)
-    except ImportError:
-        limb_parent = {}
-
-    untreated_stumps = set()
-    for container in severed_containers:
-        if head_cluster and container in head_cluster and container != "head":
-            continue
-        parent = limb_parent.get(container)
-        if parent and parent in severed_containers:
-            continue
-        if container in already_sutured:
-            continue
-        untreated_stumps.add(container)
+    # Un-sutured cut points come from ``compute_cut_points`` (one
+    # location per severance, after the head cluster / limb chain
+    # collapse) minus anything already in ``sutured_stumps``.  This
+    # lets the verb progress stump prose even without an open
+    # incision at the location — covers combat-driven amputation
+    # (which bypasses the ``open_incision`` call in
+    # ``_resolve_amputate``) and any prior amputation whose chart
+    # step the picker can't infer from.
+    from world.medical.severance import (
+        compute_cut_points, normalize_sutured_stumps,
+    )
+    sutured = normalize_sutured_stumps(target)
+    untreated_stumps = compute_cut_points(target) - set(sutured)
 
     if location is None:
         closed_incisions = close_all_incisions(target)
@@ -906,23 +865,17 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
     # world.medical.wounds.wound_descriptions) so the synthetic
     # cut-point wound emitted by ``get_character_wounds`` reads
     # "treated" once this fires.
+    # Walk closed locations for two side effects:
+    #   * Harvested-organ wound_stage transitions (fresh → treated)
+    #     so the wound renderer reads as "surgical opening crudely
+    #     bandaged" rather than "still wet and red".
+    #   * Stump recording — anything in ``untreated_stumps`` that
+    #     just got closed lands in ``sutured_stumps`` with the roll
+    #     outcome as its value, so the renderer picks the matching
+    #     flavoured variant subset (success / partial / failure).
     state = getattr(target, "medical_state", None)
     if state is not None and hasattr(state, "organs"):
-        # Normalise the storage to dict-shape so legacy list-shaped
-        # values from earlier PRs still load cleanly.  Unknown
-        # outcomes from the legacy path are imported as ``"success"``
-        # — a benign default that picks the cleanest variant subset.
-        raw = getattr(target.db, "sutured_stumps", None)
-        if raw is None:
-            sutured = {}
-        elif hasattr(raw, "keys"):
-            sutured = dict(raw)
-        else:
-            sutured = {loc: "success" for loc in raw}
-
-        sutured_dirty = False
         for loc in closed:
-            stump_at_loc = False
             for organ in state.organs.values():
                 container = getattr(organ, "container", None)
                 display = getattr(organ, "display_location", None)
@@ -931,26 +884,12 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
                 if getattr(organ, "injury_type", None) == "harvested":
                     if getattr(organ, "wound_stage", None) == "fresh":
                         organ.wound_stage = "treated"
-                # Detect severance: ``sever_character_body`` zeroes
-                # chain organs and sets ``wound_stage="severed"``.
-                # Any such organ whose container / display surface
-                # matches the closed incision marks this as a stump.
-                if getattr(organ, "wound_stage", None) == "severed":
-                    stump_at_loc = True
-            # Stump detection AT THIS LOCATION also catches the
-            # cut-point case where ``loc`` itself is the severed
-            # container but no organ's display surface matches it
-            # directly (cluster collapse — ``loc="head"`` while the
-            # organs route through ``display_location`` like
-            # "left_eye").  Falls back to membership in the
-            # untreated_stumps set computed above.
-            if not stump_at_loc and loc in untreated_stumps:
-                stump_at_loc = True
-            if stump_at_loc and loc not in sutured:
-                sutured[loc] = outcome
-                sutured_dirty = True
-        if sutured_dirty:
-            target.db.sutured_stumps = sutured
+
+    just_treated = set(closed) & untreated_stumps
+    if just_treated:
+        for loc in just_treated:
+            sutured[loc] = outcome
+        target.db.sutured_stumps = sutured
 
     seed_pain(target, closed[0], CONSCIOUS_PAIN_SEVERITY["suture"])
 

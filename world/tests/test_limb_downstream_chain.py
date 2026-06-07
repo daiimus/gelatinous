@@ -502,16 +502,19 @@ class CutPointFilterTests(TestCase):
         # Once the cut point is recorded in ``db.sutured_stumps`` (by
         # ``_resolve_suture`` closing an incision at a severance
         # location), the renderer transitions to a treated-flavoured
-        # stage so severed.py's bandaged-stump prose fires instead.
-        # Legacy list shape → generic ``"treated"`` (the success
-        # variant subset, preserving prior renderer behaviour).
+        # stage so severed.py's bandaged-stump prose fires.  Legacy
+        # list-shape storage normalises to a ``{loc: "success"}``
+        # dict via ``normalize_sutured_stumps`` — preserving the
+        # implicit success flavour the older renderer picked, but
+        # now routed explicitly so the variant subset is the curated
+        # ``treated_success`` set rather than the generic fallback.
         from world.medical.wounds import get_character_wounds
 
         char = self._char_with_severed_chain()
         char.db.sutured_stumps = ["left_shin"]
         wounds = get_character_wounds(char)
         shin_wounds = [w for w in wounds if w["location"] == "left_shin"]
-        self.assertEqual(shin_wounds[0]["stage"], "treated")
+        self.assertEqual(shin_wounds[0]["stage"], "treated_success")
 
     def test_stump_outcome_routes_to_flavoured_stage(self):
         # Dict-shape ``sutured_stumps`` records the suture outcome;

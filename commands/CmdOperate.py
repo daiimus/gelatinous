@@ -501,87 +501,22 @@ def _list_open_incisions(target):
         return []
 
 
-def _sutured_stump_locations(target):
-    """Return the location set already recorded in ``sutured_stumps``.
-
-    Backward-compat shim — accepts the legacy list shape
-    (``["head", "left_arm"]``) and the current dict shape
-    (``{"head": "success", "left_arm": "partial"}``).  The dict is
-    keyed by cut-point location; the value is the suture roll outcome
-    so the renderer can pick an outcome-flavoured variant.
-    """
-    raw = getattr(getattr(target, "db", None), "sutured_stumps", None) or ()
-    if hasattr(raw, "keys"):
-        return set(raw.keys())
-    return set(raw)
-
-
 def _list_severed_locations(target):
-    """Return the *cut-point* containers carrying a severed organ.
+    """Return un-sutured cut-point containers on ``target``, sorted.
 
-    Mirrors the cluster + chain collapse rules the wound renderer
-    (``get_character_wounds``) applies so the picker presents one
-    entry per severance, not one per organ:
-
-    * Head-cluster collapse — every cluster peer (face / neck / eyes /
-      ears / hair-or-fur / snout, species-dependent) rolls up into a
-      single ``head`` entry when the head was severed.  Otherwise a
-      decapitation reads as ``head (stump)`` *plus* ``neck (stump)``
-      from the cervical spine, confusing what's actually one wound.
-    * Limb-chain cut-point — when a downstream container's parent
-      (per species ``limb_parent``) is also severed, only the chain
-      root is offered.  Thigh amputation reads as ``left_thigh``,
-      not ``left_thigh`` + ``left_shin`` + ``left_foot``.
-
-    Already-sutured stumps are filtered out — the picker offers them
-    again only when the medical state knows they're still raw.
+    Thin wrapper that asks
+    :func:`world.medical.severance.compute_cut_points` for the full
+    cut-point set, subtracts the
+    :func:`world.medical.severance.normalize_sutured_stumps` keys, and
+    returns the remainder sorted.  Both helpers are the single source
+    of truth used by the wound renderer and the runtime suture verb
+    so the picker shows exactly what's actually un-treated.
     """
-    state = getattr(target, "medical_state", None)
-    if state is None or not hasattr(state, "organs"):
-        return []
-
-    severed_containers = set()
-    for organ in state.organs.values():
-        if (getattr(organ, "wound_stage", None) == "severed"
-                and getattr(organ, "current_hp", 0) <= 0):
-            container = getattr(organ, "container", None)
-            if container:
-                severed_containers.add(container)
-    if not severed_containers:
-        return []
-
-    species = getattr(getattr(target, "db", None), "species", None)
-
-    head_cluster = frozenset()
-    if "head" in severed_containers:
-        try:
-            from world.anatomy import get_species_severed_head_locations
-            head_cluster = get_species_severed_head_locations(species)
-        except ImportError:
-            pass
-
-    try:
-        from world.anatomy import get_species_limb_parent
-        limb_parent = get_species_limb_parent(species)
-    except ImportError:
-        limb_parent = {}
-
-    already_sutured = _sutured_stump_locations(target)
-    seen = set()
-    out = []
-    for container in severed_containers:
-        # Head-cluster collapse: keep only the ``head`` cut point.
-        if head_cluster and container in head_cluster and container != "head":
-            continue
-        # Limb-chain cut-point: skip downstream containers.
-        parent = limb_parent.get(container)
-        if parent and parent in severed_containers:
-            continue
-        if container in already_sutured or container in seen:
-            continue
-        seen.add(container)
-        out.append(container)
-    return sorted(out)
+    from world.medical.severance import (
+        compute_cut_points, normalize_sutured_stumps,
+    )
+    already_sutured = set(normalize_sutured_stumps(target))
+    return sorted(compute_cut_points(target) - already_sutured)
 
 
 def _list_planned_incisions(caller):

@@ -191,201 +191,104 @@ def _format_wound_grammar(description):
 def _stump_stage(character, location: str) -> str:
     """Return the renderer stage for a severance cut point.
 
-    Reads ``character.db.sutured_stumps`` and maps the recorded
-    suture outcome (``"success"`` / ``"partial"`` / ``"failure"``)
-    into one of three flavoured stages — ``"treated_success"`` /
+    Routes the recorded suture-roll outcome
+    (``"success"`` / ``"partial"`` / ``"failure"``) into one of
+    three flavoured stages — ``"treated_success"`` /
     ``"treated_partial"`` / ``"treated_failure"`` — so the renderer
-    picks variants that match the actual quality of the job.
-
-    Backward-compat: legacy entries stored as a flat list
-    (``["head", "left_arm"]``) treat membership as success — that's
-    the same flavour that was rendered before outcome propagation
-    landed.
-
-    No record at all → ``"fresh"`` (raw stump prose).
+    picks variants that match the actual quality of the job.  No
+    record at all → ``"fresh"`` (raw stump prose).  Backward-compat
+    is owned by :func:`world.medical.severance.normalize_sutured_stumps`.
     """
-    raw = getattr(
-        getattr(character, "db", None), "sutured_stumps", None,
-    )
-    if raw is None:
+    from world.medical.severance import normalize_sutured_stumps
+    sutured = normalize_sutured_stumps(character)
+    outcome = sutured.get(location)
+    if outcome is None:
         return "fresh"
-    if hasattr(raw, "get"):
-        outcome = raw.get(location)
-        if outcome is None:
-            return "fresh"
-        if outcome in ("success", "partial", "failure"):
-            return f"treated_{outcome}"
-        return "treated"
-    return "treated" if location in raw else "fresh"
+    if outcome in ("success", "partial", "failure"):
+        return f"treated_{outcome}"
+    return "treated"
 
 
 def get_character_wounds(character):
-    """
-    Analyze character's medical state and extract visible wounds.
-    Only returns wounds that are not concealed by clothing/armor.
-    Uses the flexible medical system to find actual damaged organs.
+    """Analyze ``character``'s medical state and extract visible wounds.
 
-    Cut-point filter (issue #339): when a limb chain has been severed
-    (e.g. shin + foot, thigh + shin + foot), the medical state has
-    every chain organ flagged ``wound_stage='severed'``. To avoid
-    rendering multiple severance wounds for what was a single cut, we
-    suppress downstream severance wounds — only the cut point shows.
-    A wound at ``left_foot`` is suppressed if ``left_shin`` (its parent
-    container per :data:`world.combat.constants.LIMB_PARENT`) is also
-    severed.
+    Returns wounds that are not concealed by clothing or armor.
 
-    Args:
-        character: Character object with medical state
+    Severance collapse: when a body region has been severed
+    (``wound_stage="severed"`` on its organs — set by
+    ``sever_character_body``), the per-organ wound rendering at every
+    container in the severed set is suppressed; the renderer emits
+    instead a single synthetic cut-point wound per severance.  Cut
+    points come from
+    :func:`world.medical.severance.compute_cut_points` — one entry
+    per anatomical severance after the head cluster and limb chain
+    collapse rules are applied.  This means a decapitation renders as
+    one ``head`` wound (no ``neck`` / ``left_eye`` / ear stragglers)
+    and a thigh amputation renders as one ``left_thigh`` wound (no
+    shin / foot stragglers).
 
-    Returns:
-        list: List of wound data dictionaries for visible wounds
+    The synthetic cut-point wound's ``stage`` comes from
+    :func:`_stump_stage` so a sutured stump reads as treated and an
+    untreated one reads as fresh.
     """
     wounds = []
 
-    # Get character's medical state
     try:
         medical_state = character.medical_state
     except AttributeError:
         return wounds
 
-    # First pass: build the set of severed containers so the cut-point
-    # filter knows whose parent is gone.
-    severed_containers = set()
-    for organ in medical_state.organs.values():
-        if (getattr(organ, "wound_stage", None) == "severed"
-                and organ.current_hp <= 0):
-            severed_containers.add(organ.container)
+    from world.medical.severance import (
+        compute_cut_points, compute_severed_containers,
+    )
+    severed_containers = compute_severed_containers(character)
+    cut_points = compute_cut_points(character)
 
-    # Issue #356 Phase 2: species-aware limb-parent map.  Rats have
-    # two-segment limbs (foreleg+forepaw, hindleg+hindpaw) so their
-    # parent map differs from human's three-segment chain.
-    species = getattr(character.db, "species", None) if hasattr(character, "db") else None
-    try:
-        from world.anatomy import get_species_limb_parent
-        LIMB_PARENT = get_species_limb_parent(species)
-    except ImportError:
-        LIMB_PARENT = {}
-
-    # Head-cluster cut-point: when the head has been severed off the
-    # body (decapitation — combat- or chart-driven), every cluster
-    # peer (face / neck / eyes / ears / hair-or-fur / snout, depending
-    # on species) collapses into a single wound at the "head" cut
-    # point.  The cluster forms a bundle, not a parent tree, so it
-    # doesn't fit the limb-parent shape — handled separately here.
-    # Detection: the brain sits in container="head" and gets zeroed
-    # by ``sever_character_body`` during head severance, so its
-    # presence in ``severed_containers`` is a reliable signal that
-    # the cluster left the body.
-    head_cluster_collapsed = "head" in severed_containers
-    if head_cluster_collapsed:
-        try:
-            from world.anatomy import get_species_severed_head_locations
-            head_cluster = get_species_severed_head_locations(species)
-        except ImportError:
-            head_cluster = frozenset()
-    else:
-        head_cluster = frozenset()
-
-    # Check all organs in the character's medical state for damage
     for organ_name, organ in medical_state.organs.items():
-        if organ.current_hp < organ.max_hp:  # Organ is damaged
-            # Issue #346: file the wound at the organ's display surface,
-            # not its bulk container. Most organs (heart, lungs, liver)
-            # have ``display_location == container``; sensory organs
-            # (left_eye, right_eye, left_ear, right_ear) route to a more
-            # specific longdesc surface so the destruction reads at the
-            # right anatomical line. Visibility / coverage checks still
-            # consult the container — clothing covers the bulk region.
-            location = getattr(organ, "display_location", None) or organ.container
+        if organ.current_hp >= organ.max_hp:
+            continue
+        # Issue #346: file the wound at the organ's display surface,
+        # not its bulk container.  Sensory organs (eyes, ears) route
+        # to specific longdesc surfaces; bulk organs share container.
+        # Visibility / coverage checks still consult the container —
+        # clothing covers the bulk region.
+        location = getattr(organ, "display_location", None) or organ.container
+        if not _is_wound_visible(character, organ.container):
+            continue
 
-            # Only include if wound location is visible (not concealed by clothing)
-            if _is_wound_visible(character, organ.container):
-                # Determine injury type and stage based on organ condition
-                injury_type = _determine_injury_type_from_organ(organ)
-                stage = _determine_wound_stage_from_organ(organ)
-                severity = _determine_severity_from_damage(organ)
+        # Severance collapse: every per-organ wound whose container
+        # is part of any severance is suppressed.  The synthetic
+        # cut-point wound emitted after this loop covers the
+        # severance anatomically — including peers like eyes / ears
+        # that route to a non-container display surface but still
+        # left with the head.  Same rule subsumes the old
+        # head-cluster + limb-chain dual-check.
+        if organ.container in severed_containers:
+            continue
 
-                # Head-cluster collapse — suppress every wound at any
-                # cluster location (including peers like "left_eye" /
-                # "neck" AND the head itself).  We emit one synthetic
-                # cut-point wound after the loop, matching the corpse
-                # path in ``apply_sever_to_corpse``.  Mirroring that
-                # contract here means the live-body view and the
-                # eventual corpse view render with the same prose
-                # ("the head has been taken off the body") instead of
-                # the live body listing every cluster organ's own
-                # injury separately ("the brain is destroyed", "the
-                # left eye is destroyed", …) — see preamble.
-                if head_cluster_collapsed and location in head_cluster:
-                    continue
-
-                # Limb-chain collapse — symmetric with head cluster:
-                # suppress every wound at any severed limb container
-                # (cut point, downstream chain, *and* pre-existing
-                # wounds that left with the limb).  One synthetic
-                # severance wound per chain root is emitted after the
-                # loop.  Without this, a severed humerus rendered as
-                # "blunt" / "left_humerus" / "severed" — keyed on
-                # the bone's own injury heuristic — while the corpse
-                # path lays down ``injury_type="severed"`` /
-                # ``organ=None`` and gets cleaner severance prose.
-                # Head-cluster locations are excluded so this doesn't
-                # double-handle anything the cluster block above
-                # already dropped.
-                if (location in severed_containers
-                        and location not in head_cluster):
-                    continue
-
-                wound_data = {
-                    'injury_type': injury_type,
-                    'location': location,
-                    'severity': severity,
-                    'stage': stage,
-                    'organ': organ_name,
-                    'organ_obj': organ
-                }
-                wounds.append(wound_data)
-
-    # Head-cluster collapse — emit the single synthetic cut-point
-    # wound that ``apply_sever_to_corpse`` would have laid down on the
-    # corpse-side path.  Same shape (injury_type="severed",
-    # location="head", organ=None) so the renderer routes to the
-    # severance prose ("the head has been taken off the body") rather
-    # than the per-organ-destruction prose the live body would have
-    # produced.  Visibility-gated on the head location so concealment
-    # via headwear (theoretical edge case) still works.
-    if head_cluster_collapsed and _is_wound_visible(character, "head"):
         wounds.append({
-            "injury_type": "severed",
-            "location": "head",
-            "severity": "Critical",
-            "stage": _stump_stage(character, "head"),
-            "organ": None,
-            "organ_obj": None,
+            'injury_type': _determine_injury_type_from_organ(organ),
+            'location': location,
+            'severity': _determine_severity_from_damage(organ),
+            'stage': _determine_wound_stage_from_organ(organ),
+            'organ': organ_name,
+            'organ_obj': organ,
         })
 
-    # Limb-chain cut-point wounds — symmetric with the head cluster
-    # synthesis above.  For every severed limb chain we emit exactly
-    # one wound at the chain root (the cut point: a severed container
-    # whose parent per ``LIMB_PARENT`` is either undefined or not
-    # itself severed).  Head-cluster containers are skipped so
-    # decapitation doesn't double-emit alongside the head wound.
-    # Same shape ``apply_sever_to_corpse`` writes so the live-body
-    # view and the corpse view render identical limb-severance prose.
-    for container in severed_containers:
-        if container in head_cluster:
-            continue
-        parent = LIMB_PARENT.get(container)
-        if parent and parent in severed_containers:
-            continue
-        if _is_wound_visible(character, container):
+    # One synthetic cut-point wound per severance.  Same shape
+    # ``apply_sever_to_corpse`` writes on the corpse path so the
+    # live-body view and the eventual corpse view render identical
+    # severance prose.  ``stage`` comes from ``_stump_stage`` so
+    # ``sutured_stumps`` outcome flavours the variant subset.
+    for cut_point in cut_points:
+        if _is_wound_visible(character, cut_point):
             wounds.append({
-                "injury_type": "severed",
-                "location": container,
-                "severity": "Critical",
-                "stage": _stump_stage(character, container),
-                "organ": None,
-                "organ_obj": None,
+                'injury_type': 'severed',
+                'location': cut_point,
+                'severity': 'Critical',
+                'stage': _stump_stage(character, cut_point),
+                'organ': None,
+                'organ_obj': None,
             })
 
     return wounds
