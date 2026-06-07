@@ -1010,10 +1010,15 @@ def _resolve_amputate(actor, target, *, location: str, **_) -> None:
                 )
                 return
     else:
-        # Corpse-shaped target.
-        from typeclasses.items import apply_sever_to_corpse
+        # Corpse-shaped target.  ``apply_sever_to_corpse`` only mutates
+        # the corpse — it doesn't spawn the appendage item.
+        # ``spawn_severed_part_from_corpse`` is the full path: spawn the
+        # right typeclass (SeveredHead / Appendage), configure provenance,
+        # record the sever, then mutate the corpse.  Same path
+        # ``CmdSever`` follows for manual weapon-driven severance.
+        from typeclasses.items import spawn_severed_part_from_corpse
         try:
-            appendage = apply_sever_to_corpse(target, location)
+            appendage = spawn_severed_part_from_corpse(target, location)
         except Exception as exc:
             actor.msg(f"The cut cannot proceed: {exc}")
             return

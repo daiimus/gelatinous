@@ -465,7 +465,30 @@ class Corpse(IdentityBearerMixin, Item):
         relevant_wounds = wounds_at_death
         if location:
             relevant_wounds = [w for w in wounds_at_death if w.get('location') == location]
-        
+
+        # Dedupe by (injury_type, location, stage) — multiple destroyed
+        # organs in the same container at death produce one wound entry
+        # each, all with the same renderer key.  Without this dedupe a
+        # corpse killed by an abdomen-wide injury renders "the abdomen
+        # is shredded" once per dead organ (often three or four lines,
+        # sometimes duplicate variants from random.choice).  Same (type,
+        # location, stage) → one rendered description.  Different
+        # injury_types or stages at the same location still render
+        # independently — a cut AND a bullet at the chest are distinct.
+        seen_keys = set()
+        unique_wounds = []
+        for wound_data in relevant_wounds:
+            key = (
+                wound_data.get('injury_type'),
+                wound_data.get('location'),
+                wound_data.get('stage'),
+            )
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            unique_wounds.append(wound_data)
+        relevant_wounds = unique_wounds
+
         # Generate descriptions for each wound
         for wound_data in relevant_wounds:
             try:

@@ -1694,6 +1694,17 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
             getattr(getattr(corpse, "db", None), "species", None)
         )
 
+    # Idempotency guard: if a synthetic stump wound at ``location_arg``
+    # already exists in ``wounds_at_death``, a previous invocation
+    # already ran this mutation.  Re-running would duplicate the stump
+    # wound and re-clear longdescs that aren't there.  Bail cleanly.
+    src_wounds_for_check = corpse.db.wounds_at_death or ()
+    for existing in src_wounds_for_check:
+        if (existing.get("injury_type") == "severed"
+                and existing.get("location") == location_arg
+                and existing.get("organ") is None):
+            return
+
     if location_arg == "head":
         locs = frozenset(head_locations)
     else:
@@ -1752,60 +1763,108 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
         corpse.db.head_severed = True
 
 
+def spawn_severed_part_from_corpse(corpse, location_arg):
+    """Spawn + configure a severed appendage from a corpse.
+
+    Generalises the head-only ``spawn_severed_head_for_corpse`` to any
+    severable location.  Pattern mirrors :class:`commands.forensics.CmdSever`
+    inline:
+
+    1. Idempotency check — if ``location_arg`` is already in
+       ``corpse.db.severed_locations``, return ``None``.
+    2. Choose typeclass: ``SeveredHead`` for ``"head"``,
+       ``Appendage`` for anything else.
+    3. ``create_object`` with a species-aware decay-flavoured key.
+    4. ``configure_from_sever`` to copy provenance / decay / wounds
+       / longdescs / snapshot off the corpse.
+    5. Record the sever in ``corpse.db.severed_locations``.
+    6. ``apply_sever_to_corpse`` to mutate the corpse (drop cluster
+       longdescs / wounds, synthesise the stump wound, flip
+       ``head_severed`` on head).
+
+    Used by:
+
+    * ``commands.forensics.CmdSever`` — manual weapon-driven severance.
+    * ``world.medical.procedures._resolve_amputate`` (corpse branch) —
+      chart-driven amputation on a corpse.
+    * ``spawn_severed_head_for_corpse`` (legacy alias, head-only) —
+      death-progression combat decapitation.
+
+    Args:
+        corpse: Source corpse.
+        location_arg: Canonical severable container name
+            (member of ``get_species_severable_containers(corpse.db.species)``).
+
+    Returns:
+        The spawned :class:`Appendage` / :class:`SeveredHead`, or
+        ``None`` if the corpse has no room or the location was already
+        severed.
+    """
+    from evennia import create_object
+    from world.combat.constants import ORGAN_CONDITION_BY_DECAY
+    from world.anatomy import get_species_part_name
+
+    room = corpse.location
+    if room is None:
+        return None
+    if location_arg in (corpse.db.severed_locations or ()):
+        return None
+
+    get_decay_stage = getattr(corpse, "get_decay_stage", None)
+    decay_stage = get_decay_stage() if callable(get_decay_stage) else "fresh"
+    condition = ORGAN_CONDITION_BY_DECAY.get(decay_stage, "damaged")
+    species = (
+        getattr(getattr(corpse, "db", None), "species", None) or "human"
+    )
+
+    if location_arg == "head":
+        typeclass = "typeclasses.items.SeveredHead"
+        readable_name = "head"
+    else:
+        typeclass = "typeclasses.items.Appendage"
+        # Species-aware readable name for the item key.
+        try:
+            readable_name = get_species_part_name(
+                species, location_arg, decay_stage,
+            ) or location_arg.replace("_", " ")
+        except Exception:
+            readable_name = location_arg.replace("_", " ")
+
+    appendage = create_object(
+        typeclass,
+        key=f"{condition} {readable_name}",
+        location=room,
+    )
+    appendage.configure_from_sever(
+        location_name=location_arg, condition=condition, corpse=corpse,
+    )
+
+    severed_list = list(corpse.db.severed_locations or ())
+    if location_arg not in severed_list:
+        severed_list.append(location_arg)
+        corpse.db.severed_locations = severed_list
+
+    apply_sever_to_corpse(corpse, location_arg)
+
+    return appendage
+
+
 def spawn_severed_head_for_corpse(corpse):
-    """Spawn + configure a :class:`SeveredHead` for a decapitated corpse.
+    """Legacy alias — head-only wrapper around
+    :func:`spawn_severed_part_from_corpse`.
 
     Combat-driven decapitation (Phase C, issue #245 follow-up) cannot
     reach the corpse synchronously: a lethal edged neck hit flags the
     dying character, the asynchronous death pipeline builds the corpse,
     and this helper is invoked at the tail of
     :meth:`typeclasses.death_progression.DeathProgressionScript._create_corpse_from_character`
-    once the corpse is fully populated.  It mirrors the manual
-    :class:`commands.forensics.CmdSever` head path: spawn the
-    super-item, copy the corpse's identity / decay / trimmed snapshot
-    onto it via :meth:`SeveredHead.configure_from_sever`, record the
-    sever, and clear the head-cluster prose off the corpse via
-    :func:`apply_sever_to_corpse`.
-
-    Idempotent: if the head has already been severed (``"head"`` in
-    ``corpse.db.severed_locations``) this is a no-op returning ``None``.
-
-    Args:
-        corpse: The freshly built corpse to decapitate.
+    once the corpse is fully populated.
 
     Returns:
         The spawned :class:`SeveredHead`, or ``None`` if the corpse has
         no location or the head was already severed.
     """
-    from evennia import create_object
-    from world.combat.constants import ORGAN_CONDITION_BY_DECAY
-
-    room = corpse.location
-    if room is None:
-        return None
-    if "head" in (corpse.db.severed_locations or ()):
-        return None
-
-    get_decay_stage = getattr(corpse, "get_decay_stage", None)
-    decay_stage = get_decay_stage() if callable(get_decay_stage) else "fresh"
-    condition = ORGAN_CONDITION_BY_DECAY.get(decay_stage, "damaged")
-
-    head = create_object(
-        "typeclasses.items.SeveredHead",
-        key=f"{condition} head",
-        location=room,
-    )
-    head.configure_from_sever(
-        location_name="head", condition=condition, corpse=corpse,
-    )
-
-    severed_list = list(corpse.db.severed_locations or ())
-    severed_list.append("head")
-    corpse.db.severed_locations = severed_list
-
-    apply_sever_to_corpse(corpse, "head")
-
-    return head
+    return spawn_severed_part_from_corpse(corpse, "head")
 
 
 def spawn_severed_head_for_living(character, *, injury_type="cut"):
