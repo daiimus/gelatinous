@@ -489,11 +489,35 @@ class Corpse(IdentityBearerMixin, Item):
             unique_wounds.append(wound_data)
         relevant_wounds = unique_wounds
 
+        # Suture progression for corpse stumps — when ``sutured_stumps``
+        # records a treatment outcome at a severance location, override
+        # the wound's stored stage with the outcome-flavoured variant.
+        # Same pattern as the living-body renderer's ``_stump_stage``
+        # but applied at corpse render time (the live wound data on
+        # the corpse stays unchanged — this is a presentation overlay).
+        # Lets a surgeon's post-death suture work visibly progress the
+        # stump prose without mutating the death-preserved wound dict.
+        from world.medical.severance import normalize_sutured_stumps
+        sutured = normalize_sutured_stumps(self)
+
         # Generate descriptions for each wound
         for wound_data in relevant_wounds:
             try:
                 from world.medical.wounds import get_wound_description
-                
+
+                # Default stage: the death-preserved value on the
+                # wound dict.  Severance wounds at sutured cut points
+                # are overridden to ``treated_<outcome>`` so corpse
+                # stumps progress visually after suture.
+                render_stage = wound_data.get('stage', 'fresh')
+                if (wound_data.get('injury_type') == 'severed'
+                        and wound_data.get('location') in sutured):
+                    outcome = sutured.get(wound_data.get('location'))
+                    if outcome in ("success", "partial", "failure"):
+                        render_stage = f"treated_{outcome}"
+                    else:
+                        render_stage = "treated"
+
                 # Generate wound description using preserved data.
                 # Use the preserved wound stage so severed limbs render
                 # severed-stage prose, destroyed organs render destroyed
@@ -506,7 +530,7 @@ class Corpse(IdentityBearerMixin, Item):
                     injury_type=wound_data['injury_type'],
                     location=wound_data['location'],
                     severity=wound_data['severity'],
-                    stage=wound_data.get('stage', 'fresh'),
+                    stage=render_stage,
                     organ=wound_data.get('organ'),
                     character=self  # Pass corpse as character for any skintone processing
                 )

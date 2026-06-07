@@ -112,6 +112,53 @@ class ComputeSeveredContainers(TestCase):
         )
         self.assertEqual(compute_severed_containers(target), set())
 
+    def test_corpse_shaped_target_reads_wounds_at_death(self):
+        # Corpses have empty live ``medical_state.organs`` post-death.
+        # The helper falls back to ``wounds_at_death`` and treats any
+        # ``injury_type="severed"`` entry as a stump container.  Lets
+        # the suture verb detect post-death stumps so corpse stumps
+        # can progress to ``treated_<outcome>`` prose.
+        from world.medical.severance import compute_severed_containers
+        target = SimpleNamespace()
+        target.medical_state = SimpleNamespace(organs={})  # empty
+        target.db = SimpleNamespace(
+            species="human",
+            wounds_at_death=[
+                {"injury_type": "severed", "location": "head",
+                 "stage": "fresh"},
+                {"injury_type": "bullet", "location": "chest",
+                 "stage": "old"},  # not a stump
+                {"injury_type": "severed", "location": "left_arm",
+                 "stage": "old"},
+            ],
+        )
+        self.assertEqual(
+            compute_severed_containers(target),
+            {"head", "left_arm"},
+        )
+
+    def test_living_path_wins_when_organs_populated(self):
+        # When both surfaces have data (test setup or transitional
+        # state), the live ``medical_state.organs`` path takes
+        # precedence — that's the source of truth for living targets.
+        from world.medical.severance import compute_severed_containers
+        target = SimpleNamespace()
+        target.medical_state = SimpleNamespace(organs={
+            "brain": _FakeOrgan("head", wound_stage="severed",
+                                  current_hp=0),
+        })
+        target.db = SimpleNamespace(
+            species="human",
+            wounds_at_death=[
+                {"injury_type": "severed", "location": "left_arm",
+                 "stage": "old"},
+            ],
+        )
+        # Live path wins — only "head" returned.
+        self.assertEqual(
+            compute_severed_containers(target), {"head"},
+        )
+
 
 # ---------------------------------------------------------------------
 # compute_cut_points

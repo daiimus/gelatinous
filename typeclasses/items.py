@@ -1735,12 +1735,29 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
         if wound.get("location") not in locs
     ]
     # Synthesized stump wound — single entry at the canonical sever
-    # location, regardless of head-cluster size.
+    # location, regardless of head-cluster size.  Stage tracks the
+    # corpse's current decay tier so a freshly-killed corpse just
+    # severed reads as a raw weeping stump (severed.py "fresh") and
+    # an old corpse reads as the dried / desiccated prose
+    # ("old").  Two-tier mapping matches the existing severed.py
+    # cells; a finer gradient would need new stages.  Subsequent
+    # corpse-side suturing overrides this at render time via
+    # ``sutured_stumps`` (see ``Corpse.get_wound_descriptions_for_location``).
+    decay_to_stump_stage = {
+        "fresh":    "fresh",
+        "early":    "fresh",
+        "moderate": "old",
+        "advanced": "old",
+        "skeletal": "old",
+    }
+    decay_getter = getattr(corpse, "get_decay_stage", None)
+    decay_stage = decay_getter() if callable(decay_getter) else "fresh"
+    stump_stage = decay_to_stump_stage.get(decay_stage, "old")
     remaining.append({
         "injury_type": "severed",
         "location": location_arg,
         "severity": "Critical",
-        "stage": "old",
+        "stage": stump_stage,
         "organ": None,
         "organ_damage": {
             "current_hp": 0,

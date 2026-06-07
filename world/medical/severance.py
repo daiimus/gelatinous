@@ -61,21 +61,45 @@ def compute_severed_containers(target) -> set:
     """Return the set of containers carrying any severed organ on
     ``target``.
 
-    A severed organ has ``wound_stage="severed"`` AND
-    ``current_hp <= 0`` — both gates so a partially-zeroed organ
-    isn't promoted to a severance.  ``sever_character_body`` is the
-    only writer that sets both fields together.
+    Two target shapes supported:
+
+    * **Living character** — reads ``target.medical_state.organs``
+      for any organ at ``wound_stage="severed"`` AND
+      ``current_hp <= 0`` (both gates so a partially-zeroed organ
+      isn't promoted to a severance).  ``sever_character_body`` is
+      the only writer that sets both fields together.
+    * **Corpse-shaped** (Corpse, SeveredHead, Appendage) — the live
+      ``medical_state`` is empty post-death, so we fall back to
+      ``target.db.wounds_at_death`` and treat any entry with
+      ``injury_type="severed"`` as a stump.  ``apply_sever_to_corpse``
+      is the writer.  Lets the suture verb detect post-death stumps
+      so corpse stumps can progress to ``treated_<outcome>`` prose.
     """
     state = getattr(target, "medical_state", None)
-    if state is None or not hasattr(state, "organs"):
+    organs = getattr(state, "organs", None) if state is not None else None
+    if organs:
+        out = set()
+        for organ in organs.values():
+            if (getattr(organ, "wound_stage", None) == "severed"
+                    and getattr(organ, "current_hp", 0) <= 0):
+                container = getattr(organ, "container", None)
+                if container:
+                    out.add(container)
+        return out
+
+    # Corpse-shaped fallback: derive from wounds_at_death.
+    db = getattr(target, "db", None)
+    if db is None:
         return set()
+    wounds = getattr(db, "wounds_at_death", None) or ()
     out = set()
-    for organ in state.organs.values():
-        if (getattr(organ, "wound_stage", None) == "severed"
-                and getattr(organ, "current_hp", 0) <= 0):
-            container = getattr(organ, "container", None)
-            if container:
-                out.add(container)
+    for wound in wounds:
+        if not hasattr(wound, "get"):
+            continue
+        if wound.get("injury_type") == "severed":
+            loc = wound.get("location")
+            if loc:
+                out.add(loc)
     return out
 
 
