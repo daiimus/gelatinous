@@ -134,3 +134,25 @@ The architecture is now complete enough to ship anatomically distinct species. T
 
 - `LONGDESC_FLEX_NOUNS` (`SPECIES_DEFINITIONS[species]["longdesc_flex_nouns"]`). Rats add `tail` / `snout` / `fur` / `whisker` / `paw` / `claw`; pair-keyed singulars flow through `pair_keys` automatically. Use `get_species_longdesc_flex_nouns(species)`.
 - `BODY_CAPACITIES` (`SPECIES_DEFINITIONS[species]["body_capacities"]`). Rat's `moving` references hindleg/hindpaw bones; `manipulation` references foreleg/forepaw bones; `talking` is intentionally absent (rats squeak, they don't talk). Use `get_species_body_capacities(species)`. Consumers updated: `MedicalState.calculate_body_capacity`, `world.medical.utils._get_vital_locations`.
+
+## Item-level compatibility layer (Phase 2.10 follow-up)
+
+The species spec answers *"what slots does a species have?"* Organ items (harvested or cyberware) layer a complementary question on top: *"can this particular organ instance be installed in this target?"* This is item-side, not species-side — both layers coexist.
+
+Three item-side fields land on every donor organ:
+
+| Item attribute | Source | Purpose |
+|---|---|---|
+| `db.compatible_species` | Stamped `[source_species]` at harvest by `_configure_harvested_item`; freely declared on cyberware at item creation | Cross-species gate. Picker / install resolver refuses if target's species isn't in the list. Legacy items pre-dating this field fall back to `[db.source_species]` via the existing harvest provenance. |
+| `db.target_container` | Cyberware only; biological harvest doesn't set it | Override for items that don't have an `organ_name` matching the species spec (cyberware bulk-slot replacements — artificial heart, etc.). |
+| `db.target_display_locations` | Cyberware only; list of valid display surfaces | Override for items installable at multiple display locations (cybernetic eye → `["left_eye", "right_eye"]`). |
+
+Picker flow (`CmdOperate._list_install_locations`):
+
+1. **Cross-species gate.** If `donor.db.compatible_species` is set and doesn't include the target's species, return empty (picker refuses).
+2. **Candidate slots.** If the item declares `target_display_locations` (cyberware paired-slot path), use those. Else if it declares `target_container` (cyberware bulk-slot path), use that. Else look up the donor's `organ_name` in `get_species_organs(target_species)` (biological path) and use `display_location` if distinct from `container`, otherwise `container`.
+3. **Status tag.** Each candidate is tagged `(empty)` or `(occupied)` based on the current HP of the organ at that slot.
+
+The cybernetic-eye case validates the model end-to-end: a single item declares `compatible_species = ["human", "rat", "lizard"]` and `target_display_locations = ["left_eye", "right_eye"]` — the picker offers both eye sockets on whichever recipient species the item supports, and refuses on uncompatible species. Cyberware items don't need entries in any species spec.
+
+Multi-slot capacity (Doctor Octopus arms — installing multiple instances of the same organ type into augmented anatomy) is future work and will need a `state.organs` → `state.slots` schema change. It plugs into the same `target_display_locations` declaration without rework.

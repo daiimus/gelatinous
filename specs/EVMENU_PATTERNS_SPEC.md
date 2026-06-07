@@ -237,6 +237,105 @@ Commands: stat1 <value>, stat2 <value>, reset, done
     return text, options
 ```
 
+### Pattern D: Multi-Source Picker with Status Tags
+
+**Use Case:** Location / target pickers whose entries come from more than one underlying source — e.g. surgery's suture picker (open incisions + planned chart steps + severed-organ stumps), the install picker (species-valid slots tagged occupied/empty), the amputate picker (severable containers minus already-severed ones). Each source contributes the same kind of entry; tags on each row tell the player *why* an entry is there.
+
+**Use case characteristics:**
+
+* Picker draws from N independent data sources, each potentially contributing the same location/value.
+* When a single value has multiple sources, the row should tag *all* of them (`(open + planned)`) rather than appear N times.
+* An "all" sentinel entry up top lets the player apply the verb without picking one.
+* Empty-source path needs its own handling — when every source is empty, the menu either offers a sentinel action or short-circuits with an explanation rather than rendering an empty list.
+
+**Reference implementation:** `commands/CmdOperate.py` → `_node_suture_location`, drawing from `_list_open_incisions` (live surgical state) + `_list_planned_incisions` (pending chart steps) + `_list_severed_locations` (severed-organ stumps inferred from the medical state).
+
+```python
+def _node_picker(caller, raw_string, **kwargs):
+    target = caller.ndb._operate_target
+
+    # Pull each source as a set so union / membership is cheap.
+    open_locs    = set(_list_open_incisions(target))
+    planned_locs = set(_list_planned_incisions(caller))
+    stump_locs   = set(_list_severed_locations(target))
+    all_locs     = sorted(open_locs | planned_locs | stump_locs)
+
+    # Empty-source fall-through.  Offer the sentinel directly so the
+    # surgeon can still author a "suture all" step that'll find
+    # incisions later if/when they exist.
+    if not all_locs:
+        text = (
+            "\n|wSuture|n\n\n"
+            "No incisions currently open and no incise steps in your "
+            "chart.  Adding a 'suture all' step anyway — useful if you "
+            "plan to add incise steps later.\n\n"
+            "  |wEnter|n - add 'suture all' step\n"
+            "  |wx|n     - Cancel"
+        )
+        options = ({"key": "_default", "goto": _process_picker_no_open},)
+        return text, options
+
+    # Build the option list.  Index 0 is the "all" sentinel; subsequent
+    # entries are individual picker targets with tags assembled
+    # union-style from all matching sources.
+    options_list = [
+        (f"|wall|n  {MUTED}(open + planned + stumps)|n",
+         "all open incisions"),
+    ]
+    for loc in all_locs:
+        tags = []
+        if loc in open_locs:    tags.append("open")
+        if loc in planned_locs: tags.append("planned")
+        if loc in stump_locs:   tags.append("stump")
+        tag = f"{MUTED}({' + '.join(tags)})|n"
+        options_list.append((f"{loc.replace('_', ' ')}  {tag}", loc))
+
+    # Persist on ndb so the processor can resolve the surgeon's pick.
+    caller.ndb._operate_pickable = options_list
+    listing = "\n".join(
+        f"  {idx}. {label}"
+        for idx, (label, _val) in enumerate(options_list, start=1)
+    )
+    text = (
+        "\n|wSuture|n\n\n"
+        "Pick what to suture:\n\n"
+        f"{listing}\n\n"
+        "  x. Cancel\n\n"
+        "|wWhich?|n (number or name)"
+    )
+    options = ({"key": "_default", "goto": _process_picker},)
+    return text, options
+```
+
+**The processor unpacks `(label, value)`:**
+
+```python
+def _process_picker(caller, raw_string, **kwargs):
+    raw = (raw_string or "").strip()
+    if raw.lower() in ("x", "exit", "cancel"):
+        return "node_top"
+    if not raw:
+        return None
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [])
+    if pick is None:
+        caller.msg("|rNo match.|n")
+        return None
+    # Pickable entries are (label, value) tuples — unpack the value.
+    value = pick[1] if isinstance(pick, tuple) else pick
+    # ... record the chart step / fire the action ...
+    return "node_top"
+```
+
+**Status-tag conventions:**
+
+* Tag text wraps in `MUTED` (the orange `|520` accent code) so it visually de-emphasises beside the location name.
+* Multiple-source tags collapse with `" + "` so `open + planned` reads naturally.
+* The sentinel "all" row's tag describes the *broadest* set the action covers (`(open + planned + stumps)`).
+
+**Sources can be derived from any state.** The suture picker's "stump" source consults the medical state directly — `_list_severed_locations` reads `compute_cut_points` from the severance module so combat-driven amputation (which never goes through the chart) still surfaces. Picker design should ask *"what's the real source of truth for this entry?"* rather than enumerating the obvious surface (e.g. just open incisions). Multi-source pickers are the way to bridge surfaces that don't share a single backing store.
+
+**Testing.** Each source contributes via its own helper; the picker node is then a thin composition. Test the helpers individually and add a single node-level test for each *combination* you care about (a row that's both open and stump should tag both). See `world/tests/test_operate_menu.py` `SutureLocationPicker` for the regression-history-grounded pattern: each historical bug in the picker became one test.
+
 ---
 
 ## Key Takeaways

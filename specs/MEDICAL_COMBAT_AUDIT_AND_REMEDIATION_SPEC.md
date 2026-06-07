@@ -11,6 +11,39 @@ prioritised remediation plan with discrete phases.
 Status: **proposal**. Author: audit pass after the pelvis-in-groin fix
 (issue #325) surfaced broader questions about death model and dead metadata.
 
+## Implementation Progress (June 2026 true-up)
+
+This spec is a planning artifact; as phases land, their content gets
+absorbed into canonical specs and the corresponding section here is
+trimmed. The current state of the remediation plan against shipped
+work:
+
+| Phase | Status | Notes |
+|---|---|---|
+| Phase 1 — Documentation & Architectural Clarification | **Partial** | Task 1 (`LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py`) is done; the comment now explicitly states the union-of-lethal-and-targeting role. Tasks 2, 3, 4 (per-method docstrings, brain-death `# NEXT:` reframing in HEALTH spec, `MEDICAL_SUBSTRATE_READINESS.md` index) are not yet shipped. |
+| Phase 2 — Brain Death Blocks Revival | Not started | `_check_medical_revival_conditions` still gates only on `is_dead()`. |
+| Phase 3 — Failure-Mode Surfacing | Not started | Empty-distribution / unbacked-container warnings not wired. |
+| Phase 4 — Vestigial-Flag Deletion | Not started | All flags listed under "Vestigial (delete)" still present. |
+| Phase 5 — `LETHAL_CAPACITY_NAMES` Split | Not started | Split into `IS_DEAD_LETHAL_CAPACITIES` + `TARGETING_VITAL_CAPACITIES` not done. |
+| Phase 6 — Chronic Medical Conditions Framework (Track 2) | Not started | Substrate gate for kidney death + other long-term conditions. |
+| Phase 7 — Movement Policing Substrate (Track 2) | Not started | Substrate gate for `moving` incapacitation + paralysis. |
+| Phase 8 — Senses System (Track 2) | Not started | Substrate gate for blindness / deafness. |
+| Phase 9 — Equipment-Handling Substrate (Track 2) | Not started | Substrate gate for `manipulation` consequences. |
+| Phase 10–13 — Wiring & Cleanup (Track 3) | Blocked | Each phase has substrate dependencies that aren't met yet. |
+
+**Recent surgery work (June 2026) is orthogonal to this audit.** The
+procedural surgery system (Phase 2.8 in `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`),
+the operate charting command (Phase 2.9), and the severance / suture-stump /
+install-picker / combat-incision-symmetry work (Phase 2.10) all sit *above*
+the substrate gaps this audit identified — the procedural verbs read /
+mutate organ HP and `wound_stage`, but none of them introduces or resolves
+a substrate consumer for things like `incapacitation_threshold`,
+`paralysis_if_destroyed`, or `total_loss_penalty`. Those substrate phases
+remain the right next focus for an audit-aligned arc.
+
+The audit's Core Insight ("schema without consumers") still stands and
+sequences correctly: build substrate before wiring schema to it.
+
 ---
 
 ## Core Insight — Schema Without Consumers

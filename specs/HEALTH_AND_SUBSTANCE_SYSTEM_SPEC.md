@@ -2911,9 +2911,11 @@ class Prosthetic:
 - [ ] Advanced surgical procedures
 - [ ] `operate` charting menu (see below)
 
-### Proposed: `operate` Charting Command (Future)
+### Phase 2.9: `operate` Charting Command - ✅ COMPLETED (June 2026)
 
-The procedural verbs (`incise` / `harvest` / `install` / `suture` — see #307 / PR #380) give players direct, low-level control over surgery in real time. `operate` is the proposed high-level companion: a menu-driven UI, modelled on `describe`, that lets a surgeon build and persist a **medical chart** on a patient. The verbs stay the canonical "what's happening right now" layer; `operate` is the canonical "here is the plan" layer.
+PRs in the #307 follow-on arc shipped the `operate` charting command alongside the procedural verbs. The verbs stay the canonical "what's happening right now" layer; `operate` is the canonical "here is the plan" layer.
+
+This section was authored as a forward-looking proposal and is retained as the design rationale for the menu surface. Where the implementation diverged from the original plan, deviations are called out inline below — the design intent should be read alongside the **As Built** notes for current behaviour.
 
 #### Intent and Positioning
 
@@ -3201,6 +3203,123 @@ Each phase is independently useful and testable; nothing in a later phase requir
 - **Patient-authored "advance directives."** A patient pre-authors a chart on themselves while conscious (DNR, organ donor flags, allergies); other surgeons see it on diagnose. Probably stretch, but the schema accommodates it.
 - **NPC use.** Should NPC surgeons (faction medics, hospital staff) chart on patients to telegraph intent? Could be a strong narrative tool; needs AI behaviour design beyond this spec's scope.
 
+#### As Built — Deviations and Realisations
+
+The implementation matches the proposal at the chart-data-structure and procedure-dispatch level. The following deviations and additions are visible in the shipped menu:
+
+* **Visual layout** — the box-drawn `score`-style chrome was replaced with **tree-branched section labels** (`PATIENT` / `CHART` / `OPTIONS` connected with box-drawing characters). The `describe`-style flush-left layout was retained. The current design idiom matches `armor comprehensive`.
+* **Charting + treatment unified.** The proposal split "Add procedure step" from "Add treatment step." Implementation collapses to a single "Add procedure step" because treatment verbs (`apply` / `inject` / `spray` / `inhale`) are now dispatched through a future PR-OP3 path; they're skipped with an outcome note today and the surgeon adds them inline once that lands.
+* **`amputate` is a procedure verb.** Combat-side severance went through `apply_sever_to_character` / `spawn_severed_head_for_living` directly; the chart now exposes `amputate` as a fifth procedure verb that routes through the same severance pipeline (with surgical-kit gating instead of edged-weapon gating). `CmdSever` retains `amputate` as a command alias.
+* **Multi-source pickers.** The suture location picker reads from three sources (open incisions, planned chart steps, severed-organ stumps from the medical state); the install location picker filters slots by species + donor-organ compatibility. See [EVMENU_PATTERNS_SPEC.md](EVMENU_PATTERNS_SPEC.md) "Pattern D — Multi-Source Picker with Status Tags" for the canonical shape.
+* **Diagnose pane** is the only proposed sub-feature still pending — currently rolled into the patient panel header (status indicators + open-incision list). The proposal-grade dedicated pane with skill-gated reveal is open work.
+* **Target resolution** — `operate <mob>` now correctly finds the body even when severed parts are in the room. Identity-pipeline candidate set excludes `Appendage` / `SeveredHead` items at stage 1; the NPC-fallback in the sdesc matcher falls through to word-boundary when prefix doesn't fire (otherwise `operate rat` couldn't reach a `"a scrawny ragged rat"` mob — the article prefix would defeat the prefix-only match).
+* **Chart status fields** — `last_modified_by` is not stored separately; the chart's most-recent step author is implicit in `_step_finished` records. `diagnoses` field is reserved but unused pending the diagnose pane.
+* **Tests** — node-level coverage seeded in `world/tests/test_operate_menu.py` (42 tests across the suture picker, install picker, top-choice routing, verb-choice routing). Chart-data layer covered in `world/tests/test_operate_charts.py`.
+
+### Phase 2.10: Severance, Suture Stumps, and Install Picker - ✅ COMPLETED (June 2026)
+
+The procedural verbs and the operate menu went live on a model that mostly worked but accumulated playtest-driven gaps as soon as decapitation and amputation hit real bodies. This phase consolidates the corrective arc:
+
+#### Severance helper module (PR #427)
+
+`world/medical/severance.py` is the single source of truth for severance-related queries. Three functions:
+
+* `compute_severed_containers(target)` — the set of containers carrying at least one organ with `wound_stage="severed"` and `current_hp == 0`. Both gates so a partially-zeroed organ isn't promoted to a severance.
+* `compute_cut_points(target)` — the canonical *one-entry-per-severance* set after two collapse rules:
+  - **Head cluster** — when `"head"` is in the severed set (brain lives there and is zeroed by `sever_character_body` during any decapitation), every cluster peer from `get_species_severed_head_locations` (face / neck / eyes / ears / hair-or-fur, species-dependent) collapses into a single `"head"` cut point.
+  - **Limb chain** — downstream containers whose `get_species_limb_parent` ancestor is also severed collapse into the chain root. Thigh amputation surfaces as `"left_thigh"`; shin and foot ride with it.
+* `normalize_sutured_stumps(target)` — returns a `{location: outcome}` dict regardless of underlying storage shape. The legacy flat-list shape (pre-outcome-flavoured renderer) imports each entry as `"success"` outcome.
+
+Three consumers route through these helpers and agree on the answers:
+
+| Consumer | Reads | Purpose |
+|---|---|---|
+| `world.medical.wounds.wound_descriptions.get_character_wounds` | `compute_cut_points` | Synthetic cut-point wound emission |
+| `commands.CmdOperate._list_severed_locations` | `compute_cut_points` − `normalize_sutured_stumps.keys()` | Suture picker entries |
+| `world.medical.procedures._resolve_suture` | same | Runtime untreated-stumps set for `suture all` |
+
+Pre-consolidation each consumer reimplemented the cluster + chain filter and the storage-shape shim. Three copies of the same logic; the consolidation collapses to one.
+
+#### Synthetic severance wound contract (PRs #420 / #421 / #422)
+
+`get_character_wounds` was previously emitting one severance wound per severed organ, so a decapitation rendered as "brain destroyed" / "left eye destroyed" / "right ear destroyed" / etc. The renderer now:
+
+* Suppresses *every* per-organ wound at any container in `compute_severed_containers` (subsumes the old head-cluster + limb-chain dual-filter).
+* Emits **one** synthetic wound per entry in `compute_cut_points`, matching the corpse-side `apply_sever_to_corpse` shape exactly:
+  ```python
+  {
+      "injury_type": "severed",
+      "location": cut_point,
+      "severity": "Critical",
+      "stage": _stump_stage(character, cut_point),  # see below
+      "organ": None,
+      "organ_obj": None,
+  }
+  ```
+
+Same renderer key the corpse path uses, so the live-body view during the death-progression window and the eventual corpse view render identical prose. Routes through `world/medical/wounds/messages/severed.py`.
+
+#### Sutured stump progression (PRs #423 / #426)
+
+`_resolve_suture` now records each cut point it closes in `character.db.sutured_stumps` keyed by location, valued by the suture-roll outcome:
+
+```python
+character.db.sutured_stumps = {
+    "head": "success",
+    "left_arm": "partial",
+    "right_arm": "failure",
+}
+```
+
+`_stump_stage(character, location)` reads the outcome and routes the synthetic wound to one of three flavoured renderer stages — `treated_success`, `treated_partial`, `treated_failure`. `severed.py` carries 3–4 variants per subgroup, so a clean roll reads "carefully sutured shut, the dressing clean" while a botched roll reads "crudely bandaged, the seam pulling dirty." The failure subgroup aligns prose with the existing infection-condition seeding `_resolve_suture` does on a failure outcome.
+
+Backward-compat lives in `normalize_sutured_stumps`: a legacy flat-list `sutured_stumps` reads as `{loc: "success"}`. The picker and runtime never see the legacy shape.
+
+Time-based progression past `treated_<outcome>` (the `healing` and `scarred` stages already populated in severed.py) is parked — needs research on Evennia ticker semantics before wiring.
+
+#### Combat amputation symmetry (PR #428)
+
+`open_incision`'s `surgeon` parameter is now optional (default `None`). `apply_sever_to_character` and `spawn_severed_head_for_living` both call `open_incision` immediately after `sever_character_body`. Result: any severance — combat-driven via `ArmorMixin.take_damage`, chart-driven via `_resolve_amputate` — leaves a recorded incision at the cut point, so the suture verb finds an open wound to close regardless of how the stump came to be.
+
+`_resolve_amputate` retains its own `open_incision` call afterward, which overwrites the location entry to record the chart surgeon as `opened_by` (chart-attribution win); `opened_by` is forensic-only state with no readers. Combat keeps the attacker as `opened_by`.
+
+#### Decapitation pipeline ownership (PR #419)
+
+`spawn_severed_head_for_living` now sets both `head_severed_at_decap = True` *and* `decapitation_pending = True`. The corpse-side cleanup hook in `DeathProgressionScript._create_corpse_from_character` gates on `decapitation_pending` to strip head-cluster prose / wounds and synthesise the neck-stump wound on the corpse. Pre-fix the combat path set `decapitation_pending` upstream but the chart-amputate path didn't — so chart-driven decap left the corpse rendering wounds at every cluster location. Owning both flags inside the spawn makes the cleanup fire regardless of caller.
+
+#### Install picker species + organ filter (PR #431)
+
+`_node_install_location` was reading `_list_containers(target)` (every container on the target) so installing a heart offered every body region as a target. Replaced with `_list_install_locations(target, donor_item)` which converges two paths through one helper:
+
+| Path | When it fires | Source of truth |
+|---|---|---|
+| **Biological** | Donor's `db.organ_name` is in the target species' organ spec | `get_species_organs(target_species)[organ_name]` — picks display_location if distinct from container, else container |
+| **Cyberware** | Donor declares `db.target_container` and / or `db.target_display_locations` | Item-side overrides; the donor doesn't need an entry in the species spec |
+
+Cross-species gate runs first: `donor_item.db.compatible_species` (stamped `[source_species]` at harvest by `_configure_harvested_item`) must include the target's species or the picker shows nothing. Legacy items pre-dating this field fall back to `[source_species]` via the existing harvest provenance.
+
+Each slot is tagged `(empty)` or `(occupied)` based on the slot organ's current HP. Surgeon can still pick occupied slots — the resolver replaces — but the tag warns. Multi-slot capacity (cybernetic limb augmentation — Doctor Octopus arms) is future work and will plug into the same `target_display_locations` declaration without rework.
+
+#### Operate target resolution (PR #425)
+
+Two fixes, two surgical edits:
+
+1. **NPC-fallback in `_match_sdesc`** — when an NPC's `get_sdesc()` returns the bare key (no explicit sdesc set, the default for spawned mobs), the matcher tried prefix-only and silently failed for mob keys that started with an article (`"a scrawny ragged rat"`). Fixed by letting the NPC fallback fall through to the word-boundary check below — `"tom"` → `"Tom Hanks"` (prefix wins), `"rat"` → `"a scrawny ragged rat"` (word-boundary catches it).
+2. **Detached-parts filter in `_resolve_target`** — `SeveredHead` / `Appendage` participate in identity (forensic-chain `apparent_uid_at_death`) so they could theoretically end up as identity matches. Surgical commands target whole-body patients only. Filtering `isinstance(obj, Appendage)` out of the stage-1 candidate set means the picker never has detached parts to compete with the body. Detached parts continue routing through stages 2/3 where `autopsy` / `sever` / `harvest` find them.
+
+#### Files
+
+* `world/medical/severance.py` — single-source-of-truth helpers
+* `world/medical/wounds/wound_descriptions.py` — `_stump_stage`, simplified cut-point synthesis
+* `world/medical/wounds/messages/severed.py` — outcome-flavoured stages, prose stocked
+* `world/medical/procedures.py` — `open_incision` made surgeon-optional, `_resolve_suture` simplified via helpers, `_configure_harvested_item` stamps `compatible_species`
+* `typeclasses/items.py` — `apply_sever_to_character` + `spawn_severed_head_for_living` call `open_incision`; `apply_severed_head_overlay` drops redundant snapshot write (base `apply_organ_snapshot_overlay` owns it via the super-call)
+* `commands/CmdOperate.py` — multi-source suture picker, species-filtered install picker
+* `commands/CmdSurgical.py` — detached-parts filter in `_resolve_target`
+* `world/search.py` — NPC-fallback word-boundary fall-through
+* `world/tests/test_severance_helpers.py` — 13 tests covering the helper module
+* `world/tests/test_operate_menu.py` — 42 tests covering picker + routing nodes
+
 ## Medical System Summary
 
 This specification documents a comprehensive medical system architecture providing:
@@ -3235,7 +3354,10 @@ This specification documents a comprehensive medical system architecture providi
 - **Phase 2.5**: ✅ Extended consumption methods and inhalation mechanics (Completed September 2025)
 - **Phase 2.6**: ✅ Ticker-based medical conditions with time-based progression (Completed December 2024)
 - **Phase 2.7**: ✅ Unified medical messaging and forensic evidence systems (Completed September 2025) - *Forensic system is proof-of-concept only*
-- **Phase 3**: 🔮 Advanced features (cybernetics, complex procedures) - Future development
+- **Phase 2.8**: ✅ Procedural surgery system (`incise` / `harvest` / `install` / `suture` / `amputate`) (Completed June 2026)
+- **Phase 2.9**: ✅ `operate` charting command — menu-driven surgery planning (Completed June 2026)
+- **Phase 2.10**: ✅ Severance helper module, sutured-stump outcome flavour, install picker species filter, combat-amputation incision symmetry (Completed June 2026)
+- **Phase 3**: 🔮 Advanced features (cybernetics implementation, multi-slot capacity, healing-tick progression) - Future development
 
 **Key Features Delivered:**
 - Hospital-grade anatomical accuracy with individual bone tracking

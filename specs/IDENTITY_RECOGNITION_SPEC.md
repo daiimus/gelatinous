@@ -1329,6 +1329,57 @@ Canonical implementations of this pattern:
 - `commands/CmdSurgical.py:_resolve_target`
 - `commands/CmdClothing.py:_resolve_clothing_target`
 
+#### Detached-parts filter (Stage 1 carve-out, Phase 2.10)
+
+A second carve-out at the identity stage. `Appendage` / `SeveredHead` items participate in the identity surface — they carry `signature_at_death` / `apparent_uid_at_death` for forensic chain so investigators can trace a severed limb back to its source. But **surgical commands target whole-body patients only**; detached parts route through `autopsy` / `sever` / `harvest` instead. When a body and its severed head are in the same room (e.g. `operate 1st rat` after decapitation), the ordinal pick from the identity match could otherwise silently land on whichever the room iteration orders first — usually the head, since severed parts spawn after the body.
+
+`CmdSurgical._resolve_target` filters detached parts out of the stage-1 candidate set before invoking the identity helper:
+
+```python
+from typeclasses.items import Appendage  # base for SeveredHead too
+location = caller.location
+if location is not None:
+    whole_body_candidates = [
+        obj for obj in location.contents
+        if not isinstance(obj, Appendage)
+    ]
+else:
+    whole_body_candidates = None
+identity_match = resolve_character_target(
+    caller, raw_name,
+    candidates=whole_body_candidates,
+    allow_self=False,
+)
+```
+
+Detached parts then route through stages 2 / 3 normally (inventory then room fallback), where `autopsy` and item-targeting commands find them by key match. The filter is targeting-pattern-specific — commands that *do* want detached parts as identity candidates (none today) wouldn't apply it.
+
+#### NPC sdesc fallback (`_match_sdesc` word-boundary fall-through, Phase 2.10)
+
+When a candidate's `get_sdesc()` returns the bare `key` (the NPC default, no explicit sdesc set — the default for any spawned mob), the matcher used to prefix-match only:
+
+```python
+# Pre-fix — broken for article-prefixed keys.
+if sdesc == target_key:
+    return target_key.lower().startswith(query_lower)
+```
+
+`"rat".startswith("a scrawny ragged rat")` returns `False` — the key begins with an article. Identity-based commands like `operate rat` silently couldn't reach mobs whose keys started with `a` / `an` / `the` even though the body was clearly in the room. The matcher now lets the NPC fallback fall through to the word-boundary check below:
+
+```python
+# NPC fallback (sdesc defaults to key): try prefix first — covers
+# "tom" → "Tom Hanks".  Fall through to word-boundary below if
+# prefix doesn't fire, so "rat" still matches a mob whose key is
+# "a scrawny ragged rat".
+if sdesc == target_key:
+    if target_key.lower().startswith(query_lower):
+        return True
+# Word-boundary match: every word in the query must appear as a
+# complete word in the sdesc.
+```
+
+`"tom"` → `"Tom Hanks"` still wins by prefix. `"rat"` → `"a scrawny ragged rat"` now hits the word-boundary path. Single regression test pins the rat-key case in `world/tests/test_identity_search.py:test_npc_fallback_falls_through_to_word_boundary`.
+
 #### Canonical examples
 
 - **Same-room combat**: `commands/combat/core_actions.py` (`CmdAttack`)
