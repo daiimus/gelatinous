@@ -2356,13 +2356,11 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
 
 
 def apply_severed_head_overlay(head, corpse):
-    """Copy identity / decay / trimmed snapshot from ``corpse`` onto ``head``.
+    """Copy identity + decay-clock fields from ``corpse`` onto ``head``.
 
     Extracted from :meth:`SeveredHead.configure_from_sever` so unit
     tests can exercise the overlay logic against plain-Python stubs
-    without instantiating an Evennia typeclass (whose metaclass would
-    bind ``super()`` to the concrete class and reject duck-typed
-    ``self`` substitutes).
+    without instantiating an Evennia typeclass.
 
     Contract — after this call ``head.db`` has:
 
@@ -2376,26 +2374,20 @@ def apply_severed_head_overlay(head, corpse):
       forensic-recognition passes can match looker memory.
     * ``creation_time`` / ``death_time`` / ``death_cause`` shared with
       the corpse so the head ages on the same decay clock.
-    * ``medical_state_at_death`` = trimmed snapshot — only organs whose
-      ``container == "head"``; body-wide fields (conditions, blood,
-      pain, consciousness) blanked because they describe the whole
-      body and would lie if reported off a disembodied head.  Organs
-      are deep-copied to prevent aliasing with the corpse snapshot.
-    * ``removed_organs`` filtered to the head-container subset of the
-      corpse's removed-organ list (so pre-sever harvests stay visible).
 
-    Side-effect on ``corpse.db``:
+    The ``medical_state_at_death`` snapshot and ``removed_organs``
+    subset are NOT written here — :meth:`Appendage.configure_from_sever`
+    (the super-call that runs before this overlay) already lays them
+    down via :func:`apply_organ_snapshot_overlay` filtered to the
+    head chain.  This used to be a double-write that produced the
+    same data twice; collapsing to one keeps the head contract
+    identical without the redundant pass.
 
-    * ``head_severed`` is set to ``True``.  Identity is *duplicated*
-      across head and corpse (the corpse retains
-      ``signature_at_death`` / ``apparent_uid_at_death`` /
-      ``sleeve_uid`` so :func:`world.forensics.extract_subject_from_corpse`
-      and the ``autopsy`` command keep working) — but the corpse's
-      look-time tertiary recognition is suppressed by
-      :meth:`typeclasses.corpse.Corpse.get_display_name` reading
-      this flag.  Game-mechanic justification: the face is the
-      dominant unaided-recognition cue; without it, only an explicit
-      autopsy can resolve the body's identity.
+    Identity is *duplicated* across head and corpse: the head carries
+    face-side recognition (sleeve_uid + forensic chain), the corpse
+    keeps its snapshot for autopsy.  Corpse-side ``head_severed`` is
+    set by :func:`apply_sever_to_corpse`, which runs in the command
+    path after this overlay.  See issue #208.
     """
     # IdentityBearerMixin contract — copy snapshotted identity.
     head.db.signature_at_death = corpse.db.signature_at_death
@@ -2408,35 +2400,6 @@ def apply_severed_head_overlay(head, corpse):
     head.db.creation_time = corpse.db.creation_time
     head.db.death_time = corpse.db.death_time
     head.db.death_cause = corpse.db.death_cause
-
-    # Trimmed head-container medical snapshot.
-    corpse_snapshot = corpse.get_medical_snapshot() or {}
-    organs = corpse_snapshot.get("organs") or {}
-    head_organs = {
-        name: dict(data)
-        for name, data in organs.items()
-        if (data.get("container") or "") == "head"
-    }
-    head.db.medical_state_at_death = {
-        "organs": head_organs,
-        "conditions": [],
-        "blood_level": None,
-        "pain_level": None,
-        "consciousness": None,
-    }
-
-    # Head-container subset of removed_organs.
-    corpse_removed = corpse.db.removed_organs or ()
-    head.db.removed_organs = [
-        name for name in corpse_removed if name in head_organs
-    ]
-
-    # Corpse-side ``head_severed`` flag is set by
-    # :func:`apply_sever_to_corpse`, which runs in the command path
-    # after this overlay.  Identity is *duplicated* across head and
-    # corpse: the head carries face-side recognition (sleeve_uid +
-    # forensic chain), while the corpse keeps its snapshot for
-    # autopsy.  See issue #208.
 
 
 def apply_severed_head_overlay_from_living(head, character):

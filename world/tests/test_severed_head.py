@@ -150,59 +150,15 @@ class SeveredHeadOverlayTests(TestCase):
             self.head.db.death_cause, self.corpse.db.death_cause
         )
 
-    def test_trimmed_snapshot_filters_to_head_container(self):
-        self._overlay()
-        organs = self.head.db.medical_state_at_death["organs"]
-        self.assertEqual(
-            set(organs.keys()), {"brain", "left_eye", "right_eye"}
-        )
-
-    def test_trimmed_snapshot_blanks_body_wide_fields(self):
-        self._overlay()
-        snap = self.head.db.medical_state_at_death
-        self.assertEqual(snap["conditions"], [])
-        self.assertIsNone(snap["blood_level"])
-        self.assertIsNone(snap["pain_level"])
-        self.assertIsNone(snap["consciousness"])
-
-    def test_removed_organs_carries_head_subset_only(self):
-        self.corpse.db.removed_organs = ["left_eye", "heart"]
-        self._overlay()
-        self.assertEqual(self.head.db.removed_organs, ["left_eye"])
-
-    def test_snapshot_organs_are_independent_copies(self):
-        """Mutating the head's snapshot must not bleed into the corpse."""
-        self._overlay()
-        self.head.db.medical_state_at_death["organs"]["brain"][
-            "current_hp"
-        ] = 0
-        self.assertEqual(
-            self.corpse.db.medical_state_at_death["organs"]["brain"][
-                "current_hp"
-            ],
-            10,
-        )
-
-    def test_no_corpse_snapshot_yields_empty_organs(self):
-        self.corpse.db.medical_state_at_death = None
-        self._overlay()
-        snap = self.head.db.medical_state_at_death
-        self.assertEqual(snap["organs"], {})
-
-    def test_get_medical_snapshot_returns_trimmed_dict(self):
-        """The accessor is a thin ``self.db.medical_state_at_death`` read."""
-        self._overlay()
-        result = SeveredHead.get_medical_snapshot(self.head)
-        self.assertIs(result, self.head.db.medical_state_at_death)
-
-    def test_non_head_organs_excluded_even_if_missing_container(self):
-        """Organs with no ``container`` key are excluded (defensive)."""
-        snapshot = _full_snapshot()
-        snapshot["organs"]["mystery_organ"] = {"current_hp": 1, "max_hp": 1}
-        self.corpse.db.medical_state_at_death = snapshot
-        self._overlay()
-        organs = self.head.db.medical_state_at_death["organs"]
-        self.assertNotIn("mystery_organ", organs)
+    # Trimmed-snapshot / removed_organs assertions moved out of this
+    # file when ``apply_severed_head_overlay`` stopped writing the
+    # snapshot itself (the base ``Appendage.configure_from_sever`` now
+    # owns that via ``apply_organ_snapshot_overlay`` with chain=("head",)).
+    # Equivalent coverage lives in ``test_sever_overlay.py``'s
+    # ``ApplyOrganSnapshotOverlayTests`` — container filter, blanked
+    # body-wide fields, ``None`` source handling, shallow-copy
+    # independence, and removed_organs filtering all pinned there
+    # against the helper that actually writes the snapshot now.
 
     def test_overlay_preserves_corpse_snapshot_keys(self):
         """Sanity: the overlay shouldn't mutate the corpse snapshot dict."""
