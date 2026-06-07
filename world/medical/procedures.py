@@ -1314,6 +1314,14 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
     species = getattr(source_db, "species", None) or "human"
     item.db.source_species = species
 
+    # Install-compatibility list — single-element for a freshly
+    # harvested biological organ.  Cyberware items declare a wider
+    # list at creation (e.g. ``["human", "rat"]`` for a cybernetic
+    # eye), and ``CmdOperate._list_install_locations`` reads this to
+    # gate cross-species installs.  Legacy items pre-dating this
+    # field fall back to ``[source_species]`` at picker time.
+    item.db.compatible_species = [species]
+
     stage_getter = getattr(source, "get_decay_stage", None)
     if callable(stage_getter):
         try:

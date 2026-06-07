@@ -429,3 +429,195 @@ class VerbChoiceRouting(TestCase):
         result, caller = self._process("4")
         self.assertEqual(result, "node_suture_location")
         self.assertEqual(caller.ndb._operate_pending_verb, "suture")
+
+
+# ---------------------------------------------------------------------
+# Install location helper
+# ---------------------------------------------------------------------
+
+
+def _make_donor(*, organ_name=None, source_species=None,
+                 compatible_species=None,
+                 target_container=None, target_display_locations=None,
+                 key="harvested heart"):
+    """Build a donor-item stub for the install picker."""
+    donor = SimpleNamespace(key=key)
+    donor.db = SimpleNamespace(
+        organ_name=organ_name,
+        source_species=source_species,
+        compatible_species=compatible_species,
+        target_container=target_container,
+        target_display_locations=target_display_locations,
+    )
+    return donor
+
+
+class ListInstallLocations(TestCase):
+    """``_list_install_locations`` — the helper that turns
+    ``"every body region"`` (broken old picker) into the slot(s)
+    where the specific donor can actually go.  Two paths converge:
+    biological (lookup by organ_name in species spec) and cyberware
+    (item-declared overrides).  Cross-species refusal sits in front
+    of both."""
+
+    # -- Biological path ---------------------------------------------
+
+    def test_biological_heart_occupied_when_slot_intact(self):
+        from commands.CmdOperate import _list_install_locations
+        target = _make_target(species="human", organs={
+            "heart": _make_organ("chest", current_hp=15),
+        })
+        donor = _make_donor(organ_name="heart", source_species="human",
+                             compatible_species=["human"])
+        self.assertEqual(
+            _list_install_locations(target, donor),
+            [("chest", "occupied")],
+        )
+
+    def test_biological_heart_empty_when_slot_harvested(self):
+        # Heart's been harvested (current_hp=0) → slot is empty,
+        # ready for a fresh donor.
+        from commands.CmdOperate import _list_install_locations
+        target = _make_target(species="human", organs={
+            "heart": _make_organ("chest", current_hp=0),
+        })
+        donor = _make_donor(organ_name="heart", source_species="human",
+                             compatible_species=["human"])
+        self.assertEqual(
+            _list_install_locations(target, donor),
+            [("chest", "empty")],
+        )
+
+    def test_biological_eye_picks_display_location(self):
+        # Eyes have container="head" but display_location="left_eye"
+        # — the display surface is the install target, not the bulk
+        # container.  Same rule the wound renderer follows.
+        from commands.CmdOperate import _list_install_locations
+        target = _make_target(species="human", organs={
+            "left_eye": _make_organ("head", current_hp=0),
+        })
+        target.medical_state.organs["left_eye"].display_location = "left_eye"
+        donor = _make_donor(organ_name="left_eye", source_species="human",
+                             compatible_species=["human"])
+        result = _list_install_locations(target, donor)
+        self.assertEqual([loc for loc, _tag in result], ["left_eye"])
+
+    # -- Cross-species gate ------------------------------------------
+
+    def test_cross_species_donor_refused(self):
+        # Rat heart in a human → empty list (picker shows refusal).
+        from commands.CmdOperate import _list_install_locations
+        target = _make_target(species="human", organs={
+            "heart": _make_organ("chest"),
+        })
+        donor = _make_donor(organ_name="heart", source_species="rat",
+                             compatible_species=["rat"])
+        self.assertEqual(_list_install_locations(target, donor), [])
+
+    def test_legacy_donor_falls_back_to_source_species(self):
+        # Items harvested before ``compatible_species`` was added
+        # carry only ``source_species``.  The helper synthesises the
+        # list so cross-species refusal still works for legacy data.
+        from commands.CmdOperate import _list_install_locations
+        target = _make_target(species="human", organs={
+            "heart": _make_organ("chest", current_hp=0),
+        })
+        donor = _make_donor(organ_name="heart", source_species="rat",
+                             compatible_species=None)  # legacy
+        self.assertEqual(_list_install_locations(target, donor), [])
+
+    def test_legacy_donor_same_species_passes(self):
+        # Same fallback — but when source species matches target,
+        # the install proceeds.
+        from commands.CmdOperate import _list_install_locations
+        target = _make_target(species="human", organs={
+            "heart": _make_organ("chest", current_hp=0),
+        })
+        donor = _make_donor(organ_name="heart", source_species="human",
+                             compatible_species=None)  # legacy
+        self.assertEqual(
+            _list_install_locations(target, donor),
+            [("chest", "empty")],
+        )
+
+    # -- Cyberware path ----------------------------------------------
+
+    def test_cyberware_with_target_display_locations(self):
+        # Cybernetic eye declares both eye sockets as valid targets.
+        # Picker should offer both — surgeon chooses which side.
+        from commands.CmdOperate import _list_install_locations
+        target = _make_target(species="human", organs={})
+        donor = _make_donor(
+            key="cybernetic eye v2",
+            organ_name=None,  # cyberware needn't match species spec
+            compatible_species=["human", "rat", "lizard"],
+            target_display_locations=["left_eye", "right_eye"],
+        )
+        result = _list_install_locations(target, donor)
+        self.assertEqual(
+            sorted([loc for loc, _tag in result]),
+            ["left_eye", "right_eye"],
+        )
+
+    def test_cyberware_compatible_with_multiple_species(self):
+        # Same cybernetic eye lands on a rat just fine.
+        from commands.CmdOperate import _list_install_locations
+        target_rat = _make_target(species="rat", organs={})
+        donor = _make_donor(
+            key="cybernetic eye v2",
+            organ_name=None,
+            compatible_species=["human", "rat"],
+            target_display_locations=["left_eye", "right_eye"],
+        )
+        result = _list_install_locations(target_rat, donor)
+        self.assertEqual(len(result), 2)
+
+    def test_cyberware_refused_for_uncompatible_species(self):
+        from commands.CmdOperate import _list_install_locations
+        target_lizard = _make_target(species="lizard", organs={})
+        donor = _make_donor(
+            key="cybernetic eye v2",
+            organ_name=None,
+            compatible_species=["human", "rat"],
+            target_display_locations=["left_eye", "right_eye"],
+        )
+        self.assertEqual(_list_install_locations(target_lizard, donor), [])
+
+    def test_cyberware_with_target_container_only(self):
+        # Simpler cyberware — bulk slot replacement.  Just container,
+        # no per-side display_location list.
+        from commands.CmdOperate import _list_install_locations
+        target = _make_target(species="human", organs={
+            "heart": _make_organ("chest", current_hp=0),
+        })
+        donor = _make_donor(
+            key="artificial heart",
+            organ_name=None,
+            compatible_species=["human"],
+            target_container="chest",
+        )
+        result = _list_install_locations(target, donor)
+        self.assertEqual([loc for loc, _tag in result], ["chest"])
+
+    # -- No-go cases --------------------------------------------------
+
+    def test_unknown_organ_name_returns_empty(self):
+        # Donor's organ_name doesn't exist in the target species'
+        # spec — no install target, picker refuses cleanly.
+        from commands.CmdOperate import _list_install_locations
+        target = _make_target(species="human", organs={})
+        donor = _make_donor(
+            organ_name="quantum_synapse",  # made up
+            source_species="human",
+            compatible_species=["human"],
+        )
+        self.assertEqual(_list_install_locations(target, donor), [])
+
+    def test_donor_with_no_organ_name_or_overrides_returns_empty(self):
+        from commands.CmdOperate import _list_install_locations
+        target = _make_target(species="human", organs={})
+        donor = _make_donor(
+            organ_name=None,
+            compatible_species=["human"],
+        )
+        self.assertEqual(_list_install_locations(target, donor), [])

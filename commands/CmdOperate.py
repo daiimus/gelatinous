@@ -491,6 +491,113 @@ def _list_donor_organs(caller):
     return out
 
 
+def _list_install_locations(target, donor_item):
+    """Return ``[(slot, status_tag)]`` for where ``donor_item`` can be
+    installed on ``target``.
+
+    Two paths converge through one helper:
+
+    * **Biological** — look up the donor's ``organ_name`` in the
+      target species' organ spec.  Heart → ``chest``; left_eye →
+      display surface ``left_eye``; etc.  Native anatomy drives the
+      slot choice.
+    * **Cyberware** — the item declares its own placement via
+      ``db.target_container`` and / or ``db.target_display_locations``.
+      A cybernetic eye sets
+      ``target_display_locations = ["left_eye", "right_eye"]`` and
+      the picker offers both.  Cyberware doesn't need an entry in
+      the species spec — the item's overrides drive everything.
+
+    Cross-species gate runs first: ``donor_item.db.compatible_species``
+    (set at harvest time to ``[source_species]``, freely declared on
+    cyberware) must include the target species or the picker shows
+    nothing.  Items predating this field fall back to
+    ``[source_species]`` for legacy compatibility.
+
+    Status tag is ``"empty"`` (target slot's current_hp is 0 — slot
+    is vacant) or ``"occupied"`` (slot is currently filled).  The
+    picker shows both so the player knows whether they're filling a
+    gap or replacing existing tissue.  Multi-slot extension (Doctor
+    Octopus arms, etc.) is future work; today every slot is binary.
+
+    Returns ``[]`` when the donor is cross-species, no matching slot
+    exists on the target species, or required fields are missing on
+    the donor item.  The picker treats an empty list as "cannot
+    install here" and routes the player back to the top.
+    """
+    target_species = (
+        getattr(getattr(target, "db", None), "species", None) or "human"
+    )
+    donor_db = getattr(donor_item, "db", None)
+    if donor_db is None:
+        return []
+
+    # Cross-species gate.  Legacy items pre-dating compatible_species
+    # fall back to a single-element list derived from source_species.
+    # If neither field is set the donor predates harvest provenance
+    # entirely — open the gate (don't silently refuse old items).
+    compatible = getattr(donor_db, "compatible_species", None)
+    if compatible is None:
+        source_species = getattr(donor_db, "source_species", None)
+        if source_species:
+            compatible = [source_species]
+    if compatible and target_species not in compatible:
+        return []
+
+    target_displays = getattr(donor_db, "target_display_locations", None)
+    target_container = getattr(donor_db, "target_container", None)
+    organ_name = getattr(donor_db, "organ_name", None)
+
+    if target_displays:
+        slots = list(target_displays)
+    elif target_container:
+        slots = [target_container]
+    elif organ_name:
+        # Biological — look up species spec.
+        try:
+            from world.anatomy import get_species_organs
+            spec = get_species_organs(target_species).get(organ_name)
+        except ImportError:
+            spec = None
+        if not spec:
+            return []
+        container = spec.get("container")
+        display = spec.get("display_location")
+        if display and display != container:
+            slots = [display]
+        elif container:
+            slots = [container]
+        else:
+            return []
+    else:
+        return []
+
+    # Occupancy tag.
+    state = getattr(target, "medical_state", None)
+    organs = getattr(state, "organs", {}) if state is not None else {}
+
+    out = []
+    for slot in slots:
+        if target_displays or target_container:
+            # Cyberware path — check the slot surface directly.
+            occupied = any(
+                getattr(organ, "current_hp", 0) > 0
+                and (getattr(organ, "container", None) == slot
+                     or getattr(organ, "display_location", None) == slot)
+                for organ in organs.values()
+            )
+        else:
+            # Biological path — check the specific organ slot the
+            # donor's organ_name will install into.
+            organ = organs.get(organ_name) if organ_name else None
+            occupied = (
+                organ is not None
+                and getattr(organ, "current_hp", 0) > 0
+            )
+        out.append((slot, "occupied" if occupied else "empty"))
+    return out
+
+
 def _list_open_incisions(target):
     """Return sorted list of locations with open incisions on
     ``target``."""
@@ -790,20 +897,58 @@ def _process_install_donor(caller, raw_string, **kwargs):
             return None
     item, organ_name = pick
     caller.ndb._operate_install_donor = item.key
+    # Stash the item object too so the install-location picker can
+    # read its compatibility / placement attrs (db.organ_name,
+    # db.compatible_species, db.target_container, db.target_display_locations).
+    caller.ndb._operate_install_donor_item = item
     # Now ask for the install location.
     return "node_install_location"
 
 
 def _node_install_location(caller, raw_string, **kwargs):
     target = caller.ndb._operate_target
-    containers = _list_containers(target)
     donor_key = getattr(caller.ndb, "_operate_install_donor", "?")
-    if not containers:
-        caller.msg("|rNo install locations on this target.|n")
+    donor_item = getattr(caller.ndb, "_operate_install_donor_item", None)
+
+    if donor_item is None:
+        # Fallback for stale state — re-resolve from caller inventory
+        # by key.  Shouldn't normally fire (the donor picker stashes
+        # the item directly) but keeps the menu robust.
+        for obj in (getattr(caller, "contents", None) or ()):
+            if getattr(obj, "key", None) == donor_key:
+                donor_item = obj
+                break
+
+    if donor_item is None:
+        caller.msg(
+            f"|r{donor_key} is no longer in your inventory.|n"
+        )
         return "node_top"
-    caller.ndb._operate_pickable = containers
-    listing = _render_numbered(
-        containers, lambda loc: loc.replace("_", " "),
+
+    slots = _list_install_locations(target, donor_item)
+    if not slots:
+        target_species = (
+            getattr(getattr(target, "db", None), "species", None) or "human"
+        )
+        caller.msg(
+            f"|r{donor_key} can't install on this patient — "
+            f"cross-species mismatch or no matching {target_species} "
+            f"slot for this organ.|n"
+        )
+        return "node_top"
+
+    # Picker entries: (label, location_value).  Tag shows whether
+    # the slot is currently filled — surgeons can still pick an
+    # occupied slot (the resolver replaces existing tissue) but the
+    # tag warns them they're doing it.
+    options_list = [
+        (f"{loc.replace('_', ' ')}  {MUTED}({tag})|n", loc)
+        for loc, tag in slots
+    ]
+    caller.ndb._operate_pickable = options_list
+    listing = "\n".join(
+        f"  {idx}. {label}"
+        for idx, (label, _val) in enumerate(options_list, start=1)
     )
     text = (
         f"\n|wInstall {donor_key} — pick the location|n\n\n"
@@ -826,13 +971,16 @@ def _process_install_location(caller, raw_string, **kwargs):
     if pick is None:
         caller.msg("|rPick a number or location name.|n")
         return None
+    # Picker entries are ``(label, location)`` tuples — unpack the
+    # underlying location value before recording on the chart step.
+    location_value = pick[1] if isinstance(pick, tuple) else pick
     donor_key = getattr(caller.ndb, "_operate_install_donor", None)
     if not donor_key:
         caller.msg("|rDonor selection lost; please retry from the top.|n")
         return "node_top"
     _add_step_to_chart(
         caller, "install",
-        {"organ_item_key": donor_key, "location": pick},
+        {"organ_item_key": donor_key, "location": location_value},
     )
     return "node_top"
 
