@@ -423,12 +423,28 @@ class TestUnmaskingMessageCellB(TestCase):
             },
         )
 
-    def test_message_uses_new_and_old_sdescs(self) -> None:
+    def test_message_uses_assigned_name_for_old_presentation(self) -> None:
+        # When the observer has named the old presentation, the
+        # transition message reads with that name rather than the
+        # bare sdesc — the observer knew who was standing there.
         _broadcast_unmasking(self.target, "uid-old", "uid-new")
         self.assertEqual(len(self.observer.messages), 1)
         msg = self.observer.messages[0]
         self.assertIn("a hooded figure", msg)
+        self.assertIn("Jorge", msg)
+        self.assertIn("steps into view", msg)
+        # Bare-sdesc form for the old side suppressed when name is set.
+        self.assertNotIn("a tall lean man", msg)
+
+    def test_message_falls_back_to_sdesc_when_no_assigned_name(self) -> None:
+        # When the observer hasn't named the old presentation, the
+        # bare sdesc is used as before.
+        self.observer.recognition_memory["uid-old"]["assigned_name"] = ""
+        _broadcast_unmasking(self.target, "uid-old", "uid-new")
+        msg = self.observer.messages[0]
         self.assertIn("a tall lean man", msg)
+        self.assertIn("a hooded figure", msg)
+        self.assertNotIn("Jorge", msg)
         self.assertIn("steps into view", msg)
 
     def test_missing_old_sdesc_suppresses_message(self) -> None:
@@ -494,9 +510,26 @@ class TestUnmaskingMessageCellD(TestCase):
         self.assertIn("The Hood", msg)
         self.assertIn("are the same person", msg)
 
-    def test_falls_back_to_sdesc_when_name_missing(self) -> None:
-        # Defensive: if one side's assigned_name was somehow blank, the
-        # shorter sdesc-only template should be used instead.
+    def test_message_surfaces_only_side_with_assigned_name(self) -> None:
+        # Realistic playtest scenario: observer remembered the bare
+        # face (named) and watched the disguise go on (creating an
+        # auto-linked entry with no name).  The realize message
+        # should still surface the known name rather than collapsing
+        # both sides to bare sdescs.
+        self.observer.recognition_memory["uid-new"]["assigned_name"] = ""
+        _broadcast_unmasking(self.target, "uid-old", "uid-new")
+        msg = self.observer.messages[0]
+        self.assertIn("a tall lean man", msg)
+        self.assertIn("a hooded figure", msg)
+        self.assertIn("who you call Jorge", msg)
+        # New side has no name — its phrase stays the bare sdesc.
+        self.assertNotIn("who you call The Hood", msg)
+        self.assertIn("are the same person", msg)
+
+    def test_message_omits_who_you_call_when_neither_side_named(self) -> None:
+        # Pathological case — both auto-linked entries with no name.
+        # The message collapses to bare sdescs on both sides.
+        self.observer.recognition_memory["uid-old"]["assigned_name"] = ""
         self.observer.recognition_memory["uid-new"]["assigned_name"] = ""
         _broadcast_unmasking(self.target, "uid-old", "uid-new")
         msg = self.observer.messages[0]

@@ -1858,34 +1858,45 @@ def _send_unmasking_message(
             # Defensive: missing sdescs would render an ugly message.
             # Skip rather than ship broken prose.
             return
+        # Prefer the observer's assigned name for the old presentation
+        # when set; the bare sdesc otherwise.  The observer knew who
+        # the old presentation was — surface that knowledge in the
+        # transition message instead of the anonymous sdesc.
+        old_name = (old_entry or {}).get("assigned_name") or ""
+        old_phrase = old_name or old_sdesc
         observer.msg(
-            f"{new_sdesc} steps into view where {old_sdesc} "
+            f"{new_sdesc} steps into view where {old_phrase} "
             f"stood a moment ago."
         )
         return
 
     if cell == "D":
         # Link discovered — the observer realises two tracked
-        # presentations are the same person.
+        # presentations are the same person.  Surface each side's
+        # assigned name when the observer has set one; either, both,
+        # or neither name may exist.  The original implementation
+        # required *both* names to fire the rich form — that meant a
+        # cell-D event where only one side was named (e.g. the bare
+        # face was remembered by name but the masked auto-link
+        # carried no name) silently dropped the name into the
+        # fallback's bare-sdesc prose.
         new_entry = memory.get(new_uid) if new_uid else None
         old_name = (old_entry or {}).get("assigned_name") or ""
         new_name = (new_entry or {}).get("assigned_name") or ""
         if not old_sdesc or not new_sdesc:
             return
-        if old_name and new_name:
-            observer.msg(
-                f"You realize that {old_sdesc}, who you call "
-                f"{old_name}, and {new_sdesc}, who you call "
-                f"{new_name}, are the same person."
-            )
-        else:
-            # Defensive fallback: cell D should always have both names
-            # set, but if a future code path drops one we still emit
-            # something coherent.
-            observer.msg(
-                f"You realize that {old_sdesc} and {new_sdesc} "
-                f"are the same person."
-            )
+        old_phrase = (
+            f"{old_sdesc}, who you call {old_name}"
+            if old_name else old_sdesc
+        )
+        new_phrase = (
+            f"{new_sdesc}, who you call {new_name}"
+            if new_name else new_sdesc
+        )
+        observer.msg(
+            f"You realize that {old_phrase} and {new_phrase} "
+            f"are the same person."
+        )
         return
 
 
