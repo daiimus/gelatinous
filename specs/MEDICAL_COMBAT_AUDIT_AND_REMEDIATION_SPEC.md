@@ -20,7 +20,7 @@ work:
 
 | Phase | Status | Notes |
 |---|---|---|
-| Phase 1 — Documentation & Architectural Clarification | **Partial** | Task 1 (`LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py`) is done; the comment now explicitly states the union-of-lethal-and-targeting role. Tasks 2, 3, 4 (per-method docstrings, brain-death `# NEXT:` reframing in HEALTH spec, `MEDICAL_SUBSTRATE_READINESS.md` index) are not yet shipped. |
+| Phase 1 — Documentation & Architectural Clarification | **✅ Complete** | All four tasks shipped. Task 1: `LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py` now explicitly documents the union role. Task 2: `MedicalState.is_dead` / `is_unconscious` / `calculate_body_capacity` docstrings spell out the substrate-vs-runtime split and cross-reference the audit's phase numbers. Task 3: HEALTH spec's brain-death `# NEXT:` pseudo-code now explicitly points at audit Phase 2 instead of reading as an open design note. Task 4: `specs/MEDICAL_SUBSTRATE_READINESS.md` index lists every unconsumed flag with its intended consumer system and audit phase. |
 | Phase 2 — Brain Death Blocks Revival | Not started | `_check_medical_revival_conditions` still gates only on `is_dead()`. |
 | Phase 3 — Failure-Mode Surfacing | Not started | Empty-distribution / unbacked-container warnings not wired. |
 | Phase 4 — Vestigial-Flag Deletion | Not started | All flags listed under "Vestigial (delete)" still present. |

@@ -580,14 +580,31 @@ class MedicalState:
         return total_loss
         
     def calculate_body_capacity(self, capacity_name):
-        """
-        Calculate current level of a body capacity.
-        
+        """Return the organ-only floor for ``capacity_name``.
+
+        This is the **schema layer's** answer to "how much of this
+        capacity does the body have left?" — derived purely from
+        organ health, weighted by each organ's declared contribution
+        to that capacity (see ``world.medical.constants.BODY_CAPACITIES``
+        and species overrides in ``world.anatomy.species``).
+
+        Pain, blood loss, condition-driven suppression, and other
+        runtime modifiers are NOT applied here.  Those flow through
+        :meth:`update_vital_signs` (which writes
+        ``self.consciousness`` / ``self.pain_level`` / ``self.blood_level``)
+        and are read by :meth:`is_unconscious`.  Conflating the two
+        would re-derive runtime state from organ HP every call,
+        breaking the substrate-readiness contract that the audit's
+        Phase 6 chronic-conditions framework is built on.
+
         Args:
             capacity_name (str): Name of capacity to calculate
-            
+                (``"blood_pumping"``, ``"breathing"``, ``"sight"``,
+                ``"moving"``, etc.).
+
         Returns:
-            float: 0.0 to 1.0 representing capacity level
+            float: 0.0 to 1.0 representing the organ-only capacity
+            floor, clamped and cached until ``_cache_dirty`` flips.
         """
         if not self._cache_dirty and capacity_name in self._capacity_cache:
             return self._capacity_cache[capacity_name]
@@ -661,16 +678,53 @@ class MedicalState:
         return capacity_level
         
     def is_unconscious(self):
-        """Returns True if character is unconscious."""
-        # Use the final consciousness value that includes all penalties:
-        # - organ damage penalties (from calculate_body_capacity)
-        # - pain penalties 
-        # - blood loss penalties
-        # - consciousness suppression penalties from conditions
+        """Return True when the character is currently unconscious.
+
+        Reads the **runtime ``self.consciousness`` value** — *not* the
+        raw consciousness capacity floor from
+        :meth:`calculate_body_capacity`.  The runtime value already
+        bakes in pain penalty, blood-loss penalty, and
+        condition-driven consciousness suppression (see
+        :meth:`update_vital_signs` for how those modifiers stack).
+
+        Brain damage feeds in indirectly: a destroyed brain drops
+        the ``consciousness`` capacity floor to zero, which
+        ``update_vital_signs`` writes into ``self.consciousness``
+        on each tick, which trips the threshold here.  This is the
+        canonical "brain destruction is unconsciousness, not death"
+        path documented in the HEALTH spec.
+        """
         return self.consciousness < (CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD / 100.0)
-        
+
     def is_dead(self):
-        """Returns True if character should be considered dead."""
+        """Return True when the character has crossed a death threshold.
+
+        Enforces exactly two death conditions, both organ-only and
+        capacity-derived:
+
+        1. **Lethal capacity floor** — any of ``blood_pumping`` /
+           ``breathing`` / ``digestion`` / ``neck_integrity`` hits
+           zero.  These are the four entries in
+           ``LETHAL_CAPACITY_NAMES`` that drive vital-location
+           targeting bias *and* enforce death (the fifth entry,
+           ``consciousness``, is intentionally NOT a death gate —
+           see :meth:`is_unconscious`).
+        2. **Blood-loss floor** — total blood level falls below
+           ``BLOOD_LOSS_DEATH_THRESHOLD``.
+
+        Notes for the audit's substrate work:
+
+        * Brain destruction lands as unconsciousness here (not
+          death).  Eventual revival blocking lives in
+          :meth:`death_progression.DeathProgressionScript._check_medical_revival_conditions`
+          per the audit's Phase 2.
+        * Kidney loss is **declared fatal** in the schema
+          (``blood_filtration.total_loss_fatal``) but not enforced
+          here — the runtime treats it as a survivable injury until
+          the audit's Phase 6 chronic-conditions substrate ships a
+          ``RenalFailure`` condition that produces death via the
+          condition tick path.
+        """
         # Death from vital organ failure
         if self.calculate_body_capacity("blood_pumping") <= 0.0:
             return True
@@ -680,11 +734,11 @@ class MedicalState:
             return True  # Liver failure
         if self.calculate_body_capacity("neck_integrity") <= 0.0:
             return True  # Decapitation - cervical spine severed (#243)
-            
+
         # Death from blood loss
         if self.blood_level <= (100.0 - BLOOD_LOSS_DEATH_THRESHOLD):
             return True
-            
+
         return False
         
     def update_vital_signs(self):

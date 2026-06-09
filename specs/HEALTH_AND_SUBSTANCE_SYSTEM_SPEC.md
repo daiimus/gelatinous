@@ -273,12 +273,16 @@ class DeathProgressionScript(DefaultScript):
         
     def _check_medical_revival_conditions(self, character):
         """Check if medical treatment has resolved fatal conditions"""
-        # NEXT: Brain death integration - check consciousness/brain state
-        # Brain-dead characters cannot be revived regardless of other medical improvements
+        # Brain death blocks revival — tracked as Phase 2 of the
+        # MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC remediation plan.
+        # Below is the intended shape; the live code in
+        # typeclasses/death_progression.py:_check_medical_revival_conditions
+        # currently only calls medical_state.is_dead() and will gain
+        # this guard when Phase 2 ships.
         brain_organ = character.medical_state.get_organ("brain")
         if brain_organ and brain_organ.current_hp <= 0:
             return False  # Brain death = no revival possible
-            
+
         # Check overall medical death status
         if character.medical_state and not character.medical_state.is_dead():
             return True  # Medical intervention successful
