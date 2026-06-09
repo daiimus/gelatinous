@@ -123,23 +123,34 @@ class CmdWear(Command):
         # they appeared at the moment they began the action.
         char_refs = {"actor": caller}
         pre_resolved = _snapshot_actor_names(caller, char_refs)
+        action_template = f"{{actor}} puts on {_articled(item.key)}."
 
-        def _broadcast_action():
-            msg_room_identity(
-                location=caller.location,
-                template=f"{{actor}} puts on {_articled(item.key)}.",
-                char_refs=char_refs,
-                exclude=[caller],
-                pre_resolved_refs=pre_resolved,
+        if getattr(item, "disguise_essential", False):
+            # Essential item: the wear triggers an unmasking moment.
+            # Route the action emote through apply_signature_change
+            # so observers see a single combined "action + reveal"
+            # message instead of two separate prose lines.
+            success, message = caller.wear_item(
+                item,
+                action_template=action_template,
+                action_char_refs=char_refs,
+                action_pre_resolved_refs=pre_resolved,
+                action_exclude=[caller],
             )
+        else:
+            # Non-essential — plain action broadcast, no unmask.
+            def _broadcast_action():
+                msg_room_identity(
+                    location=caller.location,
+                    template=action_template,
+                    char_refs=char_refs,
+                    exclude=[caller],
+                    pre_resolved_refs=pre_resolved,
+                )
 
-        # Pass the action broadcast as an on_committed callback so it
-        # fires before the apply_signature_change mutation — keeps the
-        # action description ordered before any "you realize ..." UID-
-        # transition broadcasts that follow.
-        success, message = caller.wear_item(
-            item, on_committed=_broadcast_action,
-        )
+            success, message = caller.wear_item(
+                item, on_committed=_broadcast_action,
+            )
         caller.msg(message)
 
 
@@ -276,23 +287,39 @@ class CmdRemove(Command):
                 pre_resolved_refs=pre_resolved,
             )
         
-        # The action broadcast is gated by the no-grenade case; build
-        # the callback closure so remove_item can fire it after
-        # validation passes but before the apply_signature_change
-        # mutation kicks off any identity-shift broadcasts.
-        def _broadcast_action():
-            if item.db.stuck_grenade is None:
-                msg_room_identity(
-                    location=caller.location,
-                    template=f"{{actor}} removes {_articled(item.key)}.",
-                    char_refs=char_refs,
-                    exclude=[caller],
-                    pre_resolved_refs=pre_resolved,
-                )
+        # Action emote is gated by the no-grenade case (stuck grenade
+        # already broadcast above).  When the item is disguise-
+        # essential, route through the combined-message path so
+        # observers see "X removes a balaclava, revealing they are
+        # Drek Drivel" in one line; otherwise use the plain
+        # on_committed hook to emit a standalone action broadcast
+        # before the (non-essential) mutation runs.
+        action_template = f"{{actor}} removes {_articled(item.key)}."
+        is_essential = getattr(item, "disguise_essential", False)
+        grenade_already_broadcast = item.db.stuck_grenade is not None
 
-        success, message = caller.remove_item(
-            item, on_committed=_broadcast_action,
-        )
+        if is_essential and not grenade_already_broadcast:
+            success, message = caller.remove_item(
+                item,
+                action_template=action_template,
+                action_char_refs=char_refs,
+                action_pre_resolved_refs=pre_resolved,
+                action_exclude=[caller],
+            )
+        else:
+            def _broadcast_action():
+                if not grenade_already_broadcast:
+                    msg_room_identity(
+                        location=caller.location,
+                        template=action_template,
+                        char_refs=char_refs,
+                        exclude=[caller],
+                        pre_resolved_refs=pre_resolved,
+                    )
+
+            success, message = caller.remove_item(
+                item, on_committed=_broadcast_action,
+            )
         caller.msg(message)
 
 

@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 from evennia.server.models import ServerConfig
 from evennia.utils import logger
 
-from world.grammar import GENDER_MAP, with_article
+from world.grammar import GENDER_MAP, capitalize_first, with_article
 
 if TYPE_CHECKING:
     from evennia.accounts.models import AccountDB
@@ -1885,12 +1885,15 @@ def _send_unmasking_message(
         new_name = (new_entry or {}).get("assigned_name") or ""
         if not old_sdesc or not new_sdesc:
             return
+        # Non-restrictive "who you call X" clauses sit mid-sentence,
+        # so they need commas on BOTH sides — trailing comma closes
+        # the clause before " and " or " are the same person".
         old_phrase = (
-            f"{old_sdesc}, who you call {old_name}"
+            f"{old_sdesc}, who you call {old_name},"
             if old_name else old_sdesc
         )
         new_phrase = (
-            f"{new_sdesc}, who you call {new_name}"
+            f"{new_sdesc}, who you call {new_name},"
             if new_name else new_sdesc
         )
         observer.msg(
@@ -2028,6 +2031,182 @@ def _broadcast_unmasking(
     del source  # reserved for future debug/flavor routing
 
 
+def _broadcast_unmask_with_action(
+    char: Any,
+    old_uid: str | None,
+    new_uid: str | None,
+    *,
+    action_template: str,
+    action_char_refs: dict,
+    action_pre_resolved_refs: dict,
+    action_exclude: list,
+    source: str | None = None,
+) -> None:
+    """Composed unmask broadcast — action emote + reveal suffix per
+    observer in a single message.
+
+    Used when the UID transition is triggered by a player action
+    (wear / remove of a disguise-essential item).  Observers see
+    one line that frames the reveal in the context of the action,
+    e.g.::
+
+        A wiry masked ninja removes a black balaclava, revealing
+        they are none other than Drek Drivel.
+
+    Per-observer cell semantics (matching :func:`_broadcast_unmasking`):
+
+    * **A** — knew neither: action emote only, no suffix.
+    * **B** — knew old, not new: action emote (the observer's
+      assigned name for the old presentation resolves through the
+      ``pre_resolved`` snapshot).  No suffix — the new face is
+      unknown to the observer.
+    * **C** — knew new, not old: action emote (pre-mutation sdesc
+      since observer didn't recognise the old presentation) plus
+      a reveal suffix surfacing the observer's assigned name for
+      the new presentation.
+    * **D** — knew both: action emote + reveal suffix when the new
+      presentation has an assigned name (the common Scooby-style
+      "unmasking" moment).  Linkage prose drops when neither side
+      has a name, per the "one message per action" contract.
+
+    Memory mutations (lost_contact, auto-link, sdesc refresh) are
+    applied here exactly as :func:`_broadcast_unmasking` would.
+    """
+    if old_uid is None or new_uid is None or old_uid == new_uid:
+        return
+
+    now_iso = _recognition_now_iso()
+    exclude_set = set(action_exclude or [])
+
+    # Determine which placeholder leads the template so we can
+    # title-case its display name at sentence start (matching
+    # msg_room_identity's convention).
+    first_placeholder: str | None = None
+    first_pos = len(action_template)
+    for placeholder in action_char_refs:
+        pos = action_template.find(f"{{{placeholder}}}")
+        if pos != -1 and pos < first_pos:
+            first_pos = pos
+            first_placeholder = placeholder
+
+    for observer in _collect_unmasking_observers(char):
+        if observer in exclude_set:
+            continue
+
+        memory = getattr(observer, "recognition_memory", None)
+        if memory is None:
+            memory = {}
+
+        knew_old = old_uid in memory
+        knew_new = new_uid in memory
+
+        # Determine cell + apply matching memory mutation.
+        if not knew_old and not knew_new:
+            cell = "A"
+        elif knew_old and not knew_new:
+            cell = "B"
+            memory[old_uid]["lost_contact"] = True
+            if memory[old_uid].get("real_sleeve_uid") is None:
+                sleeve_uid = getattr(char, "sleeve_uid", None)
+                if sleeve_uid:
+                    memory[old_uid]["real_sleeve_uid"] = sleeve_uid
+            location_name = (
+                observer.location.key
+                if getattr(observer, "location", None) is not None
+                else "unknown"
+            )
+            memory[new_uid] = _build_link_entry(
+                target=char,
+                observer=observer,
+                linked_to=old_uid,
+                now_iso=now_iso,
+                location_name=location_name,
+            )
+            observer.recognition_memory = memory
+        elif not knew_old and knew_new:
+            cell = "C"
+            entry = memory[new_uid]
+            entry["last_seen"] = now_iso
+            entry["location_last_seen"] = (
+                observer.location.key
+                if getattr(observer, "location", None) is not None
+                else "unknown"
+            )
+            entry["lost_contact"] = False
+            if hasattr(char, "get_sdesc"):
+                entry["sdesc_at_last_encounter"] = char.get_sdesc()
+            if entry.get("real_sleeve_uid") is None:
+                sleeve_uid = getattr(char, "sleeve_uid", None)
+                if sleeve_uid:
+                    entry["real_sleeve_uid"] = sleeve_uid
+            observer.recognition_memory = memory
+        else:
+            cell = "D"
+            memory[old_uid]["lost_contact"] = True
+            new_entry = memory[new_uid]
+            new_entry["last_seen"] = now_iso
+            new_entry["location_last_seen"] = (
+                observer.location.key
+                if getattr(observer, "location", None) is not None
+                else "unknown"
+            )
+            new_entry["lost_contact"] = False
+            if hasattr(char, "get_sdesc"):
+                new_entry["sdesc_at_last_encounter"] = char.get_sdesc()
+            if new_entry.get("linked_to") is None:
+                new_entry["linked_to"] = old_uid
+            sleeve_uid = getattr(char, "sleeve_uid", None)
+            if sleeve_uid:
+                if new_entry.get("real_sleeve_uid") is None:
+                    new_entry["real_sleeve_uid"] = sleeve_uid
+                if memory[old_uid].get("real_sleeve_uid") is None:
+                    memory[old_uid]["real_sleeve_uid"] = sleeve_uid
+            observer.recognition_memory = memory
+
+        # Render action template with per-observer character names.
+        # Use the snapshot's pre-mutation display name so the actor
+        # reads as they appeared at the start of the action.
+        rendered = action_template
+        for placeholder, char_ref in action_char_refs.items():
+            snapshot = action_pre_resolved_refs.get(placeholder)
+            if snapshot is not None and observer in snapshot:
+                display_name = snapshot[observer]
+            elif hasattr(char_ref, "get_display_name"):
+                display_name = char_ref.get_display_name(observer)
+            else:
+                display_name = getattr(char_ref, "key", "")
+            if placeholder == first_placeholder:
+                display_name = capitalize_first(display_name)
+            rendered = rendered.replace(
+                f"{{{placeholder}}}", display_name
+            )
+
+        # Compose the reveal suffix as a non-restrictive continuation
+        # of the action sentence: "X removes Y, revealing they are
+        # none other than Z."  Drop the action_template's trailing
+        # period (if any) so the comma continuation flows naturally
+        # and we end the combined line with a single full stop.
+        suffix = ""
+        if cell in ("C", "D"):
+            new_name = (
+                (memory.get(new_uid) or {}).get("assigned_name") or ""
+            )
+            if new_name:
+                suffix = f", revealing they are none other than {new_name}"
+
+        if suffix:
+            stripped = rendered.rstrip()
+            if stripped.endswith("."):
+                stripped = stripped[:-1]
+            combined = f"{stripped}{suffix}."
+        else:
+            combined = rendered
+
+        observer.msg(combined)
+
+    del source  # reserved for future debug/flavor routing
+
+
 class apply_signature_change:
     """Context manager wrapping any mutation of a character's identity signature.
 
@@ -2052,14 +2231,46 @@ class apply_signature_change:
 
     Args:
         char: The character whose signature is being mutated.
-        source: Optional free-form tag describing the mutation, passed
-            through to the flavor-text hook (currently unused).
+        source: Optional free-form tag describing the mutation,
+            passed through to the flavor-text hook (currently unused).
+        action_template: Optional message template (e.g.
+            ``"{actor} removes {item}."``) describing the player
+            action that triggered the mutation.  When provided, the
+            unmask broadcast composes a *combined* per-observer
+            message — action prose with an appended reveal suffix
+            keyed to the observer's recognition memory — instead of
+            firing a standalone realize message.  The command
+            therefore should NOT emit its own action broadcast for
+            essential items when ``action_template`` is set; the
+            single combined message replaces both.
+        action_char_refs: Mapping of placeholder names to character
+            objects, the same shape :func:`msg_room_identity`
+            accepts.  Required when ``action_template`` is set.
+        action_pre_resolved_refs: Optional pre-computed display-name
+            snapshots (the snapshot idiom used to render the actor
+            with their pre-mutation appearance).
+        action_exclude: Observers to skip when broadcasting the
+            combined message (typically the actor themselves, who
+            receives their own first-person feedback elsewhere).
     """
 
-    def __init__(self, char: Any, source: str | None = None) -> None:
+    def __init__(
+        self,
+        char: Any,
+        source: str | None = None,
+        *,
+        action_template: str | None = None,
+        action_char_refs: dict | None = None,
+        action_pre_resolved_refs: dict | None = None,
+        action_exclude: list | None = None,
+    ) -> None:
         self.char = char
         self.source = source
         self._old_uid: str | None = None
+        self.action_template = action_template
+        self.action_char_refs = action_char_refs
+        self.action_pre_resolved_refs = action_pre_resolved_refs
+        self.action_exclude = action_exclude
 
     def __enter__(self) -> "apply_signature_change":
         self._old_uid = get_apparent_uid(self.char)
@@ -2070,9 +2281,23 @@ class apply_signature_change:
             # Mutation failed; do not broadcast.
             return False
         new_uid = get_apparent_uid(self.char)
-        _broadcast_unmasking(
-            self.char, self._old_uid, new_uid, source=self.source
-        )
+        if self.action_template is not None:
+            _broadcast_unmask_with_action(
+                self.char,
+                self._old_uid,
+                new_uid,
+                action_template=self.action_template,
+                action_char_refs=self.action_char_refs or {},
+                action_pre_resolved_refs=(
+                    self.action_pre_resolved_refs or {}
+                ),
+                action_exclude=self.action_exclude or [],
+                source=self.source,
+            )
+        else:
+            _broadcast_unmasking(
+                self.char, self._old_uid, new_uid, source=self.source
+            )
         return False
 
 

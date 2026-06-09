@@ -22,6 +22,7 @@ from unittest.mock import patch
 
 from world.identity import (
     _broadcast_unmasking,
+    _broadcast_unmask_with_action,
     _build_link_entry,
     _collect_unmasking_observers,
     _LINKED_CHAIN_MAX_HOPS,
@@ -892,3 +893,127 @@ class TestOverrideHelperWiring(TestCase):
         self.assertIsNone(caller.db.keyword_override)
         self.assertIsNone(caller.db.active_persona)
         bc.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _broadcast_unmask_with_action — combined "action + reveal" path
+# ---------------------------------------------------------------------------
+
+
+class TestBroadcastUnmaskWithAction(TestCase):
+    """The combined-message path emits one line per observer:
+    action emote + reveal suffix keyed on the observer's memory."""
+
+    def _build_scene(
+        self, *,
+        observer_memory: dict | None = None,
+        target_sdesc: str = "a wiry masked ninja in a white cotton t-shirt",
+    ):
+        room = _FakeRoom("Tolliver Row")
+        target = _FakeTarget(location=room, sdesc=target_sdesc)
+        observer = _FakeObserver(
+            location=room, recognition_memory=observer_memory or {},
+        )
+        return room, target, observer
+
+    def _call(self, target, observer, *, old_uid, new_uid):
+        # The action_template uses a snapshot for the actor — observers
+        # see the pre-mutation sdesc rendered through the snapshot.
+        pre_resolved = {
+            "actor": {observer: "a wiry masked ninja in a white cotton t-shirt"},
+        }
+        _broadcast_unmask_with_action(
+            target, old_uid, new_uid,
+            action_template="{actor} removes a black balaclava.",
+            action_char_refs={"actor": target},
+            action_pre_resolved_refs=pre_resolved,
+            action_exclude=[],
+        )
+
+    def test_cell_d_named_new_uid_combines_action_and_reveal(self) -> None:
+        memory = {
+            "uid-masked": make_recognition_entry(
+                assigned_name="",
+                sdesc_at_last_encounter=(
+                    "a wiry masked ninja in a white cotton t-shirt"
+                ),
+            ),
+            "uid-bare": make_recognition_entry(
+                assigned_name="Drek Drivel",
+                sdesc_at_last_encounter="a wiry ninja wielding a chainsaw",
+            ),
+        }
+        _, target, observer = self._build_scene(observer_memory=memory)
+        self._call(target, observer, old_uid="uid-masked", new_uid="uid-bare")
+        self.assertEqual(len(observer.messages), 1)
+        msg = observer.messages[0]
+        self.assertIn("removes a black balaclava", msg)
+        self.assertIn(
+            "revealing they are none other than Drek Drivel", msg,
+        )
+        self.assertTrue(msg.endswith("."), msg)
+
+    def test_cell_c_named_new_uid_combines_action_and_reveal(self) -> None:
+        # Cell C: observer only knew the bare presentation.  Same
+        # reveal as cell D from the observer's POV.
+        memory = {
+            "uid-bare": make_recognition_entry(
+                assigned_name="Drek Drivel",
+                sdesc_at_last_encounter="a wiry ninja wielding a chainsaw",
+            ),
+        }
+        _, target, observer = self._build_scene(observer_memory=memory)
+        self._call(target, observer, old_uid="uid-masked", new_uid="uid-bare")
+        msg = observer.messages[0]
+        self.assertIn("revealing they are none other than Drek Drivel", msg)
+
+    def test_cell_a_stranger_gets_action_only(self) -> None:
+        # No memory for either UID.
+        _, target, observer = self._build_scene(observer_memory={})
+        self._call(target, observer, old_uid="uid-masked", new_uid="uid-bare")
+        msg = observer.messages[0]
+        self.assertIn("removes a black balaclava", msg)
+        self.assertNotIn("revealing", msg)
+
+    def test_cell_d_no_assigned_name_omits_reveal_suffix(self) -> None:
+        # Observer auto-linked both presentations but named neither —
+        # combined path drops the linkage prose (per the "one message"
+        # contract); the action emote stands alone.
+        memory = {
+            "uid-masked": make_recognition_entry(
+                assigned_name="",
+                sdesc_at_last_encounter="a wiry masked ninja",
+            ),
+            "uid-bare": make_recognition_entry(
+                assigned_name="",
+                sdesc_at_last_encounter="a wiry ninja",
+            ),
+        }
+        _, target, observer = self._build_scene(observer_memory=memory)
+        self._call(target, observer, old_uid="uid-masked", new_uid="uid-bare")
+        msg = observer.messages[0]
+        self.assertIn("removes a black balaclava", msg)
+        self.assertNotIn("revealing", msg)
+
+    def test_actor_excluded(self) -> None:
+        _, target, observer = self._build_scene(observer_memory={})
+        # Add target as an "observer" via action_exclude.
+        _broadcast_unmask_with_action(
+            target, "uid-old", "uid-new",
+            action_template="{actor} removes balaclava.",
+            action_char_refs={"actor": target},
+            action_pre_resolved_refs={},
+            action_exclude=[observer],
+        )
+        self.assertEqual(observer.messages, [])
+
+    def test_no_op_when_uids_unchanged(self) -> None:
+        _, target, observer = self._build_scene(observer_memory={})
+        _broadcast_unmask_with_action(
+            target, "uid-x", "uid-x",
+            action_template="{actor} removes balaclava.",
+            action_char_refs={"actor": target},
+            action_pre_resolved_refs={},
+            action_exclude=[],
+        )
+        self.assertEqual(observer.messages, [])

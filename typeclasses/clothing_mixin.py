@@ -28,21 +28,32 @@ class ClothingMixin:
         - Reads ``self.hands`` (AttributeProperty on Character) during wear_item.
     """
 
-    def wear_item(self, item, *, on_committed=None):
+    def wear_item(
+        self, item, *,
+        on_committed=None,
+        action_template=None,
+        action_char_refs=None,
+        action_pre_resolved_refs=None,
+        action_exclude=None,
+    ):
         """
         Wear a clothing item, handling layer conflicts and coverage.
 
         Args:
             item: The item to wear.
             on_committed: Optional zero-arg callable invoked after
-                validation passes but *before* the mutation runs
-                (and therefore before any
-                :func:`world.identity._broadcast_unmasking` fires
-                from :class:`apply_signature_change`).  Use this
-                from the command layer to emit the action broadcast
-                ("X puts on a balaclava") so that observer prose
-                lands in the correct narrative order: action first,
-                then the identity-shift recognition messages.
+                validation passes but *before* the mutation runs.
+                Used for **non-essential** items where the action
+                broadcast needs to land before the mutation but no
+                unmask reveal is involved.
+            action_template / action_char_refs /
+            action_pre_resolved_refs / action_exclude: Forwarded to
+            :class:`world.identity.apply_signature_change` when the
+            item is ``disguise_essential``.  Drives the combined
+            "action + reveal suffix" per-observer broadcast so the
+            unmasking moment reads as a single sentence — see the
+            docstring on ``apply_signature_change`` for the contract.
+            Ignored for non-essential items.
 
         Returns:
             tuple: (success: bool, message: str)
@@ -225,33 +236,55 @@ class ClothingMixin:
 
                 location_items.insert(insert_index, item)
 
-        # Validation passed.  Fire the committed-action hook (the
-        # command layer uses this to broadcast the action emote)
-        # before the mutation so identity-shift recognition messages
-        # land after the action description, not before it.
-        if on_committed is not None:
-            on_committed()
-
-        if is_essential:
-            with apply_signature_change(self, source="wear_item"):
+        # Validation passed.  For non-essential items the action
+        # broadcast lands via the on_committed callback (no UID
+        # transition involved).  For essential items, the combined
+        # broadcast (action + reveal) is emitted from inside
+        # apply_signature_change.__exit__ — we skip on_committed
+        # entirely so a duplicate action broadcast doesn't fire.
+        if is_essential and action_template is not None:
+            with apply_signature_change(
+                self,
+                source="wear_item",
+                action_template=action_template,
+                action_char_refs=action_char_refs,
+                action_pre_resolved_refs=action_pre_resolved_refs,
+                action_exclude=action_exclude,
+            ):
                 _do_wear()
         else:
-            _do_wear()
+            if on_committed is not None:
+                on_committed()
+            if is_essential:
+                with apply_signature_change(self, source="wear_item"):
+                    _do_wear()
+            else:
+                _do_wear()
 
         return True, f"You put on {with_article(item.key)}."
 
-    def remove_item(self, item, *, on_committed=None):
+    def remove_item(
+        self, item, *,
+        on_committed=None,
+        action_template=None,
+        action_char_refs=None,
+        action_pre_resolved_refs=None,
+        action_exclude=None,
+    ):
         """
         Remove worn clothing item, checking for outer layers blocking removal.
 
         Args:
             item: The item to remove.
             on_committed: Optional zero-arg callable invoked after
-                validation passes but *before* the mutation runs
-                (and therefore before any
-                :func:`world.identity._broadcast_unmasking` fires
-                from :class:`apply_signature_change`).  See
-                :meth:`wear_item` for the rationale.
+                validation passes but *before* the mutation runs.
+                Used for **non-essential** items where the action
+                broadcast needs to land before the mutation but no
+                unmask reveal is involved.
+            action_template / action_char_refs /
+            action_pre_resolved_refs / action_exclude: Forwarded to
+            :class:`world.identity.apply_signature_change` when the
+            item is ``disguise_essential``.  See :meth:`wear_item`.
 
         Returns:
             tuple: (success: bool, message: str)
@@ -329,18 +362,29 @@ class ClothingMixin:
                         if not items:
                             del self.worn_items[location]
 
-        # Validation passed.  Fire the committed-action hook (the
-        # command layer uses this to broadcast the action emote)
-        # before the mutation so identity-shift recognition messages
-        # land after the action description, not before it.
-        if on_committed is not None:
-            on_committed()
-
-        if is_essential:
-            with apply_signature_change(self, source="remove_item"):
+        # Validation passed.  For non-essential items the action
+        # broadcast lands via the on_committed callback.  For
+        # essential items, the combined broadcast (action + reveal)
+        # is emitted from inside apply_signature_change.__exit__ —
+        # we skip on_committed so a duplicate action doesn't fire.
+        if is_essential and action_template is not None:
+            with apply_signature_change(
+                self,
+                source="remove_item",
+                action_template=action_template,
+                action_char_refs=action_char_refs,
+                action_pre_resolved_refs=action_pre_resolved_refs,
+                action_exclude=action_exclude,
+            ):
                 _do_remove()
         else:
-            _do_remove()
+            if on_committed is not None:
+                on_committed()
+            if is_essential:
+                with apply_signature_change(self, source="remove_item"):
+                    _do_remove()
+            else:
+                _do_remove()
 
         return True, f"You remove {with_article(item.key)}."
 
