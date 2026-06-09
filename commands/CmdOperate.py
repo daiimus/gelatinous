@@ -369,18 +369,42 @@ def _process_top_choice(caller, raw_string, **kwargs):
 # -------------------------------------------------------------------
 
 
+def _is_deceased_subject(target) -> bool:
+    """True when ``target`` is a deceased subject — corpse, severed
+    head, severed appendage, or a live character whose
+    ``medical_state.is_dead()`` returns true (vital collapse before
+    corpse processing).  The autopsy procedure is only offered for
+    these subjects."""
+    db = getattr(target, "db", None)
+    if db is not None and getattr(db, "death_time", None) is not None:
+        return True
+    state = getattr(target, "medical_state", None)
+    if state is not None:
+        is_dead = getattr(state, "is_dead", None)
+        if callable(is_dead) and is_dead():
+            return True
+    return False
+
+
 def _node_add_verb(caller, raw_string, **kwargs):
-    """Prompt the surgeon for a procedure verb."""
-    text = (
-        "\n|wAdd procedure step|n\n\n"
-        "  1. incise\n"
-        "  2. harvest\n"
-        "  3. install\n"
-        "  4. suture\n"
-        "  5. amputate\n"
-        "  x. Cancel\n\n"
-        "|wWhich verb?|n"
-    )
+    """Prompt the surgeon for a procedure verb.  The autopsy verb
+    is only offered when the patient is deceased."""
+    target = caller.ndb._operate_target
+    deceased = _is_deceased_subject(target) if target else False
+
+    lines = [
+        "\n|wAdd procedure step|n\n",
+        "  1. incise",
+        "  2. harvest",
+        "  3. install",
+        "  4. suture",
+        "  5. amputate",
+    ]
+    if deceased:
+        lines.append("  6. autopsy")
+    lines.append("  x. Cancel\n")
+    lines.append("|wWhich verb?|n")
+    text = "\n".join(lines)
     options = ({"key": "_default", "goto": _process_verb_choice},)
     return text, options
 
@@ -395,11 +419,24 @@ def _process_verb_choice(caller, raw_string, **kwargs):
         "3": "install",  "install":  "install",
         "4": "suture",   "suture":   "suture",
         "5": "amputate", "amputate": "amputate",
+        "6": "autopsy",  "autopsy":  "autopsy",
     }
     verb = verb_map.get(choice)
     if verb is None:
-        caller.msg("|rPick 1-5 or x to cancel.|n")
+        caller.msg("|rPick a listed verb or x to cancel.|n")
         return None
+
+    # Autopsy is the only verb gated on patient state — block it at
+    # selection time if the target isn't deceased.  Defensive duplicate
+    # of the menu render gate above for the keyboard-typed shortcut.
+    if verb == "autopsy" and not _is_deceased_subject(
+        caller.ndb._operate_target
+    ):
+        caller.msg(
+            "|rAutopsy is only performable on a deceased subject.|n"
+        )
+        return None
+
     caller.ndb._operate_pending_verb = verb
     # Suture has optional location; the rest are required.
     if verb == "suture":
@@ -412,6 +449,11 @@ def _process_verb_choice(caller, raw_string, **kwargs):
         return "node_install_organ"
     if verb == "amputate":
         return "node_amputate_location"
+    if verb == "autopsy":
+        # No further args — drop straight onto the chart.
+        _add_step_to_chart(caller, "autopsy", {})
+        caller.msg("|gAdded:|n conduct autopsy")
+        return "node_top"
     return "node_top"
 
 
@@ -1156,6 +1198,14 @@ def _node_edit_chart(caller, raw_string, **kwargs):
         line = f"  {roman}. {summary.ljust(36)} [{tag}]"
         if outcome:
             line += f"\n          └── {outcome}"
+        # Recordable step results (autopsy report and similar) get
+        # a one-line marker — the full payload may be lengthy, so
+        # the surgeon reads it via the |wv N|n action.
+        if step.get("result"):
+            line += (
+                f"\n          └── {MUTED}finding saved — "
+                f"|wv {idx}|n to view|n"
+            )
         parts.append(line)
     parts.append("")
     parts.append("|wActions|n  (lowercase):")
@@ -1163,6 +1213,7 @@ def _node_edit_chart(caller, raw_string, **kwargs):
     parts.append("  |wd|n <N>    move step |wN|n down")
     parts.append("  |wr|n <N>    remove step |wN|n")
     parts.append("  |wi|n <N>    insert a new step before step |wN|n")
+    parts.append("  |wv|n <N>    view step |wN|n's recorded finding")
     parts.append("  |wx|n        back to top")
     parts.append("")
     parts.append("|wAction?|n")
@@ -1177,9 +1228,10 @@ def _process_edit_choice(caller, raw_string, **kwargs):
         return "node_top"
 
     parts = raw.split()
-    if len(parts) != 2 or parts[0] not in ("u", "d", "r", "i"):
+    if len(parts) != 2 or parts[0] not in ("u", "d", "r", "i", "v"):
         caller.msg(
-            "|rExpected: |wu N|r, |wd N|r, |wr N|r, |wi N|r, or |wx|r.|n"
+            "|rExpected: |wu N|r, |wd N|r, |wr N|r, |wi N|r, "
+            "|wv N|r, or |wx|r.|n"
         )
         return None
 
@@ -1231,6 +1283,16 @@ def _process_edit_choice(caller, raw_string, **kwargs):
         # instead of ``add_step``.
         caller.ndb._operate_insert_before = step_id
         return "node_add_verb"
+
+    if cmd == "v":
+        result = step.get("result")
+        if not result:
+            caller.msg(
+                f"|yStep {num} has no recorded finding to view.|n"
+            )
+            return "node_edit_chart"
+        caller.msg(f"\n|wFinding from step {num}|n\n{result}\n")
+        return "node_edit_chart"
 
     return None
 

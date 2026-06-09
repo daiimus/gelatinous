@@ -60,6 +60,11 @@ PROCEDURE_DURATIONS = {
     "install":  18,
     "suture":   9,
     "amputate": 12,
+    # Autopsy is the deliberate counterpart to the cursory ``inspect``
+    # command — a thorough post-mortem.  Lengthier than the heaviest
+    # surgical step so it reads as the dedicated forensic procedure
+    # it is.
+    "autopsy":  30,
 }
 
 #: Pain severity seeded on a conscious patient when a procedure
@@ -1079,6 +1084,113 @@ def _resolve_amputate(actor, target, *, location: str, **_) -> None:
     apply_vital_consequences(target)
 
 
+def _resolve_autopsy(actor, target, **_) -> None:
+    """Conduct a chart-driven post-mortem on a deceased subject.
+
+    Reuses the same engine as the standalone ``inspect`` command
+    (:func:`world.forensics.render_forensic_report`) so the
+    findings are identical to what an off-the-cuff examination
+    would produce; the difference is the *frame* — autopsy is the
+    lengthy deliberate procedure under ``operate``, ``inspect`` is
+    the cursory single-look read.
+
+    The full report is stashed on
+    ``target.db.surgical_state['pending_step_result']`` so the
+    chart runner's ``_advance`` hook can persist it onto the
+    step's ``result`` field; the chart pane then surfaces it on
+    re-read, giving the chart a forensic narrative record per
+    HEALTH spec §3178.
+
+    Living subjects are refused (defensive — the menu doesn't
+    surface autopsy for living patients, but a resleeve mid-chart
+    could land us here).  Skeletal corpses are also refused,
+    mirroring the standalone command's short-circuit.
+    """
+    from world.combat.constants import AUTOPSY_DC_BASIC
+    from world.forensics import (
+        attempt_forensic_recognition,
+        extract_subject_from_corpse,
+        render_forensic_report,
+    )
+
+    state = _state(target)
+
+    def _store_result(text: str) -> None:
+        state["pending_step_result"] = text
+        target.db.surgical_state = state
+
+    def _msg(text: str) -> None:
+        if actor is not None and hasattr(actor, "msg"):
+            actor.msg(text)
+
+    # Living-subject refusal.  Corpse-shape sources stamp
+    # ``db.death_time`` at creation; live ``MedicalState`` only
+    # reads dead via ``is_dead()``.  A subject with neither is a
+    # living target that shouldn't be autopsied.
+    target_db = getattr(target, "db", None)
+    death_time = (
+        getattr(target_db, "death_time", None)
+        if target_db is not None else None
+    )
+    live_state = getattr(target, "medical_state", None)
+    is_live_dead = False
+    if live_state is not None:
+        live_is_dead = getattr(live_state, "is_dead", None)
+        if callable(live_is_dead):
+            is_live_dead = bool(live_is_dead())
+    if death_time is None and not is_live_dead:
+        _msg(
+            "The subject is alive — autopsy is reserved for the "
+            "deceased."
+        )
+        _store_result("refused: subject is alive")
+        return
+
+    # Skeletal corpses short-circuit, same as the standalone path.
+    get_decay = getattr(target, "get_decay_stage", None)
+    if callable(get_decay) and get_decay() == "skeletal":
+        _msg(
+            "The remains are too far decomposed for forensic "
+            "examination — only bone is left."
+        )
+        _store_result("inconclusive: skeletal remains")
+        return
+
+    subject = extract_subject_from_corpse(target)
+    result = attempt_forensic_recognition(
+        actor, subject, AUTOPSY_DC_BASIC,
+        cache_owner=target,
+        cache_attr="autopsy_procedure_cache",
+    )
+
+    if not result.success:
+        msg = (
+            "The post-mortem was thorough but yielded no conclusive "
+            "findings."
+        )
+        _msg(msg)
+        _store_result(f"inconclusive autopsy ({msg})")
+        return
+
+    report = render_forensic_report(subject, observer=actor)
+
+    # Recognition contract — only surface an assigned name when the
+    # actor already holds the revealed UID in their memory.
+    memory = getattr(actor, "recognition_memory", None) or {}
+    header = "Post-mortem complete."
+    if result.revealed_uid and result.revealed_uid in memory:
+        assigned = memory[result.revealed_uid].get("assigned_name")
+        if assigned:
+            header = (
+                f"Post-mortem complete.  The remains are confirmed "
+                f"as those of {assigned}."
+            )
+
+    full_report = f"{header}\n{report}"
+    _msg(full_report)
+    _store_result(full_report)
+
+
 # Mapping consumed by ``_resolve_procedure_callback``.
 _VERB_RESOLVERS = {
     "incise":   _resolve_incise,
@@ -1086,6 +1198,7 @@ _VERB_RESOLVERS = {
     "install":  _resolve_install,
     "suture":   _resolve_suture,
     "amputate": _resolve_amputate,
+    "autopsy":  _resolve_autopsy,
 }
 
 

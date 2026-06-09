@@ -421,7 +421,9 @@ class VerbChoiceRouting(TestCase):
         result, caller = self._process("9")
         self.assertIsNone(result)
         self.assertEqual(len(caller.msg_log), 1)
-        self.assertIn("Pick 1-5", caller.msg_log[0])
+        # Adding autopsy (verb 6, gated on deceased subject) means
+        # the static "Pick 1-5" hint became generic.
+        self.assertIn("listed verb", caller.msg_log[0])
 
     def test_verb_choice_persists_pending_verb(self):
         # Side effect: the picker uses ``caller.ndb._operate_pending_verb``
