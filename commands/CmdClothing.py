@@ -123,10 +123,8 @@ class CmdWear(Command):
         # they appeared at the moment they began the action.
         char_refs = {"actor": caller}
         pre_resolved = _snapshot_actor_names(caller, char_refs)
-        success, message = caller.wear_item(item)
-        caller.msg(message)
 
-        if success:
+        def _broadcast_action():
             msg_room_identity(
                 location=caller.location,
                 template=f"{{actor}} puts on {_articled(item.key)}.",
@@ -134,6 +132,15 @@ class CmdWear(Command):
                 exclude=[caller],
                 pre_resolved_refs=pre_resolved,
             )
+
+        # Pass the action broadcast as an on_committed callback so it
+        # fires before the apply_signature_change mutation — keeps the
+        # action description ordered before any "you realize ..." UID-
+        # transition broadcasts that follow.
+        success, message = caller.wear_item(
+            item, on_committed=_broadcast_action,
+        )
+        caller.msg(message)
 
 
 class CmdRemove(Command):
@@ -178,6 +185,21 @@ class CmdRemove(Command):
             char_refs = {"actor": caller}
             pre_resolved = _snapshot_actor_names(caller, char_refs)
 
+            # Broadcast the aggregate action ahead of the loop so any
+            # per-item identity-shift broadcasts fired by remove_item
+            # land *after* the action description, not before it.  Uses
+            # the planned worn-items list (optimistic); partial failures
+            # land asymmetrically in the actor's msg vs. the room
+            # broadcast, but that's vanishingly rare for "remove all".
+            articled = iter_to_str([_articled(it.key) for it in worn_items])
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} removes {articled}.",
+                char_refs=char_refs,
+                exclude=[caller],
+                pre_resolved_refs=pre_resolved,
+            )
+
             removed_items = []
             for item in worn_items:
                 success, message = caller.remove_item(item)
@@ -186,14 +208,6 @@ class CmdRemove(Command):
 
             if removed_items:
                 caller.msg(f"You remove: {', '.join(removed_items)}")
-                articled = iter_to_str([_articled(key) for key in removed_items])
-                msg_room_identity(
-                    location=caller.location,
-                    template=f"{{actor}} removes {articled}.",
-                    char_refs=char_refs,
-                    exclude=[caller],
-                    pre_resolved_refs=pre_resolved,
-                )
             else:
                 caller.msg("You couldn't remove anything.")
             return
@@ -262,12 +276,11 @@ class CmdRemove(Command):
                 pre_resolved_refs=pre_resolved,
             )
         
-        # Remove the item
-        success, message = caller.remove_item(item)
-        caller.msg(message)
-        
-        if success:
-            # Message to room (only if no grenade warning was sent)
+        # The action broadcast is gated by the no-grenade case; build
+        # the callback closure so remove_item can fire it after
+        # validation passes but before the apply_signature_change
+        # mutation kicks off any identity-shift broadcasts.
+        def _broadcast_action():
             if item.db.stuck_grenade is None:
                 msg_room_identity(
                     location=caller.location,
@@ -276,6 +289,11 @@ class CmdRemove(Command):
                     exclude=[caller],
                     pre_resolved_refs=pre_resolved,
                 )
+
+        success, message = caller.remove_item(
+            item, on_committed=_broadcast_action,
+        )
+        caller.msg(message)
 
 
 class CmdRollUp(Command):
@@ -701,13 +719,17 @@ class CmdDress(Command):
             exclude=[caller, target],
         )
 
-    def _dress_character(self, target, item):
+    def _dress_character(self, target, item, *, on_committed=None):
         """Move the item into ``target``'s inventory and call its
         existing ``wear_item`` method.  On failure, roll the item
         back to the caller so it isn't orphaned on a target that
-        wouldn't accept it."""
+        wouldn't accept it.
+
+        ``on_committed`` is forwarded to ``wear_item`` so the caller
+        can interpose an action broadcast before the mutation fires
+        any identity-shift recognition messages."""
         item.move_to(target, quiet=True)
-        success, message = target.wear_item(item)
+        success, message = target.wear_item(item, on_committed=on_committed)
         if not success:
             item.move_to(self.caller, quiet=True)
         return success, message

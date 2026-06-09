@@ -28,12 +28,21 @@ class ClothingMixin:
         - Reads ``self.hands`` (AttributeProperty on Character) during wear_item.
     """
 
-    def wear_item(self, item):
+    def wear_item(self, item, *, on_committed=None):
         """
         Wear a clothing item, handling layer conflicts and coverage.
 
         Args:
             item: The item to wear.
+            on_committed: Optional zero-arg callable invoked after
+                validation passes but *before* the mutation runs
+                (and therefore before any
+                :func:`world.identity._broadcast_unmasking` fires
+                from :class:`apply_signature_change`).  Use this
+                from the command layer to emit the action broadcast
+                ("X puts on a balaclava") so that observer prose
+                lands in the correct narrative order: action first,
+                then the identity-shift recognition messages.
 
         Returns:
             tuple: (success: bool, message: str)
@@ -216,6 +225,13 @@ class ClothingMixin:
 
                 location_items.insert(insert_index, item)
 
+        # Validation passed.  Fire the committed-action hook (the
+        # command layer uses this to broadcast the action emote)
+        # before the mutation so identity-shift recognition messages
+        # land after the action description, not before it.
+        if on_committed is not None:
+            on_committed()
+
         if is_essential:
             with apply_signature_change(self, source="wear_item"):
                 _do_wear()
@@ -224,12 +240,18 @@ class ClothingMixin:
 
         return True, f"You put on {with_article(item.key)}."
 
-    def remove_item(self, item):
+    def remove_item(self, item, *, on_committed=None):
         """
         Remove worn clothing item, checking for outer layers blocking removal.
 
         Args:
             item: The item to remove.
+            on_committed: Optional zero-arg callable invoked after
+                validation passes but *before* the mutation runs
+                (and therefore before any
+                :func:`world.identity._broadcast_unmasking` fires
+                from :class:`apply_signature_change`).  See
+                :meth:`wear_item` for the rationale.
 
         Returns:
             tuple: (success: bool, message: str)
@@ -306,6 +328,13 @@ class ClothingMixin:
                         # Clean up empty lists
                         if not items:
                             del self.worn_items[location]
+
+        # Validation passed.  Fire the committed-action hook (the
+        # command layer uses this to broadcast the action emote)
+        # before the mutation so identity-shift recognition messages
+        # land after the action description, not before it.
+        if on_committed is not None:
+            on_committed()
 
         if is_essential:
             with apply_signature_change(self, source="remove_item"):
