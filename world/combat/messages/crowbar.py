@@ -298,9 +298,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} sweeps the {hit_location}s with the bar. {target_name} lands wrong. They don't get up right."
         },
         {
-            "attacker_msg": "You swing low. The bar hits {hit_location}. {target_name} hits floor.",
-            "victim_msg": "{attacker_name} swings low. The bar hits {hit_location}. You hit floor.",
-            "observer_msg": "{attacker_name} swings low. The bar hits {hit_location}. {target_name} hits floor."
+            "attacker_msg": "You swing low. The bar hits {target_name}'s {hit_location}. {target_name} hits the floor.",
+            "victim_msg": "{attacker_name} swings low. The bar hits your {hit_location}. You hit the floor.",
+            "observer_msg": "{attacker_name} swings low. The bar hits {target_name}'s {hit_location}. {target_name} hits the floor."
         }
     ],
     "miss": [

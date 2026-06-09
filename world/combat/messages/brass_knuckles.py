@@ -238,9 +238,9 @@ MESSAGES = {
             "observer_msg": "The blow from {attacker_name} crunches into {target_name}'s {hit_location}. For a moment, everything pauses. Then the blood starts."
         },
         {
-            "attacker_msg": "Your blow isn't clean — it scrapes, digs, *sticks*. When you pull {hit_location}, there's a smear of blood across your brass like a signature. {target_name} stumbles, and the floor suddenly feels too far away to trust.",
-            "victim_msg": "The blow from {attacker_name} isn't clean — it scrapes, digs, *sticks*. When they pull {hit_location}, there's a smear of blood across the brass like a signature. You stumble, and the floor suddenly feels too far away to trust.",
-            "observer_msg": "The blow from {attacker_name} isn't clean — it scrapes, digs, *sticks*. When they pull {hit_location}, there's a smear of blood across the brass like a signature. {target_name} stumbles, and the floor suddenly feels too far away to trust."
+            "attacker_msg": "Your blow isn't clean — it scrapes, digs, *sticks*. When you pull back from the {hit_location}, there's a smear of blood across your brass like a signature. {target_name} stumbles, and the floor suddenly feels too far away to trust.",
+            "victim_msg": "The blow from {attacker_name} isn't clean — it scrapes, digs, *sticks*. When they pull back from your {hit_location}, there's a smear of blood across the brass like a signature. You stumble, and the floor suddenly feels too far away to trust.",
+            "observer_msg": "The blow from {attacker_name} isn't clean — it scrapes, digs, *sticks*. When they pull back from {target_name}'s {hit_location}, there's a smear of blood across the brass like a signature. {target_name} stumbles, and the floor suddenly feels too far away to trust."
         },
         {
             "attacker_msg": "Your brass slams into the {hit_location} of {target_name}'s {hit_location} with blunt finality. They reel like they forgot how legs work.",

@@ -208,19 +208,19 @@ MESSAGES = {
             'observer_msg': "It's not the edge but the weight that ruins {target_name}. They're struck flat, breath gone, {hit_location} shattered."
         },
         {
-            'attacker_msg': "Steel bites deep, lodging into flesh before you pull {hit_location} hard. {target_name} falls, clutching what's left.",
-            'victim_msg': "Steel bites deep, lodging into flesh before {attacker_name} pulls {hit_location} hard. You fall, clutching what's left.",
-            'observer_msg': "Steel bites deep, lodging into flesh before {attacker_name} pulls {hit_location} hard. {target_name} falls, clutching what's left."
+            'attacker_msg': "Steel bites deep, lodging into flesh before you yank it free of the {hit_location}. {target_name} falls, clutching what's left.",
+            'victim_msg': "Steel bites deep, lodging into flesh before {attacker_name} yanks it free of your {hit_location}. You fall, clutching what's left.",
+            'observer_msg': "Steel bites deep, lodging into flesh before {attacker_name} yanks it free of {target_name}'s {hit_location}. {target_name} falls, clutching what's left."
         },
         {
-            'attacker_msg': "Steel meets {hit_location}, and the sound is unforgettable. {target_name} jerks forward and collapses in half-silhouette.",
-            'victim_msg': "Steel meets {hit_location}, and the sound is unforgettable. You jerk forward and collapse in half-silhouette.",
-            'observer_msg': "Steel meets {hit_location}, and the sound is unforgettable. {target_name} jerks forward and collapses in half-silhouette."
+            'attacker_msg': "Steel meets the {hit_location}, and the sound is unforgettable. {target_name} jerks forward and collapses in half-silhouette.",
+            'victim_msg': "Steel meets your {hit_location}, and the sound is unforgettable. You jerk forward and collapse in half-silhouette.",
+            'observer_msg': "Steel meets the {hit_location}, and the sound is unforgettable. {target_name} jerks forward and collapses in half-silhouette."
         },
         {
-            'attacker_msg': "The axe bites through muscle like wet cloth. {target_name} chokes on blood and disbelief as you pull {hit_location} with something more than strength.",
-            'victim_msg': "The axe bites through muscle like wet cloth. You choke on blood and disbelief as {attacker_name} pulls {hit_location} with something more than strength.",
-            'observer_msg': "The axe bites through muscle like wet cloth. {target_name} chokes on blood and disbelief as {attacker_name} pulls {hit_location} with something more than strength."
+            'attacker_msg': "The axe bites through muscle like wet cloth. {target_name} chokes on blood and disbelief as you wrench the blade from the {hit_location} with something more than strength.",
+            'victim_msg': "The axe bites through muscle like wet cloth. You choke on blood and disbelief as {attacker_name} wrenches the blade from your {hit_location} with something more than strength.",
+            'observer_msg': "The axe bites through muscle like wet cloth. {target_name} chokes on blood and disbelief as {attacker_name} wrenches the blade from the {hit_location} with something more than strength."
         },
         {
             'attacker_msg': "The axe connects with brutal, direct force. There's no finesse. Just raw correction.",

@@ -248,9 +248,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} slams the catchpole into {target_name}'s {hit_location}, snapping the bone with a deafening crack."
         },
         {
-            "attacker_msg": "You pull {hit_location} hard and the catchpole's hook tears through {target_name}'s {hit_location} in a jagged, explosive arc.",
-            "victim_msg": "{attacker_name} pulls {hit_location} hard and the catchpole's hook tears through your {hit_location} in a jagged, explosive arc.",
-            "observer_msg": "{attacker_name} pulls {hit_location} hard and the catchpole's hook tears through {target_name}'s {hit_location} in a jagged, explosive arc."
+            "attacker_msg": "You yank the catchpole hard and its hook tears through {target_name}'s {hit_location} in a jagged, explosive arc.",
+            "victim_msg": "{attacker_name} yanks the catchpole hard and its hook tears through your {hit_location} in a jagged, explosive arc.",
+            "observer_msg": "{attacker_name} yanks the catchpole hard and its hook tears through {target_name}'s {hit_location} in a jagged, explosive arc."
         },
         {
             "attacker_msg": "You hook {target_name} under the chin and jerk upward, the impact rattling {target_name}'s {hit_location}.",
@@ -288,9 +288,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} twists sharply, the catchpole carving a bloody arc across {target_name}'s {hit_location}."
         },
         {
-            "attacker_msg": "You drive the hook into {target_name}'s {hit_location} and pull {hit_location}, the sudden resistance ripping muscle.",
-            "victim_msg": "{attacker_name} drives the hook into your {hit_location} and pulls {hit_location}, the sudden resistance ripping muscle.",
-            "observer_msg": "{attacker_name} drives the hook into {target_name}'s {hit_location} and pulls {hit_location}, the sudden resistance ripping muscle."
+            "attacker_msg": "You drive the hook into {target_name}'s {hit_location} and pull hard, the sudden resistance ripping muscle.",
+            "victim_msg": "{attacker_name} drives the hook into your {hit_location} and pulls hard, the sudden resistance ripping muscle.",
+            "observer_msg": "{attacker_name} drives the hook into {target_name}'s {hit_location} and pulls hard, the sudden resistance ripping muscle."
         },
         {
             "attacker_msg": "You plant the catchpole's hook in {target_name}'s {hit_location}, the rip of flesh audible over the chaos.",

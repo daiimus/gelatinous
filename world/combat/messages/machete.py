@@ -213,7 +213,7 @@ MESSAGES = {
             'observer_msg': "Steel crashes against {target_name}'s {hit_location}. {target_name} shrieks and drops like bricks."
         },
         {
-            'attacker_msg': "Steel meets {hit_location}. {target_name} reels, blood pouring like confession.",
+            'attacker_msg': "Steel meets the {hit_location}. {target_name} reels, blood pouring like confession.",
             'victim_msg': "Steel meets your {hit_location}. You reel, blood pouring like confession.",
             'observer_msg': "Steel meets {target_name}'s {hit_location}. {target_name} reels, blood pouring like confession."
         },

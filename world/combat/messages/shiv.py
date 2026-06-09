@@ -233,9 +233,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} twists the blade like they're adjusting a screw, and {target_name}'s body tightens around it. Their mouth shapes words that never come."
         },
         {
-            'attacker_msg': "The shiv slides in smooth as silk, but pulls {hit_location} rough as concrete. {target_name}'s eyes widen like they're seeing the end of the world for the first time.",
-            'victim_msg': "The shiv slides in smooth as silk, but pulls {hit_location} rough as concrete. Your eyes widen like you're seeing the end of the world for the first time.",
-            'observer_msg': "The shiv slides in smooth as silk, but pulls {hit_location} rough as concrete. {target_name}'s eyes widen like they're seeing the end of the world for the first time."
+            'attacker_msg': "The shiv slides in smooth as silk, but pulls out of the {hit_location} rough as concrete. {target_name}'s eyes widen like they're seeing the end of the world for the first time.",
+            'victim_msg': "The shiv slides in smooth as silk, but pulls out of your {hit_location} rough as concrete. Your eyes widen like you're seeing the end of the world for the first time.",
+            'observer_msg': "The shiv slides in smooth as silk, but pulls out of {target_name}'s {hit_location} rough as concrete. {target_name}'s eyes widen like they're seeing the end of the world for the first time."
         },
         {
             'attacker_msg': "The blade bites deep, finding nerve clusters you didn't know existed. {target_name} jerks like they've been struck by lightning made of ice.",

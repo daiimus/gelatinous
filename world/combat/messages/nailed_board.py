@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "The board slams into {target_name}'s {hit_location}. A nail sticks briefly, then rips free with something attached."
         },
         {
-            'attacker_msg': "The board smashes into {target_name}'s {hit_location}. A nail catches and tears as it pulls {hit_location}. The scream is instant and ugly.",
-            'victim_msg': "The board smashes into your {hit_location}. A nail catches and tears as it pulls {hit_location}. The scream is instant and ugly.",
-            'observer_msg': "The board smashes into {target_name}'s {hit_location}. A nail catches and tears as it pulls {hit_location}. The scream is instant and ugly."
+            'attacker_msg': "The board smashes into {target_name}'s {hit_location}. A nail catches and tears as the board pulls free. The scream is instant and ugly.",
+            'victim_msg': "The board smashes into your {hit_location}. A nail catches and tears as the board pulls free. The scream is instant and ugly.",
+            'observer_msg': "The board smashes into {target_name}'s {hit_location}. A nail catches and tears as the board pulls free. The scream is instant and ugly."
         },
         {
             'attacker_msg': "The board spins, catches {target_name} across the {hit_location}. Nails scratch the scalp, drawing blood like rain.",

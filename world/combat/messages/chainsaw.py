@@ -208,9 +208,9 @@ MESSAGES = {
     ],
     'hit': [
         {
-            'attacker_msg': "A glancing blow becomes a tearing ruin. You pull {hit_location}, and what comes with the blade doesn't belong outside the body.",
-            'victim_msg': "A glancing blow becomes a tearing ruin. {attacker_name} pulls {hit_location}, and what comes with the blade doesn't belong outside your body.",
-            'observer_msg': "A glancing blow becomes a tearing ruin. {attacker_name} pulls {hit_location}, and what comes with the blade doesn't belong outside the body."
+            'attacker_msg': "A glancing blow becomes a tearing ruin. You wrench the blade from {target_name}'s {hit_location}, and what comes with it doesn't belong outside the body.",
+            'victim_msg': "A glancing blow becomes a tearing ruin. {attacker_name} wrenches the blade from your {hit_location}, and what comes with it doesn't belong outside your body.",
+            'observer_msg': "A glancing blow becomes a tearing ruin. {attacker_name} wrenches the blade from {target_name}'s {hit_location}, and what comes with it doesn't belong outside the body."
         },
         {
             'attacker_msg': "A horizontal sweep tears open a gash across {target_name}'s {hit_location}. Blood splashes hot against steel and keeps dripping long after the blade moves on.",

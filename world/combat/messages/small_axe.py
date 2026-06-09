@@ -213,7 +213,7 @@ MESSAGES = {
             'observer_msg': "Steel digs into {target_name}'s {hit_location}. Not deep, but angry."
         },
         {
-            'attacker_msg': "Steel meets {hit_location}. The sound is worse than the scream.",
+            'attacker_msg': "Steel meets the {hit_location}. The sound is worse than the scream.",
             'victim_msg': "Steel meets your {hit_location}. The sound is worse than your scream.",
             'observer_msg': "Steel meets {target_name}'s {hit_location}. The sound is worse than their scream."
         },

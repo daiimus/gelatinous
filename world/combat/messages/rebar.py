@@ -194,9 +194,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} brings the bar down hard. It bounces off {target_name}'s {hit_location} with a sickening thunk."
         },
         {
-            'attacker_msg': "Steel meets {hit_location}. {target_name} drops instantly, breath escaping like steam from a pipe.",
-            'victim_msg': "Steel meets {hit_location}. You drop instantly, breath escaping like steam from a pipe.",
-            'observer_msg': "Steel meets {hit_location}. {target_name} drops instantly, breath escaping like steam from a pipe."
+            'attacker_msg': "Steel meets the {hit_location}. {target_name} drops instantly, breath escaping like steam from a pipe.",
+            'victim_msg': "Steel meets your {hit_location}. You drop instantly, breath escaping like steam from a pipe.",
+            'observer_msg': "Steel meets the {hit_location}. {target_name} drops instantly, breath escaping like steam from a pipe."
         },
         {
             'attacker_msg': "You slam the bar into {target_name}'s {hit_location}. Air and bile explode from their mouth.",

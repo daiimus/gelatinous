@@ -253,9 +253,9 @@ MESSAGES = {
             'observer_msg': "The knife punctures shallow, but the shock is deep. {target_name} stumbles backward, {hit_location} pressed to the wound."
         },
         {
-            'attacker_msg': "The knife slashes across the {hit_location}, opening skin in a swift arc. {target_name} yelps and pulls {hit_location}.",
-            'victim_msg': "The knife slashes across your {hit_location}, opening skin in a swift arc. You yelp and pull {hit_location}.",
-            'observer_msg': "The knife slashes across the {hit_location}, opening skin in a swift arc. {target_name} yelps and pulls {hit_location}."
+            'attacker_msg': "The knife slashes across the {hit_location}, opening skin in a swift arc. {target_name} yelps and recoils.",
+            'victim_msg': "The knife slashes across your {hit_location}, opening skin in a swift arc. You yelp and recoil.",
+            'observer_msg': "The knife slashes across the {hit_location}, opening skin in a swift arc. {target_name} yelps and recoils."
         },
         {
             'attacker_msg': "The knife slips between {hit_location} — not deep enough to kill, but more than enough to hurt. {target_name} gasps.",

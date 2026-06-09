@@ -168,9 +168,9 @@ MESSAGES = {
             'observer_msg': "A fast jab sinks into the {hit_location}. {attacker_name} yanks it out with a noise that doesn't end."
         },
         {
-            'attacker_msg': "A heavy blow hits {hit_location}. Something cracks. {target_name} folds with a strangled cry.",
-            'victim_msg': "A heavy blow hits {hit_location}. Something cracks. You fold with a strangled cry.",
-            'observer_msg': "A heavy blow hits {hit_location}. Something cracks. {target_name} folds with a strangled cry."
+            'attacker_msg': "A heavy blow lands across the {hit_location}. Something cracks. {target_name} folds with a strangled cry.",
+            'victim_msg': "A heavy blow lands across your {hit_location}. Something cracks. You fold with a strangled cry.",
+            'observer_msg': "A heavy blow lands across the {hit_location}. Something cracks. {target_name} folds with a strangled cry."
         },
         {
             'attacker_msg': "A rising slash across the {hit_location} leaves a trail of blood like a drawn map to death.",

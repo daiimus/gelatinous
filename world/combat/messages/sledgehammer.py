@@ -223,7 +223,7 @@ MESSAGES = {
             'observer_msg': "The hammer caves in {target_name}'s {hit_location}. They drop like scaffolding losing its anchor."
         },
         {
-            'attacker_msg': "The hammer hits {hit_location}. They fly backward like a broken hinge.",
+            'attacker_msg': "The hammer hits {target_name}'s {hit_location}. They fly backward like a broken hinge.",
             'victim_msg': "The hammer hits your {hit_location}. You fly backward like a broken hinge.",
             'observer_msg': "The hammer hits {target_name}'s {hit_location}. They fly backward like a broken hinge."
         },
