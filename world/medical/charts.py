@@ -85,7 +85,7 @@ STEP_STATUSES = (PENDING, RUNNING, DONE, SKIPPED, FAILED)
 # UI can validate input at chart-authoring time.
 
 PROCEDURE_VERBS = (
-    "incise", "harvest", "install", "suture", "amputate",
+    "incise", "harvest", "install", "suture", "amputate", "autopsy",
 )
 TREATMENT_VERBS = ("apply", "inject")
 ALL_VERBS = PROCEDURE_VERBS + TREATMENT_VERBS
@@ -96,6 +96,7 @@ VERB_ARG_SPEC = {
     "install":  {"required": ("organ_item_key", "location"), "optional": ()},
     "suture":   {"required": (),                          "optional": ("location",)},
     "amputate": {"required": ("location",),               "optional": ()},
+    "autopsy":  {"required": (),                          "optional": ()},
     "apply":    {"required": ("item_key", "location"),    "optional": ()},
     "inject":   {"required": ("item_key",),               "optional": ("location",)},
 }
@@ -382,6 +383,8 @@ def render_step_summary(step: dict) -> str:
     if verb == "suture":
         loc = args.get("location")
         return f"suture {_humanize(loc)}" if loc else "suture all"
+    if verb == "autopsy":
+        return "conduct autopsy"
     if verb == "apply":
         item = _humanize(args.get("item_key"))
         loc = _humanize(args.get("location"))
@@ -492,13 +495,34 @@ def commence_chart(target, actor) -> Optional[dict]:
 
     def _advance(target_arg, actor_arg):
         """on_complete hook — mark the running step done, then
-        chain to the next pending step."""
+        chain to the next pending step.
+
+        Verb resolvers that produce a recordable artefact (e.g.
+        the autopsy resolver's post-mortem report) leave it on
+        ``target.db.surgical_state['pending_step_result']``; this
+        hook pops it onto the step's ``result`` field before
+        saving, so the surgeon can re-read the finding later by
+        reopening the chart.
+        """
         latest = get_chart(target_arg)
         if latest is None:
             return
-        # Find the step that was running and mark it done.
+        # Pop any pending step result the resolver left for us.
+        pending_result = None
+        target_db = getattr(target_arg, "db", None)
+        if target_db is not None:
+            state = getattr(target_db, "surgical_state", None) or {}
+            if hasattr(state, "get"):
+                pending_result = state.get("pending_step_result")
+                if pending_result is not None:
+                    state["pending_step_result"] = None
+                    target_db.surgical_state = state
+        # Find the step that was running, attach the result, and
+        # mark it done.
         for s in latest.get("steps") or ():
             if s.get("status") == RUNNING:
+                if pending_result is not None:
+                    s["result"] = pending_result
                 s["status"] = DONE
                 break
         save_chart(target_arg, latest)
@@ -608,5 +632,11 @@ def _resolve_step_args(verb: str, chart_args: dict, target, actor) -> dict:
         if chart_args.get("location"):
             out["location"] = chart_args["location"]
         return out
+
+    if verb == "autopsy":
+        # No args needed — the procedure works against the chart's
+        # subject directly.  Deceased gating happens at menu-add
+        # time and is re-checked by the resolver.
+        return {}
 
     raise _StepResolutionError(f"unknown verb {verb!r}")
