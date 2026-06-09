@@ -102,7 +102,7 @@ CONSUMPTION_RULES = {
 
 **Organ Harvesting and Biotech Foundation (Phase 3.1 → shipped as Phase 2.8):**
 - **✅ Organ viability system** - Time-based organ deterioration after death drives harvested-organ condition (`ORGAN_CONDITION_BY_DECAY`)
-- **✅ Corpse examination** - `autopsy <corpse>` renders organ inventory with harvested / severed marked absent (PR #186)
+- **✅ Corpse examination** - `inspect <corpse>` (alias `autopsy`) renders organ inventory with harvested / severed marked absent (PR #186 / renamed PR #441)
 - **✅ Organ harvesting commands** - `harvest <organ> from <target>` works on corpses, severed parts, unconscious, AND conscious living targets via the procedure verb set (PR #380, #307)
 - **✅ Harvested organ inventory** - Organ items spawn with condition (`pristine` / `damaged` / `putrid`) tracking decay tier at extraction time
 - **✅ Foundation for cybernetics** - `install <organ> in <target>` is the inverse of harvest; organ-bound conditions travel with the organ on transfer (PR #379)
@@ -472,7 +472,7 @@ def _process_delayed_attack(self, attacker, target, attacker_entry, combatants_l
 
 **Phase 3.1 - Organ Harvesting & Biotech Foundation (✅ MOSTLY SHIPPED — see Phase 2.8):**
 - **✅ Organ harvesting commands** - `harvest <organ> from <target>` via procedure verb set (PR #380); works on corpses, severed parts, unconscious, and conscious targets
-- **✅ Corpse examination system** - `autopsy <corpse>` (PR #186); organ inventory with absent / damaged status
+- **✅ Corpse examination system** - `inspect <corpse>` with `autopsy` alias (PR #186 / PR #441); organ inventory with absent / damaged status; also accepts severed heads and blood pools
 - **✅ Harvested organ inventory management** - Organ items spawn with decay-tier condition; PR #200's sever-overlay carries harvest provenance onto severed items
 - **✅ Foundation for cybernetics integration** - `install` is the inverse of `harvest`; three-tier condition model (PR #378/#379) ensures organ-bound conditions travel correctly during transfer
 - **🎯 Death progression message enhancement** - Narrative theme refinement still pending

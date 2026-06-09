@@ -1576,12 +1576,14 @@ photos). It exposes:
   axis-by-axis (reserved for future linking gameplay; no command
   exposes it).
 
-**Shipped consumer**: `commands/forensics.py:CmdAutopsy` (single-tier)
-routes corpses through the engine.
-
-**Data prep only**: blood pools have the `signature` / `apparent_uid`
-fields wired in `BloodPool.add_bleeding_incident` and the medical
-script, but no player-facing command consumes them yet.
+**Shipped consumer**: `commands/forensics.py:CmdInspect` (key
+`inspect`, alias `autopsy` for muscle-memory continuity) routes
+corpses, severed heads, AND blood pools through the engine. Single-
+tier report.  Slated to retire as a standalone command when
+`inspect` becomes a procedure type under `operate` (only
+performable on a deceased body the surgeon is operating on);
+the alias keeps the legacy command name working through the
+migration.
 
 **Out of scope (deferred)**: photo capture/display (extractor stub
 raises `NotImplementedError`), multi-UID linking gameplay,
@@ -1665,21 +1667,34 @@ an assigned name* — invariant across evidence types.
   shared_apparent_uid, shared_axes)` — diagnostic only, no
   command exposes it yet.
 
-### Consumer: `autopsy` command
+### Consumer: `inspect` command (alias `autopsy`)
 
-`commands/forensics.py:CmdAutopsy` (keyed `autopsy`, no switches,
-help category `Forensics`):
+`commands/forensics.py:CmdInspect` (keyed `inspect`, alias `autopsy`,
+no switches, help category `Forensics`):
 
-- `autopsy <corpse>` — Intellect vs `AUTOPSY_DC_BASIC` → unified
-  five-section report (identity axes, fuzzy ToD, cause, wounds,
-  organ inventory, worn essentials).
-- Skeletal corpses short-circuit with a "too far decomposed" message
-  before rolling.
+- `inspect <corpse|severed_head|blood_pool>` — Intellect vs
+  `AUTOPSY_DC_BASIC` → forensic report.
+- **Corpses / severed heads** render the unified five-section
+  report (identity axes, fuzzy ToD, cause, wounds, organ
+  inventory, worn essentials).
+- **Blood pools** dedupe `bleeding_incidents` by `apparent_uid`
+  and render distinguishable bleeders (recognized OR carrying at
+  least one non-None signature axis) individually; bare-sleeve
+  passersby aggregate into a single count line, failed rolls into
+  another. See PR #441 / #442.
+- Skeletal corpses short-circuit with a "too far decomposed"
+  message before rolling.
 - Pre-roll room broadcast via `msg_room_identity` so observers
   see the investigation regardless of outcome.
 - Concatenates the recognized-name header only when the looker
   already holds the revealed UID in `recognition_memory` with an
   `assigned_name` set.
+
+**Forward path**: `inspect` is slated to become a procedure type
+under the `operate` charting menu — only performable on a deceased
+body the surgeon is operating on.  When that lands, this
+standalone command surface retires.  The `autopsy` alias remains
+for muscle-memory continuity through the transition.
 
 ### DC tuning (provisional)
 
@@ -1725,17 +1740,29 @@ careful examination and prevents Intellect re-roll abuse.
 ### Out of scope (deferred)
 
 - Photo capture/display gameplay.
-- Blood-pool forensic consumer command (data field is wired so
-  future consumers have something to read).
 - Multi-UID linking gameplay (`link_subjects` is a primitive).
 - Memory decay & active impersonation detection (spec L1668
   Phase 5).
 - Sleeve-swap awareness (blocked on resleeving system).
 - Skeletal-bone harvest (cracked-bone marrow extraction) — deferred
-  past PR-186; skeletal corpses currently refuse autopsy and harvest.
+  past PR-186; skeletal corpses currently refuse `inspect` and
+  harvest.
 - ~~Severed-head super-item carrying full identity signature~~ —
   ✅ shipped in PR #194 (`SeveredHead`); see "Severed-Head
   Super-Item" subsection below.
+- ~~Blood-pool forensic consumer command~~ — ✅ shipped in PR #441
+  (`inspect <blood pool>`) with bucketing polish in PR #442.
+- Blood trail tracking (the same apparent UID appearing in multiple
+  rooms across time, surfacing as "the wounded individual went
+  this way") — parked future direction; the data model
+  (`BloodPool` per room with `bleeding_incidents`) already
+  supports aggregation across pools, only a query/render layer is
+  missing.
+- DNA hash / cross-sleeve identifier (a new identity axis stamped
+  at character creation that persists across resleeving, separate
+  from `sleeve_uid`) — parked future direction; would slot as a
+  sixth element on the identity signature 5-tuple and propagate
+  through forensic chain via the existing copy mechanics.
 
 ---
 
@@ -2040,13 +2067,15 @@ the head is a first-class forensic peer of the source corpse:
 - **Severing a SeveredHead is refused**: heads are terminal; the
   `CmdSever` isinstance gate remains `Corpse`-only.
 
-**Accepted targets ✅ (PR #196)**: `CmdAutopsy` and `CmdHarvest`
-accept either a `Corpse` or a `SeveredHead` — the isinstance gate
-is `(Corpse, SeveredHead)`.  Autopsy on a head renders the standard
-five-section report against the trimmed head-container snapshot
-(brain / eyes / ears / etc.); harvest extracts head-container organs
-honoring the carry-forward `removed_organs` list.  `CmdSever`
-remains `Corpse`-only.
+**Accepted targets ✅ (PR #196 / PR #441)**: `CmdInspect` (key
+`inspect`, alias `autopsy`) and `CmdHarvest` accept either a
+`Corpse` or a `SeveredHead` — the isinstance gate is
+`(Corpse, SeveredHead)`.  `CmdInspect` additionally accepts a
+`BloodPool` for room-floor bleeder forensics.  Inspecting a head
+renders the standard five-section report against the trimmed
+head-container snapshot (brain / eyes / ears / etc.); harvest
+extracts head-container organs honoring the carry-forward
+`removed_organs` list.  `CmdSever` remains `Corpse`-only.
 
 **Deferred** (post PR-C): the snapshot represents the
 *body's* identity at sever time, not consciousness; sleeve-swap
