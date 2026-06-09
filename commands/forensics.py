@@ -237,6 +237,24 @@ class CmdInspect(Command):
         sections = [f"You examine {pool_name}."]
         memory = getattr(caller, "recognition_memory", None) or {}
 
+        # Three buckets per entry — keeps the rendered report
+        # readable when an old crime scene has dozens of bleeders
+        # most of whom left only a bare sleeve signature with no
+        # recoverable distinguishing axes:
+        #
+        # * **Distinguishable** — recognized in memory OR has at
+        #   least one non-None signature axis (height / build /
+        #   keyword / essential items).  Renders the full
+        #   per-bleeder report.
+        # * **Indistinguishable** — successful roll but the
+        #   signature is too bare to tell bleeders apart.
+        #   Aggregates into a single count line.
+        # * **Failed** — recognition roll didn't succeed.
+        #   Aggregates into a single count line.
+        distinguishable: list = []
+        indistinguishable_count = 0
+        failed_count = 0
+
         for uid, incident in latest_per_uid.items():
             subject = extract_subject_from_blood_pool_incident(
                 pool, incident,
@@ -251,14 +269,32 @@ class CmdInspect(Command):
             )
 
             if not result.success:
-                sections.append(
-                    "  — One bleeder's signature could not be "
-                    "reconstructed from the pooled blood."
-                )
+                failed_count += 1
                 continue
 
+            # Distinguishability test: a signature with at least one
+            # non-None override axis (height / build / keyword) or
+            # non-empty essential-item set, OR a recognition match
+            # against the observer's memory.
+            sig = subject.signature
+            has_axes = bool(
+                sig is not None
+                and (sig[1] or sig[2] or sig[3]
+                     or subject.essential_item_type_ids)
+            )
+            is_known = bool(
+                result.revealed_uid and result.revealed_uid in memory
+                and memory[result.revealed_uid].get("assigned_name")
+            )
+
+            if has_axes or is_known:
+                distinguishable.append((subject, result))
+            else:
+                indistinguishable_count += 1
+
+        # Render distinguishable entries individually.
+        for subject, result in distinguishable:
             report = render_forensic_report(subject, observer=caller)
-            # Recognition contract — same as the corpse path.
             header = "  — Bleeder's signature:"
             if result.revealed_uid and result.revealed_uid in memory:
                 assigned = memory[result.revealed_uid].get("assigned_name")
@@ -267,6 +303,34 @@ class CmdInspect(Command):
                         f"  — Bleeder's signature, matching {assigned}:"
                     )
             sections.append(f"{header}\n{report}")
+
+        # Aggregate indistinguishable bleeders into one line.
+        if indistinguishable_count:
+            plural = "s" if indistinguishable_count > 1 else ""
+            sections.append(
+                f"  — {indistinguishable_count} other bleeder{plural} "
+                f"left traces here, but the pooled blood yields no "
+                f"distinguishing axes for them."
+            )
+
+        # Aggregate failed-roll bleeders into one line.
+        if failed_count:
+            plural = "s" if failed_count > 1 else ""
+            sections.append(
+                f"  — {failed_count} further bleeder{plural} "
+                f"could not be reconstructed from the pooled blood."
+            )
+
+        # Nothing was rendered between the header and the trailing
+        # count lines?  Tell the investigator that explicitly so
+        # the report doesn't look truncated.
+        if (not distinguishable
+                and not indistinguishable_count
+                and not failed_count):
+            sections.append(
+                "  — The bleeders left no recoverable identity "
+                "signature."
+            )
 
         caller.msg("\n".join(sections))
 
