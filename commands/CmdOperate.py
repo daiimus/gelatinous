@@ -21,7 +21,6 @@ Scope for PR-OP1 (MVP):
 
 Deferred to follow-on PRs:
 
-  • Diagnose pane (skill-gated organ-state inspection)
   • Add treatment step (apply / inject)
   • Reorder / remove / annotate steps
   • Resume from arbitrary step
@@ -66,6 +65,7 @@ from evennia import Command
 from evennia.utils.evmenu import EvMenu
 
 from world.medical import charts as chart_lib
+from world.medical import diagnose as diagnose_lib
 
 
 # ===================================================================
@@ -196,30 +196,16 @@ def _render_section(
 
 
 def _render_patient_lines(caller, target) -> list[str]:
-    """One identity line + vital-summary line(s) for the PATIENT
-    section."""
+    """One identity line + diagnose pane + vital summary for the
+    PATIENT section.  The diagnose pane (condition rung + clinical
+    findings) is the surgeon's privilege — clinical register vs.
+    the visceral ``look`` description the room sees."""
     lines = [target.get_display_name(caller)]
 
-    state = getattr(target, "medical_state", None)
-    if state is not None:
-        vitals = []
-        is_unc = getattr(target, "is_unconscious", None)
-        if callable(is_unc) and is_unc():
-            vitals.append("unconscious")
-        is_dead = getattr(state, "is_dead", None)
-        if callable(is_dead) and is_dead():
-            vitals.append("|rdying|n")
-        conditions = getattr(state, "conditions", None) or []
-        if conditions:
-            count_by_type = {}
-            for c in conditions:
-                t = getattr(c, "condition_type", "condition")
-                count_by_type[t] = count_by_type.get(t, 0) + 1
-            for k, n in count_by_type.items():
-                tag = k.replace("_", " ")
-                vitals.append(f"{n}× {tag}" if n > 1 else tag)
-        if vitals:
-            lines.append(" · ".join(vitals))
+    # Diagnose pane — condition rung + detected findings in
+    # clinical dialect.  The roll itself happens in ``func()``
+    # before the menu opens; this renderer just reads the cache.
+    lines.extend(diagnose_lib.render_diagnose_lines(caller, target))
 
     # Open incisions from the surgical_state attr (set by procedures).
     surgical_state = getattr(getattr(target, "db", None),
@@ -1393,6 +1379,24 @@ class CmdOperate(Command):
             return
 
         caller.ndb._operate_target = target
+
+        # Diagnose pane — roll Intellect vs each wound's
+        # obfuscation DC and cache the result per-physician on
+        # the patient.  Emits a room-facing examination pose only
+        # when a fresh roll occurred (cache miss or wound-set
+        # change); cache hits within the TTL re-enter the chart
+        # silently.
+        diagnose_result = diagnose_lib.perform_diagnose(caller, target)
+        if not diagnose_result.get("from_cache") and caller.location:
+            from world.identity_utils import msg_room_identity
+            msg_room_identity(
+                location=caller.location,
+                template=diagnose_lib.DIAGNOSE_POSE_ROOM,
+                char_refs={"physician": caller},
+                exclude=[caller],
+            )
+            caller.msg(diagnose_lib.DIAGNOSE_POSE_SELF)
+
         _OperateMenu(
             caller,
             {

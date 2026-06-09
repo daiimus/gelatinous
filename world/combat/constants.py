@@ -870,3 +870,42 @@ LIMB_PARENT = dict(_HUMAN_SEVER.get("limb_parent") or {})
 
 del _HUMAN_SEVER
 del _SPECIES_DEFINITIONS_S
+
+# Diagnose pane (operate chart) ---------------------------------------
+# Per-injury baseline obfuscation DC for the surgeon's Intellect roll
+# on first :class:`~commands.CmdOperate.CmdOperate` of a patient.  The
+# diagnose pane in the chart's PATIENT block surfaces wounds whose DC
+# the physician beats; failures stay hidden.  Internal-cavity organs
+# (heart, lungs, liver, brain, etc.) add ``INTERNAL_ORGAN_OBFUSCATION_MOD``
+# to their type's baseline because there's no skin-surface tell.
+WOUND_OBFUSCATION_BY_TYPE = {
+    "severance":  0,   # missing limb / part — auto-detect
+    "harvested":  0,   # absent organ on a corpse — auto-detect
+    "burn":       1,
+    "cut":        2,
+    "laceration": 2,
+    "stab":       3,
+    "bullet":     3,
+    "blunt":      5,   # bruising hides depth without palpation
+    "generic":    4,
+}
+
+# Bump applied when the wounded organ lives in a body cavity (no
+# direct surface display).  Surface organs (eye, ear, nose, tongue,
+# jaw, limb bones at hand / foot containers) skip the bump.
+INTERNAL_ORGAN_OBFUSCATION_MOD = 5
+
+# Cache TTL for the per-(physician, patient) diagnose roll.  Long
+# enough that re-opening the chart inside a single scene doesn't
+# re-pose the examination; short enough that a fresh roll lands on
+# the next chart entry after a meaningful pause.  Wound-set changes
+# invalidate the cache regardless of TTL.
+DIAGNOSE_CACHE_TTL_SECONDS = 300
+
+# Conditions surfaced by the diagnose pane (condition_type → DC).
+# These layer on top of the per-organ wound rolls — separate roll
+# per condition.
+DIAGNOSE_CONDITION_DCS = {
+    "minor_bleeding": 1,    # active bleeding is obvious
+    "infection":      6,    # early infection requires palpation
+}
