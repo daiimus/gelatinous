@@ -3281,6 +3281,34 @@ Backward-compat lives in `normalize_sutured_stumps`: a legacy flat-list `sutured
 
 Time-based progression past `treated_<outcome>` (the `healing` and `scarred` stages already populated in severed.py) is parked — needs research on Evennia ticker semantics before wiring.
 
+#### Corpse-side stump progression (PRs #435 / #437)
+
+The living-body path above keeps stump prose current via the live `medical_state.organs` + `sutured_stumps` lookup at render time. Corpses don't have a live `medical_state` — their organs were captured at death, and the corpse renderer reads `wounds_at_death` for what to display. The corpse-side counterpart needed its own progression contract so the cut-point wound on a corpse:
+
+1. Reads as **raw / weeping** on a fresh corpse just severed (severed.py `"fresh"` stage).
+2. Advances to **dried / desiccated** prose (severed.py `"old"`) as the corpse decays.
+3. Override to `treated_<outcome>` if the surgeon later sutures the corpse stump (post-death suturing is allowed via the existing `_resolve_suture` path).
+
+Two-tier decay → stage mapping in `world/medical/severance.stump_stage_for_corpse(corpse)`:
+
+| Corpse decay tier | severed.py stage |
+| --- | --- |
+| `fresh`, `early` | `fresh` |
+| `moderate`, `advanced`, `skeletal` | `old` |
+
+`apply_sever_to_corpse` writes the initial stump-wound `stage` via this helper at sever time. Subsequent state changes (decay tier transition, suture record) don't rewrite the wound in place — instead `world.medical.severance.sync_severance_wound_stages(corpse)` is the **single writer** that walks `wounds_at_death` and refreshes every severance wound's stored stage to match current state.
+
+Two hooks fire `sync_severance_wound_stages`:
+
+* `Corpse.get_preserved_wound_descriptions` — top of the render path, lazy refresh on look. Most calls are no-ops because state hasn't changed since the last sync.
+* `_resolve_suture` — after writing `sutured_stumps[loc] = outcome`. Downstream consumers (e.g. an autopsy invoked right after the suture) see the new state without round-tripping through the renderer first.
+
+The contract is: stored `wound_data['stage']` is **authoritative** for every reader (corpse renderer, `inspect`, autopsy, anything else consuming `wounds_at_death`). The sync helper is the only writer keeping that contract honest. This was a deliberate switch in PR #437 from a JIT-recompute approach (PR #436) — JIT works but forces every reader to know about a helper; event-driven stored state lets readers just trust the dict.
+
+The dedupe pass in `Corpse.get_preserved_wound_descriptions` collapses wounds sharing `(injury_type, location, stage)` to a single rendered description so a corpse killed by an abdomen-wide injury doesn't render "the abdomen is shredded" once per destroyed organ.
+
+Same contract applies to severed heads / appendages? Not yet — those route through `Appendage.return_appearance` which still hardcodes `stage="old"` for carried wounds. The "frozen at sever time" semantic is arguably correct for a detached part (it isn't actively progressing the way a body still is), so left as-is. If a future ask wants severed-part wound stages to also progress with their own decay clock, the same `sync_severance_wound_stages` pattern applies.
+
 #### Combat amputation symmetry (PR #428)
 
 `open_incision`'s `surgeon` parameter is now optional (default `None`). `apply_sever_to_character` and `spawn_severed_head_for_living` both call `open_incision` immediately after `sever_character_body`. Result: any severance — combat-driven via `ArmorMixin.take_damage`, chart-driven via `_resolve_amputate` — leaves a recorded incision at the cut point, so the suture verb finds an open wound to close regardless of how the stump came to be.
@@ -3360,7 +3388,7 @@ This specification documents a comprehensive medical system architecture providi
 - **Phase 2.7**: ✅ Unified medical messaging and forensic evidence systems (Completed September 2025) - *Forensic system is proof-of-concept only*
 - **Phase 2.8**: ✅ Procedural surgery system (`incise` / `harvest` / `install` / `suture` / `amputate`) (Completed June 2026)
 - **Phase 2.9**: ✅ `operate` charting command — menu-driven surgery planning (Completed June 2026)
-- **Phase 2.10**: ✅ Severance helper module, sutured-stump outcome flavour, install picker species filter, combat-amputation incision symmetry (Completed June 2026)
+- **Phase 2.10**: ✅ Severance helper module, sutured-stump outcome flavour, install picker species filter, combat-amputation incision symmetry, corpse-side stump progression (decay-aware + event-driven sync), forensic blood-pool surface (`inspect` command, alias `autopsy`) (Completed June 2026)
 - **Phase 3**: 🔮 Advanced features (cybernetics implementation, multi-slot capacity, healing-tick progression) - Future development
 
 **Key Features Delivered:**
