@@ -5,11 +5,15 @@ Player-facing commands that route through
 
 Currently ships:
 
-* :class:`CmdAutopsy` — examine a corpse to recover the preserved
-  identity signature, fuzzy time-of-death, apparent cause of death,
-  wounds, organ inventory, and worn essentials.  Single-tier
-  (the legacy ``/deep`` switch was dropped in PR #186 in favour of
-  the unified five-section report).
+* :class:`CmdInspect` (alias: ``autopsy``) — examine a corpse,
+  severed head, or blood pool to recover the preserved identity
+  signature.  Corpses get the full report (signature, fuzzy
+  time-of-death, cause of death, wounds, organ inventory, worn
+  essentials); blood pools render one entry per distinct bleeder.
+  Single-tier (the legacy ``/deep`` switch was dropped in PR #186
+  in favour of the unified report).  Slated to retire as a
+  standalone command when ``inspect`` becomes a procedure type
+  under ``operate``.
 * :class:`CmdHarvest` — extract a named organ from a corpse via a
   Motorics roll, spawning a :class:`typeclasses.items.Organ` item
   into the harvester's inventory and marking the organ ``absent`` on
@@ -38,64 +42,82 @@ from world.combat.constants import (
 )
 from world.combat.dice import roll_stat
 from world.combat.utils import get_wielded_weapon
+from typeclasses.objects import BloodPool
 from world.forensics import (
     attempt_forensic_recognition,
+    extract_subject_from_blood_pool_incident,
     extract_subject_from_corpse,
     render_forensic_report,
 )
 from world.identity_utils import msg_room_identity
 
 
-class CmdAutopsy(Command):
-    """Forensic examination of a corpse.
+class CmdInspect(Command):
+    """Forensic examination of a corpse, severed head, or blood pool.
 
     Usage:
-      autopsy <corpse>
+      inspect <evidence>
+      autopsy <evidence>    (alias)
 
-    Rolls Intellect vs ``AUTOPSY_DC_BASIC``.  On success the corpse's
-    preserved death-time signature is rendered — apparent height,
-    build, keyword, fuzzy time of death, cause of death, wounds
-    grouped by body location, organ inventory (with harvested /
-    severed organs marked ``absent`` per PR-186 Q3), and any
-    disguise-essential items still worn on the remains.
+    Rolls Intellect vs ``AUTOPSY_DC_BASIC``.  On success the
+    evidence's preserved identity signature is rendered — apparent
+    height, build, keyword, and for corpses also: fuzzy time of
+    death, cause of death, wounds grouped by body location, organ
+    inventory (with harvested / severed organs marked ``absent``
+    per PR-186 Q3), and any disguise-essential items still worn on
+    the remains.
 
-    Does **not** assign a name to the corpse unless the looker
-    already holds the corpse's apparent UID in their recognition
-    memory — that lookup is the responsibility of the recognition
-    pipeline, not the forensic engine, so this command never
-    leaks identities.
+    Blood pools render one entry per distinct bleeding incident
+    (keyed by apparent UID) — useful for crime scenes where
+    multiple bleeders left evidence over time.
 
-    Results are cached per ``(observer, corpse)`` — a second
-    autopsy by the same character silently re-renders the cached
+    Does **not** assign a name to the evidence unless the looker
+    already holds the apparent UID in their recognition memory —
+    that lookup is the responsibility of the recognition pipeline,
+    not the forensic engine, so this command never leaks
+    identities.
+
+    Results are cached per ``(observer, evidence)`` — a second
+    inspect by the same character silently re-renders the cached
     outcome rather than rolling again.  This rewards careful
     single-pass examination and is consistent with the
     disguise-pierce convention.
 
     Skeletal remains are too far decomposed for forensic
-    examination; pre-PR-#186 corpses still in the live DB lack
-    the death-time medical snapshot and report an empty internal
+    examination; pre-PR-#186 corpses still in the live DB lack the
+    death-time medical snapshot and report an empty internal
     examination instead.
+
+    **Future:** ``inspect`` is slated to become a procedure type
+    under the ``operate`` charting menu — only performable on a
+    deceased body the surgeon is operating on.  When that ships,
+    this standalone command surface retires.  Until then ``autopsy``
+    survives as a command alias for muscle-memory continuity.
     """
 
-    key = "autopsy"
-    aliases = ()
+    key = "inspect"
+    aliases = ("autopsy",)
     locks = "cmd:all()"
     help_category = "Forensics"
 
     def func(self):
         caller = self.caller
         if not self.args or not self.args.strip():
-            caller.msg("Usage: autopsy <corpse>")
+            caller.msg("Usage: inspect <evidence>")
             return
 
         target = caller.search(self.args.strip(), location=caller.location)
         if target is None:
             return  # search() already messaged the caller
 
+        if isinstance(target, BloodPool):
+            self._inspect_blood_pool(caller, target)
+            return
+
         if not isinstance(target, (Corpse, SeveredHead)):
             caller.msg(
-                "You can only perform an autopsy on a corpse or a "
-                "severed head."
+                "You can only inspect a corpse, severed head, or "
+                "blood pool."
             )
             return
 
@@ -157,6 +179,100 @@ class CmdAutopsy(Command):
                 )
 
         caller.msg(f"{header}\n{report}")
+
+    def _inspect_blood_pool(self, caller, pool):
+        """Forensic read of a blood pool — one entry per unique
+        apparent UID across the pool's recorded incidents.
+
+        Same recognition contract as the corpse path: surface an
+        assigned name only if the observer already holds the UID
+        in their recognition memory.  Roll is per-incident; failures
+        produce a generic line so observers know the pool was
+        examined but yielded nothing recoverable for that bleeder.
+        """
+        incidents = list(pool.db.bleeding_incidents or ())
+        pool_name = pool.get_display_name(caller)
+
+        msg_room_identity(
+            location=caller.location,
+            template="{actor} examines {pool}.",
+            char_refs={"actor": caller, "pool": pool},
+            exclude=[caller],
+        )
+
+        if not incidents:
+            caller.msg(
+                f"You examine {pool_name} but there's nothing to recover "
+                f"— no preserved identity from the bleeders."
+            )
+            return
+
+        # Dedupe by apparent_uid — multiple drips from the same
+        # bleeder collapse to one report entry.  Picks the most
+        # recent incident per UID so the timestamp reflects last
+        # contact rather than first.
+        # Duck-type: Evennia wraps persisted incident dicts in
+        # ``_SaverDict``, which is NOT a ``dict`` subclass for
+        # isinstance purposes.  Check for ``.get`` surface instead.
+        latest_per_uid: dict = {}
+        for incident in incidents:
+            if not hasattr(incident, "get"):
+                continue
+            uid = incident.get("apparent_uid")
+            if uid is None:
+                continue
+            prior = latest_per_uid.get(uid)
+            if prior is None or incident.get("timestamp", 0) > prior.get(
+                "timestamp", 0
+            ):
+                latest_per_uid[uid] = incident
+
+        if not latest_per_uid:
+            caller.msg(
+                f"You examine {pool_name} but the bleeders left no "
+                f"recoverable identity signature."
+            )
+            return
+
+        sections = [f"You examine {pool_name}."]
+        memory = getattr(caller, "recognition_memory", None) or {}
+
+        for uid, incident in latest_per_uid.items():
+            subject = extract_subject_from_blood_pool_incident(
+                pool, incident,
+            )
+            # Per-incident roll (and cache).  Cache key uses the pool
+            # plus the apparent UID so different bleeders cache
+            # independently.
+            result = attempt_forensic_recognition(
+                caller, subject, AUTOPSY_DC_BASIC,
+                cache_owner=pool,
+                cache_attr=f"forensic_recognition_cache_{uid}",
+            )
+
+            if not result.success:
+                sections.append(
+                    "  — One bleeder's signature could not be "
+                    "reconstructed from the pooled blood."
+                )
+                continue
+
+            report = render_forensic_report(subject, observer=caller)
+            # Recognition contract — same as the corpse path.
+            header = "  — Bleeder's signature:"
+            if result.revealed_uid and result.revealed_uid in memory:
+                assigned = memory[result.revealed_uid].get("assigned_name")
+                if assigned:
+                    header = (
+                        f"  — Bleeder's signature, matching {assigned}:"
+                    )
+            sections.append(f"{header}\n{report}")
+
+        caller.msg("\n".join(sections))
+
+
+# Backward-compat alias for old imports.
+CmdAutopsy = CmdInspect
 
 
 # ---------------------------------------------------------------------
