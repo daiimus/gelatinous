@@ -399,7 +399,44 @@ No action recommended.
 
 ## 5 · Remediation roadmap
 
-Prioritised by `write_frequency × runtime_cost / refactor_risk`.
+> **Measured deferral (post-audit).** The §5 items below were
+> *implemented* against three stacked PRs (#451 / #452 / #453),
+> then closed without merging after a Pepsi-challenge profile
+> run measured the actual delta on a live build of the game.
+>
+> Methodology: `evennia shell` running a tight loop of
+> `Character.get_display_name(observer)` against real DB
+> characters, on both branches (master vs the refactor tip) with
+> a clean reload between runs.  20,000 iterations + 200-call
+> warmup, wall-clock and cProfile cumulative captured.
+>
+> | Bench | Master | Refactor | Delta |
+> |---|---|---|---|
+> | Common-case render (no pierce path) | 174.40 µs / call | 172.96 µs / call | **0.8 %** — noise |
+> | Pierce path forced (cache hit) | 97.19 µs / call | 91.64 µs / call | **5.7 %** |
+>
+> The pierce-path 5.7 % gain is real but at single-digit player
+> count comes out to roughly 0.56 ms/sec of CPU — below the
+> perception floor.  The maintenance surface — a new
+> `world/runtime_caches.py` module with a registry + weakrefs,
+> flush hooks wired into `at_server_stop` /
+> `at_server_reload_stop`, four migration sites, ~16 updated
+> test files — was not justified by that gain at our current
+> scale.
+>
+> **The §5 items below remain accurate as design guidance.**
+> They describe the right shape of the changes if/when profiling
+> under real load identifies one of these surfaces as a measured
+> bottleneck.  Until then they stay deferred — not "TODO,"
+> "shelved with reason."
+>
+> If you arrive here looking for "what should I refactor next,"
+> the answer is: *nothing from this section, unless you've
+> already profiled and have data that says otherwise.*  Honor
+> the measurement; don't second-guess past-you.
+
+Prioritised (when revisited) by
+`write_frequency × runtime_cost / refactor_risk`.
 
 ### 5.1 · Pierce / forensic / diagnose / autopsy caches (P0)
 
@@ -681,8 +718,16 @@ opportunistically.
 
 * §4 (audit findings) is a snapshot of authoring time. Re-run
   the `grep` survey before assuming the numbers are current.
-* §5 (remediation roadmap) is a living checklist — strike
-  items off as they ship, add new ones as the audit reveals
-  them.
+* §5 (remediation roadmap) is **shelved** as of the measured
+  deferral above.  Items are not "TODO" — they're documented
+  design guidance for an as-yet-unmeasured future.  Don't pick
+  them up without fresh profile data.
 * §6 (migration patterns) is the part to copy from when
   implementing — treat it as a stable template.
+
+**Discipline rule going forward (added post-deferral):**
+
+* No perf work on this codebase without profile data showing
+  the bottleneck.  Architectural cleanups that *don't* claim a
+  perf benefit are fine to ship under the usual review; perf
+  claims need numbers.
