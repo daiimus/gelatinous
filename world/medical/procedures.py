@@ -179,11 +179,22 @@ def _state(target) -> dict:
     its lifetime is bounded by the in-process ``evennia_delay``
     callback that can't survive a restart anyway.  See
     :func:`get_active_procedure` / :func:`_set_active_procedure`.
+
+    Self-healing migration: legacy state dicts predating the
+    runtime-tier move carry an inert ``active_procedure: None`` key
+    that nothing reads anymore.  Strip it on access so the field
+    decays out of the database naturally as state mutates.
     """
-    if target.db.surgical_state is None:
-        target.db.surgical_state = {
-            "incisions": {},
-        }
+    state = target.db.surgical_state
+    if state is None:
+        target.db.surgical_state = {"incisions": {}}
+        return target.db.surgical_state
+    # Legacy-field prune — only writes back when there's actually
+    # something to remove, so steady-state access stays read-only.
+    if "active_procedure" in state:
+        state = dict(state)
+        state.pop("active_procedure", None)
+        target.db.surgical_state = state
     return target.db.surgical_state
 
 

@@ -74,6 +74,25 @@ class TestActiveProcedureRuntime(TestCase):
         state = proc._state(target)
         self.assertNotIn("active_procedure", state)
 
+    def test_state_self_heals_legacy_active_procedure_field(self):
+        """Existing characters carry an inert ``active_procedure``
+        key in ``db.surgical_state`` from before the runtime-tier
+        move.  ``_state`` strips it on access so the field decays
+        out naturally; no separate migration needed."""
+        target = _make_target()
+        # Pre-seed the legacy shape that production data carries.
+        target.db.surgical_state = {
+            "incisions": {},
+            "active_procedure": None,
+        }
+        state = proc._state(target)
+        self.assertNotIn("active_procedure", state)
+        # And the descriptor write landed — next access sees a
+        # clean dict without re-pruning.
+        self.assertNotIn(
+            "active_procedure", target.db.surgical_state,
+        )
+
 
 # ---------------------------------------------------------------------
 # Chart write batching
