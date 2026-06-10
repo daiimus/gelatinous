@@ -464,17 +464,35 @@ class CmdGet(Command):
         return True
 
     def _find_container_in_room(self, caller, container_name):
-        """Find a container in the room."""
-        room_candidates = [obj for obj in caller.location.contents if obj != caller]
-        if not room_candidates:
+        """Find a container in the room *or* in the caller's own
+        possession (inventory + held items).
+
+        Originally room-only — that meant ``get cig from pack``
+        failed when the pack was already in the caller's hand
+        (issue #454 playtest).  Inventory candidates added so the
+        natural flow ("get pack, get cig from pack, light cig")
+        works without dropping the container first.
+        """
+        room_candidates = [
+            obj for obj in (caller.location.contents if caller.location else [])
+            if obj != caller
+        ]
+        # Caller's own contents — covers both inventory and items
+        # held in hands (held items remain in ``caller.contents``
+        # by Evennia's default move semantics).
+        owned_candidates = list(caller.contents)
+        candidates = room_candidates + owned_candidates
+        if not candidates:
             caller.msg(f"You don't see a '{container_name}' here.")
             return None
-            
-        result = caller.search(container_name, candidates=room_candidates, quiet=True)
+
+        result = caller.search(
+            container_name, candidates=candidates, quiet=True,
+        )
         if result:
             container = result[0] if isinstance(result, list) else result
             return container
-        
+
         caller.msg(f"You don't see a '{container_name}' here.")
         return None
 

@@ -2403,3 +2403,113 @@ CORNER_STORE_COOLER = {
     ],
 }
 
+
+
+# =============================================================================
+# SMOKE SYSTEM PROTOTYPES (issue #454)
+# =============================================================================
+#
+# Brand drives which flavor bank ``smoke`` picks from
+# (see ``world/smoke.py``).  ``CIGARETTE_BASE`` carries the role tag
+# so the ``light`` / ``smoke`` / ``snuff`` commands recognise it; the
+# branded subclasses just override ``brand``.  Packs are containers
+# that auto-spawn ``capacity`` cigarettes at creation, brand-matched.
+
+
+# Lighter — zippo-style infinite-use for v1.  ``item_role:lighter``
+# tag is how ``CmdLight`` finds it in the actor's hands.
+ZIPPO_LIGHTER = {
+    "typeclass": "typeclasses.items.Item",
+    "key": "zippo lighter",
+    "aliases": ["lighter", "zippo"],
+    "desc": (
+        "A weather-beaten Zippo with a steady, reliable flame.  "
+        "The hinge clicks open with a satisfying snap; the wick "
+        "catches on the first strike more often than not."
+    ),
+    "tags": [
+        ("lighter", "item_role"),
+    ],
+}
+
+
+# Base cigarette.  Branded subtypes override ``brand``.
+CIGARETTE_BASE = {
+    "typeclass": "typeclasses.items.Item",
+    "key": "cigarette",
+    "aliases": ["cig", "smoke"],
+    "desc": "A slim, hand-rolled cigarette.",
+    "attrs": [
+        ("brand", "neutral"),
+        ("uses_left", 6),
+        ("max_uses", 6),
+    ],
+    "tags": [
+        ("cigarette", "item_role"),
+    ],
+}
+
+CIGARETTE_NEUTRAL = {
+    "prototype_parent": "CIGARETTE_BASE",
+    "key": "cigarette",
+    "desc": "A standard filtered cigarette, mild tobacco wrapped in white paper.",
+    "attrs": [
+        ("brand", "neutral"),
+    ],
+}
+
+CIGARETTE_NOIR = {
+    "prototype_parent": "CIGARETTE_BASE",
+    "key": "Noir cigarette",
+    "aliases": ["noir cig", "noir", "cig"],
+    "desc": (
+        "An unfiltered cigarette in dark paper, the brand stamp on "
+        "the side faded to near-illegible.  Smells of something "
+        "older than tobacco."
+    ),
+    "attrs": [
+        ("brand", "noir"),
+    ],
+}
+
+
+# Pack — auto-spawns ``capacity`` cigarettes of ``cigarette_prototype``
+# at creation, stamping each with the pack's ``brand``.
+CIGARETTE_PACK_BASE = {
+    "typeclass": "typeclasses.smoke.CigarettePack",
+    "key": "pack of cigarettes",
+    "aliases": ["pack", "cigarettes"],
+    "desc": "A cardboard pack of cigarettes.",
+    "attrs": [
+        ("brand", "neutral"),
+        ("capacity", 10),
+        ("cigarette_prototype", "CIGARETTE_NEUTRAL"),
+    ],
+}
+
+CIGARETTE_PACK_NEUTRAL = {
+    "prototype_parent": "CIGARETTE_PACK_BASE",
+    "key": "pack of cigarettes",
+    "desc": (
+        "A cardboard pack of filtered cigarettes.  The brand "
+        "lettering is generic block print, no logo, no flourish."
+    ),
+    "attrs": [
+        ("brand", "neutral"),
+        ("cigarette_prototype", "CIGARETTE_NEUTRAL"),
+    ],
+}
+
+CIGARETTE_PACK_NOIR = {
+    "prototype_parent": "CIGARETTE_PACK_BASE",
+    "key": "pack of Noir cigarettes",
+    "aliases": ["pack", "noir pack", "cigarettes"],
+    "desc": (
+        "A matte black pack with the brand name 'NOIR' embossed in "
+        "tarnished silver.  Heavier than it looks."
+    ),
+    "attrs": [
+        ("brand", "noir"),
+        ("cigarette_prototype", "CIGARETTE_NOIR"),
+    ],
+}

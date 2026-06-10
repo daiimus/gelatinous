@@ -24,6 +24,7 @@ from commands import CmdClothing
 from commands import CmdMedical
 from commands import CmdConsumption
 from commands import CmdMedicalItems
+from commands import CmdSmoke
 from commands.CmdSpawnMob import CmdSpawnMob
 from commands.CmdBug import CmdBug
 from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
@@ -221,6 +222,11 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdClothing.CmdDress())
         self.add(CmdClothing.CmdUndress())
 
+        # Smoke system (#454) — light / smoke / snuff.
+        self.add(CmdSmoke.CmdLight())
+        self.add(CmdSmoke.CmdSmoke())
+        self.add(CmdSmoke.CmdSnuff())
+
         # Add armor system commands
         self.add(CmdArmor())
         self.add(CmdArmorRepair())
@@ -247,7 +253,10 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdConsumption.CmdEat())
         self.add(CmdConsumption.CmdDrink())
         self.add(CmdConsumption.CmdInhale())
-        self.add(CmdConsumption.CmdSmoke())
+        # CmdConsumption.CmdSmoke() removed in #454 — superseded by
+        # commands.CmdSmoke (added above).  The medical herb-smoking
+        # surface can be reintegrated via the new command's brand /
+        # item-tag system if/when herb items are built.
         
         # Add medical item management commands
         self.add(CmdMedicalItems.CmdListMedItems())
