@@ -52,7 +52,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 _ = old_char.key
                 
                 # Check if character is actually archived/dead (default False for legacy)
-                is_archived = old_char.db.archived or False
+                is_archived = old_char.archived or False
                 
                 # If not archived, they're alive - clear last_character and proceed to normal creation
                 if not is_archived:
@@ -71,7 +71,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             # Defensive check - ensure character is accessible
             if not char:
                 continue
-            archived = char.db.archived or False
+            archived = char.archived or False
             if not archived:
                 active_characters.append(char)
         
@@ -124,8 +124,8 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 # so they always exist on Character instances - no need to check/set.
                 
                 # Ensure archived attribute exists (db attribute, not AttributeProperty)
-                if old_character.db.archived is None:
-                    old_character.db.archived = False  # Legacy characters were active when they died
+                if old_character.archived is None:
+                    old_character.archived = False  # Legacy characters were active when they died
                     
             except (AttributeError, TypeError, Exception) as e:
                 # Old character reference is invalid/deleted - clear it
@@ -267,7 +267,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         active_characters = []
         for char in account.characters:
             # Access archived status via db.archived (returns None if unset)
-            archived = char.db.archived or False
+            archived = char.archived or False
             if not archived:
                 active_characters.append(char)
         
@@ -334,7 +334,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             character.db.stack_id = str(uuid.uuid4())
             character.db.original_creation = time.time()
             character.db.current_sleeve_birth = time.time()
-            character.db.archived = False
+            character.archived = False
             # death_count defaults to 1 via AttributeProperty in Character class
             
             # WEB-CREATED CHARACTERS: Make invisible until puppeted
@@ -372,7 +372,7 @@ class CharacterArchiveView(LoginRequiredMixin, CharacterMixin, View):
     """
     Archive a character instead of deleting it.
     
-    Sets character.db.archived = True rather than deleting from database.
+    Sets character.archived = True rather than deleting from database.
     This preserves Stack tracking and death history.
     """
     

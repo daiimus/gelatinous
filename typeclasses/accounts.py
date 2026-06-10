@@ -158,7 +158,7 @@ class Account(DefaultAccount):
         # Count only active (non-archived) characters
         active_count = 0
         for char in self.characters:
-            if char.db.archived:
+            if char.archived:
                 continue
             active_count += 1
         
@@ -194,7 +194,7 @@ class Account(DefaultAccount):
         for char in self.characters:
             if not char:
                 continue
-            if char.db.archived:
+            if char.archived:
                 continue
             active_count += 1
         
@@ -217,7 +217,7 @@ class Account(DefaultAccount):
         active_chars = []
         for char in all_characters:
             # Only exclude if explicitly archived
-            if char.db.archived is True:
+            if char.archived is True:
                 continue
             active_chars.append(char)
         
@@ -234,7 +234,7 @@ class Account(DefaultAccount):
                     # Find most recently archived character
                     archived_chars = []
                     for char in all_characters:
-                        if char.db.archived is True:
+                        if char.archived is True:
                             archived_date = char.db.archived_date or 0
                             archived_chars.append((archived_date, char))
                     

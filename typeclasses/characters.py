@@ -111,6 +111,30 @@ class Character(
     # incremented in at_death so each subsequent clone advances the numeral.
     # Player-facing only — not consumed by any combat/identity mechanic.
     death_count = AttributeProperty(1, category='mortality', autocreate=True)
+
+    #: ``archived`` is a Tag (category ``character_state``) rather than
+    #: a ``db.X`` attribute — see the property accessors below.
+    #: AGENTS.md: prefer Tags for simple booleans.
+    _CHARACTER_STATE_CATEGORY = "character_state"
+
+    @property
+    def archived(self) -> bool:
+        """True when this character has been archived (death / retirement).
+        Tag-backed."""
+        return self.tags.has(
+            "archived", category=self._CHARACTER_STATE_CATEGORY,
+        )
+
+    @archived.setter
+    def archived(self, value: bool) -> None:
+        if value:
+            self.tags.add(
+                "archived", category=self._CHARACTER_STATE_CATEGORY,
+            )
+        else:
+            self.tags.remove(
+                "archived", category=self._CHARACTER_STATE_CATEGORY,
+            )
     
     # Appearance attributes - stored in db but no auto-creation for optional features
     # skintone is set via @skintone command and stored as db.skintone
@@ -487,7 +511,7 @@ class Character(
         self.death_count += 1
         
         # Set archive flags
-        self.db.archived = True
+        self.archived = True
         self.db.archived_reason = reason
         self.db.archived_date = time.time()
         

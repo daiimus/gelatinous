@@ -577,7 +577,7 @@ class CmdSeverTests(TestCase):
         self.assertFalse(getattr(corpse.db, "head_severed", False))
         with _sever_env(create_return=MagicMock()):
             _make_cmd(caller=caller, args="head from corpse").func()
-        self.assertTrue(corpse.db.head_severed)
+        self.assertTrue(corpse.head_severed)
 
     def test_limb_sever_does_not_mark_head_severed(self):
         """Severing a non-head limb must NOT set head_severed."""

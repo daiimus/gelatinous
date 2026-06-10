@@ -23,17 +23,40 @@ class ShopContainer(DefaultObject):
     Attributes:
         db.prototype_inventory (dict): {prototype_key: price} for infinite mode
         db.item_inventory (dict): {prototype_key: quantity} for limited mode
-        db.is_infinite (bool): Whether shop has unlimited stock
+        is_infinite (bool, Tag-backed): Whether shop has unlimited stock
         db.markup_percent (int): Price markup percentage (default 0)
         db.shop_name (str): Display name for the shop
         db.container_type (str): "shelf", "rack", "counter", "crate", etc.
     """
     
+    #: Tag category used for the boolean ``is_infinite`` flag.  Per
+    #: AGENTS.md, prefer Tags over ``db.X`` for simple booleans —
+    #: indexed at the DB level, no pickle round-trip.
+    _SHOP_STATE_CATEGORY = "shop_state"
+
+    @property
+    def is_infinite(self) -> bool:
+        """True when the shop has unlimited stock — Tag-backed."""
+        return self.tags.has(
+            "is_infinite", category=self._SHOP_STATE_CATEGORY,
+        )
+
+    @is_infinite.setter
+    def is_infinite(self, value: bool) -> None:
+        if value:
+            self.tags.add(
+                "is_infinite", category=self._SHOP_STATE_CATEGORY,
+            )
+        else:
+            self.tags.remove(
+                "is_infinite", category=self._SHOP_STATE_CATEGORY,
+            )
+
     def at_object_creation(self):
         """Initialize shop container attributes."""
         self.db.prototype_inventory = {}
         self.db.item_inventory = {}
-        self.db.is_infinite = True
+        self.is_infinite = True  # Tag-backed (see property above)
         self.db.markup_percent = 0
         self.db.shop_name = "Shop"
         self.db.container_type = "shelf"
@@ -76,7 +99,7 @@ class ShopContainer(DefaultObject):
         self.db.prototype_inventory[prototype_key] = price
         
         if quantity is not None:
-            self.db.is_infinite = False
+            self.is_infinite = False
             self.db.item_inventory[prototype_key] = quantity
         
         return True
@@ -118,9 +141,9 @@ class ShopContainer(DefaultObject):
         if prototype_key not in self.db.prototype_inventory:
             return False
         
-        if self.db.is_infinite:
+        if self.is_infinite:
             return True
-        
+
         quantity = self.db.item_inventory.get(prototype_key, 0)
         return quantity > 0
     
@@ -171,7 +194,7 @@ class ShopContainer(DefaultObject):
         buyer.tokens -= price
         
         # Update inventory for limited stock
-        if not self.db.is_infinite:
+        if not self.is_infinite:
             self.db.item_inventory[prototype_key] -= 1
         
         return True, item
@@ -227,7 +250,7 @@ class ShopContainer(DefaultObject):
         
         for prototype_key, price in items:
             # Skip out-of-stock items in limited inventory mode
-            if not self.db.is_infinite:
+            if not self.is_infinite:
                 quantity = self.db.item_inventory.get(prototype_key, 0)
                 if quantity <= 0:
                     continue

@@ -84,7 +84,7 @@ class _FakeCorpse:
         self.db.sleeve_uid = sleeve_uid
         # PR #208: overlay sets ``head_severed = True`` on the corpse;
         # tests can assert against this.
-        self.db.head_severed = False
+        self.head_severed = False
         self.db.creation_time = creation_time or (time.time() - 100)
         self.db.death_time = death_time or self.db.creation_time
         self.db.death_cause = death_cause
@@ -231,15 +231,15 @@ class SeveredHeadIdentityPropagationTests(TestCase):
         ``head_severed`` gate that
         :meth:`typeclasses.corpse.Corpse.get_display_name` reads."""
         from typeclasses.items import apply_sever_to_corpse
-        self.assertFalse(self.corpse.db.head_severed)
+        self.assertFalse(self.corpse.head_severed)
         apply_sever_to_corpse(self.corpse, "head")
-        self.assertTrue(self.corpse.db.head_severed)
+        self.assertTrue(self.corpse.head_severed)
 
     def test_limb_sever_does_not_mark_corpse_head_severed(self):
         """Non-head sever leaves ``head_severed`` unchanged."""
         from typeclasses.items import apply_sever_to_corpse
         apply_sever_to_corpse(self.corpse, "left_arm")
-        self.assertFalse(self.corpse.db.head_severed)
+        self.assertFalse(self.corpse.head_severed)
 
     def test_overlay_preserves_corpse_identity_for_autopsy(self):
         """Identity is duplicated, not transferred — corpse keeps snapshot."""

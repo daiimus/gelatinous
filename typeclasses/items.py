@@ -1770,7 +1770,7 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
     # ``specs/IDENTITY_RECOGNITION_SPEC.md`` §"Sever-Head Identity
     # Surface" for the rationale.
     if location_arg == "head":
-        corpse.db.head_severed = True
+        corpse.head_severed = True  # Tag-backed via Corpse property
 
 
 def spawn_severed_part_from_corpse(corpse, location_arg):

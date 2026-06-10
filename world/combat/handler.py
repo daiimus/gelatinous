@@ -148,10 +148,20 @@ def get_or_create_combat(location):
     return new_script
 
 
+#: Tag category for the combat-running boolean flag.  Per AGENTS.md,
+#: simple booleans should be Tags rather than ``db.X`` — indexed at
+#: the DB level, no pickle round-trip on read.
+_COMBAT_STATE_CATEGORY = "combat_handler_state"
+
+
 class CombatHandler(DefaultScript):
     """
     Script that manages turn-based combat for all combatants in a location.
-    
+
+    The ``combat_is_running`` flag is a Tag (category
+    ``combat_handler_state``), not a ``db.X`` attribute — see
+    :attr:`combat_is_running` for the property accessors.
+
     This is the central orchestrator of combat encounters, handling:
     - Combat state management and lifecycle
     - Turn-based initiative and action resolution
@@ -172,6 +182,25 @@ class CombatHandler(DefaultScript):
     - is_yielding: Whether they're actively attacking
     """
 
+    @property
+    def combat_is_running(self) -> bool:
+        """True when the combat loop is actively ticking — Tag-backed
+        per AGENTS.md convention."""
+        return self.tags.has(
+            "combat_is_running", category=_COMBAT_STATE_CATEGORY,
+        )
+
+    @combat_is_running.setter
+    def combat_is_running(self, value: bool) -> None:
+        if value:
+            self.tags.add(
+                "combat_is_running", category=_COMBAT_STATE_CATEGORY,
+            )
+        else:
+            self.tags.remove(
+                "combat_is_running", category=_COMBAT_STATE_CATEGORY,
+            )
+
     def at_script_creation(self):
         """
         Initialize combat handler script attributes.
@@ -187,7 +216,7 @@ class CombatHandler(DefaultScript):
         self.db.combatants = []
         self.db.round = 0
         self.db.managed_rooms = [self.obj]  # Initially manages only its host room
-        self.db.combat_is_running = False
+        self.combat_is_running = False  # Tag-backed (see property)
         
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         managed_rooms = self.db.managed_rooms or []
@@ -205,7 +234,7 @@ class CombatHandler(DefaultScript):
 
         # Use super().is_active to check Evennia's ticker status
         evennia_ticker_is_active = super().is_active
-        combat_is_running = self.db.combat_is_running
+        combat_is_running = self.combat_is_running
 
         if combat_is_running and evennia_ticker_is_active:
             splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_START: Handler {self.key} on {self.obj.key} - combat logic and Evennia ticker are already active. Skipping redundant start.")
@@ -216,7 +245,7 @@ class CombatHandler(DefaultScript):
         
         if not combat_is_running:
             splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_START_DETAIL: Setting {DB_COMBAT_RUNNING} = True for {self.key}.")
-            self.db.combat_is_running = True
+            self.combat_is_running = True
         
         if not evennia_ticker_is_active:
             splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_START_DETAIL: Evennia ticker for {self.key} is not active (super().is_active=False). Calling force_repeat().")
@@ -244,7 +273,7 @@ class CombatHandler(DefaultScript):
         
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
         
-        combat_was_running = self.db.combat_is_running
+        combat_was_running = self.combat_is_running
         
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_{DEBUG_CLEANUP}: Handler {self.key} stopping combat logic. Was running: {combat_was_running}, cleanup_combatants: {cleanup_combatants}")
 
@@ -285,7 +314,7 @@ class CombatHandler(DefaultScript):
         
         # Only reach here if handler was NOT deleted
         # Now it's safe to modify db attributes (self.pk is still valid)
-        self.db.combat_is_running = False
+        self.combat_is_running = False
         self.db.round = 0
         
         # Stop the ticker if the script is saved to the database
@@ -473,13 +502,13 @@ class CombatHandler(DefaultScript):
         the ``attack``, ``movement_resolution``, and ``actions`` modules.
         """
         splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-        if not self.db.combat_is_running:
+        if not self.combat_is_running:
             splattercast.msg(f"AT_REPEAT: Handler {self.key} on {self.obj.key} combat logic is not running ({DB_COMBAT_RUNNING}=False). Returning.")
             return
 
         if not super().is_active:
              splattercast.msg(f"AT_REPEAT: Handler {self.key} on {self.obj.key} Evennia script.is_active=False. Marking {DB_COMBAT_RUNNING}=False and returning.")
-             self.db.combat_is_running = False
+             self.combat_is_running = False
              return
 
         # Convert SaverList to regular list to avoid corruption during modifications

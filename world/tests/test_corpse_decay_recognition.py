@@ -92,7 +92,7 @@ class _FakeDecayCorpse:
         self.db.forensic_recognition_cache = None
         # PR #208: default to head-intact; tests that exercise the
         # head-severed look-suppression flip this to True.
-        self.db.head_severed = False
+        self.head_severed = False
         self.contents = list(contents or [])
         self.ndb = type("_NDB", (), {})()
         self._stage = stage
@@ -513,7 +513,7 @@ class TestHeadSeveredSuppression(TestCase):
 
     def test_headless_blocks_natural_recognition_fresh(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="fresh")
-        corpse.db.head_severed = True
+        corpse.head_severed = True
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
@@ -524,7 +524,7 @@ class TestHeadSeveredSuppression(TestCase):
 
     def test_headless_blocks_natural_recognition_early(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="early")
-        corpse.db.head_severed = True
+        corpse.head_severed = True
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
@@ -535,7 +535,7 @@ class TestHeadSeveredSuppression(TestCase):
 
     def test_headless_blocks_forensic_recovery_at_moderate(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="moderate")
-        corpse.db.head_severed = True
+        corpse.head_severed = True
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
@@ -552,7 +552,7 @@ class TestHeadSeveredSuppression(TestCase):
 
     def test_headless_blocks_forensic_recovery_at_advanced(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="advanced")
-        corpse.db.head_severed = True
+        corpse.head_severed = True
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
@@ -568,7 +568,7 @@ class TestHeadSeveredSuppression(TestCase):
     def test_head_intact_preserves_natural_recognition(self):
         """Regression guard — head-severed defaults False; recognition still flows."""
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="fresh")
-        # corpse.db.head_severed is False by default.
+        # corpse.head_severed is False by default.
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
@@ -579,14 +579,14 @@ class TestHeadSeveredSuppression(TestCase):
 
     def test_headless_none_looker_still_returns_decay_name(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="moderate")
-        corpse.db.head_severed = True
+        corpse.head_severed = True
         self.assertEqual(
             corpse.get_display_name(None), "rotting corpse",
         )
 
     def test_headless_skeletal_still_returns_decay_name(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="skeletal")
-        corpse.db.head_severed = True
+        corpse.head_severed = True
         self.assertEqual(
             corpse.get_display_name(None), "skeletal remains",
         )

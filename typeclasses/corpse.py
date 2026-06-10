@@ -6,13 +6,40 @@ from .items import Item
 from .identity_bearer import IdentityBearerMixin
 import time
 
+#: Tag category for the boolean ``head_severed`` flag on Corpse.
+#: AGENTS.md prefers Tags for simple booleans — DB-indexed,
+#: no pickle round-trip on read.
+_CORPSE_STATE_CATEGORY = "corpse_state"
+
+
 class Corpse(IdentityBearerMixin, Item):
     """
     A corpse object that preserves forensic data and uses just-in-time decay.
     Decay is calculated on-demand when the corpse is looked at or referenced,
     rather than using continuous scripts.
+
+    The ``head_severed`` flag is Tag-backed (category
+    ``corpse_state``); see the property accessors below.
     """
-    
+
+    @property
+    def head_severed(self) -> bool:
+        """True when the corpse's head has been removed — Tag-backed."""
+        return self.tags.has(
+            "head_severed", category=_CORPSE_STATE_CATEGORY,
+        )
+
+    @head_severed.setter
+    def head_severed(self, value: bool) -> None:
+        if value:
+            self.tags.add(
+                "head_severed", category=_CORPSE_STATE_CATEGORY,
+            )
+        else:
+            self.tags.remove(
+                "head_severed", category=_CORPSE_STATE_CATEGORY,
+            )
+
     def at_object_creation(self):
         """Initialize corpse with decay tracking."""
         super().at_object_creation()
@@ -65,7 +92,7 @@ class Corpse(IdentityBearerMixin, Item):
         # short-circuits to the decay-stage fallback when ``True``,
         # suppressing both natural and forensic look-time recognition.
         # Set by :func:`typeclasses.items.apply_severed_head_overlay`.
-        self.db.head_severed = False
+        self.head_severed = False  # Tag-backed (see property above)
         
         # Preserve character appearance data for proper display
         self.db.original_skintone = None
@@ -176,7 +203,7 @@ class Corpse(IdentityBearerMixin, Item):
         """Decay-stage fallback when the head has been severed.
 
         PR #208: a headless corpse loses the face — the dominant
-        unaided-recognition cue.  When ``self.db.head_severed`` is
+        unaided-recognition cue.  When ``self.head_severed`` is
         ``True`` we short-circuit to the bare decay-stage name,
         suppressing both natural recognition (Pass 1 in the mixin —
         live degraded-UID lookup) and the forensic-recovery Intellect
@@ -198,7 +225,7 @@ class Corpse(IdentityBearerMixin, Item):
         :class:`world.tests.test_corpse_decay_recognition._FakeDecayCorpse`)
         still resolve the recognition pipeline correctly.
         """
-        if self.db.head_severed:
+        if self.head_severed:
             return self._decay_display_name()
         return IdentityBearerMixin.get_display_name(self, looker, **kwargs)
 
