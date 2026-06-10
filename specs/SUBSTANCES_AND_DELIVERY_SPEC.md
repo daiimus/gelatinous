@@ -174,10 +174,10 @@ A single item can declare multiple delivery methods.  A pill
 might support `eat` only.  A vial might support `inject` and
 `drink`.  A pipe loaded with a substance supports `smoke`.
 
-The currently-shipped `CmdConsumption` commands (`eat`, `drink`,
-`inhale`, `inject`, `apply`, `bandage`) check for `medical_type`
-strings rather than delivery-method tags.  They'll migrate to
-this scheme when the substance registry lands.
+The `CmdConsumption` commands (`eat`, `drink`, `inhale`,
+`inject`, `apply`, `bandage`) gate on delivery-method tags via
+`world/consumables.py:supports_delivery` (#474), with lazy legacy
+migration from the old `medical_type` strings.
 
 ## 5 · Current state vs target state
 
@@ -200,9 +200,11 @@ this scheme when the substance registry lands.
   entries, `apply_substance` pipeline feeding the medical
   condition system, per-substance dose bookkeeping on
   `db.substance_doses`.
-* **`commands/CmdConsumption.py`** — the older medical /
-  substance command cluster (eat/drink/inhale/inject/apply/
-  bandage).  Pre-dates the layering.
+* **`commands/CmdConsumption.py`** — the medical / substance
+  command cluster (eat/drink/inhale/inject/apply/bandage).
+  Delivery gating migrated to tags in #474; treatment effects
+  still key off `medical_type` pending the substance-entry
+  migration (item 6).
 
 ### Gaps to close (separate PRs)
 
@@ -211,9 +213,17 @@ this scheme when the substance registry lands.
 2. ~~**Effect pipeline** — `apply_substance`~~ — ✅ shipped v1 in
    #458 with the severity-based vocabulary (`pain_relief`,
    `sedation`).
-3. **`CmdConsumption` migration** — switch from `medical_type`
-   strings to `("eat", "delivery_method")` / `("drink", ...)`
-   tags.  Same shape as the smoke commands.
+3. ~~**`CmdConsumption` migration**~~ — ✅ shipped in #474.
+   Delivery gating runs on `("eat", "delivery_method")` tags via
+   `world/consumables.py:supports_delivery`, which self-heals
+   pre-#474 items from their legacy `medical_type` (the
+   `is_smokable` pattern).  `medical_type` remains the
+   pharmacology key for the treatment system.  The dead
+   `CmdConsumption.CmdSmoke` (unregistered since #454) was
+   deleted.  Known preserved gap: `healing_acceleration` (the
+   stim auto-injector) maps to no delivery verb — it was not
+   consumable before and stays that way until its substance entry
+   exists.
 4. **Tolerance / addiction conditions** — concrete
    `ConditionSpec` examples + medical-script tick integration.
    The dose history (`db.substance_doses`, recorded since #458)

@@ -8,6 +8,7 @@ Implements the universal consumption system with inject, apply, bandage, etc.
 from evennia import Command
 from commands._identity_targeting import resolve_character_target
 from world.identity_utils import msg_room_identity
+from world.consumables import supports_delivery
 from world.medical.utils import (
     is_medical_item, can_be_used, get_medical_type, get_stat_requirement,
     calculate_treatment_success, apply_medical_effects, use_item
@@ -268,10 +269,8 @@ class CmdInject(ConsumptionCommand):
         item, target = result["item"], result["target"]
         is_self = (caller == target)
         
-        # Check if item can be injected
-        injectable_types = ["pain_relief", "blood_restoration", "stimulant", "toxin"]
-        medical_type = get_medical_type(item)
-        if medical_type not in injectable_types:
+        # Check if item supports the inject delivery method
+        if not supports_delivery(item, "inject"):
             caller.msg(f"{item.get_display_name(caller)} cannot be injected.")
             return
             
@@ -401,15 +400,14 @@ class CmdApply(ConsumptionCommand):
                 )
                 return
         
-        # Check if item can be applied topically or orthopedically.
+        # Check if item supports the apply delivery method.
         # Surgical kits are NOT applicable — they're tools for the
         # procedure verbs (incise / harvest / install / suture).
         # See ``help procedures``.
-        applicable_types = ["burn_treatment", "antiseptic", "healing_salve", "wound_care", "fracture_treatment", "organ_repair"]
-        medical_type = get_medical_type(item)
-        if medical_type not in applicable_types:
+        if not supports_delivery(item, "apply"):
             caller.msg(f"{item.get_display_name(caller)} cannot be applied.")
             return
+        medical_type = get_medical_type(item)
             
         # Check medical requirements
         errors = self.check_medical_requirements(item, caller, target)
@@ -576,9 +574,7 @@ class CmdBandage(ConsumptionCommand):
             caller.msg(f"{item.get_display_name(caller)} is not a medical item.")
             return
             
-        bandage_types = ["wound_care", "bandage", "gauze"]
-        medical_type = get_medical_type(item)
-        if medical_type not in bandage_types:
+        if not supports_delivery(item, "bandage"):
             caller.msg(f"{item.get_display_name(caller)} cannot be used for bandaging.")
             return
             
@@ -664,10 +660,8 @@ class CmdEat(ConsumptionCommand):
         item, target = result["item"], result["target"]
         is_self = (caller == target)
         
-        # Check if item can be eaten
-        edible_types = ["pill", "tablet", "food", "ration", "medicine"]
-        medical_type = get_medical_type(item)
-        if medical_type not in edible_types:
+        # Check if item supports the eat delivery method
+        if not supports_delivery(item, "eat"):
             caller.msg(f"{item.get_display_name(caller)} cannot be eaten.")
             return
             
@@ -743,10 +737,8 @@ class CmdDrink(ConsumptionCommand):
         item, target = result["item"], result["target"]
         is_self = (caller == target)
         
-        # Check if item can be drunk
-        liquid_types = ["liquid_medicine", "water", "alcohol", "potion", "drink"]
-        medical_type = get_medical_type(item)
-        if medical_type not in liquid_types:
+        # Check if item supports the drink delivery method
+        if not supports_delivery(item, "drink"):
             caller.msg(f"{item.get_display_name(caller)} cannot be drunk.")
             return
             
@@ -822,10 +814,8 @@ class CmdInhale(ConsumptionCommand):
         item, target = result["item"], result["target"]
         is_self = (caller == target)
         
-        # Check if item can be inhaled
-        inhalable_types = ["oxygen", "anesthetic", "inhaler", "gas", "vapor"]
-        medical_type = get_medical_type(item)
-        if medical_type not in inhalable_types:
+        # Check if item supports the inhale delivery method
+        if not supports_delivery(item, "inhale"):
             caller.msg(f"{item.get_display_name(caller)} cannot be inhaled.")
             return
             
@@ -865,88 +855,6 @@ class CmdInhale(ConsumptionCommand):
         # Apply treatment effects
         result_msg = self.execute_treatment(item, caller, target)
         caller.msg(f"Inhalation result: {result_msg}")
-        
-        if not is_self:
-            target.msg(f"Treatment result: {result_msg}")
-
-
-class CmdSmoke(ConsumptionCommand):
-    """
-    Smoke medicinal herbs, cigarettes, or combustible treatments.
-    
-    Usage:
-        smoke <item>
-        help <target> smoke <item>
-        
-    Examples:
-        smoke medicinal herb
-        smoke pain-relief cigarette
-        help Bob smoke calming herb
-        
-    Smoking is used for dried herbs, medicinal cigarettes, and other
-    combustible medical substances. Creates smoke and may affect others nearby.
-    """
-    
-    key = "smoke"
-    aliases = ["light", "burn"]
-    help_category = "Medical"
-    
-    def func(self):
-        """Execute the smoke command."""
-        caller = self.caller
-        
-        # Parse arguments
-        result = self.get_item_and_target(self.args)
-        if result["errors"]:
-            caller.msg(result["errors"][0])
-            return
-            
-        item, target = result["item"], result["target"]
-        is_self = (caller == target)
-        
-        # Check if item can be smoked
-        smokable_types = ["herb", "cigarette", "medicinal_plant", "dried_medicine"]
-        medical_type = get_medical_type(item)
-        if medical_type not in smokable_types:
-            caller.msg(f"{item.get_display_name(caller)} cannot be smoked.")
-            return
-            
-        # Check if target is conscious (required for smoking)
-        if target.is_unconscious():
-            if is_self:
-                caller.msg("You cannot smoke while unconscious.")
-            else:
-                caller.msg(f"{target.get_display_name(caller)} is unconscious and cannot smoke.")
-            return
-            
-        # Check medical requirements
-        errors = self.check_medical_requirements(item, caller, target)
-        if errors:
-            caller.msg(errors[0])
-            return
-            
-        # Execute smoking
-        if is_self:
-            caller.msg(f"You light and smoke {item.get_display_name(caller)}, inhaling the medicinal smoke.")
-            msg_room_identity(
-                location=caller.location,
-                template=f"{{actor}} lights and smokes {item.key}, creating aromatic smoke.",
-                char_refs={"actor": caller},
-                exclude=[caller],
-            )
-        else:
-            caller.msg(f"You help {target.get_display_name(caller)} smoke {item.get_display_name(caller)}.")
-            target.msg(f"{caller.get_display_name(target)} helps you smoke {item.get_display_name(target)}.")
-            msg_room_identity(
-                location=caller.location,
-                template=f"{{actor}} helps {{target}} smoke {item.key}.",
-                char_refs={"actor": caller, "target": target},
-                exclude=[caller, target],
-            )
-            
-        # Apply treatment effects
-        result_msg = self.execute_treatment(item, caller, target)
-        caller.msg(f"Smoking result: {result_msg}")
         
         if not is_self:
             target.msg(f"Treatment result: {result_msg}")

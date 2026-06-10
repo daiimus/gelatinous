@@ -1849,7 +1849,7 @@ BLOOD_BAG = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["iv", "blood", "transfusion"],
     "desc": "A sterile IV blood bag with attached tubing for emergency transfusion. Contains 500ml of universal donor blood.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("inject", "delivery_method")],
     "attrs": [
         ("medical_type", "blood_restoration"),
         ("uses_left", 1),
@@ -1871,7 +1871,7 @@ PAINKILLER = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["syringe", "morphine", "pain meds"],
     "desc": "A medical syringe containing powerful analgesic medication. Multiple doses available.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("inject", "delivery_method")],
     "attrs": [
         ("medical_type", "pain_relief"),
         ("uses_left", 3),
@@ -1893,7 +1893,7 @@ GAUZE_BANDAGES = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["gauze", "bandages", "dressing"],
     "desc": "Sterile gauze bandages for wound dressing and bleeding control. Multiple applications available.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("apply", "delivery_method"), ("bandage", "delivery_method")],
     "attrs": [
         ("medical_type", "wound_care"),
         ("uses_left", 5),
@@ -1915,7 +1915,7 @@ SPLINT = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["splint", "brace"],
     "desc": "A universal medical splint that adapts to immobilize fractured appendages. Works on arms, legs, tentacles, wings, and other limbs.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("apply", "delivery_method")],
     "attrs": [
         ("medical_type", "fracture_treatment"),
         ("uses_left", 1),
@@ -1971,7 +1971,7 @@ SURGICAL_SEALANT = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["sealant", "tissue sealant", "bioseal"],
     "desc": "A single-dose ampule of biocompatible tissue sealant. Applied directly to damaged organ tissue during open procedures to bond and seal lacerations. Inert on closed skin; requires an active surgical field to do anything meaningful.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("apply", "delivery_method")],
     "attrs": [
         ("medical_type", "organ_repair"),
         ("uses_left", 3),
@@ -2017,7 +2017,7 @@ ANTISEPTIC = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["antiseptic", "disinfectant", "spray"],
     "desc": "Medical-grade antiseptic spray for wound cleaning and infection prevention. Multiple applications per bottle.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("apply", "delivery_method")],
     "attrs": [
         ("medical_type", "antiseptic"),
         ("uses_left", 8),
@@ -2042,7 +2042,7 @@ OXYGEN_TANK = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["oxygen", "o2", "tank"],
     "desc": "Portable oxygen tank with breathing mask. Essential for respiratory emergencies and consciousness recovery.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("inhale", "delivery_method")],
     "attrs": [
         ("medical_type", "oxygen"),
         ("uses_left", 10),
@@ -2062,7 +2062,7 @@ STIMPAK_INHALER = {
     "typeclass": "typeclasses.items.Item", 
     "aliases": ["inhaler", "stimpak vapor", "medical inhaler"],
     "desc": "Pressurized inhaler containing vaporized stimpak for rapid respiratory absorption. Single use only.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("inhale", "delivery_method")],
     "attrs": [
         ("medical_type", "vapor"),
         ("uses_left", 1),
@@ -2082,7 +2082,7 @@ ANESTHETIC_GAS = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["anesthetic", "knockout gas", "medical gas"],
     "desc": "Medical anesthetic gas canister. Reduces pain but may cause drowsiness. Use with caution.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("inhale", "delivery_method")],
     "attrs": [
         ("medical_type", "anesthetic"),
         ("uses_left", 5),
@@ -2101,7 +2101,7 @@ MEDICINAL_HERB = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["herb", "healing herb", "dried herb"],
     "desc": "Dried medicinal herb that can be smoked for natural pain relief and calming effects. Organic treatment option.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("smoke", "delivery_method")],
     "attrs": [
         ("medical_type", "herb"),
         ("uses_left", 3),
@@ -2121,7 +2121,7 @@ PAIN_RELIEF_CIGARETTE = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["med cigarette", "medical cigarette", "pain cigarette"],
     "desc": "Specially formulated cigarette infused with mild pain-relieving compounds. For medicinal use only.",
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("smoke", "delivery_method")],
     "attrs": [
         ("medical_type", "cigarette"),
         ("uses_left", 1),

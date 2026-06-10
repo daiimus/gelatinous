@@ -28,7 +28,9 @@ from typing import Optional
 
 #: Tag namespaces.
 CIGARETTE_STATE_CATEGORY = "cigarette_state"
-DELIVERY_METHOD_CATEGORY = "delivery_method"
+# Single-sourced from world.consumables (the bottom layer of the
+# item -> substance -> delivery stack).
+from world.consumables import DELIVERY_METHOD_CATEGORY, supports_delivery
 ITEM_ROLE_CATEGORY = "item_role"  # Lighter still uses item_role.
 
 #: Delivery-method tag.  Cigarettes, joints, cigars, pipes — anything
@@ -499,7 +501,10 @@ def is_smokable(item) -> bool:
         tags.remove(CIGARETTE_ROLE, category=ITEM_ROLE_CATEGORY)
         tags.add(SMOKE_DELIVERY, category=DELIVERY_METHOD_CATEGORY)
         return True
-    return False
+    # Legacy migration: pre-#474 medicinal herbs/cigarettes declared
+    # smokability via medical_type — supports_delivery self-heals
+    # them to delivery tags.
+    return supports_delivery(item, SMOKE_DELIVERY)
 
 
 # Legacy back-compat alias — keep the old name callable for any

@@ -161,6 +161,12 @@ def _run_consumption_cmd(
             "commands.CmdConsumption.get_medical_type",
             return_value=medical_type,
         ),
+        # Delivery gating (#474) is tag-driven and tested in
+        # test_consumables; these tests exercise the rendering branch.
+        patch(
+            "commands.CmdConsumption.supports_delivery",
+            return_value=True,
+        ),
     ]
     if not is_bandage:
         patches.insert(
@@ -366,24 +372,6 @@ class TestConsumptionPerObserverRendering(TestCase):
         self.assertIn("gaunt man", _observer_text(self.stranger))
 
     # ---- smoke ---------------------------------------------------
-
-    def test_smoke_other_broadcast(self):
-        from commands.CmdConsumption import CmdSmoke
-
-        _run_consumption_cmd(
-            CmdSmoke,
-            caller=self.actor,
-            target=self.patient,
-            item=self.item,
-            medical_type="herb",
-        )
-
-        ktext = _observer_text(self.knower)
-        self.assertIn("Jorge", ktext)
-        self.assertIn("Maria", ktext)
-        stext = _observer_text(self.stranger)
-        self.assertIn("gaunt man", stext)
-        self.assertIn("compact woman", stext)
 
     # ---- exclusion / first-person guard --------------------------
 

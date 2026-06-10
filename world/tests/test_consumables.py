@@ -98,3 +98,88 @@ class TestConsumeUseDestroyCallback(TestCase):
         outcome = consume_use(item, on_destroy=_bad_callback)
         self.assertEqual(outcome["destroyed"], True)
         self.assertTrue(item.deleted)
+
+
+# ===================================================================
+# supports_delivery — delivery tags + legacy medical_type migration
+# ===================================================================
+
+
+class _Tags:
+    """Tag-handler stub matching Evennia's (value, category) calls."""
+
+    def __init__(self, *pairs):
+        self._tags = set(pairs)
+
+    def has(self, value, category=None):
+        return (value, category) in self._tags
+
+    def add(self, value, category=None):
+        self._tags.add((value, category))
+
+
+class _TaggedItem:
+    def __init__(self, *, tags=(), medical_type=None):
+        self.tags = _Tags(*tags)
+        attrs = {}
+        if medical_type is not None:
+            attrs["medical_type"] = medical_type
+        self.attributes = _Attributes(**attrs)
+
+
+class TestSupportsDelivery(TestCase):
+    def test_tagged_item_supports_its_method(self):
+        from world.consumables import supports_delivery
+
+        item = _TaggedItem(tags=[("inject", "delivery_method")])
+        self.assertTrue(supports_delivery(item, "inject"))
+        self.assertFalse(supports_delivery(item, "eat"))
+
+    def test_none_item_unsupported(self):
+        from world.consumables import supports_delivery
+
+        self.assertFalse(supports_delivery(None, "eat"))
+
+    def test_legacy_medical_type_self_heals_to_tags(self):
+        """A pre-#474 item (medical_type, no tags) is migrated on
+        first check: implied tags written, correct verb accepted."""
+        from world.consumables import supports_delivery
+
+        item = _TaggedItem(medical_type="pain_relief")
+        self.assertTrue(supports_delivery(item, "inject"))
+        # Tag was written back — the migration is once-per-item.
+        self.assertTrue(item.tags.has("inject", category="delivery_method"))
+
+    def test_legacy_wound_care_supports_both_apply_and_bandage(self):
+        from world.consumables import supports_delivery
+
+        item = _TaggedItem(medical_type="wound_care")
+        self.assertTrue(supports_delivery(item, "bandage"))
+        self.assertTrue(item.tags.has("apply", category="delivery_method"))
+        self.assertTrue(item.tags.has("bandage", category="delivery_method"))
+
+    def test_legacy_type_rejects_wrong_method(self):
+        from world.consumables import supports_delivery
+
+        item = _TaggedItem(medical_type="oxygen")
+        self.assertFalse(supports_delivery(item, "eat"))
+        # Migration still happened toward the implied verb.
+        self.assertTrue(item.tags.has("inhale", category="delivery_method"))
+
+    def test_unknown_medical_type_unsupported(self):
+        """Types with no delivery mapping (surgical_treatment,
+        healing_acceleration) stay non-consumable — preserved
+        behavior."""
+        from world.consumables import supports_delivery
+
+        for mtype in ("surgical_treatment", "healing_acceleration", ""):
+            item = _TaggedItem(medical_type=mtype)
+            for verb in ("eat", "drink", "inject", "apply", "inhale",
+                         "bandage", "smoke"):
+                self.assertFalse(supports_delivery(item, verb))
+
+    def test_legacy_smokables_map_to_smoke_delivery(self):
+        from world.consumables import supports_delivery
+
+        item = _TaggedItem(medical_type="herb")
+        self.assertTrue(supports_delivery(item, "smoke"))
