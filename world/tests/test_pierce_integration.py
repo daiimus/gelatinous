@@ -155,11 +155,14 @@ class TestPierceIntegrationEndToEnd(EvenniaTest):
     # Cache contract — real db.disguise_pierce_cache round-trip
     # ------------------------------------------------------------------
 
-    def test_pierce_result_cached_on_observer_db(self) -> None:
-        """After one resolved pierce attempt, the result is persisted
-        to ``observer.db.disguise_pierce_cache`` keyed on
-        ``(target.dbref, apparent_uid)``.
+    def test_pierce_result_cached_on_observer_runtime(self) -> None:
+        """After one resolved pierce attempt, the result lives in the
+        observer's runtime pierce cache keyed on
+        ``(target.dbref, apparent_uid)`` — persistence happens at the
+        next flush boundary (server stop / reload).
         """
+        from world.runtime_caches import get_runtime_cache
+
         bare_uid = "uid-bare-face"
         self.observer.recognition_memory = {
             bare_uid: {
@@ -177,7 +180,7 @@ class TestPierceIntegrationEndToEnd(EvenniaTest):
         ):
             self.target.get_display_name(looker=self.observer)
 
-        cache = self.observer.db.disguise_pierce_cache
+        cache = get_runtime_cache(self.observer, "disguise_pierce_cache")
         self.assertIsNotNone(cache)
         key = (self.target.dbref, disguised_uid)
         self.assertIn(key, cache)
@@ -198,10 +201,11 @@ class TestPierceIntegrationEndToEnd(EvenniaTest):
         self.target.db.height_override = "tall"
         disguised_uid = get_apparent_uid(self.target)
 
-        # Pre-seed cache with a TRUE result for the current disguise.
-        self.observer.db.disguise_pierce_cache = {
-            (self.target.dbref, disguised_uid): True
-        }
+        # Pre-seed cache via the runtime layer.
+        from world.runtime_caches import get_runtime_cache
+        get_runtime_cache(self.observer, "disguise_pierce_cache")[
+            (self.target.dbref, disguised_uid)
+        ] = True
 
         # Roll would *fail* if consulted — but the cache should win.
         with patch(
@@ -229,10 +233,11 @@ class TestPierceIntegrationEndToEnd(EvenniaTest):
         self.target.db.height_override = "tall"
         first_uid = get_apparent_uid(self.target)
 
-        # Pre-seed FAIL for the first disguise.
-        self.observer.db.disguise_pierce_cache = {
-            (self.target.dbref, first_uid): False
-        }
+        # Pre-seed FAIL for the first disguise via the runtime layer.
+        from world.runtime_caches import get_runtime_cache
+        get_runtime_cache(self.observer, "disguise_pierce_cache")[
+            (self.target.dbref, first_uid)
+        ] = False
 
         # Switch to a different disguise (new override value -> new UID).
         self.target.db.height_override = None
@@ -248,7 +253,8 @@ class TestPierceIntegrationEndToEnd(EvenniaTest):
             name = self.target.get_display_name(looker=self.observer)
 
         self.assertEqual(name, "Jorge")
-        cache = self.observer.db.disguise_pierce_cache
+        from world.runtime_caches import get_runtime_cache
+        cache = get_runtime_cache(self.observer, "disguise_pierce_cache")
         self.assertFalse(cache[(self.target.dbref, first_uid)])
         self.assertTrue(cache[(self.target.dbref, second_uid)])
 

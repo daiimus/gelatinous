@@ -742,8 +742,18 @@ class TestForgetInvalidatesPierceCache(TestCase):
             sleeve_uid="uid-observer",
             recognition_memory=memory,
         )
-        caller.db.disguise_pierce_cache = cache
+        # Seed via the runtime layer — pierce cache lives off the
+        # descriptor path now.  Persistence happens at flush; tests
+        # assert against the runtime dict.  ``cache=None`` is the
+        # "no preset" form — leave the runtime dict empty.
+        if cache is not None:
+            from world.runtime_caches import get_runtime_cache
+            get_runtime_cache(caller, "disguise_pierce_cache").update(cache)
         return caller
+
+    def _pierce_cache(self, caller):
+        from world.runtime_caches import get_runtime_cache
+        return get_runtime_cache(caller, "disguise_pierce_cache")
 
     def test_forget_visible_drops_pierce_cache_for_target_sleeve(self):
         """All cached presentations for the forgotten sleeve are removed."""
@@ -780,7 +790,7 @@ class TestForgetInvalidatesPierceCache(TestCase):
         cmd.caller = caller
         cmd._forget_visible(caller, target, bare_uid)
 
-        self.assertEqual(caller.db.disguise_pierce_cache, {})
+        self.assertEqual(self._pierce_cache(caller), {})
 
     def test_forget_visible_preserves_other_sleeve_cache(self):
         """Forgetting one sleeve must not touch unrelated cached pierces."""
@@ -817,7 +827,7 @@ class TestForgetInvalidatesPierceCache(TestCase):
         cmd._forget_visible(caller, target, bare_uid)
 
         self.assertEqual(
-            caller.db.disguise_pierce_cache,
+            self._pierce_cache(caller),
             {("#202", "uid-other-bare"): True},
         )
 
@@ -860,7 +870,7 @@ class TestForgetInvalidatesPierceCache(TestCase):
         cmd.caller = caller
         cmd._forget_remembered(caller, sleeve_uid, entry)
 
-        self.assertEqual(caller.db.disguise_pierce_cache, {})
+        self.assertEqual(self._pierce_cache(caller), {})
 
     def test_forget_remembered_pre_schema_entry_skips_invalidation(self):
         """Entry without ``real_sleeve_uid`` leaves cache untouched.
@@ -886,7 +896,7 @@ class TestForgetInvalidatesPierceCache(TestCase):
 
         # Cache untouched; assigned_name cleared.
         self.assertEqual(
-            caller.db.disguise_pierce_cache, {("#101", bare_uid): True}
+            self._pierce_cache(caller), {("#101", bare_uid): True}
         )
         self.assertEqual(memory[bare_uid]["assigned_name"], "")
 
@@ -925,7 +935,7 @@ class TestForgetInvalidatesPierceCache(TestCase):
         cmd.caller = caller
         cmd._forget_visible(caller, target, bare_uid)
 
-        self.assertEqual(caller.db.disguise_pierce_cache, {})
+        self.assertEqual(self._pierce_cache(caller), {})
 
     def test_forget_with_empty_cache_no_crash(self):
         """No cache present is a no-op (not an error)."""
@@ -948,7 +958,9 @@ class TestForgetInvalidatesPierceCache(TestCase):
         cmd.caller = caller
         cmd._forget_visible(caller, target, bare_uid)
 
-        self.assertIsNone(caller.db.disguise_pierce_cache)
+        # Pre-schema entries hit the legacy path that leaves the
+        # cache untouched.  Runtime cache stays empty.
+        self.assertEqual(self._pierce_cache(caller), {})
 
 
 # ===================================================================
@@ -965,8 +977,14 @@ class TestInvalidatePierceCacheForSleeve(TestCase):
             sleeve_uid="uid-observer",
             recognition_memory=memory,
         )
-        observer.db.disguise_pierce_cache = cache
+        if cache is not None:
+            from world.runtime_caches import get_runtime_cache
+            get_runtime_cache(observer, "disguise_pierce_cache").update(cache)
         return observer
+
+    def _pierce_cache(self, observer):
+        from world.runtime_caches import get_runtime_cache
+        return get_runtime_cache(observer, "disguise_pierce_cache")
 
     def test_returns_zero_for_empty_sleeve_uid(self):
         from world.identity import invalidate_pierce_cache_for_sleeve
@@ -997,7 +1015,7 @@ class TestInvalidatePierceCacheForSleeve(TestCase):
         )
         # Cache untouched.
         self.assertEqual(
-            observer.db.disguise_pierce_cache,
+            self._pierce_cache(observer),
             {("#101", "uid-other"): True},
         )
 
@@ -1018,7 +1036,7 @@ class TestInvalidatePierceCacheForSleeve(TestCase):
         dropped = invalidate_pierce_cache_for_sleeve(observer, "sleeve-x")
         self.assertEqual(dropped, 2)
         self.assertEqual(
-            observer.db.disguise_pierce_cache,
+            self._pierce_cache(observer),
             {("#11", "uid-c"): True},
         )
 

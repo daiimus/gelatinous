@@ -291,16 +291,19 @@ class TestPerformDiagnose(TestCase):
         del first  # explicitly unused — clarifies intent
 
     def test_ttl_expiry_reroll(self):
+        from world.runtime_caches import get_runtime_cache
+
         patient = self._patient_with_wounds()
         physician = _FakePhysician()
         with patch.object(dx, "roll_stat", return_value=100):
             dx.perform_diagnose(physician, patient)
-        # Backdate the cache entry past TTL.
+        # Backdate the cache entry past TTL.  Cache lives on the
+        # runtime tier now; reach into it directly.
         cache_key = dx._physician_cache_key(physician)
-        cache = patient.db.diagnose_cache
-        entry = cache[cache_key]
-        entry["timestamp"] = time.time() - dx.DIAGNOSE_CACHE_TTL_SECONDS - 1
-        cache[cache_key] = entry
+        cache = get_runtime_cache(patient, dx.DIAGNOSE_CACHE_ATTR)
+        cache[cache_key]["timestamp"] = (
+            time.time() - dx.DIAGNOSE_CACHE_TTL_SECONDS - 1
+        )
         with patch.object(dx, "roll_stat", return_value=100):
             second = dx.perform_diagnose(physician, patient)
         self.assertFalse(second["from_cache"])

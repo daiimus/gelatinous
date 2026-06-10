@@ -1512,6 +1512,7 @@ def attempt_disguise_pierce(
         surface the bare entry's ``assigned_name``), ``False`` otherwise.
     """
     from world.combat.dice import opposed_roll
+    from world.runtime_caches import get_runtime_cache
 
     observer_dbref = getattr(observer, "dbref", None)
     target_dbref = getattr(target, "dbref", None)
@@ -1522,9 +1523,12 @@ def attempt_disguise_pierce(
     )
 
     if cacheable:
-        cache = observer.db.disguise_pierce_cache
-        if cache is None:
-            cache = {}
+        # Runtime tier — plain dict on the observer, lazy-loaded from
+        # ``db.disguise_pierce_cache`` on first access this session.
+        # Mutations are dict-cheap; persistence happens at flush
+        # boundaries (at_post_unpuppet / at_server_shutdown) via the
+        # registered-cache sweep.
+        cache = get_runtime_cache(observer, "disguise_pierce_cache")
         key = (target_dbref, apparent_uid)
         if key in cache:
             return bool(cache[key])
@@ -1546,7 +1550,6 @@ def attempt_disguise_pierce(
 
     if cacheable:
         cache[key] = success
-        observer.db.disguise_pierce_cache = cache
 
     return success
 
@@ -1595,7 +1598,9 @@ def invalidate_pierce_cache_for_sleeve(
     """
     if not real_sleeve_uid:
         return 0
-    cache = observer.db.disguise_pierce_cache
+    from world.runtime_caches import get_runtime_cache
+
+    cache = get_runtime_cache(observer, "disguise_pierce_cache")
     if not cache:
         return 0
 
@@ -1616,8 +1621,9 @@ def invalidate_pierce_cache_for_sleeve(
     for key in keys_to_drop:
         del cache[key]
 
-    if keys_to_drop:
-        observer.db.disguise_pierce_cache = cache
+    # Runtime mutation visible immediately; persistence happens at
+    # the next flush boundary (forget-command paths typically
+    # accompany player session lifecycle events that flush anyway).
 
     return len(keys_to_drop)
 

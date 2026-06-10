@@ -37,8 +37,16 @@ def at_server_stop():
     """
     This is called just before the server is shut down, regardless
     of it is for a reload, reset or shutdown.
+
+    Flushes every registered runtime cache so the persisted ``db.X``
+    slots match the in-process state before the typeclass instances
+    are torn down.  Without this, the work the recognition caches do
+    during the session evaporates at restart.  See
+    ``specs/STORAGE_PATTERNS_AUDIT_AND_REMEDIATION_SPEC.md`` §5.1
+    and ``world/runtime_caches.py``.
     """
-    pass
+    from world.runtime_caches import flush_all_runtime_caches
+    flush_all_runtime_caches()
 
 
 def at_server_reload_start():
@@ -51,8 +59,14 @@ def at_server_reload_start():
 def at_server_reload_stop():
     """
     This is called only time the server stops before a reload.
+
+    Reload is a soft restart — typeclass instances may persist across
+    the reload, but the safe assumption is that anything not in
+    ``db.X`` will be lost.  Flush the runtime caches alongside the
+    full shutdown path.
     """
-    pass
+    from world.runtime_caches import flush_all_runtime_caches
+    flush_all_runtime_caches()
 
 
 def at_server_cold_start():

@@ -9,6 +9,7 @@ All test cases match the specification in
 ``specs/IDENTITY_RECOGNITION_SPEC.md``.
 """
 
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -2041,10 +2042,19 @@ class TestAttemptDisguisePierce(TestCase):
     """
 
     def _make_observer(self):
-        observer = MagicMock()
-        observer.dbref = "#10"
-        observer.db.disguise_pierce_cache = None
+        # Plain object with a SimpleNamespace db slot — avoids the
+        # MagicMock auto-vivification that would confuse the runtime
+        # cache loader's ``getattr(db, attr_name, None)``.
+        observer = SimpleNamespace(
+            dbref="#10",
+            db=SimpleNamespace(disguise_pierce_cache=None),
+        )
         return observer
+
+    def _runtime_cache(self, observer):
+        # Helper for assertions/seeding against the runtime tier.
+        from world.runtime_caches import get_runtime_cache
+        return get_runtime_cache(observer, "disguise_pierce_cache")
 
     def _make_target(self, with_overrides=False, worn_items=None):
         target = MagicMock()
@@ -2060,7 +2070,8 @@ class TestAttemptDisguisePierce(TestCase):
 
         observer = self._make_observer()
         target = self._make_target()
-        observer.db.disguise_pierce_cache = {("#20", "uid-cape"): True}
+        # Seed via the runtime layer (the new cache home).
+        self._runtime_cache(observer)[("#20", "uid-cape")] = True
         bare = {"times_seen": 0}
 
         with patch("world.combat.dice.opposed_roll") as roll:
@@ -2074,7 +2085,7 @@ class TestAttemptDisguisePierce(TestCase):
 
         observer = self._make_observer()
         target = self._make_target()
-        observer.db.disguise_pierce_cache = {("#20", "uid-cape"): False}
+        self._runtime_cache(observer)[("#20", "uid-cape")] = False
         bare = {"times_seen": 99}
 
         with patch("world.combat.dice.opposed_roll") as roll:
@@ -2096,8 +2107,11 @@ class TestAttemptDisguisePierce(TestCase):
             result = attempt_disguise_pierce(observer, target, "uid-cape", bare)
 
         self.assertTrue(result)
+        # Outcome cached in the runtime tier; persistence happens at
+        # flush boundary (server stop / reload).
         self.assertEqual(
-            observer.db.disguise_pierce_cache, {("#20", "uid-cape"): True}
+            self._runtime_cache(observer),
+            {("#20", "uid-cape"): True},
         )
 
     def test_failure_caches_outcome(self):
@@ -2114,7 +2128,8 @@ class TestAttemptDisguisePierce(TestCase):
 
         self.assertFalse(result)
         self.assertEqual(
-            observer.db.disguise_pierce_cache, {("#20", "uid-cape"): False}
+            self._runtime_cache(observer),
+            {("#20", "uid-cape"): False},
         )
 
     def test_familiarity_bonus_lets_observer_win(self):
@@ -2165,8 +2180,10 @@ class TestAttemptDisguisePierce(TestCase):
             result = attempt_disguise_pierce(observer, target, "uid-cape", bare)
 
         self.assertTrue(result)
-        # Cache must not have been written.
-        self.assertIsNone(observer.db.disguise_pierce_cache)
+        # Cache must not have been written.  Read the runtime cache
+        # directly to confirm — get_runtime_cache lazy-inits to {}
+        # but the resolver shouldn't have inserted anything.
+        self.assertEqual(self._runtime_cache(observer), {})
 
     def test_familiarity_bonus_capped(self):
         from world.identity import (

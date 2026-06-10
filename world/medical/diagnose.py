@@ -397,18 +397,19 @@ def _physician_cache_key(physician) -> str:
 
 
 def _get_or_init_cache(patient) -> dict:
-    """Return the cache dict, initialising it on patient.db if
-    absent.  Duck-types ``_SaverDict`` (no ``isinstance(dict)``
-    check — Evennia wraps persisted nested dicts)."""
-    db = getattr(patient, "db", None)
-    if db is None:
+    """Return the runtime cache dict for the patient's diagnose state.
+
+    Lazy-loads from ``patient.db.diagnose_cache`` into a plain
+    ``_runtime_diagnose_cache`` attribute on first access; subsequent
+    reads/writes are dict operations, not descriptor round-trips.
+    Persistence happens at flush boundaries
+    (``at_server_stop`` / ``at_server_reload_stop``) via the
+    registered-cache sweep — see ``world/runtime_caches.py``.
+    """
+    if getattr(patient, "db", None) is None:
         return {}
-    cache = getattr(db, DIAGNOSE_CACHE_ATTR, None)
-    if cache is None:
-        cache = {}
-        setattr(db, DIAGNOSE_CACHE_ATTR, cache)
-        cache = getattr(db, DIAGNOSE_CACHE_ATTR, cache)
-    return cache
+    from world.runtime_caches import get_runtime_cache
+    return get_runtime_cache(patient, DIAGNOSE_CACHE_ATTR)
 
 
 def perform_diagnose(physician, patient, *, force_reroll: bool = False) -> dict:

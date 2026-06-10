@@ -282,10 +282,18 @@ def attempt_forensic_recognition(
     if revealed_uid is None:
         return RecognitionResult(success=False, revealed_uid=None, from_cache=False)
 
+    # Runtime tier — lazy-load from ``cache_owner.db.<cache_attr>``
+    # on first access and mutate in-place.  Persistence happens at
+    # flush boundaries (at_server_stop / at_server_reload_stop) via
+    # the registered-cache sweep.  See world/runtime_caches.py.
+    from world.runtime_caches import get_runtime_cache
+
     cache_db = getattr(cache_owner, "db", None)
-    cache = getattr(cache_db, cache_attr, None) if cache_db is not None else None
-    if cache is None:
+    if cache_db is None:
+        # No carrier — degrade to a one-shot dict without caching.
         cache = {}
+    else:
+        cache = get_runtime_cache(cache_owner, cache_attr)
 
     looker_dbref = getattr(looker, "dbref", None)
     cache_key = (looker_dbref, revealed_uid)
@@ -303,7 +311,6 @@ def attempt_forensic_recognition(
 
     if looker_dbref is not None:
         cache[cache_key] = success
-        setattr(cache_db, cache_attr, cache)
 
     return RecognitionResult(
         success=success, revealed_uid=revealed_uid, from_cache=False
