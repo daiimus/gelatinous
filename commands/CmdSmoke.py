@@ -29,6 +29,7 @@ from evennia import Command
 from commands._identity_targeting import resolve_character_target
 from world.identity_utils import msg_room_identity
 from world.consumables import consume_use
+from world.substances import apply_substance
 from world.smoke import (
     find_held_lighter,
     find_held_smokable,
@@ -262,6 +263,15 @@ class CmdSmoke(Command):
                 char_refs={"actor": caller},
                 exclude=[caller],
             )
+
+        # Pharmacology — one dose per puff through the substance
+        # pipeline (issue #458).  Unregistered substances no-op
+        # (flavor-only items are legitimate).  The subtle feedback
+        # line only renders when an effect actually landed, so a
+        # pain-free smoker just gets the flavor message.
+        dose_result = apply_substance(caller, substance)
+        for line in dose_result.get("feedback", ()):
+            caller.msg(f"|c{line}|n")
 
         # Decrement puff count via the unified consumable helper.
         # When the last puff goes the item deletes itself; we emit

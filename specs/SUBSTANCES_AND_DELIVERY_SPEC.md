@@ -90,9 +90,32 @@ strings, not a fixed enum, and we'll want to read them as keys
 into the registry from many places.  Attribute fits better than
 tag here.
 
-## 3 · Substance registry (planned, not built)
+## 3 · Substance registry (✅ v1 shipped — issue #458)
 
-When ready, lives at `world/substances/registry.py`:
+Lives at `world/substances/registry.py`.  The shipped v1 differs
+from the original sketch below in two deliberate ways:
+
+* **Effect vocabulary is severity-based, not float-magnitude.**
+  Effects translate into the existing condition system's integer
+  severities rather than carrying their own magnitude/duration
+  model: `pain_relief` shaves `PainCondition` severity,
+  `sedation` adds/stacks a capped
+  `ConsciousnessSuppressionCondition(suppression_type="sedative")`.
+  Decay rides the conditions' own tick recovery — no parallel
+  timing model.
+* **`ConditionSpec` (tolerance / addiction / organ damage) is not
+  built yet.**  The substrate hook shipped instead:
+  `apply_substance` increments `consumer.db.substance_doses`
+  per dose, so the future tolerance system has historical data
+  from day one.
+
+Shipped entries: `tobacco_neutral` (pain_relief 1/dose),
+`tobacco_noir` (pain_relief 1 + sedation 1 capped at 2 total —
+woozy ceiling, never blackout).  `apply_substance(consumer, id)`
+is the single pipeline entry point; unknown ids no-op so
+flavor-only items stay legitimate.
+
+Original sketch (kept for the ConditionSpec direction):
 
 ```python
 @dataclass(frozen=True)
@@ -170,26 +193,38 @@ this scheme when the substance registry lands.
   wrapper over `consume_use` with "crumbles away" broadcast.
 * **`commands/CmdSmoke.py`** — `light` / `smoke` / `snuff`
   routing on the `("smoke", "delivery_method")` tag.  Cross-
-  character syntax via possessive parser.
+  character syntax via possessive parser.  Each puff applies one
+  dose through `apply_substance` (#458).
+* **`world/substances/`** (#458) — `Substance` /
+  `SubstanceEffect` dataclasses, registry with the two tobacco
+  entries, `apply_substance` pipeline feeding the medical
+  condition system, per-substance dose bookkeeping on
+  `db.substance_doses`.
 * **`commands/CmdConsumption.py`** — the older medical /
   substance command cluster (eat/drink/inhale/inject/apply/
   bandage).  Pre-dates the layering.
 
 ### Gaps to close (separate PRs)
 
-1. **Substance registry** at `world/substances/`.  Centralises
-   substance metadata; replaces the implicit registry in flavor
-   banks.
-2. **Effect pipeline** — `apply_substance(substance, consumer)`
-   that emits effects into the medical condition system.
+1. ~~**Substance registry** at `world/substances/`~~ — ✅ shipped
+   v1 in #458 (see §3).
+2. ~~**Effect pipeline** — `apply_substance`~~ — ✅ shipped v1 in
+   #458 with the severity-based vocabulary (`pain_relief`,
+   `sedation`).
 3. **`CmdConsumption` migration** — switch from `medical_type`
    strings to `("eat", "delivery_method")` / `("drink", ...)`
    tags.  Same shape as the smoke commands.
 4. **Tolerance / addiction conditions** — concrete
    `ConditionSpec` examples + medical-script tick integration.
+   The dose history (`db.substance_doses`, recorded since #458)
+   is the input data.
 5. **Roll-your-own** — `roll` command that consumes raw
    substance + paper + filter and spawns a cigarette / joint
    prototype with the substance baked on.
+6. **More substances** — cannabis, alcohol, opium.  Each likely
+   needs one or two new effect kinds (euphoria, stimulation,
+   coordination penalty) — grow the vocabulary per substance,
+   not speculatively.
 
 ## 6 · Anti-patterns to avoid
 
