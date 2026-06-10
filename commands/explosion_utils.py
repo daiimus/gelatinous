@@ -122,16 +122,19 @@ def check_rigged_grenade(character, exit_obj):
     sticky_target = None
 
     if is_sticky:
-        # Use CmdThrow's magnetic targeting logic (lazy import to avoid circular)
-        from commands.CmdThrow import CmdThrow
-        cmd = CmdThrow()
-        cmd.caller = character  # Set caller for context
-        sticky_target = cmd.select_most_magnetic_target_in_room(character.location, rigged_grenade)
+        # Magnetic targeting / stick resolution from the throwing
+        # engine (lazy import keeps the historical import graph)
+        from world.combat.throwing import (
+            resolve_weapon_hit, select_most_magnetic_target_in_room,
+        )
+        sticky_target = select_most_magnetic_target_in_room(
+            character.location, rigged_grenade, exclude=character
+        )
 
         if sticky_target:
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_RIGGED_STICKY: Selected {sticky_target.key} as magnetic target")
-            # Use existing resolve_weapon_hit logic to handle stick attempt
-            cmd.resolve_weapon_hit(rigged_grenade, sticky_target, character)
+            # Use the throwing engine's hit resolver for the stick attempt
+            resolve_weapon_hit(rigged_grenade, sticky_target, character)
         else:
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_RIGGED_STICKY: No viable magnetic targets, treating as regular grenade")
 
@@ -324,6 +327,99 @@ def start_standalone_grenade_ticker(grenade, explosion_callback=None):
                     explode_standalone_grenade(grenade)
             except Exception:
                 pass  # If even explosion fails, give up gracefully
+
+    # Start the ticker
+    tick()
+
+
+def start_grenade_ticker(grenade):
+    """Sticky-aware countdown ticker for armed grenades.
+
+    Moved from ``CmdPull`` (issue #471 step 2) so remote detonators
+    and the pull command share one implementation instead of
+    instantiating a throwaway ``CmdPull`` for access.  Differs from
+    :func:`start_standalone_grenade_ticker` by broadcasting dramatic
+    per-second warnings while the grenade is magnetically stuck to
+    armor.  Candidates for unification once behavior requirements
+    converge.
+    """
+    def tick():
+        try:
+            # Check if grenade still exists and has countdown
+            if not grenade or not hasattr(grenade, 'ndb'):
+                return  # Grenade was deleted or lost state
+
+            remaining = getattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
+
+            splattercast = get_splattercast()
+            splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER: {grenade.key} countdown: {remaining}s remaining")
+
+            if remaining > 1:
+                # Continue countdown
+                remaining -= 1
+                setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, remaining)
+
+                # STICKY GRENADE: Send appropriate countdown warnings
+                from typeclasses.items import Item
+                from typeclasses.characters import Character
+
+                # Check if grenade is stuck to armor
+                is_stuck = isinstance(grenade.location, Item) and grenade.db.stuck_to_armor is not None
+
+                if is_stuck:
+                    # Grenade stuck to armor - send dramatic warnings
+                    armor = grenade.location
+
+                    # Check if armor is worn
+                    if armor.location and isinstance(armor.location, Character):
+                        wearer = armor.location
+                        # Warning to wearer
+                        wearer.msg(f"|R*** {remaining} SECONDS ***|n {grenade.key} magnetically clamped to your {armor.key}!")
+
+                        # Warning to room
+                        if wearer.location:
+                            msg_room_identity(
+                                location=wearer.location,
+                                template=f"|y{{target_char}} has a live {grenade.key} magnetically stuck to their {armor.key}! {remaining} seconds remaining!|n",
+                                char_refs={"target_char": wearer},
+                                exclude=[wearer],
+                            )
+                    else:
+                        # Armor on ground with stuck grenade
+                        room = armor.location
+                        if room:
+                            room.msg_contents(
+                                f"|yA {grenade.key} magnetically stuck to a {armor.key} ticks down: {remaining} seconds!|n"
+                            )
+
+                # Schedule next tick
+                timer = utils.delay(1, tick)
+                setattr(grenade.ndb, NDB_GRENADE_TIMER, timer)
+
+            elif remaining == 1:
+                # Final countdown - explode next tick
+                setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
+                timer = utils.delay(
+                    1, lambda: explode_standalone_grenade(grenade)
+                )
+                setattr(grenade.ndb, NDB_GRENADE_TIMER, timer)
+                splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER: {grenade.key} final countdown - explosion scheduled")
+
+            else:
+                # Should not reach here - explosion should have been triggered
+                splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER_ERROR: {grenade.key} reached 0 without explosion - triggering now")
+                explode_standalone_grenade(grenade)
+
+        except Exception as e:
+            # Deliberate failsafe (documented exception to the
+            # no-broad-except convention): a live grenade must never
+            # become a permanent dud because of a ticker bug.  Log
+            # the error, then explode — the loudest possible way to
+            # surface the failure.  If the explosion itself raises,
+            # that propagates to the server log.
+            splattercast = get_splattercast()
+            splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER_ERROR: Ticker error for {grenade.key}: {e} - triggering explosion")
+            explode_standalone_grenade(grenade)
 
     # Start the ticker
     tick()

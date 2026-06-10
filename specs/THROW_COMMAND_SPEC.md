@@ -4,28 +4,51 @@
 
 **Status**: ✅ **PRODUCTION READY** - All components implemented and tested
 
-### Test Coverage & Known Divergences (issue #471)
+### Architecture, Test Coverage & Known Divergences (issue #471)
 
-Current behavior is pinned by the characterization suite at
-`world/tests/test_throw_characterization.py` (56 tests: parsing,
-validation, flight, landing/proximity, weapon-hit resolution,
-deflection, pull, catch). That suite is the contract for the planned
-restructure. Two findings from the line-read it encodes:
+Behavior is pinned by the characterization suite at
+`world/tests/test_throw_characterization.py` (59 tests: parsing,
+validation, flight lifecycle, landing/proximity, hit resolution,
+deflection, pull, catch). That suite is the contract for any change
+to the system.
 
-- **Weapon-throw flight is dead code.** `func()` returns for *every*
-  `db.is_throwing_weapon` object (targeted → redirects to `attack`;
-  untargeted → guidance message), so the `handle_weapon_throw` /
-  `is_weapon=True` flight path is unreachable from the command. The
-  "Weapon Detection Flow" described below documents intent, not
-  current routing — `resolve_weapon_hit` only runs via the
-  sticky-grenade landing route today. The restructure should either
-  delete the dead path or deliberately wire it back.
-- **Catch announce fixed.** `catch_object` passed `room=` to
-  `msg_room_identity` (parameter is `location`), so every successful
-  catch raised TypeError before timer cancellation — the caught
-  object would "arrive" at its destination out of the catcher's
-  hands two seconds later, breaking the hot-potato mechanic. Fixed
-  with the characterization PR; the success-path test pins the
+**Layout (since the #471 restructure):**
+
+- `commands/CmdThrow.py` — command surface only: parsing,
+  validation, origin announcements (`throw` / `pull` / `catch`).
+- `world/combat/throwing.py` — the physics engine: flight timers,
+  landing resolution, proximity assignment, grenade deflection,
+  magnetic target selection. Importable by anything that launches
+  objects (rigged-grenade triggers use it directly — no more
+  instantiating throwaway command objects for access).
+- `commands/explosion_utils.py` — `start_grenade_ticker` (the
+  sticky-aware countdown, moved from `CmdPull`) lives next to the
+  explosion machinery. It and `start_standalone_grenade_ticker` are
+  candidates for unification.
+
+**Exception policy:** the engine has no broad excepts. Failures in
+the flight-timer callback surface in the server log; flight-state
+cleanup is guaranteed via `finally`, so a landing bug can never
+strand an object in the "flying" state. The one deliberate broad
+except is the grenade ticker's failsafe (a live grenade must never
+become a permanent dud — on ticker error it logs and explodes).
+
+**Resolved findings from the original line-read:**
+
+- **Weapon-throw flight was dead code — now deleted.** `func()`
+  returns for *every* `db.is_throwing_weapon` object (targeted →
+  redirects to `attack` for full combat resolution; untargeted →
+  guidance message). User confirmed this is the correct design.
+  `resolve_weapon_hit` survives as the sticky grenade's
+  stick/bounce/damage resolver, reached via the landing route. The
+  "Weapon Detection Flow" below describes the pre-#471 intent.
+  **Future:** ammo/recovery tracking for thrown weapons (alongside
+  gun ammo) is the missing piece before a true weapon-flight path
+  would be worth wiring back.
+- **Catch announce fixed** (step 1): `catch_object` passed `room=`
+  to `msg_room_identity` (parameter is `location`), so every
+  successful catch raised TypeError before timer cancellation —
+  breaking the hot-potato mechanic. The success-path test pins the
   repaired flow.
 
 ### **Implemented Components**

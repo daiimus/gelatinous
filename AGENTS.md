@@ -168,6 +168,7 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 | Fix grappling mechanics | `world/combat/grappling.py` |
 | Add/change combat constants | `world/combat/constants.py` |
 | Modify attack/damage logic | `world/combat/utils.py` |
+| Modify throw flight/landing/deflection | `world/combat/throwing.py` |
 | Change combat messages | `world/combat/messages/*.py` |
 | Modify attack command | `commands/combat/core_actions.py` |
 | Add movement commands | `commands/combat/movement.py` |

@@ -942,12 +942,9 @@ class CmdDetonate(Command):
         fuse_time = explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
         setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
-        # Start countdown using CmdPull's grenade ticker system
-        # Create temporary CmdPull instance to access start_grenade_ticker
-        from commands.CmdThrow import CmdPull
-        pull_cmd = CmdPull()
-        pull_cmd.caller = caller
-        pull_cmd.start_grenade_ticker(explosive)
+        # Start countdown using the shared sticky-aware ticker
+        from commands.explosion_utils import start_grenade_ticker
+        start_grenade_ticker(explosive)
 
         # Operator messaging
         caller.msg(
@@ -1018,11 +1015,9 @@ class CmdDetonate(Command):
             fuse_time = explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
             setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
-            # Start countdown
-            from commands.CmdThrow import CmdPull
-            pull_cmd = CmdPull()
-            pull_cmd.caller = caller
-            pull_cmd.start_grenade_ticker(explosive)
+            # Start countdown using the shared sticky-aware ticker
+            from commands.explosion_utils import start_grenade_ticker
+            start_grenade_ticker(explosive)
 
             detonated_count += 1
 
