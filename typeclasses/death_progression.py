@@ -18,7 +18,7 @@ This creates urgency for medical response while making death less instantaneous.
 """
 
 from evennia import DefaultScript
-from evennia.utils import delay
+from evennia.utils import delay, logger
 from world.combat.debug import get_splattercast
 from world.combat.constants import (
     DEATH_PROGRESSION_DURATION,
@@ -226,14 +226,11 @@ class DeathProgressionScript(DefaultScript):
             return
             
         # Log medical revival
-        try:
-            splattercast = get_splattercast()
-            elapsed = time.time() - self.db.start_time
-            splattercast.msg(f"MEDICAL_REVIVAL: {character.key} revived by medical treatment after {elapsed:.1f}s")
-            splattercast.msg(f"DEATH_SCRIPT_CLEANUP: Stopping and deleting death progression script for {character.key} (medical revival)")
-        except Exception:
-            pass
-            
+        splattercast = get_splattercast()
+        elapsed = time.time() - (self.db.start_time or time.time())
+        splattercast.msg(f"MEDICAL_REVIVAL: {character.key} revived by medical treatment after {elapsed:.1f}s")
+        splattercast.msg(f"DEATH_SCRIPT_CLEANUP: Stopping and deleting death progression script for {character.key} (medical revival)")
+
         # Medical revival messages
         character.msg(
             "|gThe medical treatment takes effect! You feel life returning to your body.|n\n"
@@ -484,9 +481,18 @@ class DeathProgressionScript(DefaultScript):
             splattercast.msg(f"DEATH_COMPLETION: {character.key} -> Corpse created, character transitioned")
                 
         except Exception as e:
-            # Fallback - log error but don't crash the death progression
+            # Deliberate guard (#469): completion runs from at_repeat,
+            # so an uncaught error here would leave the script alive
+            # and retrying every tick — spawning a partial corpse each
+            # time.  Containing it means the progression always
+            # terminates; worst case is "archived without a corpse".
+            # Logged to the audit file AND the server log (traceback)
+            # so the failure is loud, just not player-breaking.
             splattercast = get_splattercast()
             splattercast.msg(f"DEATH_COMPLETION_ERROR: {getattr(character, 'key', '?')} - {e}")
+            logger.log_trace(
+                f"Death completion failed for {getattr(character, 'key', '?')}"
+            )
 
     def _create_corpse_from_character(self, character):
         """Create a corpse object that preserves forensic data from the character."""
@@ -562,6 +568,8 @@ class DeathProgressionScript(DefaultScript):
         # corpse; clearing after ensures the Character object carries no
         # stale disguise state into limbo or any future
         # resurrection/clone consumer.
+        # Deliberate stage guard (#469): an override-clearing bug must
+        # not abort corpse construction below (item transfer, wounds).
         try:
             from commands.CmdCharacter import _clear_all_overrides
             _clear_all_overrides(character)
@@ -588,17 +596,17 @@ class DeathProgressionScript(DefaultScript):
             # systems.  ``MedicalState.to_dict()`` is the canonical
             # serialization; pre-PR-186 corpses carry None and degrade
             # gracefully in :func:`world.forensics.render_forensic_report`.
+            # Deliberate stage guard (#469): a serialization bug must
+            # not abort corpse construction — autopsy degrades
+            # gracefully on a None snapshot.
             try:
                 corpse.db.medical_state_at_death = character.medical_state.to_dict()
-                try:
-                    splattercast = get_splattercast()
-                    organ_count = len(corpse.db.medical_state_at_death.get("organs", {}))
-                    splattercast.msg(
-                        f"DEATH_MEDICAL_SNAPSHOT: {organ_count} organs preserved "
-                        f"on corpse for {character.key}"
-                    )
-                except Exception:
-                    pass
+                splattercast = get_splattercast()
+                organ_count = len(corpse.db.medical_state_at_death.get("organs", {}))
+                splattercast.msg(
+                    f"DEATH_MEDICAL_SNAPSHOT: {organ_count} organs preserved "
+                    f"on corpse for {character.key}"
+                )
             except Exception as snapshot_err:
                 splattercast = get_splattercast()
                 splattercast.msg(
@@ -632,7 +640,8 @@ class DeathProgressionScript(DefaultScript):
                     splattercast = get_splattercast()
                     splattercast.msg(f"DEATH_WOUNDS_PRESERVED: {len(wound_data)} wounds preserved on corpse for {character.key}")
             except Exception as e:
-                # Don't fail death progression if wound preservation fails
+                # Deliberate stage guard (#469): wound preservation is
+                # forensic garnish — never fail the corpse over it.
                 splattercast = get_splattercast()
                 splattercast.msg(f"DEATH_WOUNDS_ERROR: Failed to preserve wounds for {getattr(character, 'key', '?')}: {e}")
         
@@ -667,14 +676,11 @@ class DeathProgressionScript(DefaultScript):
             character.held_items = {}
         
         # Debug logging for item transfer
-        try:
-            splattercast = get_splattercast()
-            if transferred_items:
-                splattercast.msg(f"DEATH_ITEMS_TRANSFERRED: {len(transferred_items)} items moved to corpse: {', '.join(transferred_items)}")
-            else:
-                splattercast.msg(f"DEATH_ITEMS_TRANSFERRED: No items found on {character.key} to transfer")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        if transferred_items:
+            splattercast.msg(f"DEATH_ITEMS_TRANSFERRED: {len(transferred_items)} items moved to corpse: {', '.join(transferred_items)}")
+        else:
+            splattercast.msg(f"DEATH_ITEMS_TRANSFERRED: No items found on {character.key} to transfer")
         
         # Set corpse description using sdesc (identity-aware)
         sdesc = corpse.db.sdesc_at_death if corpse.db.sdesc_at_death is not None else character.key
@@ -717,6 +723,9 @@ class DeathProgressionScript(DefaultScript):
                 else:
                     spawn_severed_head_for_corpse(corpse)
             except Exception as e:
+                # Deliberate stage guard (#469): the corpse must finish
+                # building even if the head-spawn bookkeeping fails —
+                # see the two-path design note above.
                 splattercast = get_splattercast()
                 splattercast.msg(
                     f"DEATH_DECAPITATION_ERROR: {getattr(character, 'key', '?')} - {e}"
@@ -757,31 +766,27 @@ class DeathProgressionScript(DefaultScript):
                     
                     # Verify deletion
                     still_exists = ScriptDB.objects.filter(id=script_id).exists()
-                    
-                    try:
-                        splattercast = get_splattercast()
-                        if still_exists:
-                            splattercast.msg(f"DEATH_MEDICAL_CLEANUP_FAIL: Script #{script_id} for {character.key} still exists after delete!")
-                        else:
-                            splattercast.msg(f"DEATH_MEDICAL_CLEANUP: Successfully deleted script #{script_id} for {character.key}")
-                    except Exception:
-                        pass
+
+                    splattercast = get_splattercast()
+                    if still_exists:
+                        splattercast.msg(f"DEATH_MEDICAL_CLEANUP_FAIL: Script #{script_id} for {character.key} still exists after delete!")
+                    else:
+                        splattercast.msg(f"DEATH_MEDICAL_CLEANUP: Successfully deleted script #{script_id} for {character.key}")
                 except Exception as e:
-                    try:
-                        splattercast = get_splattercast()
-                        splattercast.msg(f"DEATH_MEDICAL_CLEANUP_ERROR: {getattr(character, 'key', '?')} - {e}")
-                        import traceback
-                        splattercast.msg(f"DEATH_MEDICAL_CLEANUP_TRACE: {traceback.format_exc()}")
-                    except Exception:
-                        pass
+                    # Deliberate per-script guard (#469): one broken
+                    # script must not block deleting the rest, nor the
+                    # teleport/archive below.
+                    splattercast = get_splattercast()
+                    splattercast.msg(f"DEATH_MEDICAL_CLEANUP_ERROR: {getattr(character, 'key', '?')} - {e}")
+                    import traceback
+                    splattercast.msg(f"DEATH_MEDICAL_CLEANUP_TRACE: {traceback.format_exc()}")
         except Exception as e:
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"DEATH_MEDICAL_CLEANUP_FAIL: {getattr(character, 'key', '?')} - {e}")
-                import traceback
-                splattercast.msg(f"DEATH_MEDICAL_CLEANUP_TRACE: {traceback.format_exc()}")
-            except Exception:
-                pass
+            # Deliberate stage guard (#469): cleanup-query failure must
+            # not block the teleport/unpuppet/archive sequence below.
+            splattercast = get_splattercast()
+            splattercast.msg(f"DEATH_MEDICAL_CLEANUP_FAIL: {getattr(character, 'key', '?')} - {e}")
+            import traceback
+            splattercast.msg(f"DEATH_MEDICAL_CLEANUP_TRACE: {traceback.format_exc()}")
         
         # Move character to limbo/OOC room (Evennia's default limbo is #2)
         # Use move_hooks=False to prevent medical script spam on teleport
@@ -795,7 +800,10 @@ class DeathProgressionScript(DefaultScript):
             splattercast.msg(f"DEATH_TELEPORT_SUCCESS: {character.key} moved from {old_location} to {limbo_room}")
                 
         except Exception as e:
-            # Log the specific error instead of silently failing
+            # Deliberate stage guard (#469): a teleport failure (Limbo
+            # missing, move hook error) must not block the
+            # unpuppet/archive below — a dead body left in the room is
+            # recoverable, a half-archived character is not.
             splattercast = get_splattercast()
             splattercast.msg(f"DEATH_TELEPORT_ERROR: {getattr(character, 'key', '?')} - {e}")
         
@@ -857,7 +865,7 @@ def start_death_progression(character):
         DeathProgressionScript: The created script
     """
     # Check if character already has a death progression script
-    existing_script = character.scripts.get("death_progression")
+    existing_script = get_death_progression_script(character)
     if existing_script:
         splattercast = get_splattercast()
         splattercast.msg(f"DEATH_PROGRESSION: Existing script found for {character.key}")
@@ -884,7 +892,13 @@ def get_death_progression_script(character):
     Returns:
         DeathProgressionScript or None: The script if found, None otherwise
     """
-    return character.scripts.get("death_progression")
+    # ScriptHandler.get returns a queryset/list — and a queryset's
+    # ``.db`` is Django's database-alias *string*, so returning it raw
+    # made get_death_progression_status crash with
+    # "'str' object has no attribute 'start_time'" for any character
+    # actually in progression (caught by the #477 lifecycle tests).
+    scripts = character.scripts.get("death_progression")
+    return scripts[0] if scripts else None
 
 
 def get_death_progression_status(character):
