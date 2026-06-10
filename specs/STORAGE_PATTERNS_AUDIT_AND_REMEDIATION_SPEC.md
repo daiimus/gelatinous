@@ -30,38 +30,49 @@ Restated in our terms:
   attribute backed by an explicit flush.
 
 The advice's emphasis on *minimising writes* is grounded in Evennia's
-actual cost model: an assignment to `obj.db.foo = value` triggers
-attribute-descriptor protocol, pickle serialisation, and a Django ORM
-write to the `ObjectAttribute` table. Most of those writes are
-load-bearing. A non-trivial fraction are not.
+actual cost model:
+
+* **Reads** (`x = obj.db.foo`): descriptor lookup → in-process
+  Attribute cache. After the first hit, subsequent reads of the
+  same attribute on the same object are cheap, but the descriptor
+  protocol is still in the path. A plain Python attribute (`x =
+  self._foo`) is a dict lookup. The latter is what "free reads"
+  refers to — orders of magnitude cheaper at hot-path rates.
+* **Writes** (`obj.db.foo = value`): descriptor protocol → pickle
+  serialisation → Django ORM write to the `ObjectAttribute`
+  table. This is the expensive operation. Most of our writes are
+  load-bearing; a non-trivial fraction are not.
+
+`AGENTS.md` is the operational reference for these conventions and
+should be read alongside this spec.
 
 ## 1 · Why this matters here
 
-Gelatinous has a few characteristics that amplify the cost of the
+Three characteristics of Gelatinous amplify the cost of the
 "convenient `db.X`" pattern:
 
-1. **Hot render paths.** `get_display_name` is called from every
-   look, every msg_room_identity broadcast, every action emote, and
-   every chart pane render. That call chain reads
+1. **Hot render paths.** `get_display_name` fires on every look,
+   every `msg_room_identity` broadcast, every action emote, every
+   chart pane render. The call chain reads
    `observer.db.disguise_pierce_cache` *and* writes back on every
    pierce attempt. `grep` finds 497 `get_display_name` /
-   `attempt_display_pierce` call sites — most exercise the cache path.
+   `attempt_display_pierce` call sites; most exercise the cache.
 2. **Ticker-driven mutation.** `MedicalScript` ticks every 12s
    (`world/medical/script.py:96`) and mutates `_medical_state` in
-   place — blood loss, pain accumulation, consciousness drop, healing.
-   The script does **not** call `save_medical_state` per tick; saves
-   happen only at meaningful events (procedure complete, admin
-   change, organ swap, damage application). This is already the
-   right shape and worth preserving.
+   place — blood loss, pain accumulation, consciousness drift,
+   healing. The script does **not** call `save_medical_state` per
+   tick; saves happen at meaningful events only (procedure
+   complete, admin change, organ swap, damage application). This
+   is already the right shape — preserve it.
 3. **Dict-shaped state on `db`.** `db.surgical_state`,
    `db.medical_chart`, `db.diagnose_cache`, `db.wounds_at_death`,
-   `db.signature_at_death`. Reads cost a dict lookup wrapped in
-   Evennia's `_SaverDict` proxy (which is why we duck-type
-   `isinstance(x, dict)` everywhere — covered separately in
-   procedures.py). Writes round-trip through the pickle path.
+   `db.signature_at_death`. Reads cost a descriptor lookup plus
+   a `_SaverDict` proxy (the reason we duck-type
+   `isinstance(x, dict)` throughout the medical pipeline). Writes
+   round-trip through pickle.
 
-Throughout this spec, "hot" means "called on every render, every
-combat tick, every action emote" — not "called occasionally."
+Throughout this spec, "hot" means called on every render, every
+combat tick, every action emote — not "called occasionally."
 
 ## 2 · Survey methodology
 
@@ -164,7 +175,32 @@ The interesting partition:
   meaningful write rate, and every miss writes back. This is the
   primary remediation target.
 
-### 3.4 · `ndb` scratch state (transient by design)
+### 3.4 · The Tag system (boolean flags)
+
+`AGENTS.md` calls this out explicitly: *"For simple booleans,
+prefer the Tag system (`obj.tags`) over attributes."* Tags are
+indexed at the DB level and don't go through pickle, so they're
+the right shape for "is this thing flagged X" queries.
+
+`grep` finds several boolean `db.X = True/False` writes that
+should be Tags:
+
+| attr                       | site                              |
+|----------------------------|-----------------------------------|
+| `db.archived`              | `web/website/views/characters.py`, character archival |
+| `db.combat_is_running`     | `world/combat/handler.py` (4 sites) |
+| `db.pin_pulled`            | `commands/CmdThrow.py`, `commands/explosion_utils.py` (4 sites) |
+| `db.is_infinite`           | `typeclasses/shopkeeper.py` (2 sites) |
+| `db.integrate`             | `commands/CmdExplosives.py` |
+| `db.head_severed`          | corpse / appendage chain |
+
+Conversion is mechanical (`obj.db.X = True` →
+`obj.tags.add("X", category="...")`) but you pay a one-time
+audit tax across read sites (`if obj.db.X` →
+`if obj.tags.has("X", category="...")`). Worth doing per-flag
+on first touch; not worth a sweeping migration PR.
+
+### 3.5 · `ndb` scratch state (transient by design)
 
 256 ndb references. Top users:
 
@@ -606,9 +642,8 @@ Worth folding into onboarding.
 1. **Pierce cache runtime tier** — establish the pattern,
    ship it for one cache. Smallest blast radius, biggest
    measurable win.
-2. **Folorensic + diagnose + autopsy caches** — apply the
-   same pattern, possibly extracted into a small mixin or
-   helper.
+2. **Forensic + diagnose + autopsy caches** — apply the same
+   pattern, possibly extracted into a small mixin or helper.
 3. **`surgical_state.active_procedure` runtime-only.**
 4. **`medical_chart` write batching.**
 5. **Decision point**: recognition_memory runtime tier
@@ -619,23 +654,35 @@ opportunistically.
 
 ## 10 · Open questions
 
-* Should `at_server_shutdown` flush *everything* runtime
-  automatically (registered-list pattern), or should each
-  cache wire its own hook? Registered list is cleaner; each
-  cache wiring its own is more explicit. Recommend a tiny
-  `runtime_cache_registry` module if we go the auto route.
-* Is there a perf-instrumentation surface we can lean on to
-  confirm the wins, or do we ship blind and trust the
-  theoretical model? (No profiling harness currently in the
-  repo per casual search.)
-* Does the medical script's no-save-per-tick policy hold
-  under all damage paths, or are there edge cases where a
-  tick mutation needs to flush mid-tick? Worth a deliberate
-  audit pass when this work begins.
+1. **Flush hook strategy.** Should `at_server_shutdown` flush
+   all runtime caches automatically via a registered-list
+   pattern (`runtime_cache_registry`), or should each cache
+   wire its own hook? Registered list is cleaner and avoids
+   "forgot to register the hook" bugs; per-cache wiring is
+   more explicit and grep-able. Lean: registered list, but
+   defer the decision to whichever cache lands first.
+2. **Perf validation.** No profiling harness in the repo, so
+   the wins are theoretical. The shape of the change (descriptor
+   protocol + pickle on every miss → dict lookup) is
+   independently obvious and shipping blind is defensible.
+   Consider lightweight instrumentation (decorator-counter on
+   the cache surfaces) if we want to back the claim.
+3. **Tick-vs-flush invariants.** The medical script's
+   no-save-per-tick policy assumes that any persistence-worthy
+   tick-state change (e.g. a wound stage progressing past a
+   threshold) is followed by an event-driven flush before
+   anything could cause restart-loss. Worth a deliberate audit
+   when remediation work begins — particularly around
+   `sync_severance_wound_stages` and condition tick effects.
 
 ---
 
-*This spec is descriptive of audit findings as of authoring
-time and prescriptive only for the items in §5. Update §5 as
-items ship; §4 is meant to age into a snapshot artifact, not
-a living document.*
+**Maintenance contract:**
+
+* §4 (audit findings) is a snapshot of authoring time. Re-run
+  the `grep` survey before assuming the numbers are current.
+* §5 (remediation roadmap) is a living checklist — strike
+  items off as they ship, add new ones as the audit reveals
+  them.
+* §6 (migration patterns) is the part to copy from when
+  implementing — treat it as a stable template.
