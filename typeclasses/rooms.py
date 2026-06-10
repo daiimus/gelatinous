@@ -100,8 +100,8 @@ class Room(ObjectParent, DefaultRoom):
                     
                     # Log and delete
                     try:
-                        from evennia.comms.models import ChannelDB
-                        splattercast = ChannelDB.objects.get_channel("Splattercast")
+                        from world.combat.debug import get_splattercast
+                        splattercast = get_splattercast()
                         splattercast.msg(f"CORPSE_DECAY_JIT: {corpse.key} decayed on room entry to {self.key}")
                     except Exception:
                         pass

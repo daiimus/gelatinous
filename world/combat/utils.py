@@ -417,7 +417,7 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
         initial_is_yielding: Whether the character starts yielding
     """
     from .constants import (
-        SPLATTERCAST_CHANNEL, DB_COMBATANTS, DB_CHAR, DB_TARGET_DBREF,
+        DB_COMBATANTS, DB_CHAR, DB_TARGET_DBREF,
         DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, DB_IS_YIELDING, 
         NDB_PROXIMITY, NDB_COMBAT_HANDLER, DB_COMBAT_RUNNING
     )

@@ -14,7 +14,7 @@ Part of the G.R.I.M. Combat System.
 
 import random
 from evennia import Command, utils
-from evennia.comms.models import ChannelDB
+from world.combat.debug import get_splattercast
 from world.combat.constants import (
     DB_CHAR,
     DB_GRAPPLED_BY_DBREF,
@@ -81,7 +81,6 @@ from world.combat.constants import (
     NDB_PROXIMITY,
     NDB_PROXIMITY_UNIVERSAL,
     NDB_SKIP_ROUND,
-    SPLATTERCAST_CHANNEL,
     THROW_FLIGHT_TIME,
 )
 # Note: apply_damage removed - using character.take_damage() for medical system integration
@@ -342,7 +341,7 @@ class CmdThrow(Command):
     
     def find_target(self):
         """Find target for 'at' syntax throwing."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         if not self.target_name:
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: find_target: No target_name provided")
@@ -387,7 +386,7 @@ class CmdThrow(Command):
     
     def get_destination_room(self, direction):
         """Get destination room for directional throwing."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         if not direction:
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: get_destination_room: No direction provided")
@@ -475,7 +474,7 @@ class CmdThrow(Command):
         from typeclasses.items import Item
         from world.combat.utils import get_outermost_armor_at_location
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         # Get all characters except thrower
         characters = [obj for obj in room.contents if isinstance(obj, Character) and obj != self.caller]
@@ -541,7 +540,7 @@ class CmdThrow(Command):
         # Enter combat if not already in combat
         handler = get_or_create_combat(self.caller.location)
         if not handler:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Failed to get combat handler for weapon throw")
             return False
         
@@ -609,7 +608,7 @@ class CmdThrow(Command):
         # Start flight timer and store reference for potential cancellation
         obj.ndb.flight_timer = utils.delay(THROW_FLIGHT_TIME, self.complete_flight, obj)
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: {self.caller} started flight for {obj} to {destination}(#{destination.id})")
     
     def announce_throw_origin(self, obj, destination, target):
@@ -660,7 +659,7 @@ class CmdThrow(Command):
         """Complete the flight and handle landing."""
         splattercast = None
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Starting complete_flight for {obj}")
             
             # Check if object is None or doesn't have ndb (deleted/caught)
@@ -813,7 +812,7 @@ class CmdThrow(Command):
     def handle_landing(self, obj, destination, target, is_weapon, thrower):
         """Handle object landing and proximity assignment."""
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: handle_landing called - obj: {obj}, destination: {destination}, target: {target}, is_weapon: {is_weapon}")
             
             # Track whether we've shown a target interaction message
@@ -906,7 +905,7 @@ class CmdThrow(Command):
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: handle_landing completed successfully")
             
         except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Unexpected error in handle_landing: {e}")
             # Don't re-raise - let the object land even if there are issues
     
@@ -929,7 +928,7 @@ class CmdThrow(Command):
                 hit_location = "chest"  # Default hit location for throws
                 
                 if is_sticky:
-                    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                    splattercast = get_splattercast()
                     splattercast.msg(f"{DEBUG_PREFIX_THROW}_STICKY: Sticky grenade {weapon.key} hit {target.key}")
                     
                     # Get outermost armor at hit location
@@ -1035,14 +1034,14 @@ class CmdThrow(Command):
                 )
                 
         except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in resolve_weapon_hit: {e}")
             # Don't re-raise - weapon hit failure shouldn't fail entire throw
     
     def assign_landing_proximity(self, obj, target, thrower=None):
         """Assign proximity for universal proximity system."""
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: assign_landing_proximity called - obj: {obj}, target: {target}, thrower: {thrower}")
             
             # Ensure object has proximity list (use same pattern as drop command)
@@ -1096,14 +1095,14 @@ class CmdThrow(Command):
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: assign_landing_proximity completed successfully")
             
         except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in assign_landing_proximity: {e}")
             raise  # Re-raise to let handle_landing handle it
     
     def handle_grenade_landing(self, grenade, target, thrower=None):
         """Handle grenade-specific landing mechanics."""
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: handle_grenade_landing called - grenade: {grenade}, target: {target}, thrower: {thrower}")
             
             # If grenade lands near someone, everyone in their proximity gets added
@@ -1128,14 +1127,14 @@ class CmdThrow(Command):
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: Grenade {grenade} landed with proximity: {getattr(grenade.ndb, NDB_PROXIMITY_UNIVERSAL, [])}")
             
         except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in handle_grenade_landing: {e}")
             # Don't re-raise here - grenade landing failure shouldn't fail entire throw
     
     def check_grenade_deflection(self, grenade, destination, thrower):
         """Check if the specific target can deflect the incoming grenade with a melee weapon."""
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: check_grenade_deflection called for {grenade} in {destination}")
             
             # Future-proofing: Skip deflection for impact grenades (explode on contact)
@@ -1216,7 +1215,7 @@ class CmdThrow(Command):
                 return False
                 
         except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in check_grenade_deflection: {e}")
             return False
     
@@ -1229,7 +1228,7 @@ class CmdThrow(Command):
     def perform_grenade_deflection(self, grenade, deflector, weapon, original_thrower, current_location):
         """Perform the actual grenade deflection."""
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: perform_grenade_deflection called")
             
             # Announce successful deflection
@@ -1254,14 +1253,14 @@ class CmdThrow(Command):
                 return True
                 
         except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in perform_grenade_deflection: {e}")
             return False
     
     def determine_deflection_target(self, grenade, deflector, original_thrower, current_location):
         """Determine where the deflected grenade goes."""
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             
             # Get grenade's original flight data
             origin = getattr(grenade.ndb, 'flight_origin', None)
@@ -1324,7 +1323,7 @@ class CmdThrow(Command):
             return True
             
         except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in determine_deflection_target: {e}")
             return False
 
@@ -1436,7 +1435,7 @@ class CmdPull(Command):
         # Timer warning
         self.caller.msg(MSG_PULL_TIMER_WARNING.format(object=grenade.key, time=fuse_time))
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: {self.caller} pulled pin on {grenade}, timer: {fuse_time}s")
     
     def start_grenade_ticker(self, grenade):
@@ -1450,7 +1449,7 @@ class CmdPull(Command):
                 remaining = getattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
                 
                 # Debug output
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 if splattercast:
                     splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER: {grenade.key} countdown: {remaining}s remaining")
                 
@@ -1507,11 +1506,11 @@ class CmdPull(Command):
                     # Create a proper closure that captures the explosion function
                     def trigger_explosion():
                         try:
-                            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                            splattercast = get_splattercast()
                             splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER: Triggering explosion for {grenade.key}")
                             explode_standalone_grenade(grenade)
                         except Exception as e:
-                            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                            splattercast = get_splattercast()
                             splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER_ERROR: Error in trigger_explosion: {e}")
                     
                     timer = utils.delay(1, trigger_explosion)
@@ -1528,7 +1527,7 @@ class CmdPull(Command):
                     
             except Exception as e:
                 # Failsafe - if ticker fails, explode immediately to avoid duds
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 if splattercast:
                     splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER_ERROR: Ticker error for {grenade.key}: {e} - triggering explosion")
                 try:
@@ -1664,7 +1663,7 @@ class CmdCatch(Command):
                 pass  # Timer may have already fired
             del obj.ndb.flight_timer
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         if splattercast:
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: {self.caller} caught {obj} mid-flight")
 

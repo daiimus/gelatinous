@@ -194,11 +194,8 @@ class ArmorMixin:
                     # death_progression still fires as a fallback because
                     # ``head_severed_at_decap`` was never set.
                     try:
-                        from evennia.comms.models import ChannelDB
-                        from world.combat.constants import SPLATTERCAST_CHANNEL
-                        splattercast = ChannelDB.objects.get_channel(
-                            SPLATTERCAST_CHANNEL
-                        )
+                        from world.combat.debug import get_splattercast
+                        splattercast = get_splattercast()
                         splattercast.msg(
                             f"DECAPITATION_LIVING_SPAWN_ERROR: "
                             f"{getattr(self, 'key', '?')} - falling back "
@@ -274,11 +271,8 @@ class ArmorMixin:
         except Exception:
             # Don't break combat if the messaging layer hiccups.
             try:
-                from evennia.comms.models import ChannelDB
-                from world.combat.constants import SPLATTERCAST_CHANNEL
-                splattercast = ChannelDB.objects.get_channel(
-                    SPLATTERCAST_CHANNEL
-                )
+                from world.combat.debug import get_splattercast
+                splattercast = get_splattercast()
                 splattercast.msg(
                     f"DECAPITATION_MSG_ERROR: {self.key} - failed to "
                     f"broadcast decapitation message"

@@ -166,7 +166,7 @@ class BleedingStabilization(TestCase):
         patient.medical_state.conditions.append(bleed)
         return patient, bleed
 
-    @patch("world.medical.conditions.ChannelDB")
+    @patch("world.combat.debug.get_splattercast")
     def test_unstabilized_bleed_drains_blood(self, mock_channel):
         mock_channel.objects.get_channel.return_value = MagicMock()
         patient, bleed = self._patient_with_chest_bleed()
@@ -180,7 +180,7 @@ class BleedingStabilization(TestCase):
             "Unstabilized bleeding should drain blood on tick.",
         )
 
-    @patch("world.medical.conditions.ChannelDB")
+    @patch("world.combat.debug.get_splattercast")
     def test_stabilized_bleed_holds_blood(self, mock_channel):
         mock_channel.objects.get_channel.return_value = MagicMock()
         patient, bleed = self._patient_with_chest_bleed()
@@ -194,7 +194,7 @@ class BleedingStabilization(TestCase):
             "Stabilized bleeding should not drain blood on tick.",
         )
 
-    @patch("world.medical.conditions.ChannelDB")
+    @patch("world.combat.debug.get_splattercast")
     def test_stabilized_undamaged_organ_does_not_shield(self, mock_channel):
         """A stabilized-but-undamaged organ at the location shouldn't
         protect an unrelated bleeding source there."""

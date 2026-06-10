@@ -15,7 +15,7 @@ and add complexity to combat encounters.
 import random
 
 from evennia import Command
-from evennia.comms.models import ChannelDB
+from world.combat.debug import get_splattercast
 from evennia.utils.utils import inherits_from
 
 from world.combat.constants import (
@@ -27,7 +27,7 @@ from world.combat.constants import (
     MSG_NOT_IN_COMBAT, MSG_DISARM_NO_TARGET, MSG_DISARM_NOT_IN_PROXIMITY,
     MSG_DISARM_PREPARE,
     MSG_AIM_WHO_WHAT, MSG_AIM_SELF_TARGET, MSG_GRAPPLE_ESCAPE_VIOLENT_SWITCH,
-    MSG_STOP_NOT_AIMING, SPLATTERCAST_CHANNEL, NDB_PROXIMITY,
+    MSG_STOP_NOT_AIMING, NDB_PROXIMITY,
     NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY, NDB_AIMING_DIRECTION,
     DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_IS_YIELDING,
     COMBAT_ACTION_DISARM,
@@ -318,7 +318,7 @@ class CmdDisarm(Command):
         caller.msg(MSG_DISARM_PREPARE.format(target=target.get_display_name(caller)))
         
         # Debug message
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         if splattercast:
             splattercast.msg(f"DISARM: {caller.key} queued disarm action on {target.key} for next turn.")
 
@@ -348,7 +348,7 @@ class CmdAim(Command):
     def func(self):
         caller = self.caller
         args = self.args.strip()
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         # Debug: Verify our enhanced aim command is being called
         splattercast.msg(f"ENHANCED_AIM: {caller.key} called enhanced aim command with args='{args}'")

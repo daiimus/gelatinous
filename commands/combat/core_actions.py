@@ -12,7 +12,7 @@ by players during combat encounters.
 from random import randint
 
 from evennia import Command
-from evennia.comms.models import ChannelDB
+from world.combat.debug import get_splattercast
 from evennia.utils.utils import inherits_from
 
 from world.combat.constants import (
@@ -23,8 +23,7 @@ from world.combat.constants import (
     DEBUG_PREFIX_ATTACK, DEBUG_FAILSAFE, DEBUG_SUCCESS, DEBUG_FAIL,
     DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_IS_YIELDING,
     NDB_PROXIMITY, NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY,
-    NDB_AIMING_DIRECTION, SPLATTERCAST_CHANNEL,
-)
+    NDB_AIMING_DIRECTION, )
 from commands._identity_targeting import resolve_character_target
 from world.combat.handler import get_or_create_combat
 from world.combat.messages import get_combat_message
@@ -57,7 +56,7 @@ class CmdAttack(Command):
     def func(self):
         caller = self.caller
         args = self.args.strip()
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
 
         if not args:
             caller.msg(MSG_ATTACK_WHO)

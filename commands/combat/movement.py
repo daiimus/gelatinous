@@ -13,7 +13,7 @@ commands/combat/jump.py and are re-exported here for backward compatibility.
 
 from evennia import Command
 from random import choice
-from evennia.comms.models import ChannelDB
+from world.combat.debug import get_splattercast
 
 from world.combat.constants import (
     MSG_NOTHING_TO_FLEE, MSG_FLEE_NO_EXITS, MSG_FLEE_PINNED_BY_AIM, MSG_FLEE_TRAPPED_IN_COMBAT,
@@ -26,7 +26,6 @@ from world.combat.constants import (
     DEBUG_FAIL, DEBUG_ERROR,
     DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET,
     NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY, NDB_PROXIMITY, NDB_SKIP_ROUND,
-    SPLATTERCAST_CHANNEL,
     COMBAT_ACTION_RETREAT, MSG_RETREAT_PREPARE,
     COMBAT_ACTION_ADVANCE, MSG_ADVANCE_PREPARE,
     COMBAT_ACTION_CHARGE, MSG_CHARGE_PREPARE,
@@ -70,7 +69,7 @@ class CmdFlee(Command):
 
     def func(self):
         caller = self.caller
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         # Check if player has already attempted to flee this combat round
         if hasattr(caller.ndb, "flee_attempted_this_round") and caller.ndb.flee_attempted_this_round:
@@ -450,7 +449,7 @@ class CmdRetreat(Command):
 
     def func(self):
         caller = self.caller
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
 
         if not handler:
@@ -517,7 +516,7 @@ class CmdAdvance(Command):
     def func(self):
         caller = self.caller
         args = self.args.strip()
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         # Use robust handler validation to catch merge-related issues
         from world.combat.utils import validate_character_handler_reference
@@ -609,7 +608,7 @@ class CmdCharge(Command):
     def func(self):
         caller = self.caller
         args = self.args.strip()
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
 
         if not handler:

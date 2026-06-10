@@ -190,7 +190,9 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 ## When Stuck
 
 1. **`server/logs/server.log`** — tracebacks and errors.
-2. **The Splattercast channel** — combat debug output (see `specs/COMBAT_REFACTOR_SPEC.md`).
+2. **`server/logs/combat_audit.log`** — every combat/medical diagnostic, always on
+   (async writes via `world/combat/debug.py`).  For live in-game output, set
+   `SPLATTERCAST_LIVE = True` in settings to mirror it to the Splattercast channel.
 3. **Grep for the constant** — most strings live in a `constants.py`.
 4. **Trace from the command** — `commands/` calls into handler/system methods.
 5. **Check NDB state** — many bugs are stale `char.ndb.*` references.

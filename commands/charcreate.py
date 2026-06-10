@@ -313,9 +313,9 @@ def create_character_from_template(account, template, sex="ambiguous"):
     # sdesc_keyword defaults via get_sdesc() based on gender
     
     # Debug: Verify sex was set correctly
-    from evennia.comms.models import ChannelDB
+    from world.combat.debug import get_splattercast
     try:
-        splattercast = ChannelDB.objects.get_channel("Splattercast")
+        splattercast = get_splattercast()
         splattercast.msg(f"CHARCREATE_SEX_SET: {char.key} sex set to '{sex}', current value: '{char.sex}', gender property: '{char.gender}'")
     except Exception:
         pass
@@ -409,9 +409,9 @@ def create_flash_clone(account, old_character):
     # empty brains and recognise nobody.
     
     # Debug: Verify sex was inherited correctly
-    from evennia.comms.models import ChannelDB
+    from world.combat.debug import get_splattercast
     try:
-        splattercast = ChannelDB.objects.get_channel("Splattercast")
+        splattercast = get_splattercast()
         splattercast.msg(f"FLASH_CLONE_SEX_INHERIT: {char.key} inherited sex '{old_character.sex}' from {old_character.key}, current value: '{char.sex}', gender property: '{char.gender}'")
     except Exception:
         pass
@@ -751,9 +751,9 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
     except Exception as e:
         # Error - show message and return to selection
         caller.msg(f"|rError creating character: {e}|n")
-        from evennia.comms.models import ChannelDB
+        from world.combat.debug import get_splattercast
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = get_splattercast()
             splattercast.msg(f"CHARCREATE_ERROR: {e}")
         except Exception:
             pass
@@ -825,9 +825,9 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
     except Exception as e:
         # Error - show message and return to selection
         caller.msg(f"|rError creating flash clone: {e}|n")
-        from evennia.comms.models import ChannelDB
+        from world.combat.debug import get_splattercast
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = get_splattercast()
             splattercast.msg(f"FLASH_CLONE_ERROR: {e}")
         except Exception:
             pass
@@ -1500,9 +1500,9 @@ def first_char_finalize(caller, raw_string, **kwargs):
     except Exception as e:
         # Error - show message and return to confirmation
         caller.msg(f"|rError creating character: {e}|n")
-        from evennia.comms.models import ChannelDB
+        from world.combat.debug import get_splattercast
         try:
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = get_splattercast()
             splattercast.msg(f"CHARCREATE_ERROR: {e}")
         except Exception:
             pass

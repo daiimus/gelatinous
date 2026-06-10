@@ -5,7 +5,6 @@ Core classes for tracking organ health, medical conditions, and medical state
 persistence. These form the foundation of the medical system.
 """
 
-from evennia.comms.models import ChannelDB
 from .constants import (
     CONTRIBUTION_VALUES,
     CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD, BLOOD_LOSS_DEATH_THRESHOLD,
@@ -835,8 +834,8 @@ class MedicalState:
         character = self._get_character_reference()
         if character and character.db.archived:
             try:
-                from world.combat.constants import SPLATTERCAST_CHANNEL
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                from world.combat.debug import get_splattercast
+                splattercast = get_splattercast()
                 char_name = character.key if character else "unknown"
                 splattercast.msg(f"ADD_CONDITION: {char_name} is archived, not adding {condition.condition_type}")
             except Exception:
@@ -847,8 +846,8 @@ class MedicalState:
             self.conditions.append(condition)
             
             try:
-                from world.combat.constants import SPLATTERCAST_CHANNEL
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                from world.combat.debug import get_splattercast
+                splattercast = get_splattercast()
                 splattercast.msg(f"ADD_CONDITION: Added {condition.condition_type} severity {condition.severity}")
             except Exception:
                 pass
@@ -860,16 +859,16 @@ class MedicalState:
                 character = self._get_character_reference()
                 if character:
                     try:
-                        from world.combat.constants import SPLATTERCAST_CHANNEL
-                        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                        from world.combat.debug import get_splattercast
+                        splattercast = get_splattercast()
                         splattercast.msg(f"ADD_CONDITION: Starting ticker for {condition.condition_type} on {character.key}")
                     except Exception:
                         pass
                     condition.start_condition(character)
                 else:
                     try:
-                        from world.combat.constants import SPLATTERCAST_CHANNEL
-                        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                        from world.combat.debug import get_splattercast
+                        splattercast = get_splattercast()
                         splattercast.msg(f"ADD_CONDITION: No character reference found for {condition.condition_type}")
                     except Exception:
                         pass

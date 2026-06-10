@@ -11,13 +11,12 @@ script instance) instead of operating as methods on the class.
 
 from random import randint
 
-from evennia.comms.models import ChannelDB
+from .debug import get_splattercast
 
 from world.combat.messages import get_combat_message
 from world.medical.utils import select_hit_location, select_target_organ
 
 from .constants import (
-    SPLATTERCAST_CHANNEL,
     DB_CHAR, DB_IS_YIELDING,
     NDB_CHARGE_BONUS,
     NDB_PROXIMITY,
@@ -76,7 +75,7 @@ def process_delayed_attack(handler, attacker, target, attacker_entry, combatants
         combatants_list: List of all combat entry dicts (snapshot at
             scheduling time).
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
 
     # Validate that combat is still active
     if not handler.db.combat_is_running:
@@ -283,7 +282,7 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
         attacker_entry: The attacker's combat entry dict.
         combatants_list: List of all combat entry dicts.
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
 
     # Check if target is already dead or unconscious
     if target.is_dead():
@@ -586,7 +585,7 @@ def _handle_kill(
         hit_location: The body location that was hit.
         combatants_list: List of all combat entry dicts.
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
 
     kill_messages = get_combat_message(
         weapon_type, "kill",

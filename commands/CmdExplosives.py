@@ -14,13 +14,12 @@ Part of the G.R.I.M. Combat System.
 
 import random
 from evennia import Command, utils
-from evennia.comms.models import ChannelDB
+from world.combat.debug import get_splattercast
 from world.combat.constants import (
     DEBUG_PREFIX_THROW,
     NDB_PROXIMITY_UNIVERSAL,
     NDB_COUNTDOWN_REMAINING,
     NDB_GRENADE_TIMER,
-    SPLATTERCAST_CHANNEL,
     MSG_RIG_WHAT,
     MSG_RIG_INVALID_SYNTAX,
     MSG_RIG_NO_HANDS,
@@ -198,7 +197,7 @@ class CmdRig(Command):
         return_exit = self.find_return_exit(exit_obj)
         if return_exit:
             return_exit.db.rigged_grenade = grenade
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: Also rigged return exit {return_exit} in {return_exit.location}")
 
         # Cancel normal countdown and set up trigger
@@ -217,7 +216,7 @@ class CmdRig(Command):
             exclude=[self.caller],
         )
 
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: {self.caller} rigged {grenade} to {exit_obj}")
 
     def find_return_exit(self, exit_obj):
@@ -384,7 +383,7 @@ class CmdDefuse(Command):
                     other_char not in char_proximity):
                     char_proximity.append(other_char)
 
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         if splattercast:
             splattercast.msg(f"DEFUSE_PROXIMITY: {self.caller.key} established mutual proximity with {grenade.key} "
                            f"(grenade proximity: {[c.key if hasattr(c, 'key') else str(c) for c in grenade_proximity]})")
@@ -484,7 +483,7 @@ class CmdDefuse(Command):
             )
 
         # Debug output
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         if splattercast:
             grenade_type = "rigged" if is_rigged else "live"
             splattercast.msg(f"DEFUSE: {self.caller.key} rolled {combined_roll} vs difficulty {total_difficulty} "
@@ -523,13 +522,13 @@ class CmdDefuse(Command):
             exclude=[self.caller],
         )
 
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         if splattercast:
             splattercast.msg(f"DEFUSE_SUCCESS: {self.caller.key} defused {grenade.key}")
 
     def clear_grenade_proximity(self, grenade):
         """Clear all proximity relationships for a defused grenade."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
 
         # Get grenade's proximity list
         grenade_proximity = getattr(grenade.ndb, NDB_PROXIMITY_UNIVERSAL, [])
@@ -555,7 +554,7 @@ class CmdDefuse(Command):
         """Clean up rigging references when grenade is defused."""
         rigged_to_exit = grenade.db.rigged_to_exit
         if rigged_to_exit:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
 
             # Clean up main exit
             if rigged_to_exit.db.rigged_grenade is not None:
@@ -641,7 +640,7 @@ class CmdDefuse(Command):
             setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 1)
             utils.delay(1, self.trigger_early_explosion, grenade)
 
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             if splattercast:
                 splattercast.msg(f"DEFUSE_FAILURE: {self.caller.key} triggered early detonation of {grenade.key}")
 
@@ -655,7 +654,7 @@ class CmdDefuse(Command):
                 exclude=[self.caller],
             )
 
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             if splattercast:
                 splattercast.msg(f"DEFUSE_FAILURE: {self.caller.key} failed to defuse {grenade.key} (no early detonation)")
 
@@ -729,7 +728,7 @@ class CmdDefuse(Command):
             grenade.delete()
 
         except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in trigger_early_explosion: {e}")
 
 
@@ -824,7 +823,7 @@ class CmdScan(Command):
             )
 
             # Debug logging
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(
                 f"DETONATOR_SCAN: {caller.key} scanned e-{explosive.id} ({explosive.key}) "
                 f"into detonator #{detonator.id}. Capacity: {len(detonator.db.scanned_explosives)}/{detonator.db.max_capacity}"
@@ -979,7 +978,7 @@ class CmdDetonate(Command):
             caller.msg(f"|rThe {explosive.key} beeps and its light begins flashing!|n |y[{fuse_time} seconds]|n")
 
         # Debug logging
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(
             f"DETONATOR_SINGLE: {caller.key} remotely detonated e-{explosive_dbref} ({explosive.key}) "
             f"via detonator #{detonator.id}. Fuse: {fuse_time}s"
@@ -1074,7 +1073,7 @@ class CmdDetonate(Command):
                     )
 
         # Debug logging
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(
             f"DETONATOR_ALL: {caller.key} remotely detonated {detonated_count} explosives "
             f"via detonator #{detonator.id}. Already active: {already_active_count}"
@@ -1358,7 +1357,7 @@ class CmdClearDetonator(Command):
             )
 
             # Debug logging
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(
                 f"DETONATOR_CLEAR_SINGLE: {caller.key} cleared e-{explosive_dbref} from detonator #{detonator.id}"
             )
@@ -1396,7 +1395,7 @@ class CmdClearDetonator(Command):
         )
 
         # Debug logging
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(
             f"DETONATOR_CLEAR_ALL: {caller.key} cleared {count} explosives from detonator #{detonator.id}"
         )

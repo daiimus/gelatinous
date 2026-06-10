@@ -6,8 +6,7 @@ ticking them at regular intervals and cleaning up when no conditions remain.
 """
 
 from evennia import DefaultScript
-from evennia.comms.models import ChannelDB
-from world.combat.constants import SPLATTERCAST_CHANNEL
+from world.combat.debug import get_splattercast
 
 
 # ---------------------------------------------------------------------
@@ -111,7 +110,7 @@ class MedicalScript(DefaultScript):
         """Process all medical conditions for this character."""
         try:
             # Get splattercast for debugging
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             
             # Get character's medical state
             if not hasattr(self.obj, 'medical_state'):
@@ -247,7 +246,7 @@ class MedicalScript(DefaultScript):
                 
         except Exception as e:
             try:
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 splattercast.msg(f"MEDICAL_SCRIPT_CRITICAL_ERROR: {self.obj.key}: {e}")
             except Exception:
                 pass
@@ -257,7 +256,7 @@ class MedicalScript(DefaultScript):
     def at_stop(self):
         """Called when script stops."""
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"MEDICAL_SCRIPT_STOP: Medical script stopped for {self.obj.key}")
         except Exception:
             pass
@@ -408,7 +407,7 @@ def start_medical_script(character):
         MedicalScript: The active medical script
     """
     try:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"START_MEDICAL_SCRIPT: Checking for existing script on {character.key}")
     except Exception:
         pass
@@ -416,7 +415,7 @@ def start_medical_script(character):
     # Don't create scripts for dead characters
     if hasattr(character, 'medical_state') and character.medical_state.is_dead():
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"START_MEDICAL_SCRIPT: {character.key} is dead, not creating medical script")
         except Exception:
             pass
@@ -426,7 +425,7 @@ def start_medical_script(character):
     existing_script = character.scripts.get("medical_script")
     if existing_script:
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"START_MEDICAL_SCRIPT: Found existing script for {character.key}")
         except Exception:
             pass
@@ -434,7 +433,7 @@ def start_medical_script(character):
     
     # Create new script
     try:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"START_MEDICAL_SCRIPT: Creating new script for {character.key}")
     except Exception:
         pass
@@ -442,7 +441,7 @@ def start_medical_script(character):
     script = character.scripts.add(MedicalScript)
     
     try:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"START_MEDICAL_SCRIPT: Script created: {script}")
     except Exception:
         pass
@@ -458,7 +457,7 @@ def stop_medical_script(character):
         character: The character to stop medical script for
     """
     try:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"STOP_MEDICAL_SCRIPT: Looking for medical scripts on {character.key}")
     except Exception:
         pass
@@ -468,7 +467,7 @@ def stop_medical_script(character):
     if existing_scripts:
         for script in existing_scripts:
             try:
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 splattercast.msg(f"STOP_MEDICAL_SCRIPT: Found script {script}, deleting it")
             except Exception:
                 pass
@@ -476,7 +475,7 @@ def stop_medical_script(character):
             script.delete()
     else:
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"STOP_MEDICAL_SCRIPT: No medical scripts found on {character.key}")
         except Exception:
             pass

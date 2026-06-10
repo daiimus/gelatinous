@@ -6,7 +6,6 @@ like bleeding. Conditions are managed by per-character MedicalScript instances.
 """
 
 import random
-from evennia.comms.models import ChannelDB
 from .constants import (
     INJURY_SEVERITY_MULTIPLIERS,
     BLOOD_LOSS_PER_SEVERITY,
@@ -37,10 +36,9 @@ class MedicalCondition:
     def start_condition(self, character):
         """Begin condition management for character."""
         from world.medical.script import start_medical_script
-        from evennia.comms.models import ChannelDB
-        from world.combat.constants import SPLATTERCAST_CHANNEL
+        from world.combat.debug import get_splattercast
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         # Don't add conditions to archived characters (permanently dead)
         # Dying characters can still be resuscitated, so they should keep conditions
@@ -154,9 +152,9 @@ class BleedingCondition(MedicalCondition):
         
     def tick_effect(self, character):
         """Apply blood loss and potentially reduce severity."""
-        from world.combat.constants import SPLATTERCAST_CHANNEL
+        from world.combat.debug import get_splattercast
 
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
 
         if not hasattr(character, 'medical_state'):
             return
@@ -276,9 +274,9 @@ class PainCondition(MedicalCondition):
         
     def tick_effect(self, character):
         """Pain naturally diminishes over time."""
-        from world.combat.constants import SPLATTERCAST_CHANNEL
+        from world.combat.debug import get_splattercast
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         # Natural pain reduction
         if random.randint(1, 100) <= 20:  # 20% chance per tick
@@ -334,10 +332,10 @@ class InfectionCondition(MedicalCondition):
         
     def tick_effect(self, character):
         """Infection can worsen if untreated, or improve if treated."""
-        from world.combat.constants import SPLATTERCAST_CHANNEL
+        from world.combat.debug import get_splattercast
         import time
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         current_time = time.time()
         
         # Initialize timing tracking if needed
@@ -486,9 +484,9 @@ class ConsciousnessSuppressionCondition(MedicalCondition):
         
     def tick_effect(self, character):
         """Consciousness suppression naturally diminishes over time."""
-        from world.combat.constants import SPLATTERCAST_CHANNEL
+        from world.combat.debug import get_splattercast
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         # Natural recovery from consciousness suppression 
         # Different types recover at different rates
@@ -614,14 +612,13 @@ def set_infection_environmental_risk(character, modifier, reason="environmental 
     if not hasattr(character, 'medical_state'):
         return
         
-    from world.combat.constants import SPLATTERCAST_CHANNEL
-    from evennia.comms.models import ChannelDB
+    from world.combat.debug import get_splattercast
     
     medical_state = character.medical_state
     infection_conditions = [c for c in medical_state.conditions if c.condition_type == "infection"]
     
     if infection_conditions:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         for condition in infection_conditions:
             condition.set_environmental_modifier(modifier)
         

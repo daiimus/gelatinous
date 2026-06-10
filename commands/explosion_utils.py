@@ -18,7 +18,7 @@ Part of the G.R.I.M. Combat System.
 
 import random
 from evennia import utils
-from evennia.comms.models import ChannelDB
+from world.combat.debug import get_splattercast
 from world.identity_utils import msg_room_identity
 from world.combat.constants import (
     DEBUG_PREFIX_THROW,
@@ -30,7 +30,6 @@ from world.combat.constants import (
     DB_CHAR,
     DB_GRAPPLED_BY_DBREF,
     DB_GRAPPLING_DBREF,
-    SPLATTERCAST_CHANNEL,
     MSG_GRENADE_EXPLODE_ROOM,
     MSG_GRENADE_EXPLODE_ADJACENT,
     MSG_GRENADE_DAMAGE,
@@ -83,7 +82,7 @@ def notify_adjacent_rooms_of_explosion(explosion_room):
 def check_rigged_grenade(character, exit_obj):
     """Check if character triggers a rigged grenade. Character should already be at destination."""
     # Initialize Splattercast for debug logging
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
 
     # Check if there's a rigged grenade on this exit
     rigged_grenade = exit_obj.db.rigged_grenade
@@ -154,7 +153,7 @@ def check_rigged_grenade(character, exit_obj):
         if character not in proximity_list:
             proximity_list.append(character)
 
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     splattercast.msg(f"{DEBUG_PREFIX_THROW}_RIGGED: Established proximity for {rigged_grenade.key}: {[char.key for char in proximity_list]}")
 
     # Start countdown timer
@@ -229,7 +228,7 @@ def check_rigged_grenade(character, exit_obj):
             rigged_grenade.delete()
 
         except Exception as e:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in explode_rigged_grenade: {e}")
 
     # Start the timer
@@ -250,14 +249,14 @@ def check_rigged_grenade(character, exit_obj):
                 obj.destination == character_room and
                 obj.db.rigged_grenade == rigged_grenade):
                 obj.db.rigged_grenade = None
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: Cleaned up return exit rigging on {obj}")
                 break
 
     # Announce timer start
     character.location.msg_contents(f"The {rigged_grenade.key} starts counting down! {fuse_time} seconds!")
 
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     splattercast.msg(f"{DEBUG_PREFIX_THROW}_RIGGED: {character.key} triggered rigged {rigged_grenade.key} on {exit_obj.key}, timer: {fuse_time}s")
 
     # Return True to indicate explosion timer started
@@ -275,7 +274,7 @@ def start_standalone_grenade_ticker(grenade, explosion_callback=None):
             remaining = getattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
 
             # Debug output
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             if splattercast:
                 splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER: {grenade.key} countdown: {remaining}s remaining")
 
@@ -315,7 +314,7 @@ def start_standalone_grenade_ticker(grenade, explosion_callback=None):
 
         except Exception as e:
             # Failsafe - if ticker fails, explode immediately to avoid duds
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             if splattercast:
                 splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER_ERROR: Ticker error for {grenade.key}: {e} - triggering explosion")
             try:
@@ -339,7 +338,7 @@ def get_unified_explosion_proximity(grenade):
     relationships were established relative to grenade placement.
     """
     try:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
 
         # Start with grenade's existing proximity list
         proximity_list = getattr(grenade.ndb, NDB_PROXIMITY_UNIVERSAL, [])
@@ -370,7 +369,7 @@ def get_unified_explosion_proximity(grenade):
         return unified_list
 
     except Exception as e:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in get_unified_explosion_proximity: {e}")
         # Return original proximity list as fallback
         return getattr(grenade.ndb, NDB_PROXIMITY_UNIVERSAL, [])
@@ -382,7 +381,7 @@ def explode_standalone_grenade(grenade):
         # Note: Using character.take_damage() for medical system integration
 
         # Debug: Confirm this function is being called
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: explode_standalone_grenade called for {grenade}")
 
         # Debug: Check dud chance
@@ -552,7 +551,7 @@ def explode_standalone_grenade(grenade):
         grenade.delete()
 
     except Exception as e:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in explode_standalone_grenade: {e}")
 
 
@@ -596,14 +595,14 @@ def check_auto_defuse(character):
             attempt_auto_defuse(character, grenade)
 
     except Exception as e:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_ERROR: Error in check_auto_defuse for {character.key}: {e}")
 
 
 def attempt_auto_defuse(character, grenade):
     """Attempt automatic defuse when entering proximity of live grenade."""
     try:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
 
         # Mark attempt to prevent spam (same as manual defuse)
         attempted_by = getattr(grenade.ndb, 'defuse_attempted_by', [])
@@ -651,7 +650,7 @@ def attempt_auto_defuse(character, grenade):
             handle_auto_defuse_failure(character, grenade)
 
     except Exception as e:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_ERROR: Error in attempt_auto_defuse for {character.key} and {grenade.key}: {e}")
 
 
@@ -677,11 +676,11 @@ def handle_auto_defuse_success(character, grenade):
             exclude=[character],
         )
 
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_SUCCESS: {character.key} auto-defused {grenade.key}")
 
     except Exception as e:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_ERROR: Error in handle_auto_defuse_success: {e}")
 
 
@@ -710,7 +709,7 @@ def handle_auto_defuse_failure(character, grenade):
             setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 1)
             utils.delay(1, trigger_auto_defuse_explosion, grenade)
 
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"AUTO_DEFUSE_FAILURE: {character.key} triggered early detonation of {grenade.key}")
 
         else:
@@ -723,11 +722,11 @@ def handle_auto_defuse_failure(character, grenade):
                 exclude=[character],
             )
 
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"AUTO_DEFUSE_FAILURE: {character.key} failed to auto-defuse {grenade.key} (no early detonation)")
 
     except Exception as e:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_ERROR: Error in handle_auto_defuse_failure: {e}")
 
 
@@ -802,5 +801,5 @@ def trigger_auto_defuse_explosion(grenade):
         grenade.delete()
 
     except Exception as e:
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_ERROR: Error in trigger_auto_defuse_explosion: {e}")

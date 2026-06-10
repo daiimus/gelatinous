@@ -164,6 +164,17 @@ DISCOURSE_SSO_SECRET = ""
 DEBUG = False
 
 ######################################################################
+# Combat audit logging
+######################################################################
+
+# Combat diagnostics always go to server/logs/combat_audit.log
+# (async file writes — see world/combat/debug.py).  Set this True to
+# additionally broadcast them live to the Splattercast channel for
+# in-game debugging sessions.  Keep False in production: the live
+# broadcast renders and sends every diagnostic to channel listeners.
+SPLATTERCAST_LIVE = False
+
+######################################################################
 # Logging Configuration
 ######################################################################
 

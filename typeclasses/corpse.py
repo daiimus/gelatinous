@@ -546,9 +546,8 @@ class Corpse(IdentityBearerMixin, Item):
             except Exception as e:
                 # Don't break corpse display if wound description fails
                 try:
-                    from evennia.comms.models import ChannelDB
-                    from world.combat.constants import SPLATTERCAST_CHANNEL
-                    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                    from world.combat.debug import get_splattercast
+                    splattercast = get_splattercast()
                     splattercast.msg(f"CORPSE_WOUND_ERROR: Failed to generate wound description for {self.key}: {e}")
                 except Exception:
                     pass
@@ -1008,9 +1007,8 @@ class Corpse(IdentityBearerMixin, Item):
                 
         # Log the decay completion
         try:
-            from evennia.comms.models import ChannelDB
-            from world.combat.constants import SPLATTERCAST_CHANNEL
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            from world.combat.debug import get_splattercast
+            splattercast = get_splattercast()
             splattercast.msg(f"CORPSE_DECAY: {self.key} completely decayed and removed from {self.location}")
         except Exception:
             pass

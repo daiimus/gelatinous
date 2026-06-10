@@ -14,14 +14,12 @@ script instance) instead of operating as methods on the class.
 
 from random import randint
 
-from evennia.comms.models import ChannelDB
 
 from world.combat.messages import get_combat_message
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 
 from .constants import (
-    SPLATTERCAST_CHANNEL,
     DEBUG_PREFIX_HANDLER,
     DB_CHAR, DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET,
     DB_IS_YIELDING,
@@ -33,7 +31,7 @@ from .constants import (
     MSG_DISARM_SUCCESS_ATTACKER, MSG_DISARM_SUCCESS_VICTIM,
     MSG_DISARM_SUCCESS_OBSERVER,
 )
-from .debug import log_combat_action
+from .debug import get_splattercast, log_combat_action
 from .dice import roll_stat
 from .utils import (
     get_numeric_stat, initialize_proximity_ndb,
@@ -54,7 +52,7 @@ def resolve_disarm(handler, char, entry):
         char: The character attempting to disarm.
         entry: The character's combat entry dict.
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     target = entry.get(DB_COMBAT_ACTION_TARGET)
 
     if not target:
@@ -203,7 +201,7 @@ def resolve_grapple_attempt(handler, char, entry, combatants_list):
         entry: The character's combat entry dict.
         combatants_list: List of all combat entry dicts.
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     combat_action = entry.get(DB_COMBAT_ACTION)
 
     action_target_char = combat_action.get("target")
@@ -394,7 +392,7 @@ def resolve_escape_grapple(handler, char, entry, combatants_list):
     Returns:
         bool: ``True`` if the action consumed the turn.
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
 
     grappler = handler.get_grappled_by_obj(entry)
     if grappler and any(
@@ -500,7 +498,7 @@ def resolve_auto_escape(handler, char, entry, combatants_list):
         MSG_GRAPPLE_AUTO_ESCAPE_VIOLENT,
     )
 
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
 
     grappler = handler.get_grappled_by_obj(entry)
     if not grappler:

@@ -147,7 +147,7 @@ class TestCmdThrowIdentityTargeting(TestCase):
         cmd.caller.ndb = MagicMock()
         return cmd
 
-    @patch("commands.CmdThrow.ChannelDB")
+    @patch("commands.CmdThrow.get_splattercast")
     @patch("commands.CmdThrow.resolve_character_target")
     def test_same_room_lookup_uses_helper(self, mock_resolve, _mock_channel):
         target = MagicMock()
@@ -165,7 +165,7 @@ class TestCmdThrowIdentityTargeting(TestCase):
         self.assertEqual(same_room_call.args, (cmd.caller, "man"))
         self.assertIs(result, target)
 
-    @patch("commands.CmdThrow.ChannelDB")
+    @patch("commands.CmdThrow.get_splattercast")
     @patch("commands.CmdThrow.resolve_character_target")
     def test_no_target_no_aim_messages_no_aim_error(
         self, mock_resolve, _mock_channel
@@ -180,7 +180,7 @@ class TestCmdThrowIdentityTargeting(TestCase):
         # Should hit the NO_AIM_CROSS_ROOM branch
         self.assertTrue(msg_calls)
 
-    @patch("commands.CmdThrow.ChannelDB")
+    @patch("commands.CmdThrow.get_splattercast")
     @patch("commands.CmdThrow.resolve_character_target")
     def test_cross_room_lookup_passes_destination_contents(
         self, mock_resolve, _mock_channel
@@ -211,7 +211,7 @@ class TestCmdThrowIdentityTargeting(TestCase):
             cross_call.kwargs.get("candidates"), destination.contents
         )
 
-    @patch("commands.CmdThrow.ChannelDB")
+    @patch("commands.CmdThrow.get_splattercast")
     @patch("commands.CmdThrow.resolve_character_target")
     def test_does_not_use_caller_search_for_target(
         self, mock_resolve, _mock_channel

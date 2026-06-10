@@ -13,10 +13,9 @@ script instance) instead of operating as methods on the class.
 
 from random import randint
 
-from evennia.comms.models import ChannelDB
+from .debug import get_splattercast
 
 from .constants import (
-    SPLATTERCAST_CHANNEL,
     DEBUG_PREFIX_HANDLER,
     DB_CHAR, DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET,
     DB_IS_YIELDING, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF,
@@ -51,7 +50,7 @@ def resolve_retreat(handler, char, entry):
         char: The character attempting to retreat.
         entry: The character's combat entry dict.
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
 
     splattercast.msg(
         f"{DEBUG_PREFIX_HANDLER}_RETREAT: {char.key} executing retreat "
@@ -202,7 +201,7 @@ def resolve_advance(handler, char, entry):
         char: The character attempting to advance.
         entry: The character's combat entry dict.
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     target = entry.get(DB_COMBAT_ACTION_TARGET)
 
     if not target:
@@ -622,7 +621,7 @@ def resolve_charge(handler, char, entry, combatants_list):
         entry: The character's combat entry dict.
         combatants_list: List of all combat entry dicts.
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     target = entry.get(DB_COMBAT_ACTION_TARGET)
 
     if not target:

@@ -8,7 +8,7 @@ for allowing Characters to traverse the exit to its destination.
 """
 
 from evennia.objects.objects import DefaultExit
-from evennia.comms.models import ChannelDB
+from world.combat.debug import get_splattercast
 from world.combat.handler import get_or_create_combat 
 from world.combat.constants import (
     DB_CHAR,
@@ -21,7 +21,6 @@ from world.combat.constants import (
     NDB_COMBAT_HANDLER,
     NDB_PROXIMITY,
     NDB_PROXIMITY_UNIVERSAL,
-    SPLATTERCAST_CHANNEL,
 )
 
 
@@ -64,7 +63,7 @@ class Exit(DefaultExit):
         return self.get_display_desc(looker, **kwargs)
 
     def at_traverse(self, traversing_object, target_location):
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         # --- SKY ROOM RESTRICTION CHECK ---
         # Block normal traversal to/from sky rooms - these are transit-only spaces

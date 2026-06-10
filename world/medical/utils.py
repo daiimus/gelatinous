@@ -227,8 +227,8 @@ def select_hit_location(character, success_margin=0, attacker=None):
     # Debug output for targeting analysis
     if attacker:
         try:
-            from evennia.comms.models import ChannelDB
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            from world.combat.debug import get_splattercast
+            splattercast = get_splattercast()
             
             # Show targeting abilities and top weighted locations
             top_locations = sorted(location_weights.items(), key=lambda x: x[1], reverse=True)[:3]
@@ -975,8 +975,8 @@ def apply_medical_effects(item, user, target, **kwargs):
     death_scripts = target.scripts.get("death_progression")
     
     try:
-        from evennia.comms.models import ChannelDB
-        splattercast = ChannelDB.objects.get_channel("Splattercast")
+        from world.combat.debug import get_splattercast
+        splattercast = get_splattercast()
         splattercast.msg(f"REVIVAL_DEBUG: {target.key} has {len(death_scripts)} death scripts")
         
         if hasattr(target, 'medical_state') and target.medical_state:
@@ -996,30 +996,30 @@ def apply_medical_effects(item, user, target, **kwargs):
                     
                     # Debug the revival condition check
                     try:
-                        from evennia.comms.models import ChannelDB
-                        splattercast = ChannelDB.objects.get_channel("Splattercast")
+                        from world.combat.debug import get_splattercast
+                        splattercast = get_splattercast()
                         splattercast.msg(f"REVIVAL_DEBUG: Checking revival conditions for {target.key}")
                     except Exception:
                         pass
                     
                     if script._check_medical_revival_conditions(target):
-                        from evennia.comms.models import ChannelDB
-                        splattercast = ChannelDB.objects.get_channel("Splattercast")
+                        from world.combat.debug import get_splattercast
+                        splattercast = get_splattercast()
                         splattercast.msg(f"IMMEDIATE_REVIVAL_CHECK: {target.key} revival triggered by medical treatment")
                         script._handle_medical_revival()
                         break  # Revival handled, stop checking
                     else:
                         try:
-                            from evennia.comms.models import ChannelDB
-                            splattercast = ChannelDB.objects.get_channel("Splattercast")
+                            from world.combat.debug import get_splattercast
+                            splattercast = get_splattercast()
                             splattercast.msg(f"REVIVAL_DEBUG: {target.key} does not meet revival conditions")
                         except Exception:
                             pass
         except Exception as e:
             # Don't let revival check errors break medical treatment
             try:
-                from evennia.comms.models import ChannelDB
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                from world.combat.debug import get_splattercast
+                splattercast = get_splattercast()
                 splattercast.msg(f"REVIVAL_CHECK_ERROR: {target.key}: {e}")
             except Exception:
                 pass

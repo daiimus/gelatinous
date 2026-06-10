@@ -3,7 +3,7 @@ from evennia.utils.search import search_object
 from evennia.utils import delay
 from commands._identity_targeting import resolve_admin_target
 from world.combat.messages import get_combat_message
-from evennia.comms.models import ChannelDB
+from world.combat.debug import get_splattercast
 from world.weather import weather_system
 from world.weather.weather_messages import WEATHER_INTENSITY
 from world.identity_utils import msg_room_identity
@@ -331,19 +331,19 @@ class CmdTestDeath(Command):
                 
                 # Block if target outranks caller
                 if target_is_developer and not caller_is_developer:
-                    splattercast = ChannelDB.objects.get_channel("Splattercast")
+                    splattercast = get_splattercast()
                     splattercast.msg(f"MURDER_BLOCKED: {caller.key} attempted @murder on Developer {target.key} - insufficient permissions")
                     caller.msg(f"|rYou cannot use this command on {target.key} - insufficient permissions.|n")
                     return
                 elif target_is_admin and not (caller_is_developer or caller_is_admin):
-                    splattercast = ChannelDB.objects.get_channel("Splattercast")
+                    splattercast = get_splattercast()
                     splattercast.msg(f"MURDER_BLOCKED: {caller.key} attempted @murder on Admin {target.key} - insufficient permissions")
                     caller.msg(f"|rYou cannot use this command on {target.key} - insufficient permissions.|n")
                     return
                 elif (target_is_builder and caller_is_builder and 
                       not (caller_is_admin or caller_is_developer) and not force_test):
                     # Peer protection for builders
-                    splattercast = ChannelDB.objects.get_channel("Splattercast")
+                    splattercast = get_splattercast()
                     splattercast.msg(f"MURDER_BLOCKED: Builder {caller.key} attempted @murder on peer Builder {target.key} without 'force'")
                     caller.msg(f"|yWarning: Using this command on a peer staff member. Add 'force' if you're sure.|n")
                     return
@@ -484,7 +484,7 @@ class CmdTestDeath(Command):
                 # 5 x 10% blood loss per tick = 50% blood loss per tick = death in 2 ticks
                 
             # Log to splattercast for admin debugging
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = get_splattercast()
             splattercast.msg(f"MURDER_CMD: {caller.key} used @murder on {target.key} - applied arterial hemorrhage conditions")
             
             if force_test:
@@ -553,19 +553,19 @@ class CmdTestUnconscious(Command):
                 
                 # Block if target outranks caller
                 if target_is_developer and not caller_is_developer:
-                    splattercast = ChannelDB.objects.get_channel("Splattercast")
+                    splattercast = get_splattercast()
                     splattercast.msg(f"KNOCKOUT_BLOCKED: {caller.key} attempted @knockout on Developer {target.key} - insufficient permissions")
                     caller.msg(f"|rYou cannot use this command on {target.key} - insufficient permissions.|n")
                     return
                 elif target_is_admin and not (caller_is_developer or caller_is_admin):
-                    splattercast = ChannelDB.objects.get_channel("Splattercast")
+                    splattercast = get_splattercast()
                     splattercast.msg(f"KNOCKOUT_BLOCKED: {caller.key} attempted @knockout on Admin {target.key} - insufficient permissions")
                     caller.msg(f"|rYou cannot use this command on {target.key} - insufficient permissions.|n")
                     return
                 elif (target_is_builder and caller_is_builder and 
                       not (caller_is_admin or caller_is_developer) and not force_test):
                     # Peer protection for builders
-                    splattercast = ChannelDB.objects.get_channel("Splattercast")
+                    splattercast = get_splattercast()
                     splattercast.msg(f"KNOCKOUT_BLOCKED: Builder {caller.key} attempted @knockout on peer Builder {target.key} without 'force'")
                     caller.msg(f"|yWarning: Using this command on a peer staff member. Add 'force' if you're sure.|n")
                     return
@@ -633,7 +633,7 @@ class CmdTestUnconscious(Command):
                 # The medical system will process it organically
                 
             # Log to splattercast for admin debugging
-            splattercast = ChannelDB.objects.get_channel("Splattercast")
+            splattercast = get_splattercast()
             splattercast.msg(f"KNOCKOUT_CMD: {caller.key} used @knockout on {target.key} - applied consciousness suppression")
                 
             caller.msg(f"|r{target.key} has been given consciousness suppression via medical system.|n")
@@ -662,7 +662,7 @@ class CmdPeace(Command):
 
     def func(self):
         caller = self.caller
-        splattercast = ChannelDB.objects.get_channel("Splattercast")
+        splattercast = get_splattercast()
 
         # Default to caller's location
         location = caller.location

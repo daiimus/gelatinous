@@ -20,11 +20,10 @@ method acts as a thin dispatcher that delegates to those modules.
 
 from evennia import DefaultScript, create_script
 from evennia.utils.utils import delay
-from evennia.comms.models import ChannelDB
+from .debug import get_splattercast
 
 from .constants import (
-    COMBAT_SCRIPT_KEY, SPLATTERCAST_CHANNEL,
-    DB_COMBATANTS, DB_COMBAT_RUNNING, DB_MANAGED_ROOMS,
+    COMBAT_SCRIPT_KEY,     DB_COMBATANTS, DB_COMBAT_RUNNING, DB_MANAGED_ROOMS,
     DB_CHAR, DB_TARGET_DBREF, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF,
     DB_IS_YIELDING,
     DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_INITIATIVE,
@@ -88,7 +87,7 @@ def get_or_create_combat(location):
     Returns:
         CombatHandler: The combat handler managing this location
     """
-    splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+    splattercast = get_splattercast()
     
     # First, check if 'location' is already managed by ANY active CombatHandler
     # This requires iterating through all scripts, which can be slow.
@@ -189,7 +188,7 @@ class CombatHandler(DefaultScript):
         self.db.managed_rooms = [self.obj]  # Initially manages only its host room
         self.db.combat_is_running = False
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         managed_rooms = self.db.managed_rooms or []
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CREATE: New handler {self.key} created on {self.obj.key}, initially managing: {[r.key for r in managed_rooms]}. Combat logic initially not running.")
 
@@ -201,7 +200,7 @@ class CombatHandler(DefaultScript):
         This method ensures the combat handler is properly running and handles
         cases where the internal state might be out of sync with Evennia's ticker.
         """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
 
         # Use super().is_active to check Evennia's ticker status
         evennia_ticker_is_active = super().is_active
@@ -242,7 +241,7 @@ class CombatHandler(DefaultScript):
         if not self.pk or not self.id:
             return
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         combat_was_running = self.db.combat_is_running
         
@@ -321,7 +320,7 @@ class CombatHandler(DefaultScript):
         if not self.pk or not self.id:
             return
         
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_STOP: Handler {self.key} at_stop() called. Cleaning up combat state.")
         
         # Skip cleanup if merge is in progress to preserve combatant references
@@ -353,7 +352,7 @@ class CombatHandler(DefaultScript):
         Args:
             other_handler: The CombatHandler to merge into this one
         """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         # Defensive logging to understand the merge scenario
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_MERGE_DEBUG: self={self} (key={self.key}, id={getattr(self, 'id', 'None')}, obj={self.obj.key})")
@@ -472,7 +471,7 @@ class CombatHandler(DefaultScript):
         attack processing, movement resolution, and special actions to
         the ``attack``, ``movement_resolution``, and ``actions`` modules.
         """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         if not self.db.combat_is_running:
             splattercast.msg(f"AT_REPEAT: Handler {self.key} on {self.obj.key} combat logic is not running ({DB_COMBAT_RUNNING}=False). Returning.")
             return
@@ -659,7 +658,7 @@ class CombatHandler(DefaultScript):
         Returns:
             list: Filtered list of valid combat entry dicts.
         """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         valid = []
         managed_rooms = self.db.managed_rooms or []
         for entry in combatants_list:
@@ -692,7 +691,7 @@ class CombatHandler(DefaultScript):
         Returns:
             bool: ``True`` if combat was ended peacefully.
         """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
 
         all_yielding = all(
             entry.get(DB_IS_YIELDING, False) for entry in combatants_list
@@ -731,7 +730,7 @@ class CombatHandler(DefaultScript):
             char: The character whose flags to clean.
             entry: The character's combat entry dict.
         """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
 
         if hasattr(char.ndb, NDB_CHARGE_VULNERABILITY):
             splattercast.msg(f"AT_REPEAT_START_TURN_CLEANUP: Clearing charging_vulnerability_active for {char.key} (was active from their own previous charge).")
@@ -756,7 +755,7 @@ class CombatHandler(DefaultScript):
             char: The yielding character.
             entry: The character's combat entry dict.
         """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
 
         grappling_target = self.get_grappling_obj(entry)
         if grappling_target:
@@ -797,7 +796,7 @@ class CombatHandler(DefaultScript):
         Returns:
             bool: ``True`` if the action consumed the turn.
         """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         splattercast.msg(f"AT_REPEAT: {char.key} has action_intent: {combat_action}")
 
         if isinstance(combat_action, str):
@@ -899,7 +898,7 @@ class CombatHandler(DefaultScript):
             combatants_list: List of all combat entry dicts.
             initiative_order: List of entries sorted by initiative.
         """
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
 
         target = self.get_target(char)
         splattercast.msg(f"AT_REPEAT: After get_target(), {char.key} target is {target.key if target else None}")
@@ -956,7 +955,7 @@ class CombatHandler(DefaultScript):
     
     def set_target(self, char, target):
         """Set the target for a given character."""
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         
         # Follow the same pattern as utils.py functions:
         # 1. Get a copy of the combatants list

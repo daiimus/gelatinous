@@ -10,7 +10,7 @@ creation commands.
 
 from evennia.objects.objects import DefaultCharacter
 from evennia.typeclasses.attributes import AttributeProperty
-from evennia.comms.models import ChannelDB  # Ensure this is imported
+from world.combat.debug import get_splattercast
 
 from world.combat.constants import NDB_AIMED_AT_BY, NDB_AIMING_AT, NDB_AIMING_DIRECTION, NDB_COMBAT_HANDLER
 from world.identity_utils import msg_room_identity
@@ -316,14 +316,13 @@ class Character(
         Provides unconsciousness messaging to character and room.
         Triggers removal from combat if currently fighting.
         """
-        from evennia.comms.models import ChannelDB
-        from world.combat.constants import SPLATTERCAST_CHANNEL, NDB_COMBAT_HANDLER
+        from world.combat.constants import NDB_COMBAT_HANDLER
         from evennia.utils.utils import delay
         
         # Prevent double unconsciousness processing
         if hasattr(self, 'ndb') and getattr(self.ndb, 'unconsciousness_processed', False):
             try:
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 splattercast.msg(f"UNCONSCIOUS_SKIP: {self.key} already processed unconsciousness, skipping")
             except Exception:
                 pass
@@ -342,7 +341,7 @@ class Character(
             # Set flag for combat system to trigger unconsciousness message after attack message
             self.ndb.unconsciousness_pending = True
             try:
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 splattercast.msg(f"UNCONSCIOUS_COMBAT: {self.key} unconsciousness message deferred - in active combat")
             except Exception:
                 pass
@@ -351,7 +350,7 @@ class Character(
             def fallback_unconsciousness_message():
                 if hasattr(self.ndb, 'unconsciousness_pending') and self.ndb.unconsciousness_pending:
                     try:
-                        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                        splattercast = get_splattercast()
                         splattercast.msg(f"UNCONSCIOUS_FALLBACK: {self.key} triggering fallback unconsciousness message")
                     except Exception:
                         pass
@@ -472,8 +471,7 @@ class Character(
         # Log warning if archiving a staff character (shouldn't happen normally)
         if self.account and self.account.is_superuser:
             try:
-                from world.combat.constants import SPLATTERCAST_CHANNEL
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 splattercast.msg(f"WARNING: Archiving staff character {self.key} (Account: {self.account.key}, Reason: {reason})")
             except Exception:
                 pass
@@ -501,8 +499,7 @@ class Character(
             
             # Log the move
             try:
-                from world.combat.constants import SPLATTERCAST_CHANNEL
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 splattercast.msg(f"ARCHIVE: Moved {self.key} from {current_location.key if current_location else 'None'} to Limbo")
             except Exception:
                 pass
@@ -630,14 +627,13 @@ class Character(
         Shows death curtain which will then start the death progression system.
         """
         from .curtain_of_death import show_death_curtain
-        from evennia.comms.models import ChannelDB
-        from world.combat.constants import SPLATTERCAST_CHANNEL, NDB_COMBAT_HANDLER
+        from world.combat.constants import NDB_COMBAT_HANDLER
         from evennia.utils.utils import delay
         
         # Prevent double death processing using PERSISTENT db flag (survives server reload)
         if self.db.death_processed:
             try:
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 splattercast.msg(f"AT_DEATH_SKIP: {self.key} already processed death (db flag), skipping")
             except Exception:
                 pass
@@ -663,7 +659,7 @@ class Character(
         
         # Always show death analysis when character dies
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             death_analysis = self.debug_death_analysis()
             splattercast.msg(death_analysis)
         except Exception as e:
@@ -677,7 +673,7 @@ class Character(
             # Set flag for combat system to trigger death curtain after kill message
             self.ndb.death_curtain_pending = True
             try:
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 splattercast.msg(f"AT_DEATH_COMBAT: {self.key} death curtain deferred - in active combat")
             except Exception:
                 pass
@@ -686,7 +682,7 @@ class Character(
             def fallback_death_curtain():
                 if hasattr(self.ndb, 'death_curtain_pending') and self.ndb.death_curtain_pending:
                     try:
-                        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                        splattercast = get_splattercast()
                         splattercast.msg(f"AT_DEATH_FALLBACK: {self.key} triggering fallback death curtain")
                     except Exception:
                         pass
@@ -822,9 +818,7 @@ class Character(
         if (hasattr(self, 'medical_state') and self.medical_state and 
             self.medical_state.conditions):
             try:
-                from evennia.comms.models import ChannelDB
-                from world.combat.constants import SPLATTERCAST_CHANNEL
-                splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+                splattercast = get_splattercast()
                 
                 # Find stopped medical script and restart it
                 medical_scripts = self.scripts.get("medical_script")
@@ -876,8 +870,6 @@ class Character(
         Apply final death state after death progression completes.
         This is permanent death until manual revival by admin.
         """
-        from evennia.comms.models import ChannelDB
-        from world.combat.constants import SPLATTERCAST_CHANNEL
         
         # Update placement description for permanent death
         self.override_place = "lying motionless and deceased."
@@ -889,7 +881,7 @@ class Character(
         
         # Log final death
         try:
-            splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+            splattercast = get_splattercast()
             splattercast.msg(f"FINAL_DEATH: {self.key} has entered permanent death state")
         except Exception:
             pass
@@ -1782,8 +1774,7 @@ class Character(
         Returns:
             bool: True if an aim state was actually cleared, False otherwise.
         """
-        from world.combat.constants import SPLATTERCAST_CHANNEL
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         stopped_aiming_message_parts = []
         log_message_parts = []
         action_taken = False

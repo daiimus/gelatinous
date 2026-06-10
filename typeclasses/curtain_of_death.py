@@ -304,8 +304,8 @@ class DeathCurtain:
             
             # Debug logging
             try:
-                from evennia.comms.models import ChannelDB
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                from world.combat.debug import get_splattercast
+                splattercast = get_splattercast()
                 splattercast.msg(f"DEATH_CURTAIN: Death progression started for {self.character.key}, script: {script}")
             except Exception:
                 pass
@@ -313,8 +313,8 @@ class DeathCurtain:
         except Exception as e:
             # Debug logging for any errors
             try:
-                from evennia.comms.models import ChannelDB
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
+                from world.combat.debug import get_splattercast
+                splattercast = get_splattercast()
                 splattercast.msg(f"DEATH_CURTAIN_ERROR: Failed to start death progression for {self.character.key}: {e}")
             except Exception:
                 pass

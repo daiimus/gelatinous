@@ -9,15 +9,14 @@
 # - CmdWrest: Non-combat item snatching with contest mechanics
 #
 from evennia import Command
-from evennia.comms.models import ChannelDB
+from world.combat.debug import get_splattercast
 from world.combat.constants import (
     NDB_COMBAT_HANDLER, NDB_PROXIMITY_UNIVERSAL,
     MSG_WREST_SUCCESS_CALLER, MSG_WREST_SUCCESS_TARGET, MSG_WREST_SUCCESS_ROOM,
     MSG_WREST_FAILED_CALLER, MSG_WREST_FAILED_TARGET, MSG_WREST_FAILED_ROOM,
     MSG_WREST_IN_COMBAT, MSG_WREST_NO_FREE_HANDS, MSG_WREST_TARGET_NOT_FOUND,
     MSG_WREST_OBJECT_NOT_IN_HANDS, DB_CHAR, DB_GRAPPLED_BY_DBREF,
-    STAT_GRIT, SPLATTERCAST_CHANNEL,
-)
+    STAT_GRIT, )
 from world.combat.utils import roll_stat, roll_with_disadvantage
 from world.identity_utils import msg_room_identity
 from commands._identity_targeting import resolve_character_target
@@ -943,7 +942,7 @@ class CmdWrest(Command):
         success = caller_roll >= target_roll
         
         # Debug output for testing
-        splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
+        splattercast = get_splattercast()
         if splattercast:
             grapple_status = " (grappled)" if target_is_grappled else ""
             splattercast.msg(f"WREST CONTEST: {caller.key} {caller_roll} vs {target.key} {target_roll}{grapple_status} - {'SUCCESS' if success else 'FAILURE'}")
