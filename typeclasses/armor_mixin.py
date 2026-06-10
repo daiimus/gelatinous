@@ -632,13 +632,30 @@ class ArmorMixin:
         """
         Degrade armor durability based on damage absorbed.
 
+        Initialization is value-based, NOT ``hasattr``-based: armor
+        attributes are autocreated ``AttributeProperty`` descriptors,
+        so ``hasattr`` is always True and a guard built on it never
+        fires (issue #460 — the old guard was dead code, and any item
+        with ``armor_rating > 0`` but no explicit durability pair
+        crashed ``take_damage`` with a ZeroDivisionError on the first
+        absorbed hit).
+
         Args:
             armor_item: The armor item that absorbed damage
             damage_absorbed (int): Amount of damage the armor absorbed
         """
-        if not hasattr(armor_item, 'armor_durability'):
-            # Initialize durability if not set
-            max_durability = getattr(armor_item, 'armor_rating', 5) * 20
+        # Capture the pristine rating BEFORE any degradation so the
+        # repair system has the true baseline.  base_armor_rating
+        # defaults to 0 via AttributeProperty; treat 0 as "unset".
+        if not armor_item.base_armor_rating:
+            armor_item.base_armor_rating = armor_item.armor_rating
+
+        # Value-based durability initialization: a zero/unset
+        # max_armor_durability means the item was never given a
+        # durability pool (prototype omission, builder @set).
+        # Self-heal from the pristine rating.
+        if not armor_item.max_armor_durability:
+            max_durability = max(1, (armor_item.base_armor_rating or 5) * 20)
             armor_item.armor_durability = max_durability
             armor_item.max_armor_durability = max_durability
 
@@ -647,17 +664,14 @@ class ArmorMixin:
             0, armor_item.armor_durability - damage_absorbed
         )
 
-        # Calculate current effectiveness
+        # Calculate current effectiveness (max is guaranteed >= 1 by
+        # the init above).
         durability_percent = (
             armor_item.armor_durability / armor_item.max_armor_durability
         )
-        original_rating = getattr(
-            armor_item, 'base_armor_rating', armor_item.armor_rating
+        original_rating = (
+            armor_item.base_armor_rating or armor_item.armor_rating
         )
 
         # Degrade armor rating based on durability
         armor_item.armor_rating = max(1, int(original_rating * durability_percent))
-
-        # Store original rating if not already stored
-        if not hasattr(armor_item, 'base_armor_rating'):
-            armor_item.base_armor_rating = original_rating

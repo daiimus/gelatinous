@@ -7,9 +7,55 @@ input validation, and privacy-conscious reporting.
 """
 
 from evennia.commands.default.muxcommand import MuxCommand
+from evennia.utils.utils import run_async
 from django.conf import settings
 from datetime import datetime, timedelta, timezone
 import requests
+
+
+#: Process-lifetime cache for the git commit hash.  The hash only
+#: changes on deploy (which restarts/reloads the server), so computing
+#: it once per process eliminates the per-report file probing and the
+#: ``subprocess`` fallback entirely after first use (issue #460).
+_COMMIT_HASH_CACHE: list = []
+
+
+def _run_github_call(caller, thread_fn, on_success, failure_msg):
+    """Run a blocking GitHub API call off the reactor thread.
+
+    Commands execute on the Twisted reactor thread; a synchronous
+    ``requests`` call there freezes the entire server for every
+    player until it returns (issue #460).  This helper pushes the
+    network work into Evennia's async thread pool and delivers the
+    result back on the reactor, where it is safe to message the
+    caller and touch the database.
+
+    Contract:
+
+    * ``thread_fn`` must be pure network + parsing — NO Evennia
+      object access, NO database reads/writes (SQLite is not
+      thread-safe per the ``run_async`` docs).  Capture any needed
+      values before calling.
+    * ``on_success(result)`` runs on the reactor with
+      ``thread_fn``'s return value — messaging and db writes go
+      here.
+
+    Args:
+        caller: Character to message on failure.
+        thread_fn: Zero-arg callable executed in the thread pool.
+        on_success: One-arg callable run on the reactor with the
+            thread's return value.
+        failure_msg: Player-facing message if the thread raises.
+    """
+    def _on_err(failure):
+        caller.msg(f"|r{failure_msg}|n")
+        try:
+            from evennia.utils import logger
+            logger.log_err(f"@bug GitHub call failed: {failure}")
+        except Exception:
+            pass
+
+    run_async(thread_fn, at_return=on_success, at_err=_on_err)
 
 
 class CmdBug(MuxCommand):
@@ -154,7 +200,20 @@ class CmdBug(MuxCommand):
         return context
     
     def get_git_commit_hash(self):
-        """Get the current git commit hash."""
+        """Get the current git commit hash (cached per process).
+
+        The hash can't change without a server reload, so the file
+        probes / subprocess fallback run at most once per process
+        instead of on every report (issue #460).
+        """
+        if _COMMIT_HASH_CACHE:
+            return _COMMIT_HASH_CACHE[0]
+        commit_hash = self._compute_git_commit_hash()
+        _COMMIT_HASH_CACHE.append(commit_hash)
+        return commit_hash
+
+    def _compute_git_commit_hash(self):
+        """Resolve the current git commit hash from disk or git."""
         try:
             import os
             
@@ -283,16 +342,21 @@ class CmdBug(MuxCommand):
             return (False, f"Unexpected error: {str(e)}")
     
     def show_bug_list(self, caller):
-        """Show list of recent bug reports from GitHub."""
+        """Show list of recent bug reports from GitHub.
+
+        The fetch + formatting runs off-thread (pure network + string
+        work); only the final ``caller.msg`` happens on the reactor
+        (issue #460).
+        """
         repo = settings.GITHUB_REPO
         token = settings.GITHUB_TOKEN
-        
+
         url = f"https://api.github.com/repos/{repo}/issues"
         headers = {
             "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3+json"
         }
-        
+
         params = {
             "state": "all",  # Show both open and closed
             "labels": "player-reported",
@@ -300,89 +364,105 @@ class CmdBug(MuxCommand):
             "sort": "created",
             "direction": "desc"
         }
-        
-        try:
-            response = requests.get(url, headers=headers, params=params, timeout=10)
-            
+
+        caller.msg("|wFetching recent bug reports...|n")
+
+        def _fetch_and_format():
+            try:
+                response = requests.get(
+                    url, headers=headers, params=params, timeout=10,
+                )
+            except requests.exceptions.Timeout:
+                return "|rRequest timed out. Please try again later.|n"
+            except requests.exceptions.RequestException as e:
+                return f"|rFailed to fetch bug list: {str(e)}|n"
+
             if response.status_code != 200:
-                caller.msg(f"|rFailed to fetch bug list: HTTP {response.status_code}|n")
-                return
-            
+                return f"|rFailed to fetch bug list: HTTP {response.status_code}|n"
+
             issues = response.json()
-            
             if not issues:
-                caller.msg("\n|yNo bug reports found.|n")
-                return
-            
-            # Display header
-            caller.msg("\n|c=== Recent Bug Reports ===|n\n")
-            
+                return "\n|yNo bug reports found.|n"
+
+            lines = ["\n|c=== Recent Bug Reports ===|n\n"]
             for issue in issues:
                 number = issue['number']
                 title = issue['title']
                 state = issue['state']
                 created = issue['created_at'][:10]  # Just date
-                url = issue['html_url']
-                
-                # Color code by state
-                if state == "open":
-                    state_display = "|gOPEN|n"
-                else:
-                    state_display = "|wCLOSED|n"
-                
-                # Extract category from labels if present
+                issue_url = issue['html_url']
+
+                state_display = "|gOPEN|n" if state == "open" else "|wCLOSED|n"
+
                 labels = [label['name'] for label in issue.get('labels', [])]
                 category = None
                 for label in labels:
-                    if label in {'combat', 'medical', 'movement', 'items', 'commands',
-                                'web', 'world', 'social', 'system', 'other'}:
+                    if label in {'combat', 'medical', 'movement', 'items',
+                                 'commands', 'web', 'world', 'social',
+                                 'system', 'other'}:
                         category = label.capitalize()
                         break
-                
                 category_display = f" |y[{category}]|n" if category else ""
-                
-                caller.msg(f"|w#{number}|n {state_display}{category_display} - {title}")
-                caller.msg(f"  |wCreated: {created}|n")
-                caller.msg(f"  |c{url}|n\n")
-            
-            caller.msg("|wShowing 10 most recent reports. Visit GitHub for full history.|n\n")
-            
-        except requests.exceptions.Timeout:
-            caller.msg("|rRequest timed out. Please try again later.|n")
-        except requests.exceptions.RequestException as e:
-            caller.msg(f"|rFailed to fetch bug list: {str(e)}|n")
-        except Exception as e:
-            caller.msg(f"|rUnexpected error: {str(e)}|n")
+
+                lines.append(
+                    f"|w#{number}|n {state_display}{category_display} - {title}"
+                )
+                lines.append(f"  |wCreated: {created}|n")
+                lines.append(f"  |c{issue_url}|n\n")
+
+            lines.append(
+                "|wShowing 10 most recent reports. "
+                "Visit GitHub for full history.|n\n"
+            )
+            return "\n".join(lines)
+
+        _run_github_call(
+            caller, _fetch_and_format, caller.msg,
+            "Failed to fetch bug list. Please try again later.",
+        )
     
     def show_bug_detail(self, caller, issue_number):
-        """Show detailed information about a specific bug report."""
+        """Show detailed information about a specific bug report.
+
+        Both GitHub fetches (issue + comments) run off-thread with
+        the formatting; only the final ``caller.msg`` happens on the
+        reactor (issue #460).
+        """
         repo = settings.GITHUB_REPO
         token = settings.GITHUB_TOKEN
-        
+
         headers = {
             'Authorization': f'token {token}',
             'Accept': 'application/vnd.github.v3+json'
         }
-        
-        try:
-            # Fetch the issue
-            issue_url = f"https://api.github.com/repos/{repo}/issues/{issue_number}"
-            response = requests.get(issue_url, headers=headers, timeout=10)
-            
-            if response.status_code == 404:
-                caller.msg(f"|rIssue #{issue_number} not found.|n")
-                return
-            
-            response.raise_for_status()
-            issue = response.json()
-            
-            # Fetch comments
-            comments_url = issue['comments_url']
-            comments_response = requests.get(comments_url, headers=headers, timeout=10)
-            comments_response.raise_for_status()
-            comments = comments_response.json()
-            
-            # Display issue details
+
+        caller.msg(f"|wFetching issue #{issue_number}...|n")
+
+        def _fetch_and_format():
+            try:
+                issue_url = (
+                    f"https://api.github.com/repos/{repo}/issues/{issue_number}"
+                )
+                response = requests.get(issue_url, headers=headers, timeout=10)
+
+                if response.status_code == 404:
+                    return f"|rIssue #{issue_number} not found.|n"
+
+                response.raise_for_status()
+                issue = response.json()
+
+                # Fetch comments
+                comments_url = issue['comments_url']
+                comments_response = requests.get(
+                    comments_url, headers=headers, timeout=10,
+                )
+                comments_response.raise_for_status()
+                comments = comments_response.json()
+            except requests.exceptions.Timeout:
+                return "|rRequest timed out. Please try again later.|n"
+            except requests.exceptions.RequestException as e:
+                return f"|rFailed to fetch bug details: {str(e)}|n"
+
             title = issue['title']
             state = issue['state'].upper()
             state_display = "|g[OPEN]|n" if state == "OPEN" else "|r[CLOSED]|n"
@@ -390,54 +470,52 @@ class CmdBug(MuxCommand):
             updated = issue['updated_at'][:10]
             body = issue.get('body', 'No description provided.')
             url = issue['html_url']
-            
-            # Extract labels
+
             labels = [label['name'] for label in issue.get('labels', [])]
             category = None
             for label in labels:
-                if label in {'combat', 'medical', 'movement', 'items', 'commands',
-                            'web', 'world', 'social', 'system', 'other'}:
+                if label in {'combat', 'medical', 'movement', 'items',
+                             'commands', 'web', 'world', 'social',
+                             'system', 'other'}:
                     category = label.capitalize()
                     break
-            
-            # Build display
-            caller.msg(f"\n|w{'=' * 70}|n")
-            caller.msg(f"|wIssue #{issue_number}|n {state_display}")
-            caller.msg(f"|w{'=' * 70}|n\n")
-            
-            caller.msg(f"|wTitle:|n {title}")
+
+            lines = [
+                f"\n|w{'=' * 70}|n",
+                f"|wIssue #{issue_number}|n {state_display}",
+                f"|w{'=' * 70}|n\n",
+                f"|wTitle:|n {title}",
+            ]
             if category:
-                caller.msg(f"|wCategory:|n |y{category}|n")
-            caller.msg(f"|wCreated:|n {created}")
-            caller.msg(f"|wUpdated:|n {updated}")
-            caller.msg(f"|wURL:|n |c{url}|n\n")
-            
-            caller.msg(f"|w{'-' * 70}|n")
-            caller.msg(f"|wDescription:|n\n")
-            caller.msg(body)
-            caller.msg(f"\n|w{'-' * 70}|n")
-            
-            # Display comments
+                lines.append(f"|wCategory:|n |y{category}|n")
+            lines.extend([
+                f"|wCreated:|n {created}",
+                f"|wUpdated:|n {updated}",
+                f"|wURL:|n |c{url}|n\n",
+                f"|w{'-' * 70}|n",
+                "|wDescription:|n\n",
+                body,
+                f"\n|w{'-' * 70}|n",
+            ])
+
             if comments:
-                caller.msg(f"\n|wComments ({len(comments)}):|n\n")
+                lines.append(f"\n|wComments ({len(comments)}):|n\n")
                 for i, comment in enumerate(comments, 1):
                     author = comment['user']['login']
-                    created = comment['created_at'][:10]
+                    comment_created = comment['created_at'][:10]
                     comment_body = comment['body']
-                    
-                    caller.msg(f"|w{i}. {author}|n |c({created})|n")
-                    caller.msg(f"{comment_body}\n")
+                    lines.append(f"|w{i}. {author}|n |c({comment_created})|n")
+                    lines.append(f"{comment_body}\n")
             else:
-                caller.msg(f"\n|wNo comments yet.|n\n")
-            
-            caller.msg(f"|w{'=' * 70}|n\n")
-            
-        except requests.exceptions.Timeout:
-            caller.msg("|rRequest timed out. Please try again later.|n")
-        except requests.exceptions.RequestException as e:
-            caller.msg(f"|rFailed to fetch bug details: {str(e)}|n")
-        except Exception as e:
-            caller.msg(f"|rUnexpected error: {str(e)}|n")
+                lines.append("\n|wNo comments yet.|n\n")
+
+            lines.append(f"|w{'=' * 70}|n\n")
+            return "\n".join(lines)
+
+        _run_github_call(
+            caller, _fetch_and_format, caller.msg,
+            "Failed to fetch bug details. Please try again later.",
+        )
     
     def format_issue_body(self, description, context):
         """Format the GitHub issue body with context."""
@@ -594,31 +672,42 @@ class CmdBug(MuxCommand):
                 context['category'] = category
                 context['title'] = title
                 
-                # Create GitHub issue
+                # Create GitHub issue — network call runs off-thread
+                # so a slow GitHub API can't freeze the server
+                # (issue #460).  DB writes (rate-limit counter) stay
+                # in the reactor-side callback.
                 caller.msg(f"\n|gCreating detailed bug report (category: |c{category}|g)...|n")
-                
-                success, result = cmd_instance.create_github_issue(details, context)
-                
-                if success:
-                    issue_url = result.get('html_url', '')
-                    issue_number = result.get('number', '?')
-                    
-                    # Increment bug report counter
-                    cmd_instance.increment_report_count(account)
-                    limit = getattr(settings, 'BUG_REPORT_DAILY_LIMIT', 30)
-                    remaining = limit - (account.db.bug_report_count or 0)
-                    
-                    caller.msg(f"\n|g✓|n Issue created: |c{issue_url}|n")
-                    caller.msg("\nThank you for the detailed report! The development team will investigate.")
-                    
-                    if remaining <= 5:
-                        caller.msg(f"You have |y{remaining}|n bug reports remaining today.")
+
+                def _do_create():
+                    return cmd_instance.create_github_issue(details, context)
+
+                def _on_created(outcome):
+                    success, result = outcome
+                    if success:
+                        issue_url = result.get('html_url', '')
+
+                        # Increment bug report counter
+                        cmd_instance.increment_report_count(account)
+                        limit = getattr(settings, 'BUG_REPORT_DAILY_LIMIT', 30)
+                        remaining = limit - (account.db.bug_report_count or 0)
+
+                        caller.msg(f"\n|g✓|n Issue created: |c{issue_url}|n")
+                        caller.msg("\nThank you for the detailed report! The development team will investigate.")
+
+                        if remaining <= 5:
+                            caller.msg(f"You have |y{remaining}|n bug reports remaining today.")
+                        else:
+                            caller.msg(f"You have {remaining} bug reports remaining today.")
                     else:
-                        caller.msg(f"You have {remaining} bug reports remaining today.")
-                else:
-                    error_msg = result
-                    caller.msg(f"\n|rFailed to create bug report:|n {error_msg}")
-                    caller.msg("|yPlease try again in a moment. If the problem persists, contact staff.|n")
+                        error_msg = result
+                        caller.msg(f"\n|rFailed to create bug report:|n {error_msg}")
+                        caller.msg("|yPlease try again in a moment. If the problem persists, contact staff.|n")
+
+                _run_github_call(
+                    caller, _do_create, _on_created,
+                    "Failed to create bug report due to an internal "
+                    "error. Please try again or contact staff.",
+                )
             
             def _quit_callback(caller):
                 """Called when the player quits the editor."""

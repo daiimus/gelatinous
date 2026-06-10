@@ -676,11 +676,14 @@ class AppearanceMixin:
             )
             parts.append(formatted_body_descriptions)
 
-        # 3. Wielded items section (using hands system)
-        hands = (
-            self.attributes.get('hands', category='equipment')
-            or {'left': None, 'right': None}
-        )
+        # 3. Wielded items section (using hands system).
+        # Reads the derived ``hands`` property (species-aware grasping
+        # slots backed by ``held_items``) — NOT the legacy ``hands``
+        # attribute, which the Mr. Hands migration deletes after
+        # moving data to ``held_items``.  Reading the legacy slot
+        # here made this section permanently render "holding
+        # nothing" (issue #460).
+        hands = self.hands or {}
         wielded_items = [item for item in hands.values() if item is not None]
 
         if wielded_items:
