@@ -1,6 +1,6 @@
 # specs/
 
-Design specifications for game systems and features. 37 spec files covering combat, commands, UI, medical, identity, communication, and integrations.
+Design specifications for game systems and features. 43 spec files covering combat, commands, UI, medical, identity, communication, and integrations.
 
 ## Core Systems
 
@@ -8,6 +8,7 @@ Design specifications for game systems and features. 37 spec files covering comb
 |------|-------------|
 | `COMBAT_SYSTEM.md` | Overall combat system design |
 | `COMBAT_REFACTOR_SPEC.md` | Combat module decomposition plan |
+| `COMBAT_AUDIT_LOGGING_SPEC.md` | Single-sink combat/medical diagnostics: always-on audit file + gated Splattercast channel (`world/combat/debug.py`) |
 | `COMBAT_MESSAGE_FORMAT_SPEC.md` | Combat messaging and template system |
 | `PROXIMITY_SYSTEM_SPEC.md` | Tactical positioning mechanics |
 | `GRAPPLE_SYSTEM_SPEC.md` | Grappling and restraint mechanics |

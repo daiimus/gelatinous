@@ -33,6 +33,8 @@ Functions:
 from __future__ import annotations
 
 from django.conf import settings
+from django.core.exceptions import AppRegistryNotReady
+from django.db import Error as DatabaseError
 
 from evennia.comms.models import ChannelDB
 from evennia.utils import logger
@@ -58,14 +60,19 @@ _CHANNEL_CACHE: list = []
 
 
 def _get_live_channel():
-    """Return the Splattercast channel, resolved once per process."""
+    """Return the Splattercast channel, resolved once per process.
+
+    Returns ``None`` (without caching) when the DB / app registry
+    isn't ready yet — a legitimate, expected condition during early
+    startup — so the next call retries.  Any other failure is a real
+    bug and is left to surface.
+    """
     if not _CHANNEL_CACHE:
         try:
             _CHANNEL_CACHE.append(
                 ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
             )
-        except Exception:
-            # DB not ready (early startup) — retry next call.
+        except (DatabaseError, AppRegistryNotReady):
             return None
     return _CHANNEL_CACHE[0]
 
@@ -78,18 +85,20 @@ class _AuditRouter:
     """
 
     def msg(self, message, **kwargs):
+        # Always-on audit write.  A filesystem failure here must never
+        # break combat for players, so the (and only the) expected I/O
+        # failure mode is swallowed; anything else surfaces.
         try:
             logger.log_file(str(message), filename=COMBAT_AUDIT_FILENAME)
-        except Exception:
-            # Auditing must never take combat down with it.
+        except OSError:
             pass
+        # Opt-in live mirror.  A developer who set SPLATTERCAST_LIVE is
+        # in an active debugging session and *wants* failures to
+        # surface, so this path is deliberately unguarded.
         if getattr(settings, "SPLATTERCAST_LIVE", False):
             channel = _get_live_channel()
             if channel:
-                try:
-                    channel.msg(message, **kwargs)
-                except Exception:
-                    pass
+                channel.msg(message, **kwargs)
 
 
 _ROUTER = _AuditRouter()

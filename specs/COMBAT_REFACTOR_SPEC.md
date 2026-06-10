@@ -25,6 +25,11 @@ Total: ~3,200 lines with significant cross-file duplication
 - **Cross-File Duplication**: Same patterns repeated across both files
   - Contest patterns: `handler.py` (6 instances) + `utils.py` (inconsistent dice patterns)
   - Debug messages: `handler.py` (128) + `utils.py` (19) = 147 total splattercast calls
+    *(routing superseded — diagnostics now go through the single
+    `world/combat/debug.py` sink, not raw
+    `ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)` lookups; see
+    `COMBAT_AUDIT_LOGGING_SPEC.md`. The raw idiom referenced
+    throughout this doc was retired in #464.)*
   - Attribute access: Defensive `getattr` patterns in both files
 - **Utility Dumping Ground**: `utils.py` became catch-all with mixed responsibilities:
   - Dice rolling + debug logging + weapon handling + combat entry management
