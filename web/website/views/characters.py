@@ -218,17 +218,15 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             character.db.prelogout_location = spawn_location
             character.location = None
             
-            # Debug logging
-            from evennia.comms.models import ChannelDB
-            try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
-                splattercast.msg(
-                    f"WEB_CHAR_CREATE: {character.key} created via web (respawn), "
-                    f"location set to None for invisibility. "
-                    f"Will be restored to {character.db.prelogout_location.key} on telnet login."
-                )
-            except Exception:
-                pass
+            # Debug logging via the combat audit sink (lazy import —
+            # keep web module load independent of the game packages)
+            from world.combat.debug import get_splattercast
+            get_splattercast().msg(
+                f"WEB_CHAR_CREATE: {character.key} created via web (respawn), "
+                f"location set to None for invisibility. "
+                f"Will be restored to "
+                f"{getattr(spawn_location, 'key', '?')} on telnet login."
+            )
             
             # Clear last_character after successful respawn
             # (archive_character() will set it again when this character is archived)
@@ -240,6 +238,10 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             return HttpResponseRedirect(self.success_url)
             
         except Exception:
+            # Deliberate request-handler guard: log the full traceback,
+            # show the player a friendly error instead of a Django 500.
+            # For web views this IS the "let the unexpected surface"
+            # posture — it surfaces in the log, not on the player.
             import logging
             logging.getLogger('evennia').exception(
                 "Sleeve decantation failed for account %s", account.key
@@ -344,17 +346,15 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             character.db.prelogout_location = spawn_location
             character.location = None
             
-            # Debug logging
-            from evennia.comms.models import ChannelDB
-            try:
-                splattercast = ChannelDB.objects.get_channel("Splattercast")
-                splattercast.msg(
-                    f"WEB_CHAR_CREATE: {character.key} created via web (first-time), "
-                    f"location set to None for invisibility. "
-                    f"Will be restored to {character.db.prelogout_location.key} on telnet login."
-                )
-            except Exception:
-                pass
+            # Debug logging via the combat audit sink (lazy import —
+            # keep web module load independent of the game packages)
+            from world.combat.debug import get_splattercast
+            get_splattercast().msg(
+                f"WEB_CHAR_CREATE: {character.key} created via web (first-time), "
+                f"location set to None for invisibility. "
+                f"Will be restored to "
+                f"{getattr(spawn_location, 'key', '?')} on telnet login."
+            )
             
             messages.success(
                 self.request,
@@ -525,6 +525,8 @@ class OwnerOnlyCharacterDetailView(EvenniaCharacterDetailView):
                 messages.error(request, "You can only view your own characters.")
                 return HttpResponseRedirect(reverse_lazy("character-manage"))
         except Exception:
+            # Deliberate guard: bad/forged pk or lookup failure on an
+            # access-control path → safe redirect, never a 500.
             messages.error(request, "Character not found.")
             return HttpResponseRedirect(reverse_lazy("index"))
         
@@ -571,6 +573,8 @@ class OwnerOnlyCharacterUpdateView(EvenniaCharacterUpdateView):
                 messages.error(request, "You can only edit your own characters.")
                 return HttpResponseRedirect(reverse_lazy("character-manage"))
         except Exception:
+            # Deliberate guard: bad/forged pk or lookup failure on an
+            # access-control path → safe redirect, never a 500.
             messages.error(request, "Character not found.")
             return HttpResponseRedirect(reverse_lazy("index"))
         

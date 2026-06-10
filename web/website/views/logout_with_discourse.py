@@ -62,6 +62,8 @@ def get_discourse_user_id(user):
                 response.status_code, user.id, url,
             )
     except Exception:
+        # Deliberate best-effort guard: forum lookup failure is logged
+        # but must never block the game-side logout flow.
         logger.exception("Discourse user lookup error for external_id=%s", user.id)
     
     return None
@@ -105,6 +107,8 @@ def logout_discourse_user(discourse_user_id):
             )
             return False
     except Exception:
+        # Deliberate best-effort guard: forum logout failure is logged
+        # but must never block the game-side logout flow.
         logger.exception("Discourse logout error for discourse_user_id=%s", discourse_user_id)
         return False
 

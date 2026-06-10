@@ -124,7 +124,10 @@ class TurnstileAccountCreateView(EvenniaAccountCreateView):
             return result.get('success', False)
             
         except Exception as e:
-            # Log error and fail verification
+            # Deliberate fail-closed guard: ANY failure verifying the
+            # captcha with Cloudflare (network, JSON, timeout) must
+            # reject the registration attempt, never wave it through
+            # or 500. Logged for diagnosis.
             logger.error("Turnstile verification error: %s", e)
             return False
     

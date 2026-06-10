@@ -111,6 +111,9 @@ def discourse_sso(request):
         decoded_payload = base64.b64decode(payload).decode('utf-8')
         params = parse_qs(decoded_payload)
     except Exception as e:
+        # Deliberate guard: the payload is attacker-controllable
+        # external input — anything malformed gets a clean HTTP 400
+        # (logged with traceback), never a 500.
         logger.exception("Failed to decode or parse SSO payload")
         return HttpResponseBadRequest("Invalid payload")
     
