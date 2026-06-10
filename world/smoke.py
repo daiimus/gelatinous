@@ -28,15 +28,20 @@ from typing import Optional
 
 #: Tag namespaces.
 CIGARETTE_STATE_CATEGORY = "cigarette_state"
-ITEM_ROLE_CATEGORY = "item_role"
+DELIVERY_METHOD_CATEGORY = "delivery_method"
+ITEM_ROLE_CATEGORY = "item_role"  # Lighter still uses item_role.
 
-#: Item-role tags.  ``light`` and ``smoke`` use these to identify
-#: cigarettes / lighters by role rather than by typeclass, so
-#: prototype-defined items don't need a bespoke typeclass.
-CIGARETTE_ROLE = "cigarette"
+#: Delivery-method tag.  Cigarettes, joints, cigars, pipes — anything
+#: that can be smoked carries this.  See
+#: ``specs/SUBSTANCES_AND_DELIVERY_SPEC.md`` for the architectural
+#: model.  Replaces the legacy ``("cigarette", "item_role")`` tag —
+#: ``is_smokable`` migrates that automatically on first access.
+SMOKE_DELIVERY = "smoke"
+
+#: Item-role tag for lighters.  Distinct axis from delivery method.
 LIGHTER_ROLE = "lighter"
 
-#: Lit-state tag carried on individual cigarettes.
+#: Lit-state tag carried on individual smokables.
 LIT_TAG = "lit"
 
 #: Default puffs per cigarette.
@@ -45,21 +50,40 @@ DEFAULT_CIGARETTE_PUFFS = 6
 #: Default cigarettes per pack.
 DEFAULT_PACK_CAPACITY = 10
 
-#: Brand identifiers.  Add more here when new brands arrive; banks
-#: below are keyed by these constants.
-BRAND_NEUTRAL = "neutral"
-BRAND_NOIR = "noir"
+#: Substance identifiers.  Add more here as substances are defined;
+#: banks below are keyed by these constants.  Naming convention:
+#: ``<substance>_<style>`` when the same substance has multiple
+#: stylistic variants (e.g. tobacco_neutral, tobacco_noir).
+SUBSTANCE_TOBACCO_NEUTRAL = "tobacco_neutral"
+SUBSTANCE_TOBACCO_NOIR = "tobacco_noir"
+
+# Pre-#456 brand attribute values that mapped to these substances.
+# ``pick_smoke_message`` honours both via this table during the
+# migration window — old cigarettes already in the live DB still
+# resolve the right flavor bank.
+_LEGACY_BRAND_MAP = {
+    "neutral": SUBSTANCE_TOBACCO_NEUTRAL,
+    "noir": SUBSTANCE_TOBACCO_NOIR,
+}
+
+# Legacy back-compat aliases — kept so any third-party code (and
+# this codebase's own tests during the transition window) doesn't
+# break.  Prefer the SUBSTANCE_* names in new code.
+BRAND_NEUTRAL = SUBSTANCE_TOBACCO_NEUTRAL
+BRAND_NOIR = SUBSTANCE_TOBACCO_NOIR
+CIGARETTE_ROLE = "cigarette"  # legacy item_role tag value
 
 
 # ---------------------------------------------------------------------
 # Smoke message banks
 # ---------------------------------------------------------------------
 
-#: Per-brand smoke flavor.  ``smoke <cigarette>`` picks a random
-#: entry; the actor receives the ``self`` form and the room gets the
-#: ``room`` template rendered through :func:`msg_room_identity`.
+#: Per-substance smoke flavor.  ``smoke <smokable>`` picks a random
+#: entry from the substance's bank; the actor receives the ``self``
+#: form and the room gets the ``room`` template rendered through
+#: :func:`msg_room_identity`.
 SMOKE_MESSAGES: dict[str, list[tuple[str, str]]] = {
-    BRAND_NEUTRAL: [
+    SUBSTANCE_TOBACCO_NEUTRAL: [
         (
             "You draw deeply from your cigarette, the ember flaring "
             "briefly as you inhale, before slowly releasing a thick "
@@ -173,7 +197,7 @@ SMOKE_MESSAGES: dict[str, list[tuple[str, str]]] = {
             "in a gentle, steady stream.",
         ),
     ],
-    BRAND_NOIR: [
+    SUBSTANCE_TOBACCO_NOIR: [
         (
             "You drag on your cigarette, the smoke curling around "
             "your fingers like a secret you're not ready to share. "
@@ -421,12 +445,17 @@ BURNT_OUT_MESSAGES: list[tuple[str, str]] = [
 # Pickers
 # ---------------------------------------------------------------------
 
-def pick_smoke_message(brand: str | None) -> tuple[str, str]:
-    """Return a random ``(self, room_template)`` for ``brand``.
+def pick_smoke_message(substance: str | None) -> tuple[str, str]:
+    """Return a random ``(self, room_template)`` for ``substance``.
 
-    Unknown brands fall back to :data:`BRAND_NEUTRAL`.
+    Honours legacy brand keys (``"neutral"`` / ``"noir"``) via the
+    :data:`_LEGACY_BRAND_MAP` translation so cigarettes spawned
+    pre-#456 still render flavor.  Unknown / missing substance
+    falls back to :data:`SUBSTANCE_TOBACCO_NEUTRAL`.
     """
-    bank = SMOKE_MESSAGES.get(brand or BRAND_NEUTRAL) or SMOKE_MESSAGES[BRAND_NEUTRAL]
+    key = substance or SUBSTANCE_TOBACCO_NEUTRAL
+    key = _LEGACY_BRAND_MAP.get(key, key)
+    bank = SMOKE_MESSAGES.get(key) or SMOKE_MESSAGES[SUBSTANCE_TOBACCO_NEUTRAL]
     return random.choice(bank)
 
 
@@ -450,14 +479,33 @@ def pick_burnt_out_message() -> tuple[str, str]:
 # Item helpers
 # ---------------------------------------------------------------------
 
-def is_cigarette(item) -> bool:
-    """True when ``item`` carries the cigarette role tag."""
+def is_smokable(item) -> bool:
+    """True when ``item`` supports the ``smoke`` delivery method.
+
+    Self-heals items that still carry the pre-#456
+    ``("cigarette", "item_role")`` tag — they're migrated to
+    ``("smoke", "delivery_method")`` on first inspection so any
+    cigarette spawned before this PR keeps working.
+    """
     if item is None:
         return False
     tags = getattr(item, "tags", None)
     if tags is None:
         return False
-    return tags.has(CIGARETTE_ROLE, category=ITEM_ROLE_CATEGORY)
+    if tags.has(SMOKE_DELIVERY, category=DELIVERY_METHOD_CATEGORY):
+        return True
+    # Legacy migration: pre-#456 cigarettes carried this older tag.
+    if tags.has(CIGARETTE_ROLE, category=ITEM_ROLE_CATEGORY):
+        tags.remove(CIGARETTE_ROLE, category=ITEM_ROLE_CATEGORY)
+        tags.add(SMOKE_DELIVERY, category=DELIVERY_METHOD_CATEGORY)
+        return True
+    return False
+
+
+# Legacy back-compat alias — keep the old name callable for any
+# external code that referenced it.  Internal call sites use
+# ``is_smokable``.
+is_cigarette = is_smokable
 
 
 def is_lighter(item) -> bool:
@@ -503,9 +551,13 @@ def find_held(character, predicate) -> Optional[object]:
     return None
 
 
-def find_held_cigarette(character) -> Optional[object]:
-    """Convenience wrapper — first cigarette in ``character``'s hands."""
-    return find_held(character, is_cigarette)
+def find_held_smokable(character) -> Optional[object]:
+    """Convenience wrapper — first smokable in ``character``'s hands."""
+    return find_held(character, is_smokable)
+
+
+# Legacy back-compat alias.
+find_held_cigarette = find_held_smokable
 
 
 def find_held_lighter(character) -> Optional[object]:
@@ -513,32 +565,41 @@ def find_held_lighter(character) -> Optional[object]:
     return find_held(character, is_lighter)
 
 
-def consume_puff(cigarette) -> dict:
-    """Decrement ``cigarette.attributes['uses_left']`` by one.
+def get_substance(item) -> str | None:
+    """Read ``item``'s substance attribute, migrating from the
+    legacy ``brand`` attribute when present.
 
-    When the result reaches zero the cigarette is deleted and the
-    return dict's ``destroyed`` flag is set so callers can emit the
-    burnout broadcast.
-
-    Returns:
-        ``{"success": bool, "destroyed": bool}`` — ``success=False``
-        when the cigarette had no puffs left to begin with.
+    Pre-#456 cigarettes stored the substance identifier under
+    ``db.brand``.  This helper transparently copies it to
+    ``db.substance`` on first read so the pickers and any future
+    substance-registry lookups see a single field.
     """
-    attrs = getattr(cigarette, "attributes", None)
-    if attrs is None:
-        return {"success": False, "destroyed": False}
-    uses_left = int(attrs.get("uses_left", 0) or 0)
-    if uses_left <= 0:
-        return {"success": False, "destroyed": False}
-    uses_left -= 1
-    attrs.add("uses_left", uses_left)
-    if uses_left <= 0:
-        try:
-            cigarette.delete()
-        except AttributeError:
-            pass
-        return {"success": True, "destroyed": True}
-    return {"success": True, "destroyed": False}
+    if item is None:
+        return None
+    db = getattr(item, "db", None)
+    if db is None:
+        return None
+    substance = getattr(db, "substance", None)
+    if substance:
+        return substance
+    legacy_brand = getattr(db, "brand", None)
+    if legacy_brand:
+        # Stamp the new field; leave brand in place to avoid
+        # surprising anything else that reads it during migration.
+        db.substance = legacy_brand
+        return legacy_brand
+    return None
+
+
+def consume_puff(cigarette) -> dict:
+    """Decrement a smokable's remaining puffs.
+
+    Thin wrapper over :func:`world.consumables.consume_use`; kept
+    for callers that want the smoke-specific name.  See the generic
+    helper for the contract.
+    """
+    from world.consumables import consume_use
+    return consume_use(cigarette)
 
 
 # ---------------------------------------------------------------------

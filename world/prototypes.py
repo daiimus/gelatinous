@@ -2440,12 +2440,14 @@ CIGARETTE_BASE = {
     "aliases": ["cig", "smoke"],
     "desc": "A slim, hand-rolled cigarette.",
     "attrs": [
-        ("brand", "neutral"),
+        ("substance", "tobacco_neutral"),
         ("uses_left", 6),
         ("max_uses", 6),
     ],
     "tags": [
-        ("cigarette", "item_role"),
+        # Delivery-method classification (#456) — what verbs apply
+        # to this item.  Joints, cigars, pipes will share this tag.
+        ("smoke", "delivery_method"),
     ],
 }
 
@@ -2454,34 +2456,34 @@ CIGARETTE_NEUTRAL = {
     "key": "cigarette",
     "desc": "A standard filtered cigarette, mild tobacco wrapped in white paper.",
     "attrs": [
-        ("brand", "neutral"),
+        ("substance", "tobacco_neutral"),
     ],
 }
 
 CIGARETTE_NOIR = {
     "prototype_parent": "CIGARETTE_BASE",
     "key": "Noir cigarette",
-    "aliases": ["noir cig", "noir", "cig"],
+    "aliases": ["noir cig", "noir", "cig", "smoke"],
     "desc": (
         "An unfiltered cigarette in dark paper, the brand stamp on "
         "the side faded to near-illegible.  Smells of something "
         "older than tobacco."
     ),
     "attrs": [
-        ("brand", "noir"),
+        ("substance", "tobacco_noir"),
     ],
 }
 
 
 # Pack — auto-spawns ``capacity`` cigarettes of ``cigarette_prototype``
-# at creation, stamping each with the pack's ``brand``.
+# at creation, stamping each with the pack's ``substance``.
 CIGARETTE_PACK_BASE = {
     "typeclass": "typeclasses.smoke.CigarettePack",
     "key": "pack of cigarettes",
     "aliases": ["pack", "cigarettes"],
     "desc": "A cardboard pack of cigarettes.",
     "attrs": [
-        ("brand", "neutral"),
+        ("substance", "tobacco_neutral"),
         ("capacity", 10),
         ("cigarette_prototype", "CIGARETTE_NEUTRAL"),
     ],
@@ -2495,7 +2497,7 @@ CIGARETTE_PACK_NEUTRAL = {
         "lettering is generic block print, no logo, no flourish."
     ),
     "attrs": [
-        ("brand", "neutral"),
+        ("substance", "tobacco_neutral"),
         ("cigarette_prototype", "CIGARETTE_NEUTRAL"),
     ],
 }
@@ -2509,7 +2511,7 @@ CIGARETTE_PACK_NOIR = {
         "tarnished silver.  Heavier than it looks."
     ),
     "attrs": [
-        ("brand", "noir"),
+        ("substance", "tobacco_noir"),
         ("cigarette_prototype", "CIGARETTE_NOIR"),
     ],
 }

@@ -78,16 +78,24 @@ class _FakeItem:
         key="cigarette",
         aliases=None,
         role_tags: list[tuple[str, str]] | None = None,
-        brand="neutral",
+        substance="tobacco_neutral",
         uses_left=6,
         max_uses=6,
+        legacy_brand=None,
     ):
         self.key = key
         self.aliases = list(aliases or [])
         self.tags = _FakeTags()
         for tag, category in (role_tags or []):
             self.tags.add(tag, category=category)
-        self.db = _FakeDB(brand=brand)
+        # ``legacy_brand`` covers pre-#456 items: db.brand but no
+        # db.substance.  ``substance`` covers the post-#456 shape.
+        db_kwargs = {}
+        if legacy_brand is not None:
+            db_kwargs["brand"] = legacy_brand
+        else:
+            db_kwargs["substance"] = substance
+        self.db = _FakeDB(**db_kwargs)
         self.attributes = _FakeAttributes(
             uses_left=uses_left, max_uses=max_uses,
         )
@@ -97,10 +105,10 @@ class _FakeItem:
         self.deleted = True
 
 
-def _cigarette(brand="neutral", **kw):
+def _cigarette(substance="tobacco_neutral", **kw):
     return _FakeItem(
-        role_tags=[(sm.CIGARETTE_ROLE, sm.ITEM_ROLE_CATEGORY)],
-        brand=brand,
+        role_tags=[(sm.SMOKE_DELIVERY, sm.DELIVERY_METHOD_CATEGORY)],
+        substance=substance,
         **kw,
     )
 
@@ -109,7 +117,7 @@ def _lighter():
     return _FakeItem(
         key="lighter",
         role_tags=[(sm.LIGHTER_ROLE, sm.ITEM_ROLE_CATEGORY)],
-        brand=None,
+        substance=None,
     )
 
 
@@ -204,6 +212,65 @@ class TestHeldItems(TestCase):
 # ---------------------------------------------------------------------
 
 
+class TestIsSmokableLegacyMigration(TestCase):
+    """The new delivery-method tag is the source of truth, but
+    pre-#456 cigarettes still carry the old ``("cigarette",
+    "item_role")`` tag.  ``is_smokable`` migrates them on first
+    access."""
+
+    def test_new_tag_recognised(self):
+        item = _cigarette()
+        self.assertTrue(sm.is_smokable(item))
+
+    def test_legacy_tag_migrated_in_place(self):
+        item = _FakeItem(
+            role_tags=[(sm.CIGARETTE_ROLE, sm.ITEM_ROLE_CATEGORY)],
+        )
+        # First access returns True AND mutates the tag set.
+        self.assertTrue(sm.is_smokable(item))
+        self.assertTrue(
+            item.tags.has(
+                sm.SMOKE_DELIVERY, category=sm.DELIVERY_METHOD_CATEGORY,
+            )
+        )
+        self.assertFalse(
+            item.tags.has(
+                sm.CIGARETTE_ROLE, category=sm.ITEM_ROLE_CATEGORY,
+            )
+        )
+
+    def test_no_tag_is_not_smokable(self):
+        item = _FakeItem(role_tags=[])
+        self.assertFalse(sm.is_smokable(item))
+
+
+class TestGetSubstance(TestCase):
+    def test_reads_substance_attribute(self):
+        item = _cigarette(substance="tobacco_noir")
+        self.assertEqual(sm.get_substance(item), "tobacco_noir")
+
+    def test_legacy_brand_promoted_to_substance(self):
+        """Pre-#456 cigarettes stored the identifier in ``db.brand``.
+        ``get_substance`` returns it AND copies the value to
+        ``db.substance`` so future reads see a single field."""
+        item = _FakeItem(
+            role_tags=[(sm.SMOKE_DELIVERY, sm.DELIVERY_METHOD_CATEGORY)],
+            legacy_brand="noir",
+        )
+        self.assertEqual(sm.get_substance(item), "noir")
+        # Now stamped onto db.substance.
+        self.assertEqual(item.db.substance, "noir")
+
+    def test_returns_none_when_neither_attribute_set(self):
+        item = _FakeItem(
+            role_tags=[(sm.SMOKE_DELIVERY, sm.DELIVERY_METHOD_CATEGORY)],
+            substance=None,
+        )
+        # Clear the substance the helper might have stamped in init.
+        item.db = _FakeDB()
+        self.assertIsNone(sm.get_substance(item))
+
+
 class TestLitState(TestCase):
     def test_unlit_by_default(self):
         cig = _cigarette()
@@ -228,22 +295,44 @@ class TestLitState(TestCase):
 
 class TestMessagePicker(TestCase):
     def test_neutral_picks_from_neutral_bank(self):
-        self_msg, room_template = sm.pick_smoke_message(sm.BRAND_NEUTRAL)
+        self_msg, room_template = sm.pick_smoke_message(
+            sm.SUBSTANCE_TOBACCO_NEUTRAL,
+        )
         self.assertIn(
-            (self_msg, room_template), sm.SMOKE_MESSAGES[sm.BRAND_NEUTRAL],
+            (self_msg, room_template),
+            sm.SMOKE_MESSAGES[sm.SUBSTANCE_TOBACCO_NEUTRAL],
         )
 
     def test_noir_picks_from_noir_bank(self):
-        self_msg, room_template = sm.pick_smoke_message(sm.BRAND_NOIR)
+        self_msg, room_template = sm.pick_smoke_message(
+            sm.SUBSTANCE_TOBACCO_NOIR,
+        )
         self.assertIn(
-            (self_msg, room_template), sm.SMOKE_MESSAGES[sm.BRAND_NOIR],
+            (self_msg, room_template),
+            sm.SMOKE_MESSAGES[sm.SUBSTANCE_TOBACCO_NOIR],
         )
 
-    def test_unknown_brand_falls_back_to_neutral(self):
-        self_msg, room_template = sm.pick_smoke_message("unknown-brand")
+    def test_unknown_substance_falls_back_to_neutral(self):
+        self_msg, room_template = sm.pick_smoke_message("unknown-substance")
         self.assertIn(
-            (self_msg, room_template), sm.SMOKE_MESSAGES[sm.BRAND_NEUTRAL],
+            (self_msg, room_template),
+            sm.SMOKE_MESSAGES[sm.SUBSTANCE_TOBACCO_NEUTRAL],
         )
+
+    def test_legacy_brand_keys_still_resolve(self):
+        """Pre-#456 cigarettes had ``brand=\"neutral\"`` /
+        ``brand=\"noir\"`` — the picker honours those values via
+        the legacy mapping."""
+        legacy_neutral, _ = sm.pick_smoke_message("neutral")
+        legacy_noir, _ = sm.pick_smoke_message("noir")
+        all_neutral_self = [
+            s for s, _ in sm.SMOKE_MESSAGES[sm.SUBSTANCE_TOBACCO_NEUTRAL]
+        ]
+        all_noir_self = [
+            s for s, _ in sm.SMOKE_MESSAGES[sm.SUBSTANCE_TOBACCO_NOIR]
+        ]
+        self.assertIn(legacy_neutral, all_neutral_self)
+        self.assertIn(legacy_noir, all_noir_self)
 
     def test_room_templates_use_actor_placeholder(self):
         for brand, bank in sm.SMOKE_MESSAGES.items():
@@ -303,7 +392,7 @@ class TestCmdLight(TestCase):
 
     def test_other_light_routes_via_identity(self):
         room = _FakeRoom()
-        target_cig = _cigarette(brand="noir")
+        target_cig = _cigarette(substance="tobacco_noir")
         target = _FakeCharacter(
             key="Bob", location=room,
             hands={"left_hand": target_cig},
@@ -338,9 +427,9 @@ class TestCmdSmoke(TestCase):
         with patch("commands.CmdSmoke.msg_room_identity"):
             cmd.func()
 
-    def _setup(self, *, brand="neutral", uses_left=6, lit=True):
+    def _setup(self, *, substance="tobacco_neutral", uses_left=6, lit=True):
         room = _FakeRoom()
-        cig = _cigarette(brand=brand, uses_left=uses_left, max_uses=6)
+        cig = _cigarette(substance=substance, uses_left=uses_left, max_uses=6)
         if lit:
             sm.set_lit(cig, True)
         caller = _FakeCharacter(

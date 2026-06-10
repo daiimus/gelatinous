@@ -654,50 +654,56 @@ def can_be_used(item):
 def use_item(item):
     """
     Use the item, reducing uses left. Destroys item when uses reach 0.
-    
+
     Returns:
         dict: {"success": bool, "destroyed": bool, "message": str}
+
+    Medical-specific wrapper around
+    :func:`world.consumables.consume_use` — adds the medical-item
+    role gate and the "crumbles away" broadcast on destruction.
+    Future medical commands and the smoke commands share the same
+    decrement core via the generic helper.
     """
+    from world.consumables import consume_use
+
     if not is_medical_item(item):
         return {"success": False, "destroyed": False, "message": "Item is not a medical item"}
-        
+
     uses_left = item.attributes.get("uses_left", 1)
-    max_uses = item.attributes.get("max_uses", 1)
-    
     if uses_left <= 0:
         return {"success": False, "destroyed": False, "message": "Item is already empty"}
-    
-    # Reduce uses by 1
+
+    max_uses = item.attributes.get("max_uses", 1)
+    item_name = item.get_display_name()
+
+    def _broadcast_destroyed():
+        # Notify holders/location before destruction.
+        loc = getattr(item, "location", None)
+        if loc is None:
+            return
+        if hasattr(loc, "msg"):
+            # Item is held by a character.
+            loc.msg(f"{item_name} is now empty and crumbles away.")
+        elif hasattr(loc, "msg_contents"):
+            # Item is in a room.
+            loc.msg_contents(f"{item_name} crumbles away, now empty.")
+
+    outcome = consume_use(item, on_destroy=_broadcast_destroyed)
+    if outcome["destroyed"]:
+        return {
+            "success": True,
+            "destroyed": True,
+            "message": (
+                f"{item_name} used up and destroyed "
+                f"({max_uses}/{max_uses} uses)"
+            ),
+        }
     new_uses = uses_left - 1
-    item.attributes.add("uses_left", new_uses)
-    
-    # Check if item should be destroyed
-    if new_uses <= 0:
-        item_name = item.get_display_name()
-        
-        # Notify holders/location before destruction
-        if hasattr(item, 'location') and item.location:
-            if hasattr(item.location, 'msg'):
-                # Item is held by a character
-                item.location.msg(f"{item_name} is now empty and crumbles away.")
-            elif hasattr(item.location, 'msg_contents'):
-                # Item is in a room
-                item.location.msg_contents(f"{item_name} crumbles away, now empty.")
-        
-        # Destroy the item
-        item.delete()
-        
-        return {
-            "success": True, 
-            "destroyed": True, 
-            "message": f"{item_name} used up and destroyed ({max_uses}/{max_uses} uses)"
-        }
-    else:
-        return {
-            "success": True, 
-            "destroyed": False, 
-            "message": f"Item used ({max_uses - new_uses}/{max_uses} uses)"
-        }
+    return {
+        "success": True,
+        "destroyed": False,
+        "message": f"Item used ({max_uses - new_uses}/{max_uses} uses)",
+    }
 
 
 def get_stat_requirement(item):

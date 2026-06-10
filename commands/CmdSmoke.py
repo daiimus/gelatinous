@@ -1,17 +1,22 @@
-"""Smoke / light / snuff commands (issue #454).
+"""Smoke / light / snuff commands.
+
+Issues #454 (initial) and #456 (substance / delivery-method
+generalisation).
 
 Three commands share the same shape:
 
-* They identify cigarettes / lighters by their role Tag
-  (``cigarette`` / ``lighter`` in the ``item_role`` category) —
-  prototype-defined items, not bespoke typeclasses.
+* Smokables are identified by the ``("smoke", "delivery_method")``
+  tag; lighters by ``("lighter", "item_role")``.  Future joints,
+  cigars, pipes carry the same smoke tag and route through these
+  commands unchanged.  See
+  ``specs/SUBSTANCES_AND_DELIVERY_SPEC.md`` for the layering.
 * They use the held-hand surface (``caller.hands``) to enforce
-  "the cigarette / lighter must be in your hand."
+  "the smokable / lighter must be in your hand."
 * Per-observer broadcasts route through
   :func:`world.identity_utils.msg_room_identity`.
 
 The interesting wrinkle is :class:`CmdLight`'s cross-character
-syntax: ``light bob's cigarette`` lights a cigarette held in Bob's
+syntax: ``light bob's cigarette`` lights a smokable held in Bob's
 hand using the caller's lighter.  ``parse_possessive_target`` in
 :mod:`world.smoke` does the split; ``resolve_character_target``
 from :mod:`commands._identity_targeting` does the identity-aware
@@ -23,12 +28,13 @@ from evennia import Command
 
 from commands._identity_targeting import resolve_character_target
 from world.identity_utils import msg_room_identity
+from world.consumables import consume_use
 from world.smoke import (
-    consume_puff,
-    find_held_cigarette,
     find_held_lighter,
-    is_cigarette,
+    find_held_smokable,
+    get_substance,
     is_lit,
+    is_smokable,
     parse_possessive_target,
     pick_burnt_out_message,
     pick_light_other_message,
@@ -62,14 +68,14 @@ def _aliases_of(item) -> list[str]:
         return []
 
 
-def _find_held_cigarette_matching(character, phrase: str):
-    """Return the cigarette in ``character``'s hand that matches
+def _find_held_smokable_matching(character, phrase: str):
+    """Return the smokable in ``character``'s hand that matches
     ``phrase`` (case-insensitive substring against key / aliases),
     or None.  When ``phrase`` is empty, returns the first held
-    cigarette."""
+    smokable."""
     phrase = (phrase or "").strip().lower()
     hands = getattr(character, "hands", None) or {}
-    candidates = [item for item in hands.values() if item and is_cigarette(item)]
+    candidates = [item for item in hands.values() if item and is_smokable(item)]
     if not phrase:
         return candidates[0] if candidates else None
     for item in candidates:
@@ -132,7 +138,7 @@ class CmdLight(Command):
         self._light_other(caller, owner_phrase, cigarette_phrase, lighter)
 
     def _light_own(self, caller, phrase, lighter):
-        cigarette = _find_held_cigarette_matching(caller, phrase)
+        cigarette = _find_held_smokable_matching(caller, phrase)
         if cigarette is None:
             caller.msg(
                 "You aren't holding a cigarette matching that."
@@ -168,7 +174,7 @@ class CmdLight(Command):
             self._light_own(caller, cigarette_phrase, lighter)
             return
 
-        cigarette = _find_held_cigarette_matching(target, cigarette_phrase)
+        cigarette = _find_held_smokable_matching(target, cigarette_phrase)
         if cigarette is None:
             tname = target.get_display_name(caller)
             caller.msg(f"{tname} isn't holding a cigarette matching that.")
@@ -229,20 +235,25 @@ class CmdSmoke(Command):
     def func(self):
         caller = self.caller
         args = (self.args or "").strip()
-        cigarette = _find_held_cigarette_matching(caller, args)
+        if not args:
+            caller.msg(
+                "Smoke what?  Name a smokable you're holding "
+                "(``smoke cigarette`` / ``smoke smoke`` / "
+                "``smoke joint``)."
+            )
+            return
+        cigarette = _find_held_smokable_matching(caller, args)
         if cigarette is None:
             caller.msg(
-                "You aren't holding a cigarette matching that."
-                if args else
-                "You aren't holding a cigarette."
+                f"You aren't holding a smokable matching '{args}'."
             )
             return
         if not is_lit(cigarette):
             caller.msg("It isn't lit.  Light it first.")
             return
 
-        brand = cigarette.db.brand
-        self_msg, room_template = pick_smoke_message(brand)
+        substance = get_substance(cigarette)
+        self_msg, room_template = pick_smoke_message(substance)
         caller.msg(self_msg)
         if caller.location is not None:
             msg_room_identity(
@@ -252,10 +263,10 @@ class CmdSmoke(Command):
                 exclude=[caller],
             )
 
-        # Decrement puff count.  ``consume_puff`` deletes the
-        # cigarette when the last puff goes; we emit the burnout
-        # broadcast on that transition.
-        outcome = consume_puff(cigarette)
+        # Decrement puff count via the unified consumable helper.
+        # When the last puff goes the item deletes itself; we emit
+        # the burnout broadcast on that transition.
+        outcome = consume_use(cigarette)
         if outcome.get("destroyed"):
             burnt_self, burnt_room = pick_burnt_out_message()
             caller.msg(burnt_self)
@@ -295,12 +306,13 @@ class CmdSnuff(Command):
     def func(self):
         caller = self.caller
         args = (self.args or "").strip()
-        cigarette = _find_held_cigarette_matching(caller, args)
+        if not args:
+            caller.msg("Snuff what?  Name a smokable you're holding.")
+            return
+        cigarette = _find_held_smokable_matching(caller, args)
         if cigarette is None:
             caller.msg(
-                "You aren't holding a cigarette matching that."
-                if args else
-                "You aren't holding a cigarette."
+                f"You aren't holding a smokable matching '{args}'."
             )
             return
         if not is_lit(cigarette):
