@@ -1637,7 +1637,7 @@ class CmdCatch(Command):
             catcher="{actor}", object=obj.key
         )
         msg_room_identity(
-            room=self.caller.location,
+            location=self.caller.location,
             template=observer_template,
             char_refs={"actor": self.caller},
             exclude=[self.caller],

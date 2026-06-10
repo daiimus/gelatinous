@@ -4,6 +4,30 @@
 
 **Status**: ✅ **PRODUCTION READY** - All components implemented and tested
 
+### Test Coverage & Known Divergences (issue #471)
+
+Current behavior is pinned by the characterization suite at
+`world/tests/test_throw_characterization.py` (56 tests: parsing,
+validation, flight, landing/proximity, weapon-hit resolution,
+deflection, pull, catch). That suite is the contract for the planned
+restructure. Two findings from the line-read it encodes:
+
+- **Weapon-throw flight is dead code.** `func()` returns for *every*
+  `db.is_throwing_weapon` object (targeted → redirects to `attack`;
+  untargeted → guidance message), so the `handle_weapon_throw` /
+  `is_weapon=True` flight path is unreachable from the command. The
+  "Weapon Detection Flow" described below documents intent, not
+  current routing — `resolve_weapon_hit` only runs via the
+  sticky-grenade landing route today. The restructure should either
+  delete the dead path or deliberately wire it back.
+- **Catch announce fixed.** `catch_object` passed `room=` to
+  `msg_room_identity` (parameter is `location`), so every successful
+  catch raised TypeError before timer cancellation — the caught
+  object would "arrive" at its destination out of the catcher's
+  hands two seconds later, breaking the hot-potato mechanic. Fixed
+  with the characterization PR; the success-path test pins the
+  repaired flow.
+
 ### **Implemented Components**
 - ✅ **CmdThrow** - Complete 4-syntax throwing system
 - ✅ **CmdPull** - Pin pulling mechanism with timer management  
