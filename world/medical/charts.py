@@ -143,14 +143,79 @@ def get_chart(target) -> Optional[dict]:
     return dict(raw)
 
 
+#: Process-local set of targets whose chart writes are currently
+#: being batched.  Populated by :class:`batch_chart_writes` on enter
+#: and drained on exit, when the deferred ``save_chart`` call lands.
+#: A target may only be batched once at a time (the chart runner is
+#: not re-entrant on a single subject), so a simple set suffices.
+_BATCHING_TARGETS: set = set()
+
+
 def save_chart(target, chart: dict) -> None:
     """Persist ``chart`` onto ``target.db.medical_chart``.
 
     Updates ``last_modified_at`` automatically; callers should not
     pre-stamp the timestamp themselves.
+
+    When called from inside a :class:`batch_chart_writes` block for
+    the same target, the descriptor write is skipped — the chart
+    mutates only in memory and the batched flush lands on context
+    exit.  This collapses the 3+ writes per chart-runner step into
+    a single write per commence pass.
     """
     chart["last_modified_at"] = time.time()
+    dbref = getattr(target, "dbref", None)
+    if dbref in _BATCHING_TARGETS:
+        # Stash the latest snapshot on the target so the batch
+        # context can flush it on exit.  Uses a runtime attribute
+        # (descriptor-free) so the staging cost is a dict lookup,
+        # not a pickle round-trip.
+        target._runtime_chart_pending_flush = chart
+        return
     target.db.medical_chart = chart
+
+
+class batch_chart_writes:
+    """Context manager that defers ``save_chart`` writes to a single
+    flush on exit.
+
+    The chart runner (``commence_chart``) calls ``save_chart``
+    multiple times per step transition (mark RUNNING, mark DONE,
+    attach result, advance to next step).  Wrapping the recursive
+    pass in this context replaces that with one descriptor write
+    at the end:
+
+        with batch_chart_writes(target):
+            commence_chart(target, actor)
+
+    Nested entries on the same target are no-ops (the outermost
+    context owns the flush).  Exceptions inside the block still
+    flush the most recent in-memory snapshot — partial progress is
+    worth more than nothing.
+    """
+
+    def __init__(self, target):
+        self.target = target
+        self._dbref = getattr(target, "dbref", None)
+        self._owns_batch = False
+
+    def __enter__(self):
+        if self._dbref is not None and self._dbref not in _BATCHING_TARGETS:
+            _BATCHING_TARGETS.add(self._dbref)
+            self._owns_batch = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        if not self._owns_batch:
+            return False
+        _BATCHING_TARGETS.discard(self._dbref)
+        pending = getattr(
+            self.target, "_runtime_chart_pending_flush", None,
+        )
+        if pending is not None:
+            self.target.db.medical_chart = pending
+            self.target._runtime_chart_pending_flush = None
+        return False
 
 
 def discard_chart(target) -> None:
@@ -503,32 +568,39 @@ def commence_chart(target, actor) -> Optional[dict]:
         hook pops it onto the step's ``result`` field before
         saving, so the surgeon can re-read the finding later by
         reopening the chart.
+
+        Wrapped in :class:`batch_chart_writes` so the mark-done
+        write and the next-step's mark-running write collapse to
+        a single descriptor write per transition.  Skipped /
+        failed verbs in the recursive chain ride the same batch.
         """
-        latest = get_chart(target_arg)
-        if latest is None:
-            return
-        # Pop any pending step result the resolver left for us.
-        pending_result = None
-        target_db = getattr(target_arg, "db", None)
-        if target_db is not None:
-            state = getattr(target_db, "surgical_state", None) or {}
-            if hasattr(state, "get"):
-                pending_result = state.get("pending_step_result")
-                if pending_result is not None:
-                    state["pending_step_result"] = None
-                    target_db.surgical_state = state
-        # Find the step that was running, attach the result, and
-        # mark it done.
-        for s in latest.get("steps") or ():
-            if s.get("status") == RUNNING:
-                if pending_result is not None:
-                    s["result"] = pending_result
-                s["status"] = DONE
-                break
-        save_chart(target_arg, latest)
-        # Recursive advancement — runs the next pending step, or
-        # finalises the chart status if none remain.
-        commence_chart(target_arg, actor_arg)
+        with batch_chart_writes(target_arg):
+            latest = get_chart(target_arg)
+            if latest is None:
+                return
+            # Pop any pending step result the resolver left for us.
+            pending_result = None
+            target_db = getattr(target_arg, "db", None)
+            if target_db is not None:
+                state = getattr(target_db, "surgical_state", None) or {}
+                if hasattr(state, "get"):
+                    pending_result = state.get("pending_step_result")
+                    if pending_result is not None:
+                        state["pending_step_result"] = None
+                        target_db.surgical_state = state
+            # Find the step that was running, attach the result,
+            # and mark it done.
+            for s in latest.get("steps") or ():
+                if s.get("status") == RUNNING:
+                    if pending_result is not None:
+                        s["result"] = pending_result
+                    s["status"] = DONE
+                    break
+            save_chart(target_arg, latest)
+            # Recursive advancement — runs the next pending step,
+            # or finalises the chart status if none remain.  Both
+            # branches' writes ride the same batch.
+            commence_chart(target_arg, actor_arg)
 
     from world.medical.procedures import start_procedure
     try:

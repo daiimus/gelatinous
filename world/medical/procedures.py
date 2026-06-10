@@ -13,7 +13,7 @@ Design contract
   organ snapshot via :func:`get_organ_snapshot`.  Same dispatch path
   for every target type.
 * **Two-phase resolution.**  Each verb opens a procedure: the
-  attempt is staged on ``target.db.surgical_state["active_procedure"]``
+  attempt is staged on a runtime ``_runtime_active_procedure`` slot
   with a delay duration; resolution fires when the delay elapses,
   rolling skill and applying outcome.  Interruptions during the
   window route through :func:`interrupt_procedure`.
@@ -170,13 +170,43 @@ def organs_at_location(target, location: str) -> list[tuple[str, dict]]:
 
 
 def _state(target) -> dict:
-    """Lazy-init and return ``target.db.surgical_state``."""
+    """Lazy-init and return ``target.db.surgical_state``.
+
+    The persistent slice — incisions, sutured stumps, the
+    chart-runner's ``pending_step_result`` pickup slot.  The
+    in-flight ``active_procedure`` record lives separately on a
+    plain runtime attribute (``_runtime_active_procedure``), since
+    its lifetime is bounded by the in-process ``evennia_delay``
+    callback that can't survive a restart anyway.  See
+    :func:`get_active_procedure` / :func:`_set_active_procedure`.
+    """
     if target.db.surgical_state is None:
         target.db.surgical_state = {
             "incisions": {},
-            "active_procedure": None,
         }
     return target.db.surgical_state
+
+
+# ---------------------------------------------------------------------
+# active_procedure runtime tier
+# ---------------------------------------------------------------------
+#
+# The record is bound to an in-process ``evennia_delay`` callback —
+# a process restart drops the callback (we pass ``persistent=False``)
+# so any persisted record would be a half-truth.  Keep it as a plain
+# Python attribute on the target.  The chart's step ``status`` stays
+# persistent (the surgeon needs to re-commence post-restart); only the
+# transient procedure record is volatile.
+
+
+def get_active_procedure(target) -> Optional[dict]:
+    """Return the current in-flight procedure record, or ``None``."""
+    return getattr(target, "_runtime_active_procedure", None)
+
+
+def _set_active_procedure(target, record: Optional[dict]) -> None:
+    """Store ``record`` (or ``None`` to clear) on the runtime tier."""
+    setattr(target, "_runtime_active_procedure", record)
 
 
 def has_incision(target, location: str) -> bool:
@@ -244,8 +274,7 @@ def open_incision_locations(target) -> list[str]:
 
 def is_procedure_active(target) -> bool:
     """True when ``target`` has a procedure in-flight."""
-    state = _state(target)
-    return state.get("active_procedure") is not None
+    return get_active_procedure(target) is not None
 
 
 #: In-memory map of ``target.dbref`` → ``on_complete`` callable.
@@ -290,9 +319,10 @@ def start_procedure(
         "duration_s": duration,
         "kwargs": dict(kwargs),
     }
-    state = _state(target)
-    state["active_procedure"] = record
-    target.db.surgical_state = state
+    # active_procedure rides the runtime tier — the evennia_delay
+    # callback is in-process and would be lost on restart anyway,
+    # so persistence here would be a half-truth.
+    _set_active_procedure(target, record)
 
     if on_complete is not None:
         dbref = getattr(target, "dbref", None)
@@ -319,10 +349,8 @@ def interrupt_procedure(target, reason: str = "interrupted") -> Optional[dict]:
     is marked as ``FAILED`` with outcome ``"interrupted"`` so the
     surgeon can see why the chain stopped on re-entry.
     """
-    state = _state(target)
-    record = state.get("active_procedure")
-    state["active_procedure"] = None
-    target.db.surgical_state = state
+    record = get_active_procedure(target)
+    _set_active_procedure(target, None)
 
     dbref = getattr(target, "dbref", None)
     if dbref:
@@ -360,14 +388,12 @@ def _resolve_procedure_callback(target) -> None:
     intentionally idempotent: if the active_procedure was cleared in
     the meantime (interrupted, manually cancelled), we no-op.
     """
-    state = _state(target)
-    record = state.get("active_procedure")
+    record = get_active_procedure(target)
     if record is None:
         return  # interrupted / already resolved
     # Clear the slot first so a resolver-triggered side effect can't
     # re-enter.
-    state["active_procedure"] = None
-    target.db.surgical_state = state
+    _set_active_procedure(target, None)
 
     from evennia.objects.models import ObjectDB
     actor_dbref = record.get("actor_dbref")
