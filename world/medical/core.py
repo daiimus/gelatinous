@@ -49,7 +49,7 @@ class Organ:
         
         # Core properties
         self.max_hp = self.data.get("max_hp", 10)
-        self.current_hp = self.max_hp  # Start at full health
+        self._current_hp = self.max_hp  # Start at full health
         self.container = self.data.get("container", "unknown")
         # Display surface for wound rendering (issue #346).  Most organs
         # render their wounds at the bulk container ("heart" wounds → the
@@ -125,6 +125,25 @@ class Organ:
         # replacement.
         self.dressing_rate = 0
         
+    @property
+    def current_hp(self):
+        return self._current_hp
+
+    @current_hp.setter
+    def current_hp(self, value):
+        """Set organ HP, invalidating the parent state's caches.
+
+        Every mutation path — combat damage, healing ticks, surgical
+        procedures, admin commands, severance — assigns this
+        attribute, so routing invalidation through the setter is what
+        makes the cached death verdict (issue #462) safe: no caller
+        discipline required.
+        """
+        self._current_hp = value
+        state = getattr(self, "medical_state", None)
+        if state is not None:
+            state._invalidate_derived_state()
+
     def is_destroyed(self):
         """Returns True if organ HP is 0 or below."""
         return self.current_hp <= 0
@@ -405,15 +424,25 @@ class Organ:
         # Auto-progression from healing → scarred is gated on the
         # Time System (#301) for time-based ticks.
         
+    def _invalidate_parent_state(self):
+        """Invalidate the owning state's caches (organ-bound
+        conditions feed functionality, hence capacities and the
+        death verdict)."""
+        state = getattr(self, "medical_state", None)
+        if state is not None:
+            state._invalidate_derived_state()
+
     def add_condition(self, condition):
         """Add a medical condition to this organ."""
         if condition not in self.conditions:
             self.conditions.append(condition)
-            
+            self._invalidate_parent_state()
+
     def remove_condition(self, condition):
         """Remove a medical condition from this organ."""
         if condition in self.conditions:
             self.conditions.remove(condition)
+            self._invalidate_parent_state()
             
     def to_dict(self):
         """
@@ -514,11 +543,19 @@ class MedicalState:
         self.organs = {}
         self.conditions = []
         
+        # Cached death verdict (issue #462).  ``None`` = stale,
+        # recomputed lazily by :meth:`is_dead`.  Invalidated by the
+        # ``blood_level`` / ``Organ.current_hp`` setters and by
+        # condition add/remove — every input that can flip the
+        # verdict.  Defined before the vital-sign assignments below
+        # so the ``blood_level`` property setter can touch it.
+        self._cached_is_dead = None
+
         # Vital signs
         self.blood_level = 100.0  # Percentage of normal blood volume
         self.pain_level = 0.0     # Current pain accumulation
         self.consciousness = 1.0  # Current consciousness level (0.0 to 1.0)
-        
+
         # Cache for expensive calculations
         self._capacity_cache = {}
         self._cache_dirty = True
@@ -547,6 +584,26 @@ class MedicalState:
             organ.medical_state = self
             self.organs[organ_name] = organ
             
+    @property
+    def blood_level(self):
+        return self._blood_level
+
+    @blood_level.setter
+    def blood_level(self, value):
+        """Set blood level, invalidating the cached death verdict.
+
+        Bleeding ticks, transfusions, and admin heals all assign this
+        attribute directly — the setter keeps the death cache honest
+        without requiring those callers to know about it.
+        """
+        self._blood_level = value
+        self._cached_is_dead = None
+
+    def _invalidate_derived_state(self):
+        """Mark all derived caches stale after a medical mutation."""
+        self._cached_is_dead = None
+        self._cache_dirty = True
+
     def get_organ(self, organ_name):
         """Get organ by name, creating if it doesn't exist.
 
@@ -696,6 +753,21 @@ class MedicalState:
         return self.consciousness < (CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD / 100.0)
 
     def is_dead(self):
+        """Return the (cached) death verdict.
+
+        The full computation walks four body capacities (organ +
+        condition sweeps), and ``Character.msg`` consults this on
+        every message — so the verdict is cached and recomputed only
+        after a mutation invalidates it (issue #462).  Invalidation
+        rides the ``Organ.current_hp`` / ``blood_level`` setters and
+        condition add/remove, covering every input of
+        :meth:`_compute_is_dead`.
+        """
+        if self._cached_is_dead is None:
+            self._cached_is_dead = self._compute_is_dead()
+        return self._cached_is_dead
+
+    def _compute_is_dead(self):
         """Return True when the character has crossed a death threshold.
 
         Enforces exactly two death conditions, both organ-only and
@@ -844,7 +916,10 @@ class MedicalState:
             
         if condition not in self.conditions:
             self.conditions.append(condition)
-            
+            # Conditions can disable organs outright (capacity → 0),
+            # so they're a death-verdict input.
+            self._invalidate_derived_state()
+
             try:
                 from world.combat.debug import get_splattercast
                 splattercast = get_splattercast()
@@ -886,7 +961,8 @@ class MedicalState:
         """
         if condition in self.conditions:
             self.conditions.remove(condition)
-            
+            self._invalidate_derived_state()
+
             # Stop ticker if condition had one
             if hasattr(condition, 'stop_condition'):
                 condition.stop_condition()

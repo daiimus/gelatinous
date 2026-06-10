@@ -7,6 +7,7 @@ ticking them at regular intervals and cleaning up when no conditions remain.
 
 from evennia import DefaultScript
 from world.combat.debug import get_splattercast
+from world.medical.constants import MEDICAL_TICK_INTERVAL
 
 
 # ---------------------------------------------------------------------
@@ -92,7 +93,12 @@ class MedicalScript(DefaultScript):
         """Called when script is first created."""
         self.key = "medical_script"  # Use consistent key for searching
         self.desc = f"Medical condition manager for {self.obj.key}"
-        self.interval = 12  # Tick every 12 seconds (was 60 for production)
+        # Production tick rate — the per-tick magnitudes in
+        # world/medical/constants.py (blood-loss %, recovery rates)
+        # are tuned against this interval.  The old hardcoded 12s was
+        # a testing leftover that ran medical progression (and its
+        # per-character CPU cost) 5x fast (issue #462).
+        self.interval = MEDICAL_TICK_INTERVAL
         self.persistent = True
         self.start_delay = True  # Wait before first regular execution
         

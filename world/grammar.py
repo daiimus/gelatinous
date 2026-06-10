@@ -15,6 +15,7 @@ See specs/GRAMMAR_ENGINE_SPEC.md for the full specification.
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 
 import inflect
 
@@ -268,6 +269,18 @@ def get_article(noun_phrase: str, definite: bool = False) -> str:
     """
     if definite:
         return "the"
+    return _indefinite_article(noun_phrase)
+
+
+@lru_cache(maxsize=4096)
+def _indefinite_article(noun_phrase: str) -> str:
+    """Phoneme-aware "a"/"an" for ``noun_phrase``, memoized.
+
+    ``inflect``'s ``a()`` was profiled at ~84µs per call — roughly a
+    fifth of the per-observer display-name path — and the inputs are
+    a small, hot set (sdescs and item short descriptions), so the
+    cache pays for itself immediately (issue #462).
+    """
     result = _engine.a(noun_phrase)  # e.g. "a lanky man" or "an athletic dame"
     return result.split(" ", 1)[0]   # Extract just the article
 

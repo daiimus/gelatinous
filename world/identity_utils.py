@@ -94,6 +94,18 @@ def msg_room_identity(
             continue
         if not hasattr(observer, "msg"):
             continue
+        # Session gate (issue #462): only render for observers with a
+        # connected session.  Everything in a room has ``.msg`` —
+        # items, corpses, and the hundreds of NPCs a scene can hold —
+        # and per-observer display-name resolution is the most
+        # expensive render path in the game.  Messages to session-less
+        # objects are discarded by Evennia anyway.  When NPC AI grows
+        # message-driven perception, it should hook the action source
+        # (e.g. combat handler events), not this player-facing
+        # broadcast.
+        sessions = getattr(observer, "sessions", None)
+        if sessions is None or not sessions.count():
+            continue
 
         resolved = template
         for placeholder, char in char_refs.items():
