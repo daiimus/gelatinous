@@ -314,11 +314,8 @@ def create_character_from_template(account, template, sex="ambiguous"):
     
     # Debug: Verify sex was set correctly
     from world.combat.debug import get_splattercast
-    try:
-        splattercast = get_splattercast()
-        splattercast.msg(f"CHARCREATE_SEX_SET: {char.key} sex set to '{sex}', current value: '{char.sex}', gender property: '{char.gender}'")
-    except Exception:
-        pass
+    splattercast = get_splattercast()
+    splattercast.msg(f"CHARCREATE_SEX_SET: {char.key} sex set to '{sex}', current value: '{char.sex}', gender property: '{char.gender}'")
     
     # Set defaults
     # death_count starts at 1 via AttributeProperty in Character class
@@ -410,11 +407,8 @@ def create_flash_clone(account, old_character):
     
     # Debug: Verify sex was inherited correctly
     from world.combat.debug import get_splattercast
-    try:
-        splattercast = get_splattercast()
-        splattercast.msg(f"FLASH_CLONE_SEX_INHERIT: {char.key} inherited sex '{old_character.sex}' from {old_character.key}, current value: '{char.sex}', gender property: '{char.gender}'")
-    except Exception:
-        pass
+    splattercast = get_splattercast()
+    splattercast.msg(f"FLASH_CLONE_SEX_INHERIT: {char.key} inherited sex '{old_character.sex}' from {old_character.key}, current value: '{char.sex}', gender property: '{char.gender}'")
     
     # INHERIT: death_count from old character
     # The old character's death_count was already incremented at death (at_death())
@@ -752,11 +746,8 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
         # Error - show message and return to selection
         caller.msg(f"|rError creating character: {e}|n")
         from world.combat.debug import get_splattercast
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"CHARCREATE_ERROR: {e}")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"CHARCREATE_ERROR: {e}")
         return "respawn_welcome"
 
 
@@ -826,11 +817,8 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
         # Error - show message and return to selection
         caller.msg(f"|rError creating flash clone: {e}|n")
         from world.combat.debug import get_splattercast
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"FLASH_CLONE_ERROR: {e}")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"FLASH_CLONE_ERROR: {e}")
         return "respawn_welcome"
 
 
@@ -1501,11 +1489,8 @@ def first_char_finalize(caller, raw_string, **kwargs):
         # Error - show message and return to confirmation
         caller.msg(f"|rError creating character: {e}|n")
         from world.combat.debug import get_splattercast
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"CHARCREATE_ERROR: {e}")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"CHARCREATE_ERROR: {e}")
         return "first_char_confirm"
 
 

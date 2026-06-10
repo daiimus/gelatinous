@@ -545,12 +545,9 @@ class Corpse(IdentityBearerMixin, Item):
                     
             except Exception as e:
                 # Don't break corpse display if wound description fails
-                try:
-                    from world.combat.debug import get_splattercast
-                    splattercast = get_splattercast()
-                    splattercast.msg(f"CORPSE_WOUND_ERROR: Failed to generate wound description for {self.key}: {e}")
-                except Exception:
-                    pass
+                from world.combat.debug import get_splattercast
+                splattercast = get_splattercast()
+                splattercast.msg(f"CORPSE_WOUND_ERROR: Failed to generate wound description for {getattr(self, 'key', '?')}: {e}")
                 continue
         
         return wound_descriptions
@@ -1006,12 +1003,9 @@ class Corpse(IdentityBearerMixin, Item):
                 item.move_to(self.location, quiet=True)
                 
         # Log the decay completion
-        try:
-            from world.combat.debug import get_splattercast
-            splattercast = get_splattercast()
-            splattercast.msg(f"CORPSE_DECAY: {self.key} completely decayed and removed from {self.location}")
-        except Exception:
-            pass
+        from world.combat.debug import get_splattercast
+        splattercast = get_splattercast()
+        splattercast.msg(f"CORPSE_DECAY: {self.key} completely decayed and removed from {self.location}")
             
         # Remove the corpse
         self.delete()

@@ -134,16 +134,13 @@ class DeathProgressionScript(DefaultScript):
         self.interval = DEATH_PROGRESSION_CHECK_INTERVAL
         
         # Debug logging
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(
-                f"DEATH_PROGRESSION: Script at_script_creation for {self.obj.key} "
-                f"(duration: {DEATH_PROGRESSION_DURATION}s, "
-                f"interval: {DEATH_PROGRESSION_CHECK_INTERVAL}s, "
-                f"messages: {DEATH_PROGRESSION_MESSAGE_COUNT})"
-            )
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(
+            f"DEATH_PROGRESSION: Script at_script_creation for {self.obj.key} "
+            f"(duration: {DEATH_PROGRESSION_DURATION}s, "
+            f"interval: {DEATH_PROGRESSION_CHECK_INTERVAL}s, "
+            f"messages: {DEATH_PROGRESSION_MESSAGE_COUNT})"
+        )
         
     def at_start(self):
         """Called when script starts."""
@@ -153,15 +150,12 @@ class DeathProgressionScript(DefaultScript):
             return
             
         # Log start of death progression with configurable duration
-        try:
-            splattercast = get_splattercast()
-            duration_minutes = DEATH_PROGRESSION_DURATION / 60
-            splattercast.msg(
-                f"DEATH_PROGRESSION: Started for {character.key} - "
-                f"{duration_minutes:.1f} minute revival window"
-            )
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        duration_minutes = DEATH_PROGRESSION_DURATION / 60
+        splattercast.msg(
+            f"DEATH_PROGRESSION: Started for {character.key} - "
+            f"{duration_minutes:.1f} minute revival window"
+        )
             
         # Send initial dying message
         self._send_initial_message()
@@ -171,11 +165,8 @@ class DeathProgressionScript(DefaultScript):
         character = self.obj
         if not character:
             # Log cleanup for invalid character
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"DEATH_SCRIPT_CLEANUP: Stopping and deleting death progression script (invalid character)")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"DEATH_SCRIPT_CLEANUP: Stopping and deleting death progression script (invalid character)")
             self.stop()
             self.delete()
             return
@@ -184,11 +175,8 @@ class DeathProgressionScript(DefaultScript):
         elapsed = current_time - self.db.start_time
         
         # Debug logging
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"DEATH_PROGRESSION: at_repeat for {character.key}, elapsed: {elapsed:.1f}s")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"DEATH_PROGRESSION: at_repeat for {character.key}, elapsed: {elapsed:.1f}s")
         
         # Check if medical conditions have been resolved and character should be revived
         if self._check_medical_revival_conditions(character):
@@ -354,11 +342,8 @@ class DeathProgressionScript(DefaultScript):
         # Skip observer messages during progression - they tick too fast and overwhelm
             
         # Log progression
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"DEATH_PROGRESSION: {character.key} at {interval}s (msg {message_index + 1}/{len(messages_list)}) - {minutes_remaining}m remaining")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"DEATH_PROGRESSION: {character.key} at {interval}s (msg {message_index + 1}/{len(messages_list)}) - {minutes_remaining}m remaining")
             
     def _get_progression_messages(self):
         """Get the progression messages as an ordered list."""
@@ -464,12 +449,9 @@ class DeathProgressionScript(DefaultScript):
         self._handle_corpse_creation_and_transition(character)
             
         # Log completion
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"DEATH_PROGRESSION: {character.key} completed - corpse created, character transitioned")
-            splattercast.msg(f"DEATH_SCRIPT_CLEANUP: Stopping and deleting death progression script for {character.key}")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"DEATH_PROGRESSION: {character.key} completed - corpse created, character transitioned")
+        splattercast.msg(f"DEATH_SCRIPT_CLEANUP: Stopping and deleting death progression script for {character.key}")
             
         # Stop and delete the script to clean up completely
         self.stop()
@@ -498,19 +480,13 @@ class DeathProgressionScript(DefaultScript):
                 self._initiate_new_character_creation(account, character, session)
                 
             # 5. Log the transition
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"DEATH_COMPLETION: {character.key} -> Corpse created, character transitioned")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"DEATH_COMPLETION: {character.key} -> Corpse created, character transitioned")
                 
         except Exception as e:
             # Fallback - log error but don't crash the death progression
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"DEATH_COMPLETION_ERROR: {character.key} - {e}")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"DEATH_COMPLETION_ERROR: {getattr(character, 'key', '?')} - {e}")
 
     def _create_corpse_from_character(self, character):
         """Create a corpse object that preserves forensic data from the character."""
@@ -590,13 +566,10 @@ class DeathProgressionScript(DefaultScript):
             from commands.CmdCharacter import _clear_all_overrides
             _clear_all_overrides(character)
         except Exception as e:
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(
-                    f"DEATH_OVERRIDE_CLEAR_ERROR: {character.key} - {e}"
-                )
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(
+                f"DEATH_OVERRIDE_CLEAR_ERROR: {getattr(character, 'key', '?')} - {e}"
+            )
         
         # Preserve character appearance data for proper corpse display
         corpse.db.original_gender = getattr(character, 'gender', 'neutral')
@@ -627,14 +600,11 @@ class DeathProgressionScript(DefaultScript):
                 except Exception:
                     pass
             except Exception as snapshot_err:
-                try:
-                    splattercast = get_splattercast()
-                    splattercast.msg(
-                        f"DEATH_MEDICAL_SNAPSHOT_ERROR: Failed to snapshot "
-                        f"medical state for {character.key}: {snapshot_err}"
-                    )
-                except Exception:
-                    pass
+                splattercast = get_splattercast()
+                splattercast.msg(
+                    f"DEATH_MEDICAL_SNAPSHOT_ERROR: Failed to snapshot "
+                    f"medical state for {getattr(character, 'key', '?')}: {snapshot_err}"
+                )
             
             # Transfer wound data for corpse wound descriptions
             try:
@@ -659,18 +629,12 @@ class DeathProgressionScript(DefaultScript):
                         }
                         corpse.db.wounds_at_death.append(wound_record)
                     
-                    try:
-                        splattercast = get_splattercast()
-                        splattercast.msg(f"DEATH_WOUNDS_PRESERVED: {len(wound_data)} wounds preserved on corpse for {character.key}")
-                    except Exception:
-                        pass
+                    splattercast = get_splattercast()
+                    splattercast.msg(f"DEATH_WOUNDS_PRESERVED: {len(wound_data)} wounds preserved on corpse for {character.key}")
             except Exception as e:
                 # Don't fail death progression if wound preservation fails
-                try:
-                    splattercast = get_splattercast()
-                    splattercast.msg(f"DEATH_WOUNDS_ERROR: Failed to preserve wounds for {character.key}: {e}")
-                except Exception:
-                    pass
+                splattercast = get_splattercast()
+                splattercast.msg(f"DEATH_WOUNDS_ERROR: Failed to preserve wounds for {getattr(character, 'key', '?')}: {e}")
         
         # Transfer character description data
         if hasattr(character, 'longdesc') and character.longdesc:
@@ -753,13 +717,10 @@ class DeathProgressionScript(DefaultScript):
                 else:
                     spawn_severed_head_for_corpse(corpse)
             except Exception as e:
-                try:
-                    splattercast = get_splattercast()
-                    splattercast.msg(
-                        f"DEATH_DECAPITATION_ERROR: {character.key} - {e}"
-                    )
-                except Exception:
-                    pass
+                splattercast = get_splattercast()
+                splattercast.msg(
+                    f"DEATH_DECAPITATION_ERROR: {getattr(character, 'key', '?')} - {e}"
+                )
             character.db.decapitation_pending = False
         
         return corpse
@@ -783,11 +744,8 @@ class DeathProgressionScript(DefaultScript):
             )
             
             script_count = medical_scripts.count()
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"DEATH_MEDICAL_CLEANUP: Found {script_count} medical scripts for {character.key}")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"DEATH_MEDICAL_CLEANUP: Found {script_count} medical scripts for {character.key}")
             
             for script in medical_scripts:
                 try:
@@ -811,7 +769,7 @@ class DeathProgressionScript(DefaultScript):
                 except Exception as e:
                     try:
                         splattercast = get_splattercast()
-                        splattercast.msg(f"DEATH_MEDICAL_CLEANUP_ERROR: {character.key} - {e}")
+                        splattercast.msg(f"DEATH_MEDICAL_CLEANUP_ERROR: {getattr(character, 'key', '?')} - {e}")
                         import traceback
                         splattercast.msg(f"DEATH_MEDICAL_CLEANUP_TRACE: {traceback.format_exc()}")
                     except Exception:
@@ -819,7 +777,7 @@ class DeathProgressionScript(DefaultScript):
         except Exception as e:
             try:
                 splattercast = get_splattercast()
-                splattercast.msg(f"DEATH_MEDICAL_CLEANUP_FAIL: {character.key} - {e}")
+                splattercast.msg(f"DEATH_MEDICAL_CLEANUP_FAIL: {getattr(character, 'key', '?')} - {e}")
                 import traceback
                 splattercast.msg(f"DEATH_MEDICAL_CLEANUP_TRACE: {traceback.format_exc()}")
             except Exception:
@@ -833,19 +791,13 @@ class DeathProgressionScript(DefaultScript):
             character.move_to(limbo_room, quiet=True, move_hooks=False)
             
             # Debug logging for successful teleportation
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"DEATH_TELEPORT_SUCCESS: {character.key} moved from {old_location} to {limbo_room}")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"DEATH_TELEPORT_SUCCESS: {character.key} moved from {old_location} to {limbo_room}")
                 
         except Exception as e:
             # Log the specific error instead of silently failing
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"DEATH_TELEPORT_ERROR: {character.key} - {e}")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"DEATH_TELEPORT_ERROR: {getattr(character, 'key', '?')} - {e}")
         
         # Unpuppet character from account
         if account:
@@ -858,11 +810,8 @@ class DeathProgressionScript(DefaultScript):
             if session:
                 account.unpuppet_object(session)
                 
-                try:
-                    splattercast = get_splattercast()
-                    splattercast.msg(f"DEATH_UNPUPPET: {character.key} unpuppeted from {account.key}")
-                except Exception:
-                    pass
+                splattercast = get_splattercast()
+                splattercast.msg(f"DEATH_UNPUPPET: {character.key} unpuppeted from {account.key}")
         
         # Archive the dead character (also handles any lingering sessions)
         character.archive_character(reason="death")
@@ -886,11 +835,8 @@ class DeathProgressionScript(DefaultScript):
             account.msg("|yCharacter creation system is under development.|n")
             account.msg("|yPlease contact staff for assistance creating a new character.|n")
             
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"CHARCREATE_IMPORT_ERROR: {e}")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"CHARCREATE_IMPORT_ERROR: {e}")
         account.msg("")
         
         # TODO: Future implementation might:
@@ -913,28 +859,19 @@ def start_death_progression(character):
     # Check if character already has a death progression script
     existing_script = character.scripts.get("death_progression")
     if existing_script:
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"DEATH_PROGRESSION: Existing script found for {character.key}")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"DEATH_PROGRESSION: Existing script found for {character.key}")
         return existing_script
         
     # Create new death progression script
-    try:
-        splattercast = get_splattercast()
-        splattercast.msg(f"DEATH_PROGRESSION: Creating new script for {character.key}")
-    except Exception:
-        pass
+    splattercast = get_splattercast()
+    splattercast.msg(f"DEATH_PROGRESSION: Creating new script for {character.key}")
         
     # Create script using the same pattern as medical script
     script = character.scripts.add(DeathProgressionScript)
     
-    try:
-        splattercast = get_splattercast()
-        splattercast.msg(f"DEATH_PROGRESSION: Script created and started: {script} for {character.key}")
-    except Exception:
-        pass
+    splattercast = get_splattercast()
+    splattercast.msg(f"DEATH_PROGRESSION: Script created and started: {script} for {character.key}")
         
     return script
 def get_death_progression_script(character):

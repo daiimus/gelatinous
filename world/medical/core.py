@@ -905,13 +905,10 @@ class MedicalState:
         # Dying characters can still be resuscitated, so they should keep conditions
         character = self._get_character_reference()
         if character and character.db.archived:
-            try:
-                from world.combat.debug import get_splattercast
-                splattercast = get_splattercast()
-                char_name = character.key if character else "unknown"
-                splattercast.msg(f"ADD_CONDITION: {char_name} is archived, not adding {condition.condition_type}")
-            except Exception:
-                pass
+            from world.combat.debug import get_splattercast
+            splattercast = get_splattercast()
+            char_name = character.key if character else "unknown"
+            splattercast.msg(f"ADD_CONDITION: {char_name} is archived, not adding {condition.condition_type}")
             return
             
         if condition not in self.conditions:
@@ -920,12 +917,9 @@ class MedicalState:
             # so they're a death-verdict input.
             self._invalidate_derived_state()
 
-            try:
-                from world.combat.debug import get_splattercast
-                splattercast = get_splattercast()
-                splattercast.msg(f"ADD_CONDITION: Added {condition.condition_type} severity {condition.severity}")
-            except Exception:
-                pass
+            from world.combat.debug import get_splattercast
+            splattercast = get_splattercast()
+            splattercast.msg(f"ADD_CONDITION: Added {condition.condition_type} severity {condition.severity}")
             
             # Start ticker if condition requires it
             if hasattr(condition, 'requires_ticker') and condition.requires_ticker:
@@ -933,20 +927,14 @@ class MedicalState:
                 # doesn't directly hold character reference
                 character = self._get_character_reference()
                 if character:
-                    try:
-                        from world.combat.debug import get_splattercast
-                        splattercast = get_splattercast()
-                        splattercast.msg(f"ADD_CONDITION: Starting ticker for {condition.condition_type} on {character.key}")
-                    except Exception:
-                        pass
+                    from world.combat.debug import get_splattercast
+                    splattercast = get_splattercast()
+                    splattercast.msg(f"ADD_CONDITION: Starting ticker for {condition.condition_type} on {character.key}")
                     condition.start_condition(character)
                 else:
-                    try:
-                        from world.combat.debug import get_splattercast
-                        splattercast = get_splattercast()
-                        splattercast.msg(f"ADD_CONDITION: No character reference found for {condition.condition_type}")
-                    except Exception:
-                        pass
+                    from world.combat.debug import get_splattercast
+                    splattercast = get_splattercast()
+                    splattercast.msg(f"ADD_CONDITION: No character reference found for {condition.condition_type}")
             
             # Save medical state after adding condition to ensure persistence
             if self.character:

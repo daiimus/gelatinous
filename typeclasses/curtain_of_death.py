@@ -303,21 +303,15 @@ class DeathCurtain:
             script = start_death_progression(self.character)
             
             # Debug logging
-            try:
-                from world.combat.debug import get_splattercast
-                splattercast = get_splattercast()
-                splattercast.msg(f"DEATH_CURTAIN: Death progression started for {self.character.key}, script: {script}")
-            except Exception:
-                pass
+            from world.combat.debug import get_splattercast
+            splattercast = get_splattercast()
+            splattercast.msg(f"DEATH_CURTAIN: Death progression started for {self.character.key}, script: {script}")
                 
         except Exception as e:
             # Debug logging for any errors
-            try:
-                from world.combat.debug import get_splattercast
-                splattercast = get_splattercast()
-                splattercast.msg(f"DEATH_CURTAIN_ERROR: Failed to start death progression for {self.character.key}: {e}")
-            except Exception:
-                pass
+            from world.combat.debug import get_splattercast
+            splattercast = get_splattercast()
+            splattercast.msg(f"DEATH_CURTAIN_ERROR: Failed to start death progression for {getattr(self.character, 'key', '?')}: {e}")
 
 
 def show_death_curtain(character, message=None):

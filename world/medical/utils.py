@@ -995,12 +995,9 @@ def apply_medical_effects(item, user, target, **kwargs):
                     hasattr(script, '_check_medical_revival_conditions')):
                     
                     # Debug the revival condition check
-                    try:
-                        from world.combat.debug import get_splattercast
-                        splattercast = get_splattercast()
-                        splattercast.msg(f"REVIVAL_DEBUG: Checking revival conditions for {target.key}")
-                    except Exception:
-                        pass
+                    from world.combat.debug import get_splattercast
+                    splattercast = get_splattercast()
+                    splattercast.msg(f"REVIVAL_DEBUG: Checking revival conditions for {target.key}")
                     
                     if script._check_medical_revival_conditions(target):
                         from world.combat.debug import get_splattercast
@@ -1009,20 +1006,14 @@ def apply_medical_effects(item, user, target, **kwargs):
                         script._handle_medical_revival()
                         break  # Revival handled, stop checking
                     else:
-                        try:
-                            from world.combat.debug import get_splattercast
-                            splattercast = get_splattercast()
-                            splattercast.msg(f"REVIVAL_DEBUG: {target.key} does not meet revival conditions")
-                        except Exception:
-                            pass
+                        from world.combat.debug import get_splattercast
+                        splattercast = get_splattercast()
+                        splattercast.msg(f"REVIVAL_DEBUG: {target.key} does not meet revival conditions")
         except Exception as e:
             # Don't let revival check errors break medical treatment
-            try:
-                from world.combat.debug import get_splattercast
-                splattercast = get_splattercast()
-                splattercast.msg(f"REVIVAL_CHECK_ERROR: {target.key}: {e}")
-            except Exception:
-                pass
+            from world.combat.debug import get_splattercast
+            splattercast = get_splattercast()
+            splattercast.msg(f"REVIVAL_CHECK_ERROR: {getattr(target, 'key', '?')}: {e}")
     
     return result_msg
 

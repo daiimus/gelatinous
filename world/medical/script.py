@@ -251,21 +251,15 @@ class MedicalScript(DefaultScript):
                 self.delete()
                 
         except Exception as e:
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"MEDICAL_SCRIPT_CRITICAL_ERROR: {self.obj.key}: {e}")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"MEDICAL_SCRIPT_CRITICAL_ERROR: {getattr(self.obj, 'key', '?')}: {e}")
             self.stop()
             self.delete()
     
     def at_stop(self):
         """Called when script stops."""
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"MEDICAL_SCRIPT_STOP: Medical script stopped for {self.obj.key}")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"MEDICAL_SCRIPT_STOP: Medical script stopped for {self.obj.key}")
     
     def _send_medical_messages(self, bleeding_severity, pain_severity, infection_severity=0):
         """Send consolidated medical messages combining bleeding, pain, and infection."""
@@ -412,45 +406,30 @@ def start_medical_script(character):
     Returns:
         MedicalScript: The active medical script
     """
-    try:
-        splattercast = get_splattercast()
-        splattercast.msg(f"START_MEDICAL_SCRIPT: Checking for existing script on {character.key}")
-    except Exception:
-        pass
+    splattercast = get_splattercast()
+    splattercast.msg(f"START_MEDICAL_SCRIPT: Checking for existing script on {character.key}")
         
     # Don't create scripts for dead characters
     if hasattr(character, 'medical_state') and character.medical_state.is_dead():
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"START_MEDICAL_SCRIPT: {character.key} is dead, not creating medical script")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"START_MEDICAL_SCRIPT: {character.key} is dead, not creating medical script")
         return None
         
     # Check if script already exists
     existing_script = character.scripts.get("medical_script")
     if existing_script:
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"START_MEDICAL_SCRIPT: Found existing script for {character.key}")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"START_MEDICAL_SCRIPT: Found existing script for {character.key}")
         return existing_script.first() if existing_script else None
     
     # Create new script
-    try:
-        splattercast = get_splattercast()
-        splattercast.msg(f"START_MEDICAL_SCRIPT: Creating new script for {character.key}")
-    except Exception:
-        pass
+    splattercast = get_splattercast()
+    splattercast.msg(f"START_MEDICAL_SCRIPT: Creating new script for {character.key}")
         
     script = character.scripts.add(MedicalScript)
     
-    try:
-        splattercast = get_splattercast()
-        splattercast.msg(f"START_MEDICAL_SCRIPT: Script created: {script}")
-    except Exception:
-        pass
+    splattercast = get_splattercast()
+    splattercast.msg(f"START_MEDICAL_SCRIPT: Script created: {script}")
         
     return script
 
@@ -462,26 +441,17 @@ def stop_medical_script(character):
     Args:
         character: The character to stop medical script for
     """
-    try:
-        splattercast = get_splattercast()
-        splattercast.msg(f"STOP_MEDICAL_SCRIPT: Looking for medical scripts on {character.key}")
-    except Exception:
-        pass
+    splattercast = get_splattercast()
+    splattercast.msg(f"STOP_MEDICAL_SCRIPT: Looking for medical scripts on {character.key}")
     
     # Find and delete all medical scripts (active or stopped)
     existing_scripts = character.scripts.get("medical_script")
     if existing_scripts:
         for script in existing_scripts:
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"STOP_MEDICAL_SCRIPT: Found script {script}, deleting it")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"STOP_MEDICAL_SCRIPT: Found script {script}, deleting it")
             script.stop()
             script.delete()
     else:
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"STOP_MEDICAL_SCRIPT: No medical scripts found on {character.key}")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"STOP_MEDICAL_SCRIPT: No medical scripts found on {character.key}")

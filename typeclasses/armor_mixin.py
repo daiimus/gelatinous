@@ -193,16 +193,13 @@ class ArmorMixin:
                     # hiccup, etc.) the corpse-side spawn in
                     # death_progression still fires as a fallback because
                     # ``head_severed_at_decap`` was never set.
-                    try:
-                        from world.combat.debug import get_splattercast
-                        splattercast = get_splattercast()
-                        splattercast.msg(
-                            f"DECAPITATION_LIVING_SPAWN_ERROR: "
-                            f"{getattr(self, 'key', '?')} - falling back "
-                            f"to corpse-side head spawn"
-                        )
-                    except Exception:
-                        pass
+                    from world.combat.debug import get_splattercast
+                    splattercast = get_splattercast()
+                    splattercast.msg(
+                        f"DECAPITATION_LIVING_SPAWN_ERROR: "
+                        f"{getattr(self, 'key', '?')} - falling back "
+                        f"to corpse-side head spawn"
+                    )
             return
 
         # Living limb severance: head is excluded (decapitation routes
@@ -270,15 +267,12 @@ class ArmorMixin:
                 )
         except Exception:
             # Don't break combat if the messaging layer hiccups.
-            try:
-                from world.combat.debug import get_splattercast
-                splattercast = get_splattercast()
-                splattercast.msg(
-                    f"DECAPITATION_MSG_ERROR: {self.key} - failed to "
-                    f"broadcast decapitation message"
-                )
-            except Exception:
-                pass
+            from world.combat.debug import get_splattercast
+            splattercast = get_splattercast()
+            splattercast.msg(
+                f"DECAPITATION_MSG_ERROR: {getattr(self, 'key', '?')} - failed to "
+                f"broadcast decapitation message"
+            )
 
     def _calculate_armor_damage_reduction(self, damage, location, injury_type):
         """

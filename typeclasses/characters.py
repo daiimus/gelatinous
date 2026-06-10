@@ -321,11 +321,8 @@ class Character(
         
         # Prevent double unconsciousness processing
         if hasattr(self, 'ndb') and getattr(self.ndb, 'unconsciousness_processed', False):
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"UNCONSCIOUS_SKIP: {self.key} already processed unconsciousness, skipping")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"UNCONSCIOUS_SKIP: {self.key} already processed unconsciousness, skipping")
             return
             
         # Mark unconsciousness as processed
@@ -340,20 +337,14 @@ class Character(
         if is_in_combat:
             # Set flag for combat system to trigger unconsciousness message after attack message
             self.ndb.unconsciousness_pending = True
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"UNCONSCIOUS_COMBAT: {self.key} unconsciousness message deferred - in active combat")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"UNCONSCIOUS_COMBAT: {self.key} unconsciousness message deferred - in active combat")
             
             # Safety fallback - trigger message after 5 seconds if combat doesn't handle it
             def fallback_unconsciousness_message():
                 if hasattr(self.ndb, 'unconsciousness_pending') and self.ndb.unconsciousness_pending:
-                    try:
-                        splattercast = get_splattercast()
-                        splattercast.msg(f"UNCONSCIOUS_FALLBACK: {self.key} triggering fallback unconsciousness message")
-                    except Exception:
-                        pass
+                    splattercast = get_splattercast()
+                    splattercast.msg(f"UNCONSCIOUS_FALLBACK: {self.key} triggering fallback unconsciousness message")
                     self._show_unconsciousness_message()
                     self.ndb.unconsciousness_pending = False
             
@@ -470,11 +461,8 @@ class Character(
         
         # Log warning if archiving a staff character (shouldn't happen normally)
         if self.account and self.account.is_superuser:
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"WARNING: Archiving staff character {self.key} (Account: {self.account.key}, Reason: {reason})")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"WARNING: Archiving staff character {self.key} (Account: {self.account.key}, Reason: {reason})")
         
         # Set account's last_character for respawn flow
         if self.account:
@@ -498,11 +486,8 @@ class Character(
             self.move_to(limbo, quiet=True, move_hooks=False)
             
             # Log the move
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"ARCHIVE: Moved {self.key} from {current_location.key if current_location else 'None'} to Limbo")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"ARCHIVE: Moved {self.key} from {current_location.key if current_location else 'None'} to Limbo")
         
         # Disconnect any active sessions
         if self.sessions.all():
@@ -632,11 +617,8 @@ class Character(
         
         # Prevent double death processing using PERSISTENT db flag (survives server reload)
         if self.db.death_processed:
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"AT_DEATH_SKIP: {self.key} already processed death (db flag), skipping")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"AT_DEATH_SKIP: {self.key} already processed death (db flag), skipping")
             return
             
         # Mark death as processed IMMEDIATELY using db (persistent) to prevent ANY race conditions
@@ -672,20 +654,14 @@ class Character(
         if is_in_combat:
             # Set flag for combat system to trigger death curtain after kill message
             self.ndb.death_curtain_pending = True
-            try:
-                splattercast = get_splattercast()
-                splattercast.msg(f"AT_DEATH_COMBAT: {self.key} death curtain deferred - in active combat")
-            except Exception:
-                pass
+            splattercast = get_splattercast()
+            splattercast.msg(f"AT_DEATH_COMBAT: {self.key} death curtain deferred - in active combat")
             
             # Safety fallback - trigger curtain after 5 seconds if combat doesn't handle it
             def fallback_death_curtain():
                 if hasattr(self.ndb, 'death_curtain_pending') and self.ndb.death_curtain_pending:
-                    try:
-                        splattercast = get_splattercast()
-                        splattercast.msg(f"AT_DEATH_FALLBACK: {self.key} triggering fallback death curtain")
-                    except Exception:
-                        pass
+                    splattercast = get_splattercast()
+                    splattercast.msg(f"AT_DEATH_FALLBACK: {self.key} triggering fallback death curtain")
                     show_death_curtain(self)
                     self.ndb.death_curtain_pending = False
             
@@ -844,10 +820,7 @@ class Character(
                     delay(0.1, script.at_repeat)
                     splattercast.msg(f"REVIVAL_IMMEDIATE_NEW: Forced immediate medical processing for new script for {self.key}")
             except Exception as e:
-                try:
-                    splattercast.msg(f"REVIVAL_ERROR: Failed to restart medical script for {self.key}: {e}")
-                except Exception:
-                    pass
+                splattercast.msg(f"REVIVAL_ERROR: Failed to restart medical script for {getattr(self, 'key', '?')}: {e}")
         
         # Clear death processing flags (both ndb and db)
         if hasattr(self.ndb, 'death_processed'):
@@ -880,11 +853,8 @@ class Character(
             self._death_cmdset_applied = True
         
         # Log final death
-        try:
-            splattercast = get_splattercast()
-            splattercast.msg(f"FINAL_DEATH: {self.key} has entered permanent death state")
-        except Exception:
-            pass
+        splattercast = get_splattercast()
+        splattercast.msg(f"FINAL_DEATH: {self.key} has entered permanent death state")
 
     def validate_attack_target(self):
         """

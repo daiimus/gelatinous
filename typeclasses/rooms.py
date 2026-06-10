@@ -99,12 +99,9 @@ class Room(ObjectParent, DefaultRoom):
                             pass
                     
                     # Log and delete
-                    try:
-                        from world.combat.debug import get_splattercast
-                        splattercast = get_splattercast()
-                        splattercast.msg(f"CORPSE_DECAY_JIT: {corpse.key} decayed on room entry to {self.key}")
-                    except Exception:
-                        pass
+                    from world.combat.debug import get_splattercast
+                    splattercast = get_splattercast()
+                    splattercast.msg(f"CORPSE_DECAY_JIT: {corpse.key} decayed on room entry to {self.key}")
                     
                     corpse.delete()
             except Exception:
