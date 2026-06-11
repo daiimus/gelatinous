@@ -48,11 +48,20 @@ object everywhere.
 Every `.msg()` on the router does up to two things:
 
 1. **Audit file — always on.** The message is appended to
-   `server/logs/combat_audit.log` via Evennia's async file logger
-   (`evennia.utils.logger.log_file`). Writes happen on the logger's
-   thread pool, never blocking the Twisted reactor. This is the
-   durable record for investigating bug reports, cheating
-   accusations, and combat disputes.
+   `server/logs/combat_audit.log` by the sink's own serialized
+   async writer (`_AuditFileWriter`, #489) — NOT
+   `evennia.utils.logger.log_file`, whose handle-recycling races
+   in-flight thread writes under burst load and whose errback
+   destroys the real error (the `NoneType: None` floods; every
+   line a silently dropped write). The writer chains every write
+   on one deferred (strict serialization, reactor never blocked),
+   rotates timestamped generations inside that chain
+   (`CHANNEL_LOG_ROTATE_SIZE`), reports failures with their real
+   traceback as `AUDIT_WRITE_FAILED` in the server log, and
+   reopens after any failure. **Test processes skip the file
+   entirely** — they share `server/logs/` with the live server,
+   and their writes both polluted the audit record and triggered
+   cross-process rotation races.
 
 2. **Splattercast channel — gated.** Only when
    `settings.SPLATTERCAST_LIVE` is `True`. This is the live in-game
