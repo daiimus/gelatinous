@@ -167,6 +167,13 @@ DEBUG = False
 # Combat audit logging
 ######################################################################
 
+# Rotation size for all logger.log_file()-based logs — most
+# importantly server/logs/combat_audit.log (Evennia's 1MB default
+# rotated six times on day one; investigations want history in one
+# file).  Shared with channel logs; rotated generations have no
+# count cap, so this changes granularity, not total disk use.
+CHANNEL_LOG_ROTATE_SIZE = 10_000_000  # 10MB
+
 # Combat diagnostics always go to server/logs/combat_audit.log
 # (async file writes — see world/combat/debug.py).  Set this True to
 # additionally broadcast them live to the Splattercast channel for

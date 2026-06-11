@@ -93,8 +93,14 @@ only the expected, narrow failure of each:
 
 ```python
 # server/conf/settings.py
-SPLATTERCAST_LIVE = False   # mirror diagnostics to the channel
+SPLATTERCAST_LIVE = False           # mirror diagnostics to the channel
+CHANNEL_LOG_ROTATE_SIZE = 10_000_000  # audit-log rotation size (10MB)
 ```
+
+Rotation produces numbered generations (`combat_audit.log.1`, …)
+with no count cap — the size knob controls granularity per file,
+not total disk use.  The knob is Evennia's and is shared by
+channel logs.
 
 Flip to `True` (and reload) to watch combat live in-game. Leave
 `False` in production — the audit file captures everything either
