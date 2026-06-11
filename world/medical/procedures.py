@@ -37,6 +37,23 @@ from typing import Optional
 
 from evennia.utils import delay as evennia_delay
 
+
+def _log_guarded_failure(stage: str, target, exc: Exception) -> None:
+    """Audit-log a swallowed duck-typing-guard failure (#469).
+
+    procedures.py operates on living Characters, Corpses, and test
+    stubs; its capability guards (``getattr`` + ``callable`` + try)
+    are a declared, test-pinned contract.  What the #469 sweep
+    removed was their *silence* — every guarded failure now lands in
+    the combat audit log with a stage name, so a real character
+    hitting one of these paths is diagnosable instead of invisible.
+    """
+    from world.combat.debug import get_splattercast
+    get_splattercast().msg(
+        f"PROCEDURE_GUARD: {stage} failed for "
+        f"{getattr(target, 'key', target)!r}: {exc}"
+    )
+
 # ---------------------------------------------------------------------
 # Constants — placeholders subject to balance pass (#307)
 # ---------------------------------------------------------------------
@@ -399,10 +416,12 @@ def _resolve_procedure_callback(target) -> None:
     if dbref:
         hook = _PROCEDURE_COMPLETE_HOOKS.pop(dbref, None)
         if hook is not None:
+            # Deliberate callback isolation (#469): a broken completion
+            # hook must not crash the chart that just finished.
             try:
                 hook(target, actor)
-            except Exception:
-                pass
+            except Exception as exc:
+                _log_guarded_failure("procedure_complete_hook", target, exc)
 
 
 # ---------------------------------------------------------------------
@@ -453,7 +472,8 @@ def calculate_procedure_difficulty(target, *, conscious_modifier: bool = True) -
     if callable(checker):
         try:
             is_unconscious = bool(checker())
-        except Exception:
+        except Exception as exc:
+            _log_guarded_failure("difficulty_consciousness_probe", target, exc)
             is_unconscious = False
     if is_unconscious:
         return difficulty - ANESTHETIZED_DIFFICULTY_BONUS
@@ -530,7 +550,8 @@ def seed_pain(target, location: Optional[str], severity: int) -> None:
     if callable(checker):
         try:
             is_unconscious = bool(checker())
-        except Exception:
+        except Exception as exc:
+            _log_guarded_failure("pain_consciousness_probe", target, exc)
             is_unconscious = False
     if is_unconscious:
         return
@@ -651,7 +672,8 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
     if callable(stage_getter):
         try:
             decay_stage = stage_getter() or "fresh"
-        except Exception:
+        except Exception as exc:
+            _log_guarded_failure("harvest_decay_probe", target, exc)
             decay_stage = "fresh"
     condition = ORGAN_CONDITION_BY_DECAY.get(decay_stage, "pristine")
 
@@ -778,12 +800,15 @@ def _resolve_install(actor, target, *, organ_item, location: str,
             )
             organ.wound_stage = None if organ.current_hp == organ.max_hp else "fresh"
             # Attach organ-bound conditions from the harvested item.
+            # Deliberate data-tolerance guard (#469): a corrupt or
+            # legacy condition dict skips that condition, never the
+            # install.
             for condition_dict in (organ_item.db.organ_conditions or []):
                 try:
                     from world.medical.conditions import deserialize_condition
                     organ.conditions.append(deserialize_condition(condition_dict))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    _log_guarded_failure("install_condition_deserialize", target, exc)
 
     seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
 
@@ -812,11 +837,14 @@ def _resolve_install(actor, target, *, organ_item, location: str,
             exclude=[actor, target] if target is not actor else [actor],
         )
 
-    # Consume the harvested item.
+    # Consume the harvested item.  Deliberate guard (#469): a delete
+    # failure must not undo the completed install — but it leaves the
+    # consumed organ item in the world (dupe-relevant), so it is
+    # audit-logged for investigation.
     try:
         organ_item.delete()
-    except Exception:
-        pass
+    except Exception as exc:
+        _log_guarded_failure("install_item_delete", organ_item, exc)
 
     # PR-393 follow-up: re-evaluate vitals on living recipient.
     # Installing a vital organ (heart, brain replacement) during the
@@ -1010,6 +1038,8 @@ def _resolve_amputate(actor, target, *, location: str, **_) -> None:
                     target, injury_type="cut",
                 )
             except Exception as exc:
+                # Deliberate, actor-visible abort (#469): the failure
+                # reason surfaces to the surgeon, not a traceback.
                 actor.msg(f"The cut cannot proceed: {exc}")
                 return
         else:
@@ -1019,6 +1049,7 @@ def _resolve_amputate(actor, target, *, location: str, **_) -> None:
                     target, location, injury_type="cut",
                 )
             except Exception as exc:
+                # Deliberate, actor-visible abort (#469).
                 actor.msg(
                     f"The cut cannot proceed: {exc}"
                 )
@@ -1034,6 +1065,7 @@ def _resolve_amputate(actor, target, *, location: str, **_) -> None:
         try:
             appendage = spawn_severed_part_from_corpse(target, location)
         except Exception as exc:
+            # Deliberate, actor-visible abort (#469).
             actor.msg(f"The cut cannot proceed: {exc}")
             return
 
@@ -1262,15 +1294,15 @@ def apply_vital_consequences(target) -> bool:
     if callable(update_vital_signs):
         try:
             update_vital_signs()
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_guarded_failure("vitals_refresh", target, exc)
 
     save = getattr(target, "save_medical_state", None)
     if callable(save):
         try:
             save()
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_guarded_failure("medical_save", target, exc)
 
     is_dead = getattr(state, "is_dead", None)
     if callable(is_dead):
@@ -1286,10 +1318,10 @@ def apply_vital_consequences(target) -> bool:
                         try:
                             at_death()
                             return True
-                        except Exception:
-                            pass
-        except Exception:
-            pass
+                        except Exception as exc:
+                            _log_guarded_failure("at_death_trigger", target, exc)
+        except Exception as exc:
+            _log_guarded_failure("death_check", target, exc)
 
     # Even if not dead, keep the medical script ticking so any
     # subsequent effects (bleeding, infection, dressing healing) get
@@ -1298,8 +1330,8 @@ def apply_vital_consequences(target) -> bool:
         try:
             from world.medical.script import start_medical_script
             start_medical_script(target)
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_guarded_failure("medical_script_start", target, exc)
 
     return False
 
@@ -1358,7 +1390,8 @@ def _mark_organ_removed(target, organ_name: str) -> None:
     if callable(accessor):
         try:
             snapshot = accessor()
-        except Exception:
+        except Exception as exc:
+            _log_guarded_failure("snapshot_probe", target, exc)
             snapshot = None
     container = organ_name
     if snapshot:
@@ -1453,7 +1486,8 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
     if callable(stage_getter):
         try:
             decay_stage = stage_getter() or "fresh"
-        except Exception:
+        except Exception as exc:
+            _log_guarded_failure("organ_decay_probe", source, exc)
             decay_stage = "fresh"
     else:
         decay_stage = "fresh"

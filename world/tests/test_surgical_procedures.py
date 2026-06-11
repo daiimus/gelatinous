@@ -897,3 +897,73 @@ class MarkOrganRemovedWoundSynthesis(TestCase):
         self.assertEqual(len(wounds), 2)
         self.assertEqual(wounds[0]["injury_type"], "blunt")
         self.assertEqual(wounds[1]["injury_type"], "harvested")
+
+
+# ---------------------------------------------------------------------
+# Guard logging (#469) — duck-typing guards are tolerant but never
+# silent: a guarded failure lands in the audit log with a stage name.
+# ---------------------------------------------------------------------
+
+
+class GuardLogging(TestCase):
+    def _router(self):
+        from unittest.mock import MagicMock
+        return MagicMock()
+
+    def test_vitals_refresh_failure_is_tolerated_and_logged(self):
+        from unittest.mock import patch
+        from world.medical.procedures import apply_vital_consequences
+
+        class _BrokenState:
+            organs = {"sentinel": object()}
+
+            def update_vital_signs(self):
+                raise RuntimeError("vitals exploded")
+
+            def is_dead(self):
+                return False
+
+        target = SimpleNamespace()
+        target.medical_state = _BrokenState()
+        target.ndb = SimpleNamespace()
+
+        router = self._router()
+        with patch("world.combat.debug.get_splattercast",
+                   return_value=router):
+            died = apply_vital_consequences(target)
+
+        self.assertFalse(died)
+        logged = " ".join(
+            str(c.args[0]) for c in router.msg.call_args_list if c.args
+        )
+        self.assertIn("PROCEDURE_GUARD", logged)
+        self.assertIn("vitals_refresh", logged)
+
+    def test_consciousness_probe_failure_defaults_conscious_and_logs(self):
+        from unittest.mock import patch
+        from world.medical.procedures import (
+            calculate_procedure_difficulty,
+            PROCEDURE_BASE_DIFFICULTY,
+            CONSCIOUS_PATIENT_DIFFICULTY,
+        )
+
+        char = _human_character(conscious=True)
+
+        def _broken():
+            raise RuntimeError("medical state corrupt")
+
+        char.is_unconscious = _broken
+        router = self._router()
+        with patch("world.combat.debug.get_splattercast",
+                   return_value=router):
+            diff = calculate_procedure_difficulty(char)
+
+        # Degrades to the conscious (harder) difficulty — fail-safe
+        # in the surgeon-unfriendly direction.
+        self.assertEqual(
+            diff, PROCEDURE_BASE_DIFFICULTY + CONSCIOUS_PATIENT_DIFFICULTY
+        )
+        logged = " ".join(
+            str(c.args[0]) for c in router.msg.call_args_list if c.args
+        )
+        self.assertIn("difficulty_consciousness_probe", logged)
