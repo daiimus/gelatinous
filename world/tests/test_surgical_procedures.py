@@ -967,3 +967,78 @@ class GuardLogging(TestCase):
             str(c.args[0]) for c in router.msg.call_args_list if c.args
         )
         self.assertIn("difficulty_consciousness_probe", logged)
+
+
+# ---------------------------------------------------------------------
+# Identity rendering (#493) — procedure messages must show the
+# observer's recognition of a character, never the true key.
+# ---------------------------------------------------------------------
+
+
+class InciseIdentityRendering(TestCase):
+    """The surgeon only knows the patient as 'a wiry man'; no incise
+    outcome may leak the true key ('Billy Payne'), and the patient
+    sees the surgeon by their own recognition, not the key."""
+
+    def _pair(self):
+        actor = _human_character(intellect=3, motorics=3)
+        target = _human_character(conscious=False)
+        actor.location = None
+        target.location = None
+        actor.key = "Dr Scalpel"
+        target.key = "Billy Payne"
+        # Identity layer: each renders the other by sdesc only.
+        actor.get_display_name = lambda looker=None: "a masked surgeon"
+        target.get_display_name = lambda looker=None: "a wiry man"
+        actor_seen, target_seen = [], []
+        actor.msg = lambda *a, **k: actor_seen.append(
+            str(a[0]) if a else str(k.get("text", "")))
+        target.msg = lambda *a, **k: target_seen.append(
+            str(a[0]) if a else str(k.get("text", "")))
+        return actor, target, actor_seen, target_seen
+
+    def _assert_clean(self, actor_seen, target_seen):
+        surgeon_text = " ".join(actor_seen)
+        patient_text = " ".join(target_seen)
+        self.assertNotIn("Billy Payne", surgeon_text)
+        self.assertNotIn("Dr Scalpel", patient_text)
+
+    @patch("world.medical.procedures.random.randint", return_value=6)
+    def test_success_messages_use_recognition(self, _r):
+        from world.medical.procedures import _resolve_incise
+
+        actor, target, actor_seen, target_seen = self._pair()
+        _resolve_incise(actor, target, location="chest")
+        self._assert_clean(actor_seen, target_seen)
+        self.assertIn("a wiry man's chest", " ".join(actor_seen))
+
+    @patch("world.medical.procedures.random.randint", return_value=3)
+    def test_partial_messages_use_recognition(self, _r):
+        from world.medical.procedures import _resolve_incise
+
+        actor, target, actor_seen, target_seen = self._pair()
+        _resolve_incise(actor, target, location="chest")
+        self._assert_clean(actor_seen, target_seen)
+
+    @patch("world.medical.procedures.random.randint", return_value=1)
+    def test_fumble_messages_use_recognition(self, _r):
+        from world.medical.procedures import _resolve_incise
+
+        actor, target, actor_seen, target_seen = self._pair()
+        _resolve_incise(actor, target, location="chest")
+        self._assert_clean(actor_seen, target_seen)
+        # Fumble line capitalizes the sdesc without mangling it.
+        fumbles = [m for m in actor_seen if "blade slips" in m]
+        if fumbles:
+            self.assertIn("A wiry man's", fumbles[0])
+
+    @patch("world.medical.procedures.random.randint", return_value=6)
+    def test_recognized_names_render_intact(self, _r):
+        """A surgeon who KNOWS the patient sees the real name,
+        uncorrupted by capitalization (no 'Billy payne's')."""
+        from world.medical.procedures import _resolve_incise
+
+        actor, target, actor_seen, _ = self._pair()
+        target.get_display_name = lambda looker=None: "Billy Payne"
+        _resolve_incise(actor, target, location="chest")
+        self.assertIn("Billy Payne's chest", " ".join(actor_seen))

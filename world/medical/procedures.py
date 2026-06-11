@@ -36,6 +36,7 @@ import time
 from typing import Optional
 
 from evennia.utils import delay as evennia_delay
+from world.grammar import capitalize_first
 
 
 def _log_guarded_failure(stage: str, target, exc: Exception) -> None:
@@ -590,13 +591,14 @@ def _resolve_incise(actor, target, *, location: str, **_) -> None:
 
     if outcome == "success":
         actor.msg(
-            f"You cut a clean incision through {_possessive(target)} "
+            f"You cut a clean incision through {_possessive(target, actor)} "
             f"{location.replace('_', ' ')}."
         )
         if hasattr(target, "msg") and target is not actor:
             target.msg(
-                f"{actor.key}'s blade opens a clean incision through "
-                f"your {location.replace('_', ' ')}."
+                f"{capitalize_first(_possessive(actor, target))} blade opens "
+                f"a clean incision through your "
+                f"{location.replace('_', ' ')}."
             )
         if actor.location is not None:
             msg_room_identity(
@@ -611,14 +613,14 @@ def _resolve_incise(actor, target, *, location: str, **_) -> None:
     elif outcome == "partial":
         _apply_collateral_damage(target, location, amount=2)
         actor.msg(
-            f"You open {_possessive(target)} {location.replace('_', ' ')} "
+            f"You open {_possessive(target, actor)} {location.replace('_', ' ')} "
             f"— but the cut runs deeper than you meant."
         )
     else:  # failure
         _apply_collateral_damage(target, location, amount=3)
         seed_infection(target, location)
         actor.msg(
-            f"The blade slips. {_possessive(target).capitalize()} "
+            f"The blade slips. {capitalize_first(_possessive(target, actor))} "
             f"{location.replace('_', ' ')} is gashed but not properly "
             f"opened."
         )
@@ -1239,8 +1241,17 @@ _VERB_RESOLVERS = {
 # ---------------------------------------------------------------------
 
 
-def _possessive(target) -> str:
-    """Cheap possessive — ``"the rat's"`` / ``"Bob's"``."""
+def _possessive(target, observer=None) -> str:
+    """Identity-aware possessive — ``"a wiry man's"`` / ``"Bob's"``.
+
+    Renders the target as ``observer`` perceives them (#493 — the raw
+    ``.key`` version leaked true character names to surgeons who only
+    knew the sdesc).  Falls back to ``.key`` for non-character stubs
+    and to "the patient" when even that is missing.
+    """
+    namer = getattr(target, "get_display_name", None)
+    if observer is not None and callable(namer):
+        return f"{namer(observer)}'s"
     name = getattr(target, "key", "the patient")
     return f"{name}'s"
 
