@@ -985,8 +985,10 @@ def apply_medical_effects(item, user, target, **kwargs):
             splattercast.msg(f"REVIVAL_DEBUG: {target.key} blood_level={blood_level:.1f}%, is_dead={is_dead}")
         else:
             splattercast.msg(f"REVIVAL_DEBUG: {target.key} has no medical_state")
-    except Exception:
-        pass
+    except Exception as e:
+        # Deliberate guard (#469): diagnostic state-peek must not block
+        # the revival check below.  Logged instead of silent.
+        splattercast.msg(f"REVIVAL_DEBUG_ERROR: {getattr(target, 'key', '?')}: {e}")
     
     if death_scripts:
         try:

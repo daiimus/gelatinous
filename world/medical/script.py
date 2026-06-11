@@ -251,6 +251,9 @@ class MedicalScript(DefaultScript):
                 self.delete()
                 
         except Exception as e:
+            # Deliberate guard (#469): a critical tick error stops and
+            # deletes the script rather than retrying the same failure
+            # every tick.  Logged; the next wound re-creates the script.
             splattercast = get_splattercast()
             splattercast.msg(f"MEDICAL_SCRIPT_CRITICAL_ERROR: {getattr(self.obj, 'key', '?')}: {e}")
             self.stop()

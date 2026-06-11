@@ -888,10 +888,18 @@ class MedicalState:
             from .conditions import create_condition_from_damage
             conditions = create_condition_from_damage(damage_amount, injury_type, location)
             return conditions
-        except ImportError as e:
+        except ImportError:
             # Fallback if conditions module not available
             return []
         except Exception as e:
+            # Deliberate guard (#469): a condition-creation bug must not
+            # abort damage application — but a wound silently producing
+            # no bleeding/pain is the cheating class of failure, so it
+            # is audit-logged.
+            from world.combat.debug import get_splattercast
+            get_splattercast().msg(
+                f"CONDITION_CREATE_ERROR: {injury_type} at {location}: {e}"
+            )
             return []
             
     def add_condition(self, condition):
@@ -1031,9 +1039,15 @@ class MedicalState:
                 # Archived characters are permanently dead; dying characters can still be resuscitated
                 if character and not character.db.archived:
                     condition.start_condition(character)
-            except Exception:
-                # If condition restoration fails, skip it.
-                pass
+            except Exception as e:
+                # Deliberate guard (#469): one corrupt persisted
+                # condition skips, the rest restore.  Audit-logged so
+                # vanishing conditions are diagnosable.
+                from world.combat.debug import get_splattercast
+                get_splattercast().msg(
+                    f"CONDITION_RESTORE_ERROR: skipped condition for "
+                    f"{getattr(character, 'key', '?')}: {e}"
+                )
             
         # Restore vital signs
         medical_state.blood_level = data.get("blood_level", 100.0)

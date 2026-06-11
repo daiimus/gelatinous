@@ -13,6 +13,7 @@ CmdJump handles three distinct sub-systems:
 """
 
 from evennia import Command, search_object
+from twisted.internet.error import AlreadyCalled, AlreadyCancelled
 from evennia.utils.utils import delay
 
 from world.combat.constants import (
@@ -210,8 +211,8 @@ class CmdJump(Command):
                     try:
                         timer.cancel()  # Cancel the utils.delay timer
                         splattercast.msg(f"JUMP_SACRIFICE: Cancelled original grenade timer on {explosive.key}")
-                    except Exception:
-                        splattercast.msg(f"JUMP_SACRIFICE: Failed to cancel original grenade timer on {explosive.key}")
+                    except (AlreadyCalled, AlreadyCancelled):
+                        splattercast.msg(f"JUMP_SACRIFICE: Original grenade timer on {explosive.key} already fired/cancelled")
                 delattr(explosive.ndb, NDB_GRENADE_TIMER)
             
             # Stop any timer scripts

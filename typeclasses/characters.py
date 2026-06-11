@@ -372,19 +372,13 @@ class Character(
         if combat_handler:
             try:
                 combat_handler.remove_combatant(self)
-                # Optional: Debug broadcast for tracking
-                try:
-                    from world.combat.utils import debug_broadcast
-                    debug_broadcast(f"{self.key} removed from combat due to unconsciousness", "MEDICAL", "UNCONSCIOUS")
-                except ImportError:
-                    pass  # debug_broadcast not available
+                from world.combat.utils import debug_broadcast
+                debug_broadcast(f"{self.key} removed from combat due to unconsciousness", "MEDICAL", "UNCONSCIOUS")
             except Exception as e:
-                # Optional: Debug broadcast for tracking errors
-                try:
-                    from world.combat.utils import debug_broadcast
-                    debug_broadcast(f"Error removing {self.key} from combat on unconsciousness: {e}", "MEDICAL", "ERROR")
-                except ImportError:
-                    pass  # debug_broadcast not available
+                # Deliberate guard (#469): a combat-removal bug must not
+                # abort the unconsciousness transition itself.  Logged.
+                from world.combat.utils import debug_broadcast
+                debug_broadcast(f"Error removing {self.key} from combat on unconsciousness: {e}", "MEDICAL", "ERROR")
         
         # Optional: Debug broadcast for tracking
         try:
@@ -639,14 +633,11 @@ class Character(
         # Set death placement description for persistent visual indication
         self.override_place = "lying motionless and deceased."
         
-        # Always show death analysis when character dies
-        try:
-            splattercast = get_splattercast()
-            death_analysis = self.debug_death_analysis()
-            splattercast.msg(death_analysis)
-        except Exception as e:
-            # Fallback if splattercast channel not available
-            pass
+        # Always show death analysis when character dies.
+        # debug_death_analysis is fail-soft internally and the audit
+        # router cannot raise (#464), so no wrapper is needed.
+        splattercast = get_splattercast()
+        splattercast.msg(self.debug_death_analysis())
         
         # Check if character is in active combat - if so, defer death curtain
         is_in_combat = hasattr(self.ndb, NDB_COMBAT_HANDLER) and getattr(self.ndb, NDB_COMBAT_HANDLER) is not None
@@ -694,7 +685,9 @@ class Character(
         try:
             self.cmdset.remove_default()
         except Exception:
-            pass  # No default cmdset to remove, that's fine
+            # Deliberate (#469): removing an absent default cmdset is a
+            # legitimate no-op during state transitions.
+            pass
             
         from commands.default_cmdsets import UnconsciousCmdSet
         self.cmdset.add_default(UnconsciousCmdSet)
@@ -734,7 +727,9 @@ class Character(
             try:
                 self.cmdset.remove_default()
             except Exception:
-                pass  # No default cmdset to remove, that's fine
+                # Deliberate (#469): removing an absent default cmdset
+                # is a legitimate no-op during state transitions.
+                pass
                 
             from commands.default_cmdsets import DeathCmdSet
             self.cmdset.add_default(DeathCmdSet)
@@ -750,7 +745,9 @@ class Character(
             # Remove current default cmdset (should be unconscious cmdset)
             self.cmdset.remove_default()
         except Exception:
-            pass  # No default cmdset to remove, that's fine
+            # Deliberate (#469): removing an absent default cmdset is a
+            # legitimate no-op during state transitions.
+            pass
             
         # Restore normal character cmdset
         from commands.default_cmdsets import CharacterCmdSet
@@ -780,7 +777,9 @@ class Character(
             # Remove current default cmdset (should be death cmdset)
             self.cmdset.remove_default()
         except Exception:
-            pass  # No default cmdset to remove, that's fine
+            # Deliberate (#469): removing an absent default cmdset is a
+            # legitimate no-op during state transitions.
+            pass
             
         # Restore normal character cmdset
         from commands.default_cmdsets import CharacterCmdSet

@@ -85,18 +85,27 @@ class Room(ObjectParent, DefaultRoom):
                 # Issue #230: refresh corpse key to current decay stage.
                 # ``look`` is now a pure read; key advancement on stage
                 # transitions runs here, triggered by character entry.
+                # Deliberate (#469): cosmetic key refresh must not
+                # block decay cleanup.
                 try:
                     corpse._refresh_decay_key_if_changed()
                 except Exception:
-                    pass  # Don't let key refresh block decay cleanup.
+                    pass
 
                 if corpse.check_complete_decay():
                     # Drop items to room
                     for item in list(corpse.contents):
                         try:
                             item.move_to(self, quiet=True)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            # Deliberate (#469) — but a failed rescue
+                            # means the item is destroyed with the
+                            # corpse, so it is audit-logged.
+                            from world.combat.debug import get_splattercast
+                            get_splattercast().msg(
+                                f"CORPSE_DECAY_ITEM_LOST: {item.key} "
+                                f"in {corpse.key}: {e}"
+                            )
                     
                     # Log and delete
                     from world.combat.debug import get_splattercast
@@ -105,7 +114,10 @@ class Room(ObjectParent, DefaultRoom):
                     
                     corpse.delete()
             except Exception:
-                pass  # Corpse may have been deleted or be in invalid state
+                # Deliberate guard (#469): just-in-time decay cleanup
+                # runs on room entry — a broken corpse must never block
+                # a character walking into the room.
+                pass
     
     # Override the appearance template to use our custom footer for exits
     # and custom things display to handle @integrate objects

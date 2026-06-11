@@ -728,8 +728,11 @@ class CmdDefuse(Command):
             grenade.delete()
 
         except Exception as e:
+            # #469: log + raise — one-shot timer callback, same policy
+            # as the explosion_utils resolvers (#481).
             splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in trigger_early_explosion: {e}")
+            raise
 
 
 # =============================================================================

@@ -49,11 +49,8 @@ def _run_github_call(caller, thread_fn, on_success, failure_msg):
     """
     def _on_err(failure):
         caller.msg(f"|r{failure_msg}|n")
-        try:
-            from evennia.utils import logger
-            logger.log_err(f"@bug GitHub call failed: {failure}")
-        except Exception:
-            pass
+        from evennia.utils import logger
+        logger.log_err(f"@bug GitHub call failed: {failure}")
 
     run_async(thread_fn, at_return=on_success, at_err=_on_err)
 
@@ -225,6 +222,8 @@ class CmdBug(MuxCommand):
             ]
             
             # Also try calculating from this file's location
+            # Deliberate (#469): best-effort path probes — every
+            # failure here just feeds the "unknown" hash fallback.
             try:
                 git_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 possible_paths.append(os.path.join(git_dir, '.git', 'refs', 'heads', 'master'))
@@ -251,9 +250,12 @@ class CmdBug(MuxCommand):
                 if result.returncode == 0:
                     return result.stdout.strip()
             except Exception:
+                # Deliberate (#469): subprocess probe — falls through
+                # to the "unknown" hash.
                 pass
-                
+
         except Exception:
+            # Deliberate (#469): the whole resolver is best-effort.
             pass
         
         return "unknown"

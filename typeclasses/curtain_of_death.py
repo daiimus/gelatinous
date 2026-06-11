@@ -308,7 +308,9 @@ class DeathCurtain:
             splattercast.msg(f"DEATH_CURTAIN: Death progression started for {self.character.key}, script: {script}")
                 
         except Exception as e:
-            # Debug logging for any errors
+            # Deliberate guard (#469): the curtain animation chain must
+            # finish even if progression startup fails — the failure is
+            # logged loudly here either way.
             from world.combat.debug import get_splattercast
             splattercast = get_splattercast()
             splattercast.msg(f"DEATH_CURTAIN_ERROR: Failed to start death progression for {getattr(self.character, 'key', '?')}: {e}")

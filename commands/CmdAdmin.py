@@ -191,6 +191,8 @@ class CmdHeal(Command):
                     del target.db._test_unconscious_state
                 
                 # Remove any medical state restrictions (death/unconscious cmdsets)
+                # Deliberate (#469): the state may simply not be
+                # applied — clearing it is an expected no-op then.
                 try:
                     target.remove_death_state()
                 except Exception:

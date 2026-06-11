@@ -319,36 +319,28 @@ class ArmorMixin:
                     # Check if this is a plate carrier - needs special handling
                     if (hasattr(item, 'is_plate_carrier') and
                             getattr(item, 'is_plate_carrier', False)):
-                        # DEBUG: Log plate carrier detection
-                        try:
-                            from world.combat.utils import debug_broadcast
-                            installed = getattr(item, 'installed_plates', {})
-                            debug_broadcast(
-                                f"PLATE_CARRIER detected: {item.key} for {location}, "
-                                f"installed_plates={list(installed.keys())}",
-                                "ARMOR_CALC", "DEBUG",
-                            )
-                        except Exception:
-                            pass
+                        from world.combat.utils import debug_broadcast
+                        installed = getattr(item, 'installed_plates', {})
+                        debug_broadcast(
+                            f"PLATE_CARRIER detected: {item.key} for {location}, "
+                            f"installed_plates={list(installed.keys())}",
+                            "ARMOR_CALC", "DEBUG",
+                        )
                         # Expand plate carrier into multiple sequential layers
                         carrier_layers = self._expand_plate_carrier_layers(item, location)
-                        # DEBUG: Log expansion results
-                        try:
-                            from world.combat.utils import debug_broadcast
+                        from world.combat.utils import debug_broadcast
+                        debug_broadcast(
+                            f"PLATE_EXPAND: {len(carrier_layers)} layers created "
+                            f"from {item.key}",
+                            "ARMOR_CALC", "DEBUG",
+                        )
+                        for layer in carrier_layers:
                             debug_broadcast(
-                                f"PLATE_EXPAND: {len(carrier_layers)} layers created "
-                                f"from {item.key}",
+                                f"  Layer {layer['layer']}: {layer['item'].key} "
+                                f"({layer['armor_type']}, "
+                                f"rating={layer['armor_rating']})",
                                 "ARMOR_CALC", "DEBUG",
                             )
-                            for layer in carrier_layers:
-                                debug_broadcast(
-                                    f"  Layer {layer['layer']}: {layer['item'].key} "
-                                    f"({layer['armor_type']}, "
-                                    f"rating={layer['armor_rating']})",
-                                    "ARMOR_CALC", "DEBUG",
-                                )
-                        except Exception:
-                            pass
                         armor_layers.extend(carrier_layers)
                     else:
                         # Regular armor - single layer
@@ -463,65 +455,49 @@ class ArmorMixin:
             installed_plates = carrier.db.installed_plates or {}
             slot_coverage = carrier.db.plate_slot_coverage or {}
 
-            # DEBUG: Log what we're working with
-            try:
-                from world.combat.utils import debug_broadcast
-                debug_broadcast(
-                    f"PLATE_LOOP: Processing {len(installed_plates)} slots "
-                    f"for {location}",
-                    "ARMOR_CALC", "DEBUG",
-                )
-                debug_broadcast(
-                    f"PLATE_LOOP: installed_plates type={type(installed_plates)}, "
-                    f"value={installed_plates}",
-                    "ARMOR_CALC", "DEBUG",
-                )
-                debug_broadcast(
-                    f"PLATE_LOOP: slot_coverage={slot_coverage}",
-                    "ARMOR_CALC", "DEBUG",
-                )
-            except Exception:
-                pass
+            from world.combat.utils import debug_broadcast
+            debug_broadcast(
+                f"PLATE_LOOP: Processing {len(installed_plates)} slots "
+                f"for {location}",
+                "ARMOR_CALC", "DEBUG",
+            )
+            debug_broadcast(
+                f"PLATE_LOOP: installed_plates type={type(installed_plates)}, "
+                f"value={installed_plates}",
+                "ARMOR_CALC", "DEBUG",
+            )
+            debug_broadcast(
+                f"PLATE_LOOP: slot_coverage={slot_coverage}",
+                "ARMOR_CALC", "DEBUG",
+            )
 
             for slot_name, plate in installed_plates.items():
-                # DEBUG: Log each slot
-                try:
-                    from world.combat.utils import debug_broadcast
-                    plate_type = type(plate).__name__ if plate else "None"
-                    plate_key = plate.key if plate and hasattr(plate, 'key') else "N/A"
-                    plate_layer = (
-                        getattr(plate, 'layer', 'MISSING') if plate else "N/A"
-                    )
-                    debug_broadcast(
-                        f"PLATE_SLOT: slot={slot_name}, type={plate_type}, "
-                        f"key={plate_key}, layer={plate_layer}, "
-                        f"has_rating="
-                        f"{hasattr(plate, 'armor_rating') if plate else False}",
-                        "ARMOR_CALC", "DEBUG",
-                    )
-                except Exception as e:
-                    from world.combat.utils import debug_broadcast
-                    debug_broadcast(
-                        f"PLATE_SLOT_ERROR: {e}", "ARMOR_CALC", "ERROR"
-                    )
-                    pass
+                from world.combat.utils import debug_broadcast
+                plate_type = type(plate).__name__ if plate else "None"
+                plate_key = plate.key if plate and hasattr(plate, 'key') else "N/A"
+                plate_layer = (
+                    getattr(plate, 'layer', 'MISSING') if plate else "N/A"
+                )
+                debug_broadcast(
+                    f"PLATE_SLOT: slot={slot_name}, type={plate_type}, "
+                    f"key={plate_key}, layer={plate_layer}, "
+                    f"has_rating="
+                    f"{hasattr(plate, 'armor_rating') if plate else False}",
+                    "ARMOR_CALC", "DEBUG",
+                )
 
                 if not plate or not hasattr(plate, 'armor_rating'):
                     continue
 
                 # Check if this plate protects the hit location
                 protected_locations = slot_coverage.get(slot_name, [])
-                # DEBUG: Log coverage check
-                try:
-                    from world.combat.utils import debug_broadcast
-                    debug_broadcast(
-                        f"PLATE_COVERAGE: slot={slot_name}, "
-                        f"protects={protected_locations}, location={location}, "
-                        f"match={location in protected_locations}",
-                        "ARMOR_CALC", "DEBUG",
-                    )
-                except Exception:
-                    pass
+                from world.combat.utils import debug_broadcast
+                debug_broadcast(
+                    f"PLATE_COVERAGE: slot={slot_name}, "
+                    f"protects={protected_locations}, location={location}, "
+                    f"match={location in protected_locations}",
+                    "ARMOR_CALC", "DEBUG",
+                )
                 if location not in protected_locations:
                     continue
 

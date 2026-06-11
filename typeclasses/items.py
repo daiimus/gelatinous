@@ -1980,6 +1980,8 @@ def spawn_severed_head_for_living(character, *, injury_type="cut"):
         attacker = getattr(character.ndb, "_last_damage_attacker", None)
         open_incision(character, "head", surgeon=attacker)
     except Exception:
+        # Deliberate (#469): incision recording is forensic-only —
+        # never block the severance over its bookkeeping.
         pass
 
     return head
@@ -2370,6 +2372,8 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
         attacker = getattr(character.ndb, "_last_damage_attacker", None)
         open_incision(character, container, surgeon=attacker)
     except Exception:
+        # Deliberate (#469): incision recording is forensic-only —
+        # never block the severance over its bookkeeping.
         pass
 
     detach_items_to_appendage(character, appendage, chain)

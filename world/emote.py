@@ -364,6 +364,8 @@ def build_char_candidates(
                     if char.key not in [n for n, _rc in names]:
                         names.append((char.key, False))
             except Exception:
+                # Deliberate (#469): a lock-check hiccup just skips the
+                # builder-only true-name match candidate.
                 pass
 
         for name, requires_capital in names:
