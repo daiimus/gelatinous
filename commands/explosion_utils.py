@@ -102,7 +102,7 @@ def check_rigged_grenade(character, exit_obj):
         object=rigged_grenade.key, victim="{target_char}"
     )
     msg_room_identity(
-        room=character.location,
+        location=character.location,
         template=observer_template,
         char_refs={"target_char": character},
         exclude=[character],
@@ -203,7 +203,7 @@ def check_rigged_grenade(character, exit_obj):
                                 victim="{target_char}", grenade=rigged_grenade.key
                             )
                             msg_room_identity(
-                                room=other_character.location,
+                                location=other_character.location,
                                 template=observer_template,
                                 char_refs={"target_char": other_character},
                                 exclude=[other_character],
@@ -231,8 +231,13 @@ def check_rigged_grenade(character, exit_obj):
             rigged_grenade.delete()
 
         except Exception as e:
+            # #469: log to the audit trail, then raise — explosion
+            # resolution runs in one-shot timer callbacks, so there is
+            # no retry loop to protect; a half-applied explosion must
+            # be loud (server log traceback), not silent.
             splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in explode_rigged_grenade: {e}")
+            raise
 
     # Start the timer
     start_standalone_grenade_ticker(rigged_grenade, explode_rigged_grenade)
@@ -316,17 +321,21 @@ def start_standalone_grenade_ticker(grenade, explosion_callback=None):
                     explode_standalone_grenade(grenade)
 
         except Exception as e:
-            # Failsafe - if ticker fails, explode immediately to avoid duds
+            # Deliberate failsafe (#469, same as start_grenade_ticker):
+            # a live grenade must never become a permanent dud because
+            # of a ticker bug — log, then explode.
             splattercast = get_splattercast()
-            if splattercast:
-                splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER_ERROR: Ticker error for {grenade.key}: {e} - triggering explosion")
+            splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER_ERROR: Ticker error for {grenade.key}: {e} - triggering explosion")
             try:
                 if explosion_callback:
                     explosion_callback()
                 else:
                     explode_standalone_grenade(grenade)
-            except Exception:
-                pass  # If even explosion fails, give up gracefully
+            except Exception as inner:
+                # Failsafe-of-the-failsafe: even the forced explosion
+                # failed.  Logged — a stuck live grenade is exactly
+                # what the audit trail exists to explain.
+                splattercast.msg(f"{DEBUG_PREFIX_THROW}_TICKER_ERROR: Forced explosion also failed for {grenade.key}: {inner}")
 
     # Start the ticker
     tick()
@@ -465,6 +474,9 @@ def get_unified_explosion_proximity(grenade):
         return unified_list
 
     except Exception as e:
+        # Deliberate degradation (#469): a proximity-merge bug falls
+        # back to the grenade's own proximity list — a smaller blast
+        # is better than no blast resolution at all.  Logged.
         splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in get_unified_explosion_proximity: {e}")
         # Return original proximity list as fallback
@@ -553,7 +565,7 @@ def explode_standalone_grenade(grenade):
                 # Announce to the room
                 if holder.location:
                     msg_room_identity(
-                        room=holder.location,
+                        location=holder.location,
                         template=f"|R{{target_char}}'s {grenade.key}, magnetically clamped to their {stuck_to_armor.key}, EXPLODES in a devastating blast!|n",
                         char_refs={"target_char": holder},
                         exclude=[holder],
@@ -565,7 +577,7 @@ def explode_standalone_grenade(grenade):
                 # Announce to the room
                 if holder.location:
                     msg_room_identity(
-                        room=holder.location,
+                        location=holder.location,
                         template=f"|r{{target_char}}'s {grenade.key} explodes in their hands!|n",
                         char_refs={"target_char": holder},
                         exclude=[holder],
@@ -619,7 +631,7 @@ def explode_standalone_grenade(grenade):
                                 victim="{target_char}", grenade=grenade.key
                             )
                             msg_room_identity(
-                                room=character.location,
+                                location=character.location,
                                 template=observer_template,
                                 char_refs={"target_char": character},
                                 exclude=[character],
@@ -647,8 +659,14 @@ def explode_standalone_grenade(grenade):
         grenade.delete()
 
     except Exception as e:
+        # #469: log to the audit trail, then raise — see
+        # explode_rigged_grenade.  This guard's former silence masked
+        # the room=/location= TypeError that aborted every explosion
+        # broadcast (and the damage loop behind it) since the identity
+        # migration.
         splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in explode_standalone_grenade: {e}")
+        raise
 
 
 def check_auto_defuse(character):
@@ -691,6 +709,9 @@ def check_auto_defuse(character):
             attempt_auto_defuse(character, grenade)
 
     except Exception as e:
+        # Deliberate boundary guard (#469): this runs from the room-
+        # entry hook — a grenade-detection bug must never break player
+        # movement.  Logged.
         splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_ERROR: Error in check_auto_defuse for {character.key}: {e}")
 
@@ -729,7 +750,7 @@ def attempt_auto_defuse(character, grenade):
         # Announce auto-defuse attempt (more subtle than manual)
         character.msg(f"You notice the live {grenade.key} and instinctively attempt to defuse it...")
         msg_room_identity(
-            room=character.location,
+            location=character.location,
             template=f"{{actor}} quickly works on defusing the {grenade.key}.",
             char_refs={"actor": character},
             exclude=[character],
@@ -746,6 +767,8 @@ def attempt_auto_defuse(character, grenade):
             handle_auto_defuse_failure(character, grenade)
 
     except Exception as e:
+        # Deliberate stage guard (#469): downstream of the room-entry
+        # hook — see check_auto_defuse.  Logged.
         splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_ERROR: Error in attempt_auto_defuse for {character.key} and {grenade.key}: {e}")
 
@@ -766,7 +789,7 @@ def handle_auto_defuse_success(character, grenade):
         # Success messages (more dramatic than manual defuse)
         character.msg(f"SUCCESS! You instinctively defuse the {grenade.key} just in time!")
         msg_room_identity(
-            room=character.location,
+            location=character.location,
             template=f"{{actor}} quickly defuses the {grenade.key}!",
             char_refs={"actor": character},
             exclude=[character],
@@ -776,6 +799,8 @@ def handle_auto_defuse_success(character, grenade):
         splattercast.msg(f"AUTO_DEFUSE_SUCCESS: {character.key} auto-defused {grenade.key}")
 
     except Exception as e:
+        # Deliberate stage guard (#469): downstream of the room-entry
+        # hook — see check_auto_defuse.  Logged.
         splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_ERROR: Error in handle_auto_defuse_success: {e}")
 
@@ -790,7 +815,7 @@ def handle_auto_defuse_failure(character, grenade):
             # Early detonation triggered
             character.msg(f"Your hasty defuse attempt accidentally triggers the {grenade.key}!")
             msg_room_identity(
-                room=character.location,
+                location=character.location,
                 template=f"{{actor}}'s defuse attempt accidentally triggers the {grenade.key}!",
                 char_refs={"actor": character},
                 exclude=[character],
@@ -812,7 +837,7 @@ def handle_auto_defuse_failure(character, grenade):
             # Failed but no early detonation (more subtle failure message)
             character.msg(f"You notice the {grenade.key} but can't defuse it in time.")
             msg_room_identity(
-                room=character.location,
+                location=character.location,
                 template=f"{{actor}} notices the {grenade.key} but can't defuse it.",
                 char_refs={"actor": character},
                 exclude=[character],
@@ -822,6 +847,8 @@ def handle_auto_defuse_failure(character, grenade):
             splattercast.msg(f"AUTO_DEFUSE_FAILURE: {character.key} failed to auto-defuse {grenade.key} (no early detonation)")
 
     except Exception as e:
+        # Deliberate stage guard (#469): downstream of the room-entry
+        # hook — see check_auto_defuse.  Logged.
         splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_ERROR: Error in handle_auto_defuse_failure: {e}")
 
@@ -871,7 +898,7 @@ def trigger_auto_defuse_explosion(grenade):
                             victim="{target_char}", grenade=grenade.key
                         )
                         msg_room_identity(
-                            room=character.location,
+                            location=character.location,
                             template=observer_template,
                             char_refs={"target_char": character},
                             exclude=[character],
@@ -897,5 +924,8 @@ def trigger_auto_defuse_explosion(grenade):
         grenade.delete()
 
     except Exception as e:
+        # #469: log + raise — one-shot timer callback, same policy as
+        # explode_standalone_grenade.
         splattercast = get_splattercast()
         splattercast.msg(f"AUTO_DEFUSE_ERROR: Error in trigger_auto_defuse_explosion: {e}")
+        raise
