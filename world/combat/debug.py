@@ -32,10 +32,6 @@ Functions:
 
 from __future__ import annotations
 
-import os
-import sys
-import time
-
 from django.conf import settings
 from django.core.exceptions import AppRegistryNotReady
 from django.db import Error as DatabaseError
@@ -46,88 +42,6 @@ from evennia.utils import logger
 from .constants import SPLATTERCAST_CHANNEL
 
 COMBAT_AUDIT_FILENAME = "combat_audit.log"
-
-#: Test processes share the game dir with the live server; their
-#: audit traffic must not touch production logs (it both pollutes
-#: them and triggers cross-process rotation races — issue #489).
-_UNDER_TEST = "test" in sys.argv
-
-
-class _AuditFileWriter:
-    """Serialized async writer for the combat audit log (#489).
-
-    Replaces ``evennia.utils.logger.log_file`` for audit traffic.
-    That helper has two diagnosed failure modes under burst load:
-    it closes its cached handle every 500 accesses while deferred
-    writes are still in flight (write-after-close), and its errback
-    discards the real failure and formats the absent *current*
-    exception — the infamous ``NoneType: None`` server-log flood,
-    each line a silently dropped write.
-
-    This writer:
-
-    * funnels every write through ONE deferred chain — writes are
-      strictly serialized, so no thread ever touches a handle
-      another thread (or a close) is using;
-    * rotates inside that same chain (timestamped generations, size
-      from ``settings.CHANNEL_LOG_ROTATE_SIZE``), so rotation can't
-      race a write;
-    * reports failures with their REAL traceback to the server log
-      (``AUDIT_WRITE_FAILED``) and reopens the handle for the next
-      write — one bad write never wedges the stream.
-    """
-
-    def __init__(self, filename: str):
-        self.filename = filename
-        self._handle = None
-        self._tail = None  # tail of the serialized write chain
-
-    # -- thread-side (always serialized) ---------------------------
-
-    def _path(self) -> str:
-        return os.path.join(settings.LOG_DIR, self.filename)
-
-    def _rotate_size(self) -> int:
-        return max(1000, getattr(settings, "CHANNEL_LOG_ROTATE_SIZE", 1000000))
-
-    def _write_sync(self, line: str) -> None:
-        if self._handle is None or self._handle.closed:
-            self._handle = open(self._path(), "a", encoding="utf-8")
-        self._handle.write(line)
-        self._handle.flush()
-        if self._handle.tell() >= self._rotate_size():
-            self._handle.close()
-            self._handle = None
-            os.replace(self._path(), f"{self._path()}.{int(time.time())}")
-
-    # -- reactor-side ----------------------------------------------
-
-    def _report_failure(self, failure):
-        # The whole point of #489: never lose the real traceback.
-        logger.log_err(
-            f"AUDIT_WRITE_FAILED ({self.filename}): "
-            f"{failure.getTraceback()}"
-        )
-        self._handle = None  # force reopen on the next write
-        return None  # consume the failure; the chain continues
-
-    def write(self, message: str) -> None:
-        from twisted.internet.defer import succeed
-        from twisted.internet.threads import deferToThread
-
-        stamp = time.strftime("%y-%m-%d %H:%M:%S")
-        line = f"\n{stamp} [-] {str(message).strip()}"
-        if self._tail is None:
-            self._tail = succeed(None)
-        # Chain: each write starts only after the previous finished —
-        # fired callbacks are consumed, so the chain doesn't grow.
-        self._tail = self._tail.addCallback(
-            lambda _result: deferToThread(self._write_sync, line)
-        )
-        self._tail.addErrback(self._report_failure)
-
-
-_AUDIT_WRITER = _AuditFileWriter(COMBAT_AUDIT_FILENAME)
 
 class _NullChannel:
     """No-op message sink.
@@ -171,12 +85,13 @@ class _AuditRouter:
     """
 
     def msg(self, message, **kwargs):
-        # Always-on audit write via the serialized writer (#489) —
-        # failures are reported reactor-side with real tracebacks and
-        # can never break combat for players.  Test processes skip
-        # the file entirely (shared log dir with the live server).
-        if not _UNDER_TEST:
-            _AUDIT_WRITER.write(message)
+        # Always-on audit write.  A filesystem failure here must never
+        # break combat for players, so the (and only the) expected I/O
+        # failure mode is swallowed; anything else surfaces.
+        try:
+            logger.log_file(str(message), filename=COMBAT_AUDIT_FILENAME)
+        except OSError:
+            pass
         # Opt-in live mirror.  A developer who set SPLATTERCAST_LIVE is
         # in an active debugging session and *wants* failures to
         # surface, so this path is deliberately unguarded.
