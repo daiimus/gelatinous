@@ -314,3 +314,155 @@ class TestCmdSmokeIntegration(TestCase):
         self.assertNotIn("ache dulls", joined)
         # Flavor message still arrived (something got rendered).
         self.assertTrue(caller.msgs)
+
+
+# ---------------------------------------------------------------------
+# Tolerance (#485) — lazy-decay points shave per-dose magnitude
+# ---------------------------------------------------------------------
+
+
+class TestTolerance(TestCase):
+    def _hooked_consumer(self, points, updated_offset_hours=0.0):
+        import time as _time
+        consumer = _FakeConsumer(conditions=[_pain(5)])
+        consumer.db.substance_tolerance = {
+            "tobacco_neutral": {
+                "points": points,
+                "updated": _time.time() - updated_offset_hours * 3600,
+            },
+        }
+        return consumer
+
+    def test_fresh_consumer_gets_full_effect(self):
+        consumer = _FakeConsumer(conditions=[_pain(5)])
+        result = apply_substance(consumer, "tobacco_neutral")
+        self.assertEqual(result["applied"].get("pain_relief"), 1)
+
+    def test_tolerance_level_blunts_effect_with_feedback(self):
+        """15+ standing points = level 1 = tobacco's magnitude-1
+        pain relief reduced to zero, with the 'doesn't hit like it
+        used to' line."""
+        from world.substances.registry import TOLERANCE_FEEDBACK
+
+        consumer = self._hooked_consumer(points=20.0)
+        result = apply_substance(consumer, "tobacco_neutral")
+        self.assertNotIn("pain_relief", result["applied"])
+        self.assertIn(TOLERANCE_FEEDBACK, result["feedback"])
+        # Pain untouched.
+        self.assertEqual(consumer.medical_state.conditions[0].severity, 5)
+
+    def test_tolerance_decays_with_time(self):
+        """20 points last updated 40 hours ago at 0.5/hour decay →
+        0 standing points → full effect again."""
+        consumer = self._hooked_consumer(points=20.0, updated_offset_hours=40)
+        result = apply_substance(consumer, "tobacco_neutral")
+        self.assertEqual(result["applied"].get("pain_relief"), 1)
+
+    def test_doses_accrue_tolerance_points(self):
+        consumer = _FakeConsumer(conditions=[_pain(5)])
+        apply_substance(consumer, "tobacco_neutral")
+        apply_substance(consumer, "tobacco_neutral")
+        entry = consumer.db.substance_tolerance["tobacco_neutral"]
+        # Two points minus the sliver of lazy decay between doses.
+        self.assertGreater(entry["points"], 1.9)
+
+
+# ---------------------------------------------------------------------
+# Addiction (#485, flavor-first)
+# ---------------------------------------------------------------------
+
+
+class TestAddiction(TestCase):
+    def _consumer_with_history(self, lifetime):
+        consumer = _FakeConsumer(conditions=[_pain(3)])
+        consumer.db.substance_doses = {"tobacco_neutral": lifetime}
+        return consumer
+
+    def test_below_threshold_no_condition(self):
+        consumer = self._consumer_with_history(5)
+        apply_substance(consumer, "tobacco_neutral")
+        kinds = [
+            getattr(c, "condition_type", None)
+            for c in consumer.medical_state.conditions
+        ]
+        self.assertNotIn("addiction", kinds)
+
+    def test_crossing_threshold_forms_addiction_once(self):
+        from world.substances.registry import ADDICTION_ONSET_FEEDBACK
+
+        consumer = self._consumer_with_history(29)  # threshold 30
+        result = apply_substance(consumer, "tobacco_neutral")
+        addictions = [
+            c for c in consumer.medical_state.conditions
+            if getattr(c, "condition_type", None) == "addiction"
+        ]
+        self.assertEqual(len(addictions), 1)
+        self.assertEqual(addictions[0].substance_id, "tobacco_neutral")
+        self.assertEqual(addictions[0].prose_key, "tobacco")
+        self.assertIn(ADDICTION_ONSET_FEEDBACK, result["feedback"])
+
+        # Dosing again refreshes the habit instead of stacking a
+        # second condition.
+        before = addictions[0].last_dose_time
+        import time as _time
+        addictions[0].last_dose_time = before - 999
+        apply_substance(consumer, "tobacco_neutral")
+        addictions_after = [
+            c for c in consumer.medical_state.conditions
+            if getattr(c, "condition_type", None) == "addiction"
+        ]
+        self.assertEqual(len(addictions_after), 1)
+        self.assertGreater(addictions_after[0].last_dose_time, before - 999)
+
+
+class TestAddictionCondition(TestCase):
+    def _overdue(self, condition):
+        condition.last_dose_time -= condition.craving_after + 1
+
+    def test_dormant_while_fed(self):
+        from world.medical.conditions import AddictionCondition
+
+        condition = AddictionCondition("tobacco_neutral", prose_key="tobacco")
+        self.assertFalse(condition.is_craving())
+        self.assertEqual(condition.get_pain_contribution(), 0)
+        self.assertFalse(condition.should_end())
+
+    def test_overdue_craving_aches_and_speaks(self):
+        from unittest.mock import MagicMock
+        from world.medical.conditions import AddictionCondition
+
+        condition = AddictionCondition("tobacco_neutral", prose_key="tobacco")
+        self._overdue(condition)
+        self.assertEqual(condition.get_pain_contribution(), 1)
+
+        character = MagicMock()
+        condition.tick_effect(character)  # first overdue tick → prose
+        character.msg.assert_called_once()
+        character.msg.reset_mock()
+        condition.tick_effect(character)  # tick 2 of 5 → quiet
+        character.msg.assert_not_called()
+
+    def test_dose_resets_craving(self):
+        from world.medical.conditions import AddictionCondition
+
+        condition = AddictionCondition("tobacco_neutral")
+        self._overdue(condition)
+        condition.record_dose()
+        self.assertFalse(condition.is_craving())
+        self.assertEqual(condition.get_pain_contribution(), 0)
+
+    def test_serialization_round_trip(self):
+        from world.medical.conditions import (
+            AddictionCondition, deserialize_condition,
+        )
+
+        condition = AddictionCondition(
+            "tobacco_noir", prose_key="tobacco", craving_after=1234,
+        )
+        condition.last_dose_time = 1000.0
+        restored = deserialize_condition(condition.to_dict())
+        self.assertIsInstance(restored, AddictionCondition)
+        self.assertEqual(restored.substance_id, "tobacco_noir")
+        self.assertEqual(restored.craving_after, 1234)
+        self.assertEqual(restored.last_dose_time, 1000.0)
+        self.assertFalse(restored.should_end())

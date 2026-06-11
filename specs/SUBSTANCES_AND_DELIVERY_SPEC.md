@@ -224,10 +224,28 @@ migration from the old `medical_type` strings.
    stim auto-injector) maps to no delivery verb — it was not
    consumable before and stays that way until its substance entry
    exists.
-4. **Tolerance / addiction conditions** — concrete
-   `ConditionSpec` examples + medical-script tick integration.
-   The dose history (`db.substance_doses`, recorded since #458)
-   is the input data.
+4. ~~**Tolerance / addiction conditions**~~ — ✅ shipped in #485
+   (flavor-first by design decision).
+   * **Tolerance** (`ToleranceSpec`): each dose adds a point to
+     `db.substance_tolerance[id]`; points decay lazily by
+     wall-clock hours (no tick — computed in `apply_substance`).
+     Each full `points_per_level` is one level; each level shaves
+     one point of per-dose effect magnitude.  A fully-blunted
+     application gets "It doesn't hit like it used to."
+   * **Addiction** (`AddictionSpec`): crossing `threshold_doses`
+     lifetime doses adds a persistent
+     `AddictionCondition` (never `should_end`s — treatment is the
+     future exit).  Dormant while fed; `craving_after` seconds
+     without a dose makes it contribute 1 pain via
+     `get_pain_contribution` and surface craving prose
+     (`CRAVING_PROSE` banks) every ~5 medical ticks.  Both clear
+     on the next dose.  **No hard stat penalties in v1** — the
+     escalation path (withdrawal stages) is deliberate future
+     growth once the flavor pass is tuned.
+   * Cost note: an addicted character keeps a medical script
+     ticking permanently; the dormant path is two time
+     comparisons.  Addiction is PC-facing; mass-NPC addiction
+     would need a rethink.
 5. **Roll-your-own** — `roll` command that consumes raw
    substance + paper + filter and spawns a cigarette / joint
    prototype with the substance baked on.

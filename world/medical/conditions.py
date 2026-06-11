@@ -6,6 +6,7 @@ like bleeding. Conditions are managed by per-character MedicalScript instances.
 """
 
 import random
+import time
 from .constants import (
     INJURY_SEVERITY_MULTIPLIERS,
     BLOOD_LOSS_PER_SEVERITY,
@@ -547,6 +548,99 @@ class ConsciousnessSuppressionCondition(MedicalCondition):
         return condition
 
 
+class AddictionCondition(MedicalCondition):
+    """Flavor-first substance addiction (issue #485).
+
+    Added by ``apply_substance`` when a consumer's lifetime dose count
+    crosses the substance's addiction threshold.  Dormant while the
+    habit is fed; once ``craving_after`` seconds pass without a dose:
+
+    * each vitals refresh sees ``get_pain_contribution() == 1`` — a
+      mild ache, the "and mild pain" half of the flavor-first design;
+    * the medical-script tick surfaces craving prose every few ticks.
+
+    Both clear automatically the moment the consumer doses again
+    (``record_dose``).  The condition itself never ends on its own —
+    treatment/recovery is future work — which means an addicted
+    character keeps a medical script ticking permanently.  That's a
+    deliberate cost: addiction is a PC-facing mechanic, and the
+    dormant-path tick is a couple of time comparisons.
+
+    Severity stays at 1 in v1; escalation (withdrawal stages) is the
+    designed growth path once the flavor pass is tuned.
+    """
+
+    def __init__(self, substance_id, prose_key="generic",
+                 craving_after=7200, severity=1, location=None):
+        super().__init__("addiction", severity, location, tick_interval=60)
+        self.substance_id = substance_id
+        self.prose_key = prose_key
+        self.craving_after = craving_after
+        self.last_dose_time = time.time()
+        self._overdue_ticks = 0  # transient; not persisted
+
+    # -- state ---------------------------------------------------
+
+    def is_craving(self):
+        """True once the consumer is overdue for a dose."""
+        last = self.last_dose_time or 0
+        return (time.time() - last) >= self.craving_after
+
+    def record_dose(self):
+        """A dose landed — cravings (and their ache) reset."""
+        self.last_dose_time = time.time()
+        self._overdue_ticks = 0
+
+    # -- condition contract ---------------------------------------
+
+    def should_end(self):
+        # Persistent until a future treatment system provides an exit.
+        return False
+
+    def get_pain_contribution(self):
+        return 1 if self.is_craving() else 0
+
+    def tick_effect(self, character):
+        if not self.is_craving():
+            self._overdue_ticks = 0
+            return
+        self._overdue_ticks = getattr(self, "_overdue_ticks", 0) + 1
+        # Surface prose on the first overdue tick, then every ~5
+        # ticks (≈5 minutes at the production interval) — pressure,
+        # not spam.
+        if self._overdue_ticks % 5 == 1:
+            from world.substances.registry import pick_craving_line
+            line = pick_craving_line(self.prose_key)
+            if line and hasattr(character, "msg"):
+                character.msg(f"|x{line}|n")
+
+    # -- persistence ----------------------------------------------
+
+    def to_dict(self):
+        data = super().to_dict()
+        data.update({
+            "substance_id": self.substance_id,
+            "prose_key": self.prose_key,
+            "craving_after": self.craving_after,
+            "last_dose_time": self.last_dose_time,
+        })
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        condition = cls(
+            data.get("substance_id", "unknown"),
+            prose_key=data.get("prose_key", "generic"),
+            craving_after=data.get("craving_after", 7200),
+            severity=data.get("severity", 1),
+            location=data.get("location"),
+        )
+        condition.max_severity = data.get("max_severity", condition.severity)
+        condition.treated = data.get("treated", False)
+        condition.last_dose_time = data.get("last_dose_time", time.time())
+        return condition
+
+
 def deserialize_condition(condition_dict):
     """Reconstruct a ``MedicalCondition`` from its ``to_dict`` form.
 
@@ -571,6 +665,8 @@ def deserialize_condition(condition_dict):
         return PainCondition.from_dict(condition_dict)
     if condition_type == "infection":
         return InfectionCondition.from_dict(condition_dict)
+    if condition_type == "addiction":
+        return AddictionCondition.from_dict(condition_dict)
     if condition_type == "consciousness_suppression":
         return ConsciousnessSuppressionCondition.from_dict(condition_dict)
     return MedicalCondition.from_dict(condition_dict)

@@ -32,6 +32,8 @@ write, consistent with the storage-patterns guidance.
 """
 from __future__ import annotations
 
+import random
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -61,6 +63,37 @@ class SubstanceEffect:
 
 
 @dataclass(frozen=True)
+class ToleranceSpec:
+    """Per-substance tolerance curve (issue #485).
+
+    Each dose adds one tolerance point; points decay lazily by
+    wall-clock hours since the last update (no tick — computed in
+    ``apply_substance``).  Each full ``points_per_level`` of
+    standing points is one tolerance level, and each level shaves
+    one point of per-dose effect magnitude (floor 0).
+    """
+
+    points_per_level: int
+    decay_per_hour: float
+    max_level: int
+
+
+@dataclass(frozen=True)
+class AddictionSpec:
+    """Per-substance addiction parameters (issue #485, flavor-first).
+
+    Crossing ``threshold_doses`` lifetime doses adds a persistent
+    :class:`~world.medical.conditions.AddictionCondition`.  Dormant
+    while fed; ``craving_after`` seconds without a dose surfaces
+    periodic craving prose (``prose_key`` bank) and a mild ache.
+    """
+
+    threshold_doses: int
+    craving_after: int
+    prose_key: str
+
+
+@dataclass(frozen=True)
 class Substance:
     """A registered substance.
 
@@ -77,6 +110,8 @@ class Substance:
     display_name: str
     effects: tuple[SubstanceEffect, ...]
     flavor_bank_key: str
+    tolerance: Optional[ToleranceSpec] = None
+    addiction: Optional[AddictionSpec] = None
 
 
 # ---------------------------------------------------------------------
@@ -93,6 +128,12 @@ SUBSTANCES: dict[str, Substance] = {
             SubstanceEffect(kind="pain_relief", magnitude=1),
         ),
         flavor_bank_key="tobacco_neutral",
+        tolerance=ToleranceSpec(
+            points_per_level=15, decay_per_hour=0.5, max_level=1,
+        ),
+        addiction=AddictionSpec(
+            threshold_doses=30, craving_after=7200, prose_key="tobacco",
+        ),
     ),
     "tobacco_noir": Substance(
         id="tobacco_noir",
@@ -105,6 +146,12 @@ SUBSTANCES: dict[str, Substance] = {
             SubstanceEffect(kind="sedation", magnitude=1, max_stack=2),
         ),
         flavor_bank_key="tobacco_noir",
+        tolerance=ToleranceSpec(
+            points_per_level=15, decay_per_hour=0.5, max_level=1,
+        ),
+        addiction=AddictionSpec(
+            threshold_doses=25, craving_after=7200, prose_key="tobacco",
+        ),
     ),
 }
 
@@ -133,6 +180,90 @@ EFFECT_FEEDBACK: dict[str, str] = {
     "pain_relief": "The ache dulls a little.",
     "sedation": "A slow heaviness settles behind your eyes.",
 }
+
+#: Shown once per application when tolerance zeroed out an effect
+#: that would otherwise have landed.
+TOLERANCE_FEEDBACK = "It doesn't hit like it used to."
+
+#: Shown once, the moment an addiction condition first forms.
+ADDICTION_ONSET_FEEDBACK = (
+    "Somewhere along the line, this stopped being optional."
+)
+
+#: Craving prose banks, keyed by ``AddictionSpec.prose_key``.  Read
+#: by ``AddictionCondition.tick_effect`` via ``pick_craving_line``.
+CRAVING_PROSE: dict[str, list[str]] = {
+    "generic": [
+        "A want with no name works its way up from somewhere below "
+        "your ribs.",
+        "Your hands keep looking for something to do. You know "
+        "exactly what.",
+    ],
+    "tobacco": [
+        "Your fingers miss the weight of a cigarette. They make the "
+        "shape of one anyway.",
+        "Someone, somewhere, is smoking. You can't smell it. You can "
+        "feel it.",
+        "The space between your index and middle finger aches with "
+        "vacancy.",
+        "You catch yourself inhaling slow through pursed lips. "
+        "Nothing arrives.",
+    ],
+}
+
+
+def pick_craving_line(prose_key: str) -> str | None:
+    """Return a random craving line for ``prose_key`` (falls back to
+    the generic bank; None only if both banks are missing)."""
+    bank = CRAVING_PROSE.get(prose_key) or CRAVING_PROSE.get("generic")
+    return random.choice(bank) if bank else None
+
+
+# ---------------------------------------------------------------------
+# Tolerance bookkeeping (lazy decay — no tick)
+# ---------------------------------------------------------------------
+
+
+def _tolerance_level(consumer, substance_id: str, spec: ToleranceSpec) -> int:
+    """Return the consumer's current tolerance level for a substance.
+
+    Decays standing points by wall-clock hours since the last update,
+    writes the decayed value back, and converts points to a level.
+    """
+    db = getattr(consumer, "db", None)
+    if db is None:
+        return 0
+    store = getattr(db, "substance_tolerance", None)
+    if store is None:
+        return 0
+    entry = store.get(substance_id)
+    if not entry:
+        return 0
+    now = time.time()
+    elapsed_hours = max(0.0, (now - entry.get("updated", now)) / 3600.0)
+    points = max(0.0, entry.get("points", 0.0) - elapsed_hours * spec.decay_per_hour)
+    entry["points"] = points
+    entry["updated"] = now
+    return min(spec.max_level, int(points // spec.points_per_level))
+
+
+def _record_tolerance_dose(consumer, substance_id: str) -> None:
+    """Add one tolerance point for this dose."""
+    db = getattr(consumer, "db", None)
+    if db is None:
+        return
+    store = getattr(db, "substance_tolerance", None)
+    if store is None:
+        db.substance_tolerance = {
+            substance_id: {"points": 1.0, "updated": time.time()},
+        }
+        return
+    entry = store.get(substance_id)
+    if entry is None:
+        store[substance_id] = {"points": 1.0, "updated": time.time()}
+    else:
+        entry["points"] = entry.get("points", 0.0) + 1.0
+        entry["updated"] = time.time()
 
 
 # ---------------------------------------------------------------------
@@ -253,13 +384,23 @@ def apply_substance(consumer, substance_id: str | None, *, doses: int = 1) -> di
     if medical_state is None:
         return result
 
+    # Tolerance (#485): standing level shaves per-dose magnitude.
+    tolerance_level = 0
+    if entry.tolerance is not None:
+        tolerance_level = _tolerance_level(consumer, substance_id, entry.tolerance)
+
+    tolerance_blunted = False
     for _ in range(max(1, int(doses))):
         for effect in entry.effects:
+            magnitude = max(0, effect.magnitude - tolerance_level)
+            if magnitude <= 0 < effect.magnitude:
+                tolerance_blunted = True
+                continue
             if effect.kind == "pain_relief":
-                landed = _apply_pain_relief(medical_state, effect.magnitude)
+                landed = _apply_pain_relief(medical_state, magnitude)
             elif effect.kind == "sedation":
                 landed = _apply_sedation(
-                    medical_state, effect.magnitude, effect.max_stack,
+                    medical_state, magnitude, effect.max_stack,
                 )
             else:
                 # Unknown effect kind — declared ahead of its
@@ -276,8 +417,11 @@ def apply_substance(consumer, substance_id: str | None, *, doses: int = 1) -> di
         line = EFFECT_FEEDBACK.get(kind)
         if line:
             result["feedback"].append(line)
+    if tolerance_blunted:
+        result["feedback"].append(TOLERANCE_FEEDBACK)
 
-    # Dose bookkeeping — substrate for future tolerance/addiction.
+    # Dose bookkeeping — lifetime history feeding tolerance/addiction.
+    lifetime_doses = int(doses)
     db = getattr(consumer, "db", None)
     if db is not None:
         doses_map = getattr(db, "substance_doses", None)
@@ -287,6 +431,34 @@ def apply_substance(consumer, substance_id: str | None, *, doses: int = 1) -> di
             doses_map[substance_id] = (
                 int(doses_map.get(substance_id, 0)) + int(doses)
             )
+            lifetime_doses = int(doses_map[substance_id])
+
+    # Tolerance accrues per application (#485).
+    if entry.tolerance is not None:
+        for _ in range(max(1, int(doses))):
+            _record_tolerance_dose(consumer, substance_id)
+
+    # Addiction (#485, flavor-first): feed an existing habit, or form
+    # one once the lifetime threshold is crossed.
+    if entry.addiction is not None:
+        existing = [
+            c for c in (getattr(medical_state, "conditions", []) or [])
+            if getattr(c, "condition_type", None) == "addiction"
+            and getattr(c, "substance_id", None) == substance_id
+        ]
+        if existing:
+            existing[0].record_dose()
+        elif lifetime_doses >= entry.addiction.threshold_doses:
+            from world.medical.conditions import AddictionCondition
+            condition = AddictionCondition(
+                substance_id,
+                prose_key=entry.addiction.prose_key,
+                craving_after=entry.addiction.craving_after,
+            )
+            # add_condition starts the condition ticker itself when
+            # the state has a character reference.
+            medical_state.add_condition(condition)
+            result["feedback"].append(ADDICTION_ONSET_FEEDBACK)
 
     # Refresh vitals so consciousness reflects new penalties
     # immediately, then flush — dose application is a meaningful
