@@ -87,10 +87,13 @@ def _make_room(contents):
 
 def _make_item(key="medkit"):
     """Non-character item (no msg attribute, deliberately empty spec)."""
-    item = MagicMock(spec=["key", "get_display_name", "delete"])
+    item = MagicMock(spec=["key", "get_display_name", "delete", "db"])
     item.key = key
     # Stub get_display_name so caller-side first-person msgs don't blow up.
     item.get_display_name = lambda looker=None: key
+    # No substance — the #487 dose hook no-ops on None.
+    item.db = MagicMock()
+    item.db.substance = None
     return item
 
 

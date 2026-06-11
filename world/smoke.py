@@ -58,6 +58,8 @@ DEFAULT_PACK_CAPACITY = 10
 #: stylistic variants (e.g. tobacco_neutral, tobacco_noir).
 SUBSTANCE_TOBACCO_NEUTRAL = "tobacco_neutral"
 SUBSTANCE_TOBACCO_NOIR = "tobacco_noir"
+SUBSTANCE_CANNABIS = "cannabis"
+SUBSTANCE_OPIUM = "opium"
 
 # Pre-#456 brand attribute values that mapped to these substances.
 # ``pick_smoke_message`` honours both via this table during the
@@ -197,6 +199,57 @@ SMOKE_MESSAGES: dict[str, list[tuple[str, str]]] = {
             "{actor} takes a slow drag from their cigarette, the "
             "smoke filling their senses before they let it escape "
             "in a gentle, steady stream.",
+        ),
+    ],
+    SUBSTANCE_CANNABIS: [
+        (
+            "You pull a slow drag from the joint, sweet resin "
+            "crackling, and hold it until the room softens at the "
+            "edges.",
+            "{actor} pulls a slow drag from a joint, the sweet "
+            "smell of resin drifting outward as the smoke leaves "
+            "them in no particular hurry.",
+        ),
+        (
+            "You take an unhurried puff, exhaling green-smelling "
+            "smoke that hangs in the air like it pays rent.",
+            "{actor} takes an unhurried puff, exhaling "
+            "green-smelling smoke that hangs in the air like it "
+            "pays rent.",
+        ),
+        (
+            "You draw deep and let it sit. Somewhere in your chest, "
+            "a clenched fist you'd forgotten about opens.",
+            "{actor} draws deep on a joint and goes very still for "
+            "a moment, shoulders dropping a visible inch.",
+        ),
+        (
+            "The paper crackles. The smoke tastes like a field that "
+            "never existed. You exhale and so does the day.",
+            "{actor} exhales a lazy ribbon of smoke, eyelids at "
+            "half-mast.",
+        ),
+    ],
+    SUBSTANCE_OPIUM: [
+        (
+            "You draw the dark smoke in and the world's volume drops "
+            "by half. The sweetness sits heavy on the back of your "
+            "tongue, old and patient.",
+            "{actor} draws in dark, sweet-smelling smoke, and "
+            "something in their face goes distant and smoothed-over.",
+        ),
+        (
+            "The resin bubbles faintly. You inhale, and the ache "
+            "doesn't leave so much as it forgets your address.",
+            "{actor} inhales slowly over bubbling resin, exhaling a "
+            "heavy, honeyed smoke that sinks rather than rises.",
+        ),
+        (
+            "You breathe it in and your bones swap themselves for "
+            "something warmer. The room is the same. You are "
+            "elsewhere.",
+            "{actor} breathes in the dark smoke and settles, limbs "
+            "arranging themselves like things set down gently.",
         ),
     ],
     SUBSTANCE_TOBACCO_NOIR: [

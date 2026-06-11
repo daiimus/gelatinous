@@ -27,13 +27,19 @@ class ConsumptionCommand(Command):
     - Time-based actions (multi-round procedures)
     """
     
-    def get_item_and_target(self, args, allow_body_location=False):
+    def get_item_and_target(self, args, allow_body_location=False,
+                            require_medical=True):
         """
         Parse command arguments to get item and target.
         
         Args:
             args (str): Command arguments
             allow_body_location (bool): Whether to parse body location
+            require_medical (bool): Reject non-medical items.  The
+                ingestion verbs (eat/drink/inhale) pass False since
+                #475 made the delivery-method tag their real gate —
+                a bottle of rotgut is drinkable without being a
+                medical item (#487).
             
         Returns:
             dict: Contains item, target, body_location, errors
@@ -65,8 +71,9 @@ class ConsumptionCommand(Command):
         
         result["item"] = item[0]
         
-        # Check if it's a medical item
-        if not is_medical_item(result["item"]):
+        # Check if it's a medical item (skipped for tag-gated
+        # ingestion verbs — see require_medical above)
+        if require_medical and not is_medical_item(result["item"]):
             result["errors"].append(f"{result['item'].get_display_name(caller)} is not a medical item.")
             return result
             
@@ -90,6 +97,30 @@ class ConsumptionCommand(Command):
             
         return result
         
+    def _apply_substance_dose(self, item, target):
+        """Apply one dose of the item's substance to ``target``.
+
+        The §1 layering (#487): the command validates the delivery,
+        the substance entry owns the pharmacology.  Unknown/missing
+        substances no-op, so flavor-only consumables stay legitimate.
+        """
+        from world.substances import apply_substance
+        dose_result = apply_substance(target, item.db.substance)
+        for line in dose_result.get("feedback", ()):
+            target.msg(f"|c{line}|n")
+
+    def _consume(self, item):
+        """Spend one use of a non-medical consumable.
+
+        Items with uses_left tracking decrement-and-delete via the
+        shared lifecycle helper; legacy untracked items are consumed
+        whole.
+        """
+        from world.consumables import consume_use
+        outcome = consume_use(item)
+        if not outcome["success"]:
+            item.delete()
+
     def check_medical_requirements(self, item, user, target):
         """
         Check if medical requirements are met for using the item.
@@ -652,7 +683,7 @@ class CmdEat(ConsumptionCommand):
         caller = self.caller
         
         # Parse arguments  
-        result = self.get_item_and_target(self.args)
+        result = self.get_item_and_target(self.args, require_medical=False)
         if result["errors"]:
             caller.msg(result["errors"][0])
             return
@@ -697,10 +728,13 @@ class CmdEat(ConsumptionCommand):
             caller.msg(f"Effects: {result_msg}")
             if not is_self:
                 target.msg(f"You feel the effects: {result_msg}")
+            self._apply_substance_dose(item, target)
         else:
-            # Regular food item
+            # Regular food item — pharmacology (if any) rides the
+            # delivery, then the generic consumable lifecycle.
             caller.msg(f"You consumed {item.get_display_name(caller)}.")
-            item.delete()  # Regular food items are consumed completely
+            self._apply_substance_dose(item, target)
+            self._consume(item)
 
 
 class CmdDrink(ConsumptionCommand):
@@ -729,7 +763,7 @@ class CmdDrink(ConsumptionCommand):
         caller = self.caller
         
         # Parse arguments
-        result = self.get_item_and_target(self.args)
+        result = self.get_item_and_target(self.args, require_medical=False)
         if result["errors"]:
             caller.msg(result["errors"][0])
             return
@@ -774,10 +808,13 @@ class CmdDrink(ConsumptionCommand):
             caller.msg(f"Effects: {result_msg}")
             if not is_self:
                 target.msg(f"You feel the effects: {result_msg}")
+            self._apply_substance_dose(item, target)
         else:
-            # Regular drink
+            # Regular drink — pharmacology (if any) rides the
+            # delivery, then the generic consumable lifecycle.
             caller.msg(f"You drank {item.get_display_name(caller)}.")
-            item.delete()  # Regular drinks are consumed completely
+            self._apply_substance_dose(item, target)
+            self._consume(item)
 
 
 class CmdInhale(ConsumptionCommand):
@@ -806,7 +843,7 @@ class CmdInhale(ConsumptionCommand):
         caller = self.caller
         
         # Parse arguments
-        result = self.get_item_and_target(self.args)
+        result = self.get_item_and_target(self.args, require_medical=False)
         if result["errors"]:
             caller.msg(result["errors"][0])
             return
@@ -827,11 +864,13 @@ class CmdInhale(ConsumptionCommand):
                 caller.msg(f"{target.get_display_name(caller)} is unconscious and cannot inhale.")
             return
             
-        # Check medical requirements
-        errors = self.check_medical_requirements(item, caller, target)
-        if errors:
-            caller.msg(errors[0])
-            return
+        # Check medical requirements (medical items only — non-medical
+        # inhalables are gated by the delivery tag, #487)
+        if is_medical_item(item):
+            errors = self.check_medical_requirements(item, caller, target)
+            if errors:
+                caller.msg(errors[0])
+                return
             
         # Execute inhalation
         if is_self:
@@ -852,9 +891,15 @@ class CmdInhale(ConsumptionCommand):
                 exclude=[caller, target],
             )
             
-        # Apply treatment effects
-        result_msg = self.execute_treatment(item, caller, target)
-        caller.msg(f"Inhalation result: {result_msg}")
-        
-        if not is_self:
-            target.msg(f"Treatment result: {result_msg}")
+        # Apply treatment effects (medical items) and any substance
+        # pharmacology riding the delivery (#487)
+        if is_medical_item(item):
+            result_msg = self.execute_treatment(item, caller, target)
+            caller.msg(f"Inhalation result: {result_msg}")
+
+            if not is_self:
+                target.msg(f"Treatment result: {result_msg}")
+            self._apply_substance_dose(item, target)
+        else:
+            self._apply_substance_dose(item, target)
+            self._consume(item)

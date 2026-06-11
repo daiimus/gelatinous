@@ -466,3 +466,132 @@ class TestAddictionCondition(TestCase):
         self.assertEqual(restored.craving_after, 1234)
         self.assertEqual(restored.last_dose_time, 1000.0)
         self.assertFalse(restored.should_end())
+
+
+# ---------------------------------------------------------------------
+# Cannabis / alcohol / opium (#487)
+# ---------------------------------------------------------------------
+
+
+class TestNewSubstances(TestCase):
+    def test_entries_resolve_with_specs(self):
+        for sid in ("cannabis", "alcohol", "opium"):
+            entry = get_substance_entry(sid)
+            self.assertIsNotNone(entry, sid)
+            self.assertIsNotNone(entry.tolerance, sid)
+            self.assertIsNotNone(entry.addiction, sid)
+            # Every addiction prose key has a craving bank.
+            from world.substances.registry import CRAVING_PROSE
+            self.assertIn(entry.addiction.prose_key, CRAVING_PROSE)
+
+    def test_opium_is_the_serious_analgesic(self):
+        consumer = _FakeConsumer(conditions=[_pain(5)])
+        result = apply_substance(consumer, "opium")
+        self.assertEqual(result["applied"]["pain_relief"], 3)
+        self.assertEqual(consumer.medical_state.conditions[0].severity, 2)
+        self.assertEqual(result["applied"]["sedation"], 2)
+
+    def test_alcohol_sedation_caps_at_properly_drunk(self):
+        """Six shots: sedative severity climbs to the cap of 4
+        (0.60 consciousness penalty — drunk, standing) and stops."""
+        consumer = _FakeConsumer()
+        for _ in range(6):
+            apply_substance(consumer, "alcohol")
+        sedatives = [
+            c for c in consumer.medical_state.conditions
+            if getattr(c, "condition_type", None) == "consciousness_suppression"
+        ]
+        total = sum(int(c.severity) for c in sedatives)
+        self.assertEqual(total, 4)
+
+    def test_opium_hooks_fast(self):
+        """Ten doses is all it takes."""
+        consumer = _FakeConsumer(conditions=[_pain(3)])
+        consumer.db.substance_doses = {"opium": 9}
+        apply_substance(consumer, "opium")
+        addictions = [
+            c for c in consumer.medical_state.conditions
+            if getattr(c, "condition_type", None) == "addiction"
+        ]
+        self.assertEqual(len(addictions), 1)
+        self.assertEqual(addictions[0].prose_key, "opium")
+
+
+# ---------------------------------------------------------------------
+# Delivery wiring (#487): eat/drink/inhale carry pharmacology
+# ---------------------------------------------------------------------
+
+
+class TestDeliveryWiring(TestCase):
+    def _drink_cmd(self, item, target):
+        from unittest.mock import MagicMock
+        from commands.CmdConsumption import CmdDrink
+
+        cmd = CmdDrink()
+        cmd.caller = MagicMock()
+        cmd.caller.location = MagicMock()
+        cmd.args = "rotgut"
+        parse_result = {
+            "item": item, "target": target,
+            "body_location": None, "errors": [],
+        }
+        return cmd, parse_result
+
+    def test_drink_applies_dose_and_spends_a_use(self):
+        from unittest.mock import MagicMock, patch
+
+        item = MagicMock()
+        item.db = _FakeDB(substance="alcohol")
+        item.get_display_name = lambda looker=None: "bottle of rotgut"
+        target = MagicMock()
+        cmd, parse_result = self._drink_cmd(item, target)
+        # Drinking yourself: target is the caller.
+        target = cmd.caller
+        parse_result["target"] = target
+
+        with patch.object(cmd, "get_item_and_target",
+                          return_value=parse_result), \
+             patch("commands.CmdConsumption.supports_delivery",
+                   return_value=True), \
+             patch("commands.CmdConsumption.is_medical_item",
+                   return_value=False), \
+             patch("commands.CmdConsumption.msg_room_identity"), \
+             patch("world.substances.apply_substance",
+                   return_value={"feedback": ["The room tilts agreeably."]}
+                   ) as mock_dose, \
+             patch("world.consumables.consume_use",
+                   return_value={"success": True, "destroyed": False}
+                   ) as mock_use:
+            cmd.func()
+
+        mock_dose.assert_called_once_with(target, "alcohol")
+        mock_use.assert_called_once_with(item)
+        item.delete.assert_not_called()
+        sent = " ".join(
+            str(c.args[0]) for c in target.msg.call_args_list if c.args
+        )
+        self.assertIn("The room tilts agreeably.", sent)
+
+    def test_untracked_item_consumed_whole(self):
+        """Items without uses_left tracking fall back to full
+        deletion (legacy regular-food behavior preserved)."""
+        from unittest.mock import MagicMock, patch
+
+        item = MagicMock()
+        item.db = _FakeDB()  # no substance, no uses
+        item.get_display_name = lambda looker=None: "mystery snack"
+        cmd, parse_result = self._drink_cmd(item, None)
+        parse_result["target"] = cmd.caller
+
+        with patch.object(cmd, "get_item_and_target",
+                          return_value=parse_result), \
+             patch("commands.CmdConsumption.supports_delivery",
+                   return_value=True), \
+             patch("commands.CmdConsumption.is_medical_item",
+                   return_value=False), \
+             patch("commands.CmdConsumption.msg_room_identity"), \
+             patch("world.consumables.consume_use",
+                   return_value={"success": False, "destroyed": False}):
+            cmd.func()
+
+        item.delete.assert_called_once()

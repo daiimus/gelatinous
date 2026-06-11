@@ -2136,6 +2136,54 @@ PAIN_RELIEF_CIGARETTE = {
 }
 
 # =============================================================================
+# RECREATIONAL SUBSTANCE PROTOTYPES (#487)
+# =============================================================================
+# Substance pharmacology lives in world/substances/registry.py; these
+# items just carry the substance id + delivery tag (spec §1/§2).
+
+HAND_ROLLED_JOINT = {
+    "key": "hand-rolled joint",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["joint", "spliff"],
+    "desc": "A crooked hand-rolled joint, packed with sweet-smelling "
+            "resinous flower. The paper crackles when squeezed.",
+    "tags": [("smoke", "delivery_method")],
+    "attrs": [
+        ("substance", "cannabis"),
+        ("uses_left", 4),
+        ("max_uses", 4),
+    ],
+}
+
+ROTGUT_BOTTLE = {
+    "key": "bottle of rotgut",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["rotgut", "bottle", "booze"],
+    "desc": "An unlabeled glass bottle of harsh colonial liquor. It "
+            "smells like fuel and bad decisions, in that order.",
+    "tags": [("drink", "delivery_method")],
+    "attrs": [
+        ("substance", "alcohol"),
+        ("uses_left", 4),
+        ("max_uses", 4),
+    ],
+}
+
+OPIUM_CIGARETTE = {
+    "key": "tar-black opium cigarette",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["opium cigarette", "opium", "tar cigarette"],
+    "desc": "A thin cigarette rolled around tar-black resin. Heavy, "
+            "sweet, and patient — it will wait as long as you can.",
+    "tags": [("smoke", "delivery_method")],
+    "attrs": [
+        ("substance", "opium"),
+        ("uses_left", 3),
+        ("max_uses", 3),
+    ],
+}
+
+# =============================================================================
 # SHOP MERCHANT PROTOTYPES
 # =============================================================================
 

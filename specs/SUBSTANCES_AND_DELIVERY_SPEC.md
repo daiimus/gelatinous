@@ -249,10 +249,22 @@ migration from the old `medical_type` strings.
 5. **Roll-your-own** — `roll` command that consumes raw
    substance + paper + filter and spawns a cigarette / joint
    prototype with the substance baked on.
-6. **More substances** — cannabis, alcohol, opium.  Each likely
-   needs one or two new effect kinds (euphoria, stimulation,
-   coordination penalty) — grow the vocabulary per substance,
-   not speculatively.
+6. ~~**More substances**~~ — ✅ cannabis, alcohol, opium shipped
+   in #487, all expressible in the existing severity vocabulary
+   (pain_relief + sedation at different magnitudes/caps): cannabis
+   is mellow (cap 2), alcohol numbs to properly-drunk (cap 4 =
+   0.60 consciousness penalty, standing), opium is the serious
+   analgesic (3 pain relief/dose, sedation to the nod at cap 5)
+   and hooks in ten doses.  New effect kinds (euphoria,
+   stimulation, coordination penalty) remain future vocabulary —
+   grown per substance when one actually needs them.
+   Also in #487: **eat/drink/inhale now call ``apply_substance``**
+   (previously only smoke delivered pharmacology), non-medical
+   consumables route through ``consume_use``, and the ingestion
+   verbs no longer require ``medical_item`` — the delivery tag is
+   the gate (a bottle of rotgut is drinkable without being a
+   medkit).  Prototypes: HAND_ROLLED_JOINT, ROTGUT_BOTTLE,
+   OPIUM_CIGARETTE.
 
 ## 6 · Anti-patterns to avoid
 

@@ -153,6 +153,60 @@ SUBSTANCES: dict[str, Substance] = {
             threshold_doses=25, craving_after=7200, prose_key="tobacco",
         ),
     ),
+    "cannabis": Substance(
+        id="cannabis",
+        display_name="cannabis",
+        effects=(
+            # Mellow analgesic drift — kinder than tobacco on the
+            # pain, heavier on the eyelids.
+            SubstanceEffect(kind="pain_relief", magnitude=1),
+            SubstanceEffect(kind="sedation", magnitude=1, max_stack=2),
+        ),
+        flavor_bank_key="cannabis",
+        tolerance=ToleranceSpec(
+            points_per_level=10, decay_per_hour=1.0, max_level=1,
+        ),
+        addiction=AddictionSpec(
+            threshold_doses=60, craving_after=14400, prose_key="cannabis",
+        ),
+    ),
+    "alcohol": Substance(
+        id="alcohol",
+        display_name="alcohol",
+        effects=(
+            # Numbs more than it heals; the cap of 4 (0.60
+            # consciousness penalty) is properly drunk — heavily
+            # impaired, still standing.  Blackout stays out of v1.
+            SubstanceEffect(kind="pain_relief", magnitude=1),
+            SubstanceEffect(kind="sedation", magnitude=1, max_stack=4),
+        ),
+        flavor_bank_key="alcohol",
+        tolerance=ToleranceSpec(
+            points_per_level=12, decay_per_hour=0.75, max_level=1,
+        ),
+        addiction=AddictionSpec(
+            threshold_doses=40, craving_after=10800, prose_key="alcohol",
+        ),
+    ),
+    "opium": Substance(
+        id="opium",
+        display_name="opium",
+        effects=(
+            # The serious analgesic — three points of pain relief per
+            # dose, and a sedative pull that can take a chasing user
+            # to the nod (cap 5 = 0.75 consciousness penalty: barely
+            # present, not unconscious).  Its danger is its identity.
+            SubstanceEffect(kind="pain_relief", magnitude=3),
+            SubstanceEffect(kind="sedation", magnitude=2, max_stack=5),
+        ),
+        flavor_bank_key="opium",
+        tolerance=ToleranceSpec(
+            points_per_level=8, decay_per_hour=0.25, max_level=2,
+        ),
+        addiction=AddictionSpec(
+            threshold_doses=10, craving_after=5400, prose_key="opium",
+        ),
+    ),
 }
 
 
@@ -198,6 +252,31 @@ CRAVING_PROSE: dict[str, list[str]] = {
         "your ribs.",
         "Your hands keep looking for something to do. You know "
         "exactly what.",
+    ],
+    "cannabis": [
+        "The world has corners again. You remember when it didn't.",
+        "Everything is slightly too loud and nothing is funny. This "
+        "feels correctable.",
+        "Your thoughts keep arriving on time. You miss when they "
+        "wandered in late, smiling.",
+    ],
+    "alcohol": [
+        "Your mouth is dry in a way water has repeatedly failed to "
+        "fix.",
+        "There's a glass-shaped absence in your hand. It has opinions.",
+        "Sobriety is a fluorescent light. You remember somewhere "
+        "dimmer, warmer.",
+        "Your hands have a fine grammar of tremors this morning, "
+        "spelling out a familiar request.",
+    ],
+    "opium": [
+        "The pain isn't worse. The world is just made of it again.",
+        "Somewhere under your skin, a tide has gone out, and "
+        "everything the water covered is bare and aching.",
+        "You can feel your whole skeleton. No one should feel their "
+        "whole skeleton.",
+        "The smoke knew your name. Everything since has been "
+        "introductions.",
     ],
     "tobacco": [
         "Your fingers miss the weight of a cigarette. They make the "
