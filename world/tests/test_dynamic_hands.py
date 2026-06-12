@@ -119,10 +119,12 @@ class _HandsViewStub:
     """
 
     def __init__(self, species="human", severed=None,
-                 held_items=None):
+                 held_items=None, medical_state=None):
         self.db = SimpleNamespace(species=species)
         self._severed = set(severed or ())
         self.held_items = dict(held_items or {})
+        if medical_state is not None:
+            self.medical_state = medical_state
 
     def _get_severed_locations(self):
         return self._severed
@@ -134,7 +136,21 @@ class _HandsViewStub:
         # migration step which is exercised separately.)
         from world.anatomy import get_species_grasping_containers
         species = getattr(self.db, "species", None)
-        grasping = get_species_grasping_containers(species)
+        grasping = set(get_species_grasping_containers(species))
+
+        # Per-character grasping overlay (ANATOMY_AUGMENTS_SPEC §3.4).
+        try:
+            medical_state = self.medical_state
+        except AttributeError:
+            medical_state = None
+        if medical_state is not None:
+            for organ in getattr(medical_state, "organs", {}).values():
+                organ_data = getattr(organ, "data", None)
+                if organ_data and organ_data.get("grasping"):
+                    container = getattr(organ, "container", None)
+                    if container:
+                        grasping.add(container)
+
         severed = self._get_severed_locations()
         held = self.held_items or {}
         return {
@@ -169,6 +185,31 @@ class HandsViewAgainstAnatomy(TestCase):
         view = char.hands
         self.assertNotIn("left_hand", view)
         self.assertIn("right_hand", view)
+
+    def test_grasping_organ_adds_slot(self):
+        """ANATOMY_AUGMENTS §3.4: the prehensile cybernetic tail is a
+        third hand — a grasping-flagged organ adds its container."""
+        tail_organ = SimpleNamespace(
+            data={"grasping": True}, container="tail",
+        )
+        state = SimpleNamespace(organs={"cybernetic_tailbone": tail_organ})
+        char = _HandsViewStub(species="human", medical_state=state)
+        self.assertEqual(
+            set(char.hands), {"left_hand", "right_hand", "tail"},
+        )
+        self.assertIsNone(char.hands["tail"])
+
+    def test_severed_tail_drops_out_of_view(self):
+        """The existing severance subtraction covers the augment slot
+        with no new code."""
+        tail_organ = SimpleNamespace(
+            data={"grasping": True}, container="tail",
+        )
+        state = SimpleNamespace(organs={"cybernetic_tailbone": tail_organ})
+        char = _HandsViewStub(
+            species="human", medical_state=state, severed={"tail"},
+        )
+        self.assertEqual(set(char.hands), {"left_hand", "right_hand"})
 
     def test_severed_left_arm_excludes_left_hand(self):
         """Severance of a parent location should propagate via the

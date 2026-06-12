@@ -204,8 +204,20 @@ class ArmorMixin:
 
         # Living limb severance: head is excluded (decapitation routes
         # through the neck → death path above), neck is handled above.
-        if location not in severable_containers or location == "head":
+        # Per-character overlay (ANATOMY_AUGMENTS_SPEC §3.5): augment
+        # anatomy declares its own severability via the organ spec.
+        if location == "head":
             return
+        if location not in severable_containers:
+            try:
+                medical_state = self.medical_state
+            except AttributeError:
+                return
+            # Duck-typed for test stubs that fake the medical state:
+            # no overlay method = no augment anatomy = not severable.
+            overlay = getattr(medical_state, "location_severable_by_organ", None)
+            if overlay is None or not overlay(location):
+                return
         if not self._bone_freshly_destroyed(location):
             return
 

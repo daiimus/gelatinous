@@ -199,6 +199,25 @@ SEVERED_PART_DESCRIPTIONS = {
                 "the ankle-cut weeping a foul dark fluid."
             ),
         },
+        # Humans grow tails only by augment (ANATOMY_AUGMENTS_SPEC,
+        # #511) — the prose assumes the cybernetic article, which is
+        # the only human tail that exists.
+        "tail": {
+            "pristine": (
+                "A severed cybernetic tail, alloy vertebrae still "
+                "articulating faintly and a torn mount plate trailing "
+                "fine cabling at the cut."
+            ),
+            "damaged": (
+                "A scuffed cybernetic tail, its segments seized at odd "
+                "angles and the mount-end cabling frayed dark."
+            ),
+            "putrid": (
+                "A grime-caked cybernetic tail, dead servos locked "
+                "stiff and the flesh-interface ring at the mount gone "
+                "soft and foul."
+            ),
+        },
     },
 }
 

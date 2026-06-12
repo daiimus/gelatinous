@@ -103,7 +103,9 @@ Augment items declare (as attrs):
   specs, same shape as a species-table entry
 * `augment_container` — the new body location (`"tail"`)
 * `augment_anchor` — existing container the surgery opens
-  (incision gate), e.g. `"groin"`
+  (incision gate), e.g. `"back"` for the tail — you cut where the
+  hardware mounts (base of the spine), and the new location grows
+  from there
 * `augment_longdesc` — `{key, default_desc, display_after}` for the
   rendering surface
 * `species_compat` — `["human"]`
@@ -140,12 +142,24 @@ the end of their region).  Wound rendering follows
 
 ## 4 · The cybernetic tail (first consumer)
 
-Prototype `CYBERNETIC_TAIL`: organ `cybernetic_tail` at container
-`"tail"` (`"tail"` is already in `LIMB_CONTAINERS` — tourniquets
-gate correctly with zero changes), modest HP, common hit weight,
-`severable_container`, `grasping`; anchor `"groin"`;
-`species_compat ["human"]`.  Future biotech variants are new
-prototype text over the same attrs.
+**Augments mirror flesh organ architecture** (settled 2026-06-11):
+the tail location carries a skeletal organ the way a rat's tail
+carries `tail_vertebrae`, so every existing treatment surface works
+uniformly — a bone-typed cyber organ is splintable ("brace the bent
+actuator column"), tourniquetable, severable, with no special
+cases.  The same principle governs future *replacement*
+cybernetics: a cybernetic hand keeps the canonical slot/organ
+structure of the flesh hand (the metacarpals are still there,
+structurally) and theming lives in display names and item prose,
+never in the slot keys.
+
+Prototype `CYBERNETIC_TAIL`: organ `cybernetic_tailbone` at
+container `"tail"` (`"tail"` is already in `LIMB_CONTAINERS` —
+tourniquets gate correctly with zero changes), bone-typed, modest
+HP, common hit weight, `severable_container`, `grasping`; anchor
+`"back"` (the mount bolts to the base of the spine — you incise
+where it attaches); `species_compat ["human"]`.  Future biotech
+variants are new prototype text over the same attrs.
 
 ## 5 · Phases
 

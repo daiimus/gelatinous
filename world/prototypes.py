@@ -1947,6 +1947,38 @@ TOURNIQUET = {
     ],
 }
 
+# Cybernetic Tail - first anatomy augment (ANATOMY_AUGMENTS_SPEC, #511)
+CYBERNETIC_TAIL = {
+    "key": "cybernetic tail",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["cybertail", "tail unit"],
+    "desc": "A segmented cybernetic tail, coiled in its mounting cradle. Articulated alloy vertebrae taper to a prehensile tip; the mount plate at the base is machined to bolt against a human thoracolumbar spine. Surgical installation required.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        # Anatomy carried on the item (spec §3.3).  The organ spec is
+        # complete — augments have no species-table entry, so this
+        # dict IS the anatomy.  Bone-typed: splints brace a bent
+        # actuator column the same way they brace a femur.
+        ("augment_organs", {
+            "cybernetic_tailbone": {
+                "container": "tail", "max_hp": 25, "hit_weight": "common",
+                "can_be_destroyed": True,
+                "fracture_vulnerable": True, "bone_type": "actuator_column",
+                "severable_container": True,
+                "grasping": True,
+            },
+        }),
+        ("augment_container", "tail"),
+        ("augment_anchor", "back"),
+        ("augment_longdesc", {
+            "key": "tail",
+            "default_desc": "A segmented cybernetic tail sways at the base of the spine, alloy vertebrae clicking softly when it moves.",
+            "display_after": "back",
+        }),
+        ("species_compat", ["human"]),
+    ],
+}
+
 # Surgical Kit - Advanced multi-use medical tools
 SURGICAL_KIT = {
     "key": "surgical kit",

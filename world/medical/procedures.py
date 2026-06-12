@@ -76,6 +76,9 @@ PROCEDURE_DURATIONS = {
     "incise":   6,
     "harvest":  18,
     "install":  18,
+    # Augment installs (ANATOMY_AUGMENTS_SPEC §3.3) — mounting new
+    # anatomy is the same order of work as grafting an organ.
+    "install_augment": 18,
     "suture":   9,
     "amputate": 12,
     # Autopsy is the deliberate counterpart to the cursory ``inspect``
@@ -1225,11 +1228,157 @@ def _resolve_autopsy(actor, target, **_) -> None:
     _store_result(full_report)
 
 
+def _resolve_install_augment(actor, target, *, organ_item, location: str,
+                             **_) -> None:
+    """Resolve an augment install (ANATOMY_AUGMENTS_SPEC §3.3):
+    create the item's declared anatomy on ``target``.
+
+    ``location`` is the **anchor** container (where the surgery
+    opened — e.g. ``"back"`` for the tail); the new anatomy grows at
+    the item's ``augment_container``.  Handles re-augmentation: any
+    severed remnants at the augment container are replaced wholesale
+    by the fresh hardware.
+    """
+    from evennia.utils.dbserialize import deserialize
+    from world.identity_utils import msg_room_identity
+
+    item_db = getattr(organ_item, "db", None)
+    augment_organs = deserialize(getattr(item_db, "augment_organs", None) or {})
+    augment_container = getattr(item_db, "augment_container", None)
+    augment_longdesc = deserialize(getattr(item_db, "augment_longdesc", None) or {})
+    if not augment_organs or not augment_container:
+        actor.msg(f"The {organ_item.key} has nothing installable in it.")
+        return
+
+    # Access gate — symmetric to install's chart-bypass check: the
+    # anchor must still be open when the procedure resolves.
+    if not has_incision(target, location):
+        actor.msg(
+            f"You line up the {organ_item.key} but "
+            f"{target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')} isn't open."
+        )
+        from world.medical.charts import mark_running_step_failed
+        mark_running_step_failed(
+            target,
+            outcome=(
+                f"no incision at {location.replace('_', ' ')} — "
+                f"augment install blocked"
+            ),
+        )
+        return
+
+    state = getattr(target, "medical_state", None)
+    if state is None or not getattr(state, "organs", None):
+        actor.msg(
+            f"{target.get_display_name(actor)} can't integrate the "
+            f"{organ_item.key}."
+        )
+        return
+
+    result = roll_procedure(actor, target)
+    outcome = result["outcome"]
+
+    if outcome == "failure":
+        # Botched mount: hardware doesn't seat, infection seeded at
+        # the anchor.  The item survives for another attempt.
+        seed_infection(target, location)
+        seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
+        actor.msg(
+            f"The mount won't seat. The {organ_item.key} stays loose "
+            f"in your hands."
+        )
+        return
+
+    # Success / partial: clear any remnants at the augment container
+    # (re-augmentation over a severed stump) and create the declared
+    # anatomy from the item's specs.  Specs are deep-copied off the
+    # item's attribute layer — the item is deleted below and organs
+    # must never share storage with it.
+    from world.medical.core import Organ
+
+    for organ_name in [
+        name for name, organ in state.organs.items()
+        if getattr(organ, "container", None) == augment_container
+    ]:
+        del state.organs[organ_name]
+
+    for organ_name, spec in augment_organs.items():
+        organ = Organ(organ_name, organ_data=dict(spec))
+        organ.medical_state = state
+        state.organs[organ_name] = organ
+
+    # Surface the new anatomy (§3.6).  Reassigned, not mutated, so
+    # the AttributeProperty persists — same rule sever_character_body
+    # follows when removing keys.
+    longdesc_key = augment_longdesc.get("key") or augment_container
+    longdescs = dict(target.longdesc or {})
+    if longdesc_key not in longdescs:
+        new_longdescs = {}
+        display_after = augment_longdesc.get("display_after")
+        inserted = False
+        for loc, text in longdescs.items():
+            new_longdescs[loc] = text
+            if loc == display_after:
+                new_longdescs[longdesc_key] = augment_longdesc.get("default_desc")
+                inserted = True
+        if not inserted:
+            new_longdescs[longdesc_key] = augment_longdesc.get("default_desc")
+        target.longdesc = new_longdescs
+
+    seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
+    if outcome == "partial":
+        seed_infection(target, location)
+
+    update_vital_signs = getattr(state, "update_vital_signs", None)
+    if callable(update_vital_signs):
+        update_vital_signs()
+    save = getattr(target, "save_medical_state", None)
+    if callable(save):
+        save()
+
+    if outcome == "partial":
+        actor.msg(
+            f"You bolt the {organ_item.key} home — but the graft is "
+            f"sloppy. Time will tell."
+        )
+    else:
+        actor.msg(
+            f"You install the {organ_item.key}, anchored at "
+            f"{target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')}."
+        )
+    target.msg(
+        f"New weight settles at your {location.replace('_', ' ')} — "
+        f"a {augment_container.replace('_', ' ')} that wasn't there "
+        f"before answers when you flex."
+    )
+
+    if actor.location is not None:
+        msg_room_identity(
+            location=actor.location,
+            template=(
+                f"{{actor}} installs a {organ_item.key} into "
+                f"{{patient}}'s {location.replace('_', ' ')}."
+            ),
+            char_refs={"actor": actor, "patient": target},
+            exclude=[actor, target] if target is not actor else [actor],
+        )
+
+    # Consume the augment item.  Deliberate guard (#469): a delete
+    # failure must not undo the completed install — audit-logged.
+    try:
+        organ_item.delete()
+    except Exception as exc:
+        _log_guarded_failure("install_augment_item_delete", organ_item, exc)
+
+
 # Mapping consumed by ``_resolve_procedure_callback``.
 _VERB_RESOLVERS = {
     "incise":   _resolve_incise,
     "harvest":  _resolve_harvest,
     "install":  _resolve_install,
+    "install_augment": _resolve_install_augment,
     "suture":   _resolve_suture,
     "amputate": _resolve_amputate,
     "autopsy":  _resolve_autopsy,

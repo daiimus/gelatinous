@@ -647,6 +647,20 @@ class MedicalState:
             self.organs[organ_name] = organ
         return self.organs[organ_name]
         
+    def location_severable_by_organ(self, location):
+        """True when any organ at ``location`` flags
+        ``severable_container`` in its spec (ANATOMY_AUGMENTS_SPEC
+        §3.5).  The per-character severability overlay: augment
+        anatomy (the cybernetic tail) declares its own severability
+        instead of needing a species-table entry."""
+        for organ in self.organs.values():
+            if getattr(organ, "container", None) != location:
+                continue
+            data = getattr(organ, "data", None)
+            if data and data.get("severable_container"):
+                return True
+        return False
+
     def get_conditions_by_location(self, location):
         """Get all conditions affecting a specific body location."""
         return [c for c in self.conditions if c.location == location]

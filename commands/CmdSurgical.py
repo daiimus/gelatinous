@@ -490,6 +490,13 @@ class CmdInstall(Command):
         if organ_item is None:
             return
 
+        # Augment items (ANATOMY_AUGMENTS_SPEC §3.3) carry their own
+        # anatomy and CREATE their slot instead of requiring one —
+        # they branch before the harvested-organ gate.
+        if getattr(organ_item.db, "augment_organs", None):
+            self._install_augment(caller, organ_item, target_phrase)
+            return
+
         organ_name = getattr(organ_item.db, "organ_name", None)
         if not organ_name:
             caller.msg(
@@ -546,6 +553,89 @@ class CmdInstall(Command):
         caller.msg(
             f"You begin installing the {organ_item.key} into "
             f"{target.get_display_name(caller)}..."
+        )
+
+    def _install_augment(self, caller, organ_item, target_phrase):
+        """Stage an augment install (ANATOMY_AUGMENTS_SPEC §3.3).
+
+        Pre-dispatch gates: living target, species compatibility
+        (carried on the item — synth expansion is an item-data
+        edit), no healthy anatomy already at the augment container,
+        and an open incision at the **anchor** (the slot doesn't
+        exist yet; you cut where the hardware mounts).
+        """
+        target = _resolve_target(caller, target_phrase)
+        if target is None:
+            return
+
+        if not _is_body_container(target):
+            caller.msg(
+                f"{target.get_display_name(caller)} isn't something "
+                f"you can install an augment into."
+            )
+            return
+
+        # Living integration only: corpse organ snapshots can't grow
+        # new anatomy.
+        state = getattr(target, "medical_state", None)
+        if state is None or not getattr(state, "organs", None):
+            caller.msg(
+                f"The {organ_item.key} needs a living body to "
+                f"integrate with."
+            )
+            return
+
+        species = getattr(target.db, "species", None) or "human"
+        compat = [
+            s.lower() for s in (organ_item.db.species_compat or [])
+        ]
+        if species.lower() not in compat:
+            caller.msg(
+                f"The {organ_item.key}'s mounting hardware isn't "
+                f"rated for {species} anatomy."
+            )
+            return
+
+        augment_container = organ_item.db.augment_container
+        existing = [
+            organ for organ in state.organs.values()
+            if getattr(organ, "container", None) == augment_container
+        ]
+        if any(o.wound_stage != "severed" for o in existing):
+            caller.msg(
+                f"{target.get_display_name(caller)} already has a "
+                f"{augment_container.replace('_', ' ')}."
+            )
+            return
+
+        anchor = organ_item.db.augment_anchor or augment_container
+        if not has_incision(target, anchor):
+            caller.msg(
+                f"The {organ_item.key} mounts at the "
+                f"{anchor.replace('_', ' ')}, and "
+                f"{target.get_display_name(caller)}'s "
+                f"{anchor.replace('_', ' ')} isn't open. "
+                f"Try ``incise {target_phrase} at "
+                f"{anchor.replace('_', ' ')}``."
+            )
+            return
+
+        if _reject_if_busy(caller, target):
+            return
+
+        kit = _find_surgical_kit(caller)
+        if kit is None:
+            caller.msg("You need a surgical kit to install an augment.")
+            return
+
+        start_procedure(
+            target, verb="install_augment", actor=caller,
+            organ_item=organ_item, location=anchor,
+        )
+        caller.msg(
+            f"You begin mounting the {organ_item.key} at "
+            f"{target.get_display_name(caller)}'s "
+            f"{anchor.replace('_', ' ')}..."
         )
 
 

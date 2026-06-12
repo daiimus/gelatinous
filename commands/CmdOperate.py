@@ -775,14 +775,25 @@ def _process_incise_location(caller, raw_string, **kwargs):
 
 
 def _list_severable_containers(target):
-    """Return sorted list of severable containers for ``target``'s
-    species — limbs and head per the species table."""
+    """Return sorted list of severable containers for ``target`` —
+    the species table plus any per-character augment locations whose
+    organs declare ``severable_container`` (ANATOMY_AUGMENTS_SPEC
+    §3.5)."""
     from world.anatomy import get_species_severable_containers
     species = getattr(getattr(target, "db", None), "species", None)
     try:
-        return sorted(get_species_severable_containers(species))
+        severable = set(get_species_severable_containers(species))
     except Exception:
         return []
+    medical_state = getattr(target, "medical_state", None)
+    if medical_state is not None:
+        for organ in getattr(medical_state, "organs", {}).values():
+            data = getattr(organ, "data", None)
+            if data and data.get("severable_container"):
+                container = getattr(organ, "container", None)
+                if container:
+                    severable.add(container)
+    return sorted(severable)
 
 
 def _node_amputate_location(caller, raw_string, **kwargs):

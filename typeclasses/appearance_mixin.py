@@ -116,8 +116,14 @@ class AppearanceMixin:
         # Track which clothing items we've already added to avoid duplicates
         added_clothing_items = set()
 
-        # Process in anatomical order
-        for location in ANATOMICAL_DISPLAY_ORDER:
+        # Process in anatomical order.  Per-character anatomy beyond
+        # the species template (installed augments — ANATOMY_AUGMENTS
+        # SPEC §3.6) renders after the species order; an augment's
+        # longdesc key not in the static list must still appear.
+        render_order = list(ANATOMICAL_DISPLAY_ORDER) + [
+            loc for loc in longdescs if loc not in set(ANATOMICAL_DISPLAY_ORDER)
+        ]
+        for location in render_order:
             if location in collapse_skip:
                 # Partner of a collapsed pair; rendered at the anchor location.
                 continue

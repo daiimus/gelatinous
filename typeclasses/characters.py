@@ -1560,7 +1560,25 @@ class Character(
         from world.anatomy import get_species_grasping_containers
 
         species = getattr(self.db, "species", None)
-        grasping = get_species_grasping_containers(species)
+        grasping = set(get_species_grasping_containers(species))
+
+        # Per-character grasping overlay (ANATOMY_AUGMENTS_SPEC §3.4):
+        # an installed organ flagged ``grasping`` adds its container
+        # as a held-item slot — the prehensile cybernetic tail is a
+        # third hand.  The severance subtraction below already covers
+        # "the severed tail drops what it held".
+        try:
+            medical_state = self.medical_state
+        except AttributeError:
+            medical_state = None
+        if medical_state is not None:
+            for organ in getattr(medical_state, "organs", {}).values():
+                organ_data = getattr(organ, "data", None)
+                if organ_data and organ_data.get("grasping"):
+                    container = getattr(organ, "container", None)
+                    if container:
+                        grasping.add(container)
+
         severed = (
             self._get_severed_locations()
             if hasattr(self, "_get_severed_locations") else set()
