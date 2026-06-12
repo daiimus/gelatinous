@@ -96,8 +96,30 @@ class MedicalScript(DefaultScript):
     - Automatically starts when first condition is added
     - Automatically stops when no conditions remain
     - Provides centralized medical condition management
+
+    Lifecycle (#501 §6.2):
+    - CREATED by start_medical_script() when a condition lands or a
+      dressing needs ticking (idempotent — returns existing script).
+    - TERMINATES itself when no conditions remain and no dressed
+      organ has healing work; also stop+delete on critical tick
+      error (prevents per-tick retry storms).
+    - SURVIVES reload (persistent Script); at_start re-asserts the
+      interval from constants so persisted config can't go stale.
+      Conditions apply capped elapsed time via process(), so the
+      reload gap itself is billed at most one extra sampling window.
     """
     
+    def at_start(self):
+        """Re-assert config on every (re)start (#501 Phase 2).
+
+        Persisted scripts must never trust persisted config: this is
+        what left pre-#465 scripts ticking at a stale 12s for their
+        whole lifetime.  Re-reading the constant here means interval
+        changes propagate to every live script on the next reload.
+        """
+        if self.interval != MEDICAL_TICK_INTERVAL:
+            self.restart(interval=MEDICAL_TICK_INTERVAL)
+
     def at_script_creation(self):
         """Called when script is first created."""
         self.key = "medical_script"  # Use consistent key for searching

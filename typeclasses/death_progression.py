@@ -88,6 +88,15 @@ class DeathProgressionScript(DefaultScript):
     
     Attached to a character who is dying but not yet permanently dead.
     Provides a window for medical intervention and creates dramatic tension.
+
+    Lifecycle (#501 §6.2):
+    - CREATED by start_death_progression() when a character crosses
+      the death threshold (idempotent — returns existing script).
+    - TERMINATES via medical revival, via completion (corpse +
+      transition), or self-cleanup on an invalid character.
+    - SURVIVES reload (persistent Script); progression math is
+      already wall-clock (db.start_time), so a reload doesn't skew
+      the revival window.  at_start re-asserts the check interval.
     """
     
     def at_msg_send(self, text=None, to_obj=None, **kwargs):
@@ -143,11 +152,17 @@ class DeathProgressionScript(DefaultScript):
         )
         
     def at_start(self):
-        """Called when script starts."""
+        """Called when script starts.
+
+        Re-asserts the check interval from constants (#501 Phase 2:
+        persisted scripts never trust persisted config).
+        """
         character = self.obj
         if not character:
             self.stop()
             return
+        if self.interval != DEATH_PROGRESSION_CHECK_INTERVAL:
+            self.restart(interval=DEATH_PROGRESSION_CHECK_INTERVAL)
             
         # Log start of death progression with configurable duration
         splattercast = get_splattercast()

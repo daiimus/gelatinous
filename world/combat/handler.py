@@ -150,7 +150,15 @@ def get_or_create_combat(location):
 class CombatHandler(DefaultScript):
     """
     Script that manages turn-based combat for all combatants in a location.
-    
+
+    Lifecycle (#501 §6.2):
+    - CREATED by get_or_create_combat() on the room when combat
+      begins (one handler per location).
+    - TERMINATES via its own cleanup when no combatants remain
+      (stop+delete, or merge into another room's handler).
+    - SURVIVES reload (persistent Script) — combatant state lives in
+      db.combatants and re-validates each round.
+
     This is the central orchestrator of combat encounters, handling:
     - Combat state management and lifecycle
     - Turn-based initiative and action resolution
