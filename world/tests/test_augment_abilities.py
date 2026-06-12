@@ -149,6 +149,50 @@ class TestAbilityLayer(EvenniaTest):
         self.assertFalse(self.gun.access(self.char, "drop"))
         self.assertFalse(self.gun.access(self.char, "get"))
 
+    def test_unwield_refuses_integrated(self):
+        """The freehands bug: unwield and freehands both route
+        through unwield_item — the deployed gun is not held, it IS
+        the hand."""
+        toggle_ability(self.char, "shotgun")
+        result = self.char.unwield_item("right_hand")
+        self.assertIn("retract it instead", result)
+        # Still seated.
+        self.assertIs(self.char.hands["right_hand"], self.gun)
+
+    def test_wield_refuses_integrated(self):
+        """A freed integrated weapon must never be wieldable into an
+        arbitrary hand — that's how the gun ended up in the wrong
+        slot."""
+        self.gun.location = self.char  # simulate the freed state
+        result = self.char.wield_item(self.gun, "left_hand")
+        self.assertIn("doesn't wield", result)
+        self.assertIsNone(self.char.hands["left_hand"])
+
+    def test_retract_clears_the_actual_slot(self):
+        """Legacy desync (the Laszlo state): gun displaced into the
+        WRONG slot — retract scans for where it really is instead of
+        trusting the spec slot."""
+        self.gun.location = self.char
+        self.char.held_items = {"left_hand": self.gun}
+        self.organ.ability_state["shotgun"]["deployed"] = True
+        toggle_ability(self.char, "shotgun")  # retract
+        self.assertIsNone(self.char.hands["left_hand"])
+        self.assertIsNone(self.char.hands["right_hand"])
+        self.assertIsNone(self.gun.location)
+
+    def test_deploy_reseats_from_wrong_slot(self):
+        """Deploying over the same legacy desync clears the stale
+        reference and seats the gun in its spec slot — exactly one
+        place, the right one."""
+        self.gun.location = self.char
+        self.char.held_items = {"left_hand": self.gun}
+        toggle_ability(self.char, "shotgun")  # deploy
+        self.assertIs(self.char.hands["right_hand"], self.gun)
+        self.assertIsNone(self.char.hands["left_hand"])
+        # And the desync auto-drop guard: the gun itself was never
+        # "dropped" to the room.
+        self.assertIs(self.gun.location, self.char)
+
     def test_deployed_gun_beats_offhand_junk(self):
         """The Laszlo bug: combat must resolve the deployed shotgun,
         not the cigarette in the other hand — weapons (weapon_type)
@@ -157,6 +201,10 @@ class TestAbilityLayer(EvenniaTest):
         from world.combat.utils import get_wielded_weapon
 
         self.gun.db.weapon_type = "cybernetic_shotgun"
+        # The real discriminator: every Item defaults weapon_type to
+        # "melee" (the cigarette included), so weapons are known by
+        # the ("weapon", "type") tag the base prototypes carry.
+        self.gun.tags.add("weapon", category="type")
         cigarette = create_object(
             "typeclasses.items.Item", key="cigarette", location=self.char,
         )

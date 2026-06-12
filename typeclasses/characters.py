@@ -1701,6 +1701,16 @@ class Character(
         if item.location != self:
             return "You're not carrying that item."
 
+        # Integrated cyberware (#516) never takes the wield path —
+        # it deploys into its own slot via /<ability>.  Without this
+        # gate a freed integrated weapon could be wielded into the
+        # WRONG hand, desyncing the toggle state.
+        if item.db.integrated:
+            return (
+                f"{item.get_display_name(self)} is part of your body — "
+                f"it deploys and retracts, it doesn't wield."
+            )
+
         # Check if item is currently worn
         if hasattr(self, 'is_item_worn') and self.is_item_worn(item):
             return "You can't wield something you're wearing. Remove it first."
@@ -1728,6 +1738,15 @@ class Character(
         item = current[canonical]
         if not item:
             return f"You're not holding anything in your {display}."
+
+        # Integrated cyberware (#516): the deployed arm-gun is not
+        # held, it IS the hand.  unwield and freehands both route
+        # through here — refusing here closes both paths.
+        if item.db.integrated:
+            return (
+                f"{item.get_display_name(self)} is part of your "
+                f"{display} — retract it instead."
+            )
 
         item.move_to(self, quiet=True)
         held = dict(self.held_items or {})

@@ -319,7 +319,16 @@ class CmdDrop(Command):
         if not obj:
             caller.msg("You aren't carrying or holding that.")
             return
-        
+
+        # Integrated cyberware (#516) is bolted to your skeleton —
+        # it leaves the body by severance or surgery, not gravity.
+        if obj.db.integrated:
+            caller.msg(
+                f"{obj.get_display_name(caller)} is part of your "
+                f"body — retract it instead."
+            )
+            return
+
         # Check if item is currently worn
         if hasattr(caller, 'is_item_worn') and caller.is_item_worn(obj):
             caller.msg("You can't drop something you're wearing. Remove it first.")
@@ -717,6 +726,15 @@ class CmdGive(Command):
 
         if not item:
             caller.msg(f"You aren't carrying or holding '{self.item_name}'.")
+            return
+
+        # Integrated cyberware (#516) can't change owners by
+        # generosity — it's bolted to your skeleton.
+        if item.db.integrated:
+            caller.msg(
+                f"{item.get_display_name(caller)} is part of your "
+                f"body — you can't give it away."
+            )
             return
 
         # If giving from inventory, need to wield it first

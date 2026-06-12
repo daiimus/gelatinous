@@ -149,7 +149,11 @@ def _toggle_integrated_weapon(character, organ, name, spec) -> str:
 
         # Auto-drop whatever the hand held (settled decision: the
         # hand transforms regardless; the knife clatters down).
+        # Never the weapon itself — a state desync that left the gun
+        # seated must not hurl the integrated gun to the floor.
         held = hands.get(slot)
+        if held == weapon:
+            held = None
         if held is not None and character.location is not None:
             held.move_to(character.location, quiet=True)
             character.msg(
@@ -166,6 +170,17 @@ def _toggle_integrated_weapon(character, organ, name, spec) -> str:
                 char_refs={"actor": character},
                 exclude=[character],
             )
+
+        # Self-healing seat (#516 playtest): if the weapon is somehow
+        # referenced from another slot (legacy state from before the
+        # inventory-verb guards), clear those references first so the
+        # gun exists in exactly one place — its spec slot.
+        held = dict(character.held_items or {})
+        stale = [k for k, v in held.items() if v == weapon and k != slot]
+        if stale:
+            for k in stale:
+                held[k] = None
+            character.held_items = held
 
         weapon.location = character
         character.hands = {slot: weapon}
@@ -191,9 +206,20 @@ def _toggle_integrated_weapon(character, organ, name, spec) -> str:
 
     # ── Retract ───────────────────────────────────────────────────
     weapon = _find_weapon(state)
-    if weapon is not None and weapon.location is character:
-        character.hands = {slot: None}
-        weapon.location = None  # folded back inside the arm
+    if weapon is not None:
+        # Clear the slot the weapon is ACTUALLY in — scanned, not
+        # assumed — so a gun displaced into the wrong slot by legacy
+        # state still retracts cleanly instead of leaving a ghost.
+        held = dict(character.held_items or {})
+        cleared = False
+        for k, v in held.items():
+            if v == weapon:
+                held[k] = None
+                cleared = True
+        if cleared:
+            character.held_items = held
+        if weapon.location == character:
+            weapon.location = None  # folded back inside the arm
     state["deployed"] = False
     _persist(character)
 

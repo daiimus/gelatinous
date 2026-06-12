@@ -223,6 +223,15 @@ class CmdThrow(Command):
                 self.caller.msg(MSG_THROW_OBJECT_NOT_FOUND.format(object=self.object_name))
                 return None
 
+        # Integrated cyberware (#516) is bolted to your skeleton —
+        # throwing your own arm-gun is not the move it sounds like.
+        if obj.db.integrated:
+            self.caller.msg(
+                f"{obj.get_display_name(self.caller)} is part of your "
+                f"body — you can't throw it."
+            )
+            return None
+
         # Check for special grenade validation
         if is_explosive(obj):
             if not self.validate_grenade_throw(obj):

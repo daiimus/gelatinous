@@ -106,13 +106,16 @@ def get_wielded_weapon(character):
     """
     Get the weapon the character fights with.
 
-    Actual weapons (items carrying ``db.weapon_type``) take priority
-    over other held items — a deployed arm-shotgun beats the
-    cigarette in the off hand (#516 playtest fix; previously this
-    returned the FIRST held item of any kind, so hand order decided
-    whether you shot or brandished your smoke).  With no real weapon
-    in hand, the first held item still serves — brawling with a
-    bottle works as before.
+    Actual weapons take priority over other held items — a deployed
+    arm-shotgun beats the cigarette in the off hand (#516 playtest
+    fix; previously this returned the FIRST held item of any kind,
+    so hand order decided whether you shot or brandished your
+    smoke).  "Actual weapon" means the ``("weapon", "type")`` tag
+    from the weapon base prototypes — ``db.weapon_type`` is useless
+    as a discriminator because EVERY item defaults to ``"melee"``
+    at creation (the brawl-with-anything design).  With no real
+    weapon in hand, the first held item still serves — brawling
+    with a bottle works as before.
 
     Args:
         character: The character to check
@@ -123,7 +126,8 @@ def get_wielded_weapon(character):
     hands = getattr(character, "hands", {})
     held = [item for item in hands.values() if item]
     for item in held:
-        if getattr(getattr(item, "db", None), "weapon_type", None):
+        tags = getattr(item, "tags", None)
+        if tags is not None and tags.has("weapon", category="type"):
             return item
     return held[0] if held else None
 

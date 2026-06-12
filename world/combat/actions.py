@@ -98,11 +98,14 @@ def resolve_disarm(handler, char, entry):
         return
 
     # Find weapon to disarm (prioritize weapons, then any held item).
+    # "Weapon" = the ("weapon", "type") tag — db.weapon_type can't
+    # discriminate because every item defaults to "melee".
     # Integrated cyberware (#516) is bolted to the skeleton — you
     # can't knock an arm-gun out of someone's hand.
     weapon_hand = None
     for hand, item in hands.items():
-        if item and item.db.weapon_type and not item.db.integrated:
+        if (item and not item.db.integrated
+                and item.tags.has("weapon", category="type")):
             weapon_hand = hand
             break
 
