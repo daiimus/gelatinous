@@ -104,16 +104,28 @@ from .proximity import clear_all_proximity as clear_character_proximity  # noqa:
 
 def get_wielded_weapon(character):
     """
-    Get the first weapon found in character's hands.
-    
+    Get the weapon the character fights with.
+
+    Actual weapons (items carrying ``db.weapon_type``) take priority
+    over other held items — a deployed arm-shotgun beats the
+    cigarette in the off hand (#516 playtest fix; previously this
+    returned the FIRST held item of any kind, so hand order decided
+    whether you shot or brandished your smoke).  With no real weapon
+    in hand, the first held item still serves — brawling with a
+    bottle works as before.
+
     Args:
         character: The character to check
-        
+
     Returns:
         The weapon object, or None if no weapon is wielded
     """
     hands = getattr(character, "hands", {})
-    return next((item for hand, item in hands.items() if item), None)
+    held = [item for item in hands.values() if item]
+    for item in held:
+        if getattr(getattr(item, "db", None), "weapon_type", None):
+            return item
+    return held[0] if held else None
 
 
 def is_wielding_ranged_weapon(character):

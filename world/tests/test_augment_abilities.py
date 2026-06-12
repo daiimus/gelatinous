@@ -148,3 +148,22 @@ class TestAbilityLayer(EvenniaTest):
         toggle_ability(self.char, "shotgun")
         self.assertFalse(self.gun.access(self.char, "drop"))
         self.assertFalse(self.gun.access(self.char, "get"))
+
+    def test_deployed_gun_beats_offhand_junk(self):
+        """The Laszlo bug: combat must resolve the deployed shotgun,
+        not the cigarette in the other hand — weapons (weapon_type)
+        take priority over other held items regardless of hand
+        order."""
+        from world.combat.utils import get_wielded_weapon
+
+        self.gun.db.weapon_type = "cybernetic_shotgun"
+        cigarette = create_object(
+            "typeclasses.items.Item", key="cigarette", location=self.char,
+        )
+        self.char.hands = {"left_hand": cigarette}
+        toggle_ability(self.char, "shotgun")
+        self.assertIs(get_wielded_weapon(self.char), self.gun)
+        # Retracted, the cigarette is all that's held — brawl-with-
+        # whatever behavior is preserved.
+        toggle_ability(self.char, "shotgun")
+        self.assertIs(get_wielded_weapon(self.char), cigarette)
