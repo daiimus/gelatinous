@@ -9,16 +9,29 @@ from .constants import ORGANS, HIT_WEIGHTS
 from .core import MedicalState
 
 
-def get_organ_by_body_location(location):
+def get_organ_by_body_location(location, medical_state=None):
     """
     Get all organs that are contained within a specific body location.
-    
+
+    Per ANATOMY_AUGMENTS_SPEC §3.2 the character's actual organs are
+    the runtime truth: when a ``medical_state`` is in hand, resolution
+    reads its live organ instances — which is what makes augment
+    anatomy (and non-human species) hittable at all.  The static
+    human-table scan remains only as the no-character fallback.
+
     Args:
         location (str): Body location (e.g., "chest", "head", "left_arm")
-        
+        medical_state: The target's MedicalState, when available.
+
     Returns:
         list: List of organ names in that location
     """
+    if medical_state is not None and getattr(medical_state, "organs", None):
+        return [
+            organ_name
+            for organ_name, organ in medical_state.organs.items()
+            if getattr(organ, "container", None) == location
+        ]
     organs_in_location = []
     for organ_name, organ_data in ORGANS.items():
         if organ_data.get("container") == location:
@@ -26,25 +39,35 @@ def get_organ_by_body_location(location):
     return organs_in_location
 
 
-def calculate_hit_weights_for_location(location):
+def _hit_weight_category(organ_name, medical_state=None):
+    """Hit-weight category for an organ — live instance first, static
+    table fallback (ANATOMY_AUGMENTS_SPEC §3.2)."""
+    if medical_state is not None and getattr(medical_state, "organs", None):
+        organ = medical_state.organs.get(organ_name)
+        if organ is not None:
+            return getattr(organ, "hit_weight", "common") or "common"
+    return ORGANS.get(organ_name, {}).get("hit_weight", "common")
+
+
+def calculate_hit_weights_for_location(location, medical_state=None):
     """
     Calculate hit weights for all organs in a body location.
-    
+
     Args:
         location (str): Body location
-        
+        medical_state: The target's MedicalState, when available.
+
     Returns:
         dict: {organ_name: hit_weight_value} mapping
     """
-    organs = get_organ_by_body_location(location)
+    organs = get_organ_by_body_location(location, medical_state)
     hit_weights = {}
-    
+
     for organ_name in organs:
-        organ_data = ORGANS.get(organ_name, {})
-        weight_category = organ_data.get("hit_weight", "common")
+        weight_category = _hit_weight_category(organ_name, medical_state)
         weight_value = HIT_WEIGHTS.get(weight_category, HIT_WEIGHTS["common"])
         hit_weights[organ_name] = weight_value
-        
+
     return hit_weights
 
 
@@ -119,10 +142,17 @@ def select_hit_location(character, success_margin=0, attacker=None):
     available_locations = list(character.longdesc.keys())
     if not available_locations:
         return "chest"
-    
+
+    # The character's own organs drive the weights (ANATOMY_AUGMENTS
+    # §3.2); fall back to the static table when no medical state.
+    try:
+        target_medical_state = character.medical_state
+    except AttributeError:
+        target_medical_state = None
+
     # Calculate total hit weights for each body location
     location_weights = {}
-    
+
     # Calculate targeting parameters based on attacker's abilities
     if attacker:
         from world.combat.utils import get_character_stat
@@ -175,12 +205,11 @@ def select_hit_location(character, success_margin=0, attacker=None):
     
     for location in available_locations:
         # Get all organs in this location and sum their hit weights
-        organs = get_organ_by_body_location(location)
+        organs = get_organ_by_body_location(location, target_medical_state)
         total_weight = 0
-        
+
         for organ_name in organs:
-            organ_data = ORGANS.get(organ_name, {})
-            weight_category = organ_data.get("hit_weight", "common")
+            weight_category = _hit_weight_category(organ_name, target_medical_state)
             weight_value = HIT_WEIGHTS.get(weight_category, HIT_WEIGHTS["common"])
             total_weight += weight_value
             
@@ -306,32 +335,34 @@ def _get_location_armor_coverage(character, location):
     return total_armor
 
 
-def select_target_organ(location, precision_roll=0, attacker_skill=1):
+def select_target_organ(location, precision_roll=0, attacker_skill=1, medical_state=None):
     """
     Select a specific organ within a body location based on precision.
     Higher precision rolls are more likely to hit rare/vital organs.
-    
+
     Args:
         location (str): Body location that was hit
         precision_roll (int): d20 roll for precision targeting
         attacker_skill (int): Attacker's skill for precision calculation
-        
+        medical_state: The target's MedicalState, when available —
+            resolves organs from the actual body (augments, species)
+            per ANATOMY_AUGMENTS_SPEC §3.2.
+
     Returns:
         str: Selected organ name, or None if no organs in location
     """
     import random
-    
-    organs = get_organ_by_body_location(location)
+
+    organs = get_organ_by_body_location(location, medical_state)
     if not organs:
         return None
-        
+
     # Calculate precision-based organ weights
     organ_weights = {}
     precision_total = precision_roll + attacker_skill
-    
+
     for organ_name in organs:
-        organ_data = ORGANS.get(organ_name, {})
-        hit_weight_category = organ_data.get("hit_weight", "common")
+        hit_weight_category = _hit_weight_category(organ_name, medical_state)
         base_weight = HIT_WEIGHTS.get(hit_weight_category, HIT_WEIGHTS["common"])
         
         # Precision affects targeting of rare organs
@@ -393,10 +424,10 @@ def distribute_damage_to_organs(location, total_damage, medical_state, injury_ty
     Returns:
         dict: {organ_name: damage_amount} mapping
     """
-    organs = get_organ_by_body_location(location)
+    organs = get_organ_by_body_location(location, medical_state)
     if not organs:
         return {}
-    
+
     # Filter out destroyed organs - can't damage what's already destroyed
     functional_organs = []
     for organ_name in organs:
@@ -418,7 +449,7 @@ def distribute_damage_to_organs(location, total_damage, medical_state, injury_ty
         # Fall back to proportional distribution among functional organs
         pass
         
-    hit_weights = calculate_hit_weights_for_location(location)
+    hit_weights = calculate_hit_weights_for_location(location, medical_state)
     # Recalculate total weight using only functional organs
     total_weight = sum(hit_weights.get(organ_name, 0) for organ_name in functional_organs)
     
@@ -473,7 +504,7 @@ def apply_anatomical_damage(character, damage_amount, location, injury_type="gen
     
     # Check if all organs in this location are destroyed (potential limb loss)
     if not damage_distribution:
-        organs_in_location = get_organ_by_body_location(location)
+        organs_in_location = get_organ_by_body_location(location, medical_state)
         if organs_in_location:
             # All organs destroyed - this represents total destruction of body part
             return {

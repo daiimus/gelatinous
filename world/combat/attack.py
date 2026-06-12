@@ -462,9 +462,16 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
             (attacker_motorics * 0.7) + (attacker_intellect * 0.3)
         )
 
-        # Select specific target organ within the hit location
+        # Select specific target organ within the hit location —
+        # resolved from the target's actual body so augments and
+        # non-human anatomy are hittable (ANATOMY_AUGMENTS_SPEC §3.2).
+        try:
+            target_medical_state = target.medical_state
+        except AttributeError:
+            target_medical_state = None
         target_organ = select_target_organ(
-            hit_location, precision_roll, precision_skill
+            hit_location, precision_roll, precision_skill,
+            medical_state=target_medical_state,
         )
 
         # Debug output for precision targeting

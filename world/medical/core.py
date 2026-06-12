@@ -465,6 +465,12 @@ class Organ:
         """
         return {
             "name": self.name,
+            # The organ's spec dict (ANATOMY_AUGMENTS_SPEC §3.1).
+            # Species-table organs could re-derive this at load, but
+            # augment organs (cybernetic tail) have no table entry —
+            # an organ that can't survive a save/load round trip is
+            # a bug, so every organ carries its spec.
+            "data": self.data,
             "current_hp": self.current_hp,
             "max_hp": self.max_hp,
             # Organ-bound conditions (#307 three-tier model: body /
@@ -498,7 +504,11 @@ class Organ:
         Returns:
             Organ: Restored organ instance
         """
-        organ = cls(data["name"])
+        # Snapshots carry the organ's spec dict (ANATOMY_AUGMENTS_SPEC
+        # §3.1) so non-species organs (augments) restore container /
+        # hit_weight / flags intact.  Legacy snapshots without it fall
+        # back to the species-table lookup, exactly as before.
+        organ = cls(data["name"], organ_data=data.get("data") or None)
         organ.current_hp = data.get("current_hp", organ.max_hp)
         organ.max_hp = data.get("max_hp", organ.max_hp)
         # Restore organ-bound conditions through the proper factory
