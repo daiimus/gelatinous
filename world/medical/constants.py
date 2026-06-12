@@ -157,20 +157,36 @@ ORGAN_REPAIR_PARTIAL_DENOMINATOR = 2
 # MEDICAL CONDITION TICKER CONSTANTS (Phase 2.6)
 # ===================================================================
 
-# Ticker intervals for different condition types
-COMBAT_TICK_INTERVAL = 6              # Combat speed (matches combat rounds)
-SEVERE_BLEEDING_INTERVAL = 12         # 2 combat rounds - balanced threat
-MEDICAL_TICK_INTERVAL = 60            # Medical progression speed
+# Medical progression sampling interval.  CONDITION_CADENCE_SPEC:
+# rates below are PER MINUTE OF REAL TIME; this interval is just how
+# often the medical script samples them.  Changing it does not change
+# game balance.  (The old CONDITION_INTERVALS per-condition table was
+# dead config from an abandoned design — deleted in #501 Phase 1; the
+# future tactical tier rides the combat handler, not this constant.)
+MEDICAL_TICK_INTERVAL = 60
 
-# Condition type to ticker interval mapping
-CONDITION_INTERVALS = {
-    "burning": COMBAT_TICK_INTERVAL,           # 6s - immediate tactical threat
-    "acid_exposure": COMBAT_TICK_INTERVAL,     # 6s - immediate tactical threat  
-    "severe_bleeding": SEVERE_BLEEDING_INTERVAL, # 12s - significant but manageable
-    "minor_bleeding": MEDICAL_TICK_INTERVAL,   # 60s - natural clotting
-    "wound_healing": MEDICAL_TICK_INTERVAL,    # 60s - progression over time
-    "infection": MEDICAL_TICK_INTERVAL,        # 60s - slow development
-    "pain": MEDICAL_TICK_INTERVAL              # 60s - gradual reduction
+# Downtime cap (spec §4.3): a single process() applies at most this
+# many minutes of effect, so reloads/crashes never bill players for
+# server downtime.  2x the expected sampling gap.
+ELAPSED_CAP_MINUTES = 2.0
+
+# Per-minute hazards for chance-based condition drift (spec §4.4).
+# Authored per minute; sampled at any cadence via
+# 1 - (1 - p) ** elapsed_minutes.
+BLEEDING_CLOT_HAZARD_PER_MINUTE = 0.10      # untreated natural clotting
+PAIN_DECAY_HAZARD_PER_MINUTE = 0.20         # pain fading one severity
+INFECTION_IMPROVE_HAZARD_PER_MINUTE = 0.07  # treated: ~"improves every
+                                            # ~5 minutes" per the
+                                            # original design comment
+                                            # (1-(1-.07)^5 ≈ 30%/5min)
+INFECTION_WORSEN_HAZARD_PER_MINUTE = 0.05   # untreated, x environmental
+                                            # modifier: the documented
+                                            # "~20min progression"
+CONSCIOUSNESS_RECOVERY_HAZARD_PER_MINUTE = {
+    "knockout": 0.25,
+    "sedative": 0.15,
+    "anesthesia": 0.10,
+    "trauma": 0.20,
 }
 
 # Condition severity thresholds based on damage amounts

@@ -11,10 +11,30 @@ from .constants import (
     INJURY_SEVERITY_MULTIPLIERS,
     BLOOD_LOSS_PER_SEVERITY,
     HEALING_EFFECTIVENESS,
-    CONDITION_INTERVALS, 
-    BLEEDING_DAMAGE_THRESHOLDS, 
-    CONDITION_TRIGGERS
+    BLEEDING_DAMAGE_THRESHOLDS,
+    CONDITION_TRIGGERS,
+    BLEEDING_CLOT_HAZARD_PER_MINUTE,
+    PAIN_DECAY_HAZARD_PER_MINUTE,
+    INFECTION_IMPROVE_HAZARD_PER_MINUTE,
+    INFECTION_WORSEN_HAZARD_PER_MINUTE,
+    CONSCIOUSNESS_RECOVERY_HAZARD_PER_MINUTE,
+    ELAPSED_CAP_MINUTES,
 )
+from .clock import elapsed_game_minutes
+from .clock import now as clock_now
+
+
+def hazard_fires(p_per_minute: float, elapsed_minutes: float) -> bool:
+    """Sample a per-minute hazard over an elapsed window (spec §4.4).
+
+    ``1 - (1 - p) ** t`` — the probability the event fired at least
+    once during ``t`` minutes.  Cadence-independent: six 10s samples
+    and one 60s sample have identical distributions.
+    """
+    if p_per_minute <= 0 or elapsed_minutes <= 0:
+        return False
+    p = min(0.95, p_per_minute)
+    return random.random() < 1 - (1 - p) ** elapsed_minutes
 
 
 class MedicalCondition:
@@ -33,6 +53,29 @@ class MedicalCondition:
         self.tick_interval = tick_interval  # Not used directly anymore, but kept for compatibility
         self.requires_ticker = True
         self.treated = False
+        # CONDITION_CADENCE_SPEC (#501): when this condition last had
+        # time applied.  Rates are per real minute; ticks just sample.
+        self.last_processed = clock_now()
+
+    def process(self, character, current=None):
+        """Apply elapsed time to this condition (spec §4.2).
+
+        The only entry point carriers (medical script today, the
+        tactical tier later) should call.  Computes capped elapsed
+        minutes since ``last_processed``, hands them to
+        ``tick_effect``, and advances the marker.  The cap (§4.3)
+        means reloads/crashes never bill more than one extra
+        sampling gap.
+        """
+        if current is None:
+            current = clock_now()
+        elapsed = min(
+            elapsed_game_minutes(self.last_processed, current),
+            ELAPSED_CAP_MINUTES,
+        )
+        self.last_processed = current
+        if elapsed > 0:
+            self.tick_effect(character, elapsed)
         
     def start_condition(self, character):
         """Begin condition management for character."""
@@ -60,8 +103,11 @@ class MedicalCondition:
         else:
             splattercast.msg(f"CONDITION_START: Failed to start medical script for {character.key}")
             
-    def tick_effect(self, character):
-        """Override in subclasses to implement specific effects."""
+    def tick_effect(self, character, elapsed_minutes=1.0):
+        """Apply ``elapsed_minutes`` of this condition's per-minute
+        rates.  Override in subclasses.  The default of 1.0 keeps
+        direct callers (tests, legacy) equivalent to one old-style
+        60s tick."""
         pass
         
     def should_end(self):
@@ -116,7 +162,8 @@ class MedicalCondition:
             "location": self.location,
             "tick_interval": self.tick_interval,
             "requires_ticker": self.requires_ticker,
-            "treated": self.treated
+            "treated": self.treated,
+            "last_processed": self.last_processed,
         }
         
     @classmethod
@@ -131,6 +178,7 @@ class MedicalCondition:
         condition.tick_interval = data.get("tick_interval", 60)
         condition.requires_ticker = data.get("requires_ticker", True)
         condition.treated = data.get("treated", False)
+        condition.last_processed = data.get("last_processed", clock_now())
         return condition
         
     def end_condition(self, character):
@@ -151,8 +199,8 @@ class BleedingCondition(MedicalCondition):
         super().__init__("minor_bleeding", severity, location, tick_interval=60)
         self.blood_loss_rate = BLOOD_LOSS_PER_SEVERITY.get(severity, 1)
         
-    def tick_effect(self, character):
-        """Apply blood loss and potentially reduce severity."""
+    def tick_effect(self, character, elapsed_minutes=1.0):
+        """Apply ``elapsed_minutes`` of blood loss; chance to clot."""
         from world.combat.debug import get_splattercast
 
         splattercast = get_splattercast()
@@ -170,19 +218,23 @@ class BleedingCondition(MedicalCondition):
         if self._location_stabilized(medical_state):
             return
 
-        # Calculate blood loss
-        blood_loss = self.blood_loss_rate
+        # Per-minute blood loss x elapsed.  NOTE: the treated path
+        # keeps the historical int() truncation deliberately — at
+        # common severities int(rate * 0.3) is 0, i.e. "treated"
+        # currently means *stopped*.  Preserved for equivalence
+        # (#501 §5); retune as a separate balance decision.
+        rate_per_minute = self.blood_loss_rate
         if self.treated:
-            blood_loss = int(blood_loss * 0.3)  # Treated bleeding loses less blood
+            rate_per_minute = int(rate_per_minute * 0.3)
+        blood_loss = rate_per_minute * elapsed_minutes
 
-        # Apply blood loss
-        old_blood = medical_state.blood_level
-        medical_state.blood_level = max(0, medical_state.blood_level - blood_loss)
+        if blood_loss > 0:
+            old_blood = medical_state.blood_level
+            medical_state.blood_level = max(0, medical_state.blood_level - blood_loss)
+            splattercast.msg(f"BLOOD_LOSS: {character.key} loses {blood_loss:.2f} blood ({old_blood:.1f} -> {medical_state.blood_level:.1f})")
 
-        splattercast.msg(f"BLOOD_LOSS: {character.key} loses {blood_loss} blood ({old_blood} -> {medical_state.blood_level})")
-
-        # Check for natural healing (random chance to reduce severity)
-        if not self.treated and random.randint(1, 100) <= 10:  # 10% chance per tick
+        # Natural clotting — per-minute hazard sampled over elapsed.
+        if not self.treated and hazard_fires(BLEEDING_CLOT_HAZARD_PER_MINUTE, elapsed_minutes):
             self.severity = max(0, self.severity - 1)
             splattercast.msg(f"BLEEDING_HEAL: {character.key} bleeding severity reduced to {self.severity}")
 
@@ -264,6 +316,7 @@ class BleedingCondition(MedicalCondition):
         condition.requires_ticker = data.get("requires_ticker", True)
         condition.treated = data.get("treated", False)
         condition.blood_loss_rate = data.get("blood_loss_rate", condition.blood_loss_rate)
+        condition.last_processed = data.get("last_processed", clock_now())
         return condition
 
 
@@ -273,14 +326,14 @@ class PainCondition(MedicalCondition):
     def __init__(self, severity, location=None):
         super().__init__("pain", severity, location, tick_interval=120)  # Longer interval
         
-    def tick_effect(self, character):
+    def tick_effect(self, character, elapsed_minutes=1.0):
         """Pain naturally diminishes over time."""
         from world.combat.debug import get_splattercast
         
         splattercast = get_splattercast()
         
-        # Natural pain reduction
-        if random.randint(1, 100) <= 20:  # 20% chance per tick
+        # Natural pain reduction — per-minute hazard over elapsed.
+        if hazard_fires(PAIN_DECAY_HAZARD_PER_MINUTE, elapsed_minutes):
             self.severity = max(0, self.severity - 1)
             splattercast.msg(f"PAIN_HEAL: {character.key} pain severity reduced to {self.severity}")
             
@@ -319,6 +372,7 @@ class PainCondition(MedicalCondition):
         condition.tick_interval = data.get("tick_interval", 120)
         condition.requires_ticker = data.get("requires_ticker", True)
         condition.treated = data.get("treated", False)
+        condition.last_processed = data.get("last_processed", clock_now())
         return condition
 
 
@@ -331,34 +385,29 @@ class InfectionCondition(MedicalCondition):
         self.last_progression_check = 0  # Track time for proper progression timing
         self.environmental_modifier = 1.0  # Multiplier for environmental conditions (sewers, etc.)
         
-    def tick_effect(self, character):
-        """Infection can worsen if untreated, or improve if treated."""
+    def tick_effect(self, character, elapsed_minutes=1.0):
+        """Infection can worsen if untreated, or improve if treated.
+
+        #501 §5 RESTORATION: the per-tick numbers had drifted 5x from
+        their design (authored against the old 12s tick).  These
+        hazards restore the documented pacing — treated infection
+        "improves every ~5 minutes", untreated follows the
+        "realistic ~20min progression", scaled by the environmental
+        modifier (the future sewers-and-neglect lever).
+        """
         from world.combat.debug import get_splattercast
-        import time
-        
+
         splattercast = get_splattercast()
-        current_time = time.time()
-        
-        # Initialize timing tracking if needed
-        if self.last_progression_check == 0:
-            self.last_progression_check = current_time
-            return  # Skip first tick to establish baseline
-        
+
         if self.treated:
-            # Treated infection improves every ~5 minutes (25 ticks at 12s intervals)
-            if random.randint(1, 100) <= 12:  # ~30% chance over 25 ticks = 1.2% per tick
+            if hazard_fires(INFECTION_IMPROVE_HAZARD_PER_MINUTE, elapsed_minutes):
                 self.severity = max(0, self.severity - 1)
                 splattercast.msg(f"INFECTION_HEAL: {character.key} infection severity reduced to {self.severity}")
         else:
-            # Calculate effective progression chance based on timing and environment
-            effective_chance = self.base_progression_chance * self.environmental_modifier
-            
-            # Untreated infection can worsen - designed for realistic ~20min progression
-            if random.randint(1, 10000) <= int(effective_chance * 100):  # More granular probability
+            worsen_hazard = INFECTION_WORSEN_HAZARD_PER_MINUTE * self.environmental_modifier
+            if hazard_fires(worsen_hazard, elapsed_minutes):
                 self.severity = min(10, self.severity + 1)  # Cap at 10
                 splattercast.msg(f"INFECTION_WORSEN: {character.key} infection severity increased to {self.severity} (env modifier: {self.environmental_modifier}x)")
-                
-        self.last_progression_check = current_time
     
     def set_environmental_modifier(self, modifier):
         """Set environmental infection risk modifier (e.g., 3.0 for sewers, 0.5 for sterile conditions)"""
@@ -387,6 +436,7 @@ class InfectionCondition(MedicalCondition):
         condition.tick_interval = data.get("tick_interval", 300)
         condition.requires_ticker = data.get("requires_ticker", True)
         condition.treated = data.get("treated", False)
+        condition.last_processed = data.get("last_processed", clock_now())
         return condition
 
     def disables_organ_at_severity(self):
@@ -492,24 +542,18 @@ class ConsciousnessSuppressionCondition(MedicalCondition):
         self.suppression_type = suppression_type  # "knockout", "sedative", "anesthesia", "trauma"
         self.consciousness_penalty = min(1.0, severity * 0.15)  # Up to 1.5 consciousness reduction at severity 10
         
-    def tick_effect(self, character):
+    def tick_effect(self, character, elapsed_minutes=1.0):
         """Consciousness suppression naturally diminishes over time."""
         from world.combat.debug import get_splattercast
         
         splattercast = get_splattercast()
         
-        # Natural recovery from consciousness suppression 
-        # Different types recover at different rates
-        recovery_rates = {
-            "knockout": 25,      # Fast recovery from blunt trauma
-            "sedative": 15,      # Moderate recovery from drugs  
-            "anesthesia": 10,    # Slower recovery from medical anesthesia
-            "trauma": 20         # Moderate recovery from head trauma
-        }
+        # Natural recovery — per-minute hazard by suppression type.
+        recovery_hazard = CONSCIOUSNESS_RECOVERY_HAZARD_PER_MINUTE.get(
+            self.suppression_type, 0.20,
+        )
         
-        recovery_chance = recovery_rates.get(self.suppression_type, 20)
-        
-        if random.randint(1, 100) <= recovery_chance:
+        if hazard_fires(recovery_hazard, elapsed_minutes):
             self.severity = max(0, self.severity - 1)
             # Recalculate consciousness penalty
             self.consciousness_penalty = min(1.0, self.severity * 0.15)
@@ -554,6 +598,7 @@ class ConsciousnessSuppressionCondition(MedicalCondition):
         condition.tick_interval = data.get("tick_interval", 180)
         condition.requires_ticker = data.get("requires_ticker", True)
         condition.treated = data.get("treated", False)
+        condition.last_processed = data.get("last_processed", clock_now())
         return condition
 
 
@@ -586,7 +631,7 @@ class AddictionCondition(MedicalCondition):
         self.prose_key = prose_key
         self.craving_after = craving_after
         self.last_dose_time = time.time()
-        self._overdue_ticks = 0  # transient; not persisted
+        self._last_prose_time = 0.0  # transient; not persisted
 
     # -- state ---------------------------------------------------
 
@@ -598,7 +643,7 @@ class AddictionCondition(MedicalCondition):
     def record_dose(self):
         """A dose landed — cravings (and their ache) reset."""
         self.last_dose_time = time.time()
-        self._overdue_ticks = 0
+        self._last_prose_time = 0.0
 
     # -- condition contract ---------------------------------------
 
@@ -609,15 +654,17 @@ class AddictionCondition(MedicalCondition):
     def get_pain_contribution(self):
         return 1 if self.is_craving() else 0
 
-    def tick_effect(self, character):
+    def tick_effect(self, character, elapsed_minutes=1.0):
         if not self.is_craving():
-            self._overdue_ticks = 0
+            self._last_prose_time = 0.0
             return
-        self._overdue_ticks = getattr(self, "_overdue_ticks", 0) + 1
-        # Surface prose on the first overdue tick, then every ~5
-        # ticks (≈5 minutes at the production interval) — pressure,
-        # not spam.
-        if self._overdue_ticks % 5 == 1:
+        # Surface prose immediately on becoming overdue, then every
+        # ~5 minutes of real time — pressure, not spam.  (#501:
+        # converted from tick-counting to elapsed time.)
+        current = clock_now()
+        last = getattr(self, "_last_prose_time", 0.0)
+        if current - last >= 300 or last == 0.0:
+            self._last_prose_time = current
             from world.substances.registry import pick_craving_line
             line = pick_craving_line(self.prose_key)
             if line and hasattr(character, "msg"):
@@ -647,6 +694,7 @@ class AddictionCondition(MedicalCondition):
         condition.max_severity = data.get("max_severity", condition.severity)
         condition.treated = data.get("treated", False)
         condition.last_dose_time = data.get("last_dose_time", time.time())
+        condition.last_processed = data.get("last_processed", clock_now())
         return condition
 
 

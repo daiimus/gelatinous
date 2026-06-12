@@ -52,13 +52,17 @@ def _hp_per_tick(dressing_rate: int) -> int:
     return max(base, WOUND_HEALING_FLOOR_HP_PER_TICK)
 
 
-def _process_healing(character, medical_state) -> list:
+def _process_healing(character, medical_state, elapsed_minutes=1.0) -> list:
     """Walk stabilized + dressed organs; restore HP per dressing rate.
 
-    Returns the list of organs that received HP this tick (used by
-    the caller for logging).  Organs that reach full HP clear their
-    ``stabilized`` + ``dressing_rate`` automatically via the
-    ``Organ.heal`` code path.
+    #501: the rate is per MINUTE (the old per-tick value 1:1, since
+    the tick was 60s).  Fractional progress accumulates on the organ
+    (``dressing_progress``, persisted) and converts to whole HP via
+    ``Organ.heal`` — granularity-independent like everything else.
+
+    Returns the list of organs that received HP this pass.  Organs
+    that reach full HP clear their ``stabilized`` + ``dressing_rate``
+    automatically via the ``Organ.heal`` code path.
     """
     healed = []
     organs = getattr(medical_state, "organs", None) or {}
@@ -70,11 +74,16 @@ def _process_healing(character, medical_state) -> list:
             continue
         if organ.current_hp >= organ.max_hp:
             continue
-        hp_gain = _hp_per_tick(rate)
-        if hp_gain <= 0:
+        hp_per_minute = _hp_per_tick(rate)
+        if hp_per_minute <= 0:
             continue
-        organ.heal(hp_gain)
-        healed.append(organ)
+        progress = getattr(organ, "dressing_progress", 0.0) or 0.0
+        progress += hp_per_minute * elapsed_minutes
+        whole = int(progress)
+        organ.dressing_progress = progress - whole
+        if whole > 0:
+            organ.heal(whole)
+            healed.append(organ)
     return healed
 
 
@@ -152,7 +161,7 @@ class MedicalScript(DefaultScript):
                 try:
                     if hasattr(condition, 'requires_ticker') and condition.requires_ticker:
                         splattercast.msg(f"MEDICAL_SCRIPT: Ticking {condition.condition_type} severity {condition.severity}")
-                        condition.tick_effect(self.obj)
+                        condition.process(self.obj)
                         
                         # Track bleeding severity for consolidated messaging
                         if condition.condition_type == "minor_bleeding":
@@ -191,7 +200,24 @@ class MedicalScript(DefaultScript):
             # carry a dressing rate; restore HP proportional to the
             # rate.  Cheap in-memory pass — no per-organ DB hits
             # beyond the medical_state fetch already done above.
-            healed_organs = _process_healing(self.obj, medical_state)
+            # Healing elapsed: same clock seam as conditions (#501).
+            from world.medical.clock import elapsed_game_minutes
+            from world.medical.clock import now as clock_now
+            from world.medical.constants import ELAPSED_CAP_MINUTES
+            # ndb deliberately (#501 hygiene / DB-write doctrine):
+            # a per-tick persisted write here measured 4.5x tick cost
+            # at N=1000.  Reload resets the marker to "now", which is
+            # exactly the downtime cap's intent anyway.
+            heal_now = clock_now()
+            last_heal = self.ndb.last_heal_process or heal_now
+            heal_elapsed = min(
+                elapsed_game_minutes(last_heal, heal_now),
+                ELAPSED_CAP_MINUTES,
+            )
+            self.ndb.last_heal_process = heal_now
+            healed_organs = _process_healing(
+                self.obj, medical_state, elapsed_minutes=heal_elapsed,
+            )
             if healed_organs:
                 splattercast.msg(
                     f"MEDICAL_SCRIPT: Healing tick restored HP on "

@@ -124,6 +124,9 @@ class Organ:
         # but the rate persists.  Cleared on full heal or organ
         # replacement.
         self.dressing_rate = 0
+        # Fractional HP progress toward the next whole point of
+        # dressed healing (#501) — persisted with the organ.
+        self.dressing_progress = 0.0
         
     @property
     def current_hp(self):
@@ -471,6 +474,7 @@ class Organ:
             "wound_timestamp": self.wound_timestamp,
             "stabilized": self.stabilized,
             "dressing_rate": self.dressing_rate,
+            "dressing_progress": getattr(self, "dressing_progress", 0.0),
         }
         
     @classmethod
@@ -511,6 +515,7 @@ class Organ:
         # not-healing.
         try:
             organ.dressing_rate = int(data.get("dressing_rate", 0) or 0)
+            organ.dressing_progress = float(data.get("dressing_progress", 0.0) or 0.0)
         except (TypeError, ValueError):
             organ.dressing_rate = 0
         # Issue #346: persisted organs may predate ``display_location`` —
