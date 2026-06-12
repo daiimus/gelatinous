@@ -595,3 +595,87 @@ class TestDeliveryWiring(TestCase):
             cmd.func()
 
         item.delete.assert_called_once()
+
+
+# ---------------------------------------------------------------------
+# Guttervenom + pain_inflict (#498) — the first harmful substance
+# ---------------------------------------------------------------------
+
+
+class TestGuttervenom(TestCase):
+    def test_entry_is_weapon_not_habit(self):
+        entry = get_substance_entry("guttervenom")
+        self.assertIsNotNone(entry)
+        self.assertIsNone(entry.tolerance)
+        self.assertIsNone(entry.addiction)
+
+    def test_dose_inflicts_pain_and_dims(self):
+        consumer = _FakeConsumer()
+        result = apply_substance(consumer, "guttervenom")
+        self.assertEqual(result["applied"]["pain_inflict"], 3)
+        self.assertEqual(result["applied"]["sedation"], 1)
+        pains = [
+            c for c in consumer.medical_state.conditions
+            if getattr(c, "condition_type", None) == "pain"
+        ]
+        self.assertEqual(len(pains), 1)
+        self.assertEqual(pains[0].severity, 3)
+        self.assertIn(
+            "Fire spreads outward from the injection site.",
+            result["feedback"],
+        )
+
+    def test_repeat_doses_stack_pain_but_cap_sedation(self):
+        consumer = _FakeConsumer()
+        for _ in range(4):
+            apply_substance(consumer, "guttervenom")
+        pains = [
+            c for c in consumer.medical_state.conditions
+            if getattr(c, "condition_type", None) == "pain"
+        ]
+        self.assertEqual(sum(c.severity for c in pains), 12)
+        sedatives = [
+            c for c in consumer.medical_state.conditions
+            if getattr(c, "condition_type", None) == "consciousness_suppression"
+        ]
+        self.assertEqual(sum(int(c.severity) for c in sedatives), 3)
+
+
+class TestInjectDeliveryWiring(TestCase):
+    """#498 completes the #488 wiring: inject carries pharmacology
+    and accepts tag-gated non-medical syringes."""
+
+    def test_inject_applies_dose_and_spends_a_use(self):
+        from unittest.mock import MagicMock, patch
+        from commands.CmdConsumption import CmdInject
+
+        item = MagicMock()
+        item.db = _FakeDB(substance="guttervenom")
+        item.get_display_name = lambda looker=None: "syringe of guttervenom"
+        cmd = CmdInject()
+        cmd.caller = MagicMock()
+        cmd.caller.location = MagicMock()
+        cmd.args = "guttervenom"
+        target = cmd.caller
+        parse_result = {
+            "item": item, "target": target,
+            "body_location": None, "errors": [],
+        }
+        with patch.object(cmd, "get_item_and_target",
+                          return_value=parse_result) as mock_parse, \
+             patch("commands.CmdConsumption.supports_delivery",
+                   return_value=True), \
+             patch("commands.CmdConsumption.is_medical_item",
+                   return_value=False), \
+             patch("commands.CmdConsumption.msg_room_identity"), \
+             patch("world.substances.apply_substance",
+                   return_value={"feedback": ["Fire."]}) as mock_dose, \
+             patch("world.consumables.consume_use",
+                   return_value={"success": True, "destroyed": True}
+                   ) as mock_use:
+            cmd.func()
+
+        # Tag-gated: the parser no longer demands a medical item.
+        self.assertFalse(mock_parse.call_args.kwargs.get("require_medical", True))
+        mock_dose.assert_called_once_with(target, "guttervenom")
+        mock_use.assert_called_once_with(item)

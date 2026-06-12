@@ -257,7 +257,11 @@ migration from the old `medical_type` strings.
    analgesic (3 pain relief/dose, sedation to the nod at cap 5)
    and hooks in ten doses.  New effect kinds (euphoria,
    stimulation, coordination penalty) remain future vocabulary —
-   grown per substance when one actually needs them.
+   grown per substance when one actually needs them.  First
+   *harmful* kind shipped in #498: ``pain_inflict`` (guttervenom —
+   a weapon, not a habit: no tolerance/addiction specs).  #498 also
+   wired ``inject`` to carry pharmacology — the one verb #487
+   missed.
    Also in #487: **eat/drink/inhale now call ``apply_substance``**
    (previously only smoke delivered pharmacology), non-medical
    consumables route through ``consume_use``, and the ingestion

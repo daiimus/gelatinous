@@ -292,7 +292,7 @@ class CmdInject(ConsumptionCommand):
         caller = self.caller
         
         # Parse arguments
-        result = self.get_item_and_target(self.args)
+        result = self.get_item_and_target(self.args, require_medical=False)
         if result["errors"]:
             caller.msg(result["errors"][0])
             return
@@ -305,11 +305,13 @@ class CmdInject(ConsumptionCommand):
             caller.msg(f"{item.get_display_name(caller)} cannot be injected.")
             return
             
-        # Check medical requirements
-        errors = self.check_medical_requirements(item, caller, target)
-        if errors:
-            caller.msg(errors[0])
-            return
+        # Check medical requirements (medical items only — non-medical
+        # injectables are gated by the delivery tag, #498)
+        if is_medical_item(item):
+            errors = self.check_medical_requirements(item, caller, target)
+            if errors:
+                caller.msg(errors[0])
+                return
             
         # Execute injection
         if is_self:
@@ -330,12 +332,19 @@ class CmdInject(ConsumptionCommand):
                 exclude=[caller, target],
             )
             
-        # Apply treatment effects
-        result_msg = self.execute_treatment(item, caller, target)
-        caller.msg(f"Injection result: {result_msg}")
-        
-        if not is_self:
-            target.msg(f"Treatment result: {result_msg}")
+        # Apply treatment effects (medical items) and any substance
+        # pharmacology riding the delivery (#498 — completes the
+        # #488 wiring; inject was the missing verb)
+        if is_medical_item(item):
+            result_msg = self.execute_treatment(item, caller, target)
+            caller.msg(f"Injection result: {result_msg}")
+
+            if not is_self:
+                target.msg(f"Treatment result: {result_msg}")
+            self._apply_substance_dose(item, target)
+        else:
+            self._apply_substance_dose(item, target)
+            self._consume(item)
 
 
 class CmdApply(ConsumptionCommand):

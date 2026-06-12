@@ -2183,6 +2183,20 @@ OPIUM_CIGARETTE = {
     ],
 }
 
+GUTTERVENOM_SYRINGE = {
+    "key": "syringe of guttervenom",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["guttervenom", "venom syringe", "toxin"],
+    "desc": "A scratched autoinjector filled with murky, iridescent "
+            "fluid. The label has been deliberately scraped off.",
+    "tags": [("inject", "delivery_method")],
+    "attrs": [
+        ("substance", "guttervenom"),
+        ("uses_left", 1),
+        ("max_uses", 1),
+    ],
+}
+
 # =============================================================================
 # SHOP MERCHANT PROTOTYPES
 # =============================================================================

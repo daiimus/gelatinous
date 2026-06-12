@@ -18,6 +18,11 @@ system supports today:
   effect's ``max_stack`` so chain-smoking can't knock a character
   unconscious unboundedly — the cap is the substance's ceiling on
   total sedative severity from any source.
+* ``pain_inflict`` — the first harmful kind (#498): adds a
+  :class:`~world.medical.conditions.PainCondition` of ``magnitude``
+  severity.  Rides the existing pain machinery — it decays on the
+  medical tick, feeds the consciousness cliff, and shows in
+  ``diagnose`` like any wound pain.
 
 Future vocabulary (tolerance, addiction, stimulation, euphoria,
 organ damage) lands in follow-up PRs per
@@ -188,6 +193,18 @@ SUBSTANCES: dict[str, Substance] = {
             threshold_doses=40, craving_after=10800, prose_key="alcohol",
         ),
     ),
+    "guttervenom": Substance(
+        id="guttervenom",
+        display_name="guttervenom",
+        effects=(
+            # A weapon, not a habit: searing systemic pain plus a
+            # woozy dimming as the body fights it.  No tolerance, no
+            # addiction — nobody chases this.
+            SubstanceEffect(kind="pain_inflict", magnitude=3),
+            SubstanceEffect(kind="sedation", magnitude=1, max_stack=3),
+        ),
+        flavor_bank_key="guttervenom",
+    ),
     "opium": Substance(
         id="opium",
         display_name="opium",
@@ -233,11 +250,15 @@ def get_substance_entry(substance_id: str | None) -> Optional[Substance]:
 EFFECT_FEEDBACK: dict[str, str] = {
     "pain_relief": "The ache dulls a little.",
     "sedation": "A slow heaviness settles behind your eyes.",
+    "pain_inflict": "Fire spreads outward from the injection site.",
 }
 
 #: Shown once per application when tolerance zeroed out an effect
 #: that would otherwise have landed.
 TOLERANCE_FEEDBACK = "It doesn't hit like it used to."
+
+#: pain_inflict's landed-effect line (harmful effects get their own
+#: voice — EFFECT_FEEDBACK below covers the beneficial kinds).
 
 #: Shown once, the moment an addiction condition first forms.
 ADDICTION_ONSET_FEEDBACK = (
@@ -378,6 +399,24 @@ def _apply_pain_relief(medical_state, magnitude: int) -> int:
     return relieved
 
 
+def _apply_pain_inflict(medical_state, magnitude: int) -> int:
+    """Add a PainCondition of ``magnitude`` severity (#498).
+
+    The harmful mirror of ``pain_relief`` — a new pain condition
+    rides the existing machinery: medical-tick decay, consciousness
+    penalty above the pain threshold, diagnose visibility.
+
+    Returns:
+        Severity actually inflicted.
+    """
+    from world.medical.conditions import PainCondition
+
+    if magnitude <= 0:
+        return 0
+    medical_state.add_condition(PainCondition(magnitude, location=None))
+    return magnitude
+
+
 def _apply_sedation(medical_state, magnitude: int, max_stack: int) -> int:
     """Add or stack sedative consciousness suppression, capped.
 
@@ -481,6 +520,8 @@ def apply_substance(consumer, substance_id: str | None, *, doses: int = 1) -> di
                 landed = _apply_sedation(
                     medical_state, magnitude, effect.max_stack,
                 )
+            elif effect.kind == "pain_inflict":
+                landed = _apply_pain_inflict(medical_state, magnitude)
             else:
                 # Unknown effect kind — declared ahead of its
                 # implementation.  Skip rather than crash so the
