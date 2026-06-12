@@ -1,6 +1,6 @@
 # specs/
 
-Design specifications for game systems and features. 43 spec files covering combat, commands, UI, medical, identity, communication, and integrations.
+Design specifications for game systems and features. 44 spec files covering combat, commands, UI, medical, identity, communication, and integrations.
 
 ## Core Systems
 
@@ -14,6 +14,7 @@ Design specifications for game systems and features. 43 spec files covering comb
 | `GRAPPLE_SYSTEM_SPEC.md` | Grappling and restraint mechanics |
 | `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` | Medical/trauma system design; canonical source of truth for anatomy (spinal organs, neck integrity) and death/decapitation conditions |
 | `MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC.md` | **Planning artifact** — end-to-end audit of medical/combat/death systems and a phased remediation plan. Content gets absorbed into canonical specs as each phase lands, then this document retires. |
+| `CONDITION_CADENCE_SPEC.md` | Elapsed-time condition rates: per-minute rates, ticks as sampling, downtime cap, script hygiene doctrine (#501) |
 | `MEDICAL_SUBSTRATE_READINESS.md` | Index of unconsumed declarative flags in the medical schema → intended consumer system → audit phase. Use when adding new flags or wiring substrates. |
 | `CLOTHING_SYSTEM_SPEC.md` | Clothing and layering system |
 | `MODULAR_ARMOR_SYSTEM_SPEC.md` | Armor coverage and damage reduction |
