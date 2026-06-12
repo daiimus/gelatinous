@@ -108,13 +108,22 @@ Augment items declare (as attrs):
   from there
 * `augment_longdesc` — `{key, default_desc, display_after}` for the
   rendering surface
-* `species_compat` — `["human"]`
+* `compatible_species` — `["human"]` (the established cyberware /
+  harvest-provenance species gate; one field everywhere)
 
 `CmdInstall` grows an augment branch: species check → incision at
 the **anchor** (the slot doesn't exist yet; you cut where it goes) →
 create the organ(s) with `organ_data` from the item → add the
 longdesc key → persist.  Repeat-install while present is rejected
 ("already has a tail").
+
+The operate menu reaches the same resolver: augment items list
+alongside donor organs in the install picker, picking one records
+the chart step at the item's anchor with no location prompt (the
+item knows where it mounts), and the chart runner routes execution
+to the augment resolver — with the species and incision gates
+re-checked there, since chart commencement bypasses the command's
+pre-dispatch gates.
 
 ### 3.4 · Prehensile grasping
 
@@ -158,7 +167,7 @@ container `"tail"` (`"tail"` is already in `LIMB_CONTAINERS` —
 tourniquets gate correctly with zero changes), bone-typed, modest
 HP, common hit weight, `severable_container`, `grasping`; anchor
 `"back"` (the mount bolts to the base of the spine — you incise
-where it attaches); `species_compat ["human"]`.  Future biotech
+where it attaches); `compatible_species ["human"]`.  Future biotech
 variants are new prototype text over the same attrs.
 
 ## 5 · Phases

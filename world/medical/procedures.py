@@ -1250,6 +1250,31 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
         actor.msg(f"The {organ_item.key} has nothing installable in it.")
         return
 
+    # Species gate — re-checked here because chart-commenced installs
+    # bypass CmdInstall's pre-dispatch gates.  ``compatible_species``
+    # is the established cyberware convention; ``species_compat`` is
+    # accepted for items spawned before the unification.
+    target_species = (
+        getattr(getattr(target, "db", None), "species", None) or "human"
+    )
+    compat = [
+        s.lower() for s in (
+            getattr(item_db, "compatible_species", None)
+            or getattr(item_db, "species_compat", None) or []
+        )
+    ]
+    if target_species.lower() not in compat:
+        actor.msg(
+            f"The {organ_item.key}'s mounting hardware isn't rated "
+            f"for {target_species} anatomy."
+        )
+        from world.medical.charts import mark_running_step_failed
+        mark_running_step_failed(
+            target,
+            outcome=f"species mismatch — {target_species} not supported",
+        )
+        return
+
     # Access gate — symmetric to install's chart-bypass check: the
     # anchor must still be open when the procedure resolves.
     if not has_incision(target, location):

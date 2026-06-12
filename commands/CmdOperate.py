@@ -510,12 +510,20 @@ def _list_organs(target):
 
 def _list_donor_organs(caller):
     """Return ``(item, organ_name)`` pairs — Organ items in the
-    caller's inventory that came from a harvest and can be installed."""
+    caller's inventory that came from a harvest, plus augment items
+    (ANATOMY_AUGMENTS_SPEC §3.3) that carry their own anatomy and
+    install via the same menu."""
     out = []
     for obj in (getattr(caller, "contents", None) or ()):
-        organ_name = getattr(getattr(obj, "db", None), "organ_name", None)
+        obj_db = getattr(obj, "db", None)
+        organ_name = getattr(obj_db, "organ_name", None)
         if organ_name:
             out.append((obj, organ_name))
+            continue
+        augment = getattr(obj_db, "augment_organs", None)
+        if augment:
+            label = getattr(obj_db, "augment_container", None) or obj.key
+            out.append((obj, label))
     return out
 
 
@@ -940,6 +948,44 @@ def _process_install_donor(caller, raw_string, **kwargs):
     # read its compatibility / placement attrs (db.organ_name,
     # db.compatible_species, db.target_container, db.target_display_locations).
     caller.ndb._operate_install_donor_item = item
+
+    # Augment items (ANATOMY_AUGMENTS_SPEC §3.3) carry their own
+    # placement — the mount point is the item's anchor, so there is
+    # no location to pick.  Species-gate here for early feedback
+    # (the resolver re-checks at execution).
+    item_db = getattr(item, "db", None)
+    if getattr(item_db, "augment_organs", None):
+        target = caller.ndb._operate_target
+        target_species = (
+            getattr(getattr(target, "db", None), "species", None) or "human"
+        )
+        compat = [
+            s.lower() for s in (
+                getattr(item_db, "compatible_species", None)
+                or getattr(item_db, "species_compat", None) or []
+            )
+        ]
+        if target_species.lower() not in compat:
+            caller.msg(
+                f"|r{item.key}'s mounting hardware isn't rated for "
+                f"{target_species} anatomy.|n"
+            )
+            return "node_top"
+        anchor = (
+            getattr(item_db, "augment_anchor", None)
+            or getattr(item_db, "augment_container", None)
+        )
+        _add_step_to_chart(
+            caller, "install",
+            {"organ_item_key": item.key, "location": anchor},
+        )
+        caller.msg(
+            f"{item.key} mounts at the {anchor.replace('_', ' ')} — "
+            f"the {anchor.replace('_', ' ')} must be open when this "
+            f"step runs (add an incise step first if it isn't)."
+        )
+        return "node_top"
+
     # Now ask for the install location.
     return "node_install_location"
 

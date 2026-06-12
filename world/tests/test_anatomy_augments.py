@@ -76,7 +76,7 @@ def _surgeon():
     return actor
 
 
-def _tail_item():
+def _tail_item(**db_overrides):
     item = SimpleNamespace()
     item.key = "cybernetic tail"
     item.deleted = False
@@ -84,7 +84,7 @@ def _tail_item():
     def _delete():
         item.deleted = True
     item.delete = _delete
-    item.db = SimpleNamespace(
+    db_attrs = dict(
         augment_organs={"cybernetic_tailbone": dict(TAIL_ORGAN_SPEC)},
         augment_container="tail",
         augment_anchor="back",
@@ -93,15 +93,17 @@ def _tail_item():
             "default_desc": "A cybernetic tail.",
             "display_after": "back",
         },
-        species_compat=["human"],
+        compatible_species=["human"],
     )
+    db_attrs.update(db_overrides)
+    item.db = SimpleNamespace(**db_attrs)
     return item
 
 
 class TestInstallAugmentResolver(TestCase):
-    def _install(self, target, outcome="success"):
+    def _install(self, target, outcome="success", item=None):
         actor = _surgeon()
-        item = _tail_item()
+        item = item if item is not None else _tail_item()
         with patch(
             "world.medical.procedures.roll_procedure",
             return_value={"outcome": outcome},
@@ -179,6 +181,44 @@ class TestInstallAugmentResolver(TestCase):
             if getattr(c, "condition_type", "") == "infection"
         ]
         self.assertTrue(infections)
+
+    def test_species_gate_blocks_in_resolver(self):
+        """Chart-commenced installs bypass CmdInstall's gates — the
+        resolver re-checks species itself."""
+        target = _patient(species="rat")
+        open_incision(target, "back")
+        actor, item = self._install(target)
+        self.assertNotIn("cybernetic_tailbone", target.medical_state.organs)
+        self.assertFalse(item.deleted)
+        self.assertTrue(any("isn't rated" in m for m in actor.messages))
+
+    def test_legacy_species_compat_field_accepted(self):
+        """Items spawned before the compatible_species unification
+        carry species_compat — still honored."""
+        target = _patient()
+        open_incision(target, "back")
+        item = _tail_item(compatible_species=None, species_compat=["human"])
+        self._install(target, item=item)
+        self.assertIn("cybernetic_tailbone", target.medical_state.organs)
+
+
+class TestOperateMenuDonorListing(TestCase):
+    def test_augment_items_list_as_donors(self):
+        """The operate install picker shows augment items alongside
+        harvested organs — the bug where the tail never appeared."""
+        from commands.CmdOperate import _list_donor_organs
+
+        heart = SimpleNamespace(
+            key="donor heart", db=SimpleNamespace(organ_name="heart"),
+        )
+        tail = _tail_item()
+        plain = SimpleNamespace(key="brick", db=SimpleNamespace())
+        caller = SimpleNamespace(contents=[heart, tail, plain])
+        donors = _list_donor_organs(caller)
+        items = [item for item, _label in donors]
+        self.assertIn(heart, items)
+        self.assertIn(tail, items)
+        self.assertNotIn(plain, items)
 
 
 class TestSeverableOverlay(TestCase):

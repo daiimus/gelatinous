@@ -586,8 +586,13 @@ class CmdInstall(Command):
             return
 
         species = getattr(target.db, "species", None) or "human"
+        # ``compatible_species`` is the established cyberware gate;
+        # ``species_compat`` accepted for pre-unification items.
         compat = [
-            s.lower() for s in (organ_item.db.species_compat or [])
+            s.lower() for s in (
+                organ_item.db.compatible_species
+                or organ_item.db.species_compat or []
+            )
         ]
         if species.lower() not in compat:
             caller.msg(

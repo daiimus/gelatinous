@@ -489,6 +489,22 @@ def commence_chart(target, actor) -> Optional[dict]:
         save_chart(target, chart)
         return commence_chart(target, actor)
 
+    # Augment items route to their own resolver (ANATOMY_AUGMENTS_SPEC
+    # §3.3): the chart vocabulary stays "install", the execution
+    # differs.  The mount point is authoritative from the item — the
+    # anchor overrides whatever location the chart recorded, so a
+    # stale or hand-authored step still cuts in the right place.
+    if verb == "install":
+        item_db = getattr(resolved_args.get("organ_item"), "db", None)
+        if getattr(item_db, "augment_organs", None):
+            verb = "install_augment"
+            anchor = (
+                getattr(item_db, "augment_anchor", None)
+                or getattr(item_db, "augment_container", None)
+            )
+            if anchor:
+                resolved_args["location"] = anchor
+
     step["status"] = RUNNING
     chart["status"] = IN_PROGRESS
     save_chart(target, chart)

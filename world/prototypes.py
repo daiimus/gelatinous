@@ -1975,7 +1975,10 @@ CYBERNETIC_TAIL = {
             "default_desc": "A segmented cybernetic tail sways at the base of the spine, alloy vertebrae clicking softly when it moves.",
             "display_after": "back",
         }),
-        ("species_compat", ["human"]),
+        # The established cyberware species gate (the same field
+        # harvest provenance sets) — synth expansion is editing this
+        # list, no code.
+        ("compatible_species", ["human"]),
     ],
 }
 
