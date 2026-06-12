@@ -35,7 +35,10 @@ from world.combat.constants import (
     COMBAT_ACTION_GRAPPLE_TAKEOVER,
     COMBAT_ACTION_ESCAPE_GRAPPLE, COMBAT_ACTION_RELEASE_GRAPPLE,
 )
-from world.combat.utils import log_combat_action, initialize_proximity_ndb, get_display_name_safe
+from world.combat.utils import (
+    log_combat_action, initialize_proximity_ndb, get_display_name_safe,
+    get_wielded_weapon,
+)
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 from commands._identity_targeting import resolve_character_target
@@ -385,7 +388,7 @@ class CmdAim(Command):
                 
                 # Get weapon name for better messaging
                 hands = getattr(caller, "hands", {})
-                weapon = next((item for hand, item in hands.items() if item), None)
+                weapon = get_wielded_weapon(caller)
                 weapon_name = weapon.key if weapon else "weapon"
                 
                 caller.msg(f"You stop aiming at {get_display_name_safe(current_target, caller)} and lower your {weapon_name}.")
@@ -402,7 +405,7 @@ class CmdAim(Command):
                 
                 # Get weapon name for better messaging
                 hands = getattr(caller, "hands", {})
-                weapon = next((item for hand, item in hands.items() if item), None)
+                weapon = get_wielded_weapon(caller)
                 weapon_name = weapon.key if weapon else "weapon"
                 
                 # Try to get the actual exit name from the direction
@@ -493,7 +496,7 @@ class CmdAim(Command):
                 
                 # Check if caller has a ranged weapon for direction aiming
                 hands = getattr(caller, "hands", {})
-                weapon = next((item for hand, item in hands.items() if item), None)
+                weapon = get_wielded_weapon(caller)
                 
                 is_ranged_weapon = False
                 if weapon:
@@ -522,7 +525,7 @@ class CmdAim(Command):
                 
                 # Get held weapon for better messaging
                 hands = getattr(caller, "hands", {})
-                weapon = next((item for hand, item in hands.items() if item), None)
+                weapon = get_wielded_weapon(caller)
                 weapon_name = weapon.key if weapon else "weapon"
                 
                 # Use the exit's actual name instead of hardcoded direction mapping
@@ -589,7 +592,7 @@ class CmdAim(Command):
 
             # Check if caller has a ranged weapon
             hands = getattr(caller, "hands", {})
-            weapon = next((item for hand, item in hands.items() if item), None)
+            weapon = get_wielded_weapon(caller)
             
             is_ranged_weapon = False
             if weapon:
@@ -606,7 +609,7 @@ class CmdAim(Command):
 
             # Send messages - get weapon name for better messaging
             hands = getattr(caller, "hands", {})
-            weapon = next((item for hand, item in hands.items() if item), None)
+            weapon = get_wielded_weapon(caller)
             weapon_name = weapon.key if weapon else "weapon"
             
             caller.msg(f"You raise your {weapon_name}, taking careful aim at {get_display_name_safe(target, caller)}.")
@@ -646,7 +649,7 @@ class CmdAim(Command):
                 splattercast.msg(f"AIM_DEBUG: Direction '{direction}' is valid, proceeding with aiming")
                 # Check if caller has a ranged weapon for direction aiming
                 hands = getattr(caller, "hands", {})
-                weapon = next((item for hand, item in hands.items() if item), None)
+                weapon = get_wielded_weapon(caller)
                 
                 is_ranged_weapon = False
                 if weapon:
@@ -675,7 +678,7 @@ class CmdAim(Command):
                 
                 # Get held weapon for better messaging
                 hands = getattr(caller, "hands", {})
-                weapon = next((item for hand, item in hands.items() if item), None)
+                weapon = get_wielded_weapon(caller)
                 weapon_name = weapon.key if weapon else "weapon"
                 
                 # For this path, we don't have a target object since it's a fallback direction aim

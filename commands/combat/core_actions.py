@@ -71,7 +71,7 @@ class CmdAttack(Command):
 
         # --- WEAPON IDENTIFICATION (early) ---
         hands = getattr(caller, "hands", {})
-        weapon_obj = next((item for hand, item in hands.items() if item), None)
+        weapon_obj = get_wielded_weapon(caller)
         
         # Debug weapon detection
         splattercast.msg(f"WEAPON_DETECT: {caller.key} hands={hands}, weapon_obj={weapon_obj.key if weapon_obj else 'None'}")
@@ -537,7 +537,7 @@ class CmdStop(Command):
                 
                 # Get weapon name for better messaging
                 hands = getattr(caller, "hands", {})
-                weapon = next((item for hand, item in hands.items() if item), None)
+                weapon = get_wielded_weapon(caller)
                 weapon_name = weapon.key if weapon else "weapon"
                 
                 caller.msg(f"You stop aiming at {get_display_name_safe(aiming_target, caller)} and lower your {weapon_name}.")
@@ -553,7 +553,7 @@ class CmdStop(Command):
                 
                 # Get weapon name for better messaging
                 hands = getattr(caller, "hands", {})
-                weapon = next((item for hand, item in hands.items() if item), None)
+                weapon = get_wielded_weapon(caller)
                 weapon_name = weapon.key if weapon else "weapon"
                 
                 # Try to get the actual exit name from the direction

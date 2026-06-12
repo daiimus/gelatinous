@@ -37,7 +37,7 @@ from commands.combat.jump import CmdJump, apply_gravity_to_items  # noqa: F401
 from commands._identity_targeting import resolve_character_in_rooms
 from world.combat.utils import (
     get_highest_opponent_stat, get_numeric_stat, filter_valid_opponents,
-    standard_roll, clear_aim_state,
+    standard_roll, clear_aim_state, get_wielded_weapon,
 )
 from world.identity_utils import msg_room_identity
 
@@ -129,7 +129,7 @@ class CmdFlee(Command):
                             other_entry = next((e for e in other_h.db.combatants if e["char"] == char_in_dest), None)
                             if other_entry and other_h.get_target_obj(other_entry) == caller:
                                 other_hands = getattr(char_in_dest, "hands", {})
-                                other_weapon_obj = next((item for hand, item in other_hands.items() if item), None)
+                                other_weapon_obj = get_wielded_weapon(char_in_dest)
                                 other_is_ranged = other_weapon_obj and other_weapon_obj.db.is_ranged
                                 if other_is_ranged:
                                     is_this_exit_safe_from_ranged_targeters = False
@@ -338,7 +338,7 @@ class CmdFlee(Command):
                             other_entry = next((e for e in (other_handler.db.combatants or []) if e["char"] == char_in_dest), None)
                             if other_entry and original_handler_at_flee_start.get_target_obj(other_entry) == caller:
                                 other_hands = getattr(char_in_dest, "hands", {})
-                                other_weapon = next((item for hand, item in other_hands.items() if item), None)
+                                other_weapon = get_wielded_weapon(char_in_dest)
                                 if other_weapon and other_weapon.db.is_ranged:
                                     is_safe = False
                                     break

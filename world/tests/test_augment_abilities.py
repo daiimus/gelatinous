@@ -144,6 +144,29 @@ class TestAbilityLayer(EvenniaTest):
             self.organ.ability_state["shotgun"].get("deployed", False)
         )
 
+    def test_no_inline_weapon_picks_outside_the_resolver(self):
+        """Doctrine pin (#516 playtest): combat code must resolve
+        weapons through get_wielded_weapon, never the inline
+        first-held-item idiom — that idiom is how the engagement
+        message brandished a zippo while the hit fired the arm-gun.
+        """
+        import pathlib
+
+        root = pathlib.Path(__file__).resolve().parents[2]
+        idiom = "next((item for hand, item in"
+        offenders = []
+        for sub in ("commands", "world", "typeclasses"):
+            for path in (root / sub).rglob("*.py"):
+                if "tests" in path.parts:
+                    continue
+                if idiom in path.read_text(encoding="utf-8"):
+                    offenders.append(str(path.relative_to(root)))
+        self.assertEqual(
+            offenders, [],
+            "inline weapon picks found — use get_wielded_weapon: "
+            f"{offenders}",
+        )
+
     def test_integrated_weapon_refuses_drop(self):
         toggle_ability(self.char, "shotgun")
         self.assertFalse(self.gun.access(self.char, "drop"))
