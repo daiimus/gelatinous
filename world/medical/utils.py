@@ -787,7 +787,7 @@ def apply_medical_effects(item, user, target, **kwargs):
         
         # Reduce bleeding (check for minor_bleeding condition type)
         bleeding_conditions = [c for c in medical_state.conditions 
-                             if hasattr(c, 'condition_type') and c.condition_type == "minor_bleeding"]
+                             if hasattr(c, 'condition_type') and c.condition_type == "bleeding"]
         for condition in bleeding_conditions[:2]:  # Reduce up to 2 bleeding conditions
             condition.severity = max(0, condition.severity - 3)
             if condition.severity <= 0:
@@ -809,7 +809,7 @@ def apply_medical_effects(item, user, target, **kwargs):
     elif medical_type == "wound_care":
         # Bandaging effects
         bleeding_conditions = [c for c in medical_state.conditions 
-                             if hasattr(c, 'condition_type') and c.condition_type == "minor_bleeding"]
+                             if hasattr(c, 'condition_type') and c.condition_type == "bleeding"]
         for condition in bleeding_conditions[:1]:  # Stop one source of bleeding
             condition.severity = max(0, condition.severity - 2)
             if condition.severity <= 0:

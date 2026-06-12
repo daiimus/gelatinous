@@ -906,6 +906,6 @@ DIAGNOSE_CACHE_TTL_SECONDS = 300
 # These layer on top of the per-organ wound rolls — separate roll
 # per condition.
 DIAGNOSE_CONDITION_DCS = {
-    "minor_bleeding": 1,    # active bleeding is obvious
+    "bleeding": 1,          # active bleeding is obvious
     "infection":      6,    # early infection requires palpation
 }

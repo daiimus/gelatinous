@@ -96,17 +96,10 @@ class TestBleedingEquivalence(TestCase):
 
         self.assertAlmostEqual(state_a.blood_level, state_b.blood_level)
 
-    def test_treated_truncation_preserved(self):
-        """Historical behavior kept deliberately: treated bleeding at
-        common severities loses zero blood (int truncation)."""
-        target, state = _patient()
-        condition = BleedingCondition(3, "chest")
-        condition.treated = True
-        state.add_condition(condition)
-        condition.last_processed = 1000.0
-        with patch("world.medical.conditions.random.random", return_value=0.99):
-            condition.process(target, current=1060.0)
-        self.assertEqual(state.blood_level, 100.0)
+    # NOTE: the Phase-1 "treated truncation preserved" equivalence
+    # test was superseded by the #507 design decision: treated now
+    # means SLOWED (layered brakes), pinned by
+    # TestBleedingModel.test_bandaged_wound_slows_to_thirty_percent.
 
 
 class TestDowntimeCap(TestCase):
@@ -174,3 +167,73 @@ class TestPersistence(TestCase):
         before = __import__("time").time()
         restored = deserialize_condition(data)
         self.assertGreaterEqual(restored.last_processed, before - 1)
+
+
+# ---------------------------------------------------------------------
+# Bleeding model (#507): layered brakes, clot cap, live-derived rate
+# ---------------------------------------------------------------------
+
+
+class TestBleedingModel(TestCase):
+    def test_bandaged_wound_slows_to_thirty_percent(self):
+        """Layered brakes: treated = slowed, not stopped."""
+        target, state = _patient()
+        condition = BleedingCondition(4, "chest")  # 2.0/min
+        condition.treated = True
+        state.add_condition(condition)
+        condition.last_processed = 1000.0
+        with patch("world.medical.conditions.random.random", return_value=0.99):
+            condition.process(target, current=1060.0)
+        self.assertAlmostEqual(state.blood_level, 100.0 - 2.0 * 0.3)
+
+    def test_arterial_bleeding_never_self_clots(self):
+        """Severity 6+ has no natural resolution — intervention or
+        death."""
+        target, state = _patient()
+        condition = BleedingCondition(7, "chest")
+        state.add_condition(condition)
+        condition.last_processed = 1000.0
+        # Roll that would always fire a hazard — but no hazard exists.
+        with patch("world.medical.conditions.random.random", return_value=0.0):
+            condition.process(target, current=1060.0)
+        self.assertEqual(condition.severity, 7)
+
+    def test_moderate_bleeding_can_clot(self):
+        target, state = _patient()
+        condition = BleedingCondition(5, "chest")
+        state.add_condition(condition)
+        condition.last_processed = 1000.0
+        with patch("world.medical.conditions.random.random", return_value=0.0):
+            condition.process(target, current=1060.0)
+        self.assertEqual(condition.severity, 4)
+
+    def test_treated_wounds_clot_faster_and_resolve(self):
+        """Bandaging doubles the clot hazard — slowed wounds have an
+        endpoint, not a permanent leak."""
+        target, state = _patient()
+        condition = BleedingCondition(2, "chest")
+        condition.treated = True
+        state.add_condition(condition)
+        condition.last_processed = 1000.0
+        # 0.19 < 1-(1-0.20)^1 → fires only with the doubled hazard.
+        with patch("world.medical.conditions.random.random", return_value=0.19):
+            condition.process(target, current=1060.0)
+        self.assertEqual(condition.severity, 1)
+
+    def test_rate_follows_severity_not_creation(self):
+        """The stale-rate bug: a clotted-down wound bleeds at its
+        CURRENT severity's rate."""
+        condition = BleedingCondition(5, "chest")  # created at 3.0/min
+        condition.severity = 1
+        self.assertAlmostEqual(condition.get_blood_loss_rate(), 0.5)
+
+    def test_rename_with_legacy_alias(self):
+        condition = BleedingCondition(9, "chest")
+        self.assertEqual(condition.condition_type, "bleeding")
+        self.assertEqual(condition.display_name, "catastrophic bleeding")
+        # Legacy persisted saves load transparently.
+        data = condition.to_dict()
+        data["condition_type"] = "minor_bleeding"
+        restored = deserialize_condition(data)
+        self.assertEqual(restored.condition_type, "bleeding")
+        self.assertEqual(restored.severity, 9)

@@ -113,14 +113,14 @@ class TestClassifyConditionRung(TestCase):
 
     def test_single_bleeder_serious(self):
         patient = _FakePatient(state=_FakeState(conditions=[
-            _FakeCondition(condition_type="minor_bleeding"),
+            _FakeCondition(condition_type="bleeding"),
         ]))
         self.assertEqual(dx.classify_condition_rung(patient), dx.RUNG_SERIOUS)
 
     def test_two_bleeders_critical(self):
         patient = _FakePatient(state=_FakeState(conditions=[
-            _FakeCondition(condition_type="minor_bleeding"),
-            _FakeCondition(condition_type="minor_bleeding"),
+            _FakeCondition(condition_type="bleeding"),
+            _FakeCondition(condition_type="bleeding"),
         ]))
         self.assertEqual(dx.classify_condition_rung(patient), dx.RUNG_CRITICAL)
 
@@ -130,9 +130,9 @@ class TestClassifyConditionRung(TestCase):
 
     def test_three_bleeders_moribund(self):
         patient = _FakePatient(state=_FakeState(conditions=[
-            _FakeCondition(condition_type="minor_bleeding"),
-            _FakeCondition(condition_type="minor_bleeding"),
-            _FakeCondition(condition_type="minor_bleeding"),
+            _FakeCondition(condition_type="bleeding"),
+            _FakeCondition(condition_type="bleeding"),
+            _FakeCondition(condition_type="bleeding"),
         ]))
         self.assertEqual(dx.classify_condition_rung(patient), dx.RUNG_MORIBUND)
 
@@ -453,7 +453,7 @@ class TestConditionRendering(TestCase):
     def test_bleeding_condition_renders_clinically(self):
         patient = _FakePatient(state=_FakeState(
             conditions=[_FakeCondition(
-                condition_type="minor_bleeding", location="chest",
+                condition_type="bleeding", location="chest",
             )],
         ))
         physician = _FakePhysician()

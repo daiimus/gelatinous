@@ -163,7 +163,7 @@ running 5× off its design:
 
 | Constant / behavior | Today (per 60s tick) | Per-minute | Note |
 |---|---|---|---|
-| `BLOOD_LOSS_PER_SEVERITY` | 0.5–2.5% per tick | same, per minute | 1:1 — authored for 60s |
+| `BLOOD_LOSS_PER_SEVERITY` | 0.5–2.5% per tick | same, per minute | 1:1 — authored for 60s.  #507 then made the rate derive from *current* severity (stale-rate fix) and replaced the treated-path truncation with the layered-brakes model: bandage slows to 30%, dressing stops, clotting only at severity ≤5 |
 | Bleeding natural clotting (severity −1 chance) | per tick | same hazard per minute | 1:1 |
 | Pain decay | 1 severity per tick | 1 per minute | 1:1 |
 | Infection: treated improvement | 12% per tick (authored: "12% per 12s tick") | **restored**: `1−(1−0.12)⁵ ≈ 47%` per minute | the 5× drift fix |

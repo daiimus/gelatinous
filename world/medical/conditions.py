@@ -14,6 +14,9 @@ from .constants import (
     BLEEDING_DAMAGE_THRESHOLDS,
     CONDITION_TRIGGERS,
     BLEEDING_CLOT_HAZARD_PER_MINUTE,
+    BLEEDING_TREATED_MULTIPLIER,
+    BLEEDING_SELF_CLOT_MAX_SEVERITY,
+    BLEEDING_SEVERITY_LABELS,
     PAIN_DECAY_HAZARD_PER_MINUTE,
     INFECTION_IMPROVE_HAZARD_PER_MINUTE,
     INFECTION_WORSEN_HAZARD_PER_MINUTE,
@@ -193,11 +196,28 @@ class MedicalCondition:
 
 
 class BleedingCondition(MedicalCondition):
-    """Bleeding condition that causes blood loss over time."""
-    
+    """Bleeding: blood loss over time, severity-tiered (#507).
+
+    The "layered brakes" model:
+    - **bandage** (``apply_treatment``) — reduces severity and slows
+      the residual loss to ``BLEEDING_TREATED_MULTIPLIER``; buying
+      time, not a fix
+    - **wound-care dressing** (stabilization, PR-B) — full stop at
+      the location, plus healing
+    - **natural clotting** — only severity ≤
+      ``BLEEDING_SELF_CLOT_MAX_SEVERITY`` self-resolves (doubled
+      hazard when bandaged); arterial-tier wounds bleed until
+      someone intervenes
+
+    The blood-loss rate derives from *current* severity at tick
+    time — never stored — so clotting/treatment lowering severity
+    lowers the rate with it (the stale-rate bug class).
+    condition_type is "bleeding"; legacy saves with "minor_bleeding"
+    load transparently.
+    """
+
     def __init__(self, severity, location=None):
-        super().__init__("minor_bleeding", severity, location, tick_interval=60)
-        self.blood_loss_rate = BLOOD_LOSS_PER_SEVERITY.get(severity, 1)
+        super().__init__("bleeding", severity, location, tick_interval=60)
         
     def tick_effect(self, character, elapsed_minutes=1.0):
         """Apply ``elapsed_minutes`` of blood loss; chance to clot."""
@@ -218,14 +238,11 @@ class BleedingCondition(MedicalCondition):
         if self._location_stabilized(medical_state):
             return
 
-        # Per-minute blood loss x elapsed.  NOTE: the treated path
-        # keeps the historical int() truncation deliberately — at
-        # common severities int(rate * 0.3) is 0, i.e. "treated"
-        # currently means *stopped*.  Preserved for equivalence
-        # (#501 §5); retune as a separate balance decision.
-        rate_per_minute = self.blood_loss_rate
-        if self.treated:
-            rate_per_minute = int(rate_per_minute * 0.3)
+        # Per-minute blood loss x elapsed, derived from CURRENT
+        # severity (#507: never the stale stored rate).  Bandaged
+        # wounds leak at the treated multiplier — slowed, not
+        # stopped; the full stop is the stabilization channel.
+        rate_per_minute = self.get_blood_loss_rate()
         blood_loss = rate_per_minute * elapsed_minutes
 
         if blood_loss > 0:
@@ -233,10 +250,17 @@ class BleedingCondition(MedicalCondition):
             medical_state.blood_level = max(0, medical_state.blood_level - blood_loss)
             splattercast.msg(f"BLOOD_LOSS: {character.key} loses {blood_loss:.2f} blood ({old_blood:.1f} -> {medical_state.blood_level:.1f})")
 
-        # Natural clotting — per-minute hazard sampled over elapsed.
-        if not self.treated and hazard_fires(BLEEDING_CLOT_HAZARD_PER_MINUTE, elapsed_minutes):
-            self.severity = max(0, self.severity - 1)
-            splattercast.msg(f"BLEEDING_HEAL: {character.key} bleeding severity reduced to {self.severity}")
+        # Natural clotting — only wounds that plausibly clot (#507):
+        # severity ≤ the self-clot cap.  Bandaging promotes clotting
+        # (doubled hazard), which also gives treated wounds an
+        # endpoint instead of a permanent slow leak.
+        if self.severity <= BLEEDING_SELF_CLOT_MAX_SEVERITY:
+            clot_hazard = BLEEDING_CLOT_HAZARD_PER_MINUTE
+            if self.treated:
+                clot_hazard *= 2
+            if hazard_fires(clot_hazard, elapsed_minutes):
+                self.severity = max(0, self.severity - 1)
+                splattercast.msg(f"BLEEDING_HEAL: {character.key} bleeding severity reduced to {self.severity}")
 
     def _location_stabilized(self, medical_state) -> bool:
         """True when any damaged organ at this condition's location is
@@ -279,11 +303,15 @@ class BleedingCondition(MedicalCondition):
         return max(1, self.severity // 2)  # Half severity as pain
         
     def get_blood_loss_rate(self):
-        """Return blood loss rate per tick."""
-        blood_loss = self.blood_loss_rate
+        """Per-minute blood loss, derived from current severity.
+
+        Bandaged wounds run at the treated multiplier — slowed, not
+        stopped (#507 layered brakes).
+        """
+        rate = BLOOD_LOSS_PER_SEVERITY.get(self.severity, 0.0)
         if self.treated:
-            blood_loss = int(blood_loss * 0.3)  # Treated bleeding loses less blood
-        return blood_loss
+            rate = rate * BLEEDING_TREATED_MULTIPLIER
+        return rate
         
     def apply_treatment(self, treatment_quality="adequate"):
         """Apply medical treatment to bleeding."""
@@ -294,15 +322,16 @@ class BleedingCondition(MedicalCondition):
         severity_reduction = max(1, int(self.severity * effectiveness))
         
         self.severity = max(0, self.severity - severity_reduction)
+        # Residual loss slows via the treated multiplier in
+        # get_blood_loss_rate (derived live) — no stored rate to
+        # mutate (#507).
         
-        # Reduce blood loss rate for treated bleeding
-        self.blood_loss_rate = max(1, int(self.blood_loss_rate * 0.3))
-        
-    def to_dict(self):
-        """Serialize bleeding condition for persistence."""
-        data = super().to_dict()
-        data["blood_loss_rate"] = self.blood_loss_rate
-        return data
+    @property
+    def display_name(self):
+        """Severity-tiered label — "arterial bleeding", not "minor"."""
+        return BLEEDING_SEVERITY_LABELS.get(
+            max(1, min(10, self.severity)), "bleeding",
+        )
         
     @classmethod
     def from_dict(cls, data):
@@ -315,7 +344,8 @@ class BleedingCondition(MedicalCondition):
         condition.tick_interval = data.get("tick_interval", 60)
         condition.requires_ticker = data.get("requires_ticker", True)
         condition.treated = data.get("treated", False)
-        condition.blood_loss_rate = data.get("blood_loss_rate", condition.blood_loss_rate)
+        # Legacy "blood_loss_rate" in old saves is ignored — the rate
+        # derives from severity now (#507).
         condition.last_processed = data.get("last_processed", clock_now())
         return condition
 
@@ -716,7 +746,7 @@ def deserialize_condition(condition_dict):
         class so the data round-trips without crashing.
     """
     condition_type = condition_dict.get("condition_type", "unknown")
-    if condition_type == "minor_bleeding":
+    if condition_type in ("bleeding", "minor_bleeding"):  # legacy alias
         return BleedingCondition.from_dict(condition_dict)
     if condition_type == "pain":
         return PainCondition.from_dict(condition_dict)

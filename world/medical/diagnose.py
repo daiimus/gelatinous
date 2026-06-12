@@ -117,7 +117,7 @@ def classify_condition_rung(patient) -> str:
     conditions = list(getattr(state, "conditions", []) or [])
     bleeders = [
         c for c in conditions
-        if getattr(c, "condition_type", None) == "minor_bleeding"
+        if getattr(c, "condition_type", None) == "bleeding"
     ]
 
     # Moribund — actively dying.
@@ -266,7 +266,7 @@ def clinical_phrase(organ) -> str:
 
 
 _CONDITION_PHRASE = {
-    "minor_bleeding": "active haemorrhage from the {region}",
+    "bleeding": "active haemorrhage from the {region}",
     "infection":      "septic focus at the {region}",
 }
 

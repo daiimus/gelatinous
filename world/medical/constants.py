@@ -173,7 +173,10 @@ ELAPSED_CAP_MINUTES = 2.0
 # Per-minute hazards for chance-based condition drift (spec §4.4).
 # Authored per minute; sampled at any cadence via
 # 1 - (1 - p) ** elapsed_minutes.
-BLEEDING_CLOT_HAZARD_PER_MINUTE = 0.10      # untreated natural clotting
+BLEEDING_CLOT_HAZARD_PER_MINUTE = 0.10      # natural clotting (severity
+                                            # ≤ the self-clot cap below;
+                                            # doubled when bandaged —
+                                            # treatment promotes clotting)
 PAIN_DECAY_HAZARD_PER_MINUTE = 0.20         # pain fading one severity
 INFECTION_IMPROVE_HAZARD_PER_MINUTE = 0.07  # treated: ~"improves every
                                             # ~5 minutes" per the
@@ -182,6 +185,23 @@ INFECTION_IMPROVE_HAZARD_PER_MINUTE = 0.07  # treated: ~"improves every
 INFECTION_WORSEN_HAZARD_PER_MINUTE = 0.05   # untreated, x environmental
                                             # modifier: the documented
                                             # "~20min progression"
+# Bleeding model (#507, "layered brakes"):
+# - bandage (apply_treatment): reduces severity AND slows residual
+#   loss to BLEEDING_TREATED_MULTIPLIER — buys time, doesn't stop it
+# - wound-care dressing (stabilization, PR-B): full stop + healing
+# - natural clotting: only severity ≤ BLEEDING_SELF_CLOT_MAX_SEVERITY
+#   self-resolves; critical/arterial (6+) bleeds until intervention
+BLEEDING_TREATED_MULTIPLIER = 0.3
+BLEEDING_SELF_CLOT_MAX_SEVERITY = 5
+
+#: Display labels per bleeding severity (diagnose etc.).
+BLEEDING_SEVERITY_LABELS = {
+    1: "minor bleeding", 2: "light bleeding", 3: "moderate bleeding",
+    4: "heavy bleeding", 5: "severe bleeding", 6: "critical bleeding",
+    7: "arterial bleeding", 8: "massive bleeding",
+    9: "catastrophic bleeding", 10: "fatal bleeding",
+}
+
 CONSCIOUSNESS_RECOVERY_HAZARD_PER_MINUTE = {
     "knockout": 0.25,
     "sedative": 0.15,

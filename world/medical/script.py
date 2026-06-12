@@ -186,7 +186,7 @@ class MedicalScript(DefaultScript):
                         condition.process(self.obj)
                         
                         # Track bleeding severity for consolidated messaging
-                        if condition.condition_type == "minor_bleeding":
+                        if condition.condition_type == "bleeding":
                             total_bleeding_severity += condition.severity
                         
                         # Track pain severity for consolidated messaging

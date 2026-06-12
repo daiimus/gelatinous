@@ -59,4 +59,4 @@ class TestBaselineConditions(TestCase):
     @patch("world.medical.conditions.random.randint", return_value=100)
     def test_heavy_damage_produces_bleeding(self, _r):
         conditions = create_condition_from_damage(10, "cut", "left_arm")
-        self.assertIn("minor_bleeding", _types(conditions))
+        self.assertIn("bleeding", _types(conditions))
