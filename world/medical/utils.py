@@ -831,13 +831,35 @@ def apply_medical_effects(item, user, target, **kwargs):
             # Bone healing - slightly less than surgery but bone-specific
             heal_amount = 5  # Base bone healing with splints
             actual_healed = bone.heal(heal_amount)
-            
+
+            # #497: a splint stays on — set the wound-care dressing
+            # channel (PR-C) on the bone so the medical script's
+            # healing tick keeps knitting it over time.  Splints are
+            # THE bone-HP path (surgery's organ_repair is for soft
+            # organs).  Rate from the item's fracture effectiveness;
+            # never downgrade a better dressing already in place.
+            bone.stabilized = True
+            bone.dressing_rate = max(
+                getattr(bone, "dressing_rate", 0) or 0,
+                get_effectiveness(item, "fracture"),
+            )
+            if hasattr(target, "scripts"):
+                try:
+                    from world.medical.script import start_medical_script
+                    start_medical_script(target)
+                except Exception:
+                    # Deliberate stub-tolerance guard (#469 pattern,
+                    # same as treatments.py): the splint landed
+                    # regardless; the tick starts on the next
+                    # condition event if this misses.
+                    pass
+
             if actual_healed > 0:
                 bone_display_name = bone_name.replace('_', ' ').title()
                 bone_type = bone.data.get("bone_type", "bone")
-                result_msg = f"Splint applied successfully. {bone_display_name} ({bone_type}) healed for {actual_healed} HP ({bone.current_hp}/{bone.max_hp})."
+                result_msg = f"Splint applied successfully. {bone_display_name} ({bone_type}) healed for {actual_healed} HP ({bone.current_hp}/{bone.max_hp}) and splinted — it will knit over time."
             else:
-                result_msg = "Splint applied, but no further bone healing was possible."
+                result_msg = "Splint applied — the bone is set and will knit over time."
         else:
             # Check if there are destroyed bones (0 HP)
             destroyed_bones = [name for name, organ in medical_state.organs.items() 
