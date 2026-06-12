@@ -601,15 +601,29 @@ class CmdInstall(Command):
             )
             return
 
+        # Multi-container gate (spec §3.5): a replacement augment
+        # (the shotgun arm spans right_arm + right_hand) declares
+        # organs at several containers — every one of them must be
+        # vacant or a severed stump.  Amputate first, then mount.
         augment_container = organ_item.db.augment_container
-        existing = [
+        augment_organs = organ_item.db.augment_organs or {}
+        declared = {
+            spec.get("container")
+            for spec in augment_organs.values()
+            if hasattr(spec, "get")
+        } - {None}
+        blocking = [
             organ for organ in state.organs.values()
-            if getattr(organ, "container", None) == augment_container
+            if getattr(organ, "container", None) in declared
+            and organ.wound_stage != "severed"
         ]
-        if any(o.wound_stage != "severed" for o in existing):
+        if blocking:
+            container = blocking[0].container
             caller.msg(
                 f"{target.get_display_name(caller)} already has a "
-                f"{augment_container.replace('_', ' ')}."
+                f"{container.replace('_', ' ')} — the "
+                f"{organ_item.key} mounts over a stump, not living "
+                f"anatomy."
             )
             return
 

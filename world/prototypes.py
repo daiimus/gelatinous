@@ -1982,6 +1982,79 @@ CYBERNETIC_TAIL = {
     ],
 }
 
+# Shotgun Arm - first replacement augment + integrated weapon (#516)
+SHOTGUN_ARM = {
+    "key": "shotgun arm",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["gun arm", "arm unit"],
+    "desc": "A full right-arm replacement unit in its transport cradle, shoulder coupling to fingertips. The forearm housing is noticeably thicker than the muscle it imitates — inside it, folded along the actuator column, sits an integrated combat shotgun. The hand is five-fingered, dexterous, and honest until it isn't. Mounts over an amputated right arm; surgical installation required.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        # Replacement anatomy (spec §3.5): mirrors the flesh arm's
+        # organ architecture — bone-typed, splintable, same
+        # containers, same chain severance.  The shotgun ability
+        # lives on the humerus actuator; the hand grasps.
+        ("augment_organs", {
+            "cybernetic_humerus": {
+                "container": "right_arm", "max_hp": 30,
+                "hit_weight": "common", "can_be_destroyed": True,
+                "fracture_vulnerable": True,
+                "bone_type": "actuator_column",
+                "abilities": {
+                    "shotgun": {
+                        "type": "integrated_weapon",
+                        "slot": "right_hand",
+                        "weapon_prototype": "SHOTGUN_ARM_GUN",
+                        "deploy_msg": "Your right forearm splits along its seam and the shotgun rotates up into place — the hand folds back and away, and the barrel is just *there*, like it always was.",
+                        "retract_msg": "The shotgun swings down and folds along the actuator column; plating closes over it and your fingers flex, a hand again.",
+                        "deploy_room": "{actor}'s right forearm splits open with a snap of locking servos — a shotgun barrel rotates up out of the housing where their hand used to be.",
+                        "retract_room": "{actor}'s arm-shotgun folds away into the forearm housing; plating seals and their hand reassembles, fingers flexing.",
+                    },
+                },
+            },
+            "cybernetic_metacarpals": {
+                "container": "right_hand", "max_hp": 18,
+                "hit_weight": "uncommon", "can_be_destroyed": True,
+                "fracture_vulnerable": True,
+                "bone_type": "actuator_lattice",
+                "grasping": True,
+            },
+        }),
+        ("augment_container", "right_arm"),
+        ("augment_anchor", "right_arm"),
+        ("augment_longdesc", [
+            {
+                "key": "right_arm",
+                "default_desc": "A full cybernetic right arm, matte composite plating over an actuator column, the forearm housing a shade too thick for what a forearm needs to be.",
+            },
+            {
+                "key": "right_hand",
+                "default_desc": "An articulated alloy right hand, five-fingered and precise, the knuckle plating worn smooth.",
+                "display_after": "right_arm",
+            },
+        ]),
+        ("compatible_species", ["human"]),
+    ],
+}
+
+# The integrated weapon the shotgun arm deploys (#516).  Spawned
+# lazily on first /shotgun; locked + flagged integrated by the
+# ability layer regardless of what's declared here.
+SHOTGUN_ARM_GUN = {
+    "prototype_parent": "RANGED_WEAPON_BASE",
+    "key": "arm-mounted shotgun",
+    "aliases": ["arm shotgun", "armgun"],
+    "desc": "A combat shotgun built into a cybernetic forearm — short, shrouded, and inseparable from the arm that carries it. The barrel shroud doubles as the forearm's structural plating, and the feed system disappears somewhere into the elbow. There is no stock, no grip, no sling mount: the weapon is the limb.",
+    "damage": 20,
+    "locks": "get:false();drop:false();give:false()",
+    "attrs": [
+        ("weapon_type", "cybernetic_shotgun"),
+        ("damage_type", "bullet"),  # Medical system injury type
+        ("hands_required", 1),      # It IS the hand
+        ("integrated", True),
+    ],
+}
+
 # Surgical Kit - Advanced multi-use medical tools
 SURGICAL_KIT = {
     "key": "surgical kit",

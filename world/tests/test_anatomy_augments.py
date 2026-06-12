@@ -253,3 +253,173 @@ class TestSeveredTailProse(TestCase):
         for condition in ("pristine", "damaged", "putrid"):
             prose = get_severed_part_description("human", "tail", condition)
             self.assertTrue(prose, f"missing {condition} tail prose")
+
+
+# ---------------------------------------------------------------------
+# Replacement augments — multi-container (#516 Phase 2)
+# ---------------------------------------------------------------------
+
+
+def _arm_item():
+    """Stub mirroring the SHOTGUN_ARM prototype's augment attrs."""
+    item = SimpleNamespace()
+    item.key = "shotgun arm"
+    item.deleted = False
+
+    def _delete():
+        item.deleted = True
+    item.delete = _delete
+    item.db = SimpleNamespace(
+        augment_organs={
+            "cybernetic_humerus": {
+                "container": "right_arm", "max_hp": 30,
+                "hit_weight": "common", "bone_type": "actuator_column",
+                "abilities": {
+                    "shotgun": {
+                        "type": "integrated_weapon",
+                        "slot": "right_hand",
+                        "weapon_prototype": "SHOTGUN_ARM_GUN",
+                    },
+                },
+            },
+            "cybernetic_metacarpals": {
+                "container": "right_hand", "max_hp": 18,
+                "hit_weight": "uncommon", "grasping": True,
+            },
+        },
+        augment_container="right_arm",
+        augment_anchor="right_arm",
+        augment_longdesc=[
+            {"key": "right_arm", "default_desc": "A cyber arm."},
+            {"key": "right_hand", "default_desc": "A cyber hand.",
+             "display_after": "right_arm"},
+        ],
+        compatible_species=["human"],
+    )
+    return item
+
+
+def _sever_right_arm(target):
+    """Put the patient in the amputee state the arm mounts over."""
+    for organ in target.medical_state.organs.values():
+        if organ.container in ("right_arm", "right_hand"):
+            organ.current_hp = 0
+            organ.wound_stage = "severed"
+    target.longdesc = {
+        k: v for k, v in target.longdesc.items()
+        if k not in ("right_arm", "right_hand")
+    }
+
+
+class TestReplacementAugmentInstall(TestCase):
+    def _install(self, target, item, outcome="success"):
+        actor = _surgeon()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": outcome},
+        ):
+            _resolve_install_augment(
+                actor, target, organ_item=item, location="right_arm",
+            )
+        return actor, item
+
+    def _amputee(self):
+        target = _patient()
+        target.longdesc = {
+            "head": None, "back": None,
+            "right_arm": None, "right_hand": None,
+        }
+        _sever_right_arm(target)
+        return target
+
+    def test_mounts_over_the_stump(self):
+        target = self._amputee()
+        open_incision(target, "right_arm")
+        self._install(target, _arm_item())
+
+        organs = target.medical_state.organs
+        self.assertIn("cybernetic_humerus", organs)
+        self.assertIn("cybernetic_metacarpals", organs)
+        # The severed flesh remnants are replaced wholesale.
+        self.assertNotIn("right_humerus", organs)
+        self.assertNotIn("right_metacarpals", organs)
+        self.assertEqual(organs["cybernetic_humerus"].container, "right_arm")
+        self.assertEqual(organs["cybernetic_metacarpals"].container, "right_hand")
+
+    def test_longdesc_list_restores_both_keys_in_order(self):
+        target = self._amputee()
+        open_incision(target, "right_arm")
+        self._install(target, _arm_item())
+        keys = list(target.longdesc.keys())
+        self.assertIn("right_arm", keys)
+        self.assertIn("right_hand", keys)
+        self.assertEqual(
+            keys.index("right_hand"), keys.index("right_arm") + 1,
+        )
+
+    def test_ability_rideses_the_installed_organ(self):
+        from world.medical.augments import find_ability
+
+        target = self._amputee()
+        open_incision(target, "right_arm")
+        self._install(target, _arm_item())
+        organ, spec = find_ability(target, "shotgun")
+        self.assertIsNotNone(organ)
+        self.assertEqual(spec["slot"], "right_hand")
+
+
+class TestReplacementAugmentGate(TestCase):
+    def test_living_anatomy_blocks_install(self):
+        """The command gate: you amputate first, then mount.  Tested
+        at the helper level the command branch uses."""
+        target = _patient()
+        item = _arm_item()
+        declared = {
+            spec["container"]
+            for spec in item.db.augment_organs.values()
+        }
+        blocking = [
+            organ for organ in target.medical_state.organs.values()
+            if organ.container in declared
+            and organ.wound_stage != "severed"
+        ]
+        self.assertTrue(blocking)  # healthy arm blocks
+        _sever_right_arm(target)
+        blocking = [
+            organ for organ in target.medical_state.organs.values()
+            if organ.container in declared
+            and organ.wound_stage != "severed"
+        ]
+        self.assertFalse(blocking)  # stump admits the mount
+
+
+class TestCyberneticShotgunMessages(TestCase):
+    def test_message_set_loads_for_every_phase(self):
+        from world.combat.messages import get_combat_message
+        from world.combat.messages.cybernetic_shotgun import MESSAGES
+
+        for phase in ("initiate", "hit", "miss", "kill"):
+            self.assertGreaterEqual(len(MESSAGES[phase]), 30)
+            result = get_combat_message(
+                "cybernetic_shotgun", phase,
+                hit_location="chest", damage=20,
+            )
+            self.assertNotIn("Error", result["attacker_msg"])
+            # Non-fallback: fallback prose is "You <phase> ... with".
+            self.assertNotIn(f"You {phase}", result["attacker_msg"])
+
+    def test_every_variant_formats_cleanly(self):
+        """Every template in every phase must format with the
+        standard kwargs — a typo'd placeholder fails loudly here
+        instead of mid-combat."""
+        from world.combat.messages.cybernetic_shotgun import MESSAGES
+
+        kwargs = {
+            "attacker_name": "A", "target_name": "B",
+            "item_name": "gun", "item": "gun",
+            "hit_location": "chest", "damage": 20, "phase": "x",
+        }
+        for phase, variants in MESSAGES.items():
+            for variant in variants:
+                for key in ("attacker_msg", "victim_msg", "observer_msg"):
+                    variant[key].format(**kwargs)

@@ -1315,16 +1315,25 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
         )
         return
 
-    # Success / partial: clear any remnants at the augment container
-    # (re-augmentation over a severed stump) and create the declared
-    # anatomy from the item's specs.  Specs are deep-copied off the
-    # item's attribute layer — the item is deleted below and organs
-    # must never share storage with it.
+    # Success / partial: clear any remnants at every container the
+    # augment declares (re-augmentation over a severed stump; a
+    # replacement augment like the shotgun arm spans several — spec
+    # §3.5) and create the declared anatomy from the item's specs.
+    # Specs are deep-copied off the item's attribute layer — the
+    # item is deleted below and organs must never share storage
+    # with it.
     from world.medical.core import Organ
+
+    declared_containers = {
+        spec.get("container")
+        for spec in augment_organs.values()
+        if hasattr(spec, "get")
+    } - {None}
+    declared_containers.add(augment_container)
 
     for organ_name in [
         name for name, organ in state.organs.items()
-        if getattr(organ, "container", None) == augment_container
+        if getattr(organ, "container", None) in declared_containers
     ]:
         del state.organs[organ_name]
 
@@ -1333,23 +1342,35 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
         organ.medical_state = state
         state.organs[organ_name] = organ
 
-    # Surface the new anatomy (§3.6).  Reassigned, not mutated, so
-    # the AttributeProperty persists — same rule sever_character_body
-    # follows when removing keys.
-    longdesc_key = augment_longdesc.get("key") or augment_container
+    # Surface the new anatomy (§3.6).  ``augment_longdesc`` is one
+    # entry (the tail) or a list of entries (the arm restores
+    # right_arm + right_hand keys over the stump).  Reassigned, not
+    # mutated, so the AttributeProperty persists — same rule
+    # sever_character_body follows when removing keys.
+    entries = (
+        augment_longdesc
+        if isinstance(augment_longdesc, (list, tuple))
+        else [augment_longdesc]
+    )
     longdescs = dict(target.longdesc or {})
-    if longdesc_key not in longdescs:
+    for entry in entries:
+        if not hasattr(entry, "get"):
+            continue
+        longdesc_key = entry.get("key") or augment_container
+        if longdesc_key in longdescs:
+            continue
         new_longdescs = {}
-        display_after = augment_longdesc.get("display_after")
+        display_after = entry.get("display_after")
         inserted = False
         for loc, text in longdescs.items():
             new_longdescs[loc] = text
             if loc == display_after:
-                new_longdescs[longdesc_key] = augment_longdesc.get("default_desc")
+                new_longdescs[longdesc_key] = entry.get("default_desc")
                 inserted = True
         if not inserted:
-            new_longdescs[longdesc_key] = augment_longdesc.get("default_desc")
-        target.longdesc = new_longdescs
+            new_longdescs[longdesc_key] = entry.get("default_desc")
+        longdescs = new_longdescs
+    target.longdesc = longdescs
 
     seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
     if outcome == "partial":
