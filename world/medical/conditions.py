@@ -460,8 +460,17 @@ def create_condition_from_damage(damage_amount, damage_type, location=None):
         pain_severity = min(8, max(1, damage_amount // 2))
         conditions.append(PainCondition(pain_severity, location))
     
-    # Add infection risk for penetrating wounds
-    if damage_type in ['bullet', 'blade', 'pierce'] and damage_amount >= 8:
+    # Add infection risk for penetrating/dirty wounds.  #495: the old
+    # gate listed 'blade'/'pierce' — ghost types no caller ever sends
+    # (the real vocabulary is cut/stab/laceration/blunt/blast/bullet)
+    # — so only bullets could infect and the antiseptic loop was dead.
+    #
+    # INTERIM MODEL: flat chance on heavy penetrating hits.  The
+    # designed future model is circumstantial, not random-per-hit:
+    # poor wound treatment, environment (open wounds in sewers),
+    # and retained foreign bodies (an untreated bullet still in the
+    # wound) should drive infection instead.
+    if damage_type in ['bullet', 'cut', 'stab', 'laceration'] and damage_amount >= 8:
         if random.randint(1, 100) <= 25:  # 25% chance
             infection_severity = random.randint(1, 3)
             conditions.append(InfectionCondition(infection_severity, location))
