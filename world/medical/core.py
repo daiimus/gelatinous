@@ -136,6 +136,13 @@ class Organ:
         # (tourniquets can't stay on forever) is the noted future
         # hook — the elapsed-time machinery makes it cheap to add.
         self.tourniqueted = False
+
+        # Cyberware ability runtime state (AUGMENT_ABILITIES_SPEC §2,
+        # #516): {ability_name: {"deployed": bool, "weapon_dbref": str}}.
+        # The ability DECLARATION lives in self.data["abilities"]
+        # (round-trips with the spec); this is the toggle state,
+        # persisted like stabilized / tourniqueted.
+        self.ability_state = {}
         
     @property
     def current_hp(self):
@@ -491,6 +498,7 @@ class Organ:
             "dressing_rate": self.dressing_rate,
             "dressing_progress": getattr(self, "dressing_progress", 0.0),
             "tourniqueted": getattr(self, "tourniqueted", False),
+            "ability_state": getattr(self, "ability_state", {}) or {},
         }
         
     @classmethod
@@ -539,6 +547,13 @@ class Organ:
             organ.tourniqueted = bool(data.get("tourniqueted", False))
         except (TypeError, ValueError):
             organ.dressing_rate = 0
+        # Cyberware toggle state (#516) — plain-dict copy so the
+        # restored organ never shares storage with the snapshot.
+        raw_ability_state = data.get("ability_state") or {}
+        organ.ability_state = {
+            str(name): dict(entry) if hasattr(entry, "keys") else {}
+            for name, entry in raw_ability_state.items()
+        }
         # Issue #346: persisted organs may predate ``display_location`` —
         # the ``cls(data["name"])`` constructor already seeded it from
         # the ORGANS spec, so only override when the snapshot carries

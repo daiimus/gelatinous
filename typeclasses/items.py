@@ -2378,6 +2378,21 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
 
     detach_items_to_appendage(character, appendage, chain)
 
+    # Integrated cyberware hardware travels with the limb (#516).
+    # Deployed weapons already moved (they sat in held_items); this
+    # covers retracted hardware folded inside the severed arm.
+    try:
+        from world.medical.augments import carry_hardware_to_appendage
+        carry_hardware_to_appendage(character, chain, appendage)
+    except Exception:
+        # Deliberate (#469): hardware bookkeeping must never block
+        # the severance itself.  Audit-logged for investigation.
+        from world.combat.debug import get_splattercast
+        get_splattercast().msg(
+            f"SEVER_HARDWARE_CARRY_ERROR: "
+            f"{getattr(character, 'key', '?')} at {container}"
+        )
+
     # Severance narrative — issue #332. Replaces the previous inline
     # template with a library lookup so each (location, injury_type,
     # severity) cell gets variant prose. Falls back gracefully to the

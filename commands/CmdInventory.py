@@ -841,9 +841,19 @@ class CmdWrest(Command):
         target_hand, target_object = self._find_object_in_target_hands(target)
         if not target_object:
             caller.msg(MSG_WREST_OBJECT_NOT_IN_HANDS.format(
-                target=target.get_display_name(caller), 
+                target=target.get_display_name(caller),
                 object=self.object_name
             ))
+            return
+
+        # 4b. Integrated cyberware (#516) is bolted to the skeleton —
+        # there is nothing to wrest, even from the unconscious.
+        if target_object.db.integrated:
+            caller.msg(
+                f"{target_object.get_display_name(caller)} is part of "
+                f"{target.get_display_name(caller)}'s body — you can't "
+                f"wrest it loose."
+            )
             return
 
         # 5. Check if target is grappled (for disadvantage)

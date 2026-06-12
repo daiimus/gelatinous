@@ -287,6 +287,12 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         from commands.CmdOperate import CmdOperate
         self.add(CmdOperate())
 
+        # Cyberware dispatcher (#516): ``/<ability>`` toggles
+        # installed augment abilities.  One command keyed on the
+        # prefix constant — see ``world/medical/augments.py``.
+        from commands.CmdCyberware import CmdCyberware
+        self.add(CmdCyberware())
+
 class AccountCmdSet(default_cmds.AccountCmdSet):
     """
     This is the cmdset available to the Account at all times. It is

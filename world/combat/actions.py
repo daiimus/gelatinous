@@ -97,16 +97,18 @@ def resolve_disarm(handler, char, entry):
         )
         return
 
-    # Find weapon to disarm (prioritize weapons, then any held item)
+    # Find weapon to disarm (prioritize weapons, then any held item).
+    # Integrated cyberware (#516) is bolted to the skeleton — you
+    # can't knock an arm-gun out of someone's hand.
     weapon_hand = None
     for hand, item in hands.items():
-        if item and item.db.weapon_type:
+        if item and item.db.weapon_type and not item.db.integrated:
             weapon_hand = hand
             break
 
     if not weapon_hand:
         for hand, item in hands.items():
-            if item:
+            if item and not item.db.integrated:
                 weapon_hand = hand
                 break
 
