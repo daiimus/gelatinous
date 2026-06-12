@@ -154,7 +154,7 @@ class ConsumptionCommand(Command):
         if hasattr(target, 'is_unconscious') and target.is_unconscious():
             # Some procedures can be done on unconscious patients
             medical_type = get_medical_type(item)
-            if medical_type not in ["blood_restoration", "surgical_treatment", "wound_care", "antiseptic", "fracture_treatment", "organ_repair"]:
+            if medical_type not in ["blood_restoration", "surgical_treatment", "wound_care", "antiseptic", "fracture_treatment", "organ_repair", "tourniquet"]:
                 errors.append(f"{target.get_display_name(user)} is unconscious and cannot cooperate.")
                 
         return errors
@@ -453,6 +453,60 @@ class CmdApply(ConsumptionCommand):
         errors = self.check_medical_requirements(item, caller, target)
         if errors:
             caller.msg(errors[0])
+            return
+
+        # #509: tourniquets are limb-only instant bleeding holds.
+        # They require a named location — there is no "worst wound"
+        # fallback because the limb gate is the whole point.
+        if medical_type == "tourniquet":
+            if not location:
+                caller.msg(
+                    "Tourniquets go on a specific limb: "
+                    "apply tourniquet to <target>'s <limb>."
+                )
+                return
+            from world.medical.treatments import apply_tourniquet
+            tourniquet_location = location
+            # Resolve location → container if the player named an organ.
+            try:
+                state = target.medical_state
+            except AttributeError:
+                state = None
+            if state is not None and hasattr(state, "organs"):
+                organ = state.organs.get(location)
+                if organ is not None:
+                    tourniquet_location = organ.container
+            outcome = apply_tourniquet(
+                actor=caller, target=target, item=item,
+                location=tourniquet_location,
+            )
+            if outcome["applied"]:
+                use_item(item)
+                if is_self:
+                    msg_room_identity(
+                        location=caller.location,
+                        template=(
+                            f"{{actor}} cinches a tourniquet around their "
+                            f"{tourniquet_location.replace('_', ' ')}."
+                        ),
+                        char_refs={"actor": caller},
+                        exclude=[caller],
+                    )
+                else:
+                    msg_room_identity(
+                        location=caller.location,
+                        template=(
+                            f"{{actor}} cinches a tourniquet around "
+                            f"{{target}}'s "
+                            f"{tourniquet_location.replace('_', ' ')}."
+                        ),
+                        char_refs={"actor": caller, "target": target},
+                        exclude=[caller, target],
+                    )
+            for line in outcome["messages"]:
+                caller.msg(line)
+                if not is_self:
+                    target.msg(line)
             return
 
         # PR-B (#307): wound_care items applied with location precision

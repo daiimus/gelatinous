@@ -1931,6 +1931,22 @@ SPLINT = {
     ],
 }
 
+# Tourniquet - Reusable limb bleeding control (#509)
+TOURNIQUET = {
+    "key": "tourniquet",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["tq", "strap"],
+    "desc": "A windlass-and-strap tourniquet for clamping off catastrophic limb bleeding. Stops any bleed it can reach cold — but nothing heals under it, and the wound reopens the moment it comes off without proper treatment. Limbs only.",
+    "tags": [("medical_item", "item_type"), ("apply", "delivery_method")],
+    "attrs": [
+        ("medical_type", "tourniquet"),
+        ("uses_left", 1),
+        ("max_uses", 1),
+        ("stat_requirement", 0),
+        ("application_time", 1),
+    ],
+}
+
 # Surgical Kit - Advanced multi-use medical tools
 SURGICAL_KIT = {
     "key": "surgical kit",

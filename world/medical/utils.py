@@ -807,15 +807,42 @@ def apply_medical_effects(item, user, target, **kwargs):
         result_msg = "Painkiller administered. Pain significantly reduced."
         
     elif medical_type == "wound_care":
-        # Bandaging effects
+        # Roll-based bandaging (#509 — completes the #508 layered
+        # brakes, which previously had no caller).  One bleeding
+        # source per application:
+        #   success          -> wound closed outright ("sutured for
+        #                       all intents") on modest wounds;
+        #                       heavy wounds take a big severity cut
+        #   partial_success  -> severity -2
+        #   failure          -> severity -1 (you did *something*)
+        # Any contact sets `treated`: residual flow slows to the
+        # treated multiplier and the clot hazard doubles.
         bleeding_conditions = [c for c in medical_state.conditions 
                              if hasattr(c, 'condition_type') and c.condition_type == "bleeding"]
-        for condition in bleeding_conditions[:1]:  # Stop one source of bleeding
-            condition.severity = max(0, condition.severity - 2)
+        result_msg = "Wounds bandaged."
+        for condition in bleeding_conditions[:1]:
+            outcome = calculate_treatment_success(
+                item, user, target, "bleeding",
+            )["success_level"]
+            if outcome == "success":
+                # Closes modest wounds (≤4) outright; heavier wounds
+                # take a -4 cut — a field bandage can't shut an
+                # artery, only shrink the problem.
+                reduction = condition.severity if condition.severity <= 4 else 4
+                if condition.severity <= 4:
+                    result_msg = "Expert bandaging — the bleeding is closed off."
+                else:
+                    result_msg = "Expert bandaging — the bleeding eases dramatically."
+            elif outcome == "partial_success":
+                reduction = 2
+                result_msg = "Wounds properly bandaged. Bleeding controlled."
+            else:
+                reduction = 1
+                result_msg = "Clumsy bandaging — the bleeding slows, barely."
+            condition.severity = max(0, condition.severity - reduction)
+            condition.treated = True
             if condition.severity <= 0:
                 medical_state.conditions.remove(condition)
-        
-        result_msg = "Wounds properly bandaged. Bleeding controlled."
         
     elif medical_type == "fracture_treatment":
         # Splint treatment - heal damaged bones only (excludes destroyed bones)

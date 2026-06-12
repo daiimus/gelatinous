@@ -127,6 +127,15 @@ class Organ:
         # Fractional HP progress toward the next whole point of
         # dressed healing (#501) — persisted with the organ.
         self.dressing_progress = 0.0
+
+        # Tourniquet flag (#509).  Limb-only by application rules:
+        # while True, bleeding at this organ's container is held
+        # completely (no loss, no clotting) — but nothing heals and
+        # removal without treatment resumes the bleed.  Cleared by
+        # proper wound treatment at the location.  Ischemia cost
+        # (tourniquets can't stay on forever) is the noted future
+        # hook — the elapsed-time machinery makes it cheap to add.
+        self.tourniqueted = False
         
     @property
     def current_hp(self):
@@ -475,6 +484,7 @@ class Organ:
             "stabilized": self.stabilized,
             "dressing_rate": self.dressing_rate,
             "dressing_progress": getattr(self, "dressing_progress", 0.0),
+            "tourniqueted": getattr(self, "tourniqueted", False),
         }
         
     @classmethod
@@ -516,6 +526,7 @@ class Organ:
         try:
             organ.dressing_rate = int(data.get("dressing_rate", 0) or 0)
             organ.dressing_progress = float(data.get("dressing_progress", 0.0) or 0.0)
+            organ.tourniqueted = bool(data.get("tourniqueted", False))
         except (TypeError, ValueError):
             organ.dressing_rate = 0
         # Issue #346: persisted organs may predate ``display_location`` —

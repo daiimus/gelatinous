@@ -238,6 +238,13 @@ class BleedingCondition(MedicalCondition):
         if self._location_stabilized(medical_state):
             return
 
+        # Tourniquet (#509): an applied tourniquet holds the limb
+        # completely — no loss, no severity drift, no clotting
+        # progress (flow is stopped; nothing to clot).  It is NOT a
+        # fix: remove it untreated and this picks right back up.
+        if self._location_tourniqueted(medical_state):
+            return
+
         # Per-minute blood loss x elapsed, derived from CURRENT
         # severity (#507: never the stale stored rate).  Bandaged
         # wounds leak at the treated multiplier — slowed, not
@@ -261,6 +268,23 @@ class BleedingCondition(MedicalCondition):
             if hazard_fires(clot_hazard, elapsed_minutes):
                 self.severity = max(0, self.severity - 1)
                 splattercast.msg(f"BLEEDING_HEAL: {character.key} bleeding severity reduced to {self.severity}")
+
+    def _location_tourniqueted(self, medical_state) -> bool:
+        """True when any organ at this location carries an applied
+        tourniquet flag (#509).  Limb-only by application rules; the
+        flag lives organ-level like ``stabilized``."""
+        if self.location is None:
+            return False
+        organs = getattr(medical_state, "organs", None)
+        if not organs:
+            return False
+        for organ in organs.values():
+            container = getattr(organ, "container", None)
+            if self.location != container:
+                continue
+            if getattr(organ, "tourniqueted", False):
+                return True
+        return False
 
     def _location_stabilized(self, medical_state) -> bool:
         """True when any damaged organ at this condition's location is

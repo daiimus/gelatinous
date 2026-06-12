@@ -237,3 +237,177 @@ class TestBleedingModel(TestCase):
         restored = deserialize_condition(data)
         self.assertEqual(restored.condition_type, "bleeding")
         self.assertEqual(restored.severity, 9)
+
+
+# ---------------------------------------------------------------------
+# Bandage roll + tourniquets (#509)
+# ---------------------------------------------------------------------
+
+
+class _FakeAttrs:
+    """Dict-backed stand-in for Evennia's AttributeHandler."""
+
+    def __init__(self, data):
+        self._d = dict(data)
+
+    def get(self, key, default=None):
+        return self._d.get(key, default)
+
+    def add(self, key, value):
+        self._d[key] = value
+
+
+class TestBandageRoll(TestCase):
+    """#509: bandaging routes through the treatment roll and engages
+    the #508 layered brakes (which previously had no caller)."""
+
+    def _bandage(self, severity, success_level):
+        from world.medical.utils import apply_medical_effects
+
+        target, state = _patient()
+        # The post-treatment revival check walks target.scripts.
+        target.scripts = SimpleNamespace(get=lambda *a, **kw: [])
+        condition = BleedingCondition(severity, "left_arm")
+        state.add_condition(condition)
+        item = SimpleNamespace(
+            attributes=_FakeAttrs({"medical_type": "wound_care"}),
+            key="test bandage",
+        )
+        user = SimpleNamespace(intellect=3, key="medic")
+        with patch(
+            "world.medical.utils.calculate_treatment_success",
+            return_value={"success_level": success_level},
+        ):
+            apply_medical_effects(item, user, target)
+        return state, condition
+
+    def test_success_sutures_modest_wound_shut(self):
+        """'Sutured for all intents and purposes': severity ≤4 closes
+        outright and the condition is removed."""
+        state, condition = self._bandage(4, "success")
+        self.assertEqual(condition.severity, 0)
+        self.assertNotIn(condition, state.conditions)
+
+    def test_success_cannot_close_an_artery(self):
+        """Heavy wounds (5+) take the -4 cut but stay open — a field
+        bandage shrinks the problem, it doesn't shut an artery."""
+        state, condition = self._bandage(8, "success")
+        self.assertEqual(condition.severity, 4)
+        self.assertTrue(condition.treated)
+        self.assertIn(condition, state.conditions)
+
+    def test_partial_success_reduces_two_and_treats(self):
+        state, condition = self._bandage(5, "partial_success")
+        self.assertEqual(condition.severity, 3)
+        self.assertTrue(condition.treated)
+
+    def test_failure_still_engages_the_brakes(self):
+        """Even clumsy bandaging slows the wound: -1 severity and the
+        treated flag (30% flow, doubled clot hazard) both land."""
+        state, condition = self._bandage(5, "failure")
+        self.assertEqual(condition.severity, 4)
+        self.assertTrue(condition.treated)
+
+
+class TestTourniquets(TestCase):
+    """#509: limb-only instant full hold; not a fix."""
+
+    def test_limb_gate(self):
+        from world.medical.treatments import is_tourniquetable_location
+
+        self.assertTrue(is_tourniquetable_location("left_arm"))
+        self.assertTrue(is_tourniquetable_location("right_shin"))
+        self.assertTrue(is_tourniquetable_location("tentacle_3"))
+        self.assertFalse(is_tourniquetable_location("chest"))
+        self.assertFalse(is_tourniquetable_location("neck"))
+        self.assertFalse(is_tourniquetable_location("head"))
+
+    def test_cannot_tourniquet_torso(self):
+        from world.medical.treatments import apply_tourniquet
+
+        target, state = _patient()
+        outcome = apply_tourniquet(None, target, None, "chest")
+        self.assertFalse(outcome["applied"])
+
+    def test_holds_arterial_bleeding_completely(self):
+        """The design point: a tourniquet stops ANY severity at a
+        limb — the bleed that nothing else can touch in the field."""
+        from world.medical.treatments import apply_tourniquet
+
+        target, state = _patient()
+        condition = BleedingCondition(7, "left_arm")
+        state.add_condition(condition)
+        condition.last_processed = 1000.0
+        outcome = apply_tourniquet(None, target, None, "left_arm")
+        self.assertTrue(outcome["applied"])
+        with patch("world.medical.conditions.random.random", return_value=0.99):
+            condition.process(target, current=1060.0)
+        self.assertEqual(state.blood_level, 100.0)
+        self.assertEqual(condition.severity, 7)
+
+    def test_no_clotting_under_a_tourniquet(self):
+        """Flow is stopped, so nothing clots — severity is frozen,
+        not improving.  Remove it untreated and the wound is exactly
+        as bad as it was."""
+        from world.medical.treatments import apply_tourniquet
+
+        target, state = _patient()
+        condition = BleedingCondition(3, "left_arm")
+        state.add_condition(condition)
+        condition.last_processed = 1000.0
+        apply_tourniquet(None, target, None, "left_arm")
+        # Roll 0.0 would clot a severity-3 wound — but not under the band.
+        with patch("world.medical.conditions.random.random", return_value=0.0):
+            condition.process(target, current=1060.0)
+        self.assertEqual(condition.severity, 3)
+        self.assertEqual(state.blood_level, 100.0)
+
+    def test_removal_resumes_bleeding(self):
+        from world.medical.treatments import apply_tourniquet, clear_tourniquet
+
+        target, state = _patient()
+        condition = BleedingCondition(4, "left_arm")  # 2.0/min
+        state.add_condition(condition)
+        condition.last_processed = 1000.0
+        apply_tourniquet(None, target, None, "left_arm")
+        with patch("world.medical.conditions.random.random", return_value=0.99):
+            condition.process(target, current=1060.0)
+            self.assertEqual(state.blood_level, 100.0)
+            self.assertTrue(clear_tourniquet(target, "left_arm"))
+            condition.process(target, current=1120.0)
+        self.assertAlmostEqual(state.blood_level, 100.0 - 2.0)
+
+    def test_dressing_supersedes_tourniquet(self):
+        """Proper wound care at the location clears the band — the
+        dressing holds the wound, so the tourniquet comes off."""
+        from world.medical.treatments import apply_wound_care
+
+        target, state = _patient()
+        organ = next(
+            o for o in state.organs.values() if o.container == "left_arm"
+        )
+        organ.current_hp = organ.max_hp - 5
+        organ.tourniqueted = True
+        actor = SimpleNamespace(intellect=3, motorics=3, key="medic")
+        item = SimpleNamespace(
+            attributes=_FakeAttrs({"effectiveness": {}, "uses_left": 2}),
+            key="dressing",
+        )
+        outcome = apply_wound_care(
+            actor=actor, target=target, item=item, location="left_arm",
+        )
+        self.assertTrue(outcome["stabilized"])
+        self.assertFalse(organ.tourniqueted)
+        self.assertTrue(organ.stabilized)
+
+    def test_tourniquet_flag_round_trips(self):
+        from world.medical.core import Organ
+
+        organ = Organ("left_humerus")
+        organ.tourniqueted = True
+        restored = Organ.from_dict(organ.to_dict())
+        self.assertTrue(restored.tourniqueted)
+        # Legacy snapshots without the field default to False.
+        data = organ.to_dict()
+        del data["tourniqueted"]
+        self.assertFalse(Organ.from_dict(data).tourniqueted)

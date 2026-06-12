@@ -208,6 +208,95 @@ def _conditions_at_location(
 # ---------------------------------------------------------------------
 
 
+LIMB_CONTAINERS = {
+    "left_arm", "right_arm", "left_hand", "right_hand",
+    "left_thigh", "right_thigh", "left_shin", "right_shin",
+    "left_foot", "right_foot", "tail", "left_wing", "right_wing",
+}
+
+
+def is_tourniquetable_location(location: str) -> bool:
+    """Limbs only (#509) — you cannot tourniquet a chest or a neck.
+
+    Torso/head arterial bleeding is dressing-or-die by design.
+    Numbered appendages (tentacles etc.) count as limbs, matching
+    ``Organ._is_limb_container``.
+    """
+    if location in LIMB_CONTAINERS:
+        return True
+    return "tentacle_" in location or "_leg_" in location or "_arm_" in location
+
+
+def apply_tourniquet(actor, target, item, location: str) -> dict:
+    """Apply a tourniquet at a limb location (#509).
+
+    Instant full hold of bleeding at the limb, ANY severity — the
+    field answer to arterial limb wounds.  Not a fix: nothing heals
+    under it, and bleeding resumes if it's removed before proper
+    treatment.  Proper wound care at the location clears the flag
+    (the surgeon takes it off as part of doing the job).
+
+    Returns {"applied": bool, "messages": [str, ...]}.
+    """
+    if not is_tourniquetable_location(location):
+        return {
+            "applied": False,
+            "messages": [
+                f"You can't tourniquet a {location.replace('_', ' ')} — "
+                f"that needs pressure dressing or a surgeon."
+            ],
+        }
+    state = getattr(target, "medical_state", None)
+    organs = getattr(state, "organs", None) if state else None
+    if not organs:
+        return {"applied": False, "messages": ["Nothing there to bind."]}
+
+    marked = False
+    for organ in organs.values():
+        if getattr(organ, "container", None) == location:
+            organ.tourniqueted = True
+            marked = True
+    if not marked:
+        return {
+            "applied": False,
+            "messages": [f"No {location.replace('_', ' ')} to bind."],
+        }
+    save = getattr(target, "save_medical_state", None)
+    if callable(save):
+        save()
+    return {
+        "applied": True,
+        "messages": [
+            f"The tourniquet bites down above the "
+            f"{location.replace('_', ' ')} — the bleeding there stops "
+            f"cold.  It is not a fix: get them to proper care."
+        ],
+    }
+
+
+def clear_tourniquet(target, location: str) -> bool:
+    """Remove the tourniquet flag at ``location`` (#509).
+
+    Called by proper wound treatment at the location, or by an
+    explicit removal.  Returns True if anything was cleared —
+    callers should warn that untreated bleeding resumes.
+    """
+    state = getattr(target, "medical_state", None)
+    organs = getattr(state, "organs", None) if state else None
+    if not organs:
+        return False
+    cleared = False
+    for organ in organs.values():
+        if getattr(organ, "container", None) == location and getattr(organ, "tourniqueted", False):
+            organ.tourniqueted = False
+            cleared = True
+    if cleared:
+        save = getattr(target, "save_medical_state", None)
+        if callable(save):
+            save()
+    return cleared
+
+
 def apply_wound_care(actor, target, item, location: str) -> dict:
     """Apply a wound_care item at ``location`` on ``target``.
 
@@ -295,6 +384,9 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
     wound_healing_rating = int(effectiveness.get("wound_healing", 0) or 0)
     for organ in wounded_organs:
         organ.stabilized = True
+        # Proper care supersedes the field tourniquet (#509): the
+        # dressing holds the wound, so the band comes off with it.
+        organ.tourniqueted = False
         organ.dressing_rate = wound_healing_rating
     result["stabilized"] = True
     result["messages"].append(
