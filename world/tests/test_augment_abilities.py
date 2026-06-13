@@ -491,3 +491,42 @@ class TestChromeLongdesc(EvenniaTest):
             "left_arm", self.char.longdesc["left_arm"], self.char,
         )
         self.assertNotIn("shotgun barrel juts", rendered)
+
+    def _add_chrome_hand(self):
+        hand = Organ("cybernetic_metacarpals", organ_data={
+            "container": "left_hand", "max_hp": 18, "inorganic": True,
+        })
+        hand.medical_state = self.char.medical_state
+        self.char.medical_state.organs["cybernetic_metacarpals"] = hand
+        ld = dict(self.char.longdesc or {})
+        ld["left_hand"] = (
+            "An articulated alloy left hand, five-fingered and precise."
+        )
+        self.char.longdesc = ld
+        self.organ.data["abilities"]["shotgun"]["deployed_longdesc_slot"] = (
+            "Where the left hand should be, the wrist tapers into a "
+            "seamless firing socket."
+        )
+
+    def test_deployed_weapon_replaces_the_hand_longdesc(self):
+        """The /shotgun follow-up: deploying folds the hand away, so
+        the hand's longdesc is REPLACED (not appended) by the slot
+        prose."""
+        self._add_chrome_hand()
+        self.organ.ability_state = {
+            "shotgun": {"deployed": True, "weapon_dbref": "#1"},
+        }
+        rendered = self.char._render_body_longdesc(
+            "left_hand", self.char.longdesc["left_hand"], self.char,
+        )
+        self.assertIn("firing socket", rendered)
+        self.assertNotIn("five-fingered", rendered)  # baseline replaced
+
+    def test_retracted_weapon_restores_the_hand_longdesc(self):
+        self._add_chrome_hand()
+        self.organ.ability_state = {"shotgun": {"deployed": False}}
+        rendered = self.char._render_body_longdesc(
+            "left_hand", self.char.longdesc["left_hand"], self.char,
+        )
+        self.assertIn("five-fingered", rendered)
+        self.assertNotIn("firing socket", rendered)

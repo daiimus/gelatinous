@@ -2086,6 +2086,7 @@ SHOTGUN_MODULE = {
                     "deploy_msg": "Your {side} forearm splits along its seam and the shotgun rotates up into place — the hand folds back and away, and the barrel is just *there*, like it always was.",
                     "retract_msg": "The shotgun swings down and folds along the actuator column; plating closes over it and your fingers flex, a hand again.",
                     "deployed_longdesc": "The forearm housing has split open along its seam, a stub shotgun barrel deployed and locked where the hand should be.",
+                    "deployed_longdesc_slot": "Where the {side} hand should be, the wrist tapers into a seamless firing socket — the hand has folded back and stowed along the forearm.",
                     "deploy_room": "{actor}'s forearm splits open with a snap of locking servos — a shotgun barrel rotates up out of the housing where their hand used to be.",
                     "retract_room": "{actor}'s arm-shotgun folds away into the forearm housing; plating seals and their hand reassembles, fingers flexing.",
                 },

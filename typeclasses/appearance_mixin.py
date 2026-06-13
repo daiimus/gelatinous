@@ -778,13 +778,45 @@ class AppearanceMixin:
                     out.append(prose)
         return " ".join(out)
 
+    def _deployed_slot_prose(self, location):
+        """Replacement prose for a hand whose slot a deployed weapon
+        has consumed (#516 review follow-up): when /shotgun fills the
+        hand, the hand isn't a hand anymore — its longdesc is
+        REPLACED by the ability's ``deployed_longdesc_slot``, not just
+        appended to.  An ability's ``slot`` (resolved to a real
+        container at install) names which location it consumes.
+        Returns the prose, or ``""`` when nothing is deployed here.
+        """
+        state = getattr(self, "medical_state", None)
+        organs = getattr(state, "organs", None) if state else None
+        if not organs:
+            return ""
+        for organ in organs.values():
+            data = getattr(organ, "data", None) or {}
+            abilities = data.get("abilities") or {}
+            store = getattr(organ, "ability_state", None) or {}
+            for name, spec in abilities.items():
+                if spec.get("slot") != location:
+                    continue
+                if not (store.get(name) or {}).get("deployed"):
+                    continue
+                prose = spec.get("deployed_longdesc_slot")
+                if prose:
+                    return prose
+        return ""
+
     def _render_body_longdesc(self, location, text, looker):
         """Process one location's longdesc: flesh gets tokens +
         skintone; chrome (#516 review) gets gunmetal + any deployed-
         module expansion instead.  Wounds append either way."""
         is_chrome = self._location_is_inorganic(location)
+        # A hand whose slot a deployed weapon has taken renders the
+        # weapon's slot prose INSTEAD of its baseline hand text — the
+        # hand has folded away.
+        slot_override = self._deployed_slot_prose(location) if is_chrome else ""
+        base_text = slot_override or text
         processed = self._process_description_variables(
-            text, looker,
+            base_text, looker,
             force_third_person=True, apply_skintone=not is_chrome,
             side=self._side_from_location(location),
         )
