@@ -2009,60 +2009,87 @@ CYBERNETIC_HEART = {
     ],
 }
 
-# Shotgun Arm - first replacement augment + integrated weapon (#516)
-SHOTGUN_ARM = {
-    "key": "shotgun arm",
+# Cybernetic Arm - side-agnostic limb chassis (#526 M2/M3)
+# One prototype mounts left OR right: the surgeon names the side and
+# every {side} template resolves from it.  Organs keep CANONICAL
+# names ({side}_humerus etc.) so capacity wiring survives — the SPEC
+# makes them chrome.  The forearm hardpoint is an empty module slot:
+# weapons/tools seat into it via `install <module> in <target>`.
+CYBER_ARM = {
+    "key": "cybernetic arm",
     "typeclass": "typeclasses.items.Item",
-    "aliases": ["gun arm", "arm unit"],
-    "desc": "A full right-arm replacement unit in its transport cradle, shoulder coupling to fingertips. The forearm housing is noticeably thicker than the muscle it imitates — inside it, folded along the actuator column, sits an integrated combat shotgun. The hand is five-fingered, dexterous, and honest until it isn't. Mounts over an amputated right arm; surgical installation required.",
+    "aliases": ["cyber arm", "prosthetic arm", "arm unit"],
+    "desc": "A full arm replacement unit in its transport cradle, shoulder coupling to fingertips, ambidextrous mounting hardware along the seam. The forearm housing carries an empty modular hardpoint behind an access panel — the chassis is honest work; what goes in the slot is the owner's business. Mounts over an amputated arm, either side; surgical installation required.",
     "tags": [("medical_item", "item_type"), ("augment", "item_type")],
     "attrs": [
-        # Replacement anatomy (spec §3.5): mirrors the flesh arm's
-        # organ architecture — bone-typed, splintable, same
-        # containers, same chain severance.  The shotgun ability
-        # lives on the humerus actuator; the hand grasps.
         ("augment_organs", {
-            "cybernetic_humerus": {
-                "container": "right_arm", "max_hp": 30,
-                "hit_weight": "common", "can_be_destroyed": True,
+            "{side}_humerus": {
+                "container": "{side}_arm", "max_hp": 30,
+                "hit_weight": "common", "capacity": "manipulation",
+                "contribution": "major", "can_be_destroyed": True,
                 "fracture_vulnerable": True,
-                "bone_type": "actuator_column",
-                "inorganic": True,
-                "abilities": {
-                    "shotgun": {
-                        "type": "integrated_weapon",
-                        "slot": "right_hand",
-                        "weapon_prototype": "SHOTGUN_ARM_GUN",
-                        "deploy_msg": "Your right forearm splits along its seam and the shotgun rotates up into place — the hand folds back and away, and the barrel is just *there*, like it always was.",
-                        "retract_msg": "The shotgun swings down and folds along the actuator column; plating closes over it and your fingers flex, a hand again.",
-                        "deploy_room": "{actor}'s right forearm splits open with a snap of locking servos — a shotgun barrel rotates up out of the housing where their hand used to be.",
-                        "retract_room": "{actor}'s arm-shotgun folds away into the forearm housing; plating seals and their hand reassembles, fingers flexing.",
-                    },
-                },
+                "bone_type": "actuator_column", "inorganic": True,
             },
-            "cybernetic_metacarpals": {
-                "container": "right_hand", "max_hp": 18,
-                "hit_weight": "uncommon", "can_be_destroyed": True,
+            "{side}_metacarpals": {
+                "container": "{side}_hand", "max_hp": 18,
+                "hit_weight": "uncommon", "capacity": "manipulation",
+                "contribution": "moderate", "can_be_destroyed": True,
                 "fracture_vulnerable": True,
-                "bone_type": "actuator_lattice",
-                "grasping": True,
-                "inorganic": True,
+                "bone_type": "actuator_lattice", "inorganic": True,
+            },
+            "{side}_forearm_hardpoint": {
+                "container": "{side}_arm", "max_hp": 10,
+                "hit_weight": "rare", "inorganic": True,
+                "hardpoint": "forearm",
             },
         }),
-        ("augment_container", "right_arm"),
-        ("augment_anchor", "right_arm"),
+        ("augment_container", "{side}_arm"),
+        ("augment_anchor", "{side}_arm"),
         ("augment_longdesc", [
             {
-                "key": "right_arm",
-                "default_desc": "A full cybernetic right arm, matte composite plating over an actuator column, the forearm housing a shade too thick for what a forearm needs to be.",
+                "key": "{side}_arm",
+                "default_desc": "A full cybernetic arm, matte composite plating over an actuator column, an access panel seam running the length of the forearm.",
             },
             {
-                "key": "right_hand",
-                "default_desc": "An articulated alloy right hand, five-fingered and precise, the knuckle plating worn smooth.",
-                "display_after": "right_arm",
+                "key": "{side}_hand",
+                "default_desc": "An articulated alloy hand, five-fingered and precise, the knuckle plating worn smooth.",
+                "display_after": "{side}_arm",
             },
         ]),
         ("compatible_species", ["human"]),
+    ],
+}
+
+# Shotgun Module - forearm hardpoint weapon (#526 M3)
+# Seats into any free forearm hardpoint, either side — it inherits
+# its side from the slot.  Harvest recovers it from a limb or corpse
+# as this same item.
+SHOTGUN_MODULE = {
+    "key": "shotgun module",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["arm shotgun module", "weapon module"],
+    "desc": "A combat shotgun folded into a forearm-hardpoint form factor: barrel shroud, feed system, and deployment servos packed into a unit the size of a forearm bone. The coupling collar is standard chassis gauge. It wants a slot.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("module_type", "forearm"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "{side}_arm", "max_hp": 12, "hit_weight": "rare",
+            "inorganic": True,
+            "hardpoint": "forearm", "module_type": "forearm",
+            "abilities": {
+                "shotgun": {
+                    "type": "integrated_weapon",
+                    "slot": "{side}_hand",
+                    "weapon_prototype": "SHOTGUN_ARM_GUN",
+                    "deploy_msg": "Your {side} forearm splits along its seam and the shotgun rotates up into place — the hand folds back and away, and the barrel is just *there*, like it always was.",
+                    "retract_msg": "The shotgun swings down and folds along the actuator column; plating closes over it and your fingers flex, a hand again.",
+                    "deploy_room": "{actor}'s forearm splits open with a snap of locking servos — a shotgun barrel rotates up out of the housing where their hand used to be.",
+                    "retract_room": "{actor}'s arm-shotgun folds away into the forearm housing; plating seals and their hand reassembles, fingers flexing.",
+                },
+            },
+        }),
     ],
 }
 

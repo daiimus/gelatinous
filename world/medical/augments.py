@@ -288,6 +288,34 @@ def _persist(character):
 # ---------------------------------------------------------------------
 
 
+def park_organ_hardware(character, organ) -> None:
+    """Retract and park one organ's ability hardware (#526 M3).
+
+    Called when the organ is being removed from the body (module or
+    organ harvest): any deployed weapon comes out of the hands and
+    off the grid so it travels with the harvested item's spec rather
+    than being orphaned — locked, undroppable, unretractable — in
+    the hand of a body that no longer has the ability.
+    """
+    store = getattr(organ, "ability_state", None) or {}
+    held = dict(getattr(character, "held_items", None) or {})
+    held_changed = False
+    for name, ability_state in store.items():
+        if not isinstance(ability_state, dict):
+            continue
+        weapon = _find_weapon(ability_state)
+        if weapon is not None:
+            for slot, item in held.items():
+                if item == weapon:
+                    held[slot] = None
+                    held_changed = True
+            if weapon.location == character:
+                weapon.location = None
+        ability_state["deployed"] = False
+    if held_changed:
+        character.held_items = held
+
+
 def carry_hardware_to_appendage(character, chain, appendage) -> None:
     """Move integrated hardware whose organ just severed onto the
     severed appendage (spec decision 7: the limb takes its gear).

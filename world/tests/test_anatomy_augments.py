@@ -529,6 +529,235 @@ class TestAnatomyIsTheTruth(TestCase):
         self.assertLess(severed, healthy)
 
 
+SIDED_ARM_ORGANS = {
+    "{side}_humerus": {
+        "container": "{side}_arm", "max_hp": 30, "hit_weight": "common",
+        "capacity": "manipulation", "contribution": "major",
+        "bone_type": "actuator_column", "inorganic": True,
+    },
+    "{side}_forearm_hardpoint": {
+        "container": "{side}_arm", "max_hp": 10, "hit_weight": "rare",
+        "inorganic": True, "hardpoint": "forearm",
+    },
+}
+
+SHOTGUN_MODULE_SPEC = {
+    "container": "{side}_arm", "max_hp": 12, "hit_weight": "rare",
+    "inorganic": True, "hardpoint": "forearm", "module_type": "forearm",
+    "abilities": {
+        "shotgun": {
+            "type": "integrated_weapon",
+            "slot": "{side}_hand",
+            "weapon_prototype": "SHOTGUN_ARM_GUN",
+        },
+    },
+}
+
+
+def _sided_arm_item():
+    """Stub mirroring the CYBER_ARM prototype's side-agnostic shape."""
+    item = SimpleNamespace()
+    item.key = "cybernetic arm"
+    item.deleted = False
+
+    def _delete():
+        item.deleted = True
+    item.delete = _delete
+    item.db = SimpleNamespace(
+        augment_organs={k: dict(v) for k, v in SIDED_ARM_ORGANS.items()},
+        augment_container="{side}_arm",
+        augment_anchor="{side}_arm",
+        augment_longdesc=[
+            {"key": "{side}_arm", "default_desc": "A cyber arm."},
+        ],
+        compatible_species=["human"],
+    )
+    return item
+
+
+def _module_item():
+    item = SimpleNamespace()
+    item.key = "shotgun module"
+    item.deleted = False
+
+    def _delete():
+        item.deleted = True
+    item.delete = _delete
+    item.db = SimpleNamespace(
+        module_type="forearm",
+        condition="pristine",
+        organ_conditions=[],
+        organ_spec=dict(SHOTGUN_MODULE_SPEC),
+        compatible_species=["human"],
+    )
+    item.get_display_name = lambda looker=None: item.key
+    return item
+
+
+class TestSideAgnosticChassis(TestCase):
+    """#526 M2: one CYBER_ARM mounts left or right — the surgeon
+    names the side and the {side} templates resolve from it."""
+
+    def test_declaration_resolves_side(self):
+        from world.medical.procedures import resolve_augment_declaration
+
+        declaration = resolve_augment_declaration(
+            _sided_arm_item().db, side="left",
+        )
+        self.assertTrue(declaration["side_agnostic"])
+        self.assertEqual(declaration["container"], "left_arm")
+        self.assertEqual(declaration["anchor"], "left_arm")
+        self.assertIn("left_humerus", declaration["organs"])
+        self.assertEqual(
+            declaration["organs"]["left_humerus"]["container"], "left_arm",
+        )
+        self.assertEqual(declaration["longdesc"][0]["key"], "left_arm")
+
+    def test_declaration_without_side_keeps_templates(self):
+        from world.medical.procedures import resolve_augment_declaration
+
+        declaration = resolve_augment_declaration(_sided_arm_item().db)
+        self.assertTrue(declaration["side_agnostic"])
+        self.assertIn("{side}_humerus", declaration["organs"])
+
+    def test_install_resolves_left(self):
+        target = _patient()
+        target.longdesc = {"head": None, "back": None}
+        for organ in target.medical_state.organs.values():
+            if organ.container in ("left_arm", "left_hand"):
+                organ.current_hp = 0
+                organ.wound_stage = "severed"
+        open_incision(target, "left_arm")
+        actor = _surgeon()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": "success"},
+        ):
+            _resolve_install_augment(
+                actor, target, organ_item=_sided_arm_item(),
+                location="left_arm", side="left",
+            )
+        organs = target.medical_state.organs
+        self.assertIn("left_humerus", organs)
+        self.assertTrue(organs["left_humerus"].data.get("inorganic"))
+        self.assertIn("left_forearm_hardpoint", organs)
+        self.assertIn("left_arm", target.longdesc)
+        # The RIGHT side is untouched flesh.
+        self.assertFalse(organs["right_humerus"].data.get("inorganic"))
+
+    def test_install_without_side_blocks(self):
+        target = _patient()
+        open_incision(target, "left_arm")
+        actor = _surgeon()
+        item = _sided_arm_item()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": "success"},
+        ):
+            _resolve_install_augment(
+                actor, target, organ_item=item, location="left_arm",
+            )
+        self.assertFalse(item.deleted)
+        self.assertTrue(any("either side" in m for m in actor.messages))
+
+
+class TestModuleInstall(TestCase):
+    """#526 M3: modules seat into chassis hardpoints and inherit
+    their side from the slot."""
+
+    def _chassis_patient(self, side="left"):
+        target = _patient()
+        spec = {
+            "container": f"{side}_arm", "max_hp": 10, "hit_weight": "rare",
+            "inorganic": True, "hardpoint": "forearm",
+        }
+        organ = Organ(f"{side}_forearm_hardpoint", organ_data=spec)
+        organ.medical_state = target.medical_state
+        target.medical_state.organs[f"{side}_forearm_hardpoint"] = organ
+        return target
+
+    def _install(self, target, item, location="left_arm", outcome="success"):
+        from world.medical.procedures import _resolve_install_module
+
+        actor = _surgeon()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": outcome},
+        ):
+            _resolve_install_module(
+                actor, target, organ_item=item, location=location,
+            )
+        return actor
+
+    def test_module_seats_and_inherits_side(self):
+        from world.medical.augments import find_ability
+
+        target = self._chassis_patient("left")
+        open_incision(target, "left_arm")
+        item = _module_item()
+        self._install(target, item)
+
+        organ = target.medical_state.organs["left_forearm_hardpoint"]
+        self.assertIn("shotgun", organ.data.get("abilities", {}))
+        # Side inherited from the slot: the ability deploys into the
+        # LEFT hand.
+        found, spec = find_ability(target, "shotgun")
+        self.assertIs(found, organ)
+        self.assertEqual(spec["slot"], "left_hand")
+        self.assertTrue(item.deleted)
+
+    def test_occupied_hardpoint_rejects(self):
+        target = self._chassis_patient("left")
+        # Occupy it with a live module.
+        occupied_spec = dict(SHOTGUN_MODULE_SPEC)
+        occupied_spec["container"] = "left_arm"
+        organ = Organ("left_forearm_hardpoint", organ_data=occupied_spec)
+        organ.medical_state = target.medical_state
+        target.medical_state.organs["left_forearm_hardpoint"] = organ
+        open_incision(target, "left_arm")
+        item = _module_item()
+        actor = self._install(target, item)
+        self.assertFalse(item.deleted)
+        self.assertTrue(any("hardpoint" in m for m in actor.messages))
+
+    def test_harvested_out_hardpoint_accepts_again(self):
+        """Module harvest tombstones the slot (hp 0 severed) — a new
+        module rebuilds over it."""
+        target = self._chassis_patient("left")
+        occupied_spec = dict(SHOTGUN_MODULE_SPEC)
+        occupied_spec["container"] = "left_arm"
+        organ = Organ("left_forearm_hardpoint", organ_data=occupied_spec)
+        organ.current_hp = 0
+        organ.wound_stage = "severed"
+        organ.medical_state = target.medical_state
+        target.medical_state.organs["left_forearm_hardpoint"] = organ
+        open_incision(target, "left_arm")
+        item = _module_item()
+        self._install(target, item)
+        rebuilt = target.medical_state.organs["left_forearm_hardpoint"]
+        self.assertEqual(rebuilt.current_hp, rebuilt.max_hp)
+        self.assertIn("shotgun", rebuilt.data.get("abilities", {}))
+
+    def test_harvest_carries_module_provenance(self):
+        from world.medical.procedures import _configure_harvested_item
+
+        target = self._chassis_patient("left")
+        occupied_spec = dict(SHOTGUN_MODULE_SPEC)
+        occupied_spec = {
+            k: (v.replace("{side}", "left") if isinstance(v, str) else v)
+            for k, v in occupied_spec.items()
+        }
+        organ = Organ("left_forearm_hardpoint", organ_data=occupied_spec)
+        item = SimpleNamespace(db=SimpleNamespace())
+        _configure_harvested_item(
+            item, organ_name="left_forearm_hardpoint",
+            condition="pristine", source=target,
+            organ_data=organ.to_dict(),
+        )
+        self.assertEqual(item.db.module_type, "forearm")
+        self.assertIn("abilities", item.db.organ_spec)
+
+
 CYBER_HEART_SPEC = {
     "container": "chest", "max_hp": 20, "hit_weight": "uncommon",
     "vital": True, "capacity": "blood_pumping", "contribution": "total",

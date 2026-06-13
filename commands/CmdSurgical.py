@@ -479,12 +479,23 @@ class CmdInstall(Command):
         caller = self.caller
         raw = (self.args or "").strip()
         if " in " not in raw:
-            caller.msg("Usage: install <organ> in <target>")
+            caller.msg("Usage: install <organ> in <target> [at <side/location>]")
             return
 
         item_phrase, _, target_phrase = raw.partition(" in ")
         item_phrase = item_phrase.strip()
         target_phrase = target_phrase.strip()
+
+        # Optional side / location suffix (#526 M2/M3):
+        # ``install cyber arm in bob at left`` (side-agnostic chassis)
+        # ``install shotgun module in bob at left arm`` (hardpoint pick)
+        side_or_location = None
+        if " at " in target_phrase:
+            target_phrase, _, side_or_location = target_phrase.partition(" at ")
+            target_phrase = target_phrase.strip()
+            side_or_location = (
+                side_or_location.strip().lower().replace(" ", "_")
+            )
 
         organ_item = caller.search(item_phrase, location=caller)
         if organ_item is None:
@@ -494,7 +505,23 @@ class CmdInstall(Command):
         # anatomy and CREATE their slot instead of requiring one —
         # they branch before the harvested-organ gate.
         if getattr(organ_item.db, "augment_organs", None):
-            self._install_augment(caller, organ_item, target_phrase)
+            self._install_augment(
+                caller, organ_item, target_phrase,
+                side=side_or_location,
+            )
+            return
+
+        # Ability modules (#526 M3) seat into chassis hardpoints —
+        # placement comes from the slot, not the organ name.
+        module_type = (
+            getattr(organ_item.db, "module_type", None)
+            or (getattr(organ_item.db, "organ_spec", None) or {}).get("module_type")
+        )
+        if module_type:
+            self._install_module(
+                caller, organ_item, target_phrase, module_type,
+                side_or_location=side_or_location,
+            )
             return
 
         organ_name = getattr(organ_item.db, "organ_name", None)
@@ -555,7 +582,8 @@ class CmdInstall(Command):
             f"{target.get_display_name(caller)}..."
         )
 
-    def _install_augment(self, caller, organ_item, target_phrase):
+    def _install_augment(self, caller, organ_item, target_phrase,
+                         side=None):
         """Stage an augment install (ANATOMY_AUGMENTS_SPEC §3.3).
 
         Pre-dispatch gates: living target, species compatibility
@@ -563,7 +591,28 @@ class CmdInstall(Command):
         edit), no healthy anatomy already at the augment container,
         and an open incision at the **anchor** (the slot doesn't
         exist yet; you cut where the hardware mounts).
+
+        ``side`` resolves side-agnostic chassis (#526 M2): one
+        CYBER_ARM prototype mounts left or right; the surgeon names
+        the side (``install cyber arm in bob at left``).
         """
+        # Normalize side input ("left arm" → "left").
+        if side:
+            side = side.split("_")[0]
+            if side not in ("left", "right"):
+                caller.msg("Side must be left or right.")
+                return
+
+        from world.medical.procedures import resolve_augment_declaration
+        declaration = resolve_augment_declaration(organ_item.db, side=side)
+        if declaration["side_agnostic"] and not side:
+            caller.msg(
+                f"The {organ_item.key} mounts on either side — name "
+                f"one: ``install {organ_item.key} in {target_phrase} "
+                f"at left`` (or right)."
+            )
+            return
+
         target = _resolve_target(caller, target_phrase)
         if target is None:
             return
@@ -608,8 +657,8 @@ class CmdInstall(Command):
         # mount (user decision 2026-06-13: sever and amputate are one
         # path, and the install surgery clears ruined remains the
         # same way it clears severed remnants).
-        augment_container = organ_item.db.augment_container
-        augment_organs = organ_item.db.augment_organs or {}
+        augment_container = declaration["container"]
+        augment_organs = declaration["organs"]
         declared = {
             spec.get("container")
             for spec in augment_organs.values()
@@ -630,7 +679,7 @@ class CmdInstall(Command):
             )
             return
 
-        anchor = organ_item.db.augment_anchor or augment_container
+        anchor = declaration["anchor"] or augment_container
         if not has_incision(target, anchor):
             caller.msg(
                 f"The {organ_item.key} mounts at the "
@@ -652,12 +701,109 @@ class CmdInstall(Command):
 
         start_procedure(
             target, verb="install_augment", actor=caller,
-            organ_item=organ_item, location=anchor,
+            organ_item=organ_item, location=anchor, side=side,
         )
         caller.msg(
             f"You begin mounting the {organ_item.key} at "
             f"{target.get_display_name(caller)}'s "
             f"{anchor.replace('_', ' ')}..."
+        )
+
+    def _install_module(self, caller, organ_item, target_phrase,
+                        module_type, side_or_location=None):
+        """Stage an ability-module install (#526 M3): the module
+        seats into a free chassis hardpoint.  With hardpoints on
+        both sides, the surgeon names one (``at left`` /
+        ``at left arm``)."""
+        from world.medical.procedures import find_hardpoint
+
+        target = _resolve_target(caller, target_phrase)
+        if target is None:
+            return
+        if not _is_body_container(target):
+            caller.msg(
+                f"{target.get_display_name(caller)} isn't something "
+                f"you can install a module into."
+            )
+            return
+        state = getattr(target, "medical_state", None)
+        if state is None or not getattr(state, "organs", None):
+            caller.msg(
+                f"The {organ_item.key} needs a living body to "
+                f"integrate with."
+            )
+            return
+
+        species = getattr(target.db, "species", None) or "human"
+        compat = [
+            s.lower() for s in (organ_item.db.compatible_species or [])
+        ]
+        if compat and species.lower() not in compat:
+            caller.msg(
+                f"The {organ_item.key} isn't rated for {species} "
+                f"anatomy."
+            )
+            return
+
+        # Collect free hardpoints, optionally filtered by side.
+        candidates = []
+        for organ_name, organ in state.organs.items():
+            data = getattr(organ, "data", None)
+            if not data or data.get("hardpoint") != module_type:
+                continue
+            if bool(data.get("abilities")) and organ.current_hp > 0:
+                continue  # occupied
+            container = getattr(organ, "container", None) or ""
+            if side_or_location:
+                side = side_or_location.split("_")[0]
+                if not container.startswith(side):
+                    continue
+            candidates.append((organ_name, container))
+
+        if not candidates:
+            caller.msg(
+                f"No free {module_type.replace('_', ' ')} hardpoint "
+                f"on {target.get_display_name(caller)} — the "
+                f"{organ_item.key} needs a chassis slot (and an "
+                f"unoccupied one)."
+            )
+            return
+        if len({c for _n, c in candidates}) > 1:
+            sides = ", ".join(sorted(c.replace("_", " ") for _n, c in candidates))
+            caller.msg(
+                f"{target.get_display_name(caller)} has free "
+                f"hardpoints at: {sides}.  Name one — ``install "
+                f"{organ_item.key} in {target_phrase} at left`` (or "
+                f"right)."
+            )
+            return
+
+        container = candidates[0][1]
+        if not has_incision(target, container):
+            caller.msg(
+                f"The hardpoint sits inside "
+                f"{target.get_display_name(caller)}'s "
+                f"{container.replace('_', ' ')} — it isn't open. "
+                f"Try ``incise {target_phrase} at "
+                f"{container.replace('_', ' ')}``."
+            )
+            return
+
+        if _reject_if_busy(caller, target):
+            return
+        kit = _find_surgical_kit(caller)
+        if kit is None:
+            caller.msg("You need a surgical kit to seat a module.")
+            return
+
+        start_procedure(
+            target, verb="install_module", actor=caller,
+            organ_item=organ_item, location=container,
+        )
+        caller.msg(
+            f"You begin seating the {organ_item.key} into the "
+            f"hardpoint at {target.get_display_name(caller)}'s "
+            f"{container.replace('_', ' ')}..."
         )
 
 

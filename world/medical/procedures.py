@@ -79,6 +79,9 @@ PROCEDURE_DURATIONS = {
     # Augment installs (ANATOMY_AUGMENTS_SPEC §3.3) — mounting new
     # anatomy is the same order of work as grafting an organ.
     "install_augment": 18,
+    # Module seating (#526 M3) — quicker than a graft: the chassis
+    # did the hard integration work already.
+    "install_module": 9,
     "suture":   9,
     "amputate": 12,
     # Autopsy is the deliberate counterpart to the cursory ``inspect``
@@ -1246,7 +1249,53 @@ def _resolve_autopsy(actor, target, **_) -> None:
     _store_result(full_report)
 
 
+def _format_side(value, side):
+    """Recursively resolve ``{side}`` placeholders in an augment
+    declaration (#526 M2).  Strings format; dicts format both keys
+    and values; lists/tuples map.  Non-templated data passes
+    through untouched."""
+    if isinstance(value, str):
+        return value.replace("{side}", side) if "{side}" in value else value
+    if hasattr(value, "items"):
+        return {
+            _format_side(k, side): _format_side(v, side)
+            for k, v in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_format_side(v, side) for v in value]
+    return value
+
+
+def resolve_augment_declaration(item_db, side=None) -> dict:
+    """Return the item's augment declaration as plain data, with
+    ``{side}`` templates resolved (#526 M2 — side-agnostic chassis:
+    one CYBER_ARM prototype mounts left or right; the surgeon names
+    the side and everything resolves from it).
+
+    Returns ``{"organs", "container", "anchor", "longdesc",
+    "side_agnostic"}``.  ``side_agnostic`` is True when the raw
+    declaration contains ``{side}`` templates — callers must supply
+    ``side`` before gating or installing such items.
+    """
+    from evennia.utils.dbserialize import deserialize
+
+    raw = {
+        "organs": deserialize(getattr(item_db, "augment_organs", None) or {}),
+        "container": getattr(item_db, "augment_container", None),
+        "anchor": getattr(item_db, "augment_anchor", None),
+        "longdesc": deserialize(getattr(item_db, "augment_longdesc", None) or {}),
+    }
+    side_agnostic = "{side}" in str(raw["container"] or "") or any(
+        "{side}" in name for name in raw["organs"]
+    )
+    if side_agnostic and side:
+        raw = {key: _format_side(value, side) for key, value in raw.items()}
+    raw["side_agnostic"] = side_agnostic
+    return raw
+
+
 def _resolve_install_augment(actor, target, *, organ_item, location: str,
+                             side: str = None,
                              **_) -> None:
     """Resolve an augment install (ANATOMY_AUGMENTS_SPEC §3.3):
     create the item's declared anatomy on ``target``.
@@ -1255,15 +1304,26 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
     opened — e.g. ``"back"`` for the tail); the new anatomy grows at
     the item's ``augment_container``.  Handles re-augmentation: any
     severed remnants at the augment container are replaced wholesale
-    by the fresh hardware.
+    by the fresh hardware.  ``side`` resolves a side-agnostic
+    chassis's ``{side}`` templates (#526 M2).
     """
-    from evennia.utils.dbserialize import deserialize
     from world.identity_utils import msg_room_identity
 
     item_db = getattr(organ_item, "db", None)
-    augment_organs = deserialize(getattr(item_db, "augment_organs", None) or {})
-    augment_container = getattr(item_db, "augment_container", None)
-    augment_longdesc = deserialize(getattr(item_db, "augment_longdesc", None) or {})
+    declaration = resolve_augment_declaration(item_db, side=side)
+    if declaration["side_agnostic"] and not side:
+        actor.msg(
+            f"The {organ_item.key} mounts on either side — name one "
+            f"(left or right)."
+        )
+        from world.medical.charts import mark_running_step_failed
+        mark_running_step_failed(
+            target, outcome="side-agnostic augment without a side",
+        )
+        return
+    augment_organs = declaration["organs"]
+    augment_container = declaration["container"]
+    augment_longdesc = declaration["longdesc"]
     if not augment_organs or not augment_container:
         actor.msg(f"The {organ_item.key} has nothing installable in it.")
         return
@@ -1464,12 +1524,171 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
         _log_guarded_failure("install_augment_item_delete", organ_item, exc)
 
 
+def find_hardpoint(state, module_type: str, container: str = None):
+    """Return ``(organ_name, organ)`` for a hardpoint slot matching
+    ``module_type`` (#526 M3), optionally restricted to one
+    container.  Occupied hardpoints (a live module with abilities)
+    don't match — harvest the current module first.  Tombstoned
+    hardpoints (module harvested out) DO match: the module install
+    rebuilds the slot organ wholesale."""
+    organs = getattr(state, "organs", None) or {}
+    for organ_name, organ in organs.items():
+        data = getattr(organ, "data", None)
+        if not data or data.get("hardpoint") != module_type:
+            continue
+        if container and getattr(organ, "container", None) != container:
+            continue
+        occupied = bool(data.get("abilities")) and organ.current_hp > 0
+        if occupied:
+            continue
+        return organ_name, organ
+    return None, None
+
+
+def _resolve_install_module(actor, target, *, organ_item, location: str,
+                            **_) -> None:
+    """Resolve an ability-module install (#526 M3): rebuild the
+    hardpoint organ at ``location`` with the module's spec.  The
+    side resolves from the hardpoint's container, so one module
+    prototype serves either arm — it inherits its side from where
+    it's mounted."""
+    from evennia.utils.dbserialize import deserialize
+    from world.identity_utils import msg_room_identity
+    from world.medical.charts import mark_running_step_failed
+
+    item_db = getattr(organ_item, "db", None)
+    module_spec = deserialize(getattr(item_db, "organ_spec", None) or {})
+    module_type = (
+        getattr(item_db, "module_type", None)
+        or module_spec.get("module_type")
+    )
+    if not module_spec or not module_type:
+        actor.msg(f"The {organ_item.key} has no module hardware in it.")
+        return
+
+    state = getattr(target, "medical_state", None)
+    if state is None or not getattr(state, "organs", None):
+        actor.msg(
+            f"The {organ_item.key} needs a living body to integrate with."
+        )
+        return
+
+    # Species gate — chart-commenced installs bypass command gates.
+    target_species = (
+        getattr(getattr(target, "db", None), "species", None) or "human"
+    )
+    compat = [
+        s.lower() for s in (
+            getattr(item_db, "compatible_species", None) or []
+        )
+    ]
+    if compat and target_species.lower() not in compat:
+        actor.msg(
+            f"The {organ_item.key} isn't rated for {target_species} "
+            f"anatomy."
+        )
+        mark_running_step_failed(
+            target, outcome=f"species mismatch — {target_species}",
+        )
+        return
+
+    if not has_incision(target, location):
+        actor.msg(
+            f"You line up the {organ_item.key} but "
+            f"{target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')} isn't open."
+        )
+        mark_running_step_failed(
+            target,
+            outcome=f"no incision at {location} — module install blocked",
+        )
+        return
+
+    hardpoint_name, hardpoint = find_hardpoint(
+        state, module_type, container=location,
+    )
+    if hardpoint is None:
+        actor.msg(
+            f"No free {module_type.replace('_', ' ')} hardpoint at "
+            f"{target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')} — the {organ_item.key} "
+            f"needs a chassis slot to seat in."
+        )
+        mark_running_step_failed(
+            target, outcome=f"no free {module_type} hardpoint at {location}",
+        )
+        return
+
+    result = roll_procedure(actor, target)
+    outcome = result["outcome"]
+    if outcome == "failure":
+        seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
+        actor.msg(
+            f"The {organ_item.key} won't seat in the hardpoint. It "
+            f"stays loose in your hands."
+        )
+        return
+
+    # The module inherits its side from the hardpoint's container
+    # ("left_arm" → "left") — one prototype serves either arm.
+    side = location.split("_")[0] if "_" in location else ""
+    spec = _format_side(dict(module_spec), side) if side in ("left", "right") else dict(module_spec)
+
+    from world.medical.core import Organ
+    organ = Organ(hardpoint_name, organ_data=spec)
+    organ.medical_state = state
+    state.organs[hardpoint_name] = organ
+    condition_hp = {
+        "pristine": organ.max_hp,
+        "damaged": int(organ.max_hp * 0.6),
+        "putrid": int(organ.max_hp * 0.3),
+    }
+    organ.current_hp = condition_hp.get(
+        getattr(item_db, "condition", None) or "pristine", organ.max_hp,
+    )
+
+    seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
+    if outcome == "partial":
+        seed_infection(target, location)
+        actor.msg(
+            f"You seat the {organ_item.key} — but the coupling is "
+            f"sloppy. Time will tell."
+        )
+    else:
+        actor.msg(
+            f"You seat the {organ_item.key} in the hardpoint at "
+            f"{target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')}."
+        )
+
+    save = getattr(target, "save_medical_state", None)
+    if callable(save):
+        save()
+
+    if actor.location is not None:
+        msg_room_identity(
+            location=actor.location,
+            template=(
+                f"{{actor}} seats a {organ_item.key} into "
+                f"{{patient}}'s {location.replace('_', ' ')}."
+            ),
+            char_refs={"actor": actor, "patient": target},
+            exclude=[actor, target] if target is not actor else [actor],
+        )
+
+    try:
+        organ_item.delete()
+    except Exception as exc:
+        _log_guarded_failure("install_module_item_delete", organ_item, exc)
+
+
 # Mapping consumed by ``_resolve_procedure_callback``.
 _VERB_RESOLVERS = {
     "incise":   _resolve_incise,
     "harvest":  _resolve_harvest,
     "install":  _resolve_install,
     "install_augment": _resolve_install_augment,
+    "install_module": _resolve_install_module,
     "suture":   _resolve_suture,
     "amputate": _resolve_amputate,
     "autopsy":  _resolve_autopsy,
@@ -1617,6 +1836,19 @@ def _mark_organ_removed(target, organ_name: str) -> None:
 
     state = getattr(target, "medical_state", None)
     if state is not None and hasattr(state, "organs"):
+        # Hardware sweep (#526 M3): removing an organ whose ability
+        # has a DEPLOYED weapon must park the hardware first —
+        # otherwise the locked gun is orphaned in the hand with its
+        # ability gone and no way to retract it.  Guarded: hardware
+        # bookkeeping never blocks the extraction.
+        try:
+            organ_for_sweep = state.organs.get(organ_name)
+            if organ_for_sweep is not None and getattr(
+                    organ_for_sweep, "ability_state", None):
+                from world.medical.augments import park_organ_hardware
+                park_organ_hardware(target, organ_for_sweep)
+        except Exception as exc:
+            _log_guarded_failure("organ_removed_hardware_sweep", target, exc)
         organ = state.organs.get(organ_name)
         if organ is not None:
             organ.current_hp = 0
@@ -1743,6 +1975,11 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
     if spec and hasattr(spec, "get"):
         from evennia.utils.dbserialize import deserialize
         item.db.organ_spec = deserialize(spec)
+        # Module provenance (#526 M3): a harvested module routes back
+        # through the module-install branch, not the by-name path —
+        # it seats into any matching hardpoint, either side.
+        if spec.get("module_type"):
+            item.db.module_type = spec.get("module_type")
 
     stage_getter = getattr(source, "get_decay_stage", None)
     if callable(stage_getter):

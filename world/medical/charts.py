@@ -489,21 +489,30 @@ def commence_chart(target, actor) -> Optional[dict]:
         save_chart(target, chart)
         return commence_chart(target, actor)
 
-    # Augment items route to their own resolver (ANATOMY_AUGMENTS_SPEC
-    # §3.3): the chart vocabulary stays "install", the execution
-    # differs.  The mount point is authoritative from the item — the
-    # anchor overrides whatever location the chart recorded, so a
-    # stale or hand-authored step still cuts in the right place.
+    # Augment and module items route to their own resolvers (#516,
+    # #526 M3): the chart vocabulary stays "install", the execution
+    # differs.  For augments the mount point is authoritative from
+    # the item — the anchor overrides whatever location the chart
+    # recorded (side-resolved for side-agnostic chassis, #526 M2).
     if verb == "install":
         item_db = getattr(resolved_args.get("organ_item"), "db", None)
         if getattr(item_db, "augment_organs", None):
             verb = "install_augment"
-            anchor = (
-                getattr(item_db, "augment_anchor", None)
-                or getattr(item_db, "augment_container", None)
-            )
-            if anchor:
+            side = (args or {}).get("side")
+            from world.medical.procedures import resolve_augment_declaration
+            declaration = resolve_augment_declaration(item_db, side=side)
+            anchor = declaration["anchor"] or declaration["container"]
+            if anchor and "{side}" not in str(anchor):
                 resolved_args["location"] = anchor
+            if side:
+                resolved_args["side"] = side
+        elif (
+            getattr(item_db, "module_type", None)
+            or (getattr(item_db, "organ_spec", None) or {}).get("module_type")
+        ):
+            # Module seats at the recorded hardpoint container; the
+            # resolver re-finds the slot and re-checks the gates.
+            verb = "install_module"
 
     step["status"] = RUNNING
     chart["status"] = IN_PROGRESS

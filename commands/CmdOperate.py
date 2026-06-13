@@ -516,14 +516,23 @@ def _list_donor_organs(caller):
     out = []
     for obj in (getattr(caller, "contents", None) or ()):
         obj_db = getattr(obj, "db", None)
-        organ_name = getattr(obj_db, "organ_name", None)
-        if organ_name:
-            out.append((obj, organ_name))
-            continue
         augment = getattr(obj_db, "augment_organs", None)
         if augment:
             label = getattr(obj_db, "augment_container", None) or obj.key
             out.append((obj, label))
+            continue
+        # Ability modules (#526 M3) — checked before organ_name:
+        # harvested modules carry both, and the module route wins.
+        module_type = (
+            getattr(obj_db, "module_type", None)
+            or (getattr(obj_db, "organ_spec", None) or {}).get("module_type")
+        )
+        if module_type:
+            out.append((obj, f"{module_type} module"))
+            continue
+        organ_name = getattr(obj_db, "organ_name", None)
+        if organ_name:
+            out.append((obj, organ_name))
     return out
 
 
@@ -579,6 +588,28 @@ def _list_install_locations(target, donor_item):
             compatible = [source_species]
     if compatible and target_species not in compatible:
         return []
+
+    # Ability modules (#526 M3): the install locations are the
+    # target's FREE matching hardpoint containers.
+    module_type = (
+        getattr(donor_db, "module_type", None)
+        or (getattr(donor_db, "organ_spec", None) or {}).get("module_type")
+    )
+    if module_type:
+        state = getattr(target, "medical_state", None)
+        organs = getattr(state, "organs", {}) if state is not None else {}
+        out = []
+        for organ in organs.values():
+            data = getattr(organ, "data", None)
+            if not data or data.get("hardpoint") != module_type:
+                continue
+            occupied = bool(data.get("abilities")) and organ.current_hp > 0
+            container = getattr(organ, "container", None)
+            if container:
+                out.append((container, "occupied" if occupied else "empty"))
+        # The picker may only offer free slots — occupied ones show
+        # for context but the command/resolver gates refuse them.
+        return [entry for entry in out if entry[1] == "empty"]
 
     target_displays = getattr(donor_db, "target_display_locations", None)
     target_container = getattr(donor_db, "target_container", None)
@@ -971,10 +1002,13 @@ def _process_install_donor(caller, raw_string, **kwargs):
                 f"{target_species} anatomy.|n"
             )
             return "node_top"
-        anchor = (
-            getattr(item_db, "augment_anchor", None)
-            or getattr(item_db, "augment_container", None)
-        )
+        # Side-agnostic chassis (#526 M2): the surgeon picks the
+        # side before the step is recorded.
+        from world.medical.procedures import resolve_augment_declaration
+        declaration = resolve_augment_declaration(item_db)
+        if declaration["side_agnostic"]:
+            return "node_install_side"
+        anchor = declaration["anchor"] or declaration["container"]
         _add_step_to_chart(
             caller, "install",
             {"organ_item_key": item.key, "location": anchor},
@@ -988,6 +1022,49 @@ def _process_install_donor(caller, raw_string, **kwargs):
 
     # Now ask for the install location.
     return "node_install_location"
+
+
+def _node_install_side(caller, raw_string, **kwargs):
+    """Side picker for side-agnostic chassis (#526 M2)."""
+    donor_key = getattr(caller.ndb, "_operate_install_donor", "?")
+    text = (
+        f"\n|wInstall {donor_key} — pick the side|n\n\n"
+        f"{donor_key} mounts on either side:\n\n"
+        "  1. left\n"
+        "  2. right\n\n"
+        "  x. Cancel\n\n"
+        "|wWhich side?|n"
+    )
+    options = ({"key": "_default", "goto": _process_install_side},)
+    return text, options
+
+
+def _process_install_side(caller, raw_string, **kwargs):
+    raw = (raw_string or "").strip().lower()
+    if raw in ("x", "exit", "cancel"):
+        return "node_top"
+    side = {"1": "left", "2": "right"}.get(raw, raw)
+    if side not in ("left", "right"):
+        caller.msg("|rPick left or right.|n")
+        return None
+    donor_item = getattr(caller.ndb, "_operate_install_donor_item", None)
+    donor_key = getattr(caller.ndb, "_operate_install_donor", None)
+    if donor_item is None or not donor_key:
+        caller.msg("|rDonor selection lost; please retry from the top.|n")
+        return "node_top"
+    from world.medical.procedures import resolve_augment_declaration
+    declaration = resolve_augment_declaration(donor_item.db, side=side)
+    anchor = declaration["anchor"] or declaration["container"]
+    _add_step_to_chart(
+        caller, "install",
+        {"organ_item_key": donor_key, "location": anchor, "side": side},
+    )
+    caller.msg(
+        f"{donor_key} mounts at the {anchor.replace('_', ' ')} — it "
+        f"must be open when this step runs (add an incise step first "
+        f"if it isn't)."
+    )
+    return "node_top"
 
 
 def _node_install_location(caller, raw_string, **kwargs):
@@ -1525,6 +1602,7 @@ class CmdOperate(Command):
                 "node_harvest_organ":    _node_harvest_organ,
                 "node_install_organ":    _node_install_organ,
                 "node_install_location": _node_install_location,
+                "node_install_side":     _node_install_side,
                 "node_suture_location":  _node_suture_location,
                 "node_amputate_location":_node_amputate_location,
                 "node_edit_chart":       _node_edit_chart,
