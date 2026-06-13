@@ -2047,14 +2047,21 @@ CYBER_ARM = {
         }),
         ("augment_container", "{side}_arm"),
         ("augment_anchor", "{side}_arm"),
+        # Templated longdesc prose (#516 review): reads as part of the
+        # character, not a bare label.  `{Their}` flexes His/Her/Their
+        # by the wearer's gender at render; the verb agrees with the
+        # part ("arm is", "hand is"), sidestepping person-number verb
+        # agreement.  `{side}` is the install-resolved literal
+        # ("right"/"left") — NOT the `{arm}`/`{hand}` body-noun flex,
+        # which pluralizes wrong for singular-they ("a cybernetic arms").
         ("augment_longdesc", [
             {
                 "key": "{side}_arm",
-                "default_desc": "A full cybernetic {side} arm, matte composite plating over an actuator column, an access panel seam running the length of the forearm.",
+                "default_desc": "{Their} {side} arm is a full cybernetic replacement, matte composite plating over an actuator column, an access panel seam running the length of the forearm.",
             },
             {
                 "key": "{side}_hand",
-                "default_desc": "An articulated alloy {side} hand, five-fingered and precise, the knuckle plating worn smooth.",
+                "default_desc": "{Their} {side} hand is articulated alloy, five-fingered and precise, the knuckle plating worn smooth.",
                 "display_after": "{side}_arm",
             },
         ]),
