@@ -565,6 +565,26 @@ class Organ:
         return organ
 
 
+def is_augment_organ(organ, species_organs) -> bool:
+    """Whether ``organ`` is installed hardware rather than factory
+    anatomy (#526 review — the @resetmedical preservation predicate).
+
+    True when the organ has no species-table entry (the tail, a
+    hardpoint) OR its spec carries augment markers: ``inorganic``
+    (canonical-name chrome like a cyber humerus or heart),
+    ``abilities`` (a flesh-mounted Nailz host), ``hardpoint`` /
+    ``module_type`` (chassis slots and seated modules).
+    """
+    data = getattr(organ, "data", None) or {}
+    return bool(
+        organ.name not in (species_organs or {})
+        or data.get("inorganic")
+        or data.get("abilities")
+        or data.get("hardpoint")
+        or data.get("module_type")
+    )
+
+
 class MedicalState:
     """
     Manages the complete medical state of a character.
@@ -666,6 +686,42 @@ class MedicalState:
         """
         return self.organs.get(organ_name)
         
+    def full_heal(self):
+        """Complete medical restoration of PRESENT anatomy (#526
+        review — the @heal/@revive backend).
+
+        The anatomy-truth standard applies: severed tombstones are
+        absence records, not injuries — healing does not regrow
+        limbs or resurrect harvested-out modules (which would
+        duplicate their abilities).  Destroyed-in-place organs ARE
+        still attached and restore fully, wound bookkeeping cleared.
+        Cyberware toggle state survives: a deployed gun is not an
+        injury.
+
+        Returns the number of organs that needed healing.
+        """
+        healed = 0
+        for organ in self.organs.values():
+            if organ.wound_stage == "severed":
+                continue
+            if organ.current_hp < organ.max_hp:
+                healed += 1
+            organ.current_hp = organ.max_hp
+            organ.wound_stage = None
+            organ.injury_type = None
+            organ.wound_timestamp = None
+            organ.stabilized = False
+            organ.dressing_rate = 0
+            organ.dressing_progress = 0.0
+            organ.tourniqueted = False
+        self.conditions.clear()
+        self.blood_level = 100.0
+        self.pain_level = 0.0
+        self.consciousness = 1.0
+        self._cached_is_dead = None
+        self._cache_dirty = True
+        return healed
+
     def location_severable_by_organ(self, location):
         """True when any organ at ``location`` flags
         ``severable_container`` in its spec (ANATOMY_AUGMENTS_SPEC

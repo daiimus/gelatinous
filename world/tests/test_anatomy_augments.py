@@ -964,6 +964,94 @@ class TestSpecCarryingOrgans(TestCase):
         self.assertEqual(item.db.organ_spec.get("max_hp"), 20)
 
 
+class TestFullHealStandard(TestCase):
+    """#526 review: @heal restores PRESENT anatomy — tombstones are
+    absence records, not injuries."""
+
+    def test_severed_tombstones_stay_severed(self):
+        target = _patient()
+        _sever_right_arm(target)
+        target.medical_state.full_heal()
+        stump = target.medical_state.organs["right_humerus"]
+        self.assertEqual(stump.current_hp, 0)
+        self.assertEqual(stump.wound_stage, "severed")
+
+    def test_harvested_module_does_not_resurrect(self):
+        """The duplication exploit: harvest the module (item in
+        hand), @heal the patient, ability returns.  Must not."""
+        from world.medical.augments import find_ability
+
+        target = _patient()
+        spec = dict(SHOTGUN_MODULE_SPEC)
+        spec["container"] = "left_arm"
+        organ = Organ("left_forearm_hardpoint", organ_data=spec)
+        organ.current_hp = 0
+        organ.wound_stage = "severed"  # harvest tombstone
+        organ.medical_state = target.medical_state
+        target.medical_state.organs["left_forearm_hardpoint"] = organ
+
+        target.medical_state.full_heal()
+        self.assertEqual(organ.current_hp, 0)
+        found, _spec = find_ability(target, "shotgun")
+        self.assertIsNone(found)
+
+    def test_destroyed_in_place_restores_clean(self):
+        target = _patient()
+        heart = target.medical_state.organs["heart"]
+        heart.current_hp = 0
+        heart.wound_stage = "destroyed"
+        heart.injury_type = "bullet"
+        heart.stabilized = True
+        heart.tourniqueted = True
+        healed = target.medical_state.full_heal()
+        self.assertGreaterEqual(healed, 1)
+        self.assertEqual(heart.current_hp, heart.max_hp)
+        self.assertIsNone(heart.wound_stage)
+        self.assertIsNone(heart.injury_type)
+        self.assertFalse(heart.stabilized)
+        self.assertFalse(heart.tourniqueted)
+
+    def test_vitals_and_conditions_reset(self):
+        from world.medical.conditions import BleedingCondition, MedicalCondition
+
+        target = _patient()
+        state = target.medical_state
+        with patch.object(
+            MedicalCondition, "start_condition", lambda self, ch: None,
+        ):
+            state.add_condition(BleedingCondition(4, "chest"))
+        state.blood_level = 40.0
+        state.pain_level = 12.0
+        state.full_heal()
+        self.assertEqual(state.conditions, [])
+        self.assertEqual(state.blood_level, 100.0)
+        self.assertEqual(state.pain_level, 0.0)
+
+
+class TestAugmentOrganPredicate(TestCase):
+    """#526 review: the @resetmedical preservation rule."""
+
+    def test_predicate_classifies_the_templates(self):
+        from world.anatomy import get_species_organs
+        from world.medical.core import is_augment_organ
+
+        table = get_species_organs(None)
+        # New-container anatomy: no table entry.
+        tail = Organ("cybernetic_tailbone", organ_data=dict(TAIL_ORGAN_SPEC))
+        self.assertTrue(is_augment_organ(tail, table))
+        # Canonical-name chrome: table entry, inorganic spec.
+        cyber_heart = Organ("heart", organ_data=dict(CYBER_HEART_SPEC))
+        self.assertTrue(is_augment_organ(cyber_heart, table))
+        # Flesh-mounted module host: flesh spec + abilities.
+        host_spec = dict(get_species_organs(None)["left_metacarpals"])
+        host_spec["abilities"] = {"nailz": {"type": "natural_weapon"}}
+        host = Organ("left_metacarpals", organ_data=host_spec)
+        self.assertTrue(is_augment_organ(host, table))
+        # Factory flesh: not an augment.
+        flesh = _patient().medical_state.organs["heart"]
+        self.assertFalse(is_augment_organ(flesh, table))
+
+
 class TestSeveredCyberProse(TestCase):
     def test_inorganic_parts_get_chrome_prose(self):
         from world.anatomy.severed_parts import get_severed_part_description

@@ -154,26 +154,17 @@ class CmdHeal(Command):
                     caller.msg(f"|g{target.key} has no medical conditions.|n")
                 continue
             
-            # Full heal without condition type - complete medical restoration
+            # Full heal without condition type - complete medical
+            # restoration of PRESENT anatomy (#526 review: severed
+            # tombstones stay severed — @heal doesn't regrow limbs or
+            # resurrect harvested-out modules; full_heal owns the
+            # standard).
             if amount is None and condition_type is None:
-                # Clear all conditions
-                medical_state.conditions.clear()
-                
+                organs_healed = medical_state.full_heal()
+
                 # Stop medical script since no conditions remain
                 from world.medical.script import stop_medical_script
                 stop_medical_script(target)
-                
-                # Restore all organs to full health
-                organs_healed = 0
-                for organ in medical_state.organs.values():
-                    if organ.current_hp < organ.max_hp:
-                        organ.current_hp = organ.max_hp
-                        organs_healed += 1
-                
-                # Restore vital signs
-                medical_state.blood_level = 100.0
-                medical_state.pain_level = 0.0
-                medical_state.consciousness = 1.0  # Consciousness is stored as 0.0-1.0, displayed as percentage
                 
                 # Clear any death or unconsciousness placement descriptions
                 if hasattr(target, 'override_place'):
@@ -354,22 +345,15 @@ class CmdTestDeath(Command):
             # Character is dead, revive them using heal command logic
             if hasattr(target, 'medical_state') and target.medical_state:
                 medical_state = target.medical_state
-                
-                # Clear all conditions (including consciousness suppression)
-                medical_state.conditions.clear()
-                
+
+                # Full restoration of PRESENT anatomy (#526 review —
+                # severed tombstones stay severed; full_heal owns
+                # the standard).
+                medical_state.full_heal()
+
                 # Stop medical script since no conditions remain
                 from world.medical.script import stop_medical_script
                 stop_medical_script(target)
-                
-                # Restore all organs to full health
-                for organ in medical_state.organs.values():
-                    organ.current_hp = organ.max_hp
-                
-                # Restore vital signs
-                medical_state.blood_level = 100.0
-                medical_state.pain_level = 0.0
-                medical_state.consciousness = 1.0
                 
                 # Clear placement descriptions and processing flags
                 if hasattr(target, 'override_place'):
@@ -841,21 +825,22 @@ class CmdResetMedical(Command):
             from typeclasses.characters import Character
             characters = Character.objects.all()
             count = 0
-            
+            preserved_total = 0
+
             for char in characters:
-                if hasattr(char, '_medical_state'):
-                    delattr(char, '_medical_state')
-                if char.db.medical_state:
-                    del char.db.medical_state
+                preserved_total += _reset_medical_preserving_augments(char)
                 count += 1
-                
-            caller.msg(f"|gReset medical states for {count} characters.|n")
-            caller.msg("|yCharacters will get current medical structure on next access.|n")
-            
+
+            caller.msg(
+                f"|gReset medical states for {count} characters "
+                f"({preserved_total} augment organs preserved).|n"
+            )
+            caller.msg("|yFlesh rebuilt from the current structure; installed cyberware carried over.|n")
+
         elif args.lower() == "all":
             caller.msg("|yWarning: This will reset ALL character medical states!|n")
             caller.msg("|yUse '@resetmedical confirm all' to proceed.|n")
-            
+
         else:
             # Reset specific character
             target = resolve_admin_target(caller, args)
@@ -863,13 +848,59 @@ class CmdResetMedical(Command):
                 caller.msg(f"|rCould not find '{args}'.|n")
                 return
 
-            if hasattr(target, '_medical_state'):
-                delattr(target, '_medical_state')
-            if target.db.medical_state:
-                del target.db.medical_state
-                
-            caller.msg(f"|gReset medical state for {target.get_display_name(caller)}.|n")
-            caller.msg("|yThey will get current medical structure on next access.|n")
+            preserved = _reset_medical_preserving_augments(target)
+
+            caller.msg(
+                f"|gReset medical state for "
+                f"{target.get_display_name(caller)} "
+                f"({preserved} augment organs preserved).|n"
+            )
+            caller.msg("|yFlesh rebuilt from the current structure; installed cyberware carried over.|n")
+
+
+def _reset_medical_preserving_augments(char) -> int:
+    """Rebuild ``char``'s medical state from the current species
+    structure while carrying installed augments over (#526 review).
+
+    Pre-#526 this command nuked the state wholesale — which, with
+    per-character anatomy, erased every installed arm, tail, heart,
+    and module while orphaning their longdesc keys and parked
+    weapon items.  Augment organs (``is_augment_organ``) now survive
+    the rebuild; flesh resets to factory exactly as before.
+
+    Returns the number of organs preserved.
+    """
+    from world.anatomy import get_species_organs
+    from world.medical.core import is_augment_organ
+
+    species = getattr(getattr(char, "db", None), "species", None)
+    species_table = get_species_organs(species)
+
+    preserved = []
+    try:
+        old_state = char.medical_state
+    except AttributeError:
+        old_state = None
+    if old_state is not None and getattr(old_state, "organs", None):
+        preserved = [
+            organ for organ in old_state.organs.values()
+            if is_augment_organ(organ, species_table)
+        ]
+
+    if hasattr(char, '_medical_state'):
+        delattr(char, '_medical_state')
+    if char.db.medical_state:
+        del char.db.medical_state
+
+    if preserved:
+        new_state = char.medical_state  # property rebuilds from species
+        for organ in preserved:
+            organ.medical_state = new_state
+            new_state.organs[organ.name] = organ
+        save = getattr(char, "save_medical_state", None)
+        if callable(save):
+            save()
+    return len(preserved)
 
 
 class CmdMedicalAudit(Command):

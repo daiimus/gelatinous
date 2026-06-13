@@ -195,6 +195,29 @@ class TestAbilityLayer(EvenniaTest):
         # Retracted: the held knife serves again.
         self.assertIs(get_wielded_weapon(self.char), knife)
 
+    def test_resetmedical_preserves_chrome(self):
+        """#526 review: @resetmedical rebuilds flesh from the current
+        species table but carries installed augments over instead of
+        erasing them."""
+        from commands.CmdAdmin import _reset_medical_preserving_augments
+
+        # The gun-arm organ from setUp is an augment (abilities).
+        # Wound the flesh heart so we can see it factory-reset.
+        self.char.medical_state.organs["heart"].current_hp = 3
+        preserved = _reset_medical_preserving_augments(self.char)
+        self.assertGreaterEqual(preserved, 1)
+        state = self.char.medical_state
+        self.assertIn("cybernetic_humerus", state.organs)
+        self.assertIn(
+            "shotgun",
+            state.organs["cybernetic_humerus"].data.get("abilities", {}),
+        )
+        # Flesh rebuilt at factory.
+        self.assertEqual(
+            state.organs["heart"].current_hp,
+            state.organs["heart"].max_hp,
+        )
+
     def test_no_inline_weapon_picks_outside_the_resolver(self):
         """Doctrine pin (#516 playtest): combat code must resolve
         weapons through get_wielded_weapon, never the inline
