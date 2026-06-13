@@ -217,10 +217,13 @@ SKINTONE_PALETTE = {
 VALID_SKINTONES = set(SKINTONE_PALETTE.keys())
 
 # Raw cybernetic chrome (#516 review).  Inorganic body locations
-# render in a light steel grey instead of the wearer's skintone —
-# chrome is not flesh.  When coating items arrive they'll override
-# this per augment; until then this is the bare-metal default.
-CHROME_DEFAULT_COLOR = "|444"  # light steel grey (xterm256 4/4/4)
+# render in a dark steel grey instead of the wearer's skintone —
+# chrome is not flesh.  Matches the "black leather" tone the
+# clothing palette uses (COLOR_DEFINITIONS["black"] in
+# typeclasses/items.py) so chrome reads as dark worked metal rather
+# than blending into the default-terminal clothing color.  Coating
+# items will override this per augment later.
+CHROME_DEFAULT_COLOR = "|=l"  # dark steel grey (xterm256 greyscale)
 
 # ===================================================================
 # CHANNELS & LOGGING
