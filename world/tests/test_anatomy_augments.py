@@ -1066,13 +1066,15 @@ def _severed_cyber_arm(deployed=False):
         "right_humerus": {
             "container": "right_arm", "current_hp": 30, "max_hp": 30,
             "wound_stage": "severed",
-            "data": {"container": "right_arm", "max_hp": 30, "inorganic": True},
+            "data": {"container": "right_arm", "max_hp": 30,
+                     "inorganic": True, "prosthetic_frame": True},
         },
         "right_metacarpals": {
             "container": "right_hand", "current_hp": 18, "max_hp": 18,
             "wound_stage": "severed",
             "data": {"container": "right_hand", "max_hp": 18,
-                     "inorganic": True, "grasping": True},
+                     "inorganic": True, "prosthetic_frame": True,
+                     "grasping": True},
         },
         "right_forearm_hardpoint": {
             "container": "right_arm", "current_hp": 12, "max_hp": 12,
@@ -1080,7 +1082,7 @@ def _severed_cyber_arm(deployed=False):
             "ability_state": {"shotgun": {"deployed": deployed,
                                           "weapon_dbref": None}},
             "data": {"container": "right_arm", "inorganic": True,
-                     "hardpoint": "forearm",
+                     "prosthetic_frame": True, "hardpoint": "forearm",
                      "abilities": {"shotgun": {
                          "type": "integrated_weapon",
                          "slot": "right_hand", "weapon_prototype": "X"}}},
@@ -1184,6 +1186,45 @@ class TestLimbReattach(TestCase):
         actor = self._reattach(target, item)
         self.assertFalse(item.deleted)
         self.assertTrue(any("isn't open" in m for m in actor.messages))
+
+    def test_reattach_keys_on_frame_not_inorganic(self):
+        """The frame marker is the discriminator, not organ content:
+        strip ``prosthetic_frame`` (leaving the chrome) and the limb
+        no longer reattaches."""
+        from world.medical.procedures import is_cybernetic_limb
+        item = _severed_cyber_arm()
+        for d in item.get_medical_snapshot()["organs"].values():
+            d["data"].pop("prosthetic_frame", None)
+        self.assertFalse(is_cybernetic_limb(item))
+
+    def test_flesh_hand_with_cyberware_not_reattachable(self):
+        """The user's case: a flesh hand with cyberware implanted in
+        it (Nailz) is still flesh — no prosthetic frame, so it
+        necroses and doesn't reattach.  The cyberware harvests out
+        separately."""
+        from world.medical.procedures import is_cybernetic_limb
+
+        item = SimpleNamespace()
+        snap = {"organs": {
+            "left_metacarpals": {
+                "container": "left_hand", "current_hp": 0,
+                # Flesh organ carrying an implanted ability — and even
+                # a stray inorganic sub-part — but NO prosthetic frame.
+                "data": {"container": "left_hand", "inorganic": True,
+                         "abilities": {"nailz": {"type": "natural_weapon"}}},
+            },
+        }}
+        item.get_medical_snapshot = lambda: snap
+        item.db = SimpleNamespace(location_name="left_hand")
+        self.assertFalse(is_cybernetic_limb(item))
+
+    def test_operate_lists_cyber_limb_as_donor(self):
+        from commands.CmdOperate import _list_donor_organs
+
+        limb = _severed_cyber_arm()
+        caller = SimpleNamespace(contents=[limb])
+        donors = _list_donor_organs(caller)
+        self.assertTrue(any(it is limb for it, _label in donors))
 
 
 class TestSeveredCyberProse(TestCase):

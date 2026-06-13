@@ -530,6 +530,13 @@ def _list_donor_organs(caller):
         if module_type:
             out.append((obj, f"{module_type} module"))
             continue
+        # Severed cybernetic limbs (#526 follow-up) reattach whole —
+        # listed so surgeons can author a reattach step from the
+        # chart, parity with the ``install`` command.
+        from world.medical.procedures import is_cybernetic_limb
+        if is_cybernetic_limb(obj):
+            out.append((obj, obj.key))
+            continue
         organ_name = getattr(obj_db, "organ_name", None)
         if organ_name:
             out.append((obj, organ_name))
@@ -1017,6 +1024,36 @@ def _process_install_donor(caller, raw_string, **kwargs):
             f"{item.key} mounts at the {anchor.replace('_', ' ')} — "
             f"the {anchor.replace('_', ' ')} must be open when this "
             f"step runs (add an incise step first if it isn't)."
+        )
+        return "node_top"
+
+    # Severed cybernetic limbs (#526 follow-up) reattach at their cut
+    # point — no location to pick.  The chart runner routes the step
+    # to install_limb; the resolver re-checks the stump + incision.
+    from world.medical.procedures import (
+        get_organ_snapshot, is_cybernetic_limb,
+    )
+    if is_cybernetic_limb(item):
+        anchor = getattr(item_db, "location_name", None)
+        if not anchor:
+            snap = get_organ_snapshot(item)
+            conts = {
+                d.get("container")
+                for d in (snap.get("organs") or {}).values()
+                if hasattr(d, "get") and d.get("container")
+            }
+            anchor = sorted(conts)[0] if conts else None
+        if not anchor:
+            caller.msg("|rThat limb has no attachment point.|n")
+            return "node_top"
+        _add_step_to_chart(
+            caller, "install",
+            {"organ_item_key": item.key, "location": anchor},
+        )
+        caller.msg(
+            f"{item.key} reattaches at the {anchor.replace('_', ' ')} "
+            f"— the stump must be amputated and open when this step "
+            f"runs (add an incise step first if needed)."
         )
         return "node_top"
 

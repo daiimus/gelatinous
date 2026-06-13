@@ -2029,6 +2029,7 @@ CYBER_ARM = {
                 "contribution": "major", "can_be_destroyed": True,
                 "fracture_vulnerable": True,
                 "bone_type": "actuator_column", "inorganic": True,
+                "prosthetic_frame": True,
             },
             "{side}_metacarpals": {
                 "container": "{side}_hand", "max_hp": 18,
@@ -2036,11 +2037,12 @@ CYBER_ARM = {
                 "contribution": "moderate", "can_be_destroyed": True,
                 "fracture_vulnerable": True,
                 "bone_type": "actuator_lattice", "inorganic": True,
+                "prosthetic_frame": True,
             },
             "{side}_forearm_hardpoint": {
                 "container": "{side}_arm", "max_hp": 10,
                 "hit_weight": "rare", "inorganic": True,
-                "hardpoint": "forearm",
+                "hardpoint": "forearm", "prosthetic_frame": True,
             },
         }),
         ("augment_container", "{side}_arm"),
@@ -2076,7 +2078,7 @@ SHOTGUN_MODULE = {
         ("compatible_species", ["human"]),
         ("organ_spec", {
             "container": "{side}_arm", "max_hp": 12, "hit_weight": "rare",
-            "inorganic": True,
+            "inorganic": True, "prosthetic_frame": True,
             "hardpoint": "forearm", "module_type": "forearm",
             "abilities": {
                 "shotgun": {

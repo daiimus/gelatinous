@@ -1788,17 +1788,26 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
 
 
 def is_cybernetic_limb(appendage) -> bool:
-    """True when ``appendage`` is a severed CYBERNETIC limb (#526
-    follow-up): an organ-snapshot-bearing part with at least one
-    inorganic organ.  Flesh limbs don't reattach (necrosis); chrome
-    bolts back on."""
+    """True when ``appendage`` is a severed PROSTHETIC limb that
+    reattaches (#526 follow-up; criteria settled with user
+    2026-06-13).
+
+    Reattachability is a property of the limb's FRAME, marked
+    explicitly when the prosthetic chassis is installed
+    (``prosthetic_frame`` on the chassis organs) — NOT inferred from
+    counting inorganic organs.  A flesh limb is flesh even with
+    cyberware implanted in it (Nailz on a flesh hand, a cyber
+    sub-organ in an otherwise-flesh limb): no prosthetic frame, so it
+    necroses and does not reattach.  Its implants / harvestable
+    organs still pull and reinstall separately.
+    """
     snapshot = get_organ_snapshot(appendage)
     organs = (snapshot or {}).get("organs") or {}
     for entry in organs.values():
         if not hasattr(entry, "get"):
             continue
         data = entry.get("data")
-        if data and hasattr(data, "get") and data.get("inorganic"):
+        if data and hasattr(data, "get") and data.get("prosthetic_frame"):
             return True
     return False
 
