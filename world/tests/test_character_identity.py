@@ -33,7 +33,7 @@ from world.tests._identity_helpers import (
 # ===================================================================
 
 
-def _make_item(key="Kitchen Knife", coverage=None):
+def _make_item(key="Kitchen Knife", coverage=None, weapon=False):
     """Return a minimal mock item with a ``.key`` and disguise defaults.
 
     Disguise-related attributes are pinned to falsy defaults so the
@@ -56,6 +56,12 @@ def _make_item(key="Kitchen Knife", coverage=None):
     item.worn_sdesc_short = ""
     item.coverage = list(coverage) if coverage else []
     item.disguise_silent_feature = False
+    # Weapon discrimination for the distinguishing-feature chain
+    # (#516 review): only actual weapons / explosives dominate the
+    # sdesc.  MagicMock would make ``tags.has`` and ``db.is_explosive``
+    # auto-truthy, so pin both explicitly.
+    item.tags.has.return_value = bool(weapon)
+    item.db.is_explosive = False
     return item
 
 
@@ -138,7 +144,7 @@ class TestDistinguishingFeature(TestCase):
 
     def test_wielded_weapon_wins(self):
         """Wielded weapon outranks clothing and hair."""
-        knife = _make_item("Kitchen Knife")
+        knife = _make_item("Kitchen Knife", weapon=True)
         trenchcoat = _make_item("Black Trenchcoat")
         char = _make_character(
             hands={"left": None, "right": knife},
@@ -159,6 +165,31 @@ class TestDistinguishingFeature(TestCase):
         )
         result = char.get_distinguishing_feature()
         self.assertEqual(result, "in a Black Trenchcoat")
+
+    def test_non_weapon_in_hand_falls_through_to_garment(self):
+        """#516 review: a cigarette / lighter / tool in hand carries
+        no sdesc weight — the predominant garment wins instead."""
+        cigarette = _make_item("cigarette")  # weapon=False
+        coat = _make_item("Armored Jacket")
+        char = _make_character(
+            hands={"left": None, "right": cigarette},
+            worn_items={"chest": [coat]},
+        )
+        result = char.get_distinguishing_feature()
+        self.assertEqual(result, "in an Armored Jacket")
+
+    def test_non_weapon_in_hand_falls_through_to_hair(self):
+        """With nothing worn, a non-weapon held item still doesn't
+        dominate — hair is the next fallback."""
+        pack = _make_item("pack of cigarettes")  # weapon=False
+        char = _make_character(
+            hands={"left": None, "right": pack},
+            hair_color="black",
+            hair_style="slicked",
+        )
+        result = char.get_distinguishing_feature()
+        self.assertIn("hair", result.lower() + result)
+        self.assertNotIn("cigarettes", result)
 
     def test_hair_when_no_weapon_or_clothing(self):
         """Hair feature used when no weapon or clothing."""
@@ -189,15 +220,15 @@ class TestDistinguishingFeature(TestCase):
 
     def test_left_hand_wielded(self):
         """Left-hand weapon detected."""
-        sword = _make_item("Katana")
+        sword = _make_item("Katana", weapon=True)
         char = _make_character(hands={"left": sword, "right": None})
         result = char.get_distinguishing_feature()
         self.assertEqual(result, "wielding a Katana")
 
     def test_both_hands_wielded_picks_first(self):
         """When both hands hold items, one is chosen (deterministic)."""
-        knife = _make_item("Kitchen Knife")
-        pistol = _make_item("Pistol")
+        knife = _make_item("Kitchen Knife", weapon=True)
+        pistol = _make_item("Pistol", weapon=True)
         char = _make_character(hands={"left": knife, "right": pistol})
         result = char.get_distinguishing_feature()
         # Dict iteration order in Python 3.7+ is insertion order
@@ -216,7 +247,7 @@ class TestDistinguishingFeature(TestCase):
 
     def test_article_an_for_vowel_item(self):
         """Items starting with a vowel get 'an' article."""
-        axe = _make_item("Axe")
+        axe = _make_item("Axe", weapon=True)
         char = _make_character(hands={"left": None, "right": axe})
         result = char.get_distinguishing_feature()
         self.assertEqual(result, "wielding an Axe")
@@ -361,7 +392,7 @@ class TestGetSdesc(TestCase):
 
     def test_full_sdesc_with_feature(self):
         """Height + build + keyword + feature produces full sdesc."""
-        knife = _make_item("Kitchen Knife")
+        knife = _make_item("Kitchen Knife", weapon=True)
         char = _make_character(
             height="tall",
             build="lean",
@@ -502,7 +533,7 @@ class TestGetDisplayName(TestCase):
 
     def test_stranger_with_feature(self):
         """Stranger sdesc includes distinguishing feature."""
-        knife = _make_item("Kitchen Knife")
+        knife = _make_item("Kitchen Knife", weapon=True)
         target = _make_character(
             key="Jorge Jackson",
             height="tall",

@@ -923,9 +923,25 @@ class Character(
                 return format_wielded_feature(natural.key)
         except Exception:
             pass
+        # Only an actual weapon or explosive carries enough weight to
+        # dominate the sdesc — a cigarette, lighter, or tool in hand
+        # falls through to the predominant garment (#516 review).
+        # "Weapon" is the ("weapon", "type") tag, not db.weapon_type
+        # (which defaults to "melee" on every item — the #520/#522
+        # lesson).
         hands = self.hands or {}
         for _hand, item in hands.items():
-            if item is not None:
+            if item is None:
+                continue
+            tags = getattr(item, "tags", None)
+            is_weapon = tags is not None and tags.has("weapon", category="type")
+            if not is_weapon:
+                try:
+                    from world.combat.throwing import is_explosive
+                    is_weapon = bool(is_explosive(item))
+                except Exception:
+                    is_weapon = False
+            if is_weapon:
                 return format_wielded_feature(item.key)
 
         # 2. Outermost clothing item (pick the first location with coverage).
