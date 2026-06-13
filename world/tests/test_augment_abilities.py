@@ -312,3 +312,47 @@ class TestAbilityLayer(EvenniaTest):
         # whatever behavior is preserved.
         toggle_ability(self.char, "shotgun")
         self.assertIs(get_wielded_weapon(self.char), cigarette)
+
+
+class TestSeveranceDropsHeldItems(EvenniaTest):
+    """Production-path regression (#533 follow-on): a limb severed
+    mid-grip drops the held item to the room.  The shorthand stubs
+    in test_living_sever never caught the canonical-key /
+    functional-anatomy-gate interaction — this uses a real
+    Character."""
+
+    def test_severed_arm_drops_its_weapon_to_the_room(self):
+        from typeclasses.items import apply_sever_to_character
+
+        char = create_object(Character, key="Armless", location=self.room1)
+        knife = create_object(
+            "typeclasses.items.Item", key="kitchen knife", location=char,
+        )
+        result = char.wield_item(knife, "right_hand")
+        self.assertIn("wield", result.lower())
+        self.assertIs(char.hands["right_hand"], knife)
+
+        # Pulp the right-arm bones so the chain is severable.
+        for name in ("right_humerus", "right_metacarpals"):
+            char.medical_state.organs[name].current_hp = 0
+
+        apply_sever_to_character(char, "right_arm", injury_type="cut")
+
+        # The knife fell free — in the room, not orphaned in the
+        # backing store, not on the appendage.
+        self.assertIs(knife.location, self.room1)
+        self.assertNotIn(knife, (char.held_items or {}).values())
+        # And the drop was recorded for the severance prose.
+        # (ndb is cleared by apply_sever after emitting the beat.)
+
+    def test_empty_hand_severance_drops_nothing(self):
+        from typeclasses.items import apply_sever_to_character
+
+        char = create_object(Character, key="Emptyhand", location=self.room1)
+        for name in ("left_humerus", "left_metacarpals"):
+            char.medical_state.organs[name].current_hp = 0
+        # Should not raise and should record no dropped items.
+        apply_sever_to_character(char, "left_arm", injury_type="cut")
+        self.assertIsNone(
+            getattr(char.ndb, "_sever_dropped_items", None)
+        )

@@ -2293,35 +2293,65 @@ def detach_items_to_appendage(character, appendage, containers):
             hands_to_clear.add(hand)
 
     if hands_to_clear:
-        hands = character.hands or {}
-        new_hands = dict(hands)
+        from typeclasses.characters import _canonical_hand
+
         # PR-H0: held items drop to the character's current location
-        # rather than relocating onto the severed appendage.  The
-        # severed limb is bookkept as "had a weapon in it before the
-        # cut", but the weapon itself falls free.  Use the canonical
-        # drop-to-room pipeline for gravity / proximity parity with
-        # the player ``drop`` command.
+        # rather than relocating onto the severed appendage — the
+        # weapon falls free, so salvage doesn't require interacting
+        # with the severed limb first.
+        #
+        # Read the ``held_items`` BACKING STORE, not the derived
+        # ``hands`` view: ``sever_character_body`` has already zeroed
+        # the chain's organs, so the functional-anatomy gate (#533)
+        # hides the severed hand from ``character.hands`` — reading
+        # the view here misses the weapon and orphans it in the
+        # store.  Compounding that, ``sever_hand_by_container`` keys
+        # on shorthand ("right") while the store uses canonical keys
+        # ("right_hand"), so we try both forms.  (Older test stubs
+        # expose a plain ``hands`` dict in shorthand and no backing
+        # store — fall through to that.)
+        # Duck-type, not isinstance: Evennia wraps the AttributeProperty
+        # in a ``_SaverDict`` which is NOT a ``dict`` subclass.
+        store = getattr(character, "held_items", None)
+        using_backing = hasattr(store, "get")
+        store = dict(store if using_backing else (character.hands or {}))
+
         drop_room = getattr(character, "location", None)
+        dropped = []
         for hand in hands_to_clear:
-            held = new_hands.get(hand)
-            if held:
-                new_hands[hand] = None
-                if drop_room is not None:
-                    # Deferred import — ``commands.combat.jump`` pulls
-                    # in evennia.commands.Command which we don't want
-                    # at module load time for this typeclasses file.
-                    from commands.combat.jump import drop_to_room as _drop
-                    _drop(held, drop_room)
-                else:
-                    # Fall back to the legacy relocation if the
-                    # character has no location (test stubs, edge
-                    # cases) — keeps the dropped item somewhere
-                    # findable rather than orphaning it.
-                    _relocate_item(held, appendage)
+            for key in (hand, _canonical_hand(hand)):
+                if store.get(key):
+                    held = store[key]
+                    store[key] = None
+                    dropped.append(held)
+                    if drop_room is not None:
+                        # Deferred import — ``commands.combat.jump``
+                        # pulls in evennia.commands.Command we don't
+                        # want at module load for this file.
+                        from commands.combat.jump import drop_to_room as _drop
+                        _drop(held, drop_room)
+                    else:
+                        # No location (stub / edge case): keep the
+                        # item findable on the appendage rather than
+                        # orphaning it.
+                        _relocate_item(held, appendage)
+                    break
                 # ``moved`` historically tracked items that travelled
-                # WITH the appendage.  Held weapons no longer travel
-                # there, so they are intentionally not appended.
-        character.hands = new_hands
+                # WITH the appendage.  Dropped weapons don't, so they
+                # are intentionally not appended to it.
+
+        if using_backing:
+            character.held_items = store
+        else:
+            character.hands = store
+
+        # Surface dropped items so the severance narrative can note
+        # them ("...the hand spilling open, a knife clattering free").
+        # Only when something actually dropped — an empty marker would
+        # falsely trip the narrative beat's guard.
+        ndb = getattr(character, "ndb", None)
+        if ndb is not None and dropped:
+            ndb._sever_dropped_items = list(dropped)
 
     return moved
 
@@ -2492,7 +2522,45 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
             exclude=[],
         )
 
+    # Dropped-grip beat (user decision 2026-06-13): a limb severed
+    # mid-grip spills what it held to the floor — call it out so the
+    # loose weapon is visible to grab rather than a silent surprise.
+    dropped = getattr(getattr(character, "ndb", None), "_sever_dropped_items", None)
+    if dropped:
+        character.ndb._sever_dropped_items = None
+        try:
+            from world.identity_utils import msg_room_identity
+            names = _comma_list([it.key for it in dropped])
+            character.msg(
+                f"Your nerveless fingers spill open — {names} "
+                f"clatters to the ground."
+            )
+            msg_room_identity(
+                location=room,
+                template=(
+                    f"{{actor}}'s nerveless fingers spill open — "
+                    f"{names} clatters to the ground."
+                ),
+                char_refs={"actor": character},
+                exclude=[character],
+            )
+        except Exception:
+            pass
+
     return appendage
+
+
+def _comma_list(names):
+    """Join item names as 'a knife', 'a knife and a gun', or
+    'a knife, a gun, and a wrench'."""
+    arts = [f"a {n}" for n in names]
+    if not arts:
+        return "nothing"
+    if len(arts) == 1:
+        return arts[0]
+    if len(arts) == 2:
+        return f"{arts[0]} and {arts[1]}"
+    return f"{', '.join(arts[:-1])}, and {arts[-1]}"
 
 
 def apply_severed_head_overlay(head, corpse):
