@@ -177,7 +177,46 @@ as a hand until you `/shotgun`.
 * Precedence (Phase 3): active claws beat a held knife; deactivated
   claws yield to it.
 
-## 7 · Maintenance contract
+## 7 · Cybernetics architecture — the standard templates
+
+Settled 2026-06-13 after the shotgun arm shipped: **chassis +
+module is the standard**; future cybernetics are data over these
+four templates, never bespoke systems.
+
+1. **Replacement organ** (cyber heart / eye / kidney — the
+   low-impact tier).  An organ item carrying its own spec installs
+   into the existing slot via the replacement path, which rebuilds
+   the organ: **same canonical organ name** (capacity tables key by
+   name; theming lives in display prose — the standing principle),
+   new spec (`inorganic`, adjusted HP).
+   *Requires: spec-carrying organ items in `_resolve_install`.*
+2. **Anatomy augment** (the tail): new containers via the augment
+   path.  Shipped.
+3. **Limb chassis** (prosthetic arm / leg): augment over a stump or
+   wreckage — and **side-agnostic**: one `CYBER_ARM` prototype
+   mounts left or right, the surgeon names the side at install and
+   the item's organ/longdesc/anchor templates resolve `{side}`.
+   A chassis may declare empty **hardpoint** organ slots.
+   *Requires: side parameterization in the augment install.*
+4. **Ability module** (shotgun, claws/Nailz, teeth/Jawz): an organ
+   item carrying spec + ability that installs INTO anatomy — a
+   chassis hardpoint, or **compatible flesh anatomy** (Nailz into a
+   flesh hand, Jawz into a flesh jaw; some modules are
+   chrome-or-meat agnostic by declaration).  The module inherits
+   its side/slot from where it's mounted; its ability "just does
+   its thing" from there.  **Harvest is the recovery verb**: a
+   module comes out of a severed limb or corpse as the organ item
+   it is.
+   *Requires: harvest carrying organ spec data onto the item;
+   mount-requirement declaration (container class +
+   flesh/chrome compatibility).*
+
+The shipped `SHOTGUN_ARM` refactors into `CYBER_ARM` (side-agnostic
+chassis, forearm hardpoint) + `SHOTGUN_MODULE` when this lands;
+fused all-in-ones may return later as flavor, but the standard
+template is modular.
+
+## 8 · Maintenance contract
 
 * New toggleable cyberware declares a §2 ability — never a bespoke
   command or a character-level flag.
