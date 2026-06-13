@@ -1,22 +1,56 @@
 # Health and Substance System Specification
 
-> **⚠️ Drift notice (2026-06-13).** This document predates several
-> shipped systems and is stale in places. Authoritative sources for
-> the current behavior:
-> * **Bleeding model** — layered brakes (bandage roll → `treated`
->   30% residual flow + doubled clot hazard; wound-care dressing =
->   full stop; **tourniquets** = limb-only instant hold; natural
->   clotting only at severity ≤ 5; arterial 6+ needs intervention).
->   The condition was renamed `minor_bleeding` → **`bleeding`**
->   (legacy deserialize alias kept). See `CONDITION_CADENCE_SPEC` §5
->   and `world/medical/conditions.py`.
-> * **Condition cadence** (per-minute rates, downtime cap, clock
->   seam) — `CONDITION_CADENCE_SPEC`.
-> * **Per-character anatomy, augments, cyberware** —
->   `ANATOMY_AUGMENTS_SPEC` and `AUGMENT_ABILITIES_SPEC` (incl. the
->   anatomy-truth tombstone standard, `inorganic` organs = pain-only
->   damage, chrome-aware heal/reset).
-> A full reconciliation of this spec is tracked as its own pass.
+> **⚠️ This document is a phase-by-phase development log (Dec 2024 →
+> June 2026).** The phase sections below describe systems *as they
+> were built*; several were later superseded and carry pointers back
+> here. The **Current Model** section immediately below is the
+> authoritative summary of present behavior (reconciliation pass
+> #542, 2026-06-13).
+
+## Current Model (authoritative — 2026-06)
+
+### Condition roster
+Five conditions ship (`world/medical/conditions.py`): **bleeding,
+pain, infection, consciousness-suppression, addiction**.  Burning
+and acid are **not** implemented — parked until fire exists as
+content (the `BurningCondition` / `AcidCondition` named in older
+phase notes below were never built).  Conditions run on one
+per-character `MedicalScript`, **not** Evennia's global
+`TICKER_HANDLER`.
+
+### Cadence
+Condition effects are **rates per minute of real time**, sampled at
+each tick (a tick is just a sampling moment).  Each condition tracks
+`last_processed` and applies elapsed-time effect, capped at
+`ELAPSED_CAP_MINUTES` so reloads/crashes don't bill players.  The
+old `CONDITION_INTERVALS` multi-speed tickers are deleted.  Full
+design: `CONDITION_CADENCE_SPEC`.
+
+### Bleeding — layered brakes
+Condition named `bleeding` (legacy `minor_bleeding` deserialize
+alias kept).  Blood-loss rate derives from **current** severity
+(`BLOOD_LOSS_PER_SEVERITY`, per minute) — never a stored rate.
+- **Bandage** (roll-based, `wound_care`): cuts severity and sets
+  `treated` → residual flow drops to `BLEEDING_TREATED_MULTIPLIER`
+  (0.3) and the clot hazard doubles; closes modest wounds outright,
+  but a field bandage can't shut an artery (severity ≥ 5 takes a
+  capped −4).
+- **Wound-care dressing / stabilization**: full stop at the location
+  plus a healing channel.
+- **Tourniquet** (#509): limb-only instant full hold at any
+  severity; nothing heals under it; bleeding resumes if removed
+  untreated; a proper dressing supersedes it.
+- **Natural clotting**: only severity ≤ `BLEEDING_SELF_CLOT_MAX_
+  SEVERITY` (5) self-resolves, via `BLEEDING_CLOT_HAZARD_PER_MINUTE`;
+  arterial 6+ never self-clots — intervention or death.  Death at
+  `BLOOD_LOSS_DEATH_THRESHOLD` (85%) loss.
+
+### Per-character anatomy, augments, cyberware
+The character's `organs` dict is the single source of present
+anatomy (no auto-create; severed organs persist as 0-HP tombstones).
+`inorganic` organs take **pain-only** damage (no bleed / infection).
+Heal and `@resetmedical` are chrome-aware.  Full design:
+`ANATOMY_AUGMENTS_SPEC` + `AUGMENT_ABILITIES_SPEC`.
 
 ## Implementation Status
 
@@ -103,7 +137,7 @@
 - **✅ Architectural robustness** - Direct medical state analysis replaces fragile message text parsing for consumption decisions
 - **✅ Resource efficiency** - Prevents wasteful consumption on healthy patients or inappropriate conditions
 - **✅ Unconscious patient support** - Medical procedures that don't require cooperation work on unconscious patients
-- **✅ Real condition detection** - Uses actual condition types (`minor_bleeding`, `pain`, `infection`) from medical system classes
+- **✅ Real condition detection** - Uses actual condition types (`bleeding`, `pain`, `infection`) from medical system classes
 
 **Smart Consumption Matrix:**
 ```python
@@ -111,8 +145,8 @@
 CONSUMPTION_RULES = {
     "surgical_treatment": "Only consumed for damaged soft tissue organs (excludes bones and destroyed organs)",
     "fracture_treatment": "Only consumed for damaged bones (fracture_vulnerable or bone_type properties)",
-    "blood_restoration": "Consumed for blood_level < 100 OR minor_bleeding conditions present",
-    "wound_care": "Consumed only for minor_bleeding conditions (external wound dressing)",
+    "blood_restoration": "Consumed for blood_level < 100 OR bleeding conditions present",
+    "wound_care": "Consumed only for bleeding conditions (external wound dressing)",
     "pain_relief": "Always consumed (pain detection complexity)",
     "antiseptic": "Always consumed (infection prevention)"
 }
@@ -395,10 +429,16 @@ class DeathProgressionScript(DefaultScript):
 - ✅ Complete consumption commands: `inhale/smoke` for inhalers, gases, medicinal herbs
 - ✅ Natural language consumption method system complete
 
-**Phase 2.6 - Ticker-Based Medical Conditions (✅ COMPLETED December 2024):**
-- ✅ Dynamic medical conditions with time-based progression using Evennia ticker system
-- ✅ Multi-speed ticker system: Combat (6s), severe bleeding (12s), medical (60s)
-- ✅ BleedingCondition with natural clotting, BurningCondition with spreading, AcidCondition with equipment damage
+**Phase 2.6 - Ticker-Based Medical Conditions (December 2024 — later
+superseded; see [Current Model](#current-model-authoritative--2026-06)):**
+- Dynamic medical conditions with time-based progression (the global
+  ticker was later replaced by per-character scripts + per-minute
+  cadence, #504/#506)
+- ~~Multi-speed ticker system: Combat (6s), severe bleeding (12s),
+  medical (60s)~~ — `CONDITION_INTERVALS` deleted in the cadence refactor
+- ✅ BleedingCondition (now the layered-brakes model, #508/#509).
+  **BurningCondition / AcidCondition were never built** — parked
+  until fire exists as content
 - ✅ Automatic condition creation integrated with damage system
 - ✅ Synchronized effects and messaging to prevent mysterious deaths
 
@@ -2234,6 +2274,18 @@ def check_wound_visibility(character, location):
 *Note: All consumption method commands are implemented and functional. Substance effect balancing and advanced interactions are iterative improvements to the solid foundation.*
 
 ### Phase 2.6: Ticker-Based Medical Conditions - ✅ COMPLETED (Dec 2024)
+
+> **⚠️ SUPERSEDED — see [Current Model](#current-model-authoritative--2026-06).**
+> The Dec 2024 design below (global `TICKER_HANDLER`,
+> `CONDITION_INTERVALS` multi-speed tickers, `decay_rate` natural
+> clotting that runs every wound to 0, `BurningCondition` /
+> `AcidCondition`, `blood_current`) was replaced by: the per-minute
+> cadence refactor on per-character scripts (#504/#506,
+> `CONDITION_CADENCE_SPEC`); the layered-brakes bleeding solve with
+> a clot cap at severity 5 and tourniquets (#508/#509); and the
+> condition rename `minor_bleeding` → `bleeding`. The code blocks in
+> this section are retained as build history, not current behavior.
+
 Dynamic medical conditions that apply ongoing effects over time using Evennia's native ticker system.
 
 **Implementation Complete:**
@@ -2876,6 +2928,17 @@ def emergency_stabilization(character, location, medical_skill):
 ```
 
 **Prosthetics Integration** (Future Phase 5):
+
+> **⚠️ SUPERSEDED — shipped, but not this way.** Cyberware /
+> prosthetics shipped as the **chassis + module** standard (#516,
+> #526), NOT this `Prosthetic` class.  Prosthetic limbs are augment
+> organs installed via the surgery verbs; they carry a
+> `prosthetic_frame` marker, take pain-only damage (`inorganic`),
+> and reattach whole when severed.  Quality/coating tiers are a
+> future item-data layer.  Authoritative: `ANATOMY_AUGMENTS_SPEC` +
+> `AUGMENT_ABILITIES_SPEC`.  The sketch below is retained as
+> historical intent only.
+
 ```python
 # Prosthetic system foundation
 class Prosthetic:
