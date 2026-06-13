@@ -603,8 +603,11 @@ class CmdInstall(Command):
 
         # Multi-container gate (spec §3.5): a replacement augment
         # (the shotgun arm spans right_arm + right_hand) declares
-        # organs at several containers — every one of them must be
-        # vacant or a severed stump.  Amputate first, then mount.
+        # organs at several containers — every one must be free of
+        # LIVING anatomy.  Stumps and pulped wreckage both admit the
+        # mount (user decision 2026-06-13: sever and amputate are one
+        # path, and the install surgery clears ruined remains the
+        # same way it clears severed remnants).
         augment_container = organ_item.db.augment_container
         augment_organs = organ_item.db.augment_organs or {}
         declared = {
@@ -615,15 +618,15 @@ class CmdInstall(Command):
         blocking = [
             organ for organ in state.organs.values()
             if getattr(organ, "container", None) in declared
-            and organ.wound_stage != "severed"
+            and organ.current_hp > 0
         ]
         if blocking:
             container = blocking[0].container
             caller.msg(
-                f"{target.get_display_name(caller)} already has a "
-                f"{container.replace('_', ' ')} — the "
-                f"{organ_item.key} mounts over a stump, not living "
-                f"anatomy."
+                f"{target.get_display_name(caller)} still has a "
+                f"living {container.replace('_', ' ')} — the "
+                f"{organ_item.key} mounts over a stump or wreckage, "
+                f"not living anatomy."
             )
             return
 

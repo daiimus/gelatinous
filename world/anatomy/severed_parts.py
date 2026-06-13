@@ -367,7 +367,31 @@ SEVERED_PART_DESCRIPTIONS.setdefault("rat", {
 })
 
 
-def get_severed_part_description(species, location, condition):
+#: Severed cybernetic parts (#516 follow-up).  Augment anatomy is
+#: chrome, not meat — a severed gun arm must not describe "muscle
+#: firm" and "cartilage".  Keyed by location with a ``None`` generic
+#: fallback whose ``{part}`` formats to the location name.  Used
+#: whenever the severed chain's organs are flagged ``inorganic``.
+CYBERNETIC_PART_DESCRIPTIONS = {
+    None: {
+        "pristine": (
+            "A severed cybernetic {part}, composite plating intact "
+            "and torn power couplings trailing from the mount-end, "
+            "still beaded with sealant gel."
+        ),
+        "damaged": (
+            "A scuffed cybernetic {part}, its plating dented and the "
+            "mount-end couplings frayed dark where they tore."
+        ),
+        "putrid": (
+            "A grime-caked cybernetic {part}, servos locked stiff and "
+            "the flesh-interface ring at the mount gone soft and foul."
+        ),
+    },
+}
+
+
+def get_severed_part_description(species, location, condition, inorganic=False):
     """Return condition-keyed prose for a severed body part.
 
     Args:
@@ -384,7 +408,21 @@ def get_severed_part_description(species, location, condition):
         isn't registered.  Callers should treat empty as "no default
         desc available, fall back to whatever Evennia does next"
         rather than asserting.
+
+    When ``inorganic`` is True (the severed chain's organs are
+    augment chrome), the cybernetic table answers first — location-
+    specific entry, then the generic ``{part}`` template — before
+    falling through to the species flesh prose.
     """
+    if inorganic:
+        cyber_table = (
+            CYBERNETIC_PART_DESCRIPTIONS.get(location)
+            or CYBERNETIC_PART_DESCRIPTIONS.get(None, {})
+        )
+        prose = cyber_table.get(condition, "")
+        if prose:
+            return prose.format(part=(location or "limb").replace("_", " "))
+
     species_table = SEVERED_PART_DESCRIPTIONS.get(species)
     if species_table is None:
         species_table = SEVERED_PART_DESCRIPTIONS.get("human", {})

@@ -1225,7 +1225,16 @@ class Appendage(Item):
         # look output explicitly surfaces the freshness state.  The
         # tagline travels in ``db.desc`` so the dynamic wound /
         # longdesc composition below still rides on top cleanly.
-        prose = get_severed_part_description(species, location_name, condition)
+        # Cyber-aware prose (#516 follow-up): a severed augment limb
+        # is chrome, not meat.  Snapshot organ dicts carry their spec
+        # under "data" since the anatomy substrate.
+        snapshot = corpse.get_medical_snapshot() if hasattr(corpse, "get_medical_snapshot") else {}
+        inorganic = _chain_organs_inorganic_snapshot(snapshot, chain)
+        if inorganic and species in (self.key or ""):
+            self.key = self.key.replace(species, "cybernetic", 1)
+        prose = get_severed_part_description(
+            species, location_name, condition, inorganic=inorganic,
+        )
         composed = prepend_condition_to_desc(condition, prose)
         if composed:
             self.db.desc = composed
@@ -1327,7 +1336,14 @@ class Appendage(Item):
         else:
             self.key = get_species_part_name(species, location_name, "fresh")
 
-        prose = get_severed_part_description(species, location_name, condition)
+        # Cyber-aware prose (#516 follow-up): a severed augment limb
+        # is chrome, not meat.  Read live off the still-intact body.
+        inorganic = _chain_organs_inorganic_live(character, chain)
+        if inorganic and species in (self.key or ""):
+            self.key = self.key.replace(species, "cybernetic", 1)
+        prose = get_severed_part_description(
+            species, location_name, condition, inorganic=inorganic,
+        )
         composed = prepend_condition_to_desc(condition, prose)
         if composed:
             self.db.desc = composed
@@ -1659,6 +1675,42 @@ def apply_organ_snapshot_overlay(appendage, *, source_snapshot,
             name for name in (source_removed_organs or ())
             if name in trimmed
         ]
+
+
+def _chain_organs_inorganic_live(character, chain):
+    """True when the organs at the severed chain's containers are
+    augment chrome (any flags ``inorganic`` — #516 follow-up).  Read
+    off the living body BEFORE the sever mutates it."""
+    state = getattr(character, "medical_state", None)
+    organs = getattr(state, "organs", None) if state else None
+    if not organs:
+        return False
+    chain_set = set(chain or ())
+    for organ in organs.values():
+        if getattr(organ, "container", None) not in chain_set:
+            continue
+        data = getattr(organ, "data", None)
+        if data and data.get("inorganic"):
+            return True
+    return False
+
+
+def _chain_organs_inorganic_snapshot(snapshot, chain):
+    """Snapshot-dict twin of :func:`_chain_organs_inorganic_live` for
+    the corpse path.  Organ dicts carry their spec under ``"data"``
+    since the anatomy substrate; legacy snapshots without it read as
+    flesh."""
+    organs = (snapshot or {}).get("organs") or {}
+    chain_set = set(chain or ())
+    for entry in organs.values():
+        if not hasattr(entry, "get"):
+            continue
+        if entry.get("container") not in chain_set:
+            continue
+        data = entry.get("data")
+        if data and hasattr(data, "get") and data.get("inorganic"):
+            return True
+    return False
 
 
 def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):

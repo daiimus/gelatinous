@@ -369,28 +369,140 @@ class TestReplacementAugmentInstall(TestCase):
 
 
 class TestReplacementAugmentGate(TestCase):
-    def test_living_anatomy_blocks_install(self):
-        """The command gate: you amputate first, then mount.  Tested
-        at the helper level the command branch uses."""
-        target = _patient()
-        item = _arm_item()
+    """Living anatomy blocks; stumps AND wreckage admit (user
+    decision 2026-06-13: sever and amputate are one path, and the
+    install surgery clears mangled remains the same way).  The gate
+    is HP-based — tested at the helper level the command branch and
+    resolver both use."""
+
+    def _blocking(self, target, item):
         declared = {
             spec["container"]
             for spec in item.db.augment_organs.values()
         }
-        blocking = [
+        return [
             organ for organ in target.medical_state.organs.values()
-            if organ.container in declared
-            and organ.wound_stage != "severed"
+            if organ.container in declared and organ.current_hp > 0
         ]
-        self.assertTrue(blocking)  # healthy arm blocks
+
+    def test_living_anatomy_blocks_install(self):
+        target = _patient()
+        self.assertTrue(self._blocking(target, _arm_item()))
+
+    def test_severed_stump_admits(self):
+        target = _patient()
         _sever_right_arm(target)
-        blocking = [
-            organ for organ in target.medical_state.organs.values()
-            if organ.container in declared
-            and organ.wound_stage != "severed"
+        self.assertFalse(self._blocking(target, _arm_item()))
+
+    def test_destroyed_wreckage_admits(self):
+        """Pulped-in-place (blunt/bullet — destroyed, not severed)
+        is anatomy to clear, not anatomy that blocks."""
+        target = _patient()
+        for organ in target.medical_state.organs.values():
+            if organ.container in ("right_arm", "right_hand"):
+                organ.current_hp = 0
+                organ.wound_stage = "destroyed"
+        self.assertFalse(self._blocking(target, _arm_item()))
+
+    def test_resolver_recheck_blocks_living_anatomy(self):
+        """Chart-commenced installs bypass the command gate — the
+        resolver re-checks and marks the step failed."""
+        target = _patient()
+        target.longdesc = {"head": None, "right_arm": None}
+        open_incision(target, "right_arm")
+        actor = _surgeon()
+        item = _arm_item()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": "success"},
+        ):
+            _resolve_install_augment(
+                actor, target, organ_item=item, location="right_arm",
+            )
+        self.assertNotIn("cybernetic_humerus", target.medical_state.organs)
+        self.assertFalse(item.deleted)
+        self.assertTrue(any("living" in m for m in actor.messages))
+
+    def test_install_over_wreckage_replaces_longdesc(self):
+        """Destroyed-in-place limbs keep their longdesc key (only
+        severance removes it) — the mount overwrites the dead flesh
+        prose with the augment's."""
+        target = _patient()
+        target.longdesc = {
+            "head": None, "right_arm": "A scarred but mighty arm.",
+            "right_hand": None,
+        }
+        for organ in target.medical_state.organs.values():
+            if organ.container in ("right_arm", "right_hand"):
+                organ.current_hp = 0
+                organ.wound_stage = "destroyed"
+        open_incision(target, "right_arm")
+        actor = _surgeon()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": "success"},
+        ):
+            _resolve_install_augment(
+                actor, target, organ_item=_arm_item(), location="right_arm",
+            )
+        self.assertIn("cybernetic_humerus", target.medical_state.organs)
+        self.assertEqual(target.longdesc["right_arm"], "A cyber arm.")
+        self.assertEqual(target.longdesc["right_hand"], "A cyber hand.")
+
+
+class TestInorganicConditions(TestCase):
+    """Chrome doesn't bleed and doesn't go septic; pain stays as
+    neural feedback (user decision 2026-06-13)."""
+
+    def _damaged(self, inorganic):
+        from world.medical.conditions import MedicalCondition
+
+        target = _patient()
+        spec = dict(TAIL_ORGAN_SPEC)
+        spec["inorganic"] = inorganic
+        organ = Organ("cybernetic_tailbone", organ_data=spec)
+        organ.medical_state = target.medical_state
+        target.medical_state.organs["cybernetic_tailbone"] = organ
+        # Script lifecycle isn't under test — the stub has no
+        # Evennia scripts handler.
+        with patch.object(
+            MedicalCondition, "start_condition", lambda self, ch: None,
+        ):
+            target.medical_state.take_organ_damage(
+                "cybernetic_tailbone", 12, "bullet",
+            )
+        return [
+            getattr(c, "condition_type", "")
+            for c in target.medical_state.conditions
         ]
-        self.assertFalse(blocking)  # stump admits the mount
+
+    def test_inorganic_organ_damage_yields_pain_only(self):
+        types = self._damaged(inorganic=True)
+        self.assertNotIn("bleeding", types)
+        self.assertNotIn("infection", types)
+        self.assertIn("pain", types)
+
+    def test_organic_organ_damage_still_bleeds(self):
+        types = self._damaged(inorganic=False)
+        self.assertIn("bleeding", types)
+
+
+class TestSeveredCyberProse(TestCase):
+    def test_inorganic_parts_get_chrome_prose(self):
+        from world.anatomy.severed_parts import get_severed_part_description
+
+        for condition in ("pristine", "damaged", "putrid"):
+            prose = get_severed_part_description(
+                "human", "right_arm", condition, inorganic=True,
+            )
+            self.assertIn("cybernetic", prose.lower())
+            self.assertNotIn("muscle", prose.lower())
+
+    def test_flesh_parts_unchanged(self):
+        from world.anatomy.severed_parts import get_severed_part_description
+
+        prose = get_severed_part_description("human", "right_arm", "pristine")
+        self.assertIn("muscle", prose.lower())
 
 
 class TestCyberneticShotgunMessages(TestCase):

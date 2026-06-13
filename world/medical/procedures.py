@@ -1331,6 +1331,29 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
     } - {None}
     declared_containers.add(augment_container)
 
+    # Living-anatomy gate, re-checked at resolution (chart-commenced
+    # installs bypass CmdInstall's pre-dispatch gates — same pattern
+    # as the species and incision re-checks above).  Stumps and
+    # wreckage admit the mount; a living limb does not.
+    living = [
+        organ for organ in state.organs.values()
+        if getattr(organ, "container", None) in declared_containers
+        and organ.current_hp > 0
+    ]
+    if living:
+        container = living[0].container
+        actor.msg(
+            f"{target.get_display_name(actor)} still has a living "
+            f"{container.replace('_', ' ')} — the {organ_item.key} "
+            f"mounts over a stump or wreckage, not living anatomy."
+        )
+        from world.medical.charts import mark_running_step_failed
+        mark_running_step_failed(
+            target,
+            outcome=f"living anatomy at {container} — augment blocked",
+        )
+        return
+
     for organ_name in [
         name for name, organ in state.organs.items()
         if getattr(organ, "container", None) in declared_containers
@@ -1358,6 +1381,10 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
             continue
         longdesc_key = entry.get("key") or augment_container
         if longdesc_key in longdescs:
+            # Mounting over destroyed-in-place anatomy: the key
+            # survived (only severance removes it) but the limb it
+            # described is gone — the augment's prose replaces it.
+            longdescs[longdesc_key] = entry.get("default_desc")
             continue
         new_longdescs = {}
         display_after = entry.get("display_after")

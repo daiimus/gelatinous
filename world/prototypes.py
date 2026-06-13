@@ -1966,6 +1966,7 @@ CYBERNETIC_TAIL = {
                 "fracture_vulnerable": True, "bone_type": "actuator_column",
                 "severable_container": True,
                 "grasping": True,
+                "inorganic": True,
             },
         }),
         ("augment_container", "tail"),
@@ -2000,6 +2001,7 @@ SHOTGUN_ARM = {
                 "hit_weight": "common", "can_be_destroyed": True,
                 "fracture_vulnerable": True,
                 "bone_type": "actuator_column",
+                "inorganic": True,
                 "abilities": {
                     "shotgun": {
                         "type": "integrated_weapon",
@@ -2018,6 +2020,7 @@ SHOTGUN_ARM = {
                 "fracture_vulnerable": True,
                 "bone_type": "actuator_lattice",
                 "grasping": True,
+                "inorganic": True,
             },
         }),
         ("augment_container", "right_arm"),

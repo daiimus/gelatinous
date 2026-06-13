@@ -913,13 +913,23 @@ class MedicalState:
         """
         organ = self.get_organ(organ_name)
         was_destroyed = organ.take_damage(damage_amount, injury_type)
-        
+
         # Create medical conditions based on damage type and amount (Phase 2.6)
         if damage_amount > 0:
             new_conditions = self._create_conditions_from_damage(
                 damage_amount, injury_type, organ.container
             )
-            
+
+            # Inorganic organs (#516 follow-up, user decision
+            # 2026-06-13): chrome doesn't bleed and doesn't go
+            # septic — a shot-up gun arm loses function, not blood.
+            # Pain stays: neural feedback from the damaged graft.
+            if organ.data.get("inorganic"):
+                new_conditions = [
+                    c for c in new_conditions
+                    if getattr(c, "condition_type", "") == "pain"
+                ]
+
             # Add and start new conditions
             for condition in new_conditions:
                 self.add_condition(condition)
