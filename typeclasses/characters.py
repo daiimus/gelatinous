@@ -1583,6 +1583,28 @@ class Character(
             self._get_severed_locations()
             if hasattr(self, "_get_severed_locations") else set()
         )
+
+        # Functional-anatomy gate (#526 review): a grasping slot
+        # needs LIVING organs at its container.  The severed-set
+        # subtraction alone misses chain severances — the cut-point
+        # wound filter suppresses downstream wounds, so a hand
+        # attached to a severed arm never appeared "severed" and
+        # kept holding items.  Organ truth closes it: all organs at
+        # the container tombstoned (severed, harvested, or pulped
+        # in place) = no grip.  Characters without organ data at a
+        # location keep the legacy severed-set behavior.
+        if medical_state is not None:
+            organs = getattr(medical_state, "organs", {}) or {}
+            for location in list(grasping):
+                at_location = [
+                    o for o in organs.values()
+                    if getattr(o, "container", None) == location
+                ]
+                if at_location and not any(
+                        getattr(o, "current_hp", 1) > 0
+                        for o in at_location):
+                    severed = set(severed) | {location}
+
         held = self.held_items or {}
         return {
             location: held.get(location)

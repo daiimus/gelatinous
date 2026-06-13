@@ -152,6 +152,23 @@ class _HandsViewStub:
                         grasping.add(container)
 
         severed = self._get_severed_locations()
+
+        # Functional-anatomy gate (#526 review) — mirror of the real
+        # property: all organs at a grasping container tombstoned =
+        # no grip, even when the severed set missed it (chain
+        # severance suppresses downstream wounds).
+        if medical_state is not None:
+            organs = getattr(medical_state, "organs", {}) or {}
+            for location in list(grasping):
+                at_location = [
+                    o for o in organs.values()
+                    if getattr(o, "container", None) == location
+                ]
+                if at_location and not any(
+                        getattr(o, "current_hp", 1) > 0
+                        for o in at_location):
+                    severed = set(severed) | {location}
+
         held = self.held_items or {}
         return {
             location: held.get(location)
@@ -198,6 +215,27 @@ class HandsViewAgainstAnatomy(TestCase):
             set(char.hands), {"left_hand", "right_hand", "tail"},
         )
         self.assertIsNone(char.hands["tail"])
+
+    def test_chain_severed_hand_drops_out(self):
+        """The Laszlo finding (#526 review): severing the ARM
+        suppresses the hand's own wounds (cut-point filter), so the
+        severed set misses the hand — the organ-truth gate must
+        still remove the slot.  No holding cigarettes in a hand
+        attached to nothing."""
+        dead_hand_organ = SimpleNamespace(
+            data={}, container="right_hand", current_hp=0,
+        )
+        live_hand_organ = SimpleNamespace(
+            data={}, container="left_hand", current_hp=15,
+        )
+        state = SimpleNamespace(organs={
+            "right_metacarpals": dead_hand_organ,
+            "left_metacarpals": live_hand_organ,
+        })
+        char = _HandsViewStub(species="human", medical_state=state)
+        view = char.hands
+        self.assertNotIn("right_hand", view)
+        self.assertIn("left_hand", view)
 
     def test_severed_tail_drops_out_of_view(self):
         """The existing severance subtraction covers the augment slot
