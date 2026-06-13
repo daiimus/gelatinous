@@ -2093,6 +2093,57 @@ SHOTGUN_MODULE = {
     ],
 }
 
+# Nailz - flesh-mount natural weapon module (#526 M4)
+# Implants into LIVING anatomy at either hand (flesh or chrome) —
+# the host stays what it is; it just has claws in it now.  /nailz
+# extends them; active claws take combat precedence over anything
+# held (settled decision 2026-06-12).
+NAILZ = {
+    "key": "Nailz",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["nailz", "claw implants", "nail implants"],
+    "desc": "A sealed clinical tray of ten curved monofilament claws and their spring housings, sized for implantation along the fingers of one hand. The marketing name is etched on the tray lid in a typeface that has seen some court dates. Installation requires a surgeon; regret is sold separately.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("module_type", "nailz"),
+        ("module_mount", "flesh"),
+        ("flesh_containers", ["{side}_hand"]),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "module_type": "nailz",
+            "abilities": {
+                "nailz": {
+                    "type": "natural_weapon",
+                    "weapon_prototype": "NAILZ_CLAWS",
+                    "deploy_msg": "Your knuckles ache, then part — ten monofilament claws slide out along your fingers with a sound like scissors closing.",
+                    "retract_msg": "The claws fold back under your skin; your hand is just a hand again, mostly.",
+                    "deploy_room": "{actor} flexes a hand and monofilament claws slide out along their fingers, catching the light.",
+                    "retract_room": "{actor}'s claws fold away under the skin of their hand.",
+                },
+            },
+        }),
+    ],
+}
+
+# The claw weapon Nailz extends (#526 M4).  Never held — the claws
+# ARE the hand; combat resolution reads it via natural-weapon
+# precedence.  Reuses the tiger_claws message set.
+NAILZ_CLAWS = {
+    "prototype_parent": "MELEE_WEAPON_BASE",
+    "key": "monofilament claws",
+    "aliases": ["claws", "nailz claws"],
+    "desc": "Ten curved monofilament claws, extended from their knuckle housings. They are not for opening letters.",
+    "damage": 9,
+    "locks": "get:false();drop:false();give:false()",
+    "attrs": [
+        ("weapon_type", "tiger_claws"),
+        ("damage_type", "cut"),
+        ("hands_required", 1),
+        ("integrated", True),
+    ],
+}
+
 # The integrated weapon the shotgun arm deploys (#516).  Spawned
 # lazily on first /shotgun; locked + flagged integrated by the
 # ability layer regardless of what's declared here.

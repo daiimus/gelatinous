@@ -1604,6 +1604,113 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
         )
         return
 
+    # The module inherits its side from its mount's container
+    # ("left_arm" → "left") — one prototype serves either side.
+    side = location.split("_")[0] if "_" in location else ""
+    spec = _format_side(dict(module_spec), side) if side in ("left", "right") else dict(module_spec)
+
+    # Mount mode (#526 M4): "hardpoint" (default — chassis slot) or
+    # "flesh" (Nailz/Jawz class — the ability implants into LIVING
+    # anatomy at a declared container; flesh stays flesh, still
+    # bleeds, now has claws in it; a cyber hand stays chrome).
+    mount_mode = getattr(item_db, "module_mount", None) or "hardpoint"
+    if mount_mode == "flesh":
+        flesh_containers = [
+            _format_side(c, side) if side in ("left", "right") else c
+            for c in (getattr(item_db, "flesh_containers", None) or [])
+        ]
+        if location not in flesh_containers:
+            actor.msg(
+                f"The {organ_item.key} doesn't mount at "
+                f"{location.replace('_', ' ')}."
+            )
+            mark_running_step_failed(
+                target, outcome=f"{organ_item.key} can't mount at {location}",
+            )
+            return
+        host = next(
+            (o for o in state.organs.values()
+             if getattr(o, "container", None) == location
+             and o.current_hp > 0),
+            None,
+        )
+        if host is None:
+            actor.msg(
+                f"Nothing living at {target.get_display_name(actor)}'s "
+                f"{location.replace('_', ' ')} to implant the "
+                f"{organ_item.key} into."
+            )
+            mark_running_step_failed(
+                target, outcome=f"no living host anatomy at {location}",
+            )
+            return
+        new_abilities = spec.get("abilities") or {}
+        existing = host.data.get("abilities") or {}
+        if any(name in existing for name in new_abilities):
+            actor.msg(
+                f"{target.get_display_name(actor)}'s "
+                f"{location.replace('_', ' ')} already carries that "
+                f"hardware."
+            )
+            mark_running_step_failed(
+                target, outcome=f"duplicate module at {location}",
+            )
+            return
+
+        result = roll_procedure(actor, target)
+        outcome = result["outcome"]
+        if outcome == "failure":
+            seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
+            seed_infection(target, location)
+            actor.msg(
+                f"The implant bed won't take. The {organ_item.key} "
+                f"stays loose in your hands."
+            )
+            return
+
+        # Implant: merge the ability into the host organ's spec —
+        # deep-copied dict swap so the organ never shares storage
+        # with the soon-deleted item and the species table is never
+        # mutated.
+        host_data = dict(host.data)
+        merged = dict(host_data.get("abilities") or {})
+        merged.update(new_abilities)
+        host_data["abilities"] = merged
+        host_data["module_type"] = module_type
+        host.data = host_data
+
+        seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
+        if outcome == "partial":
+            seed_infection(target, location)
+            actor.msg(
+                f"You implant the {organ_item.key} — but the bed is "
+                f"inflamed. Time will tell."
+            )
+        else:
+            actor.msg(
+                f"You implant the {organ_item.key} into "
+                f"{target.get_display_name(actor)}'s "
+                f"{location.replace('_', ' ')}."
+            )
+        save = getattr(target, "save_medical_state", None)
+        if callable(save):
+            save()
+        if actor.location is not None:
+            msg_room_identity(
+                location=actor.location,
+                template=(
+                    f"{{actor}} implants a {organ_item.key} into "
+                    f"{{patient}}'s {location.replace('_', ' ')}."
+                ),
+                char_refs={"actor": actor, "patient": target},
+                exclude=[actor, target] if target is not actor else [actor],
+            )
+        try:
+            organ_item.delete()
+        except Exception as exc:
+            _log_guarded_failure("install_module_item_delete", organ_item, exc)
+        return
+
     hardpoint_name, hardpoint = find_hardpoint(
         state, module_type, container=location,
     )
@@ -1628,11 +1735,6 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
             f"stays loose in your hands."
         )
         return
-
-    # The module inherits its side from the hardpoint's container
-    # ("left_arm" → "left") — one prototype serves either arm.
-    side = location.split("_")[0] if "_" in location else ""
-    spec = _format_side(dict(module_spec), side) if side in ("left", "right") else dict(module_spec)
 
     from world.medical.core import Organ
     organ = Organ(hardpoint_name, organ_data=spec)

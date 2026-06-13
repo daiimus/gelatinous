@@ -92,6 +92,8 @@ def toggle_ability(character, name) -> str:
     ability_type = spec.get("type")
     if ability_type == "integrated_weapon":
         return _toggle_integrated_weapon(character, organ, name, spec)
+    if ability_type == "natural_weapon":
+        return _toggle_natural_weapon(character, organ, name, spec)
     return f"{name} doesn't respond. (unknown ability type {ability_type!r})"
 
 
@@ -238,6 +240,77 @@ def _toggle_integrated_weapon(character, organ, name, spec) -> str:
             exclude=[character],
         )
     return retract_msg
+
+
+def _toggle_natural_weapon(character, organ, name, spec) -> str:
+    """Toggle a natural cyberweapon (#526 M4 — the claws family).
+
+    Unlike integrated weapons, natural weapons never touch the hand
+    slots: the claws ARE the hand.  The weapon item lives off-grid
+    permanently; combat resolution reads it via the precedence rule
+    (active natural cyberweapon > held weapon > fists — settled
+    decision 2026-06-12: claws out means you fight with claws,
+    knife in hand or not).
+    """
+    from world.identity_utils import msg_room_identity
+
+    state = _ability_state(organ, name)
+    if not state.get("deployed"):
+        weapon = _get_or_spawn_weapon(character, state, spec)
+        if weapon is None:
+            return f"{name} grinds and fails — no hardware found."
+        state["deployed"] = True
+        _persist(character)
+        msg = spec.get("deploy_msg") or (
+            f"The {weapon.key} extend with a wet metallic whisper."
+        )
+        if character.location is not None:
+            msg_room_identity(
+                location=character.location,
+                template=spec.get("deploy_room") or (
+                    f"{{actor}}'s {weapon.key} slide out, catching "
+                    f"the light."
+                ),
+                char_refs={"actor": character},
+                exclude=[character],
+            )
+        return msg
+
+    state["deployed"] = False
+    _persist(character)
+    weapon = _find_weapon(state)
+    weapon_name = weapon.key if weapon else name
+    msg = spec.get("retract_msg") or (
+        f"The {weapon_name} retract, gone like they were never there."
+    )
+    if character.location is not None:
+        msg_room_identity(
+            location=character.location,
+            template=spec.get("retract_room") or (
+                f"{{actor}}'s {weapon_name} slide away out of sight."
+            ),
+            char_refs={"actor": character},
+            exclude=[character],
+        )
+    return msg
+
+
+def get_active_natural_weapon(character):
+    """The deployed natural cyberweapon's item, or ``None`` (#526
+    M4).  Consumed by combat's weapon resolution: active natural
+    cyberweapons take precedence over held weapons (settled decision
+    2026-06-12).  Severed organs drop out via :func:`iter_abilities`.
+    """
+    for organ, name, spec in iter_abilities(character):
+        if spec.get("type") != "natural_weapon":
+            continue
+        store = getattr(organ, "ability_state", None) or {}
+        if not (store.get(name) or {}).get("deployed"):
+            continue
+        weapon = _find_weapon(store.get(name) or {})
+        if weapon is not None:
+            return weapon
+    return None
 
 
 def _find_weapon(state):

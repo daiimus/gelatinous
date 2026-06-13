@@ -745,28 +745,71 @@ class CmdInstall(Command):
             )
             return
 
-        # Collect free hardpoints, optionally filtered by side.
+        # Collect candidate mount containers, optionally filtered by
+        # side.  Hardpoint modules want a free chassis slot; flesh
+        # modules (#526 M4 — Nailz/Jawz class) want LIVING anatomy
+        # at one of their declared containers.
+        mount_mode = (
+            getattr(organ_item.db, "module_mount", None) or "hardpoint"
+        )
         candidates = []
-        for organ_name, organ in state.organs.items():
-            data = getattr(organ, "data", None)
-            if not data or data.get("hardpoint") != module_type:
-                continue
-            if bool(data.get("abilities")) and organ.current_hp > 0:
-                continue  # occupied
-            container = getattr(organ, "container", None) or ""
-            if side_or_location:
-                side = side_or_location.split("_")[0]
-                if not container.startswith(side):
+        if mount_mode == "flesh":
+            declared = []
+            for raw in (organ_item.db.flesh_containers or []):
+                if "{side}" in raw:
+                    declared.extend(
+                        raw.replace("{side}", s) for s in ("left", "right")
+                    )
+                else:
+                    declared.append(raw)
+            new_ability_names = set(
+                ((organ_item.db.organ_spec or {}).get("abilities") or {})
+            )
+            for container in declared:
+                if side_or_location:
+                    side = side_or_location.split("_")[0]
+                    if not container.startswith(side):
+                        continue
+                host = next(
+                    (o for o in state.organs.values()
+                     if getattr(o, "container", None) == container
+                     and o.current_hp > 0),
+                    None,
+                )
+                if host is None:
                     continue
-            candidates.append((organ_name, container))
+                if new_ability_names & set(host.data.get("abilities") or {}):
+                    continue  # already carries this hardware
+                candidates.append((container, container))
+        else:
+            for organ_name, organ in state.organs.items():
+                data = getattr(organ, "data", None)
+                if not data or data.get("hardpoint") != module_type:
+                    continue
+                if bool(data.get("abilities")) and organ.current_hp > 0:
+                    continue  # occupied
+                container = getattr(organ, "container", None) or ""
+                if side_or_location:
+                    side = side_or_location.split("_")[0]
+                    if not container.startswith(side):
+                        continue
+                candidates.append((organ_name, container))
 
         if not candidates:
-            caller.msg(
-                f"No free {module_type.replace('_', ' ')} hardpoint "
-                f"on {target.get_display_name(caller)} — the "
-                f"{organ_item.key} needs a chassis slot (and an "
-                f"unoccupied one)."
-            )
+            if mount_mode == "flesh":
+                caller.msg(
+                    f"Nowhere on {target.get_display_name(caller)} "
+                    f"for the {organ_item.key} — it needs living "
+                    f"anatomy at a compatible location, without that "
+                    f"hardware already in it."
+                )
+            else:
+                caller.msg(
+                    f"No free {module_type.replace('_', ' ')} hardpoint "
+                    f"on {target.get_display_name(caller)} — the "
+                    f"{organ_item.key} needs a chassis slot (and an "
+                    f"unoccupied one)."
+                )
             return
         if len({c for _n, c in candidates}) > 1:
             sides = ", ".join(sorted(c.replace("_", " ") for _n, c in candidates))

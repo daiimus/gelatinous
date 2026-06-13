@@ -758,6 +758,108 @@ class TestModuleInstall(TestCase):
         self.assertIn("abilities", item.db.organ_spec)
 
 
+def _nailz_item():
+    item = SimpleNamespace()
+    item.key = "Nailz"
+    item.deleted = False
+
+    def _delete():
+        item.deleted = True
+    item.delete = _delete
+    item.db = SimpleNamespace(
+        module_type="nailz",
+        module_mount="flesh",
+        flesh_containers=["{side}_hand"],
+        condition="pristine",
+        organ_conditions=[],
+        organ_spec={
+            "module_type": "nailz",
+            "abilities": {
+                "nailz": {
+                    "type": "natural_weapon",
+                    "weapon_prototype": "NAILZ_CLAWS",
+                },
+            },
+        },
+        compatible_species=["human"],
+    )
+    item.get_display_name = lambda looker=None: item.key
+    return item
+
+
+class TestFleshMountModules(TestCase):
+    """#526 M4: the Nailz/Jawz class — abilities implant into LIVING
+    anatomy; the host stays what it is (flesh still bleeds)."""
+
+    def _install(self, target, item, location="left_hand", outcome="success"):
+        from world.medical.procedures import _resolve_install_module
+
+        actor = _surgeon()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": outcome},
+        ):
+            _resolve_install_module(
+                actor, target, organ_item=item, location=location,
+            )
+        return actor
+
+    def test_implants_into_living_flesh(self):
+        from world.medical.augments import find_ability
+
+        target = _patient()
+        open_incision(target, "left_hand")
+        item = _nailz_item()
+        self._install(target, item)
+
+        host = target.medical_state.organs["left_metacarpals"]
+        self.assertIn("nailz", host.data.get("abilities", {}))
+        # The host stays flesh — it still bleeds.
+        self.assertFalse(host.data.get("inorganic"))
+        organ, spec = find_ability(target, "nailz")
+        self.assertIs(organ, host)
+        self.assertEqual(spec["type"], "natural_weapon")
+        self.assertTrue(item.deleted)
+        # The species table was never mutated: a second character's
+        # metacarpals carry no claws.
+        other = _patient()
+        self.assertNotIn(
+            "nailz",
+            other.medical_state.organs["left_metacarpals"].data.get(
+                "abilities", {},
+            ),
+        )
+
+    def test_duplicate_implant_rejects(self):
+        target = _patient()
+        open_incision(target, "left_hand")
+        self._install(target, _nailz_item())
+        second = _nailz_item()
+        actor = self._install(target, second)
+        self.assertFalse(second.deleted)
+        self.assertTrue(any("already carries" in m for m in actor.messages))
+
+    def test_dead_anatomy_rejects(self):
+        target = _patient()
+        for organ in target.medical_state.organs.values():
+            if organ.container == "left_hand":
+                organ.current_hp = 0
+                organ.wound_stage = "destroyed"
+        open_incision(target, "left_hand")
+        item = _nailz_item()
+        actor = self._install(target, item)
+        self.assertFalse(item.deleted)
+        self.assertTrue(any("Nothing living" in m for m in actor.messages))
+
+    def test_undeclared_container_rejects(self):
+        target = _patient()
+        open_incision(target, "chest")
+        item = _nailz_item()
+        actor = self._install(target, item, location="chest")
+        self.assertFalse(item.deleted)
+        self.assertTrue(any("doesn't mount" in m for m in actor.messages))
+
+
 CYBER_HEART_SPEC = {
     "container": "chest", "max_hp": 20, "hit_weight": "uncommon",
     "vital": True, "capacity": "blood_pumping", "contribution": "total",

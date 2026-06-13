@@ -123,6 +123,18 @@ def get_wielded_weapon(character):
     Returns:
         The weapon object, or None if no weapon is wielded
     """
+    # Active natural cyberweapons win outright (#526 M4, settled
+    # decision 2026-06-12): claws out means you fight with claws,
+    # knife in hand or not.  Toggle them off to use the knife.
+    try:
+        from world.medical.augments import get_active_natural_weapon
+        natural = get_active_natural_weapon(character)
+        if natural is not None:
+            return natural
+    except Exception:
+        # Test stubs without a medical state fall through to hands.
+        pass
+
     hands = getattr(character, "hands", {})
     held = [item for item in hands.values() if item]
     for item in held:

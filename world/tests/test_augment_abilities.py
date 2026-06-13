@@ -144,6 +144,48 @@ class TestAbilityLayer(EvenniaTest):
             self.organ.ability_state["shotgun"].get("deployed", False)
         )
 
+    def test_natural_weapon_toggle_and_precedence(self):
+        """#526 M4: claws never touch the hand slots, and active
+        claws beat anything held (settled decision 2026-06-12)."""
+        from world.combat.utils import get_wielded_weapon
+
+        claws_organ = Organ("left_metacarpals_clawed", organ_data={
+            "container": "left_hand", "max_hp": 15,
+            "abilities": {
+                "nailz": {
+                    "type": "natural_weapon",
+                    "weapon_prototype": "NAILZ_CLAWS",
+                },
+            },
+        })
+        claws_organ.medical_state = self.char.medical_state
+        self.char.medical_state.organs["left_metacarpals_clawed"] = claws_organ
+        claws = create_object(
+            "typeclasses.items.Item", key="monofilament claws",
+            location=None,
+        )
+        claws.db.integrated = True
+        claws_organ.ability_state = {
+            "nailz": {"weapon_dbref": claws.dbref},
+        }
+        # A held, weapon-tagged knife to lose the precedence fight.
+        knife = create_object(
+            "typeclasses.items.Item", key="knife", location=self.char,
+        )
+        knife.tags.add("weapon", category="type")
+        self.char.hands = {"left_hand": knife}
+
+        toggle_ability(self.char, "nailz")
+        # Claws deployed: never in hands, still off-grid, but they
+        # ARE the combat weapon.
+        self.assertIsNone(claws.location)
+        self.assertNotIn(claws, self.char.hands.values())
+        self.assertIs(get_wielded_weapon(self.char), claws)
+
+        toggle_ability(self.char, "nailz")
+        # Retracted: the held knife serves again.
+        self.assertIs(get_wielded_weapon(self.char), knife)
+
     def test_no_inline_weapon_picks_outside_the_resolver(self):
         """Doctrine pin (#516 playtest): combat code must resolve
         weapons through get_wielded_weapon, never the inline
