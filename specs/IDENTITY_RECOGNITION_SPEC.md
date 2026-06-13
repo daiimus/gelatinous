@@ -33,7 +33,7 @@ What strangers see instead of a name. Composed from observable physical traits:
 
 - **Physical descriptor** — auto-derived from height × build (immutable without a new sleeve)
 - **Keyword** — player-selected via `describe keyword`, gender-gated
-- **Distinguishing feature** — auto-derived from visible state: clothing > hair > nothing
+- **Distinguishing feature** — auto-derived from visible state: wielded weapon / explosive > clothing > hair > nothing
 
 Skintone is deliberately excluded from the sdesc. It appears only in the longdesc when someone `look`s at the character directly.
 
@@ -148,7 +148,15 @@ person, kid, urchin, human, citizen, elder, fossil, fleshbag, denizen, neut, sna
 
 The distinguishing feature is the final clause of the sdesc. It is **always auto-derived** from the character's actual visible state — players cannot set it directly. This ensures the sdesc is always truthful to what observers can actually see.
 
-**Priority order:** clothing > hair > nothing
+**Priority order:** wielded weapon / explosive > clothing > hair > nothing
+
+#### Weapon-based Feature
+
+A held **weapon or explosive** outranks clothing and hair — what someone is brandishing is the most salient thing about them. "Weapon" means an item carrying the `("weapon", "type")` tag (the weapon-base prototypes), **not** `db.weapon_type` (which defaults to `"melee"` on every item — so a cigarette, lighter, or tool in hand does NOT dominate; it falls through to the garment). Explosives (`db.is_explosive`) also dominate.
+
+Format: `"wielding {article} {weapon}"` — e.g., `"wielding a kitchen knife"`.
+
+**Deployed cyberweapons dominate too.** An integrated weapon (arm-shotgun) sits in the `hands` dict while deployed, so it's picked here naturally; an active natural weapon (claws) lives off-grid and is checked explicitly via `get_active_natural_weapon`. Either way a deployed cyber weapon carries normal weapon weight in the sdesc while staying out of the "holding" list (it's part of the body — see `AUGMENT_ABILITIES_SPEC`).
 
 #### Clothing-based Feature
 

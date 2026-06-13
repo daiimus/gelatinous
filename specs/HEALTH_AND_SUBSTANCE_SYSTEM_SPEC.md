@@ -1,5 +1,23 @@
 # Health and Substance System Specification
 
+> **⚠️ Drift notice (2026-06-13).** This document predates several
+> shipped systems and is stale in places. Authoritative sources for
+> the current behavior:
+> * **Bleeding model** — layered brakes (bandage roll → `treated`
+>   30% residual flow + doubled clot hazard; wound-care dressing =
+>   full stop; **tourniquets** = limb-only instant hold; natural
+>   clotting only at severity ≤ 5; arterial 6+ needs intervention).
+>   The condition was renamed `minor_bleeding` → **`bleeding`**
+>   (legacy deserialize alias kept). See `CONDITION_CADENCE_SPEC` §5
+>   and `world/medical/conditions.py`.
+> * **Condition cadence** (per-minute rates, downtime cap, clock
+>   seam) — `CONDITION_CADENCE_SPEC`.
+> * **Per-character anatomy, augments, cyberware** —
+>   `ANATOMY_AUGMENTS_SPEC` and `AUGMENT_ABILITIES_SPEC` (incl. the
+>   anatomy-truth tombstone standard, `inorganic` organs = pain-only
+>   damage, chrome-aware heal/reset).
+> A full reconciliation of this spec is tracked as its own pass.
+
 ## Implementation Status
 
 ### ✅ COMPLETED PHASES

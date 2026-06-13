@@ -133,6 +133,15 @@ with the species grasping set, minus severed — the existing
 severance subtraction then handles "severed tail drops what it
 held" with no new code.
 
+**Grasping requires functional anatomy** (shipped, post-Phase 2):
+a hand slot only grips when it has a living organ at its container.
+Chain severance suppresses a downstream wound (one wound at the cut
+point), so the wound-derived severed set alone missed a hand
+attached to a severed arm — it kept holding things.  The `hands`
+property now also drops any container whose organs are all
+tombstoned (severed / harvested / pulped).  A crushed-but-attached
+hand can't grip either.
+
 ### 3.5 · Severance
 
 A container is severable when it's in the species severable set
@@ -148,6 +157,62 @@ The longdesc renderer appends per-character locations missing from
 the species display order after their `display_after` hint (or at
 the end of their region).  Wound rendering follows
 `display_location` as it already does.
+
+**Chrome rendering** (shipped): a body location whose organs are
+`inorganic` renders in a light steel grey (`CHROME_DEFAULT_COLOR`)
+instead of the wearer's skintone — chrome is not flesh.  Limb
+longdesc is side-aware via the `{side}` token (resolved at install).
+A deployed integrated weapon expands the limb's longdesc and
+replaces the consumed hand's — see `AUGMENT_ABILITIES_SPEC` §9.
+
+### 3.7 · The body is the single truth (the anatomy-truth standard)
+
+The character's `organs` dict is the **only** source of present
+anatomy; nothing auto-creates.  `get_organ` returns existing-or-
+`None` — never lazily creates from the species table (the old
+behavior was a zombie-organ factory: capacity math iterating
+species lists by name resurrected install-deleted flesh organs at
+full HP).  Absence is meaningful.
+
+Severed organs persist as **0-HP `"severed"` tombstones** — they
+ARE the stump, and they are load-bearing: wound rendering, the
+`hands` functional gate (§3.4), capacity loss, and the re-augment
+"stump or wreckage" gate all read them.  Augment / reattach installs
+clear tombstones at their containers when new anatomy takes the
+slot.  Capacity math skips absent organs — a mounted replacement
+implicitly restores capacity; a bare stump keeps dragging it down
+via its tombstone.
+
+### 3.8 · Inorganic organs
+
+An organ spec flag `"inorganic": true` marks chrome.  Damage to an
+inorganic organ yields **pain only** — no bleeding, no infection
+(chrome doesn't hemorrhage or go septic; pain is neural feedback
+from the graft).  Severed inorganic parts get cybernetic part prose
+and a `"cybernetic <part>"` name instead of flesh ("muscle firm…
+cartilage").
+
+### 3.9 · Heal & reset
+
+`MedicalState.full_heal()` (the `@heal` / revive backend) restores
+**present anatomy only** — tombstones are absence records, not
+injuries, so healing never regrows a severed limb or resurrects a
+harvested-out module (which would duplicate its ability).  It
+preserves cyberware toggle state (a deployed gun is not an injury).
+`@resetmedical` rebuilds flesh from the current species table but
+**preserves installed augments** via `is_augment_organ()` (no
+species-table entry, or `inorganic` / `abilities` / `hardpoint` /
+`module_type` markers) — a wholesale nuke would erase every
+installed limb, tail, heart, and module.
+
+### 3.10 · Reattachment & the prosthetic frame
+
+Reattaching a whole severed limb is gated on an explicit
+`"prosthetic_frame": true` marker stamped on a chassis's frame
+organs at install — never inferred from organ content.  Flesh never
+reattaches (necrosis), even with cyberware implanted in it; only a
+prosthetic frame bolts back on.  Full mechanics in
+`AUGMENT_ABILITIES_SPEC` §8.
 
 ## 4 · The cybernetic tail (first consumer)
 
@@ -172,13 +237,18 @@ variants are new prototype text over the same attrs.
 
 ## 5 · Phases
 
-* **Phase 1 — substrate refactor** (one PR): organ-spec round-trip
-  + per-character location→organ resolution + equivalence tests +
-  the rat-tail fix + hit-resolution benchmark.  Pure refactor; no
-  behavior change for humans.
-* **Phase 2 — augment install** (one PR): `CmdInstall` augment
+* **Phase 1 — substrate refactor** — **shipped**: organ-spec
+  round-trip + per-character location→organ resolution + the
+  rat-tail fix + hit-resolution benchmark.
+* **Phase 2 — augment install** — **shipped**: `CmdInstall` augment
   branch, longdesc insertion, severable/grasping overlays,
-  prehensile `hands` merge, the tail prototype, full test suite.
+  prehensile `hands` merge, the tail prototype.
+* **Post-Phase-2 standards** — **shipped** (§3.4, §3.6–3.10):
+  functional-anatomy grasping, chrome rendering, the anatomy-truth
+  tombstone standard, inorganic-organ behavior, chrome-aware heal /
+  reset, and the prosthetic-frame reattachment gate.  The
+  chassis+module cyberware standard built on this substrate lives in
+  `AUGMENT_ABILITIES_SPEC` §7.
 * **Phase 3 — future, parked**: capacity contributions (waits on
   capacity consumers), synth compatibility (item-data edit),
   biotech theming, implant-specific organ-bound conditions
