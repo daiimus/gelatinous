@@ -78,9 +78,18 @@ class TestAbilityLayer(EvenniaTest):
 
     def test_severed_organ_loses_the_ability(self):
         self.organ.wound_stage = "severed"
+        self.organ.current_hp = 0
         organ, spec = find_ability(self.char, "shotgun")
         self.assertIsNone(organ)
         self.assertIn("no cyberware", toggle_ability(self.char, "shotgun"))
+
+    def test_dead_organ_powers_nothing(self):
+        """Abilities require a FUNCTIONAL organ (#526 playtest fix):
+        a harvested-out or destroyed slot at 0 HP is a tombstone, not
+        a power source — /shotgun on it must find nothing."""
+        self.organ.current_hp = 0  # destroyed in place / harvested out
+        organ, spec = find_ability(self.char, "shotgun")
+        self.assertIsNone(organ)
 
     def test_unknown_ability_lists_what_you_have(self):
         msg = toggle_ability(self.char, "lasereyes")

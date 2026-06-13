@@ -34,14 +34,16 @@ CYBERWARE_COMMAND_PREFIX = "/"
 
 def iter_abilities(character):
     """Yield ``(organ, ability_name, spec)`` for every ability on the
-    character's body.  Severed organs are skipped — the hardware left
-    with the limb."""
+    character's body.  Abilities require a FUNCTIONAL organ: severed
+    limbs took their hardware with them, harvested-out modules left a
+    dead slot, and a destroyed hardpoint is so much shrapnel — all of
+    those are 0-HP tombstones and power nothing."""
     state = getattr(character, "medical_state", None)
     organs = getattr(state, "organs", None) if state else None
     if not organs:
         return
     for organ in organs.values():
-        if getattr(organ, "wound_stage", None) == "severed":
+        if getattr(organ, "current_hp", 0) <= 0:
             continue
         data = getattr(organ, "data", None)
         abilities = data.get("abilities") if data else None
