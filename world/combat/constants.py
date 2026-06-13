@@ -217,10 +217,10 @@ SKINTONE_PALETTE = {
 VALID_SKINTONES = set(SKINTONE_PALETTE.keys())
 
 # Raw cybernetic chrome (#516 review).  Inorganic body locations
-# render in gunmetal grey instead of the wearer's skintone — chrome
-# is not flesh.  When coating items arrive they'll override this per
-# augment; until then this is the bare-metal default.
-CHROME_DEFAULT_COLOR = "|x"  # gunmetal / bright-black
+# render in a light steel grey instead of the wearer's skintone —
+# chrome is not flesh.  When coating items arrive they'll override
+# this per augment; until then this is the bare-metal default.
+CHROME_DEFAULT_COLOR = "|444"  # light steel grey (xterm256 4/4/4)
 
 # ===================================================================
 # CHANNELS & LOGGING

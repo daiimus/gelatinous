@@ -188,16 +188,17 @@ four templates, never bespoke systems.
    into the existing slot via the replacement path, which rebuilds
    the organ: **same canonical organ name** (capacity tables key by
    name; theming lives in display prose — the standing principle),
-   new spec (`inorganic`, adjusted HP).
-   *Requires: spec-carrying organ items in `_resolve_install`.*
+   new spec (`inorganic`, adjusted HP).  **Shipped** (M1):
+   `CYBERNETIC_HEART`; harvest writes `organ_spec` onto the item,
+   `_resolve_install` rebuilds the slot from it.
 2. **Anatomy augment** (the tail): new containers via the augment
-   path.  Shipped.
+   path.  **Shipped.**
 3. **Limb chassis** (prosthetic arm / leg): augment over a stump or
    wreckage — and **side-agnostic**: one `CYBER_ARM` prototype
    mounts left or right, the surgeon names the side at install and
    the item's organ/longdesc/anchor templates resolve `{side}`.
-   A chassis may declare empty **hardpoint** organ slots.
-   *Requires: side parameterization in the augment install.*
+   A chassis declares empty **hardpoint** organ slots and stamps
+   `prosthetic_frame` on its frame organs (§9).  **Shipped** (M2/M3).
 4. **Ability module** (shotgun, claws/Nailz, teeth/Jawz): an organ
    item carrying spec + ability that installs INTO anatomy — a
    chassis hardpoint, or **compatible flesh anatomy** (Nailz into a
@@ -206,17 +207,64 @@ four templates, never bespoke systems.
    its side/slot from where it's mounted; its ability "just does
    its thing" from there.  **Harvest is the recovery verb**: a
    module comes out of a severed limb or corpse as the organ item
-   it is.
-   *Requires: harvest carrying organ spec data onto the item;
-   mount-requirement declaration (container class +
-   flesh/chrome compatibility).*
+   it is.  **Shipped** (M3 hardpoint + M4 flesh-mount):
+   `SHOTGUN_MODULE` (forearm hardpoint), `NAILZ` (flesh-mount
+   natural weapon).
 
-The shipped `SHOTGUN_ARM` refactors into `CYBER_ARM` (side-agnostic
-chassis, forearm hardpoint) + `SHOTGUN_MODULE` when this lands;
-fused all-in-ones may return later as flavor, but the standard
+The fused `SHOTGUN_ARM` was retired in favor of `CYBER_ARM`
+(side-agnostic chassis, forearm hardpoint) + `SHOTGUN_MODULE`.
+Fused all-in-ones may return later as flavor, but the standard
 template is modular.
 
-## 8 · Maintenance contract
+## 8 · Limb reattachment & the prosthetic frame
+
+A severed limb is an `Appendage` carrying a medical snapshot of its
+organs.  Two things determine what can be done with it:
+
+* **Reattachment is a property of the FRAME, marked explicitly.**
+  Only a limb whose frame was installed as a cybernetic prosthetic
+  reattaches.  The chassis stamps `prosthetic_frame: True` on its
+  frame organs at install (and the hardpoint-seated module keeps the
+  flag); `is_cybernetic_limb()` returns True when **any** organ in
+  the severed snapshot carries it.  This is NOT inferred from organ
+  content — a limb can be flesh and chrome at once.  A flesh limb,
+  even with cyberware implanted in it (Nailz on a flesh hand, a
+  lone cyber sub-organ), has no frame: it necroses and does not
+  reattach.  Flesh never reattaches; necrosis stands.
+* **Components recover regardless of the limb.**  Whether or not the
+  whole limb reattaches, its harvestable parts — a seated module, a
+  replaceable organ — pull out via `harvest` and reinstall
+  elsewhere.  Module-only salvage and whole-limb reattach are both
+  valid; surgeon's choice.
+
+**Reattachment is a lossless round-trip apart from two deltas:** the
+limb's damage/condition travels with it (HP and wound stage are in
+the snapshot and restored as-is — a shot-up arm reattaches shot-up),
+and deployed weapons come back **retracted** (the deployed weapon
+item does not survive the cut; the module re-spawns it on the next
+toggle).  Everything else — chassis, seated module, frame flag,
+side, longdesc — is preserved.
+
+Mechanically: an installed prosthetic and its severed appendage are
+the **same organs in two states**.  Install (`install <limb> in
+<patient>`) and the `operate` chart both route a severed cyber limb
+to the `install_limb` resolver, which rebuilds the organs from the
+snapshot over a stump (amputate first — any compatible body, so
+scavenged chrome bolts on), restores the carried longdesc, and
+consumes the appendage.
+
+## 9 · Chrome rendering
+
+Inorganic body locations render in a light steel grey
+(`CHROME_DEFAULT_COLOR`, `world/combat/constants.py`) rather than
+the wearer's skintone — chrome is not flesh.  Coating items will
+override this per augment when they exist; until then it is the
+bare-metal default.  Limb longdesc is side-aware via the `{side}`
+token (resolved at install), and a deployed integrated weapon
+expands the limb's longdesc (`deployed_longdesc`) while replacing
+the consumed hand's longdesc (`deployed_longdesc_slot`).
+
+## 10 · Maintenance contract
 
 * New toggleable cyberware declares a §2 ability — never a bespoke
   command or a character-level flag.
