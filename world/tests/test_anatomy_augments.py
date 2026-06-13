@@ -804,6 +804,37 @@ class TestFleshMountModules(TestCase):
             )
         return actor
 
+    def test_jawz_targets_the_jaw_not_the_brain(self):
+        """flesh_organ targeting (#525): a multi-organ container (head)
+        requires naming the specific host, or the implant would land
+        in whatever organ comes first (the brain)."""
+        from world.medical.augments import find_ability
+
+        target = _patient()
+        open_incision(target, "head")
+        jawz = SimpleNamespace()
+        jawz.key = "Jawz"
+        jawz.deleted = False
+        jawz.delete = lambda: setattr(jawz, "deleted", True)
+        jawz.get_display_name = lambda looker=None: "Jawz"
+        jawz.db = SimpleNamespace(
+            module_type="jawz", module_mount="flesh",
+            flesh_containers=["head"], flesh_organ="jaw",
+            condition="pristine", organ_conditions=[],
+            organ_spec={"module_type": "jawz", "abilities": {
+                "jawz": {"type": "natural_weapon",
+                         "weapon_prototype": "JAWZ_FANGS"}}},
+            compatible_species=["human"],
+        )
+        self._install(target, jawz, location="head")
+
+        organs = target.medical_state.organs
+        self.assertIn("jawz", organs["jaw"].data.get("abilities", {}))
+        self.assertNotIn("jawz", organs["brain"].data.get("abilities", {}))
+        self.assertTrue(jawz.deleted)
+        found, _spec = find_ability(target, "jawz")
+        self.assertIs(found, organs["jaw"])
+
     def test_implants_into_living_flesh(self):
         from world.medical.augments import find_ability
 
@@ -1270,6 +1301,35 @@ class TestCyberneticShotgunMessages(TestCase):
             "attacker_name": "A", "target_name": "B",
             "item_name": "gun", "item": "gun",
             "hit_location": "chest", "damage": 20, "phase": "x",
+        }
+        for phase, variants in MESSAGES.items():
+            for variant in variants:
+                for key in ("attacker_msg", "victim_msg", "observer_msg"):
+                    variant[key].format(**kwargs)
+
+
+class TestCyberneticTeethMessages(TestCase):
+    """Jawz bite message set (#525)."""
+
+    def test_message_set_loads_for_every_phase(self):
+        from world.combat.messages import get_combat_message
+        from world.combat.messages.cybernetic_teeth import MESSAGES
+
+        for phase in ("initiate", "hit", "miss", "kill"):
+            self.assertGreaterEqual(len(MESSAGES[phase]), 12)
+            result = get_combat_message(
+                "cybernetic_teeth", phase, hit_location="arm",
+            )
+            self.assertNotIn("Error", result["attacker_msg"])
+            self.assertNotIn(f"You {phase}", result["attacker_msg"])
+
+    def test_every_variant_formats_cleanly(self):
+        from world.combat.messages.cybernetic_teeth import MESSAGES
+
+        kwargs = {
+            "attacker_name": "A", "target_name": "B",
+            "item_name": "fangs", "item": "fangs",
+            "hit_location": "arm", "phase": "x",
         }
         for phase, variants in MESSAGES.items():
             for variant in variants:

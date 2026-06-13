@@ -2156,6 +2156,57 @@ NAILZ_CLAWS = {
     ],
 }
 
+# JAWZ - flesh-mount natural weapon, implanted into the jaw (#525/M4).
+# Like NAILZ but targets a SPECIFIC host organ (the jaw) since the
+# head container holds many organs.  /jawz bares the fangs; active
+# fangs take combat precedence over a held weapon (you bit them).
+JAWZ = {
+    "key": "Jawz",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["jawz", "fang implants", "teeth implants"],
+    "desc": "A surgical case of paired titanium-alloy fangs and their gum-line actuators, machined to seat over a living mandible. The lid carries a worn sticker — a grinning chrome skull — and a warranty void the moment it leaves the shop. Installation requires a surgeon.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("module_type", "jawz"),
+        ("module_mount", "flesh"),
+        ("flesh_containers", ["head"]),
+        ("flesh_organ", "jaw"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "module_type": "jawz",
+            "abilities": {
+                "jawz": {
+                    "type": "natural_weapon",
+                    "weapon_prototype": "JAWZ_FANGS",
+                    "deploy_msg": "Your gums ache and split — alloy fangs slide down over your teeth with an oily click, and your jaw sets a little wider to hold them.",
+                    "retract_msg": "The fangs retract into your gum line with a wet snick; your smile is almost normal again.",
+                    "deployed_longdesc": "Alloy fangs jut from {their} gum line, too long and too sharp for the mouth that holds them.",
+                    "deploy_room": "{actor}'s jaw flexes and a row of alloy fangs slides down over their teeth, catching the light.",
+                    "retract_room": "{actor}'s fangs retract into their gum line with a wet click.",
+                },
+            },
+        }),
+    ],
+}
+
+# The fangs Jawz bares (#525).  Never held — they ARE the bite;
+# combat reads them via natural-weapon precedence.
+JAWZ_FANGS = {
+    "prototype_parent": "MELEE_WEAPON_BASE",
+    "key": "alloy fangs",
+    "aliases": ["fangs", "jawz fangs", "teeth"],
+    "desc": "Paired rows of titanium-alloy fangs, extended and locked. They were not designed with kissing in mind.",
+    "damage": 8,
+    "locks": "get:false();drop:false();give:false()",
+    "attrs": [
+        ("weapon_type", "cybernetic_teeth"),
+        ("damage_type", "stab"),
+        ("hands_required", 0),
+        ("integrated", True),
+    ],
+}
+
 # The integrated weapon the shotgun arm deploys (#516).  Spawned
 # lazily on first /shotgun; locked + flagged integrated by the
 # ability layer regardless of what's declared here.

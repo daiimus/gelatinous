@@ -1631,12 +1631,21 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
                 target, outcome=f"{organ_item.key} can't mount at {location}",
             )
             return
-        host = next(
-            (o for o in state.organs.values()
-             if getattr(o, "container", None) == location
-             and o.current_hp > 0),
-            None,
-        )
+        # A module may name a SPECIFIC host organ (JAWZ → the jaw) for
+        # multi-organ containers; otherwise it takes the first living
+        # organ at the location (NAILZ → the lone hand organ).
+        flesh_organ = getattr(item_db, "flesh_organ", None)
+        if flesh_organ:
+            host = state.organs.get(flesh_organ)
+            if host is not None and host.current_hp <= 0:
+                host = None
+        else:
+            host = next(
+                (o for o in state.organs.values()
+                 if getattr(o, "container", None) == location
+                 and o.current_hp > 0),
+                None,
+            )
         if host is None:
             actor.msg(
                 f"Nothing living at {target.get_display_name(actor)}'s "

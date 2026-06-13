@@ -772,17 +772,25 @@ class CmdInstall(Command):
             new_ability_names = set(
                 ((organ_item.db.organ_spec or {}).get("abilities") or {})
             )
+            flesh_organ = getattr(organ_item.db, "flesh_organ", None)
             for container in declared:
                 if side_or_location:
                     side = side_or_location.split("_")[0]
                     if not container.startswith(side):
                         continue
-                host = next(
-                    (o for o in state.organs.values()
-                     if getattr(o, "container", None) == container
-                     and o.current_hp > 0),
-                    None,
-                )
+                # Specific named host (JAWZ → jaw) or first living
+                # organ at the container (NAILZ → the lone hand organ).
+                if flesh_organ:
+                    host = state.organs.get(flesh_organ)
+                    if host is not None and host.current_hp <= 0:
+                        host = None
+                else:
+                    host = next(
+                        (o for o in state.organs.values()
+                         if getattr(o, "container", None) == container
+                         and o.current_hp > 0),
+                        None,
+                    )
                 if host is None:
                     continue
                 if new_ability_names & set(host.data.get("abilities") or {}):
