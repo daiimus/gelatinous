@@ -170,23 +170,11 @@ class AppearanceMixin:
                 # is the sole description.
                 if (location in longdescs and longdescs[location]
                         and location not in destroyed_locs):
-                    # Longdesc should have skintone applied
-                    processed_desc = self._process_description_variables(
-                        longdescs[location], looker,
-                        force_third_person=True, apply_skintone=True,
-                        side=self._side_from_location(location),
+                    # Chrome-aware render: flesh → skintone, inorganic
+                    # → gunmetal + deployed-module expansion (#516).
+                    processed_desc = self._render_body_longdesc(
+                        location, longdescs[location], looker
                     )
-
-                    # Add wounds to this location if any exist
-                    try:
-                        from world.medical.wounds import append_wounds_to_longdesc
-                        processed_desc = append_wounds_to_longdesc(
-                            processed_desc, self, location, looker
-                        )
-                    except ImportError:
-                        # Wound system not available, continue without wounds
-                        pass
-
                     descriptions.append((location, processed_desc))
                 else:
                     # No longdesc for this location, but check for standalone wounds
@@ -230,26 +218,13 @@ class AppearanceMixin:
                             descriptions.append((location, desc))
                             added_clothing_items.add(clothing_item)
                 elif location in longdescs and longdescs[location]:
-                    # Extended location with longdesc - apply template variable
-                    # processing and skintone. Same side-aware singular
-                    # flex treatment as the standard-anatomy branch
-                    # above (#341).
-                    processed_desc = self._process_description_variables(
-                        longdescs[location], looker,
-                        force_third_person=True, apply_skintone=True,
-                        side=self._side_from_location(location),
+                    # Extended location with longdesc — chrome-aware
+                    # render (skintone for flesh, gunmetal + deployed-
+                    # module expansion for inorganic; #341 side flex
+                    # and wound-append handled inside the helper).
+                    processed_desc = self._render_body_longdesc(
+                        location, longdescs[location], looker
                     )
-
-                    # Add wounds to this extended location if any exist
-                    try:
-                        from world.medical.wounds import append_wounds_to_longdesc
-                        processed_desc = append_wounds_to_longdesc(
-                            processed_desc, self, location, looker
-                        )
-                    except ImportError:
-                        # Wound system not available, continue without wounds
-                        pass
-
                     descriptions.append((location, processed_desc))
                 else:
                     # No longdesc for extended location, but check for
@@ -754,6 +729,78 @@ class AppearanceMixin:
 
         # Join all parts with appropriate spacing (blank lines between sections)
         return '\n\n'.join(parts)
+
+    def _location_is_inorganic(self, location):
+        """True when ``location`` is cybernetic chrome (#516 review).
+
+        Reads the medical organs at the container: any organ flagged
+        ``inorganic`` makes the whole location render as metal rather
+        than flesh (no skintone; gunmetal wrap).  Matches by container
+        or display_location so surface keys line up with bulk organs.
+        """
+        state = getattr(self, "medical_state", None)
+        organs = getattr(state, "organs", None) if state else None
+        if not organs:
+            return False
+        for organ in organs.values():
+            if location not in (
+                getattr(organ, "container", None),
+                getattr(organ, "display_location", None),
+            ):
+                continue
+            data = getattr(organ, "data", None)
+            if data and data.get("inorganic"):
+                return True
+        return False
+
+    def _deployed_module_longdesc(self, location):
+        """Prose for any deployed ability module at ``location``
+        (#516 review item 4): the chrome arm's baseline longdesc
+        expands when a weapon is out.  Returns the joined
+        ``deployed_longdesc`` strings, or ``""``.
+        """
+        state = getattr(self, "medical_state", None)
+        organs = getattr(state, "organs", None) if state else None
+        if not organs:
+            return ""
+        out = []
+        for organ in organs.values():
+            if getattr(organ, "container", None) != location:
+                continue
+            data = getattr(organ, "data", None) or {}
+            abilities = data.get("abilities") or {}
+            store = getattr(organ, "ability_state", None) or {}
+            for name, spec in abilities.items():
+                if not (store.get(name) or {}).get("deployed"):
+                    continue
+                prose = spec.get("deployed_longdesc")
+                if prose:
+                    out.append(prose)
+        return " ".join(out)
+
+    def _render_body_longdesc(self, location, text, looker):
+        """Process one location's longdesc: flesh gets tokens +
+        skintone; chrome (#516 review) gets gunmetal + any deployed-
+        module expansion instead.  Wounds append either way."""
+        is_chrome = self._location_is_inorganic(location)
+        processed = self._process_description_variables(
+            text, looker,
+            force_third_person=True, apply_skintone=not is_chrome,
+            side=self._side_from_location(location),
+        )
+        if is_chrome:
+            from world.combat.constants import CHROME_DEFAULT_COLOR
+            deployed = self._deployed_module_longdesc(location)
+            body = f"{processed} {deployed}" if deployed else processed
+            processed = f"{CHROME_DEFAULT_COLOR}{body}|n"
+        try:
+            from world.medical.wounds import append_wounds_to_longdesc
+            processed = append_wounds_to_longdesc(
+                processed, self, location, looker
+            )
+        except ImportError:
+            pass
+        return processed
 
     @staticmethod
     def _side_from_location(location):

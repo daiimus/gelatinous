@@ -2048,11 +2048,11 @@ CYBER_ARM = {
         ("augment_longdesc", [
             {
                 "key": "{side}_arm",
-                "default_desc": "A full cybernetic arm, matte composite plating over an actuator column, an access panel seam running the length of the forearm.",
+                "default_desc": "A full cybernetic {side} arm, matte composite plating over an actuator column, an access panel seam running the length of the forearm.",
             },
             {
                 "key": "{side}_hand",
-                "default_desc": "An articulated alloy hand, five-fingered and precise, the knuckle plating worn smooth.",
+                "default_desc": "An articulated alloy {side} hand, five-fingered and precise, the knuckle plating worn smooth.",
                 "display_after": "{side}_arm",
             },
         ]),
@@ -2085,6 +2085,7 @@ SHOTGUN_MODULE = {
                     "weapon_prototype": "SHOTGUN_ARM_GUN",
                     "deploy_msg": "Your {side} forearm splits along its seam and the shotgun rotates up into place — the hand folds back and away, and the barrel is just *there*, like it always was.",
                     "retract_msg": "The shotgun swings down and folds along the actuator column; plating closes over it and your fingers flex, a hand again.",
+                    "deployed_longdesc": "The forearm housing has split open along its seam, a stub shotgun barrel deployed and locked where the hand should be.",
                     "deploy_room": "{actor}'s forearm splits open with a snap of locking servos — a shotgun barrel rotates up out of the housing where their hand used to be.",
                     "retract_room": "{actor}'s arm-shotgun folds away into the forearm housing; plating seals and their hand reassembles, fingers flexing.",
                 },
@@ -2118,6 +2119,7 @@ NAILZ = {
                     "weapon_prototype": "NAILZ_CLAWS",
                     "deploy_msg": "Your knuckles ache, then part — ten monofilament claws slide out along your fingers with a sound like scissors closing.",
                     "retract_msg": "The claws fold back under your skin; your hand is just a hand again, mostly.",
+                    "deployed_longdesc": "Ten monofilament claws stand extended from the fingertips, catching the light.",
                     "deploy_room": "{actor} flexes a hand and monofilament claws slide out along their fingers, catching the light.",
                     "retract_room": "{actor}'s claws fold away under the skin of their hand.",
                 },

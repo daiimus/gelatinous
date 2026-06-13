@@ -430,3 +430,64 @@ class TestDeployedWeaponDisplay(EvenniaTest):
         toggle_ability(self.char, "nailz")
         feature = self.char.get_distinguishing_feature()
         self.assertIn("claws", feature.lower())
+
+
+class TestChromeLongdesc(EvenniaTest):
+    """#516 review (item 2 + item 4-longdesc): chrome renders gunmetal
+    (not skintone), and a deployed module expands the limb's longdesc."""
+
+    def setUp(self):
+        super().setUp()
+        self.char = create_object(Character, key="Chrome", location=self.room1)
+        self.char.db.skintone = "tan"
+        organ = Organ("cybernetic_humerus", organ_data={
+            "container": "left_arm", "max_hp": 30, "inorganic": True,
+            "abilities": {"shotgun": {
+                "type": "integrated_weapon", "slot": "left_hand",
+                "weapon_prototype": "X",
+                "deployed_longdesc": "A stub shotgun barrel juts where the hand should be.",
+            }},
+        })
+        organ.medical_state = self.char.medical_state
+        self.char.medical_state.organs["cybernetic_humerus"] = organ
+        self.organ = organ
+        ld = dict(self.char.longdesc or {})
+        ld["left_arm"] = "A full cybernetic left arm."
+        self.char.longdesc = ld
+
+    def test_inorganic_location_detected(self):
+        self.assertTrue(self.char._location_is_inorganic("left_arm"))
+        self.assertFalse(self.char._location_is_inorganic("chest"))
+
+    def test_chrome_renders_gunmetal_not_skintone(self):
+        from world.combat.constants import (
+            CHROME_DEFAULT_COLOR, SKINTONE_PALETTE,
+        )
+        rendered = self.char._render_body_longdesc(
+            "left_arm", self.char.longdesc["left_arm"], self.char,
+        )
+        self.assertIn(CHROME_DEFAULT_COLOR, rendered)
+        self.assertNotIn(SKINTONE_PALETTE["tan"], rendered)
+
+    def test_flesh_still_skintoned(self):
+        from world.combat.constants import SKINTONE_PALETTE
+        rendered = self.char._render_body_longdesc(
+            "chest", "A broad chest.", self.char,
+        )
+        self.assertIn(SKINTONE_PALETTE["tan"], rendered)
+
+    def test_deployed_module_expands_longdesc(self):
+        self.organ.ability_state = {
+            "shotgun": {"deployed": True, "weapon_dbref": "#1"},
+        }
+        rendered = self.char._render_body_longdesc(
+            "left_arm", self.char.longdesc["left_arm"], self.char,
+        )
+        self.assertIn("shotgun barrel juts", rendered)
+
+    def test_retracted_module_does_not_expand(self):
+        self.organ.ability_state = {"shotgun": {"deployed": False}}
+        rendered = self.char._render_body_longdesc(
+            "left_arm", self.char.longdesc["left_arm"], self.char,
+        )
+        self.assertNotIn("shotgun barrel juts", rendered)
