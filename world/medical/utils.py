@@ -432,7 +432,7 @@ def distribute_damage_to_organs(location, total_damage, medical_state, injury_ty
     functional_organs = []
     for organ_name in organs:
         organ = medical_state.get_organ(organ_name)
-        if not organ.is_destroyed():
+        if organ is not None and not organ.is_destroyed():
             functional_organs.append(organ_name)
     
     # If all organs in this location are destroyed, no damage can be applied

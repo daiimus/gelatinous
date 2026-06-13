@@ -646,21 +646,25 @@ class MedicalState:
         self._cache_dirty = True
 
     def get_organ(self, organ_name):
-        """Get organ by name, creating if it doesn't exist.
+        """Get organ by name, or ``None`` when the body doesn't have it.
 
-        Species-aware (issue #356 Phase 1) — lazily-created organs
-        consult the owning character's species so the spec lookup
-        targets the right table.  Sets the parent back-reference
-        (#307) on newly-created organs.
+        NEVER creates (#516 sever/install review).  Per-character
+        anatomy makes absence meaningful: an organ deleted by an
+        augment install, or never present, must STAY absent.  The
+        old auto-create behavior was a zombie-organ factory — any
+        name lookup (capacity math iterating species tables, medinfo)
+        silently resurrected deleted anatomy at full HP, so a
+        character with a cybernetic arm grew phantom flesh bones the
+        moment anyone computed their capacities.
+
+        The standard: the organs dict is the single truth of present
+        anatomy.  Severed organs remain as 0-HP ``wound_stage
+        "severed"`` tombstones (they ARE the stump — wound rendering,
+        hands subtraction, and the re-augment gate all read them);
+        augment installs clear tombstones at their containers when
+        new anatomy takes the slot.
         """
-        if organ_name not in self.organs:
-            species = None
-            if self.character is not None:
-                species = getattr(self.character.db, "species", None)
-            organ = Organ(organ_name, species=species)
-            organ.medical_state = self
-            self.organs[organ_name] = organ
-        return self.organs[organ_name]
+        return self.organs.get(organ_name)
         
     def location_severable_by_organ(self, location):
         """True when any organ at ``location`` flags
@@ -739,7 +743,15 @@ class MedicalState:
         max_possible_capacity = 0.0
         
         for organ_name in capacity_organs:
-            organ = self.get_organ(organ_name)
+            organ = self.organs.get(organ_name)
+            if organ is None:
+                # Absent anatomy (#516 review): organ deleted by an
+                # augment install or never present — it contributes
+                # nothing and counts toward nothing.  Severed limbs
+                # still reduce capacity via their 0-HP tombstones;
+                # a mounted replacement implicitly restores it by
+                # taking the flesh organ out of the equation.
+                continue
             organ_functionality = organ.get_functionality_percentage()
             
             # Get contribution level - check for organ-specific contributions first
@@ -911,7 +923,11 @@ class MedicalState:
         Returns:
             bool: True if organ was destroyed
         """
-        organ = self.get_organ(organ_name)
+        organ = self.organs.get(organ_name)
+        if organ is None:
+            # Absent anatomy can't be damaged (#516 review — no
+            # auto-create; see get_organ).
+            return False
         was_destroyed = organ.take_damage(damage_amount, injury_type)
 
         # Create medical conditions based on damage type and amount (Phase 2.6)

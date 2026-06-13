@@ -256,6 +256,10 @@ class CmdMedicalInfo(Command):
                 status = "|yDamaged|n"
             elif organ.current_hp > 0:
                 status = "|rSeverely Damaged|n"
+            elif organ.wound_stage == "severed":
+                # The 0-HP tombstone of a severed limb is the stump
+                # record, not in-place destruction (#516 review).
+                status = "|xSevered|n"
             else:
                 status = "|RDestroyed|n"
                 

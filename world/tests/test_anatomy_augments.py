@@ -487,6 +487,48 @@ class TestInorganicConditions(TestCase):
         self.assertIn("bleeding", types)
 
 
+class TestAnatomyIsTheTruth(TestCase):
+    """The #516-review standard: the organs dict is the single truth
+    of present anatomy — nothing auto-creates.  The old get_organ
+    auto-create was a zombie-organ factory: capacity math iterating
+    species tables by name resurrected install-deleted flesh organs
+    at full HP."""
+
+    def test_get_organ_never_creates(self):
+        state = _patient().medical_state
+        del state.organs["right_humerus"]
+        self.assertIsNone(state.get_organ("right_humerus"))
+        self.assertNotIn("right_humerus", state.organs)
+
+    def test_capacity_math_does_not_resurrect(self):
+        """The exact bug: medinfo capacities after a gun-arm install
+        re-created the deleted flesh arm."""
+        state = _patient().medical_state
+        del state.organs["right_humerus"]
+        state._cache_dirty = True
+        state.calculate_body_capacity("manipulation")
+        self.assertNotIn("right_humerus", state.organs)
+
+    def test_damage_to_absent_organ_is_a_noop(self):
+        state = _patient().medical_state
+        del state.organs["right_humerus"]
+        result = state.take_organ_damage("right_humerus", 10, "cut")
+        self.assertFalse(result)
+        self.assertNotIn("right_humerus", state.organs)
+
+    def test_severed_tombstones_still_reduce_capacity(self):
+        """Tombstones are load-bearing: a severed (not replaced) arm
+        keeps dragging manipulation down via its 0-HP record."""
+        target = _patient()
+        state = target.medical_state
+        state._cache_dirty = True
+        healthy = state.calculate_body_capacity("manipulation")
+        _sever_right_arm(target)
+        state._cache_dirty = True
+        severed = state.calculate_body_capacity("manipulation")
+        self.assertLess(severed, healthy)
+
+
 class TestSeveredCyberProse(TestCase):
     def test_inorganic_parts_get_chrome_prose(self):
         from world.anatomy.severed_parts import get_severed_part_description

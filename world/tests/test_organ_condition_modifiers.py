@@ -146,12 +146,17 @@ class OrganBackRefWired(TestCase):
             with self.subTest(organ=name):
                 self.assertIs(organ.medical_state, state)
 
-    def test_lazy_get_organ_sets_back_ref(self):
+    def test_get_organ_does_not_resurrect(self):
+        """SUPERSEDED behavior (#516 sever/install review): get_organ
+        no longer lazily creates.  Per-character anatomy makes
+        absence meaningful — auto-create was a zombie-organ factory
+        that resurrected install-deleted organs.  Absent stays
+        absent; the back-ref contract is covered by the init path
+        above and the augment install path."""
         state = MedicalState(_human_character())
-        # Drop an organ then re-fetch via get_organ.
         del state.organs["heart"]
-        heart = state.get_organ("heart")
-        self.assertIs(heart.medical_state, state)
+        self.assertIsNone(state.get_organ("heart"))
+        self.assertNotIn("heart", state.organs)
 
 
 class OrganScanFiltersConditionsByLocation(TestCase):
