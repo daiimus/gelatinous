@@ -255,7 +255,19 @@ class CmdInventory(Command):
         for hand, item in hands.items():
             display = hand.replace("_", " ")
             if item:
-                lines.append(f"A {item.get_display_name(caller)} is held in your {display}.")
+                # Integrated cyberware (#516) isn't held — it IS the
+                # hand.  "A shotgun module is your right hand" reads
+                # truer than "held in your right hand".
+                if getattr(item.db, "integrated", False):
+                    lines.append(
+                        f"A {item.get_display_name(caller)} is your "
+                        f"{display}."
+                    )
+                else:
+                    lines.append(
+                        f"A {item.get_display_name(caller)} is held in "
+                        f"your {display}."
+                    )
             else:
                 lines.append(f"Nothing is in your {display}.")
 

@@ -911,7 +911,18 @@ class Character(
             format_wielded_feature,
         )
 
-        # 1. Wielded weapon / explosive
+        # 1. Wielded weapon / explosive.  A deployed cyber weapon
+        # dominates the sdesc with normal weapon weight (#516 review):
+        # integrated weapons already sit in ``hands`` (held-is-
+        # wielded); active natural weapons (claws) live off-grid, so
+        # check them explicitly first.
+        try:
+            from world.medical.augments import get_active_natural_weapon
+            natural = get_active_natural_weapon(self)
+            if natural is not None:
+                return format_wielded_feature(natural.key)
+        except Exception:
+            pass
         hands = self.hands or {}
         for _hand, item in hands.items():
             if item is not None:

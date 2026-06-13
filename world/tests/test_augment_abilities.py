@@ -356,3 +356,77 @@ class TestSeveranceDropsHeldItems(EvenniaTest):
         self.assertIsNone(
             getattr(char.ndb, "_sever_dropped_items", None)
         )
+
+
+class TestDeployedWeaponDisplay(EvenniaTest):
+    """#516 review (items 1+4): a deployed cyber weapon is not 'held'
+    — it reads as part of the hand in self-inventory, is excluded
+    from the look-at-others held list, and dominates the sdesc."""
+
+    def setUp(self):
+        super().setUp()
+        self.char = create_object(Character, key="Chrome", location=self.room1)
+        # Give them an sdesc so get_distinguishing_feature engages.
+        self.char.db.height = "average"
+        self.char.db.build = "wiry"
+        organ = Organ("cybernetic_humerus", organ_data={
+            "container": "right_arm", "max_hp": 30,
+            "abilities": {"shotgun": {
+                "type": "integrated_weapon", "slot": "right_hand",
+                "weapon_prototype": "SHOTGUN_ARM_GUN",
+            }},
+        })
+        organ.medical_state = self.char.medical_state
+        self.char.medical_state.organs["cybernetic_humerus"] = organ
+        self.organ = organ
+        self.gun = create_object(
+            "typeclasses.items.Item", key="shotgun module", location=None,
+        )
+        self.gun.db.integrated = True
+        self.gun.tags.add("weapon", category="type")
+        organ.ability_state = {"shotgun": {"weapon_dbref": self.gun.dbref}}
+
+    def test_self_inventory_says_is_your_hand(self):
+        from commands.CmdInventory import CmdInventory
+
+        toggle_ability(self.char, "shotgun")
+        captured = []
+        self.char.msg = lambda text=None, **kw: captured.append(text or "")
+        cmd = CmdInventory()
+        cmd.caller = self.char
+        cmd.args = ""
+        cmd.obj = self.char
+        cmd.func()
+        output = "\n".join(captured).lower()
+        self.assertIn("shotgun module is your", output)
+        self.assertNotIn("shotgun module is held in", output)
+
+    def test_look_excludes_integrated_from_held(self):
+        toggle_ability(self.char, "shotgun")
+        looker = create_object(Character, key="Witness", location=self.room1)
+        appearance = self.char.return_appearance(looker)
+        self.assertNotIn("holding a shotgun module", appearance)
+        self.assertNotIn("holding nothing", appearance)
+
+    def test_integrated_dominates_sdesc(self):
+        toggle_ability(self.char, "shotgun")
+        feature = self.char.get_distinguishing_feature()
+        self.assertIn("shotgun module", feature)
+
+    def test_natural_weapon_dominates_sdesc(self):
+        claws_organ = Organ("left_metacarpals", organ_data={
+            "container": "left_hand", "max_hp": 15,
+            "abilities": {"nailz": {
+                "type": "natural_weapon", "weapon_prototype": "NAILZ_CLAWS",
+            }},
+        })
+        claws_organ.medical_state = self.char.medical_state
+        self.char.medical_state.organs["left_metacarpals"] = claws_organ
+        claws = create_object(
+            "typeclasses.items.Item", key="monofilament claws", location=None,
+        )
+        claws.db.integrated = True
+        claws_organ.ability_state = {"nailz": {"weapon_dbref": claws.dbref}}
+        toggle_ability(self.char, "nailz")
+        feature = self.char.get_distinguishing_feature()
+        self.assertIn("claws", feature.lower())

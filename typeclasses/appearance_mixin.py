@@ -690,7 +690,27 @@ class AppearanceMixin:
         # here made this section permanently render "holding
         # nothing" (issue #460).
         hands = self.hands or {}
-        wielded_items = [item for item in hands.values() if item is not None]
+        # Integrated cyberware (#516) is excluded from the held list:
+        # a deployed arm-gun is part of the body, represented in the
+        # longdesc and dominating the sdesc — not "held".
+        wielded_items = [
+            item for item in hands.values()
+            if item is not None and not getattr(item.db, "integrated", False)
+        ]
+        # Whether a deployed cyber weapon (integrated in a slot OR an
+        # active natural weapon like claws) is present — used to
+        # suppress the misleading "holding nothing" line, since the
+        # sdesc shows them armed.
+        has_deployed_chrome = any(
+            getattr(item.db, "integrated", False) for item in hands.values()
+            if item is not None
+        )
+        if not has_deployed_chrome:
+            try:
+                from world.medical.augments import get_active_natural_weapon
+                has_deployed_chrome = get_active_natural_weapon(self) is not None
+            except Exception:
+                pass
 
         if wielded_items:
             wielded_names = [obj.get_display_name(looker) for obj in wielded_items]
@@ -713,8 +733,10 @@ class AppearanceMixin:
                     f"{wielded_with_articles[-1]}."
                 )
             parts.append(wielded_text)
-        else:
-            # Show explicitly when hands are empty
+        elif not has_deployed_chrome:
+            # Show explicitly when hands are empty — but not when a
+            # deployed cyber weapon fills them (the sdesc already
+            # shows them armed; "holding nothing" would contradict).
             parts.append(f"{self.get_display_name(looker)} is holding nothing.")
 
         # 4. Staff-only comprehensive inventory (with explicit admin messaging)
