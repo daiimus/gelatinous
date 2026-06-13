@@ -787,12 +787,30 @@ def _resolve_install(actor, target, *, organ_item, location: str,
         )
         return
 
-    # Success / partial: organ installs.  Living target: restore HP and
-    # attach any organ-bound conditions from the harvested item to the
-    # corresponding organ on the recipient.
+    # Success / partial: organ installs.  Living target: the slot's
+    # organ is rebuilt or restored, and any organ-bound conditions
+    # from the harvested item attach to it.
     state = getattr(target, "medical_state", None)
     if state is not None:
-        organ = state.organs.get(organ_item.db.organ_name)
+        organ_name = organ_item.db.organ_name
+        organ = state.organs.get(organ_name)
+
+        # Spec-carrying install (#526 M1): when the item carries an
+        # organ spec, the item IS the organ — rebuild the slot with
+        # the item's nature.  Same canonical name (capacity tables
+        # key by name; theming lives in prose), new spec: a
+        # cybernetic heart installs into the "heart" slot as
+        # inorganic chrome.  Items without a spec (legacy harvests,
+        # plain biological organs) keep the HP-restore behavior on
+        # the existing slot organ.
+        from evennia.utils.dbserialize import deserialize
+        item_spec = deserialize(getattr(organ_item.db, "organ_spec", None) or {})
+        if item_spec:
+            from world.medical.core import Organ
+            organ = Organ(organ_name, organ_data=dict(item_spec))
+            organ.medical_state = state
+            state.organs[organ_name] = organ
+
         if organ is not None:
             # Reset HP based on harvested condition.
             condition_hp = {
@@ -1714,6 +1732,17 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
     # gate cross-species installs.  Legacy items pre-dating this
     # field fall back to ``[source_species]`` at picker time.
     item.db.compatible_species = [species]
+
+    # Spec-carrying harvest (#526 M1): the organ's spec dict travels
+    # with the item, so cyber organs and ability modules survive
+    # extraction and reinstall as what they ARE — not as whatever
+    # the destination slot's species default happens to be.  Legacy
+    # snapshots without "data" produce no spec; install falls back
+    # to its HP-restore behavior.
+    spec = organ_data.get("data") if hasattr(organ_data, "get") else None
+    if spec and hasattr(spec, "get"):
+        from evennia.utils.dbserialize import deserialize
+        item.db.organ_spec = deserialize(spec)
 
     stage_getter = getattr(source, "get_decay_stage", None)
     if callable(stage_getter):

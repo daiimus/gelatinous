@@ -529,6 +529,110 @@ class TestAnatomyIsTheTruth(TestCase):
         self.assertLess(severed, healthy)
 
 
+CYBER_HEART_SPEC = {
+    "container": "chest", "max_hp": 20, "hit_weight": "uncommon",
+    "vital": True, "capacity": "blood_pumping", "contribution": "total",
+    "inorganic": True,
+}
+
+
+def _organ_item(organ_name="heart", organ_spec=None, condition="pristine"):
+    """Stub mirroring a harvested/cyber organ item (#526 M1)."""
+    item = SimpleNamespace()
+    item.key = f"cybernetic {organ_name}"
+    item.deleted = False
+
+    def _delete():
+        item.deleted = True
+    item.delete = _delete
+    item.db = SimpleNamespace(
+        organ_name=organ_name,
+        condition=condition,
+        organ_conditions=[],
+        organ_spec=organ_spec,
+        compatible_species=["human"],
+    )
+    item.get_display_name = lambda looker=None: item.key
+    return item
+
+
+class TestSpecCarryingOrgans(TestCase):
+    """#526 M1: the item IS the organ — specs travel with harvested
+    items and rebuild the slot on install (same canonical name, new
+    nature)."""
+
+    def _install(self, target, item, outcome="success"):
+        from world.medical.procedures import _resolve_install
+
+        actor = _surgeon()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": outcome},
+        ):
+            _resolve_install(
+                actor, target, organ_item=item, location="chest",
+            )
+        return actor
+
+    def test_spec_item_rebuilds_the_slot(self):
+        """Installing a cybernetic heart replaces the flesh heart's
+        NATURE while keeping the canonical name — capacity wiring
+        untouched, organ now chrome."""
+        target = _patient()
+        open_incision(target, "chest")
+        self._install(target, _organ_item(organ_spec=dict(CYBER_HEART_SPEC)))
+
+        heart = target.medical_state.organs["heart"]
+        self.assertTrue(heart.data.get("inorganic"))
+        self.assertEqual(heart.max_hp, 20)
+        self.assertEqual(heart.current_hp, 20)  # pristine
+        self.assertEqual(heart.container, "chest")
+        self.assertIs(heart.medical_state, target.medical_state)
+
+    def test_damaged_spec_item_installs_damaged(self):
+        target = _patient()
+        open_incision(target, "chest")
+        self._install(
+            target,
+            _organ_item(organ_spec=dict(CYBER_HEART_SPEC), condition="damaged"),
+        )
+        heart = target.medical_state.organs["heart"]
+        self.assertEqual(heart.current_hp, 12)  # 60% of 20
+        self.assertEqual(heart.wound_stage, "fresh")
+
+    def test_legacy_item_keeps_restore_behavior(self):
+        """No spec = plain biological organ: the existing slot organ
+        is restored, its nature unchanged."""
+        target = _patient()
+        open_incision(target, "chest")
+        original = target.medical_state.organs["heart"]
+        original.current_hp = 3
+        self._install(target, _organ_item(organ_spec=None))
+
+        heart = target.medical_state.organs["heart"]
+        self.assertIs(heart, original)
+        self.assertEqual(heart.current_hp, heart.max_hp)
+        self.assertFalse(heart.data.get("inorganic"))
+
+    def test_harvest_writes_the_spec_onto_the_item(self):
+        """The other half of the round trip: extraction carries the
+        organ's spec so chrome reinstalls as chrome."""
+        from world.medical.procedures import _configure_harvested_item
+
+        target = _patient()
+        cyber = Organ("heart", organ_data=dict(CYBER_HEART_SPEC))
+        cyber.medical_state = target.medical_state
+        target.medical_state.organs["heart"] = cyber
+
+        item = SimpleNamespace(db=SimpleNamespace())
+        _configure_harvested_item(
+            item, organ_name="heart", condition="pristine",
+            source=target, organ_data=cyber.to_dict(),
+        )
+        self.assertTrue(item.db.organ_spec.get("inorganic"))
+        self.assertEqual(item.db.organ_spec.get("max_hp"), 20)
+
+
 class TestSeveredCyberProse(TestCase):
     def test_inorganic_parts_get_chrome_prose(self):
         from world.anatomy.severed_parts import get_severed_part_description

@@ -1983,6 +1983,32 @@ CYBERNETIC_TAIL = {
     ],
 }
 
+# Cybernetic Heart - first spec-carrying replacement organ (#526 M1)
+# Installs into the canonical "heart" slot via the standard
+# replacement path (incise chest -> install -> suture).  Same organ
+# NAME so the blood_pumping capacity wiring is untouched; the SPEC
+# makes it chrome — inorganic (no bleed, no sepsis), sturdier than
+# meat.
+CYBERNETIC_HEART = {
+    "key": "cybernetic heart",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["cyber heart", "pump unit"],
+    "desc": "A fist-sized cardiac replacement unit, its impeller housing machined from surgical alloy and its mounting collar ringed with vascular couplers. It does one thing, forever, without being asked.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("organ_name", "heart"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "chest", "max_hp": 20, "hit_weight": "uncommon",
+            "vital": True, "capacity": "blood_pumping",
+            "contribution": "total",
+            "can_be_harvested": True, "can_be_replaced": True,
+            "inorganic": True,
+        }),
+    ],
+}
+
 # Shotgun Arm - first replacement augment + integrated weapon (#516)
 SHOTGUN_ARM = {
     "key": "shotgun arm",
