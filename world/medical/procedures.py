@@ -82,6 +82,9 @@ PROCEDURE_DURATIONS = {
     # Module seating (#526 M3) — quicker than a graft: the chassis
     # did the hard integration work already.
     "install_module": 9,
+    # Limb reattachment (#526 follow-up): bolting a severed cyber
+    # limb back on is full-graft work, like the original mount.
+    "install_limb": 18,
     "suture":   9,
     "amputate": 12,
     # Autopsy is the deliberate counterpart to the cursory ``inspect``
@@ -1784,6 +1787,196 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
         _log_guarded_failure("install_module_item_delete", organ_item, exc)
 
 
+def is_cybernetic_limb(appendage) -> bool:
+    """True when ``appendage`` is a severed CYBERNETIC limb (#526
+    follow-up): an organ-snapshot-bearing part with at least one
+    inorganic organ.  Flesh limbs don't reattach (necrosis); chrome
+    bolts back on."""
+    snapshot = get_organ_snapshot(appendage)
+    organs = (snapshot or {}).get("organs") or {}
+    for entry in organs.values():
+        if not hasattr(entry, "get"):
+            continue
+        data = entry.get("data")
+        if data and hasattr(data, "get") and data.get("inorganic"):
+            return True
+    return False
+
+
+def _resolve_install_limb(actor, target, *, organ_item, location: str,
+                          **_) -> None:
+    """Reattach a severed cybernetic limb (#526 follow-up, user
+    decision 2026-06-13).
+
+    The whole limb goes back on — chassis plus whatever module is
+    still seated, at its current HP / condition.  A bare chassis
+    (module already harvested out) reattaches fine.  Looted chrome:
+    any compatible body, gated by the target having a stump at every
+    one of the limb's containers (you amputate first, then bolt the
+    scavenged arm on).  Deployed weapons don't survive the cut, so
+    modules come back retracted.
+    """
+    from world.identity_utils import msg_room_identity
+    from world.medical.charts import mark_running_step_failed
+    from world.medical.core import Organ
+
+    snapshot = get_organ_snapshot(organ_item)
+    organs_data = (snapshot or {}).get("organs") or {}
+    if not organs_data:
+        actor.msg(f"The {organ_item.key} has no anatomy to reattach.")
+        return
+
+    state = getattr(target, "medical_state", None)
+    if state is None or not getattr(state, "organs", None):
+        actor.msg(
+            f"The {organ_item.key} needs a living body to reattach to."
+        )
+        return
+
+    declared = {
+        d.get("container") for d in organs_data.values()
+        if hasattr(d, "get") and d.get("container")
+    }
+
+    # Container fit (the "compatible body" gate): the target must
+    # have every one of the limb's containers as a real slot —
+    # represented by a stump / wreckage organ from a prior
+    # amputation.  No slot = nowhere to bolt it.
+    target_containers = {
+        getattr(o, "container", None) for o in state.organs.values()
+    }
+    missing = declared - target_containers
+    if missing:
+        nice = ", ".join(sorted(c.replace("_", " ") for c in missing))
+        actor.msg(
+            f"{target.get_display_name(actor)} has nowhere to attach "
+            f"the {organ_item.key} — no {nice} to bolt it to."
+        )
+        mark_running_step_failed(
+            target, outcome=f"no host containers: {sorted(missing)}",
+        )
+        return
+
+    # Living-anatomy gate: every container must be a stump or
+    # wreckage, never living flesh/chrome.  Amputate first.
+    living = [
+        o for o in state.organs.values()
+        if getattr(o, "container", None) in declared and o.current_hp > 0
+    ]
+    if living:
+        container = living[0].container
+        actor.msg(
+            f"{target.get_display_name(actor)} still has a living "
+            f"{container.replace('_', ' ')} — amputate before "
+            f"reattaching the {organ_item.key}."
+        )
+        mark_running_step_failed(
+            target, outcome=f"living anatomy at {container}",
+        )
+        return
+
+    if not has_incision(target, location):
+        actor.msg(
+            f"You line the {organ_item.key} up against the stump, but "
+            f"{target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')} isn't open."
+        )
+        mark_running_step_failed(
+            target, outcome=f"no incision at {location} — reattach blocked",
+        )
+        return
+
+    result = roll_procedure(actor, target)
+    outcome = result["outcome"]
+    if outcome == "failure":
+        seed_infection(target, location)
+        seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
+        actor.msg(
+            f"The graft won't take. The {organ_item.key} stays loose "
+            f"in your hands."
+        )
+        return
+
+    # Success / partial: rebuild every organ from the appendage's
+    # snapshot at its container, replacing any stump/wreckage there.
+    for container in declared:
+        for oname in [
+            n for n, o in state.organs.items()
+            if getattr(o, "container", None) == container
+        ]:
+            del state.organs[oname]
+
+    for name, odata in organs_data.items():
+        spec = odata.get("data") if hasattr(odata, "get") else None
+        spec = dict(spec) if spec and hasattr(spec, "get") else {}
+        organ = Organ(name, organ_data=spec or None)
+        organ.max_hp = odata.get("max_hp", organ.max_hp)
+        organ.current_hp = odata.get("current_hp", organ.max_hp)
+        organ.wound_stage = odata.get("wound_stage")
+        # Modules come back retracted — the deployed weapon item did
+        # not survive the severance.  Clean up the orphaned weapon if
+        # it's still floating, then reset the toggle state.
+        raw_ability = odata.get("ability_state") or {}
+        reset_state = {}
+        for ability_name, astate in raw_ability.items():
+            if hasattr(astate, "get"):
+                dbref = astate.get("weapon_dbref")
+                if dbref:
+                    try:
+                        from evennia.utils.search import search_object
+                        for found in search_object(dbref):
+                            found.delete()
+                    except Exception:
+                        pass
+                reset_state[ability_name] = {"deployed": False}
+        organ.ability_state = reset_state
+        organ.medical_state = state
+        state.organs[name] = organ
+
+    # Restore the limb's longdesc prose (carried on the appendage at
+    # sever time — apply_living_sever_overlay).
+    carried = getattr(organ_item.db, "longdesc_data", None) or {}
+    if carried:
+        ld = dict(target.longdesc or {})
+        for loc, text in carried.items():
+            ld[loc] = text
+        target.longdesc = ld
+
+    seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
+    if outcome == "partial":
+        seed_infection(target, location)
+        actor.msg(
+            f"You bolt the {organ_item.key} back on — but the graft "
+            f"is sloppy. Time will tell."
+        )
+    else:
+        actor.msg(
+            f"You reattach the {organ_item.key} to "
+            f"{target.get_display_name(actor)}'s "
+            f"{location.replace('_', ' ')}."
+        )
+
+    save = getattr(target, "save_medical_state", None)
+    if callable(save):
+        save()
+
+    if actor.location is not None:
+        msg_room_identity(
+            location=actor.location,
+            template=(
+                f"{{actor}} reattaches a {organ_item.key} to "
+                f"{{patient}}'s {location.replace('_', ' ')}."
+            ),
+            char_refs={"actor": actor, "patient": target},
+            exclude=[actor, target] if target is not actor else [actor],
+        )
+
+    try:
+        organ_item.delete()
+    except Exception as exc:
+        _log_guarded_failure("install_limb_item_delete", organ_item, exc)
+
+
 # Mapping consumed by ``_resolve_procedure_callback``.
 _VERB_RESOLVERS = {
     "incise":   _resolve_incise,
@@ -1791,6 +1984,7 @@ _VERB_RESOLVERS = {
     "install":  _resolve_install,
     "install_augment": _resolve_install_augment,
     "install_module": _resolve_install_module,
+    "install_limb": _resolve_install_limb,
     "suture":   _resolve_suture,
     "amputate": _resolve_amputate,
     "autopsy":  _resolve_autopsy,

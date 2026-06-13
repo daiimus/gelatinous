@@ -513,6 +513,11 @@ def commence_chart(target, actor) -> Optional[dict]:
             # Module seats at the recorded hardpoint container; the
             # resolver re-finds the slot and re-checks the gates.
             verb = "install_module"
+        else:
+            # Severed cybernetic limb (#526 follow-up): reattach whole.
+            from world.medical.procedures import is_cybernetic_limb
+            if is_cybernetic_limb(resolved_args.get("organ_item")):
+                verb = "install_limb"
 
     step["status"] = RUNNING
     chart["status"] = IN_PROGRESS

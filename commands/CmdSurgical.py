@@ -524,6 +524,13 @@ class CmdInstall(Command):
             )
             return
 
+        # Severed cybernetic limbs (#526 follow-up) reattach whole —
+        # an Appendage whose snapshot carries inorganic anatomy.
+        from world.medical.procedures import is_cybernetic_limb
+        if is_cybernetic_limb(organ_item):
+            self._install_limb(caller, organ_item, target_phrase)
+            return
+
         organ_name = getattr(organ_item.db, "organ_name", None)
         if not organ_name:
             caller.msg(
@@ -847,6 +854,95 @@ class CmdInstall(Command):
             f"You begin seating the {organ_item.key} into the "
             f"hardpoint at {target.get_display_name(caller)}'s "
             f"{container.replace('_', ' ')}..."
+        )
+
+    def _install_limb(self, caller, organ_item, target_phrase):
+        """Stage a severed-cybernetic-limb reattachment (#526
+        follow-up): bolt the whole limb back on over a stump.
+
+        Pre-dispatch gates: living target, the target has a stump at
+        every one of the limb's containers (amputate first — looted
+        chrome bolts onto any compatible body), and an open incision
+        at the cut point.  The resolver re-checks all of these.
+        """
+        from world.medical.procedures import get_organ_snapshot
+
+        target = _resolve_target(caller, target_phrase)
+        if target is None:
+            return
+        if not _is_body_container(target):
+            caller.msg(
+                f"{target.get_display_name(caller)} isn't something "
+                f"you can reattach a limb to."
+            )
+            return
+        state = getattr(target, "medical_state", None)
+        if state is None or not getattr(state, "organs", None):
+            caller.msg(
+                f"The {organ_item.key} needs a living body to "
+                f"reattach to."
+            )
+            return
+
+        snapshot = get_organ_snapshot(organ_item)
+        organs_data = (snapshot or {}).get("organs") or {}
+        declared = {
+            d.get("container") for d in organs_data.values()
+            if hasattr(d, "get") and d.get("container")
+        }
+        target_containers = {
+            getattr(o, "container", None) for o in state.organs.values()
+        }
+        missing = declared - target_containers
+        if missing:
+            nice = ", ".join(sorted(c.replace("_", " ") for c in missing))
+            caller.msg(
+                f"{target.get_display_name(caller)} has nowhere to "
+                f"attach the {organ_item.key} — no {nice}."
+            )
+            return
+        living = [
+            o for o in state.organs.values()
+            if getattr(o, "container", None) in declared and o.current_hp > 0
+        ]
+        if living:
+            container = living[0].container
+            caller.msg(
+                f"{target.get_display_name(caller)} still has a living "
+                f"{container.replace('_', ' ')} — amputate before "
+                f"reattaching the {organ_item.key}."
+            )
+            return
+
+        # Anchor = the limb's cut point (its severed location).
+        anchor = getattr(organ_item.db, "location_name", None)
+        if anchor not in declared:
+            anchor = sorted(declared)[0] if declared else None
+        if not anchor or not has_incision(target, anchor):
+            anchor_disp = (anchor or "the stump").replace("_", " ")
+            caller.msg(
+                f"The {organ_item.key} bolts on at the {anchor_disp}, "
+                f"and {target.get_display_name(caller)}'s {anchor_disp} "
+                f"isn't open. Try ``incise {target_phrase} at "
+                f"{anchor_disp}``."
+            )
+            return
+
+        if _reject_if_busy(caller, target):
+            return
+        kit = _find_surgical_kit(caller)
+        if kit is None:
+            caller.msg("You need a surgical kit to reattach a limb.")
+            return
+
+        start_procedure(
+            target, verb="install_limb", actor=caller,
+            organ_item=organ_item, location=anchor,
+        )
+        caller.msg(
+            f"You begin reattaching the {organ_item.key} to "
+            f"{target.get_display_name(caller)}'s "
+            f"{anchor.replace('_', ' ')}..."
         )
 
 

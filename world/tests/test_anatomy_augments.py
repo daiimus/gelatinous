@@ -1052,6 +1052,140 @@ class TestAugmentOrganPredicate(TestCase):
         self.assertFalse(is_augment_organ(flesh, table))
 
 
+def _severed_cyber_arm(deployed=False):
+    """Stub Appendage carrying a severed cyber-arm snapshot (#526
+    reattach)."""
+    item = SimpleNamespace()
+    item.key = "cybernetic right arm"
+    item.deleted = False
+
+    def _delete():
+        item.deleted = True
+    item.delete = _delete
+    snapshot = {"organs": {
+        "right_humerus": {
+            "container": "right_arm", "current_hp": 30, "max_hp": 30,
+            "wound_stage": "severed",
+            "data": {"container": "right_arm", "max_hp": 30, "inorganic": True},
+        },
+        "right_metacarpals": {
+            "container": "right_hand", "current_hp": 18, "max_hp": 18,
+            "wound_stage": "severed",
+            "data": {"container": "right_hand", "max_hp": 18,
+                     "inorganic": True, "grasping": True},
+        },
+        "right_forearm_hardpoint": {
+            "container": "right_arm", "current_hp": 12, "max_hp": 12,
+            "wound_stage": "severed",
+            "ability_state": {"shotgun": {"deployed": deployed,
+                                          "weapon_dbref": None}},
+            "data": {"container": "right_arm", "inorganic": True,
+                     "hardpoint": "forearm",
+                     "abilities": {"shotgun": {
+                         "type": "integrated_weapon",
+                         "slot": "right_hand", "weapon_prototype": "X"}}},
+        },
+    }}
+    item.get_medical_snapshot = lambda: snapshot
+    item.db = SimpleNamespace(
+        location_name="right_arm",
+        longdesc_data={
+            "right_arm": "A full cybernetic right arm.",
+            "right_hand": "An articulated alloy right hand.",
+        },
+    )
+    item.get_display_name = lambda looker=None: item.key
+    return item
+
+
+class TestLimbReattach(TestCase):
+    """#526 follow-up (user decision 2026-06-13): a severed cyber
+    limb reattaches whole — chassis + seated module, over a stump,
+    onto any compatible body."""
+
+    def _amputee(self):
+        target = _patient()
+        for o in target.medical_state.organs.values():
+            if o.container in ("right_arm", "right_hand"):
+                o.current_hp = 0
+                o.wound_stage = "severed"
+        target.longdesc = {"head": None}
+        return target
+
+    def _reattach(self, target, item, outcome="success"):
+        from world.medical.procedures import _resolve_install_limb
+        actor = _surgeon()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": outcome},
+        ):
+            _resolve_install_limb(
+                actor, target, organ_item=item, location="right_arm",
+            )
+        return actor
+
+    def test_is_cybernetic_limb_detects(self):
+        from world.medical.procedures import is_cybernetic_limb
+        self.assertTrue(is_cybernetic_limb(_severed_cyber_arm()))
+
+    def test_reattach_rebuilds_the_limb(self):
+        from world.medical.augments import find_ability
+
+        target = self._amputee()
+        open_incision(target, "right_arm")
+        item = _severed_cyber_arm()
+        self._reattach(target, item)
+
+        organs = target.medical_state.organs
+        self.assertEqual(organs["right_humerus"].current_hp, 30)
+        self.assertTrue(organs["right_humerus"].data.get("inorganic"))
+        self.assertIn("right_forearm_hardpoint", organs)
+        found, _spec = find_ability(target, "shotgun")
+        self.assertIsNotNone(found)
+        self.assertEqual(
+            target.longdesc["right_arm"], "A full cybernetic right arm.",
+        )
+        self.assertTrue(item.deleted)
+
+    def test_reattach_comes_back_retracted(self):
+        target = self._amputee()
+        open_incision(target, "right_arm")
+        item = _severed_cyber_arm(deployed=True)
+        self._reattach(target, item)
+        hp = target.medical_state.organs["right_forearm_hardpoint"]
+        self.assertFalse(hp.ability_state["shotgun"]["deployed"])
+
+    def test_bare_chassis_reattaches(self):
+        """No module seated — the chassis still goes back on."""
+        target = self._amputee()
+        open_incision(target, "right_arm")
+        item = _severed_cyber_arm()
+        # Strip the module from the snapshot.
+        del item.get_medical_snapshot()["organs"]["right_forearm_hardpoint"]
+        self._reattach(target, item)
+        self.assertIn("right_humerus", target.medical_state.organs)
+        self.assertNotIn(
+            "right_forearm_hardpoint", target.medical_state.organs,
+        )
+        self.assertTrue(item.deleted)
+
+    def test_living_arm_blocks_reattach(self):
+        target = _patient()
+        target.longdesc = {"head": None}
+        open_incision(target, "right_arm")
+        item = _severed_cyber_arm()
+        actor = self._reattach(target, item)
+        self.assertFalse(item.deleted)
+        self.assertTrue(any("living" in m for m in actor.messages))
+
+    def test_reattach_needs_incision(self):
+        target = self._amputee()
+        item = _severed_cyber_arm()
+        actor = self._reattach(target, item)
+        self.assertFalse(item.deleted)
+        self.assertTrue(any("isn't open" in m for m in actor.messages))
+
+
 class TestSeveredCyberProse(TestCase):
     def test_inorganic_parts_get_chrome_prose(self):
         from world.anatomy.severed_parts import get_severed_part_description
