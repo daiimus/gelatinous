@@ -146,3 +146,62 @@ MESSAGES = {
         ],
     },
 }
+
+
+# Chrome bank (#525): a CYBER_ARM's hand sheared at the wrist coupling.
+# No blood — snapped finger servos, dead manipulator actuators.
+CHROME_MESSAGES = {
+    "cut": {
+        "grievous": [
+            {
+                "attacker_msg": "Your edge shears through {target_name}'s {hit_location} at the wrist coupling. The chrome hand drops, finger servos still ticking, and clatters across the floor.",
+                "victim_msg": "{attacker_name}'s edge shears through your {hit_location} at the wrist coupling. The hand drops, finger servos still ticking, and clatters away.",
+                "observer_msg": "{attacker_name}'s edge shears through {target_name}'s {hit_location} at the wrist coupling. The chrome hand drops, finger servos still ticking, and clatters across the floor.",
+            },
+            {
+                "attacker_msg": "Alloy parts with a shriek and {target_name}'s {hit_location} tears off at the wrist, the severed manipulator cables sparking once and going dead.",
+                "victim_msg": "Alloy parts with a shriek and your {hit_location} tears off at the wrist, the manipulator cables sparking once and going dead.",
+                "observer_msg": "Alloy parts with a shriek and {target_name}'s {hit_location} tears off at the wrist, the severed manipulator cables sparking once and going dead.",
+            },
+        ],
+        "minor": [
+            {
+                "attacker_msg": "A clean stroke parts the wrist coupling and {target_name}'s {hit_location} drops free, fingers frozen mid-curl.",
+                "victim_msg": "{attacker_name}'s clean stroke parts your wrist coupling and your {hit_location} drops free, fingers frozen mid-curl.",
+                "observer_msg": "A clean stroke parts the wrist coupling and {target_name}'s {hit_location} drops free, fingers frozen mid-curl.",
+            },
+        ],
+    },
+    "stab": {
+        "grievous": [
+            {
+                "attacker_msg": "You punch the point through {target_name}'s wrist seam and the {hit_location} sags off its mount, dead alloy and trailing wire.",
+                "victim_msg": "{attacker_name} punches the point through your wrist seam and your {hit_location} sags off its mount, dead alloy and trailing wire.",
+                "observer_msg": "{attacker_name} punches the point through {target_name}'s wrist seam and the {hit_location} sags off its mount, dead alloy and trailing wire.",
+            },
+        ],
+        "minor": [
+            {
+                "attacker_msg": "Your point finds the wrist gap and {target_name}'s {hit_location} pops loose, sliding off its coupling.",
+                "victim_msg": "{attacker_name}'s point finds your wrist gap and your {hit_location} pops loose, sliding off its coupling.",
+                "observer_msg": "{attacker_name}'s point finds the wrist gap and {target_name}'s {hit_location} pops loose, sliding off its coupling.",
+            },
+        ],
+    },
+    "laceration": {
+        "grievous": [
+            {
+                "attacker_msg": "You saw through the wrist until the cable bundle parts; {target_name}'s {hit_location} swings free on a thread of wire and falls, sparking.",
+                "victim_msg": "{attacker_name} saws through your wrist until the cable bundle parts; your {hit_location} swings free on a thread of wire and falls, sparking.",
+                "observer_msg": "{attacker_name} saws through the wrist until the cable bundle parts; {target_name}'s {hit_location} swings free on a thread of wire and falls, sparking.",
+            },
+        ],
+        "minor": [
+            {
+                "attacker_msg": "A short, tearing stroke severs the {hit_location} cable bundle and the dead hand drops away.",
+                "victim_msg": "{attacker_name}'s tearing stroke severs your {hit_location} cable bundle and the dead hand drops away.",
+                "observer_msg": "A short, tearing stroke severs {target_name}'s {hit_location} cable bundle and the dead hand drops away.",
+            },
+        ],
+    },
+}

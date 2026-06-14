@@ -107,15 +107,15 @@ class _PassThrough(dict):
         return f"{{{key}}}"
 
 
-def _select_template(
-    location: str, injury_type: str, severity: str
+def _pick_variant(
+    module_name: str, injury_type: str, severity: str, attr: str
 ) -> dict | None:
-    """Load the MESSAGES dict and pick a random variant.
+    """Load ``attr`` (``MESSAGES`` / ``CHROME_MESSAGES``) off the
+    location module and pick a random variant.
 
     Returns ``None`` if any lookup step fails — callers fall through to
-    a generic fallback template.
+    the next bank or the generic template.
     """
-    module_name = _resolve_module_name(location)
     try:
         module = importlib.import_module(
             f"world.combat.messages.severance.{module_name}"
@@ -123,7 +123,7 @@ def _select_template(
     except ModuleNotFoundError:
         return None
 
-    messages = getattr(module, "MESSAGES", {})
+    messages = getattr(module, attr, {})
     by_injury = messages.get(injury_type)
     if not isinstance(by_injury, dict):
         return None
@@ -136,6 +136,32 @@ def _select_template(
 
     valid = [v for v in variants if isinstance(v, dict)]
     return random.choice(valid) if valid else None
+
+
+def _select_template(
+    location: str, injury_type: str, severity: str, material: str = "flesh"
+) -> dict | None:
+    """Pick a variant for one (location, injury, severity, material).
+
+    Flesh severances read the location module's ``MESSAGES``.  Chrome
+    severances read its ``CHROME_MESSAGES``; a location with no chrome
+    bank yet falls back to the generic ``cybernetic`` module so any
+    prosthetic limb still narrates as hardware, never meat.  Returns
+    ``None`` if every bank is empty — callers fall through to the
+    generic (blood-free) fallback template.
+    """
+    module_name = _resolve_module_name(location)
+    if material == "chrome":
+        chosen = _pick_variant(
+            module_name, injury_type, severity, "CHROME_MESSAGES"
+        )
+        if chosen is not None:
+            return chosen
+        # Generic chrome prose — works at any location via {hit_location}.
+        return _pick_variant(
+            "cybernetic", injury_type, severity, "MESSAGES"
+        )
+    return _pick_variant(module_name, injury_type, severity, "MESSAGES")
 
 
 def _fallback_template(location: str) -> dict:
@@ -163,6 +189,7 @@ def get_severance_message(
     target=None,
     item=None,
     severity: str = "grievous",
+    material: str = "flesh",
     **kwargs,
 ) -> dict:
     """Render a severance message set for one body location.
@@ -184,6 +211,10 @@ def get_severance_message(
         severity: ``"grievous"`` (default, dramatic / brutal) or
             ``"minor"`` (clean / surgical). Falls back to the other
             severity if the chosen cell is empty.
+        material: ``"flesh"`` (default) or ``"chrome"``.  Chrome routes
+            to the location's ``CHROME_MESSAGES`` bank (then the generic
+            ``cybernetic`` module) so a severed prosthetic limb narrates
+            as sheared hardware, not bleeding meat.
         **kwargs: Extra format substitutions (``hit_location`` is the
             common one — defaults to the canonical location key with
             underscores replaced by spaces).
@@ -198,7 +229,7 @@ def get_severance_message(
     if severity not in _VALID_SEVERITIES:
         severity = "grievous"
 
-    chosen = _select_template(location, injury_type, severity) or _fallback_template(location)
+    chosen = _select_template(location, injury_type, severity, material) or _fallback_template(location)
 
     # Identity-aware names.
     attacker_sees_target = (

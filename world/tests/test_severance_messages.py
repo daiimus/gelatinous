@@ -253,3 +253,96 @@ class FallbackTests(TestCase):
         self.assertIn("attacker_msg", msgs)
         self.assertIn("victim_msg", msgs)
         self.assertIn("observer_msg", msgs)
+
+
+# =====================================================================
+# Chrome severances (#525) — prosthetic limbs shear, they don't bleed
+# =====================================================================
+
+
+# Words that mark FLESH severance prose. Chrome output must never use
+# them — the whole point of material="chrome" is to swap meat for
+# hardware.
+_BLOOD_WORDS = ("blood", "socket", "spray of red", "gore", "flesh")
+
+
+def _is_bloodless(text: str) -> bool:
+    low = text.lower()
+    return not any(w in low for w in _BLOOD_WORDS)
+
+
+class ChromeSeveranceTests(TestCase):
+    """material="chrome" routes to the per-location CHROME_MESSAGES bank
+    (then the generic ``cybernetic`` module), never the flesh prose."""
+
+    def _all_msgs(self, location, draws=20, **kw):
+        a, t = _FakeChar("Vasquez"), _FakeChar("Maria")
+        out = []
+        for _ in range(draws):
+            m = get_severance_message(
+                location, "cut", a, t, _FakeItem("monoblade"),
+                material="chrome", hit_location=location, **kw,
+            )
+            out.extend(
+                m[k] for k in ("attacker_msg", "victim_msg", "observer_msg")
+            )
+        return out
+
+    def test_flesh_is_the_default(self):
+        # No material arg → flesh path; the signature default holds.
+        a, t = _FakeChar("A"), _FakeChar("B")
+        msgs = get_severance_message("left_arm", "cut", a, t)
+        self.assertIn("attacker_msg", msgs)
+
+    def test_per_location_chrome_is_bloodless(self):
+        # arms / hands / tail carry bespoke CHROME_MESSAGES banks.
+        for loc in ("left_arm", "left_hand", "tail"):
+            with self.subTest(location=loc):
+                for text in self._all_msgs(loc):
+                    self.assertTrue(
+                        _is_bloodless(text),
+                        f"chrome {loc} leaked flesh prose: {text!r}",
+                    )
+
+    def test_chrome_reads_as_hardware(self):
+        # Over many draws, chrome arm prose names hardware, not anatomy.
+        joined = " ".join(self._all_msgs("left_arm")).lower()
+        self.assertTrue(
+            any(w in joined for w in
+                ("coupling", "actuator", "cable", "alloy", "servo", "chrome")),
+            "chrome arm prose names no hardware",
+        )
+
+    def test_chromeless_location_falls_back_to_generic(self):
+        # thighs has no CHROME_MESSAGES bank yet → generic cybernetic
+        # module, still bloodless hardware prose (never the flesh cell).
+        for text in self._all_msgs("left_thigh"):
+            self.assertTrue(
+                _is_bloodless(text),
+                f"generic chrome fallback leaked flesh prose: {text!r}",
+            )
+
+    def test_generic_module_covers_every_cell(self):
+        # The fallback floor must be complete: every injury × severity
+        # populated so any chrome limb has prose to land on.
+        import importlib
+        mod = importlib.import_module(
+            "world.combat.messages.severance.cybernetic"
+        )
+        for itype in ("cut", "stab", "laceration"):
+            for sev in ("grievous", "minor"):
+                cell = mod.MESSAGES.get(itype, {}).get(sev, [])
+                with self.subTest(injury=itype, severity=sev):
+                    self.assertGreaterEqual(len(cell), 1)
+                    for variant in cell:
+                        for key in ("attacker_msg", "victim_msg",
+                                    "observer_msg"):
+                            self.assertIn(key, variant)
+
+    def test_chrome_still_color_wrapped(self):
+        a, t = _FakeChar("A"), _FakeChar("B")
+        msgs = get_severance_message(
+            "left_arm", "cut", a, t, material="chrome",
+        )
+        self.assertTrue(msgs["attacker_msg"].startswith("|r"))
+        self.assertTrue(msgs["attacker_msg"].endswith("|n"))

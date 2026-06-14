@@ -2484,7 +2484,13 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
     try:
         from world.combat.messages.severance import get_severance_message
         from world.identity_utils import msg_room_identity
+        from world.medical.procedures import is_cybernetic_limb
 
+        # A severed prosthetic limb narrates as sheared hardware, not
+        # bleeding meat — keyed on the same prosthetic_frame marker that
+        # governs reattachment (#525).  A flesh limb with cyberware in it
+        # is still flesh: no frame, so it bleeds.
+        material = "chrome" if is_cybernetic_limb(appendage) else "flesh"
         msgs = get_severance_message(
             location=container,
             injury_type=injury_type,
@@ -2492,6 +2498,7 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
             target=character,
             item=weapon,
             severity="grievous",
+            material=material,
             hit_location=container,
         )
         if attacker is not None:

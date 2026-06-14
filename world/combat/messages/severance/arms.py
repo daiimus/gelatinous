@@ -146,3 +146,72 @@ MESSAGES = {
         ],
     },
 }
+
+
+# Chrome bank (#525): a CYBER_ARM sheared at the shoulder mount.  No
+# blood — sheared actuator column, snapped cable looms, dead alloy.
+CHROME_MESSAGES = {
+    "cut": {
+        "grievous": [
+            {
+                "attacker_msg": "Your blade shears through {target_name}'s {hit_location} at the shoulder mount. The chrome limb drops dead-weight, cable looms whipping loose, and clangs off the floor.",
+                "victim_msg": "{attacker_name}'s blade shears through your {hit_location} at the shoulder mount. The arm goes dead and drops away, cables snapping loose.",
+                "observer_msg": "{attacker_name}'s blade shears through {target_name}'s {hit_location} at the shoulder mount. The chrome limb drops dead-weight, cable looms whipping loose, and clangs off the floor.",
+            },
+            {
+                "attacker_msg": "The edge bites into the actuator column with a shriek. {target_name}'s {hit_location} tears off at the shoulder, sparks fizzing from the stripped coupling.",
+                "victim_msg": "The edge bites into your {hit_location} actuator column with a shriek. The arm tears off at the shoulder, sparks fizzing from the stripped coupling.",
+                "observer_msg": "The edge bites into the actuator column with a shriek. {target_name}'s {hit_location} tears off at the shoulder, sparks fizzing from the stripped coupling.",
+            },
+            {
+                "attacker_msg": "You take {target_name}'s {hit_location} off at the shoulder seam and the dead chrome goes one way while the body lurches the other, balance lost to the missing weight.",
+                "victim_msg": "{attacker_name} takes your {hit_location} off at the shoulder seam. The dead chrome goes one way while your body lurches the other.",
+                "observer_msg": "{attacker_name} takes {target_name}'s {hit_location} off at the shoulder seam and the dead chrome goes one way while the body lurches the other, balance lost to the missing weight.",
+            },
+        ],
+        "minor": [
+            {
+                "attacker_msg": "A clean stroke parts {target_name}'s {hit_location} at the shoulder coupling. The arm detaches almost gently, hardware gone dark.",
+                "victim_msg": "{attacker_name}'s clean stroke parts your {hit_location} at the shoulder coupling. The arm detaches almost gently, hardware gone dark.",
+                "observer_msg": "A clean stroke parts {target_name}'s {hit_location} at the shoulder coupling. The arm detaches almost gently, hardware gone dark.",
+            },
+            {
+                "attacker_msg": "Your blade slips through the shoulder joint and {target_name}'s {hit_location} drops free, neat as a part pulled for service.",
+                "victim_msg": "{attacker_name}'s blade slips through the joint and your {hit_location} drops free, neat as a part pulled for service.",
+                "observer_msg": "{attacker_name}'s blade slips through the shoulder joint and {target_name}'s {hit_location} drops free, neat as a part pulled for service.",
+            },
+        ],
+    },
+    "stab": {
+        "grievous": [
+            {
+                "attacker_msg": "You drive the point into {target_name}'s shoulder junction and twist; the {hit_location} coupling lets go and the dead arm sags off its mounts.",
+                "victim_msg": "{attacker_name} drives the point into your shoulder junction and twists. The {hit_location} coupling lets go and the dead arm sags off its mounts.",
+                "observer_msg": "{attacker_name} drives the point into {target_name}'s shoulder junction and twists; the {hit_location} coupling lets go and the dead arm sags off its mounts.",
+            },
+        ],
+        "minor": [
+            {
+                "attacker_msg": "Your point finds the gap between shoulder plates and {target_name}'s {hit_location} pops loose, sliding off its frame.",
+                "victim_msg": "{attacker_name}'s point finds the gap between your shoulder plates and your {hit_location} pops loose, sliding off its frame.",
+                "observer_msg": "{attacker_name}'s point finds the gap between shoulder plates and {target_name}'s {hit_location} pops loose, sliding off its frame.",
+            },
+        ],
+    },
+    "laceration": {
+        "grievous": [
+            {
+                "attacker_msg": "You saw the edge through the shoulder until the last cable parts. {target_name}'s {hit_location} swings free on a thread of wire, then falls, sparking.",
+                "victim_msg": "{attacker_name} saws the edge through your shoulder until the last cable parts. Your {hit_location} swings free on a thread of wire, then falls, sparking.",
+                "observer_msg": "{attacker_name} saws the edge through the shoulder until the last cable parts. {target_name}'s {hit_location} swings free on a thread of wire, then falls, sparking.",
+            },
+        ],
+        "minor": [
+            {
+                "attacker_msg": "A short, tearing stroke severs the {hit_location} cable bundle at the shoulder and the dead arm sags away.",
+                "victim_msg": "{attacker_name}'s tearing stroke severs your {hit_location} cable bundle at the shoulder and the dead arm sags away.",
+                "observer_msg": "A short, tearing stroke severs {target_name}'s {hit_location} cable bundle at the shoulder and the dead arm sags away.",
+            },
+        ],
+    },
+}
