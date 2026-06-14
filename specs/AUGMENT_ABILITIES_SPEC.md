@@ -181,7 +181,9 @@ as a hand until you `/shotgun`.
 
 Settled 2026-06-13 after the shotgun arm shipped: **chassis +
 module is the standard**; future cybernetics are data over these
-four templates, never bespoke systems.
+five templates, never bespoke systems.  (Originally framed as four;
+the #549 sharpening split "ability module" into a hardpoint module
+and a distinct flesh-implant tier — see 4 and 5 below.)
 
 1. **Replacement organ** (cyber heart / eye / kidney — the
    low-impact tier).  An organ item carrying its own spec installs
@@ -199,17 +201,31 @@ four templates, never bespoke systems.
    the item's organ/longdesc/anchor templates resolve `{side}`.
    A chassis declares empty **hardpoint** organ slots and stamps
    `prosthetic_frame` on its frame organs (§9).  **Shipped** (M2/M3).
-4. **Ability module** (shotgun, claws/Nailz, teeth/Jawz): an organ
-   item carrying spec + ability that installs INTO anatomy — a
-   chassis hardpoint, or **compatible flesh anatomy** (Nailz into a
-   flesh hand, Jawz into a flesh jaw; some modules are
-   chrome-or-meat agnostic by declaration).  The module inherits
-   its side/slot from where it's mounted; its ability "just does
-   its thing" from there.  **Harvest is the recovery verb**: a
-   module comes out of a severed limb or corpse as the organ item
-   it is.  **Shipped** (M3 hardpoint + M4 flesh-mount):
-   `SHOTGUN_MODULE` (forearm hardpoint), `NAILZ` (flesh-mount
-   natural weapon).
+4. **Ability module** (shotgun, teeth/Jawz): an organ item carrying
+   spec + ability that seats into a chassis **hardpoint**, inheriting
+   its side/slot from the mount; its ability "just does its thing"
+   from there.  **A module needs a hardpoint — that is the line**
+   (sharpened #549; supersedes the earlier "hardpoint OR compatible
+   flesh" framing).  **Harvest is the recovery verb**: a module comes
+   out of a severed limb or corpse as the organ item it is.
+   **Shipped** (M3): `SHOTGUN_MODULE` (a `CYBER_ARM` forearm
+   hardpoint); `JAWZ` (a `CYBER_JAW` jaw hardpoint, #550).
+   `CYBER_JAW` is the first **replacement organ that is itself a
+   chassis** — it rebuilds the jaw slot (keeping talk/eat) *and*
+   carries a `jaw` hardpoint for the bite module.  It installs via the
+   replacement path (template 1), is surface-accessible (no cavity
+   incision), then the module seats into its hardpoint.
+
+5. **Flesh implant** (Nailz): the sibling tier, **not a module** —
+   an ability grafted directly into LIVING anatomy (carbide claws
+   into a flesh hand), no hardpoint, no chassis.  The host stays
+   flesh and still bleeds; it has no `prosthetic_frame`, so it
+   necroses and the limb doesn't reattach (the implant harvests out
+   separately).  `module_mount: "flesh"` in code, but conceptually
+   it's the implant tier, distinct from a hardpoint module.
+   **Shipped** (M4): `NAILZ` + `NAILZ_CLAWS` — carbide claw body
+   honed to a **monofilament edge** (the edge is the wire, not the
+   claw; corrected #549).
 
 The fused `SHOTGUN_ARM` was retired in favor of `CYBER_ARM`
 (side-agnostic chassis, forearm hardpoint) + `SHOTGUN_MODULE`.
@@ -253,11 +269,23 @@ snapshot over a stump (amputate first — any compatible body, so
 scavenged chrome bolts on), restores the carried longdesc, and
 consumes the appendage.
 
+**Severance narrative (chrome, #551).** The moment a prosthetic limb
+comes off narrates as sheared hardware, not bleeding meat.
+`get_severance_message(..., material="chrome")` reads a per-location
+`CHROME_MESSAGES` bank (arms / hands / tail today), falling back to a
+generic `cybernetic` module, then a blood-free generic template.  The
+one fork lives in `apply_sever_to_character`, keyed on
+`is_cybernetic_limb(appendage)` — the same `prosthetic_frame` marker
+as reattachment above — so a flesh limb with cyberware in it still
+bleeds.  The head/decapitation beat stays flesh (no cyber skull
+exists).  Prose: sheared actuators, snapped cable looms, a coolant
+hiss, dead-weight alloy clatter.
+
 ## 9 · Chrome rendering
 
-Inorganic body locations render in a light steel grey
-(`CHROME_DEFAULT_COLOR`, `world/combat/constants.py`) rather than
-the wearer's skintone — chrome is not flesh.  Coating items will
+Inorganic body locations render in a dark steel grey
+(`CHROME_DEFAULT_COLOR` = `|=l`, `world/combat/constants.py`) rather
+than the wearer's skintone — chrome is not flesh.  Coating items will
 override this per augment when they exist; until then it is the
 bare-metal default.  Limb longdesc is side-aware via the `{side}`
 token (resolved at install), and a deployed integrated weapon

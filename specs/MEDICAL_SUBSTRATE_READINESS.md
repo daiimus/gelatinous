@@ -40,6 +40,44 @@ The audit itself is the planning artifact and lifecycle: this is the at-a-glance
 | `fracture_vulnerable` | 2 files | Bone-fracture condition spawn path (`world/medical/utils.py`, `commands/CmdConsumption.py`) | — (live) | **Live** — load-bearing |
 | `bone_type` | 3 files | Bone-fracture and severance routing (`world/medical/utils.py`, `world/medical/core.py`, `commands/CmdConsumption.py`) | — (live) | **Live** — load-bearing |
 
+> **Read-count caveat (2026-06-14):** the "Reads (current)" column above was
+> last validated June 2026 and is stale — re-run the grep-counts before
+> relying on a specific number. The flags are correctly *classified*
+> (vestigial / gap / live); only the integer counts drift.
+
+---
+
+## Flags from the augment / cyberware arc (#511–#551)
+
+These organ-spec flags landed with the anatomy-augments and cyberware
+chassis+module work and are **already consumed by runtime** — they are
+live and load-bearing, not substrate-gaps. Catalogued here because the
+"Adding a new flag" checklist below requires a row per flag, and the
+arc shipped before this index was updated (the flag-debt symptom this
+doc exists to catch, turned on the doc itself).
+
+| Flag (declaration site) | Intended consumer | Status |
+|---|---|---|
+| `inorganic` (organ spec) | Damage model — chrome takes pain only, no bleed/infection (`Organ.take_damage`); chrome rendering (`appearance_mixin`); chrome severance prose (`get_severance_message`) | **Live** — load-bearing |
+| `prosthetic_frame` (chassis organs) | `is_cybernetic_limb` — reattachment eligibility + chrome severance routing | **Live** — load-bearing |
+| `hardpoint` (chassis slot organ) | `find_hardpoint` — module seating (`world/medical/procedures.py`) | **Live** — load-bearing |
+| `module_type` (module item / hardpoint) | Install dispatch + hardpoint match + harvest provenance | **Live** — load-bearing |
+| `abilities` (organ spec) | Ability layer — `find_ability`, `iter_abilities`, toggle dispatcher | **Live** — load-bearing |
+| `flesh_organ` (flesh-mount module) | Names the specific host organ in a multi-organ container (Jawz→jaw) | **Live** — load-bearing |
+| `can_be_harvested` / `can_be_replaced` | Harvest / install gates (operate menu + resolvers) | **Live** — load-bearing |
+| `capacities` (list) + `*_contribution` | Per-character capacity math for replacement/augment organs (`calculate_body_capacity`) | **Live** — load-bearing |
+| `grasping` (organ spec) | Prehensile `hands` overlay — extra held slot from a grasping container | **Live** — load-bearing |
+| `severable_container` (augment organ) | Severable-overlay + operate-menu sever listing | **Live** — load-bearing |
+| `display_location` / `hit_weight` | Surface-access incision gate + hit-distribution weighting (pre-arc, never catalogued) | **Live** — load-bearing |
+
+**Capacity-extension note:** augment organs can *add* anatomy and
+capacities a species table never declared (the cyber tail; a future
+Doc-Ock rig). The substrate phases below (movement policing, senses,
+equipment-handling) assume the static species table is the full
+capacity set — per-character capacity *extension* is an un-catalogued
+wrinkle to fold in when those substrates are scoped. See
+`MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC.md`.
+
 ---
 
 ## Substrate → Phases the Audit Sequences

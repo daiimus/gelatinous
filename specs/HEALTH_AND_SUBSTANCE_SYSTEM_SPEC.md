@@ -49,7 +49,12 @@ alias kept).  Blood-loss rate derives from **current** severity
 The character's `organs` dict is the single source of present
 anatomy (no auto-create; severed organs persist as 0-HP tombstones).
 `inorganic` organs take **pain-only** damage (no bleed / infection).
-Heal and `@resetmedical` are chrome-aware.  Full design:
+Severing a prosthetic limb narrates as sheared hardware, not bleeding
+meat — `get_severance_message(..., material="chrome")`, keyed on the
+`prosthetic_frame` marker (#551).  Heal and `@resetmedical` are
+chrome-aware.  Cybernetics follow the chassis+module standard (five
+templates: replacement organ, anatomy augment, limb chassis,
+hardpoint module, flesh implant).  Full design:
 `ANATOMY_AUGMENTS_SPEC` + `AUGMENT_ABILITIES_SPEC`.
 
 ## Implementation Status

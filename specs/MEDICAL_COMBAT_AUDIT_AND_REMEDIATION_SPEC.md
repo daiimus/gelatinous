@@ -41,6 +41,21 @@ a substrate consumer for things like `incapacitation_threshold`,
 `paralysis_if_destroyed`, or `total_loss_penalty`. Those substrate phases
 remain the right next focus for an audit-aligned arc.
 
+**The anatomy-augments + cyberware arc (#511–#551) is likewise orthogonal
+to the substrate gaps.** Chassis+module cyberware, spec-carrying
+replacement organs, inorganic damage (pain-only), reattachment, and
+chrome severance prose all read / mutate organ HP, `wound_stage`,
+`inorganic`, and `abilities` — but none introduces or resolves a consumer
+for `incapacitation_threshold`, `paralysis_if_destroyed`, or
+`total_loss_penalty`. The substrate phases are unchanged by it. One
+*genuine new wrinkle* the arc exposed, though: augment organs can **add**
+anatomy and capacities a species table never declared (the cyber tail).
+The substrate plan (Phases 7–9) assumes the static species table is the
+full capacity set; **per-character capacity extension** is an
+un-catalogued substrate concern to fold into movement-policing /
+senses / equipment-handling whenever those are scoped. Tracked in
+`MEDICAL_SUBSTRATE_READINESS.md`.
+
 The audit's Core Insight ("schema without consumers") still stands and
 sequences correctly: build substrate before wiring schema to it.
 

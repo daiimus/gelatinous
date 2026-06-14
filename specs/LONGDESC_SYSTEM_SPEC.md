@@ -518,11 +518,37 @@ longdesc = AttributeProperty(
 - Permanent modifications (scars, prosthetics)
 - Medical condition visibility
 
-#### Cybernetic/Modification System
-- Cybernetic implants as location overrides
+#### Chrome / Inorganic Rendering ✅ **SHIPPED** (anatomy-augments + cyberware arc, #511–#551)
+Cybernetic limbs/organs are no longer a future overlay — they render
+through a live inorganic layer in `typeclasses/appearance_mixin.py`:
+
+- **Inorganic location detection** — `_location_is_inorganic(location)`
+  reads the per-character organ snapshot for an `inorganic`/
+  `prosthetic_frame` organ at the location; chrome locations render in
+  `CHROME_DEFAULT_COLOR` (`|=l`, dark steel grey — `world/combat/constants.py`)
+  instead of skin tone.
+- **Side-aware chassis longdesc** — `{side}` tokens in a chassis
+  prototype's `augment_longdesc` resolve at install (a left/right cyber
+  arm reads correctly), alongside the existing `{Their}` pronoun flex.
+- **Deployed-module expansion** — `_deployed_module_longdesc(location)`
+  appends an active module's `deployed_longdesc` (the shotgun arm, the
+  Nailz claws) after the base body line.
+- **Deployed hand-slot override** — `_deployed_slot_prose(location)`
+  replaces a *consumed* hand's longdesc when an integrated weapon folds
+  the hand away (`/shotgun` shows the firing socket, not a hand).
+- **Stored-at-install policy** — chrome longdesc prose is captured when
+  the chassis is installed, not re-rendered each look (a settled design
+  call: old installs keep stale prose until re-install; acceptable
+  pre-production).
+
+Tattoos / piercings / scar overlays remain future (see Modification
+System below).
+
+#### Tattoo / Piercing / Scar Modification System (Future)
 - Tattoo system integration
 - Body modification descriptions
 - Enhancement visibility rules
+- Scar overlays (medical `can_scar` hook exists; rendering not wired)
 
 #### Equipment Integration
 - Worn equipment affects appearance
@@ -574,7 +600,7 @@ longdesc = AttributeProperty(
 1. **Clothing System** ✅ **COMPLETED**: Coverage-based visibility using shared location constants with dynamic styling
 2. **Equipment System** 🔄 **READY**: Worn item integration architecture prepared  
 3. **Injury System** 🔄 **READY**: Medical condition display hooks established
-4. **Modification System** 🔄 **READY**: Cybernetics, tattoos, piercings integration points prepared
+4. **Modification System** ◐ **PARTIAL**: Chrome/inorganic cybernetic rendering shipped (#511–#551 — see "Chrome / Inorganic Rendering" above); tattoos/piercings/scars still prepared-not-wired
 5. **Pronoun System** ✅ **COMPLETED**: Dynamic pronoun integration with $pron() support
 6. **Tailor System** 🔄 **READY**: Custom fitting commands for unique anatomies architecture prepared
 

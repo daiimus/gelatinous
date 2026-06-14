@@ -192,6 +192,15 @@ from the graft).  Severed inorganic parts get cybernetic part prose
 and a `"cybernetic <part>"` name instead of flesh ("muscle firm…
 cartilage").
 
+The **severance moment** is forked too (#551): a prosthetic limb's
+detachment narrates as sheared hardware, not bleeding meat.
+`get_severance_message(..., material="chrome")` routes to a
+per-location `CHROME_MESSAGES` bank (then a generic `cybernetic`
+fallback module).  The fork keys on `is_cybernetic_limb` — the same
+`prosthetic_frame` marker as reattachment (§3.10) — so a flesh limb
+with cyberware implanted in it still bleeds.  See
+`AUGMENT_ABILITIES_SPEC` §8.
+
 ### 3.9 · Heal & reset
 
 `MedicalState.full_heal()` (the `@heal` / revive backend) restores
