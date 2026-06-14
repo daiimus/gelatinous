@@ -2788,7 +2788,9 @@ HIT_LOCATION_DIFFICULTY = {
 3. ~~Define location difficulty constants and organ targeting weights~~ → Implemented with success margin thresholds and precision-based organ weights
 4. ~~Update combat handler to use smart location targeting~~ → Fully integrated two-stage targeting system
 
-**Phase 3.2: Armor Protection Layer** - 🔲 PLANNED 
+**Phase 3.2: Armor Protection Layer** - ✅ SHIPPED — armor moved to its
+own system; see `MODULAR_ARMOR_SYSTEM_SPEC.md` (stacking, plate carriers,
+tactical targeting). The sketch below is superseded historical intent.
 1. Extend `typeclasses/items.py` with armor properties:
    ```python
    # Add to clothing items

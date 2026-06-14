@@ -3,9 +3,10 @@
 ## Document Information
 
 **Version:** 1.0  
-**Date:** 2025-01-XX  
-**Status:** Draft - Awaiting Review  
-**Author:** AI Agent  
+**Date:** 2025-01  
+**Status:** ✅ Implemented — the webclient size-detection plugin ships in
+`web/static/webclient/js/gel.js`; the §Implementation Plan checklist
+below is delivered. (Header corrected 2026-06-14 — was stale "Draft".)  
 **Related Systems:** G.R.I.M. Combat System, Evennia Webclient  
 
 ---

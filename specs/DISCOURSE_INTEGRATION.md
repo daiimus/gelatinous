@@ -130,19 +130,21 @@ enable local logins = false          # Force SSO only
 
 ### 3.2 Set Color Values
 
-Use these values (matching your game's `custom.css`):
+Use these values (matching the live site palette in `STYLING_SPEC.md` /
+`custom.css` — the muted jade-green "Blade Runner" scheme, **not** the
+old blue accent):
 
 ```
-Primary (text):           #ffffff
+Primary (text):           #e0e0e0
 Secondary (background):   #1a1a1a
-Tertiary (accent):        #6fa8dc
-Quaternary (borders):     #3a3a3a
+Tertiary (accent):        #5fd38d   (muted jade green)
+Quaternary (borders):     #404040
 Header Background:        #1a1a1a
-Header Primary:           #ffffff
-Highlight (selected):     #5a8fc7
-Danger (errors):          #dc6f6f
-Success (confirmations):  #6fdc7a
-Love (likes):             #dc6fa8
+Header Primary:           #e0e0e0
+Highlight (selected):     #4a9d6d   (dimmed jade)
+Danger (errors):          #e85555
+Success (confirmations):  #5fd38d
+Love (likes):             #e6c547
 ```
 
 ### 3.3 Apply to Theme

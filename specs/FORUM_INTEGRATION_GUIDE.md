@@ -42,13 +42,12 @@ The following files support forum integration but are **non-invasive**:
 
 ### Discourse Side (Forum)
 
-If you set up a Discourse forum, these specs provide complete theme configuration:
-
-**Consolidated Specs**:
-- `DISCOURSE_COLOR_PALETTE.md` - Color scheme matching your game
-- `DISCOURSE_DARK_THEME_CSS.md` - CSS for header integration
-- `DISCOURSE_THEME_CODE_FIXED.md` - JavaScript for iframe embedding
-- `CACHING_AND_PRECONNECT_SETUP.md` - Performance optimizations
+If you set up a Discourse forum, the complete theme configuration —
+color scheme, header-integration CSS, iframe-embedding JavaScript, and
+caching/preconnect setup — lives in **`DISCOURSE_INTEGRATION.md`**
+(steps 3–9). (The previously-separate `DISCOURSE_COLOR_PALETTE.md` /
+`DISCOURSE_DARK_THEME_CSS.md` / `DISCOURSE_THEME_CODE_FIXED.md` /
+`CACHING_AND_PRECONNECT_SETUP.md` files were consolidated into it.)
 
 ---
 

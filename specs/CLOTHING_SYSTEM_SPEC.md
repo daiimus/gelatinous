@@ -4,7 +4,7 @@
 
 **Design Phase**: Comprehensive specification completed with dynamic styling system  
 **Implementation Status**: Core functionality implemented and tested - ready for advanced features  
-**Documentation Status**: Complete specification with corrected FuncParser understanding  
+**Documentation Status**: Complete. Pronoun handling is the grammar engine's `{their}`/`{they}` brace tokens — `$pron()` was found not to work in prototypes (see §Enhanced Features).  
 **Testing Status**: Basic clothing system verified working in game environment
 
 ## Overview
@@ -19,7 +19,7 @@ The Clothing System extends the longdesc foundation to provide wearable items th
 4. **Shared Location Constants**: Uses the same body location system as longdesc for consistency
 5. **Appearance Integration**: Seamlessly integrates with existing character appearance system
 6. **Roleplay Enhancement**: Style commands provide intuitive roleplay interactions with meaningful feedback
-7. **Pronoun Integration**: All clothing descriptions use Evennia's `$pron()` system for perspective handling
+7. **Pronoun Integration**: Clothing descriptions use the grammar engine's `{their}`/`{they}` brace tokens for perspective handling — **not** Evennia's `$pron()` (which doesn't work in prototypes; see §Enhanced Features and `GRAMMAR_ENGINE_SPEC.md`)
 8. **Color Immersion**: ANSI color integration for enhanced visual immersion and atmospheric descriptions
 
 ## Integration with Longdesc System
@@ -55,7 +55,7 @@ class Item(DefaultObject):
     
     # Clothing-specific description that appears when worn (base state)
     # Empty string = not clothing, populated = worn description
-    # USES $pron() for perspective-aware descriptions
+    # USES {their}/{they} brace tokens for perspective-aware descriptions
     worn_desc = AttributeProperty("", autocreate=True)
     
     # ANSI color definition for this item
@@ -138,13 +138,13 @@ COLOR_DEFINITIONS = {
 
 # Example colored clothing prototypes
 DEVELOPER_HOODIE = {
-    "worn_desc": "A menacing {color}black|n developer hoodie that clings to $pron(their) frame like digital shadow incarnate, command-line text pulsing ominously across $pron(their) chest",
+    "worn_desc": "A menacing {color}black|n developer hoodie that clings to {their} frame like digital shadow incarnate, command-line text pulsing ominously across {their} chest",
     "color": "black",
     "material": "cotton",
 }
 
 BLUE_JEANS = {
-    "worn_desc": "Battle-tested {color}denim|n jeans that cling to $pron(their) form with urban authority, $pron(their) faded indigo surface scarred by countless encounters", 
+    "worn_desc": "Battle-tested {color}denim|n jeans that cling to {their} form with urban authority, {their} faded indigo surface scarred by countless encounters", 
     "color": "blue",
     "material": "denim",
 }
@@ -167,7 +167,7 @@ def get_colored_description(self):
 
 # Example usage in prototypes:
 RAINBOW_SOCKS = {
-    "worn_desc": "Wildly vibrant rainbow socks that shimmer with {color}prismatic brilliance|n across $pron(their) feet",
+    "worn_desc": "Wildly vibrant rainbow socks that shimmer with {color}prismatic brilliance|n across {their} feet",
     "color": "bright_magenta",
     "material": "synthetic",
 }
@@ -675,7 +675,7 @@ def _build_clothing_coverage_map(self):
     return coverage
 
 def return_appearance(self, looker, **kwargs):
-    """Enhanced appearance integrating clothing with existing formatting and $pron() system."""
+    """Enhanced appearance integrating clothing with existing formatting and the {their}/{they} brace-token system."""
     # Get base header (name, description, etc.)
     string = self._get_appearance_header(looker, **kwargs)
     
@@ -683,7 +683,7 @@ def return_appearance(self, looker, **kwargs):
     body_descriptions = self._get_visible_body_descriptions(looker)
     
     if body_descriptions:
-        # Feed into existing paragraph formatting system with $pron() processing
+        # Feed into existing paragraph formatting system with brace-token processing
         formatted_body = self._format_longdescs_with_paragraphs(body_descriptions, looker)
         string += f"\n{formatted_body}"
     
@@ -697,7 +697,7 @@ def _get_visible_body_descriptions(self, looker=None):
     
     for location in LONGDESC_LOCATIONS:
         if location in coverage_map:
-            # Location covered by clothing - use current worn_desc with $pron() processing
+            # Location covered by clothing - use current worn_desc with brace-token processing
             clothing_item = coverage_map[location]
             desc = clothing_item.get_current_worn_desc_with_perspective(looker, from_obj=self)
             if desc:
@@ -706,7 +706,7 @@ def _get_visible_body_descriptions(self, looker=None):
             # Location not covered - use character's longdesc
             desc = self.longdescs.get(location)
             if desc:
-                # Process longdescs through $pron() system too for consistency
+                # Process longdescs through the brace-token system too for consistency
                 processed_desc = self._process_description_pronouns(desc, looker)
                 descriptions.append(processed_desc)
     
@@ -718,14 +718,14 @@ def _get_visible_body_descriptions(self, looker=None):
 ### Pronoun and Color Processing
 ```python
 def get_current_worn_desc_with_perspective(self, looker=None, from_obj=None):
-    """Get current worn description with $pron() and color processing"""
+    """Get current worn description with brace-token and color processing"""
     # Get base description (considering current style state)
     desc = self.get_current_worn_desc()
     
     # Process color placeholders
     desc = self._process_color_codes(desc)
     
-    # Process $pron() tags with perspective
+    # Process {their}/{they} brace tokens with perspective
     if looker and from_obj:
         from evennia.utils.funcparser import FuncParser
         parser = FuncParser(desc)
@@ -911,7 +911,7 @@ The shirt doesn't have a zipper.
 
 ## Enhanced Prototype Examples
 
-### Developer Hoodie with $pron() and Color Integration
+### Developer Hoodie with brace-token and Color Integration
 ```python
 DEVELOPER_HOODIE = {
     "prototype_key": "DEVELOPER_HOODIE",
@@ -1071,5 +1071,5 @@ COMBAT_BOOTS = {
 
 ---
 
-**Document Status**: Enhanced with `$pron()` integration, streamlined single-color system, and material attribute for future extensibility
+**Document Status**: Enhanced with `{their}`/`{they}` brace-token integration, streamlined single-color system, and material attribute for future extensibility
 **Next Steps**: Implement Phase 2 color & material system enhancements in codebase

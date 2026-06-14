@@ -72,9 +72,10 @@ char.db.archived = False
 > **Status: Form COMPLETE.** Phases 1–4 were built incrementally and are now
 > live. The shipped `CharacterForm` in `web/website/forms.py` includes the split
 > name fields (`first_name`, `last_name`), `sex`, all four GRIM stats, and the
-> full 300-point + name-uniqueness validation. Phase 5 (respawn interface)
-> remains optional/future. The per-phase breakdown is retained below as the
-> historical implementation plan.
+> full 300-point + name-uniqueness validation. The respawn interface
+> (templates + flash clone) also **shipped and is deployed to production**
+> — see `WEB_RESPAWN_CHARACTER_CREATION_SPEC.md`. The per-phase breakdown
+> is retained below as the historical implementation plan.
 
 ### Phase 1: Minimal Form (COMPLETE)
 
