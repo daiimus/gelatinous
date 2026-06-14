@@ -1,6 +1,10 @@
-# Storage Patterns: Audit and Remediation Spec
+# Storage Patterns Roadmap
 
-**Status**: Audit complete · remediation roadmap drafted · no code
+> Renamed from `STORAGE_PATTERNS_AUDIT_AND_REMEDIATION_SPEC` (2026-06-14).
+> A **forward roadmap**: the survey is done, the §5 remediation plan is
+> drafted and not yet executed.
+
+**Status**: Survey complete · remediation roadmap drafted · no code
 changes yet.
 
 ## 0 · The architectural principle

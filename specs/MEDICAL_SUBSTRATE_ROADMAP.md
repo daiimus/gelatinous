@@ -1,15 +1,25 @@
-# Medical & Combat Audit and Remediation Spec
+# Medical Substrate Roadmap
+
+> Renamed from `MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC` (2026-06-14).
+> This is a **forward roadmap**, not a historical audit — the findings
+> below seeded a phased plan for building the medical/combat substrate
+> consumers, and most phases are still ahead. The at-a-glance flag map
+> lives in `MEDICAL_SUBSTRATE_READINESS.md`.
 
 ## Overview
 
-End-to-end audit of the medical and combat systems, the death-progression
-pipeline, and the tertiary systems they depend on (wounds, conditions, armor,
-corpse, hit selection). This spec catalogues every drift, dead metadata flag,
-and documented-but-unimplemented feature found in that audit, and lays out a
-prioritised remediation plan with discrete phases.
+Started as an end-to-end audit of the medical and combat systems, the
+death-progression pipeline, and the tertiary systems they depend on
+(wounds, conditions, armor, corpse, hit selection). It catalogued every
+drift, dead metadata flag, and documented-but-unimplemented feature found,
+and laid out a prioritised remediation plan with discrete phases. That
+remediation plan — building the substrate consumers the schema advertises —
+is the live content; the audit catalogue is its rationale.
 
-Status: **proposal**. Author: audit pass after the pelvis-in-groin fix
-(issue #325) surfaced broader questions about death model and dead metadata.
+Status: **active roadmap** (Phase 1 complete; 2–13 ahead — see the
+Implementation Progress true-up below). Origin: audit pass after the
+pelvis-in-groin fix (issue #325) surfaced broader questions about the
+death model and dead metadata.
 
 ## Implementation Progress (June 2026 true-up)
 

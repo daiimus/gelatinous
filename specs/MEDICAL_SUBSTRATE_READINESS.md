@@ -1,6 +1,6 @@
 # Medical Substrate Readiness Index
 
-This document is the load-bearing artifact spun out of Phase 1 of `MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC.md`. Its purpose is captured in that spec's Core Insight:
+This document is the load-bearing artifact spun out of Phase 1 of `MEDICAL_SUBSTRATE_ROADMAP.md`. Its purpose is captured in that spec's Core Insight:
 
 > The medical system has a top-down anatomical schema whose bottom-up consumer systems were never built. Each declarative flag advertises a consumer system that hasn't been written yet. Deleting them would be deleting design documentation. The right work is *building the substrates*.
 
@@ -76,7 +76,7 @@ Doc-Ock rig). The substrate phases below (movement policing, senses,
 equipment-handling) assume the static species table is the full
 capacity set — per-character capacity *extension* is an un-catalogued
 wrinkle to fold in when those substrates are scoped. See
-`MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC.md`.
+`MEDICAL_SUBSTRATE_ROADMAP.md`.
 
 ---
 
@@ -102,13 +102,13 @@ Phases 4 (Vestigial-Flag Deletion) and 5 (`LETHAL_CAPACITY_NAMES` Split) don't d
 2. If existing runtime: wire it on the same PR. Don't add unconsumed declarative state.
 3. If future substrate: add a row to the table above with the substrate name and audit phase that will wire it. **An unconsumed flag without a row here is the symptom the audit catalogues** — that's how flag-debt accumulates.
 
-When the audit's Phases 4–13 land, prune rows here and remove the flag-debt in `MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC.md`'s "Drift Quick Reference" headline list.
+When the audit's Phases 4–13 land, prune rows here and remove the flag-debt in `MEDICAL_SUBSTRATE_ROADMAP.md`'s "Drift Quick Reference" headline list.
 
 ---
 
 ## See Also
 
-- `MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC.md` — full audit catalogue, remediation phases, sequencing
+- `MEDICAL_SUBSTRATE_ROADMAP.md` — full audit catalogue, remediation phases, sequencing
 - `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` — the canonical health/medical spec; "Spinal Anatomy, Decapitation & Combat Severance" section is the canonical reference for how death wiring crosses the schema boundary
 - `world/medical/constants.py` — `LETHAL_CAPACITY_NAMES`, `BODY_CAPACITIES`, `CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD`, `BLOOD_LOSS_DEATH_THRESHOLD`
 - `world/medical/core.py` — `MedicalState.is_dead`, `is_unconscious`, `calculate_body_capacity`

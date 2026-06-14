@@ -35,7 +35,7 @@ Example::
         exclude=[attacker, target],
     )
 
-See ``specs/MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC.md`` and issue #332
+See ``specs/MEDICAL_SUBSTRATE_ROADMAP.md`` and issue #332
 for the broader design context.
 """
 

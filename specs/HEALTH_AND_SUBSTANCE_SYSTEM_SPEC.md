@@ -331,7 +331,7 @@ class DeathProgressionScript(DefaultScript):
     def _check_medical_revival_conditions(self, character):
         """Check if medical treatment has resolved fatal conditions"""
         # Brain death blocks revival — tracked as Phase 2 of the
-        # MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC remediation plan.
+        # MEDICAL_SUBSTRATE_ROADMAP remediation plan.
         # Below is the intended shape; the live code in
         # typeclasses/death_progression.py:_check_medical_revival_conditions
         # currently only calls medical_state.is_dead() and will gain
