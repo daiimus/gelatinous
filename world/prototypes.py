@@ -2109,11 +2109,16 @@ SHOTGUN_MODULE = {
 # the host stays what it is; it just has claws in it now.  /nailz
 # extends them; active claws take combat precedence over anything
 # held (settled decision 2026-06-12).
+# NAILZ — flesh IMPLANT (not a module): carbide claws grafted into a
+# living hand, no chassis required.  The clean counterexample to the
+# hardpoint modules.  Material note (#525 review): the claws are
+# carbide (a rigid blade material); "monofilament" is a wire/whip and
+# belongs on the cutting EDGE, not the claw body.
 NAILZ = {
     "key": "Nailz",
     "typeclass": "typeclasses.items.Organ",
     "aliases": ["nailz", "claw implants", "nail implants"],
-    "desc": "A sealed clinical tray of ten curved monofilament claws and their spring housings, sized for implantation along the fingers of one hand. The marketing name is etched on the tray lid in a typeface that has seen some court dates. Installation requires a surgeon; regret is sold separately.",
+    "desc": "A sealed clinical tray of ten curved carbide claws and their spring housings, each blade honed to a monofilament edge, sized for implantation along the fingers of one hand. The marketing name is etched on the tray lid in a typeface that has seen some court dates. Installation requires a surgeon; regret is sold separately.",
     "tags": [("medical_item", "item_type"), ("augment", "item_type")],
     "attrs": [
         ("module_type", "nailz"),
@@ -2127,10 +2132,10 @@ NAILZ = {
                 "nailz": {
                     "type": "natural_weapon",
                     "weapon_prototype": "NAILZ_CLAWS",
-                    "deploy_msg": "Your knuckles ache, then part — ten monofilament claws slide out along your fingers with a sound like scissors closing.",
+                    "deploy_msg": "Your knuckles ache, then part — ten carbide claws slide out along your fingers with a sound like scissors closing.",
                     "retract_msg": "The claws fold back under your skin; your hand is just a hand again, mostly.",
-                    "deployed_longdesc": "Ten monofilament claws stand extended from the fingertips, catching the light.",
-                    "deploy_room": "{actor} flexes a hand and monofilament claws slide out along their fingers, catching the light.",
+                    "deployed_longdesc": "Ten carbide claws stand extended from the fingertips, monofilament edges catching the light.",
+                    "deploy_room": "{actor} flexes a hand and carbide claws slide out along their fingers, catching the light.",
                     "retract_room": "{actor}'s claws fold away under the skin of their hand.",
                 },
             },
@@ -2143,9 +2148,9 @@ NAILZ = {
 # precedence.  Reuses the tiger_claws message set.
 NAILZ_CLAWS = {
     "prototype_parent": "MELEE_WEAPON_BASE",
-    "key": "monofilament claws",
-    "aliases": ["claws", "nailz claws"],
-    "desc": "Ten curved monofilament claws, extended from their knuckle housings. They are not for opening letters.",
+    "key": "carbide claws",
+    "aliases": ["claws", "nailz claws", "carbide claws"],
+    "desc": "Ten curved carbide claws, extended from their knuckle housings, each honed to a monofilament edge. They are not for opening letters.",
     "damage": 9,
     "locks": "get:false();drop:false();give:false()",
     "attrs": [
@@ -2156,30 +2161,63 @@ NAILZ_CLAWS = {
     ],
 }
 
-# JAWZ - flesh-mount natural weapon, implanted into the jaw (#525/M4).
-# Like NAILZ but targets a SPECIFIC host organ (the jaw) since the
-# head container holds many organs.  /jawz bares the fangs; active
-# fangs take combat precedence over a held weapon (you bit them).
-JAWZ = {
-    "key": "Jawz",
+# CYBER_JAW — prosthetic-jaw chassis (#525 review).  Replaces the
+# flesh jaw with a chrome one (keeps talking/eating) and carries a
+# "jaw" HARDPOINT for a Jawz-class module.  Installs via the
+# replacement-organ path (same canonical name "jaw").  A MODULE needs
+# a hardpoint, so a cyber jaw is the prerequisite for Jawz.
+CYBER_JAW = {
+    "key": "cybernetic jaw",
     "typeclass": "typeclasses.items.Organ",
-    "aliases": ["jawz", "fang implants", "teeth implants"],
-    "desc": "A surgical case of paired titanium-alloy fangs and their gum-line actuators, machined to seat over a living mandible. The lid carries a worn sticker — a grinning chrome skull — and a warranty void the moment it leaves the shop. Installation requires a surgeon.",
+    "aliases": ["cyber jaw", "prosthetic jaw", "jaw unit"],
+    "desc": "A full cybernetic mandible — articulated alloy and a composite chin plate, the gum line machined with an empty hardpoint behind a slide cover. It eats, it talks, and it's waiting for something to put in the slot. Surgical installation required.",
     "tags": [("medical_item", "item_type"), ("augment", "item_type")],
     "attrs": [
-        ("module_type", "jawz"),
-        ("module_mount", "flesh"),
-        ("flesh_containers", ["head"]),
-        ("flesh_organ", "jaw"),
+        ("organ_name", "jaw"),
         ("condition", "pristine"),
         ("compatible_species", ["human"]),
         ("organ_spec", {
-            "module_type": "jawz",
+            "container": "head", "display_location": "face",
+            "max_hp": 14, "hit_weight": "rare",
+            "capacities": ["talking", "eating"],
+            "talking_contribution": "major",
+            "eating_contribution": "moderate",
+            "can_be_harvested": True, "can_be_replaced": True,
+            "inorganic": True, "prosthetic_frame": True,
+            "hardpoint": "jaw",
+        }),
+    ],
+}
+
+# JAWZ — hardpoint module (#525 review): seats into a CYBER_JAW's jaw
+# hardpoint (module = hardpoint hardware; you need the cyber jaw
+# first).  Rebuilds the jaw organ to keep its talking/eating function
+# while adding the bite.  /jawz bares the fangs; active fangs take
+# combat precedence over a held weapon (you bit them).
+JAWZ = {
+    "key": "Jawz",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["jawz", "fang module", "teeth module"],
+    "desc": "A surgical case of paired titanium-alloy fangs and their gum-line actuators, machined to seat into a cybernetic jaw's hardpoint. The lid carries a worn sticker — a grinning chrome skull — and a warranty void the moment it leaves the shop. Needs a cyber jaw to mount into; installation requires a surgeon.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("module_type", "jaw"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "head", "display_location": "face",
+            "max_hp": 14, "hit_weight": "rare",
+            "capacities": ["talking", "eating"],
+            "talking_contribution": "major",
+            "eating_contribution": "moderate",
+            "can_be_harvested": True, "can_be_replaced": True,
+            "inorganic": True, "prosthetic_frame": True,
+            "hardpoint": "jaw", "module_type": "jaw",
             "abilities": {
                 "jawz": {
                     "type": "natural_weapon",
                     "weapon_prototype": "JAWZ_FANGS",
-                    "deploy_msg": "Your gums ache and split — alloy fangs slide down over your teeth with an oily click, and your jaw sets a little wider to hold them.",
+                    "deploy_msg": "Your gums split along their seam — alloy fangs slide down over your teeth with an oily click, and your jaw sets a little wider to hold them.",
                     "retract_msg": "The fangs retract into your gum line with a wet snick; your smile is almost normal again.",
                     "deployed_longdesc": "Alloy fangs jut from {their} gum line, too long and too sharp for the mouth that holds them.",
                     "deploy_room": "{actor}'s jaw flexes and a row of alloy fangs slides down over their teeth, catching the light.",

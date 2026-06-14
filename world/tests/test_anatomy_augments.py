@@ -758,6 +758,143 @@ class TestModuleInstall(TestCase):
         self.assertIn("abilities", item.db.organ_spec)
 
 
+CYBER_JAW_SPEC = {
+    "container": "head", "display_location": "face",
+    "max_hp": 14, "hit_weight": "rare",
+    "capacities": ["talking", "eating"],
+    "talking_contribution": "major",
+    "eating_contribution": "moderate",
+    "can_be_harvested": True, "can_be_replaced": True,
+    "inorganic": True, "prosthetic_frame": True,
+    "hardpoint": "jaw",
+}
+
+JAWZ_MODULE_SPEC = dict(
+    CYBER_JAW_SPEC,
+    module_type="jaw",
+    abilities={
+        "jawz": {
+            "type": "natural_weapon",
+            "weapon_prototype": "JAWZ_FANGS",
+        },
+    },
+)
+
+
+def _jawz_item():
+    item = SimpleNamespace()
+    item.key = "Jawz"
+    item.deleted = False
+
+    def _delete():
+        item.deleted = True
+    item.delete = _delete
+    item.db = SimpleNamespace(
+        module_type="jaw",
+        condition="pristine",
+        organ_conditions=[],
+        organ_spec={k: (dict(v) if isinstance(v, dict) else v)
+                    for k, v in JAWZ_MODULE_SPEC.items()},
+        compatible_species=["human"],
+    )
+    item.get_display_name = lambda looker=None: item.key
+    return item
+
+
+class TestCyberJawHardpoint(TestCase):
+    """#525 review: Jawz is a hardpoint module, not a flesh implant.
+    The line is drawn — a MODULE needs a chassis hardpoint, so a
+    cybernetic jaw (CYBER_JAW) is the prerequisite.  The cyber jaw
+    replaces the flesh jaw via the spec-carrying organ path and
+    carries a ``jaw`` hardpoint; Jawz seats into it."""
+
+    def _install_jaw(self, target, item, location="head", outcome="success"):
+        from world.medical.procedures import _resolve_install
+
+        actor = _surgeon()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": outcome},
+        ):
+            _resolve_install(
+                actor, target, organ_item=item, location=location,
+            )
+        return actor
+
+    def _install_module(self, target, item, location="head",
+                        outcome="success"):
+        from world.medical.procedures import _resolve_install_module
+
+        actor = _surgeon()
+        with patch(
+            "world.medical.procedures.roll_procedure",
+            return_value={"outcome": outcome},
+        ):
+            _resolve_install_module(
+                actor, target, organ_item=item, location=location,
+            )
+        return actor
+
+    def _cyber_jaw_item(self):
+        return _organ_item(
+            organ_name="jaw", organ_spec=dict(CYBER_JAW_SPEC),
+        )
+
+    def test_cyber_jaw_replaces_flesh_jaw(self):
+        """The chassis: a cyber jaw rebuilds the jaw slot as chrome,
+        keeps talking/eating, and exposes a jaw hardpoint.  The jaw
+        is surface-accessible (its display_location is its own face),
+        so no cavity incision is required."""
+        target = _patient()
+        self._install_jaw(target, self._cyber_jaw_item())
+
+        jaw = target.medical_state.organs["jaw"]
+        self.assertTrue(jaw.data.get("inorganic"))
+        self.assertTrue(jaw.data.get("prosthetic_frame"))
+        self.assertEqual(jaw.data.get("hardpoint"), "jaw")
+        self.assertEqual(jaw.max_hp, 14)
+        self.assertIn("talking", jaw.data.get("capacities", []))
+        self.assertIn("eating", jaw.data.get("capacities", []))
+        # No ability yet — the hardpoint is empty.
+        self.assertFalse(jaw.data.get("abilities"))
+
+    def test_jawz_seats_into_cyber_jaw_hardpoint(self):
+        """The module: with a cyber jaw in place, Jawz seats into the
+        jaw hardpoint, adding the bite while keeping talk/eat."""
+        from world.medical.augments import find_ability
+
+        target = _patient()
+        self._install_jaw(target, self._cyber_jaw_item())
+        open_incision(target, "head")
+        item = _jawz_item()
+        self._install_module(target, item)
+
+        jaw = target.medical_state.organs["jaw"]
+        self.assertIn("jawz", jaw.data.get("abilities", {}))
+        # Chassis function preserved.
+        self.assertTrue(jaw.data.get("inorganic"))
+        self.assertIn("talking", jaw.data.get("capacities", []))
+        self.assertIn("eating", jaw.data.get("capacities", []))
+        found, spec = find_ability(target, "jawz")
+        self.assertIs(found, jaw)
+        self.assertEqual(spec["type"], "natural_weapon")
+        self.assertEqual(spec["weapon_prototype"], "JAWZ_FANGS")
+        self.assertTrue(item.deleted)
+
+    def test_jawz_without_cyber_jaw_rejects(self):
+        """The gate: a flesh jaw has no hardpoint — Jawz can't seat,
+        and the message names the missing hardpoint."""
+        target = _patient()
+        open_incision(target, "head")
+        item = _jawz_item()
+        actor = self._install_module(target, item)
+        self.assertFalse(item.deleted)
+        self.assertTrue(any("hardpoint" in m for m in actor.messages))
+        # Flesh jaw untouched — no bite grafted onto living anatomy.
+        jaw = target.medical_state.organs["jaw"]
+        self.assertNotIn("jawz", jaw.data.get("abilities", {}) or {})
+
+
 def _nailz_item():
     item = SimpleNamespace()
     item.key = "Nailz"
@@ -804,35 +941,35 @@ class TestFleshMountModules(TestCase):
             )
         return actor
 
-    def test_jawz_targets_the_jaw_not_the_brain(self):
-        """flesh_organ targeting (#525): a multi-organ container (head)
+    def test_flesh_organ_targets_named_host_not_first(self):
+        """flesh_organ targeting: a multi-organ container (head)
         requires naming the specific host, or the implant would land
         in whatever organ comes first (the brain)."""
         from world.medical.augments import find_ability
 
         target = _patient()
         open_incision(target, "head")
-        jawz = SimpleNamespace()
-        jawz.key = "Jawz"
-        jawz.deleted = False
-        jawz.delete = lambda: setattr(jawz, "deleted", True)
-        jawz.get_display_name = lambda looker=None: "Jawz"
-        jawz.db = SimpleNamespace(
-            module_type="jawz", module_mount="flesh",
+        implant = SimpleNamespace()
+        implant.key = "test implant"
+        implant.deleted = False
+        implant.delete = lambda: setattr(implant, "deleted", True)
+        implant.get_display_name = lambda looker=None: "test implant"
+        implant.db = SimpleNamespace(
+            module_type="testmod", module_mount="flesh",
             flesh_containers=["head"], flesh_organ="jaw",
             condition="pristine", organ_conditions=[],
-            organ_spec={"module_type": "jawz", "abilities": {
-                "jawz": {"type": "natural_weapon",
-                         "weapon_prototype": "JAWZ_FANGS"}}},
+            organ_spec={"module_type": "testmod", "abilities": {
+                "testmod": {"type": "natural_weapon",
+                            "weapon_prototype": "JAWZ_FANGS"}}},
             compatible_species=["human"],
         )
-        self._install(target, jawz, location="head")
+        self._install(target, implant, location="head")
 
         organs = target.medical_state.organs
-        self.assertIn("jawz", organs["jaw"].data.get("abilities", {}))
-        self.assertNotIn("jawz", organs["brain"].data.get("abilities", {}))
-        self.assertTrue(jawz.deleted)
-        found, _spec = find_ability(target, "jawz")
+        self.assertIn("testmod", organs["jaw"].data.get("abilities", {}))
+        self.assertNotIn("testmod", organs["brain"].data.get("abilities", {}))
+        self.assertTrue(implant.deleted)
+        found, _spec = find_ability(target, "testmod")
         self.assertIs(found, organs["jaw"])
 
     def test_implants_into_living_flesh(self):
@@ -889,6 +1026,22 @@ class TestFleshMountModules(TestCase):
         actor = self._install(target, item, location="chest")
         self.assertFalse(item.deleted)
         self.assertTrue(any("doesn't mount" in m for m in actor.messages))
+
+
+class TestNailzMaterial(TestCase):
+    """#525 review: claws are carbide with a monofilament EDGE — a
+    monofilament whip/wire isn't a claw body.  Pins the material so
+    the prose doesn't drift back to 'monofilament claws'."""
+
+    def test_nailz_prototypes_are_carbide(self):
+        from world import prototypes
+
+        for proto in (prototypes.NAILZ, prototypes.NAILZ_CLAWS):
+            desc = proto["desc"].lower()
+            self.assertIn("carbide", desc)
+            self.assertNotIn("monofilament claw", desc)
+        # The edge — not the body — is the monofilament part.
+        self.assertIn("monofilament edge", prototypes.NAILZ["desc"].lower())
 
 
 CYBER_HEART_SPEC = {
