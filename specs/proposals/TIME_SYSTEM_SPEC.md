@@ -1,5 +1,7 @@
 # Time System Specification
 
+> **Status:** 📋 Proposal — not implemented (tracking #301). The TST real-time clock is the future-clock seam the cadence system already references; current TIME_FACTOR is unchanged.
+
 ## Overview
 
 The Gelatinous Monster universe operates on Terran Standard Time (TST) - Earth's UTC calendar system maintained across all human settlements and installations. This specification outlines the practical, technical, and cultural reasons for this temporal standardization in a spacefaring civilization.

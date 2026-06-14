@@ -1,5 +1,7 @@
 # G.R.I.M. Combat System Documentation
 
+> **Status:** ✅ Shipped — high-level overview of the running combat system. NOTE: some features described below are aspirational and NOT implemented — skill progression, reputation, ammunition tracking, weapon durability, and formation fighting. Treat the combat code and COMBAT_REFACTOR (roadmap) as current truth where they disagree.
+
 ## Overview
 
 The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine that emphasizes both violent and non-violent conflict resolution. It's built around four core character attributes and supports complex tactical scenarios while maintaining narrative focus.

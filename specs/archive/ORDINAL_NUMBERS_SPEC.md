@@ -1,5 +1,7 @@
 # Ordinal Number Support - Implementation Complete
 
+> **Status:** 🗄 Historical — completion record of a shipped feature (natural-language ordinal multimatch). Kept for context.
+
 ## Overview
 Successfully implemented natural language ordinal number support for multimatch disambiguation in Evennia commands. Players can now use intuitive commands like "get 1st mushroom" instead of "get mushroom-1".
 

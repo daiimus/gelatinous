@@ -1,5 +1,7 @@
 # Proximity System Architecture Specification
 
+> **Status:** 📋 Proposal — the live dual-proximity system it documents is accurate; the Option-A unification it proposes is NOT implemented.
+
 ## Overview
 The G.R.I.M. Combat System currently operates with dual proximity systems that evolved to handle different use cases. This document outlines the current architecture, identifies the challenges, and proposes a unification strategy.
 

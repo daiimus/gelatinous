@@ -1,5 +1,7 @@
 # Medical Substrate Readiness Index
 
+> **Status:** 🛣 Roadmap reference — the flag→consumer ledger paired with MEDICAL_SUBSTRATE_ROADMAP. Describes live anatomy flags + which (mostly unbuilt) substrate will consume each.
+
 This document is the load-bearing artifact spun out of Phase 1 of `MEDICAL_SUBSTRATE_ROADMAP.md`. Its purpose is captured in that spec's Core Insight:
 
 > The medical system has a top-down anatomical schema whose bottom-up consumer systems were never built. Each declarative flag advertises a consumer system that hasn't been written yet. Deleting them would be deleting design documentation. The right work is *building the substrates*.

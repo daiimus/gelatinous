@@ -1,5 +1,7 @@
 # Storage Patterns Roadmap
 
+> **Status:** 🛣 Roadmap — survey complete; the §5 remediation plan is drafted, not executed.
+
 > Renamed from `STORAGE_PATTERNS_AUDIT_AND_REMEDIATION_SPEC` (2026-06-14).
 > A **forward roadmap**: the survey is done, the §5 remediation plan is
 > drafted and not yet executed.

@@ -1,5 +1,7 @@
 # Pronoun System Deep Dive: Clothing & Longdesc Integration
 
+> **Status:** 🗄 Superseded — the $pron()/FuncParser design here was never built; perspective pronouns shipped via the grammar engine + brace tokens (see GRAMMAR_ENGINE_SPEC, LONGDESC_SYSTEM_SPEC, EMOTE_POSE_SPEC). Kept for historical design context.
+
 > **STATUS: SUPERSEDED / HISTORICAL.** The `$pron()`/FuncParser design proposed here was not implemented. Perspective-aware pronouns shipped via the grammar engine and `{their}`/`{they}` brace tokens instead. See `GRAMMAR_ENGINE_SPEC.md` and `LONGDESC_SYSTEM_SPEC.md` for the actual implementation. Retained for historical design context.
 
 ## Overview

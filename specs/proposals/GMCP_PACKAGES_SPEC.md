@@ -1,5 +1,7 @@
 # GMCP Packages Specification
 
+> **Status:** 📋 Proposal — not implemented (tracking #305). The game advertises GMCP in MSSP but sends no custom packages yet.
+
 ## Overview
 
 This spec defines the Generic MUD Communication Protocol (GMCP) packages

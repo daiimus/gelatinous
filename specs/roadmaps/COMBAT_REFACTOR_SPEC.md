@@ -1,5 +1,7 @@
 # Combat System Refactor Specification
 
+> **Status:** 🛣 Roadmap (partial) — dice.py/debug.py/actions.py were split out; several proposed modules and the size-reduction targets are NOT done. The diagnostics-routing section is superseded by COMBAT_AUDIT_LOGGING_SPEC.
+
 ## Overview
 
 This specification outlines a systematic refactor of the combat module to address technical debt accumulated through incremental LLM development. The refactor will transform both the monolithic `handler.py` (originally 1,470 lines; currently ~1,077) and the oversized `utils.py` (originally 1,007 lines; currently ~1,047) into a maintainable, modular system. **Status:** partially delivered — `dice.py`, `debug.py`, and `actions.py` were split out, but several proposed modules below were never created and the size-reduction targets have not yet been met.

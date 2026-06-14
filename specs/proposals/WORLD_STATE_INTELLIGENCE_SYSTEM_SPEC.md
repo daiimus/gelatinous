@@ -1,6 +1,6 @@
 # World State Intelligence System (WSIS) Specification
 
-> **Status:** Design phase -- no implementation yet.
+> **Status:** 📋 Proposal — not implemented (tracking #303). Depends on faction / infrastructure / economy systems that are themselves unbuilt.
 >
 > This spec defines a world simulation layer and player-facing intelligence interface
 > for tracking colony-wide state across multiple dimensions (security, infrastructure,

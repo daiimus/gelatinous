@@ -1,5 +1,7 @@
 # Medical Substrate Roadmap
 
+> **Status:** 🛣 Roadmap — Phase 1 shipped; Phases 2–13 ahead. The plan for building the medical/combat substrate consumers the schema advertises.
+
 > Renamed from `MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC` (2026-06-14).
 > This is a **forward roadmap**, not a historical audit — the findings
 > below seeded a phased plan for building the medical/combat substrate
@@ -21,6 +23,77 @@ Implementation Progress true-up below). Origin: audit pass after the
 pelvis-in-groin fix (issue #325) surfaced broader questions about the
 death model and dead metadata.
 
+## Roadmap at a glance
+
+**Status key:** ✅ complete · ⏳ pending · ⛔ blocked (needs a substrate
+first) · 💬 needs analysis / discussion before it can be scoped.
+
+The core insight sequences the whole plan: **build the substrate before
+wiring schema to it.** Standalone phases ship anytime; substrate phases
+(Sprint 2) gate the wiring phases (Sprint 3).
+
+```mermaid
+graph LR
+    P1["✅ P1 · Documentation"]:::done
+
+    subgraph S1["Sprint 1 · standalone — ship anytime ⏳"]
+        P2["P2 · Brain death blocks revival"]
+        P3["P3 · Failure-mode surfacing"]
+        P4["P4 · Vestigial-flag deletion"]
+        P5["P5 · LETHAL_CAPACITY split"]
+    end
+
+    subgraph S2["Sprint 2 · substrates — build first ⏳"]
+        P6["P6 · Chronic conditions"]
+        P7["P7 · Movement policing"]
+        P8["P8 · Senses"]
+        P9["P9 · Equipment-handling"]
+    end
+
+    subgraph S3["Sprint 3 · wiring — blocked on substrates ⛔"]
+        P10["P10 · Functional incapacitation"]
+        P11["P11 · Paralysis"]
+        P12["P12 · Kidney death (RenalFailure)"]
+        P13["P13 · Final flag audit"]
+    end
+
+    P6 --> P12
+    P7 --> P10
+    P7 --> P11
+    P8 --> P10
+    P9 --> P10
+    P10 --> P13
+    P11 --> P13
+    P12 --> P13
+
+    classDef done fill:#1b5e20,color:#fff,stroke:#0d3311;
+```
+
+### Status dashboard
+
+| Bucket | Phases | Notes |
+|---|---|---|
+| ✅ **Complete** | Phase 1 | Documentation & architectural clarification (the substrate-vs-runtime split, this roadmap, the readiness ledger). |
+| ⏳ **Pending — standalone** | Phases 2–5 | No substrate dependency; each a half-to-full-day session. Phase 4/5 also unblock the flag cleanup. |
+| ⏳ **Pending — substrate** | Phases 6–9 | The main build effort; each a real spec + PR. They gate Sprint 3. |
+| ⛔ **Blocked — wiring** | Phases 10–13 | Wait on their substrate (10←7/8/9, 11←7, 12←6, 13←all). |
+
+### 💬 Needs analysis / discussion (not yet a phase)
+
+- **Skill / stat model** — *upstream of this entire roadmap's tuning.*
+  Every medical roll (`roll_procedure`, `calculate_treatment_success`)
+  and forensic check is a placeholder formula on G.R.I.M. stats that all
+  default to `1`. Difficulty/effectiveness balance can't be tuned, and
+  capacity→roll penalties (the point of Sprints 2–3) have no real roll to
+  modify, until the skill/stat design is decided. **Design decision owed.**
+- **Per-character capacity extension** — augment organs can *add* anatomy
+  and capacities a species table never declared (the cyber tail). Sprints
+  2–3 assume the static species table is the full capacity set; extension
+  is an un-catalogued substrate concern. See `MEDICAL_SUBSTRATE_READINESS.md`.
+- **Social-interaction substrate** — `talking` total-loss effects
+  (`cannot_negotiate`, …) have no audit phase: open design, depends on a
+  trade/negotiation system that doesn't exist yet.
+
 ## Implementation Progress (June 2026 true-up)
 
 This spec is a planning artifact; as phases land, their content gets
@@ -30,7 +103,7 @@ work:
 
 | Phase | Status | Notes |
 |---|---|---|
-| Phase 1 — Documentation & Architectural Clarification | **✅ Complete** | All four tasks shipped. Task 1: `LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py` now explicitly documents the union role. Task 2: `MedicalState.is_dead` / `is_unconscious` / `calculate_body_capacity` docstrings spell out the substrate-vs-runtime split and cross-reference the audit's phase numbers. Task 3: HEALTH spec's brain-death `# NEXT:` pseudo-code now explicitly points at audit Phase 2 instead of reading as an open design note. Task 4: `specs/MEDICAL_SUBSTRATE_READINESS.md` index lists every unconsumed flag with its intended consumer system and audit phase. |
+| Phase 1 — Documentation & Architectural Clarification | **✅ Complete** | All four tasks shipped. Task 1: `LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py` now explicitly documents the union role. Task 2: `MedicalState.is_dead` / `is_unconscious` / `calculate_body_capacity` docstrings spell out the substrate-vs-runtime split and cross-reference the audit's phase numbers. Task 3: HEALTH spec's brain-death `# NEXT:` pseudo-code now explicitly points at audit Phase 2 instead of reading as an open design note. Task 4: `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md` index lists every unconsumed flag with its intended consumer system and audit phase. |
 | Phase 2 — Brain Death Blocks Revival | Not started | `_check_medical_revival_conditions` still gates only on `is_dead()`. |
 | Phase 3 — Failure-Mode Surfacing | Not started | Empty-distribution / unbacked-container warnings not wired. |
 | Phase 4 — Vestigial-Flag Deletion | Not started | All flags listed under "Vestigial (delete)" still present. |
@@ -333,7 +406,7 @@ Tasks:
      capacity.
 3. Reframe `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`'s `# NEXT:` brain-death
    pseudo-code: point it at Phase 2 of this spec.
-4. Add a `specs/MEDICAL_SUBSTRATE_READINESS.md` index that documents
+4. Add a `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md` index that documents
    each declarative flag, its intended consumer system, and the phase
    that will wire it.
 

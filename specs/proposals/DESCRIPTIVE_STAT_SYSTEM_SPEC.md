@@ -1,5 +1,7 @@
 # Descriptive Stat System Specification
 
+> **Status:** 📋 Proposal — not implemented. The four G.R.I.M. stats exist on the Character, but the A–Z descriptor display layer and any skill system described below are unbuilt.
+
 ## Overview
 
 The G.R.I.M. (Grit, Resonance, Intellect, Motorics) system will be enhanced with descriptive words that replace raw numerical displays for players. Each stat will have 26 alphabetical descriptive tiers (A-Z) representing power levels from 0-150, with each tier covering a 6-point range.

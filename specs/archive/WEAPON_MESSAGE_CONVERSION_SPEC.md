@@ -1,5 +1,7 @@
 # Weapon Message Conversion Specification
 
+> **Status:** 🗄 Historical — a one-time migration how-to; the conversion is complete (~80 files). Superseded as the format reference by COMBAT_MESSAGE_FORMAT_SPEC.
+
 ## Overview
 This specification defines the process for converting weapon message files from the old single-perspective format to the new multi-perspective format in the Evennia combat system.
 
