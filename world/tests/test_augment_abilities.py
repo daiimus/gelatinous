@@ -408,10 +408,41 @@ class TestDeployedWeaponDisplay(EvenniaTest):
         self.assertNotIn("holding a shotgun module", appearance)
         self.assertNotIn("holding nothing", appearance)
 
+    def test_look_shows_integrated_as_hand(self):
+        """An onlooker sees the deployed weapon AS the hand — the
+        third-person mirror of the ``inv`` "is your right hand" line."""
+        toggle_ability(self.char, "shotgun")
+        looker = create_object(Character, key="Witness", location=self.room1)
+        appearance = self.char.return_appearance(looker).lower()
+        self.assertIn("shotgun module is", appearance)
+        self.assertIn("right hand", appearance)
+
     def test_integrated_dominates_sdesc(self):
         toggle_ability(self.char, "shotgun")
         feature = self.char.get_distinguishing_feature()
         self.assertIn("shotgun module", feature)
+
+    def test_natural_weapon_leaves_hands_empty(self):
+        """Claws live off-grid: they don't fill a hand, so empty hands
+        still read "holding nothing" while the claws are out (the sdesc
+        carries the armed signal)."""
+        claws_organ = Organ("left_metacarpals", organ_data={
+            "container": "left_hand", "max_hp": 15,
+            "abilities": {"nailz": {
+                "type": "natural_weapon", "weapon_prototype": "NAILZ_CLAWS",
+            }},
+        })
+        claws_organ.medical_state = self.char.medical_state
+        self.char.medical_state.organs["left_metacarpals"] = claws_organ
+        claws = create_object(
+            "typeclasses.items.Item", key="monofilament claws", location=None,
+        )
+        claws.db.integrated = True
+        claws_organ.ability_state = {"nailz": {"weapon_dbref": claws.dbref}}
+        toggle_ability(self.char, "nailz")
+        looker = create_object(Character, key="Witness", location=self.room1)
+        appearance = self.char.return_appearance(looker).lower()
+        self.assertIn("holding nothing", appearance)
 
     def test_natural_weapon_dominates_sdesc(self):
         claws_organ = Organ("left_metacarpals", organ_data={

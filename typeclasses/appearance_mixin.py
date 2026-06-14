@@ -665,28 +665,27 @@ class AppearanceMixin:
         # here made this section permanently render "holding
         # nothing" (issue #460).
         hands = self.hands or {}
-        # Integrated cyberware (#516) is excluded from the held list:
-        # a deployed arm-gun is part of the body, represented in the
-        # longdesc and dominating the sdesc — not "held".
+        # Normal held items: integrated cyberware (#516) is excluded —
+        # a deployed arm-gun isn't "held", it IS the limb, and renders
+        # on its own line below.
         wielded_items = [
             item for item in hands.values()
             if item is not None and not getattr(item.db, "integrated", False)
         ]
-        # Whether a deployed cyber weapon (integrated in a slot OR an
-        # active natural weapon like claws) is present — used to
-        # suppress the misleading "holding nothing" line, since the
-        # sdesc shows them armed.
-        has_deployed_chrome = any(
-            getattr(item.db, "integrated", False) for item in hands.values()
-            if item is not None
-        )
-        if not has_deployed_chrome:
-            try:
-                from world.medical.augments import get_active_natural_weapon
-                has_deployed_chrome = get_active_natural_weapon(self) is not None
-            except Exception:
-                pass
-
+        # Deployed integrated weapons, paired with the hand they have
+        # become.  These read as the body for onlookers ("Chrome's
+        # shotgun module is their right hand"), the third-person mirror
+        # of the first-person ``inv`` frame ("... is your right hand").
+        integrated_weapons = [
+            (hand, item) for hand, item in hands.items()
+            if item is not None and getattr(item.db, "integrated", False)
+        ]
+        # A natural weapon (claws/jaws) lives off-grid — never in a hand
+        # slot — so it never surfaces in this section.  Its visibility is
+        # handled by the sdesc and (later) the cyberware status/extend
+        # commands.  Crucially, it does NOT suppress "holding nothing":
+        # claws aren't *held*, so empty hands genuinely hold nothing even
+        # while the claws are out (the sdesc still shows them armed).
         if wielded_items:
             wielded_names = [obj.get_display_name(looker) for obj in wielded_items]
             if len(wielded_names) == 1:
@@ -708,10 +707,17 @@ class AppearanceMixin:
                     f"{wielded_with_articles[-1]}."
                 )
             parts.append(wielded_text)
-        elif not has_deployed_chrome:
-            # Show explicitly when hands are empty — but not when a
-            # deployed cyber weapon fills them (the sdesc already
-            # shows them armed; "holding nothing" would contradict).
+
+        if integrated_weapons:
+            parts.append(
+                self._format_integrated_weapon_line(integrated_weapons, looker)
+            )
+
+        # Show "holding nothing" whenever the hands themselves are empty.
+        # An integrated weapon HAS become a hand (line above), so it
+        # suppresses this; a natural weapon (claws/jaws) has not, so the
+        # hands still read empty even while it is deployed.
+        if not wielded_items and not integrated_weapons:
             parts.append(f"{self.get_display_name(looker)} is holding nothing.")
 
         # 4. Staff-only comprehensive inventory (with explicit admin messaging)
@@ -729,6 +735,45 @@ class AppearanceMixin:
 
         # Join all parts with appropriate spacing (blank lines between sections)
         return '\n\n'.join(parts)
+
+    def _format_integrated_weapon_line(self, integrated_weapons, looker):
+        """Render deployed integrated cyber weapons as the limbs they
+        have become — the third-person mirror of the ``inv`` "... is
+        your right hand" frame (#516 follow-up).  Multiple deployed
+        weapons join into one sentence, like the held-items list::
+
+            "Chrome's shotgun module is their right hand."
+            "Chrome's shotgun module is their right hand and their
+             plasma cutter is their left hand."
+
+        Args:
+            integrated_weapons: list of ``(hand_key, item)`` pairs.
+            looker (Character): who is looking.
+        """
+        gender_mapping = {
+            'male': 'male', 'female': 'female',
+            'neutral': 'plural', 'nonbinary': 'plural', 'other': 'plural',
+        }
+        character_gender = gender_mapping.get(self.gender, 'plural')
+        possessive = self._get_pronoun('possessive', character_gender)
+        name_possessive = f"{self.get_display_name(looker)}'s"
+
+        clauses = []
+        for index, (hand, item) in enumerate(integrated_weapons):
+            # First clause names the character; later clauses use the
+            # pronoun ("Chrome's shotgun ... and their cutter ...").
+            owner = name_possessive if index == 0 else possessive
+            weapon = item.get_display_name(looker)
+            hand_label = hand.replace("_", " ")
+            clauses.append(f"{owner} {weapon} is {possessive} {hand_label}")
+
+        if len(clauses) == 1:
+            sentence = clauses[0]
+        elif len(clauses) == 2:
+            sentence = f"{clauses[0]} and {clauses[1]}"
+        else:
+            sentence = f"{', '.join(clauses[:-1])}, and {clauses[-1]}"
+        return f"{sentence}."
 
     def _location_is_inorganic(self, location):
         """True when ``location`` is cybernetic chrome (#516 review).
