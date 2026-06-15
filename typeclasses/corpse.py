@@ -176,33 +176,37 @@ class Corpse(IdentityBearerMixin, Item):
         """True when this corpse has lost its head — the dominant
         unaided-recognition cue (PR #208).
 
-        Derived from the DURABLE severance record
-        (``'head' in severed_locations``) in addition to the legacy
-        ``head_severed`` boolean.  The two are set by different paths and
-        can drift apart: the living-decapitation propagation in
-        :meth:`death_progression.DeathProgressionScript._create_corpse_from_character`
-        only flips ``head_severed`` when the transient
-        ``decapitation_pending`` handshake survives to corpse-build time.
-        A reload mid-progression (or an NPC corpse path that skips that
-        block) strands ``head_severed=False`` while ``severed_locations``
-        still records the head came off — the live bug where a
-        decapitated rat carcass kept rendering its name (#2696:
-        ``severed_locations=['head']`` but ``head_severed=False``).
-        Reading ``severed_locations`` here makes anonymisation robust to
-        that drift and self-heals already-stranded corpses on deploy.
+        Derived from the corpse's ACTUAL ANATOMY, not a stored flag.
+        ``head_severed`` and ``severed_locations`` are written by the
+        living-decapitation propagation in
+        :meth:`death_progression.DeathProgressionScript._create_corpse_from_character`,
+        which is gated on the transient ``decapitation_pending``
+        handshake surviving to corpse-build time — a reload mid-
+        progression or an NPC corpse path leaves them unset even though
+        the head is plainly gone.  Live carcasses #2696 and #2497 were
+        stranded two different ways (one with ``severed_locations=['head']``
+        + ``head_severed=False``, the other with both empty), which is
+        why reading those flags is a band-aid.
+
+        :func:`world.medical.severance.compute_severed_containers` reads
+        the AUTHORITATIVE record instead — severed organ tombstones on a
+        living body, ``wounds_at_death`` stumps on a corpse — both
+        populated by the *ungated* wound / medical-snapshot path at
+        death, never the ``decapitation_pending`` handshake.  So
+        headlessness cannot desync from the anatomy, and every
+        already-stranded corpse self-heals the moment it is looked at.
         """
-        if self.db.head_severed:
-            return True
-        return "head" in (self.db.severed_locations or ())
+        from world.medical.severance import compute_severed_containers
+        return "head" in compute_severed_containers(self)
 
     def get_display_name(self, looker, **kwargs):
         """Decay-stage fallback when the head has been severed.
 
         PR #208: a headless corpse loses the face — the dominant
         unaided-recognition cue.  When the corpse is headless (see
-        :meth:`_is_headless` — ``head_severed`` OR the head recorded in
-        ``severed_locations``) we short-circuit to the bare decay-stage
-        name,
+        :meth:`_is_headless`, which derives from the corpse's actual
+        severance record rather than a stored flag) we short-circuit to
+        the bare decay-stage name,
         suppressing both natural recognition (Pass 1 in the mixin —
         live degraded-UID lookup) and the forensic-recovery Intellect
         roll (Pass 2).  Investigators must use the explicit

@@ -91,13 +91,17 @@ class _FakeDecayCorpse:
         self.db.apparent_uid_at_death = None
         self.db.signature_at_death = None
         self.db.forensic_recognition_cache = None
-        # PR #208: default to head-intact; tests that exercise the
-        # head-severed look-suppression flip this to True.
+        # PR #208: head-intact by default.  ``_is_headless`` derives
+        # headlessness from the AUTHORITATIVE severance record, so the
+        # head-suppression tests give the corpse an actual severed-head
+        # stump in ``wounds_at_death`` (what ``compute_severed_containers``
+        # reads for a corpse) rather than flipping a flag.  The legacy
+        # ``head_severed`` / ``severed_locations`` fields are kept as
+        # head-intact defaults purely so other surfaces that still read
+        # them on a fake don't trip.
         self.db.head_severed = False
-        # Durable severance record — the corpse-build bug strands
-        # ``head_severed`` False while this still records the head came
-        # off, so ``_is_headless`` also reads here.
         self.db.severed_locations = []
+        self.db.wounds_at_death = []
         self.contents = list(contents or [])
         self.ndb = type("_NDB", (), {})()
         self._stage = stage
@@ -518,7 +522,7 @@ class TestHeadSeveredSuppression(TestCase):
 
     def test_headless_blocks_natural_recognition_fresh(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="fresh")
-        corpse.db.head_severed = True
+        corpse.db.wounds_at_death = [{"injury_type": "severed", "location": "head"}]
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
@@ -527,17 +531,22 @@ class TestHeadSeveredSuppression(TestCase):
             corpse.get_display_name(observer), "human corpse",
         )
 
-    def test_severed_locations_head_anonymizes_without_flag(self):
-        """Regression (live carcass #2696): the corpse-build handshake
-        can strand ``head_severed=False`` while ``severed_locations``
-        still records the head came off (the living-decapitation
-        propagation skipped by a reload mid-progression / an NPC corpse
-        path).  ``_is_headless`` reads the durable list too, so such a
-        corpse still anonymises — and shipping it self-heals the
-        already-stranded corpses on deploy."""
+    def test_severed_head_wound_anonymizes_despite_stale_flags(self):
+        """Regression (live carcasses #2696 + #2497): the corpse-build
+        ``decapitation_pending`` handshake can strand BOTH ``head_severed``
+        and ``severed_locations`` unset even though the head is gone (a
+        reload mid death-progression, or an NPC corpse path that skips
+        that block).  Headlessness must derive from the AUTHORITATIVE
+        record — the severed-head stump in ``wounds_at_death`` — so the
+        corpse still anonymises with both legacy flags stale, and every
+        already-stranded corpse self-heals on the next look."""
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="fresh")
+        # The exact stranded shape from live carcass #2497.
         corpse.db.head_severed = False
-        corpse.db.severed_locations = ["head"]
+        corpse.db.severed_locations = []
+        corpse.db.wounds_at_death = [
+            {"injury_type": "severed", "location": "head"},
+        ]
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
@@ -548,7 +557,7 @@ class TestHeadSeveredSuppression(TestCase):
 
     def test_headless_blocks_natural_recognition_early(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="early")
-        corpse.db.head_severed = True
+        corpse.db.wounds_at_death = [{"injury_type": "severed", "location": "head"}]
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
@@ -559,7 +568,7 @@ class TestHeadSeveredSuppression(TestCase):
 
     def test_headless_blocks_forensic_recovery_at_moderate(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="moderate")
-        corpse.db.head_severed = True
+        corpse.db.wounds_at_death = [{"injury_type": "severed", "location": "head"}]
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
@@ -576,7 +585,7 @@ class TestHeadSeveredSuppression(TestCase):
 
     def test_headless_blocks_forensic_recovery_at_advanced(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="advanced")
-        corpse.db.head_severed = True
+        corpse.db.wounds_at_death = [{"injury_type": "severed", "location": "head"}]
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
@@ -603,14 +612,14 @@ class TestHeadSeveredSuppression(TestCase):
 
     def test_headless_none_looker_still_returns_decay_name(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="moderate")
-        corpse.db.head_severed = True
+        corpse.db.wounds_at_death = [{"injury_type": "severed", "location": "head"}]
         self.assertEqual(
             corpse.get_display_name(None), "rotting corpse",
         )
 
     def test_headless_skeletal_still_returns_decay_name(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="skeletal")
-        corpse.db.head_severed = True
+        corpse.db.wounds_at_death = [{"injury_type": "severed", "location": "head"}]
         self.assertEqual(
             corpse.get_display_name(None), "skeletal remains",
         )
