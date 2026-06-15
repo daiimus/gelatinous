@@ -172,12 +172,37 @@ class Corpse(IdentityBearerMixin, Item):
         species = self.db.species or "human"
         return get_species_corpse_name(species, stage)
 
+    def _is_headless(self):
+        """True when this corpse has lost its head — the dominant
+        unaided-recognition cue (PR #208).
+
+        Derived from the DURABLE severance record
+        (``'head' in severed_locations``) in addition to the legacy
+        ``head_severed`` boolean.  The two are set by different paths and
+        can drift apart: the living-decapitation propagation in
+        :meth:`death_progression.DeathProgressionScript._create_corpse_from_character`
+        only flips ``head_severed`` when the transient
+        ``decapitation_pending`` handshake survives to corpse-build time.
+        A reload mid-progression (or an NPC corpse path that skips that
+        block) strands ``head_severed=False`` while ``severed_locations``
+        still records the head came off — the live bug where a
+        decapitated rat carcass kept rendering its name (#2696:
+        ``severed_locations=['head']`` but ``head_severed=False``).
+        Reading ``severed_locations`` here makes anonymisation robust to
+        that drift and self-heals already-stranded corpses on deploy.
+        """
+        if self.db.head_severed:
+            return True
+        return "head" in (self.db.severed_locations or ())
+
     def get_display_name(self, looker, **kwargs):
         """Decay-stage fallback when the head has been severed.
 
         PR #208: a headless corpse loses the face — the dominant
-        unaided-recognition cue.  When ``self.db.head_severed`` is
-        ``True`` we short-circuit to the bare decay-stage name,
+        unaided-recognition cue.  When the corpse is headless (see
+        :meth:`_is_headless` — ``head_severed`` OR the head recorded in
+        ``severed_locations``) we short-circuit to the bare decay-stage
+        name,
         suppressing both natural recognition (Pass 1 in the mixin —
         live degraded-UID lookup) and the forensic-recovery Intellect
         roll (Pass 2).  Investigators must use the explicit
@@ -198,7 +223,7 @@ class Corpse(IdentityBearerMixin, Item):
         :class:`world.tests.test_corpse_decay_recognition._FakeDecayCorpse`)
         still resolve the recognition pipeline correctly.
         """
-        if self.db.head_severed:
+        if self._is_headless():
             return self._decay_display_name()
         return IdentityBearerMixin.get_display_name(self, looker, **kwargs)
 

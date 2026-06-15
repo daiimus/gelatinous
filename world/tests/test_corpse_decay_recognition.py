@@ -66,6 +66,7 @@ class _FakeDecayCorpse:
 
     # Bind production methods so tests exercise the real implementation.
     get_display_name = Corpse.get_display_name
+    _is_headless = Corpse._is_headless
     _attempt_forensic_recognition = Corpse._attempt_forensic_recognition
     _FORENSIC_RECOGNITION_DC = Corpse._FORENSIC_RECOGNITION_DC
 
@@ -93,6 +94,10 @@ class _FakeDecayCorpse:
         # PR #208: default to head-intact; tests that exercise the
         # head-severed look-suppression flip this to True.
         self.db.head_severed = False
+        # Durable severance record — the corpse-build bug strands
+        # ``head_severed`` False while this still records the head came
+        # off, so ``_is_headless`` also reads here.
+        self.db.severed_locations = []
         self.contents = list(contents or [])
         self.ndb = type("_NDB", (), {})()
         self._stage = stage
@@ -514,6 +519,25 @@ class TestHeadSeveredSuppression(TestCase):
     def test_headless_blocks_natural_recognition_fresh(self):
         corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="fresh")
         corpse.db.head_severed = True
+        fresh_uid = get_apparent_uid(corpse)
+        observer = _FakeObserver(
+            memory={fresh_uid: {"assigned_name": "Jorge"}},
+        )
+        self.assertEqual(
+            corpse.get_display_name(observer), "human corpse",
+        )
+
+    def test_severed_locations_head_anonymizes_without_flag(self):
+        """Regression (live carcass #2696): the corpse-build handshake
+        can strand ``head_severed=False`` while ``severed_locations``
+        still records the head came off (the living-decapitation
+        propagation skipped by a reload mid-progression / an NPC corpse
+        path).  ``_is_headless`` reads the durable list too, so such a
+        corpse still anonymises — and shipping it self-heals the
+        already-stranded corpses on deploy."""
+        corpse = _FakeDecayCorpse(sleeve_uid="uid-jorge", stage="fresh")
+        corpse.db.head_severed = False
+        corpse.db.severed_locations = ["head"]
         fresh_uid = get_apparent_uid(corpse)
         observer = _FakeObserver(
             memory={fresh_uid: {"assigned_name": "Jorge"}},
