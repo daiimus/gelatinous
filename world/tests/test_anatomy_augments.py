@@ -858,6 +858,21 @@ class TestCyberJawHardpoint(TestCase):
         # No ability yet — the hardpoint is empty.
         self.assertFalse(jaw.data.get("abilities"))
 
+    def test_cyber_jaw_installs_at_face_display_location(self):
+        """Regression (operate-menu bug): the install picker passes the
+        jaw's *display_location* ("face"), not its container ("head"),
+        as the procedure location.  Surface-accessibility must be judged
+        from the organ itself, so installing at "face" needs NO incision
+        — the old gate wrongly demanded a face incision the menu can't
+        open, dead-ending the install."""
+        target = _patient()
+        self._install_jaw(target, self._cyber_jaw_item(), location="face")
+
+        jaw = target.medical_state.organs["jaw"]
+        self.assertTrue(jaw.data.get("inorganic"))
+        self.assertTrue(jaw.data.get("prosthetic_frame"))
+        self.assertEqual(jaw.data.get("hardpoint"), "jaw")
+
     def test_jawz_seats_into_cyber_jaw_hardpoint(self):
         """The module: with a cyber jaw in place, Jawz seats into the
         jaw hardpoint, adding the bite while keeping talk/eat."""

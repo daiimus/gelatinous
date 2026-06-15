@@ -763,18 +763,32 @@ def _resolve_install(actor, target, *, organ_item, location: str,
                          "organ_name", None) or organ_item.key
     slot = snapshot_organs.get(organ_name)
     if slot is not None and hasattr(slot, "get"):
-        slot_display = slot.get("display_location") or location
-        if slot_display == location and not has_incision(target, location):
+        # Surface-accessibility is a property of the ORGAN (its
+        # container vs display_location), NOT of whatever ``location``
+        # the caller happened to pass.  Mirrors ``_incision_required``:
+        # an organ whose display_location differs from its container
+        # (jaw/eyes/ears/nose/tongue — all surface at "face" etc.) sits
+        # on the outside and installs without a cavity incision; one
+        # whose display falls back to its container lives inside and
+        # needs it opened.  The incisable unit is always the CONTAINER —
+        # the operate menu only ever opens containers, never display
+        # surfaces.  (Bug fixed: the install picker passes the jaw's
+        # display_location "face" as the location, so the old
+        # ``slot_display == location`` test demanded a "face" incision
+        # that the menu can't make — install dead-ended.)
+        container = slot.get("container") or location
+        slot_display = slot.get("display_location") or container
+        if slot_display == container and not has_incision(target, container):
             actor.msg(
                 f"You try to slot the {organ_item.key} in but "
                 f"{target.get_display_name(actor)}'s "
-                f"{location.replace('_', ' ')} isn't open."
+                f"{container.replace('_', ' ')} isn't open."
             )
             from world.medical.charts import mark_running_step_failed
             mark_running_step_failed(
                 target,
                 outcome=(
-                    f"no incision at {location.replace('_', ' ')} — "
+                    f"no incision at {container.replace('_', ' ')} — "
                     f"install blocked"
                 ),
             )
