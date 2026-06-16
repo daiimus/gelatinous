@@ -2002,7 +2002,9 @@ forensic-chain fields as `Organ` (`source_signature`,
 
 The display key is rendered via
 `get_species_part_name(species, location, decay_stage)` at spawn
-time by `configure_from_sever` (PR #202 / PR-G).  Fresh / early
+time by `configure_from_sever` (PR #202 / PR-G) and **then advances
+with decay** — see "Severed-Part Decay & Preservation" below; the
+key is no longer frozen at the sever-moment tier.  Fresh / early
 decay produces `"{species} {location}"` (e.g. `human left arm`);
 moderate / advanced drops to `"rotting {location}"`; the skeletal
 tier reads `"skeletal {location}"` — limbs *can* skeletonize, so
@@ -2012,6 +2014,71 @@ tissue dries rather than skeletonizes — see issue #212).  The
 freshness `condition` (`pristine` / `damaged` / `putrid`) is
 conveyed via `db.desc` (PR #204) and surfaces at `look` time, not
 in the key.
+
+### Severed-Part Decay & Preservation
+
+A severed part keeps decaying after it leaves the body. The model has
+three categories, only one of which is fully built today.
+
+#### Flesh limbs — free-running decay ✅ (Shipped)
+
+`Appendage` carries the same decay clock as `Corpse` / `SeveredHead`
+(the clock was lifted *down* from `SeveredHead` to the `Appendage` base
+so every severed part shares it):
+
+| Field / method | Behavior |
+|---|---|
+| `db.creation_time` | Corpse-sever copies `corpse.db.creation_time` (the limb ages with its source corpse); living-sever stamps `time.time()` (cut fresh, decays from now). |
+| `_DECAY_STAGES` | `fresh(<1h) → early(<1d) → moderate(<3d) → advanced(<1wk) → skeletal`. Identical ladder to the corpse. |
+| `get_decay_stage()` | Live tier from `creation_time`. |
+| `_refresh_decay_key_if_changed()` | Advances `self.key` to the current tier's species-aware name (`get_species_part_name` / compound `get_species_severed_chain_name`). |
+
+The key advances on the **same lifecycle hook the corpse uses** —
+`Room._check_corpse_decay`, fired on character entry — keeping `look` a
+pure read. Targeting survives the rename without alias churn because the
+**location words are invariant across tiers** (`human left arm` →
+`rotting left arm` → `skeletal left arm` all contain `left arm`), so
+substring matching still resolves.
+
+**Skeletal is terminal.** Bones persist on a scale we don't simulate, so
+there's no tier past skeletal. **Limb cleanup is deliberately deferred**
+(the room hook refreshes severed-part keys but, unlike corpses, does not
+`check_complete_decay()` them) — a fully-decayed flesh limb becomes a
+persistent bone.
+
+#### Cyberware limbs — frozen (preservation-gated, future)
+
+A severed *cybernetic* limb does **not** free-run decay:
+`_refresh_decay_key_if_changed()` skips any part for which
+`is_cybernetic_limb(self)` is true. Chrome doesn't rot. Its degradation
+instead rides the preservation model below — specialized tech that
+requires protection and, like a harvested organ, has a viability window.
+
+#### Organs + cyberware — viability via preservation (future, blocked)
+
+Harvested **organs and cyberware** behave identically for viability:
+they degrade only while **unprotected**, not on a free-running clock.
+This is blocked on a **refrigeration / cold-storage mechanic** that does
+not exist yet — without it there is no signal to discern protected from
+unprotected, and a naive rot-timer would make every harvested organ
+useless in minutes.
+
+Intended model when built:
+
+- A cold-storage container (or location) **pauses** the viability clock.
+- Implementation: **timestamp cold-storage entry and exit**, then accrue
+  the *unprotected* duration against the item; decay tier derives from
+  accumulated unprotected time rather than wall-clock age.
+- **Utilization viability** is the gate that consumes this: transplant
+  (organs), reinstall (cyberware), and limb **reattachment** all check
+  freshness. Reattaching a severed limb is *uncommon but sometimes
+  viable* — a fresh/early limb may graft; beyond that it has necrosed
+  and is refused. (For flesh limbs this gate is **future** — the shipped
+  flesh-limb decay above is cosmetic only; it does not yet block
+  reattachment.)
+
+This belongs to the medical substrate; see
+`HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` for the organ/harvest detail.
 
 ### Harvest interaction
 

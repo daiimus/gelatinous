@@ -1151,6 +1151,82 @@ class Appendage(Item):
         # cluster.  Read by ``return_appearance`` (forensic prose)
         # and the third-party ``undress`` verb.
         self.db.worn_items = {}
+        # Decay clock — a severed limb keeps rotting after it leaves the
+        # body, exactly like the corpse and severed head.  ``creation_time``
+        # is set by the configure paths (corpse-sever copies the source
+        # corpse's clock so the limb ages with it; living-sever stamps
+        # "now").  Defaults to object-creation time so a bare Appendage
+        # spawned outside the configure paths still renders sanely.
+        # ``get_decay_stage`` reads this against ``_DECAY_STAGES``.
+        import time as _time
+        self.db.creation_time = _time.time()
+
+    # Decay tier thresholds, in seconds since ``creation_time`` — the
+    # same ladder the corpse and severed head use (CORPSE_DECAY_*).  A
+    # severed limb ages through these tiers after it leaves the body;
+    # ``skeletal`` is terminal (bones persist on a scale we don't
+    # simulate, and limb cleanup is deliberately deferred).
+    _DECAY_STAGES = (
+        ("fresh", 3600),
+        ("early", 86400),
+        ("moderate", 259200),
+        ("advanced", 604800),
+    )
+
+    def get_decay_stage(self):
+        """Return the current decay tier; mirrors Corpse / SeveredHead."""
+        import time
+        elapsed = time.time() - (self.db.creation_time or time.time())
+        for stage, threshold in self._DECAY_STAGES:
+            if elapsed < threshold:
+                return stage
+        return "skeletal"
+
+    def _current_decay_key(self):
+        """Compose the species-aware part name at the CURRENT decay tier.
+
+        Mirrors the naming in :meth:`configure_from_sever` — compound
+        chain name when the limb carries downstream parts (thigh+shin+
+        foot → "rotting left leg"), single-part name otherwise — but
+        read live against :meth:`get_decay_stage` so the key advances as
+        the limb rots.
+        """
+        from world.anatomy import (
+            get_species_part_name,
+            get_species_severed_chain_name,
+        )
+        species = self.db.source_species or "human"
+        location = self.db.location_name or ""
+        stage = self.get_decay_stage()
+        chain = self.db.chain or (location,)
+        if len(chain) > 1:
+            return get_species_severed_chain_name(species, location, stage)
+        return get_species_part_name(species, location, stage)
+
+    def _refresh_decay_key_if_changed(self):
+        """Advance ``self.key`` to the current decay tier's name.
+
+        Lifecycle hook, called from
+        :meth:`typeclasses.rooms.Room._check_corpse_decay` on character
+        entry (NOT from ``look`` — look stays pure), the same contract
+        the corpse uses (issue #230).  Targeting survives the change
+        without alias churn: the location words ("left arm") stay in the
+        key at every tier, so substring matching still resolves.
+
+        Skips CYBERNETIC limbs: chrome doesn't rot, so a severed cyber
+        limb keeps its frozen name.  Its degradation rides the future
+        preservation / refrigeration model (viability accrues only while
+        unprotected), not this free-running organic clock.
+        """
+        try:
+            from world.medical.procedures import is_cybernetic_limb
+            if is_cybernetic_limb(self):
+                return
+        except Exception:
+            pass
+        new_key = self._current_decay_key()
+        if new_key and new_key != self.key:
+            self.key = new_key
 
     def configure_from_sever(self, *, location_name, condition, corpse):
         """Populate forensic-chain fields immediately after spawn.
@@ -1208,6 +1284,15 @@ class Appendage(Item):
             decay_stage = corpse.get_decay_stage()
         else:
             decay_stage = "fresh"
+        # Decay clock: the limb ages with its source corpse — copy the
+        # corpse's ``creation_time`` so a limb cut off a moderate-decay
+        # corpse is itself moderate-decay (exactly like the severed
+        # head).  ``db.chain`` (set below) lets the lazy key-refresh
+        # re-derive the compound vs single name at later tiers.
+        import time as _time
+        self.db.creation_time = (
+            getattr(corpse.db, "creation_time", None) or _time.time()
+        )
         # Compound name when the chain has downstream parts (#339).
         if len(chain) > 1:
             self.key = get_species_severed_chain_name(
@@ -1306,6 +1391,11 @@ class Appendage(Item):
         self.db.location_name = location_name
         self.db.chain = chain  # Preserve for downstream consumers.
         self.db.condition = condition
+        # Decay clock: a limb cut from the living starts its rot now
+        # (no source corpse to inherit a clock from).  The lazy
+        # key-refresh advances the name from "fresh" through the tiers.
+        import time as _time
+        self.db.creation_time = _time.time()
         # No source corpse exists for a living sever.
         self.db.source_corpse_dbref = None
 
@@ -2765,17 +2855,9 @@ class SeveredHead(IdentityBearerMixin, Appendage):
     # ------------------------------------------------------------------
     # IdentityBearerMixin contract — decay surface
     # ------------------------------------------------------------------
-
-    # Decay tier thresholds, in seconds since ``creation_time``.  Same
-    # ladder the corpse uses (see ``world/combat/constants.py``
-    # ``CORPSE_DECAY_*``).  Copied locally so we don't need a Corpse
-    # instance to consult.
-    _DECAY_STAGES = (
-        ("fresh", 3600),
-        ("early", 86400),
-        ("moderate", 259200),
-        ("advanced", 604800),
-    )
+    # ``_DECAY_STAGES`` + ``get_decay_stage`` are inherited from
+    # :class:`Appendage` (the decay clock now lives on the base severed-
+    # part class so flesh limbs age too — issue: severed-limb decay).
 
     @property
     def sleeve_uid(self):
@@ -2794,15 +2876,6 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         essential-items axis collapses to an empty tuple naturally.
         """
         return self.db.sleeve_uid
-
-    def get_decay_stage(self):
-        """Return the current decay tier; mirrors Corpse semantics."""
-        import time
-        elapsed = time.time() - (self.db.creation_time or time.time())
-        for stage, threshold in self._DECAY_STAGES:
-            if elapsed < threshold:
-                return stage
-        return "skeletal"
 
     def _decay_display_name(self):
         """Fallback display when no recognition memory matches.

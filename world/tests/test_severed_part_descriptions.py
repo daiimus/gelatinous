@@ -209,3 +209,79 @@ class TestAppendageConfigureFromSeverPopulatesDesc(TestCase):
         )
         self.assertEqual(app.db.original_gender, "male")
         self.assertEqual(app.db.original_character_name, "Jdoe")
+
+
+class TestAppendageDecay(TestCase):
+    """Severed limbs decay after they leave the body — the decay clock
+    now lives on the ``Appendage`` base (lifted from ``SeveredHead``), so
+    flesh limbs advance through the tiers instead of staying frozen at
+    their sever-moment name.  Cyber limbs stay frozen: chrome doesn't
+    rot, and its degradation rides the future preservation model.
+    """
+
+    def _fake_limb(self, *, location_name="left_arm", chain=None,
+                   creation_time=None, species="human"):
+        import time
+        from typeclasses.items import Appendage
+
+        class _DB:
+            pass
+
+        limb = type("FakeLimb", (), {})()
+        limb.db = _DB()
+        limb.db.location_name = location_name
+        limb.db.chain = chain or [location_name]
+        limb.db.source_species = species
+        limb.db.creation_time = (
+            creation_time if creation_time is not None else time.time()
+        )
+        limb.key = ""
+        limb._DECAY_STAGES = Appendage._DECAY_STAGES
+        for name in ("get_decay_stage", "_current_decay_key",
+                     "_refresh_decay_key_if_changed"):
+            setattr(limb, name, getattr(Appendage, name).__get__(limb))
+        return limb
+
+    def test_stage_advances_with_age(self):
+        import time
+        limb = self._fake_limb(creation_time=time.time())
+        self.assertEqual(limb.get_decay_stage(), "fresh")
+        # Backdate the clock past the advanced threshold → terminal skeletal.
+        limb.db.creation_time = time.time() - 700000
+        self.assertEqual(limb.get_decay_stage(), "skeletal")
+
+    def test_refresh_advances_key_to_current_tier(self):
+        import time
+        limb = self._fake_limb(creation_time=time.time())
+        limb._refresh_decay_key_if_changed()
+        fresh_key = limb.key
+        self.assertIn("left arm", fresh_key.lower())
+        # Age to skeletal and refresh — the key advances, location words stay.
+        limb.db.creation_time = time.time() - 700000
+        limb._refresh_decay_key_if_changed()
+        self.assertNotEqual(limb.key, fresh_key)
+        self.assertIn("left arm", limb.key.lower())
+        self.assertIn("skeletal", limb.key.lower())
+
+    def test_compound_chain_decays_as_one_name(self):
+        import time
+        limb = self._fake_limb(
+            location_name="left_thigh",
+            chain=["left_thigh", "left_shin", "left_foot"],
+            creation_time=time.time() - 700000,
+        )
+        limb._refresh_decay_key_if_changed()
+        # Compound leg name, not the bare thigh.
+        self.assertIn("left leg", limb.key.lower())
+
+    def test_cyber_limb_does_not_decay(self):
+        import time
+        from unittest.mock import patch
+        limb = self._fake_limb(creation_time=time.time() - 700000)
+        limb.key = "cybernetic left arm"
+        with patch(
+            "world.medical.procedures.is_cybernetic_limb", return_value=True,
+        ):
+            limb._refresh_decay_key_if_changed()
+        # Chrome doesn't rot — frozen name preserved.
+        self.assertEqual(limb.key, "cybernetic left arm")

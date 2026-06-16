@@ -118,7 +118,20 @@ class Room(ObjectParent, DefaultRoom):
                 # runs on room entry — a broken corpse must never block
                 # a character walking into the room.
                 pass
-    
+
+        # Severed-part decay: a severed limb keeps rotting after it
+        # leaves the body, so advance its key to the current tier on the
+        # same character-entry lifecycle the corpse uses.  Refresh-only —
+        # limb cleanup is deliberately deferred (no check_complete_decay).
+        # Catches SeveredHead too (an Appendage subclass); harmless, since
+        # its display is recognition-driven and the key stays consistent.
+        from typeclasses.items import Appendage
+        for part in [o for o in self.contents if isinstance(o, Appendage)]:
+            try:
+                part._refresh_decay_key_if_changed()
+            except Exception:
+                pass
+
     # Override the appearance template to use our custom footer for exits
     # and custom things display to handle @integrate objects
     # This avoids duplicate display issues with exits while letting Evennia handle characters
