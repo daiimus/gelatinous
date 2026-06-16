@@ -1967,6 +1967,11 @@ CYBERNETIC_TAIL = {
                 "severable_container": True,
                 "grasping": True,
                 "inorganic": True,
+                # Prosthetic-frame marker (#527/#539 standard): a severed
+                # cyber tail chrome-shears (not bleeds) and reattaches
+                # whole, like every other cyber limb.  Predated the
+                # standard and was missing it (#571).
+                "prosthetic_frame": True,
             },
         }),
         ("augment_container", "tail"),

@@ -1097,6 +1097,36 @@ class TestNailzMaterial(TestCase):
         self.assertEqual(set(containers), {"left_hand", "right_hand"})
 
 
+class TestCyberTailFlags(TestCase):
+    """#571: the cyber tail is a chrome limb — its organ must carry both
+    ``inorganic`` (chrome rendering / pain-only damage) and
+    ``prosthetic_frame`` (chrome severance + whole-limb reattach, via
+    is_cybernetic_limb).  The prototype predated the #527/#539 standard
+    and was missing the frame marker."""
+
+    def test_tail_organ_is_chrome_and_framed(self):
+        from world import prototypes
+
+        spec = dict(prototypes.CYBERNETIC_TAIL["attrs"])
+        tailbone = spec["augment_organs"]["cybernetic_tailbone"]
+        self.assertTrue(tailbone.get("inorganic"))
+        self.assertTrue(tailbone.get("prosthetic_frame"))
+
+    def test_framed_tail_reads_as_cybernetic_limb(self):
+        """A severed tail whose organ carries the frame marker is
+        recognised by is_cybernetic_limb (the chrome-severance +
+        reattach gate)."""
+        from world.medical.procedures import is_cybernetic_limb
+
+        snapshot = {"organs": {"cybernetic_tailbone": {
+            "data": {"container": "tail", "prosthetic_frame": True}}}}
+        appendage = SimpleNamespace(
+            get_medical_snapshot=lambda: snapshot,
+            medical_state=None,
+        )
+        self.assertTrue(is_cybernetic_limb(appendage))
+
+
 CYBER_HEART_SPEC = {
     "container": "chest", "max_hp": 20, "hit_weight": "uncommon",
     "vital": True, "capacity": "blood_pumping", "contribution": "total",
