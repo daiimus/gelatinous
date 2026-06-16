@@ -22,6 +22,9 @@ def _organ(container, hp, mx, data, astate=None):
 
 
 def _char(organs):
+    # is_augment_organ reads organ.name; mirror the dict key onto it.
+    for name, organ in organs.items():
+        organ.name = name
     return NS(medical_state=NS(organs=organs))
 
 
@@ -44,6 +47,16 @@ _RAZORBOY = {
         {"jawz": {"deployed": False}}),
     "left_eye": _organ(
         "head", 6, 14, {"inorganic": True, "prosthetic_frame": True}),
+}
+
+# Stale cybernetic tail (#569): an augment limb whose runtime data is
+# missing the ``inorganic`` flag (installed before the prototype had it).
+# It must still show — recognised by being absent from the species table.
+_STALE_TAIL = {
+    "cybernetic_tailbone": _organ(
+        "tail", 25, 25,
+        {"bone_type": "actuator_column", "grasping": True,
+         "severable_container": True}),
 }
 
 # Razorgirl: flesh body, Nailz both hands (deployed).
@@ -91,6 +104,14 @@ class TestCyberwareSystemReadout(TestCase):
         self.assertIn("degraded", out)
         # Prose-only — no raw HP numbers.
         self.assertNotIn("6/14", out)
+
+    def test_stale_cyber_tail_still_shows(self):
+        """#569: an augment limb (the tail) missing the ``inorganic``
+        flag still lists — detected by being absent from the species
+        table, via the canonical is_augment_organ predicate."""
+        out = render_system(_char(_STALE_TAIL))
+        self.assertIn("cybernetic tail", out)
+        self.assertNotIn("No cybernetics installed", out)
 
     def test_nailz_flesh_mount_groups_both_hands(self):
         out = render_system(_char(_RAZORGIRL))

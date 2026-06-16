@@ -40,19 +40,42 @@ def _label_box(label: str) -> tuple[str, str, str]:
     return f"╔{'═' * _BOX_W}╗", f"║{text}║", f"╚{'═' * _BOX_W}╝"
 
 
-def _cyber_organs(character):
-    """Return ``(name, organ, data)`` for every cyber-relevant organ:
-    chrome (``inorganic`` / ``prosthetic_frame``) or any organ carrying
-    an ability (catches flesh-mount modules like Nailz)."""
+def _species_organs(character) -> dict:
+    """The character's species anatomy table — the baseline the augment
+    predicate measures against."""
+    from world.anatomy import get_species_organs
+
+    species = getattr(getattr(character, "db", None), "species", None) or "human"
+    try:
+        return get_species_organs(species) or {}
+    except Exception:
+        return {}
+
+
+def _cyber_organs(character, species_organs):
+    """Return ``(name, organ, data)`` for every FUNCTIONAL augment organ,
+    via the canonical :func:`world.medical.core.is_augment_organ`
+    predicate (the one ``@resetmedical`` preserves on).
+
+    Using that predicate — rather than a hand-rolled
+    ``inorganic``/``abilities`` check — is what lets the readout catch
+    augment-added limbs like the cybernetic tail: it's recognised by
+    being absent from the species table, so a stale install missing the
+    ``inorganic`` flag still shows (#569).  0-HP tombstones (severed /
+    destroyed) power nothing and are skipped, matching ``iter_abilities``.
+    """
+    from world.medical.core import is_augment_organ
+
     state = getattr(character, "medical_state", None)
     organs = getattr(state, "organs", None) if state else None
     out = []
     if not organs:
         return out
     for name, organ in organs.items():
-        data = getattr(organ, "data", None) or {}
-        if data.get("inorganic") or data.get("prosthetic_frame") or data.get("abilities"):
-            out.append((name, organ, data))
+        if getattr(organ, "current_hp", 0) <= 0:
+            continue
+        if is_augment_organ(organ, species_organs):
+            out.append((name, organ, getattr(organ, "data", None) or {}))
     return out
 
 
@@ -81,18 +104,25 @@ def _ability_lines(organ, data) -> list[str]:
 
 
 def render_system(character) -> str:
-    cyber = _cyber_organs(character)
+    species_organs = _species_organs(character)
+    cyber = _cyber_organs(character, species_organs)
     if not cyber:
         return (
             "Self-diagnostic: your wetware is all meat. "
             "No cybernetics installed."
         )
 
-    chrome = [(n, o, d) for n, o, d in cyber
-              if d.get("inorganic") or d.get("prosthetic_frame")]
-    flesh_mods = [(n, o, d) for n, o, d in cyber
-                  if not (d.get("inorganic") or d.get("prosthetic_frame"))
-                  and d.get("abilities")]
+    # Flesh-mount = NATIVE anatomy (in the species table) carrying an
+    # ability but not itself chrome (Nailz in a flesh hand).  Everything
+    # else augment is chrome / an augment limb — including a flag-less
+    # stale tail, which lands here by being absent from the species table.
+    chrome, flesh_mods = [], []
+    for name, organ, data in cyber:
+        native = name in species_organs
+        if native and data.get("abilities") and not data.get("inorganic"):
+            flesh_mods.append((name, organ, data))
+        else:
+            chrome.append((name, organ, data))
 
     # --- Chrome devices: group limb organs by container, head/torso by name.
     groups: dict = {}
