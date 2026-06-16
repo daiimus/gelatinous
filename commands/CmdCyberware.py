@@ -16,6 +16,7 @@ from world.medical.augments import (
     list_abilities,
     toggle_ability,
 )
+from world.medical.cyberware_status import render_system
 
 
 class CmdCyberware(Command):
@@ -23,6 +24,7 @@ class CmdCyberware(Command):
 
     Usage:
         /            - list your installed cyberware and its state
+        /system      - full diagnostic readout of your cyberware
         /<ability>   - toggle that ability (deploy / retract)
 
     Examples:
@@ -49,5 +51,8 @@ class CmdCyberware(Command):
         name = (self.args or "").strip().lower()
         if not name:
             caller.msg(list_abilities(caller))
+            return
+        if name == "system":
+            caller.msg(render_system(caller))
             return
         caller.msg(toggle_ability(caller, name))
