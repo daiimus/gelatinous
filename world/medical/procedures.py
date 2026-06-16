@@ -1694,16 +1694,47 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
             )
             return
 
-        # Implant: merge the ability into the host organ's spec —
-        # deep-copied dict swap so the organ never shares storage
-        # with the soon-deleted item and the species table is never
-        # mutated.
-        host_data = dict(host.data)
-        merged = dict(host_data.get("abilities") or {})
-        merged.update(new_abilities)
-        host_data["abilities"] = merged
-        host_data["module_type"] = module_type
-        host.data = host_data
+        # Implant: seat the ability into the living host at EVERY listed
+        # flesh container, not just the install site.  Nailz is bilateral
+        # — five carbide blades per hand, both hands — so one tray claws
+        # both; lose a hand and the other keeps its blades.  Single-
+        # container modules (the common case) seat into their one host.
+        # Hosts already carrying the ability, or with no living organ,
+        # are skipped.  Deep-copied dict swaps so the organ never shares
+        # storage with the soon-deleted item and the species table is
+        # never mutated.
+        seated_locations = []
+        for container in flesh_containers:
+            if flesh_organ:
+                h = state.organs.get(flesh_organ)
+                if h is not None and h.current_hp <= 0:
+                    h = None
+            else:
+                h = next(
+                    (o for o in state.organs.values()
+                     if getattr(o, "container", None) == container
+                     and o.current_hp > 0),
+                    None,
+                )
+            if h is None:
+                continue
+            if any(name in (h.data.get("abilities") or {})
+                   for name in new_abilities):
+                continue
+            h_data = dict(h.data)
+            merged = dict(h_data.get("abilities") or {})
+            merged.update(new_abilities)
+            h_data["abilities"] = merged
+            h_data["module_type"] = module_type
+            h.data = h_data
+            seated_locations.append(container)
+
+        if len(seated_locations) > 1:
+            where = "both hands"
+        elif seated_locations:
+            where = seated_locations[0].replace("_", " ")
+        else:
+            where = location.replace("_", " ")
 
         seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
         if outcome == "partial":
@@ -1715,8 +1746,7 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
         else:
             actor.msg(
                 f"You implant the {organ_item.key} into "
-                f"{target.get_display_name(actor)}'s "
-                f"{location.replace('_', ' ')}."
+                f"{target.get_display_name(actor)}'s {where}."
             )
         save = getattr(target, "save_medical_state", None)
         if callable(save):
@@ -1726,7 +1756,7 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
                 location=actor.location,
                 template=(
                     f"{{actor}} implants a {organ_item.key} into "
-                    f"{{patient}}'s {location.replace('_', ' ')}."
+                    f"{{patient}}'s {where}."
                 ),
                 char_refs={"actor": actor, "patient": target},
                 exclude=[actor, target] if target is not actor else [actor],

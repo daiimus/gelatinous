@@ -2118,12 +2118,12 @@ NAILZ = {
     "key": "Nailz",
     "typeclass": "typeclasses.items.Organ",
     "aliases": ["nailz", "claw implants", "nail implants"],
-    "desc": "A sealed clinical tray of ten curved carbide claws and their spring housings, each blade honed to a monofilament edge, sized for implantation along the fingers of one hand. The marketing name is etched on the tray lid in a typeface that has seen some court dates. Installation requires a surgeon; regret is sold separately.",
+    "desc": "A sealed clinical tray of ten slender carbide blades and their spring housings, each scalpel honed to a monofilament edge and sized to seat beneath a fingernail — five per hand, both hands. The marketing name is etched on the tray lid in a typeface that has seen some court dates. Installation requires a surgeon; regret is sold separately.",
     "tags": [("medical_item", "item_type"), ("augment", "item_type")],
     "attrs": [
         ("module_type", "nailz"),
         ("module_mount", "flesh"),
-        ("flesh_containers", ["{side}_hand"]),
+        ("flesh_containers", ["left_hand", "right_hand"]),
         ("condition", "pristine"),
         ("compatible_species", ["human"]),
         ("organ_spec", {
@@ -2132,11 +2132,11 @@ NAILZ = {
                 "nailz": {
                     "type": "natural_weapon",
                     "weapon_prototype": "NAILZ_CLAWS",
-                    "deploy_msg": "Your knuckles ache, then part — ten carbide claws slide out along your fingers with a sound like scissors closing.",
-                    "retract_msg": "The claws fold back under your skin; your hand is just a hand again, mostly.",
-                    "deployed_longdesc": "Ten carbide claws stand extended from the fingertips, monofilament edges catching the light.",
-                    "deploy_room": "{actor} flexes a hand and carbide claws slide out along their fingers, catching the light.",
-                    "retract_room": "{actor}'s claws fold away under the skin of their hand.",
+                    "deploy_msg": "Your nails lift and part — ten carbide blades slide out from beneath them, four centimetres of monofilament edge sheathing your fingertips with a sound like scissors closing.",
+                    "retract_msg": "The blades withdraw beneath your nails; your hands are just hands again, mostly.",
+                    "deployed_longdesc": "Slender carbide blades jut from beneath {their} fingernails, monofilament edges catching the light.",
+                    "deploy_room": "{actor}'s fingernails lift and carbide blades slide out from beneath them, catching the light.",
+                    "retract_room": "{actor}'s finger-blades withdraw beneath their nails.",
                 },
             },
         }),
@@ -2148,9 +2148,9 @@ NAILZ = {
 # precedence.  Reuses the tiger_claws message set.
 NAILZ_CLAWS = {
     "prototype_parent": "MELEE_WEAPON_BASE",
-    "key": "carbide claws",
-    "aliases": ["claws", "nailz claws", "carbide claws"],
-    "desc": "Ten curved carbide claws, extended from their knuckle housings, each honed to a monofilament edge. They are not for opening letters.",
+    "key": "carbide blades",
+    "aliases": ["blades", "nailz", "nailz blades", "finger-blades"],
+    "desc": "Ten slender carbide blades, extended from beneath the fingernails, each four centimetres of monofilament edge. They are not for opening letters.",
     "damage": 9,
     "locks": "get:false();drop:false();give:false()",
     "attrs": [

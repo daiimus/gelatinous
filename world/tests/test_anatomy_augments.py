@@ -921,7 +921,7 @@ def _nailz_item():
     item.db = SimpleNamespace(
         module_type="nailz",
         module_mount="flesh",
-        flesh_containers=["{side}_hand"],
+        flesh_containers=["left_hand", "right_hand"],
         condition="pristine",
         organ_conditions=[],
         organ_spec={
@@ -1003,6 +1003,23 @@ class TestFleshMountModules(TestCase):
         self.assertIs(organ, host)
         self.assertEqual(spec["type"], "natural_weapon")
         self.assertTrue(item.deleted)
+
+    def test_nailz_is_bilateral(self):
+        """One Nailz tray claws BOTH hands (#565): five carbide blades
+        per hand, both hands.  A single install seats the ability into
+        every living host in ``flesh_containers``, not just the site —
+        so losing one hand leaves the other's blades intact."""
+        target = _patient()
+        open_incision(target, "left_hand")
+        item = _nailz_item()
+        actor = self._install(target, item)
+        for organ_name in ("left_metacarpals", "right_metacarpals"):
+            host = target.medical_state.organs[organ_name]
+            self.assertIn(
+                "nailz", host.data.get("abilities", {}),
+                f"{organ_name} should carry the blades",
+            )
+        self.assertTrue(any("both hands" in m for m in actor.messages))
         # The species table was never mutated: a second character's
         # metacarpals carry no claws.
         other = _patient()
@@ -1057,6 +1074,27 @@ class TestNailzMaterial(TestCase):
             self.assertNotIn("monofilament claw", desc)
         # The edge — not the body — is the monofilament part.
         self.assertIn("monofilament edge", prototypes.NAILZ["desc"].lower())
+
+    def test_nailz_is_molly_not_wolverine(self):
+        """#565: blades seat beneath the fingernails (Molly Millions),
+        not from knuckle housings (wolverine).  Pins the flavor."""
+        from world import prototypes
+
+        weapon_desc = prototypes.NAILZ_CLAWS["desc"].lower()
+        self.assertIn("beneath the fingernails", weapon_desc)
+        self.assertNotIn("knuckle", weapon_desc)
+        deploy = prototypes.NAILZ["attrs"]
+        spec = dict(deploy)["organ_spec"]
+        deploy_msg = spec["abilities"]["nailz"]["deploy_msg"].lower()
+        self.assertNotIn("knuckle", deploy_msg)
+
+    def test_nailz_prototype_is_bilateral(self):
+        """#565: one tray claws both hands — flesh_containers names
+        both, so a single install seats blades in each."""
+        from world import prototypes
+
+        containers = dict(prototypes.NAILZ["attrs"])["flesh_containers"]
+        self.assertEqual(set(containers), {"left_hand", "right_hand"})
 
 
 CYBER_HEART_SPEC = {
