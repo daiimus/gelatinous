@@ -25,7 +25,9 @@ from random import random
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 from world.voice import (
+    can_see,
     garbled_voice_phrase,
+    resolve_speaker_attribution,
     voice_phrase,
     VOICE_FLAVOR_SPRINKLE_CHANCE,
 )
@@ -64,29 +66,34 @@ class CmdSay(Command):
         # Actor sees their own message
         caller.msg(f'You say, "{speech}"')
 
-        # Voice flavour (CAPACITY_CONSUMERS spec §4). A garbled voice (wrecked
-        # `talking` capacity) always renders — a ruined voice is conspicuous;
-        # otherwise the speaker is visible to the room, so flavour is a
-        # sporadic, low-frequency sprinkle (§4.6 can-see branch) rolled once
-        # per utterance for a consistent reading. The full sight/hearing
-        # resolution chain (unseen speakers → mandatory attribution) is a
-        # later slice.
-        flavor = garbled_voice_phrase(caller)
-        if flavor is None:
+        # Voice flavour for observers who can SEE the speaker (CAPACITY_CONSUMERS
+        # spec §4.6 can-see branch): a garbled voice always renders — a ruined
+        # voice is conspicuous — otherwise a sporadic, low-frequency sprinkle,
+        # rolled once per utterance for a consistent reading.
+        visible_flavor = garbled_voice_phrase(caller)
+        if visible_flavor is None:
             phrase = voice_phrase(caller)
             if phrase and random() < VOICE_FLAVOR_SPRINKLE_CHANCE:
-                flavor = phrase
-        say_verb = f"says, |x*{flavor}*|n" if flavor else "says,"
+                visible_flavor = phrase
+        visible_verb = f"says, |x*{visible_flavor}*|n" if visible_flavor else "says,"
 
-        # Each observer sees per-observer speaker attribution
+        # Each observer's attribution resolves per the sight/hearing chain
+        # (§4.5): see → display name; can't-see-but-hear → voice discernment
+        # (name or "someone"); neither → "someone". Voice flavour only attaches
+        # on the can-see branch; an unseen, undiscerned voice is not described.
         for observer in location.contents:
             if observer is caller:
                 continue
             if not hasattr(observer, "msg"):
                 continue
-            speaker_name = caller.get_display_name(observer)
+            if can_see(observer):
+                speaker_name = caller.get_display_name(observer)
+                verb = visible_verb
+            else:
+                speaker_name = resolve_speaker_attribution(caller, observer)
+                verb = "says,"
             observer.msg(
-                text=f'{capitalize_first(speaker_name)} {say_verb} "{speech}"',
+                text=f'{capitalize_first(speaker_name)} {verb} "{speech}"',
                 type="say",
                 from_obj=caller,
             )
