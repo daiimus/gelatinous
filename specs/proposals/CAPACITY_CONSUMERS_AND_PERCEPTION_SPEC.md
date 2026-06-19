@@ -353,8 +353,16 @@ is the content lift) → per-effector resolver (manipulation/moving).
    `world/tests/test_combat_capacity_sight.py`.
 2. **Identity / voice** — `@voice` + voice signature + the resolution chain +
    rendering heuristic; gates visual recognition on `sight`, voice on `hearing`.
-   **✅ CORE SHIPPED (2a/2b/2c).** Deferred: voice-descriptor-as-identity +
-   §4.6 multi-voice disambiguation; deaf audio suppression.
+   **✅ CORE SHIPPED (2a/2b/2c/2d).** Deferred: voice-descriptor-as-identity +
+   §4.6 multi-voice disambiguation.
+   - **2d ✅ SHIPPED — deaf audio gating.** Hearing gates speech *content*, not
+     just attribution. `say`: a deaf+sighted listener sees "{name} says
+     something you can't make out"; deaf+blind is suppressed entirely.
+     Poses/emotes: `world/emote.py` `process_speech` redacts quoted speech to
+     `"..."` for a deaf observer (both `render_dot_pose` and the traditional
+     `render_emote` now route through it); the visible action still shows
+     (visual gating is layer 3). Whisper to a deaf target is redacted too. The
+     speaker always reads their own words. Tests in `test_emote.py`.
    - **2a ✅ SHIPPED — voice signature foundation.** `world/voice.py`: curated
      description+ending vocabulary (config-overridable), composer
      (`voice_phrase`), and the **`talking`-capacity garble gate** (§4.7 — first

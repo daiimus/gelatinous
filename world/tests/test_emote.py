@@ -28,6 +28,7 @@ from world.emote import (
     _should_conjugate,
     _split_speech_segments,
     build_char_candidates,
+    process_speech,
     render_dot_pose,
     render_emote,
     render_emote_for_observer,
@@ -130,6 +131,60 @@ def _make_room(contents):
 # ===================================================================
 # Tests: Speech Splitting
 # ===================================================================
+
+
+class _MedState:
+    def __init__(self, hearing):
+        self._hearing = hearing
+
+    def calculate_body_capacity(self, name):
+        return self._hearing if name == "hearing" else 1.0
+
+    def get_conditions_by_type(self, condition_type):
+        return []
+
+
+class _Listener:
+    def __init__(self, hearing=1.0, medical=True):
+        self.medical_state = _MedState(hearing) if medical else None
+
+
+class TestProcessSpeechDeaf(TestCase):
+    """process_speech redacts quoted content for a deaf observer (§4)."""
+
+    def setUp(self):
+        self.speaker = object()  # identity-only; not the observer
+
+    def test_hearing_observer_gets_words(self):
+        observer = _Listener(hearing=1.0)
+        self.assertEqual(
+            process_speech("you're late", self.speaker, observer), '"you\'re late"'
+        )
+
+    def test_deaf_observer_content_redacted(self):
+        observer = _Listener(hearing=0.0)
+        self.assertEqual(
+            process_speech("you're late", self.speaker, observer), '"..."'
+        )
+
+    def test_one_ear_still_hears(self):
+        observer = _Listener(hearing=0.5)
+        self.assertEqual(
+            process_speech("hi", self.speaker, observer), '"hi"'
+        )
+
+    def test_speaker_always_hears_self(self):
+        # Even a deaf speaker reads back their own quoted words.
+        deaf_speaker = _Listener(hearing=0.0)
+        self.assertEqual(
+            process_speech("my words", deaf_speaker, deaf_speaker), '"my words"'
+        )
+
+    def test_no_medical_model_fails_open(self):
+        observer = _Listener(medical=False)
+        self.assertEqual(
+            process_speech("hi", self.speaker, observer), '"hi"'
+        )
 
 
 class TestSplitSpeechSegments(TestCase):

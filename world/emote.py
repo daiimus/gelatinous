@@ -92,9 +92,11 @@ def process_speech(
 ) -> str:
     """Process speech content for a specific observer.
 
-    Default implementation returns text unchanged, wrapped in quotes.
-    Future language system overrides this to apply comprehension
-    filtering based on speaker's language and observer's skills.
+    Wraps speech in quotes. A deaf observer (one who cannot hear the speaker)
+    perceives that speech occurred but not its content — the quoted words are
+    redacted to ``"..."`` (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4: hearing
+    gates the auditory channel). The speaker always hears their own words.
+    Future language system layers further comprehension filtering here.
 
     Args:
         text: Raw speech content.
@@ -103,8 +105,12 @@ def process_speech(
         language: Language identifier or ``None`` for common/default.
 
     Returns:
-        Rendered speech string including quotes.
+        Rendered speech string including quotes (redacted when unheard).
     """
+    if observer is not speaker:
+        from world.voice import can_hear
+        if not can_hear(observer):
+            return '"..."'
     return f'"{text}"'
 
 
@@ -998,7 +1004,11 @@ def render_emote_for_observer(
         if isinstance(token, TextToken):
             parts.append(token.text)
         elif isinstance(token, SpeechToken):
-            parts.append(f'"{token.text}"')
+            parts.append(
+                process_speech(
+                    token.text, token.speaker, observer, token.language
+                )
+            )
         elif isinstance(token, CharRefToken):
             display_name = token.character.get_display_name(observer)
             parts.append(display_name)
