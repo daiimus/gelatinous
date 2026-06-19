@@ -47,8 +47,10 @@ consequence layer" between *fine* and *dead/unconscious*.
 - **One capacity, many consumers.** A capacity is an *input* feeding multiple
   independent consumer systems (combat, identity recognition, the LOOK
   renderer). "It's all connected."
-- **Setting-agnostic, cyberpunk-themed.** Chrome and harvested organs are the
-  general answer to crippling injury, but capacity-loss and cyberware/biotech
+- **Setting-agnostic, cyberpunk-themed.** Crippling injury is remediated by a
+  **chrome augment OR a harvested-organ transplant** — both RipperDoc work,
+  chrome and wetwork side by side (a cyber kidney *and* a donor kidney both
+  restore `blood_filtration`). Capacity-loss and cyberware/biotech/transplant
   are **separate systems that integrate**, not one baked into the other. A
   grimdark reskin would relabel the flavor, not the mechanics.
 
@@ -260,13 +262,57 @@ species, extra appendages, and cyberware are auto-counted; nothing hardcoded.
 Builds on existing pieces: weapon `hands_required`, the `hands` grasping-slot
 system, species anatomy tables.
 
-## 7 · Capacity → consumer matrix (summary)
+## 7 · Blood filtration & condition-driven appearance (chronic/metabolic)
+
+**Organs:** `left_kidney` + `right_kidney`, 0.5 each. The first consumer that's
+neither combat nor perception — it modifies a **chronic condition over time**,
+proving the model spans the medical sim too.
+
+### 7.1 Infection resistance (v1 — wireable now)
+`blood_filtration` is a **physiological multiplier parallel to
+`InfectionCondition.environmental_modifier`** — failing kidneys make an
+infection you *already have* worsen faster and clear slower:
+- worsen-hazard `×` filtration factor (low filtration → faster progression),
+- treated-heal rate `×` filtration (low filtration → it lingers despite treatment).
+
+**Not acquisition** — kidneys don't stop you *catching* an infection (wound care
++ the environmental modifier do that); they govern how your body *fights one
+off*. `disease_resistance` = "how you process an infection," not "whether you
+catch one." Slots straight into the existing multiplier.
+
+### 7.2 Renal failure (buildable on the chronic-conditions substrate)
+Total kidney loss (filtration `0`) → a **RenalFailure** chronic condition,
+realizing the table's declared-but-unenforced `total_loss_fatal` *and* the
+`blood_filtration → consciousness` modifier that `update_vital_signs` doesn't
+apply today. Effects: consciousness suppression + slow death, **and its
+signature — a visible skin-pigment shift** (sallow / uremic / ashen). Rides the
+chronic-conditions substrate (parallel to the parked ischemia clock).
+
+### 7.3 Condition-driven appearance symptoms (cross-cutting hook)
+Renal failure's pigment shift generalizes: **conditions can carry visible
+symptoms** that tint the rendered skintone / appearance (layered on the existing
+skintone system), legible to `look`, diagnosis, observers, *and* other systems.
+The body's state becomes **legible at a glance** — a RipperDoc reads you across
+the room; players see the sick one without a `diagnose`. The same hook yields
+**cyanosis** (low `breathing` → blue lips), **jaundice** (liver), **pallor**
+(blood loss). And conditions are **first-class signals other systems extrapolate
+from**: a toxin substance can trigger/worsen renal failure, diagnosis surfaces
+it, another condition compounds it.
+
+### 7.4 Remediation = chrome OR transplant (RipperDoc)
+Per §1: a **cyber kidney** *and* a **transplanted donor kidney** (harvested
+organ, canonical name → capacity auto-restores) both fix filtration — the
+general remediation principle for *any* capacity-restoring augment, not kidney-
+specific. A dialysis implant/consumable is the future non-chrome, non-transplant
+stopgap.
+
+## 8 · Capacity → consumer matrix (summary)
 
 See §2. Build cost ascends: combat hooks (cheap, multiplicative) → identity/voice
 (reuse pipeline) → perception render (framework exists; base-desc decomposition
 is the content lift) → per-effector resolver (manipulation/moving).
 
-## 8 · Build sequencing (layered)
+## 9 · Build sequencing (layered)
 
 1. **Combat consumers** (`sight`→ranged/melee) — proves multiplicative +
    suppressible-effect pattern on a whole-body capacity.
@@ -280,7 +326,7 @@ is the content lift) → per-effector resolver (manipulation/moving).
 Each layer ships standalone value. The five-senses *description model* (§5) is
 the one piece worth pinning early so earlier layers don't contradict it.
 
-## 9 · Cross-references
+## 10 · Cross-references
 
 - `LOOK_COMMAND_SPEC.md` — Sensory Category Framework (the render consumer).
 - `IDENTITY_RECOGNITION_SPEC.md` — the recognition pipeline voice mirrors;
@@ -290,7 +336,7 @@ the one piece worth pinning early so earlier layers don't contradict it.
 - The condition system (`world/medical/conditions.py`) — home for suppressible
   effect-modifiers (blindsight, flashbang-deafness) and contribution methods.
 
-## 10 · Open / undecided
+## 11 · Open / undecided
 
 - Two-handed combination rule (weaker hand caps vs blend) and the
   under-gripping penalty curve (§6.1).
