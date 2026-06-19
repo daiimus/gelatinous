@@ -14,7 +14,9 @@ from random import randint
 from .debug import get_splattercast
 
 from world.combat.messages import get_combat_message
-from world.combat.capacity import sight_hit_factor, moving_dodge_factor
+from world.combat.capacity import (
+    sight_hit_factor, moving_dodge_factor, manipulation_hit_factor,
+)
 from world.medical.utils import select_hit_location, select_target_organ
 
 from .constants import (
@@ -397,10 +399,17 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     # condition (chrome sense-enhancer) suppresses the penalty.  Whole-body
     # capacity, so no per-effector resolver needed.
     sight_factor = sight_hit_factor(attacker, is_ranged_attack)
-    effective_skill = attacker_skill * sight_factor
-    if sight_factor < 1.0:
+    # Manipulation consumes the attacker's aim too (CAPACITY_CONSUMERS spec §6.1,
+    # §9 layer 4b — offensive half).  Per-gripping-hand, NOT body-wide: a
+    # one-armed shooter with a good hand fights at full accuracy.  Completes the
+    # combat stack — ranged: motorics × sight × manipulation(trigger hand);
+    # melee: motorics × manipulation(wield hand) × light-sight.
+    manip_factor = manipulation_hit_factor(attacker, weapon)
+    effective_skill = attacker_skill * sight_factor * manip_factor
+    if sight_factor < 1.0 or manip_factor < 1.0:
         splattercast.msg(
-            f"ATTACK_SIGHT: {attacker.key} sight factor {sight_factor:.2f} "
+            f"ATTACK_CAPACITY: {attacker.key} sight {sight_factor:.2f} × "
+            f"manip {manip_factor:.2f} "
             f"({'ranged' if is_ranged_attack else 'melee'}) — motorics "
             f"{attacker_skill} -> {effective_skill:.1f}"
         )
