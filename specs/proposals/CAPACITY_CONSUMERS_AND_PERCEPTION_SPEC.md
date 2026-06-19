@@ -396,7 +396,16 @@ is the content lift) → per-effector resolver (manipulation/moving).
      `test_voice_identity.py`. **Headline payoff live: a blind listener recognises
      a known voice; a stranger's stays "someone."**
 3. **Perception render** — capacities gate LOOK sensory categories + compensatory
-   enrichment.
+   enrichment. **✅ CORE SHIPPED.** `world/perception.py` (`blocked_senses` /
+   `can_perceive_sense` / `has_reduced_perception`) reads `sight`→visual,
+   `hearing`→auditory from the voice-layer primitives (chrome override seams
+   honoured); olfactory/tactile/atmospheric never gated. The weather + crowd
+   ambient pools (`get_sensory_messages`, `get_crowd_contributions`) now drop
+   content the looker can't perceive (blind → no visual weather/crowd; deaf →
+   no auditory), and a sense-reduced looker gets a **+1 compensatory** ambient
+   message. Tests: `world/tests/test_perception.py`. **Deferred (spec §5,
+   accepted):** base single-blob room-desc sense decomposition — the visual
+   layer stays whole for now; gating the additive pools is the buildable slice.
 4. **Per-effector resolver** — `manipulation`/`moving` (and the multi-appendage
    future).
 
