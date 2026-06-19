@@ -1,10 +1,10 @@
 # Capacity Consumers & Perception Spec
 
 > **Status: 📋 PROPOSAL — design-of-record, not implemented.** Captures an
-> in-progress design conversation. Built in layers (see §8). `sight` and
-> `hearing`/voice are fully designed below; `manipulation`/`moving` (the
-> per-effector resolver) are still being designed (§6). Magnitudes and
-> balance numbers are illustrative, not final.
+> in-progress design conversation. Built in layers (see §8). The four core
+> capacities — `sight`, `hearing`/voice, `manipulation`, `moving` — are
+> designed below; the remaining capacities are blocked on absent systems
+> (§2). Magnitudes and balance numbers are illustrative, not final.
 
 ## 0 · Purpose
 
@@ -191,28 +191,74 @@ limitation; this spec supplies the input.**
   layer; other-sense components are additive. Full **base-desc sense
   decomposition** is the future authoring lift, not a prerequisite.
 
-## 6 · Manipulation & Moving — the per-effector resolver (IN DESIGN)
+## 6 · Manipulation & Moving — the per-effector resolver (decided)
 
-> *To be designed next. Notes from the conversation so far:*
+Unlike `sight`/`hearing` (whole-body), these route through a shared
+**effector resolver** — `resolve_effectors(character, action)` → returns
+**(a) the effective capacity for the action** and **(b) meta-bonuses from
+surplus effectors**, both measured against the **species baseline** derived
+*dynamically* from anatomy (§6.3). An action declares the effectors it needs
+(weapon `hands_required`; locomotion; future jump/athletics → legs).
 
-Unlike `sight`/`hearing` (whole-body), these are **per-effector, normalized to
-species baseline** — a real subsystem ("effector resolver"), not a body-wide
-multiply:
-- An **action declares its effectors** (weapon `hands_required`; jump → legs;
-  future athletics → whatever).
-- Resolve *which* effectors serve it, check *their* functional capacity, and
-  compare **available functional effectors vs the species baseline** (human =
-  2 hands/2 legs; rat = 4 legs+tail; Doc-Ock = 8 arms — derived from species
-  anatomy, not hardcoded).
-- **Penalty** when short of the requirement (2-handed weapon, one hand, no free
-  second → disadvantage); **bonus** when over baseline — but bonus = **initiative
-  + hard-to-fully-disarm + loadout readiness** (grenade *and* 2H melee *and*
-  pistol all ready at once), **NOT** extra attacks or raw damage (combat-balance
-  guardrail). *Which* readied option to use when is a future combat revision.
-- Builds on existing pieces: weapon `hands_required`, the `hands` grasping-slot
-  system (prehensile tail = third slot), species anatomy tables.
-- **`moving`** drives movement/flee now (hard floor at the `0.15`
-  incapacitation_threshold), and **future jump/athletics** (legs).
+### 6.1 Manipulation — two distinct outputs
+
+Damage/loss of arm-hand anatomy answers two *separate* questions; conflating
+them into one body-wide number is wrong.
+
+- **(Q1) Handling — from the *specific gripping effector(s)* only.** Weapon
+  accuracy depends on the hand(s) actually holding it, NOT a body average. A
+  one-armed character with a pistol in their good hand fights at **full**
+  accuracy — the missing arm is irrelevant to that weapon. (Body-wide
+  manipulation ≈ `0.5` for one arm would wrongly halve it.)
+- **(Q2) Breadth / readiness — from the *count of functional manipulators vs
+  baseline*.** Buys breadth, not accuracy: **initiative + hard-to-fully-disarm
+  + loadout-readiness** (a grenade *and* a 2H melee *and* a pistol all ready at
+  once). NOT extra attacks or raw damage (combat-balance guardrail). *Which*
+  readied option to bring to bear when is a future combat revision.
+
+So: one-armed → full per-weapon accuracy, reduced breadth; four-armed → same
+per-weapon accuracy, large breadth (multiple weapons up, near-undisarmable,
+faster initiative).
+
+**Minimum requirements + scaled penalty.** A weapon's `hands_required` is a
+*minimum*; the gripping effectors must meet it. **Under-gripping** (2H weapon
+held one-handed, no free second hand) is a **scaled** handling penalty, not a
+flat tier. Combining multiple gripping hands on one weapon scales handling
+(the weaker hand drags it — exact min-vs-blend TBD, §10).
+
+**Effector targeting already exists.** `wield <item> in <hand>` is implemented
+and matches the slot by name (`wield baton in left`); since the `hands` view
+*is* the grasping-slot set (prehensile tail included), `wield pistol in tail`
+works the moment the slot exists. Switching/choosing weapon effectors is
+already supported — no new command needed.
+
+### 6.2 Moving — aggregate, species-normalized
+
+You don't *pick a leg* to move with, so `moving` is the **whole locomotion
+apparatus**, normalized to species baseline (human losing 1 of 2 legs ≫ rat
+losing 1 of 4 — already species-aware via `get_species_body_capacities`).
+Drives: **dodge** (combat defense), **flee**, **movement speed**, and **future
+jump/athletics**. Hard floor at the table's `0.15` incapacitation_threshold =
+can't locomote (drag yourself).
+
+### 6.3 The combat capacity stack (multiplicative)
+
+Capacities *modify* the GRIM-derived result. Offense rides arms+eyes; defense
+rides legs:
+
+| Action | Stack |
+|---|---|
+| Ranged hit | `motorics-precision × sight × manipulation(trigger hand)` |
+| Melee hit | `motorics-precision × manipulation(wielding hand) × light-sight` |
+| Dodge / evasion | `motorics × moving` |
+
+### 6.4 Dynamic baseline derivation
+
+Baseline effector counts come straight from anatomy — count **grasping
+organs** (manipulation) / **locomotion organs** (moving) per species. New
+species, extra appendages, and cyberware are auto-counted; nothing hardcoded.
+Builds on existing pieces: weapon `hands_required`, the `hands` grasping-slot
+system, species anatomy tables.
 
 ## 7 · Capacity → consumer matrix (summary)
 
@@ -246,7 +292,8 @@ the one piece worth pinning early so earlier layers don't contradict it.
 
 ## 10 · Open / undecided
 
-- `manipulation`/`moving` per-effector resolver — full design (§6).
+- Two-handed combination rule (weaker hand caps vs blend) and the
+  under-gripping penalty curve (§6.1).
 - Effect magnitudes / balance numbers (illustrative here).
 - Languages (the `<language>` slot is future-proofed; only Common exists).
 - Proximity-dependent hearing (directionality) — waits on the proximity system.
