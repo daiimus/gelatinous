@@ -99,6 +99,11 @@ class Character(
     hair_style = AttributeProperty(None, category="identity")
     sdesc_keyword = AttributeProperty(None, category="identity")
     recognition_memory = AttributeProperty({}, category="identity", autocreate=True)
+    # Voice recognition — the auditory parallel to recognition_memory, keyed by
+    # voice UID (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4.2). Populated when you
+    # remember an audible speaker; read by the resolution chain to attribute a
+    # known voice you can't see.
+    voice_memory = AttributeProperty({}, category="identity", autocreate=True)
     species = AttributeProperty("human", category="identity")
 
     # Shop System Attributes

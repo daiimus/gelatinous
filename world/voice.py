@@ -29,7 +29,12 @@ like the visual-keyword sets.
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
+
+# Voice-UID digest size — matches the visual Apparent-UID convention
+# (``world.identity._APPARENT_UID_DIGEST_BYTES``) so the two axes read alike.
+_VOICE_UID_DIGEST_BYTES = 8
 
 # --------------------------------------------------------------------------
 # Curated vocabulary
@@ -127,9 +132,14 @@ def _read_talking_capacity(char: Any) -> float | None:
     if not callable(calc):
         return None
     try:
-        return calc("talking")
+        value = calc("talking")
     except Exception:
         return None
+    # Only a real number gates garble; anything else (e.g. a test mock) fails
+    # open, mirroring ``world.combat.dice.get_character_stat``.
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    return value
 
 
 def is_voice_garbled(char: Any) -> bool:
@@ -172,3 +182,125 @@ def voice_phrase(char: Any, language: str = "Common") -> str | None:
     else:
         return None
     return f"speaking {language}, {body}"
+
+
+# --------------------------------------------------------------------------
+# Voice recognition — the apparent-UID / recognition-memory parallel (§4.2)
+# --------------------------------------------------------------------------
+# Voice recognition is the visual recognition machine on a second axis. The
+# signature is salted on the speaker's real ``sleeve_uid`` (so everyone has a
+# stable, recognisable voice even before they curate flavour — the description /
+# ending are presentation, exactly as the visual sdesc keyword is) plus the
+# presentation slots and the modulator state. A voice modulator changes the UID,
+# defeating recognition the way a mask defeats the visual channel.
+#
+# Garble (a wrecked ``talking`` capacity) is NOT a signature input — it does not
+# change *who* the voice belongs to, it transiently prevents production. The
+# resolution chain (slice 2c) skips the voice channel for a currently-garbled
+# speaker; the stored UID stays stable across the injury.
+
+def is_voice_modulated(char: Any) -> bool:
+    """True if a voice modulator is masking this character's voice.
+
+    The cyber-disguise parallel to a visual mask (§4.2). No augment sets this
+    yet; the flag is honoured now so the modulator is pure content later.
+    """
+    db = getattr(char, "db", None)
+    return bool(getattr(db, "voice_modulator_active", False)) if db is not None else False
+
+
+def get_voice_signature(char: Any) -> tuple:
+    """The voice signature tuple — input to :func:`get_apparent_voice_uid`.
+
+    Mirrors ``world.identity.get_identity_signature``: real ``sleeve_uid`` as a
+    per-character salt, plus the curated presentation slots and modulator state.
+
+    Returns:
+        ``(sleeve_uid, voice_description, voice_ending, modulator_active)``.
+    """
+    return (
+        getattr(char, "sleeve_uid", None),
+        get_voice_description(char),
+        get_voice_ending(char),
+        is_voice_modulated(char),
+    )
+
+
+def get_apparent_voice_uid(char: Any) -> str | None:
+    """Deterministic voice UID for a character's current voice presentation.
+
+    ``None`` when there is no real ``sleeve_uid`` (pre-chargen shell) — callers
+    MUST treat ``None`` as "no voice recognition possible", exactly as the
+    visual pipeline treats a ``None`` Apparent UID.
+    """
+    signature = get_voice_signature(char)
+    if signature[0] is None:
+        return None
+    signature_bytes = repr(signature).encode("utf-8")
+    return hashlib.blake2b(
+        signature_bytes, digest_size=_VOICE_UID_DIGEST_BYTES
+    ).hexdigest()
+
+
+def get_assigned_voice_name(observer: Any, target: Any) -> str | None:
+    """Return *observer*'s assigned name for *target*'s current voice.
+
+    Resolves *target*'s current voice UID and looks up the matching
+    ``voice_memory`` entry on *observer*. The voice parallel to
+    ``world.identity.get_assigned_name``. Returns the non-empty assigned name,
+    or ``None`` when the observer has not named this voice (including when the
+    target has no voice UID, or the voice is modulated into an unknown UID).
+    """
+    voice_uid = get_apparent_voice_uid(target)
+    if voice_uid is None:
+        return None
+    memory = getattr(observer, "voice_memory", None)
+    if not memory or voice_uid not in memory:
+        return None
+    assigned = memory[voice_uid].get("assigned_name") or ""
+    return assigned or None
+
+
+def remember_voice(observer: Any, target: Any, name: str) -> bool:
+    """Record *name* for *target*'s current voice in *observer*'s voice memory.
+
+    The voice parallel to the recognition-memory writer in ``CmdRemember``.
+    Keyed on the target's current voice UID, so a modulated voice gets its own
+    entry (you can know someone's real voice and not their disguised one).
+
+    Returns ``True`` if an entry was written, ``False`` when the target has no
+    usable voice UID (nothing to remember).
+    """
+    voice_uid = get_apparent_voice_uid(target)
+    if voice_uid is None:
+        return False
+
+    memory = getattr(observer, "voice_memory", None)
+    if memory is None:
+        memory = {}
+
+    entry = memory.get(voice_uid, {})
+    entry["assigned_name"] = name
+    entry["voice_phrase_at_encounter"] = voice_phrase(target)
+    entry["real_sleeve_uid"] = getattr(target, "sleeve_uid", None)
+    memory[voice_uid] = entry
+    # Reassign through the attribute so the AttributeProperty persists the
+    # mutated dict (mirrors how CmdRemember writes recognition_memory).
+    observer.voice_memory = memory
+    return True
+
+
+def forget_voice(observer: Any, target: Any) -> bool:
+    """Clear *observer*'s assigned name for *target*'s current voice.
+
+    Returns ``True`` if an entry was cleared, ``False`` otherwise.
+    """
+    voice_uid = get_apparent_voice_uid(target)
+    if voice_uid is None:
+        return False
+    memory = getattr(observer, "voice_memory", None)
+    if not memory or voice_uid not in memory:
+        return False
+    memory[voice_uid]["assigned_name"] = ""
+    observer.voice_memory = memory
+    return True

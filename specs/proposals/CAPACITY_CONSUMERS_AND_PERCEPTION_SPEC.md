@@ -361,9 +361,15 @@ is the content lift) → per-effector resolver (manipulation/moving).
      set/view/list/clear). `say` renders flavour: garble always, otherwise the
      §4.6 "can-see → sporadic sprinkle" branch (the only branch reachable until
      2c). Tests: `world/tests/test_voice_identity.py`.
-   - **2b — voice memory + recognition** (the apparent-UID/`recognition_memory`
-     parallel): a `get_voice_signature`/voice-UID and per-listener voice memory
-     so a known voice attributes a speaker. *Not built.*
+   - **2b ✅ SHIPPED — voice memory + recognition.** The apparent-UID /
+     `recognition_memory` parallel in `world/voice.py`: `get_voice_signature`
+     (salted on `sleeve_uid`, so everyone has a stable recognisable voice + a
+     `voice_modulator_active` slot that, like a mask, changes the UID),
+     `get_apparent_voice_uid`, and a `voice_memory` AttributeProperty on the
+     Character with `remember_voice`/`forget_voice`/`get_assigned_voice_name`.
+     `remember <target>`/`forget <target>` now teach/clear the voice alongside
+     the face (skipping garbled speakers). Tests in `test_voice_identity.py`.
+     *Not yet consumed by display* — that's 2c.
    - **2c — the resolution chain** (§4.5) in `get_display_name`/`say`: see→hear→
      neither, gated on the listener's `sight`/`hearing`; unlocks unseen
      speakers and the full §4.6 heuristic (mandatory disambiguation). *Not built.*
