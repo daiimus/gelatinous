@@ -16,7 +16,9 @@ from unittest import TestCase
 
 from world.combat.capacity import (
     SIGHT_OVERRIDE_CONDITION,
+    MOVING_OVERRIDE_CONDITION,
     sight_hit_factor,
+    moving_dodge_factor,
     _piecewise,
     SIGHT_CURVE_RANGED,
     SIGHT_CURVE_MELEE,
@@ -133,3 +135,49 @@ class SuppressionAndFailOpenTests(TestCase):
 
         char = _FakeChar(_Broken())
         self.assertAlmostEqual(sight_hit_factor(char, is_ranged=True), 1.0)
+
+
+class _MovingMedicalState:
+    def __init__(self, moving=1.0, override_conditions=0):
+        self._moving = moving
+        self._overrides = override_conditions
+
+    def calculate_body_capacity(self, name):
+        return self._moving if name == "moving" else 1.0
+
+    def get_conditions_by_type(self, condition_type):
+        if condition_type == MOVING_OVERRIDE_CONDITION:
+            return [object()] * self._overrides
+        return []
+
+
+class MovingDodgeTests(TestCase):
+    def _factor(self, moving):
+        return moving_dodge_factor(_FakeChar(_MovingMedicalState(moving=moving)))
+
+    def test_full_locomotion_no_penalty(self):
+        self.assertAlmostEqual(self._factor(1.0), 1.0)
+
+    def test_healthy_partial_loss_scales(self):
+        # A clear penalty below full, but still mobile.
+        self.assertLess(self._factor(0.5), 1.0)
+        self.assertGreater(self._factor(0.5), 0.25)
+
+    def test_incapacitation_floor_collapses_dodge(self):
+        # At/below the 0.15 threshold, evasion is a flail.
+        self.assertAlmostEqual(self._factor(0.15), 0.25)
+        self.assertAlmostEqual(self._factor(0.0), 0.10)
+
+    def test_monotonic_non_decreasing(self):
+        prev = -1.0
+        for raw in (0.0, 0.15, 0.3, 0.6, 1.0):
+            cur = self._factor(raw)
+            self.assertGreaterEqual(cur, prev)
+            prev = cur
+
+    def test_override_condition_nulls_penalty(self):
+        char = _FakeChar(_MovingMedicalState(moving=0.0, override_conditions=1))
+        self.assertAlmostEqual(moving_dodge_factor(char), 1.0)
+
+    def test_no_medical_state_fails_open(self):
+        self.assertAlmostEqual(moving_dodge_factor(_FakeChar(None)), 1.0)
