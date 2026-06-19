@@ -68,8 +68,8 @@ def _piecewise(raw: float, anchors) -> float:
     return anchors[-1][1]
 
 
-def _read_sight_capacity(character):
-    """Return raw ``sight`` capacity (0.0–1.0), or ``None`` if unreadable.
+def _read_capacity(character, name: str):
+    """Return raw body capacity *name* (0.0–1.0), or ``None`` if unreadable.
 
     ``None`` signals "no medical model" — the caller fails open.
     """
@@ -80,19 +80,19 @@ def _read_sight_capacity(character):
     if not callable(calc):
         return None
     try:
-        return calc("sight")
+        return calc(name)
     except Exception:
         return None
 
 
-def _has_sight_override(character) -> bool:
-    """True if a condition suppresses the sight penalty (chrome/biotech seam)."""
+def _has_override(character, condition_type: str) -> bool:
+    """True if a condition suppresses a capacity penalty (chrome/biotech seam)."""
     state = getattr(character, "medical_state", None)
     getter = getattr(state, "get_conditions_by_type", None)
     if not callable(getter):
         return False
     try:
-        return bool(getter(SIGHT_OVERRIDE_CONDITION))
+        return bool(getter(condition_type))
     except Exception:
         return False
 
@@ -109,12 +109,47 @@ def sight_hit_factor(character, is_ranged: bool) -> float:
         A factor in ``[0.0, 1.0]``.  ``1.0`` means no sight penalty (full
         sight, no medical model, or an active suppressor).
     """
-    if _has_sight_override(character):
+    if _has_override(character, SIGHT_OVERRIDE_CONDITION):
         return 1.0
 
-    raw = _read_sight_capacity(character)
+    raw = _read_capacity(character, "sight")
     if raw is None:
         return 1.0  # fail-open: no medical model, no penalty
 
     curve = SIGHT_CURVE_RANGED if is_ranged else SIGHT_CURVE_MELEE
     return _piecewise(raw, curve)
+
+
+# --------------------------------------------------------------------------
+# Moving → dodge (CAPACITY_CONSUMERS spec §6.2/§6.3 — defensive half)
+# --------------------------------------------------------------------------
+# Unlike manipulation, ``moving`` is whole-body and already species-normalized
+# (``calculate_body_capacity`` weights leg organs per anatomy: a human losing
+# one of two legs ≫ a rat losing one of four). It drives the defensive side of
+# the combat stack — dodge/evasion = motorics × moving.
+#
+# Hard floor at the species table's 0.15 incapacitation_threshold: below it you
+# can't locomote (drag yourself), so evasion collapses to a flail. Graceful
+# above. Magnitudes tunable (spec §11).
+MOVING_INCAPACITATION_THRESHOLD = 0.15
+MOVING_CURVE_DODGE = ((0.0, 0.10), (0.15, 0.25), (1.0, 1.0))
+
+# The chrome-legs seam — a cyber locomotion augment suppresses the dodge
+# penalty. Nothing sets it yet; honoured now so the augment is pure content.
+MOVING_OVERRIDE_CONDITION = "moving_override"
+
+
+def moving_dodge_factor(character) -> float:
+    """Multiplier applied to *character*'s motorics when dodging/evading.
+
+    Returns a factor in ``[0.0, 1.0]``; ``1.0`` means no penalty (full
+    locomotion, no medical model, or an active suppressor).
+    """
+    if _has_override(character, MOVING_OVERRIDE_CONDITION):
+        return 1.0
+
+    raw = _read_capacity(character, "moving")
+    if raw is None:
+        return 1.0  # fail-open
+
+    return _piecewise(raw, MOVING_CURVE_DODGE)

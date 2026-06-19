@@ -14,7 +14,7 @@ from random import randint
 from .debug import get_splattercast
 
 from world.combat.messages import get_combat_message
-from world.combat.capacity import sight_hit_factor
+from world.combat.capacity import sight_hit_factor, moving_dodge_factor
 from world.medical.utils import select_hit_location, select_target_organ
 
 from .constants import (
@@ -405,9 +405,21 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
             f"{attacker_skill} -> {effective_skill:.1f}"
         )
 
+    # Moving capacity consumes the target's dodge (CAPACITY_CONSUMERS spec §6.2,
+    # §9 layer 4 — defensive half).  Whole-body, species-normalized; a hard floor
+    # at the incapacitation threshold means wrecked legs collapse evasion to a
+    # flail.  A moving-override condition (cyber legs) suppresses the penalty.
+    moving_factor = moving_dodge_factor(target)
+    effective_dodge = target_skill * moving_factor
+    if moving_factor < 1.0:
+        splattercast.msg(
+            f"DODGE_MOVING: {target.key} moving factor {moving_factor:.2f} — "
+            f"motorics {target_skill} -> {effective_dodge:.1f}"
+        )
+
     # Roll for attack
     attacker_roll = randint(1, 20) + effective_skill
-    target_roll = randint(1, 20) + target_skill
+    target_roll = randint(1, 20) + effective_dodge
 
     # Check for charge bonus
     has_attr = hasattr(attacker.ndb, NDB_CHARGE_BONUS)
