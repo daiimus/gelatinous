@@ -17,21 +17,27 @@ from world.voice import (
     DEFAULT_VOICE_DESCRIPTIONS,
     DEFAULT_VOICE_ENDINGS,
     VOICE_GARBLE_THRESHOLD,
+    forget_voice,
     garbled_voice_phrase,
+    get_apparent_voice_uid,
+    get_assigned_voice_name,
     get_voice_descriptions,
     get_voice_endings,
+    get_voice_signature,
     has_voice_signature,
     is_valid_voice_description,
     is_valid_voice_ending,
     is_voice_garbled,
+    remember_voice,
     voice_phrase,
 )
 
 
 class _FakeDB:
-    def __init__(self, description=None, ending=None):
+    def __init__(self, description=None, ending=None, modulated=False):
         self.voice_description = description
         self.voice_ending = ending
+        self.voice_modulator_active = modulated
 
 
 class _FakeMedicalState:
@@ -46,9 +52,11 @@ class _FakeMedicalState:
 
 class _FakeChar:
     def __init__(self, description=None, ending=None, talking=1.0,
-                 medical=True):
-        self.db = _FakeDB(description, ending)
+                 medical=True, sleeve_uid="sleeve-1", modulated=False):
+        self.db = _FakeDB(description, ending, modulated)
         self.medical_state = _FakeMedicalState(talking) if medical else None
+        self.sleeve_uid = sleeve_uid
+        self.voice_memory = {}
 
 
 class VocabularyTests(TestCase):
@@ -132,6 +140,67 @@ class TalkingGarbleGateTests(TestCase):
         char = _FakeChar("gravelly", "drawl", medical=False)
         self.assertFalse(is_voice_garbled(char))
         self.assertIsNone(garbled_voice_phrase(char))
+
+
+class VoiceRecognitionTests(TestCase):
+    """The voice apparent-UID / voice-memory parallel (§4.2)."""
+
+    def test_uid_is_stable_and_deterministic(self):
+        a = _FakeChar("gravelly", "drawl", sleeve_uid="s1")
+        b = _FakeChar("gravelly", "drawl", sleeve_uid="s1")
+        self.assertEqual(get_apparent_voice_uid(a), get_apparent_voice_uid(b))
+        self.assertEqual(len(get_apparent_voice_uid(a)), 16)
+
+    def test_uid_salted_on_sleeve_even_without_flavour(self):
+        # Everyone has a recognisable voice UID via sleeve_uid; flavour is
+        # presentation, not identity.
+        a = _FakeChar(sleeve_uid="s1")
+        b = _FakeChar(sleeve_uid="s2")
+        self.assertIsNotNone(get_apparent_voice_uid(a))
+        self.assertNotEqual(get_apparent_voice_uid(a), get_apparent_voice_uid(b))
+
+    def test_no_sleeve_uid_means_no_uid(self):
+        self.assertIsNone(get_apparent_voice_uid(_FakeChar(sleeve_uid=None)))
+
+    def test_modulator_changes_uid(self):
+        bare = _FakeChar("gravelly", "drawl", sleeve_uid="s1", modulated=False)
+        masked = _FakeChar("gravelly", "drawl", sleeve_uid="s1", modulated=True)
+        self.assertNotEqual(
+            get_apparent_voice_uid(bare), get_apparent_voice_uid(masked)
+        )
+
+    def test_signature_shape(self):
+        char = _FakeChar("gravelly", "drawl", sleeve_uid="s1")
+        self.assertEqual(
+            get_voice_signature(char), ("s1", "gravelly", "drawl", False)
+        )
+
+    def test_remember_and_resolve(self):
+        observer = _FakeChar(sleeve_uid="obs")
+        speaker = _FakeChar("gravelly", "drawl", sleeve_uid="spk")
+        self.assertIsNone(get_assigned_voice_name(observer, speaker))
+        self.assertTrue(remember_voice(observer, speaker, "Bob"))
+        self.assertEqual(get_assigned_voice_name(observer, speaker), "Bob")
+
+    def test_remembered_voice_not_recognised_through_modulator(self):
+        observer = _FakeChar(sleeve_uid="obs")
+        speaker = _FakeChar("gravelly", "drawl", sleeve_uid="spk")
+        remember_voice(observer, speaker, "Bob")
+        # Same person switches on a modulator → unknown voice.
+        speaker.db.voice_modulator_active = True
+        self.assertIsNone(get_assigned_voice_name(observer, speaker))
+
+    def test_cannot_remember_voiceless_target(self):
+        observer = _FakeChar(sleeve_uid="obs")
+        no_sleeve = _FakeChar(sleeve_uid=None)
+        self.assertFalse(remember_voice(observer, no_sleeve, "Ghost"))
+
+    def test_forget_voice(self):
+        observer = _FakeChar(sleeve_uid="obs")
+        speaker = _FakeChar("gravelly", "drawl", sleeve_uid="spk")
+        remember_voice(observer, speaker, "Bob")
+        self.assertTrue(forget_voice(observer, speaker))
+        self.assertIsNone(get_assigned_voice_name(observer, speaker))
 
 
 class CommandRegistrationTests(TestCase):

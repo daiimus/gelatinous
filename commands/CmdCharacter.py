@@ -2161,6 +2161,16 @@ class CmdRemember(Command):
         memory[apparent_uid] = entry
         caller.recognition_memory = memory
 
+        # Voice recognition (CAPACITY_CONSUMERS spec §4.2): remembering a
+        # speaker you can see also teaches you their voice — you are co-located,
+        # so you hear them. Skipped when their voice is currently garbled (a
+        # wrecked `talking` capacity — you can't learn a voice that's broken
+        # right now). The full listener-deafness gate lands with the resolution
+        # chain (2c); the speaker-garble gate is correct now.
+        from world.voice import remember_voice, is_voice_garbled
+        if not is_voice_garbled(target):
+            remember_voice(caller, target, name)
+
         # Provide feedback using the newly assigned name
         if old_name and old_name != name:
             caller.msg(
@@ -2403,6 +2413,12 @@ class CmdForget(Command):
 
         memory[apparent_uid]["assigned_name"] = ""
         caller.recognition_memory = memory
+
+        # Forget their voice too (CAPACITY_CONSUMERS spec §4.2) — the visible
+        # and audible channels are forgotten together when you forget a present
+        # target. A modulated voice keys to its own entry and is untouched.
+        from world.voice import forget_voice
+        forget_voice(caller, target)
 
         # Drop stale pierce-cache verdicts for this sleeve so the next
         # look re-evaluates against the now-nameless memory.  Prefer
