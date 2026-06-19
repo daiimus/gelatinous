@@ -48,9 +48,12 @@ class WeatherSystem:
         
         if not sensory_messages:
             return ""
-            
-        # Select 2 messages from available senses, designed to synergize
-        selected_messages = self.select_weather_messages(sensory_messages, 2)
+
+        # Compensatory enrichment (CAPACITY_CONSUMERS spec §5): a looker missing
+        # a sense gets a little more texture from the senses that remain.
+        from world.perception import has_reduced_perception
+        count = 3 if has_reduced_perception(looker) else 2
+        selected_messages = self.select_weather_messages(sensory_messages, count)
         
         if not selected_messages:
             return ""
@@ -94,14 +97,18 @@ class WeatherSystem:
             
         if not weather_messages:
             return []
-            
-        # For now, return all available messages
-        # Future: filter based on looker's sensory capabilities
+
+        # Filter by the looker's perceivable senses (CAPACITY_CONSUMERS spec §5):
+        # a blind looker gets no *visual* weather (rain they can't see) but still
+        # the auditory/olfactory channels; a deaf looker loses the auditory ones.
+        from world.perception import blocked_senses
+        blocked = blocked_senses(looker)
+
         available_messages = []
         for sense, messages in weather_messages.items():
-            if messages:  # Only include senses that have messages
+            if messages and sense not in blocked:
                 available_messages.extend(messages)
-                
+
         return available_messages
         
     def select_weather_messages(self, available_messages, count=2):

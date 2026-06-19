@@ -116,8 +116,14 @@ class CrowdSystem:
         if not crowd_messages:
             return ""
         
-        # Select random message from available categories
-        available_categories = list(crowd_messages.keys())
+        # Select random message from available categories, gated by the
+        # looker's perceivable senses (CAPACITY_CONSUMERS spec §5): the blind
+        # don't get visual crowd content, the deaf don't get the auditory din.
+        from world.perception import blocked_senses
+        blocked = blocked_senses(looker)
+        available_categories = [
+            c for c in crowd_messages.keys() if c not in blocked
+        ]
         if available_categories:
             # Randomly select one category to display (following weather system pattern)
             selected_category = random.choice(available_categories)
