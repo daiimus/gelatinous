@@ -353,6 +353,20 @@ is the content lift) → per-effector resolver (manipulation/moving).
    `world/tests/test_combat_capacity_sight.py`.
 2. **Identity / voice** — `@voice` + voice signature + the resolution chain +
    rendering heuristic; gates visual recognition on `sight`, voice on `hearing`.
+   - **2a ✅ SHIPPED — voice signature foundation.** `world/voice.py`: curated
+     description+ending vocabulary (config-overridable), composer
+     (`voice_phrase`), and the **`talking`-capacity garble gate** (§4.7 — first
+     consumer of the otherwise-blocked `talking` capacity: wrecked jaw →
+     `garbled_voice_phrase`). `@voice` command (`commands/CmdCharacter.py`,
+     set/view/list/clear). `say` renders flavour: garble always, otherwise the
+     §4.6 "can-see → sporadic sprinkle" branch (the only branch reachable until
+     2c). Tests: `world/tests/test_voice_identity.py`.
+   - **2b — voice memory + recognition** (the apparent-UID/`recognition_memory`
+     parallel): a `get_voice_signature`/voice-UID and per-listener voice memory
+     so a known voice attributes a speaker. *Not built.*
+   - **2c — the resolution chain** (§4.5) in `get_display_name`/`say`: see→hear→
+     neither, gated on the listener's `sight`/`hearing`; unlocks unseen
+     speakers and the full §4.6 heuristic (mandatory disambiguation). *Not built.*
 3. **Perception render** — capacities gate LOOK sensory categories + compensatory
    enrichment.
 4. **Per-effector resolver** — `manipulation`/`moving` (and the multi-appendage

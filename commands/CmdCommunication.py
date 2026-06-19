@@ -20,8 +20,15 @@ from world.emote import (
     tokenize_dot_pose,
     tokenize_emote,
 )
+from random import random
+
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
+from world.voice import (
+    garbled_voice_phrase,
+    voice_phrase,
+    VOICE_FLAVOR_SPRINKLE_CHANCE,
+)
 
 
 class CmdSay(Command):
@@ -57,6 +64,20 @@ class CmdSay(Command):
         # Actor sees their own message
         caller.msg(f'You say, "{speech}"')
 
+        # Voice flavour (CAPACITY_CONSUMERS spec §4). A garbled voice (wrecked
+        # `talking` capacity) always renders — a ruined voice is conspicuous;
+        # otherwise the speaker is visible to the room, so flavour is a
+        # sporadic, low-frequency sprinkle (§4.6 can-see branch) rolled once
+        # per utterance for a consistent reading. The full sight/hearing
+        # resolution chain (unseen speakers → mandatory attribution) is a
+        # later slice.
+        flavor = garbled_voice_phrase(caller)
+        if flavor is None:
+            phrase = voice_phrase(caller)
+            if phrase and random() < VOICE_FLAVOR_SPRINKLE_CHANCE:
+                flavor = phrase
+        say_verb = f"says, |x*{flavor}*|n" if flavor else "says,"
+
         # Each observer sees per-observer speaker attribution
         for observer in location.contents:
             if observer is caller:
@@ -65,7 +86,7 @@ class CmdSay(Command):
                 continue
             speaker_name = caller.get_display_name(observer)
             observer.msg(
-                text=f'{capitalize_first(speaker_name)} says, "{speech}"',
+                text=f'{capitalize_first(speaker_name)} {say_verb} "{speech}"',
                 type="say",
                 from_obj=caller,
             )

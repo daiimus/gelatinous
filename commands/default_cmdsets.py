@@ -37,7 +37,7 @@ from commands.CmdExplosives import (
     CmdClearDetonator,
 )
 from commands.CmdGraffiti import CmdGraffiti, CmdPress
-from commands.CmdCharacter import CmdDescribe, CmdSkintone
+from commands.CmdCharacter import CmdDescribe, CmdSkintone, CmdVoice
 from commands.CmdCharacter import CmdRemember, CmdForget, CmdRecall, CmdMemory
 from commands.CmdCommunication import CmdSay, CmdWhisper, CmdEmote, CmdDotPose
 from commands.forensics import CmdAutopsy, CmdSever
@@ -182,6 +182,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # Add unified describe command (short desc + keyword + longdesc).
         # Replaces @longdesc, @shortdesc, and Evennia's default setdesc.
         self.add(CmdDescribe())
+        self.add(CmdVoice())
         # Remove Evennia's default setdesc; the Short Description menu option
         # and `describe short <text>` now own the main description.
         self.remove(CmdSetDesc())
