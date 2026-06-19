@@ -120,34 +120,93 @@ def has_voice_signature(char: Any) -> bool:
 
 
 # --------------------------------------------------------------------------
-# The talking-capacity gate (§4.7)
+# Capacity reads
 # --------------------------------------------------------------------------
-def _read_talking_capacity(char: Any) -> float | None:
-    """Raw ``talking`` capacity (0.0–1.0), or ``None`` if unreadable.
+def _read_capacity(char: Any, name: str) -> float | None:
+    """Raw body capacity *name* (0.0–1.0) for *char*, or ``None`` if unreadable.
 
-    ``None`` → fail open (no medical model means no garble).
+    ``None`` signals "no medical model" — callers fail open. Only a real number
+    is returned; anything else (e.g. a test mock) yields ``None``, mirroring
+    ``world.combat.dice.get_character_stat``.
     """
     state = getattr(char, "medical_state", None)
     calc = getattr(state, "calculate_body_capacity", None)
     if not callable(calc):
         return None
     try:
-        value = calc("talking")
+        value = calc(name)
     except Exception:
         return None
-    # Only a real number gates garble; anything else (e.g. a test mock) fails
-    # open, mirroring ``world.combat.dice.get_character_stat``.
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         return None
     return value
 
 
+def _has_condition(char: Any, condition_type: str) -> bool:
+    """True if *char* carries an active condition of *condition_type*."""
+    state = getattr(char, "medical_state", None)
+    getter = getattr(state, "get_conditions_by_type", None)
+    if not callable(getter):
+        return False
+    try:
+        return bool(getter(condition_type))
+    except Exception:
+        return False
+
+
+# --------------------------------------------------------------------------
+# The talking-capacity gate (§4.7)
+# --------------------------------------------------------------------------
 def is_voice_garbled(char: Any) -> bool:
     """True when a wrecked ``talking`` capacity ruins voice production."""
-    talking = _read_talking_capacity(char)
+    talking = _read_capacity(char, "talking")
     if talking is None:
         return False
     return talking < VOICE_GARBLE_THRESHOLD
+
+
+# --------------------------------------------------------------------------
+# Perception primitives — can the observer see / hear the speaker (§4.5)
+# --------------------------------------------------------------------------
+# Below these capacities the observer has effectively lost the sense (blind /
+# deaf). One eye / one ear (0.5) still perceives; total loss (0.0) does not.
+# These live here for the resolution chain; layer 3 (perception render) may
+# promote them to a shared perception module. Tunable.
+SIGHT_PERCEPTION_THRESHOLD = 0.15
+HEARING_PERCEPTION_THRESHOLD = 0.15
+
+# Condition seams that restore a lost sense (chrome eyes / cyber ears). Reuse
+# the combat sight-override constant so one augment is coherent everywhere.
+from world.combat.capacity import SIGHT_OVERRIDE_CONDITION  # noqa: E402
+HEARING_OVERRIDE_CONDITION = "hearing_override"
+
+
+def can_see(char: Any) -> bool:
+    """True if *char* can see (enough ``sight`` to visually identify others).
+
+    Fails open with no medical model. A sight-override condition (chrome eyes)
+    restores sight regardless of organ state.
+    """
+    if _has_condition(char, SIGHT_OVERRIDE_CONDITION):
+        return True
+    sight = _read_capacity(char, "sight")
+    if sight is None:
+        return True
+    return sight >= SIGHT_PERCEPTION_THRESHOLD
+
+
+def can_hear(char: Any) -> bool:
+    """True if *char* can hear (enough ``hearing`` to receive a voice).
+
+    Fails open with no medical model. A hearing-override condition (cyber ears)
+    restores hearing regardless of organ state.
+    """
+    if _has_condition(char, HEARING_OVERRIDE_CONDITION):
+        return True
+    hearing = _read_capacity(char, "hearing")
+    if hearing is None:
+        return True
+    return hearing >= HEARING_PERCEPTION_THRESHOLD
 
 
 # --------------------------------------------------------------------------
@@ -283,6 +342,9 @@ def remember_voice(observer: Any, target: Any, name: str) -> bool:
     entry["assigned_name"] = name
     entry["voice_phrase_at_encounter"] = voice_phrase(target)
     entry["real_sleeve_uid"] = getattr(target, "sleeve_uid", None)
+    # Familiarity: how many times this voice has been remembered, feeding the
+    # discernment determination (mirrors recognition ``times_seen``).
+    entry["times_heard"] = int(entry.get("times_heard", 0) or 0) + 1
     memory[voice_uid] = entry
     # Reassign through the attribute so the AttributeProperty persists the
     # mutated dict (mirrors how CmdRemember writes recognition_memory).
@@ -303,4 +365,173 @@ def forget_voice(observer: Any, target: Any) -> bool:
         return False
     memory[voice_uid]["assigned_name"] = ""
     observer.voice_memory = memory
+    invalidate_voice_discern_cache_for_sleeve(
+        observer, getattr(target, "sleeve_uid", None)
+    )
     return True
+
+
+def find_voice_entries_by_real_sleeve_uid(observer, real_sleeve_uid):
+    """All *observer* voice-memory ``(voice_uid, entry)`` for a given sleeve.
+
+    Voice parallel to ``world.identity.find_entries_by_real_sleeve_uid`` — lets
+    discernment find "have I named this person's voice under *any* presentation?"
+    (e.g. their natural voice, when they are now modulated).
+    """
+    if not real_sleeve_uid:
+        return []
+    memory = getattr(observer, "voice_memory", None) or {}
+    return [
+        (uid, entry)
+        for uid, entry in memory.items()
+        if entry.get("real_sleeve_uid") == real_sleeve_uid
+    ]
+
+
+# --------------------------------------------------------------------------
+# Voice discernment — the determination (mirrors disguise piercing, §4.5)
+# --------------------------------------------------------------------------
+# Discerning a voice is ALWAYS a determination, never a free lookup: a face you
+# can stare at, a voice you must place, and audio-only is an inherently less
+# certain channel. The mechanic mirrors ``world.identity.attempt_disguise_pierce``
+# exactly — opposed Intellect (observer) vs Resonance (target), familiarity
+# buff, a "disguise" penalty (here the voice modulator), permanently cached per
+# presentation so one determination sticks (no per-utterance flicker). What
+# voice adds is the ``hearing`` capacity multiplier on the observer's side — the
+# consumer that makes this layer earn its name (deaf cannot discern, one ear is
+# impaired). Magnitudes mirror the visual side and are tunable (spec §11).
+
+VOICE_DISCERN_FAMILIARITY_CAP = 5
+VOICE_DISCERN_MODULATION_PENALTY = 3
+
+#: What an unseen, undiscerned speaker is rendered as. The voice descriptor as a
+#: stand-in identity ("a gravelly drawl says…") is deferred — for now an
+#: unrecognised voice simply isn't attributed (decided).
+GENERIC_UNSEEN_SPEAKER = "someone"
+
+
+def attempt_voice_discern(observer: Any, target: Any) -> str | None:
+    """Resolve (and cache) whether *observer* places *target*'s voice by name.
+
+    Returns the assigned voice name on success, ``None`` otherwise (never
+    heard/named this voice, garbled production, failed determination). The
+    caller renders ``None`` as :data:`GENERIC_UNSEEN_SPEAKER`.
+    """
+    if observer is target:
+        return None
+    # A garbled voice carries no usable signature to place.
+    if is_voice_garbled(target):
+        return None
+
+    voice_uid = get_apparent_voice_uid(target)
+    real_sleeve = getattr(target, "sleeve_uid", None)
+    if voice_uid is None or not real_sleeve:
+        return None
+
+    # Have we named this person's voice under any presentation?
+    named = [
+        (uid, entry)
+        for uid, entry in find_voice_entries_by_real_sleeve_uid(observer, real_sleeve)
+        if (entry.get("assigned_name") or "")
+    ]
+    if not named:
+        return None
+    # Prefer the entry for the *current* voice presentation; otherwise any named
+    # presentation (you know their natural voice, they are modulated now).
+    bare_entry = next(
+        (entry for uid, entry in named if uid == voice_uid), named[0][1]
+    )
+    assigned_name = bare_entry["assigned_name"]
+
+    observer_dbref = getattr(observer, "dbref", None)
+    target_dbref = getattr(target, "dbref", None)
+    cacheable = (
+        observer_dbref is not None
+        and target_dbref is not None
+        and bool(voice_uid)
+    )
+    if cacheable:
+        cache = observer.db.voice_discern_cache
+        if cache is None:
+            cache = {}
+        key = (target_dbref, voice_uid)
+        if key in cache:
+            return assigned_name if cache[key] else None
+    else:
+        cache = None
+        key = None
+
+    from world.combat.dice import opposed_roll
+
+    obs_roll, tgt_roll, _ = opposed_roll(
+        observer, target, "intellect", "resonance"
+    )
+    familiarity = min(
+        int(bare_entry.get("times_heard", 0) or 0),
+        VOICE_DISCERN_FAMILIARITY_CAP,
+    )
+    penalty = VOICE_DISCERN_MODULATION_PENALTY if is_voice_modulated(target) else 0
+    # Hearing weights the observer's side — the capacity consumer. Fail open
+    # (full hearing) with no medical model.
+    hearing = _read_capacity(observer, "hearing")
+    if hearing is None:
+        hearing = 1.0
+    success = (obs_roll + familiarity) * hearing > (tgt_roll + penalty)
+
+    if cacheable:
+        cache[key] = success
+        observer.db.voice_discern_cache = cache
+
+    return assigned_name if success else None
+
+
+def invalidate_voice_discern_cache_for_sleeve(observer, real_sleeve_uid):
+    """Drop cached voice-discern verdicts for every presentation of a sleeve.
+
+    Voice parallel to ``world.identity.invalidate_pierce_cache_for_sleeve`` —
+    called on forget so the cognitive act of forgetting a person also discards
+    every cached discernment for any voice presentation they have used.
+    """
+    if not real_sleeve_uid:
+        return 0
+    db = getattr(observer, "db", None)
+    cache = getattr(db, "voice_discern_cache", None) if db is not None else None
+    if not cache:
+        return 0
+    uids = {
+        uid for uid, _ in find_voice_entries_by_real_sleeve_uid(observer, real_sleeve_uid)
+    }
+    if not uids:
+        return 0
+    removed = 0
+    for key in list(cache.keys()):
+        # key == (target_dbref, voice_uid)
+        if isinstance(key, tuple) and len(key) == 2 and key[1] in uids:
+            del cache[key]
+            removed += 1
+    if removed:
+        observer.db.voice_discern_cache = cache
+    return removed
+
+
+# --------------------------------------------------------------------------
+# The resolution chain — who said it, per listener (§4.5)
+# --------------------------------------------------------------------------
+def resolve_speaker_attribution(speaker: Any, observer: Any) -> str:
+    """How *observer* hears *speaker* attributed in speech.
+
+    The see → hear → neither chain, gated on the *observer's* capacities:
+
+    1. **Can see** → the normal visual display name (recognition / disguise
+       pierce / sdesc) — unchanged from the sighted path.
+    2. **Can't see, can hear** → the voice discernment determination: the
+       assigned voice name on success, else :data:`GENERIC_UNSEEN_SPEAKER`.
+    3. **Neither** (blind + deaf) → :data:`GENERIC_UNSEEN_SPEAKER`.
+    """
+    if observer is speaker:
+        return getattr(speaker, "key", GENERIC_UNSEEN_SPEAKER)
+    if can_see(observer):
+        return speaker.get_display_name(observer)
+    if can_hear(observer):
+        return attempt_voice_discern(observer, speaker) or GENERIC_UNSEEN_SPEAKER
+    return GENERIC_UNSEEN_SPEAKER

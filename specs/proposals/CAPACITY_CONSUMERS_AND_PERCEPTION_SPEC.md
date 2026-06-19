@@ -353,6 +353,8 @@ is the content lift) → per-effector resolver (manipulation/moving).
    `world/tests/test_combat_capacity_sight.py`.
 2. **Identity / voice** — `@voice` + voice signature + the resolution chain +
    rendering heuristic; gates visual recognition on `sight`, voice on `hearing`.
+   **✅ CORE SHIPPED (2a/2b/2c).** Deferred: voice-descriptor-as-identity +
+   §4.6 multi-voice disambiguation; deaf audio suppression.
    - **2a ✅ SHIPPED — voice signature foundation.** `world/voice.py`: curated
      description+ending vocabulary (config-overridable), composer
      (`voice_phrase`), and the **`talking`-capacity garble gate** (§4.7 — first
@@ -370,9 +372,21 @@ is the content lift) → per-effector resolver (manipulation/moving).
      `remember <target>`/`forget <target>` now teach/clear the voice alongside
      the face (skipping garbled speakers). Tests in `test_voice_identity.py`.
      *Not yet consumed by display* — that's 2c.
-   - **2c — the resolution chain** (§4.5) in `get_display_name`/`say`: see→hear→
-     neither, gated on the listener's `sight`/`hearing`; unlocks unseen
-     speakers and the full §4.6 heuristic (mandatory disambiguation). *Not built.*
+   - **2c ✅ SHIPPED — the resolution chain.** `resolve_speaker_attribution`
+     (`world/voice.py`) gates speech attribution on the *listener's* capacities:
+     **can-see → display name; can't-see-but-hear → voice discernment; neither →
+     "someone."** `can_see`/`can_hear` read `sight`/`hearing` (override-condition
+     seams for chrome eyes/ears). **Discerning a voice is always a determination**
+     mirroring disguise piercing: `attempt_voice_discern` runs opposed
+     Intellect-vs-Resonance, familiarity buff, modulator penalty, **weighted by
+     the listener's `hearing` capacity** (the consumer — `hearing` finally lands),
+     cached per presentation; forget invalidates it. **Decided simplification:**
+     an unrecognised/undiscerned voice is *not* attributed (no descriptor) — it
+     renders as "someone"; the voice-descriptor-as-identity ("a gravelly drawl
+     says…") and the §4.6 multi-voice disambiguation are **deferred**. Wired into
+     `say` (per-observer; 2a flavour now confined to the can-see branch). Tests in
+     `test_voice_identity.py`. **Headline payoff live: a blind listener recognises
+     a known voice; a stranger's stays "someone."**
 3. **Perception render** — capacities gate LOOK sensory categories + compensatory
    enrichment.
 4. **Per-effector resolver** — `manipulation`/`moving` (and the multi-appendage

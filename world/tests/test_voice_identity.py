@@ -16,7 +16,11 @@ from unittest import TestCase
 from world.voice import (
     DEFAULT_VOICE_DESCRIPTIONS,
     DEFAULT_VOICE_ENDINGS,
+    GENERIC_UNSEEN_SPEAKER,
     VOICE_GARBLE_THRESHOLD,
+    attempt_voice_discern,
+    can_hear,
+    can_see,
     forget_voice,
     garbled_voice_phrase,
     get_apparent_voice_uid,
@@ -29,6 +33,7 @@ from world.voice import (
     is_valid_voice_ending,
     is_voice_garbled,
     remember_voice,
+    resolve_speaker_attribution,
     voice_phrase,
 )
 
@@ -38,25 +43,42 @@ class _FakeDB:
         self.voice_description = description
         self.voice_ending = ending
         self.voice_modulator_active = modulated
+        # Evennia's db handler returns None for unset attributes; the discern
+        # cache relies on that.
+        self.voice_discern_cache = None
 
 
 class _FakeMedicalState:
-    def __init__(self, talking=1.0):
-        self._talking = talking
+    def __init__(self, talking=1.0, sight=1.0, hearing=1.0, conditions=None):
+        self._caps = {"talking": talking, "sight": sight, "hearing": hearing}
+        self._conditions = conditions or {}
 
     def calculate_body_capacity(self, name):
-        if name == "talking":
-            return self._talking
-        return 1.0
+        return self._caps.get(name, 1.0)
+
+    def get_conditions_by_type(self, condition_type):
+        return [object()] * self._conditions.get(condition_type, 0)
 
 
 class _FakeChar:
     def __init__(self, description=None, ending=None, talking=1.0,
-                 medical=True, sleeve_uid="sleeve-1", modulated=False):
+                 medical=True, sleeve_uid="sleeve-1", modulated=False,
+                 sight=1.0, hearing=1.0, intellect=10, resonance=10,
+                 dbref="#1", conditions=None, key="Speaker"):
         self.db = _FakeDB(description, ending, modulated)
-        self.medical_state = _FakeMedicalState(talking) if medical else None
+        self.medical_state = (
+            _FakeMedicalState(talking, sight, hearing, conditions)
+            if medical else None
+        )
         self.sleeve_uid = sleeve_uid
         self.voice_memory = {}
+        self.intellect = intellect
+        self.resonance = resonance
+        self.dbref = dbref
+        self.key = key
+
+    def get_display_name(self, looker=None, **kwargs):
+        return self.key
 
 
 class VocabularyTests(TestCase):
@@ -201,6 +223,146 @@ class VoiceRecognitionTests(TestCase):
         remember_voice(observer, speaker, "Bob")
         self.assertTrue(forget_voice(observer, speaker))
         self.assertIsNone(get_assigned_voice_name(observer, speaker))
+
+
+class PerceptionTests(TestCase):
+    """can_see / can_hear capacity thresholds + override seams (§4.5)."""
+
+    def test_full_senses(self):
+        char = _FakeChar(sight=1.0, hearing=1.0)
+        self.assertTrue(can_see(char))
+        self.assertTrue(can_hear(char))
+
+    def test_one_eye_one_ear_still_perceive(self):
+        char = _FakeChar(sight=0.5, hearing=0.5)
+        self.assertTrue(can_see(char))
+        self.assertTrue(can_hear(char))
+
+    def test_blind_and_deaf(self):
+        char = _FakeChar(sight=0.0, hearing=0.0)
+        self.assertFalse(can_see(char))
+        self.assertFalse(can_hear(char))
+
+    def test_override_conditions_restore_senses(self):
+        from world.voice import (
+            SIGHT_OVERRIDE_CONDITION, HEARING_OVERRIDE_CONDITION,
+        )
+        char = _FakeChar(
+            sight=0.0, hearing=0.0,
+            conditions={SIGHT_OVERRIDE_CONDITION: 1, HEARING_OVERRIDE_CONDITION: 1},
+        )
+        self.assertTrue(can_see(char))
+        self.assertTrue(can_hear(char))
+
+    def test_no_medical_model_fails_open(self):
+        char = _FakeChar(medical=False)
+        self.assertTrue(can_see(char))
+        self.assertTrue(can_hear(char))
+
+
+class VoiceDiscernmentTests(TestCase):
+    """The discernment determination (mirrors disguise piercing, §4.5)."""
+
+    def _observer(self, **kw):
+        kw.setdefault("dbref", "#100")
+        kw.setdefault("key", "Listener")
+        return _FakeChar(**kw)
+
+    def test_unknown_voice_not_discerned(self):
+        observer = self._observer()
+        speaker = _FakeChar(sleeve_uid="spk", dbref="#1")
+        self.assertIsNone(attempt_voice_discern(observer, speaker))
+
+    def test_garbled_speaker_not_discerned(self):
+        observer = self._observer(intellect=1000)
+        speaker = _FakeChar(sleeve_uid="spk", dbref="#1", resonance=1, talking=0.0)
+        remember_voice(observer, speaker, "Bob")
+        self.assertIsNone(attempt_voice_discern(observer, speaker))
+
+    def test_no_sleeve_not_discerned(self):
+        observer = self._observer()
+        speaker = _FakeChar(sleeve_uid=None, dbref="#1")
+        self.assertIsNone(attempt_voice_discern(observer, speaker))
+
+    def test_strong_observer_discerns_known_voice(self):
+        # Overwhelming intellect vs minimal resonance + familiarity → success
+        # is deterministic (obs_roll>=1, +fam, vs tgt_roll==1).
+        observer = self._observer(intellect=1000, hearing=1.0)
+        speaker = _FakeChar(sleeve_uid="spk", dbref="#1", resonance=1)
+        remember_voice(observer, speaker, "Bob")
+        self.assertEqual(attempt_voice_discern(observer, speaker), "Bob")
+
+    def test_hearing_capacity_gates_discernment(self):
+        # Same overwhelming setup, but near-zero hearing collapses the
+        # observer's side below the target's floor → deterministic failure.
+        speaker = _FakeChar(sleeve_uid="spk", dbref="#1", resonance=1)
+        deaf = self._observer(intellect=1000, hearing=0.0001, dbref="#101")
+        remember_voice(deaf, speaker, "Bob")
+        self.assertIsNone(attempt_voice_discern(deaf, speaker))
+
+    def test_verdict_is_cached(self):
+        observer = self._observer()
+        speaker = _FakeChar(sleeve_uid="spk", dbref="#1", resonance=1)
+        remember_voice(observer, speaker, "Bob")
+        # Pre-seed a True verdict; the cached value is honoured (no re-roll).
+        voice_uid = get_apparent_voice_uid(speaker)
+        observer.db.voice_discern_cache = {("#1", voice_uid): True}
+        self.assertEqual(attempt_voice_discern(observer, speaker), "Bob")
+        # Flip the cached verdict → None, proving the cache is read.
+        observer.db.voice_discern_cache = {("#1", voice_uid): False}
+        self.assertIsNone(attempt_voice_discern(observer, speaker))
+
+    def test_forget_clears_discern_cache(self):
+        observer = self._observer(intellect=1000)
+        speaker = _FakeChar(sleeve_uid="spk", dbref="#1", resonance=1)
+        remember_voice(observer, speaker, "Bob")
+        attempt_voice_discern(observer, speaker)  # populate cache
+        self.assertTrue(observer.db.voice_discern_cache)
+        forget_voice(observer, speaker)
+        self.assertFalse(observer.db.voice_discern_cache)
+
+
+class ResolutionChainTests(TestCase):
+    """resolve_speaker_attribution: see -> hear -> neither (§4.5)."""
+
+    def test_self_returns_own_key(self):
+        char = _FakeChar(key="Me")
+        self.assertEqual(resolve_speaker_attribution(char, char), "Me")
+
+    def test_sighted_observer_uses_display_name(self):
+        speaker = _FakeChar(key="Bob")
+        observer = _FakeChar(sight=1.0, dbref="#100", key="Listener")
+        self.assertEqual(resolve_speaker_attribution(speaker, observer), "Bob")
+
+    def test_blind_hearing_discerns_known_voice(self):
+        speaker = _FakeChar(key="Bob", sleeve_uid="spk", dbref="#1", resonance=1)
+        observer = _FakeChar(
+            sight=0.0, hearing=1.0, intellect=1000, dbref="#100", key="Listener"
+        )
+        remember_voice(observer, speaker, "Bob-voice")
+        self.assertEqual(
+            resolve_speaker_attribution(speaker, observer), "Bob-voice"
+        )
+
+    def test_blind_hearing_unknown_voice_is_generic(self):
+        speaker = _FakeChar(key="Bob", sleeve_uid="spk", dbref="#1")
+        observer = _FakeChar(sight=0.0, hearing=1.0, dbref="#100")
+        self.assertEqual(
+            resolve_speaker_attribution(speaker, observer),
+            GENERIC_UNSEEN_SPEAKER,
+        )
+
+    def test_blind_and_deaf_is_generic(self):
+        speaker = _FakeChar(key="Bob", sleeve_uid="spk", dbref="#1", resonance=1)
+        observer = _FakeChar(
+            sight=0.0, hearing=0.0, intellect=1000, dbref="#100"
+        )
+        remember_voice(observer, speaker, "Bob-voice")
+        # Even with the voice remembered, no hearing → generic.
+        self.assertEqual(
+            resolve_speaker_attribution(speaker, observer),
+            GENERIC_UNSEEN_SPEAKER,
+        )
 
 
 class CommandRegistrationTests(TestCase):
