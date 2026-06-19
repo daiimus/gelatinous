@@ -64,10 +64,40 @@ A capacity effect only lands if a *consumer system* exists.
 | `hearing` | LOOK auditory layer, **voice recognition**, acoustic/flashbang conditions | wireable now |
 | `manipulation` | weapon handling (per-effector resolver) | now — needs resolver (§6) |
 | `moving` | movement / flee / future jump-athletics (per-effector resolver) | now — needs resolver (§6) |
-| `talking` | **voice production** (the voice triangle, §4); social/negotiation | partial — social blocked |
+| `talking` | **voice production** (the voice triangle, §4); social/negotiation (resonance-gated) | production now; social **system-blocked, NOT skill-blocked** |
 | `blood_filtration` | infection resistance (existing `InfectionCondition`) | wireable now |
-| `eating` | nutrition_efficiency | blocked (no nutrition system) |
-| `hearing`→trade, `*`→work_speed | trade price, crafting/work | blocked (no economy/work system) |
+| `eating` | **consumption benefit** (existing consume pipeline; buff model, no hunger) | wireable once the food/drink buff exists; rides delivery tags |
+| `hearing`→trade, `*`→work_speed | trade price, crafting/work | blocked (no trade/work system); **drop the `hearing→trade` vestige** |
+
+### 2.1 · Blocked-capacity shapes (pin the shape so future system-builders snap in correctly)
+
+- **`talking` → social.** Voice *production* is designed (§4): jaw/tongue damage
+  garbles output and the garble is legible on the voice channel. The blocked
+  piece is the *social consumer* — and it is **NOT skill-blocked**. It rides
+  **resonance** (the R in GRIM, which exists) the way aim rides motorics:
+  a future `persuade`/`negotiate`/`intimidate` action declares `talking` as a
+  consumed capacity → `resonance × talking → social result`. Skills, if/when
+  they land, only *refine* this. Blocked solely on the **social-action system**
+  (the verbs + the gig/favor/rep loop).
+- **`eating` → consumption benefit.** **Not blocked** — it rides the *existing*
+  consumption pipeline (`CmdConsumption`, delivery-method tags). **No hunger /
+  no deprivation penalty** (a hunger grind cuts against the favor+gear+rep,
+  squishy-by-design direction). Instead a **buff model**: consuming food/drink
+  confers a positive effect; not consuming is merely neutral. The `eating`
+  capacity (jaw/tongue/teeth/gut) **scales the magnitude of that benefit** and
+  **gates delivery**: a wrecked mouth falls back solid → liquid → IV — exactly
+  the delivery-tag seam the CmdConsumption migration already wants. Remediation:
+  feeding tube / cyber-stomach / IV. Buildable once the food/drink buff itself
+  exists; the capacity hook is trivial on top of it.
+- **`*` → work_speed.** Declared on `sight` + `manipulation`. Genuinely blocked
+  on a general crafting/work system. *Natural first hook when we do wire it:* the
+  **operate/surgery** flow (it is already a "work" action) — a one-eyed,
+  low-`manipulation` surgeon is measurably worse (slower, higher complication
+  chance). Noted, not built; surgery stays unscaled until we choose to open this.
+- **`hearing` → trade.** A RimWorld seed vestige ("hearing affects haggling").
+  Thematically weak; hearing's real consumers are perception (§5), voice-recog
+  (§4), and acoustic hazards. **Drop / re-scope** rather than honor. If anything
+  ever gates negotiation it is `talking`, not `hearing`.
 
 ## 3 · Sight (worked example — decided)
 
@@ -343,5 +373,7 @@ the one piece worth pinning early so earlier layers don't contradict it.
 - Effect magnitudes / balance numbers (illustrative here).
 - Languages (the `<language>` slot is future-proofed; only Common exists).
 - Proximity-dependent hearing (directionality) — waits on the proximity system.
-- `eating`/nutrition, `talking`→social, `*`→work_speed, `hearing`→trade — all
-  blocked on systems that don't exist yet.
+- Blocked-capacity shapes are pinned in §2.1. Remaining true blocks:
+  `talking`→social (social-action system), `*`→work_speed (general work system;
+  surgery is the natural first hook). `eating` is *not* blocked — it rides the
+  consumption pipeline (buff model, no hunger). `hearing`→trade is to be dropped.
