@@ -1697,6 +1697,134 @@ def _process_longdesc_entry(caller, raw_string, **kwargs):
     return "node_describe_list"
 
 
+class CmdVoice(Command):
+    """
+    Set how your character's voice sounds when they speak.
+
+    Your voice is a second identity — others can come to recognise you by it
+    even when they can't see you. It has two parts, both chosen from a curated
+    vocabulary (like your sdesc keyword):
+
+      |wdescription|n  - the colour/timbre, e.g. |wgravelly|n, |wsilken|n, |whusky|n
+      |wending|n       - the delivery, e.g. |wdrawl|n, |wrasp|n, |wlilt|n, |wpurr|n
+
+    Together they render in speech as, for example:
+      Robert says, |x*speaking Common, in a gravelly drawl*|n "Call me Bob."
+
+    Usage:
+      @voice                          - Show your current voice
+      @voice description <word>       - Set the colour of your voice
+      @voice ending <word>            - Set the delivery of your voice
+      @voice list                     - List the available words
+      @voice clear                    - Clear your voice flavour
+
+    Examples:
+      @voice description gravelly
+      @voice ending drawl
+    """
+
+    key = "@voice"
+    aliases = ["voice"]
+    locks = "cmd:all()"
+    help_category = "Social"
+
+    def func(self):
+        caller = self.caller
+        args = (self.args or "").strip()
+
+        if not args:
+            self._show_current(caller)
+            return
+
+        lower = args.lower()
+        if lower == "list":
+            self._show_list(caller)
+            return
+        if lower in ("clear", "none", "reset"):
+            caller.attributes.remove("voice_description")
+            caller.attributes.remove("voice_ending")
+            caller.msg("Cleared your voice flavour.")
+            return
+
+        parts = args.split(None, 1)
+        slot = parts[0].lower()
+        word = parts[1].strip().lower() if len(parts) > 1 else ""
+
+        if slot in ("description", "desc", "colour", "color"):
+            self._set_description(caller, word)
+        elif slot in ("ending", "end", "delivery"):
+            self._set_ending(caller, word)
+        else:
+            caller.msg(
+                "Usage: |w@voice description <word>|n or "
+                "|w@voice ending <word>|n. See |w@voice list|n."
+            )
+
+    def _set_description(self, caller, word):
+        from world.voice import is_valid_voice_description
+        if not word:
+            caller.msg("Usage: |w@voice description <word>|n")
+            return
+        if not is_valid_voice_description(word):
+            caller.msg(
+                f"|r'{word}' is not an available voice description.|n "
+                f"See |w@voice list|n."
+            )
+            return
+        caller.db.voice_description = word
+        self._preview(caller, f"Voice description set to |w{word}|n.")
+
+    def _set_ending(self, caller, word):
+        from world.voice import is_valid_voice_ending
+        if not word:
+            caller.msg("Usage: |w@voice ending <word>|n")
+            return
+        if not is_valid_voice_ending(word):
+            caller.msg(
+                f"|r'{word}' is not an available voice ending.|n "
+                f"See |w@voice list|n."
+            )
+            return
+        caller.db.voice_ending = word
+        self._preview(caller, f"Voice ending set to |w{word}|n.")
+
+    def _preview(self, caller, header):
+        from world.voice import voice_phrase
+        caller.msg(header)
+        phrase = voice_phrase(caller)
+        if phrase:
+            caller.msg(f'You now sound like: |x*{phrase}*|n')
+
+    def _show_current(self, caller):
+        from world.voice import (
+            get_voice_description, get_voice_ending, voice_phrase,
+        )
+        desc = get_voice_description(caller)
+        ending = get_voice_ending(caller)
+        if not (desc or ending):
+            caller.msg(
+                "You have set no voice flavour. Your voice is unremarkable. "
+                "Use |w@voice description <word>|n and |w@voice ending <word>|n."
+            )
+            return
+        caller.msg(
+            f"Voice description: |w{desc or '(unset)'}|n   "
+            f"ending: |w{ending or '(unset)'}|n"
+        )
+        phrase = voice_phrase(caller)
+        if phrase:
+            caller.msg(f'You sound like: |x*{phrase}*|n')
+
+    def _show_list(self, caller):
+        from world.voice import get_voice_descriptions, get_voice_endings
+        descs = ", ".join(sorted(get_voice_descriptions()))
+        endings = ", ".join(sorted(get_voice_endings()))
+        caller.msg(
+            f"|wVoice descriptions|n (the colour):\n  {descs}\n\n"
+            f"|wVoice endings|n (the delivery):\n  {endings}"
+        )
+
+
 class CmdSkintone(Command):
     """
     Set your character's skintone for longdesc display coloring.
