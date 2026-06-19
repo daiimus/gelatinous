@@ -25,6 +25,7 @@ from random import random
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 from world.voice import (
+    can_hear,
     can_see,
     garbled_voice_phrase,
     resolve_speaker_attribution,
@@ -77,26 +78,36 @@ class CmdSay(Command):
                 visible_flavor = phrase
         visible_verb = f"says, |x*{visible_flavor}*|n" if visible_flavor else "says,"
 
-        # Each observer's attribution resolves per the sight/hearing chain
-        # (§4.5): see → display name; can't-see-but-hear → voice discernment
-        # (name or "someone"); neither → "someone". Voice flavour only attaches
-        # on the can-see branch; an unseen, undiscerned voice is not described.
+        # Each observer's perception resolves per the sight/hearing chain
+        # (§4.5). Hearing gates the *content* (the words); sight + the voice
+        # channel gate the *attribution* (who):
+        #   - can hear → the words, attributed by sight (name + flavour) or by
+        #     voice discernment (name / "someone").
+        #   - deaf but can see → they watch the speaker mouth something but
+        #     can't make it out (no content).
+        #   - deaf and blind → no channel at all; the utterance is suppressed.
         for observer in location.contents:
             if observer is caller:
                 continue
             if not hasattr(observer, "msg"):
                 continue
-            if can_see(observer):
-                speaker_name = caller.get_display_name(observer)
-                verb = visible_verb
+
+            heard = can_hear(observer)
+            seen = can_see(observer)
+            if not heard and not seen:
+                continue  # no channel — suppress entirely
+
+            speaker_name = resolve_speaker_attribution(caller, observer)
+            if heard:
+                verb = visible_verb if seen else "says,"
+                text = f'{capitalize_first(speaker_name)} {verb} "{speech}"'
             else:
-                speaker_name = resolve_speaker_attribution(caller, observer)
-                verb = "says,"
-            observer.msg(
-                text=f'{capitalize_first(speaker_name)} {verb} "{speech}"',
-                type="say",
-                from_obj=caller,
-            )
+                # Deaf but watching: speech is visible, content is not.
+                text = (
+                    f"{capitalize_first(speaker_name)} says something "
+                    f"you can't make out."
+                )
+            observer.msg(text=text, type="say", from_obj=caller)
 
 
 class CmdWhisper(Command):
@@ -143,16 +154,21 @@ class CmdWhisper(Command):
         target_name_for_actor = target.get_display_name(caller)
         caller.msg(f'You whisper to {target_name_for_actor}, "{speech}"')
 
-        # Target hears the full message
-        speaker_name_for_target = caller.get_display_name(target)
-        target.msg(
-            text=(
-                f'{capitalize_first(speaker_name_for_target)}'
-                f' whispers to you, "{speech}"'
-            ),
-            type="whisper",
-            from_obj=caller,
+        # Target hears the full message — unless deaf, in which case they feel
+        # the lean-in but can't make out the words (CAPACITY_CONSUMERS §4).
+        speaker_name_for_target = capitalize_first(
+            caller.get_display_name(target)
         )
+        if can_hear(target):
+            target_text = (
+                f'{speaker_name_for_target} whispers to you, "{speech}"'
+            )
+        else:
+            target_text = (
+                f"{speaker_name_for_target} leans in to whisper, but you "
+                f"can't make out a word of it."
+            )
+        target.msg(text=target_text, type="whisper", from_obj=caller)
 
         # Room observers see that a whisper occurred, but NOT the content
         for observer in location.contents:
