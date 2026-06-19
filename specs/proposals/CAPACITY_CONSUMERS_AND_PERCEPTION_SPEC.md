@@ -345,7 +345,12 @@ is the content lift) → per-effector resolver (manipulation/moving).
 ## 9 · Build sequencing (layered)
 
 1. **Combat consumers** (`sight`→ranged/melee) — proves multiplicative +
-   suppressible-effect pattern on a whole-body capacity.
+   suppressible-effect pattern on a whole-body capacity. **✅ SHIPPED** —
+   `world/combat/capacity.py` `sight_hit_factor()` multiplies the attacker's
+   motorics term in `world/combat/attack.py` `process_attack`; piecewise curves
+   (ranged steep, melee light), `sight_override` condition suppresses the
+   penalty (the chrome seam — augment not built yet). Tests:
+   `world/tests/test_combat_capacity_sight.py`.
 2. **Identity / voice** — `@voice` + voice signature + the resolution chain +
    rendering heuristic; gates visual recognition on `sight`, voice on `hearing`.
 3. **Perception render** — capacities gate LOOK sensory categories + compensatory

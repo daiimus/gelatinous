@@ -14,6 +14,7 @@ from random import randint
 from .debug import get_splattercast
 
 from world.combat.messages import get_combat_message
+from world.combat.capacity import sight_hit_factor
 from world.medical.utils import select_hit_location, select_target_organ
 
 from .constants import (
@@ -390,8 +391,22 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     attacker_skill = get_numeric_stat(attacker, "motorics", 1)
     target_skill = get_numeric_stat(target, "motorics", 1)
 
+    # Sight capacity consumes the attacker's aim (CAPACITY_CONSUMERS spec §3,
+    # §9 layer 1).  Multiplicative on the motorics skill term: ranged falls off
+    # steeply (depth perception), melee only when fully blind.  A sight-override
+    # condition (chrome sense-enhancer) suppresses the penalty.  Whole-body
+    # capacity, so no per-effector resolver needed.
+    sight_factor = sight_hit_factor(attacker, is_ranged_attack)
+    effective_skill = attacker_skill * sight_factor
+    if sight_factor < 1.0:
+        splattercast.msg(
+            f"ATTACK_SIGHT: {attacker.key} sight factor {sight_factor:.2f} "
+            f"({'ranged' if is_ranged_attack else 'melee'}) — motorics "
+            f"{attacker_skill} -> {effective_skill:.1f}"
+        )
+
     # Roll for attack
-    attacker_roll = randint(1, 20) + attacker_skill
+    attacker_roll = randint(1, 20) + effective_skill
     target_roll = randint(1, 20) + target_skill
 
     # Check for charge bonus
