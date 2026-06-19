@@ -153,3 +153,78 @@ def moving_dodge_factor(character) -> float:
         return 1.0  # fail-open
 
     return _piecewise(raw, MOVING_CURVE_DODGE)
+
+
+# --------------------------------------------------------------------------
+# Manipulation → hit (CAPACITY_CONSUMERS spec §6.1/§6.3 — offensive half)
+# --------------------------------------------------------------------------
+# Unlike sight/moving, manipulation is NOT body-wide: weapon handling depends on
+# the *specific hand(s) gripping the weapon*, not a body average (§6.1 Q1). A
+# one-armed character with a pistol in their good hand fights at FULL accuracy —
+# the missing arm is irrelevant to that weapon. So we scope the capacity to the
+# gripping hand's limb chain via MedicalState.calculate_capacity_scoped.
+#
+# Breadth from surplus arms (Q2: initiative / disarm-resist / loadout) is a
+# separate output and a future combat revision — not modelled here.
+MANIPULATION_CURVE = ((0.0, 0.20), (0.5, 0.65), (1.0, 1.0))
+MANIPULATION_OVERRIDE_CONDITION = "manipulation_override"
+
+
+def _gripping_slots(attacker, weapon):
+    """The grasping slots currently holding *weapon* (e.g. ``["left_hand"]``)."""
+    hands = getattr(attacker, "hands", None) or {}
+    try:
+        return [slot for slot, item in hands.items() if item is weapon]
+    except Exception:
+        return []
+
+
+def _limb_ancestors(attacker, slot):
+    """Containers whose organs power *slot* — the slot + its upstream chain.
+
+    Inverts the species ``limb_downstream_chain``: every container whose
+    downstream set includes *slot* (e.g. ``left_hand`` → ``{left_arm,
+    left_hand}``), so both the hand bones and the arm bones count.
+    """
+    species = getattr(getattr(attacker, "db", None), "species", None)
+    try:
+        from world.anatomy import get_species_limb_downstream_chain
+        chain = get_species_limb_downstream_chain(species) or {}
+    except Exception:
+        chain = {}
+    ancestors = {c for c, downstream in chain.items() if slot in downstream}
+    ancestors.add(slot)  # a grasping container may itself hold organs (e.g. tail)
+    return ancestors
+
+
+def manipulation_hit_factor(attacker, weapon) -> float:
+    """Multiplier on *attacker*'s motorics from the hand(s) gripping *weapon*.
+
+    Per-effector (§6.1): scoped to the gripping hand's limb chain, not body-wide.
+    When two hands grip one weapon, the weaker hand drags it (``min`` for now;
+    exact min-vs-blend is TBD, spec §10). Falls back to body-wide manipulation
+    for unarmed / natural-weapon / undeterminable grips. Fail-open to ``1.0``.
+    """
+    if _has_override(attacker, MANIPULATION_OVERRIDE_CONDITION):
+        return 1.0
+
+    state = getattr(attacker, "medical_state", None)
+    scoped = getattr(state, "calculate_capacity_scoped", None)
+
+    gripping = _gripping_slots(attacker, weapon) if weapon is not None else []
+    if not gripping or not callable(scoped):
+        # Unarmed, natural weapon, or no scoped model — body-wide manipulation.
+        raw = _read_capacity(attacker, "manipulation")
+        if raw is None:
+            return 1.0
+        return _piecewise(raw, MANIPULATION_CURVE)
+
+    caps = []
+    for slot in gripping:
+        try:
+            caps.append(scoped("manipulation", _limb_ancestors(attacker, slot)))
+        except Exception:
+            return 1.0  # fail-open on any anatomy lookup failure
+    if not caps:
+        return 1.0
+    return _piecewise(min(caps), MANIPULATION_CURVE)

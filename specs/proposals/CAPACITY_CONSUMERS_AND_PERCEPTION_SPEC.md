@@ -407,19 +407,30 @@ is the content lift) → per-effector resolver (manipulation/moving).
    accepted):** base single-blob room-desc sense decomposition — the visual
    layer stays whole for now; gating the additive pools is the buildable slice.
 4. **Per-effector resolver** — `manipulation`/`moving` (and the multi-appendage
-   future).
+   future). **✅ CORE SHIPPED (4a/4b).** Deferred: Q2 breadth meta-bonuses
+   (surplus-appendage initiative / disarm-resist / loadout) — a future combat
+   revision.
    - **4a ✅ SHIPPED — `moving` → dodge (defensive half).** `world/combat/
      capacity.py` `moving_dodge_factor` multiplies the *target's* motorics in
      `attack.py` (dodge = motorics × moving). Whole-body, species-normalized
      (§6.2 — you don't pick a leg); hard floor at the table's 0.15
      incapacitation_threshold collapses evasion to a flail; `moving_override`
      chrome-legs seam. Tests in `test_combat_capacity_sight.py`.
-   - **4b — `manipulation` → hit (per-effector, offensive half).** The intricate
-     part (§6.1 Q1): per-*gripping-hand* manipulation, not body-wide — a
-     one-armed shooter fights at full accuracy. Needs the weapon→hand→limb-chain
-     organ traversal (invert `limb_downstream_chain`, scope a capacity to those
-     organs) + 2H under-grip blend. Breadth meta-bonuses (Q2: initiative/disarm-
-     resist/loadout) remain a future combat revision. *Not built.*
+   - **4b ✅ SHIPPED — `manipulation` → hit (per-effector, offensive half).**
+     `MedicalState.calculate_capacity_scoped(capacity, containers)` computes a
+     capacity from only one limb's organs (the contribution math is extracted
+     into `_resolve_capacity_contribution`, shared with the body-wide method).
+     `world/combat/capacity.py` `manipulation_hit_factor(attacker, weapon)` finds
+     the gripping slot(s) from `attacker.hands`, inverts `limb_downstream_chain`
+     to the hand's limb organs, and scopes manipulation there — so a one-armed
+     shooter with a good hand fights at **full** accuracy (Q1 isolation, tested).
+     Two-handed grips take the weaker hand (`min`; exact blend TBD §10);
+     unarmed/natural-weapon falls back to body-wide; `manipulation_override`
+     chrome-arm seam. Multiplied into the attacker's motorics in `attack.py`,
+     completing the stack (ranged: motorics × sight × manipulation; melee:
+     motorics × manipulation × light-sight; dodge: motorics × moving). Breadth
+     meta-bonuses (Q2: initiative/disarm-resist/loadout) remain a future combat
+     revision. Tests: `test_combat_manipulation_resolver.py`.
 
 Each layer ships standalone value. The five-senses *description model* (§5) is
 the one piece worth pinning early so earlier layers don't contradict it.

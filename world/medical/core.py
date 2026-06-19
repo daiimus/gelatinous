@@ -809,52 +809,107 @@ class MedicalState:
                 # taking the flesh organ out of the equation.
                 continue
             organ_functionality = organ.get_functionality_percentage()
-            
-            # Get contribution level - check for organ-specific contributions first
-            contribution_value = None
-            
-            # Check for organ-specific contributions (e.g., liver_contribution, stomach_contribution)
-            organ_contribution_key = f"{organ_name}_contribution"
-            if organ_contribution_key in capacity_data:
-                contribution_value = capacity_data[organ_contribution_key]
-            else:
-                # Check for bone-specific contributions (e.g., femur_contribution, humerus_contribution)
-                bone_type = organ_name.split('_')[-1]  # Get bone name (femur, humerus, etc.)
-                if bone_type in ['femur', 'tibia', 'humerus']:
-                    bone_contribution_key = f"{bone_type}_contribution"
-                elif 'metacarpals' in organ_name:
-                    bone_contribution_key = "metacarpal_contribution"
-                elif 'metatarsals' in organ_name:
-                    bone_contribution_key = "metatarsal_contribution"
-                else:
-                    bone_contribution_key = None
-                    
-                if bone_contribution_key and bone_contribution_key in capacity_data:
-                    contribution_value = capacity_data[bone_contribution_key]
-                else:
-                    # Fall back to organ's defined contribution or generic lookup
-                    contribution_key = organ.data.get(f"{capacity_name}_contribution", organ.contribution)
-                    if isinstance(contribution_key, str):
-                        contribution_value = CONTRIBUTION_VALUES.get(contribution_key, 0.05)
-                    else:
-                        contribution_value = float(contribution_key)
-                
+            contribution_value = self._resolve_capacity_contribution(
+                organ_name, organ, capacity_data, capacity_name
+            )
+
             # Add to totals
             total_capacity += organ_functionality * contribution_value
             max_possible_capacity += contribution_value
-            
+
         # Normalize to 0.0-1.0 range based on maximum possible capacity
         if max_possible_capacity > 0:
             capacity_level = total_capacity / max_possible_capacity
         else:
             capacity_level = 1.0
-            
+
         # Clamp to valid range
         capacity_level = max(0.0, min(1.0, capacity_level))
-        
+
         # Cache the result
         self._capacity_cache[capacity_name] = capacity_level
         return capacity_level
+
+    def _resolve_capacity_contribution(
+        self, organ_name, organ, capacity_data, capacity_name
+    ):
+        """Return one organ's contribution weight toward *capacity_name*.
+
+        Extracted from :meth:`calculate_body_capacity` so the per-effector
+        scoped resolver (:meth:`calculate_capacity_scoped`) shares the exact
+        same contribution rules (CAPACITY_CONSUMERS spec §6.1).
+        """
+        # Organ-specific contributions (e.g. liver_contribution).
+        organ_contribution_key = f"{organ_name}_contribution"
+        if organ_contribution_key in capacity_data:
+            return capacity_data[organ_contribution_key]
+
+        # Bone-type contributions (e.g. humerus_contribution, metacarpal_*).
+        bone_type = organ_name.split('_')[-1]
+        if bone_type in ['femur', 'tibia', 'humerus']:
+            bone_contribution_key = f"{bone_type}_contribution"
+        elif 'metacarpals' in organ_name:
+            bone_contribution_key = "metacarpal_contribution"
+        elif 'metatarsals' in organ_name:
+            bone_contribution_key = "metatarsal_contribution"
+        else:
+            bone_contribution_key = None
+
+        if bone_contribution_key and bone_contribution_key in capacity_data:
+            return capacity_data[bone_contribution_key]
+
+        # Fall back to the organ's own declared contribution.
+        contribution_key = organ.data.get(
+            f"{capacity_name}_contribution", organ.contribution
+        )
+        if isinstance(contribution_key, str):
+            return CONTRIBUTION_VALUES.get(contribution_key, 0.05)
+        return float(contribution_key)
+
+    def calculate_capacity_scoped(self, capacity_name, containers):
+        """Capacity computed from only the organs in *containers* (uncached).
+
+        The per-effector resolver (CAPACITY_CONSUMERS spec §6.1): instead of the
+        body-wide average, scope a capacity to a specific limb — e.g. the
+        ``manipulation`` of the one hand actually gripping a weapon, so a
+        one-armed character shoots at full accuracy with their good hand.
+
+        Args:
+            capacity_name (str): capacity to compute (e.g. ``"manipulation"``).
+            containers (set[str]): container/location names whose organs count
+                (e.g. ``{"left_arm", "left_hand"}`` for the left gripping hand).
+
+        Returns:
+            float: 0.0–1.0. Returns 1.0 (no penalty) when no in-scope organs
+            define the capacity — fail open.
+        """
+        from world.anatomy import get_species_body_capacities
+        species = None
+        if self.character is not None:
+            species = getattr(self.character.db, "species", None)
+        capacity_data = get_species_body_capacities(species).get(capacity_name, {})
+        capacity_organs = capacity_data.get("organs", [])
+        if not capacity_organs:
+            return 1.0
+
+        containers = set(containers or ())
+        total = 0.0
+        max_possible = 0.0
+        for organ_name in capacity_organs:
+            organ = self.organs.get(organ_name)
+            if organ is None:
+                continue
+            if organ.data.get("container") not in containers:
+                continue
+            contribution = self._resolve_capacity_contribution(
+                organ_name, organ, capacity_data, capacity_name
+            )
+            total += organ.get_functionality_percentage() * contribution
+            max_possible += contribution
+
+        if max_possible <= 0:
+            return 1.0  # no in-scope organs define this capacity — fail open
+        return max(0.0, min(1.0, total / max_possible))
         
     def is_unconscious(self):
         """Return True when the character is currently unconscious.
