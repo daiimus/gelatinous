@@ -13,8 +13,9 @@ import re
 
 from evennia import create_object
 
-#: Base typeclass for spawned drinks.
-DRINK_TYPECLASS = "typeclasses.objects.Object"
+#: Base typeclass for spawned drinks. Must be an ``Item`` — the custom CmdGet
+#: only picks up ``typeclasses.items.Item`` instances.
+DRINK_TYPECLASS = "typeclasses.items.Item"
 
 #: Words dropped when deriving searchable aliases from a drink's display name.
 _ALIAS_STOPWORDS = {"a", "an", "the", "of", "with", "and", "in", "on", "to"}
