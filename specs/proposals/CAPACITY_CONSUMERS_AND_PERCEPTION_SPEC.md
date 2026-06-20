@@ -322,7 +322,13 @@ apply today. Effects: consciousness suppression + slow death, **and its
 signature — a visible skin-pigment shift** (sallow / uremic / ashen). Rides the
 chronic-conditions substrate (parallel to the parked ischemia clock).
 
-### 7.3 Condition-driven appearance symptoms (cross-cutting hook)
+### 7.3 Condition-driven appearance symptoms (cross-cutting hook) — ✅ SHIPPED
+*(Built: `world/medical/appearance.py` `get_appearance_tint` / `get_active_symptom`
+— tints the longdesc render via `appearance_mixin`, overriding base skintone.
+Capacity/vitals built-ins: `cyanosis` (failing breathing), `pallor` (blood loss).
+Condition hook: any condition exposing `appearance_symptom()` (e.g. RenalFailure
+→ `uremic`). Priority-ordered, fail-open. Tests: `test_condition_appearance.py`.)*
+
 Renal failure's pigment shift generalizes: **conditions can carry visible
 symptoms** that tint the rendered skintone / appearance (layered on the existing
 skintone system), legible to `look`, diagnosis, observers, *and* other systems.
