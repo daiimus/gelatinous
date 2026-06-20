@@ -41,20 +41,37 @@ class WeatherSystem:
             
         # Get current time period
         time_period = get_current_time_period()
-        
-        # Get available sensory messages
+
+        # Look up this weather+time's message pools (fall back to time-less key)
         weather_key = f"{self.current_weather}_{time_period}"
-        sensory_messages = self.get_sensory_messages(weather_key, looker)
-        
-        if not sensory_messages:
+        region_messages = WEATHER_MESSAGES.get(self.weather_region, {})
+        weather_messages = (
+            region_messages.get(weather_key)
+            or region_messages.get(self.current_weather)
+        )
+        if not weather_messages:
             return ""
 
-        # Compensatory enrichment (CAPACITY_CONSUMERS spec §5): a looker missing
-        # a sense gets a little more texture from the senses that remain.
-        from world.perception import has_reduced_perception
+        # Pick one line each from DISTINCT perceivable senses, so the lines we
+        # show never echo each other (a visual + a smell, not two near-identical
+        # visuals). Senses gate per CAPACITY_CONSUMERS spec §5: sight -> visual,
+        # hearing -> auditory; smell / touch / atmospheric always perceived.
+        # A looker missing a sense gets one extra line from those that remain.
+        from world.perception import blocked_senses, has_reduced_perception
+        blocked = blocked_senses(looker)
+        perceivable = [
+            (sense, lines) for sense, lines in weather_messages.items()
+            if lines and sense not in blocked
+        ]
+        if not perceivable:
+            return ""
+
         count = 3 if has_reduced_perception(looker) else 2
-        selected_messages = self.select_weather_messages(sensory_messages, count)
-        
+        random.shuffle(perceivable)
+        selected_messages = [
+            random.choice(lines) for _, lines in perceivable[:count]
+        ]
+
         if not selected_messages:
             return ""
             
