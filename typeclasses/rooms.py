@@ -34,12 +34,55 @@ class Room(ObjectParent, DefaultRoom):
     # Outside room flag for weather system
     outside = AttributeProperty(default=False, autocreate=True)
     
-    # Room description
+    # Room description (the VISUAL layer — see get_display_desc)
     desc = AttributeProperty(default="", autocreate=True)
-    
+
+    # Per-sense description layers (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §5):
+    # {"auditory": ..., "olfactory": ..., "tactile": ..., "atmospheric": ...}.
+    # Opt-in per room; the single-blob `desc` is the default visual layer, so
+    # rooms without this render exactly as before. Authored via `@roomsense`.
+    sense_descs = AttributeProperty(default={}, autocreate=True)
+
     # Crowd system base level
     crowd_base_level = AttributeProperty(default=0, autocreate=True)
     
+    #: Non-visual sense layers, in render order.
+    SENSE_LAYER_ORDER = ("auditory", "olfactory", "tactile", "atmospheric")
+
+    def get_display_desc(self, looker, **kwargs):
+        """Perception-aware room description (CAPACITY_CONSUMERS spec §5).
+
+        Composes the room's description from only the sense layers *looker* can
+        perceive: the visual blob (`db.desc`) when they can see, plus any
+        authored non-visual layers (`db.sense_descs`) for senses they still
+        have. A blind looker loses the visual prose but still 'reads' the room
+        by sound / smell / feel; deaf drops the auditory layer; and so on.
+
+        Rooms with no `sense_descs` and a sighted looker return the plain visual
+        desc exactly as before (zero regression). Weather/crowd still append in
+        ``return_appearance`` (themselves perception-gated, #592).
+        """
+        from world.perception import can_perceive_sense
+
+        parts = []
+        visual = self.db.desc or ""
+        if visual and can_perceive_sense(looker, "visual"):
+            parts.append(visual)
+
+        sense_descs = self.db.sense_descs or {}
+        for sense in self.SENSE_LAYER_ORDER:
+            text = sense_descs.get(sense)
+            if text and can_perceive_sense(looker, sense):
+                parts.append(text)
+
+        if parts:
+            return " ".join(parts)
+
+        # Nothing perceivable — give a sense-appropriate void rather than blank.
+        if not can_perceive_sense(looker, "visual"):
+            return "You can't see a thing here, and nothing else reaches you."
+        return visual or "You see nothing special."
+
     def at_object_creation(self):
         """
         Called when room is first created.
