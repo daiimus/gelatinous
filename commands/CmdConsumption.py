@@ -98,13 +98,35 @@ class ConsumptionCommand(Command):
         return result
         
     def _apply_substance_dose(self, item, target):
-        """Apply one dose of the item's substance to ``target``.
+        """Apply one dose of the item's substance(s) to ``target``.
 
         The §1 layering (#487): the command validates the delivery,
         the substance entry owns the pharmacology.  Unknown/missing
         substances no-op, so flavor-only consumables stay legitimate.
+
+        A recipe-composed drink (BARS_AND_RECIPES_SPEC) carries a
+        ``db.drink_effects`` map of ``{substance_id: doses}`` instead of a
+        single ``db.substance`` — each canonical substance is applied through
+        the same pipeline, so the alcohol cap / tolerance / addiction all hold,
+        and the drink's own ``db.drink_taste`` is surfaced once per sip.
         """
         from world.substances import apply_substance
+
+        drink_effects = item.db.drink_effects
+        if drink_effects:
+            for substance_id, doses in drink_effects.items():
+                try:
+                    n = max(1, int(doses))
+                except (TypeError, ValueError):
+                    continue
+                dose_result = apply_substance(target, substance_id, doses=n)
+                for line in dose_result.get("feedback", ()):
+                    target.msg(f"|c{line}|n")
+            taste = item.db.drink_taste
+            if taste:
+                target.msg(f"|x{taste}|n")
+            return
+
         dose_result = apply_substance(target, item.db.substance)
         for line in dose_result.get("feedback", ()):
             target.msg(f"|c{line}|n")

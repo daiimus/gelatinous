@@ -188,7 +188,14 @@ class CmdTo(Command):
                     f"{capitalize_first(speaker_name)} says something to "
                     f"{target_ref}, but you can't make it out."
                 )
-            observer.msg(text=text, type="say", from_obj=caller)
+            # The addressed target also receives the raw content structurally
+            # (only when they can hear it), so NPCs/systems can react to being
+            # spoken to directly — e.g. a bartender taking an order.
+            directed = (
+                {"to_speech": speech, "to_speaker": caller}
+                if (observer is target and heard) else {}
+            )
+            observer.msg(text=text, type="say", from_obj=caller, **directed)
 
 
 class CmdWhisper(Command):
