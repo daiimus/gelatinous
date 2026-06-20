@@ -475,9 +475,17 @@ locomotion restored, no special-case needed:
   (the voice-disguise; shifts the voice UID so recognition fails). `/modulate`.
 
 The `*_override` conditions (`sight_override`/`hearing_override`/`moving_override`/
-`manipulation_override`) remain a distinct, still-open **enhancer** seam — for a
-future augment that grants a sense *without* the organ (blindsight / sonar /
-targeting computer), where replacement doesn't apply.
+`manipulation_override`) remain a distinct **enhancer** seam — for an augment that
+grants a sense *without* the organ, where replacement doesn't apply.
+
+- **Combat blindsight ✅ SHIPPED** (decided 2026-06-20: combat-only, "enhance to
+  full perception later"). `TARGETING_PROCESSOR` forearm-hardpoint module → a
+  toggleable `blindsight` ability (`/blindsight`) sets `db.blindsight_active`,
+  which `world/combat/capacity.py` `sight_hit_factor` honours to restore combat
+  aim with the eyes gone. **Combat-only by construction:** it's a separate flag
+  from `sight_override`, so `can_see` (perception/recognition) stays false —
+  rooms and faces remain dark. A future fuller-sense suite would set the real
+  `sight_override` to also light up perception. Tests: `test_blindsight.py`.
 
 ## 10 · Cross-references
 

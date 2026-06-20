@@ -2109,6 +2109,36 @@ SHOTGUN_MODULE = {
     ],
 }
 
+# Targeting Processor - forearm-hardpoint module granting combat "blindsight".
+# Seats into a CYBER_ARM's forearm hardpoint (like the shotgun module). /blindsight
+# toggles a sonar/ranging suite that restores combat AIM with the eyes gone —
+# combat-only: it does NOT restore perception (rooms/faces stay dark; that's a
+# future fuller-sense upgrade). Needs a cyber arm to mount into; surgeon required.
+TARGETING_PROCESSOR = {
+    "key": "targeting processor",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["targeting suite", "smartlink processor", "sonar module"],
+    "desc": "A forearm-hardpoint module the size of a thick deck of cards: a sensor-fusion die, a ranging emitter behind a smoked window, and a coupling collar of standard chassis gauge. Engaged, it paints the world in wireframe and firing solutions straight into your motor cortex — you shoot true with your eyes shut. It wants a slot.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("module_type", "forearm"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "{side}_arm", "max_hp": 10, "hit_weight": "rare",
+            "inorganic": True, "prosthetic_frame": True,
+            "hardpoint": "forearm", "module_type": "forearm",
+            "abilities": {
+                "blindsight": {
+                    "type": "blindsight",
+                    "deploy_msg": "The targeting suite spins up — the world resolves into wireframe and ranging data, and your aim holds true even with your eyes shut.",
+                    "retract_msg": "The targeting suite powers down; the firing solutions fade and the dark closes back in.",
+                },
+            },
+        }),
+    ],
+}
+
 # Nailz - flesh-mount natural weapon module (#526 M4)
 # Implants into LIVING anatomy at either hand (flesh or chrome) —
 # the host stays what it is; it just has claws in it now.  /nailz

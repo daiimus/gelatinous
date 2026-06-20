@@ -97,6 +97,20 @@ def _has_override(character, condition_type: str) -> bool:
         return False
 
 
+# Combat-only "blindsight" — a targeting / sonar suite that restores combat
+# aim when the eyes are gone, WITHOUT restoring perception (``can_see`` stays
+# false: rooms and faces remain dark). Distinct from SIGHT_OVERRIDE_CONDITION,
+# which is the *full-vision* seam. Set as a db flag by the targeting-processor
+# augment ability. (CAPACITY_CONSUMERS spec — enhancer seam; user-decided
+# combat-only 2026-06-20, "maybe enhance toward full perception later".)
+BLINDSIGHT_FLAG = "blindsight_active"
+
+
+def _blindsight_active(character) -> bool:
+    db = getattr(character, "db", None)
+    return bool(getattr(db, BLINDSIGHT_FLAG, False)) if db is not None else False
+
+
 def sight_hit_factor(character, is_ranged: bool) -> float:
     """Multiplier applied to *character*'s motorics skill term when attacking.
 
@@ -107,9 +121,9 @@ def sight_hit_factor(character, is_ranged: bool) -> float:
 
     Returns:
         A factor in ``[0.0, 1.0]``.  ``1.0`` means no sight penalty (full
-        sight, no medical model, or an active suppressor).
+        sight, no medical model, a full sight-override, or combat blindsight).
     """
-    if _has_override(character, SIGHT_OVERRIDE_CONDITION):
+    if _has_override(character, SIGHT_OVERRIDE_CONDITION) or _blindsight_active(character):
         return 1.0
 
     raw = _read_capacity(character, "sight")
