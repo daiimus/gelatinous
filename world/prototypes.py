@@ -2268,6 +2268,156 @@ SHOTGUN_ARM_GUN = {
     ],
 }
 
+# ===================================================================
+# Sensory + locomotion chrome (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC)
+# ===================================================================
+# These restore a performance capacity the SAME way CYBER_ARM restores
+# manipulation and CYBER_JAW restores talking: a capacity-bearing
+# replacement organ at the CANONICAL organ name, so
+# ``calculate_body_capacity`` counts it and every consumer (combat
+# aim/dodge, identity recognition, perception render) sees the sense
+# restored — no special-case override needed.  Eyes/ears are head
+# sub-organs, so they use the single-organ (``organ_name``) path like
+# CYBER_JAW (replace the destroyed flesh organ in its slot — the rest
+# of the head stays put).  Legs span limb containers, so they use the
+# side-agnostic ``augment_organs`` chassis path like CYBER_ARM.
+
+# --- Optical implants → sight (combat aim, visual recognition, LOOK) ---
+CYBER_LEFT_EYE = {
+    "key": "cybernetic left eye",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["cyber left eye", "left optic", "left ocular unit"],
+    "desc": "A spherical optical replacement unit nested in protective foam — a machined alloy housing, a cluster lens of layered apertures, and a fan of micro-couplers trailing from the back like an optic nerve rendered in ribbon cable. The iris ring glows a faint standby amber. Mounts in a left socket; surgical installation required.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("organ_name", "left_eye"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "head", "display_location": "left_eye",
+            "max_hp": 10, "hit_weight": "rare",
+            "capacity": "sight", "contribution": "major",
+            "can_be_harvested": True, "can_be_replaced": True,
+            "inorganic": True, "prosthetic_frame": True,
+        }),
+    ],
+}
+
+CYBER_RIGHT_EYE = {
+    "key": "cybernetic right eye",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["cyber right eye", "right optic", "right ocular unit"],
+    "desc": "A spherical optical replacement unit nested in protective foam — a machined alloy housing, a cluster lens of layered apertures, and a fan of micro-couplers trailing from the back like an optic nerve rendered in ribbon cable. The iris ring glows a faint standby amber. Mounts in a right socket; surgical installation required.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("organ_name", "right_eye"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "head", "display_location": "right_eye",
+            "max_hp": 10, "hit_weight": "rare",
+            "capacity": "sight", "contribution": "major",
+            "can_be_harvested": True, "can_be_replaced": True,
+            "inorganic": True, "prosthetic_frame": True,
+        }),
+    ],
+}
+
+# --- Cochlear implants → hearing (voice discernment, LOOK auditory) ---
+CYBER_LEFT_EAR = {
+    "key": "cybernetic left ear",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["cyber left ear", "left cochlear unit"],
+    "desc": "A cochlear replacement unit — a coiled alloy snail-shell of transducers feeding a slim pickup membrane, the whole assembly small enough to seat in a temporal bone. A standby LED winks at the base of the coupler. Mounts on the left; surgical installation required.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("organ_name", "left_ear"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "head", "display_location": "left_ear",
+            "max_hp": 12, "hit_weight": "rare",
+            "capacity": "hearing", "contribution": "major",
+            "can_be_harvested": True, "can_be_replaced": True,
+            "inorganic": True, "prosthetic_frame": True,
+        }),
+    ],
+}
+
+CYBER_RIGHT_EAR = {
+    "key": "cybernetic right ear",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["cyber right ear", "right cochlear unit"],
+    "desc": "A cochlear replacement unit — a coiled alloy snail-shell of transducers feeding a slim pickup membrane, the whole assembly small enough to seat in a temporal bone. A standby LED winks at the base of the coupler. Mounts on the right; surgical installation required.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("organ_name", "right_ear"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "head", "display_location": "right_ear",
+            "max_hp": 12, "hit_weight": "rare",
+            "capacity": "hearing", "contribution": "major",
+            "can_be_harvested": True, "can_be_replaced": True,
+            "inorganic": True, "prosthetic_frame": True,
+        }),
+    ],
+}
+
+# --- Cybernetic leg → moving (dodge, flee, movement) ---
+# Side-agnostic chassis like CYBER_ARM: one prototype mounts left OR
+# right, the surgeon names the side, and the canonical bone names
+# ({side}_femur etc.) keep the `moving` capacity wiring intact.
+CYBER_LEG = {
+    "key": "cybernetic leg",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["cyber leg", "prosthetic leg", "leg unit"],
+    "desc": "A full leg replacement unit in its transport cradle, hip coupling to footplate, ambidextrous mounting hardware along the seam. The shin housing is a column of linear actuators behind impact plating; the foot is a sprung alloy plate built to take a landing. Mounts over an amputated leg, either side; surgical installation required.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("augment_organs", {
+            "{side}_femur": {
+                "container": "{side}_thigh", "max_hp": 40,
+                "hit_weight": "common", "capacity": "moving",
+                "contribution": "major", "can_be_destroyed": True,
+                "fracture_vulnerable": True,
+                "bone_type": "actuator_column", "inorganic": True,
+                "prosthetic_frame": True,
+            },
+            "{side}_tibia": {
+                "container": "{side}_shin", "max_hp": 32,
+                "hit_weight": "common", "capacity": "moving",
+                "contribution": "major", "can_be_destroyed": True,
+                "fracture_vulnerable": True,
+                "bone_type": "actuator_column", "inorganic": True,
+                "prosthetic_frame": True,
+            },
+            "{side}_metatarsals": {
+                "container": "{side}_foot", "max_hp": 18,
+                "hit_weight": "uncommon", "capacity": "moving",
+                "contribution": "minor", "can_be_destroyed": True,
+                "fracture_vulnerable": True,
+                "bone_type": "actuator_lattice", "inorganic": True,
+                "prosthetic_frame": True,
+            },
+        }),
+        ("augment_container", "{side}_thigh"),
+        ("augment_anchor", "{side}_thigh"),
+        ("augment_longdesc", [
+            {
+                "key": "{side}_thigh",
+                "default_desc": "{Their} {side} leg is a full cybernetic replacement, a column of linear actuators behind matte impact plating, an access seam running the length of the shin.",
+            },
+            {
+                "key": "{side}_foot",
+                "default_desc": "{Their} {side} foot is a sprung alloy plate, the underside scuffed to bare metal where it takes the ground.",
+                "display_after": "{side}_thigh",
+            },
+        ]),
+        ("compatible_species", ["human"]),
+    ],
+}
+
 # Surgical Kit - Advanced multi-use medical tools
 SURGICAL_KIT = {
     "key": "surgical kit",
