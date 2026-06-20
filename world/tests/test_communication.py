@@ -506,6 +506,108 @@ class TestCmdSay(TestCase):
 
 
 # ===================================================================
+# Tests: CmdTo
+# ===================================================================
+
+
+class TestCmdTo(TestCase):
+    """Tests for the directed-speech `to` command (say, aimed at one person)."""
+
+    def _run_to(self, caller, args, room_contents, search_result=None):
+        """Invoke CmdTo.func() with mocked state."""
+        from commands.CmdCommunication import CmdTo
+
+        cmd = CmdTo()
+        cmd.caller = caller
+        cmd.args = f" {args}"
+        cmd.cmdstring = "to"
+
+        room = MagicMock()
+        room.contents = room_contents
+        caller.location = room
+        if search_result is not None:
+            caller.search = MagicMock(return_value=search_result)
+
+        cmd.func()
+
+    def test_actor_sees_directed_say(self):
+        """Actor sees 'You say to <target>, \"...\"'."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall", build="lean",
+            sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        maria = _make_character(
+            key="Maria", sex="female", height="short", build="athletic",
+            sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
+        self._run_to(jorge, "woman Evening.", [jorge, maria], search_result=maria)
+
+        jorge.msg.assert_called_once()
+        actor_msg = jorge.msg.call_args[0][0]
+        self.assertIn("You say to", actor_msg)
+        self.assertIn('"Evening."', actor_msg)
+
+    def test_target_is_addressed_as_you(self):
+        """The target hears '... says to you, \"...\"' with full content."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall", build="lean",
+            sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        maria = _make_character(
+            key="Maria", sex="female", height="short", build="athletic",
+            sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
+        self._run_to(jorge, "woman Evening.", [jorge, maria], search_result=maria)
+
+        maria.msg.assert_called_once()
+        text = maria.msg.call_args[1].get("text", "")
+        self.assertIn("says to you,", text)
+        self.assertIn('"Evening."', text)
+
+    def test_third_party_sees_who_it_was_aimed_at(self):
+        """A bystander hears the content, framed as directed at the target."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall", build="lean",
+            sdesc_keyword="man", sleeve_uid="uid-jorge",
+        )
+        maria = _make_character(
+            key="Maria", sex="female", height="short", build="athletic",
+            sdesc_keyword="woman", sleeve_uid="uid-maria",
+        )
+        alice = _make_character(
+            key="Alice", sex="female", height="average", build="average",
+            sleeve_uid="uid-alice",
+        )
+        self._run_to(
+            jorge, "woman Evening.", [jorge, maria, alice], search_result=maria
+        )
+
+        alice.msg.assert_called_once()
+        text = alice.msg.call_args[1].get("text", "")
+        self.assertIn("says to", text)
+        self.assertNotIn("says to you", text)  # alice isn't the target
+        self.assertIn('"Evening."', text)
+        self.assertEqual(alice.msg.call_args[1].get("type"), "say")
+
+    def test_to_bad_usage(self):
+        """`to` with no message shows usage."""
+        jorge = _make_character(
+            key="Jorge", sex="male", height="tall", build="lean",
+            sleeve_uid="uid-jorge",
+        )
+        from commands.CmdCommunication import CmdTo
+
+        cmd = CmdTo()
+        cmd.caller = jorge
+        cmd.args = " woman"   # target but no message
+        cmd.cmdstring = "to"
+        jorge.location = MagicMock()
+        cmd.func()
+
+        jorge.msg.assert_called_once_with("Usage: to <target> <message>")
+
+
+# ===================================================================
 # Tests: CmdWhisper
 # ===================================================================
 
