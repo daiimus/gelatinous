@@ -202,8 +202,62 @@ def get_weapon_damage(weapon, default=0):
     # Ensure it's numeric and non-negative
     if not isinstance(damage, (int, float)) or damage < 0:
         return default
-    
+
     return int(damage)
+
+
+def _weapon_is_ranged(weapon) -> bool:
+    return bool(getattr(getattr(weapon, "db", None), "is_ranged", False))
+
+
+def _in_melee_range(attacker, target) -> bool:
+    """True when *target* is in *attacker*'s melee proximity (same room +
+    closed to melee). Mirrors the engagement gate in ``process_attack``."""
+    if getattr(attacker, "location", None) != getattr(target, "location", None):
+        return False
+    ndb = getattr(attacker, "ndb", None)
+    proximity = getattr(ndb, NDB_PROXIMITY, None) if ndb is not None else None
+    return bool(proximity) and target in proximity
+
+
+def select_weapon_for_engagement(attacker, target):
+    """Pick the best in-hand weapon for the current engagement (auto-prioritizer).
+
+    Combat fights with the right tool for the range automatically — the payoff
+    of holding several weapons at once (the loadout-readiness half of the
+    multi-appendage design, CAPACITY_CONSUMERS spec §6.1 Q2). Priority:
+
+    1. An active natural cyberweapon wins outright (settled precedence).
+    2. **Range-appropriate first.** At range, only ranged weapons reach; in
+       melee, anything works (a gun point-blank included).
+    3. **Then highest damage potential.** (Skill weighting joins this once a
+       skill system exists — for now, damage is the tiebreaker.)
+
+    A single-weapon fighter always gets that one weapon, so behaviour is
+    unchanged except for those actually holding a choice. Returns the chosen
+    weapon, or ``None`` when unarmed (caller falls back to fists).
+    """
+    try:
+        from world.medical.augments import get_active_natural_weapon
+        natural = get_active_natural_weapon(attacker)
+        if natural is not None:
+            return natural
+    except Exception:
+        pass
+
+    weapons = get_wielded_weapons(attacker)
+    if not weapons:
+        return None
+
+    if _in_melee_range(attacker, target):
+        usable = weapons  # everything is usable point-blank
+    else:
+        # At range only ranged weapons reach; if none, keep the held set so the
+        # caller's reach gate still produces the right "can't reach" message.
+        ranged = [w for w in weapons if _weapon_is_ranged(w)]
+        usable = ranged or weapons
+
+    return max(usable, key=lambda w: get_weapon_damage(w, 0))
 
 
 # ===================================================================

@@ -29,6 +29,7 @@ from .constants import (
 from .utils import (
     get_numeric_stat, get_display_name_safe,
     get_wielded_weapon, is_wielding_ranged_weapon,
+    select_weapon_for_engagement,
     get_weapon_damage, get_combatant_grappling_target,
     get_character_dbref,
 )
@@ -301,8 +302,16 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
         )
         return
 
-    # Check if attacker is wielding a ranged weapon
-    is_ranged_attack = is_wielding_ranged_weapon(attacker)
+    # Auto-prioritizer (CAPACITY_CONSUMERS spec §6.1 Q2): pick the best in-hand
+    # weapon for THIS engagement — range-appropriate first, then highest damage.
+    # The engagement (not the weapon) decides melee vs ranged. A one-weapon
+    # fighter gets that weapon unchanged; holding several (multi-armed / cyber
+    # tail) lets combat bring the right one to bear automatically.
+    chosen_weapon = select_weapon_for_engagement(attacker, target)
+    is_ranged_attack = bool(
+        chosen_weapon
+        and getattr(getattr(chosen_weapon, "db", None), "is_ranged", False)
+    )
 
     # For melee attacks, check same-room and proximity requirements
     if not is_ranged_attack:
@@ -387,7 +396,9 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
                 )
 
     # ── Get weapon and stats ───────────────────────────────────────────
-    weapon = get_wielded_weapon(attacker)
+    # Use the engagement-selected weapon (above) so damage/messages/is_ranged
+    # all agree on the one weapon being brought to bear.
+    weapon = chosen_weapon
     weapon_name = weapon.key if weapon else "unarmed"
 
     attacker_skill = get_numeric_stat(attacker, "motorics", 1)
