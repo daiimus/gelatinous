@@ -114,17 +114,19 @@ class ConsumptionCommand(Command):
 
         drink_effects = item.db.drink_effects
         if drink_effects:
+            feedback = []
             for substance_id, doses in drink_effects.items():
                 try:
                     n = max(1, int(doses))
                 except (TypeError, ValueError):
                     continue
                 dose_result = apply_substance(target, substance_id, doses=n)
-                for line in dose_result.get("feedback", ()):
-                    target.msg(f"|c{line}|n")
+                feedback.extend(dose_result.get("feedback", ()))
             taste = item.db.drink_taste
-            if taste:
-                target.msg(f"|x{taste}|n")
+            # One concise line in the default colour: the taste, then the effect.
+            parts = ([taste] if taste else []) + list(feedback)
+            if parts:
+                target.msg(" ".join(parts))
             return
 
         dose_result = apply_substance(target, item.db.substance)
@@ -868,9 +870,9 @@ class CmdDrink(ConsumptionCommand):
                 caller.msg(errors[0])
                 return
                 
-        # Execute drinking
+        # Execute drinking (the actor's own line is sent below, sip-aware, so
+        # we don't double up with a "You drink" here)
         if is_self:
-            caller.msg(f"You drink {item.get_display_name(caller)}.")
             msg_room_identity(
                 location=caller.location,
                 template=f"{{actor}} drinks {item.key}.",
@@ -895,9 +897,15 @@ class CmdDrink(ConsumptionCommand):
                 target.msg(f"You feel the effects: {result_msg}")
             self._apply_substance_dose(item, target)
         else:
-            # Regular drink — pharmacology (if any) rides the
-            # delivery, then the generic consumable lifecycle.
-            caller.msg(f"You drank {item.get_display_name(caller)}.")
+            # Regular drink — one actor line per sip (a sip, or the final
+            # mouthful), then pharmacology, then the consumable lifecycle.
+            if is_self:
+                uses_left = item.db.uses_left
+                name = item.get_display_name(caller)
+                if uses_left is None or int(uses_left or 0) <= 1:
+                    caller.msg(f"You finish off {name}.")
+                else:
+                    caller.msg(f"You take a sip of {name}.")
             self._apply_substance_dose(item, target)
             self._consume(item)
 

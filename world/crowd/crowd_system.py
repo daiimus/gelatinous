@@ -113,9 +113,13 @@ class CrowdSystem:
         if crowd_level == 0:
             return ""
         
-        # Get available crowd messages for this level
-        from .crowd_messages import get_crowd_messages
-        crowd_messages = get_crowd_messages(crowd_level)
+        # Get available crowd messages for this level. Enclosed rooms (bars,
+        # venues) draw on the 'interior' pool; open-air rooms get the street
+        # crush 'default'. The street-traffic imagery (haulers, drones, gutters)
+        # would read wrong indoors.
+        from .crowd_messages import crowd_profile_for_room_type, get_crowd_messages
+        profile = crowd_profile_for_room_type(room.type)
+        crowd_messages = get_crowd_messages(crowd_level, profile=profile)
         if not crowd_messages:
             return ""
         
