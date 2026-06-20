@@ -298,10 +298,14 @@ system, species anatomy tables.
 neither combat nor perception — it modifies a **chronic condition over time**,
 proving the model spans the medical sim too.
 
-### 7.1 Infection resistance (v1 — wireable now)
+### 7.1 Infection resistance (v1 — wireable now) — ✅ SHIPPED
 `blood_filtration` is a **physiological multiplier parallel to
 `InfectionCondition.environmental_modifier`** — failing kidneys make an
 infection you *already have* worsen faster and clear slower:
+*(Built: `world/medical/conditions.py` `read_blood_filtration` + the
+worsen/heal multipliers in `InfectionCondition.tick_effect` — worsen
+×(1+slope·(1−filtration)), heal ×max(floor, filtration). Fail-open. Tests:
+`test_blood_filtration_infection.py`.)*
 - worsen-hazard `×` filtration factor (low filtration → faster progression),
 - treated-heal rate `×` filtration (low filtration → it lingers despite treatment).
 

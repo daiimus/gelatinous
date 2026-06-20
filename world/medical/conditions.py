@@ -40,6 +40,33 @@ def hazard_fires(p_per_minute: float, elapsed_minutes: float) -> bool:
     return random.random() < 1 - (1 - p) ** elapsed_minutes
 
 
+# blood_filtration → infection course (CAPACITY_CONSUMERS spec §7.1). Failing
+# kidneys can't help the body fight an infection it already has: it worsens
+# faster and clears slower. Tunable.
+BLOOD_FILTRATION_HEAL_FLOOR = 0.25     # clearance never stalls below 25% speed
+BLOOD_FILTRATION_WORSEN_SLOPE = 1.0    # worsen ×(1 + slope·(1−filtration)): 0.5→1.5x, 0→2.0x
+
+
+def read_blood_filtration(character):
+    """Raw ``blood_filtration`` capacity (0.0–1.0) for *character*, or ``None``.
+
+    ``None`` → fail open (no medical model means no filtration effect). Only a
+    real number gates the modifiers; anything else (e.g. a test mock) yields
+    ``None``, mirroring the combat-capacity reads.
+    """
+    state = getattr(character, "medical_state", None)
+    calc = getattr(state, "calculate_body_capacity", None)
+    if not callable(calc):
+        return None
+    try:
+        value = calc("blood_filtration")
+    except Exception:
+        return None
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    return value
+
+
 class MedicalCondition:
     """
     Base class for all medical conditions.
@@ -453,15 +480,26 @@ class InfectionCondition(MedicalCondition):
 
         splattercast = get_splattercast()
 
+        # blood_filtration (§7.1): a physiological multiplier parallel to the
+        # environmental modifier — failing kidneys can't clear the toxins of an
+        # infection you already have, so it worsens faster and heals slower.
+        # Not acquisition (wound care + environment gate that), just the course.
+        filtration = read_blood_filtration(character)
+
         if self.treated:
-            if hazard_fires(INFECTION_IMPROVE_HAZARD_PER_MINUTE, elapsed_minutes):
+            heal_hazard = INFECTION_IMPROVE_HAZARD_PER_MINUTE
+            if filtration is not None:
+                heal_hazard *= max(BLOOD_FILTRATION_HEAL_FLOOR, filtration)
+            if hazard_fires(heal_hazard, elapsed_minutes):
                 self.severity = max(0, self.severity - 1)
                 splattercast.msg(f"INFECTION_HEAL: {character.key} infection severity reduced to {self.severity}")
         else:
             worsen_hazard = INFECTION_WORSEN_HAZARD_PER_MINUTE * self.environmental_modifier
+            if filtration is not None:
+                worsen_hazard *= 1.0 + BLOOD_FILTRATION_WORSEN_SLOPE * (1.0 - filtration)
             if hazard_fires(worsen_hazard, elapsed_minutes):
                 self.severity = min(10, self.severity + 1)  # Cap at 10
-                splattercast.msg(f"INFECTION_WORSEN: {character.key} infection severity increased to {self.severity} (env modifier: {self.environmental_modifier}x)")
+                splattercast.msg(f"INFECTION_WORSEN: {character.key} infection severity increased to {self.severity} (env modifier: {self.environmental_modifier}x, filtration: {filtration})")
     
     def set_environmental_modifier(self, modifier):
         """Set environmental infection risk modifier (e.g., 3.0 for sewers, 0.5 for sterile conditions)"""
