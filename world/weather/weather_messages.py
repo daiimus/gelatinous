@@ -6,25 +6,32 @@ system flattens the perceivable-sense lines for the current weather+time into
 one pool and shows a couple at random, so every line is written as a single
 standalone observation that reads cleanly beside any other.
 
-Guiding principle (matches the room and crowd authoring): OFFER the player
-something concrete to observe -- the rain running the gutters brown, the acid
-drizzle hissing on warm metal, the lamps drowned in fog -- grounded in the
-colony's own texture (prefab sprawl, the grating, the channel, the crater rim,
-the processor's hum). No line tells the player how to feel or what the weather
-"means." Just the weather, as it lands on the street.
+Principles (shared with the room and crowd authoring):
+
+  * OFFER concrete observation, don't narrate how to feel. Ground it in the
+    colony's own texture (prefab sprawl, the grating, the channel, the crater
+    rim, the processor's hum).
+  * AMBIENCE, NOT ACTION ON THE PLAYER. Describe the weather and what it does to
+    the street and the air, not things done to the character. Plain sensation
+    ("the cold bites", "the air stings") is fine; it doesn't demand a reaction
+    the text can't deliver.
+  * NAME THE SUBJECT. The wind's howl, the crowd, the storm -- keep referents
+    concrete.
+
+Five sense layers, matching the room model: visual / auditory / olfactory /
+tactile / atmospheric. The system gates visual on sight and auditory on
+hearing; olfactory, tactile and atmospheric always show.
 
 The big WEATHER_MESSAGES dict (every weather type x time-of-day x sense) is
-built deterministically at import from two sources:
+built deterministically at import from:
 
   * WEATHER_POOLS -- per weather type, observational lines per sense category.
   * TIME_LIGHT / TIME_ACTIVITY -- diurnal light-level and street-activity lines,
-    phrased to hold true under any weather (they describe ambient light and
-    foot traffic, never clear-sky or long-distance visibility).
+    phrased to hold true under any weather (ambient light and foot traffic,
+    never clear-sky or long-distance visibility).
 
-Each weather+time entry draws a time-of-day light line + weather visuals, the
-weather's auditory/olfactory lines, and a time-of-day activity line + weather
-atmosphere. Rotating the pool by the time index gives per-time variation
-without random churn at import.
+Rotating each pool by the time index gives per-time variation without random
+churn at import.
 """
 
 # Weather intensity levels (used elsewhere for message length/impact tuning).
@@ -125,6 +132,12 @@ WEATHER_POOLS = {
             "a dry mineral edge rides the clear air off the crater",
             "there's nothing on the air but dust and the distant processor",
         ],
+        'tactile': [
+            "the dry air sits warm and unmoving",
+            "heat radiates up off the bone-dry grating",
+            "the still air holds the day's warmth close to the ground",
+            "nothing stirs the warm, dry air",
+        ],
         'atmospheric': [
             "the dry weather has people out and unhurried",
             "the gutters and drains sit dry and idle",
@@ -157,6 +170,12 @@ WEATHER_POOLS = {
             "damp composite and cold metal ride the heavy air",
             "the overcast traps the street's smells low and close",
             "moisture sits in the air without falling",
+        ],
+        'tactile': [
+            "the air hangs damp and heavy, neither warm nor cold",
+            "a clammy stillness sits over the street",
+            "the heavy air presses close without a breath of wind",
+            "the damp settles cool and unmoving over everything",
         ],
         'atmospheric': [
             "the flat grey light drains the colour out of everything",
@@ -191,6 +210,12 @@ WEATHER_POOLS = {
             "dust and ozone ride the driving air",
             "the moving air strips the street of its settled smells",
         ],
+        'tactile': [
+            "the wind shoves cold and steady down the street",
+            "the gusts fling grit and buffet everything left in the open",
+            "the moving air strips the warmth off every surface",
+            "the wind worries at every loose edge and seam",
+        ],
         'atmospheric': [
             "the wind has driven most people into the lee of the buildings",
             "grit collects deep in every windward corner",
@@ -218,11 +243,17 @@ WEATHER_POOLS = {
         ],
         'olfactory': [
             "the fog is wet and cold, tasting of mineral and metal",
-            "damp condenses on your lips with every breath",
+            "damp condenses cold on every surface",
             "the heavy wet air holds the street's smells suspended",
             "cold moisture and rust ride every breath",
             "the fog smells of standing water and cold stone",
             "wet composite and old metal thicken the air",
+        ],
+        'tactile': [
+            "the fog hangs cold and wet, beading on every surface",
+            "a clammy damp settles over the street",
+            "the wet cold of the fog works into everything",
+            "moisture gathers cold on rail and grating alike",
         ],
         'atmospheric': [
             "the fog beads and runs down every vertical surface",
@@ -257,6 +288,12 @@ WEATHER_POOLS = {
             "the air smells of rain and rinsed metal",
             "cold wet stone and runoff ride every breath",
         ],
+        'tactile': [
+            "the rain falls cold and steady over everything",
+            "a wet chill settles into every surface",
+            "the cold of the rain seeps into the grating and the walls",
+            "everything left in the open runs with cold water",
+        ],
         'atmospheric': [
             "the rain has cleared the street of all but the hurried",
             "puddles spread wide across the low grating",
@@ -289,6 +326,12 @@ WEATHER_POOLS = {
             "the air smells faintly of rinsed metal",
             "wet dust and cool mineral ride the soft rain",
             "a light wet edge rides the air",
+        ],
+        'tactile': [
+            "a fine cold damp settles out of the drizzle",
+            "the light rain leaves a cool film on every surface",
+            "the drizzle barely wets the grating, just enough to chill it",
+            "a cool dampness gathers slowly on everything",
         ],
         'atmospheric': [
             "the light rain hasn't cleared the street, only slowed it",
@@ -323,6 +366,12 @@ WEATHER_POOLS = {
             "cold metal and clean ice ride every breath",
             "the chilled air smells of nothing but cold",
         ],
+        'tactile': [
+            "the air bites cold and dry",
+            "a still, deep cold settles in with the snow",
+            "the cold sits heavy and unmoving over the white street",
+            "the chill creeps into every surface under the snow",
+        ],
         'atmospheric': [
             "snow settles undisturbed in the quiet corners",
             "the fresh white coat takes every footprint",
@@ -356,6 +405,12 @@ WEATHER_POOLS = {
             "the air smells only of cold metal and ice",
             "the deep cold numbs the smell of the street",
         ],
+        'tactile': [
+            "the cold drives hard behind the heavy snow",
+            "the wind-driven snow piles cold against every wall",
+            "the deep cold works fast into everything exposed",
+            "the chill of the heavy fall settles bone-deep over the street",
+        ],
         'atmospheric': [
             "drifts climb the windward walls and bury the low rails",
             "the heavy fall has driven the street near empty",
@@ -379,7 +434,7 @@ WEATHER_POOLS = {
             "snow and wind fill the street with a constant howl",
             "nothing carries through the storm's roar",
             "ice and grit crack past on the wind",
-            "the howl rises and falls but never stops",
+            "the wind's howl rises and falls but never stops",
         ],
         'olfactory': [
             "the storm scours the air to bitter, scentless cold",
@@ -388,6 +443,12 @@ WEATHER_POOLS = {
             "the blizzard strips away every smell",
             "hard cold and clean ice are all the air carries",
             "the freezing wind numbs the nose to anything",
+        ],
+        'tactile': [
+            "the wind tears bitter cold down the street",
+            "the driving cold cuts through every gap and seam",
+            "the blizzard's cold is brutal and total, with no still air to escape it",
+            "the wind packs cold and snow into anything that breaks it",
         ],
         'atmospheric': [
             "the blizzard has emptied the street entirely",
@@ -422,6 +483,12 @@ WEATHER_POOLS = {
             "a sharp electric tang hangs over the street",
             "hot dust and ozone ride every breath",
         ],
+        'tactile': [
+            "the air hangs hot, dry, and charged",
+            "the storm's wind drives warm grit down the street",
+            "the dry heat sits heavy under the churning cloud",
+            "the air feels tight and electric between the thunderclaps",
+        ],
         'atmospheric': [
             "the dry storm has people watching the sky and the doorways",
             "each flash throws hard shadows the length of the grating",
@@ -454,6 +521,12 @@ WEATHER_POOLS = {
             "cold rain and ozone ride every breath",
             "the downpour rinses the air to wet mineral and ozone",
             "wet composite and the burnt bite of lightning ride the air",
+        ],
+        'tactile': [
+            "the rain drives down cold and hard over everything",
+            "the cold downpour pools and soaks across the grating",
+            "the storm's wind drives the cold rain sidelong",
+            "the wet chill of the storm settles into every surface",
         ],
         'atmospheric': [
             "the storm has cleared the street of everyone unhurried",
@@ -488,6 +561,12 @@ WEATHER_POOLS = {
             "acrid particulate coats every breath",
             "the murk carries the taste of the smokestacks",
         ],
+        'tactile': [
+            "the air sits warm, thick, and gritty",
+            "a fine chemical grit settles over every surface",
+            "the heavy pall hangs close and unmoving",
+            "the gritty air leaves a film on everything it touches",
+        ],
         'atmospheric': [
             "the pall films every surface with grey grit",
             "people move through the murk with their mouths covered",
@@ -520,6 +599,12 @@ WEATHER_POOLS = {
             "the corrosive air bites at every breath",
             "chemical sting and rot ride the wet air",
             "the rain leaves a taste of solvent and decay",
+        ],
+        'tactile': [
+            "the air hangs warm and damp with a chemical sting",
+            "the acid drizzle eats slick at every surface it pools on",
+            "a faint chemical burn rides the wet air",
+            "the corrosive damp clings to everything in the open",
         ],
         'atmospheric': [
             "the tox rain has driven everyone under cover or indoors",
@@ -554,6 +639,12 @@ WEATHER_POOLS = {
             "the dry air rasps with mineral dust",
             "grit settles dry and metallic on the tongue",
         ],
+        'tactile': [
+            "the wind drives hot grit that scours every surface",
+            "blown sand abrades everything left in the open",
+            "the gritty wind sandblasts walls and signage alike",
+            "the hot, abrasive air leaves nothing untouched",
+        ],
         'atmospheric': [
             "the sandstorm has cleared the street of all but the desperate",
             "fine sand sifts into every seam and corner",
@@ -574,7 +665,7 @@ WEATHER_POOLS = {
         'auditory': [
             "the dense fog turns every sound around and flattens it",
             "footsteps come from impossible directions in the murk",
-            "sound is muffled enough to seem to come from inside your own ears",
+            "sound is muffled enough to seem to come from nowhere at all",
             "voices arrive close and bodiless out of the white",
             "the fog swallows the direction out of every noise",
             "dripping is the only sound that carries clear",
@@ -586,6 +677,12 @@ WEATHER_POOLS = {
             "wet stone and rust hang heavy on the still air",
             "the saturated air tastes of cold metal",
             "the fog holds the street's smells thick and close",
+        ],
+        'tactile': [
+            "the dense fog hangs cold and soaking",
+            "a heavy wet cold presses out of the white",
+            "the saturated fog beads and runs off every surface",
+            "the cold damp is thick enough to feel against the face",
         ],
         'atmospheric': [
             "the blind fog has all but stopped movement on the street",
@@ -614,11 +711,17 @@ WEATHER_POOLS = {
         ],
         'olfactory': [
             "the heavy fog is cold and wet, thick with mineral damp",
-            "saturated air condenses on your lips with every breath",
+            "saturated air condenses on every cold surface",
             "wet stone and old metal hang dense on the air",
             "the cold damp coats the mouth and the throat",
             "the fog holds the street's smells suspended and close",
             "rust and standing water thicken every breath",
+        ],
+        'tactile': [
+            "the heavy fog hangs cold and soaking wet",
+            "a clammy chill beads on every surface",
+            "the wet cold of the fog works deep into everything",
+            "moisture sheets cold off rail and grating",
         ],
         'atmospheric': [
             "the heavy fog has slowed the street to a crawl",
@@ -653,12 +756,18 @@ WEATHER_POOLS = {
             "a hard electric tang coats the mouth",
             "ozone and scorched dust hang heavy on the air",
         ],
+        'tactile': [
+            "the charged air prickles and crackles",
+            "the air hangs hot and electric between the bursts",
+            "each strike leaves the air tight and charged",
+            "a static charge hangs heavy over the whole street",
+        ],
         'atmospheric': [
             "the flashstorm has driven everyone off the open street",
             "each burst throws the street into hard white relief",
-            "the charged air raises the hair and prickles the skin",
             "the strobing leaves the street flickering black and white",
             "the storm hammers the sky without pause",
+            "the lamps are lost under the storm's white stutter",
         ],
     },
     'torrential_rain': {
@@ -685,6 +794,12 @@ WEATHER_POOLS = {
             "the downpour leaves only cold rain on every breath",
             "the flooded drains push up a smell of wet rot and runoff",
             "the rain-soaked air is thick with cold mineral",
+        ],
+        'tactile': [
+            "the rain hammers down cold and heavy",
+            "the deluge drives cold runoff across the grating",
+            "the downpour soaks everything in the open in seconds",
+            "the cold weight of the rain pounds every surface",
         ],
         'atmospheric': [
             "the torrential rain has emptied the street completely",
@@ -719,6 +834,12 @@ WEATHER_POOLS = {
             "cold damp coats the mouth, mineral and metallic",
             "the saturated air holds the street's smells thick and wet",
         ],
+        'tactile': [
+            "the air hangs cold, wet, and clinging",
+            "a soaking chill settles out of the fogged rain",
+            "the doubled damp works cold into everything",
+            "moisture clings cold to every surface at once",
+        ],
         'atmospheric': [
             "the fogged rain has slowed the street to almost nothing",
             "moisture sheets and beads on every surface at once",
@@ -751,6 +872,7 @@ def _build_weather_messages():
                 'visual': [TIME_LIGHT[period]] + _rotate(pools['visual'], i, 2),
                 'auditory': _rotate(pools['auditory'], i, 3),
                 'olfactory': _rotate(pools['olfactory'], i, 3),
+                'tactile': _rotate(pools['tactile'], i, 2),
                 'atmospheric': (
                     [TIME_ACTIVITY[period]] + _rotate(pools['atmospheric'], i * 2, 2)
                 ),
