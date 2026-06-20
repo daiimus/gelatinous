@@ -347,7 +347,14 @@ the room; players see the sick one without a `diagnose`. The same hook yields
 from**: a toxin substance can trigger/worsen renal failure, diagnosis surfaces
 it, another condition compounds it.
 
-### 7.4 Remediation = chrome OR transplant (RipperDoc)
+### 7.4 Remediation = chrome OR transplant (RipperDoc) — ✅ SHIPPED
+*(Built: `CYBER_LEFT_KIDNEY` / `CYBER_RIGHT_KIDNEY` prototypes — single-organ
+replacements at the canonical kidney slots, capacity `blood_filtration`. A
+harvested **donor** kidney installs the same way (canonical name → capacity
+auto-restores) with no new code. Restoring filtration clears RenalFailure via
+the §7.2 despawn. Tests: `test_capacity_chrome.py`. Dialysis stopgap still
+future.)*
+
 Per §1: a **cyber kidney** *and* a **transplanted donor kidney** (harvested
 organ, canonical name → capacity auto-restores) both fix filtration — the
 general remediation principle for *any* capacity-restoring augment, not kidney-

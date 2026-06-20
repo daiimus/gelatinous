@@ -28,6 +28,8 @@ from world.prototypes import (
     CYBER_RIGHT_EYE,
     CYBER_LEFT_EAR,
     CYBER_RIGHT_EAR,
+    CYBER_LEFT_KIDNEY,
+    CYBER_RIGHT_KIDNEY,
     CYBER_LEG,
 )
 
@@ -132,12 +134,51 @@ class CyberLegRestoresMoving(TestCase):
         self.assertAlmostEqual(moving_dodge_factor(p), 1.0)
 
 
+class CyberKidneyRestoresFiltration(TestCase):
+    def test_failed_then_chromed(self):
+        p = _Patient()
+        state = p.attach()
+        self.assertAlmostEqual(
+            state.calculate_body_capacity("blood_filtration"), 1.0
+        )
+
+        # Both flesh kidneys destroyed → filtration collapses (renal failure
+        # territory: below the 0.05 onset threshold).
+        _destroy(state, "left_kidney", "right_kidney")
+        self.assertLessEqual(
+            state.calculate_body_capacity("blood_filtration"), 0.05
+        )
+
+        # Install chrome filtration units at the canonical kidney slots →
+        # filtration restored above the 0.4 recovery threshold (clears uremia).
+        _install(state, "left_kidney", _organ_spec(CYBER_LEFT_KIDNEY))
+        _install(state, "right_kidney", _organ_spec(CYBER_RIGHT_KIDNEY))
+        self.assertAlmostEqual(
+            state.calculate_body_capacity("blood_filtration"), 1.0
+        )
+
+    def test_single_donor_kidney_clears_recovery_threshold(self):
+        # One kidney (cyber or donor) restores filtration above the renal-
+        # failure recovery threshold (0.4) — you survive on one.
+        p = _Patient()
+        state = p.attach()
+        _destroy(state, "left_kidney", "right_kidney")
+        _install(state, "left_kidney", _organ_spec(CYBER_LEFT_KIDNEY))
+        self.assertGreaterEqual(
+            state.calculate_body_capacity("blood_filtration"), 0.4
+        )
+
+
 class ChromePrototypeShape(TestCase):
     """Guard the capacity wiring the consumers depend on."""
 
     def test_eyes_declare_sight(self):
         for proto in (CYBER_LEFT_EYE, CYBER_RIGHT_EYE):
             self.assertEqual(_organ_spec(proto)["capacity"], "sight")
+
+    def test_kidneys_declare_blood_filtration(self):
+        for proto in (CYBER_LEFT_KIDNEY, CYBER_RIGHT_KIDNEY):
+            self.assertEqual(_organ_spec(proto)["capacity"], "blood_filtration")
 
     def test_ears_declare_hearing(self):
         for proto in (CYBER_LEFT_EAR, CYBER_RIGHT_EAR):
