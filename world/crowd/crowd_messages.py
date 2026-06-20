@@ -246,7 +246,7 @@ CROWD_MESSAGES = {
         'packed': {
             'visual': [
                 "a scream goes up somewhere in the crush, short and sharp, and the mass swallows it without a ripple",
-                "the crowd locks solid, packed too tight for anyone to do more than shuffle when it shuffles",
+                "the crowd locks up solid, jammed too tight for anyone to do more than inch forward",
                 "a child rides overhead hand to hand above the crush, wide-eyed and silent, toward the edge",
                 "someone goes down underfoot and the mass grinds on over the gap",
                 "arms stay pinned in the crush, hands locked on whatever they were holding",
