@@ -40,7 +40,7 @@ class Room(ObjectParent, DefaultRoom):
     # Per-sense description layers (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §5):
     # {"auditory": ..., "olfactory": ..., "tactile": ..., "atmospheric": ...}.
     # Opt-in per room; the single-blob `desc` is the default visual layer, so
-    # rooms without this render exactly as before. Authored via `@roomsense`.
+    # rooms without this render exactly as before. Authored as room data.
     sense_descs = AttributeProperty(default={}, autocreate=True)
 
     # Crowd system base level
