@@ -130,8 +130,11 @@ class CrowdSystem:
             category_messages = crowd_messages[selected_category]
             if category_messages:
                 selected_message = random.choice(category_messages)
-                # Ensure message ends with period
-                formatted_message = selected_message.capitalize()
+                # Capitalise the first letter only (preserve interior caps and
+                # multi-sentence lines), then ensure it ends with a period.
+                formatted_message = (
+                    selected_message[:1].upper() + selected_message[1:]
+                )
                 if not formatted_message.endswith('.'):
                     formatted_message += '.'
                 # Wrap in bold white for ambient atmosphere
