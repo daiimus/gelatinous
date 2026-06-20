@@ -98,6 +98,8 @@ def toggle_ability(character, name) -> str:
         return _toggle_natural_weapon(character, organ, name, spec)
     if ability_type == "voice_modulator":
         return _toggle_voice_modulator(character, organ, name, spec)
+    if ability_type == "blindsight":
+        return _toggle_blindsight(character, organ, name, spec)
     return f"{name} doesn't respond. (unknown ability type {ability_type!r})"
 
 
@@ -324,6 +326,35 @@ def _toggle_voice_modulator(character, organ, name, spec) -> str:
     _persist(character)
     return spec.get("retract_msg") or (
         "Your voice modulator powers down — your own voice returns."
+    )
+
+
+def _toggle_blindsight(character, organ, name, spec) -> str:
+    """Toggle a combat targeting / sonar suite — "blindsight".
+
+    Sets ``character.db.blindsight_active``, which `world.combat.capacity`
+    honours to restore combat aim even when the eyes are gone. Combat-only:
+    it does NOT restore perception (rooms / faces stay dark) — that's the
+    separate full-vision seam. (CAPACITY_CONSUMERS spec; user-decided
+    combat-only 2026-06-20.)
+    """
+    from world.combat.capacity import BLINDSIGHT_FLAG
+
+    state = _ability_state(organ, name)
+    if not state.get("deployed"):
+        state["deployed"] = True
+        setattr(character.db, BLINDSIGHT_FLAG, True)
+        _persist(character)
+        return spec.get("deploy_msg") or (
+            "Your targeting suite spins up — the world goes to wireframe and "
+            "ranging data, and your aim steadies even with your eyes shut."
+        )
+
+    state["deployed"] = False
+    setattr(character.db, BLINDSIGHT_FLAG, False)
+    _persist(character)
+    return spec.get("retract_msg") or (
+        "Your targeting suite powers down; the firing solutions fade."
     )
 
 
