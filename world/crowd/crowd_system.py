@@ -12,9 +12,12 @@ class CrowdSystem:
     """
     
     def __init__(self):
-        # Base crowd levels for different room types
+        # Base crowd levels for different room types. Streets carry their
+        # busyness through each room's crowd_base_level (0 quiet .. 3 hotspot),
+        # so 'street' itself adds nothing -- otherwise a base-1 street can never
+        # read sparser than 'moderate'.
         self.room_type_modifiers = {
-            'street': 0.5,
+            'street': 0.0,
             'intersection': 1.0,
             'corner store': 0.5,
             'laundromat': 0.2,
