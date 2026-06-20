@@ -244,13 +244,28 @@ them into one body-wide number is wrong.
   manipulation ≈ `0.5` for one arm would wrongly halve it.)
 - **(Q2) Breadth / readiness — from the *count of functional manipulators vs
   baseline*.** Buys breadth, not accuracy: **initiative + hard-to-fully-disarm
-  + loadout-readiness** (a grenade *and* a 2H melee *and* a pistol all ready at
-  once). NOT extra attacks or raw damage (combat-balance guardrail). *Which*
-  readied option to bring to bear when is a future combat revision.
+  + loadout-readiness**. NOT extra attacks or raw damage (combat-balance
+  guardrail). Three sub-payoffs, all **decided 2026-06-20**:
+  - **Loadout-readiness ✅ SHIPPED — the auto-prioritizer.** Rather than a
+    weapon-swap action economy, combat *automatically* brings the best in-hand
+    weapon to bear for the engagement: **range-appropriate first** (only ranged
+    reach at range; anything works point-blank), **then highest damage** (skill
+    weighting joins this once skills exist). The engagement — not the weapon —
+    decides melee vs ranged. `world/combat/utils.py`
+    `select_weapon_for_engagement` (used by `process_attack`); natural-weapon
+    precedence preserved; single-weapon fighters unchanged. Tests:
+    `test_weapon_autoprioritizer.py`. Holding several weapons (multi-armed /
+    cyber tail) is what feeds the picker more options.
+  - **Disarm — *once per gripping hand* (decided, not built).** A disarm must
+    succeed against *each* gripping hand to fully disarm; a four-armed gunslinger
+    is near-impossible to strip. Hooks the existing disarm mechanic.
+  - **Initiative — ramp then cap (decided, not built).** NOT a big 3rd-hand
+    jump; the bonus **scales up through ~6 limbs** (a reason to keep adding),
+    then **tapers off completely**. Hooks the existing initiative order.
 
 So: one-armed → full per-weapon accuracy, reduced breadth; four-armed → same
-per-weapon accuracy, large breadth (multiple weapons up, near-undisarmable,
-faster initiative).
+per-weapon accuracy, large breadth (the right weapon auto-selected, near-
+undisarmable, faster initiative).
 
 **Minimum requirements + scaled penalty.** A weapon's `hands_required` is a
 *minimum*; the gripping effectors must meet it. **Under-gripping** (2H weapon
