@@ -266,7 +266,9 @@ them into one body-wide number is wrong.
     Triangular (accelerating) increments per surplus grasping limb beyond the
     species baseline — the 3rd hand is a small jump, the run to ~6 limbs is the
     reason to chrome up, then it **caps completely** (extra limbs past 6 give
-    nothing). Decided 2026-06-20. Tests: `test_initiative_limbs.py`.
+    nothing). Human: `+0/+1/+3/+6/+10` for 2/3/4/5/6 hands, flat beyond.
+    Decided 2026-06-20 (magnitudes halved per balance pass). Tests:
+    `test_initiative_limbs.py`.
 
 So: one-armed → full per-weapon accuracy, reduced breadth; four-armed → same
 per-weapon accuracy, large breadth (the right weapon auto-selected, near-

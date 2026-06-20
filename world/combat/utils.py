@@ -266,7 +266,7 @@ def select_weapon_for_engagement(attacker, target):
 # COMPLETELY (capped). Modelled as triangular (accelerating) increments per
 # surplus limb, capped. Magnitudes tunable.
 INITIATIVE_LIMB_SURPLUS_CAP = 4   # surplus limbs that still help (human: caps at 6 total)
-INITIATIVE_LIMB_BONUS_UNIT = 2    # initiative per triangular step; peak = UNIT × T(CAP) = 20
+INITIATIVE_LIMB_BONUS_UNIT = 1    # initiative per triangular step; peak = UNIT × T(CAP) = 10
 
 
 def surplus_limb_initiative_bonus(char) -> int:
