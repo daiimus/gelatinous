@@ -256,12 +256,17 @@ them into one body-wide number is wrong.
     precedence preserved; single-weapon fighters unchanged. Tests:
     `test_weapon_autoprioritizer.py`. Holding several weapons (multi-armed /
     cyber tail) is what feeds the picker more options.
-  - **Disarm — *once per gripping hand* (decided, not built).** A disarm must
-    succeed against *each* gripping hand to fully disarm; a four-armed gunslinger
-    is near-impossible to strip. Hooks the existing disarm mechanic.
-  - **Initiative — ramp then cap (decided, not built).** NOT a big 3rd-hand
-    jump; the bonus **scales up through ~6 limbs** (a reason to keep adding),
-    then **tapers off completely**. Hooks the existing initiative order.
+  - **Disarm — *once per gripping hand* ✅ ALREADY SATISFIED.** `resolve_disarm`
+    (`world/combat/actions.py`) already knocks out **one** weapon per successful
+    attempt, so a multi-weapon fighter needs one disarm *per* gripping hand to be
+    fully stripped — exactly the decided behaviour, emergent from the existing
+    mechanic. (Edge: a 2H weapon held in two hands disarms as one item — fine.)
+  - **Initiative — ramp then cap ✅ SHIPPED.** `surplus_limb_initiative_bonus`
+    (`world/combat/utils.py`) adds to the `d20 + motorics` initiative roll.
+    Triangular (accelerating) increments per surplus grasping limb beyond the
+    species baseline — the 3rd hand is a small jump, the run to ~6 limbs is the
+    reason to chrome up, then it **caps completely** (extra limbs past 6 give
+    nothing). Decided 2026-06-20. Tests: `test_initiative_limbs.py`.
 
 So: one-armed → full per-weapon accuracy, reduced breadth; four-armed → same
 per-weapon accuracy, large breadth (the right weapon auto-selected, near-
