@@ -1176,14 +1176,25 @@ class AppearanceMixin:
 
         # Apply skintone coloring only if requested (for longdescs only)
         if apply_skintone:
-            skintone = self.db.skintone
-            if skintone:
-                from world.combat.constants import SKINTONE_PALETTE
-                color_code = SKINTONE_PALETTE.get(skintone)
-                if color_code:
-                    # Wrap the entire processed description in the skintone color
-                    # Reset color at end to prevent bleeding
-                    processed_desc = f"{color_code}{processed_desc}|n"
+            color_code = None
+            # A condition/vitals symptom (cyanosis, pallor, uremic…) tints the
+            # body and OVERRIDES the base skintone — the body's state legible at
+            # a glance (CAPACITY_CONSUMERS spec §7.3). Fail-open so look never
+            # breaks.
+            try:
+                from world.medical.appearance import get_appearance_tint
+                color_code = get_appearance_tint(self)
+            except Exception:
+                color_code = None
+            if color_code is None:
+                skintone = self.db.skintone
+                if skintone:
+                    from world.combat.constants import SKINTONE_PALETTE
+                    color_code = SKINTONE_PALETTE.get(skintone)
+            if color_code:
+                # Wrap the entire processed description in the colour.
+                # Reset at end to prevent bleeding.
+                processed_desc = f"{color_code}{processed_desc}|n"
 
         return processed_desc
 
