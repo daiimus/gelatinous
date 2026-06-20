@@ -110,6 +110,87 @@ class CmdSay(Command):
             observer.msg(text=text, type="say", from_obj=caller)
 
 
+class CmdTo(Command):
+    """
+    Speak aloud, directed at someone in the room.
+
+    Usage:
+        to <target> <message>
+
+    Like ``say``, but pointed at one person — everyone present still hears it.
+    The target is addressed directly ("... says to you, ..."); onlookers see
+    who it was aimed at. Perception applies exactly as with ``say``: hearing
+    gates the words, sight gates whether you can tell who is speaking.
+    """
+
+    key = "to"
+    locks = "cmd:all()"
+    help_category = "Social"
+
+    def func(self):
+        caller = self.caller
+
+        args = (self.args or "").strip()
+        parts = args.split(None, 1)
+        if len(parts) < 2 or not parts[1].strip():
+            caller.msg("Usage: to <target> <message>")
+            return
+        target_str, speech = parts[0], parts[1].strip()
+
+        location = caller.location
+        if not location:
+            caller.msg("You have no location to speak in.")
+            return
+
+        target = caller.search(target_str)
+        if not target:
+            return  # search() already sent the error message
+
+        # Actor sees their own message.
+        caller.msg(f'You say to {target.get_display_name(caller)}, "{speech}"')
+
+        # Voice flavour for observers who can SEE the speaker (as in `say`):
+        # a garbled voice always renders; otherwise a sporadic sprinkle, rolled
+        # once per utterance for a consistent reading across observers.
+        visible_flavor = garbled_voice_phrase(caller)
+        if visible_flavor is None:
+            phrase = voice_phrase(caller)
+            if phrase and random() < VOICE_FLAVOR_SPRINKLE_CHANCE:
+                visible_flavor = phrase
+
+        # Directed but audible: everyone present resolves it through the same
+        # sight/hearing chain as `say`. The target is addressed as "you".
+        for observer in location.contents:
+            if observer is caller:
+                continue
+            if not hasattr(observer, "msg"):
+                continue
+
+            heard = can_hear(observer)
+            seen = can_see(observer)
+            if not heard and not seen:
+                continue  # no channel — suppress entirely
+
+            speaker_name = resolve_speaker_attribution(caller, observer)
+            target_ref = (
+                "you" if observer is target
+                else target.get_display_name(observer)
+            )
+            if heard:
+                if seen and visible_flavor:
+                    verb = f"says to {target_ref}, |x*{visible_flavor}*|n"
+                else:
+                    verb = f"says to {target_ref},"
+                text = f'{capitalize_first(speaker_name)} {verb} "{speech}"'
+            else:
+                # Deaf but watching: the address is visible, the words are not.
+                text = (
+                    f"{capitalize_first(speaker_name)} says something to "
+                    f"{target_ref}, but you can't make it out."
+                )
+            observer.msg(text=text, type="say", from_obj=caller)
+
+
 class CmdWhisper(Command):
     """
     Whisper a message to a specific target.
