@@ -882,6 +882,24 @@ def render_for_observer(
 # =========================================================================
 
 
+def _extract_speech(tokens) -> tuple[str, set[int]]:
+    """Pull the spoken words and addressed-character ids out of a token stream.
+
+    A pose can carry an embedded quote (``.nod at man, "..."``); when it does,
+    that speech should ride the same rails as ``say``/``to`` so NPCs react to it
+    uniformly. Returns ``(words, referenced_char_ids)`` — ``words`` is the joined
+    quoted content (empty if the pose has none), and ``referenced_char_ids`` are
+    the ``id()``s of characters the pose points at, which count as *addressed*.
+    """
+    words = " ".join(
+        t.text for t in tokens if isinstance(t, SpeechToken)
+    ).strip()
+    referenced = {
+        id(t.character) for t in tokens if isinstance(t, CharRefToken)
+    }
+    return words, referenced
+
+
 def render_dot_pose(
     tokens: list[
         TextToken | VerbToken | PronounToken | SpeechToken | CharRefToken
@@ -902,7 +920,10 @@ def render_dot_pose(
         exclude: Characters/objects to exclude from receiving the
             message.
     """
+    from world.speech import speech_payload
+
     exclude_set = set(exclude) if exclude else set()
+    words, referenced = _extract_speech(tokens)
 
     for observer in location.contents:
         if observer in exclude_set:
@@ -911,7 +932,12 @@ def render_dot_pose(
             continue
 
         rendered = render_for_observer(tokens, actor, observer)
-        observer.msg(text=rendered, type="pose", from_obj=actor)
+        # An embedded quote rides the shared speech rails: hearing listeners get
+        # the words, and a listener the pose points at counts as addressed.
+        payload = speech_payload(
+            observer, actor, words, addressed=(id(observer) in referenced)
+        )
+        observer.msg(text=rendered, type="pose", from_obj=actor, **payload)
 
 
 # =========================================================================
@@ -1040,7 +1066,10 @@ def render_emote(
         exclude: Characters/objects to exclude from receiving the
             message.
     """
+    from world.speech import speech_payload
+
     exclude_set = set(exclude) if exclude else set()
+    words, referenced = _extract_speech(tokens)
 
     for observer in location.contents:
         if observer in exclude_set:
@@ -1049,4 +1078,9 @@ def render_emote(
             continue
 
         rendered = render_emote_for_observer(tokens, actor, observer)
-        observer.msg(text=rendered, type="pose", from_obj=actor)
+        # An embedded quote rides the shared speech rails: hearing listeners get
+        # the words, and a listener the emote points at counts as addressed.
+        payload = speech_payload(
+            observer, actor, words, addressed=(id(observer) in referenced)
+        )
+        observer.msg(text=rendered, type="pose", from_obj=actor, **payload)

@@ -20,18 +20,11 @@ from world.emote import (
     tokenize_dot_pose,
     tokenize_emote,
 )
-from random import random
 
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
-from world.voice import (
-    can_hear,
-    can_see,
-    garbled_voice_phrase,
-    resolve_speaker_attribution,
-    voice_phrase,
-    VOICE_FLAVOR_SPRINKLE_CHANCE,
-)
+from world.perception import can_hear
+from world.speech import broadcast_speech
 
 
 class CmdSay(Command):
@@ -64,50 +57,11 @@ class CmdSay(Command):
             caller.msg("You have no location to speak in.")
             return
 
-        # Actor sees their own message
+        # Actor sees their own message; the room hears it through the shared
+        # speech backbone (per-observer attribution, hearing-gated content,
+        # voice flavour, and the structured speech payload NPCs react to).
         caller.msg(f'You say, "{speech}"')
-
-        # Voice flavour for observers who can SEE the speaker (CAPACITY_CONSUMERS
-        # spec §4.6 can-see branch): a garbled voice always renders — a ruined
-        # voice is conspicuous — otherwise a sporadic, low-frequency sprinkle,
-        # rolled once per utterance for a consistent reading.
-        visible_flavor = garbled_voice_phrase(caller)
-        if visible_flavor is None:
-            phrase = voice_phrase(caller)
-            if phrase and random() < VOICE_FLAVOR_SPRINKLE_CHANCE:
-                visible_flavor = phrase
-        visible_verb = f"says, |x*{visible_flavor}*|n" if visible_flavor else "says,"
-
-        # Each observer's perception resolves per the sight/hearing chain
-        # (§4.5). Hearing gates the *content* (the words); sight + the voice
-        # channel gate the *attribution* (who):
-        #   - can hear → the words, attributed by sight (name + flavour) or by
-        #     voice discernment (name / "someone").
-        #   - deaf but can see → they watch the speaker mouth something but
-        #     can't make it out (no content).
-        #   - deaf and blind → no channel at all; the utterance is suppressed.
-        for observer in location.contents:
-            if observer is caller:
-                continue
-            if not hasattr(observer, "msg"):
-                continue
-
-            heard = can_hear(observer)
-            seen = can_see(observer)
-            if not heard and not seen:
-                continue  # no channel — suppress entirely
-
-            speaker_name = resolve_speaker_attribution(caller, observer)
-            if heard:
-                verb = visible_verb if seen else "says,"
-                text = f'{capitalize_first(speaker_name)} {verb} "{speech}"'
-            else:
-                # Deaf but watching: speech is visible, content is not.
-                text = (
-                    f"{capitalize_first(speaker_name)} says something "
-                    f"you can't make out."
-                )
-            observer.msg(text=text, type="say", from_obj=caller)
+        broadcast_speech(caller, speech, location)
 
 
 class CmdTo(Command):
@@ -146,56 +100,12 @@ class CmdTo(Command):
         if not target:
             return  # search() already sent the error message
 
-        # Actor sees their own message.
+        # Actor sees their own message; the room hears it through the shared
+        # speech backbone. `to` is just `say` with a target: the addressee is
+        # rendered "you", and the structured payload marks them `addressed` so
+        # an NPC can tell being spoken to directly from ambient room chatter.
         caller.msg(f'You say to {target.get_display_name(caller)}, "{speech}"')
-
-        # Voice flavour for observers who can SEE the speaker (as in `say`):
-        # a garbled voice always renders; otherwise a sporadic sprinkle, rolled
-        # once per utterance for a consistent reading across observers.
-        visible_flavor = garbled_voice_phrase(caller)
-        if visible_flavor is None:
-            phrase = voice_phrase(caller)
-            if phrase and random() < VOICE_FLAVOR_SPRINKLE_CHANCE:
-                visible_flavor = phrase
-
-        # Directed but audible: everyone present resolves it through the same
-        # sight/hearing chain as `say`. The target is addressed as "you".
-        for observer in location.contents:
-            if observer is caller:
-                continue
-            if not hasattr(observer, "msg"):
-                continue
-
-            heard = can_hear(observer)
-            seen = can_see(observer)
-            if not heard and not seen:
-                continue  # no channel — suppress entirely
-
-            speaker_name = resolve_speaker_attribution(caller, observer)
-            target_ref = (
-                "you" if observer is target
-                else target.get_display_name(observer)
-            )
-            if heard:
-                if seen and visible_flavor:
-                    verb = f"says to {target_ref}, |x*{visible_flavor}*|n"
-                else:
-                    verb = f"says to {target_ref},"
-                text = f'{capitalize_first(speaker_name)} {verb} "{speech}"'
-            else:
-                # Deaf but watching: the address is visible, the words are not.
-                text = (
-                    f"{capitalize_first(speaker_name)} says something to "
-                    f"{target_ref}, but you can't make it out."
-                )
-            # The addressed target also receives the raw content structurally
-            # (only when they can hear it), so NPCs/systems can react to being
-            # spoken to directly — e.g. a bartender taking an order.
-            directed = (
-                {"to_speech": speech, "to_speaker": caller}
-                if (observer is target and heard) else {}
-            )
-            observer.msg(text=text, type="say", from_obj=caller, **directed)
+        broadcast_speech(caller, speech, location, target=target)
 
 
 class CmdWhisper(Command):
