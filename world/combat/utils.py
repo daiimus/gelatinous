@@ -260,6 +260,43 @@ def select_weapon_for_engagement(attacker, target):
     return max(usable, key=lambda w: get_weapon_damage(w, 0))
 
 
+# Surplus grasping limbs buy initiative (CAPACITY_CONSUMERS spec §6.1 Q2 —
+# breadth, not power). Decided 2026-06-20: NOT a big 3rd-hand jump — the bonus
+# RAMPS UP through ~6 limbs (a reason to keep adding), then TAPERS OFF
+# COMPLETELY (capped). Modelled as triangular (accelerating) increments per
+# surplus limb, capped. Magnitudes tunable.
+INITIATIVE_LIMB_SURPLUS_CAP = 4   # surplus limbs that still help (human: caps at 6 total)
+INITIATIVE_LIMB_BONUS_UNIT = 2    # initiative per triangular step; peak = UNIT × T(CAP) = 20
+
+
+def surplus_limb_initiative_bonus(char) -> int:
+    """Initiative bonus from grasping limbs beyond the species baseline.
+
+    More working hands / tails = you bring something to bear sooner. The
+    marginal value accelerates (the 3rd hand is small; the run up to ~6 is the
+    reason to chrome up) then caps — extra limbs past the cap give nothing.
+    Fail-open (0) for anything without a readable ``hands`` view / species.
+    """
+    hands = getattr(char, "hands", None)
+    if hands is None:
+        return 0
+    try:
+        functional = len(hands)
+    except Exception:
+        return 0
+
+    species = getattr(getattr(char, "db", None), "species", None)
+    try:
+        from world.anatomy import get_species_grasping_containers
+        baseline = len(get_species_grasping_containers(species) or ())
+    except Exception:
+        return 0
+
+    surplus = min(max(0, functional - baseline), INITIATIVE_LIMB_SURPLUS_CAP)
+    triangular = surplus * (surplus + 1) // 2   # 0, 1, 3, 6, 10
+    return triangular * INITIATIVE_LIMB_BONUS_UNIT
+
+
 # ===================================================================
 # MESSAGE FORMATTING
 # ===================================================================
@@ -531,7 +568,11 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
     target_dbref = get_character_dbref(target)
     entry = {
         DB_CHAR: char,
-        DB_INITIATIVE: randint(1, 20) + get_numeric_stat(char, "motorics", 0),
+        DB_INITIATIVE: (
+            randint(1, 20)
+            + get_numeric_stat(char, "motorics", 0)
+            + surplus_limb_initiative_bonus(char)
+        ),
         DB_TARGET_DBREF: target_dbref,
         DB_GRAPPLING_DBREF: get_character_dbref(initial_grappling),
         DB_GRAPPLED_BY_DBREF: get_character_dbref(initial_grappled_by),
