@@ -133,6 +133,14 @@ class BarCounter(Item):
         self.db.integrate = True          # part of the room, not a loose object
         self.locks.add("get:false()")     # stuck — can't be pocketed
         self.cmdset.add(BarCmdSet, persistent=True)
+        # @integrate weaves the counter into the room description via
+        # db.sensory_contributions (builders author a per-bar 'visual' line, e.g.
+        # `@roomsense`-style data). Until they do, fall back to a plain generic
+        # line rather than the bare "<key> is here" the room would otherwise use.
+        self.db.integration_fallback = (
+            "A salvaged counter runs along one side of the room, its surface "
+            "scarred by years of set-down glasses."
+        )
 
     def is_bartender(self, char):
         """True if `char` may work this bar (owner, staff, or — v1 — anyone if
@@ -172,6 +180,17 @@ class Bartender(Character):
     def at_object_creation(self):
         super().at_object_creation()
         self.db.is_bartender_npc = True
+        # Identity safety-net: a Character with no height/build composes no
+        # sdesc and falls back to its *key* — which would leak the NPC's real
+        # name ("Sully") to every onlooker instead of "a wiry man". Seed a
+        # baseline presentation so the NPC always renders through the identity
+        # system; builders override per-NPC (height/build/sdesc_keyword/sex).
+        if not self.height:
+            self.height = "average"
+        if not self.build:
+            self.build = "average"
+        if not self.sdesc_keyword:
+            self.sdesc_keyword = "bartender"
 
     def _find_bar(self):
         if not self.location:
