@@ -435,6 +435,25 @@ is the content lift) → per-effector resolver (manipulation/moving).
 Each layer ships standalone value. The five-senses *description model* (§5) is
 the one piece worth pinning early so earlier layers don't contradict it.
 
+### 9.5 · Chrome — the augments that remediate (✅ SHIPPED)
+
+Crippling injury is remediated by chrome (§1). The augments restore a capacity
+the idiomatic way — **capacity-bearing replacement organs at the canonical organ
+names** (like the pre-existing `CYBER_ARM`→manipulation, `CYBER_JAW`→talking), so
+`calculate_body_capacity` counts them and every consumer sees the sense /
+locomotion restored, no special-case needed:
+
+- `CYBER_LEFT_EYE` / `CYBER_RIGHT_EYE` → `sight` (single-organ, head sub-organ).
+- `CYBER_LEFT_EAR` / `CYBER_RIGHT_EAR` → `hearing`.
+- `CYBER_LEG` → `moving` (side-agnostic `augment_organs` chassis).
+- `VOICE_MODULATOR` → a jaw-hardpoint module toggling `voice_modulator_active`
+  (the voice-disguise; shifts the voice UID so recognition fails). `/modulate`.
+
+The `*_override` conditions (`sight_override`/`hearing_override`/`moving_override`/
+`manipulation_override`) remain a distinct, still-open **enhancer** seam — for a
+future augment that grants a sense *without* the organ (blindsight / sonar /
+targeting computer), where replacement doesn't apply.
+
 ## 10 · Cross-references
 
 - `LOOK_COMMAND_SPEC.md` — Sensory Category Framework (the render consumer).
