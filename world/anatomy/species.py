@@ -182,12 +182,12 @@ SPECIES_DEFINITIONS = {
                 "can_be_harvested": True
             },
             # Nose — issue #355.  Surfaces at the ``face`` longdesc
-            # the same way jaw and tongue do.  Damage doesn't affect a
-            # named capacity (no smell capacity in scope), but it's
-            # disfiguring and harvestable.
+            # the same way jaw and tongue do.  Carries the ``smell``
+            # capacity (olfactory perception); disfiguring and harvestable.
             "nose": {
                 "container": "head", "display_location": "face",
                 "max_hp": 8, "hit_weight": "rare",
+                "capacity": "smell", "contribution": "total",
                 "disfiguring_if_lost": True,
                 "can_be_harvested": True,
             },
@@ -516,6 +516,12 @@ SPECIES_DEFINITIONS = {
                 "organ_contribution": 0.5,
                 "affects": ["trade_price_improvement"],
                 "total_loss_penalty": "deafness",
+            },
+            "smell": {
+                "organs": ["nose"],
+                "organ_contribution": 1.0,
+                "affects": [],
+                "total_loss_penalty": "anosmia",
             },
             "moving": {
                 "organs": ["thoracolumbar_spine", "pelvis",

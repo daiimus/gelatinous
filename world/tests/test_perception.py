@@ -14,6 +14,7 @@ from unittest import TestCase
 
 from world.perception import (
     AUDITORY_SENSE,
+    OLFACTORY_SENSE,
     VISUAL_SENSE,
     blocked_senses,
     can_perceive_sense,
@@ -23,8 +24,8 @@ from world.perception import (
 
 
 class _MedState:
-    def __init__(self, sight=1.0, hearing=1.0):
-        self._caps = {"sight": sight, "hearing": hearing}
+    def __init__(self, sight=1.0, hearing=1.0, smell=1.0):
+        self._caps = {"sight": sight, "hearing": hearing, "smell": smell}
 
     def calculate_body_capacity(self, name):
         return self._caps.get(name, 1.0)
@@ -34,8 +35,10 @@ class _MedState:
 
 
 class _Looker:
-    def __init__(self, sight=1.0, hearing=1.0, medical=True):
-        self.medical_state = _MedState(sight, hearing) if medical else None
+    def __init__(self, sight=1.0, hearing=1.0, smell=1.0, medical=True):
+        self.medical_state = (
+            _MedState(sight, hearing, smell) if medical else None
+        )
 
 
 ALL_SENSES = ["visual", "auditory", "olfactory", "tactile", "atmospheric"]
@@ -60,6 +63,15 @@ class BlockedSensesTests(TestCase):
     def test_one_eye_one_ear_block_nothing(self):
         self.assertEqual(blocked_senses(_Looker(sight=0.5, hearing=0.5)), set())
 
+    def test_no_nose_blocks_olfactory_only(self):
+        self.assertEqual(blocked_senses(_Looker(smell=0.0)), {OLFACTORY_SENSE})
+
+    def test_blind_and_anosmic_blocks_both(self):
+        self.assertEqual(
+            blocked_senses(_Looker(sight=0.0, smell=0.0)),
+            {VISUAL_SENSE, OLFACTORY_SENSE},
+        )
+
     def test_none_looker_blocks_nothing(self):
         self.assertEqual(blocked_senses(None), set())
 
@@ -79,6 +91,12 @@ class CanPerceiveSenseTests(TestCase):
         looker = _Looker(hearing=0.0)
         self.assertFalse(can_perceive_sense(looker, "auditory"))
         self.assertTrue(can_perceive_sense(looker, "visual"))
+
+    def test_anosmic_cannot_perceive_olfactory_but_others_ok(self):
+        looker = _Looker(smell=0.0)
+        self.assertFalse(can_perceive_sense(looker, "olfactory"))
+        self.assertTrue(can_perceive_sense(looker, "visual"))
+        self.assertTrue(can_perceive_sense(looker, "tactile"))
 
 
 class FilterSensoryKeysTests(TestCase):
