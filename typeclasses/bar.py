@@ -137,8 +137,11 @@ class BarCounter(Item):
         # db.sensory_contributions (builders author a per-bar 'visual' line, e.g.
         # `@roomsense`-style data). Until they do, fall back to a plain generic
         # line rather than the bare "<key> is here" the room would otherwise use.
+        # Highlight the targetable noun in cyan (house style for things you can
+        # interact with), matching the typical 'bar' key word so `look bar`
+        # reads as clickable.
         self.db.integration_fallback = (
-            "A salvaged counter runs along one side of the room, its surface "
+            "A salvaged |cbar|n runs along one side of the room, its surface "
             "scarred by years of set-down glasses."
         )
 
@@ -152,23 +155,15 @@ class BarCounter(Item):
         return char is owner or char in staff
 
     def return_appearance(self, looker, **kwargs):
+        # Looking at the bar shows its own description (db.desc) — deliberately
+        # distinct from the @integrate line woven into the room — plus whatever
+        # drinks are physically resting on its surface. No instructional chrome.
         base = super().return_appearance(looker, **kwargs)
-        # Show drinks resting on the surface.
         drinks = [o for o in self.contents if getattr(o.db, "is_drink", False)]
         if drinks:
             served = ", ".join(d.get_display_name(looker) for d in drinks)
             base += f"\n\nOn the bar: {served}."
-        guide = (
-            "\n\n|wFor patrons|n\n"
-            "  |cread menu on " + self.key + "|n — see what's on offer\n"
-            "  |cto <bartender> ...|n       — ask for a drink\n"
-            "  |cget <drink> from " + self.key + "|n — take a drink off the bar\n"
-            "  |cdrink <drink>|n            — sip it\n"
-            "\n|wFor bartenders|n\n"
-            "  |cput <ingredient> on " + self.key + "|n — load ingredients\n"
-            "  |cuse " + self.key + "|n             — mix the loaded ingredients"
-        )
-        return base + guide
+        return base
 
 
 # ---------------------------------------------------------------------------
