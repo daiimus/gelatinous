@@ -93,7 +93,7 @@ class CmdBarUse(Command):
             effects=effects,
             sips=3,
             taste="A rough, improvised mix — it does the job.",
-            location=bar,
+            location=bar.location,   # onto the room (narrated on the bar)
         )
         for i in ingredients:
             i.delete()
@@ -197,8 +197,9 @@ class Bartender(Character):
                 f'"That\'s {price}. Come back when you\'ve got it."'
             )
             return
-        loc = bar if bar else self.location
-        drink = make_drink_from_recipe(recipe, location=loc)
+        # Served into the room (narrated "on the bar") so a plain `get` works;
+        # the bar-as-surface container is a later polish.
+        drink = make_drink_from_recipe(recipe, location=self.location)
         if price:
             patron.tokens = have - price
             if bar:
