@@ -298,10 +298,149 @@ CROWD_MESSAGES = {
                 "there's no telling where one body ends and the next begins",
             ],
         },
-    }
+    },
+    # ------------------------------------------------------------------
+    # Interior profile — bars, venues, and other enclosed rooms. The street
+    # 'default' pool is all open-air crush (haulers, drones, gutters); indoors
+    # the crowd is the room's own patrons, so it reads smaller and closer. Same
+    # five sense layers, smaller pools, no weather/traffic imagery. Selected by
+    # room.type via get_crowd_messages(profile=...).
+    # ------------------------------------------------------------------
+    'interior': {
+        'sparse': {
+            'visual': [
+                "a lone drinker nurses something at the far end of the counter, in no hurry to finish it",
+                "two regulars hunch over a table, talking low, and don't look up",
+                "someone sits alone in a booth with their back to the wall and their eyes on the door",
+                "a barfly counts out chits one at a time, weighing another round against the walk home",
+                "a synth wipes down an already-clean table with slow, even strokes",
+                "someone dozes against the wall in the corner, drink forgotten on the floor",
+            ],
+            'auditory': [
+                "a single low conversation murmurs somewhere behind you and goes quiet",
+                "a glass sets down on wood, and the room is quiet enough to hear it",
+                "a stool scrapes back, and bootsteps cross to the door and out",
+                "somewhere a handpad chimes and a voice answers it in a mutter",
+                "the slow drip of a tap counts off the quiet",
+            ],
+            'olfactory': [
+                "spilled liquor and old smoke have soaked into the wood over years",
+                "stale beer and somebody's cheap cigarette hang in the still air",
+                "the close smell of a near-empty room: damp coats, ash, and cold grease",
+            ],
+            'tactile': [
+                "the near-empty room holds the warmth of its few bodies and little else",
+                "the quiet leaves the air still and close around the tables",
+            ],
+            'atmospheric': [
+                "half the seats are empty and the lights over them have been left low",
+                "the room has the settled hush of a place between its busy hours",
+                "rings from a hundred glasses ghost the bartop where the light catches it",
+            ],
+        },
+        'moderate': {
+            'visual': [
+                "a working crowd fills the tables, drinks moving and chits changing hands",
+                "two crews share a booth, voices easy, eyes still tracking the room",
+                "someone works the floor table to table, selling something held close to the chest",
+                "a knot of regulars props up the counter, trading the same complaints they always do",
+                "a synth ferries empties back two-handed and never spills",
+                "a hand of cards goes round a corner table, the pot a small heap of chits",
+            ],
+            'auditory': [
+                "a dozen overlapping conversations fill the room with a steady warm churn",
+                "laughter goes up at one table and turns a few heads",
+                "glasses clink and a stool scrapes under the talk",
+                "someone calls an order across the room and gets a grunt back",
+                "a low argument simmers at the bar and settles before it boils",
+            ],
+            'olfactory': [
+                "warm bodies, spilled beer, and cigarette smoke thicken the air",
+                "the smells of a working bar: liquor, sweat, and something frying out back",
+                "smoke hangs in a flat layer at head height over the tables",
+            ],
+            'tactile': [
+                "the room's warm with bodies now, the chill of the door long gone",
+                "the heat of a full house takes the edge off the night",
+            ],
+            'atmospheric': [
+                "the tables are mostly full and the talk runs steady over them",
+                "the floor's gone tacky underfoot where the night's spills have dried",
+                "smoke and low light blur the far end of the room together",
+            ],
+        },
+        'heavy': {
+            'visual': [
+                "the room's packed shoulder to shoulder, every table taken and the bar three deep",
+                "people stand wherever they can find floor, drinks held high out of the crush",
+                "a scuffle breaks out near the bar and folds back into the press before it goes anywhere",
+                "the line at the counter has stopped being a line and become a wall of backs and elbows",
+            ],
+            'auditory': [
+                "the noise is a solid wall of voices with no gaps in it",
+                "you can't hear the person beside you without leaning in close",
+                "a glass shatters somewhere in the press and a cheer goes up after it",
+                "shouted orders pile on top of each other at the bar and lose all meaning",
+            ],
+            'olfactory': [
+                "the packed room reeks of sweat, smoke, and spilled drink",
+                "body heat pushes a thick stink of bodies and stale beer through the air",
+                "the smoke's so thick now it stings the eyes",
+            ],
+            'tactile': [
+                "the packed bodies throw off a steady heat that comes from every side",
+                "there's no still air left in here, just the warm press of the crowd",
+            ],
+            'atmospheric': [
+                "there's no clear floor left, just a room full of shifting backs",
+                "breath and smoke fog the air under the low lights",
+                "the heat of the crowd has become its own weather in here",
+            ],
+        },
+        'packed': {
+            'visual': [
+                "the crush is total, jammed too tight for anyone to do more than inch toward the bar",
+                "drinks ride overhead hand to hand because there's no room to carry them any other way",
+                "faces press close enough to count on every side",
+                "a fight breaks out somewhere in the pack, has nowhere to go, and dies in the press",
+            ],
+            'auditory': [
+                "the roar of the packed room is total, every voice drowned in every other",
+                "the din is so complete it starts to feel like silence",
+                "not even a shout carries past the next body",
+            ],
+            'olfactory': [
+                "the crush stinks of close-packed bodies, sweat, and breath gone stale",
+                "there's no clean air left, only the thick reek of the packed room",
+            ],
+            'tactile': [
+                "the crush radiates a smothering heat from every side at once",
+                "the press holds everyone upright whether they like it or not",
+            ],
+            'atmospheric': [
+                "there are no walls anymore, just packed bodies in every direction",
+                "the air is thick, warm, and short",
+                "the crowd has stopped being people and become one solid thing",
+            ],
+        },
+    },
 }
 
-def get_crowd_messages(crowd_level, message_category='all'):
+#: Room types that draw on the enclosed 'interior' crowd pool rather than the
+#: open-air street 'default'. Anything not listed falls back to 'default'.
+INTERIOR_ROOM_TYPES = {
+    'bar', 'interior', 'nightclub', 'club', 'venue', 'cantina', 'lounge',
+}
+
+
+def crowd_profile_for_room_type(room_type):
+    """Map a ``room.type`` to a crowd message profile name ('default'|'interior')."""
+    if room_type and str(room_type).lower() in INTERIOR_ROOM_TYPES:
+        return 'interior'
+    return 'default'
+
+
+def get_crowd_messages(crowd_level, message_category='all', profile='default'):
     """
     Get crowd messages for specified level and category.
 
@@ -309,6 +448,9 @@ def get_crowd_messages(crowd_level, message_category='all'):
         crowd_level (int): Crowd level (0-4+)
         message_category (str): 'visual', 'auditory', 'olfactory', 'tactile',
             'atmospheric', or 'all'
+        profile (str): Which message pool to draw from ('default' street crush
+            vs. 'interior' enclosed venues). Unknown profiles fall back to
+            'default'.
 
     Returns:
         dict or list: Message pools for the crowd level
@@ -318,10 +460,12 @@ def get_crowd_messages(crowd_level, message_category='all'):
     if intensity == 'none':
         return {} if message_category == 'all' else []
 
-    if intensity not in CROWD_MESSAGES['default']:
+    pool = CROWD_MESSAGES.get(profile) or CROWD_MESSAGES['default']
+
+    if intensity not in pool:
         intensity = 'packed'  # Fallback for very high crowd levels
 
-    crowd_pool = CROWD_MESSAGES['default'][intensity]
+    crowd_pool = pool[intensity]
 
     if message_category == 'all':
         return crowd_pool

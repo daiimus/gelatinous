@@ -94,6 +94,8 @@ def _make_item(key="medkit"):
     # No substance — the #487 dose hook no-ops on None.
     item.db = MagicMock()
     item.db.substance = None
+    # Not a recipe-composed drink — the drink branch (#643) must no-op.
+    item.db.drink_effects = None
     return item
 
 

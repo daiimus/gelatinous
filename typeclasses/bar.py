@@ -1,21 +1,23 @@
 """
 Bars (BARS_AND_RECIPES_SPEC) — the crafting station and its bartender.
 
-``BarCounter`` is the interactive counter object: a container that holds loaded
-ingredients and served drinks, carries the menu/register/ownership, and exposes
-the `menu` / `use` verbs. ``Bartender`` is an NPC that responds to a patron
-talking to it (the `to` command's structured directed speech) by making a drink
-from its menu, serving it on the bar, and charging on order.
+``BarCounter`` is the interactive counter: an ``@integrate`` room fixture (folds
+into the room description, not listed as a loose object, can't be picked up) that
+holds served drinks on its surface, carries the menu/register/ownership, and
+exposes the `read menu on <bar>` / `use <bar>` verbs. ``Bartender`` is an NPC that
+responds to a patron talking to it (the `to` command's structured directed
+speech) by making a drink from its menu, setting it on the bar, and taking
+payment diegetically (it says the price; no system text).
 
-v1 is intentionally lenient where the spec defers detail (ownership gating,
-recipe-saving UX) so the loop is testable; those are later slices.
+v1 is intentionally lenient where the spec defers (ownership gating, recipe-save
+UX) so the loop is testable; those are later slices.
 """
 
 from evennia import CmdSet
 from evennia.commands.command import Command
 from evennia.utils import delay
 
-from typeclasses.objects import Object
+from typeclasses.items import Item
 from typeclasses.characters import Character
 from world.bar import (
     make_drink,
@@ -30,10 +32,13 @@ from world.bar import (
 # ---------------------------------------------------------------------------
 class CmdBarMenu(Command):
     """
-    Read the bar's menu.
+    Read a bar's menu.
 
     Usage:
+        read menu on <bar>
         menu
+
+    Defaults to the bar in the room, so a bare ``menu`` / ``read menu`` works.
     """
 
     key = "menu"
@@ -42,27 +47,27 @@ class CmdBarMenu(Command):
     help_category = "Bar"
 
     def func(self):
-        bar = self.obj
+        bar = self.obj   # the bar this cmdset is attached to
         menu = bar.db.menu or []
+        name = bar.get_display_name(self.caller)
         if not menu:
-            self.caller.msg(f"{bar.get_display_name(self.caller)} has nothing on offer.")
+            self.caller.msg(f"{name} has nothing on offer.")
             return
-        lines = [f"|w{bar.get_display_name(self.caller)} — menu|n"]
+        lines = [f"|w{name} — menu|n"]
         for r in menu:
-            price = r.get("price", 0)
-            lines.append(f"  {r['name']}  |y({price})|n")
+            lines.append(f"  {r['name']}  |y({r.get('price', 0)})|n")
         self.caller.msg("\n".join(lines))
 
 
 class CmdBarUse(Command):
     """
-    Work the bar: mix whatever ingredients are loaded into it.
+    Work the bar: mix whatever ingredients are loaded onto it.
 
     Usage:
         use <bar>
 
-    Load ingredients first (``put <ingredient> in <bar>``), then ``use`` the
-    bar to mix them into a drink. The drink lands on the bar.
+    Load ingredients first (``put <ingredient> on <bar>``), then ``use`` the bar
+    to mix them into a drink. The drink lands on the bar.
     """
 
     key = "use"
@@ -75,13 +80,10 @@ class CmdBarUse(Command):
         if not bar.is_bartender(caller):
             caller.msg("You aren't working this bar.")
             return
-        ingredients = [
-            o for o in bar.contents
-            if getattr(o.db, "is_ingredient", False)
-        ]
+        ingredients = [o for o in bar.contents if getattr(o.db, "is_ingredient", False)]
         if not ingredients:
             caller.msg(
-                f"Nothing's loaded to mix. Put ingredients in "
+                f"Nothing's loaded to mix. Put ingredients on "
                 f"{bar.get_display_name(caller)} first."
             )
             return
@@ -93,7 +95,7 @@ class CmdBarUse(Command):
             effects=effects,
             sips=3,
             taste="A rough, improvised mix — it does the job.",
-            location=bar.location,   # onto the room (narrated on the bar)
+            location=bar,   # onto the bar surface
         )
         for i in ingredients:
             i.delete()
@@ -111,10 +113,16 @@ class BarCmdSet(CmdSet):
 
 
 # ---------------------------------------------------------------------------
-# The bar counter
+# The bar counter — an @integrate room fixture with a surface
 # ---------------------------------------------------------------------------
-class BarCounter(Object):
-    """An interactive bar counter — the first crafting station."""
+class BarCounter(Item):
+    """An interactive bar counter — the first crafting station.
+
+    An ``Item`` (so the @integrate room display recognises it) but a fixed
+    fixture: ``db.integrate`` folds it into the room description rather than the
+    loose-object list, and a ``get:false()`` lock keeps it from being picked up.
+    Served drinks rest in its ``contents`` (the surface).
+    """
 
     def at_object_creation(self):
         super().at_object_creation()
@@ -122,29 +130,35 @@ class BarCounter(Object):
         self.db.register = 0
         self.db.owner = None
         self.db.staff = []
-        self.locks.add("get:false()")  # the bar itself isn't pocketable
+        self.db.integrate = True          # part of the room, not a loose object
+        self.locks.add("get:false()")     # stuck — can't be pocketed
         self.cmdset.add(BarCmdSet, persistent=True)
 
     def is_bartender(self, char):
-        """True if `char` may work this bar (owner, staff, or — v1 — anyone
-        if no ownership is set yet)."""
+        """True if `char` may work this bar (owner, staff, or — v1 — anyone if
+        no ownership is configured yet)."""
         owner = self.db.owner
         staff = self.db.staff or []
         if owner is None and not staff:
-            return True  # lenient until ownership is configured
+            return True
         return char is owner or char in staff
 
     def return_appearance(self, looker, **kwargs):
         base = super().return_appearance(looker, **kwargs)
+        # Show drinks resting on the surface.
+        drinks = [o for o in self.contents if getattr(o.db, "is_drink", False)]
+        if drinks:
+            served = ", ".join(d.get_display_name(looker) for d in drinks)
+            base += f"\n\nOn the bar: {served}."
         guide = (
             "\n\n|wFor patrons|n\n"
-            "  |cmenu|n                 — read what's on offer\n"
-            "  |corder ... |n / |cto <bartender> ...|n — ask the bartender for a drink\n"
-            "  |cget <drink> from " + self.key + "|n — take a drink served to you\n"
-            "  |cdrink <drink>|n        — sip it\n"
+            "  |cread menu on " + self.key + "|n — see what's on offer\n"
+            "  |cto <bartender> ...|n       — ask for a drink\n"
+            "  |cget <drink> from " + self.key + "|n — take a drink off the bar\n"
+            "  |cdrink <drink>|n            — sip it\n"
             "\n|wFor bartenders|n\n"
-            "  |cput <ingredient> in " + self.key + "|n — load ingredients\n"
-            "  |cuse " + self.key + "|n            — mix the loaded ingredients"
+            "  |cput <ingredient> on " + self.key + "|n — load ingredients\n"
+            "  |cuse " + self.key + "|n             — mix the loaded ingredients"
         )
         return base + guide
 
@@ -172,34 +186,26 @@ class Bartender(Character):
         order = kwargs.get("to_speech")
         speaker = kwargs.get("to_speaker") or from_obj
         if order and speaker is not None and speaker is not self:
-            # A small beat, then fulfil — feels natural and avoids reentrancy.
             delay(1.5, self._fulfil_order, order, speaker)
         return True
 
     def _fulfil_order(self, order_text, patron):
-        if not self.location:
+        if not self.location or getattr(patron, "location", None) is not self.location:
             return
-        if getattr(patron, "location", None) is not self.location:
-            return  # patron wandered off
         bar = self._find_bar()
         menu = (bar.db.menu if bar else None) or self.db.menu or []
         recipe = match_recipe(order_text, menu)
         if not recipe:
-            self.location.msg_contents(
-                f'{self.key} shakes their head. "Don\'t serve that here."'
-            )
+            self.execute_cmd("say Don't serve that here.")
             return
         price = int(recipe.get("price", 0) or 0)
         have = int(getattr(patron, "tokens", 0) or 0)
         if price and have < price:
-            self.location.msg_contents(
-                f'{self.key} looks {patron.key} over. '
-                f'"That\'s {price}. Come back when you\'ve got it."'
-            )
+            self.execute_cmd(f"say That's {price}. Come back when you've got it.")
             return
-        # Served into the room (narrated "on the bar") so a plain `get` works;
-        # the bar-as-surface container is a later polish.
-        drink = make_drink_from_recipe(recipe, location=self.location)
+        # Make it on the bar surface, take the cash as part of the gesture.
+        loc = bar if bar else self.location
+        drink = make_drink_from_recipe(recipe, location=loc)
         if price:
             patron.tokens = have - price
             if bar:
@@ -207,7 +213,8 @@ class Bartender(Character):
         craft = recipe.get("craft", "fixes the drink")
         where = bar.key if bar else "the bar"
         self.location.msg_contents(
-            f"{self.key} {craft}, then sets {drink.key} on {where}."
+            f"{self.key} {craft}, sets {drink.key} on {where}, and sweeps the "
+            f"payment off the slab with a practiced hand."
         )
         if price:
-            patron.msg(f"|y(That's {price} tokens.)|n")
+            self.execute_cmd(f"say {price}.")
