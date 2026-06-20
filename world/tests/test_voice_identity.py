@@ -244,7 +244,7 @@ class PerceptionTests(TestCase):
         self.assertFalse(can_hear(char))
 
     def test_override_conditions_restore_senses(self):
-        from world.voice import (
+        from world.perception import (
             SIGHT_OVERRIDE_CONDITION, HEARING_OVERRIDE_CONDITION,
         )
         char = _FakeChar(

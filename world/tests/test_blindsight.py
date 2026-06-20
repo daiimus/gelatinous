@@ -16,7 +16,7 @@ from types import SimpleNamespace
 from unittest import TestCase
 
 from world.combat.capacity import sight_hit_factor, BLINDSIGHT_FLAG
-from world.voice import can_see
+from world.perception import can_see
 from world.medical.augments import _toggle_blindsight
 
 
