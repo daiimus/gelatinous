@@ -184,11 +184,11 @@ GRATITUDE_TRIGGERS = (
 #: rather than words. Phrased as emote actions (the identity system prepends his
 #: per-observer name).
 ACK_EMOTES = (
-    "tips his chin a fraction, not looking up from the taps",
-    "raises two fingers off the slab in a flat, unhurried salute",
-    "grunts once, low, and keeps wiping down a glass",
-    "gives a single slow nod, the kind that's already moved on to the next thing",
-    "knocks two knuckles against the slab and lets that be the answer",
+    "tips his chin a fraction, not looking up from the taps.",
+    "raises two fingers off the slab in a flat, unhurried salute.",
+    "grunts once, low, and keeps wiping down a glass.",
+    "gives a single slow nod, the kind that's already moved on to the next thing.",
+    "knocks two knuckles against the slab and lets that be the answer.",
 )
 
 #: Minimum seconds between acknowledgements, so a chatty room doesn't spam them.
@@ -222,36 +222,31 @@ class Bartender(Character):
         return None
 
     def at_msg_receive(self, text=None, from_obj=None, **kwargs):
-        """React to speech nearby.
+        """React to speech nearby, via the shared speech backbone.
 
-        Two triggers, gratitude checked first so "thanks for the rotgut" reads
-        as a thank-you, not a re-order:
+        Every verb that carries words — ``say``, ``to``, or a pose with an
+        embedded quote — delivers the same structured payload (``speech`` =
+        the words, ``addressed`` = whether this bartender was the one spoken to),
+        and only to listeners who can hear. So a single check handles all three:
 
-          - **Gratitude** (thanks/cheers/much obliged...) heard from anyone in
-            the room, whether said plainly or directed via ``to`` — answered
-            with a small non-verbal acknowledgement.
-          - **A directed order** (the ``to`` command's ``to_speech``) — fulfilled
-            from the menu.
+          - **Gratitude** (thanks/cheers/much obliged...) from any heard speech —
+            answered with a small non-verbal acknowledgement. Checked first so
+            "thanks for the rotgut" reads as a thank-you, not a re-order.
+          - **A directed order** — speech that was *addressed* to this bartender
+            (``to <bartender> ...`` or ``.slide up to <bartender>, "..."``) is
+            matched against the menu and made.
         """
-        order = kwargs.get("to_speech")
-        speaker = kwargs.get("to_speaker") or from_obj
-        if speaker is None or speaker is self:
+        speech = kwargs.get("speech")
+        speaker = from_obj
+        if not speech or speaker is None or speaker is self:
             return True
 
-        # Spoken content: the raw directed order if present, else the rendered
-        # say text (which still contains the quoted words to scan).
-        if order:
-            content = order
-        else:
-            raw = text[0] if isinstance(text, (tuple, list)) else text
-            content = raw if isinstance(raw, str) else ""
-
-        if self._is_gratitude(content):
+        if self._is_gratitude(speech):
             self._acknowledge()
             return True
 
-        if order:
-            delay(1.5, self._fulfil_order, order, speaker)
+        if kwargs.get("addressed"):
+            delay(1.5, self._fulfil_order, speech, speaker)
         return True
 
     @staticmethod
