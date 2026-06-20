@@ -46,6 +46,16 @@ def hazard_fires(p_per_minute: float, elapsed_minutes: float) -> bool:
 BLOOD_FILTRATION_HEAL_FLOOR = 0.25     # clearance never stalls below 25% speed
 BLOOD_FILTRATION_WORSEN_SLOPE = 1.0    # worsen ×(1 + slope·(1−filtration)): 0.5→1.5x, 0→2.0x
 
+# RenalFailure (§7.2): total kidney loss → chronic uremia. Numbers are
+# proof-of-concept; a balance pass is owed. Tunable.
+RENAL_FAILURE_ONSET_FILTRATION = 0.05            # ≤ this (both kidneys gone) → onset
+RENAL_FAILURE_RECOVERY_FILTRATION = 0.4          # ≥ this (a kidney restored) → clears
+RENAL_FAILURE_PROGRESSION_PER_MINUTE = 0.15      # toxin buildup: severity climbs
+RENAL_FAILURE_CONSCIOUSNESS_PER_SEVERITY = 0.06  # progressive obtundation
+RENAL_FAILURE_MAX_CONSCIOUSNESS_PENALTY = 0.6    # can't alone instantly zero consciousness
+RENAL_FAILURE_LETHAL_SEVERITY = 7                # uremic systemic decline begins
+RENAL_FAILURE_DECLINE_PER_TICK = 0.3             # %/update blood-equiv drain when terminal
+
 
 def read_blood_filtration(character):
     """Raw ``blood_filtration`` capacity (0.0–1.0) for *character*, or ``None``.
@@ -694,6 +704,64 @@ class ConsciousnessSuppressionCondition(MedicalCondition):
         return condition
 
 
+class RenalFailureCondition(MedicalCondition):
+    """Total kidney loss → chronic uremia (CAPACITY_CONSUMERS spec §7.2).
+
+    Spawned and cleared by :meth:`MedicalState.update_vital_signs` from the
+    ``blood_filtration`` capacity (both kidneys gone → onset; a kidney restored
+    — cyber or donor — → it clears). Toxins accumulate (severity climbs), which:
+
+    * **obtunds** the patient — :meth:`get_consciousness_penalty` ramps with
+      severity (reuses the existing consciousness-suppression summation), and
+    * **slowly kills** — at terminal severity a uremic systemic decline drains
+      blood-equivalent volume (:meth:`get_blood_loss_rate`) until the existing
+      blood-loss death floor trips. No new death-verdict path; it rides the
+      substrates bleeding already uses.
+
+    Its signature is a visible uremic pallor via the §7.3 appearance hook.
+    """
+
+    def __init__(self, severity=1, location=None):
+        super().__init__("renal_failure", severity, location, tick_interval=300)
+
+    def tick_effect(self, character, elapsed_minutes=1.0):
+        # Toxins accumulate while filtration is gone — severity climbs to max.
+        if hazard_fires(RENAL_FAILURE_PROGRESSION_PER_MINUTE, elapsed_minutes):
+            self.severity = min(10, self.severity + 1)
+
+    def get_consciousness_penalty(self):
+        """Progressive obtundation, capped (uremic encephalopathy)."""
+        return min(
+            RENAL_FAILURE_MAX_CONSCIOUSNESS_PENALTY,
+            self.severity * RENAL_FAILURE_CONSCIOUSNESS_PER_SEVERITY,
+        )
+
+    def get_blood_loss_rate(self):
+        """Uremic systemic decline — a slow drain once terminal, else none."""
+        if self.severity < RENAL_FAILURE_LETHAL_SEVERITY:
+            return 0.0
+        return RENAL_FAILURE_DECLINE_PER_TICK
+
+    def appearance_symptom(self):
+        """The §7.3 visible signature — sallow / uremic / ashen skin."""
+        return "uremic"
+
+    def should_end(self):
+        # Never self-resolves; removal is filtration-driven (update_vital_signs
+        # clears it when a kidney is restored).
+        return False
+
+    @classmethod
+    def from_dict(cls, data):
+        condition = cls(data.get("severity", 1), data.get("location"))
+        condition.max_severity = data.get("max_severity", condition.severity)
+        condition.tick_interval = data.get("tick_interval", 300)
+        condition.requires_ticker = data.get("requires_ticker", True)
+        condition.treated = data.get("treated", False)
+        condition.last_processed = data.get("last_processed", clock_now())
+        return condition
+
+
 class AddictionCondition(MedicalCondition):
     """Flavor-first substance addiction (issue #485).
 
@@ -818,6 +886,8 @@ def deserialize_condition(condition_dict):
         return AddictionCondition.from_dict(condition_dict)
     if condition_type == "consciousness_suppression":
         return ConsciousnessSuppressionCondition.from_dict(condition_dict)
+    if condition_type == "renal_failure":
+        return RenalFailureCondition.from_dict(condition_dict)
     return MedicalCondition.from_dict(condition_dict)
 
 
