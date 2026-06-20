@@ -108,7 +108,7 @@ def process_speech(
         Rendered speech string including quotes (redacted when unheard).
     """
     if observer is not speaker:
-        from world.voice import can_hear
+        from world.perception import can_hear
         if not can_hear(observer):
             return '"..."'
     return f'"{text}"'

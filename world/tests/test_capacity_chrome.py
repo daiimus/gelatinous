@@ -22,7 +22,7 @@ from unittest import TestCase
 
 from world.medical.core import MedicalState, Organ
 from world.combat.capacity import sight_hit_factor, moving_dodge_factor
-from world.voice import can_see, can_hear
+from world.perception import can_see, can_hear
 from world.prototypes import (
     CYBER_LEFT_EYE,
     CYBER_RIGHT_EYE,

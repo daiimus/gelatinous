@@ -32,6 +32,10 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
+# Per-sense capability checks live in world.perception (the perception module);
+# voice's speech-attribution chain consumes them.
+from world.perception import can_hear, can_see, _read_capacity
+
 # Voice-UID digest size — matches the visual Apparent-UID convention
 # (``world.identity._APPARENT_UID_DIGEST_BYTES``) so the two axes read alike.
 _VOICE_UID_DIGEST_BYTES = 8
@@ -120,41 +124,6 @@ def has_voice_signature(char: Any) -> bool:
 
 
 # --------------------------------------------------------------------------
-# Capacity reads
-# --------------------------------------------------------------------------
-def _read_capacity(char: Any, name: str) -> float | None:
-    """Raw body capacity *name* (0.0–1.0) for *char*, or ``None`` if unreadable.
-
-    ``None`` signals "no medical model" — callers fail open. Only a real number
-    is returned; anything else (e.g. a test mock) yields ``None``, mirroring
-    ``world.combat.dice.get_character_stat``.
-    """
-    state = getattr(char, "medical_state", None)
-    calc = getattr(state, "calculate_body_capacity", None)
-    if not callable(calc):
-        return None
-    try:
-        value = calc(name)
-    except Exception:
-        return None
-    if not isinstance(value, (int, float)) or isinstance(value, bool):
-        return None
-    return value
-
-
-def _has_condition(char: Any, condition_type: str) -> bool:
-    """True if *char* carries an active condition of *condition_type*."""
-    state = getattr(char, "medical_state", None)
-    getter = getattr(state, "get_conditions_by_type", None)
-    if not callable(getter):
-        return False
-    try:
-        return bool(getter(condition_type))
-    except Exception:
-        return False
-
-
-# --------------------------------------------------------------------------
 # The talking-capacity gate (§4.7)
 # --------------------------------------------------------------------------
 def is_voice_garbled(char: Any) -> bool:
@@ -163,67 +132,6 @@ def is_voice_garbled(char: Any) -> bool:
     if talking is None:
         return False
     return talking < VOICE_GARBLE_THRESHOLD
-
-
-# --------------------------------------------------------------------------
-# Perception primitives — can the observer see / hear the speaker (§4.5)
-# --------------------------------------------------------------------------
-# Below these capacities the observer has effectively lost the sense (blind /
-# deaf). One eye / one ear (0.5) still perceives; total loss (0.0) does not.
-# These live here for the resolution chain; layer 3 (perception render) may
-# promote them to a shared perception module. Tunable.
-SIGHT_PERCEPTION_THRESHOLD = 0.15
-HEARING_PERCEPTION_THRESHOLD = 0.15
-SMELL_PERCEPTION_THRESHOLD = 0.15
-
-# Condition seams that restore a lost sense (chrome eyes / cyber ears / a cyber
-# nose). Reuse the combat sight-override constant so one augment is coherent
-# everywhere.
-from world.combat.capacity import SIGHT_OVERRIDE_CONDITION  # noqa: E402
-HEARING_OVERRIDE_CONDITION = "hearing_override"
-SMELL_OVERRIDE_CONDITION = "smell_override"
-
-
-def can_see(char: Any) -> bool:
-    """True if *char* can see (enough ``sight`` to visually identify others).
-
-    Fails open with no medical model. A sight-override condition (chrome eyes)
-    restores sight regardless of organ state.
-    """
-    if _has_condition(char, SIGHT_OVERRIDE_CONDITION):
-        return True
-    sight = _read_capacity(char, "sight")
-    if sight is None:
-        return True
-    return sight >= SIGHT_PERCEPTION_THRESHOLD
-
-
-def can_hear(char: Any) -> bool:
-    """True if *char* can hear (enough ``hearing`` to receive a voice).
-
-    Fails open with no medical model. A hearing-override condition (cyber ears)
-    restores hearing regardless of organ state.
-    """
-    if _has_condition(char, HEARING_OVERRIDE_CONDITION):
-        return True
-    hearing = _read_capacity(char, "hearing")
-    if hearing is None:
-        return True
-    return hearing >= HEARING_PERCEPTION_THRESHOLD
-
-
-def can_smell(char: Any) -> bool:
-    """True if *char* can smell (enough ``smell`` for olfactory perception).
-
-    Fails open with no medical model. A smell-override condition (a cyber nose)
-    restores smell regardless of organ state.
-    """
-    if _has_condition(char, SMELL_OVERRIDE_CONDITION):
-        return True
-    smell = _read_capacity(char, "smell")
-    if smell is None:
-        return True
-    return smell >= SMELL_PERCEPTION_THRESHOLD
 
 
 # --------------------------------------------------------------------------
