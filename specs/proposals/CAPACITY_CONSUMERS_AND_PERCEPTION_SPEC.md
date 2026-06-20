@@ -234,11 +234,17 @@ limitation; this spec supplies the input.**
 (`blocked_senses` / `can_perceive_sense` / `has_reduced_perception`) gates the
 weather + crowd ambient pools on `sight`→visual / `hearing`→auditory (chrome
 override seams honoured), with a +1 compensatory ambient message when a sense
-is missing. **⏭️ NEXT (this slice): base room-desc five-senses decomposition** —
-let authors split a room's description into per-sense layers so the blind/deaf
-get a genuinely different room view (not just trimmed ambient pools). The
-single-blob desc remains the default visual layer; the decomposition is additive
-and opt-in per room.
+is missing.
+
+**✅ SHIPPED (base room-desc five-senses decomposition):** `Room.get_display_desc`
+(`typeclasses/rooms.py`) composes the room description from only the sense layers
+the looker can perceive — the visual blob (`db.desc`) when sighted, plus authored
+non-visual layers (`db.sense_descs`: auditory/olfactory/tactile/atmospheric) for
+senses they still have. **A blind looker loses the visual prose but reads the
+room by sound/smell/feel; deaf drops the auditory layer.** Opt-in per room via
+the `@roomsense` builder command — rooms with no sense layers + a sighted looker
+render exactly as before (zero regression). Weather/crowd still append (also
+perception-gated). Tests: `test_room_five_senses.py`.
 
 ## 6 · Manipulation & Moving — the per-effector resolver (decided)
 
