@@ -9,10 +9,15 @@ addiction come free. Drinks are multi-use consumables — one sip per use.
 All drink/ingredient content authored here is original to the colony.
 """
 
+import re
+
 from evennia import create_object
 
 #: Base typeclass for spawned drinks.
 DRINK_TYPECLASS = "typeclasses.objects.Object"
+
+#: Words dropped when deriving searchable aliases from a drink's display name.
+_ALIAS_STOPWORDS = {"a", "an", "the", "of", "with", "and", "in", "on", "to"}
 
 
 def mix_effects(ingredients):
@@ -34,12 +39,27 @@ def mix_effects(ingredients):
     return {k: v for k, v in effects.items() if v}
 
 
-def make_drink(*, name, desc, effects, sips=3, taste="", location=None):
+def _drink_aliases(name, keywords=()):
+    """Searchable aliases for a drink whose display name carries articles/phrases.
+
+    "a mug of rotgut" -> {"mug", "rotgut"} (+ any recipe keywords), so a patron
+    can ``drink rotgut`` / ``get rotgut from bar`` without typing the full name.
+    """
+    words = [
+        w for w in re.findall(r"[a-z0-9']+", (name or "").lower())
+        if w not in _ALIAS_STOPWORDS and len(w) > 2
+    ]
+    return list(dict.fromkeys([k.lower() for k in keywords] + words))
+
+
+def make_drink(*, name, desc, effects, sips=3, taste="", location=None, keywords=()):
     """Create a multi-use drink consumable that plugs into the `drink` verb.
 
     The drink carries ``db.drink_effects`` (a ``{substance_id: doses}`` map
     applied per sip), ``db.uses_left`` (the number of sips), and the `drink`
-    delivery tag so the existing consumption command accepts it.
+    delivery tag so the existing consumption command accepts it. Aliases are
+    derived from the name (+ recipe keywords) so the article-prefixed display
+    name stays targetable.
     """
     drink = create_object(DRINK_TYPECLASS, key=name, location=location)
     drink.db.desc = desc
@@ -49,6 +69,9 @@ def make_drink(*, name, desc, effects, sips=3, taste="", location=None):
     drink.db.is_drink = True
     # Delivery tag — `supports_delivery(item, "drink")` looks for this.
     drink.tags.add("drink", category="delivery_method")
+    aliases = _drink_aliases(name, keywords)
+    if aliases:
+        drink.aliases.add(aliases)
     return drink
 
 
@@ -61,6 +84,7 @@ def make_drink_from_recipe(recipe, *, location=None):
         sips=recipe.get("sips", 3),
         taste=recipe.get("taste", ""),
         location=location,
+        keywords=recipe.get("order_keywords", ()),
     )
 
 
