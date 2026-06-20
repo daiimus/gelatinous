@@ -2364,6 +2364,50 @@ CYBER_RIGHT_EAR = {
     ],
 }
 
+# --- Cybernetic kidney → blood_filtration (infection course, renal failure) ---
+# Single-organ replacement at the canonical kidney slot (like CYBERNETIC_HEART
+# in the shared chest): restores blood_filtration, which clears RenalFailure
+# (§7.2) via update_vital_signs and steadies the infection course (§7.1). A
+# harvested DONOR kidney installs the same way (canonical name → capacity
+# auto-restores) — the modular dialysis stopgap is future.
+CYBER_LEFT_KIDNEY = {
+    "key": "cybernetic left kidney",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["cyber left kidney", "left filtration unit"],
+    "desc": "A bean-shaped filtration unit in a sealed perfusion cradle — a stack of micro-dialysis membranes behind a titanium shell, vascular couplers ringing the hilum like the real thing's renal artery and vein. It hums faintly even unpowered, holding pressure. Mounts on the left; surgical installation required.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("organ_name", "left_kidney"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "abdomen", "max_hp": 15, "hit_weight": "uncommon",
+            "capacity": "blood_filtration", "contribution": "major",
+            "can_be_harvested": True, "can_be_replaced": True,
+            "inorganic": True, "prosthetic_frame": True,
+        }),
+    ],
+}
+
+CYBER_RIGHT_KIDNEY = {
+    "key": "cybernetic right kidney",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["cyber right kidney", "right filtration unit"],
+    "desc": "A bean-shaped filtration unit in a sealed perfusion cradle — a stack of micro-dialysis membranes behind a titanium shell, vascular couplers ringing the hilum like the real thing's renal artery and vein. It hums faintly even unpowered, holding pressure. Mounts on the right; surgical installation required.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("organ_name", "right_kidney"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "abdomen", "max_hp": 15, "hit_weight": "uncommon",
+            "capacity": "blood_filtration", "contribution": "major",
+            "can_be_harvested": True, "can_be_replaced": True,
+            "inorganic": True, "prosthetic_frame": True,
+        }),
+    ],
+}
+
 # --- Cybernetic leg → moving (dodge, flee, movement) ---
 # Side-agnostic chassis like CYBER_ARM: one prototype mounts left OR
 # right, the surgeon names the side, and the canonical bone names
