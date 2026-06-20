@@ -2418,6 +2418,43 @@ CYBER_LEG = {
     ],
 }
 
+# --- Voice modulator → voice disguise (the audio parallel to a mask) ---
+# A jaw-hardpoint module (JAWZ pattern): seats into a CYBER_JAW's slot,
+# rebuilds the jaw so talking/eating survive, and adds a toggleable
+# `modulate` ability.  Engaging it sets `voice_modulator_active`, which
+# shifts the voice signature to a different UID so listeners no longer
+# recognise the voice (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4.2).
+# Needs a cyber jaw to mount into; installation requires a surgeon.
+VOICE_MODULATOR = {
+    "key": "voice modulator",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["voice mod", "vox modulator", "modulator module"],
+    "desc": "A flat module the size of a guitar pick, machined to seat into a cybernetic jaw's hardpoint. A lattice of resonator films and a DSP die hide under a perforated cover; the coupling collar is standard jaw gauge. Engaged, it re-synthesises every word in a voice that isn't yours. Needs a cyber jaw to mount into; installation requires a surgeon.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("module_type", "jaw"),
+        ("condition", "pristine"),
+        ("compatible_species", ["human"]),
+        ("organ_spec", {
+            "container": "head", "display_location": "face",
+            "max_hp": 14, "hit_weight": "rare",
+            "capacities": ["talking", "eating"],
+            "talking_contribution": "major",
+            "eating_contribution": "moderate",
+            "can_be_harvested": True, "can_be_replaced": True,
+            "inorganic": True, "prosthetic_frame": True,
+            "hardpoint": "jaw", "module_type": "jaw",
+            "abilities": {
+                "modulate": {
+                    "type": "voice_modulator",
+                    "deploy_msg": "The modulator hums against your jaw — your next words will leave your mouth in a stranger's voice.",
+                    "retract_msg": "The modulator powers down with a faint click; your own voice settles back into your throat.",
+                },
+            },
+        }),
+    ],
+}
+
 # Surgical Kit - Advanced multi-use medical tools
 SURGICAL_KIT = {
     "key": "surgical kit",

@@ -96,6 +96,8 @@ def toggle_ability(character, name) -> str:
         return _toggle_integrated_weapon(character, organ, name, spec)
     if ability_type == "natural_weapon":
         return _toggle_natural_weapon(character, organ, name, spec)
+    if ability_type == "voice_modulator":
+        return _toggle_voice_modulator(character, organ, name, spec)
     return f"{name} doesn't respond. (unknown ability type {ability_type!r})"
 
 
@@ -295,6 +297,34 @@ def _toggle_natural_weapon(character, organ, name, spec) -> str:
             exclude=[character],
         )
     return msg
+
+
+def _toggle_voice_modulator(character, organ, name, spec) -> str:
+    """Toggle a voice modulator (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4.2).
+
+    The voice-disguise parallel to a worn mask: while engaged it sets
+    ``character.db.voice_modulator_active``, which shifts the voice signature
+    to a different UID (``world.voice.get_voice_signature``) so listeners no
+    longer recognise the voice (and the discernment determination re-rolls
+    against the new presentation). Covert by design — engaging it draws no room
+    message; only the change in voice when the wearer next speaks is observable.
+    """
+    state = _ability_state(organ, name)
+    if not state.get("deployed"):
+        state["deployed"] = True
+        character.db.voice_modulator_active = True
+        _persist(character)
+        return spec.get("deploy_msg") or (
+            "Your voice modulator hums to life — your next words will carry "
+            "a stranger's timbre."
+        )
+
+    state["deployed"] = False
+    character.db.voice_modulator_active = False
+    _persist(character)
+    return spec.get("retract_msg") or (
+        "Your voice modulator powers down — your own voice returns."
+    )
 
 
 def get_active_natural_weapon(character):
