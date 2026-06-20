@@ -992,6 +992,11 @@ class MedicalState:
         
     def update_vital_signs(self):
         """Update vital signs based on current conditions and organ state."""
+        # Renal failure tracks the blood_filtration capacity (CAPACITY_CONSUMERS
+        # spec §7.2) — onset when both kidneys are gone, cleared when a kidney is
+        # restored. Run first so a fresh onset's penalties land this same tick.
+        self._update_renal_failure()
+
         # Update pain level
         self.pain_level = self.calculate_total_pain()
         
@@ -1018,9 +1023,34 @@ class MedicalState:
                 consciousness_suppression_penalty += condition.get_consciousness_penalty()
         
         self.consciousness = max(0.0, base_consciousness - pain_penalty - blood_penalty - consciousness_suppression_penalty)
-        
+
         # Mark cache as dirty after vital sign updates
         self._cache_dirty = True
+
+    def _update_renal_failure(self):
+        """Spawn / clear the RenalFailure condition from ``blood_filtration``.
+
+        Onset when filtration collapses (both kidneys gone); cleared when a
+        kidney is restored (cyber or donor transplant lifts filtration back up).
+        Idempotent — only ever one renal_failure condition at a time.
+        (CAPACITY_CONSUMERS spec §7.2.)
+        """
+        from .conditions import (
+            RenalFailureCondition,
+            RENAL_FAILURE_ONSET_FILTRATION,
+            RENAL_FAILURE_RECOVERY_FILTRATION,
+        )
+
+        filtration = self.calculate_body_capacity("blood_filtration")
+        existing = self.get_conditions_by_type("renal_failure")
+
+        if filtration <= RENAL_FAILURE_ONSET_FILTRATION:
+            if not existing:
+                self.add_condition(RenalFailureCondition(severity=1))
+        elif filtration >= RENAL_FAILURE_RECOVERY_FILTRATION:
+            # Filtration restored — uremia clears.
+            for condition in existing:
+                self.remove_condition(condition)
         
     def take_organ_damage(self, organ_name, damage_amount, injury_type="generic"):
         """

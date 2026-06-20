@@ -314,7 +314,15 @@ worsen/heal multipliers in `InfectionCondition.tick_effect` — worsen
 off*. `disease_resistance` = "how you process an infection," not "whether you
 catch one." Slots straight into the existing multiplier.
 
-### 7.2 Renal failure (buildable on the chronic-conditions substrate)
+### 7.2 Renal failure (buildable on the chronic-conditions substrate) — ✅ SHIPPED
+*(Built: `RenalFailureCondition` (`world/medical/conditions.py`) spawned/cleared
+by `MedicalState._update_renal_failure` in `update_vital_signs` (onset at
+filtration ≤0.05, clears ≥0.4 — hysteresis). Obtunds via `get_consciousness_penalty`
+(reuses the existing suppression sum); slow-kills via `get_blood_loss_rate` once
+terminal (rides the existing blood-loss death floor — no new death-verdict path);
+shows `uremic` via the §7.3 hook. Restoring filtration (cyber/donor kidney) clears
+it. Tests: `test_renal_failure.py`.)*
+
 Total kidney loss (filtration `0`) → a **RenalFailure** chronic condition,
 realizing the table's declared-but-unenforced `total_loss_fatal` *and* the
 `blood_filtration → consciousness` modifier that `update_vital_signs` doesn't
