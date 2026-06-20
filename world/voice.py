@@ -174,11 +174,14 @@ def is_voice_garbled(char: Any) -> bool:
 # promote them to a shared perception module. Tunable.
 SIGHT_PERCEPTION_THRESHOLD = 0.15
 HEARING_PERCEPTION_THRESHOLD = 0.15
+SMELL_PERCEPTION_THRESHOLD = 0.15
 
-# Condition seams that restore a lost sense (chrome eyes / cyber ears). Reuse
-# the combat sight-override constant so one augment is coherent everywhere.
+# Condition seams that restore a lost sense (chrome eyes / cyber ears / a cyber
+# nose). Reuse the combat sight-override constant so one augment is coherent
+# everywhere.
 from world.combat.capacity import SIGHT_OVERRIDE_CONDITION  # noqa: E402
 HEARING_OVERRIDE_CONDITION = "hearing_override"
+SMELL_OVERRIDE_CONDITION = "smell_override"
 
 
 def can_see(char: Any) -> bool:
@@ -207,6 +210,20 @@ def can_hear(char: Any) -> bool:
     if hearing is None:
         return True
     return hearing >= HEARING_PERCEPTION_THRESHOLD
+
+
+def can_smell(char: Any) -> bool:
+    """True if *char* can smell (enough ``smell`` for olfactory perception).
+
+    Fails open with no medical model. A smell-override condition (a cyber nose)
+    restores smell regardless of organ state.
+    """
+    if _has_condition(char, SMELL_OVERRIDE_CONDITION):
+        return True
+    smell = _read_capacity(char, "smell")
+    if smell is None:
+        return True
+    return smell >= SMELL_PERCEPTION_THRESHOLD
 
 
 # --------------------------------------------------------------------------

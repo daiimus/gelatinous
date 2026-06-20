@@ -14,30 +14,33 @@ Scope (decided, spec §5): this gates the *additive* sensory pools. The single-
 blob base room description stays valid as the visual layer — full base-desc
 sense decomposition is a future authoring lift, not a prerequisite.
 
-``sight`` → visual, ``hearing`` → auditory. Olfactory / tactile / gustatory /
-atmospheric are never gated here (smell and touch survive blindness and
-deafness; atmospheric is the multi-sense mood catch-all). Fails open: a looker
-with no readable capacities perceives everything.
+``sight`` → visual, ``hearing`` → auditory, ``smell`` → olfactory (the nose
+organ). Tactile / gustatory / atmospheric are never gated here: ambient touch is
+whole-body sensation that survives losing a hand (a future *examine-by-touch* of
+an object would gate on hands instead), and atmospheric is the multi-sense mood
+catch-all. Fails open: a looker with no readable capacities perceives everything.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from world.voice import can_hear, can_see
+from world.voice import can_hear, can_see, can_smell
 
 #: Sense category gated by ``sight``.
 VISUAL_SENSE = "visual"
 #: Sense category gated by ``hearing``.
 AUDITORY_SENSE = "auditory"
+#: Sense category gated by ``smell`` (the nose organ).
+OLFACTORY_SENSE = "olfactory"
 
 
 def blocked_senses(looker: Any) -> set[str]:
     """Return the sense categories *looker* cannot currently perceive.
 
     Empty when the looker perceives everything (full senses, no medical model,
-    or restored by a chrome override). Only the sight/hearing-gated categories
-    can appear here; every other sense passes through.
+    or restored by a chrome override). Only the sight/hearing/smell-gated
+    categories can appear here; every other sense passes through.
     """
     blocked: set[str] = set()
     if looker is None:
@@ -46,6 +49,8 @@ def blocked_senses(looker: Any) -> set[str]:
         blocked.add(VISUAL_SENSE)
     if not can_hear(looker):
         blocked.add(AUDITORY_SENSE)
+    if not can_smell(looker):
+        blocked.add(OLFACTORY_SENSE)
     return blocked
 
 
