@@ -13,6 +13,9 @@ v1 is intentionally lenient where the spec defers (ownership gating, recipe-save
 UX) so the loop is testable; those are later slices.
 """
 
+import random
+from time import monotonic
+
 from evennia import CmdSet
 from evennia.commands.command import Command
 from evennia.utils import delay
@@ -169,6 +172,29 @@ class BarCounter(Item):
 # ---------------------------------------------------------------------------
 # The bartender NPC
 # ---------------------------------------------------------------------------
+#: Substrings that read as thanks/acknowledgement in something said near the
+#: bartender. Matched case-insensitively against the spoken content; 'thank'
+#: covers thanks/thank you/thank ya, 'obliged' covers much obliged, etc.
+GRATITUDE_TRIGGERS = (
+    "thank", "cheers", "obliged", "appreciate", "good look", "nice one",
+    "ta for", "much love",
+)
+
+#: Non-verbal acknowledgements — Sully's taciturn, so he answers with a gesture
+#: rather than words. Phrased as emote actions (the identity system prepends his
+#: per-observer name).
+ACK_EMOTES = (
+    "tips his chin a fraction, not looking up from the taps",
+    "raises two fingers off the slab in a flat, unhurried salute",
+    "grunts once, low, and keeps wiping down a glass",
+    "gives a single slow nod, the kind that's already moved on to the next thing",
+    "knocks two knuckles against the slab and lets that be the answer",
+)
+
+#: Minimum seconds between acknowledgements, so a chatty room doesn't spam them.
+ACK_COOLDOWN = 6.0
+
+
 class Bartender(Character):
     """An NPC that takes drink orders by being spoken to (the `to` command)."""
 
@@ -196,12 +222,51 @@ class Bartender(Character):
         return None
 
     def at_msg_receive(self, text=None, from_obj=None, **kwargs):
-        """React to being addressed directly (the `to` command)."""
+        """React to speech nearby.
+
+        Two triggers, gratitude checked first so "thanks for the rotgut" reads
+        as a thank-you, not a re-order:
+
+          - **Gratitude** (thanks/cheers/much obliged...) heard from anyone in
+            the room, whether said plainly or directed via ``to`` — answered
+            with a small non-verbal acknowledgement.
+          - **A directed order** (the ``to`` command's ``to_speech``) — fulfilled
+            from the menu.
+        """
         order = kwargs.get("to_speech")
         speaker = kwargs.get("to_speaker") or from_obj
-        if order and speaker is not None and speaker is not self:
+        if speaker is None or speaker is self:
+            return True
+
+        # Spoken content: the raw directed order if present, else the rendered
+        # say text (which still contains the quoted words to scan).
+        if order:
+            content = order
+        else:
+            raw = text[0] if isinstance(text, (tuple, list)) else text
+            content = raw if isinstance(raw, str) else ""
+
+        if self._is_gratitude(content):
+            self._acknowledge()
+            return True
+
+        if order:
             delay(1.5, self._fulfil_order, order, speaker)
         return True
+
+    @staticmethod
+    def _is_gratitude(content):
+        low = (content or "").lower()
+        return any(trigger in low for trigger in GRATITUDE_TRIGGERS)
+
+    def _acknowledge(self):
+        """A throttled, non-verbal nod to thanks."""
+        now = monotonic()
+        last = self.ndb.last_ack or 0
+        if now - last < ACK_COOLDOWN:
+            return
+        self.ndb.last_ack = now
+        delay(1.0, self.execute_cmd, f"emote {random.choice(ACK_EMOTES)}")
 
     def _fulfil_order(self, order_text, patron):
         if not self.location or getattr(patron, "location", None) is not self.location:
@@ -224,11 +289,13 @@ class Bartender(Character):
             patron.tokens = have - price
             if bar:
                 bar.db.register = int(bar.db.register or 0) + price
+        # The whole transaction is one wordless gesture — make it, set it down,
+        # take the cash. Routed through `emote` so the bartender renders by
+        # per-observer identity (a stranger sees "a lean man", not "Sully"),
+        # and no price is spoken: the swept payment says it.
         craft = recipe.get("craft", "fixes the drink")
         where = bar.key if bar else "the bar"
-        self.location.msg_contents(
-            f"{self.key} {craft}, sets {drink.key} on {where}, and sweeps the "
+        self.execute_cmd(
+            f"emote {craft}, sets {drink.key} on {where}, and sweeps the "
             f"payment off the slab with a practiced hand."
         )
-        if price:
-            self.execute_cmd(f"say {price}.")
