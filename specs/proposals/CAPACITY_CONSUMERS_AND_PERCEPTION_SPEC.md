@@ -1,10 +1,17 @@
 # Capacity Consumers & Perception Spec
 
-> **Status: 📋 PROPOSAL — design-of-record, not implemented.** Captures an
-> in-progress design conversation. Built in layers (see §8). The four core
-> capacities — `sight`, `hearing`/voice, `manipulation`, `moving` — are
-> designed below; the remaining capacities are blocked on absent systems
-> (§2). Magnitudes and balance numbers are illustrative, not final.
+> **Status: ✅ MOSTLY SHIPPED & LIVE** (as of 2026-06-20). What began as a
+> design proposal is now built: the performance capacities consume across
+> combat (sight/manipulation/moving), voice & identity (talking/hearing),
+> perception (sight/hearing), and the metabolic sim (blood_filtration), with
+> chrome + transplants to remediate each. Per-piece **✅ SHIPPED** markers are
+> inline throughout; the build ladder is §9. **Still deferred:**
+> voice-descriptor-as-identity + the §4.6 multi-voice disambiguation; base
+> single-blob room-desc **five-senses decomposition** (§5 — next up); a
+> full-perception sensory suite (the blindsight upgrade); and the
+> social/skill-blocked capacities (§2.1, waiting on systems that don't exist).
+> Balance numbers are tuned in play. §0 below frames the *original* problem
+> this solved.
 
 ## 0 · Purpose
 
@@ -60,14 +67,14 @@ A capacity effect only lands if a *consumer system* exists.
 
 | Capacity | Real consumers (this spec) | Status |
 |---|---|---|
-| `sight` | combat (ranged/melee), identity recognition, LOOK visual layer | wireable now |
-| `hearing` | LOOK auditory layer, **voice recognition**, acoustic/flashbang conditions | wireable now |
-| `manipulation` | weapon handling (per-effector resolver) | now — needs resolver (§6) |
-| `moving` | movement / flee / future jump-athletics (per-effector resolver) | now — needs resolver (§6) |
-| `talking` | **voice production** (the voice triangle, §4); social/negotiation (resonance-gated) | production now; social **system-blocked, NOT skill-blocked** |
-| `blood_filtration` | infection resistance (existing `InfectionCondition`) | wireable now |
-| `eating` | **consumption benefit** (existing consume pipeline; buff model, no hunger) | wireable once the food/drink buff exists; rides delivery tags |
-| `hearing`→trade, `*`→work_speed | trade price, crafting/work | blocked (no trade/work system); **drop the `hearing→trade` vestige** |
+| `sight` | combat (ranged/melee), identity recognition, LOOK visual layer | ✅ shipped (combat, recognition, perception render) |
+| `hearing` | LOOK auditory layer, **voice recognition**, acoustic/flashbang conditions | ✅ shipped (voice discern, deaf gating, perception); flashbang-deafness future |
+| `manipulation` | weapon handling (per-effector resolver) | ✅ shipped (per-hand resolver, §6) |
+| `moving` | movement / flee / future jump-athletics (per-effector resolver) | ✅ shipped (dodge, §6); flee/jump future |
+| `talking` | **voice production** (the voice triangle, §4); social/negotiation (resonance-gated) | ✅ voice-production shipped (garble); social **system-blocked, NOT skill-blocked** |
+| `blood_filtration` | infection course, renal failure (existing condition substrate) | ✅ shipped (§7) |
+| `eating` | **consumption benefit** (existing consume pipeline; buff model, no hunger) | blocked — needs the food/drink buff; rides delivery tags |
+| `hearing`→trade, `*`→work_speed | trade price, crafting/work | blocked (no trade/work system); `hearing→trade` vestige dropped |
 
 ### 2.1 · Blocked-capacity shapes (pin the shape so future system-builders snap in correctly)
 
@@ -222,6 +229,16 @@ limitation; this spec supplies the input.**
 - **Graceful start:** current single-blob room descs stay valid as the *visual*
   layer; other-sense components are additive. Full **base-desc sense
   decomposition** is the future authoring lift, not a prerequisite.
+
+**✅ SHIPPED (ambient gating + enrichment, #592):** `world/perception.py`
+(`blocked_senses` / `can_perceive_sense` / `has_reduced_perception`) gates the
+weather + crowd ambient pools on `sight`→visual / `hearing`→auditory (chrome
+override seams honoured), with a +1 compensatory ambient message when a sense
+is missing. **⏭️ NEXT (this slice): base room-desc five-senses decomposition** —
+let authors split a room's description into per-sense layers so the blind/deaf
+get a genuinely different room view (not just trimmed ambient pools). The
+single-blob desc remains the default visual layer; the decomposition is additive
+and opt-in per room.
 
 ## 6 · Manipulation & Moving — the per-effector resolver (decided)
 
