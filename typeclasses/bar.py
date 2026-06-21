@@ -22,6 +22,7 @@ from evennia.utils import delay
 
 from typeclasses.items import Item
 from typeclasses.characters import Character
+from world.grammar import capitalize_first, with_article
 from world.bar import (
     make_drink,
     make_drink_from_recipe,
@@ -58,7 +59,9 @@ class CmdBarMenu(Command):
             return
         lines = [f"|w{name} — menu|n"]
         for r in menu:
-            lines.append(f"  {r['name']}  |y({r.get('price', 0)})|n")
+            lines.append(
+                f"  {capitalize_first(r['name'])}  |y({r.get('price', 0)})|n"
+            )
         self.caller.msg("\n".join(lines))
 
 
@@ -93,7 +96,7 @@ class CmdBarUse(Command):
         effects = mix_effects(ingredients)
         names = ", ".join(i.key for i in ingredients)
         drink = make_drink(
-            name="a mixed drink",
+            name="mixed drink",
             desc=f"a freshly-mixed drink, thrown together from {names}",
             effects=effects,
             sips=3,
@@ -103,7 +106,8 @@ class CmdBarUse(Command):
         for i in ingredients:
             i.delete()
         caller.location.msg_contents(
-            f"{caller.key} mixes {names} into {drink.key} on {bar.key}."
+            f"{caller.key} mixes {names} into {with_article(drink.key)} "
+            f"on {bar.key}."
         )
 
 
@@ -184,7 +188,9 @@ class BarCounter(Item):
         base = super().return_appearance(looker, **kwargs)
         drinks = [o for o in self.contents if getattr(o.db, "is_drink", False)]
         if drinks:
-            served = ", ".join(d.get_display_name(looker) for d in drinks)
+            served = ", ".join(
+                with_article(d.get_display_name(looker)) for d in drinks
+            )
             base += f"\n\nOn the bar: {served}."
         return base
 
@@ -311,6 +317,6 @@ class Bartender(Character):
         craft = recipe.get("craft", "fixes the drink")
         where = bar.key if bar else "the bar"
         self.execute_cmd(
-            f"emote {craft}, sets {drink.key} on {where}, and sweeps the "
-            f"payment off the slab with a practiced hand."
+            f"emote {craft}, sets {with_article(drink.key)} on {where}, and "
+            f"sweeps the payment off the slab with a practiced hand."
         )

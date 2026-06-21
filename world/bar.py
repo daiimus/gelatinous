@@ -59,9 +59,16 @@ def make_drink(*, name, desc, effects, sips=3, taste="", location=None, keywords
     The drink carries ``db.drink_effects`` (a ``{substance_id: doses}`` map
     applied per sip), ``db.uses_left`` (the number of sips), and the `drink`
     delivery tag so the existing consumption command accepts it. Aliases are
-    derived from the name (+ recipe keywords) so the article-prefixed display
-    name stays targetable.
+    derived from the name (+ recipe keywords) so the bare display name stays
+    targetable.
+
+    The item *key* carries no leading article (house convention — display sites
+    prepend "a"/"an"/"the"), so a stray "a " in a recipe name is stripped here
+    to avoid the double-article ("A a mug of rotgut...") render.
     """
+    from world.search import strip_leading_article
+
+    name = strip_leading_article((name or "").strip())
     drink = create_object(DRINK_TYPECLASS, key=name, location=location)
     drink.db.desc = desc
     drink.db.uses_left = max(1, int(sips))
@@ -112,7 +119,7 @@ def match_recipe(order_text, menu):
 # ---------------------------------------------------------------------------
 HUB_AND_HOWL_MENU = [
     {
-        "name": "a mug of rotgut",
+        "name": "mug of rotgut",
         "order_keywords": ("rotgut", "grain", "spirit", "cheap"),
         "price": 8,
         "sips": 3,
@@ -122,7 +129,7 @@ HUB_AND_HOWL_MENU = [
         "craft": "reaches under the slab for an unlabelled jug and sloshes cloudy spirit into a dented tin mug",
     },
     {
-        "name": "a glass of reactor wash",
+        "name": "glass of reactor wash",
         "order_keywords": ("reactor", "wash", "strong", "stiff"),
         "price": 15,
         "sips": 3,
@@ -132,7 +139,7 @@ HUB_AND_HOWL_MENU = [
         "craft": "pulls a smudged glass, free-pours two fingers of something amber and oily, and slides it over",
     },
     {
-        "name": "a cup of channel fog",
+        "name": "cup of channel fog",
         "order_keywords": ("fog", "channel", "milky", "smooth"),
         "price": 20,
         "sips": 4,
@@ -142,7 +149,7 @@ HUB_AND_HOWL_MENU = [
         "craft": "measures a milky grey-green liquor into a chipped ceramic cup with the care of someone who knows what's in it",
     },
     {
-        "name": "a mug of black recyc",
+        "name": "mug of black recyc",
         "order_keywords": ("recyc", "black", "coffee", "caf", "sober"),
         "price": 5,
         "sips": 4,
