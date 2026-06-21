@@ -204,6 +204,8 @@ class BarCounter(Item):
         # two mugs of rotgut") via the standard get_numbered_name. No chrome.
         from collections import defaultdict
 
+        from evennia.utils.utils import iter_to_str
+
         base = super().return_appearance(looker, **kwargs)
         groups = defaultdict(list)
         for o in self.contents:
@@ -215,7 +217,7 @@ class BarCounter(Item):
                 count = len(objs)
                 singular, plural = objs[0].get_numbered_name(count, looker)
                 parts.append(singular if count == 1 else plural)
-            base += f"\n\nOn the bar: {', '.join(parts)}."
+            base += f"\n\nOn the bar: {iter_to_str(parts)}."
         return base
 
 
