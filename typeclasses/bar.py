@@ -148,9 +148,29 @@ class BarCounter(Item):
             "scarred by years of set-down glasses."
         )
 
+    @staticmethod
+    def _is_staff(char):
+        """True if `char` is game staff (Builder permission or higher).
+
+        Uses the ``perm()`` lock function so the check honours the permission
+        hierarchy and the controlling account's permissions, matching how the
+        rest of the codebase detects staff (see :mod:`world.emote`).
+        """
+        try:
+            return bool(char.locks.check_lockstring(char, "perm(Builder)"))
+        except Exception:
+            return False
+
     def is_bartender(self, char):
-        """True if `char` may work this bar (owner, staff, or — v1 — anyone if
-        no ownership is configured yet)."""
+        """True if `char` may work and manage this bar.
+
+        Game staff (Builder+) can always work and manage any bar — they keep the
+        place running regardless of who owns it. Otherwise: the owner, anyone on
+        the staff list, or — while no ownership is configured (v1) — anyone
+        present.
+        """
+        if self._is_staff(char):
+            return True
         owner = self.db.owner
         staff = self.db.staff or []
         if owner is None and not staff:

@@ -107,6 +107,49 @@ class TestPosePayload(BaseEvenniaTest):
         self.assertTrue(target.last.get("addressed"))
 
 
+class TestBarStaffAccess(BaseEvenniaTest):
+    """Staff (Builder+) can work/manage any bar; ownership still gates others."""
+
+    def _bar(self, owner=None, staff=None):
+        b = MagicMock()
+        b.db.owner = owner
+        b.db.staff = staff or []
+        b._is_staff = barmod.BarCounter._is_staff  # real staticmethod
+        return b
+
+    def _char(self, is_staff=False):
+        c = MagicMock()
+        c.locks.check_lockstring = lambda obj, lockstr: is_staff
+        return c
+
+    def _is_bartender(self, bar, char):
+        return barmod.BarCounter.is_bartender(bar, char)
+
+    def test_staff_can_work_owned_bar(self):
+        bar = self._bar(owner=object())  # owned by someone else
+        self.assertTrue(self._is_bartender(bar, self._char(is_staff=True)))
+
+    def test_non_staff_blocked_on_owned_bar(self):
+        bar = self._bar(owner=object())
+        self.assertFalse(self._is_bartender(bar, self._char(is_staff=False)))
+
+    def test_owner_allowed(self):
+        owner = self._char(is_staff=False)
+        bar = self._bar(owner=owner)
+        self.assertTrue(self._is_bartender(bar, owner))
+
+    def test_unowned_allows_anyone(self):
+        bar = self._bar()
+        self.assertTrue(self._is_bartender(bar, self._char(is_staff=False)))
+
+    def test_staff_check_failure_is_safe(self):
+        bar = self._bar(owner=object())
+        char = MagicMock()
+        char.locks.check_lockstring.side_effect = RuntimeError("boom")
+        # A lock-check hiccup must not crash; it just denies non-owners.
+        self.assertFalse(self._is_bartender(bar, char))
+
+
 class TestBartenderReaction(BaseEvenniaTest):
     """at_msg_receive routes the unified payload to ack / order / nothing."""
 
