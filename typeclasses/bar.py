@@ -62,12 +62,15 @@ class CmdBarMenu(Command):
         if not menu:
             self.caller.msg(f"{name} has nothing on offer.")
             return
+        # Pad names to a common width so the price column lines up. Labels are
+        # plain (no colour codes), so visible length == len().
+        labels = [capitalize_first(r["name"]) for r in menu]
+        width = max(len(label) for label in labels)
         lines = [f"|w{name} — menu|n"]
-        for r in menu:
+        for label, r in zip(labels, menu):
             price = format_currency(r.get("price", 0))
             lines.append(
-                f"  {capitalize_first(r['name'])}  "
-                f"{MENU_PRICE_COLOR}({price})|n"
+                f"  {label.ljust(width)}   {MENU_PRICE_COLOR}({price})|n"
             )
         self.caller.msg("\n".join(lines))
 
