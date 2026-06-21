@@ -199,15 +199,23 @@ class BarCounter(Item):
 
     def return_appearance(self, looker, **kwargs):
         # Looking at the bar shows its own description (db.desc) — deliberately
-        # distinct from the @integrate line woven into the room — plus whatever
-        # is physically resting on its surface. No instructional chrome.
+        # distinct from the @integrate line woven into the room — plus what's
+        # resting on its surface, stacked by count ("a glass of reactor wash,
+        # two mugs of rotgut") via the standard get_numbered_name. No chrome.
+        from collections import defaultdict
+
         base = super().return_appearance(looker, **kwargs)
-        surface = [o for o in self.contents if o.access(looker, "view")]
-        if surface:
-            served = ", ".join(
-                with_article(o.get_display_name(looker)) for o in surface
-            )
-            base += f"\n\nOn the bar: {served}."
+        groups = defaultdict(list)
+        for o in self.contents:
+            if o.access(looker, "view"):
+                groups[o.get_display_name(looker)].append(o)
+        if groups:
+            parts = []
+            for objs in groups.values():
+                count = len(objs)
+                singular, plural = objs[0].get_numbered_name(count, looker)
+                parts.append(singular if count == 1 else plural)
+            base += f"\n\nOn the bar: {', '.join(parts)}."
         return base
 
 
