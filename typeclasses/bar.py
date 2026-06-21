@@ -25,6 +25,7 @@ from typeclasses.characters import Character
 from world.grammar import capitalize_first, with_article
 from world.shop.utils import format_currency
 from world.bar import (
+    DEFAULT_BAR_SNACKS,
     make_drink,
     make_drink_from_recipe,
     match_recipe,
@@ -144,6 +145,7 @@ class BarCounter(Item):
     def at_object_creation(self):
         super().at_object_creation()
         self.db.menu = []
+        self.db.snacks = list(DEFAULT_BAR_SNACKS)  # free bottomless nibbles (§10)
         self.db.register = 0
         self.db.owner = None
         self.db.staff = []
@@ -218,6 +220,12 @@ class BarCounter(Item):
                 singular, plural = objs[0].get_numbered_name(count, looker)
                 parts.append(singular if count == 1 else plural)
             base += f"\n\nOn the bar: {iter_to_str(parts)}."
+        # Free bottomless snacks (§10) — pure ambiance, advertised so patrons
+        # know they can pick at them (`eat <snack> from <bar>`).
+        snacks = self.db.snacks or []
+        if snacks:
+            names = iter_to_str([s["name"] for s in snacks])
+            base += f"\n\nFree to pick at: {names}."
         return base
 
 

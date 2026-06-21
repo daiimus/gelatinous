@@ -766,13 +766,50 @@ class CmdEat(ConsumptionCommand):
     aliases = ["consume", "swallow"]
     help_category = "Medical"
     
+    def _eat_bar_snack(self, args):
+        """Free bar snacks (§10): ``eat <snack> [from <bar>]`` nibbles a no-cost
+        snack off a bar's snack list in the room. Pure ambiance — bottomless,
+        nothing enters inventory. Returns True if a snack was served."""
+        from world.bar import find_room_bar_snack
+        from world.substances import apply_substance
+
+        caller = self.caller
+        match = find_room_bar_snack(getattr(caller, "location", None), args or "")
+        if not match:
+            return False
+        bar, snack = match
+        name = snack["name"]
+        caller.msg(
+            f"You help yourself to {with_article(name)} from "
+            f"{bar.get_display_name(caller)}."
+        )
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} helps themselves to {with_article(name)} "
+                     f"from {bar.key}.",
+            char_refs={"actor": caller},
+            exclude=[caller],
+        )
+        taste = snack.get("taste")
+        if taste:
+            caller.msg(taste)
+        for sid, doses in (snack.get("effects") or {}).items():
+            try:
+                apply_substance(caller, sid, doses=max(1, int(doses)))
+            except (TypeError, ValueError):
+                continue
+        return True
+
     def func(self):
         """Execute the eat command."""
         caller = self.caller
-        
-        # Parse arguments  
+
+        # Parse arguments
         result = self.get_item_and_target(self.args, require_medical=False)
         if result["errors"]:
+            # Not holding a matching item — maybe it's a free bar snack.
+            if self._eat_bar_snack(self.args):
+                return
             caller.msg(result["errors"][0])
             return
             

@@ -113,6 +113,67 @@ def match_recipe(order_text, menu):
 
 
 # ---------------------------------------------------------------------------
+# Free snacks (BARS_AND_RECIPES_SPEC §10) — bottomless colony ambiance, no
+# cost, nothing enters inventory. A bar's db.snacks is a fixed list; patrons
+# `eat <snack> [from <bar>]` to nibble in place. Original content.
+# ---------------------------------------------------------------------------
+DEFAULT_BAR_SNACKS = [
+    {
+        "name": "brine pods",
+        "order_keywords": ("brine", "pods", "pod"),
+        "desc": "a chipped bowl of pale, rubbery brine pods, set out free for the taking",
+        "taste": "Salt-slick and faintly chemical, they squeak against your teeth and leave a briny sting at the back of the throat.",
+    },
+    {
+        "name": "synth-jerky",
+        "order_keywords": ("jerky", "synth-jerky", "synth", "meat"),
+        "desc": "a rack of dark, twisted synth-jerky strips, free for the taking",
+        "taste": "Tough, smoky, and aggressively over-salted — more chew than flavour, which is the point: it keeps you drinking.",
+    },
+    {
+        "name": "ration crackers",
+        "order_keywords": ("crackers", "cracker", "ration", "rations"),
+        "desc": "an open tin of dry ration crackers, free for the taking",
+        "taste": "Dry, bland, and faintly of cardboard — they soak up whatever you've been pouring down your neck.",
+    },
+]
+
+
+def match_snack(text, snacks):
+    """Find the first snack whose keywords appear in `text`. Returns dict/None."""
+    if not text or not snacks:
+        return None
+    low = text.lower()
+    for snack in snacks:
+        for kw in snack.get("order_keywords", (snack.get("name", ""),)):
+            if kw and kw.lower() in low:
+                return snack
+    return None
+
+
+def find_room_bar_snack(location, text):
+    """Resolve an ``eat <snack> [from <bar>]`` request against bars in a room.
+
+    Strips a trailing ``from <bar>`` disambiguator, then matches the remaining
+    words against each bar's ``db.snacks``. Bars are duck-typed (an object with
+    an ``is_bartender`` method) to avoid importing the typeclass here. Returns
+    ``(bar, snack_dict)`` or ``None``.
+    """
+    if not location or not text:
+        return None
+    snack_text = re.split(r"\bfrom\b", text.strip(), maxsplit=1)[0].strip()
+    if not snack_text:
+        return None
+    for obj in getattr(location, "contents", ()):
+        if not callable(getattr(obj, "is_bartender", None)):
+            continue
+        snack = match_snack(snack_text, obj.db.snacks or [])
+        if snack:
+            return obj, snack
+    return None
+
+
+# ---------------------------------------------------------------------------
 # A starter menu for the Hub & Howl — scuzzy colony drinks. Original content.
 # Effects use real substance ids (see world/substances/registry.py): `alcohol`
 # (sedation cap 4), `opium` (strong). Flavour-only drinks carry no effects.
