@@ -191,15 +191,21 @@ class BarCounter(Item):
             return True
         return char is owner or char in staff
 
+    def get_display_things(self, looker, **kwargs):
+        # The bar's contents (drinks, loaded ingredients) are shown by
+        # return_appearance under "On the bar:". Suppress the default
+        # "You see:" listing so they aren't rendered twice.
+        return ""
+
     def return_appearance(self, looker, **kwargs):
         # Looking at the bar shows its own description (db.desc) — deliberately
         # distinct from the @integrate line woven into the room — plus whatever
-        # drinks are physically resting on its surface. No instructional chrome.
+        # is physically resting on its surface. No instructional chrome.
         base = super().return_appearance(looker, **kwargs)
-        drinks = [o for o in self.contents if getattr(o.db, "is_drink", False)]
-        if drinks:
+        surface = [o for o in self.contents if o.access(looker, "view")]
+        if surface:
             served = ", ".join(
-                with_article(d.get_display_name(looker)) for d in drinks
+                with_article(o.get_display_name(looker)) for o in surface
             )
             base += f"\n\nOn the bar: {served}."
         return base
