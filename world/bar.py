@@ -126,7 +126,7 @@ HUB_AND_HOWL_MENU = [
         "effects": {"alcohol": 1},
         "desc": "a dented tin mug of cloudy grain spirit, the colony's cheapest way to lose a shift",
         "taste": "It scours the throat like coolant — paint-thinner heat and a sour, metallic finish.",
-        "craft": "reaches under the slab for an unlabelled jug and sloshes cloudy spirit into a dented tin mug",
+        "craft": "reaches under the slab for an unlabelled jug and sloshes out a measure of cloudy grain spirit",
     },
     {
         "name": "glass of reactor wash",
@@ -136,7 +136,7 @@ HUB_AND_HOWL_MENU = [
         "effects": {"alcohol": 2},
         "desc": "a smudged glass of something amber and oily that catches the light wrong",
         "taste": "It hits like a dropped tool — hot, chemical, and gone numb before you swallow.",
-        "craft": "pulls a smudged glass, free-pours two fingers of something amber and oily, and slides it over",
+        "craft": "free-pours two fingers of something amber and oily that catches the light wrong",
     },
     {
         "name": "cup of channel fog",
@@ -146,7 +146,7 @@ HUB_AND_HOWL_MENU = [
         "effects": {"alcohol": 1, "opium": 1},
         "desc": "a chipped ceramic cup of a milky, grey-green liquor that smells faintly of brine and poppy",
         "taste": "Smooth and cold going down, with a slow warmth that closes over you like the channel fog it's named for.",
-        "craft": "measures a milky grey-green liquor into a chipped ceramic cup with the care of someone who knows what's in it",
+        "craft": "measures out a milky, grey-green liquor with the care of someone who knows what's in it",
     },
     {
         "name": "mug of black recyc",
@@ -156,6 +156,6 @@ HUB_AND_HOWL_MENU = [
         "effects": {},
         "desc": "a scalding mug of reclaimed caf, black as the inside of a vent and twice as bitter",
         "taste": "Bitter, scalding, and faintly of the recycler — but it's hot, and it's not alcohol.",
-        "craft": "fills a mug from the battered caf urn at the end of the bar, no ceremony to it",
+        "craft": "draws a scalding measure from the battered caf urn at the end of the bar, no ceremony to it",
     },
 ]
