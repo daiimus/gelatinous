@@ -37,6 +37,37 @@ def _room(contents):
     return r
 
 
+class TestDrinkNaming(BaseEvenniaTest):
+    """Drink keys carry no leading article (display sites add it)."""
+
+    def test_make_drink_strips_leading_article(self):
+        from world.bar import make_drink
+
+        d = make_drink(
+            name="a mug of rotgut", desc="x", effects={}, location=self.room1
+        )
+        self.assertEqual(d.key, "mug of rotgut")
+
+    def test_menu_names_are_article_free(self):
+        from world.bar import HUB_AND_HOWL_MENU
+
+        for recipe in HUB_AND_HOWL_MENU:
+            self.assertFalse(
+                recipe["name"].lower().startswith(("a ", "an ", "the ")),
+                f"menu name {recipe['name']!r} still carries an article",
+            )
+
+    def test_aliases_still_targetable(self):
+        from world.bar import make_drink
+
+        d = make_drink(
+            name="a mug of rotgut", desc="x", effects={}, location=self.room1
+        )
+        aliases = d.aliases.all()
+        self.assertIn("rotgut", aliases)
+        self.assertIn("mug", aliases)
+
+
 class TestSpeechPayloadRouting(BaseEvenniaTest):
     """broadcast_speech attaches speech/addressed only to hearing listeners."""
 

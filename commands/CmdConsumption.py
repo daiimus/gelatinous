@@ -7,6 +7,7 @@ Implements the universal consumption system with inject, apply, bandage, etc.
 
 from evennia import Command
 from commands._identity_targeting import resolve_character_target
+from world.grammar import with_article
 from world.identity_utils import msg_room_identity
 from world.consumables import supports_delivery
 from world.medical.utils import (
@@ -875,16 +876,16 @@ class CmdDrink(ConsumptionCommand):
         if is_self:
             msg_room_identity(
                 location=caller.location,
-                template=f"{{actor}} drinks {item.key}.",
+                template=f"{{actor}} drinks {with_article(item.key)}.",
                 char_refs={"actor": caller},
                 exclude=[caller],
             )
         else:
-            caller.msg(f"You help {target.get_display_name(caller)} drink {item.get_display_name(caller)}.")
-            target.msg(f"{caller.get_display_name(target)} helps you drink {item.get_display_name(target)}.")
+            caller.msg(f"You help {target.get_display_name(caller)} drink {with_article(item.get_display_name(caller))}.")
+            target.msg(f"{caller.get_display_name(target)} helps you drink {with_article(item.get_display_name(target))}.")
             msg_room_identity(
                 location=caller.location,
-                template=f"{{actor}} helps {{target}} drink {item.key}.",
+                template=f"{{actor}} helps {{target}} drink {with_article(item.key)}.",
                 char_refs={"actor": caller, "target": target},
                 exclude=[caller, target],
             )
@@ -901,7 +902,7 @@ class CmdDrink(ConsumptionCommand):
             # mouthful), then pharmacology, then the consumable lifecycle.
             if is_self:
                 uses_left = item.db.uses_left
-                name = item.get_display_name(caller)
+                name = with_article(item.get_display_name(caller))
                 if uses_left is None or int(uses_left or 0) <= 1:
                     caller.msg(f"You finish off {name}.")
                 else:
