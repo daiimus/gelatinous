@@ -156,6 +156,6 @@ HUB_AND_HOWL_MENU = [
         "effects": {},
         "desc": "a scalding mug of reclaimed caf, black as the inside of a vent and twice as bitter",
         "taste": "Bitter, scalding, and faintly of the recycler — but it's hot, and it's not alcohol.",
-        "craft": "draws a scalding measure from the battered caf urn at the end of the bar, no ceremony to it",
+        "craft": "draws a scalding measure straight from the battered caf urn",
     },
 ]
