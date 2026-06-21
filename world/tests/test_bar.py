@@ -68,6 +68,45 @@ class TestDrinkNaming(BaseEvenniaTest):
         self.assertIn("mug", aliases)
 
 
+class TestSnacks(BaseEvenniaTest):
+    """Free bar snacks (§10): keyword match + room resolution."""
+
+    def test_match_snack(self):
+        from world.bar import match_snack, DEFAULT_BAR_SNACKS
+
+        self.assertEqual(
+            match_snack("grab some brine pods", DEFAULT_BAR_SNACKS)["name"],
+            "brine pods",
+        )
+        self.assertEqual(
+            match_snack("jerky", DEFAULT_BAR_SNACKS)["name"], "synth-jerky"
+        )
+        self.assertIsNone(match_snack("a wrench", DEFAULT_BAR_SNACKS))
+        self.assertIsNone(match_snack("", DEFAULT_BAR_SNACKS))
+
+    def test_find_room_bar_snack_strips_from_clause(self):
+        from world.bar import find_room_bar_snack, DEFAULT_BAR_SNACKS
+
+        bar = MagicMock()
+        bar.is_bartender = lambda c: True  # duck-typed as a bar
+        bar.db.snacks = DEFAULT_BAR_SNACKS
+        room = MagicMock()
+        room.contents = [bar]
+
+        found = find_room_bar_snack(room, "crackers from the hull-slab bar")
+        self.assertIsNotNone(found)
+        self.assertIs(found[0], bar)
+        self.assertEqual(found[1]["name"], "ration crackers")
+
+    def test_find_room_bar_snack_no_bar(self):
+        from world.bar import find_room_bar_snack, DEFAULT_BAR_SNACKS
+
+        not_a_bar = MagicMock(spec=[])  # no is_bartender
+        room = MagicMock()
+        room.contents = [not_a_bar]
+        self.assertIsNone(find_room_bar_snack(room, "brine pods"))
+
+
 class TestSpeechPayloadRouting(BaseEvenniaTest):
     """broadcast_speech attaches speech/addressed only to hearing listeners."""
 
