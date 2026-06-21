@@ -26,10 +26,8 @@ from world.grammar import capitalize_first, with_article
 from world.shop.utils import format_currency
 from world.bar import (
     DEFAULT_BAR_SNACKS,
-    make_drink,
     make_drink_from_recipe,
     match_recipe,
-    mix_effects,
 )
 
 #: Price colour on the menu — the same burnt orange (XTERM-256 |520) the
@@ -97,29 +95,10 @@ class CmdBarUse(Command):
         if not bar.is_bartender(caller):
             caller.msg("You aren't working this bar.")
             return
-        ingredients = [o for o in bar.contents if getattr(o.db, "is_ingredient", False)]
-        if not ingredients:
-            caller.msg(
-                f"Nothing's loaded to mix. Put ingredients on "
-                f"{bar.get_display_name(caller)} first."
-            )
-            return
-        effects = mix_effects(ingredients)
-        names = ", ".join(i.key for i in ingredients)
-        drink = make_drink(
-            name="mixed drink",
-            desc=f"a freshly-mixed drink, thrown together from {names}",
-            effects=effects,
-            sips=3,
-            taste="A rough, improvised mix — it does the job.",
-            location=bar,   # onto the bar surface
-        )
-        for i in ingredients:
-            i.delete()
-        caller.location.msg_contents(
-            f"{caller.key} mixes {names} into {with_article(drink.key)} "
-            f"on {bar.key}."
-        )
+        # Open the operate-style mixing menu (load ingredients, see the
+        # projected effects + recognized classic, pour / save-brand / make).
+        from commands.bar_menu import start_bar_menu
+        start_bar_menu(caller, bar)
 
 
 class BarCmdSet(CmdSet):

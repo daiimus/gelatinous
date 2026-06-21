@@ -160,6 +160,37 @@ class TestCocktailRecognition(BaseEvenniaTest):
         self.assertTrue(g.db.is_ingredient)
 
 
+class TestBarMenuSave(BaseEvenniaTest):
+    """The save/brand step records a free-text-named recipe to the bar menu."""
+
+    def test_save_recipe_brands_and_keeps_base(self):
+        from commands.bar_menu import _save_recipe
+
+        bar = MagicMock()
+        bar.db.menu = []
+        proj = {"effects": {"alcohol": 4}, "flavour": "juniper-sharp",
+                "cocktail": "Negroni"}
+        r = _save_recipe(bar, "Kyoto Negroni", proj=proj, taste=None)
+
+        self.assertEqual(r["name"], "Kyoto Negroni")
+        self.assertEqual(r["base_cocktail"], "Negroni")   # remembers the family
+        self.assertEqual(r["effects"], {"alcohol": 4})
+        self.assertEqual(r["taste"], "juniper-sharp")      # composed fallback
+        self.assertIn("kyoto", r["order_keywords"])
+        self.assertIn("negroni", r["order_keywords"])
+        self.assertEqual(bar.db.menu[-1]["name"], "Kyoto Negroni")
+
+    def test_custom_taste_overrides_composed(self):
+        from commands.bar_menu import _save_recipe
+
+        bar = MagicMock()
+        bar.db.menu = []
+        proj = {"effects": {}, "flavour": "auto flavour", "cocktail": None}
+        r = _save_recipe(bar, "House Pour", proj=proj, taste="silk and smoke")
+        self.assertEqual(r["taste"], "silk and smoke")
+        self.assertIsNone(r["base_cocktail"])
+
+
 class TestSnacks(BaseEvenniaTest):
     """Free bar snacks (§10): keyword match + room resolution."""
 
