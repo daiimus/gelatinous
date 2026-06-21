@@ -121,7 +121,7 @@ HUB_AND_HOWL_MENU = [
     {
         "name": "mug of rotgut",
         "order_keywords": ("rotgut", "grain", "spirit", "cheap"),
-        "price": 8,
+        "price": 0,
         "sips": 3,
         "effects": {"alcohol": 1},
         "desc": "a dented tin mug of cloudy grain spirit, the colony's cheapest way to lose a shift",
@@ -131,7 +131,7 @@ HUB_AND_HOWL_MENU = [
     {
         "name": "glass of reactor wash",
         "order_keywords": ("reactor", "wash", "strong", "stiff"),
-        "price": 15,
+        "price": 0,
         "sips": 3,
         "effects": {"alcohol": 2},
         "desc": "a smudged glass of something amber and oily that catches the light wrong",
@@ -141,7 +141,7 @@ HUB_AND_HOWL_MENU = [
     {
         "name": "cup of channel fog",
         "order_keywords": ("fog", "channel", "milky", "smooth"),
-        "price": 20,
+        "price": 0,
         "sips": 4,
         "effects": {"alcohol": 1, "opium": 1},
         "desc": "a chipped ceramic cup of a milky, grey-green liquor that smells faintly of brine and poppy",
@@ -151,7 +151,7 @@ HUB_AND_HOWL_MENU = [
     {
         "name": "mug of black recyc",
         "order_keywords": ("recyc", "black", "coffee", "caf", "sober"),
-        "price": 5,
+        "price": 0,
         "sips": 4,
         "effects": {},
         "desc": "a scalding mug of reclaimed caf, black as the inside of a vent and twice as bitter",
