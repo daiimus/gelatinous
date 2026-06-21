@@ -68,6 +68,98 @@ class TestDrinkNaming(BaseEvenniaTest):
         self.assertIn("mug", aliases)
 
 
+class TestCocktailRecognition(BaseEvenniaTest):
+    """The hidden classics layer: loose role-match + spirit-swap spin naming."""
+
+    def _ing(self, role=None, spirit=None, contributions=None):
+        m = MagicMock()
+        m.db.role = role
+        m.db.spirit = spirit
+        m.db.contributions = contributions or {}
+        m.db.flavour = ""
+        return m
+
+    def _negroni(self, spirit):
+        return [self._ing("spirit", spirit),
+                self._ing("bitter_aperitivo"),
+                self._ing("sweet_vermouth")]
+
+    def test_canonical_negroni(self):
+        from world.bar import recognize_cocktail
+        self.assertEqual(recognize_cocktail(self._negroni("gin")), "Negroni")
+
+    def test_spirit_swap_spin(self):
+        from world.bar import recognize_cocktail
+        self.assertEqual(recognize_cocktail(self._negroni("mezcal")), "Mezcal Negroni")
+
+    def test_colony_spirit_spin(self):
+        from world.bar import recognize_cocktail
+        self.assertEqual(
+            recognize_cocktail(self._negroni("grain mash")), "Grain Mash Negroni"
+        )
+
+    def test_extra_garnish_ignored(self):
+        from world.bar import recognize_cocktail
+        ings = self._negroni("gin") + [self._ing("citrus")]
+        self.assertEqual(recognize_cocktail(ings), "Negroni")
+
+    def test_sour_family_names(self):
+        from world.bar import recognize_cocktail
+        sour = lambda s: [self._ing("spirit", s), self._ing("citrus"),
+                          self._ing("sweetener")]
+        self.assertEqual(recognize_cocktail(sour("rum")), "Daiquiri")
+        self.assertEqual(recognize_cocktail(sour("whiskey")), "Whiskey Sour")
+        self.assertEqual(recognize_cocktail(sour("mezcal")), "Mezcal Sour")
+
+    def test_most_specific_template_wins(self):
+        from world.bar import recognize_cocktail
+        last_word = [self._ing("spirit", "gin"), self._ing("herbal_liqueur"),
+                     self._ing("maraschino"), self._ing("citrus")]
+        self.assertEqual(recognize_cocktail(last_word), "Last Word")
+
+    def test_no_spirit_no_match(self):
+        from world.bar import recognize_cocktail
+        self.assertIsNone(recognize_cocktail(
+            [self._ing("bitter_aperitivo"), self._ing("sweet_vermouth")]
+        ))
+
+    def test_unrecognized_freemix(self):
+        from world.bar import recognize_cocktail
+        self.assertIsNone(recognize_cocktail([self._ing("spirit", "gin")]))
+
+    def test_project_mix_caps_and_names(self):
+        from world.bar import project_mix, MIX_EFFECT_CAP
+        ings = [self._ing("spirit", "gin", {"alcohol": 2}),
+                self._ing("bitter_aperitivo", None, {"alcohol": 1}),
+                self._ing("sweet_vermouth", None, {"alcohol": 1})]
+        proj = project_mix(ings)
+        self.assertEqual(proj["cocktail"], "Negroni")
+        self.assertEqual(proj["effects"], {"alcohol": 4})
+        # Overshoot is trimmed to the safety-net cap.
+        over = project_mix([self._ing("spirit", "gin", {"alcohol": 9})])
+        self.assertEqual(over["effects"]["alcohol"], MIX_EFFECT_CAP)
+
+    def test_catalog_covers_every_cocktail(self):
+        from world.bar import INGREDIENT_CATALOG, COCKTAILS
+        roles = {p.get("role") for p in INGREDIENT_CATALOG.values()}
+        spirits = {p.get("spirit") for p in INGREDIENT_CATALOG.values()
+                   if p.get("role") == "spirit"}
+        for c in COCKTAILS:
+            self.assertIn(c["canonical"], spirits,
+                          f"{c['name']}: canonical spirit not in catalog")
+            for role in c["roles"]:
+                self.assertIn(role, roles,
+                              f"{c['name']}: role {role} has no ingredient")
+
+    def test_make_ingredient_sets_identity(self):
+        from world.bar import make_ingredient
+        g = make_ingredient("mezcal", location=self.room1)
+        self.assertEqual(g.db.role, "spirit")
+        self.assertEqual(g.db.spirit, "mezcal")
+        self.assertEqual(g.db.contributions, {"alcohol": 2})
+        self.assertTrue(g.db.is_ingredient)
+
+
 class TestSnacks(BaseEvenniaTest):
     """Free bar snacks (§10): keyword match + room resolution."""
 
