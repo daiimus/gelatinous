@@ -311,12 +311,17 @@ class Bartender(Character):
             if bar:
                 bar.db.register = int(bar.db.register or 0) + price
         # The whole transaction is one wordless gesture — make it, set it down,
-        # take the cash. Routed through `emote` so the bartender renders by
-        # per-observer identity (a stranger sees "a lean man", not "Sully"),
-        # and no price is spoken: the swept payment says it.
+        # and (when there's a tab) take the cash. Routed through `emote` so the
+        # bartender renders by per-observer identity (a stranger sees "a lean
+        # man", not "Sully"), and no price is spoken: the swept payment says it.
+        # A free drink just gets slid over — no phantom payment.
         craft = recipe.get("craft", "fixes the drink")
         where = bar.key if bar else "the bar"
+        closer = (
+            "sweeps the payment off the slab with a practiced hand"
+            if price else "slides it over"
+        )
         self.execute_cmd(
-            f"emote {craft}, sets {with_article(drink.key)} on {where}, and "
-            f"sweeps the payment off the slab with a practiced hand."
+            f"emote {craft}, sets {with_article(drink.key)} on {where}, "
+            f"and {closer}."
         )
