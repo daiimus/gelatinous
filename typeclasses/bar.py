@@ -23,12 +23,17 @@ from evennia.utils import delay
 from typeclasses.items import Item
 from typeclasses.characters import Character
 from world.grammar import capitalize_first, with_article
+from world.shop.utils import format_currency
 from world.bar import (
     make_drink,
     make_drink_from_recipe,
     match_recipe,
     mix_effects,
 )
+
+#: Price colour on the menu — the same burnt orange (XTERM-256 |520) the
+#: operate menu uses for parenthetical/secondary info, for cross-UI consistency.
+MENU_PRICE_COLOR = "|520"
 
 
 # ---------------------------------------------------------------------------
@@ -59,8 +64,10 @@ class CmdBarMenu(Command):
             return
         lines = [f"|w{name} — menu|n"]
         for r in menu:
+            price = format_currency(r.get("price", 0))
             lines.append(
-                f"  {capitalize_first(r['name'])}  |y({r.get('price', 0)})|n"
+                f"  {capitalize_first(r['name'])}  "
+                f"{MENU_PRICE_COLOR}({price})|n"
             )
         self.caller.msg("\n".join(lines))
 
