@@ -779,14 +779,15 @@ class CmdEat(ConsumptionCommand):
             return False
         bar, snack = match
         name = snack["name"]
+        # Snack names are mass/plural nouns (brine pods, synth-jerky), so "some"
+        # reads right where an indefinite article wouldn't ("a synth-jerky").
         caller.msg(
-            f"You help yourself to {with_article(name)} from "
+            f"You help yourself to some {name} from "
             f"{bar.get_display_name(caller)}."
         )
         msg_room_identity(
             location=caller.location,
-            template=f"{{actor}} helps themselves to {with_article(name)} "
-                     f"from {bar.key}.",
+            template=f"{{actor}} helps themselves to some {name} from {bar.key}.",
             char_refs={"actor": caller},
             exclude=[caller],
         )
