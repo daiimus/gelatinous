@@ -166,7 +166,7 @@ def node_top(caller, raw_string, **kwargs):
         lines.append(f"  {MUTED}[2]|n Save as a recipe")
     if bar.db.menu:
         lines.append(f"  {MUTED}[3]|n Make a known recipe")
-    lines.append(f"  {MUTED}[q]|n Step back")
+    lines.append(f"  {MUTED}[x]|n Step away")
 
     return "\n".join(lines), ({"key": "_default", "goto": _process_top},)
 
@@ -174,7 +174,7 @@ def node_top(caller, raw_string, **kwargs):
 def _process_top(caller, raw_string, **kwargs):
     choice = raw_string.strip().lower()
     bar = getattr(caller.ndb, "_bar_menu", None)
-    if choice in ("q", "x", "quit", "back", ""):
+    if choice in ("x", "exit", "quit", "q", ""):
         return "node_exit" if choice else None
     if choice == "1":
         if _loaded(bar):
@@ -249,14 +249,14 @@ def node_pick_recipe(caller, raw_string, **kwargs):
     lines = [f"{HEAD}Make which recipe?|n", ""]
     for idx, r in enumerate(menu, 1):
         lines.append(f"  {MUTED}[{idx}]|n {r['name']}")
-    lines.append(f"  {MUTED}[q]|n Back")
+    lines.append(f"  {MUTED}[x]|n Back")
     return "\n".join(lines), ({"key": "_default", "goto": _process_pick},)
 
 
 def _process_pick(caller, raw_string, **kwargs):
     bar = getattr(caller.ndb, "_bar_menu", None)
     choice = raw_string.strip().lower()
-    if choice in ("q", "x", "back", ""):
+    if choice in ("x", "back", "q", ""):
         return "node_top"
     menu = (bar.db.menu if bar else None) or []
     if choice.isdigit() and 1 <= int(choice) <= len(menu):
