@@ -145,6 +145,51 @@ class CmdBarPrepare(Command):
         )
 
 
+class CmdBarClear(Command):
+    """
+    Clear abandoned drinks and loose ingredients off the bar.
+
+    Usage:
+        clear <bar>
+
+    Wipes the bar surface down — served drinks nobody took and any ingredients
+    left loaded. Keeps the counter tidy between rounds. For bartenders.
+    """
+
+    key = "clear"
+    locks = "cmd:all()"
+    help_category = "Bar"
+
+    def func(self):
+        from world.identity_utils import msg_room_identity
+
+        bar = self.obj
+        caller = self.caller
+        if not bar.is_bartender(caller):
+            caller.msg("You aren't working this bar.")
+            return
+        clutter = [
+            o for o in bar.contents
+            if getattr(o.db, "is_drink", False) or getattr(o.db, "is_ingredient", False)
+        ]
+        n = len(clutter)
+        if not n:
+            caller.msg(f"{bar.get_display_name(caller)} is already clear.")
+            return
+        for o in clutter:
+            o.delete()
+        caller.msg(
+            f"You wipe down {bar.get_display_name(caller)}, clearing away "
+            f"{n} item{'s' if n != 1 else ''}."
+        )
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} wipes down {bar.key}, clearing away the empties.",
+            char_refs={"actor": caller},
+            exclude=[caller],
+        )
+
+
 class BarCmdSet(CmdSet):
     key = "bar_cmdset"
 
@@ -152,6 +197,7 @@ class BarCmdSet(CmdSet):
         self.add(CmdBarMenu())
         self.add(CmdBarUse())
         self.add(CmdBarPrepare())
+        self.add(CmdBarClear())
 
 
 # ---------------------------------------------------------------------------

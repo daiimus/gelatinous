@@ -204,7 +204,11 @@ BLEEDING_SEVERITY_LABELS = {
 
 CONSCIOUSNESS_RECOVERY_HAZARD_PER_MINUTE = {
     "knockout": 0.25,
-    "sedative": 0.15,
+    # Drink/drug sedation should sleep off, not strand the player — one severity
+    # drop (≈3 min at the 180s tick) is enough to regain consciousness; a few
+    # more clears the buzz. Raised from 0.15 so a blackout is a brief nap, not a
+    # ~30-minute lockout (player-experience: blacking out is temporary).
+    "sedative": 0.50,
     "anesthesia": 0.10,
     "trauma": 0.20,
 }
