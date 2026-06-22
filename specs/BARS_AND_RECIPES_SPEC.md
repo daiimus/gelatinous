@@ -1,12 +1,61 @@
 # Bars & Recipes Spec
 
-> **Status: 🧭 DESIGN PROPOSAL — NOT IMPLEMENTED** (drafted 2026-06-20). Core
-> design decisions are LOCKED (see §1.1); this document is for review before
-> any build. Scope is deliberately bounded to a shippable v1 with explicit
-> seams (§11) for the deferred passes (deep ingredient sourcing, prep methods,
-> faction-integrated ownership). Builds directly on the existing consumption
-> pipeline (`SUBSTANCES_AND_DELIVERY_SPEC.md`, `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`)
-> — recipes produce ordinary consumables, no new effect engine.
+> **Status: ✅ v1 SHIPPED & LIVE** (drafted 2026-06-20; v1 built & deployed
+> 2026-06-21/22 at the Hub & Howl). All 14 locked decisions (§1.1) are
+> implemented, plus several pieces beyond the original v1 line (cocktail
+> recognition, prep methods, bottomless house stock, chug/devour). Remaining
+> work is the deferred seams (§11): supplier-NPC ingredient economy, the
+> register/`manage`/`clear`/`deposit` owner tooling, faction ownership, and the
+> general crafting-station framework. See **§0.1 · Implementation status** for
+> the shipped/deferred breakdown. Builds directly on the consumption pipeline
+> (`SUBSTANCES_AND_DELIVERY_SPEC.md`, `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`) —
+> recipes produce ordinary consumables, no new effect engine.
+
+## 0.1 · Implementation status (2026-06-22)
+
+**Shipped & live (PRs #639–#689):**
+- `BarCounter` — an `@integrate` room fixture (folds into the room desc,
+  `get:false`), a served-drink surface (counted `On the bar:` listing), its own
+  `db.desc`, the menu (`₮` currency + operate-orange, column-aligned), and the
+  `read menu on <bar>` verb. Wired end-to-end at the Hub & Howl.
+- **NPC bartender** (Sully) — takes orders diegetically via the unified speech
+  backbone (`say`/`to`/pose all route through `world/speech.py`; a pose that
+  references the bartender counts as a directed order), makes the drink, takes
+  payment as one wordless gesture (no system text), acknowledges thanks
+  non-verbally, and renders by per-observer identity.
+- **Crafting** — the interactive operate-style `use <bar>` EvMenu
+  (`commands/bar_menu.py`): pick ingredients from the **bottomless house stock**
+  (auto-derived from the menu + base pantry — no hauling), see the projected
+  effects / composed flavour / recognized classic, then **pour** (with a
+  build/stir/shake/muddle/blend prep step), **save/brand** as a free-text-named
+  recipe (custom names like *Kyoto Negroni*; remembers the base cocktail), or
+  **make a known recipe**. `clear` resets the load.
+- **Two-layer ingredients** (§3) — substance contributions (doses → effects)
+  *plus* a cocktail role + spirit type. ~44-ingredient seeded catalog
+  (`@ingredient <key>` spawns them for testing, pending the supplier economy).
+- **Cocktail recognition** — a hidden 20-template library recognized at mix time
+  by loose role-match (roles present, ratios/garnishes ignored), with
+  spirit-swap spins (*Mezcal Negroni*) and same-skeleton families (rum
+  sour→*Daiquiri*, whiskey→*Whiskey Sour*; gin *Negroni*/whiskey *Boulevardier*;
+  tequila *Margarita*/brandy *Sidecar*) and spirit-less classics (*Mimosa*,
+  *Spritz*). A single-ingredient pour is *a glass of `<ingredient>`*.
+- **Flavour** — refined ingredient tasting-notes composed into a sentence, with
+  authored taste prose for ~23 iconic named drinks; flavour-only drinks (soda,
+  recyc) surface their taste too.
+- **Consumption** — drinks ride the existing pipeline (sips, alcohol cap,
+  tolerance, addiction); `prepare <drink>` is a menu-skip shortcut for a known
+  pour; `chug` (drinks) / `devour` (food) consume every remaining use at once
+  (medical items guarded out); `drink 2nd mug` ordinals fixed.
+- **Free snacks** (§10) — bottomless `eat <snack> from <bar>`.
+- **Role gating** — `is_bartender` allows owner/staff and any Builder+ staff.
+- **Pricing** — currency is the `₮` token (shop-consistent); Hub prices **zeroed
+  for now** by request (re-pricing restores the spoken-price/payment path).
+
+**Deferred (designed-for, not built — see §11):** supplier-NPC ingredient
+economy (#6); register + `manage`/`clear`/`deposit` owner tooling (§9); cyber-
+brain recipe files / portability + trade (#11); faction-integrated ownership
+(§8); the reusable crafting-station framework (§2.1); prep-method *mechanics*
+(shipped as flavour-only); per-spin authored tastes.
 
 ## 0 · Purpose
 
@@ -322,12 +371,22 @@ jerky**, **ration crackers**. Optional for v1; cheap to add.
 
 ## 11 · Build phases
 
-**v1 (this spec):**
-- `BarCounter` object + the four pillars + role gating (owner + staff).
-- Ingredients as real items with contribution profiles; supplier-NPC vendors.
-- Free-mix → additive-capped drinks → consumption pipeline.
-- Save/name/brand recipes; menu + pricing + register.
-- One reference bar wired end-to-end (the Hub & Howl), then the others.
+**v1 — ✅ SHIPPED (2026-06-21/22):**
+- ✅ `BarCounter` object + the four pillars + role gating (owner + staff + Builder+).
+- ✅ Ingredients as real items with contribution profiles (+ cocktail identity).
+      Supplier-NPC vendors **deferred** — a seeded catalog + `@ingredient` spawn
+      tool stands in for now.
+- ✅ Free-mix → additive-capped drinks → consumption pipeline.
+- ✅ Save/name/brand recipes; menu. **Pricing** present (zeroed by request);
+      **register** deferred.
+- ✅ One reference bar wired end-to-end (the Hub & Howl).
+
+**Shipped beyond the original v1 line:**
+- ✅ Hidden classic-cocktail recognition + spirit-swap spins (loose role-match).
+- ✅ Prep methods (build/stir/shake/muddle/blend) — flavour + suggestion only.
+- ✅ Bottomless house stock (pick-from-stock in the menu, no hauling).
+- ✅ `prepare <drink>` menu-skip shortcut; `chug`/`devour` whole-item consume.
+- ✅ Unified `say`/`to`/pose speech backbone (NPC reacts to any of them).
 
 **Deferred seams (designed-for, not built):**
 - **General crafting / workshop mechanics** — extract the *load → use →
@@ -363,13 +422,16 @@ jerky**, **ration crackers**. Optional for v1; cheap to add.
 
 ## 13 · Open questions
 
-All core decisions are **resolved** (decisions #1–14; ordering settled in §7.1 —
-diegetic `to`/pose, pay on order). Remaining items are build details, not design
-blockers:
+All core decisions are **resolved** (decisions #1–14). The v1 build questions
+are settled; what remains is the deferred-seam work (§11) and tuning:
 
-1. **`to` command** (directed say) — a prerequisite for NPC ordering; confirm it
-   exists or build it (pose works meanwhile).
-2. **NPC menu-request parsing** robustness (v1: drink-name match).
-3. **Drinks/recipe template — received** (captured in §6.1). Remaining tuning:
-   assign **substance contributions** to the ingredient catalog (the alcohol /
-   effect numbers the template doesn't carry — flavour-only ingredients get none).
+1. ✅ **`to` command** (directed say) — built, and the whole `say`/`to`/pose path
+   is unified through `world/speech.py`; the NPC reacts to any of them.
+2. ✅ **NPC menu-request parsing** — keyword match against the menu (`match_recipe`).
+3. ✅ **Ingredient contributions** — assigned across the seeded catalog (§3).
+4. **Effect/balance tuning** — `MIX_EFFECT_CAP` and per-sip dose scaling (esp.
+   `chug` stacking) are first-pass; "drunk is just a condition," tune in play.
+5. **Owner tooling** — `manage`/`clear`/`deposit` and the register are the main
+   unbuilt v1 commands (§9); spec'd, not yet built.
+6. **Supplier economy** — the ingredient vendor loop (#6) is the biggest deferred
+   piece gating "real" scarcity-driven balance.
