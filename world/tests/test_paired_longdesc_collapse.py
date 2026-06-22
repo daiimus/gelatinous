@@ -342,3 +342,49 @@ class PairedSeveredDescriptionTests(TestCase):
         ):
             out = get_paired_severed_description(None, "left_hand", "right_hand")
         self.assertIsNone(out)
+
+
+class _ExtAnatomy(AppearanceMixin):
+    """Minimal host to exercise extended-anatomy (e.g. an augment tail)
+    rendering through the real ``_get_visible_body_descriptions``."""
+
+    def __init__(self, longdescs):
+        self._longdescs = longdescs
+
+    @property
+    def longdesc(self):
+        return self._longdescs
+
+    class _DB:
+        species = None
+
+    db = _DB()
+
+    def _build_clothing_coverage_map(self):
+        return {}
+
+    def _get_destroyed_locations(self):
+        return set()
+
+    def _build_paired_longdesc_collapse(self, *a, **k):
+        return ({}, set())
+
+    def _build_destroyed_pair_collapse(self, *a, **k):
+        return ({}, set())
+
+    def _render_body_longdesc(self, location, text, looker):
+        return text
+
+
+class ExtendedAnatomyRenderTests(TestCase):
+    """An extended longdesc location (an augment tail) renders exactly once."""
+
+    def test_extended_longdesc_renders_once(self):
+        host = _ExtAnatomy(
+            {"chest": "A bare chest.", "tail": "A cybernetic tail sways."}
+        )
+        descriptions = host._get_visible_body_descriptions(looker=None)
+        locations = [loc for loc, _ in descriptions]
+        self.assertEqual(locations.count("tail"), 1)
+        joined = " ".join(text for _, text in descriptions)
+        self.assertEqual(joined.count("A cybernetic tail sways."), 1)
