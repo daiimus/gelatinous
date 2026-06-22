@@ -465,7 +465,7 @@ def _best_template(ingredients):
 #: swapped spirit's notes. Colony-grit descriptive styling, our own words.
 COCKTAIL_TASTE = {
     "Negroni": "Bittersweet and bracing — orange-bitter over a botanical spine, with a long, dry herbal finish.",
-    "Boulevardier": "A Negroni gone darker: oak and caramel under the bitter orange, slow and warming.",
+    "Boulevardier": "Dark and bittersweet — oak and caramel under a bitter-orange edge, with a slow, warming herbal finish.",
     "Old Fashioned": "Whiskey worn smooth — oak and caramel rounded off with sugar and a spiced bite.",
     "Daiquiri": "Clean and sharp: sugarcane and lime in tight balance, gone before it lingers.",
     "Whiskey Sour": "Tart and bracing, lemon cutting through the oak with the sweetness trailing behind.",
