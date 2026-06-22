@@ -200,6 +200,43 @@ def _run_consumption_cmd(
 # ===================================================================
 
 
+class TestOrdinalItemParse(TestCase):
+    """`drink 2nd mug` keeps the ordinal attached to its noun for search."""
+
+    def _cmd(self):
+        from commands.CmdConsumption import CmdDrink
+        cmd = CmdDrink()
+        caller = MagicMock()
+        caller.ORDINAL_WORDS = {"first": 1, "second": 2, "1st": 1, "2nd": 2}
+        caller._searched = []
+        def fake_search(q, location=None, quiet=False):
+            caller._searched.append(q)
+            return [MagicMock()]
+        caller.search = fake_search
+        cmd.caller = caller
+        return cmd, caller
+
+    def test_numeric_ordinal_kept_with_noun(self):
+        cmd, caller = self._cmd()
+        res = cmd.get_item_and_target("2nd mug", require_medical=False)
+        self.assertEqual(caller._searched, ["2nd mug"])
+        self.assertEqual(res["target"], caller)  # no bogus target
+
+    def test_word_ordinal_kept_with_noun(self):
+        cmd, caller = self._cmd()
+        cmd.get_item_and_target("second rotgut", require_medical=False)
+        self.assertEqual(caller._searched, ["second rotgut"])
+
+    def test_plain_item_then_target_still_splits(self):
+        cmd, caller = self._cmd()
+        with patch("commands.CmdConsumption.resolve_character_target",
+                   return_value=MagicMock()) as rct:
+            cmd.get_item_and_target("pill alice", require_medical=False)
+        self.assertEqual(caller._searched, ["pill"])
+        rct.assert_called_once()
+        self.assertEqual(rct.call_args[0][1], "alice")
+
+
 class TestConsumptionPerObserverRendering(TestCase):
     """Each consumption verb broadcasts per-observer-rendered text."""
 
