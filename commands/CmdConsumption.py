@@ -59,8 +59,18 @@ class ConsumptionCommand(Command):
             
         # Parse arguments
         parts = args.split()
-        item_name = parts[0]
-        
+        # Keep an ordinal prefix attached to its noun ("2nd mug", "second mug")
+        # so the search's ordinal handling (ObjectParent.get_search_query_
+        # replacement) can resolve it, instead of splitting the ordinal off as
+        # the item and the noun as a (bogus) target.
+        ordinal_words = getattr(caller, "ORDINAL_WORDS", {})
+        if len(parts) > 1 and parts[0].lower() in ordinal_words:
+            item_name = f"{parts[0]} {parts[1]}"
+            rest = parts[2:]
+        else:
+            item_name = parts[0]
+            rest = parts[1:]
+
         # Find the item
         item = caller.search(item_name, location=caller, quiet=True)
         if not item:
@@ -69,18 +79,18 @@ class ConsumptionCommand(Command):
         elif len(item) > 1:
             result["errors"].append(f"Multiple items match '{item_name}'. Be more specific.")
             return result
-        
+
         result["item"] = item[0]
-        
+
         # Check if it's a medical item (skipped for tag-gated
         # ingestion verbs — see require_medical above)
         if require_medical and not is_medical_item(result["item"]):
             result["errors"].append(f"{result['item'].get_display_name(caller)} is not a medical item.")
             return result
-            
+
         # Parse target (if specified)
-        if len(parts) > 1:
-            target_name = parts[1]
+        if rest:
+            target_name = rest[0]
             if target_name.lower() in ["me", "myself", "self"]:
                 result["target"] = caller
             else:
@@ -93,9 +103,9 @@ class ConsumptionCommand(Command):
                 result["target"] = target
                 
         # Parse body location (for commands that support it)
-        if allow_body_location and len(parts) > 2:
-            result["body_location"] = parts[2]
-            
+        if allow_body_location and len(rest) > 1:
+            result["body_location"] = rest[1]
+
         return result
         
     def _apply_substance_dose(self, item, target):

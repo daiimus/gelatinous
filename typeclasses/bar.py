@@ -101,12 +101,57 @@ class CmdBarUse(Command):
         start_bar_menu(caller, bar)
 
 
+class CmdBarPrepare(Command):
+    """
+    Prepare a known drink from the bar's menu, on the fly.
+
+    Usage:
+        prepare <drink>
+
+    A shortcut past the mixing menu: matches the bar's menu and makes the drink
+    straight onto the bar (no ingredients to load — like the bartender pouring a
+    known recipe). For bartenders.
+
+    Example:
+        prepare recyc
+    """
+
+    key = "prepare"
+    locks = "cmd:all()"
+    help_category = "Bar"
+
+    def func(self):
+        import re
+        bar = self.obj
+        caller = self.caller
+        if not bar.is_bartender(caller):
+            caller.msg("You aren't working this bar.")
+            return
+        # Tolerate a trailing "on <bar>" — the command is already bound to a bar.
+        query = re.split(r"\bon\b", (self.args or "").strip(), maxsplit=1)[0].strip()
+        if not query:
+            caller.msg("Prepare what? (try the menu to see what's on offer.)")
+            return
+        recipe = match_recipe(query, bar.db.menu or [])
+        if not recipe:
+            caller.msg(
+                f"That's not on {bar.get_display_name(caller)}'s menu."
+            )
+            return
+        drink = make_drink_from_recipe(recipe, location=bar)
+        craft = recipe.get("craft", "builds the drink")
+        caller.execute_cmd(
+            f"emote {craft}, and sets {with_article(drink.key)} on {bar.key}."
+        )
+
+
 class BarCmdSet(CmdSet):
     key = "bar_cmdset"
 
     def at_cmdset_creation(self):
         self.add(CmdBarMenu())
         self.add(CmdBarUse())
+        self.add(CmdBarPrepare())
 
 
 # ---------------------------------------------------------------------------
