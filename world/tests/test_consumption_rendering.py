@@ -200,6 +200,37 @@ def _run_consumption_cmd(
 # ===================================================================
 
 
+class TestFlavourOnlyDrinkTaste(TestCase):
+    """A no-effect drink (soda, black recyc) still surfaces its taste."""
+
+    def test_empty_effects_still_shows_taste(self):
+        from commands.CmdConsumption import CmdDrink
+        cmd = CmdDrink()
+        item = MagicMock()
+        item.db.drink_effects = {}      # flavour-only pour
+        item.db.drink_taste = "It tastes of clean soda fizz."
+        target = MagicMock()
+        msgs = []
+        target.msg = lambda *a, **k: msgs.append(a[0] if a else k.get("text"))
+        with patch("world.substances.apply_substance") as ap:
+            cmd._apply_substance_dose(item, target)
+        self.assertIn("It tastes of clean soda fizz.", msgs)
+        ap.assert_not_called()
+
+    def test_non_drink_uses_substance_path(self):
+        from commands.CmdConsumption import CmdDrink
+        cmd = CmdDrink()
+        item = MagicMock()
+        item.db.drink_effects = None    # not a recipe-composed drink
+        item.db.substance = None
+        target = MagicMock()
+        target.msg = MagicMock()
+        with patch("world.substances.apply_substance",
+                   return_value={"feedback": []}) as ap:
+            cmd._apply_substance_dose(item, target)
+        ap.assert_called_once()
+
+
 class TestOrdinalItemParse(TestCase):
     """`drink 2nd mug` keeps the ordinal attached to its noun for search."""
 

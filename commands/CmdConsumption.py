@@ -123,10 +123,14 @@ class ConsumptionCommand(Command):
         """
         from world.substances import apply_substance
 
+        # A recipe-composed drink carries a ``db.drink_effects`` map — possibly
+        # *empty* for a flavour-only pour (soda water, a no-effect mixer). Test
+        # for None (the marker that it's a drink), not truthiness, so a
+        # no-effect drink still surfaces its taste.
         drink_effects = item.db.drink_effects
-        if drink_effects:
+        if drink_effects is not None:
             feedback = []
-            for substance_id, doses in drink_effects.items():
+            for substance_id, doses in (drink_effects or {}).items():
                 try:
                     n = max(1, int(doses))
                 except (TypeError, ValueError):
