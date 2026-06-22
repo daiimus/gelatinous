@@ -171,6 +171,33 @@ class TestCocktailRecognition(BaseEvenniaTest):
         over = project_mix([self._ing("spirit", "gin", {"alcohol": 9})])
         self.assertEqual(over["effects"]["alcohol"], MIX_EFFECT_CAP)
 
+    def test_taste_authored_for_classic(self):
+        from world.bar import project_mix, COCKTAIL_TASTE
+        negroni = [self._ing("spirit", "gin"), self._ing("bitter_aperitivo"),
+                   self._ing("sweet_vermouth")]
+        self.assertEqual(project_mix(negroni)["taste"], COCKTAIL_TASTE["Negroni"])
+
+    def test_taste_composed_for_freemix(self):
+        from world.bar import compose_taste
+        g = self._ing("spirit", "gin"); g.db.flavour = "juniper-sharp botanicals"
+        self.assertEqual(
+            compose_taste([g], None), "It tastes of juniper-sharp botanicals."
+        )
+        v = self._ing("sweet_vermouth"); v.db.flavour = "sweet, herbal wine"
+        self.assertEqual(
+            compose_taste([g, v], None),
+            "It tastes of juniper-sharp botanicals and sweet, herbal wine.",
+        )
+
+    def test_compose_has_no_semicolons(self):
+        from world.bar import compose_flavour
+        a = self._ing(); a.db.flavour = "alpha"
+        b = self._ing(); b.db.flavour = "beta"
+        c = self._ing(); c.db.flavour = "gamma"
+        out = compose_flavour([a, b, c])
+        self.assertNotIn(";", out)
+        self.assertEqual(out, "alpha, beta, and gamma")
+
     def test_default_name_single_ingredient(self):
         from world.bar import default_drink_name, project_mix
         # A neat spirit is a glass of that spirit.
@@ -243,13 +270,13 @@ class TestBarMenuSave(BaseEvenniaTest):
         bar = MagicMock()
         bar.db.menu = []
         proj = {"effects": {"alcohol": 4}, "flavour": "juniper-sharp",
-                "cocktail": "Negroni"}
+                "taste": "a bittersweet Negroni", "cocktail": "Negroni"}
         r = _save_recipe(bar, "Kyoto Negroni", proj=proj, taste=None)
 
         self.assertEqual(r["name"], "Kyoto Negroni")
         self.assertEqual(r["base_cocktail"], "Negroni")   # remembers the family
         self.assertEqual(r["effects"], {"alcohol": 4})
-        self.assertEqual(r["taste"], "juniper-sharp")      # composed fallback
+        self.assertEqual(r["taste"], "a bittersweet Negroni")   # taste fallback
         self.assertIn("kyoto", r["order_keywords"])
         self.assertIn("negroni", r["order_keywords"])
         self.assertEqual(bar.db.menu[-1]["name"], "Kyoto Negroni")
@@ -259,7 +286,8 @@ class TestBarMenuSave(BaseEvenniaTest):
 
         bar = MagicMock()
         bar.db.menu = []
-        proj = {"effects": {}, "flavour": "auto flavour", "cocktail": None}
+        proj = {"effects": {}, "flavour": "auto flavour",
+                "taste": "It tastes of auto flavour.", "cocktail": None}
         r = _save_recipe(bar, "House Pour", proj=proj, taste="silk and smoke")
         self.assertEqual(r["taste"], "silk and smoke")
         self.assertIsNone(r["base_cocktail"])
