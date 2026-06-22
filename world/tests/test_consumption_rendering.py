@@ -200,6 +200,40 @@ def _run_consumption_cmd(
 # ===================================================================
 
 
+class TestChugDevourFullDose(TestCase):
+    """chug/devour stack every remaining use's dose at once."""
+
+    def test_drink_effects_scaled_by_uses(self):
+        from commands.CmdConsumption import CmdChug
+        cmd = CmdChug()
+        item = MagicMock()
+        item.db.uses_left = 3
+        item.db.drink_effects = {"alcohol": 1}
+        item.db.drink_taste = "It scours the throat."
+        target = MagicMock()
+        msgs = []
+        target.msg = lambda *a, **k: msgs.append(a[0] if a else k.get("text"))
+        with patch("world.substances.apply_substance",
+                   return_value={"feedback": ["A slow heaviness."]}) as ap:
+            cmd._apply_full_dose(item, target)
+        ap.assert_called_once_with(target, "alcohol", doses=3)   # 1 × 3 sips
+        self.assertTrue(any("scours the throat" in m for m in msgs))
+
+    def test_legacy_substance_scaled_by_uses(self):
+        from commands.CmdConsumption import CmdDevour
+        cmd = CmdDevour()
+        item = MagicMock()
+        item.db.uses_left = 2
+        item.db.drink_effects = None
+        item.db.substance = "opium"
+        target = MagicMock()
+        target.msg = MagicMock()
+        with patch("world.substances.apply_substance",
+                   return_value={"feedback": []}) as ap:
+            cmd._apply_full_dose(item, target)
+        ap.assert_called_once_with(target, "opium", doses=2)
+
+
 class TestFlavourOnlyDrinkTaste(TestCase):
     """A no-effect drink (soda, black recyc) still surfaces its taste."""
 

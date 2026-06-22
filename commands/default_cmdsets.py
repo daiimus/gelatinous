@@ -257,6 +257,8 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdConsumption.CmdEat())
         self.add(CmdConsumption.CmdDrink())
         self.add(CmdConsumption.CmdInhale())
+        self.add(CmdConsumption.CmdChug())
+        self.add(CmdConsumption.CmdDevour())
         # CmdConsumption.CmdSmoke() removed in #454 — superseded by
         # commands.CmdSmoke (added above).  The medical herb-smoking
         # surface can be reintegrated via the new command's brand /
