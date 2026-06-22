@@ -217,6 +217,73 @@ INGREDIENT_CATALOG = {
             "flavour": "plain sweetness", "desc": "a sticky flask of sugar syrup", "keywords": ("sugar", "syrup", "simple")},
     "bitters": {"name": "dasher of aromatic bitters", "role": "bitters", "contributions": {},
             "flavour": "spiced, concentrated bitterness", "desc": "a small dasher bottle of aromatic bitters", "keywords": ("bitters", "aromatic", "dasher")},
+    # ---- More spirits --------------------------------------------------
+    "brandy": {"name": "bottle of brandy", "role": ROLE_SPIRIT, "spirit": "brandy",
+            "contributions": {"alcohol": 2}, "flavour": "raisined and warm",
+            "desc": "a dusty Earth-import bottle of brandy", "keywords": ("brandy", "cognac")},
+    # ---- More liqueurs (alcohol 1) -------------------------------------
+    "coffee_liqueur": {"name": "bottle of coffee liqueur", "role": "coffee_liqueur",
+            "contributions": {"alcohol": 1}, "flavour": "dark roasted coffee and sugar",
+            "desc": "a sticky bottle of coffee liqueur", "keywords": ("coffee", "liqueur")},
+    "amaretto": {"name": "bottle of amaretto", "role": "amaretto",
+            "contributions": {"alcohol": 1}, "flavour": "sweet toasted almond",
+            "desc": "a bottle of amber amaretto", "keywords": ("amaretto", "almond")},
+    "elderflower": {"name": "bottle of elderflower liqueur", "role": "elderflower",
+            "contributions": {"alcohol": 1}, "flavour": "floral elderflower",
+            "desc": "a pale bottle of elderflower liqueur", "keywords": ("elderflower",)},
+    "cassis": {"name": "bottle of cassis", "role": "cassis",
+            "contributions": {"alcohol": 1}, "flavour": "dark blackcurrant",
+            "desc": "a deep purple bottle of crème de cassis", "keywords": ("cassis", "blackcurrant")},
+    # ---- Wine / sparkling / fortified (alcohol 1) ----------------------
+    "sparkling_wine": {"name": "bottle of sparkling wine", "role": "sparkling_wine",
+            "contributions": {"alcohol": 1}, "flavour": "dry, bright effervescence",
+            "desc": "a foil-necked Earth-import bottle of sparkling wine", "keywords": ("sparkling", "champagne", "prosecco", "wine")},
+    "sherry": {"name": "bottle of dry sherry", "role": "sherry",
+            "contributions": {"alcohol": 1}, "flavour": "nutty, saline, oxidised",
+            "desc": "a slim bottle of dry sherry", "keywords": ("sherry",)},
+    # ---- Mixers (non-alcoholic) ----------------------------------------
+    "soda": {"name": "siphon of soda water", "role": "soda", "contributions": {},
+            "flavour": "clean fizz", "desc": "a battered soda siphon", "keywords": ("soda", "seltzer")},
+    "tonic": {"name": "bottle of tonic water", "role": "tonic", "contributions": {},
+            "flavour": "bittersweet quinine fizz", "desc": "a bottle of tonic water", "keywords": ("tonic",)},
+    "ginger_beer": {"name": "bottle of ginger beer", "role": "ginger_beer", "contributions": {},
+            "flavour": "spicy ginger bite", "desc": "a cloudy bottle of ginger beer", "keywords": ("ginger",)},
+    "cola": {"name": "bottle of cola", "role": "cola", "contributions": {},
+            "flavour": "sweet caramel fizz", "desc": "a scuffed bottle of flat-looking cola", "keywords": ("cola", "coke")},
+    # ---- Juices --------------------------------------------------------
+    "orange_juice": {"name": "jug of orange juice", "role": "orange_juice", "contributions": {},
+            "flavour": "sweet-tart orange", "desc": "a jug of cloudy orange juice", "keywords": ("orange", "juice", "oj")},
+    "cranberry": {"name": "carton of cranberry juice", "role": "cranberry", "contributions": {},
+            "flavour": "tart cranberry", "desc": "a carton of deep red cranberry juice", "keywords": ("cranberry",)},
+    "pineapple": {"name": "tin of pineapple juice", "role": "pineapple", "contributions": {},
+            "flavour": "sweet tropical pineapple", "desc": "a dented tin of pineapple juice", "keywords": ("pineapple",)},
+    "grapefruit": {"name": "jug of grapefruit juice", "role": "grapefruit", "contributions": {},
+            "flavour": "bittersweet grapefruit", "desc": "a jug of pink grapefruit juice", "keywords": ("grapefruit",)},
+    # ---- Dairy / protein / coffee --------------------------------------
+    "cream": {"name": "carton of cream", "role": "cream", "contributions": {},
+            "flavour": "rich, heavy cream", "desc": "a carton of thick cream", "keywords": ("cream",)},
+    "coconut": {"name": "tin of coconut cream", "role": "coconut", "contributions": {},
+            "flavour": "sweet coconut", "desc": "a tin of thick coconut cream", "keywords": ("coconut",)},
+    "egg_white": {"name": "egg white", "role": "egg_white", "contributions": {},
+            "flavour": "silky foam", "desc": "a single egg white in a cup", "keywords": ("egg",)},
+    "coffee": {"name": "shot of espresso", "role": "coffee", "contributions": {},
+            "flavour": "bitter, concentrated coffee", "desc": "a hot shot of pulled espresso", "keywords": ("espresso", "coffee", "shot")},
+    # ---- Sweeteners / syrups -------------------------------------------
+    "grenadine": {"name": "flask of grenadine", "role": "grenadine", "contributions": {},
+            "flavour": "sweet pomegranate red", "desc": "a flask of deep red grenadine", "keywords": ("grenadine", "pomegranate")},
+    "orgeat": {"name": "flask of orgeat", "role": "orgeat", "contributions": {},
+            "flavour": "sweet almond-orange", "desc": "a flask of milky orgeat syrup", "keywords": ("orgeat",)},
+    "honey_syrup": {"name": "flask of honey syrup", "role": "honey", "contributions": {},
+            "flavour": "floral honey", "desc": "a sticky flask of honey syrup", "keywords": ("honey",)},
+    "mint": {"name": "sprig of mint", "role": "mint", "contributions": {},
+            "flavour": "cool fresh mint", "desc": "a bruised sprig of hydroponic mint", "keywords": ("mint",)},
+    # ---- Garnishes (flavour / presence only — never role-defining) -----
+    "olive": {"name": "olive", "role": "garnish", "contributions": {},
+            "flavour": "briny olive", "desc": "a single brined olive on a pick", "keywords": ("olive",)},
+    "cherry": {"name": "cocktail cherry", "role": "garnish", "contributions": {},
+            "flavour": "syrupy cherry", "desc": "a lurid red cocktail cherry", "keywords": ("cherry",)},
+    "salt": {"name": "pinch of salt", "role": "garnish", "contributions": {},
+            "flavour": "a saline rim", "desc": "a small dish of coarse salt", "keywords": ("salt",)},
 }
 
 
@@ -262,22 +329,59 @@ def compose_flavour(ingredients):
 # matched on brand names. `spin` formats non-canonical spirits; `spirit_names`
 # overrides specific spirits where the family name differs (rum sour = Daiquiri).
 # ---------------------------------------------------------------------------
+#: A template names a skeleton of required component roles (the spirit role is
+#: implied for spirit-keyed templates and tracked separately for naming). Where
+#: several classics share a skeleton, one template carries the family with
+#: `spirit_names` overrides (rum sour = Daiquiri, whiskey = Whiskey Sour; gin
+#: Negroni vs whiskey Boulevardier). `spirit_keyed: False` = a spirit-less
+#: classic (Mimosa, Spritz). Order matters only for equal-specificity ties.
 COCKTAILS = [
-    {"name": "Last Word", "canonical": "gin",
+    # --- spirit-keyed, most specific first ---
+    {"name": "Mojito", "canonical": "rum", "spin": "{spirit} Mojito",
+     "roles": {"citrus", "sweetener", "mint", "soda"}},
+    {"name": "Cosmopolitan", "canonical": "vodka", "spin": "{spirit} Cosmopolitan",
+     "roles": {"orange_liqueur", "cranberry", "citrus"}},
+    {"name": "Last Word", "canonical": "gin", "spin": "{spirit} Last Word",
      "roles": {"herbal_liqueur", "maraschino", "citrus"}},
-    {"name": "Margarita", "canonical": "tequila",
+    {"name": "Mai Tai", "canonical": "rum", "spin": "{spirit} Mai Tai",
+     "roles": {"orange_liqueur", "orgeat", "citrus"}},
+    {"name": "French 75", "canonical": "gin", "spin": "{spirit} 75",
+     "roles": {"citrus", "sweetener", "sparkling_wine"}},
+    {"name": "Tom Collins", "canonical": "gin", "spin": "{spirit} Collins",
+     "roles": {"citrus", "sweetener", "soda"}},
+    {"name": "Margarita", "canonical": "tequila", "spin": "{spirit} Margarita",
+     "spirit_names": {"brandy": "Sidecar"},
      "roles": {"orange_liqueur", "citrus"}},
-    {"name": "Negroni", "canonical": "gin",
+    {"name": "Negroni", "canonical": "gin", "spin": "{spirit} Negroni",
+     "spirit_names": {"whiskey": "Boulevardier"},
      "roles": {"bitter_aperitivo", "sweet_vermouth"}},
-    {"name": "Manhattan", "canonical": "whiskey",
+    {"name": "Manhattan", "canonical": "whiskey", "spin": "{spirit} Manhattan",
      "roles": {"sweet_vermouth", "bitters"}},
-    {"name": "Old Fashioned", "canonical": "whiskey",
+    {"name": "Old Fashioned", "canonical": "whiskey", "spin": "{spirit} Old Fashioned",
      "roles": {"sweetener", "bitters"}},
+    {"name": "Espresso Martini", "canonical": "vodka", "spin": "{spirit} Espresso Martini",
+     "roles": {"coffee_liqueur", "coffee"}},
+    {"name": "White Russian", "canonical": "vodka", "spin": "{spirit} White Russian",
+     "roles": {"coffee_liqueur", "cream"}},
+    {"name": "Pina Colada", "canonical": "rum", "spin": "{spirit} Colada",
+     "roles": {"pineapple", "coconut"}},
+    {"name": "Moscow Mule", "canonical": "vodka", "spin": "{spirit} Mule",
+     "roles": {"ginger_beer", "citrus"}},
+    {"name": "Paloma", "canonical": "tequila", "spin": "{spirit} Paloma",
+     "roles": {"grapefruit", "soda"}},
     {"name": "Daiquiri", "canonical": "rum", "spin": "{spirit} Sour",
-     "spirit_names": {"whiskey": "Whiskey Sour", "gin": "Gin Sour"},
+     "spirit_names": {"whiskey": "Whiskey Sour", "gin": "Gin Sour",
+                      "brandy": "Brandy Sour", "amaretto": "Amaretto Sour"},
      "roles": {"citrus", "sweetener"}},
-    {"name": "Martini", "canonical": "gin",
+    {"name": "Martini", "canonical": "gin", "spin": "{spirit} Martini",
      "roles": {"dry_vermouth"}},
+    {"name": "Gin & Tonic", "canonical": "gin", "spin": "{spirit} & Tonic",
+     "roles": {"tonic"}},
+    # --- spirit-less ---
+    {"name": "Mimosa", "spirit_keyed": False,
+     "roles": {"sparkling_wine", "orange_juice"}},
+    {"name": "Spritz", "spirit_keyed": False,
+     "roles": {"bitter_aperitivo", "sparkling_wine"}},
 ]
 
 
@@ -288,6 +392,8 @@ def _spirit_display(spirit):
 
 def name_cocktail(template, spirit):
     """Name a recognized cocktail for the spirit used (canonical or a spin)."""
+    if not template.get("spirit_keyed", True):
+        return template["name"]
     if spirit == template["canonical"]:
         return template["name"]
     overrides = template.get("spirit_names", {})
@@ -301,9 +407,10 @@ def recognize_cocktail(ingredients):
     """Recognize a classic (or spin) from loaded ingredients. Returns the
     composed name string, or ``None`` for an unrecognized free-mix.
 
-    Loose match: a template fires when all its required roles are present and a
-    spirit is loaded; extra roles/garnishes are ignored. When several templates
-    match, the most specific (most roles) wins. The first loaded spirit names it.
+    Loose match: a template fires when all its required roles are present (plus
+    a spirit, for spirit-keyed templates); extra roles/garnishes are ignored.
+    When several templates match, the most specific (most required components)
+    wins. The first loaded spirit names it / its spin.
     """
     roles_present = set()
     spirit = None
@@ -313,13 +420,18 @@ def recognize_cocktail(ingredients):
             roles_present.add(role)
         if role == ROLE_SPIRIT and spirit is None:
             spirit = getattr(ing.db, "spirit", None)
-    if spirit is None:
-        return None
+
     best = None
+    best_score = -1
     for template in COCKTAILS:
-        if template["roles"] <= roles_present:
-            if best is None or len(template["roles"]) > len(best["roles"]):
-                best = template
+        needs_spirit = template.get("spirit_keyed", True)
+        if needs_spirit and spirit is None:
+            continue
+        if not template["roles"] <= roles_present:
+            continue
+        score = len(template["roles"]) + (1 if needs_spirit else 0)
+        if score > best_score:
+            best, best_score = template, score
     if best is None:
         return None
     return name_cocktail(best, spirit)
