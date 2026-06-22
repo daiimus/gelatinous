@@ -162,6 +162,13 @@ class CmdHeal(Command):
             if amount is None and condition_type is None:
                 organs_healed = medical_state.full_heal()
 
+                # Reset the intoxication/addiction ledger too — full_heal clears
+                # the sedation/drunkenness *conditions*, but the lifetime
+                # substance-dose tally (cravings, addiction threshold) lives on
+                # the character; a full heal should sober them up clean.
+                if target.attributes.has("substance_doses"):
+                    target.attributes.remove("substance_doses")
+
                 # Stop medical script since no conditions remain
                 from world.medical.script import stop_medical_script
                 stop_medical_script(target)
