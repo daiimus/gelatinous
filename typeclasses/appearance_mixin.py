@@ -191,8 +191,15 @@ class AppearanceMixin:
                         # Wound system not available, continue without wounds
                         pass
 
-        # Add any extended anatomy not in default order (clothing or longdesc)
-        all_locations = set(longdescs.keys()) | set(coverage_map.keys())
+        # Add any extended anatomy not in default order (clothing or longdesc).
+        # The main loop above already renders everything in ``render_order``
+        # (the species order PLUS extended longdesc keys like an augment tail),
+        # so exclude those here — otherwise an extended longdesc location renders
+        # twice. This loop's remaining job is coverage-only extended locations
+        # (clothing on an extended location that carries no longdesc).
+        all_locations = (
+            (set(longdescs.keys()) | set(coverage_map.keys())) - set(render_order)
+        )
         for location in all_locations:
             if location not in ANATOMICAL_DISPLAY_ORDER:
                 if location in collapse_skip:
