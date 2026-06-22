@@ -1112,6 +1112,14 @@ class CmdChug(ConsumptionCommand):
         if not supports_delivery(item, "drink"):
             caller.msg(f"You can't chug {item.get_display_name(caller)}.")
             return
+        # Medical items need proper administration, not a reckless chug — a
+        # dedicated verb for those is out of scope for now (#687 follow-up).
+        if is_medical_item(item):
+            caller.msg(
+                f"You wouldn't just chug {item.get_display_name(caller)} — "
+                f"that needs proper dosing."
+            )
+            return
         name = with_article(item.get_display_name(caller))
         if is_self:
             caller.msg(f"You chug {name} down in one long pull.")
@@ -1157,6 +1165,14 @@ class CmdDevour(ConsumptionCommand):
         is_self = (caller == target)
         if not supports_delivery(item, "eat"):
             caller.msg(f"You can't devour {item.get_display_name(caller)}.")
+            return
+        # Medical items need proper administration, not a reckless gulp — a
+        # dedicated verb for those is out of scope for now (#687 follow-up).
+        if is_medical_item(item):
+            caller.msg(
+                f"You wouldn't just devour {item.get_display_name(caller)} — "
+                f"that needs proper dosing."
+            )
             return
         name = with_article(item.get_display_name(caller))
         if is_self:

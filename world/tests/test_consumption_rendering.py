@@ -219,6 +219,24 @@ class TestChugDevourFullDose(TestCase):
         ap.assert_called_once_with(target, "alcohol", doses=3)   # 1 × 3 sips
         self.assertTrue(any("scours the throat" in m for m in msgs))
 
+    def test_medical_item_is_guarded(self):
+        from commands.CmdConsumption import CmdChug
+        cmd = CmdChug()
+        caller = MagicMock()
+        caller.msg = MagicMock()
+        cmd.caller = caller
+        item = MagicMock()
+        item.get_display_name = lambda looker=None: "a stimpak"
+        parse = {"item": item, "target": caller, "errors": []}
+        with patch.object(cmd, "get_item_and_target", return_value=parse), \
+             patch("commands.CmdConsumption.supports_delivery", return_value=True), \
+             patch("commands.CmdConsumption.is_medical_item", return_value=True), \
+             patch.object(cmd, "_apply_full_dose") as full:
+            cmd.args = "stimpak"
+            cmd.func()
+        full.assert_not_called()
+        self.assertIn("proper dosing", caller.msg.call_args[0][0])
+
     def test_legacy_substance_scaled_by_uses(self):
         from commands.CmdConsumption import CmdDevour
         cmd = CmdDevour()
