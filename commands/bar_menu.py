@@ -64,6 +64,7 @@ def start_bar_menu(caller, bar):
         {
             "node_top": node_top,
             "node_add_stock": node_add_stock,
+            "node_method": node_method,
             "node_save_name": node_save_name,
             "node_save_taste": node_save_taste,
             "node_pick_recipe": node_pick_recipe,
@@ -110,13 +111,35 @@ def _recipe_keywords(name):
     return tuple(w for w in name.lower().split() if len(w) > 2)
 
 
-def _pour(caller, bar, *, name=None):
-    """Make the loaded mix into a drink on the bar; consume the ingredients."""
+#: Preparation methods — flavour only (decision: no mechanical effect in v1).
+#: Phrased without the drink name ("it") so the same craft narration works in
+#: the menu pour AND the NPC serve emote.
+METHOD_ORDER = ("build", "stir", "shake", "muddle", "blend")
+METHOD_LABEL = {"build": "Build", "stir": "Stir", "shake": "Shake",
+                "muddle": "Muddle", "blend": "Blend"}
+METHOD_ADVERB = {"build": "built", "stir": "stirred", "shake": "shaken",
+                 "muddle": "muddled", "blend": "blended"}
+METHOD_CRAFT = {
+    "build": "builds it in the glass",
+    "stir": "stirs it down over ice, smooth and unhurried",
+    "shake": "shakes it hard over ice and strains it out",
+    "muddle": "muddles the base and churns it together",
+    "blend": "blends it into a frozen slurry",
+}
+
+
+def _pour(caller, bar, *, name=None, method=None):
+    """Make the loaded mix into a drink on the bar; consume the ingredients.
+
+    ``method`` drives only the craft narration (no mechanical effect); defaults
+    to the recognized classic's suggested method, else 'build'.
+    """
     ings = _loaded(bar)
     if not ings:
         caller.msg("Nothing's loaded to mix.")
         return None
     proj = project_mix(ings)
+    method = method or proj.get("method") or "build"
     drink_name = name or proj["cocktail"] or "house mix"
     taste = proj["flavour"]
     desc = f"a freshly-mixed drink — {taste}" if taste else "a freshly-mixed drink"
@@ -127,13 +150,15 @@ def _pour(caller, bar, *, name=None):
     for i in ings:
         i.delete()
     caller.execute_cmd(
-        f"emote builds {with_article(drink.key)} and sets it on {bar.key}."
+        f"emote {METHOD_CRAFT[method]}, and sets {with_article(drink.key)} "
+        f"on {bar.key}."
     )
     return proj
 
 
-def _save_recipe(bar, name, *, proj, taste=None):
+def _save_recipe(bar, name, *, proj, taste=None, method=None):
     """Append a branded recipe (from the projection) to the bar's menu."""
+    method = method or proj.get("method") or "build"
     recipe = {
         "name": name,
         "desc": (f"a house pour — {proj['flavour']}" if proj["flavour"]
@@ -143,8 +168,9 @@ def _save_recipe(bar, name, *, proj, taste=None):
         "effects": dict(proj["effects"]),
         "taste": taste or proj["flavour"],
         "base_cocktail": proj["cocktail"],
+        "method": method,
         "order_keywords": _recipe_keywords(name),
-        "craft": "builds the drink with practiced, economical motions",
+        "craft": METHOD_CRAFT.get(method, METHOD_CRAFT["build"]),
     }
     menu = list(bar.db.menu or [])
     menu.append(recipe)
@@ -175,7 +201,9 @@ def node_top(caller, raw_string, **kwargs):
         if proj["flavour"]:
             lines.append(f"  {MUTED}Flavour:  {proj['flavour']}|n")
         if proj["cocktail"]:
-            lines.append(f"  Reads as: {HEAD}{proj['cocktail']}|n")
+            adverb = METHOD_ADVERB.get(proj.get("method"))
+            tail = f" {MUTED}({adverb})|n" if adverb else ""
+            lines.append(f"  Reads as: {HEAD}{proj['cocktail']}|n{tail}")
         else:
             lines.append(f"  {MUTED}Reads as: an unrecognized free-mix|n")
     else:
@@ -212,7 +240,7 @@ def _process_top(caller, raw_string, **kwargs):
         return "node_top"
     if choice == "1":
         if _loaded(bar):
-            _pour(caller, bar)
+            return "node_method"
         return "node_top"
     if choice == "2":
         if not _loaded(bar):
@@ -250,6 +278,30 @@ def _process_add_stock(caller, raw_string, **kwargs):
         ing = make_ingredient(stock[int(choice) - 1], location=bar)
         caller.msg(f"Added {ing.key} to the mix.")
         return "node_add_stock"   # stay, to add more
+    caller.msg("|rPick a number, or x to go back.|n")
+    return None
+
+
+# ---- prep method ---------------------------------------------------------
+def node_method(caller, raw_string, **kwargs):
+    bar = getattr(caller.ndb, "_bar_menu", None)
+    suggested = project_mix(_loaded(bar)).get("method") if bar else None
+    lines = [f"{HEAD}How do you make it?|n", ""]
+    for idx, m in enumerate(METHOD_ORDER, 1):
+        tag = f"  {MUTED}(suggested)|n" if m == suggested else ""
+        lines.append(f"  {MUTED}[{idx}]|n {METHOD_LABEL[m]}{tag}")
+    lines.append(f"  {MUTED}[x]|n Back")
+    return "\n".join(lines), ({"key": "_default", "goto": _process_method},)
+
+
+def _process_method(caller, raw_string, **kwargs):
+    bar = getattr(caller.ndb, "_bar_menu", None)
+    choice = raw_string.strip().lower()
+    if choice in ("x", "back", ""):
+        return "node_top"
+    if choice.isdigit() and 1 <= int(choice) <= len(METHOD_ORDER):
+        _pour(caller, bar, method=METHOD_ORDER[int(choice) - 1])
+        return "node_top"
     caller.msg("|rPick a number, or x to go back.|n")
     return None
 
@@ -294,9 +346,10 @@ def _process_save_taste(caller, raw_string, **kwargs):
         caller.msg("The mix is gone; nothing saved.")
         return "node_top"
     proj = project_mix(ings)
-    _save_recipe(bar, name, proj=proj, taste=taste)
-    # Branding pours the first one.
-    _pour(caller, bar, name=name)
+    method = proj.get("method") or "build"
+    _save_recipe(bar, name, proj=proj, taste=taste, method=method)
+    # Branding pours the first one, in the suggested method.
+    _pour(caller, bar, name=name, method=method)
     base = f" ({proj['cocktail']})" if proj["cocktail"] else ""
     caller.msg(f"{HEAD}Saved {name}{base} to the menu.|n It's now orderable.")
     return "node_top"
