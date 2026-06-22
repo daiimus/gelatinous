@@ -148,6 +148,41 @@ class ConsumptionCommand(Command):
         for line in dose_result.get("feedback", ()):
             target.msg(f"|c{line}|n")
 
+    def _apply_full_dose(self, item, target):
+        """Apply *every remaining use* of a consumable at once (chug/devour).
+
+        Stacks the per-use dose by ``uses_left`` — chugging a 3-sip rotgut lands
+        3 doses of alcohol — through the same ``apply_substance`` pipeline, so
+        caps/tolerance/addiction hold. Taste shows once. The whole item is
+        consumed by the caller afterwards.
+        """
+        from world.substances import apply_substance
+
+        uses = item.db.uses_left
+        n = max(1, int(uses or 1))
+
+        drink_effects = item.db.drink_effects
+        if drink_effects is not None:
+            feedback = []
+            for substance_id, doses in (drink_effects or {}).items():
+                try:
+                    per = max(1, int(doses))
+                except (TypeError, ValueError):
+                    continue
+                dose_result = apply_substance(target, substance_id, doses=per * n)
+                feedback.extend(dose_result.get("feedback", ()))
+            taste = item.db.drink_taste
+            parts = ([taste] if taste else []) + list(feedback)
+            if parts:
+                target.msg(" ".join(parts))
+            return
+
+        substance = item.db.substance
+        if substance:
+            dose_result = apply_substance(target, substance, doses=n)
+            for line in dose_result.get("feedback", ()):
+                target.msg(f"|c{line}|n")
+
     def _consume(self, item):
         """Spend one use of a non-medical consumable.
 
@@ -1049,3 +1084,97 @@ class CmdInhale(ConsumptionCommand):
         else:
             self._apply_substance_dose(item, target)
             self._consume(item)
+
+
+class CmdChug(ConsumptionCommand):
+    """
+    Chug an entire drink at once — every remaining sip in one pull.
+
+    Usage:
+        chug <drink>
+
+    Downs the whole thing, delivering all its effects stacked as if you'd
+    sipped it to the bottom (chug a 3-sip rotgut, take three hits of alcohol).
+    Drinks only.
+    """
+
+    key = "chug"
+    help_category = "Medical"
+
+    def func(self):
+        caller = self.caller
+        result = self.get_item_and_target(self.args, require_medical=False)
+        if result["errors"]:
+            caller.msg(result["errors"][0])
+            return
+        item, target = result["item"], result["target"]
+        is_self = (caller == target)
+        if not supports_delivery(item, "drink"):
+            caller.msg(f"You can't chug {item.get_display_name(caller)}.")
+            return
+        name = with_article(item.get_display_name(caller))
+        if is_self:
+            caller.msg(f"You chug {name} down in one long pull.")
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} chugs {with_article(item.key)} down in one long pull.",
+                char_refs={"actor": caller},
+                exclude=[caller],
+            )
+        else:
+            caller.msg(f"You help {target.get_display_name(caller)} chug {name} down.")
+            target.msg(f"{caller.get_display_name(target)} helps you chug {with_article(item.get_display_name(target))} down.")
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} helps {{target}} chug {with_article(item.key)} down.",
+                char_refs={"actor": caller, "target": target},
+                exclude=[caller, target],
+            )
+        self._apply_full_dose(item, target)
+        item.delete()
+
+
+class CmdDevour(ConsumptionCommand):
+    """
+    Devour an entire food item at once — every remaining bite in one go.
+
+    Usage:
+        devour <food>
+
+    Wolfs the whole thing down, delivering all its effects stacked. Food only.
+    """
+
+    key = "devour"
+    help_category = "Medical"
+
+    def func(self):
+        caller = self.caller
+        result = self.get_item_and_target(self.args, require_medical=False)
+        if result["errors"]:
+            caller.msg(result["errors"][0])
+            return
+        item, target = result["item"], result["target"]
+        is_self = (caller == target)
+        if not supports_delivery(item, "eat"):
+            caller.msg(f"You can't devour {item.get_display_name(caller)}.")
+            return
+        name = with_article(item.get_display_name(caller))
+        if is_self:
+            caller.msg(f"You devour {name} in a few quick bites.")
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} devours {with_article(item.key)} in a few quick bites.",
+                char_refs={"actor": caller},
+                exclude=[caller],
+            )
+        else:
+            caller.msg(f"You help {target.get_display_name(caller)} devour {name}.")
+            target.msg(f"{caller.get_display_name(target)} helps you devour {with_article(item.get_display_name(target))}.")
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} helps {{target}} devour {with_article(item.key)}.",
+                char_refs={"actor": caller, "target": target},
+                exclude=[caller, target],
+            )
+        self._apply_full_dose(item, target)
+        item.delete()
