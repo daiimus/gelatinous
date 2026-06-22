@@ -140,7 +140,7 @@ def _pour(caller, bar, *, name=None, method=None):
         return None
     proj = project_mix(ings)
     method = method or proj.get("method") or "build"
-    drink_name = name or proj["cocktail"] or "house mix"
+    drink_name = name or proj["name"]
     taste = proj["flavour"]
     desc = f"a freshly-mixed drink — {taste}" if taste else "a freshly-mixed drink"
     drink = make_drink(
@@ -205,7 +205,7 @@ def node_top(caller, raw_string, **kwargs):
             tail = f" {MUTED}({adverb})|n" if adverb else ""
             lines.append(f"  Reads as: {HEAD}{proj['cocktail']}|n{tail}")
         else:
-            lines.append(f"  {MUTED}Reads as: an unrecognized free-mix|n")
+            lines.append(f"  {MUTED}Reads as: {with_article(proj['name'])}|n")
     else:
         lines.append(
             f"  {MUTED}Nothing loaded. Put ingredients on the bar first "
@@ -310,7 +310,7 @@ def _process_method(caller, raw_string, **kwargs):
 def node_save_name(caller, raw_string, **kwargs):
     bar = getattr(caller.ndb, "_bar_menu", None)
     proj = project_mix(_loaded(bar))
-    default = proj["cocktail"] or "house mix"
+    default = proj["name"]
     text = (
         f"{HEAD}Name this pour.|n\n"
         f"  {MUTED}It reads as {default}. Press enter to keep that, or type "
@@ -322,7 +322,7 @@ def node_save_name(caller, raw_string, **kwargs):
 def _process_save_name(caller, raw_string, **kwargs):
     bar = getattr(caller.ndb, "_bar_menu", None)
     proj = project_mix(_loaded(bar))
-    name = raw_string.strip() or proj["cocktail"] or "house mix"
+    name = raw_string.strip() or proj["name"]
     caller.ndb._bar_save_name = name
     return "node_save_taste"
 

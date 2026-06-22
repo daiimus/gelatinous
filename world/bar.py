@@ -462,6 +462,32 @@ def recognize_cocktail(ingredients):
     return name_cocktail(template, spirit) if template else None
 
 
+_VESSEL_RE = re.compile(r"^\w+ of (.+)$")
+
+
+def _ingredient_essence(ingredient):
+    """An ingredient's bare substance name, minus its container — a spirit's
+    type if it has one, else the name with any '<vessel> of ' prefix stripped
+    ('bottle of gin' -> 'gin', 'sprig of mint' -> 'mint')."""
+    spirit = getattr(ingredient.db, "spirit", None)
+    if spirit:
+        return spirit
+    name = ingredient.key or ""
+    m = _VESSEL_RE.match(name)
+    return m.group(1) if m else name
+
+
+def default_drink_name(ingredients, cocktail):
+    """The drink's default name: the recognized classic, else 'glass of <X>' for
+    a single-ingredient pour (a neat gin is just a glass of gin), else 'house
+    mix' for an unrecognized blend."""
+    if cocktail:
+        return cocktail
+    if ingredients and len({i.key for i in ingredients}) == 1:
+        return f"glass of {_ingredient_essence(ingredients[0])}"
+    return "house mix"
+
+
 def project_mix(ingredients):
     """Project what the loaded ingredients would make, without making it.
 
@@ -475,11 +501,13 @@ def project_mix(ingredients):
     effects = {sid: min(d, MIX_EFFECT_CAP) for sid, d in raw.items()}
     capped = {sid: d for sid, d in raw.items() if d > MIX_EFFECT_CAP}
     template, spirit = _best_template(ingredients)
+    cocktail = name_cocktail(template, spirit) if template else None
     return {
         "effects": effects,
         "flavour": compose_flavour(ingredients),
         "capped": capped,
-        "cocktail": name_cocktail(template, spirit) if template else None,
+        "cocktail": cocktail,
+        "name": default_drink_name(ingredients, cocktail),
         "method": COCKTAIL_METHOD.get(template["name"]) if template else None,
     }
 
