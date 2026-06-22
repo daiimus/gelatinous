@@ -117,10 +117,42 @@ class TestCocktailRecognition(BaseEvenniaTest):
                      self._ing("maraschino"), self._ing("citrus")]
         self.assertEqual(recognize_cocktail(last_word), "Last Word")
 
+    def test_boulevardier_override(self):
+        from world.bar import recognize_cocktail
+        self.assertEqual(recognize_cocktail(self._negroni("whiskey")), "Boulevardier")
+
+    def test_spiritless_classics(self):
+        from world.bar import recognize_cocktail
+        mimosa = [self._ing("sparkling_wine"), self._ing("orange_juice")]
+        self.assertEqual(recognize_cocktail(mimosa), "Mimosa")
+        spritz = [self._ing("bitter_aperitivo"), self._ing("sparkling_wine")]
+        self.assertEqual(recognize_cocktail(spritz), "Spritz")
+
+    def test_nesting_prefers_more_specific(self):
+        from world.bar import recognize_cocktail
+        # rum + lime + sugar = Daiquiri (sour). Add soda -> Collins. Add mint -> Mojito.
+        sour = [self._ing("spirit", "rum"), self._ing("citrus"),
+                self._ing("sweetener")]
+        self.assertEqual(recognize_cocktail(sour), "Daiquiri")
+        collins = sour + [self._ing("soda")]
+        self.assertEqual(recognize_cocktail(collins), "Rum Collins")
+        mojito = collins + [self._ing("mint")]
+        self.assertEqual(recognize_cocktail(mojito), "Mojito")
+
+    def test_margarita_sidecar_family(self):
+        from world.bar import recognize_cocktail
+        marg = [self._ing("spirit", "tequila"), self._ing("orange_liqueur"),
+                self._ing("citrus")]
+        self.assertEqual(recognize_cocktail(marg), "Margarita")
+        sidecar = [self._ing("spirit", "brandy"), self._ing("orange_liqueur"),
+                   self._ing("citrus")]
+        self.assertEqual(recognize_cocktail(sidecar), "Sidecar")
+
     def test_no_spirit_no_match(self):
         from world.bar import recognize_cocktail
+        # bitters + sweet vermouth alone fills no spirit-less skeleton either.
         self.assertIsNone(recognize_cocktail(
-            [self._ing("bitter_aperitivo"), self._ing("sweet_vermouth")]
+            [self._ing("bitters"), self._ing("sweet_vermouth")]
         ))
 
     def test_unrecognized_freemix(self):
@@ -145,8 +177,9 @@ class TestCocktailRecognition(BaseEvenniaTest):
         spirits = {p.get("spirit") for p in INGREDIENT_CATALOG.values()
                    if p.get("role") == "spirit"}
         for c in COCKTAILS:
-            self.assertIn(c["canonical"], spirits,
-                          f"{c['name']}: canonical spirit not in catalog")
+            if c.get("spirit_keyed", True):
+                self.assertIn(c["canonical"], spirits,
+                              f"{c['name']}: canonical spirit not in catalog")
             for role in c["roles"]:
                 self.assertIn(role, roles,
                               f"{c['name']}: role {role} has no ingredient")
