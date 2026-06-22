@@ -176,15 +176,14 @@ class CmdBarClear(Command):
             o for o in bar.contents
             if getattr(o.db, "is_drink", False) or getattr(o.db, "is_ingredient", False)
         ]
-        n = len(clutter)
-        if not n:
-            caller.msg(f"{bar.get_display_name(caller)} is already clear.")
+        if not clutter:
+            caller.msg(f"{bar.get_display_name(caller)} is already clean.")
             return
         for o in clutter:
             o.delete()
         caller.msg(
-            f"You wipe down {bar.get_display_name(caller)}, clearing away "
-            f"{n} item{'s' if n != 1 else ''}."
+            f"You wipe down {bar.get_display_name(caller)}, clearing away the "
+            f"empties and abandoned glasses with a practiced sweep."
         )
         msg_room_identity(
             location=caller.location,
