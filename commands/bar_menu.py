@@ -22,8 +22,11 @@ from evennia.utils.evmenu import EvMenu
 
 from world.grammar import with_article
 from world.bar import (
+    INGREDIENT_CATALOG,
+    derive_bar_stock,
     make_drink,
     make_drink_from_recipe,
+    make_ingredient,
     project_mix,
 )
 
@@ -60,6 +63,7 @@ def start_bar_menu(caller, bar):
         caller,
         {
             "node_top": node_top,
+            "node_add_stock": node_add_stock,
             "node_save_name": node_save_name,
             "node_save_taste": node_save_taste,
             "node_pick_recipe": node_pick_recipe,
@@ -77,6 +81,25 @@ def start_bar_menu(caller, bar):
 # ---------------------------------------------------------------------------
 def _loaded(bar):
     return [o for o in bar.contents if getattr(o.db, "is_ingredient", False)]
+
+
+def _bar_stock(bar):
+    """The bottomless ingredient keys this bar carries — an explicit db.stock if
+    a builder set one, else auto-derived from the menu + base pantry."""
+    stock = bar.db.stock
+    if stock:
+        return [k for k in stock if k in INGREDIENT_CATALOG]
+    return derive_bar_stock(bar.db.menu or [])
+
+
+def _clear_load(caller, bar):
+    n = 0
+    for o in list(bar.contents):
+        if getattr(o.db, "is_ingredient", False):
+            o.delete()
+            n += 1
+    caller.msg(f"Swept {n} ingredient(s) off the bar." if n
+               else "Nothing loaded to clear.")
 
 
 def _effect_summary(effects):
@@ -161,9 +184,12 @@ def node_top(caller, raw_string, **kwargs):
             f"(put <thing> on {bar.key}).|n"
         )
     lines.append("")
+    if _bar_stock(bar):
+        lines.append(f"  {MUTED}[a]|n Add an ingredient from the bar stock")
     if ings:
         lines.append(f"  {MUTED}[1]|n Pour it")
         lines.append(f"  {MUTED}[2]|n Save as a recipe")
+        lines.append(f"  {MUTED}[c]|n Clear the load")
     if bar.db.menu:
         lines.append(f"  {MUTED}[3]|n Make a known recipe")
     lines.append(f"  {MUTED}[x]|n Step away")
@@ -176,6 +202,14 @@ def _process_top(caller, raw_string, **kwargs):
     bar = getattr(caller.ndb, "_bar_menu", None)
     if choice in ("x", "exit", "quit", "q", ""):
         return "node_exit" if choice else None
+    if choice == "a":
+        if _bar_stock(bar):
+            return "node_add_stock"
+        caller.msg("This bar carries no stock.")
+        return None
+    if choice == "c":
+        _clear_load(caller, bar)
+        return "node_top"
     if choice == "1":
         if _loaded(bar):
             _pour(caller, bar)
@@ -190,7 +224,33 @@ def _process_top(caller, raw_string, **kwargs):
             return "node_pick_recipe"
         caller.msg("Nothing on the menu yet.")
         return None
-    caller.msg("|rPick an option, or q to step back.|n")
+    caller.msg("|rPick an option, or x to step away.|n")
+    return None
+
+
+# ---- add from stock ------------------------------------------------------
+def node_add_stock(caller, raw_string, **kwargs):
+    bar = getattr(caller.ndb, "_bar_menu", None)
+    stock = _bar_stock(bar) if bar else []
+    lines = [f"{HEAD}Add from the bar stock|n",
+             f"  {MUTED}(bottomless — pick as many as you like)|n", ""]
+    for idx, key in enumerate(stock, 1):
+        lines.append(f"  {MUTED}[{idx}]|n {INGREDIENT_CATALOG[key]['name']}")
+    lines.append(f"  {MUTED}[x]|n Back")
+    return "\n".join(lines), ({"key": "_default", "goto": _process_add_stock},)
+
+
+def _process_add_stock(caller, raw_string, **kwargs):
+    bar = getattr(caller.ndb, "_bar_menu", None)
+    choice = raw_string.strip().lower()
+    if choice in ("x", "back", ""):
+        return "node_top"
+    stock = _bar_stock(bar) if bar else []
+    if choice.isdigit() and 1 <= int(choice) <= len(stock):
+        ing = make_ingredient(stock[int(choice) - 1], location=bar)
+        caller.msg(f"Added {ing.key} to the mix.")
+        return "node_add_stock"   # stay, to add more
+    caller.msg("|rPick a number, or x to go back.|n")
     return None
 
 
