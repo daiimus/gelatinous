@@ -171,6 +171,36 @@ class TestCocktailRecognition(BaseEvenniaTest):
         over = project_mix([self._ing("spirit", "gin", {"alcohol": 9})])
         self.assertEqual(over["effects"]["alcohol"], MIX_EFFECT_CAP)
 
+    def test_default_name_single_ingredient(self):
+        from world.bar import default_drink_name, project_mix
+        # A neat spirit is a glass of that spirit.
+        gin = self._ing("spirit", "gin")
+        gin.key = "bottle of gin"
+        self.assertEqual(default_drink_name([gin], None), "glass of gin")
+        # Two pours of the same thing is still a glass of it.
+        self.assertEqual(default_drink_name([gin, gin], None), "glass of gin")
+        # project_mix carries the default name.
+        self.assertEqual(project_mix([gin])["name"], "glass of gin")
+
+    def test_default_name_non_spirit_strips_vessel(self):
+        from world.bar import default_drink_name
+        verm = self._ing("sweet_vermouth")
+        verm.key = "bottle of sweet vermouth"
+        self.assertEqual(
+            default_drink_name([verm], None), "glass of sweet vermouth"
+        )
+
+    def test_default_name_multi_is_house_mix(self):
+        from world.bar import default_drink_name
+        a = self._ing("spirit", "vodka"); a.key = "bottle of vodka"
+        b = self._ing("cream"); b.key = "carton of cream"
+        self.assertEqual(default_drink_name([a, b], None), "house mix")
+
+    def test_default_name_prefers_cocktail(self):
+        from world.bar import default_drink_name
+        g = self._ing("spirit", "gin"); g.key = "bottle of gin"
+        self.assertEqual(default_drink_name([g], "Negroni"), "Negroni")
+
     def test_project_mix_suggests_method(self):
         from world.bar import project_mix
         negroni = [self._ing("spirit", "gin"), self._ing("bitter_aperitivo"),
