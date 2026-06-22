@@ -165,78 +165,78 @@ ROLE_SPIRIT = "spirit"
 INGREDIENT_CATALOG = {
     # ---- Earth-import spirits ------------------------------------------
     "gin": {"name": "bottle of gin", "role": ROLE_SPIRIT, "spirit": "gin",
-            "contributions": {"alcohol": 2}, "flavour": "juniper-sharp and botanical",
+            "contributions": {"alcohol": 2}, "flavour": "juniper-sharp botanicals",
             "desc": "an Earth-import bottle of gin, label half scoured away", "keywords": ("gin",)},
     "whiskey": {"name": "bottle of whiskey", "role": ROLE_SPIRIT, "spirit": "whiskey",
-            "contributions": {"alcohol": 2}, "flavour": "oaky and caramel-warm",
+            "contributions": {"alcohol": 2}, "flavour": "oaky caramel",
             "desc": "a squat Earth-import bottle of amber whiskey", "keywords": ("whiskey", "whisky")},
     "rum": {"name": "bottle of white rum", "role": ROLE_SPIRIT, "spirit": "rum",
-            "contributions": {"alcohol": 2}, "flavour": "light and sugarcane-sweet",
+            "contributions": {"alcohol": 2}, "flavour": "light sugarcane",
             "desc": "a clear Earth-import bottle of white rum", "keywords": ("rum",)},
     "mezcal": {"name": "bottle of mezcal", "role": ROLE_SPIRIT, "spirit": "mezcal",
             "contributions": {"alcohol": 2}, "flavour": "smoky roasted agave",
             "desc": "a hand-labelled Earth-import bottle of mezcal", "keywords": ("mezcal",)},
     "tequila": {"name": "bottle of tequila", "role": ROLE_SPIRIT, "spirit": "tequila",
-            "contributions": {"alcohol": 2}, "flavour": "bright and peppery agave",
+            "contributions": {"alcohol": 2}, "flavour": "bright, peppery agave",
             "desc": "an Earth-import bottle of silver tequila", "keywords": ("tequila",)},
     "vodka": {"name": "bottle of vodka", "role": ROLE_SPIRIT, "spirit": "vodka",
-            "contributions": {"alcohol": 2}, "flavour": "clean and near-flavourless",
+            "contributions": {"alcohol": 2}, "flavour": "a clean, cold burn",
             "desc": "a frosted Earth-import bottle of vodka", "keywords": ("vodka",)},
     # ---- Scuzzy colony spirits (grimy spins of the classics) -----------
     "grain_mash": {"name": "jar of grain mash", "role": ROLE_SPIRIT, "spirit": "grain mash",
-            "contributions": {"alcohol": 1}, "flavour": "raw, paint-stripping grain spirit",
+            "contributions": {"alcohol": 1}, "flavour": "raw, paint-stripping grain",
             "desc": "a sealed jar of cloudy fermented grain mash — the colony's base spirit", "keywords": ("grain", "mash")},
     "reactor_cut": {"name": "flask of reactor cut", "role": ROLE_SPIRIT, "spirit": "reactor cut",
             "contributions": {"alcohol": 2}, "flavour": "harsh chemical heat",
             "desc": "a scratched flask of high-proof reactor cut, distilled too close to the coolant lines", "keywords": ("reactor", "cut", "proof")},
     # ---- Colony additives / mixers (no cocktail role) ------------------
     "poppy_tincture": {"name": "vial of poppy tincture", "role": None,
-            "contributions": {"opium": 1}, "flavour": "bitter brine-and-poppy",
+            "contributions": {"opium": 1}, "flavour": "bitter poppy brine",
             "desc": "a dropper vial of dark poppy tincture, cut with channel brine", "keywords": ("poppy", "tincture", "opium")},
     "channel_cordial": {"name": "bottle of channel cordial", "role": None, "contributions": {},
-            "flavour": "milky, grey-green, faintly sweet",
+            "flavour": "milky, sweet kelp",
             "desc": "a bottle of milky grey-green cordial pressed from channel kelp", "keywords": ("channel", "cordial", "kelp")},
     "caf": {"name": "jug of reclaimed caf", "role": None, "contributions": {},
-            "flavour": "bitter, scalding reclaimed caf",
+            "flavour": "scalding reclaimed caf",
             "desc": "a battered jug of black reclaimed caf", "keywords": ("caf", "coffee", "recyc")},
     # ---- Modifiers (alcohol 1) -----------------------------------------
     "bitter_aperitivo": {"name": "bottle of bitter aperitivo", "role": "bitter_aperitivo",
             "contributions": {"alcohol": 1}, "flavour": "bitter blood-orange",
             "desc": "a vivid red bottle of bitter aperitivo", "keywords": ("aperitivo", "bitter", "red")},
     "sweet_vermouth": {"name": "bottle of sweet vermouth", "role": "sweet_vermouth",
-            "contributions": {"alcohol": 1}, "flavour": "herbal and sweet",
+            "contributions": {"alcohol": 1}, "flavour": "sweet, herbal wine",
             "desc": "a dark bottle of sweet red vermouth", "keywords": ("sweet", "vermouth")},
     "dry_vermouth": {"name": "bottle of dry vermouth", "role": "dry_vermouth",
-            "contributions": {"alcohol": 1}, "flavour": "dry and grassy",
+            "contributions": {"alcohol": 1}, "flavour": "dry, grassy wine",
             "desc": "a pale bottle of dry vermouth", "keywords": ("dry", "vermouth")},
     "maraschino": {"name": "bottle of maraschino liqueur", "role": "maraschino",
             "contributions": {"alcohol": 1}, "flavour": "nutty cherry",
             "desc": "a square bottle of clear maraschino liqueur", "keywords": ("maraschino", "cherry")},
     "herbal_liqueur": {"name": "bottle of green herbal liqueur", "role": "herbal_liqueur",
-            "contributions": {"alcohol": 1}, "flavour": "green, alpine, and herbal",
+            "contributions": {"alcohol": 1}, "flavour": "alpine herbs",
             "desc": "a heavy bottle of green herbal liqueur, faintly medicinal", "keywords": ("herbal", "green", "chartreuse")},
     "orange_liqueur": {"name": "bottle of orange liqueur", "role": "orange_liqueur",
             "contributions": {"alcohol": 1}, "flavour": "sweet orange peel",
             "desc": "a clear bottle of orange liqueur", "keywords": ("orange", "triple", "sec", "curacao")},
     # ---- Non-alcoholic (flavour / structure only) ----------------------
     "lime": {"name": "lime", "role": "citrus", "contributions": {},
-            "flavour": "sharp, sour citrus", "desc": "a precious Earth-import lime", "keywords": ("lime",)},
+            "flavour": "sharp lime", "desc": "a precious Earth-import lime", "keywords": ("lime",)},
     "lemon": {"name": "lemon", "role": "citrus", "contributions": {},
-            "flavour": "bright, sour citrus", "desc": "a precious Earth-import lemon", "keywords": ("lemon",)},
+            "flavour": "bright lemon", "desc": "a precious Earth-import lemon", "keywords": ("lemon",)},
     "sugar_syrup": {"name": "flask of sugar syrup", "role": "sweetener", "contributions": {},
             "flavour": "plain sweetness", "desc": "a sticky flask of sugar syrup", "keywords": ("sugar", "syrup", "simple")},
     "bitters": {"name": "dasher of aromatic bitters", "role": "bitters", "contributions": {},
-            "flavour": "spiced, concentrated bitterness", "desc": "a small dasher bottle of aromatic bitters", "keywords": ("bitters", "aromatic", "dasher")},
+            "flavour": "spiced bitterness", "desc": "a small dasher bottle of aromatic bitters", "keywords": ("bitters", "aromatic", "dasher")},
     # ---- More spirits --------------------------------------------------
     "brandy": {"name": "bottle of brandy", "role": ROLE_SPIRIT, "spirit": "brandy",
-            "contributions": {"alcohol": 2}, "flavour": "raisined and warm",
+            "contributions": {"alcohol": 2}, "flavour": "warm, raisined fruit",
             "desc": "a dusty Earth-import bottle of brandy", "keywords": ("brandy", "cognac")},
     # ---- More liqueurs (alcohol 1) -------------------------------------
     "coffee_liqueur": {"name": "bottle of coffee liqueur", "role": "coffee_liqueur",
-            "contributions": {"alcohol": 1}, "flavour": "dark roasted coffee and sugar",
+            "contributions": {"alcohol": 1}, "flavour": "dark, sweet coffee",
             "desc": "a sticky bottle of coffee liqueur", "keywords": ("coffee", "liqueur")},
     "amaretto": {"name": "bottle of amaretto", "role": "amaretto",
-            "contributions": {"alcohol": 1}, "flavour": "sweet toasted almond",
+            "contributions": {"alcohol": 1}, "flavour": "toasted almond",
             "desc": "a bottle of amber amaretto", "keywords": ("amaretto", "almond")},
     "elderflower": {"name": "bottle of elderflower liqueur", "role": "elderflower",
             "contributions": {"alcohol": 1}, "flavour": "floral elderflower",
@@ -246,50 +246,50 @@ INGREDIENT_CATALOG = {
             "desc": "a deep purple bottle of crème de cassis", "keywords": ("cassis", "blackcurrant")},
     # ---- Wine / sparkling / fortified (alcohol 1) ----------------------
     "sparkling_wine": {"name": "bottle of sparkling wine", "role": "sparkling_wine",
-            "contributions": {"alcohol": 1}, "flavour": "dry, bright effervescence",
+            "contributions": {"alcohol": 1}, "flavour": "dry sparkling wine",
             "desc": "a foil-necked Earth-import bottle of sparkling wine", "keywords": ("sparkling", "champagne", "prosecco", "wine")},
     "sherry": {"name": "bottle of dry sherry", "role": "sherry",
-            "contributions": {"alcohol": 1}, "flavour": "nutty, saline, oxidised",
+            "contributions": {"alcohol": 1}, "flavour": "nutty, saline sherry",
             "desc": "a slim bottle of dry sherry", "keywords": ("sherry",)},
     # ---- Mixers (non-alcoholic) ----------------------------------------
     "soda": {"name": "siphon of soda water", "role": "soda", "contributions": {},
-            "flavour": "clean fizz", "desc": "a battered soda siphon", "keywords": ("soda", "seltzer")},
+            "flavour": "clean soda fizz", "desc": "a battered soda siphon", "keywords": ("soda", "seltzer")},
     "tonic": {"name": "bottle of tonic water", "role": "tonic", "contributions": {},
-            "flavour": "bittersweet quinine fizz", "desc": "a bottle of tonic water", "keywords": ("tonic",)},
+            "flavour": "bittersweet quinine", "desc": "a bottle of tonic water", "keywords": ("tonic",)},
     "ginger_beer": {"name": "bottle of ginger beer", "role": "ginger_beer", "contributions": {},
-            "flavour": "spicy ginger bite", "desc": "a cloudy bottle of ginger beer", "keywords": ("ginger",)},
+            "flavour": "spicy ginger", "desc": "a cloudy bottle of ginger beer", "keywords": ("ginger",)},
     "cola": {"name": "bottle of cola", "role": "cola", "contributions": {},
-            "flavour": "sweet caramel fizz", "desc": "a scuffed bottle of flat-looking cola", "keywords": ("cola", "coke")},
+            "flavour": "sweet caramel cola", "desc": "a scuffed bottle of flat-looking cola", "keywords": ("cola", "coke")},
     # ---- Juices --------------------------------------------------------
     "orange_juice": {"name": "jug of orange juice", "role": "orange_juice", "contributions": {},
             "flavour": "sweet-tart orange", "desc": "a jug of cloudy orange juice", "keywords": ("orange", "juice", "oj")},
     "cranberry": {"name": "carton of cranberry juice", "role": "cranberry", "contributions": {},
             "flavour": "tart cranberry", "desc": "a carton of deep red cranberry juice", "keywords": ("cranberry",)},
     "pineapple": {"name": "tin of pineapple juice", "role": "pineapple", "contributions": {},
-            "flavour": "sweet tropical pineapple", "desc": "a dented tin of pineapple juice", "keywords": ("pineapple",)},
+            "flavour": "sweet pineapple", "desc": "a dented tin of pineapple juice", "keywords": ("pineapple",)},
     "grapefruit": {"name": "jug of grapefruit juice", "role": "grapefruit", "contributions": {},
             "flavour": "bittersweet grapefruit", "desc": "a jug of pink grapefruit juice", "keywords": ("grapefruit",)},
     # ---- Dairy / protein / coffee --------------------------------------
     "cream": {"name": "carton of cream", "role": "cream", "contributions": {},
-            "flavour": "rich, heavy cream", "desc": "a carton of thick cream", "keywords": ("cream",)},
+            "flavour": "rich cream", "desc": "a carton of thick cream", "keywords": ("cream",)},
     "coconut": {"name": "tin of coconut cream", "role": "coconut", "contributions": {},
             "flavour": "sweet coconut", "desc": "a tin of thick coconut cream", "keywords": ("coconut",)},
     "egg_white": {"name": "egg white", "role": "egg_white", "contributions": {},
-            "flavour": "silky foam", "desc": "a single egg white in a cup", "keywords": ("egg",)},
+            "flavour": "a silky foam", "desc": "a single egg white in a cup", "keywords": ("egg",)},
     "coffee": {"name": "shot of espresso", "role": "coffee", "contributions": {},
-            "flavour": "bitter, concentrated coffee", "desc": "a hot shot of pulled espresso", "keywords": ("espresso", "coffee", "shot")},
+            "flavour": "bitter espresso", "desc": "a hot shot of pulled espresso", "keywords": ("espresso", "coffee", "shot")},
     # ---- Sweeteners / syrups -------------------------------------------
     "grenadine": {"name": "flask of grenadine", "role": "grenadine", "contributions": {},
-            "flavour": "sweet pomegranate red", "desc": "a flask of deep red grenadine", "keywords": ("grenadine", "pomegranate")},
+            "flavour": "sweet pomegranate", "desc": "a flask of deep red grenadine", "keywords": ("grenadine", "pomegranate")},
     "orgeat": {"name": "flask of orgeat", "role": "orgeat", "contributions": {},
-            "flavour": "sweet almond-orange", "desc": "a flask of milky orgeat syrup", "keywords": ("orgeat",)},
+            "flavour": "almond-orange syrup", "desc": "a flask of milky orgeat syrup", "keywords": ("orgeat",)},
     "honey_syrup": {"name": "flask of honey syrup", "role": "honey", "contributions": {},
             "flavour": "floral honey", "desc": "a sticky flask of honey syrup", "keywords": ("honey",)},
     "mint": {"name": "sprig of mint", "role": "mint", "contributions": {},
-            "flavour": "cool fresh mint", "desc": "a bruised sprig of hydroponic mint", "keywords": ("mint",)},
+            "flavour": "cool mint", "desc": "a bruised sprig of hydroponic mint", "keywords": ("mint",)},
     # ---- Garnishes (flavour / presence only — never role-defining) -----
     "olive": {"name": "olive", "role": "garnish", "contributions": {},
-            "flavour": "briny olive", "desc": "a single brined olive on a pick", "keywords": ("olive",)},
+            "flavour": "brine", "desc": "a single brined olive on a pick", "keywords": ("olive",)},
     "cherry": {"name": "cocktail cherry", "role": "garnish", "contributions": {},
             "flavour": "syrupy cherry", "desc": "a lurid red cocktail cherry", "keywords": ("cherry",)},
     "salt": {"name": "pinch of salt", "role": "garnish", "contributions": {},
@@ -318,17 +318,20 @@ def make_ingredient(catalog_key, *, location=None):
 
 
 def compose_flavour(ingredients):
-    """Join the loaded ingredients' flavour notes into one description.
+    """Join the loaded ingredients' flavour notes into one readable clause.
 
-    Order-preserving and de-duplicated, so two pours of gin read once. Used as
-    the free-mix drink's taste until a save/brand authors its own prose.
+    Order-preserving and de-duplicated (two pours of gin read once), joined with
+    commas and a final 'and' — "juniper-sharp botanicals, bitter blood-orange,
+    and sweet, herbal wine" — to drop inside a tasting sentence.
     """
+    from evennia.utils.utils import iter_to_str
+
     notes = []
     for ing in ingredients:
         f = getattr(ing.db, "flavour", "") or ""
         if f and f not in notes:
             notes.append(f)
-    return "; ".join(notes)
+    return iter_to_str(notes)
 
 
 # ---------------------------------------------------------------------------
@@ -456,10 +459,51 @@ def _best_template(ingredients):
     return (best, spirit) if best else (None, None)
 
 
+#: Authored taste prose for iconic drinks, keyed by the *resolved* name (so a
+#: Boulevardier reads differently from a Negroni). Spins without an entry (Mezcal
+#: Negroni, Rum Collins) fall back to the composed sentence, which captures the
+#: swapped spirit's notes. Colony-grit descriptive styling, our own words.
+COCKTAIL_TASTE = {
+    "Negroni": "Bittersweet and bracing — orange-bitter over a botanical spine, with a long, dry herbal finish.",
+    "Boulevardier": "A Negroni gone darker: oak and caramel under the bitter orange, slow and warming.",
+    "Old Fashioned": "Whiskey worn smooth — oak and caramel rounded off with sugar and a spiced bite.",
+    "Daiquiri": "Clean and sharp: sugarcane and lime in tight balance, gone before it lingers.",
+    "Whiskey Sour": "Tart and bracing, lemon cutting through the oak with the sweetness trailing behind.",
+    "Margarita": "Bright and saline — agave and sharp lime over a sweet orange edge.",
+    "Sidecar": "Warming and sharp: brandy and orange peel cut clean with lemon.",
+    "Manhattan": "Dark and stirred-down — oak and sweet vermouth with a bitter spice underneath.",
+    "Martini": "Cold, clean, and bone-dry, botanicals with barely a whisper of wine.",
+    "Last Word": "Equal parts and all of them loud — herbal, sour, and nutty-sweet at once.",
+    "Mojito": "Cool and effervescent, mint and lime over light rum, bright and easy.",
+    "Cosmopolitan": "Tart and pink — cranberry and lime with a sweet citrus lift.",
+    "Moscow Mule": "A spicy ginger bite over a clean spirit, lime keeping it sharp.",
+    "Gin & Tonic": "Crisp and bitter-dry, quinine and juniper under a long cold fizz.",
+    "French 75": "Bright and celebratory — lemon and gin lifted on dry sparkling wine.",
+    "Tom Collins": "Long and refreshing, lemon and sugar stretched out over soda.",
+    "Espresso Martini": "Bitter coffee and cold spirit, sweet and sharp under a velvet head.",
+    "White Russian": "Rich and slow — coffee and sweet liquor smoothed into cold cream.",
+    "Pina Colada": "Thick and tropical, coconut and pineapple over rum, sweet as shore leave.",
+    "Mai Tai": "Rum-forward and nutty — orange and almond over a sharp lime backbone.",
+    "Paloma": "Bittersweet grapefruit over agave, long and fizzy and faintly saline.",
+    "Mimosa": "Bright and easy, orange juice lifted on dry sparkling wine.",
+    "Spritz": "Bitter-orange and bubbles, light and dry and just a little sweet.",
+}
+
+
 def recognize_cocktail(ingredients):
     """Recognized classic / spin name for a mix, or ``None`` for a free-mix."""
     template, spirit = _best_template(ingredients)
     return name_cocktail(template, spirit) if template else None
+
+
+def compose_taste(ingredients, cocktail):
+    """The drink's taste line on consumption: authored prose for an iconic
+    named drink, else a composed tasting sentence from the ingredient notes."""
+    authored = COCKTAIL_TASTE.get(cocktail) if cocktail else None
+    if authored:
+        return authored
+    clause = compose_flavour(ingredients)
+    return f"It tastes of {clause}." if clause else ""
 
 
 _VESSEL_RE = re.compile(r"^\w+ of (.+)$")
@@ -505,6 +549,7 @@ def project_mix(ingredients):
     return {
         "effects": effects,
         "flavour": compose_flavour(ingredients),
+        "taste": compose_taste(ingredients, cocktail),
         "capped": capped,
         "cocktail": cocktail,
         "name": default_drink_name(ingredients, cocktail),

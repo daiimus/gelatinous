@@ -141,8 +141,8 @@ def _pour(caller, bar, *, name=None, method=None):
     proj = project_mix(ings)
     method = method or proj.get("method") or "build"
     drink_name = name or proj["name"]
-    taste = proj["flavour"]
-    desc = f"a freshly-mixed drink — {taste}" if taste else "a freshly-mixed drink"
+    taste = proj["taste"]
+    desc = f"a freshly-mixed drink — {proj['flavour']}" if proj["flavour"] else "a freshly-mixed drink"
     drink = make_drink(
         name=drink_name, desc=desc, effects=proj["effects"], sips=3,
         taste=taste, location=bar,
@@ -166,7 +166,7 @@ def _save_recipe(bar, name, *, proj, taste=None, method=None):
         "price": 0,
         "sips": 3,
         "effects": dict(proj["effects"]),
-        "taste": taste or proj["flavour"],
+        "taste": taste or proj["taste"],
         "base_cocktail": proj["cocktail"],
         "method": method,
         "order_keywords": _recipe_keywords(name),
