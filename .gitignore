@@ -19,3 +19,6 @@ server/conf/secret_settings.py
 # OS generated files
 .DS_Store
 .vscode/settings.json
+
+# Live-dir room-desc rollback snapshots — never commit
+room_desc_snapshot_*.json
