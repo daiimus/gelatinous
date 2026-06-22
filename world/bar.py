@@ -189,6 +189,16 @@ INGREDIENT_CATALOG = {
     "reactor_cut": {"name": "flask of reactor cut", "role": ROLE_SPIRIT, "spirit": "reactor cut",
             "contributions": {"alcohol": 2}, "flavour": "harsh chemical heat",
             "desc": "a scratched flask of high-proof reactor cut, distilled too close to the coolant lines", "keywords": ("reactor", "cut", "proof")},
+    # ---- Colony additives / mixers (no cocktail role) ------------------
+    "poppy_tincture": {"name": "vial of poppy tincture", "role": None,
+            "contributions": {"opium": 1}, "flavour": "bitter brine-and-poppy",
+            "desc": "a dropper vial of dark poppy tincture, cut with channel brine", "keywords": ("poppy", "tincture", "opium")},
+    "channel_cordial": {"name": "bottle of channel cordial", "role": None, "contributions": {},
+            "flavour": "milky, grey-green, faintly sweet",
+            "desc": "a bottle of milky grey-green cordial pressed from channel kelp", "keywords": ("channel", "cordial", "kelp")},
+    "caf": {"name": "jug of reclaimed caf", "role": None, "contributions": {},
+            "flavour": "bitter, scalding reclaimed caf",
+            "desc": "a battered jug of black reclaimed caf", "keywords": ("caf", "coffee", "recyc")},
     # ---- Modifiers (alcohol 1) -----------------------------------------
     "bitter_aperitivo": {"name": "bottle of bitter aperitivo", "role": "bitter_aperitivo",
             "contributions": {"alcohol": 1}, "flavour": "bitter blood-orange",
@@ -371,7 +381,7 @@ COCKTAILS = [
      "roles": {"grapefruit", "soda"}},
     {"name": "Daiquiri", "canonical": "rum", "spin": "{spirit} Sour",
      "spirit_names": {"whiskey": "Whiskey Sour", "gin": "Gin Sour",
-                      "brandy": "Brandy Sour", "amaretto": "Amaretto Sour"},
+                      "brandy": "Brandy Sour"},
      "roles": {"citrus", "sweetener"}},
     {"name": "Martini", "canonical": "gin", "spin": "{spirit} Martini",
      "roles": {"dry_vermouth"}},
@@ -456,6 +466,25 @@ def project_mix(ingredients):
     }
 
 
+#: Structural non-alcoholic basics every bar keeps on hand, so even a scuzzy
+#: bar can build sours/highballs from its own spirits — the seed of riffs (§5).
+BASE_BAR_PANTRY = ("lime", "lemon", "sugar_syrup", "bitters", "soda")
+
+
+def derive_bar_stock(menu):
+    """The bottomless ingredient stock for a bar (decision: auto from the menu).
+
+    The base pantry plus every ingredient the bar's menu drinks call for, so a
+    bartender can always re-make and riff on what's on offer. Returns catalog
+    keys in catalog order (spirits, modifiers, structure…).
+    """
+    keys = set(BASE_BAR_PANTRY)
+    for recipe in (menu or []):
+        for k in recipe.get("ingredients", ()):
+            keys.add(k)
+    return [k for k in INGREDIENT_CATALOG if k in keys]
+
+
 def match_snack(text, snacks):
     """Find the first snack whose keywords appear in `text`. Returns dict/None."""
     if not text or not snacks:
@@ -499,6 +528,7 @@ HUB_AND_HOWL_MENU = [
     {
         "name": "mug of rotgut",
         "order_keywords": ("rotgut", "grain", "spirit", "cheap"),
+        "ingredients": ("grain_mash",),
         "price": 0,
         "sips": 3,
         "effects": {"alcohol": 1},
@@ -509,6 +539,7 @@ HUB_AND_HOWL_MENU = [
     {
         "name": "glass of reactor wash",
         "order_keywords": ("reactor", "wash", "strong", "stiff"),
+        "ingredients": ("reactor_cut",),
         "price": 0,
         "sips": 3,
         "effects": {"alcohol": 2},
@@ -519,6 +550,7 @@ HUB_AND_HOWL_MENU = [
     {
         "name": "cup of channel fog",
         "order_keywords": ("fog", "channel", "milky", "smooth"),
+        "ingredients": ("reactor_cut", "poppy_tincture", "channel_cordial"),
         "price": 0,
         "sips": 4,
         "effects": {"alcohol": 1, "opium": 1},
@@ -529,6 +561,7 @@ HUB_AND_HOWL_MENU = [
     {
         "name": "mug of black recyc",
         "order_keywords": ("recyc", "black", "coffee", "caf", "sober"),
+        "ingredients": ("caf",),
         "price": 0,
         "sips": 4,
         "effects": {},

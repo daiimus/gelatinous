@@ -224,6 +224,28 @@ class TestBarMenuSave(BaseEvenniaTest):
         self.assertIsNone(r["base_cocktail"])
 
 
+class TestBarStock(BaseEvenniaTest):
+    """A bar's bottomless stock = base pantry + its menu's ingredients."""
+
+    def test_derive_stock_from_menu(self):
+        from world.bar import (derive_bar_stock, BASE_BAR_PANTRY,
+                               HUB_AND_HOWL_MENU, INGREDIENT_CATALOG)
+        stock = derive_bar_stock(HUB_AND_HOWL_MENU)
+        for k in BASE_BAR_PANTRY:
+            self.assertIn(k, stock)
+        for k in ("grain_mash", "reactor_cut", "poppy_tincture", "caf"):
+            self.assertIn(k, stock)
+        for k in stock:
+            self.assertIn(k, INGREDIENT_CATALOG)
+
+    def test_menu_ingredients_are_catalog_keys(self):
+        from world.bar import HUB_AND_HOWL_MENU, INGREDIENT_CATALOG
+        for r in HUB_AND_HOWL_MENU:
+            for k in r.get("ingredients", ()):
+                self.assertIn(k, INGREDIENT_CATALOG,
+                              f"{r['name']}: unknown ingredient {k}")
+
+
 class TestSnacks(BaseEvenniaTest):
     """Free bar snacks (§10): keyword match + room resolution."""
 
