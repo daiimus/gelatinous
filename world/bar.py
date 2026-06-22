@@ -395,6 +395,19 @@ COCKTAILS = [
 ]
 
 
+#: Traditional preparation method per classic — a *suggestion* surfaced in the
+#: mixing menu, never enforced (loose ethos). Keyed by the template base name.
+COCKTAIL_METHOD = {
+    "Mojito": "muddle", "Cosmopolitan": "shake", "Last Word": "shake",
+    "Mai Tai": "shake", "French 75": "shake", "Tom Collins": "build",
+    "Margarita": "shake", "Negroni": "stir", "Manhattan": "stir",
+    "Old Fashioned": "stir", "Espresso Martini": "shake",
+    "White Russian": "build", "Pina Colada": "blend", "Moscow Mule": "build",
+    "Paloma": "build", "Daiquiri": "shake", "Martini": "stir",
+    "Gin & Tonic": "build", "Mimosa": "build", "Spritz": "build",
+}
+
+
 def _spirit_display(spirit):
     """Title-case a spirit type for spin names ('mezcal' -> 'Mezcal')."""
     return " ".join(w.capitalize() for w in (spirit or "").split())
@@ -413,14 +426,12 @@ def name_cocktail(template, spirit):
     return spin.format(spirit=_spirit_display(spirit), base=template["name"])
 
 
-def recognize_cocktail(ingredients):
-    """Recognize a classic (or spin) from loaded ingredients. Returns the
-    composed name string, or ``None`` for an unrecognized free-mix.
+def _best_template(ingredients):
+    """The most-specific matching cocktail template + the naming spirit.
 
     Loose match: a template fires when all its required roles are present (plus
     a spirit, for spirit-keyed templates); extra roles/garnishes are ignored.
-    When several templates match, the most specific (most required components)
-    wins. The first loaded spirit names it / its spin.
+    Most required components wins. Returns ``(template, spirit)`` or ``(None, None)``.
     """
     roles_present = set()
     spirit = None
@@ -442,27 +453,34 @@ def recognize_cocktail(ingredients):
         score = len(template["roles"]) + (1 if needs_spirit else 0)
         if score > best_score:
             best, best_score = template, score
-    if best is None:
-        return None
-    return name_cocktail(best, spirit)
+    return (best, spirit) if best else (None, None)
+
+
+def recognize_cocktail(ingredients):
+    """Recognized classic / spin name for a mix, or ``None`` for a free-mix."""
+    template, spirit = _best_template(ingredients)
+    return name_cocktail(template, spirit) if template else None
 
 
 def project_mix(ingredients):
     """Project what the loaded ingredients would make, without making it.
 
-    Returns ``{"effects", "flavour", "capped", "cocktail"}``: the additive
-    substance sum (each clamped to MIX_EFFECT_CAP), the composed flavour, any
-    substances the cap trimmed (for UI feedback), and the recognized classic /
-    spin name (or ``None`` for an unrecognized free-mix).
+    Returns ``{"effects", "flavour", "capped", "cocktail", "method"}``: the
+    additive substance sum (each clamped to MIX_EFFECT_CAP), the composed
+    flavour, any substances the cap trimmed (for UI feedback), the recognized
+    classic / spin name (or ``None``), and the suggested preparation method
+    (or ``None`` for a free-mix).
     """
     raw = mix_effects(ingredients)
     effects = {sid: min(d, MIX_EFFECT_CAP) for sid, d in raw.items()}
     capped = {sid: d for sid, d in raw.items() if d > MIX_EFFECT_CAP}
+    template, spirit = _best_template(ingredients)
     return {
         "effects": effects,
         "flavour": compose_flavour(ingredients),
         "capped": capped,
-        "cocktail": recognize_cocktail(ingredients),
+        "cocktail": name_cocktail(template, spirit) if template else None,
+        "method": COCKTAIL_METHOD.get(template["name"]) if template else None,
     }
 
 

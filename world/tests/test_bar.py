@@ -171,6 +171,17 @@ class TestCocktailRecognition(BaseEvenniaTest):
         over = project_mix([self._ing("spirit", "gin", {"alcohol": 9})])
         self.assertEqual(over["effects"]["alcohol"], MIX_EFFECT_CAP)
 
+    def test_project_mix_suggests_method(self):
+        from world.bar import project_mix
+        negroni = [self._ing("spirit", "gin"), self._ing("bitter_aperitivo"),
+                   self._ing("sweet_vermouth")]
+        self.assertEqual(project_mix(negroni)["method"], "stir")
+        daiquiri = [self._ing("spirit", "rum"), self._ing("citrus"),
+                    self._ing("sweetener")]
+        self.assertEqual(project_mix(daiquiri)["method"], "shake")
+        # Free-mix has no suggested method.
+        self.assertIsNone(project_mix([self._ing("spirit", "vodka")])["method"])
+
     def test_catalog_covers_every_cocktail(self):
         from world.bar import INGREDIENT_CATALOG, COCKTAILS
         roles = {p.get("role") for p in INGREDIENT_CATALOG.values()}
