@@ -377,65 +377,206 @@ CROWD_MESSAGES = {
                 "the line at the counter has stopped being a line and become a wall of backs and elbows",
             ],
             'auditory': [
-                "the noise is a solid wall of voices with no gaps in it",
-                "you can't hear the person beside you without leaning in close",
+                "the noise blurs into one solid wall of sound off the low ceiling",
+                "you can't hear the person beside you without putting your mouth to their ear",
                 "a glass shatters somewhere in the press and a cheer goes up after it",
                 "shouted orders pile on top of each other at the bar and lose all meaning",
             ],
             'olfactory': [
                 "the packed room reeks of sweat, smoke, and spilled drink",
-                "body heat pushes a thick stink of bodies and stale beer through the air",
-                "the smoke's so thick now it stings the eyes",
+                "body heat pushes a thick stink of bodies and stale beer through the close air",
+                "the smoke hangs so thick under the lights now it stings the eyes",
             ],
             'tactile': [
-                "the packed bodies throw off a steady heat that comes from every side",
-                "there's no still air left in here, just the warm press of the crowd",
+                "the heat of the packed room presses in close and damp from every side",
+                "there's no still air left between the walls, just the warm push of the crowd",
             ],
             'atmospheric': [
-                "there's no clear floor left, just a room full of shifting backs",
+                "there's no clear floor left, just a room full of shifting backs under the lights",
                 "breath and smoke fog the air under the low lights",
-                "the heat of the crowd has become its own weather in here",
+                "the heat of the crowd has become its own weather, trapped under the roof",
             ],
         },
         'packed': {
             'visual': [
                 "the crush is total, jammed too tight for anyone to do more than inch toward the bar",
                 "drinks ride overhead hand to hand because there's no room to carry them any other way",
-                "faces press close enough to count on every side",
-                "a fight breaks out somewhere in the pack, has nowhere to go, and dies in the press",
+                "the floor has vanished under wall-to-wall bodies, packed to the back of the room",
+                "a fight breaks out somewhere in the pack, has nowhere to go, and folds back into the crowd",
             ],
             'auditory': [
-                "the roar of the packed room is total, every voice drowned in every other",
-                "the din is so complete it starts to feel like silence",
+                "the roar of the room blurs into one wall of sound with no gaps in it",
+                "the din off the walls is so complete it starts to feel like silence",
                 "not even a shout carries past the next body",
             ],
             'olfactory': [
-                "the crush stinks of close-packed bodies, sweat, and breath gone stale",
-                "there's no clean air left, only the thick reek of the packed room",
+                "the packed room stinks of close bodies, sweat, smoke, and spilled drink",
+                "there's no clean air left between the walls, only the thick reek of the crowd",
             ],
             'tactile': [
-                "the crush radiates a smothering heat from every side at once",
+                "the packed room radiates a smothering, damp heat from every side at once",
                 "the press holds everyone upright whether they like it or not",
             ],
             'atmospheric': [
-                "there are no walls anymore, just packed bodies in every direction",
-                "the air is thick, warm, and short",
-                "the crowd has stopped being people and become one solid thing",
+                "there's no floor and no gaps, just packed bodies wall to wall under the lights",
+                "the air between the walls is thick, warm, and short",
+                "the crowd has jammed solid, packed to the back wall and the bar",
+            ],
+        },
+    },
+    # ------------------------------------------------------------------
+    # Nightclub profile — the dance floor, not the bar. Bass you feel in the
+    # chest, strobes and lasers and fog, a crowd locked to the beat, the decks,
+    # the drop. Deliberately a different world from the 'interior' bar pool: no
+    # counters or stools or drink orders — it's all floor, light, and sound.
+    # Selected by room.type (nightclub/club) via crowd_profile_for_room_type.
+    # ------------------------------------------------------------------
+    'nightclub': {
+        'sparse': {
+            'visual': [
+                "a lone figure moves on the empty floor, lost in a track no one else is feeling yet",
+                "two people share a pill in the dark at the floor's edge and drift apart",
+                "the DJ works the decks for a handful of early bodies, building something slow",
+                "a dancer runs the same eight-count over and over under the lights, alone",
+                "someone is folded into a corner banquette, gone somewhere the music can't reach",
+                "a bouncer leans in the doorway, arms crossed, reading the thin early crowd",
+                "glowsticks crack and flare in a knot of kids who came too early and too eager",
+            ],
+            'auditory': [
+                "the bass thuds through a near-empty room, more felt than heard",
+                "a track builds toward a drop that lands on no one",
+                "a single whoop goes up off the floor and dies in the dark",
+                "feedback whines off the rig and a voice curses at the board",
+                "the music swallows a shouted name before it reaches anyone",
+            ],
+            'olfactory': [
+                "dry-ice fog and old sweat hang flat over the empty floor",
+                "synth-smoke and spilled energy drink sweeten the cold early air",
+                "the sharp chemical reek of fresh fog drifts from the machines",
+            ],
+            'tactile': [
+                "the bass comes up through the grating into the soles of your feet",
+                "the floor is tacky underfoot where last night never quite got cleaned",
+                "fog rolls cold and damp across the open floor",
+            ],
+            'atmospheric': [
+                "the lights sweep an empty floor, throwing strobes across no one",
+                "lasers cut the fog over a dance floor that hasn't filled yet",
+                "the screens loop their fractured static to a near-empty room",
+                "the room waits, lit and loud and almost empty, for the night to land",
+            ],
+        },
+        'moderate': {
+            'visual': [
+                "the floor's filling out, a loose crowd moving in and out of time with the beat",
+                "a circle opens around someone who can actually dance, and closes again",
+                "a dealer works the floor's edge, palm to palm, never breaking stride",
+                "the DJ reads the room and pushes the tempo, and the floor answers",
+                "a pair grind together in the strobe, oblivious to the bodies around them",
+                "someone films the floor on a cracked handpad, a small cold square in the dark",
+            ],
+            'auditory': [
+                "the bass has found its weight now, and the floor moves with it",
+                "a cheer rolls across the room as the track breaks open",
+                "whoops and voices braid through the music without rising above it",
+                "someone screams the hook back at the booth, off-key and delighted",
+            ],
+            'olfactory': [
+                "sweat, fog, and synth-smoke thicken over the moving floor",
+                "a sweet chemical haze of vape and dry-ice rolls off the crowd",
+                "the metallic tang of someone's stim-sweat cuts through the fog",
+            ],
+            'tactile': [
+                "the bass is a steady pressure in the chest now, climbing with the track",
+                "the floor's warm with bodies, the air stirred by a hundred moving arms",
+                "heat rolls off the dancers in waves, fog clinging to damp skin",
+            ],
+            'atmospheric': [
+                "strobes chop the moving crowd into stop-motion under the rig",
+                "lasers rake the fog over a floor that's finally moving",
+                "the screens' static washes the dancers in cold, broken light",
+                "the whole room pulses with the track, lit and loud and starting to cook",
+            ],
+        },
+        'heavy': {
+            'visual': [
+                "the floor is a single moving mass, every body locked to the same beat",
+                "hands go up across the whole floor on the build, reaching for the drop",
+                "a dancer crowd-surfs the packed floor a few seconds before going down laughing",
+                "lasers sweep a sea of upraised arms and the floor roars back",
+                "someone goes down in the crush and friends haul them up, still dancing",
+            ],
+            'auditory': [
+                "the bass is total now, a physical thing driving the whole floor",
+                "the drop hits and the room detonates into one massive roar",
+                "the track and the crowd's roar have become the same sound",
+                "the speakers on their chains rattle with every kick",
+            ],
+            'olfactory': [
+                "the packed floor reeks of hot sweat, fog, and chemical smoke",
+                "a wall of sweat-and-fog heat hits you at the edge of the floor",
+                "the air is thick with vape, body heat, and the sweet rot of spilled drink",
+            ],
+            'tactile': [
+                "the bass hammers in the chest and up through the grating into the legs",
+                "the packed floor throws off a wet, rolling heat from every side",
+                "there's no still air left over the floor, just the warm churn of bodies",
+            ],
+            'atmospheric': [
+                "strobes freeze the heaving floor a frame at a time, all of it raised arms",
+                "fog and laserlight hang in solid sheets over the packed floor",
+                "the heat of the floor fogs the air and runs in beads down the walls",
+                "the whole room moves as one body, hammering on the beat",
+            ],
+        },
+        'packed': {
+            'visual': [
+                "the floor is jammed solid, everyone moving because there's no room not to",
+                "the crowd surges as one on the drop and you go where it goes",
+                "arms stay up across the floor, locked there by the press as much as the beat",
+                "lasers cut a packed floor with no gap and no edge anywhere in it",
+            ],
+            'auditory': [
+                "the bass and the roar are total, one sound with no room left in it",
+                "the rig is so loud the air itself feels solid",
+                "the drop lands and the roar is so complete it loops back into silence",
+            ],
+            'olfactory': [
+                "the crush stinks of hot sweat, chemical fog, and breath gone close and stale",
+                "there's no clean air over the floor, only the wet reek of the packed crowd",
+            ],
+            'tactile': [
+                "the bass is inside the chest now, indistinguishable from a heartbeat",
+                "the packed floor radiates a smothering, soaking heat from every side at once",
+                "the crush holds everyone upright, moving them whether they choose to or not",
+            ],
+            'atmospheric': [
+                "there's no floor and no edge, just packed bodies under the strobes wall to wall",
+                "the air over the floor is thick, hot, and shaking with the bass",
+                "the crowd has stopped being people and become one heaving thing, lit in strobe",
+                "fog, heat, and laserlight have closed over the floor into its own dark weather",
             ],
         },
     },
 }
 
-#: Room types that draw on the enclosed 'interior' crowd pool rather than the
-#: open-air street 'default'. Anything not listed falls back to 'default'.
+#: Dance-venue room types — the 'nightclub' pool (floor/bass/lights), a world
+#: apart from the bar-counter 'interior' pool.
+NIGHTCLUB_ROOM_TYPES = {'nightclub', 'club'}
+
+#: Enclosed bar/venue room types that draw on the 'interior' crowd pool rather
+#: than the open-air street 'default'. Anything unlisted falls back to 'default'.
 INTERIOR_ROOM_TYPES = {
-    'bar', 'interior', 'nightclub', 'club', 'venue', 'cantina', 'lounge',
+    'bar', 'interior', 'venue', 'cantina', 'lounge',
 }
 
 
 def crowd_profile_for_room_type(room_type):
-    """Map a ``room.type`` to a crowd message profile name ('default'|'interior')."""
-    if room_type and str(room_type).lower() in INTERIOR_ROOM_TYPES:
+    """Map a ``room.type`` to a crowd profile ('default'|'interior'|'nightclub')."""
+    t = str(room_type or "").lower()
+    if t in NIGHTCLUB_ROOM_TYPES:
+        return 'nightclub'
+    if t in INTERIOR_ROOM_TYPES:
         return 'interior'
     return 'default'
 
