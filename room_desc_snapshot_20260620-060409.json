@@ -1,0 +1,172 @@
+{
+  "2": {
+    "key": "Limbo",
+    "desc": "Welcome to your new |wEvennia|n-based game! Visit https://www.evennia.com if you need\nhelp, want to contribute, report issues or just join the community.\n\nAs a privileged user, write |wbatchcommand tutorial_world.build|n to build\ntutorial content. Once built, try |wintro|n for starting help and |wtutorial|n to\nplay the demo game.",
+    "sense_descs": {}
+  },
+  "4": {
+    "key": "Braddock Avenue",
+    "desc": "The avenue widens here where an old mining shaft entrance has been sealed with composite plating, the metal warped from some long-ago structural failure. Graffiti covers the sealed entrance—layer upon layer of tags, territorial markers, and cryptic symbols that might be gang signs or philosophical statements or both. A row of storage containers lines the northern side, their doors secured with mismatched locks suggesting whoever owns them doesn't trust corporate security to care. The crater wall shows water staining here, dark streaks where condensation or leakage has marked the stone for years. Distant machinery hums constantly, the sound building like pressure behind your eardrums.",
+    "sense_descs": {}
+  },
+  "13": {
+    "key": "Braddock Avenue",
+    "desc": "Prefab modules crowd both sides of the avenue here, their walls so close you could touch them simultaneously if you stretched. The narrow passage between them channels wind into a constant low whistle, the sound mixing with voices and machinery from adjacent streets. Someone has strung cable lights overhead, their intermittent flicker creating strobing shadows that make navigation feel like moving through discrete moments rather than continuous space. A small shrine occupies a wall niche—candles, some unidentifiable offering wrapped in cloth, and a printed image so faded the subject has become pure abstraction. The ground is worn smooth here, polished by endless passage.",
+    "sense_descs": {}
+  },
+  "17": {
+    "key": "Braddock Avenue",
+    "desc": "A corner store occupies the northern side, its entrance marked by a hand-painted sign offering \"Provisions & Sundries\" in lettering that's been touched up so many times the original color is just archaeological speculation. To the south, a laundromat's windows glow with condensation, the humid air escaping through vents carrying the scent of industrial detergent and heated fabric. Between them, the avenue serves as an impromptu marketplace—a synthetic vendor stands beside a folding table displaying protein bars and recycled water bottles, their prices marked in both scrip and trade goods. The sound of the laundromat's tumbling machines provides a rhythmic backdrop, almost hypnotic in its mechanical constancy.",
+    "sense_descs": {}
+  },
+  "178": {
+    "key": "Ramirez Provisions & Sundries",
+    "desc": "The store crams itself into a space that might have been designed for storage rather than commerce, shelving units bolted to every available wall surface and extending overhead in a precarious geometry that defies standard safety codes. Protein rations, recycled water, salvaged electronics, and medical supplies compete for shelf space with items whose purpose has been forgotten but might prove useful someday.",
+    "sense_descs": {}
+  },
+  "181": {
+    "key": "Market Rooftop",
+    "desc": "This rooftop offers a commanding view of the neighborhood, its surface a patchwork of weathered tar paper, gravel, and the occasional patch where someone tried to seal a leak. The building's old brick chimney rises like a monument to forgotten heating systems, while newer additions—satellite dishes, cell phone antennas, and a small forest of PVC pipes—create an urban jungle of technology. A few overturned milk crates serve as makeshift seating near the roof's edge, where someone has clearly spent time watching the street below. The smell of the market drifts up through ventilation grates: a mix of produce, cleaning supplies, and the faint sweetness of overripe fruit. From here, the gap to the neighboring laundromat rooftop looks both impossibly far and tantalizingly close, depending on your nerve. The city spreads out in a grid of possibilities, each rooftop a potential stepping stone for those bold enough to take the leap. Wind whistles between the buildings, carrying the sounds of traffic, distant music, and the endless hum of urban life.",
+    "sense_descs": {}
+  },
+  "184": {
+    "key": "Suds & Bubbles Laundromat",
+    "desc": "Heat hits you immediately upon entry, the atmospheric recyclers struggling against humidity that turns the air thick and almost liquid. Industrial washers and dryers line both walls, their mismatched models suggesting decades of replacement and repair - some still bearing manufacturer plates from Terran companies that no longer exist. The floor tiles, cracked and stained, channel water toward drains that gurgle constantly with the optimism of systems designed for lighter use. Folding tables occupy the center, their surfaces warped from moisture and heat, scattered with forgotten socks and the occasional left-behind garment that's achieved the status of permanent resident. The mechanical thunder of tumbling drums creates a white noise that makes conversation require raised voices, rendering the space into a cathedral of industrial necessity where people come to maintain the fiction that cleanliness still matters.",
+    "sense_descs": {}
+  },
+  "187": {
+    "key": "Laundromat Rooftop",
+    "desc": "The flat rooftop stretches out under the open sky, its tar and gravel surface baking in the sun and dotted with puddles that never quite dry. A cluster of industrial ventilation units hums and rattles, exhausting the humid air from the laundromat below in periodic clouds of steam that smell faintly of soap and fabric softener. The roof's edge is marked by a low concrete parapet, just high enough to lean against while surveying the urban landscape. Rusty fire escape ladders cling to the building's sides, and a few weathered lawn chairs sit abandoned near a makeshift clothesline strung between two antenna masts. From here, you can see across the gap to the neighboring buildings, their rooftops forming a concrete archipelago above the streets below. The city sprawls in all directions, a maze of brick, steel, and possibility.",
+    "sense_descs": {}
+  },
+  "190": {
+    "key": "In the Air",
+    "desc": "Wind whips past your ears as the city spreads below in a patchwork of rooftops, fire escapes, and narrow alleys. The air carries the mingled scents of exhaust fumes, cooking food, and the distant tang of the river. Traffic sounds drift up from the streets - horns, engines, the occasional siren - while closer at hand you can hear the creak of metal structures and the flutter of fabric in the breeze. The urban landscape stretches in every direction, a maze of brick and concrete punctuated by the occasional splash of neon or greenery.",
+    "sense_descs": {}
+  },
+  "220": {
+    "key": "Braddock Avenue",
+    "desc": "The avenue begins to widen here, industrial grating replacing the improvised surfaces of the southwestern reaches. Prefab housing gives way to structures with an almost deliberate quality, their placement suggesting planning rather than organic desperation. To the north, you can see where the colony transitions from edge to established—streetlights that actually function, signage that hasn't been hand-painted over salvage. The atmospheric processor looms larger now, its northeastern bulk close enough that you can make out individual exhaust stacks and the scaffolding of maintenance platforms. The air tastes of metal and ozone, warmer but still carrying that edge of mineral cold from the crater's depths.",
+    "sense_descs": {}
+  },
+  "223": {
+    "key": "South Marlowe Street and Braddock Avenue",
+    "desc": "The intersection sprawls where South Marlowe Street cuts north through the colony's industrial heart, its width marking it as a major artery designed when someone still believed in planning for growth. Industrial grating forms a near-perfect grid here, maintenance hatches dotting the surface at regular intervals like punctuation marks in a language of buried infrastructure. To the north, Marlowe climbs toward the distant promise of the Balboa Channel and the Central Span beyond, its perspective lines disappearing into the maze of prefab structures and the hazy glow of functional street lighting. The atmospheric processor dominates the eastern view, close enough now that its mechanical rhythm becomes something you feel in your chest rather than merely hear. South, the crater wall curves dark and final, reminding you that even in a place built for expansion, some boundaries remain absolute.",
+    "sense_descs": {}
+  },
+  "888": {
+    "key": "Braddock Avenue",
+    "desc": "Heavy machinery dominates here, parked mining haulers forming impromptu walls that channel foot traffic into narrow paths between their massive treads. The vehicles still carry the day's work—regolith dust coating their surfaces, ice melt freezing in the joints of their hydraulics. Someone has welded a crude shelter between two hauler cabs, the space barely large enough for a person to lie down, its entrance curtained with thermal sheeting. The air carries the mixed scents of hydraulic fluid and stone dust, warmer than the southwestern edge but still holding the crater's mineral chill.",
+    "sense_descs": {}
+  },
+  "894": {
+    "key": "South Marlowe Street",
+    "desc": "The street opens with a width that speaks to ambition - someone designed this as a thoroughfare when the colony still had pretensions toward planning. Industrial grating forms an almost perfect grid underfoot, maintenance hatches at regular intervals suggesting infrastructure that actually gets attention. The atmospheric processor dominates the eastern horizon, close enough that its waste heat creates shimmering air currents that make distant structures waver. Prefab housing lines both sides, their walls showing the kind of maintenance that comes from being near a major route—fresh patches, functional seals, the occasional coat of protective sealant still tacky enough to smell.",
+    "sense_descs": {}
+  },
+  "897": {
+    "key": "Braddock Avenue",
+    "desc": "The avenue shifts character here, leaving behind the improvised sprawl of the western reaches for something that almost resembles intentional design. The street surface is intact industrial grating, warm to the touch from the atmospheric processor's proximity—close enough now that its waste heat has transformed this corner of the colony into the most habitable real estate on Braddock. Prefab modules line the northern side in relatively good repair, their walls showing fresh patches rather than decades of accumulated damage. To the south, the crater wall still looms, but here it's been integrated with better engineering—proper seals, functioning drainage, structural supports that look like someone actually calculated load-bearing rather than guessing. The air carries that thick metallic warmth that makes you realize cold is a choice the western colony makes by necessity rather than preference.",
+    "sense_descs": {}
+  },
+  "1682": {
+    "key": "Tsiolkovsky Corridor",
+    "desc": "",
+    "sense_descs": {}
+  },
+  "1685": {
+    "key": "Tsiolkovsky Corridor",
+    "desc": "",
+    "sense_descs": {}
+  },
+  "1688": {
+    "key": "Tsiolkovsky Corridor",
+    "desc": "",
+    "sense_descs": {}
+  },
+  "1691": {
+    "key": "Ada Avenue and Tsiolkovsky Corridor",
+    "desc": "The avenue terminates at Tsiolkovsky Corridor, the colony's eastern boundary where residential and industrial zones meet the crater wall's unyielding presence. The intersection carries the particular energy of a terminus - workers arriving and departing, materials moving in transit, the circulation of colony life concentrated at this endpoint. The processor's output colors the air in the distance, rising into the horizon. The crater wall rises behind the intersection, its surface marked by ventilation shafts and maintenance access points. The colony extends as far as it can in this direction; beyond lies only stone and the machinery required to make it habitable.",
+    "sense_descs": {}
+  },
+  "1694": {
+    "key": "Tsiolkovsky Corridor",
+    "desc": "",
+    "sense_descs": {}
+  },
+  "1697": {
+    "key": "Tsiolkovsky Corridor",
+    "desc": "",
+    "sense_descs": {}
+  },
+  "1703": {
+    "key": "Tsiolkovsky Corridor and Arcturus Row",
+    "desc": "",
+    "sense_descs": {}
+  },
+  "1935": {
+    "key": "Queen of Cups - Rooftop",
+    "desc": "The stairs end at a hatch that opens onto the roof, patched metal sheets forming a jagged surface underfoot. From here, Pessoa Street stretches eastward, alive with noise and smoke. The atmospheric processor dominates the skyline in pale light. Makeshift chairs and crates litter the roof. Evidence of gatherings are left behind with empty bottles and burnt offerings. The wind carries the smell of spice and smoke, mixing with the hum of machinery. Shadows stretch long across the colony, broken by neon glows from below.",
+    "sense_descs": {}
+  },
+  "1961": {
+    "key": "Colonial Armory",
+    "desc": "The seal above the entrance has been painted over so many times it's become an abstract smear suggesting authority without claiming it. The west wall features a faded mural - possibly depicting colonial marines, possibly depicting anyone with guns who looked heroic before the paint oxidized - its details lost to time and nobody caring enough to restore what might have been propaganda or might have just been decoration.",
+    "sense_descs": {}
+  },
+  "1968": {
+    "key": "Helix Lounge",
+    "desc": "The warehouse shell is gutted, steel beams exposed like ribs. Concrete walls sweat with condensation, patched with cables that pulse faint light. Speakers hang heavy from chains, their casings scarred, humming with static even when silent. The floor is grating over old drainage channels, steam rising in bursts from vents below. Neon strips flicker against rusted panels, painting the room in jagged color. Screens loop fractured visuals, VHS static bleeding into industrial patterns. The air smells of ozone, oil, and burnt circuitry.",
+    "sense_descs": {}
+  },
+  "1971": {
+    "key": "Helix Lounge - Balcony",
+    "desc": "A steel staircase climbs to the balcony, its steps worn smooth by decades of use. The balcony runs the length of the warehouse, railings patched with welded plates. Chairs sit in clusters, scavenged from offices and ships, their cushions torn but functional. Tables are slabs of metal bolted to the floor, scarred with cigarette burns and knife marks. The walls are lined with old monitors, looping static and half-forgotten logos. Light filters through cracked panels above, casting long shadows across the seating. The hum of the main floor rises here, muffled but constant.",
+    "sense_descs": {}
+  },
+  "1974": {
+    "key": "Helix Lounge - VIP",
+    "desc": "Behind a reinforced door, the VIP zone glows with its own neon palette. A bar stretches along one wall, steel counter polished to a dull shine, bottles lined in uneven rows. Hot tubs sit recessed into the floor, their surfaces steaming, framed by rusted piping and flickering lights. The walls are paneled with old advertising screens, looping broken commercials in endless cycles. The ceiling is low, cables dangling like vines, dripping condensation into the tubs. The air is thick with heat and chemical tang, heavy and close. It feels sealed off, a hidden chamber of excess carved from ruin.",
+    "sense_descs": {}
+  },
+  "1983": {
+    "key": "Thawn-Harrison Cryogenics - Courtyard",
+    "desc": "Composite decking replaces industrial grating here, geometric patterns suggesting corporate resources rather than desperate improvisation. Security lighting mounted on telescoping poles creates overlapping coverage. The building's northern facade displays brushed composite panels and Thawn-Harrison's backlit name in letters that maintain their glow regardless of day cycle. Prefab walls flank east and west, showing maintenance that speaks to professional facilities management. The western and southern approaches open to the street, bollards and low barriers guiding traffic.",
+    "sense_descs": {}
+  },
+  "1986": {
+    "key": "Thawn-Harrison Cryogenics - Lobby",
+    "desc": "The reception area maintains corporate aesthetics while acknowledging colonial reality — composite flooring polished to a sheen that won't last, furniture arranged with deliberate spacing that suggests crowd management protocols. The main desk curves along the eastern wall, its surface integrating displays and biometric scanners, the attendant station currently occupied by a synthetic whose professional demeanor doesn't quite mask the security subroutines running beneath. Waiting area chairs line the southern wall, their upholstery showing wear patterns from populations who wait because they have no choice.",
+    "sense_descs": {}
+  },
+  "1989": {
+    "key": "Thawn-Harrison Cryogenics - Decantation Chamber",
+    "desc": "Ten decanting pods dominate the floor in parallel rows, cylinders of reinforced composite and transparent polymer three meters tall, interiors lit by soft blue illumination that makes the synthetic gel appear both liquid and solid. Control consoles flank each pod, displays cycling through biometric data — neural activity, tissue integration, cardiovascular function rendered as numbers. Supply stations line the walls with refrigerated biochemical storage, equipment racks, emergency medical kits behind break-glass panels. The northern observation station monitors all pods from an elevated platform. Environmental systems maintain precise temperature and humidity, filtered air circulation constant. The floor is composite rated for chemical resistance, drainage channels positioned at intervals. The air tastes clinical — sterilization compounds and refrigerant chemistry. Warning placards cover designated walls in multiple languages.",
+    "sense_descs": {}
+  },
+  "2008": {
+    "key": "Gaia's Treasures",
+    "desc": "The viewport displays speak to careful curation rather than desperate acquisition — a brass sextant behind climate-controlled glass, paper books sealed in preservation cases, what might be genuine wood furniture arranged to suggest Earth living rooms most colonists have only seen in recordings. The proprietor keeps the lighting low, each artifact spotlit like museum pieces, the kind of presentation that makes you think twice before asking prices. Deeper inside, shelves hold smaller items — porcelain that survived the crossing, mechanical watches, photographs in actual silver frames. The air smells faintly of old paper and polishing compound, a Terran scent manufactured through careful maintenance rather than natural accumulation.",
+    "sense_descs": {}
+  },
+  "2430": {
+    "key": "dbg_room9",
+    "desc": "",
+    "sense_descs": {}
+  },
+  "2461": {
+    "key": "dbg_head_corpse_room",
+    "desc": "",
+    "sense_descs": {}
+  },
+  "2480": {
+    "key": "dbg_corpse_amp_room",
+    "desc": "",
+    "sense_descs": {}
+  },
+  "2496": {
+    "key": "dbg_jit_room",
+    "desc": "",
+    "sense_descs": {}
+  }
+}
