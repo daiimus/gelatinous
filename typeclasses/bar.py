@@ -147,16 +147,20 @@ class CmdBarPrepare(Command):
 
 class CmdBarClear(Command):
     """
-    Clear abandoned drinks and loose ingredients off the bar.
+    Clean abandoned drinks and loose ingredients off the bar.
 
     Usage:
-        clear <bar>
+        clean <bar>
+        wipe <bar>
 
     Wipes the bar surface down — served drinks nobody took and any ingredients
     left loaded. Keeps the counter tidy between rounds. For bartenders.
+
+    (``clean`` rather than ``clear`` — ``clear`` is taken by the detonator.)
     """
 
-    key = "clear"
+    key = "clean"
+    aliases = ["wipe"]
     locks = "cmd:all()"
     help_category = "Bar"
 
