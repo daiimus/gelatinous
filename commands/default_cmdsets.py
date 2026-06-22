@@ -73,7 +73,14 @@ class UnconsciousCmdSet(CmdSet):
         # Staff commands (will be filtered by permissions anyway)
         self.add(default_cmds.CmdPy())        # Staff debugging
         self.add(default_cmds.CmdReload())    # Staff server management
-        
+
+        # Admin recovery commands stay available even while unconscious —
+        # they're perm-locked (Builders/Developers), so regular players can't
+        # use them, but staff can @heal themselves out of a state instead of
+        # being locked out by the very state they're trying to fix.
+        self.add(CmdHeal())
+        self.add(CmdResetMedical())
+
         # NO look, NO movement, NO actions when unconscious
 
 
@@ -99,7 +106,12 @@ class DeathCmdSet(CmdSet):
         # Staff commands (will be filtered by permissions anyway)
         self.add(default_cmds.CmdPy())        # Staff debugging
         self.add(default_cmds.CmdReload())    # Staff server management
-        
+
+        # Admin recovery commands stay available even while dead — perm-locked,
+        # so staff can @heal themselves back instead of being locked out.
+        self.add(CmdHeal())
+        self.add(CmdResetMedical())
+
         # NO look, NO time, NO movement, NO actions when dead
 
 
