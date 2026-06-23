@@ -73,3 +73,46 @@ def request_turn(messages, on_turn, on_fail, schema=None):
         on_fail()
 
     run_async(_thread_fn, at_return=_at_return, at_err=_at_err)
+
+
+def _embed_url():
+    """The embeddings endpoint, derived from the chat URL (override:
+    ``settings.LLM_GM_EMBED_URL``)."""
+    explicit = getattr(settings, "LLM_GM_EMBED_URL", "")
+    if explicit:
+        return explicit
+    url = getattr(settings, "LLM_GM_URL", _DEFAULT_URL)
+    return url.replace("/chat/completions", "/embeddings")
+
+
+def request_embedding(text, on_done, on_fail):
+    """Embed ``text`` off the reactor; deliver the vector (list[float]) to
+    ``on_done`` (Phase 2 memory). Mirrors ``request_turn``'s thread contract —
+    the thread does pure network, callbacks run on the reactor.
+    """
+    url = _embed_url()
+    api_key = getattr(settings, "LLM_GM_API_KEY", "")
+    timeout = getattr(settings, "LLM_GM_TIMEOUT", _DEFAULT_TIMEOUT)
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    body = {"input": text}
+
+    def _thread_fn():
+        resp = requests.post(url, json=body, headers=headers, timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json()
+        items = data.get("data") or []
+        return items[0].get("embedding") if items else None
+
+    def _at_return(vec):
+        if not vec:
+            on_fail()
+            return
+        on_done(vec)
+
+    def _at_err(failure):
+        logger.log_err(f"LLM embedding call failed: {failure}")
+        on_fail()
+
+    run_async(_thread_fn, at_return=_at_return, at_err=_at_err)
