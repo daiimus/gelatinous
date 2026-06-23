@@ -9,6 +9,8 @@ model voices *this* character — the same sdesc/longdesc/voice the world percei
 See ``specs/proposals/LLM_GAMEMASTER_SPEC.md`` §5.2 (persona card).
 """
 
+from evennia.utils.dbserialize import deserialize
+
 from world.voice import get_voice_description, get_voice_ending, voice_phrase
 
 
@@ -54,5 +56,7 @@ def build_persona(npc) -> dict:
         "voice_ending": get_voice_ending(npc),
         "location": location,
         "menu": menu,
-        "persona_seed": npc.db.llm_persona or {},
+        # deserialize → plain dict/list (the seed's nested mes_example is a
+        # _SaverDict/_SaverList off the DB, which json.dumps can't serialize).
+        "persona_seed": deserialize(npc.db.llm_persona) or {},
     }

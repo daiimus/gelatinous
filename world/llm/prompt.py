@@ -187,7 +187,15 @@ def few_shot_messages(persona: dict) -> list:
             parsed = parse_turn(assistant, persona)
             assistant = {"speech": parsed["speech"] or "", "action":
                          parsed["action"] or "", "tool": "none", "tool_argument": ""}
-        out.append({"role": "user", "content": user})
+        # Rebuild a plain, JSON-safe dict — a DB-sourced example arrives as a
+        # _SaverDict (or other Mapping) that json.dumps can't serialize directly.
+        assistant = {
+            "speech": str(assistant.get("speech", "") or ""),
+            "action": str(assistant.get("action", "") or ""),
+            "tool": str(assistant.get("tool", "none") or "none"),
+            "tool_argument": str(assistant.get("tool_argument", "") or ""),
+        }
+        out.append({"role": "user", "content": str(user)})
         out.append({"role": "assistant", "content": json.dumps(assistant)})
     return out
 
