@@ -208,8 +208,16 @@ they achieve them:
   server, or a thin custom socket service) and have the game call it
   asynchronously.
 - **Warm model, cold requests.** Load the weights **once** at sidecar start and
-  keep them resident; pay the load cost (seconds to tens of seconds) at boot, not
-  per turn. Requests are stateless against a warm model.
+  keep them resident; pay the load cost at boot, not per turn. Requests are
+  stateless against a warm model.
+- **One resident model; the library lives off-box.** Exactly **one** model is warm
+  at a time (the sidecar is a serial generator, §8). The production Mac mini is
+  **disk-constrained** — a handful of GB free on the boot SSD — so model weights
+  are stored on the **NAS** (NFS-mounted) and loaded across the network *once* at
+  sidecar boot. Because load is a one-time, boot-time cost against an always-on
+  resident model, **NAS read speed never touches per-turn latency**. The NAS holds
+  the *library* of candidate models to A/B; the box only ever pulls the one it's
+  serving. This is the operational form of the plug-and-play swap (§4.2).
 - **Account for co-tenancy.** The target production Mac mini (24 GB unified) is a
   **shared box** — it also runs the full Docker stack (Gelatinous and the rest),
   Plex, a torrent client, and more. The GM's *effective* memory and GPU slice is
@@ -282,9 +290,18 @@ latency budget or memory). **Map the tier to the box** (§3 co-tenancy):
 
 **Plug-and-play is a hard requirement, not a nicety** (the user's call): models
 must be swappable *at will* with no code change — a config pointer to a different
-`mlx-community` checkpoint behind the §9 Model adapter. This is what lets the
-same loop run the 12B on production and the 24B on the bench, and lets you chase
+checkpoint (on the NAS, §3) behind the §9 Model adapter. This is what lets the
+same loop run the 8B on production and the 24B on the bench, and lets you chase
 better tunes as they ship without touching the game.
+
+**Far end of the swap seam — a custom fine-tune.** The eventual goal is a
+*Gelatinous-tuned* model. The pipeline keeps the mini a pure **inference** box:
+fine-tune **off-box** (QLoRA via Unsloth or equivalent on a CUDA GPU — Apple
+Silicon can't train it; no Metal training backend), merge the adapter, **convert
+to MLX** (`mlx_lm.convert`, 4-bit), and drop the result on the NAS. From the
+game's perspective a house-tuned model is *just another checkpoint behind the
+Model adapter* — no code change. Training lives elsewhere; serving stays MLX.
+(Out of scope for the build; recorded so the seam isn't designed against it.)
 
 > ⚠️ **Do not hard-code the pick.** Bind the model behind the §9 *Model
 > adapter*. The named families above are a *starting shortlist*, not a decision;
