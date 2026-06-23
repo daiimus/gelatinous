@@ -228,7 +228,10 @@ def render_persona(persona: dict) -> str:
         lines.append(f"Your voice: {persona['voice']}.")
     loc = persona.get("location") or {}
     if loc.get("name"):
-        lines.append(f"You are behind the bar at {loc['name']}.")
+        # Neutral placement — what the NPC *does* here comes from its archetype
+        # duties (a bartender tends the bar; a companion works the floor), never
+        # from a hardcoded role baked into the shared persona render.
+        lines.append(f"You are at {loc['name']}.")
     menu = persona.get("menu")
     if menu:
         lines.append("Your bar serves ONLY: " + ", ".join(menu) + " (no beer, no "
