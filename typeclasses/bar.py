@@ -13,6 +13,7 @@ v1 is intentionally lenient where the spec defers (ownership gating, recipe-save
 UX) so the loop is testable; those are later slices.
 """
 
+import json
 import random
 from functools import partial
 from time import monotonic
@@ -25,7 +26,8 @@ from typeclasses.items import Item
 from typeclasses.characters import Character
 from typeclasses.llm_persona import build_persona
 from world.grammar import capitalize_first, with_article
-from world.llm.client import llm_enabled, request_npc_reply
+from world.llm.client import llm_enabled, request_turn
+from world.llm.prompt import build_messages, parse_turn
 from world.shop.utils import format_currency
 from world.bar import (
     DEFAULT_BAR_SNACKS,
@@ -337,6 +339,10 @@ LLM_DIRECTED_COOLDOWN = 4.0    # min seconds between replies to direct address/n
 LLM_AMBIENT_COOLDOWN = 45.0    # she rarely volunteers into overheard chatter
 LLM_AMBIENT_CHANCE = 0.35      # ...and not every eligible time
 LLM_HISTORY_TURNS = 6          # recent turns kept per interlocutor (anti-repetition)
+#: Tools the model may call that *inform* it (read-only) vs *act* (mutate). Context
+#: tools loop (run → feed result back → re-ask); action tools route to a command.
+CONTEXT_TOOLS = {"look", "check_stock"}
+LLM_MAX_TOOL_ROUNDS = 3        # cap the agentic loop so it can't spin forever
 
 
 class Bartender(Character):
@@ -520,20 +526,16 @@ class Bartender(Character):
             return True
         self.ndb.last_llm = now
 
-        # Capture everything the off-reactor thread needs BEFORE threading
-        # (the SQLite/Evennia-thread contract — see world/llm/client.py).
+        # Capture everything reactor-side BEFORE threading (SQLite/Evennia-thread
+        # contract). The agentic loop re-calls from the reactor-side callback.
         persona = build_persona(self)
         speaker_name = patron.get_display_name(self)
         perception = self._perceive(patron)
         history = self._recent_history(patron)
-        request_npc_reply(
-            persona, speaker_name, line or "", mode,
-            on_reply=partial(self._render_and_remember, patron, line or "",
-                             speaker_name),
-            on_fail=on_fail or self._llm_silent,
-            perception=perception,
-            history=history,
-        )
+        messages = build_messages(persona, speaker_name, line or "", mode,
+                                  perception, history)
+        self._agentic_round(messages, persona, patron, line or "", speaker_name,
+                            on_fail or self._llm_silent, rounds=0)
         return True
 
     def _perceive(self, patron):
@@ -570,9 +572,56 @@ class Bartender(Character):
         the model sees what it just said and stops repeating itself."""
         return (self.ndb.llm_history or {}).get(self._hist_key(patron), [])
 
-    def _render_and_remember(self, patron, line, speaker_name, speech, action):
-        """Render the reply, then append the turn to short-term memory."""
-        self._render_llm_reply(speech, action)
+    # --- the agentic tool loop (constrained turn → context tools → reply) ----
+
+    def _agentic_round(self, messages, persona, patron, line, speaker_name,
+                       on_fail, rounds):
+        """One constrained generation; the reactor-side callback either runs a
+        context tool and loops, or renders the final reply + any action tool."""
+        request_turn(
+            messages,
+            on_turn=partial(self._on_turn, messages, persona, patron, line,
+                            speaker_name, on_fail, rounds),
+            on_fail=on_fail,
+        )
+
+    def _on_turn(self, messages, persona, patron, line, speaker_name, on_fail,
+                 rounds, raw):
+        turn = parse_turn(raw, persona)
+        tool, arg = turn["tool"], turn["tool_argument"]
+        # Context tool: run the real read, feed the result back, loop.
+        if tool in CONTEXT_TOOLS and rounds < LLM_MAX_TOOL_ROUNDS:
+            result = self._run_context_tool(tool, arg, patron)
+            extended = messages + [
+                {"role": "assistant",
+                 "content": raw if isinstance(raw, str) else json.dumps(raw)},
+                {"role": "user", "content": f"[tool result · {tool}] {result}"},
+            ]
+            self._agentic_round(extended, persona, patron, line, speaker_name,
+                                on_fail, rounds + 1)
+            return
+        # Terminal: render speech/action, run the action tool, remember.
+        self._render_llm_reply(turn["speech"], turn["action"])
+        if tool == "prepare_drink" and arg and self.location:
+            self.execute_cmd(f"prepare {arg}")
+        self._remember_turn(patron, line, speaker_name, turn["speech"],
+                            turn["action"])
+
+    def _run_context_tool(self, tool, arg, patron):
+        """Run a read-only context tool via the game's real logic and return its
+        result for the model. (Reads only — world-mutating tools go through real
+        commands in ``_on_turn``.)"""
+        if tool == "look":
+            return self._perceive(patron) or "nothing remarkable"
+        if tool == "check_stock":
+            bar = self._find_bar()
+            menu = (bar.db.menu if bar else None) or self.db.menu or []
+            names = [r.get("name") for r in menu if r.get("name")]
+            return ("Serves: " + ", ".join(names)) if names else "nothing on tap"
+        return ""
+
+    def _remember_turn(self, patron, line, speaker_name, speech, action):
+        """Append the rendered turn to short-term memory (anti-repetition)."""
         reply = self._reconstruct_reply(speech, action)
         if not reply:
             return

@@ -1,142 +1,114 @@
 """The portable LLM prompt layer (world.llm.prompt) — backend-agnostic.
 
-Pure functions: the OpenAI message builder (card persona + few-shot + grounded
-turn), the persona render, and the reply parser. No model, no Evennia, no network.
+Pure functions: the OpenAI message builder (persona + tools + few-shot + turn),
+the persona render, and the constrained-turn parser. No model, no Evennia.
 """
 
+import json
 from unittest import TestCase
 
-from world.llm.prompt import build_messages, parse_reply, render_persona
+from world.llm.prompt import (
+    TURN_SCHEMA, build_messages, parse_turn, render_persona,
+)
 
 _PERSONA = {
     "sdesc": "a lithe woman",
-    "skintone": "olive",
-    "voice": "speaking Common, in a silken purr",
+    "voice": "a silken purr",
     "location": {"name": "the Helix Lounge"},
+    "menu": ["Negroni", "Martini"],
     "persona_seed": {
         "name": "Sable",
         "description": "the bartender at the Helix Lounge.",
-        "personality": "sly, watchful, unhurried",
-        "scenario": "tending a slow night behind the bar",
+        "personality": "sly, watchful",
         "mes_example": [
             {"user": 'a patron says to you: "busy?"',
-             "assistant": '*polishes a glass.* "Define busy."'},
+             "assistant": {"speech": "Define busy.", "action": "polishes a glass",
+                           "tool": "none", "tool_argument": ""}},
         ],
     },
 }
 
 
 class TestBuildMessages(TestCase):
-    def test_system_fewshot_turn_order(self):
+    def test_system_has_tools_schema_and_persona(self):
         msgs = build_messages(_PERSONA, "a lean man", "rough night?", "directed")
-        self.assertEqual(msgs[0]["role"], "system")
+        sys = msgs[0]["content"]
+        self.assertIn("Sable", sys)
+        self.assertIn("speech", sys)        # schema fields explained
+        self.assertIn("prepare_drink", sys)  # tools listed
+        self.assertIn("look", sys)
+        self.assertIn("Negroni", sys)        # menu
+
+    def test_fewshot_is_json_and_turn_last(self):
+        msgs = build_messages(_PERSONA, "a man", "hi", "directed")
+        self.assertIn("assistant", [m["role"] for m in msgs])
+        # the few-shot assistant content is the JSON schema, not prose
+        asst = next(m["content"] for m in msgs if m["role"] == "assistant")
+        self.assertEqual(json.loads(asst)["speech"], "Define busy.")
         self.assertEqual(msgs[-1]["role"], "user")
-        self.assertIn("assistant", [m["role"] for m in msgs])  # few-shot present
-        self.assertIn("Sable", msgs[0]["content"])
-        self.assertIn("sly, watchful", msgs[0]["content"])
-        self.assertIn("rough night?", msgs[-1]["content"])
+        self.assertIn("hi", msgs[-1]["content"])
 
-    def test_fewshot_uses_card_examples(self):
-        joined = " ".join(m["content"] for m in
-                          build_messages(_PERSONA, "a man", "hi", "directed"))
-        self.assertIn("Define busy.", joined)  # from mes_example
-
-    def test_perception_grounds_and_forbids_invention(self):
+    def test_perception_grounds_turn(self):
         msgs = build_messages(_PERSONA, "a man", "hi", "directed",
-                              perception="a stocky droog in a white t-shirt")
-        self.assertIn("a stocky droog in a white t-shirt", msgs[-1]["content"])
-        self.assertIn("PERCEPTION", msgs[-1]["content"])
-        sys = msgs[0]["content"].lower()
-        self.assertIn("invent", sys)  # charter forbids inventing appearance
+                              perception="a stocky droog in a white shirt")
+        self.assertIn("a stocky droog in a white shirt", msgs[-1]["content"])
 
-    def test_directed_vs_ambient_framing(self):
-        directed = build_messages(_PERSONA, "a man", "hi", "directed")
-        ambient = build_messages(_PERSONA, "a man", "hi", "ambient")
-        self.assertIn("says to you", directed[-1]["content"])
-        self.assertIn("overhear", ambient[-1]["content"].lower())
-        self.assertIn("PASS", ambient[0]["content"])
+    def test_ambient_framing(self):
+        d = build_messages(_PERSONA, "a man", "hi", "directed")
+        a = build_messages(_PERSONA, "a man", "hi", "ambient")
+        self.assertIn("says to you", d[-1]["content"])
+        self.assertIn("overhear", a[-1]["content"].lower())
+        self.assertIn("OVERHEARD", a[0]["content"])
 
-    def test_backcompat_old_manner_keys(self):
-        old = {"persona_seed": {"name": "X", "manner": "gruff",
-                                "wants": "quiet", "boundaries": "discuss debts"}}
-        self.assertIn("gruff", render_persona(old))
-
-    def test_history_inserted_before_turn(self):
-        hist = [{"user": 'a man says to you: "again?"',
-                 "assistant": '*nods.* "Same as before."'}]
-        msgs = build_messages(_PERSONA, "a man", "and now?", "directed",
-                              history=hist)
-        joined = " ".join(m["content"] for m in msgs)
-        self.assertIn("Same as before.", joined)         # history present
-        self.assertEqual(msgs[-1]["content"].count("and now?"), 1)  # turn is last
-        # history pair sits before the final turn
-        contents = [m["content"] for m in msgs]
-        self.assertLess(contents.index('*nods.* "Same as before."'),
-                        len(contents) - 1)
-
-    def test_menu_in_persona(self):
-        p = dict(_PERSONA)
-        p["menu"] = ["Negroni", "Old Fashioned"]
-        out = render_persona(p)
-        self.assertIn("Negroni", out)
-        self.assertIn("ONLY", out)
-
-    def test_render_persona_is_defensive(self):
+    def test_render_persona_defensive(self):
         self.assertIn("the bartender", render_persona({}))
 
 
-class TestParseReply(TestCase):
-    def test_clean_format_split(self):
-        out = parse_reply('*Sable smirks.* "What\'s it to ya?"', _PERSONA)
-        self.assertEqual(out["speech"], "What's it to ya?")
-        self.assertEqual(out["action"], "smirks.")
+class TestParseTurn(TestCase):
+    def _t(self, **kw):
+        base = {"speech": "", "action": "", "tool": "none", "tool_argument": ""}
+        base.update(kw)
+        return json.dumps(base)
 
-    def test_prose_narration_becomes_pose(self):
-        raw = 'Sable\'s eyes flick to the door. "We\'re closing soon," she says.'
-        out = parse_reply(raw, _PERSONA)
-        self.assertEqual(out["speech"], "We're closing soon,")
-        self.assertIsNotNone(out["action"])
-        self.assertIn("eyes flick to the door", out["action"])
-        self.assertFalse(out["action"].lower().startswith("sable"))
+    def test_json_turn_with_tool(self):
+        out = parse_turn(self._t(speech="Coming up.", action="grabs a glass",
+                                 tool="prepare_drink", tool_argument="Negroni"),
+                         _PERSONA)
+        self.assertEqual(out["speech"], "Coming up.")
+        self.assertEqual(out["action"], "grabs a glass")
+        self.assertEqual(out["tool"], "prepare_drink")
+        self.assertEqual(out["tool_argument"], "Negroni")
+
+    def test_self_lead_stripped(self):
+        out = parse_turn(self._t(speech="hi", action="Sable smirks"), _PERSONA)
+        self.assertEqual(out["action"], "smirks")
 
     def test_pov_leak_action_dropped(self):
-        out = parse_reply('*your eyes meet his.* "Hey."', _PERSONA)
-        self.assertEqual(out["speech"], "Hey.")
+        out = parse_turn(self._t(speech="hey", action="your eyes meet his"),
+                         _PERSONA)
         self.assertIsNone(out["action"])
-
-    def test_speech_only(self):
-        out = parse_reply('"Just a sec."', _PERSONA)
-        self.assertEqual(out["speech"], "Just a sec.")
-        self.assertIsNone(out["action"])
-
-    def test_no_markers_treated_as_speech(self):
-        self.assertEqual(parse_reply("rough night, huh", _PERSONA)["speech"],
-                         "rough night, huh")
-
-    def test_ooc_dropped_to_null(self):
-        out = parse_reply("As an AI, I can't roleplay that.", _PERSONA)
-        self.assertEqual(out, {"speech": None, "action": None})
+        self.assertEqual(out["speech"], "hey")
 
     def test_empty_is_null(self):
-        self.assertEqual(parse_reply("", _PERSONA), {"speech": None, "action": None})
+        out = parse_turn(self._t(), _PERSONA)
+        self.assertIsNone(out["speech"])
+        self.assertIsNone(out["action"])
+        self.assertEqual(out["tool"], "none")
 
-    def test_pass_sentinel_is_null(self):
-        for raw in ("PASS", "pass", '"PASS"', "PASS.", "*PASS*"):
-            self.assertEqual(parse_reply(raw, _PERSONA),
-                             {"speech": None, "action": None}, raw)
+    def test_unknown_tool_coerced_to_none(self):
+        out = parse_turn(self._t(speech="x", tool="frobnicate"), _PERSONA)
+        self.assertEqual(out["tool"], "none")
 
-    def test_decline_narration_is_null(self):
-        out = parse_reply("Sable does not react to the comment.", _PERSONA)
-        self.assertEqual(out, {"speech": None, "action": None})
+    def test_ooc_speech_dropped(self):
+        out = parse_turn(self._t(speech="As an AI I can't do that"), _PERSONA)
+        self.assertIsNone(out["speech"])
 
-    def test_runaway_continuation_is_cut(self):
-        raw = ('*sets down a glass.* "Define busy."\n\n'
-               'a patron says to you: "got anything strong?"\n\n'
-               '*a slow smile.* "Always."')
-        out = parse_reply(raw, _PERSONA)
-        self.assertEqual(out["speech"], "Define busy.")
-        self.assertEqual(out["action"], "sets down a glass.")
+    def test_prose_fallback(self):
+        out = parse_turn('*smirks* "what now?"', _PERSONA)
+        self.assertEqual(out["speech"], "what now?")
+        self.assertEqual(out["action"], "smirks")
+        self.assertEqual(out["tool"], "none")
 
-    def test_quoted_line_with_decline_word_still_speaks(self):
-        out = parse_reply('"No response from the docks, last I heard."', _PERSONA)
-        self.assertEqual(out["speech"], "No response from the docks, last I heard.")
+    def test_schema_tool_enum(self):
+        self.assertEqual(TURN_SCHEMA["properties"]["tool"]["enum"],
+                         ["none", "look", "check_stock", "prepare_drink"])
