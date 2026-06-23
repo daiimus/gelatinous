@@ -51,6 +51,14 @@ The first build accounts for, and only for:
 5. **Memory write-back to RAG** — each NPC sustains its own memory; encounters
    accrete instead of resetting.
 
+The target is **active characters, not reactive props** (the user's call): NPCs
+with their own wants who *initiate* — start conversations, approach, hold grudges
+and favour across sessions — within the social-only surface of v1. Agency is the
+goal; the persona card foregrounds *wants*, and crafted NPCs get rate-limited
+**social initiative** (§5.1), not just reactivity. (Cost is bounded by reserving
+initiative for *crafted/active* NPCs; bulk/background NPCs stay event-driven —
+§8.)
+
 Explicitly **out of scope for v1** (noted in §11): GM-authored world events /
 plot, scene direction across multiple players, procedural quest generation,
 voice/TTS, and any authority over **player** characters (which is a hard line —
@@ -305,8 +313,12 @@ Drive this off the **existing perception surface**, not a new omniscient feed:
 - **Speech addressed to / overheard by** the NPC.
 - **Arrivals/departures, poses, and emotes** in the NPC's location.
 - **Combat and medical events** the NPC is party to or witness of.
-- **Scheduled ticks** (idle behaviour, initiative to *act* unprompted) — rate-
-  limited, off by default for background NPCs.
+- **Scheduled ticks** (idle behaviour, initiative to *act* unprompted). Because v1
+  targets **active characters** (§0.1), crafted/active NPCs get this **on but
+  rate-limited** — a periodic chance to pursue a want (start a conversation,
+  approach someone, follow up on a grudge), bounded so it never floods the serial
+  generator (§8). Bulk/background NPCs stay **event-driven only** (initiative off)
+  to keep cost sane.
 
 Each event is normalised to `{npc_id, kind, actor (as perceived), content,
 location, timestamp}` and pushed to the queue. **Debounce**: collapse a burst
@@ -320,10 +332,22 @@ voice), never the raw object.
 The prompt is composed, in priority order, to fit the context budget:
 
 1. **GM charter** (shared system prompt — the rules of being a gamemaster).
-2. **Persona card** — a **structured, versioned** record of the NPC's durable
-   identity: who they are, voice, manner, wants, boundaries, relationships,
-   current goals. Authored per-NPC and stored with it (decided form, §11.5). This
-   is the *mask*.
+2. **Persona card** — a **structured, versioned** record split into two parts so
+   the NPC can *grow without losing coherence* (these are **active characters**
+   with their own wants — §0.1 — not static reactors):
+   - **Immutable core** — the author's fixed intent: fundamental nature, voice,
+     manner, hard boundaries. The part of the mask that must *not* drift, or the
+     character dissolves.
+   - **Mutable state** — what experience rewrites: standing relationships,
+     attitudes, current goals, learned facts, grudges/debts. This is **driven by
+     the RAG layer** (§6) — the NPC mutates over time *because* memory updates this
+     half, while the core holds the character together.
+
+   **One template, two authoring paths** (resolved §11.5): the same card schema is
+   **hand-authored by builders** for crafted NPCs *and* **auto-generated** for
+   bulk/background NPCs (a generator fills the schema; the immutable core can be
+   seeded from existing identity/voice fields, then refined). Author once; the
+   mutable half lives and changes from there.
 3. **Retrieved memory** — top-k from the NPC's RAG namespace (§6), semantically
    retrieved against the current situation: prior encounters with this actor,
    relevant facts, standing grudges/debts. This is what makes the NPC *continuous*.
@@ -455,8 +479,20 @@ store is a rebuildable semantic index over episodic memory documents.
   episodes over time (salience from §5.3 + recency + emotional weight). Unbounded
   memory is both a retrieval-quality problem and a storage one. *Methodology, not
   a fixed policy — tune in play.*
-- **Consistency & recovery.** Because the store is an index over authoritative
-  records, it can be rebuilt from them on cold start, migration, or corruption.
+- **Persona mutation.** Memory is the engine of character growth: experience
+  feeds the **mutable half** of the persona card (§5.2.2) — a betrayed NPC becomes
+  permanently warier, a regular becomes a friend. The **immutable core stays
+  fixed** so growth never dissolves the character. Mechanically this is the
+  episodic store plus periodic *consolidation*: salient episodes summarise into
+  updated relationship/attitude state on the card. (Consolidation cadence/rules:
+  methodology, tune in play — ties to forgetting & salience above.)
+- **Lore grounding (future).** The LLM's training carries vast world-knowledge an
+  in-fiction NPC shouldn't have. The eventual fix is a **shared, read-only lore
+  namespace** (a colony wiki / setting corpus) the context assembler retrieves
+  from alongside per-NPC memory — same RAG mechanism, different scope. **For now**
+  (decided §11.11) lore is bounded *softly* in the GM charter ("you know the
+  colony, your own life, and what you've perceived; don't invent specific external
+  facts"); the corpus replaces the soft boundary when it exists.
 
 ---
 
@@ -465,15 +501,37 @@ store is a rebuildable semantic index over episodic memory documents.
 The defining tension: **an uncensored model inside a governed world.** Resolve it
 by separating two axes that are usually conflated:
 
-- **Content latitude (model axis)** — we *want* a model that will write a grim,
-  adult, violent setting in character without refusing or moralising. Refusals
-  here are a **defect** (they break immersion and waste turns). This is why §4
-  selects for uncensored creative tunes.
-- **World authority (game axis)** — the model has **none**. It proposes intents;
-  the game adjudicates every one (§5.4). No prompt jailbreak can make an NPC do
-  something the **command layer and consent gate** don't permit, because the
-  model never touches the world directly — it only emits intents that the arbiter
-  filters and the command layer executes under normal rules.
+- **Content latitude (model axis) — raw, by design.** Gelatinous is an **adult
+  game** with a grim setting; we *want* a model that portrays violence, drugs,
+  sex, cruelty, and moral greyness **in character, without refusing or
+  moralising**. Refusals and lectures here are a **defect** — they break
+  immersion, waste turns, and flatten the fiction. This is why §4 selects for
+  minimally-aligned creative/RP tunes (or abliterated bases) over safety-tuned
+  assistants.
+- **World authority (game axis) — none.** The model proposes intents; the game
+  adjudicates every one (§5.4). No prompt jailbreak can make an NPC *do* something
+  the **command layer and consent gate** don't permit, because the model never
+  touches the world directly — it only emits intents the arbiter filters and the
+  command layer executes under normal rules.
+
+**Why the split is the whole point:** a *raw* model is only safe to leave running
+*because* the bounds are **structural, never the model's reluctance**. Relying on
+a model to refuse is both a creativity tax *and* an empty guarantee (jailbreaks
+exist). Enforce the bounds in code and the model can be as raw as the setting
+wants. The bounds are exactly two:
+
+1. **In-world consent for *actions*** — what an NPC may *do* to an able-to-resist
+   character is governed by the Trust/Consent mechanic (below), not by the model
+   having scruples. Dark *events* are gated by game rules.
+2. **A minimal structural hard-floor on *output*** — a tiny, non-negotiable
+   denylist enforced by the arbiter / output guard (§5.4.6) **regardless of what
+   the model emits**. For an adult setting essentially everything is in scope; the
+   floor exists for the genuinely-absolute legal/ethical bright lines that are not
+   creative choices — foremost **any sexualisation of minors**. This is deliberately
+   *not* delegated to the model: it holds even if a raw model would produce it, so
+   running uncensored weights stays defensible. *(Working stance — the exact
+   denylist is a small owed item, §11.10; pending the user's sign-off on this
+   division.)*
 
 This separation is the whole safety story, and it has hard edges:
 
@@ -512,9 +570,12 @@ This separation is the whole safety story, and it has hard edges:
 - **Thinking affordance.** For a directly-addressed NPC, a brief "…" / busy beat
   covers generation latency diegetically and sets expectations.
 - **Scale is turns/sec, bounded by the accelerator.** Plan NPC population and
-  ambient-tick rates against *one* serial generator. Most NPCs should be **idle
-  unless perceived** (event-driven), not constantly thinking. Background "life"
-  is cheap scripted behaviour; the model is spent on *interaction*.
+  ambient-tick rates against *one* serial generator. Reconcile this with **active
+  characters** (§0.1) by **tiering**: a small set of *crafted/active* NPCs get
+  rate-limited social initiative (§5.1); the **bulk stay event-driven, idle unless
+  perceived**, with cheap scripted background "life." The model's expensive turns
+  are spent on *interaction* and on the handful of NPCs meant to feel alive — not
+  on every prop in the colony.
 - **Horizontal headroom (later):** the sidecar boundary (§3) means a second box
   or accelerator can host more NPCs without touching the game — out of scope now,
   but the architecture doesn't foreclose it.
@@ -595,12 +656,17 @@ Phase 1 changes the player-facing default if disabled.
    LLM as *intents* but **resolved by the classical tactical AI**, not the model
    (Principle 8 / §2.2) — the allow-list grows by wiring resolvers behind the
    Action-adapter seam, not by handing the LLM combat turns.
-4. **Idle/unprompted behaviour** — do background NPCs ever act *without* a
-   perception trigger, and at what (expensive) cadence? Default off.
-5. ✅ **Persona authoring — resolved: a new structured persona card** per NPC
-   (versioned; identity, voice, wants, boundaries, relationships), §5.2.2. *Open
-   sub-question:* card format/tooling and whether it auto-seeds a base from
-   existing identity/voice fields.
+4. ✅ **Idle/unprompted behaviour — resolved: tiered.** v1 targets **active
+   characters** (§0.1), so *crafted/active* NPCs get **rate-limited social
+   initiative** (pursue a want unprompted); *bulk/background* NPCs stay
+   **event-driven, initiative off**, to bound cost on the serial generator
+   (§5.1, §8). *Open sub-question:* the initiative cadence/budget number.
+5. ✅ **Persona authoring — resolved: one structured, versioned card, two paths.**
+   Hand-authored by builders *and* auto-generated from the same schema (§5.2.2);
+   split **immutable core** (author intent) vs **mutable state** (evolves via RAG
+   — the NPC changes over time, §6). *Open sub-question:* the card schema/format
+   and the auto-generator, and the consolidation rules that write experience back
+   into mutable state.
 6. **Memory forgetting policy** — concrete salience/decay/summarisation rules
    (left as methodology in §6; needs a first cut to tune in play).
 7. **Multi-player scenes** — when several PCs engage one NPC, whose perception/
@@ -611,6 +677,17 @@ Phase 1 changes the player-facing default if disabled.
 9. ✅ **Sidecar lifecycle — resolved: always-on resident** (warm model, zero
    spin-up latency); accept the idle power/thermal cost on the shared box, kept
    in check by the §3 bounded-generation discipline.
+10. **Content hard-floor — exact denylist owed.** Direction decided (§7): **raw
+    model + structural floor**; the floor exists for genuinely-absolute legal/
+    ethical lines (foremost any sexualisation of minors), enforced in code, not
+    delegated to the model. *Owed:* the precise denylist, its enforcement point
+    (output guard vs. a classifier pass), and the user's explicit sign-off on the
+    division.
+11. ✅ **Lore boundary — resolved: soft now, corpus later.** v1 bounds NPC
+    world-knowledge *softly* via the GM charter (know the colony / your life / what
+    you've perceived; don't invent external specifics, §6). A future **shared
+    read-only lore namespace** (colony wiki / setting corpus) replaces the soft
+    boundary through the same RAG mechanism when it exists.
 
 ---
 
