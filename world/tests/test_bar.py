@@ -13,6 +13,7 @@ from evennia.utils.test_resources import BaseEvenniaTest
 
 import world.speech as speech
 import typeclasses.bar as barmod
+import typeclasses.llm_npc as llmnpc
 
 
 class _Obs:
@@ -474,6 +475,10 @@ class TestBartenderReaction(BaseEvenniaTest):
         b = MagicMock()
         b._is_gratitude = barmod.Bartender._is_gratitude  # real staticmethod
         b._acknowledge = MagicMock()
+        # at_msg_receive (mixin) defers to this real bartender hook for the
+        # gratitude/order intercept before the LLM layer.
+        b._handle_directed_speech = (
+            barmod.Bartender._handle_directed_speech.__get__(b, barmod.Bartender))
         return b
 
     def _call(self, b, speaker, **payload):
@@ -524,7 +529,8 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     cooldown, loop-guard, fail-safe. Orders + gratitude paths stay untouched."""
 
     _REAL = (
-        "_classify_speech", "_mentions_self", "_try_llm_reply",
+        "_classify_speech", "_mentions_self", "_name_aliases",
+        "_handle_directed_speech", "_try_llm_reply",
         "_render_llm_reply", "_llm_fallback", "_llm_silent",
     )
 
@@ -561,32 +567,32 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
 
     def test_directed_name_routes_directed(self):
         b, spk = self._bartender(), self._speaker()
-        with patch.object(barmod, "llm_enabled", return_value=True), \
-                patch.object(barmod, "delay") as mock_delay:
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as mock_delay:
             self._call(b, spk, speech="hey sable, busy?", addressed=False)
         mock_delay.assert_called_once()
         self.assertIn("directed", mock_delay.call_args.args)
 
     def test_ambient_routes_ambient(self):
         b, spk = self._bartender(), self._speaker()
-        with patch.object(barmod, "llm_enabled", return_value=True), \
-                patch.object(barmod, "delay") as mock_delay:
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as mock_delay:
             self._call(b, spk, speech="this place is dead tonight", addressed=False)
         mock_delay.assert_called_once()
         self.assertIn("ambient", mock_delay.call_args.args)
 
     def test_disabled_routes_nothing(self):
         b, spk = self._bartender(), self._speaker()
-        with patch.object(barmod, "llm_enabled", return_value=False), \
-                patch.object(barmod, "delay") as mock_delay:
+        with patch.object(llmnpc, "llm_enabled", return_value=False), \
+                patch.object(llmnpc, "delay") as mock_delay:
             self._call(b, spk, speech="hey sable", addressed=False)
         mock_delay.assert_not_called()
 
     def test_loop_guard_ignores_npc_speaker(self):
         b, npc = self._bartender(), self._speaker()
         npc.db.is_bartender_npc = True
-        with patch.object(barmod, "llm_enabled", return_value=True), \
-                patch.object(barmod, "delay") as mock_delay:
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as mock_delay:
             self._call(b, npc, speech="rough night sable", addressed=False)
         mock_delay.assert_not_called()
 
@@ -594,8 +600,8 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         # alone with the speaker → a plain (un-named) line is plainly for her
         b, spk = self._bartender(), self._speaker()
         b._is_alone_with = lambda speaker: True
-        with patch.object(barmod, "llm_enabled", return_value=True), \
-                patch.object(barmod, "delay") as mock_delay:
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as mock_delay:
             self._call(b, spk, speech="this drink is watered down", addressed=False)
         mock_delay.assert_called_once()
         self.assertIn("directed", mock_delay.call_args.args)
@@ -615,8 +621,9 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
 
     def test_addressed_still_routes_to_order(self):
         b, spk = self._bartender(), self._speaker()
-        with patch.object(barmod, "llm_enabled", return_value=True), \
-                patch.object(barmod, "delay") as mock_delay:
+        # the addressed→order delay fires in the bartender hook (bar module),
+        # before the LLM layer is even consulted.
+        with patch.object(barmod, "delay") as mock_delay:
             self._call(b, spk, speech="a rotgut", addressed=True)
         mock_delay.assert_called_once()
         # the addressed branch targets _fulfil_order, not the LLM layer
@@ -626,9 +633,9 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
 
     def test_try_llm_reply_starts_agentic_round(self):
         b, patron = self._bartender(), self._speaker(name="a wiry courier")
-        with patch.object(barmod, "llm_enabled", return_value=True), \
-                patch.object(barmod, "build_persona", return_value={"x": 1}), \
-                patch.object(barmod, "build_messages", return_value=["m"]) as bm:
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "build_persona", return_value={"x": 1}), \
+                patch.object(llmnpc, "build_messages", return_value=["m"]) as bm:
             taken = b._try_llm_reply("rough night?", patron, "directed")
         self.assertTrue(taken)
         bm.assert_called_once()
@@ -647,7 +654,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         from time import monotonic
         b, patron = self._bartender(), self._speaker()
         b.ndb.last_llm = monotonic()  # just replied
-        with patch.object(barmod, "llm_enabled", return_value=True):
+        with patch.object(llmnpc, "llm_enabled", return_value=True):
             taken = b._try_llm_reply("hi", patron, "directed")
         self.assertTrue(taken)         # handled-by-silence, no scripted fallback
         b._agentic_round.assert_not_called()
@@ -710,9 +717,9 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         self._bind_memory(b)
         patron = self._speaker(); patron.id = 7
         b.ndb.llm_history = {}
-        for i in range(barmod.LLM_HISTORY_TURNS + 4):
+        for i in range(llmnpc.LLM_HISTORY_TURNS + 4):
             b._remember_turn(patron, f"l{i}", "a man", f"r{i}", "nods")
-        self.assertEqual(len(b._recent_history(patron)), barmod.LLM_HISTORY_TURNS)
+        self.assertEqual(len(b._recent_history(patron)), llmnpc.LLM_HISTORY_TURNS)
 
     def test_memory_is_per_interlocutor(self):
         b = self._bartender()
@@ -730,7 +737,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b._hist_key = barmod.Bartender._hist_key
         b._reconstruct_reply = barmod.Bartender._reconstruct_reply
         for name in ("_on_turn", "_run_context_tool", "_render_llm_reply",
-                     "_remember_turn", "_recent_history"):
+                     "_handle_action_tool", "_remember_turn", "_recent_history"):
             setattr(b, name,
                     getattr(barmod.Bartender, name).__get__(b, barmod.Bartender))
         b.ndb.llm_history = {}
@@ -741,7 +748,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b._run_context_tool = lambda tool, arg, p: "a stocky droog"
         turn = {"speech": None, "action": None, "tool": "look",
                 "tool_argument": "patron"}
-        with patch.object(barmod, "parse_turn", return_value=turn):
+        with patch.object(llmnpc, "parse_turn", return_value=turn):
             b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, "{}")
         b._agentic_round.assert_called_once()           # looped to gather context
         b.execute_cmd.assert_not_called()               # no terminal render yet
@@ -751,7 +758,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         patron = self._speaker(); patron.id = 6
         turn = {"speech": "Coming up", "action": "grabs a glass",
                 "tool": "prepare_drink", "tool_argument": "Negroni"}
-        with patch.object(barmod, "parse_turn", return_value=turn):
+        with patch.object(llmnpc, "parse_turn", return_value=turn):
             b._on_turn(["m"], {}, patron, "a negroni", "a man", lambda: None, 0, "{}")
         b.execute_cmd.assert_any_call("prepare Negroni")  # the REAL command
         b._agentic_round.assert_not_called()              # terminal, no loop
@@ -761,17 +768,20 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         patron = self._speaker(); patron.id = 8
         turn = {"speech": "hey", "action": "nods", "tool": "none",
                 "tool_argument": ""}
-        with patch.object(barmod, "parse_turn", return_value=turn):
+        with patch.object(llmnpc, "parse_turn", return_value=turn):
             b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, "{}")
         b.execute_cmd.assert_any_call('pose nods. "hey"')
 
     def test_run_context_tool_look_and_stock(self):
         b = self._bartender()
-        b._run_context_tool = barmod.Bartender._run_context_tool.__get__(
-            b, barmod.Bartender)
         b._perceive = lambda patron: "a wiry courier, scarred jaw"
         patron = self._speaker()
-        self.assertIn("wiry courier", b._run_context_tool("look", "patron", patron))
+        # look is the shared mixin tool (Bartender delegates to it via super)
+        self.assertIn("wiry courier",
+                      llmnpc.LLMNpcMixin._run_context_tool(b, "look", "patron", patron))
+        # check_stock is the bartender's own extension
+        b._run_context_tool = barmod.Bartender._run_context_tool.__get__(
+            b, barmod.Bartender)
         b._find_bar = lambda: None
         b.db.menu = [{"name": "Negroni"}, {"name": "Martini"}]
         self.assertIn("Negroni", b._run_context_tool("check_stock", "", patron))
