@@ -61,6 +61,26 @@ class TestBuildMessages(TestCase):
                                 "wants": "quiet", "boundaries": "discuss debts"}}
         self.assertIn("gruff", render_persona(old))
 
+    def test_history_inserted_before_turn(self):
+        hist = [{"user": 'a man says to you: "again?"',
+                 "assistant": '*nods.* "Same as before."'}]
+        msgs = build_messages(_PERSONA, "a man", "and now?", "directed",
+                              history=hist)
+        joined = " ".join(m["content"] for m in msgs)
+        self.assertIn("Same as before.", joined)         # history present
+        self.assertEqual(msgs[-1]["content"].count("and now?"), 1)  # turn is last
+        # history pair sits before the final turn
+        contents = [m["content"] for m in msgs]
+        self.assertLess(contents.index('*nods.* "Same as before."'),
+                        len(contents) - 1)
+
+    def test_menu_in_persona(self):
+        p = dict(_PERSONA)
+        p["menu"] = ["Negroni", "Old Fashioned"]
+        out = render_persona(p)
+        self.assertIn("Negroni", out)
+        self.assertIn("ONLY", out)
+
     def test_render_persona_is_defensive(self):
         self.assertIn("the bartender", render_persona({}))
 

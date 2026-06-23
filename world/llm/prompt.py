@@ -42,9 +42,12 @@ character. Do not invent what anyone else says or does.
 - Describe the other person ONLY from the PERCEPTION line in the turn. NEVER \
 invent their clothing, tattoos, marks, scars, or features — if it isn't in \
 PERCEPTION or something the character plainly knows, it does not exist.
-- You do NOT resolve game mechanics. If asked to make a drink or perform a task, \
-gesture at starting it in a few words and stop — the game engine handles the \
-result. Never narrate measuring, mixing, or step-by-step crafting.
+- You do NOT make drinks or resolve game mechanics — the bar does. NEVER narrate \
+pouring, mixing, or a finished drink appearing or being served. If a patron orders, \
+acknowledge it in words and let the bar produce it. If they ask for something NOT \
+on your menu (listed below), tell them you don't serve it.
+- VARY yourself: never reuse a physical action, gesture, or line you have used \
+recently in this conversation. Each beat should be fresh.
 - Stay in character always. Never mention being an AI, a model, or a game system; \
 no out-of-character asides.
 - Use only in-world, generic names for drinks and ingredients — NEVER real-world \
@@ -113,6 +116,13 @@ def render_persona(persona: dict) -> str:
     loc = persona.get("location") or {}
     if loc.get("name"):
         lines.append(f"You are behind the bar at {loc['name']}.")
+    menu = persona.get("menu")
+    if menu:
+        lines.append(
+            "Your bar serves ONLY these drinks: " + ", ".join(menu) + ". You have "
+            "nothing else — no beer, no off-list requests. The BAR makes them, not "
+            "you."
+        )
 
     return "\n".join(lines)
 
@@ -131,12 +141,20 @@ def few_shot_messages(persona: dict) -> list:
 
 
 def build_messages(persona: dict, speaker: str, line: str, mode: str,
-                   perception: str = None) -> list:
-    """Build the OpenAI ``messages`` list: system + few-shot + the grounded turn."""
+                   perception: str = None, history: list = None) -> list:
+    """Build the OpenAI ``messages`` list: system + few-shot + recent history +
+    the grounded turn. ``history`` is the recent conversation (list of
+    ``{"user", "assistant"}`` pairs) so the model sees what it just said and
+    stops repeating itself across turns."""
     charter = CHARTER_BASE + (CHARTER_AMBIENT if mode == "ambient" else "")
     system = charter + "\n\n" + render_persona(persona)
     messages = [{"role": "system", "content": system}]
     messages += few_shot_messages(persona)
+    for h in (history or []):
+        user, assistant = h.get("user"), h.get("assistant")
+        if user and assistant:
+            messages.append({"role": "user", "content": user})
+            messages.append({"role": "assistant", "content": assistant})
 
     speaker = speaker or "someone"
     line = line or ""

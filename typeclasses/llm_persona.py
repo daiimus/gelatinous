@@ -32,6 +32,15 @@ def build_persona(npc) -> dict:
             "desc": getattr(npc.location.db, "desc", None),
         }
 
+    # The bar's real menu, so she knows exactly what she serves (and what she
+    # doesn't) — and never fakes pouring something off-list.
+    menu = None
+    find_bar = getattr(npc, "_find_bar", None)
+    if callable(find_bar):
+        bar = find_bar()
+        bar_menu = (bar.db.menu if bar else None) or npc.db.menu or []
+        menu = [r.get("name") for r in bar_menu if r.get("name")] or None
+
     return {
         "sdesc": npc.get_sdesc(),
         "longdescs": longdescs,
@@ -44,5 +53,6 @@ def build_persona(npc) -> dict:
         "voice_description": get_voice_description(npc),
         "voice_ending": get_voice_ending(npc),
         "location": location,
+        "menu": menu,
         "persona_seed": npc.db.llm_persona or {},
     }

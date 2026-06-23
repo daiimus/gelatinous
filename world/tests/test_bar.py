@@ -638,8 +638,14 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         self.assertEqual(args[1], "a wiry courier")    # speaker as she sees them
         self.assertEqual(args[2], "rough night?")      # line
         self.assertEqual(args[3], "directed")          # mode
-        self.assertIs(kwargs["on_reply"], b._render_llm_reply)
+        # on_reply now wraps render + memory append (a partial); perception and
+        # history are threaded through
+        from functools import partial as _partial
+        self.assertIsInstance(kwargs["on_reply"], _partial)
+        self.assertIs(kwargs["on_reply"].func, b._render_and_remember)
         self.assertIs(kwargs["on_fail"], b._llm_silent)
+        self.assertIn("perception", kwargs)
+        self.assertIn("history", kwargs)
 
     def test_try_llm_reply_gated_off(self):
         b, patron = self._bartender(llm_driven=False), self._speaker()
@@ -691,6 +697,44 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b = self._bartender()
         b._llm_fallback()
         b.execute_cmd.assert_called_once_with("say Don't serve that here.")
+
+    def _bind_memory(self, b):
+        b._hist_key = barmod.Bartender._hist_key            # staticmethods
+        b._reconstruct_reply = barmod.Bartender._reconstruct_reply
+        for name in ("_recent_history", "_render_and_remember", "_render_llm_reply"):
+            setattr(b, name,
+                    getattr(barmod.Bartender, name).__get__(b, barmod.Bartender))
+
+    def test_short_term_memory_roundtrip(self):
+        b = self._bartender()
+        self._bind_memory(b)
+        patron = self._speaker(); patron.id = 42
+        b.ndb.llm_history = {}
+        self.assertEqual(b._recent_history(patron), [])
+        b._render_and_remember(patron, "hey", "a man", "evening", "wipes the bar")
+        hist = b._recent_history(patron)
+        self.assertEqual(len(hist), 1)
+        self.assertIn("hey", hist[0]["user"])
+        self.assertEqual(hist[0]["assistant"], '*wipes the bar* "evening"')
+
+    def test_memory_caps_at_limit(self):
+        b = self._bartender()
+        self._bind_memory(b)
+        patron = self._speaker(); patron.id = 7
+        b.ndb.llm_history = {}
+        for i in range(barmod.LLM_HISTORY_TURNS + 4):
+            b._render_and_remember(patron, f"l{i}", "a man", f"r{i}", "nods")
+        self.assertEqual(len(b._recent_history(patron)), barmod.LLM_HISTORY_TURNS)
+
+    def test_memory_is_per_interlocutor(self):
+        b = self._bartender()
+        self._bind_memory(b)
+        b.ndb.llm_history = {}
+        p1 = self._speaker(); p1.id = 1
+        p2 = self._speaker(); p2.id = 2
+        b._render_and_remember(p1, "to one", "a man", "hi one", "nods")
+        self.assertEqual(len(b._recent_history(p1)), 1)
+        self.assertEqual(b._recent_history(p2), [])  # separate conversation
 
     def test_mentions_self(self):
         b = self._bartender()
