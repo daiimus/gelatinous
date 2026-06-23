@@ -1,0 +1,282 @@
+"""Generic LLM-driven NPC — the engagement loop + agentic tool loop, factored
+out of the bartender so any archetype (Companion, …) can think.
+
+The NPC's *job* is its persona archetype (``world/llm/prompt.ARCHETYPES``); this
+class is just the **brain**. Subclasses add job mechanics through small hooks:
+
+* ``_handle_directed_speech`` — intercept addressed/special speech before the LLM
+  layer (e.g. a bartender's orders / gratitude). Return True if fully handled.
+* ``_run_context_tool`` — extend the read-only tools (``look`` is built in here).
+* ``_handle_action_tool`` — route an archetype's *action* tool to a real command.
+* ``_name_aliases`` — extra words that count as naming this NPC.
+
+Reactor-safety mirrors ``CmdBug``: persona is built on the reactor, the blocking
+POST runs off-reactor (``world/llm/client``), and the callbacks orchestrate the
+agentic loop back on the reactor. See ``LLM_GAMEMASTER_SPEC`` Phase 1.
+"""
+
+import json
+import random
+from functools import partial
+from time import monotonic
+
+from evennia.utils.utils import delay
+
+from typeclasses.characters import Character
+from typeclasses.llm_persona import build_persona
+from world.llm.client import llm_enabled, request_turn
+from world.llm.prompt import (
+    CONTEXT_TOOLS, build_messages, parse_turn, schema_for, tool_names,
+)
+
+LLM_DIRECTED_COOLDOWN = 4.0    # min seconds between replies to direct address/name
+LLM_AMBIENT_COOLDOWN = 45.0    # rarely volunteers into overheard chatter
+LLM_AMBIENT_CHANCE = 0.35      # ...and not every eligible time
+LLM_HISTORY_TURNS = 6          # recent turns kept per interlocutor (anti-repetition)
+LLM_MAX_TOOL_ROUNDS = 3        # cap the agentic loop so it can't spin forever
+
+
+class LLMNpcMixin:
+    """The reusable LLM brain. Mix into a Character (before it in the MRO)."""
+
+    # --- engagement entrypoint -------------------------------------------
+    def at_msg_receive(self, text=None, from_obj=None, **kwargs):
+        """React to heard speech. Job-specific handlers get first crack; the
+        LLM layer only runs when both gates (per-NPC + deployment) are on, so a
+        scripted NPC is byte-identical with the LLM off."""
+        speech = kwargs.get("speech")
+        speaker = from_obj
+        if not speech or speaker is None or speaker is self:
+            return True
+        if self._handle_directed_speech(speech, speaker, kwargs):
+            return True
+        if self.db.llm_driven and llm_enabled():
+            kind = self._classify_speech(speech, speaker)
+            if kind == "directed":
+                delay(1.5, self._try_llm_reply, speech, speaker, "directed")
+            elif kind == "ambient":
+                delay(1.0, self._try_llm_reply, speech, speaker, "ambient")
+        return True
+
+    def _handle_directed_speech(self, speech, speaker, kwargs):
+        """Hook: a subclass intercepts addressed/special speech before the LLM
+        layer (a bartender's orders/gratitude). Return True if fully handled."""
+        return False
+
+    # --- classification --------------------------------------------------
+    def _classify_speech(self, speech, speaker):
+        """Cheap reactor-side gate: ``directed`` | ``ambient`` | ``ignore``."""
+        # Loop guard: never react to another NPC's broadcast speech, so two
+        # LLM-driven NPCs can't ping-pong on ambient lines.
+        if (getattr(speaker.db, "is_bartender_npc", False)
+                or getattr(speaker.db, "llm_driven", False)):
+            return "ignore"
+        if self._mentions_self(speech) or self._is_alone_with(speaker):
+            return "directed"
+        return "ambient"
+
+    def _is_alone_with(self, speaker):
+        """True when no other character shares the room — so the speaker can only
+        be talking to this NPC."""
+        if not self.location:
+            return False
+        return not any(
+            o is not self and o is not speaker and isinstance(o, Character)
+            for o in self.location.contents
+        )
+
+    def _mentions_self(self, speech):
+        """Whether a line names this NPC (key, keyword, or role aliases)."""
+        low = (speech or "").lower()
+        names = [self.key.lower()]
+        if self.sdesc_keyword:
+            names.append(self.sdesc_keyword.lower())
+        names += self._name_aliases()
+        return any(n and n in low for n in names)
+
+    def _name_aliases(self):
+        """Hook: extra words that count as naming this NPC (role words)."""
+        return []
+
+    # --- request orchestration -------------------------------------------
+    def _try_llm_reply(self, line, patron, mode, on_fail=None):
+        """Route a conversational line to the LLM sidecar, off the reactor.
+
+        Returns True if the LLM path was taken (caller suppresses any scripted
+        fallback), False if gated/throttled off so the caller can fall back.
+        """
+        if not self.db.llm_driven or not llm_enabled():
+            return False
+        if (not self.location
+                or getattr(patron, "location", None) is not self.location):
+            return False
+
+        now = monotonic()
+        last = self.ndb.last_llm or 0
+        if mode == "ambient":
+            if now - last < LLM_AMBIENT_COOLDOWN:
+                return True  # throttled: stay silent rather than spam
+            if random.random() > LLM_AMBIENT_CHANCE:
+                return True  # eligible, but didn't bite this time
+        elif now - last < LLM_DIRECTED_COOLDOWN:
+            return True
+        self.ndb.last_llm = now
+
+        # Capture everything reactor-side BEFORE threading (SQLite/Evennia-thread
+        # contract). The agentic loop re-calls from the reactor-side callback.
+        persona = build_persona(self)
+        speaker_name = patron.get_display_name(self)
+        perception = self._perceive(patron)
+        history = self._recent_history(patron)
+        messages = build_messages(persona, speaker_name, line or "", mode,
+                                  perception, history)
+        self._agentic_round(messages, persona, patron, line or "", speaker_name,
+                            on_fail or self._llm_silent, rounds=0)
+        return True
+
+    def _perceive(self, patron):
+        """What this NPC sees when it looks at the patron — grounds the model's
+        description so it can't invent the speaker's appearance. ANSI-stripped,
+        identity-gated, trimmed to a sentence-bounded summary (the full
+        return_appearance bloats context and truncates mid-word)."""
+        try:
+            from evennia.utils.ansi import strip_ansi
+            raw = patron.return_appearance(self)
+            if not raw:
+                return None
+            text = " ".join(strip_ansi(raw).split())
+            if len(text) > 300:
+                cut = text[:300]
+                for end in (". ", "! ", "? "):
+                    i = cut.rfind(end)
+                    if i > 120:
+                        cut = cut[: i + 1]
+                        break
+                text = cut.rstrip()
+            return text
+        except Exception:
+            return None
+
+    # --- short-term conversation memory (per interlocutor, ndb/ephemeral) ----
+
+    @staticmethod
+    def _hist_key(patron):
+        return f"#{patron.id}"
+
+    def _recent_history(self, patron):
+        """The recent turns with this interlocutor — fed back into the prompt so
+        the model sees what it just said and stops repeating itself."""
+        return (self.ndb.llm_history or {}).get(self._hist_key(patron), [])
+
+    # --- the agentic tool loop (constrained turn → context tools → reply) ----
+
+    def _agentic_round(self, messages, persona, patron, line, speaker_name,
+                       on_fail, rounds):
+        """One constrained generation; the reactor-side callback either runs a
+        context tool and loops, or renders the final reply + any action tool."""
+        request_turn(
+            messages,
+            on_turn=partial(self._on_turn, messages, persona, patron, line,
+                            speaker_name, on_fail, rounds),
+            on_fail=on_fail,
+            schema=schema_for(persona),  # tool enum scoped to the archetype
+        )
+
+    def _on_turn(self, messages, persona, patron, line, speaker_name, on_fail,
+                 rounds, raw):
+        turn = parse_turn(raw, persona, tool_names(persona))
+        tool, arg = turn["tool"], turn["tool_argument"]
+        # Context tool: run the real read, feed the result back, loop.
+        if tool in CONTEXT_TOOLS and rounds < LLM_MAX_TOOL_ROUNDS:
+            result = self._run_context_tool(tool, arg, patron)
+            extended = messages + [
+                {"role": "assistant",
+                 "content": raw if isinstance(raw, str) else json.dumps(raw)},
+                {"role": "user", "content": f"[tool result · {tool}] {result}"},
+            ]
+            self._agentic_round(extended, persona, patron, line, speaker_name,
+                                on_fail, rounds + 1)
+            return
+        # Terminal: render speech/action, route any action tool, remember.
+        self._render_llm_reply(turn["speech"], turn["action"])
+        self._handle_action_tool(tool, arg, patron)
+        self._remember_turn(patron, line, speaker_name, turn["speech"],
+                            turn["action"])
+
+    def _run_context_tool(self, tool, arg, patron):
+        """Run a read-only context tool and return its result for the model.
+        ``look`` is built in; subclasses extend (then call super)."""
+        if tool == "look":
+            return self._perceive(patron) or "nothing remarkable"
+        return ""
+
+    def _handle_action_tool(self, tool, arg, patron):
+        """Hook: route an action tool to a real command. Base NPC has no
+        action tools (social archetypes are read-only)."""
+        return None
+
+    def _remember_turn(self, patron, line, speaker_name, speech, action):
+        """Append the rendered turn to short-term memory (anti-repetition)."""
+        reply = self._reconstruct_reply(speech, action)
+        if not reply:
+            return
+        hist = self.ndb.llm_history or {}
+        key = self._hist_key(patron)
+        turns = list(hist.get(key, []))
+        turns.append({
+            "user": f'{speaker_name} says to you: "{line}"',
+            "assistant": reply,
+        })
+        hist[key] = turns[-LLM_HISTORY_TURNS:]
+        self.ndb.llm_history = hist
+
+    @staticmethod
+    def _reconstruct_reply(speech, action):
+        """Re-form the model's own reply for the history (so it sees its prior
+        gestures and phrasing, in the same format it produces)."""
+        if action and speech:
+            return f'*{action}* "{speech}"'
+        if action:
+            return f"*{action}*"
+        if speech:
+            return f'"{speech}"'
+        return ""
+
+    def _render_llm_reply(self, speech, action):
+        """Render the sidecar reply as ONE fluid emote — the MUD-native way to act
+        and speak in a single beat. The embedded quote rides the hearing-gated
+        speech rails (``tokenize_emote`` → ``SpeechToken``) and character refs in
+        the action resolve per-observer. Falls back to a bare pose or say."""
+        if not self.location:
+            return
+        speech = speech.strip().strip('"').strip() if speech else None
+        action = action.strip() if action else None
+        if action and speech:
+            if action[-1] not in ".!?…,":
+                action += "."
+            self.execute_cmd(f'pose {action} "{speech}"')
+        elif action:
+            self.execute_cmd(f"pose {action}")
+        elif speech:
+            self.execute_cmd(f"say {speech}")
+
+    def _llm_silent(self):
+        """Sidecar failed or declined on conversation: stay quiet."""
+        return None
+
+
+class LLMNpc(LLMNpcMixin, Character):
+    """A generic LLM-driven social NPC. The persona's ``archetype`` is its job;
+    the typeclass is only the brain. Opt in per-NPC via ``db.llm_driven`` (and
+    the deployment-wide ``LLM_GM_ENABLED``)."""
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        # Identity safety-net: a Character with no height/build composes no sdesc
+        # and falls back to its *key* — leaking the NPC's real name. Seed a
+        # baseline so it always renders through the identity system.
+        if not self.height:
+            self.height = "average"
+        if not self.build:
+            self.build = "average"
+        self.db.llm_driven = False
