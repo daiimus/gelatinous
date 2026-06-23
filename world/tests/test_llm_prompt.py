@@ -8,7 +8,8 @@ import json
 from unittest import TestCase
 
 from world.llm.prompt import (
-    TURN_SCHEMA, build_messages, parse_turn, render_persona,
+    ARCHETYPES, TURN_SCHEMA, _archetype, build_messages, parse_turn,
+    render_persona,
 )
 
 _PERSONA = {
@@ -62,6 +63,28 @@ class TestBuildMessages(TestCase):
 
     def test_render_persona_defensive(self):
         self.assertIn("the bartender", render_persona({}))
+
+
+class TestArchetype(TestCase):
+    def test_empty_persona_defaults_to_bartender(self):
+        self.assertIs(_archetype({}), ARCHETYPES["bartender"])
+
+    def test_archetype_injects_duties_and_scopes_tools(self):
+        msgs = build_messages(_PERSONA, "a man", "hi", "directed")
+        sys = msgs[0]["content"]
+        self.assertIn("YOUR WORK", sys)        # archetype duties block
+        self.assertIn("prepare_drink", sys)    # bartender tool granted
+
+    def test_unknown_archetype_falls_back(self):
+        p = dict(_PERSONA, persona_seed=dict(_PERSONA["persona_seed"],
+                                             archetype="nonesuch"))
+        self.assertIs(_archetype(p), ARCHETYPES["bartender"])
+
+    def test_archetype_fewshot_used_when_no_mes_example(self):
+        # persona without its own examples borrows the archetype's banter
+        p = {"persona_seed": {"name": "Rix", "archetype": "bartender"}}
+        msgs = build_messages(p, "a man", "hi", "directed")
+        self.assertIn("assistant", [m["role"] for m in msgs])
 
 
 class TestParseTurn(TestCase):

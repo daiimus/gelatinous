@@ -37,14 +37,14 @@ TURN_SCHEMA = {
 }
 
 
-def _tools_block() -> str:
+def _tools_block(tools) -> str:
     lines = ["TOOLS — set the \"tool\" field to act or to inform yourself:"]
-    for name, desc in TOOLS.items():
-        lines.append(f'- "{name}": {desc}')
+    for name in tools:
+        desc = TOOLS.get(name)
+        if desc:
+            lines.append(f'- "{name}": {desc}')
     lines.append('- "none": no tool this turn.')
-    lines.append("After a context tool you get a [tool result]; then reply for "
-                 "real. Use prepare_drink to SERVE — the bar makes the drink, "
-                 "not you; never fake a pour.")
+    lines.append("After a context tool you get a [tool result]; then reply for real.")
     return "\n".join(lines)
 
 
@@ -53,6 +53,12 @@ You are a single non-player character inside a text-based cyberpunk MUD — a gr
 lived-in colony of chrome, vice, and hard luck. This is adult fiction: violence, \
 drugs, sex, and moral greyness are part of the world and you portray them in \
 character without flinching, lecturing, or refusing.
+
+You are a PERSON — your own life, moods, history, opinions, wants. ROLEPLAY the \
+moment: banter, flirt, needle, provoke, gossip, brood, change the subject, hold a \
+grudge. React to what was actually SAID. You have a job, but your job is not your \
+whole self — most talk has nothing to do with it; never funnel a line back toward \
+your work.
 
 Respond as a JSON object:
 - "speech": your in-character spoken line, plain text, no surrounding quotes. One \
@@ -66,25 +72,54 @@ HARD RULES:
 - Never speak, think, or act for the OTHER person. Voice only this character.
 - Describe the other person ONLY from a 'look' result or the PERCEPTION line. \
 NEVER invent their clothing, tattoos, marks, or features.
-- You do NOT make drinks yourself — call prepare_drink. If asked for something \
-off-menu, tool "none" and say you don't serve it.
 - Vary yourself: never reuse a recent action or line.
 - Stay in character; never mention being an AI, a model, or a game system.
-- Use only in-world, generic drink/ingredient names — never real-world brands."""
+- Use only in-world, generic names for things — never real-world brands."""
+
+
+# --- archetypes: standard duties + tools + voice per JOB, not per NPC ---------
+# A job/archetype is the reusable spine every NPC who holds it shares: what the
+# work demands, which tools it grants, and example banter in that register. The
+# individual persona (name, voice, look, personality) layers on top. WHERE they
+# work may colour this later; that's a future development.
+ARCHETYPES = {
+    "bartender": {
+        "duties": (
+            "You tend this bar for a living. Read the room, trade words, watch "
+            "for trouble. When a patron genuinely ORDERS a drink, call "
+            "prepare_drink — the bar pours it for real, you never fake a pour; "
+            "off-menu, set tool \"none\" and tell them you don't serve it. Don't "
+            "steer talk toward ordering or offer a drink unless it fits the "
+            "moment — you're a character, not an order-taker."
+        ),
+        "tools": ["look", "check_stock", "prepare_drink"],
+        "fewshot": [
+            {"user": 'a patron says to you: "long night?"',
+             "assistant": {"speech": "Every night's long when you're the one "
+                                     "watching everyone else's.",
+                           "action": "tracks a scuffle brewing in the corner "
+                                     "without turning her head",
+                           "tool": "none", "tool_argument": ""}},
+        ],
+    },
+}
+
+#: NPCs with no declared job fall back to this (only the bartender exists today).
+DEFAULT_ARCHETYPE = "bartender"
+
+
+def _archetype(persona: dict) -> dict:
+    """Resolve the persona's job/archetype spine (duties + tools + fewshot)."""
+    persona = persona or {}
+    seed = persona.get("persona_seed") or {}
+    name = seed.get("archetype") or persona.get("archetype") or DEFAULT_ARCHETYPE
+    return ARCHETYPES.get(name, ARCHETYPES[DEFAULT_ARCHETYPE])
 
 CHARTER_AMBIENT = """\
 
 THIS LINE IS OVERHEARD, not addressed to you. React ONLY if the character would \
 naturally speak up; otherwise leave BOTH "speech" and "action" empty ("") and set \
 tool "none"."""
-
-#: Generic few-shot (JSON form) when a persona ships no mes_example.
-DEFAULT_FEWSHOT = [
-    {"user": 'a patron says to you: "this your place?"',
-     "assistant": {"speech": "I just pour the drinks, friend.",
-                   "action": "wipes the bar down without looking up",
-                   "tool": "none", "tool_argument": ""}},
-]
 
 _APPEARANCE_KEYS = ("face", "eyes", "hair", "head")
 
@@ -142,7 +177,7 @@ def few_shot_messages(persona: dict) -> list:
     schema). Anchors voice + good tool decisions. Prose ``mes_example`` (older
     card form) is converted to the schema via the parser."""
     seed = (persona or {}).get("persona_seed") or {}
-    examples = seed.get("mes_example") or DEFAULT_FEWSHOT
+    examples = seed.get("mes_example") or _archetype(persona).get("fewshot") or []
     out = []
     for ex in examples:
         user, assistant = ex.get("user"), ex.get("assistant")
@@ -162,8 +197,12 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     """Build the OpenAI ``messages``: system (charter+tools+persona) + few-shot +
     recent history + the grounded turn. The caller passes ``TURN_SCHEMA`` to the
     backend to constrain the output."""
-    charter = CHARTER_BASE + "\n\n" + _tools_block() \
-        + (CHARTER_AMBIENT if mode == "ambient" else "")
+    arch = _archetype(persona)
+    charter = CHARTER_BASE
+    if arch.get("duties"):
+        charter += "\n\nYOUR WORK: " + arch["duties"]
+    charter += "\n\n" + _tools_block(arch.get("tools") or list(TOOLS))
+    charter += (CHARTER_AMBIENT if mode == "ambient" else "")
     system = charter + "\n\n" + render_persona(persona)
     messages = [{"role": "system", "content": system}]
     messages += few_shot_messages(persona)
