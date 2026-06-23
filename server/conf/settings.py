@@ -252,13 +252,22 @@ LOGGING = {
 # LLM Gamemaster sidecar (LLM_GAMEMASTER_SPEC, #705/#707)
 ######################################################################
 # Master switch for LLM-driven NPC dialogue. OFF by default here; flip it on in
-# secret_settings.py on a deployment where the sidecar (an external native MLX
-# process) is running. The per-NPC ``db.llm_driven`` flag is the second gate.
-# URL targets the host-native sidecar from inside the game container via
-# host.docker.internal (a 127.0.0.1 URL would mean the container itself).
+# secret_settings.py on a deployment where an inference backend is running. The
+# per-NPC ``db.llm_driven`` flag is the second gate.
+#
+# Backend-agnostic: the game speaks the standard OpenAI Chat Completions protocol,
+# so LLM_GM_URL can point at ANY compatible endpoint — our MLX sidecar,
+# mlx_lm.server, Ollama, llama.cpp, vLLM, LM Studio, or a cloud API. From inside
+# the game container a host-native backend is reached via host.docker.internal
+# (a 127.0.0.1 URL would mean the container itself). Set LLM_GM_API_KEY for cloud
+# providers (sent as a Bearer token); leave blank for local servers.
 LLM_GM_ENABLED = False
-LLM_GM_URL = "http://host.docker.internal:8765/converse"
-LLM_GM_TIMEOUT = 12  # seconds; the sidecar's per-turn generation budget
+LLM_GM_URL = "http://host.docker.internal:8765/v1/chat/completions"
+LLM_GM_MODEL = ""          # backend-specific model id; blank lets local servers default
+LLM_GM_API_KEY = ""        # Bearer token for cloud backends; blank for local
+LLM_GM_TIMEOUT = 12        # seconds; per-turn budget
+LLM_GM_MAX_TOKENS = 80     # short NPC turns
+LLM_GM_TEMPERATURE = 0.8   # characterful but coherent
 
 ######################################################################
 # Settings given in secret_settings.py override those in this file.
