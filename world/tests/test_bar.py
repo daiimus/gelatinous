@@ -668,11 +668,18 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
             barmod.Bartender._fulfil_order(b, "a unicorn tear", patron)
         b.execute_cmd.assert_any_call("say Don't serve that here.")
 
-    def test_render_say_and_pose(self):
+    def test_render_unified_emote(self):
+        # action + speech -> ONE action-led emote with the quote embedded
         b = self._bartender()
-        b._render_llm_reply('"What\'s it to ya?"', "wipes down the slab")
-        b.execute_cmd.assert_any_call("say What's it to ya?")
-        b.execute_cmd.assert_any_call("pose wipes down the slab")
+        b._render_llm_reply("What's it to ya?", "wipes down the slab")
+        b.execute_cmd.assert_called_once_with(
+            'pose wipes down the slab. "What\'s it to ya?"')
+
+    def test_render_action_only(self):
+        b = self._bartender()
+        b.execute_cmd.reset_mock()
+        b._render_llm_reply(None, "polishes a glass")
+        b.execute_cmd.assert_called_once_with("pose polishes a glass")
 
     def test_render_speech_only(self):
         b = self._bartender()
