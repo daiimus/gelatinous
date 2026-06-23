@@ -48,15 +48,41 @@ There is (currently) **no way for an NPC to verify a PC's name.** So a name is a
   before is an **inconsistency event** — noticed or not by perceptiveness, and
   *responded to by personality* (see §3).
 
+**Decision: an explicit "aliases memory" — the set of names the NPC knows a
+person by** (its coined nickname + every name they've claimed), structured and
+**dual-purpose**:
+
+- **GM-usable.** Stored as real, human-readable data so a *human GM who puppets
+  the NPC* (something we may never do, but must accommodate) can see at a glance
+  "you know this person as X; they've also gone by Y, Z." Not a prompt-only
+  artifact.
+- **LLM-equipped.** The same aliases surface into the prompt so the model knows
+  the full picture — what *it* calls them, and what they've *called themselves* —
+  and can play the gap (§3).
+
+The `remember` tool (§4) sets the *primary* name (the recognition `assigned_name`);
+the aliases memory keeps the **history** around it. It lives alongside / extends
+the recognition entry (which already keys on apparent_uid and links presentations
+via piercing), not a parallel store.
+
 ## 3 · Affective state is itself memory
 
 How an NPC **feels** about a person — trust, suspicion, fondness, irritation,
-amusement — is a first-class, recalled memory dimension that evolves with the
-pattern of interaction and the claim-history. It is the lever that turns
-identity tracking into character.
+amusement — is a first-class, recalled memory dimension. It is the lever that
+turns identity tracking into character. The recognition entry already carries a
+`relationship_valence` (+ `notes`, `tags`, `recent_interactions`), so this has a
+home — no new structure.
 
-The response to a detected inconsistency is **not** a fixed rule — it's the
-NPC's personality reading its own affective state:
+**Decision: valence is an LLM-adjusted metric driven by *experience*, not just
+words.** The model has a perfectly good read on social behaviour — so it judges
+what a person *does* and nudges its valence accordingly, exactly as a person
+would. Does Bob pose about pissing on the bar? Kill someone in the room? Harass
+the NPC? Tip well, defend the NPC, keep their word? Each shifts the read. The
+**persona guides the weighting** — Sully shrugs off what makes Vesper cold; a
+prim NPC and a gutter one score the same act differently.
+
+The response to a detected inconsistency (§2) or a behaviour is **not** a fixed
+rule — it's the NPC's personality reading its own valence:
 
 - **Discreet** — clocks the third alias this month, says nothing, files it.
 - **Fed up** — tired of your bullshit; gets cold, cuts you off, names the game.
@@ -66,6 +92,15 @@ The classical/tactical layer may gate hard reactions (a fed-up bouncer refusing
 service); the *expression* is the LLM's. This is where Memory meets
 `TRUST_AND_CONSENT_SPEC` — trust is the accumulated affective state, and many
 third-party actions should consult it.
+
+**⚠️ Load-bearing dependency:** valence-on-behaviour requires the NPC to
+**perceive behaviour**. Today it reacts to *speech* only (`at_msg_receive` on the
+speech payload) — a pure pose/emote/combat event isn't even noticed. So §8.3
+depends on **ambient action-awareness**: the NPC observing room poses, emotes,
+and combat events (attributed to an actor's apparent_uid), forming impressions
+and updating valence. That's a feature in its own right (a slice before the
+valence layer), and it rides the existing perception system + the speech
+backbone's broadcast path.
 
 ## 4 · Naming is a spontaneous, creative act (nicknames)
 
@@ -138,14 +173,22 @@ signature:
 
 ## 8 · Phasing
 
-**Now (shippable on the existing Phase 2 plumbing):**
-1. Re-key `llm_memories` from `#{patron.id}` → `apparent_uid`.
-2. A `remember`/nickname **tool** so an NPC spontaneously coins or records a
-   name through the real recognition mechanism.
-3. **Claim-history** (§2) + a coarse **affective/trust** field (§3) in the
-   memory record / a per-identity summary, surfaced into the MEMORY block.
-4. Personality-driven inconsistency response — prompt/charter guidance, no new
-   gate.
+**✅ Shipped:**
+1. **§8.1 (#753)** — re-key `llm_memories` on `apparent_uid` (disguise-aware).
+2. **§8.2 (#755)** — the universal `remember` tool: NPCs coin/learn names through
+   the real recognition mechanism, private per NPC.
+
+**Next (still on existing plumbing):**
+3. **Aliases memory** (§2) — the structured, GM-readable + LLM-surfaced history of
+   names known for a person, extending the recognition entry; + a coarse
+   **valence** read surfaced into the prompt. Personality-driven inconsistency
+   response is charter guidance, no new gate.
+4. **Ambient action-awareness** (the §3 ⚠️ dependency) — NPCs perceive room
+   poses/emotes/combat (attributed to apparent_uid), not just speech. A feature
+   in its own right and the prerequisite for behaviour-driven valence.
+5. **Behaviour-driven valence** (§3) — the LLM nudges its read from what a person
+   *does*, persona-weighted; surfaced back into the prompt + consulted by
+   `TRUST_AND_CONSENT`.
 
 **Later (roadmap, spec each deliberately):** disguise-merge of memory on piercing
 (§5); photos as identity artifacts (§6); cyberbrain memory store (§6); NPC↔NPC
