@@ -548,6 +548,9 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
             setattr(b, name, bound)
         # default: not alone (so ambient stays ambient); override per test
         b._is_alone_with = lambda speaker: False
+        # default: no long-term memories → _try_llm_reply skips the embed round-
+        # trip and goes straight to generation (Phase 2; override per test)
+        b._load_memories = lambda: []
         return b
 
     def _speaker(self, location="room", name="a lean man"):
