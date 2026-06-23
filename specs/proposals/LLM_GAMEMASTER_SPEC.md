@@ -6,7 +6,15 @@
 > **OpenAI-compatible** inference backend (MLX / Ollama / cloud — swappable by
 > URL, no code change), seeded from her real identity, gated behind two switches,
 > fail-safe to scripted behaviour, drink mechanics untouched. Build ladder +
-> per-phase status in §10. A methodology for
+> per-phase status in §10.
+>
+> **Architecture direction (2026-06-23):** actions are **tool calls routed to real
+> in-game commands** (`execute_cmd`) — context tools (`look`, `check_stock`) the
+> model calls to *inform itself*, and action tools (`prepare_drink`) it calls to
+> *do its job*; reliability comes from **constrained decoding of a unified
+> `{speech, action, tool}` schema** (output guaranteed well-formed), not from
+> hoping the model behaves. Standard model is an **uncensored tool-calling** model
+> (current: **Hermes-3-Llama-3.1-8B**); see §4. A methodology for
 > running a **local LLM as a storyteller / gamemaster** that puppets NPCs:
 > dialogue, a bounded set of actions, real command use, and **per-NPC memory
 > sustained through RAG**. This document is deliberately **implementation-light**.
@@ -252,11 +260,17 @@ without touching the game.
 
 ## 4 · Model selection
 
-The need is specific: **an uncensored, creative-writing-tuned instruct model**
-that (a) writes characterful in-world prose, (b) does **not refuse** dark/adult/
-morally-grey content (this is fiction in a grim setting), (c) **follows
-structure** well enough to emit parseable intents, and (d) fits a Mac mini's
-unified memory at a usable speed.
+The need is specific: **an uncensored, tool-calling instruct model** that (a) does
+**not refuse** dark/adult/morally-grey content (this is fiction in a grim
+setting), (b) **reliably emits tool calls and decides when/what to call** (its
+trained capability — this is how it acts on the world, §4.4), (c) writes
+characterful in-world prose in the schema's `speech`/`action` fields, and (d) fits
+a Mac mini's unified memory at a usable speed.
+
+> **Why tool-calling moved to the top of the list** (learned in the A/B, §4.4): a
+> creative-but-not-tool model has a great voice but cannot reliably *decide*
+> which command to invoke — and that decision is the NPC's core job. Voice can be
+> tuned; tool-decision capability cannot be bolted onto a model that lacks it.
 
 ### 4.1 · Selection rubric (the durable part)
 
@@ -266,8 +280,9 @@ Score candidates on:
 |---|---|---|
 | **Refusal rate** | Will it stay in character through grim content? | A red-team prompt set drawn from the setting; count refusals / breaks / moralising asides |
 | **Prose quality** | Is the dialogue characterful, not generic? | Blind A/B of in-persona samples against a rubric (voice, economy, subtext) |
-| **Instruction following** | Will it emit clean structured intents? | % of generations that parse against the intent schema (§5.3) first-try |
-| **Persona adherence** | Does it stay *this* NPC, not drift to assistant voice? | Long-context runs with a persona card; count voice/identity slips |
+| **Tool-call reliability** | Does it emit valid tool calls in the right format? | % valid tool calls; largely *guaranteed* once under constrained decoding (§4.4) |
+| **Tool-decision quality** | Does it call the *right* tool at the *right* time? | Scenario set: does it `look` before describing, `prepare_drink` on an order, decline off-menu? (constrained decoding does NOT fix this — it's a model capability) |
+| **Persona adherence** | Does it stay *this* NPC, not drift to assistant voice? | Long-context runs with a persona card; count voice/identity slips — measured **under the constrained schema** (the schema's required `speech`/`action` fields hold character while it tool-calls) |
 | **Footprint** | Fits memory at 4-bit with headroom for KV cache + embeddings? | Resident size vs. available unified memory |
 | **Speed** | Meets the latency budget (§3)? | tokens/sec at target quant on the actual Mac mini |
 
@@ -331,6 +346,51 @@ incoherent/off-persona); a **stop sequence** that closes the intent block;
 charter** (you run characters in a world with rules; emit only the intent schema;
 stay in persona; never speak for the player) reused across all NPCs, with the
 **persona card** (§5.2) layered on top per-NPC.
+
+### 4.4 · The tool-calling + constrained-decoding architecture (the standard)
+
+The reliable way to get *both* a guaranteed-valid action channel *and* an
+in-character voice from one model — established best practice, validated in the
+A/B:
+
+- **One unified schema per turn** — `{ speech, action, tool, tool_argument }` (or
+  an OpenAI `tool_calls` array). The model fills it every turn; the `tool` field
+  is its decision to act *or* to inform itself.
+- **Constrained decoding guarantees the *format*.** A grammar/FSM masks invalid
+  tokens during generation, so the output is *always* well-formed — no
+  regex-parsing prose, no malformed JSON, no "it forgot to close the tag." This is
+  the reliability lever. **Native tool-calling *alone* is a 95–99% hint, not a
+  guarantee** (that 1–5% is the model faking a pour instead of calling the tool).
+- **But the schema does not make the model *decide* well.** Constrained decoding
+  guarantees the envelope; the *contents* — calling `look` before describing
+  someone, `prepare_drink` on an order, declining off-menu — are a trained model
+  capability. **Hence: a tool-calling model, under constrained decoding.** The
+  required `speech`/`action` fields also *hold the model in character* while it
+  tool-calls (the free-form failure mode where it drops into assistant voice).
+
+**A/B learnings (Rocinante-12B vs Hermes-3-8B, 2026-06-23):** neither refuses
+adult content (both clear G→explicit). Rocinante has the tighter voice but **no
+tool-calling** — forcing it into a tool schema yields valid JSON with *poor
+decisions*. Hermes tool-calls but, *free-form*, drops character and was
+inconsistent — the very combination that constrained decoding is meant to fix was
+never tested in that A/B. At 8B, "rich character" and "reliable tools" fight
+*without* the schema forcing both.
+
+**Current standard: `mlx-community/Hermes-3-Llama-3.1-8B-4bit`** — uncensored
+(cleared every refusal tier), native `<tool_call>` support, ~4.5 GB (smaller than
+a 12B, comfortable on the shared box). We **master the tool builds against it**,
+then evaluate other HuggingFace models (bench-class 22–32B tool+creative tunes,
+newer tunes) once we hit an acceptable tool success rate. Voice-first tunes like
+Rocinante remain a *voice reference*, not the action model.
+
+**Backend stays MLX (corrected — earlier notes were stale):** `mlx-lm` (latest)
+has **native tool-calling** (its server takes `tools` / parses `tool_call`) and
+**constrained decoding via `outlines`'s MLX backend** (JSON-schema → token
+constraints on Apple Silicon; also `otriscon/llm-structured-output`). So the whole
+architecture runs on our Apple-native stack — no llama.cpp, no second engine.
+`mlx_lm.lora` even enables an in-stack fine-tune later. *(Always re-verify MLX
+capabilities directly — the framework moves fast and training-data assumptions go
+stale.)*
 
 ---
 
@@ -407,14 +467,29 @@ schema:
 
 - **`speech`** routes through the speech backbone (Appendix A) so voice/identity/
   hearing gating applies exactly as for players.
-- **`actions`** are *proposed* commands, each drawn from the affordance list —
-  adjudicated in §5.4 before any run.
+- **`actions`** are **tool calls** (§4.4), each drawn from the affordance list —
+  adjudicated in §5.4 before any run. Two kinds:
+  - **Action tools** (`prepare_drink`, later `attack`/`give`/…) *do* something →
+    routed to a real `execute_cmd` (§5.5).
+  - **Context tools** (`look`, `check_stock`, later `recall`) *inform* the model →
+    run the real read-only command, feed the result back, and let the model
+    continue (the **agentic loop**, below). This is how it grounds itself — e.g.
+    it *calls `look`* before describing someone instead of inventing them — rather
+    than us pre-stuffing everything into the prompt.
 - **`memory`** is the model's own nomination of what to remember (the write-back
   seed, §6), with a salience it assigns.
 
-Parse defensively: malformed output → **discard the turn** (fail quiet, §1.7),
-optionally one retry with a "return valid schema only" reminder. Never actuate
-from a partial parse.
+**Reliability via constrained decoding (§4.4), not defensive parsing.** The output
+is *guaranteed* schema-valid by the grammar — there is no malformed-JSON path to
+defend. Where a fallible model would need a retry, the constraint makes the
+envelope correct by construction; only the *decisions* inside it depend on model
+quality.
+
+**The agentic loop** (for context tools): perceive → infer → if the model emits a
+context tool, run the real read-only command and append its result → infer again →
+… until the model emits a turn with no further tool needs (or an action tool) →
+arbitrate → actuate. Bound the rounds per turn (a hard cap) so a model can't loop
+forever; each round is one constrained generation.
 
 ### 5.4 · Arbitrate — validate, gate, de-conflict
 
@@ -775,8 +850,44 @@ specific section — the real seams the adapters bind to.*
 
 ## Appendix B · Model candidate notes
 
-See §4.2. Candidates are tracked as a *living shortlist*, not a decision — all
+See §4.2/§4.4. Candidates are tracked as a *living shortlist*, not a decision — all
 sourced as `mlx-community` 4-bit quants, scored with the §4.1 rubric on the
 target Mac mini, and bound behind the §9 Model adapter so swapping is a config
-change, not a code change. Re-evaluate every release cycle; uncensored
-creative-writing tunes move fast.
+change, not a code change. **Current standard: `Hermes-3-Llama-3.1-8B-4bit`**
+(uncensored tool-caller). Re-evaluate every release cycle.
+
+## Appendix C · MLX implementation notes (our deployment)
+
+The spec body is **backend-universal** (standard OpenAI / tool-calling contract).
+This appendix is our concrete reality: **Gelatinous runs on MLX, indefinitely.**
+Everything the architecture needs is native to the Apple-silicon stack — verified
+on `mlx-lm 0.31.3` (re-verify on upgrades; the framework moves fast).
+
+- **Native tool-calling** — `mlx-lm` has it built in. The tokenizer flags
+  `tokenizer.has_tool_calling` (true when the model's chat template declares tool
+  support — Hermes's ChatML does). Pass `tools` to `apply_chat_template(...,
+  tools=[…])` (or the `mlx_lm.server` `tools` request field); the model emits tool
+  calls; a `tool_parser(tool_text, tools)` extracts them. Per best practice this is
+  a **95–99% hint** — pair it with constrained decoding for a guarantee.
+- **Constrained decoding (the reliability guarantee)** — via **`outlines`'s MLX
+  backend**:
+  ```python
+  import outlines
+  m = outlines.models.mlxlm(model)            # wrap the loaded mlx-lm model
+  gen = m(prompt, outlines.json_schema(TurnSchema), max_tokens=...)
+  ```
+  A finite-state grammar masks invalid tokens each step → output is *guaranteed*
+  to match the schema (`{speech, action, tool, tool_argument}` or a `tool_calls`
+  array). `otriscon/llm-structured-output` is an MLX-native alternative.
+  *Caveat:* constrained-generation has had version-specific regressions (e.g. runs
+  to `max_tokens` with invalid output on some builds) — pin and smoke-test the
+  `outlines`/`mlx-lm` pair before relying on it.
+- **Recommended combination:** a tool-calling model (decisions) **under** an
+  `outlines`-constrained unified schema (format guarantee + holds character via
+  required `speech`/`action` fields). That is the §4.4 architecture, all on MLX.
+- **Sidecar:** single-threaded `HTTPServer` (MLX's Metal GPU stream is
+  thread-bound — `ThreadingHTTPServer` breaks it with "no Stream(gpu, 1)"). One
+  warm model, serial generation.
+- **In-stack fine-tune later:** `mlx_lm.lora` LoRA-tunes on Apple silicon (slow on
+  the 24 GB box; use the 64 GB bench), then `mlx_lm.convert` → 4-bit → NAS → swap
+  behind the Model adapter. No CUDA needed for the on-box path.
