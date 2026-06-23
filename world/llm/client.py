@@ -26,8 +26,8 @@ from world.llm.prompt import build_messages, parse_reply
 #: endpoint; from inside the game container the host-native backend is reached via
 #: ``host.docker.internal`` (a ``127.0.0.1`` URL would mean the container itself).
 _DEFAULT_URL = "http://host.docker.internal:8765/v1/chat/completions"
-_DEFAULT_TIMEOUT = 12
-_DEFAULT_MAX_TOKENS = 80
+_DEFAULT_TIMEOUT = 15
+_DEFAULT_MAX_TOKENS = 120
 _DEFAULT_TEMPERATURE = 0.8
 
 
@@ -36,7 +36,8 @@ def llm_enabled() -> bool:
     return bool(getattr(settings, "LLM_GM_ENABLED", False))
 
 
-def request_npc_reply(persona, speaker_name, line, mode, on_reply, on_fail):
+def request_npc_reply(persona, speaker_name, line, mode, on_reply, on_fail,
+                      perception=None):
     """POST a turn to the chat-completions backend off the reactor; render on return.
 
     Args:
@@ -48,6 +49,9 @@ def request_npc_reply(persona, speaker_name, line, mode, on_reply, on_fail):
         on_reply (callable): ``on_reply(speech, action)`` — runs on the reactor.
         on_fail (callable): ``on_fail()`` — runs on the reactor on timeout, error,
             or an empty (declined) reply.
+        perception (str|None): what the NPC sees when it looks at the speaker
+            (ANSI-stripped), captured on the reactor — grounds description so the
+            model can't invent the speaker's appearance.
     """
     url = getattr(settings, "LLM_GM_URL", _DEFAULT_URL)
     model = getattr(settings, "LLM_GM_MODEL", "")
@@ -56,7 +60,7 @@ def request_npc_reply(persona, speaker_name, line, mode, on_reply, on_fail):
     max_tokens = getattr(settings, "LLM_GM_MAX_TOKENS", _DEFAULT_MAX_TOKENS)
     temperature = getattr(settings, "LLM_GM_TEMPERATURE", _DEFAULT_TEMPERATURE)
 
-    messages = build_messages(persona, speaker_name, line, mode)
+    messages = build_messages(persona, speaker_name, line, mode, perception)
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"

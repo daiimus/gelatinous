@@ -540,6 +540,8 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         for name in self._REAL:
             bound = getattr(barmod.Bartender, name).__get__(b, barmod.Bartender)
             setattr(b, name, bound)
+        # default: not alone (so ambient stays ambient); override per test
+        b._is_alone_with = lambda speaker: False
         return b
 
     def _speaker(self, location="room", name="a lean man"):
@@ -587,6 +589,29 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
                 patch.object(barmod, "delay") as mock_delay:
             self._call(b, npc, speech="rough night sable", addressed=False)
         mock_delay.assert_not_called()
+
+    def test_solo_room_routes_directed(self):
+        # alone with the speaker → a plain (un-named) line is plainly for her
+        b, spk = self._bartender(), self._speaker()
+        b._is_alone_with = lambda speaker: True
+        with patch.object(barmod, "llm_enabled", return_value=True), \
+                patch.object(barmod, "delay") as mock_delay:
+            self._call(b, spk, speech="this drink is watered down", addressed=False)
+        mock_delay.assert_called_once()
+        self.assertIn("directed", mock_delay.call_args.args)
+
+    def test_is_alone_with_detects_other_characters(self):
+        from typeclasses.characters import Character
+        b = self._bartender()
+        b._is_alone_with = barmod.Bartender._is_alone_with.__get__(
+            b, barmod.Bartender)
+        spk = MagicMock(spec=Character)
+        room = MagicMock()
+        b.location = room
+        room.contents = [b, spk]
+        self.assertTrue(b._is_alone_with(spk))
+        room.contents = [b, spk, MagicMock(spec=Character)]
+        self.assertFalse(b._is_alone_with(spk))
 
     def test_addressed_still_routes_to_order(self):
         b, spk = self._bartender(), self._speaker()

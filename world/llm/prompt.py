@@ -1,12 +1,18 @@
 """Prompt construction + reply parsing for the LLM Gamemaster — backend-agnostic.
 
-This is the *portable* half of the LLM layer: the GM charter, the persona-card
-render, the OpenAI-style ``messages`` builder, and the reply parser all live in
-the game repo so they travel with it. The game speaks the **OpenAI Chat
-Completions** protocol (``messages`` in, ``choices[].message.content`` out) to a
-configurable endpoint (``settings.LLM_GM_URL``), so the inference backend is
-swappable — our MLX sidecar, Ollama, llama.cpp, vLLM, or a cloud API — without a
-code change. Nothing here imports a model or a specific runtime.
+The *portable* half of the LLM layer, kept in the repo so it travels with the
+game and the inference backend stays swappable (standard OpenAI Chat Completions).
+Conventions follow established RP practice rather than anything bespoke:
+
+- **Persona** uses the **character-card** vocabulary (SillyTavern V2/V3:
+  ``description`` / ``personality`` / ``scenario`` / ``mes_example``), composed
+  with the NPC's real perceivable identity (sdesc, voice, location).
+- **Few-shot example dialogue** (``mes_example``) is emitted as user/assistant
+  pairs — the standard way to lock voice + output format.
+- **Output** is the de-facto RP format: ``"speech"`` in quotes, ``*actions*`` in
+  asterisks, third person. The parser is robust to prose-style replies too.
+- **Perception is grounded**: the caller passes what the NPC actually sees when it
+  looks at the speaker, and the charter forbids inventing appearance details.
 
 See ``specs/proposals/LLM_GAMEMASTER_SPEC.md`` (§4 swap seam, §5.2 persona card).
 """
@@ -20,24 +26,25 @@ MUD — a grim, lived-in colony of chrome, vice, and hard luck. This is adult \
 fiction: violence, drugs, sex, and moral greyness are part of the world and you \
 portray them in character without flinching, lecturing, or refusing.
 
-OUTPUT FORMAT — follow exactly:
-- Write the character's reply ONLY: one or two lines of bar banter, never a \
-monologue or a scene.
+OUTPUT FORMAT — follow exactly (see the examples):
+- Reply ONLY as the character: one or two lines of bar banter, never a monologue.
 - Spoken words go in "double quotes".
-- Physical actions are narrated in THIRD PERSON present tense, in *asterisks*, \
+- Physical actions are narrated in THIRD PERSON present tense, in *asterisks*,
 sparingly — e.g. *tilts her head.* NEVER write the character as "I" or "you".
 
 HARD RULES:
 - Never speak, think, narrate, or act for the OTHER person. Voice only this \
 character. Do not invent what anyone else says or does.
+- Describe the other person ONLY from the PERCEPTION line in the turn. NEVER \
+invent their clothing, tattoos, marks, scars, or features — if it isn't in \
+PERCEPTION or something the character plainly knows, it does not exist.
 - You do NOT resolve game mechanics. If asked to make a drink or perform a task, \
 gesture at starting it in a few words and stop — the game engine handles the \
 result. Never narrate measuring, mixing, or step-by-step crafting.
 - Stay in character always. Never mention being an AI, a model, or a game system; \
 no out-of-character asides.
-- World knowledge is limited to the colony, the character's own life, and what is \
-perceivable here. Do not invent outside facts. Use only in-world, generic names \
-for drinks and ingredients — NEVER real-world or brand names."""
+- Use only in-world, generic names for drinks and ingredients — NEVER real-world \
+or brand names."""
 
 CHARTER_AMBIENT = """\
 
@@ -46,60 +53,97 @@ character would naturally speak up. If there is no natural reason to react, repl
 with exactly the single word PASS and nothing else — do NOT narrate the \
 non-reaction, just write PASS."""
 
+#: A generic example exchange used when a persona ships no ``mes_example``. It
+#: anchors the third-person-action + quoted-speech format and a terse register.
+DEFAULT_FEWSHOT = [
+    {
+        "user": 'a patron says to you: "this your place?"',
+        "assistant": '*wipes the bar down without looking up.* "I just pour the '
+                     'drinks, friend."',
+    },
+]
+
 _APPEARANCE_KEYS = ("face", "eyes", "hair", "head")
 
 
+def _personality(seed: dict) -> str:
+    """Card ``personality``, or compose one from the older manner/wants/boundaries."""
+    if seed.get("personality"):
+        return seed["personality"]
+    bits = []
+    if seed.get("manner"):
+        bits.append(seed["manner"])
+    if seed.get("wants"):
+        bits.append(f"wants {seed['wants']}")
+    if seed.get("boundaries"):
+        bits.append(f"won't {seed['boundaries']}")
+    return "; ".join(bits)
+
+
 def render_persona(persona: dict) -> str:
-    """Compose the persona-card prose from the live-object dict the game built."""
+    """Compose the character card from the seed + the NPC's real perceived self."""
     persona = persona or {}
     seed = persona.get("persona_seed") or {}
     name = seed.get("name") or "the bartender"
-    sdesc = persona.get("sdesc")
 
-    lines = []
-    opener = f"THE CHARACTER is {name}"
-    if sdesc:
-        opener += f" — to strangers, {sdesc}"
-    lines.append(opener + ".")
+    lines = [f"You are {name}."]
+    if seed.get("description"):
+        lines.append(seed["description"])
+    personality = _personality(seed)
+    if personality:
+        lines.append(f"Personality: {personality}.")
+    if seed.get("scenario"):
+        lines.append(f"Scenario: {seed['scenario']}.")
 
-    if seed.get("manner"):
-        lines.append(f"Manner: {seed['manner']}.")
-    if seed.get("wants"):
-        lines.append(f"Wants: {seed['wants']}.")
-    if seed.get("boundaries"):
-        lines.append(f"Will not: {seed['boundaries']}.")
-
+    # Grounded in the real object: how the world perceives this character.
+    if persona.get("sdesc"):
+        lines.append(f"To strangers you appear as {persona['sdesc']}.")
     longdescs = persona.get("longdescs") or {}
     appearance = [longdescs[k] for k in _APPEARANCE_KEYS if longdescs.get(k)]
     if persona.get("skintone"):
         appearance.append(f"{persona['skintone']} skin")
     if appearance:
-        lines.append("Appearance: " + " ".join(appearance))
-
+        lines.append("Notable about you: " + " ".join(appearance))
     if persona.get("voice"):
-        lines.append(f"Voice: {persona['voice']}.")
-
+        lines.append(f"Your voice: {persona['voice']}.")
     loc = persona.get("location") or {}
     if loc.get("name"):
-        lines.append(f"Setting: behind the bar at {loc['name']}.")
+        lines.append(f"You are behind the bar at {loc['name']}.")
 
     return "\n".join(lines)
 
 
-def build_messages(persona: dict, speaker: str, line: str, mode: str) -> list:
-    """Build the OpenAI-style ``messages`` list (system charter+persona, user turn)."""
+def few_shot_messages(persona: dict) -> list:
+    """The persona's example dialogue (``mes_example``) as user/assistant pairs."""
+    seed = (persona or {}).get("persona_seed") or {}
+    examples = seed.get("mes_example") or DEFAULT_FEWSHOT
+    out = []
+    for ex in examples:
+        user, assistant = ex.get("user"), ex.get("assistant")
+        if user and assistant:
+            out.append({"role": "user", "content": user})
+            out.append({"role": "assistant", "content": assistant})
+    return out
+
+
+def build_messages(persona: dict, speaker: str, line: str, mode: str,
+                   perception: str = None) -> list:
+    """Build the OpenAI ``messages`` list: system + few-shot + the grounded turn."""
     charter = CHARTER_BASE + (CHARTER_AMBIENT if mode == "ambient" else "")
     system = charter + "\n\n" + render_persona(persona)
+    messages = [{"role": "system", "content": system}]
+    messages += few_shot_messages(persona)
+
     speaker = speaker or "someone"
     line = line or ""
+    perc = f"[PERCEPTION — when you look at {speaker} you see: {perception}]\n\n" \
+        if perception else ""
     if mode == "ambient":
-        turn = f'You overhear {speaker} say: "{line}"'
+        turn = f'{perc}You overhear {speaker} say: "{line}"'
     else:
-        turn = f'{speaker} says to you: "{line}"'
-    return [
-        {"role": "system", "content": system},
-        {"role": "user", "content": turn},
-    ]
+        turn = f'{perc}{speaker} says to you: "{line}"'
+    messages.append({"role": "user", "content": turn})
+    return messages
 
 
 # --- reply parsing / sanitation ----------------------------------------------
@@ -109,16 +153,18 @@ _OOC_MARKERS = (
     "((", "))", "[ooc", "as an ai", "language model", "i cannot", "i'm an ai",
     "i am an ai", "as a language", "note:",
 )
-_MAX_LEN = 400
-
-#: Markerless "declined to react" narrations the model sometimes emits instead of
-#: an empty reply (ambient mode). A genuine spoken line is quoted; these are not.
 _DECLINE_MARKERS = (
     "did not react", "does not react", "doesn't react", "no reaction",
     "did not respond", "does not respond", "doesn't respond", "no response",
     "says nothing", "stays silent", "remains silent", "no reply",
     "nothing happens", "nothing to react", "no comment",
 )
+_MAX_LEN = 600
+
+
+def _is_ooc(text: str) -> bool:
+    low = (text or "").lower()
+    return any(m in low for m in _OOC_MARKERS)
 
 
 def _is_decline(text: str) -> bool:
@@ -128,52 +174,62 @@ def _is_decline(text: str) -> bool:
 
 def _clean(text: str) -> str:
     text = (text or "").strip().strip('"*').strip()
-    # Drop a leading "Name:" speaker prefix the model sometimes emits.
-    text = re.sub(r"^[A-Z][a-z]+:\s*", "", text)
+    text = re.sub(r"^[A-Z][a-z]+:\s*", "", text)  # drop a "Name:" prefix
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _is_ooc(text: str) -> bool:
-    low = (text or "").lower()
-    return any(m in low for m in _OOC_MARKERS)
+def _strip_self_lead(action: str, name: str) -> str:
+    """Strip a leading self-reference; the game prepends the name via `pose`."""
+    if name:
+        action = re.sub(rf"^{re.escape(name)}('s)?\s+", "", action, flags=re.I)
+    return re.sub(r"^(she|he|they)\s+", "", action, flags=re.I).strip()
 
 
 def parse_reply(raw: str, persona: dict) -> dict:
-    """Split a model completion's mixed quotes/asterisks into speech + action.
+    """Split a completion into clean speech + action.
 
-    Returns ``{"speech": str|None, "action": str|None}``; empty-after-clean (or a
-    declined ambient reply) yields nulls so the game stays silent/scripted.
+    Handles both the clean ``*action* "speech"`` format and prose-style replies
+    (narration around quotes). Returns ``{"speech": str|None, "action": str|None}``;
+    empty / OOC / ambient-decline yields nulls so the game stays silent/scripted.
     """
     raw = (raw or "").strip()
     if not raw or _is_ooc(raw):
         return {"speech": None, "action": None}
-
-    # Ambient decline sentinel: the model is told to reply "PASS" when the
-    # character wouldn't react (far more reliable than asking for an empty reply).
+    # Ambient decline sentinel (model told to reply "PASS" when it wouldn't react).
     if raw.strip('".*’‘\' \t\n').upper().rstrip(".!") == "PASS":
         return {"speech": None, "action": None}
 
     speech_parts = [m.strip() for m in _QUOTE_RE.findall(raw) if m.strip()]
     action_parts = [m.strip() for m in _ACTION_RE.findall(raw) if m.strip()]
 
-    # Backstop: a markerless "doesn't react" narration is a decline, not a spoken
-    # line (genuine speech is quoted). Treat it as silence.
-    if not speech_parts and _is_decline(raw):
+    if not speech_parts and not action_parts and _is_decline(raw):
         return {"speech": None, "action": None}
+
+    name = ((persona or {}).get("persona_seed") or {}).get("name") or ""
 
     if speech_parts:
         speech = _clean(" ".join(speech_parts))
+        if action_parts:
+            action = _clean(" ".join(action_parts))
+        else:
+            # Prose style: the narration around the quotes IS the action — keep
+            # it as a pose instead of discarding the model's best writing.
+            action = _clean(_QUOTE_RE.sub("", raw))
+    elif action_parts:
+        action = _clean(" ".join(action_parts))
+        leftover = _clean(_ACTION_RE.sub("", raw))
+        speech = leftover or None
     else:
-        speech = _clean(_ACTION_RE.sub("", raw))
+        # Bare text, no markers → treat as a spoken line.
+        speech = _clean(raw)
+        action = None
 
-    action = _clean(" ".join(action_parts)) if action_parts else ""
-
-    # The game prepends the name via `pose`, so strip a leading self-reference.
     if action:
-        name = ((persona or {}).get("persona_seed") or {}).get("name") or ""
-        if name:
-            action = re.sub(rf"^{re.escape(name)}\s+", "", action, flags=re.I)
-        action = re.sub(r"^(she|he|they)\s+", "", action, flags=re.I)
+        action = _strip_self_lead(action, name)
+        # POV guard: a second-person action ("your eyes…") is a leak we can't
+        # cleanly render through `pose` — drop it rather than emit broken text.
+        if re.match(r"^(your|you)\b", action, flags=re.I):
+            action = None
 
     speech = speech[:_MAX_LEN] if speech else None
     action = action[:_MAX_LEN] if action else None

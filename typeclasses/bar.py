@@ -470,7 +470,21 @@ class Bartender(Character):
         if (getattr(speaker.db, "is_bartender_npc", False)
                 or getattr(speaker.db, "llm_driven", False)):
             return "ignore"
-        return "directed" if self._mentions_self(speech) else "ambient"
+        # Named, or effectively alone with the speaker (then any line is plainly
+        # for her), counts as directed; otherwise it's overheard chatter.
+        if self._mentions_self(speech) or self._is_alone_with(speaker):
+            return "directed"
+        return "ambient"
+
+    def _is_alone_with(self, speaker):
+        """True when no other character shares the room — so the speaker can only
+        be talking to this NPC."""
+        if not self.location:
+            return False
+        return not any(
+            o is not self and o is not speaker and isinstance(o, Character)
+            for o in self.location.contents
+        )
 
     def _mentions_self(self, speech):
         """Whether a line names this bartender (key, keyword, or generic role)."""
@@ -508,12 +522,25 @@ class Bartender(Character):
         # (the SQLite/Evennia-thread contract — see world/llm/client.py).
         persona = build_persona(self)
         speaker_name = patron.get_display_name(self)
+        perception = self._perceive(patron)
         request_npc_reply(
             persona, speaker_name, line or "", mode,
             on_reply=self._render_llm_reply,
             on_fail=on_fail or self._llm_silent,
+            perception=perception,
         )
         return True
+
+    def _perceive(self, patron):
+        """What this NPC sees when it looks at the patron — grounds the model's
+        description so it can't invent the speaker's appearance. ANSI-stripped,
+        identity-gated (it's the patron's appearance *as this NPC perceives it*)."""
+        try:
+            from evennia.utils.ansi import strip_ansi
+            raw = patron.return_appearance(self)
+            return " ".join(strip_ansi(raw).split())[:600] if raw else None
+        except Exception:
+            return None
 
     def _render_llm_reply(self, speech, action):
         """Reactor-side render of the sidecar reply: say + pose."""
