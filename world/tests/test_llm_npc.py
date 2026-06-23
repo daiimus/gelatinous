@@ -18,7 +18,7 @@ def _bind(b, name):
 class TestStoreMemory(TestCase):
     def test_embeds_then_saves_record(self):
         b = MagicMock()
-        b._hist_key = lambda p: f"#{p.id}"
+        b._memory_subject = lambda p: f"#{p.id}"
         b._load_memories = lambda: []
         b._llm_silent = lambda: None
         _bind(b, "_store_memory")
@@ -50,7 +50,7 @@ class TestRecall(TestCase):
         b.db.llm_driven = True
         b.location = "room"
         b.ndb.last_llm = 0
-        b._hist_key = lambda p: f"#{p.id}"
+        b._memory_subject = lambda p: f"#{p.id}"
         b._load_memories = lambda: memories
         b._perceive = lambda p: None
         b._recent_history = lambda p: []
