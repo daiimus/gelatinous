@@ -247,6 +247,18 @@ class LLMNpcMixin:
         d[subject] = entry
         self.db.llm_dossiers = d
 
+    def _set_valence(self, subject, valence):
+        """Update the NPC's private read on a person (§8.5 behaviour-driven).
+        Surfaces in the WHO block next turn; consulted by trust/consent later."""
+        valence = " ".join(str(valence).split())[:40]
+        if not valence:
+            return
+        d = self._dossiers()
+        entry = dict(d.get(subject) or {"aliases": [], "valence": "neutral"})
+        entry["valence"] = valence
+        d[subject] = entry
+        self.db.llm_dossiers = d
+
     def _store_memory(self, patron, speaker_name, line, speech):
         """Remember this exchange: embed it off-reactor, then write a record
         (scoped to the interlocutor) and prune. Fire-and-forget — runs after the
@@ -344,10 +356,12 @@ class LLMNpcMixin:
         return ""
 
     def _handle_action_tool(self, tool, arg, patron):
-        """Route an action tool to a real command. ``remember`` is universal
-        (every NPC can name people); subclasses extend then call super."""
+        """Route an action tool to a real command. ``remember``/``feel`` are
+        universal; subclasses extend then call super."""
         if tool == "remember" and arg and patron and self.location:
             self._remember_person(patron, arg)
+        elif tool == "feel" and arg and patron:
+            self._set_valence(self._memory_subject(patron), arg)
 
     def _remember_person(self, patron, name):
         """Privately name/nickname the interlocutor via the REAL ``remember``
