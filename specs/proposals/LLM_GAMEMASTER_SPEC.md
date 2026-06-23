@@ -490,7 +490,7 @@ store is a rebuildable semantic index over episodic memory documents.
   in-fiction NPC shouldn't have. The eventual fix is a **shared, read-only lore
   namespace** (a colony wiki / setting corpus) the context assembler retrieves
   from alongside per-NPC memory — same RAG mechanism, different scope. **For now**
-  (decided §11.11) lore is bounded *softly* in the GM charter ("you know the
+  (decided §11.10) lore is bounded *softly* in the GM charter ("you know the
   colony, your own life, and what you've perceived; don't invent specific external
   facts"); the corpus replaces the soft boundary when it exists.
 
@@ -514,24 +514,13 @@ by separating two axes that are usually conflated:
   touches the world directly — it only emits intents the arbiter filters and the
   command layer executes under normal rules.
 
-**Why the split is the whole point:** a *raw* model is only safe to leave running
-*because* the bounds are **structural, never the model's reluctance**. Relying on
-a model to refuse is both a creativity tax *and* an empty guarantee (jailbreaks
-exist). Enforce the bounds in code and the model can be as raw as the setting
-wants. The bounds are exactly two:
-
-1. **In-world consent for *actions*** — what an NPC may *do* to an able-to-resist
-   character is governed by the Trust/Consent mechanic (below), not by the model
-   having scruples. Dark *events* are gated by game rules.
-2. **A minimal structural hard-floor on *output*** — a tiny, non-negotiable
-   denylist enforced by the arbiter / output guard (§5.4.6) **regardless of what
-   the model emits**. For an adult setting essentially everything is in scope; the
-   floor exists for the genuinely-absolute legal/ethical bright lines that are not
-   creative choices — foremost **any sexualisation of minors**. This is deliberately
-   *not* delegated to the model: it holds even if a raw model would produce it, so
-   running uncensored weights stays defensible. *(Working stance — the exact
-   denylist is a small owed item, §11.10; pending the user's sign-off on this
-   division.)*
+**Why the split is the whole point:** what *bounds* an NPC is the **game**, not
+the model's reluctance. What an NPC may *do* to an able-to-resist character is
+governed by the in-world **Trust/Consent** mechanic (below) and the command
+layer's normal rules — not by the model having scruples. Relying on a model to
+refuse is both a creativity tax *and* an empty guarantee (jailbreaks exist);
+keeping authority in the game systems lets the model be as raw as the setting
+wants while the *world* stays governed.
 
 This separation is the whole safety story, and it has hard edges:
 
@@ -677,13 +666,7 @@ Phase 1 changes the player-facing default if disabled.
 9. ✅ **Sidecar lifecycle — resolved: always-on resident** (warm model, zero
    spin-up latency); accept the idle power/thermal cost on the shared box, kept
    in check by the §3 bounded-generation discipline.
-10. **Content hard-floor — exact denylist owed.** Direction decided (§7): **raw
-    model + structural floor**; the floor exists for genuinely-absolute legal/
-    ethical lines (foremost any sexualisation of minors), enforced in code, not
-    delegated to the model. *Owed:* the precise denylist, its enforcement point
-    (output guard vs. a classifier pass), and the user's explicit sign-off on the
-    division.
-11. ✅ **Lore boundary — resolved: soft now, corpus later.** v1 bounds NPC
+10. ✅ **Lore boundary — resolved: soft now, corpus later.** v1 bounds NPC
     world-knowledge *softly* via the GM charter (know the colony / your life / what
     you've perceived; don't invent external specifics, §6). A future **shared
     read-only lore namespace** (colony wiki / setting corpus) replaces the soft
