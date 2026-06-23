@@ -34,6 +34,13 @@ BLEEDING_ROOM_BY_SPECIES: dict[str, dict[str, str]] = {
         "severe":   "Blood weeps freely from {actor}, soaking into the fur.",
         "grievous": "{actor} leaves a slick of blood, fur matted with it.",
     },
+    "synthetic_humanoid": {
+        # Synthetic blood runs cobalt, not red (see species blood_color).
+        "minor":    "Small beads of |Bcobalt|n fluid well from {actor}'s wounds.",
+        "moderate": "|BCobalt|n fluid steadily seeps from {actor}, staining dark.",
+        "severe":   "|BCobalt|n fluid runs freely from {actor}'s wounds, pooling on the ground.",
+        "grievous": "{actor} leaves a trail of |Bcobalt|n fluid, their wounds venting freely.",
+    },
 }
 
 
@@ -75,12 +82,20 @@ DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
         "stab":          "|R{actor} squeaks once, body shuddering, then goes limp.|n",
         "slash":         "|R{actor} squeaks once, body shuddering, then goes limp.|n",
     },
+    "synthetic_humanoid": {
+        # Cobalt fluid; mechanical stillness rather than a final breath.
+        "blood loss":    "|B{actor}'s cobalt fluid spreads beneath their stilled frame.|n",
+        "heart failure": "|B{actor}'s frame shudders once and powers down, still.|n",
+        "stab":          "|B{actor} jerks, cobalt fluid venting, then goes inert.|n",
+        "slash":         "|B{actor} jerks, cobalt fluid venting, then goes inert.|n",
+    },
 }
 
 # Generic fallback when no cause matches.
 _GENERIC_DEATH_BY_SPECIES: dict[str, str] = {
     "human": "|R{actor} draws their final breath and grows still.|n",
     "rat":   "|R{actor}'s small body falls still.|n",
+    "synthetic_humanoid": "|B{actor}'s systems fall dark and the frame goes still.|n",
 }
 
 
