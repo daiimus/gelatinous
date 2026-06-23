@@ -56,6 +56,8 @@ Design notes
 
 from __future__ import annotations
 
+import copy
+
 #: Species registry.  Keys are stable species identifiers (lowercase,
 #: underscore-separated for multi-word species like ``"glitch_synth"``);
 #: values are dicts whose schema is documented inline below.
@@ -1091,6 +1093,80 @@ SPECIES_DEFINITIONS = {
         },
     },
 }
+
+
+# =====================================================================
+# SYNTHETIC HUMANOID — derived from human.
+# =====================================================================
+#
+# A replicant/Synth: humanoid in FORM, human in MECHANICS (organs,
+# capacities, severability, and the capacity-derived death model all
+# inherit unchanged), but synthetic in PRESENTATION. Derived from the
+# human definition via deepcopy + targeted overrides rather than
+# hand-authored — it stays DRY and tracks future human-anatomy changes.
+#
+# This pass establishes the chassis identity: organs run a bit more
+# durable, and the body does NOT rot (it goes inert, never "rotting" /
+# "skeletal"). Blood-colour and live organ-name divergence are authored
+# in follow-up passes; until then a synthetic still bleeds the human
+# prose. Appendage names stay humanoid (arm/hand/leg) by design.
+SYNTH_ORGAN_DURABILITY = 1.25  # synthetic tissue/frame takes more punishment
+
+
+def _derive_synthetic_humanoid(base: dict) -> dict:
+    synth = copy.deepcopy(base)
+    synth["display_name"] = "synthetic humanoid"
+
+    # Tougher: every organ/bone runs a bit more durable.
+    for organ in synth["organs"].values():
+        organ["max_hp"] = int(round(organ["max_hp"] * SYNTH_ORGAN_DURABILITY))
+
+    # The chassis does not decay. Time advances it toward a stripped,
+    # desiccated frame — never rot or skeletonization.
+    synth["decay_part_prefixes"] = {
+        "fresh": "synthetic {part}", "early": "synthetic {part}",
+        "moderate": "synthetic {part}", "advanced": "inert synthetic {part}",
+        "skeletal": "stripped synthetic {part}",
+    }
+    synth["decay_organ_prefixes"] = {
+        "fresh": "synthetic {organ}", "early": "synthetic {organ}",
+        "moderate": "synthetic {organ}", "advanced": "inert synthetic {organ}",
+        "skeletal": "desiccated synthetic {organ}",
+    }
+    synth["decay_corpse_names"] = {
+        "fresh": "deactivated synthetic", "early": "deactivated synthetic",
+        "moderate": "inert synthetic chassis",
+        "advanced": "inert synthetic chassis",
+        "skeletal": "stripped synthetic frame",
+    }
+    synth["decay_corpse_descriptions"] = {
+        "fresh": (
+            "A recently deactivated synthetic. {base_desc} The chassis is "
+            "intact, its synthetic flesh cooling but uncorrupted."
+        ),
+        "early": (
+            "A deactivated synthetic. {base_desc} The synthetic flesh has "
+            "gone slack and cool, yet shows no sign of decay."
+        ),
+        "moderate": (
+            "An inert synthetic chassis. The synthetic tissue has dulled and "
+            "settled, but does not rot — there is no odor of decay."
+        ),
+        "advanced": (
+            "A dormant synthetic chassis. The artificial tissue has "
+            "discoloured and drawn tight where exposed, the frame slackening, "
+            "but it does not putrefy."
+        ),
+        "skeletal": (
+            "A stripped synthetic frame. Little remains but the structural "
+            "chassis and dried synthetic tissue; it will decompose no further."
+        ),
+    }
+    return synth
+
+
+SPECIES_DEFINITIONS["synthetic_humanoid"] = _derive_synthetic_humanoid(
+    SPECIES_DEFINITIONS["human"])
 
 
 def _resolve_species(species: str | None) -> dict:
