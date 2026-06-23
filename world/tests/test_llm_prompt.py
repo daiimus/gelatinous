@@ -89,6 +89,14 @@ class TestBuildMessages(TestCase):
         msgs = build_messages(_PERSONA, "a man", "hi", "directed")
         self.assertNotIn("WHO", msgs[-1]["content"])
 
+    def test_events_injected_as_recently_block(self):
+        msgs = build_messages(_PERSONA, "a man", "hi", "directed",
+                              events=["the drifter pissed on the bar",
+                                      "someone drew a knife"])
+        turn = msgs[-1]["content"]
+        self.assertIn("RECENTLY", turn)
+        self.assertIn("pissed on the bar", turn)
+
 
 class TestArchetype(TestCase):
     def test_empty_persona_defaults_to_bartender(self):

@@ -44,6 +44,39 @@ class TestStoreMemory(TestCase):
         re.assert_not_called()
 
 
+class TestActionAwareness(TestCase):
+    def _npc(self):
+        b = MagicMock()
+        b.db.llm_driven = True
+        b.ndb.action_buffer = None
+        for m in ("at_msg_receive", "_observe_action", "_drain_actions"):
+            _bind(b, m)
+        return b
+
+    def test_pose_is_observed_not_reacted(self):
+        b = self._npc()
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as d:
+            b.at_msg_receive(text="the drifter pisses on the bar",
+                             from_obj=MagicMock(), type="pose")
+        d.assert_not_called()   # observed cheaply, NO LLM reaction
+        self.assertEqual(b.ndb.action_buffer,
+                         ["the drifter pisses on the bar"])
+
+    def test_drain_returns_and_clears(self):
+        b = self._npc()
+        b._observe_action(MagicMock(), "a does X")
+        b._observe_action(MagicMock(), "b does Y")
+        self.assertEqual(b._drain_actions(), ["a does X", "b does Y"])
+        self.assertEqual(b._drain_actions(), [])     # cleared after drain
+
+    def test_buffer_caps(self):
+        b = self._npc()
+        for i in range(llmnpc.LLM_ACTION_BUFFER + 5):
+            b._observe_action(MagicMock(), f"act {i}")
+        self.assertEqual(len(b.ndb.action_buffer), llmnpc.LLM_ACTION_BUFFER)
+
+
 class TestDossier(TestCase):
     def _npc(self, dossiers):
         b = MagicMock()
@@ -113,6 +146,7 @@ class TestRecall(TestCase):
         b._memory_subject = lambda p: f"#{p.id}"
         b._load_memories = lambda: memories
         b._relationship_line = lambda subject, patron: None
+        b._drain_actions = lambda: []
         b._perceive = lambda p: None
         b._recent_history = lambda p: []
         b._agentic_round = MagicMock()
