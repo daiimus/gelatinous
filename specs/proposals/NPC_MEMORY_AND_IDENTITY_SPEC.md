@@ -178,17 +178,18 @@ signature:
 2. **§8.2 (#755)** — the universal `remember` tool: NPCs coin/learn names through
    the real recognition mechanism, private per NPC.
 
-**Next (still on existing plumbing):**
-3. **Aliases memory** (§2) — the structured, GM-readable + LLM-surfaced history of
-   names known for a person, extending the recognition entry; + a coarse
-   **valence** read surfaced into the prompt. Personality-driven inconsistency
-   response is charter guidance, no new gate.
-4. **Ambient action-awareness** (the §3 ⚠️ dependency) — NPCs perceive room
-   poses/emotes/combat (attributed to apparent_uid), not just speech. A feature
-   in its own right and the prerequisite for behaviour-driven valence.
-5. **Behaviour-driven valence** (§3) — the LLM nudges its read from what a person
-   *does*, persona-weighted; surfaced back into the prompt + consulted by
-   `TRUST_AND_CONSENT`.
+3. **§8.3 (#758)** — aliases memory (`db.llm_dossiers`: name-history + valence,
+   GM-readable + LLM-surfaced) + the `[WHO]` block.
+4. **§8.4 (#760)** — ambient action-awareness: NPCs observe room poses cheaply
+   (no LLM) and consume them on the next reply (`[RECENTLY]` block). The
+   observe-≠-react design keeps the single-threaded model from saturating.
+5. **§8.5 (#762)** — behaviour-driven valence: the `feel` tool lets the LLM nudge
+   its read from what a person *does*, persona-weighted; surfaces in `[WHO]`,
+   consulted by `TRUST_AND_CONSENT`.
+
+**✅ §8 COMPLETE & LIVE.** The full loop runs: witness behaviour → adjust
+feeling → treat them accordingly next time, keyed on perceived identity, with
+names coined or learned.
 
 **Later (roadmap, spec each deliberately):** disguise-merge of memory on piercing
 (§5); photos as identity artifacts (§6); cyberbrain memory store (§6); NPC↔NPC
