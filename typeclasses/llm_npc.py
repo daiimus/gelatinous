@@ -23,8 +23,11 @@ from time import monotonic
 from evennia.utils.utils import delay
 
 from typeclasses.characters import Character
+from evennia.utils.dbserialize import deserialize
+
 from typeclasses.llm_persona import build_persona
-from world.llm.client import llm_enabled, request_turn
+from world.llm import memory as mem
+from world.llm.client import llm_enabled, request_embedding, request_turn
 from world.llm.prompt import (
     CONTEXT_TOOLS, build_messages, parse_turn, schema_for, tool_names,
 )
@@ -34,6 +37,7 @@ LLM_AMBIENT_COOLDOWN = 45.0    # rarely volunteers into overheard chatter
 LLM_AMBIENT_CHANCE = 0.35      # ...and not every eligible time
 LLM_HISTORY_TURNS = 6          # recent turns kept per interlocutor (anti-repetition)
 LLM_MAX_TOOL_ROUNDS = 3        # cap the agentic loop so it can't spin forever
+LLM_MEMORY_TOPK = 3            # long-term memories recalled into a turn (Phase 2)
 
 
 class LLMNpcMixin:
@@ -128,11 +132,57 @@ class LLMNpcMixin:
         speaker_name = patron.get_display_name(self)
         perception = self._perceive(patron)
         history = self._recent_history(patron)
-        messages = build_messages(persona, speaker_name, line or "", mode,
-                                  perception, history)
-        self._agentic_round(messages, persona, patron, line or "", speaker_name,
-                            on_fail or self._llm_silent, rounds=0)
+        subject = self._hist_key(patron)
+        on_fail = on_fail or self._llm_silent
+
+        def _go(memories):
+            messages = build_messages(persona, speaker_name, line or "", mode,
+                                      perception, history, memories=memories)
+            self._agentic_round(messages, persona, patron, line or "",
+                                speaker_name, on_fail, rounds=0)
+
+        def _with_query_vec(vec):
+            # reactor-side: score this NPC's memories against the line, inject.
+            try:
+                hits = mem.retrieve(vec, self._load_memories(),
+                                    k=LLM_MEMORY_TOPK, subject=subject)
+                _go(mem.memory_texts(hits))
+            except Exception:  # noqa: BLE001 — memory is best-effort
+                _go(None)
+
+        # Phase 2: recall before generating. Skip the embed round-trip entirely
+        # when there's nothing to recall (first-ever interactions add no latency);
+        # any embed failure degrades to a memoryless reply.
+        if line and self._load_memories():
+            request_embedding(line, on_done=_with_query_vec,
+                              on_fail=lambda: _go(None))
+        else:
+            _go(None)
         return True
+
+    # --- long-term memory (Phase 2) --------------------------------------
+
+    def _load_memories(self):
+        """This NPC's stored memory records as plain dicts (deserialized)."""
+        return deserialize(self.db.llm_memories) or []
+
+    def _store_memory(self, patron, speaker_name, line, speech):
+        """Remember this exchange: embed it off-reactor, then write a record
+        (scoped to the interlocutor) and prune. Fire-and-forget — runs after the
+        reply has already rendered, so it never delays the NPC."""
+        if not line:
+            return
+        text = f'{speaker_name} said: "{line}"'
+        if speech:
+            text += f' — I answered: "{speech}"'
+        subject = self._hist_key(patron)
+
+        def _save(vec):
+            recs = self._load_memories()
+            recs.append(mem.make_record(text, vec, subject=subject))
+            self.db.llm_memories = mem.prune(recs)
+
+        request_embedding(text, on_done=_save, on_fail=self._llm_silent)
 
     def _perceive(self, patron):
         """What this NPC sees when it looks at the patron — grounds the model's
@@ -202,6 +252,8 @@ class LLMNpcMixin:
         self._handle_action_tool(tool, arg, patron)
         self._remember_turn(patron, line, speaker_name, turn["speech"],
                             turn["action"])
+        # Long-term memory: persist what was learned (async, post-render).
+        self._store_memory(patron, speaker_name, line, turn["speech"])
 
     def _run_context_tool(self, tool, arg, patron):
         """Run a read-only context tool and return its result for the model.
