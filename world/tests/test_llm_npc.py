@@ -81,9 +81,24 @@ class TestDossier(TestCase):
     def _npc(self, dossiers):
         b = MagicMock()
         b.db.llm_dossiers = dossiers
-        for m in ("_dossiers", "_relationship_line", "_note_alias"):
+        for m in ("_dossiers", "_relationship_line", "_note_alias",
+                  "_set_valence"):
             _bind(b, m)
         return b
+
+    def test_set_valence_persists(self):
+        b = self._npc({})
+        b._set_valence("#5", "fed up with their bullshit")
+        self.assertEqual(b.db.llm_dossiers["#5"]["valence"],
+                         "fed up with their bullshit")
+
+    def test_valence_surfaces_in_relationship_line(self):
+        b = self._npc({})
+        b._set_valence("#5", "wary")
+        # re-read what _set_valence wrote
+        b.db.llm_dossiers = b.db.llm_dossiers
+        line = b._relationship_line("#5", MagicMock())
+        self.assertIn("wary", line)
 
     def test_relationship_line_none_for_stranger(self):
         self.assertIsNone(self._npc({})._relationship_line("#5", MagicMock()))
@@ -135,6 +150,13 @@ class TestRememberTool(TestCase):
         b = self._npc()
         b._handle_action_tool("prepare_drink", "Negroni", MagicMock())
         b.execute_cmd.assert_not_called()       # drinks are the bartender's job
+
+    def test_feel_routes_to_set_valence(self):
+        b = self._npc()
+        b._memory_subject = lambda p: "#5"
+        b._set_valence = MagicMock()
+        b._handle_action_tool("feel", "wary", MagicMock())
+        b._set_valence.assert_called_once_with("#5", "wary")
 
 
 class TestRecall(TestCase):

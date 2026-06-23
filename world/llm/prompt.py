@@ -30,6 +30,12 @@ TOOLS = {
                          "dodger'). Private to you; from then on you know them by "
                          "it. Do it when someone's worth tagging, not every turn "
                          "(argument: the name)"},
+    "feel": {"kind": "action",
+             "desc": "update your private read on the person you're speaking to, "
+                     "based on what they've done and said (e.g. 'wary', 'fond', "
+                     "'fed up', 'amused', 'owes me one'). It colours how you treat "
+                     "them from now on — set it when their behaviour shifts how "
+                     "you feel, not every turn (argument: a short word/phrase)"},
     "check_stock": {"kind": "context",
                     "desc": "list exactly what the bar can serve right now "
                             "(argument: '')"},
@@ -39,10 +45,10 @@ TOOLS = {
                               "narrate pouring yourself (argument: the drink name)"},
 }
 
-#: Granted to every archetype on top of its job tools: ``look`` (grounding is
-#: never accidentally withheld) and ``remember`` (any NPC can privately name/
-#: nickname people — NPC_MEMORY_AND_IDENTITY_SPEC §4).
-BASE_TOOLS = ("look", "remember")
+#: Granted to every archetype on top of its job tools: ``look`` (grounding),
+#: ``remember`` (privately name/nickname people, §4) and ``feel`` (update the
+#: private affective read on a person, §3) — NPC_MEMORY_AND_IDENTITY_SPEC.
+BASE_TOOLS = ("look", "remember", "feel")
 
 #: Read-only tools that loop their result back (vs. action tools → real commands).
 #: Derived from the registry so adding a tool can't desync the game-side router.
