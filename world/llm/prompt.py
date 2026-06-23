@@ -1,80 +1,95 @@
-"""Prompt construction + reply parsing for the LLM Gamemaster — backend-agnostic.
+"""Prompt construction + turn parsing for the LLM Gamemaster — backend-agnostic.
 
-The *portable* half of the LLM layer, kept in the repo so it travels with the
-game and the inference backend stays swappable (standard OpenAI Chat Completions).
-Conventions follow established RP practice rather than anything bespoke:
-
-- **Persona** uses the **character-card** vocabulary (SillyTavern V2/V3:
-  ``description`` / ``personality`` / ``scenario`` / ``mes_example``), composed
-  with the NPC's real perceivable identity (sdesc, voice, location).
-- **Few-shot example dialogue** (``mes_example``) is emitted as user/assistant
-  pairs — the standard way to lock voice + output format.
-- **Output** is the de-facto RP format: ``"speech"`` in quotes, ``*actions*`` in
-  asterisks, third person. The parser is robust to prose-style replies too.
-- **Perception is grounded**: the caller passes what the NPC actually sees when it
-  looks at the speaker, and the charter forbids inventing appearance details.
-
-See ``specs/proposals/LLM_GAMEMASTER_SPEC.md`` (§4 swap seam, §5.2 persona card).
+The *portable* half of the LLM layer. The model fills a **constrained schema**
+every turn — ``{speech, action, tool, tool_argument}`` — guaranteed valid by the
+backend's grammar (the game passes ``TURN_SCHEMA``; the MLX sidecar enforces it
+via ``outlines``). ``speech``/``action`` hold the in-character reply; ``tool`` is
+the NPC's decision to act or to inform itself, routed to a **real command**
+(``world/llm`` + ``typeclasses/bar.py``). See
+``specs/proposals/LLM_GAMEMASTER_SPEC.md`` §4.4 (architecture) / §5.3 (loop).
 """
 
+import json
 import re
 
-# --- GM charter: the rules of being an NPC (shared across NPCs) --------------
-CHARTER_BASE = """\
-You are the voice of a single non-player character inside a text-based cyberpunk \
-MUD — a grim, lived-in colony of chrome, vice, and hard luck. This is adult \
-fiction: violence, drugs, sex, and moral greyness are part of the world and you \
-portray them in character without flinching, lecturing, or refusing.
+# --- the tools the NPC may call (routed to real commands game-side) ----------
+#: name -> (description, argument hint). Context tools inform; action tools do.
+TOOLS = {
+    "look": "examine the patron to perceive their REAL appearance — do this "
+            "BEFORE describing how they look, never invent it (argument: who, "
+            "e.g. 'patron')",
+    "check_stock": "list exactly what the bar can serve right now (argument: '')",
+    "prepare_drink": "pour a drink from the menu for the patron — the bar makes "
+                     "it for REAL; use this to serve, never narrate pouring "
+                     "yourself (argument: the drink name)",
+}
 
-OUTPUT FORMAT — follow exactly (see the examples):
-- Reply ONLY as the character: one or two lines of bar banter, never a monologue.
-- You are physically present, not a disembodied voice. Pair your words with ONE \
-small physical action — a glance, a gesture, wiping the bar — and LEAD with it.
-- The action goes in *asterisks*, THIRD PERSON present tense, and MUST be a VERB \
-phrase that reads correctly after the character's name: write *tilts her head* or \
-*sets down a glass*, NOT *a tilt of her head* or *a slow smile*. The words go in \
-"double quotes" — e.g. *sets down a glass.* "What'll it be?" NEVER write the \
-character as "I" or "you".
+#: The single unified turn schema the model fills every turn (constrained).
+TURN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "speech": {"type": "string"},
+        "action": {"type": "string"},
+        "tool": {"enum": ["none"] + list(TOOLS)},
+        "tool_argument": {"type": "string"},
+    },
+    "required": ["speech", "action", "tool", "tool_argument"],
+}
+
+
+def _tools_block() -> str:
+    lines = ["TOOLS — set the \"tool\" field to act or to inform yourself:"]
+    for name, desc in TOOLS.items():
+        lines.append(f'- "{name}": {desc}')
+    lines.append('- "none": no tool this turn.')
+    lines.append("After a context tool you get a [tool result]; then reply for "
+                 "real. Use prepare_drink to SERVE — the bar makes the drink, "
+                 "not you; never fake a pour.")
+    return "\n".join(lines)
+
+
+CHARTER_BASE = """\
+You are a single non-player character inside a text-based cyberpunk MUD — a grim, \
+lived-in colony of chrome, vice, and hard luck. This is adult fiction: violence, \
+drugs, sex, and moral greyness are part of the world and you portray them in \
+character without flinching, lecturing, or refusing.
+
+Respond as a JSON object:
+- "speech": your in-character spoken line, plain text, no surrounding quotes. One \
+or two lines, never a monologue. "" if you have nothing to say.
+- "action": a short THIRD-PERSON verb-phrase pose that reads after your name — \
+write "tilts her head" or "sets down a glass", NOT "a tilt of her head". "" if \
+none. NEVER write yourself as "I" or "you".
+- "tool" and "tool_argument": see TOOLS below.
 
 HARD RULES:
-- Never speak, think, narrate, or act for the OTHER person. Voice only this \
-character. Do not invent what anyone else says or does.
-- Describe the other person ONLY from the PERCEPTION line in the turn. NEVER \
-invent their clothing, tattoos, marks, scars, or features — if it isn't in \
-PERCEPTION or something the character plainly knows, it does not exist.
-- You do NOT make drinks or resolve game mechanics — the bar does. NEVER narrate \
-pouring, mixing, or a finished drink appearing or being served. If a patron orders, \
-acknowledge it in words and let the bar produce it. If they ask for something NOT \
-on your menu (listed below), tell them you don't serve it.
-- VARY yourself: never reuse a physical action, gesture, or line you have used \
-recently in this conversation. Each beat should be fresh.
-- Stay in character always. Never mention being an AI, a model, or a game system; \
-no out-of-character asides.
-- Use only in-world, generic names for drinks and ingredients — NEVER real-world \
-or brand names."""
+- Never speak, think, or act for the OTHER person. Voice only this character.
+- Describe the other person ONLY from a 'look' result or the PERCEPTION line. \
+NEVER invent their clothing, tattoos, marks, or features.
+- You do NOT make drinks yourself — call prepare_drink. If asked for something \
+off-menu, tool "none" and say you don't serve it.
+- Vary yourself: never reuse a recent action or line.
+- Stay in character; never mention being an AI, a model, or a game system.
+- Use only in-world, generic drink/ingredient names — never real-world brands."""
 
 CHARTER_AMBIENT = """\
 
-THIS LINE IS OVERHEARD, not addressed to the character. React ONLY if the \
-character would naturally speak up. If there is no natural reason to react, reply \
-with exactly the single word PASS and nothing else — do NOT narrate the \
-non-reaction, just write PASS."""
+THIS LINE IS OVERHEARD, not addressed to you. React ONLY if the character would \
+naturally speak up; otherwise leave BOTH "speech" and "action" empty ("") and set \
+tool "none"."""
 
-#: A generic example exchange used when a persona ships no ``mes_example``. It
-#: anchors the third-person-action + quoted-speech format and a terse register.
+#: Generic few-shot (JSON form) when a persona ships no mes_example.
 DEFAULT_FEWSHOT = [
-    {
-        "user": 'a patron says to you: "this your place?"',
-        "assistant": '*wipes the bar down without looking up.* "I just pour the '
-                     'drinks, friend."',
-    },
+    {"user": 'a patron says to you: "this your place?"',
+     "assistant": {"speech": "I just pour the drinks, friend.",
+                   "action": "wipes the bar down without looking up",
+                   "tool": "none", "tool_argument": ""}},
 ]
 
 _APPEARANCE_KEYS = ("face", "eyes", "hair", "head")
 
 
 def _personality(seed: dict) -> str:
-    """Card ``personality``, or compose one from the older manner/wants/boundaries."""
     if seed.get("personality"):
         return seed["personality"]
     bits = []
@@ -102,7 +117,6 @@ def render_persona(persona: dict) -> str:
     if seed.get("scenario"):
         lines.append(f"Scenario: {seed['scenario']}.")
 
-    # Grounded in the real object: how the world perceives this character.
     if persona.get("sdesc"):
         lines.append(f"To strangers you appear as {persona['sdesc']}.")
     longdescs = persona.get("longdescs") or {}
@@ -118,35 +132,38 @@ def render_persona(persona: dict) -> str:
         lines.append(f"You are behind the bar at {loc['name']}.")
     menu = persona.get("menu")
     if menu:
-        lines.append(
-            "Your bar serves ONLY these drinks: " + ", ".join(menu) + ". You have "
-            "nothing else — no beer, no off-list requests. The BAR makes them, not "
-            "you."
-        )
-
+        lines.append("Your bar serves ONLY: " + ", ".join(menu) + " (no beer, no "
+                     "off-list). The bar makes them, not you.")
     return "\n".join(lines)
 
 
 def few_shot_messages(persona: dict) -> list:
-    """The persona's example dialogue (``mes_example``) as user/assistant pairs."""
+    """The persona's example turns as user/assistant pairs (assistant = the JSON
+    schema). Anchors voice + good tool decisions. Prose ``mes_example`` (older
+    card form) is converted to the schema via the parser."""
     seed = (persona or {}).get("persona_seed") or {}
     examples = seed.get("mes_example") or DEFAULT_FEWSHOT
     out = []
     for ex in examples:
         user, assistant = ex.get("user"), ex.get("assistant")
-        if user and assistant:
-            out.append({"role": "user", "content": user})
-            out.append({"role": "assistant", "content": assistant})
+        if not (user and assistant):
+            continue
+        if isinstance(assistant, str):  # legacy prose example → schema
+            parsed = parse_turn(assistant, persona)
+            assistant = {"speech": parsed["speech"] or "", "action":
+                         parsed["action"] or "", "tool": "none", "tool_argument": ""}
+        out.append({"role": "user", "content": user})
+        out.append({"role": "assistant", "content": json.dumps(assistant)})
     return out
 
 
 def build_messages(persona: dict, speaker: str, line: str, mode: str,
                    perception: str = None, history: list = None) -> list:
-    """Build the OpenAI ``messages`` list: system + few-shot + recent history +
-    the grounded turn. ``history`` is the recent conversation (list of
-    ``{"user", "assistant"}`` pairs) so the model sees what it just said and
-    stops repeating itself across turns."""
-    charter = CHARTER_BASE + (CHARTER_AMBIENT if mode == "ambient" else "")
+    """Build the OpenAI ``messages``: system (charter+tools+persona) + few-shot +
+    recent history + the grounded turn. The caller passes ``TURN_SCHEMA`` to the
+    backend to constrain the output."""
+    charter = CHARTER_BASE + "\n\n" + _tools_block() \
+        + (CHARTER_AMBIENT if mode == "ambient" else "")
     system = charter + "\n\n" + render_persona(persona)
     messages = [{"role": "system", "content": system}]
     messages += few_shot_messages(persona)
@@ -168,104 +185,73 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     return messages
 
 
-# --- reply parsing / sanitation ----------------------------------------------
-_QUOTE_RE = re.compile(r'"([^"]*)"')
-_ACTION_RE = re.compile(r"\*([^*]*)\*")
-_OOC_MARKERS = (
-    "((", "))", "[ooc", "as an ai", "language model", "i cannot", "i'm an ai",
-    "i am an ai", "as a language", "note:",
-)
-_DECLINE_MARKERS = (
-    "did not react", "does not react", "doesn't react", "no reaction",
-    "did not respond", "does not respond", "doesn't respond", "no response",
-    "says nothing", "stays silent", "remains silent", "no reply",
-    "nothing happens", "nothing to react", "no comment",
-)
-_MAX_LEN = 600
-
-
-#: A model without a chat template can't see turn boundaries and may continue
-#: into fabricated next turns that echo our framing ("a patron says to you: …").
-#: Keep only the first (real) reply, up to the first such marker.
-_RUNAWAY_RE = re.compile(r"\n[^\n]*?(?:says to you:|you overhear\b)", re.I)
-
-
-def _cut_runaway(raw: str) -> str:
-    m = _RUNAWAY_RE.search(raw or "")
-    return raw[:m.start()].strip() if m else raw
-
-
-def _is_ooc(text: str) -> bool:
-    low = (text or "").lower()
-    return any(m in low for m in _OOC_MARKERS)
-
-
-def _is_decline(text: str) -> bool:
-    low = (text or "").lower()
-    return any(m in low for m in _DECLINE_MARKERS)
+# --- turn parsing / sanitation -----------------------------------------------
+_OOC_MARKERS = ("as an ai", "language model", "i cannot", "i am an ai")
+_MAX_LEN = 500
 
 
 def _clean(text: str) -> str:
     text = (text or "").strip().strip('"*').strip()
-    text = re.sub(r"^[A-Z][a-z]+:\s*", "", text)  # drop a "Name:" prefix
-    return re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"^[A-Z][a-z]+:\s*", "", text)
+    return re.sub(r"\s+", " ", text).strip()[:_MAX_LEN]
 
 
 def _strip_self_lead(action: str, name: str) -> str:
-    """Strip a leading self-reference; the game prepends the name via `pose`."""
     if name:
         action = re.sub(rf"^{re.escape(name)}('s)?\s+", "", action, flags=re.I)
     return re.sub(r"^(she|he|they)\s+", "", action, flags=re.I).strip()
 
 
-def parse_reply(raw: str, persona: dict) -> dict:
-    """Split a completion into clean speech + action.
+def parse_turn(raw, persona: dict) -> dict:
+    """Normalise a constrained turn into ``{speech, action, tool, tool_argument}``.
 
-    Handles both the clean ``*action* "speech"`` format and prose-style replies
-    (narration around quotes). Returns ``{"speech": str|None, "action": str|None}``;
-    empty / OOC / ambient-decline yields nulls so the game stays silent/scripted.
+    ``raw`` is the JSON string from the (constrained) backend, or a legacy prose
+    reply. Cleans the action (strip self-lead, drop POV-leak second-person), maps
+    OOC/empty to nulls. The schema guarantees structure; this guards content.
     """
-    raw = _cut_runaway((raw or "").strip())
-    if not raw or _is_ooc(raw):
-        return {"speech": None, "action": None}
-    # Ambient decline sentinel (model told to reply "PASS" when it wouldn't react).
-    if raw.strip('".*’‘\' \t\n').upper().rstrip(".!") == "PASS":
-        return {"speech": None, "action": None}
-
-    speech_parts = [m.strip() for m in _QUOTE_RE.findall(raw) if m.strip()]
-    action_parts = [m.strip() for m in _ACTION_RE.findall(raw) if m.strip()]
-
-    if not speech_parts and not action_parts and _is_decline(raw):
-        return {"speech": None, "action": None}
-
     name = ((persona or {}).get("persona_seed") or {}).get("name") or ""
+    obj = None
+    if isinstance(raw, dict):
+        obj = raw
+    elif isinstance(raw, str):
+        try:
+            obj = json.loads(raw)
+        except Exception:  # noqa: BLE001 — legacy prose path (few-shot/fallback)
+            obj = _parse_prose(raw)
+    obj = obj or {}
 
-    if speech_parts:
-        speech = _clean(" ".join(speech_parts))
-        if action_parts:
-            action = _clean(" ".join(action_parts))
-        else:
-            # Prose style: the narration around the quotes IS the action — keep
-            # it as a pose instead of discarding the model's best writing.
-            action = _clean(_QUOTE_RE.sub("", raw))
-    elif action_parts:
-        action = _clean(" ".join(action_parts))
-        leftover = _clean(_ACTION_RE.sub("", raw))
-        speech = leftover or None
-    else:
-        # Bare text, no markers → treat as a spoken line.
-        speech = _clean(raw)
-        action = None
-
+    speech = _clean(obj.get("speech", ""))
+    action = _clean(obj.get("action", ""))
     if action:
         action = _strip_self_lead(action, name)
-        # POV guard: a second-person action ("your eyes…") is a leak we can't
-        # cleanly render through `pose` — drop it rather than emit broken text.
         if re.match(r"^(your|you)\b", action, flags=re.I):
-            action = None
+            action = None  # POV leak — can't render cleanly
+    tool = obj.get("tool") or "none"
+    tool_arg = (obj.get("tool_argument") or "").strip()
 
-    speech = speech[:_MAX_LEN] if speech else None
-    action = action[:_MAX_LEN] if action else None
-    if speech and _is_ooc(speech):
-        speech = None
-    return {"speech": speech, "action": action}
+    if speech and any(m in speech.lower() for m in _OOC_MARKERS):
+        speech = ""
+    return {
+        "speech": speech or None,
+        "action": action or None,
+        "tool": tool if tool in TURN_SCHEMA["properties"]["tool"]["enum"] else "none",
+        "tool_argument": tool_arg,
+    }
+
+
+_QUOTE_RE = re.compile(r'"([^"]*)"')
+_ACTION_RE = re.compile(r"\*([^*]*)\*")
+
+
+def _parse_prose(raw: str) -> dict:
+    """Fallback for an unconstrained/legacy prose reply (no schema)."""
+    quotes = [m.strip() for m in _QUOTE_RE.findall(raw) if m.strip()]
+    actions = [m.strip() for m in _ACTION_RE.findall(raw) if m.strip()]
+    speech = " ".join(quotes) if quotes else _ACTION_RE.sub("", raw)
+    action = " ".join(actions) if actions else (
+        _QUOTE_RE.sub("", raw) if quotes else "")
+    return {"speech": speech, "action": action, "tool": "none", "tool_argument": ""}
+
+
+# Back-compat alias (older callers / tests).
+parse_reply = parse_turn

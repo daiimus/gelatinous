@@ -624,45 +624,33 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
 
     # --- _try_llm_reply gating + payload ---
 
-    def test_try_llm_reply_fires_request(self):
+    def test_try_llm_reply_starts_agentic_round(self):
         b, patron = self._bartender(), self._speaker(name="a wiry courier")
         with patch.object(barmod, "llm_enabled", return_value=True), \
-                patch.object(barmod, "build_persona", return_value={"x": 1}) as bp, \
-                patch.object(barmod, "request_npc_reply") as req:
+                patch.object(barmod, "build_persona", return_value={"x": 1}), \
+                patch.object(barmod, "build_messages", return_value=["m"]) as bm:
             taken = b._try_llm_reply("rough night?", patron, "directed")
         self.assertTrue(taken)
-        bp.assert_called_once_with(b)
-        req.assert_called_once()
-        args, kwargs = req.call_args
-        self.assertEqual(args[0], {"x": 1})            # persona
-        self.assertEqual(args[1], "a wiry courier")    # speaker as she sees them
-        self.assertEqual(args[2], "rough night?")      # line
-        self.assertEqual(args[3], "directed")          # mode
-        # on_reply now wraps render + memory append (a partial); perception and
-        # history are threaded through
-        from functools import partial as _partial
-        self.assertIsInstance(kwargs["on_reply"], _partial)
-        self.assertIs(kwargs["on_reply"].func, b._render_and_remember)
-        self.assertIs(kwargs["on_fail"], b._llm_silent)
-        self.assertIn("perception", kwargs)
-        self.assertIn("history", kwargs)
+        bm.assert_called_once()
+        b._agentic_round.assert_called_once()      # the loop is kicked off
+        args = b._agentic_round.call_args.args
+        self.assertEqual(args[0], ["m"])           # messages
+        self.assertEqual(args[3], "rough night?")  # line
 
     def test_try_llm_reply_gated_off(self):
         b, patron = self._bartender(llm_driven=False), self._speaker()
-        with patch.object(barmod, "request_npc_reply") as req:
-            taken = b._try_llm_reply("hi", patron, "directed")
+        taken = b._try_llm_reply("hi", patron, "directed")
         self.assertFalse(taken)
-        req.assert_not_called()
+        b._agentic_round.assert_not_called()
 
     def test_try_llm_reply_cooldown_is_silent(self):
         from time import monotonic
         b, patron = self._bartender(), self._speaker()
         b.ndb.last_llm = monotonic()  # just replied
-        with patch.object(barmod, "llm_enabled", return_value=True), \
-                patch.object(barmod, "request_npc_reply") as req:
+        with patch.object(barmod, "llm_enabled", return_value=True):
             taken = b._try_llm_reply("hi", patron, "directed")
         self.assertTrue(taken)         # handled-by-silence, no scripted fallback
-        req.assert_not_called()
+        b._agentic_round.assert_not_called()
 
     # --- order-path fallback, render, fail-safe ---
 
@@ -701,7 +689,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     def _bind_memory(self, b):
         b._hist_key = barmod.Bartender._hist_key            # staticmethods
         b._reconstruct_reply = barmod.Bartender._reconstruct_reply
-        for name in ("_recent_history", "_render_and_remember", "_render_llm_reply"):
+        for name in ("_recent_history", "_remember_turn"):
             setattr(b, name,
                     getattr(barmod.Bartender, name).__get__(b, barmod.Bartender))
 
@@ -711,7 +699,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         patron = self._speaker(); patron.id = 42
         b.ndb.llm_history = {}
         self.assertEqual(b._recent_history(patron), [])
-        b._render_and_remember(patron, "hey", "a man", "evening", "wipes the bar")
+        b._remember_turn(patron, "hey", "a man", "evening", "wipes the bar")
         hist = b._recent_history(patron)
         self.assertEqual(len(hist), 1)
         self.assertIn("hey", hist[0]["user"])
@@ -723,7 +711,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         patron = self._speaker(); patron.id = 7
         b.ndb.llm_history = {}
         for i in range(barmod.LLM_HISTORY_TURNS + 4):
-            b._render_and_remember(patron, f"l{i}", "a man", f"r{i}", "nods")
+            b._remember_turn(patron, f"l{i}", "a man", f"r{i}", "nods")
         self.assertEqual(len(b._recent_history(patron)), barmod.LLM_HISTORY_TURNS)
 
     def test_memory_is_per_interlocutor(self):
@@ -732,9 +720,61 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b.ndb.llm_history = {}
         p1 = self._speaker(); p1.id = 1
         p2 = self._speaker(); p2.id = 2
-        b._render_and_remember(p1, "to one", "a man", "hi one", "nods")
+        b._remember_turn(p1, "to one", "a man", "hi one", "nods")
         self.assertEqual(len(b._recent_history(p1)), 1)
         self.assertEqual(b._recent_history(p2), [])  # separate conversation
+
+    # --- the agentic tool loop ---
+
+    def _bind_loop(self, b):
+        b._hist_key = barmod.Bartender._hist_key
+        b._reconstruct_reply = barmod.Bartender._reconstruct_reply
+        for name in ("_on_turn", "_run_context_tool", "_render_llm_reply",
+                     "_remember_turn", "_recent_history"):
+            setattr(b, name,
+                    getattr(barmod.Bartender, name).__get__(b, barmod.Bartender))
+        b.ndb.llm_history = {}
+
+    def test_on_turn_context_tool_loops(self):
+        b = self._bartender(); self._bind_loop(b)
+        patron = self._speaker(); patron.id = 5
+        b._run_context_tool = lambda tool, arg, p: "a stocky droog"
+        turn = {"speech": None, "action": None, "tool": "look",
+                "tool_argument": "patron"}
+        with patch.object(barmod, "parse_turn", return_value=turn):
+            b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, "{}")
+        b._agentic_round.assert_called_once()           # looped to gather context
+        b.execute_cmd.assert_not_called()               # no terminal render yet
+
+    def test_on_turn_action_tool_runs_real_command(self):
+        b = self._bartender(); self._bind_loop(b)
+        patron = self._speaker(); patron.id = 6
+        turn = {"speech": "Coming up", "action": "grabs a glass",
+                "tool": "prepare_drink", "tool_argument": "Negroni"}
+        with patch.object(barmod, "parse_turn", return_value=turn):
+            b._on_turn(["m"], {}, patron, "a negroni", "a man", lambda: None, 0, "{}")
+        b.execute_cmd.assert_any_call("prepare Negroni")  # the REAL command
+        b._agentic_round.assert_not_called()              # terminal, no loop
+
+    def test_on_turn_terminal_renders(self):
+        b = self._bartender(); self._bind_loop(b)
+        patron = self._speaker(); patron.id = 8
+        turn = {"speech": "hey", "action": "nods", "tool": "none",
+                "tool_argument": ""}
+        with patch.object(barmod, "parse_turn", return_value=turn):
+            b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, "{}")
+        b.execute_cmd.assert_any_call('pose nods. "hey"')
+
+    def test_run_context_tool_look_and_stock(self):
+        b = self._bartender()
+        b._run_context_tool = barmod.Bartender._run_context_tool.__get__(
+            b, barmod.Bartender)
+        b._perceive = lambda patron: "a wiry courier, scarred jaw"
+        patron = self._speaker()
+        self.assertIn("wiry courier", b._run_context_tool("look", "patron", patron))
+        b._find_bar = lambda: None
+        b.db.menu = [{"name": "Negroni"}, {"name": "Martini"}]
+        self.assertIn("Negroni", b._run_context_tool("check_stock", "", patron))
 
     def test_mentions_self(self):
         b = self._bartender()
