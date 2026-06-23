@@ -543,17 +543,22 @@ class Bartender(Character):
             return None
 
     def _render_llm_reply(self, speech, action):
-        """Reactor-side render of the sidecar reply: say + pose."""
+        """Render the sidecar reply as ONE fluid emote — the MUD-native way to act
+        and speak in a single beat. The embedded quote rides the hearing-gated
+        speech rails (``tokenize_emote`` → ``SpeechToken``) and character refs in
+        the action resolve per-observer. Falls back to a bare pose or say."""
         if not self.location:
             return
-        if speech:
-            clean = speech.strip().strip('"').strip()
-            if clean:
-                self.execute_cmd(f"say {clean}")
-        if action:
-            clean = action.strip()
-            if clean:
-                self.execute_cmd(f"pose {clean}")
+        speech = speech.strip().strip('"').strip() if speech else None
+        action = action.strip() if action else None
+        if action and speech:
+            if action[-1] not in ".!?…,":
+                action += "."
+            self.execute_cmd(f'pose {action} "{speech}"')
+        elif action:
+            self.execute_cmd(f"pose {action}")
+        elif speech:
+            self.execute_cmd(f"say {speech}")
 
     def _llm_fallback(self):
         """Sidecar failed on an addressed non-order: the curt scripted line."""
