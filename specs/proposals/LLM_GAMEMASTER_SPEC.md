@@ -295,13 +295,21 @@ same loop run the 8B on production and the 24B on the bench, and lets you chase
 better tunes as they ship without touching the game.
 
 **Far end of the swap seam — a custom fine-tune.** The eventual goal is a
-*Gelatinous-tuned* model. The pipeline keeps the mini a pure **inference** box:
-fine-tune **off-box** (QLoRA via Unsloth or equivalent on a CUDA GPU — Apple
-Silicon can't train it; no Metal training backend), merge the adapter, **convert
-to MLX** (`mlx_lm.convert`, 4-bit), and drop the result on the NAS. From the
-game's perspective a house-tuned model is *just another checkpoint behind the
-Model adapter* — no code change. Training lives elsewhere; serving stays MLX.
-(Out of scope for the build; recorded so the seam isn't designed against it.)
+*Gelatinous-tuned* model. This means **fine-tuning** (LoRA/QLoRA on an existing
+base), not pretraining from scratch (a cluster-scale job, off the table on any
+single box). Two viable paths, both ending in MLX:
+- **Off-box (recommended for the production tune)** — QLoRA via Unsloth on a
+  rented CUDA GPU; far faster iteration. Unsloth's kernels are **CUDA-only**, so
+  this doesn't run on Apple Silicon.
+- **On-box (viable for experiments)** — **MLX *can* LoRA-fine-tune on Apple
+  Silicon** (`mlx_lm.lora`); no CUDA needed. But it's slower and memory-heavy, and
+  the **production 24 GB mini has no headroom to train while serving** — better
+  suited to the 64 GB bench for tinkering.
+
+Either way: merge the adapter, **convert to MLX** (`mlx_lm.convert`, 4-bit), drop
+the result on the NAS, and it's *just another checkpoint behind the Model adapter*
+— no code change. Serving always stays MLX on the mini. (Out of scope for the
+build; recorded so the seam isn't designed against it.)
 
 > ⚠️ **Do not hard-code the pick.** Bind the model behind the §9 *Model
 > adapter*. The named families above are a *starting shortlist*, not a decision;
