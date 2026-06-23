@@ -449,10 +449,12 @@ class Bartender(LLMNpcMixin, Character):
         return super()._run_context_tool(tool, arg, patron)
 
     def _handle_action_tool(self, tool, arg, patron):
-        """Route the ``prepare_drink`` action tool to the real ``prepare``
-        command — the bar makes the drink for real (never a faked pour)."""
+        """Route ``prepare_drink`` to the real ``prepare`` command (the bar makes
+        the drink for real); delegate the rest (e.g. ``remember``) to the mixin."""
         if tool == "prepare_drink" and arg and self.location:
             self.execute_cmd(f"prepare {arg}")
+            return
+        LLMNpcMixin._handle_action_tool(self, tool, arg, patron)
 
     def _llm_fallback(self):
         """Sidecar failed on an addressed non-order: the curt scripted line."""
