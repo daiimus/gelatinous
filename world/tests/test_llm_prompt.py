@@ -78,6 +78,17 @@ class TestBuildMessages(TestCase):
         msgs = build_messages(_PERSONA, "a man", "hi", "directed")
         self.assertNotIn("MEMORY", msgs[-1]["content"])
 
+    def test_relationship_injected_as_who_block(self):
+        msgs = build_messages(_PERSONA, "a man", "hi", "directed",
+                              relationship="you know them as 'the foot guy'.")
+        turn = msgs[-1]["content"]
+        self.assertIn("WHO", turn)
+        self.assertIn("the foot guy", turn)
+
+    def test_no_relationship_no_who_block(self):
+        msgs = build_messages(_PERSONA, "a man", "hi", "directed")
+        self.assertNotIn("WHO", msgs[-1]["content"])
+
 
 class TestArchetype(TestCase):
     def test_empty_persona_defaults_to_bartender(self):

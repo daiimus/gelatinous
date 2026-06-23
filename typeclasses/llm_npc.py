@@ -133,11 +133,13 @@ class LLMNpcMixin:
         perception = self._perceive(patron)
         history = self._recent_history(patron)
         subject = self._memory_subject(patron)
+        relationship = self._relationship_line(subject, patron)
         on_fail = on_fail or self._llm_silent
 
         def _go(memories):
             messages = build_messages(persona, speaker_name, line or "", mode,
-                                      perception, history, memories=memories)
+                                      perception, history, memories=memories,
+                                      relationship=relationship)
             self._agentic_round(messages, persona, patron, line or "",
                                 speaker_name, on_fail, rounds=0)
 
@@ -176,6 +178,42 @@ class LLMNpcMixin:
     def _load_memories(self):
         """This NPC's stored memory records as plain dicts (deserialized)."""
         return deserialize(self.db.llm_memories) or []
+
+    # --- per-identity dossier: aliases + affective read (§8.3) ------------
+
+    def _dossiers(self):
+        """Per-identity dossiers (apparent_uid -> {aliases, valence}). Plain,
+        deserialized, GM-readable (NPC_MEMORY_AND_IDENTITY_SPEC §2/§3)."""
+        return deserialize(self.db.llm_dossiers) or {}
+
+    def _relationship_line(self, subject, patron):
+        """A one-line WHO summary for the prompt — the names this NPC knows the
+        person by + its read on them. ``None`` for a clean stranger."""
+        d = self._dossiers().get(subject) or {}
+        aliases = [a for a in (d.get("aliases") or []) if a]
+        valence = d.get("valence") or "neutral"
+        if not aliases and valence == "neutral":
+            return None
+        parts = []
+        if len(aliases) == 1:
+            parts.append(f"you know them as '{aliases[0]}'")
+        elif aliases:
+            parts.append("you've known them as "
+                         + ", ".join(f"'{a}'" for a in aliases))
+        if valence != "neutral":
+            parts.append(f"your read on them: {valence}")
+        return ("; ".join(parts) + ".") if parts else None
+
+    def _note_alias(self, subject, name):
+        """Record a name in this person's alias history (capped, deduped)."""
+        d = self._dossiers()
+        entry = dict(d.get(subject) or {"aliases": [], "valence": "neutral"})
+        aliases = [a for a in (entry.get("aliases") or []) if a]
+        if name not in aliases:
+            aliases.append(name)
+        entry["aliases"] = aliases[-8:]
+        d[subject] = entry
+        self.db.llm_dossiers = d
 
     def _store_memory(self, patron, speaker_name, line, speech):
         """Remember this exchange: embed it off-reactor, then write a record
@@ -293,6 +331,7 @@ class LLMNpcMixin:
                 return  # already known by this name
             target = patron.get_display_name(self)
             self.execute_cmd(f"remember {target} as {name}")
+            self._note_alias(self._memory_subject(patron), name)
         except Exception:  # noqa: BLE001 — naming is best-effort
             pass
 
