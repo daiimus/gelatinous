@@ -87,6 +87,13 @@ voice/TTS, and any authority over **player** characters (which is a hard line �
 7. **Fail safe, fail quiet.** Every failure mode — model down, timeout, malformed
    output, validation reject — degrades to the *current* scripted behaviour or to
    silence, never to a crash or a broken-character leak.
+8. **Two intelligences, one NPC.** The LLM owns *creative and narrative*
+   decisions (dialogue, wants, who to trust, the decision *to* act); a classical
+   NPC AI owns *tactical resolution* (combat targeting, when to actually flee,
+   pathing, self-preservation). The LLM emits a *narrative intent*; a
+   deterministic resolver and the existing game systems carry it out. **Don't make
+   the language model grind combat turns** — it's slower, costlier, and worse at
+   it than a utility function (§2.2).
 
 ---
 
@@ -145,6 +152,35 @@ Every NPC turn is the same six-stage loop. Each stage is a contract (§9):
 The rest of this spec is these six stages plus the cross-cutting concerns
 (runtime, model, memory, governance, concurrency).
 
+### 2.2 · Division of labour: the creative LLM and the tactical AI
+
+The LLM is **not** the only intelligence driving an NPC, and deliberately so. Two
+kinds of decision live in a character, and they want different machinery:
+
+- **Creative / social / narrative — the LLM.** What the NPC *says*, how it feels,
+  who it trusts, what it *wants*, and the **decision to** pursue a beat ("this
+  one's had enough — throw them out," "I don't like the look of that, I'm
+  leaving"). Open-ended, characterful, slow, expensive.
+- **Tactical / mechanical — a classical NPC AI.** The moment-to-moment
+  *resolution*: in a fight, who to target this round, *when* to actually `flee`,
+  pathing, retaliation, self-preservation reflexes. Closed-form, fast,
+  deterministic, cheap — far better served by a behaviour tree / utility function
+  than by a language model deciding combat turns on the fly.
+
+The seam between them is the **intent**. The LLM emits a *narrative intent* — "I
+want to fight that man," "I'm getting out of here," "serve her, on the house" —
+and hands it off. For **social** intents the resolver is trivial (speak / emote /
+move). For **mechanical** intents (a `kill`, a `flee`, an economic exchange) the
+resolver is the **classical AI plus the existing game systems**: the LLM decides
+*that* a fight starts and *why*; the combat AI and the combat engine decide *how
+it goes*, turn by turn. The model never sits in the combat loop.
+
+v1 is **social-only** (§0.1), so the tactical-AI half is mostly latent — but the
+architecture **reserves the seam now**: the Action adapter (§9) is specified to
+route *mechanical* intents to a tactical resolver, not straight to `execute_cmd`.
+Adding combat/economy later is then *wiring a resolver behind an existing seam*,
+not a redesign. This is the concrete shape of Principle 8.
+
 ---
 
 ## 3 · Runtime — MLX sidecar on Apple Silicon
@@ -166,6 +202,15 @@ they achieve them:
 - **Warm model, cold requests.** Load the weights **once** at sidecar start and
   keep them resident; pay the load cost (seconds to tens of seconds) at boot, not
   per turn. Requests are stateless against a warm model.
+- **Account for co-tenancy.** The target production Mac mini (24 GB unified) is a
+  **shared box** — it also runs the full Docker stack (Gelatinous and the rest),
+  Plex, a torrent client, and more. The GM's *effective* memory and GPU slice is
+  therefore **well under** the nominal 24 GB, and it competes for the Metal GPU
+  with anything else that touches it. Size the model for the *slice*, not the
+  spec sheet (§4.2), and keep generation bounded so a turn doesn't starve the
+  other tenants (or get starved). A separate **64 GB mini** serves as a test bench
+  for performance deltas and for trialling larger models before they'd ever land
+  on the shared box.
 - **Bounded generation.** Cap `max_tokens` hard (NPC turns are short — a line of
   dialogue and a couple of intents, not an essay). Stream if the transport
   supports it so the actuator can begin as the first intent resolves.
@@ -209,20 +254,29 @@ The rubric outlives any model. **Re-run it whenever a candidate is swapped.**
 ### 4.2 · Shortlist & recommendation (as of early 2026 — swappable)
 
 Sweet spot for a Mac mini is **12B–24B at 4-bit** (quality without blowing the
-latency budget or memory). Candidates, all available as `mlx-community` quants:
+latency budget or memory). **Map the tier to the box** (§3 co-tenancy):
 
-- **Primary recommendation — a Mistral-Small-24B creative/RP fine-tune**
-  (e.g. TheDrummer's *Cydonia* line or the *Magnum v4* 22B–27B series). These
-  are explicitly tuned for uncensored roleplay/storytelling prose and follow
-  structure adequately. At 4-bit they fit comfortably with room for context and
-  the embedding model alongside.
-- **Low-latency / smaller-RAM fallback — a 12B Nemo-class tune** (e.g.
-  *Rocinante 12B* or *Magnum v4 12B*, Mistral-Nemo base). Noticeably faster and
-  lighter; slightly less coherent over long context. Good for a 16 GB mini or
-  when turn latency matters more than prose ceiling.
-- **General uncensored baseline** — a *Dolphin*-tuned base, if RP tunes
+- **Production model (shared 24 GB mini) — a 12B Nemo-class tune** (e.g.
+  *Rocinante 12B* or *Magnum v4 12B*, Mistral-Nemo base). Light, fast, and small
+  enough to coexist with the Docker stack + Plex + the rest on the shared box
+  without starving them. This is the realistic *production* pick precisely
+  *because* the 24 GB is not the GM's to spend. Slightly less coherent over long
+  context than the bigger tier — acceptable for short, in-character turns.
+- **Quality / test-bench tier (64 GB mini, or a future dedicated box) — a
+  Mistral-Small-24B creative/RP fine-tune** (e.g. TheDrummer's *Cydonia* line or
+  the *Magnum v4* 22B–27B series). Explicitly tuned for uncensored roleplay/
+  storytelling prose; better persona adherence and subtext. Use the 64 GB bench
+  to measure the prose/latency **delta** over the 12B and decide whether it
+  justifies a dedicated production box.
+- **General uncensored baseline** — a *Dolphin*-tuned base, if the RP tunes
   underperform on instruction-following in your tests; tuned more for compliance
   than prose, so expect flatter dialogue.
+
+**Plug-and-play is a hard requirement, not a nicety** (the user's call): models
+must be swappable *at will* with no code change — a config pointer to a different
+`mlx-community` checkpoint behind the §9 Model adapter. This is what lets the
+same loop run the 12B on production and the 24B on the bench, and lets you chase
+better tunes as they ship without touching the game.
 
 > ⚠️ **Do not hard-code the pick.** Bind the model behind the §9 *Model
 > adapter*. The named families above are a *starting shortlist*, not a decision;
@@ -266,9 +320,10 @@ voice), never the raw object.
 The prompt is composed, in priority order, to fit the context budget:
 
 1. **GM charter** (shared system prompt — the rules of being a gamemaster).
-2. **Persona card** — the NPC's durable identity: who they are, voice, manner,
-   wants, boundaries, relationships, current goals. Authored once, stored with
-   the NPC. This is the *mask*.
+2. **Persona card** — a **structured, versioned** record of the NPC's durable
+   identity: who they are, voice, manner, wants, boundaries, relationships,
+   current goals. Authored per-NPC and stored with it (decided form, §11.5). This
+   is the *mask*.
 3. **Retrieved memory** — top-k from the NPC's RAG namespace (§6), semantically
    retrieved against the current situation: prior encounters with this actor,
    relevant facts, standing grudges/debts. This is what makes the NPC *continuous*.
@@ -316,7 +371,10 @@ In order:
 2. **Capability gate** — can this NPC *actually* do this now? Drunk, wounded,
    restrained, disarmed — the **command layer already enforces this** (Principle
    2), so a rejected command simply fails as it would for a player. The arbiter's
-   job is to not *narrate* success the world didn't grant.
+   job is to not *narrate* success the world didn't grant. **Mechanical intents
+   are also delegated here** (Principle 8, §2.2): a `kill`/`flee`/trade intent is
+   handed to the **tactical resolver**, which decides the moment-to-moment
+   execution — the LLM's intent is the *trigger*, not the turn-by-turn play.
 3. **Consent / authority gate** — **the hard interlock.** Any action that targets
    another *able-to-resist* character routes through the **Trust/Consent** gate
    (`TRUST_AND_CONSENT_SPEC.md`): an NPC may not perform third-party actions on an
@@ -480,8 +538,10 @@ contract, described by responsibility, not signature:
 3. **Model adapter** — *prompt → intents.* Owns the runtime (MLX), the model,
    generation settings, and structured-output parsing. **The swap seam for §4.**
 4. **Action adapter** — *approved intent → world effect.* Translates intents into
-   real commands/speech via the host's player-input path. (Gelatinous:
-   `execute_cmd` + the speech backbone — Appendix A.)
+   real commands/speech via the host's player-input path; **routes *mechanical*
+   intents to the tactical resolver** rather than executing them directly
+   (Principle 8 / §2.2). (Gelatinous: `execute_cmd` + the speech backbone —
+   Appendix A.)
 5. **Safety/governance adapter** — *proposed intents → approved intents.* Owns
    affordance checks, the capability and **consent** gates, de-confliction, rate
    limits, the OOC guard, audit logging, and the kill switch (§5.4, §7).
@@ -507,8 +567,9 @@ MLX, ChromaDB, or Evennia.
   remembers a prior encounter across sessions.*
 - **Phase 3 — bounded actions.** Add the Action affordance list + the full
   arbiter (§5.4) including the capability and **consent** gates. A small,
-  allow-listed verb surface. *Deliverable: the NPC takes a real, governed action
-  through a command.*
+  allow-listed verb surface. **Mechanical verbs route to the tactical resolver**
+  (§2.2), not straight to the model. *Deliverable: the NPC takes a real, governed
+  action through a command.*
 - **Phase 4 — many NPCs & de-confliction.** One GM, multiple personas, serialised
   turns, priority queue, isolation verified across namespaces.
 - **Phase 5 — hardening.** Audit logging, kill switch, rate limits, forgetting/
@@ -521,16 +582,25 @@ Phase 1 changes the player-facing default if disabled.
 
 ## 11 · Open questions
 
-1. **Final hardware spec** (Mac mini RAM) — fixes the §4 model-size envelope.
-   Resolve before committing to a primary model.
+1. ✅ **Hardware — resolved.** Production = a **shared 24 GB Mac mini** (co-tenant
+   with the Docker stack, Plex, torrent — so the GM's *effective* slice is well
+   under 24 GB → **12B-class production model**, §4.2); a **64 GB mini** is the
+   **test bench** for performance/quality deltas and larger-model trials. Models
+   are **plug-and-play / swappable at will** behind the Model adapter (§9).
 2. **Latency budget number** — what p95 reads as "alive" vs "laggy" for a
-   directly-addressed NPC? Drives quant/model-size trade.
-3. **Autonomy ceiling for v1** — how broad is the initial action allow-list? Lean
-   conservative (speech + emotes + serve + move) and widen with confidence.
+   directly-addressed NPC? Drives quant/model-size trade. *Measure on both minis
+   in Phase 0.*
+3. ✅ **Autonomy ceiling for v1 — resolved: social-only** (speech + emote + move;
+   §0.1). Beyond v1, mechanical verbs (`kill`, `flee`, trade) are emitted by the
+   LLM as *intents* but **resolved by the classical tactical AI**, not the model
+   (Principle 8 / §2.2) — the allow-list grows by wiring resolvers behind the
+   Action-adapter seam, not by handing the LLM combat turns.
 4. **Idle/unprompted behaviour** — do background NPCs ever act *without* a
    perception trigger, and at what (expensive) cadence? Default off.
-5. **Persona authoring pipeline** — how are persona cards written, stored, and
-   versioned? Reuse of existing NPC description/identity fields vs. a new card.
+5. ✅ **Persona authoring — resolved: a new structured persona card** per NPC
+   (versioned; identity, voice, wants, boundaries, relationships), §5.2.2. *Open
+   sub-question:* card format/tooling and whether it auto-seeds a base from
+   existing identity/voice fields.
 6. **Memory forgetting policy** — concrete salience/decay/summarisation rules
    (left as methodology in §6; needs a first cut to tune in play).
 7. **Multi-player scenes** — when several PCs engage one NPC, whose perception/
@@ -538,8 +608,9 @@ Phase 1 changes the player-facing default if disabled.
 8. **GM-authored events** — explicitly deferred (§0.1). When/if the storyteller
    graduates from puppeting NPCs to *directing scenes*, that is a separate spec
    with its own authority questions.
-9. **Cost/always-on** — is the sidecar always resident, or spun up on player
-   presence? Affects power/thermals on a always-on Mac mini.
+9. ✅ **Sidecar lifecycle — resolved: always-on resident** (warm model, zero
+   spin-up latency); accept the idle power/thermal cost on the shared box, kept
+   in check by the §3 bounded-generation discipline.
 
 ---
 
