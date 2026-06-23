@@ -1,0 +1,48 @@
+"""Compose an NPC persona dict from its live object fields, for the LLM sidecar.
+
+Runs on the reactor (reads ``db`` + identity getters) and returns plain,
+JSON-safe data handed to the off-reactor sidecar call (``world/llm/client.py``).
+The builder-authored **immutable core** (manner / wants / boundaries) lives in
+``db.llm_persona``; everything else is derived from the NPC's real identity so the
+model voices *this* character — the same sdesc/longdesc/voice the world perceives.
+
+See ``specs/proposals/LLM_GAMEMASTER_SPEC.md`` §5.2 (persona card).
+"""
+
+from world.voice import get_voice_description, get_voice_ending, voice_phrase
+
+
+def build_persona(npc) -> dict:
+    """Build the persona dict from the NPC's real fields. Defensive throughout.
+
+    Must run on the reactor (reads db + identity getters). The returned dict is
+    inert JSON passed to the sidecar thread — no live objects leak across.
+    """
+    longdescs = {}
+    raw = getattr(npc, "longdesc", None) or {}
+    for loc in raw:
+        desc = npc.get_longdesc(loc)
+        if desc:
+            longdescs[loc] = desc
+
+    location = None
+    if npc.location:
+        location = {
+            "name": npc.location.key,
+            "desc": getattr(npc.location.db, "desc", None),
+        }
+
+    return {
+        "sdesc": npc.get_sdesc(),
+        "longdescs": longdescs,
+        "skintone": getattr(npc.db, "skintone", None),
+        "height": npc.height,
+        "build": npc.build,
+        "sex": npc.sex,
+        "species": npc.species,
+        "voice": voice_phrase(npc),
+        "voice_description": get_voice_description(npc),
+        "voice_ending": get_voice_ending(npc),
+        "location": location,
+        "persona_seed": npc.db.llm_persona or {},
+    }

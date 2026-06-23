@@ -1,6 +1,12 @@
 # LLM Gamemaster Spec
 
-> **Status:** 📋 Proposal — not implemented (tracking #705). A methodology for
+> **Status:** 🟡 Proposal — **Phase 1 SHIPPED** (#707); the rest still designed,
+> not built (tracking #705). The first bridge is live: the Bartender NPC Sable
+> answers player speech with model-generated dialogue from a decoupled,
+> **OpenAI-compatible** inference backend (MLX / Ollama / cloud — swappable by
+> URL, no code change), seeded from her real identity, gated behind two switches,
+> fail-safe to scripted behaviour, drink mechanics untouched. Build ladder +
+> per-phase status in §10. A methodology for
 > running a **local LLM as a storyteller / gamemaster** that puppets NPCs:
 > dialogue, a bounded set of actions, real command use, and **per-NPC memory
 > sustained through RAG**. This document is deliberately **implementation-light**.
@@ -628,15 +634,42 @@ MLX, ChromaDB, or Evennia.
 
 ## 10 · Build phases
 
-- **Phase 0 — sidecar & model.** Stand up the MLX server; load a shortlisted
-  model warm; prove the latency budget on the actual Mac mini; run the §4.1
-  rubric and pick a starting model. *Deliverable: `prompt → text` over local IPC,
-  measured.*
-- **Phase 1 — one NPC, dialogue only.** Bind Perception + Model + Action adapters
-  for a single existing NPC (e.g. a bartender). No memory, no actions beyond
-  speech. The GM hears, the GM speaks in character, through the real backbone.
-  *Deliverable: a conversation that stays in persona, fails safe when the sidecar
-  is off.*
+- ✅ **Phase 0 — sidecar & model.** Standalone MLX harness on the Mac mini
+  (`~/llm-gm-spike/phase0_sable.py`) proved a local model can voice the NPC and
+  measured latency/prose; starting model **Rocinante 12B** (4-bit, `mlx-community`/
+  community quant), ~15 tok/s, ~3 s TTFT on the shared 24 GB box.
+- ✅ **Phase 1 — one NPC, dialogue only (#707).** The live Bartender NPC Sable
+  answers player speech via a local LLM. **Backend-agnostic by design**: the game
+  speaks the standard **OpenAI Chat Completions** protocol to a configurable
+  endpoint (`settings.LLM_GM_URL`), so the inference backend is swappable with no
+  code change — our MLX sidecar, `mlx_lm.server`, Ollama, llama.cpp, vLLM, or a
+  cloud API. Shipped pieces:
+  - **Portable prompt layer** (`world/llm/prompt.py`, in-repo): the GM charter
+    (directed + ambient variants), the persona-card render, the OpenAI `messages`
+    builder, and the reply parser (mixed quotes/asterisks → clean `speech` /
+    `action`; OOC/meta stripped; empty/decline → nulls). This travels with the
+    game so the backend stays a dumb inference endpoint.
+  - **Game client** (`world/llm/client.py`): off-reactor `run_async` POST to
+    `…/v1/chat/completions` mirroring `CmdBug` (thread does pure network; no
+    Evennia/DB access; render in the reactor callback). Optional Bearer
+    `LLM_GM_API_KEY` for cloud backends. Container reaches a host backend via
+    `host.docker.internal`.
+  - **MLX sidecar** (`~/llm-gm-spike/sidecar.py`, out-of-repo, native): one valid
+    backend — a stdlib OpenAI-compatible `/v1/chat/completions` server; warm model
+    + serial-gen lock; applies the chat template (with a fallback for tunes that
+    ship without one); never raises (empty completion on failure). Owns **no** game
+    logic.
+  - **Persona seeding** (`typeclasses/llm_persona.py` `build_persona`): composes
+    the persona dict from the NPC's *real* live fields (sdesc, longdescs, voice,
+    skintone, location) + the builder-authored core in `db.llm_persona`.
+  - **Engagement model** (`typeclasses/bar.py` `Bartender`): a reactor-side
+    classifier — **directed** (addressed, or names her) always replies; **ambient**
+    (overheard) is cost-gated (cooldown + roll) *and* the model may decline; orders
+    + gratitude paths byte-identical. Two gates: `settings.LLM_GM_ENABLED` +
+    per-NPC `db.llm_driven`; fail-safe to scripted behaviour.
+  - **No memory, no actions beyond speech/pose** (Phases 2–3). Tests:
+    `world/tests/test_bar.py::TestBartenderLLMRouting`. *Deliverable met: in-persona
+    conversation that fails safe when the sidecar is off or a gate is down.*
 - **Phase 2 — memory.** Add the Memory adapter: per-NPC RAG namespace, write-back,
   identity-gated retrieval, built on `recognition_memory`. *Deliverable: the NPC
   remembers a prior encounter across sessions.*
