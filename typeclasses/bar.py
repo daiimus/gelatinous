@@ -14,6 +14,7 @@ UX) so the loop is testable; those are later slices.
 """
 
 import random
+from functools import partial
 from time import monotonic
 
 from evennia import CmdSet
@@ -335,6 +336,7 @@ ACK_COOLDOWN = 6.0
 LLM_DIRECTED_COOLDOWN = 4.0    # min seconds between replies to direct address/name
 LLM_AMBIENT_COOLDOWN = 45.0    # she rarely volunteers into overheard chatter
 LLM_AMBIENT_CHANCE = 0.35      # ...and not every eligible time
+LLM_HISTORY_TURNS = 6          # recent turns kept per interlocutor (anti-repetition)
 
 
 class Bartender(Character):
@@ -523,24 +525,78 @@ class Bartender(Character):
         persona = build_persona(self)
         speaker_name = patron.get_display_name(self)
         perception = self._perceive(patron)
+        history = self._recent_history(patron)
         request_npc_reply(
             persona, speaker_name, line or "", mode,
-            on_reply=self._render_llm_reply,
+            on_reply=partial(self._render_and_remember, patron, line or "",
+                             speaker_name),
             on_fail=on_fail or self._llm_silent,
             perception=perception,
+            history=history,
         )
         return True
 
     def _perceive(self, patron):
         """What this NPC sees when it looks at the patron — grounds the model's
         description so it can't invent the speaker's appearance. ANSI-stripped,
-        identity-gated (it's the patron's appearance *as this NPC perceives it*)."""
+        identity-gated, trimmed to a sentence-bounded summary (the full
+        return_appearance bloats context and truncates mid-word)."""
         try:
             from evennia.utils.ansi import strip_ansi
             raw = patron.return_appearance(self)
-            return " ".join(strip_ansi(raw).split())[:600] if raw else None
+            if not raw:
+                return None
+            text = " ".join(strip_ansi(raw).split())
+            if len(text) > 300:
+                cut = text[:300]
+                for end in (". ", "! ", "? "):
+                    i = cut.rfind(end)
+                    if i > 120:
+                        cut = cut[: i + 1]
+                        break
+                text = cut.rstrip()
+            return text
         except Exception:
             return None
+
+    # --- short-term conversation memory (per interlocutor, ndb/ephemeral) ----
+
+    @staticmethod
+    def _hist_key(patron):
+        return f"#{patron.id}"
+
+    def _recent_history(self, patron):
+        """The recent turns with this interlocutor — fed back into the prompt so
+        the model sees what it just said and stops repeating itself."""
+        return (self.ndb.llm_history or {}).get(self._hist_key(patron), [])
+
+    def _render_and_remember(self, patron, line, speaker_name, speech, action):
+        """Render the reply, then append the turn to short-term memory."""
+        self._render_llm_reply(speech, action)
+        reply = self._reconstruct_reply(speech, action)
+        if not reply:
+            return
+        hist = self.ndb.llm_history or {}
+        key = self._hist_key(patron)
+        turns = list(hist.get(key, []))
+        turns.append({
+            "user": f'{speaker_name} says to you: "{line}"',
+            "assistant": reply,
+        })
+        hist[key] = turns[-LLM_HISTORY_TURNS:]
+        self.ndb.llm_history = hist
+
+    @staticmethod
+    def _reconstruct_reply(speech, action):
+        """Re-form the model's own reply for the history (so it sees its prior
+        gestures and phrasing, in the same format it produces)."""
+        if action and speech:
+            return f'*{action}* "{speech}"'
+        if action:
+            return f"*{action}*"
+        if speech:
+            return f'"{speech}"'
+        return ""
 
     def _render_llm_reply(self, speech, action):
         """Render the sidecar reply as ONE fluid emote — the MUD-native way to act
