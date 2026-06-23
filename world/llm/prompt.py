@@ -18,9 +18,11 @@ import re
 #: side). Archetypes grant a SUBSET (see ARCHETYPES); the schema is scoped to it.
 TOOLS = {
     "look": {"kind": "context",
-             "desc": "examine the patron to perceive their REAL appearance — do "
-                     "this BEFORE describing how they look, never invent it "
-                     "(argument: who, e.g. 'patron')"},
+             "desc": "examine someone or something you CAN'T already see, to "
+                     "perceive their REAL appearance (never invent it). The "
+                     "person you're speaking to is ALREADY described in the "
+                     "PERCEPTION line — do NOT look at them again "
+                     "(argument: who/what)"},
     "check_stock": {"kind": "context",
                     "desc": "list exactly what the bar can serve right now "
                             "(argument: '')"},
@@ -95,7 +97,9 @@ none. NEVER write yourself as "I" or "you".
 HARD RULES:
 - Never speak, think, or act for the OTHER person. Voice only this character.
 - Describe the other person ONLY from a 'look' result or the PERCEPTION line. \
-NEVER invent their clothing, tattoos, marks, or features.
+NEVER invent their clothing, tattoos, marks, or features. The PERCEPTION line \
+already shows you whoever you're addressing — use it; don't spend a turn looking \
+at them again.
 - Vary yourself: never reuse a recent action or line.
 - Stay in character; never mention being an AI, a model, or a game system.
 - Use only in-world, generic names for things — never real-world brands."""
