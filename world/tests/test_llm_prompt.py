@@ -8,8 +8,9 @@ import json
 from unittest import TestCase
 
 from world.llm.prompt import (
-    ARCHETYPES, TURN_SCHEMA, _archetype, build_messages, parse_turn,
-    render_persona,
+    ARCHETYPES, BASE_TOOLS, CONTEXT_TOOLS, TOOLS, TURN_SCHEMA, _archetype,
+    build_messages, parse_turn, render_persona, schema_for, tool_names,
+    turn_schema,
 )
 
 _PERSONA = {
@@ -105,6 +106,58 @@ class TestArchetype(TestCase):
         msgs = build_messages(p, "a man", "hi", "directed")  # must not raise
         asst = next(m["content"] for m in msgs if m["role"] == "assistant")
         self.assertEqual(json.loads(asst)["speech"], "Hey.")
+
+
+class TestToolScoping(TestCase):
+    def setUp(self):
+        # a throwaway social archetype: no job tools → BASE (look) only.
+        ARCHETYPES["_test_social"] = {"duties": "You loiter.", "tools": [],
+                                      "fewshot": []}
+        self.addCleanup(lambda: ARCHETYPES.pop("_test_social", None))
+        self.social = {"persona_seed": {"name": "Vex", "archetype": "_test_social"}}
+
+    def test_context_tools_derived_from_registry(self):
+        # read-only tools loop; the action tool (prepare_drink) is excluded.
+        self.assertIn("look", CONTEXT_TOOLS)
+        self.assertIn("check_stock", CONTEXT_TOOLS)
+        self.assertNotIn("prepare_drink", CONTEXT_TOOLS)
+
+    def test_base_tool_always_granted(self):
+        # every archetype perceives, even one declaring no job tools.
+        self.assertEqual(tool_names(self.social), list(BASE_TOOLS))
+        self.assertIn("look", tool_names(self.social))
+
+    def test_bartender_grants_its_job_tools_plus_base(self):
+        names = tool_names(_PERSONA)  # bartender archetype
+        self.assertEqual(names, ["look", "check_stock", "prepare_drink"])
+
+    def test_schema_scoped_to_archetype(self):
+        # the social archetype's schema can't even express prepare_drink.
+        enum = schema_for(self.social)["properties"]["tool"]["enum"]
+        self.assertEqual(enum, ["none", "look"])
+        self.assertNotIn("prepare_drink", enum)
+
+    def test_turn_schema_builder(self):
+        self.assertEqual(turn_schema(["look"])["properties"]["tool"]["enum"],
+                         ["none", "look"])
+
+    def test_social_prompt_omits_bartender_tools(self):
+        sys = build_messages(self.social, "a man", "hi", "directed")[0]["content"]
+        self.assertIn("look", sys)
+        self.assertNotIn("prepare_drink", sys)
+
+    def test_parse_coerces_out_of_scope_tool(self):
+        # a tool outside the archetype's grant is coerced to none.
+        raw = json.dumps({"speech": "x", "action": "", "tool": "prepare_drink",
+                          "tool_argument": "Negroni"})
+        out = parse_turn(raw, self.social, allowed_tools=tool_names(self.social))
+        self.assertEqual(out["tool"], "none")
+
+    def test_parse_keeps_in_scope_tool(self):
+        raw = json.dumps({"speech": "", "action": "", "tool": "look",
+                          "tool_argument": "patron"})
+        out = parse_turn(raw, self.social, allowed_tools=tool_names(self.social))
+        self.assertEqual(out["tool"], "look")
 
 
 class TestParseTurn(TestCase):

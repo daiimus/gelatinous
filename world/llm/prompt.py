@@ -13,36 +13,60 @@ import json
 import re
 
 # --- the tools the NPC may call (routed to real commands game-side) ----------
-#: name -> (description, argument hint). Context tools inform; action tools do.
+#: name -> {kind, desc}. ``kind`` "context" tools inform the NPC (read → loop the
+#: result back); "action" tools change the world (routed to a real command game-
+#: side). Archetypes grant a SUBSET (see ARCHETYPES); the schema is scoped to it.
 TOOLS = {
-    "look": "examine the patron to perceive their REAL appearance — do this "
-            "BEFORE describing how they look, never invent it (argument: who, "
-            "e.g. 'patron')",
-    "check_stock": "list exactly what the bar can serve right now (argument: '')",
-    "prepare_drink": "pour a drink from the menu for the patron — the bar makes "
-                     "it for REAL; use this to serve, never narrate pouring "
-                     "yourself (argument: the drink name)",
+    "look": {"kind": "context",
+             "desc": "examine the patron to perceive their REAL appearance — do "
+                     "this BEFORE describing how they look, never invent it "
+                     "(argument: who, e.g. 'patron')"},
+    "check_stock": {"kind": "context",
+                    "desc": "list exactly what the bar can serve right now "
+                            "(argument: '')"},
+    "prepare_drink": {"kind": "action",
+                      "desc": "pour a drink from the menu for the patron — the "
+                              "bar makes it for REAL; use this to serve, never "
+                              "narrate pouring yourself (argument: the drink name)"},
 }
 
-#: The single unified turn schema the model fills every turn (constrained).
-TURN_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "speech": {"type": "string"},
-        "action": {"type": "string"},
-        "tool": {"enum": ["none"] + list(TOOLS)},
-        "tool_argument": {"type": "string"},
-    },
-    "required": ["speech", "action", "tool", "tool_argument"],
-}
+#: Every NPC perceives — ``look`` is granted to every archetype on top of its job
+#: tools, so grounding is never accidentally withheld.
+BASE_TOOLS = ("look",)
+
+#: Read-only tools that loop their result back (vs. action tools → real commands).
+#: Derived from the registry so adding a tool can't desync the game-side router.
+CONTEXT_TOOLS = frozenset(n for n, t in TOOLS.items() if t["kind"] == "context")
+
+
+def turn_schema(tools) -> dict:
+    """The unified turn schema with the ``tool`` enum scoped to ``tools`` (+none).
+
+    Backends constrain output to this, so an NPC can only emit a tool its
+    archetype actually grants — a fixer can't be made to ``prepare_drink``.
+    """
+    return {
+        "type": "object",
+        "properties": {
+            "speech": {"type": "string"},
+            "action": {"type": "string"},
+            "tool": {"enum": ["none"] + list(tools)},
+            "tool_argument": {"type": "string"},
+        },
+        "required": ["speech", "action", "tool", "tool_argument"],
+    }
+
+
+#: Full-registry default (back-compat for the client default + non-scoped callers).
+TURN_SCHEMA = turn_schema(list(TOOLS))
 
 
 def _tools_block(tools) -> str:
     lines = ["TOOLS — set the \"tool\" field to act or to inform yourself:"]
     for name in tools:
-        desc = TOOLS.get(name)
-        if desc:
-            lines.append(f'- "{name}": {desc}')
+        entry = TOOLS.get(name)
+        if entry:
+            lines.append(f'- "{name}": {entry["desc"]}')
     lines.append('- "none": no tool this turn.')
     lines.append("After a context tool you get a [tool result]; then reply for real.")
     return "\n".join(lines)
@@ -92,7 +116,7 @@ ARCHETYPES = {
             "steer talk toward ordering or offer a drink unless it fits the "
             "moment — you're a character, not an order-taker."
         ),
-        "tools": ["look", "check_stock", "prepare_drink"],
+        "tools": ["check_stock", "prepare_drink"],  # + BASE_TOOLS (look)
         "fewshot": [
             {"user": 'a patron says to you: "long night?"',
              "assistant": {"speech": "Every night's long when you're the one "
@@ -114,6 +138,20 @@ def _archetype(persona: dict) -> dict:
     seed = persona.get("persona_seed") or {}
     name = seed.get("archetype") or persona.get("archetype") or DEFAULT_ARCHETYPE
     return ARCHETYPES.get(name, ARCHETYPES[DEFAULT_ARCHETYPE])
+
+
+def tool_names(persona: dict) -> list:
+    """The tools this persona's archetype grants: BASE_TOOLS + its job tools,
+    order-preserved and deduped, filtered to the known registry."""
+    job = _archetype(persona).get("tools") or []
+    ordered = list(BASE_TOOLS) + [t for t in job if t not in BASE_TOOLS]
+    return [n for n in ordered if n in TOOLS]
+
+
+def schema_for(persona: dict) -> dict:
+    """The constrained turn schema scoped to this persona's granted tools."""
+    return turn_schema(tool_names(persona))
+
 
 CHARTER_AMBIENT = """\
 
@@ -203,13 +241,13 @@ def few_shot_messages(persona: dict) -> list:
 def build_messages(persona: dict, speaker: str, line: str, mode: str,
                    perception: str = None, history: list = None) -> list:
     """Build the OpenAI ``messages``: system (charter+tools+persona) + few-shot +
-    recent history + the grounded turn. The caller passes ``TURN_SCHEMA`` to the
-    backend to constrain the output."""
+    recent history + the grounded turn. The caller passes ``schema_for(persona)``
+    to the backend to constrain the output to this archetype's tools."""
     arch = _archetype(persona)
     charter = CHARTER_BASE
     if arch.get("duties"):
         charter += "\n\nYOUR WORK: " + arch["duties"]
-    charter += "\n\n" + _tools_block(arch.get("tools") or list(TOOLS))
+    charter += "\n\n" + _tools_block(tool_names(persona))
     charter += (CHARTER_AMBIENT if mode == "ambient" else "")
     system = charter + "\n\n" + render_persona(persona)
     messages = [{"role": "system", "content": system}]
@@ -249,14 +287,19 @@ def _strip_self_lead(action: str, name: str) -> str:
     return re.sub(r"^(she|he|they)\s+", "", action, flags=re.I).strip()
 
 
-def parse_turn(raw, persona: dict) -> dict:
+def parse_turn(raw, persona: dict, allowed_tools=None) -> dict:
     """Normalise a constrained turn into ``{speech, action, tool, tool_argument}``.
 
     ``raw`` is the JSON string from the (constrained) backend, or a legacy prose
     reply. Cleans the action (strip self-lead, drop POV-leak second-person), maps
     OOC/empty to nulls. The schema guarantees structure; this guards content.
+
+    ``allowed_tools`` (names, no "none") bounds the tool to what the archetype
+    grants — defence in depth behind the scoped schema; defaults to the full
+    registry. An out-of-scope tool coerces to "none".
     """
     name = ((persona or {}).get("persona_seed") or {}).get("name") or ""
+    allowed = set(allowed_tools) if allowed_tools is not None else set(TOOLS)
     obj = None
     if isinstance(raw, dict):
         obj = raw
@@ -281,7 +324,7 @@ def parse_turn(raw, persona: dict) -> dict:
     return {
         "speech": speech or None,
         "action": action or None,
-        "tool": tool if tool in TURN_SCHEMA["properties"]["tool"]["enum"] else "none",
+        "tool": tool if (tool == "none" or tool in allowed) else "none",
         "tool_argument": tool_arg,
     }
 
