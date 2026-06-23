@@ -132,7 +132,7 @@ class LLMNpcMixin:
         speaker_name = patron.get_display_name(self)
         perception = self._perceive(patron)
         history = self._recent_history(patron)
-        subject = self._hist_key(patron)
+        subject = self._memory_subject(patron)
         on_fail = on_fail or self._llm_silent
 
         def _go(memories):
@@ -162,6 +162,17 @@ class LLMNpcMixin:
 
     # --- long-term memory (Phase 2) --------------------------------------
 
+    def _memory_subject(self, patron):
+        """The recognition identity to scope memory by — the *perceived*
+        identity (apparent_uid), so memory rides the same spine as recognition
+        and a disguise reads as a stranger (NPC_MEMORY_AND_IDENTITY_SPEC §1).
+        Falls back to object id for pre-chargen shells with no apparent_uid."""
+        try:
+            from world.identity import get_apparent_uid
+            return get_apparent_uid(patron) or self._hist_key(patron)
+        except Exception:  # noqa: BLE001 — never break a reply over keying
+            return self._hist_key(patron)
+
     def _load_memories(self):
         """This NPC's stored memory records as plain dicts (deserialized)."""
         return deserialize(self.db.llm_memories) or []
@@ -175,7 +186,7 @@ class LLMNpcMixin:
         text = f'{speaker_name} said: "{line}"'
         if speech:
             text += f' — I answered: "{speech}"'
-        subject = self._hist_key(patron)
+        subject = self._memory_subject(patron)
 
         def _save(vec):
             recs = self._load_memories()
