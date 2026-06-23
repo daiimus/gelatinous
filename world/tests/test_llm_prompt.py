@@ -109,6 +109,14 @@ class TestParseReply(TestCase):
         out = parse_reply("Sable does not react to the comment.", _PERSONA)
         self.assertEqual(out, {"speech": None, "action": None})
 
+    def test_runaway_continuation_is_cut(self):
+        raw = ('*sets down a glass.* "Define busy."\n\n'
+               'a patron says to you: "got anything strong?"\n\n'
+               '*a slow smile.* "Always."')
+        out = parse_reply(raw, _PERSONA)
+        self.assertEqual(out["speech"], "Define busy.")
+        self.assertEqual(out["action"], "sets down a glass.")
+
     def test_quoted_line_with_decline_word_still_speaks(self):
         out = parse_reply('"No response from the docks, last I heard."', _PERSONA)
         self.assertEqual(out["speech"], "No response from the docks, last I heard.")
