@@ -539,6 +539,9 @@ def seed_infection(target, location: str, severity: int = FAILURE_INFECTION_SEVE
     state = getattr(target, "medical_state", None)
     if state is None or not hasattr(state, "conditions"):
         return
+    # Synthetics don't go septic (the inorganic-graft analog) — no infection.
+    if getattr(state, "is_infection_immune", None) and state.is_infection_immune():
+        return
     try:
         from world.medical.conditions import InfectionCondition
     except ImportError:

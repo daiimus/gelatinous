@@ -1124,10 +1124,17 @@ class MedicalState:
             )
             return []
             
+    def is_infection_immune(self) -> bool:
+        """Whether this body's species cannot culture infection (synthetics)."""
+        from world.anatomy import get_species_infection_immune
+        character = self._get_character_reference()
+        species = getattr(character.db, "species", None) if character else None
+        return get_species_infection_immune(species)
+
     def add_condition(self, condition):
         """
         Add a medical condition and start its ticker if needed.
-        
+
         Args:
             condition: MedicalCondition instance
         """
@@ -1140,7 +1147,18 @@ class MedicalState:
             char_name = character.key if character else "unknown"
             splattercast.msg(f"ADD_CONDITION: {char_name} is archived, not adding {condition.condition_type}")
             return
-            
+
+        # Infection-immune species (synthetics) don't culture infection —
+        # their synthetic tissue doesn't go septic. They still bleed/feel
+        # pain; only the infection course is suppressed (the species-level
+        # analog of the inorganic-organ filter, #516).
+        if (getattr(condition, "condition_type", "") == "infection"
+                and self.is_infection_immune()):
+            from world.combat.debug import get_splattercast
+            get_splattercast().msg(
+                "ADD_CONDITION: infection-immune species, skipping infection")
+            return
+
         if condition not in self.conditions:
             self.conditions.append(condition)
             # Conditions can disable organs outright (capacity → 0),

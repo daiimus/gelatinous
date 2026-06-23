@@ -16,6 +16,7 @@ from world.anatomy import (
     get_species_blood_color,
     get_species_corpse_description,
     get_species_corpse_name,
+    get_species_infection_immune,
 )
 from world.anatomy.species import SPECIES_DEFINITIONS
 from world.combat.constants import SKINTONE_PALETTE, VALID_SKINTONES
@@ -152,3 +153,33 @@ class TestBloodPoolMixture(TestCase):
         pool = self._pool_with(None)
         self.assertEqual(pool._stain_word(), "|Rcrimson|n")
         self.assertEqual(pool._stain_word(aged=True), "|Rrust-brown|n")
+
+
+class TestSyntheticInfectionImmunity(TestCase):
+    def test_species_flag(self):
+        self.assertTrue(get_species_infection_immune("synthetic_humanoid"))
+        self.assertFalse(get_species_infection_immune("human"))
+        self.assertFalse(get_species_infection_immune("rat"))
+        self.assertFalse(get_species_infection_immune(None))
+
+    def test_infection_condition_type_matches_guard(self):
+        # the add_condition gate keys on condition_type == "infection".
+        from world.medical.conditions import InfectionCondition
+        self.assertEqual(InfectionCondition(2, "chest").condition_type,
+                         "infection")
+
+    def test_seed_infection_skips_immune_target(self):
+        from world.medical.procedures import seed_infection
+        state = MagicMock()
+        state.conditions = []
+        state.is_infection_immune.return_value = True
+        seed_infection(MagicMock(medical_state=state), "chest", 3)
+        self.assertEqual(state.conditions, [])  # no infection seeded
+
+    def test_seed_infection_applies_to_non_immune(self):
+        from world.medical.procedures import seed_infection
+        state = MagicMock()
+        state.conditions = []
+        state.is_infection_immune.return_value = False
+        seed_infection(MagicMock(medical_state=state), "chest", 3)
+        self.assertEqual(len(state.conditions), 1)

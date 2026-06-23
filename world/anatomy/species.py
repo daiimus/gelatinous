@@ -1129,6 +1129,12 @@ def _derive_synthetic_humanoid(base: dict) -> dict:
     # (so mixed pools read as a mixture). "synth" is the short glance token.
     synth["blood_color"] = {"name": "cobalt", "code": "|B", "dried": "slate"}
 
+    # Synthetic tissue doesn't culture biological infection — the
+    # species-level analog of an inorganic graft ("chrome doesn't go
+    # septic", #516). They still bleed (cobalt) and feel pain; only the
+    # infection course is suppressed.
+    synth["infection_immune"] = True
+
     # Tougher: every organ/bone runs a bit more durable.
     for organ in synth["organs"].values():
         organ["max_hp"] = int(round(organ["max_hp"] * SYNTH_ORGAN_DURABILITY))
@@ -1206,6 +1212,15 @@ def get_species_blood_color(species: str | None) -> dict:
     """
     spec = _resolve_species(species)
     return spec.get("blood_color") or _DEFAULT_BLOOD_COLOR
+
+
+def get_species_infection_immune(species: str | None) -> bool:
+    """Whether this species cannot culture biological infection.
+
+    True for synthetics (their tissue doesn't go septic — the species-level
+    analog of an inorganic graft). Drives the infection-condition gate.
+    """
+    return bool(_resolve_species(species).get("infection_immune"))
 
 
 def get_species_longdesc_flex_nouns(species: str | None) -> set:
