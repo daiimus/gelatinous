@@ -20,7 +20,7 @@ from evennia.utils.utils import run_async
 from world.llm.prompt import TURN_SCHEMA
 
 _DEFAULT_URL = "http://host.docker.internal:8765/v1/chat/completions"
-_DEFAULT_TIMEOUT = 20          # 24B + constrained decoding is slower than 8B
+_DEFAULT_TIMEOUT = 40          # warm 24B constrained gen ~17s/round; cover one round + headroom
 _DEFAULT_MAX_TOKENS = 160
 
 
