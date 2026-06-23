@@ -68,6 +68,14 @@ SPECIES_DEFINITIONS = {
         # advanced/skeletal stages by the decay-prefix template.
         "display_name": "human",
 
+        # Blood colour (synthetic-blood support).  ``name`` is the fresh
+        # adjective, ``code`` its ANSI colour, ``dried`` the aged adjective.
+        # Consumed by the bleeding/death prose and the BloodPool mixture
+        # renderer so a room pooled with blood from different species reads
+        # as a visually distinguishable mixture.  Species without this field
+        # fall back to human crimson via ``get_species_blood_color``.
+        "blood_color": {"name": "crimson", "code": "|R", "dried": "rust-brown"},
+
         # Per-location display strings.  Keys are canonical body-
         # location identifiers (matching ``container`` values in
         # ``world.medical.constants.ORGANS`` and the ``location`` field
@@ -1117,27 +1125,32 @@ def _derive_synthetic_humanoid(base: dict) -> dict:
     synth = copy.deepcopy(base)
     synth["display_name"] = "synthetic humanoid"
 
+    # Synthetic blood — a cool fluid, visually distinct from human crimson
+    # (so mixed pools read as a mixture). "synth" is the short glance token.
+    synth["blood_color"] = {"name": "cobalt", "code": "|B", "dried": "slate"}
+
     # Tougher: every organ/bone runs a bit more durable.
     for organ in synth["organs"].values():
         organ["max_hp"] = int(round(organ["max_hp"] * SYNTH_ORGAN_DURABILITY))
 
     # The chassis does not decay. Time advances it toward a stripped,
-    # desiccated frame — never rot or skeletonization.
+    # desiccated frame — never rot or skeletonization. Glance token is the
+    # short "synth" (decided over "synthetic humanoid head").
     synth["decay_part_prefixes"] = {
-        "fresh": "synthetic {part}", "early": "synthetic {part}",
-        "moderate": "synthetic {part}", "advanced": "inert synthetic {part}",
-        "skeletal": "stripped synthetic {part}",
+        "fresh": "synth {part}", "early": "synth {part}",
+        "moderate": "synth {part}", "advanced": "inert synth {part}",
+        "skeletal": "stripped synth {part}",
     }
     synth["decay_organ_prefixes"] = {
-        "fresh": "synthetic {organ}", "early": "synthetic {organ}",
-        "moderate": "synthetic {organ}", "advanced": "inert synthetic {organ}",
-        "skeletal": "desiccated synthetic {organ}",
+        "fresh": "synth {organ}", "early": "synth {organ}",
+        "moderate": "synth {organ}", "advanced": "inert synth {organ}",
+        "skeletal": "desiccated synth {organ}",
     }
     synth["decay_corpse_names"] = {
-        "fresh": "deactivated synthetic", "early": "deactivated synthetic",
-        "moderate": "inert synthetic chassis",
-        "advanced": "inert synthetic chassis",
-        "skeletal": "stripped synthetic frame",
+        "fresh": "deactivated synth", "early": "deactivated synth",
+        "moderate": "inert synth chassis",
+        "advanced": "inert synth chassis",
+        "skeletal": "stripped synth frame",
     }
     synth["decay_corpse_descriptions"] = {
         "fresh": (
@@ -1179,6 +1192,20 @@ def _resolve_species(species: str | None) -> dict:
     if not species:
         return SPECIES_DEFINITIONS["human"]
     return SPECIES_DEFINITIONS.get(species, SPECIES_DEFINITIONS["human"])
+
+
+#: Fallback when a species declares no ``blood_color`` (e.g. rat → red).
+_DEFAULT_BLOOD_COLOR = {"name": "crimson", "code": "|R", "dried": "rust-brown"}
+
+
+def get_species_blood_color(species: str | None) -> dict:
+    """Return the species's blood-colour descriptor ``{name, code, dried}``.
+
+    Drives the bleeding/death prose colour and the BloodPool mixture
+    renderer. Unknown / field-less species fall back to human crimson.
+    """
+    spec = _resolve_species(species)
+    return spec.get("blood_color") or _DEFAULT_BLOOD_COLOR
 
 
 def get_species_longdesc_flex_nouns(species: str | None) -> set:

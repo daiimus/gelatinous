@@ -425,17 +425,23 @@ class MedicalScript(DefaultScript):
         except (AttributeError, TypeError, ValueError):
             pass
 
+        # The bleeder's species blood colour, so the pool renders a visually
+        # distinguishable mixture when species bleed in the same spot.
+        from world.anatomy import get_species_blood_color
+        blood_color = get_species_blood_color(getattr(self.obj.db, "species", None))
+
         if existing_pool:
             # Merge into existing pool (like graffiti entries)
             existing_pool.add_bleeding_incident(
                 self.obj.key, severity, sleeve_uid=sleeve_uid,
                 signature=signature, apparent_uid=apparent_uid,
+                blood_color=blood_color,
             )
         else:
             # Create new blood pool
             from evennia import create_object
             from typeclasses.objects import BloodPool
-            
+
             blood_pool = create_object(
                 BloodPool,
                 key="blood stains",
@@ -444,6 +450,7 @@ class MedicalScript(DefaultScript):
             blood_pool.add_bleeding_incident(
                 self.obj.key, severity, sleeve_uid=sleeve_uid,
                 signature=signature, apparent_uid=apparent_uid,
+                blood_color=blood_color,
             )
 
 

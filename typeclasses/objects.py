@@ -484,7 +484,7 @@ class BloodPool(Object):
         # Set up integration for room description (like graffiti)
         self.db.integrate = True
         self.db.integration_priority = 4  # Lower priority than graffiti
-        self.db.integration_desc = "Dark |Rstains|n mark the ground where blood has pooled."
+        self.db.integration_desc = "Dark |Rstains|n mark the ground where blood has pooled."  # recoloured per mixture on first incident
         
         self.locks.add("get:false()")  # Can't be picked up
         
@@ -493,7 +493,7 @@ class BloodPool(Object):
         
     def add_bleeding_incident(
         self, character_name, severity, sleeve_uid=None,
-        signature=None, apparent_uid=None,
+        signature=None, apparent_uid=None, blood_color=None,
     ):
         """Add a new bleeding incident to this pool (like adding graffiti).
 
@@ -523,7 +523,10 @@ class BloodPool(Object):
             'apparent_uid': apparent_uid,
             'severity': severity,
             'timestamp': current_time,
-            'age_hours': 0  # Will be calculated dynamically
+            'age_hours': 0,  # Will be calculated dynamically
+            # Blood colour at bleed-time (species-derived). Legacy/None →
+            # human crimson via the renderer's default.
+            'blood_color': blood_color,
         }
         
         if not self.db.bleeding_incidents:
@@ -616,6 +619,32 @@ class BloodPool(Object):
         else:
             return "ancient and barely visible"
     
+    #: Default when an incident predates colour tracking (human crimson).
+    _DEFAULT_BLOOD_COLOR = {"name": "crimson", "code": "|R", "dried": "rust-brown"}
+
+    def _blood_colors(self):
+        """Distinct blood colours in this pool, first-seen order — so a pool
+        bled into by more than one species reads as a visual mixture."""
+        seen, out = set(), []
+        for inc in self.db.bleeding_incidents or []:
+            bc = inc.get('blood_color') or self._DEFAULT_BLOOD_COLOR
+            if bc.get('name') not in seen:
+                seen.add(bc.get('name'))
+                out.append(bc)
+        return out or [self._DEFAULT_BLOOD_COLOR]
+
+    def _stain_word(self, aged=False):
+        """A colour-coded stain adjective — single colour, or the distinct
+        colours mingled ("|Rcrimson|n and |Bcobalt|n") for a mixed pool."""
+        cols = self._blood_colors()
+        key = 'dried' if aged else 'name'
+        parts = [f"{c.get('code', '')}{c.get(key) or c.get('name')}|n" for c in cols]
+        if len(parts) == 1:
+            return parts[0]
+        if len(parts) == 2:
+            return f"{parts[0]} and {parts[1]}"
+        return ", ".join(parts[:-1]) + f", and {parts[-1]}"
+
     def _update_description(self):
         """Update object description like graffiti system."""
         if not self.db.bleeding_incidents:
@@ -624,17 +653,22 @@ class BloodPool(Object):
             volume_desc = self.get_volume_description()
             age_desc = self.get_age_description()
             self.db.desc = f"Blood evidence shows {volume_desc}, {age_desc}."
-            
-            # Update integration description based on current state
+
+            # Update integration description based on current state, coloured
+            # by the blood mixture present (visually distinguishable per species).
             age_hours = self.get_age_hours()
             if age_hours < 1:
-                self.db.integration_desc = "Fresh |Rcrimson stains|n glisten wetly on the ground."
+                self.db.integration_desc = (
+                    f"Fresh {self._stain_word()} stains glisten wetly on the ground.")
             elif age_hours < 6:
-                self.db.integration_desc = "Dark |Rblood stains|n mark the ground ominously."
+                self.db.integration_desc = (
+                    f"Dark {self._stain_word()} stains mark the ground ominously.")
             elif age_hours < 24:
-                self.db.integration_desc = "Dried |Rbrown stains|n show where blood once pooled."
+                self.db.integration_desc = (
+                    f"Dried {self._stain_word(aged=True)} stains show where blood once pooled.")
             else:
-                self.db.integration_desc = "Faint |Rrusty marks|n hint at old bloodshed."
+                self.db.integration_desc = (
+                    f"Faint {self._stain_word(aged=True)} marks hint at old bloodshed.")
     
     def return_appearance(self, looker, **kwargs):
         """Return detailed forensic description showing all incidents."""
@@ -647,13 +681,13 @@ class BloodPool(Object):
         # Main description
         age_hours = self.get_age_hours()
         if age_hours < 1:
-            base_desc = f"Crimson blood marks this area with {volume_desc}, {age_desc}."
+            base_desc = f"Fresh {self._stain_word()} blood marks this area with {volume_desc}, {age_desc}."
         elif age_hours < 6:
-            base_desc = f"Dark blood stains mark this spot with {volume_desc}, now {age_desc}."
+            base_desc = f"Dark {self._stain_word()} stains mark this spot with {volume_desc}, now {age_desc}."
         elif age_hours < 24:
-            base_desc = f"Dried blood residue shows {volume_desc} occurred here, {age_desc}."
+            base_desc = f"Dried {self._stain_word(aged=True)} residue shows {volume_desc} occurred here, {age_desc}."
         else:
-            base_desc = f"Faint rusty stains hint at {volume_desc} that happened here, {age_desc}."
+            base_desc = f"Faint {self._stain_word(aged=True)} stains hint at {volume_desc} that happened here, {age_desc}."
         
         # Forensic incident summary — do NOT reveal character names
         # Blood evidence shows patterns but not identities
