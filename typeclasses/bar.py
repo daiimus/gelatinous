@@ -27,7 +27,9 @@ from typeclasses.characters import Character
 from typeclasses.llm_persona import build_persona
 from world.grammar import capitalize_first, with_article
 from world.llm.client import llm_enabled, request_turn
-from world.llm.prompt import build_messages, parse_turn
+from world.llm.prompt import (
+    CONTEXT_TOOLS, build_messages, parse_turn, schema_for, tool_names,
+)
 from world.shop.utils import format_currency
 from world.bar import (
     DEFAULT_BAR_SNACKS,
@@ -339,9 +341,8 @@ LLM_DIRECTED_COOLDOWN = 4.0    # min seconds between replies to direct address/n
 LLM_AMBIENT_COOLDOWN = 45.0    # she rarely volunteers into overheard chatter
 LLM_AMBIENT_CHANCE = 0.35      # ...and not every eligible time
 LLM_HISTORY_TURNS = 6          # recent turns kept per interlocutor (anti-repetition)
-#: Tools the model may call that *inform* it (read-only) vs *act* (mutate). Context
-#: tools loop (run → feed result back → re-ask); action tools route to a command.
-CONTEXT_TOOLS = {"look", "check_stock"}
+#: CONTEXT_TOOLS (read-only → loop the result back; vs action tools → real command)
+#: is derived from the prompt-layer tool registry, so they can't desync.
 LLM_MAX_TOOL_ROUNDS = 3        # cap the agentic loop so it can't spin forever
 
 
@@ -583,11 +584,12 @@ class Bartender(Character):
             on_turn=partial(self._on_turn, messages, persona, patron, line,
                             speaker_name, on_fail, rounds),
             on_fail=on_fail,
+            schema=schema_for(persona),  # tool enum scoped to the archetype
         )
 
     def _on_turn(self, messages, persona, patron, line, speaker_name, on_fail,
                  rounds, raw):
-        turn = parse_turn(raw, persona)
+        turn = parse_turn(raw, persona, tool_names(persona))
         tool, arg = turn["tool"], turn["tool_argument"]
         # Context tool: run the real read, feed the result back, loop.
         if tool in CONTEXT_TOOLS and rounds < LLM_MAX_TOOL_ROUNDS:

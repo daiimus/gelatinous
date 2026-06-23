@@ -29,7 +29,7 @@ def llm_enabled() -> bool:
     return bool(getattr(settings, "LLM_GM_ENABLED", False))
 
 
-def request_turn(messages, on_turn, on_fail):
+def request_turn(messages, on_turn, on_fail, schema=None):
     """POST a constrained turn off the reactor; deliver the raw JSON to ``on_turn``.
 
     Args:
@@ -37,6 +37,9 @@ def request_turn(messages, on_turn, on_fail):
             caller across the agentic loop).
         on_turn (callable): ``on_turn(raw_json_str)`` — runs on the reactor.
         on_fail (callable): ``on_fail()`` — runs on the reactor on error/empty.
+        schema (dict): the constrained turn schema; defaults to the full-registry
+            ``TURN_SCHEMA``. Callers pass ``prompt.schema_for(persona)`` to scope
+            the ``tool`` enum to the NPC's archetype.
     """
     url = getattr(settings, "LLM_GM_URL", _DEFAULT_URL)
     model = getattr(settings, "LLM_GM_MODEL", "")
@@ -47,7 +50,7 @@ def request_turn(messages, on_turn, on_fail):
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
-    body = {"messages": messages, "json_schema": TURN_SCHEMA,
+    body = {"messages": messages, "json_schema": schema or TURN_SCHEMA,
             "max_tokens": max_tokens}
     if model:
         body["model"] = model
