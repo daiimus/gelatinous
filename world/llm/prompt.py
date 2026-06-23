@@ -162,6 +162,17 @@ _DECLINE_MARKERS = (
 _MAX_LEN = 600
 
 
+#: A model without a chat template can't see turn boundaries and may continue
+#: into fabricated next turns that echo our framing ("a patron says to you: …").
+#: Keep only the first (real) reply, up to the first such marker.
+_RUNAWAY_RE = re.compile(r"\n[^\n]*?(?:says to you:|you overhear\b)", re.I)
+
+
+def _cut_runaway(raw: str) -> str:
+    m = _RUNAWAY_RE.search(raw or "")
+    return raw[:m.start()].strip() if m else raw
+
+
 def _is_ooc(text: str) -> bool:
     low = (text or "").lower()
     return any(m in low for m in _OOC_MARKERS)
@@ -192,7 +203,7 @@ def parse_reply(raw: str, persona: dict) -> dict:
     (narration around quotes). Returns ``{"speech": str|None, "action": str|None}``;
     empty / OOC / ambient-decline yields nulls so the game stays silent/scripted.
     """
-    raw = (raw or "").strip()
+    raw = _cut_runaway((raw or "").strip())
     if not raw or _is_ooc(raw):
         return {"speech": None, "action": None}
     # Ambient decline sentinel (model told to reply "PASS" when it wouldn't react).
