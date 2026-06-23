@@ -65,6 +65,19 @@ class TestBuildMessages(TestCase):
     def test_render_persona_defensive(self):
         self.assertIn("the bartender", render_persona({}))
 
+    def test_memories_injected_before_turn(self):
+        msgs = build_messages(_PERSONA, "a man", "remember me?", "directed",
+                              memories=["he stiffed you on a tab last week",
+                                        "he asks too many questions"])
+        turn = msgs[-1]["content"]
+        self.assertIn("MEMORY", turn)
+        self.assertIn("stiffed you on a tab", turn)
+        self.assertIn("remember me?", turn)  # the turn still follows the block
+
+    def test_no_memories_no_block(self):
+        msgs = build_messages(_PERSONA, "a man", "hi", "directed")
+        self.assertNotIn("MEMORY", msgs[-1]["content"])
+
 
 class TestArchetype(TestCase):
     def test_empty_persona_defaults_to_bartender(self):
