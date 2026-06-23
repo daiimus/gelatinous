@@ -22,7 +22,9 @@ from evennia.utils import delay
 
 from typeclasses.items import Item
 from typeclasses.characters import Character
+from typeclasses.llm_persona import build_persona
 from world.grammar import capitalize_first, with_article
+from world.llm.client import llm_enabled, request_npc_reply
 from world.shop.utils import format_currency
 from world.bar import (
     DEFAULT_BAR_SNACKS,
@@ -327,6 +329,13 @@ ACK_EMOTES = (
 #: Minimum seconds between acknowledgements, so a chatty room doesn't spam them.
 ACK_COOLDOWN = 6.0
 
+#: LLM-driven conversational replies (LLM_GAMEMASTER_SPEC Phase 1, #707). Gated
+#: by BOTH ``settings.LLM_GM_ENABLED`` (deployment) and ``npc.db.llm_driven``
+#: (per-NPC), so a scripted bartender stays byte-identical when the LLM is off.
+LLM_DIRECTED_COOLDOWN = 4.0    # min seconds between replies to direct address/name
+LLM_AMBIENT_COOLDOWN = 45.0    # she rarely volunteers into overheard chatter
+LLM_AMBIENT_CHANCE = 0.35      # ...and not every eligible time
+
 
 class Bartender(Character):
     """An NPC that takes drink orders by being spoken to (the `to` command)."""
@@ -345,6 +354,10 @@ class Bartender(Character):
             self.build = "average"
         if not self.sdesc_keyword:
             self.sdesc_keyword = "bartender"
+        # LLM-driven dialogue is opt-in per NPC (and also gated by the
+        # deployment-wide LLM_GM_ENABLED). Builders flip this on the NPCs that
+        # should think; everyone else stays fully scripted.
+        self.db.llm_driven = False
 
     def _find_bar(self):
         if not self.location:
@@ -380,6 +393,17 @@ class Bartender(Character):
 
         if kwargs.get("addressed"):
             delay(1.5, self._fulfil_order, speech, speaker)
+            return True
+
+        # LLM conversational layer — only when both gates are on, so the
+        # scripted NPC is byte-identical with the LLM off. Orders and gratitude
+        # above are never routed here.
+        if self.db.llm_driven and llm_enabled():
+            kind = self._classify_speech(speech, speaker)
+            if kind == "directed":
+                delay(1.5, self._try_llm_reply, speech, speaker, "directed")
+            elif kind == "ambient":
+                delay(1.0, self._try_llm_reply, speech, speaker, "ambient")
         return True
 
     @staticmethod
@@ -403,7 +427,11 @@ class Bartender(Character):
         menu = (bar.db.menu if bar else None) or self.db.menu or []
         recipe = match_recipe(order_text, menu)
         if not recipe:
-            self.execute_cmd("say Don't serve that here.")
+            # An addressed line that isn't an order becomes conversation when the
+            # LLM is driving her; otherwise the curt scripted line still stands.
+            if not self._try_llm_reply(order_text, patron, "directed",
+                                       on_fail=self._llm_fallback):
+                self.execute_cmd("say Don't serve that here.")
             return
         price = int(recipe.get("price", 0) or 0)
         have = int(getattr(patron, "tokens", 0) or 0)
@@ -432,3 +460,79 @@ class Bartender(Character):
             f"emote {craft}, sets {with_article(drink.key)} on {where}, "
             f"and {closer}."
         )
+
+    # --- LLM-driven conversation (gated; LLM_GAMEMASTER_SPEC Phase 1) --------
+
+    def _classify_speech(self, speech, speaker):
+        """Cheap reactor-side gate: ``directed`` | ``ambient`` | ``ignore``."""
+        # Loop guard: never react to another NPC's broadcast speech, so two
+        # LLM-driven NPCs can't ping-pong on ambient lines.
+        if (getattr(speaker.db, "is_bartender_npc", False)
+                or getattr(speaker.db, "llm_driven", False)):
+            return "ignore"
+        return "directed" if self._mentions_self(speech) else "ambient"
+
+    def _mentions_self(self, speech):
+        """Whether a line names this bartender (key, keyword, or generic role)."""
+        low = (speech or "").lower()
+        names = [self.key.lower()]
+        if self.sdesc_keyword:
+            names.append(self.sdesc_keyword.lower())
+        names += ["bartender", "barkeep", "barkeeper"]
+        return any(n and n in low for n in names)
+
+    def _try_llm_reply(self, line, patron, mode, on_fail=None):
+        """Route a conversational line to the LLM sidecar, off the reactor.
+
+        Returns True if the LLM path was taken (caller suppresses any scripted
+        fallback), False if gated/throttled off so the caller can fall back.
+        """
+        if not self.db.llm_driven or not llm_enabled():
+            return False
+        if (not self.location
+                or getattr(patron, "location", None) is not self.location):
+            return False
+
+        now = monotonic()
+        last = self.ndb.last_llm or 0
+        if mode == "ambient":
+            if now - last < LLM_AMBIENT_COOLDOWN:
+                return True  # throttled: stay silent rather than spam
+            if random.random() > LLM_AMBIENT_CHANCE:
+                return True  # eligible, but she didn't bite this time
+        elif now - last < LLM_DIRECTED_COOLDOWN:
+            return True
+        self.ndb.last_llm = now
+
+        # Capture everything the off-reactor thread needs BEFORE threading
+        # (the SQLite/Evennia-thread contract — see world/llm/client.py).
+        persona = build_persona(self)
+        speaker_name = patron.get_display_name(self)
+        request_npc_reply(
+            persona, speaker_name, line or "", mode,
+            on_reply=self._render_llm_reply,
+            on_fail=on_fail or self._llm_silent,
+        )
+        return True
+
+    def _render_llm_reply(self, speech, action):
+        """Reactor-side render of the sidecar reply: say + pose."""
+        if not self.location:
+            return
+        if speech:
+            clean = speech.strip().strip('"').strip()
+            if clean:
+                self.execute_cmd(f"say {clean}")
+        if action:
+            clean = action.strip()
+            if clean:
+                self.execute_cmd(f"pose {clean}")
+
+    def _llm_fallback(self):
+        """Sidecar failed on an addressed non-order: the curt scripted line."""
+        if self.location:
+            self.execute_cmd("say Don't serve that here.")
+
+    def _llm_silent(self):
+        """Sidecar failed or declined on conversation: stay quiet."""
+        return None
