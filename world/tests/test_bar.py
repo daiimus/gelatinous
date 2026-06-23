@@ -517,3 +517,152 @@ class TestBartenderReaction(BaseEvenniaTest):
             self._call(b, b, speech="thanks", addressed=True)
         mock_delay.assert_not_called()
         b._acknowledge.assert_not_called()
+
+
+class TestBartenderLLMRouting(BaseEvenniaTest):
+    """The gated LLM conversational layer: directed/ambient routing, payload,
+    cooldown, loop-guard, fail-safe. Orders + gratitude paths stay untouched."""
+
+    _REAL = (
+        "_classify_speech", "_mentions_self", "_try_llm_reply",
+        "_render_llm_reply", "_llm_fallback", "_llm_silent",
+    )
+
+    def _bartender(self, llm_driven=True, location="room"):
+        b = MagicMock()
+        b.key = "Sable"
+        b.sdesc_keyword = "catgirl"
+        b.db.llm_driven = llm_driven
+        b.db.is_bartender_npc = True
+        b.ndb.last_llm = 0
+        b.location = location
+        b._is_gratitude = barmod.Bartender._is_gratitude  # real staticmethod
+        for name in self._REAL:
+            bound = getattr(barmod.Bartender, name).__get__(b, barmod.Bartender)
+            setattr(b, name, bound)
+        return b
+
+    def _speaker(self, location="room", name="a lean man"):
+        s = MagicMock()
+        s.db.is_bartender_npc = False
+        s.db.llm_driven = False
+        s.location = location
+        s.get_display_name = lambda looker=None, **kw: name
+        return s
+
+    def _call(self, b, speaker, **payload):
+        return barmod.Bartender.at_msg_receive(
+            b, text=None, from_obj=speaker, **payload
+        )
+
+    # --- routing through at_msg_receive ---
+
+    def test_directed_name_routes_directed(self):
+        b, spk = self._bartender(), self._speaker()
+        with patch.object(barmod, "llm_enabled", return_value=True), \
+                patch.object(barmod, "delay") as mock_delay:
+            self._call(b, spk, speech="hey sable, busy?", addressed=False)
+        mock_delay.assert_called_once()
+        self.assertIn("directed", mock_delay.call_args.args)
+
+    def test_ambient_routes_ambient(self):
+        b, spk = self._bartender(), self._speaker()
+        with patch.object(barmod, "llm_enabled", return_value=True), \
+                patch.object(barmod, "delay") as mock_delay:
+            self._call(b, spk, speech="this place is dead tonight", addressed=False)
+        mock_delay.assert_called_once()
+        self.assertIn("ambient", mock_delay.call_args.args)
+
+    def test_disabled_routes_nothing(self):
+        b, spk = self._bartender(), self._speaker()
+        with patch.object(barmod, "llm_enabled", return_value=False), \
+                patch.object(barmod, "delay") as mock_delay:
+            self._call(b, spk, speech="hey sable", addressed=False)
+        mock_delay.assert_not_called()
+
+    def test_loop_guard_ignores_npc_speaker(self):
+        b, npc = self._bartender(), self._speaker()
+        npc.db.is_bartender_npc = True
+        with patch.object(barmod, "llm_enabled", return_value=True), \
+                patch.object(barmod, "delay") as mock_delay:
+            self._call(b, npc, speech="rough night sable", addressed=False)
+        mock_delay.assert_not_called()
+
+    def test_addressed_still_routes_to_order(self):
+        b, spk = self._bartender(), self._speaker()
+        with patch.object(barmod, "llm_enabled", return_value=True), \
+                patch.object(barmod, "delay") as mock_delay:
+            self._call(b, spk, speech="a rotgut", addressed=True)
+        mock_delay.assert_called_once()
+        # the addressed branch targets _fulfil_order, not the LLM layer
+        self.assertIs(mock_delay.call_args.args[1], b._fulfil_order)
+
+    # --- _try_llm_reply gating + payload ---
+
+    def test_try_llm_reply_fires_request(self):
+        b, patron = self._bartender(), self._speaker(name="a wiry courier")
+        with patch.object(barmod, "llm_enabled", return_value=True), \
+                patch.object(barmod, "build_persona", return_value={"x": 1}) as bp, \
+                patch.object(barmod, "request_npc_reply") as req:
+            taken = b._try_llm_reply("rough night?", patron, "directed")
+        self.assertTrue(taken)
+        bp.assert_called_once_with(b)
+        req.assert_called_once()
+        args, kwargs = req.call_args
+        self.assertEqual(args[0], {"x": 1})            # persona
+        self.assertEqual(args[1], "a wiry courier")    # speaker as she sees them
+        self.assertEqual(args[2], "rough night?")      # line
+        self.assertEqual(args[3], "directed")          # mode
+        self.assertIs(kwargs["on_reply"], b._render_llm_reply)
+        self.assertIs(kwargs["on_fail"], b._llm_silent)
+
+    def test_try_llm_reply_gated_off(self):
+        b, patron = self._bartender(llm_driven=False), self._speaker()
+        with patch.object(barmod, "request_npc_reply") as req:
+            taken = b._try_llm_reply("hi", patron, "directed")
+        self.assertFalse(taken)
+        req.assert_not_called()
+
+    def test_try_llm_reply_cooldown_is_silent(self):
+        from time import monotonic
+        b, patron = self._bartender(), self._speaker()
+        b.ndb.last_llm = monotonic()  # just replied
+        with patch.object(barmod, "llm_enabled", return_value=True), \
+                patch.object(barmod, "request_npc_reply") as req:
+            taken = b._try_llm_reply("hi", patron, "directed")
+        self.assertTrue(taken)         # handled-by-silence, no scripted fallback
+        req.assert_not_called()
+
+    # --- order-path fallback, render, fail-safe ---
+
+    def test_order_no_recipe_llm_off_curt_line(self):
+        b, patron = self._bartender(llm_driven=False), self._speaker()
+        b._find_bar = lambda: None
+        b.db.menu = []
+        with patch.object(barmod, "match_recipe", return_value=None):
+            barmod.Bartender._fulfil_order(b, "a unicorn tear", patron)
+        b.execute_cmd.assert_any_call("say Don't serve that here.")
+
+    def test_render_say_and_pose(self):
+        b = self._bartender()
+        b._render_llm_reply('"What\'s it to ya?"', "wipes down the slab")
+        b.execute_cmd.assert_any_call("say What's it to ya?")
+        b.execute_cmd.assert_any_call("pose wipes down the slab")
+
+    def test_render_speech_only(self):
+        b = self._bartender()
+        b.execute_cmd.reset_mock()
+        b._render_llm_reply("just a sec", None)
+        b.execute_cmd.assert_called_once_with("say just a sec")
+
+    def test_llm_fallback_curt_line(self):
+        b = self._bartender()
+        b._llm_fallback()
+        b.execute_cmd.assert_called_once_with("say Don't serve that here.")
+
+    def test_mentions_self(self):
+        b = self._bartender()
+        self.assertTrue(b._mentions_self("hey sable"))
+        self.assertTrue(b._mentions_self("yo bartender"))
+        self.assertTrue(b._mentions_self("nice catgirl ears"))
+        self.assertFalse(b._mentions_self("this whole place is dead"))

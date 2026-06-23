@@ -249,6 +249,18 @@ LOGGING = {
 }
 
 ######################################################################
+# LLM Gamemaster sidecar (LLM_GAMEMASTER_SPEC, #705/#707)
+######################################################################
+# Master switch for LLM-driven NPC dialogue. OFF by default here; flip it on in
+# secret_settings.py on a deployment where the sidecar (an external native MLX
+# process) is running. The per-NPC ``db.llm_driven`` flag is the second gate.
+# URL targets the host-native sidecar from inside the game container via
+# host.docker.internal (a 127.0.0.1 URL would mean the container itself).
+LLM_GM_ENABLED = False
+LLM_GM_URL = "http://host.docker.internal:8765/converse"
+LLM_GM_TIMEOUT = 12  # seconds; the sidecar's per-turn generation budget
+
+######################################################################
 # Settings given in secret_settings.py override those in this file.
 ######################################################################
 try:
