@@ -86,6 +86,26 @@ class TestArchetype(TestCase):
         msgs = build_messages(p, "a man", "hi", "directed")
         self.assertIn("assistant", [m["role"] for m in msgs])
 
+    def test_mapping_mes_example_is_json_safe(self):
+        # DB-sourced examples arrive as a Mapping (Evennia _SaverDict), not a
+        # plain dict — few_shot_messages must rebuild a json-serializable turn.
+        from collections.abc import Mapping
+
+        class FakeSaver(Mapping):  # mimics _SaverDict: a Mapping, not a dict
+            def __init__(self, d): self._d = d
+            def __getitem__(self, k): return self._d[k]
+            def __iter__(self): return iter(self._d)
+            def __len__(self): return len(self._d)
+
+        p = {"persona_seed": {"name": "Sable", "archetype": "bartender",
+             "mes_example": [FakeSaver({
+                 "user": 'a patron says to you: "hi"',
+                 "assistant": FakeSaver({"speech": "Hey.", "action": "nods",
+                                         "tool": "none", "tool_argument": ""})})]}}
+        msgs = build_messages(p, "a man", "hi", "directed")  # must not raise
+        asst = next(m["content"] for m in msgs if m["role"] == "assistant")
+        self.assertEqual(json.loads(asst)["speech"], "Hey.")
+
 
 class TestParseTurn(TestCase):
     def _t(self, **kw):
