@@ -44,6 +44,34 @@ class TestStoreMemory(TestCase):
         re.assert_not_called()
 
 
+class TestDossier(TestCase):
+    def _npc(self, dossiers):
+        b = MagicMock()
+        b.db.llm_dossiers = dossiers
+        for m in ("_dossiers", "_relationship_line", "_note_alias"):
+            _bind(b, m)
+        return b
+
+    def test_relationship_line_none_for_stranger(self):
+        self.assertIsNone(self._npc({})._relationship_line("#5", MagicMock()))
+
+    def test_relationship_line_with_aliases_and_valence(self):
+        b = self._npc({"#5": {"aliases": ["the foot guy", "Bob"],
+                              "valence": "wary"}})
+        line = b._relationship_line("#5", MagicMock())
+        self.assertIn("the foot guy", line)
+        self.assertIn("Bob", line)
+        self.assertIn("wary", line)
+
+    def test_note_alias_appends_dedups_and_persists(self):
+        b = self._npc({})
+        b._note_alias("#5", "the foot guy")
+        b._note_alias("#5", "the foot guy")   # dup ignored
+        b._note_alias("#5", "Bob")
+        self.assertEqual(b.db.llm_dossiers["#5"]["aliases"],
+                         ["the foot guy", "Bob"])
+
+
 class TestRememberTool(TestCase):
     def _npc(self):
         b = MagicMock()
@@ -84,6 +112,7 @@ class TestRecall(TestCase):
         b.ndb.last_llm = 0
         b._memory_subject = lambda p: f"#{p.id}"
         b._load_memories = lambda: memories
+        b._relationship_line = lambda subject, patron: None
         b._perceive = lambda p: None
         b._recent_history = lambda p: []
         b._agentic_round = MagicMock()
