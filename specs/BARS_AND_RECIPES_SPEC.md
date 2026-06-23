@@ -17,7 +17,8 @@
 - `BarCounter` — an `@integrate` room fixture (folds into the room desc,
   `get:false`), a served-drink surface (counted `On the bar:` listing), its own
   `db.desc`, the menu (`₮` currency + operate-orange, column-aligned), and the
-  `read menu on <bar>` verb. Wired end-to-end at the Hub & Howl.
+  `read menu on <bar>` verb. Wired end-to-end at the Hub & Howl and the Helix
+  Lounge.
 - **NPC bartender** (Sully) — takes orders diegetically via the unified speech
   backbone (`say`/`to`/pose all route through `world/speech.py`; a pose that
   references the bartender counts as a directed order), makes the drink, takes
@@ -59,8 +60,8 @@ brain recipe files / portability + trade (#11); faction-integrated ownership
 
 ## 0 · Purpose
 
-Bars exist as *rooms* today (the Hub & Howl, Helix Lounge, Queen of Cups) — set
-dressing, no mechanics. This makes them **functional social and economic hubs**:
+Bars began as *rooms* — set dressing, no mechanics. This makes them
+**functional social and economic hubs**:
 places where consumables are mixed, served, bought, and consumed, run by NPCs or
 players. It takes the consumption pipeline already built (substances, delivery
 verbs, tolerance/addiction) and extends it *upward* into the colony's social and
@@ -112,8 +113,8 @@ register, and owner management.
 
 A new typeclass (working name `BarCounter`, a `Furniture`/`Object` subtype)
 placed in a bar room. It is examinable and exposes role-gated verbs. The Hub &
-Howl's "bent slab of starship hull" becomes a real instance; Helix Lounge and the
-Queen of Cups lobby get their own.
+Howl's "bent slab of starship hull" and the Helix Lounge's backlit bar are real
+instances today; the Queen of Cups lobby still gets its own.
 
 **State (AttributeProperties):**
 
@@ -379,7 +380,8 @@ jerky**, **ration crackers**. Optional for v1; cheap to add.
 - ✅ Free-mix → additive-capped drinks → consumption pipeline.
 - ✅ Save/name/brand recipes; menu. **Pricing** present (zeroed by request);
       **register** deferred.
-- ✅ One reference bar wired end-to-end (the Hub & Howl).
+- ✅ Two reference bars wired end-to-end (the Hub & Howl, and the Helix Lounge —
+      the latter a fully-stocked free-mix shakedown with NPC bartender Sable Vane).
 
 **Shipped beyond the original v1 line:**
 - ✅ Hidden classic-cocktail recognition + spirit-swap spins (loose role-match).
