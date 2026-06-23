@@ -274,9 +274,27 @@ class LLMNpcMixin:
         return ""
 
     def _handle_action_tool(self, tool, arg, patron):
-        """Hook: route an action tool to a real command. Base NPC has no
-        action tools (social archetypes are read-only)."""
-        return None
+        """Route an action tool to a real command. ``remember`` is universal
+        (every NPC can name people); subclasses extend then call super."""
+        if tool == "remember" and arg and patron and self.location:
+            self._remember_person(patron, arg)
+
+    def _remember_person(self, patron, name):
+        """Privately name/nickname the interlocutor via the REAL ``remember``
+        command (NPC_MEMORY_AND_IDENTITY_SPEC §4) — keyed on their apparent_uid
+        in this NPC's recognition memory. Skips a no-op re-name so the LLM can't
+        churn the same nickname every turn."""
+        name = " ".join(str(name).split())[:40]
+        if not name or " as " in name.lower():
+            return
+        try:
+            from world.identity import get_assigned_name
+            if get_assigned_name(self, patron) == name:
+                return  # already known by this name
+            target = patron.get_display_name(self)
+            self.execute_cmd(f"remember {target} as {name}")
+        except Exception:  # noqa: BLE001 — naming is best-effort
+            pass
 
     def _remember_turn(self, patron, line, speaker_name, speech, action):
         """Append the rendered turn to short-term memory (anti-repetition)."""

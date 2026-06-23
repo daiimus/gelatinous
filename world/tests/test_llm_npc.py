@@ -44,6 +44,38 @@ class TestStoreMemory(TestCase):
         re.assert_not_called()
 
 
+class TestRememberTool(TestCase):
+    def _npc(self):
+        b = MagicMock()
+        b.location = "room"
+        _bind(b, "_handle_action_tool")
+        _bind(b, "_remember_person")
+        return b
+
+    def test_remember_routes_to_real_command(self):
+        b = self._npc()
+        patron = MagicMock()
+        patron.get_display_name = lambda looker=None, **k: "a gaunt drifter"
+        with patch("world.identity.get_assigned_name", return_value=None):
+            b._handle_action_tool("remember", "the cagey one", patron)
+        b.execute_cmd.assert_called_once_with(
+            "remember a gaunt drifter as the cagey one")
+
+    def test_skips_when_already_named(self):
+        b = self._npc()
+        patron = MagicMock()
+        patron.get_display_name = lambda looker=None, **k: "the cagey one"
+        with patch("world.identity.get_assigned_name",
+                   return_value="the cagey one"):
+            b._handle_action_tool("remember", "the cagey one", patron)
+        b.execute_cmd.assert_not_called()      # no churn re-naming
+
+    def test_base_mixin_ignores_drink_tool(self):
+        b = self._npc()
+        b._handle_action_tool("prepare_drink", "Negroni", MagicMock())
+        b.execute_cmd.assert_not_called()       # drinks are the bartender's job
+
+
 class TestRecall(TestCase):
     def _npc(self, memories):
         b = MagicMock()

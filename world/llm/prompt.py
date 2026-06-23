@@ -23,6 +23,13 @@ TOOLS = {
                      "person you're speaking to is ALREADY described in the "
                      "PERCEPTION line — do NOT look at them again "
                      "(argument: who/what)"},
+    "remember": {"kind": "action",
+                 "desc": "remember the person you're speaking to by a name — one "
+                         "they gave you, OR a nickname you privately coin from "
+                         "what you know about them (e.g. 'the foot guy', 'tab "
+                         "dodger'). Private to you; from then on you know them by "
+                         "it. Do it when someone's worth tagging, not every turn "
+                         "(argument: the name)"},
     "check_stock": {"kind": "context",
                     "desc": "list exactly what the bar can serve right now "
                             "(argument: '')"},
@@ -32,9 +39,10 @@ TOOLS = {
                               "narrate pouring yourself (argument: the drink name)"},
 }
 
-#: Every NPC perceives — ``look`` is granted to every archetype on top of its job
-#: tools, so grounding is never accidentally withheld.
-BASE_TOOLS = ("look",)
+#: Granted to every archetype on top of its job tools: ``look`` (grounding is
+#: never accidentally withheld) and ``remember`` (any NPC can privately name/
+#: nickname people — NPC_MEMORY_AND_IDENTITY_SPEC §4).
+BASE_TOOLS = ("look", "remember")
 
 #: Read-only tools that loop their result back (vs. action tools → real commands).
 #: Derived from the registry so adding a tool can't desync the game-side router.

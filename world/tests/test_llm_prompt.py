@@ -142,12 +142,13 @@ class TestToolScoping(TestCase):
 
     def test_bartender_grants_its_job_tools_plus_base(self):
         names = tool_names(_PERSONA)  # bartender archetype
-        self.assertEqual(names, ["look", "check_stock", "prepare_drink"])
+        self.assertEqual(names, ["look", "remember", "check_stock", "prepare_drink"])
 
     def test_schema_scoped_to_archetype(self):
-        # the social archetype's schema can't even express prepare_drink.
+        # the social archetype gets the base tools (look + remember) but never
+        # a bartender's prepare_drink.
         enum = schema_for(self.social)["properties"]["tool"]["enum"]
-        self.assertEqual(enum, ["none", "look"])
+        self.assertEqual(enum, ["none", "look", "remember"])
         self.assertNotIn("prepare_drink", enum)
 
     def test_turn_schema_builder(self):
@@ -220,4 +221,5 @@ class TestParseTurn(TestCase):
 
     def test_schema_tool_enum(self):
         self.assertEqual(TURN_SCHEMA["properties"]["tool"]["enum"],
-                         ["none", "look", "check_stock", "prepare_drink"])
+                         ["none", "look", "remember", "check_stock",
+                          "prepare_drink"])
