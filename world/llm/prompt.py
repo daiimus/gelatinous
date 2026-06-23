@@ -284,7 +284,8 @@ def few_shot_messages(persona: dict) -> list:
 
 def build_messages(persona: dict, speaker: str, line: str, mode: str,
                    perception: str = None, history: list = None,
-                   memories: list = None, relationship: str = None) -> list:
+                   memories: list = None, relationship: str = None,
+                   events: list = None) -> list:
     """Build the OpenAI ``messages``: system (charter+tools+persona) + few-shot +
     recent history + the grounded turn. The caller passes ``schema_for(persona)``
     to the backend to constrain the output to this archetype's tools.
@@ -313,11 +314,16 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     speaker = speaker or "someone"
     line = line or ""
     who = f"[WHO — {relationship}]\n\n" if relationship else ""
+    seen = ""
+    if events:
+        seen = ("[RECENTLY — what you've just seen happen around you (it colours "
+                "how you feel, react if it warrants):\n"
+                + "\n".join(f"- {e}" for e in events if e) + "]\n\n")
     mem = ""
     if memories:
         mem = ("[MEMORY — what you recall (use it naturally, don't recite it):\n"
                + "\n".join(f"- {m}" for m in memories if m) + "]\n\n")
-    mem = who + mem
+    mem = who + seen + mem
     perc = f"[PERCEPTION — when you look at {speaker} you see: {perception}]\n\n" \
         if perception else ""
     if mode == "ambient":

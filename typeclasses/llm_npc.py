@@ -38,6 +38,7 @@ LLM_AMBIENT_CHANCE = 0.35      # ...and not every eligible time
 LLM_HISTORY_TURNS = 6          # recent turns kept per interlocutor (anti-repetition)
 LLM_MAX_TOOL_ROUNDS = 3        # cap the agentic loop so it can't spin forever
 LLM_MEMORY_TOPK = 3            # long-term memories recalled into a turn (Phase 2)
+LLM_ACTION_BUFFER = 6          # room actions observed (no LLM) → next reply (§8.4)
 
 
 class LLMNpcMixin:
@@ -48,9 +49,18 @@ class LLMNpcMixin:
         """React to heard speech. Job-specific handlers get first crack; the
         LLM layer only runs when both gates (per-NPC + deployment) are on, so a
         scripted NPC is byte-identical with the LLM off."""
-        speech = kwargs.get("speech")
         speaker = from_obj
-        if not speech or speaker is None or speaker is self:
+        if speaker is None or speaker is self:
+            return True
+        # §8.4 ambient action-awareness: a pure pose/emote (an *action*, not
+        # words) is OBSERVED cheaply into a buffer — NO LLM call — and consumed
+        # on the next reply. This is what keeps the single-threaded model from
+        # saturating: poses cost nothing until they ride a turn we're making.
+        speech = kwargs.get("speech")
+        if (kwargs.get("type") == "pose" and not speech and self.db.llm_driven):
+            self._observe_action(speaker, text)
+            return True
+        if not speech:
             return True
         if self._handle_directed_speech(speech, speaker, kwargs):
             return True
@@ -134,12 +144,13 @@ class LLMNpcMixin:
         history = self._recent_history(patron)
         subject = self._memory_subject(patron)
         relationship = self._relationship_line(subject, patron)
+        events = self._drain_actions()  # what we've witnessed since last reply
         on_fail = on_fail or self._llm_silent
 
         def _go(memories):
             messages = build_messages(persona, speaker_name, line or "", mode,
                                       perception, history, memories=memories,
-                                      relationship=relationship)
+                                      relationship=relationship, events=events)
             self._agentic_round(messages, persona, patron, line or "",
                                 speaker_name, on_fail, rounds=0)
 
@@ -178,6 +189,27 @@ class LLMNpcMixin:
     def _load_memories(self):
         """This NPC's stored memory records as plain dicts (deserialized)."""
         return deserialize(self.db.llm_memories) or []
+
+    # --- ambient action-awareness (§8.4) ---------------------------------
+
+    def _observe_action(self, actor, text):
+        """Buffer a witnessed room action — reactor-side, NO LLM. Already
+        rendered from this NPC's POV (names resolved), so just keep the text."""
+        if not text:
+            return
+        from evennia.utils.ansi import strip_ansi
+        clean = " ".join(strip_ansi(text).split())[:200]
+        if not clean:
+            return
+        buf = list(self.ndb.action_buffer or [])
+        buf.append(clean)
+        self.ndb.action_buffer = buf[-LLM_ACTION_BUFFER:]
+
+    def _drain_actions(self):
+        """Recent witnessed actions, consumed (cleared) for this turn."""
+        buf = list(self.ndb.action_buffer or [])
+        self.ndb.action_buffer = []
+        return buf
 
     # --- per-identity dossier: aliases + affective read (§8.3) ------------
 
