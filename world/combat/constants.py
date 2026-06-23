@@ -211,6 +211,18 @@ SKINTONE_PALETTE = {
     "olive": "|320",       # Olive undertone (3,2,0)
     "brown": "|210",       # Brown (2,1,0)
     "rich": "|310",        # Rich brown (3,1,0)
+
+    # Synthetic / alien spectrum — vaguely-unnatural tones for synthetic
+    # humanoids (replicants/Synths). Cool greys, off-tints, and metallics
+    # that read as "not quite human" beside the realistic range above.
+    "alabaster": "|554",   # Cool near-white synthetic (5,5,4)
+    "ashen": "|333",       # Mid neutral grey (3,3,3)
+    "slate": "|223",       # Blue-grey (2,2,3)
+    "pewter": "|222",      # Dark metallic grey (2,2,2)
+    "jade": "|242",        # Pale desaturated green (2,4,2)
+    "lilac": "|425",       # Pale violet (4,2,5)
+    "cobalt": "|114",      # Deep synthetic blue (1,1,4)
+    "chrome": "|445",      # Silvery off-white (4,4,5)
 }
 
 # Valid skintone names for validation
