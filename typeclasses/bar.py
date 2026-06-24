@@ -22,6 +22,7 @@ from evennia.utils import delay
 
 from typeclasses.items import Item
 from typeclasses.characters import Character
+from typeclasses.furniture import Seating
 from typeclasses.llm_npc import LLMNpcMixin
 from world.grammar import capitalize_first, with_article
 from world.shop.utils import format_currency
@@ -214,13 +215,16 @@ class BarCmdSet(CmdSet):
 # ---------------------------------------------------------------------------
 # The bar counter — an @integrate room fixture with a surface
 # ---------------------------------------------------------------------------
-class BarCounter(Item):
-    """An interactive bar counter — the first crafting station.
+class BarCounter(Seating, Item):
+    """An interactive bar counter — the first crafting station, and its own
+    seating (FURNITURE_AND_POSTURE).
 
     An ``Item`` (so the @integrate room display recognises it) but a fixed
     fixture: ``db.integrate`` folds it into the room description rather than the
     loose-object list, and a ``get:false()`` lock keeps it from being picked up.
-    Served drinks rest in its ``contents`` (the surface).
+    Served drinks rest in its ``contents`` (the surface). The stools are part of
+    the bar — ``sit at bar`` takes one of its ``capacity`` slots, not a loose
+    object (``Seating`` provides the occupancy API).
     """
 
     def at_object_creation(self):
@@ -236,42 +240,17 @@ class BarCounter(Item):
         self.db.integrate = True          # part of the room, not a loose object
         self.locks.add("get:false()")     # stuck — can't be pocketed
         self.cmdset.add(BarCmdSet, persistent=True)
-        # @integrate weaves the counter into the room description via
-        # db.sensory_contributions (builders author a per-bar 'visual' line, e.g.
-        # `@roomsense`-style data). Until they do, fall back to a plain generic
-        # line rather than the bare "<key> is here" the room would otherwise use.
-        # Highlight the targetable noun in cyan (house style for things you can
-        # interact with), matching the typical 'bar' key word so `look bar`
-        # reads as clickable.
+        # Seating: the stools ARE the bar — `sit at bar` fills one of these slots.
+        self.db.postures = ("sitting",)
+        self.db.capacity = BAR_STOOL_COUNT   # ten stools' worth
+        self.db.preposition = "at"
+        # @integrate weaves the counter into the room description (the stools are
+        # described as part of it, so players see them without a loose listing).
         self.db.integration_fallback = (
             "A salvaged |cbar|n runs along one side of the room, its surface "
-            "scarred by years of set-down glasses."
+            "scarred by years of set-down glasses, a row of mismatched stools "
+            "bolted along its base."
         )
-        # Seating: a bar comes with stools (FURNITURE_AND_POSTURE). Idempotent,
-        # and safe if the counter has no room yet. Existing bars are backfilled
-        # once at the DB level (`for b in BarCounter.objects.all(): b.stock_stools()`).
-        self.stock_stools()
-
-    def stock_stools(self, count=BAR_STOOL_COUNT):
-        """Spawn this bar's seating into its room — once (guarded by a flag).
-        Returns how many stools were added."""
-        if self.db.stools_spawned:
-            return 0
-        room = self.location
-        if not room:
-            return 0
-        from evennia.prototypes.spawner import spawn
-        from world.prototypes import BAR_STOOL
-        added = 0
-        for _ in range(count):
-            try:
-                stool = spawn(BAR_STOOL)[0]
-                stool.move_to(room, quiet=True, move_hooks=False)
-                added += 1
-            except Exception:  # noqa: BLE001 — never let seating break bar setup
-                break
-        self.db.stools_spawned = bool(added)
-        return added
 
     @staticmethod
     def _is_staff(char):
