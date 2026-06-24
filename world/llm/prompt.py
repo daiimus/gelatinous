@@ -53,6 +53,12 @@ TOOLS = {
                       "yours; never narrate healing you didn't do. Argument: what "
                       "to use — 'bandage'/'gauze' (bleeding, wounds), 'painkiller' "
                       "(pain), 'blood' (blood loss), 'splint' (fracture), 'stim'"},
+    "install": {"kind": "action",
+                "desc": "install cyberware on the patient on your table — the game "
+                        "runs the REAL surgery (incise → install → suture, skill-"
+                        "rolled; the sim owns whether it takes). Don't narrate the "
+                        "outcome. Argument: what to fit — 'cyber arm' (name a side, "
+                        "left/right), 'eye'/'ear'/'kidney' (+side), 'jaw', 'heart'"},
 }
 
 #: Granted to every archetype on top of its job tools: ``look`` (grounding),
@@ -239,11 +245,12 @@ ARCHETYPES = {
             "you don't fake a procedure or promise an outcome the body won't give. "
             "Bedside manner is colony-blunt: calm, direct, a little gallows-dry — "
             "you've seen worse walk out and worse not. You patch who's in front of "
-            "you; payment and ethics are between you and them."
+            "you, fit chrome when they want it, and the work speaks; payment and "
+            "ethics are between you and them."
         ),
         "length": ("Keep it tight — a line or two and a spare, clinical gesture. "
                    "You work more than you talk."),
-        "tools": ["diagnose", "treat"],  # + BASE look/remember/feel
+        "tools": ["diagnose", "treat", "install"],  # + BASE look/remember/feel
         "fewshot": [
             {"user": 'a patient says to you: "just patch me up, doc, i\'m fine."',
              "assistant": {"speech": "Everyone's fine until they're on my table. "

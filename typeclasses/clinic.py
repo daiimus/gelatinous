@@ -32,6 +32,19 @@ CLINIC_SUPPLIES = {
     "splint": ("SPLINT", "apply"),
 }
 
+#: Cyberware the clinic can fit, keyed by the word the doctor names. ``{S}`` is
+#: filled with the side for left/right organs; ``side_agnostic`` chassis (the arm)
+#: take a single prototype and a side passed to the augment declaration instead.
+CLINIC_CYBERWARE = {
+    "arm": ("CYBER_ARM", True),
+    "eye": ("CYBER_{S}_EYE", False),
+    "ear": ("CYBER_{S}_EAR", False),
+    "kidney": ("CYBER_{S}_KIDNEY", False),
+    "jaw": ("CYBER_JAW", False),
+    "heart": ("CYBERNETIC_HEART", False),
+    "tail": ("CYBERNETIC_TAIL", False),
+}
+
 
 class Doctor(LLMNpcMixin, Character):
     """An LLM-driven clinic doctor — the medical analogue of ``Bartender``."""
@@ -87,6 +100,9 @@ class Doctor(LLMNpcMixin, Character):
         if tool == "treat" and arg and self.location:
             self._treat(self._patient(patron), arg)
             return
+        if tool == "install" and arg and self.location:
+            self._install_cyber(self._patient(patron), arg)
+            return
         LLMNpcMixin._handle_action_tool(self, tool, arg, patron)
 
     # --- treatment: draw a supply, run the REAL command ------------------
@@ -109,6 +125,63 @@ class Doctor(LLMNpcMixin, Character):
             self.execute_cmd(f"inject {item.key} {target}")
         else:
             self.execute_cmd(f"apply {item.key} on {target}")
+
+    # --- cyberware install: run the real surgery chart ------------------
+    def _resolve_cyberware(self, what):
+        """Parse the doctor's ``install`` argument into a (prototype_key, side)
+        pair. ``side`` is the value passed to the augment declaration (only
+        side-agnostic chassis like the arm need it; L/R organs pick a prototype)."""
+        import re
+        low = (what or "").lower()
+        side = "right" if "right" in low else ("left" if "left" in low else None)
+        for keyword, (template, side_agnostic) in CLINIC_CYBERWARE.items():
+            if re.search(rf"\b{keyword}\b", low):   # whole word (so 'ear' != 'heart')
+                if "{S}" in template:
+                    return template.replace("{S}", (side or "left").upper()), None
+                if side_agnostic:
+                    return template, (side or "right")
+                return template, None
+        return None, None
+
+    def _install_cyber(self, patient, what):
+        """Fit cyberware on the patient: build the real surgery chart
+        (incise → install → suture) and commence it. The procedure engine owns
+        the skill rolls + outcome (+ the AutoDoc bonus); the doctor just operates."""
+        chart = self._build_install_chart(patient, what)
+        if chart:
+            from world.medical import charts as chart_lib
+            try:
+                chart_lib.commence_chart(patient, self)
+            except Exception:  # noqa: BLE001 — surgery must not break the turn
+                pass
+
+    def _build_install_chart(self, patient, what):
+        """Draw the cyberware + a kit, resolve its mount point, and lay out the
+        incise → install → suture chart on the patient. Returns the chart or
+        ``None`` if the cyberware can't be resolved."""
+        proto_key, side = self._resolve_cyberware(what)
+        if not proto_key or not patient:
+            return None
+        cyber = self._draw_supply(proto_key)
+        if not cyber:
+            return None
+        self._draw_supply("SURGICAL_KIT")   # incise checks for a kit on the surgeon
+        try:
+            from world.medical import charts as chart_lib
+            from world.medical.procedures import resolve_augment_declaration
+            decl = resolve_augment_declaration(cyber.db, side=side) or {}
+            anchor = decl.get("anchor") or decl.get("container")
+            if not anchor:
+                return None
+            chart = chart_lib.new_chart(self)
+            chart_lib.add_step(chart, "incise", {"location": anchor})
+            chart_lib.add_step(chart, "install",
+                               {"organ_item_key": cyber.key, "location": anchor})
+            chart_lib.add_step(chart, "suture", {})
+            chart_lib.save_chart(patient, chart)
+            return chart
+        except Exception:  # noqa: BLE001 — never crash a turn over a bad install
+            return None
 
     def _draw_supply(self, proto_key):
         """Spawn a clinic supply item into the doctor's hands (bottomless stock).
