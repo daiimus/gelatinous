@@ -57,8 +57,15 @@ class LLMNpcMixin:
         # on the next reply. This is what keeps the single-threaded model from
         # saturating: poses cost nothing until they ride a turn we're making.
         speech = kwargs.get("speech")
-        if (kwargs.get("type") == "pose" and not speech and self.db.llm_driven):
-            self._observe_action(speaker, text)
+        if kwargs.get("type") == "pose" and not speech:
+            if self.db.llm_driven:
+                self._observe_action(speaker, text)
+                # A wordless pose aimed AT this NPC warrants a reaction (like
+                # directed speech). Ambient poses (not aimed at us) stay
+                # observe-only, so the model never saturates on room chatter.
+                if (kwargs.get("addressed") and llm_enabled()
+                        and not self._is_npc_speaker(speaker)):
+                    delay(1.5, self._try_llm_reply, text, speaker, "action")
             return True
         if not speech:
             return True
@@ -78,12 +85,15 @@ class LLMNpcMixin:
         return False
 
     # --- classification --------------------------------------------------
+    def _is_npc_speaker(self, speaker):
+        """Loop guard: another NPC, so we never react (speech or pose) and two
+        LLM-driven NPCs can't ping-pong."""
+        return bool(getattr(speaker.db, "is_bartender_npc", False)
+                    or getattr(speaker.db, "llm_driven", False))
+
     def _classify_speech(self, speech, speaker):
         """Cheap reactor-side gate: ``directed`` | ``ambient`` | ``ignore``."""
-        # Loop guard: never react to another NPC's broadcast speech, so two
-        # LLM-driven NPCs can't ping-pong on ambient lines.
-        if (getattr(speaker.db, "is_bartender_npc", False)
-                or getattr(speaker.db, "llm_driven", False)):
+        if self._is_npc_speaker(speaker):
             return "ignore"
         if self._mentions_self(speech) or self._is_alone_with(speaker):
             return "directed"

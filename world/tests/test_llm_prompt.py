@@ -89,6 +89,14 @@ class TestBuildMessages(TestCase):
         msgs = build_messages(_PERSONA, "a man", "hi", "directed")
         self.assertNotIn("WHO", msgs[-1]["content"])
 
+    def test_action_mode_frames_a_directed_pose(self):
+        msgs = build_messages(_PERSONA, "a lean man",
+                              "a lean man runs a hand up your arm", "action")
+        turn = msgs[-1]["content"]
+        self.assertIn("runs a hand up your arm", turn)
+        self.assertIn("directed at you", turn)
+        self.assertNotIn("says to you", turn)   # not framed as speech
+
     def test_events_injected_as_recently_block(self):
         msgs = build_messages(_PERSONA, "a man", "hi", "directed",
                               events=["the drifter pissed on the bar",
