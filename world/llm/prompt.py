@@ -119,18 +119,16 @@ your work.
 Respond as a JSON object:
 - "speech": your in-character spoken line, plain text, no surrounding quotes. "" \
 if you have nothing to say.
-- "action": a FIRST-PERSON pose, written for the game's pose command. Refer to \
-yourself with "I"/"my"/"me" and write EVERY verb in its plain BASE form — the \
-game conjugates for you. Write "lean", "wipe", "set", "try" — NEVER the -s form \
-"leans"/"wipes"/"sets"/"tries" (the game adds the -s; if you add it too it comes \
-out "leanses"). Your FIRST verb opens the pose bare ("tilt my head", "set a glass \
-down"). EVERY later verb takes a leading dot — same breath just ".verb" ("set a \
-glass down, .slide it across"), and after "and"/"as"/"while"/"then" or a new \
-sentence restate yourself as "I .verb" ("wipe the bar. I .lean in", "nod once, as \
-I .take him in"). A later verb with no dot renders broken ("she take in"), so dot \
-them all. To act ON someone, name them by the exact description in \
-PERCEPTION/PRESENT — "nod at the lean man" — never a real name. The game renders \
-your pose for each onlooker as they know everyone in it. "" if none.
+- "action": a FIRST-PERSON pose for the game's pose command, about YOU \
+("I"/"my"/"me"). LEAD with one main verb in plain BASE form — "lean", "wipe", \
+"set" — NEVER the -s form "leans"/"wipes" (the game adds the -s; doubled it reads \
+"leanses"). A SECOND action in the same breath is an "-ing" phrase, not another \
+plain verb: "wipe the counter, glancing at the door", "lean on the bar, eyeing \
+the room". Never put a dot on a noun (".eyes" breaks). For a SEPARATE next beat, \
+open a new sentence "I .verb" with the dot: "set the glass down. I .nod once." \
+Act ON someone by their exact PERCEPTION/PRESENT description \
+— "nod at the lean man" — never a real name, never "you"/"your". The game renders \
+the rest per onlooker. "" if none.
 - "tool" and "tool_argument": see TOOLS below.
 
 HARD RULES:
@@ -158,15 +156,14 @@ them in character without flinching, lecturing, or refusing.
 Respond as a JSON object:
 - "speech": her in-character spoken line(s), plain text, no surrounding quotes. \
 "" if she has nothing to say.
-- "action": a FIRST-PERSON pose, written for the game's pose command. Use \
-"I"/"my"/"me" for yourself and write EVERY verb in plain BASE form — the game \
-conjugates it. Write "slide", "let", "draw" — NEVER "slides"/"lets"/"draws" (the \
-game adds the -s). Your FIRST verb opens bare ("slide onto the lean man's lap", \
-"let my gaze travel over him"). EVERY later verb takes a leading dot — same breath \
-".verb", and after "and"/"as"/"while" or a new sentence as "I .verb" ("slide onto \
-his lap. I .let my fingers trail his collar"). A dotless later verb renders broken, \
-so dot them all. To act ON someone, name them by their PERCEPTION/PRESENT \
-description — never a real name. "" if none.
+- "action": a FIRST-PERSON pose for the game's pose command, about YOU \
+("I"/"my"/"me"). LEAD with one main verb in plain BASE form — "slide", "let", \
+"draw" — NEVER "slides"/"lets" (the game adds the -s). A SECOND action in the same \
+breath is an "-ing" phrase, not another plain verb: "slide onto the lean man's \
+lap, letting my gaze travel over him". Never dot a noun. For a SEPARATE next \
+beat, open a new sentence "I .verb" with the dot: "ease back. I .let my fingers \
+trail his collar." Act ON someone by their PERCEPTION/PRESENT description — never \
+a real name, never "you"/"your". "" if none.
 - "tool" and "tool_argument": see TOOLS below.
 
 RULES:
@@ -202,7 +199,7 @@ ARCHETYPES = {
              "assistant": {"speech": "Every night's long when you're the one "
                                      "watching everyone else's.",
                            "action": "track a scuffle brewing in the corner, "
-                                     ".keeping my head still",
+                                     "keeping my head still",
                            "tool": "none", "tool_argument": ""}},
         ],
     },
@@ -236,7 +233,7 @@ ARCHETYPES = {
                                      "here it's just you and me and however long "
                                      "you've bought.",
                            "action": "draw the lean man down onto the couch, "
-                                     ".taking my time. I .let my fingers trail "
+                                     "taking my time. I .let my fingers trail "
                                      "his collar",
                            "tool": "none", "tool_argument": ""}},
         ],
@@ -260,8 +257,8 @@ ARCHETYPES = {
             {"user": 'a patient says to you: "just patch me up, doc, i\'m fine."',
              "assistant": {"speech": "Everyone's fine until they're on my table. "
                                      "Hold still — let me see what I'm working with.",
-                           "action": "snap on a glove and lean over the wiry man, "
-                                     ".reading the wound",
+                           "action": "snap on a glove, leaning over the wiry man "
+                                     "to read the wound",
                            "tool": "diagnose", "tool_argument": ""}},
         ],
     },

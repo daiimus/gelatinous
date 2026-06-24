@@ -181,23 +181,88 @@ SCENARIOS = {
 _BASE_S_VERBS = {"focus", "kiss", "press", "toss", "brush", "caress", "dress",
                  "pass", "miss", "cross", "address", "undress", "guess"}
 
+#: Common base-form pose/action verbs. Used to spot an UNDOTTED continuation
+#: verb — a verb opening a later clause without the leading dot the DSL needs
+#: (it renders raw, e.g. "...and set it aside" instead of "...and sets it
+#: aside"). Base forms only (plurals like "eyes" are nouns here, kept OUT so
+#: "eyes fixed on him" isn't a false flag). Not exhaustive — tuned for recall on
+#: the verbs the model actually reaches for; consistent enough to compare
+#: charters against each other.
+_VERB_LEXICON = frozenset({
+    "lean", "wipe", "set", "take", "start", "pour", "nod", "stare", "fold",
+    "cross", "glance", "tilt", "slide", "draw", "watch", "fix", "let", "raise",
+    "drag", "prop", "shake", "press", "turn", "slap", "grab", "reach", "gesture", "smile", "frown", "sigh", "shrug", "lift", "drop", "push", "pull",
+    "tap", "rap", "flick", "snap", "wave", "cock", "narrow", "roll", "rub",
+    "scratch", "wipe", "swipe", "scan", "study", "eye", "lock",
+    "settle", "fold", "cross", "plant", "lay", "place", "put", "pick",
+    "hold", "grip", "clutch", "release", "loosen", "tighten", "twist", "spin",
+    "step", "shift", "ease", "sink", "slump", "straighten", "stand", "crouch",
+    "kneel", "perch", "settle", "swing", "duck", "dodge", "edge",
+    "stride", "saunter", "amble", "pace", "circle", "lean", "tip", "dip", "bow",
+    "jut", "thrust", "jab", "swat", "smack", "knock", "bang", "pound", "wipe",
+    "mop", "polish", "scrub", "rinse", "splash", "tip", "slosh",
+    "sip", "swig", "knock", "savor", "spark", "puff", "exhale",
+    "inhale", "breathe", "spit", "swallow", "lick", "bite", "chew", "smirk",
+    "grin", "scowl", "sneer", "grimace", "wince", "squint", "blink", "glare",
+    "peer", "look", "regard", "consider", "weigh", "measure", "count", "check",
+    "test", "feel", "trace", "brush", "stroke", "caress", "graze", "skim",
+    "hook", "catch", "snag", "tug", "yank", "haul", "heave", "hoist", "toss",
+    "fling", "hurl", "chuck", "lob", "roll", "deal", "slap", "slide", "push",
+    "nudge", "elbow", "shoulder", "bump", "shove", "kick", "stomp", "stamp",
+    "tread", "tiptoe", "creep", "slink", "prowl", "mutter", "murmur", "whisper",
+    "hum", "chuckle", "laugh", "snort", "huff", "exhale", "cough", "clear",
+    "jerk", "twitch", "flinch", "recoil", "stiffen", "tense", "relax", "soften",
+    "harden", "set", "clench", "unclench", "curl", "uncurl", "splay", "spread",
+    "flex", "ball", "fist", "open", "close", "shut", "shield", "guard",
+    "wipe", "dry", "wring", "wave", "beckon", "summon", "dismiss", "shoo",
+})
 
-def lint_action(action: str) -> list[str]:
-    """Heuristic flags for dot-pose DSL adherence. Empty list == looks clean."""
-    flags = []
+
+def score_pose(action: str) -> list[tuple[str, str]]:
+    """Categorized dot-pose adherence flags for the (already normalized) action.
+
+    Returns ``(category, detail)`` pairs; empty == clean. Scoring the
+    post-``parse_turn`` action means we measure what actually RENDERS:
+    ``double_conj`` — a verb fed already-conjugated, which the engine conjugates
+    AGAIN ("leans" -> "leanses"); ``undotted_cont`` — a later-clause verb with no
+    leading dot, which renders raw ("...and set it aside"); plus the older
+    leading-token and second-person checks.
+    """
+    flags: list[tuple[str, str]] = []
     if not action:
         return flags
-    words = action.split()
-    first = words[0].strip(".,").lower()
+    first = action.split()[0].strip(".,").lower()
     if first in ("i", "she", "he", "they"):
-        flags.append(f"leading pronoun '{first}' (parse_turn strips it)")
+        flags.append(("lead_pronoun", f"leading pronoun '{first}'"))
     elif first.endswith("ing"):
-        flags.append(f"first word '{first}' is a participle, not a base verb")
+        flags.append(("lead_participle", f"first word '{first}' is a participle"))
     elif first.endswith("s") and first not in _BASE_S_VERBS:
-        flags.append(f"first word '{first}' looks conjugated (want base form)")
+        flags.append(("double_conj", f"leading verb '{first}' already conjugated"))
+    # Dotted verbs the model conjugated -> engine doubles it.
+    for m in re.finditer(r"(?<!\.)\.([a-zA-Z]+)", action):
+        w = m.group(1).lower()
+        if w.endswith("s") and not w.endswith("ss") and w not in _BASE_S_VERBS \
+                and not w.endswith("ing"):
+            flags.append(("double_conj", f"dotted verb '.{w}' already conjugated"))
+    # A later clause whose first word is a verb but isn't dotted -> renders raw.
+    clauses = re.split(r"[,.;:]\s+|\s+(?:and|then|as|while|but|before|after)\s+",
+                       action, flags=re.I)
+    for seg in clauses[1:]:
+        seg = seg.strip()
+        if not seg or seg.startswith(".") or seg.lower().startswith("i "):
+            continue
+        m = re.match(r"([a-zA-Z]+)", seg)
+        if m and m.group(1).lower() in _VERB_LEXICON:
+            flags.append(("undotted_cont",
+                          f"continuation verb '{m.group(1).lower()}' not dotted"))
     if re.search(r"\byou\b|\byour\b", action, re.I):
-        flags.append("second-person 'you/your' in pose (should be 3rd-person/sdesc)")
+        flags.append(("second_person", "second-person 'you/your' in pose"))
     return flags
+
+
+def lint_action(action: str) -> list[str]:
+    """Back-compat: just the human-readable details (render-mode caller)."""
+    return [detail for _cat, detail in score_pose(action)]
 
 
 def post(messages, schema, url, max_tokens=160):
@@ -321,6 +386,79 @@ def run(scenario_name, n, url, do_render):
     print(" ===")
 
 
+# A bank of varied DIRECTED player lines, rotated across a volume run so the
+# samples exercise different poses instead of one repeated prompt. Content-
+# neutral; the model's pose FORMAT (not the topic) is what we're scoring.
+SCORE_LINES = [
+    "rough night?", "what should I drink?", "you been here long?",
+    "quiet in here tonight.", "you hear about the riot on 3rd?",
+    "what do you recommend?", "long shift?", "seen anyone come through here?",
+    "this place have a name?", "you always work alone?", "busy week?",
+    "got anything stronger?", "what's the story with the scar?",
+    "you from around here?", "looks like trouble outside.", "how's business?",
+    "what's good tonight?", "you look like you've had a day.",
+    "anyone else asking about me?", "mind if I sit a while?",
+]
+
+
+def run_score(scenario_name, n, url):
+    """Volume mode: draw N poses over rotated lines and report a CATEGORIZED
+    dot-pose format pass rate (the charter-refinement metric). Prints only the
+    failing samples + a per-category breakdown so a 100-1000 run stays readable."""
+    sc = SCENARIOS[scenario_name]
+    persona = sc["persona"]
+    schema = schema_for(persona)
+    speaker_label = sc["speaker"]
+    present_labels = sc.get("present")
+    perception = f"when you look at {speaker_label} you see them plainly"
+
+    print(f"=== score '{scenario_name}' | {n}x @ {url} ===\n")
+    clean = empty = fails = 0
+    by_cat: dict[str, int] = {}
+    examples: list[str] = []
+    for i in range(1, n + 1):
+        line = SCORE_LINES[(i - 1) % len(SCORE_LINES)]
+        messages = build_messages(persona, speaker_label, line, sc["mode"],
+                                  perception=perception, present=present_labels,
+                                  relationship=sc.get("relationship"))
+        try:
+            raw = post(messages, schema, url)
+        except Exception as e:  # noqa: BLE001 — dev tool
+            print(f"[{i}] REQUEST FAILED: {e}")
+            continue
+        action = parse_turn(raw, persona, tool_names(persona))["action"] or ""
+        if not action:
+            empty += 1
+            continue
+        flags = score_pose(action)
+        if not flags:
+            clean += 1
+        else:
+            fails += 1
+            for cat, _detail in flags:
+                by_cat[cat] = by_cat.get(cat, 0) + 1
+            if len(examples) < 25:
+                cats = ",".join(sorted({c for c, _ in flags}))
+                examples.append(f"[{i}] ({cats}) {action!r}")
+        # Streaming tally so a long run is observable (1000 samples shouldn't go
+        # dark for an hour). Flush — output is piped to a file in the background.
+        if i % 10 == 0 or i == n:
+            done = clean + fails
+            rate = f"{100*clean/done:.0f}%" if done else "—"
+            print(f"  …{i}/{n}  clean={clean} fail={fails} empty={empty} "
+                  f"({rate})", flush=True)
+
+    scored = clean + fails
+    print("--- failing samples ---")
+    for ex in examples:
+        print(ex)
+    print(f"\n=== {clean}/{scored} clean "
+          f"({100*clean/scored:.1f}%) | {empty} empty (no pose) ===")
+    print("failures by category:")
+    for cat in sorted(by_cat, key=lambda c: -by_cat[c]):
+        print(f"  {cat:16} {by_cat[cat]}")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Probe the live LLM sidecar.")
     ap.add_argument("--scenario", default="companion", choices=list(SCENARIOS))
@@ -328,8 +466,14 @@ def main():
     ap.add_argument("--url", default=DEFAULT_URL)
     ap.add_argument("--render", action="store_true",
                     help="render poses + report targeting resolution (needs Evennia)")
+    ap.add_argument("--score", action="store_true",
+                    help="VOLUME pose-format pass rate over rotated lines "
+                         "(host, stdlib; the charter-refinement metric)")
     args = ap.parse_args()
-    run(args.scenario, args.n, args.url, args.render)
+    if args.score:
+        run_score(args.scenario, args.n, args.url)
+    else:
+        run(args.scenario, args.n, args.url, args.render)
 
 
 if __name__ == "__main__":
