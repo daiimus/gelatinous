@@ -487,9 +487,11 @@ class LLMNpcMixin:
         action = action.strip().lstrip(".").strip() if action else None
         if action:
             body = action
-            if speech:
+            if speech and '"' not in body:
                 # Weave the line into the pose as a quote so it reads as one beat
                 # and still rides the say/hearing rails (CmdDotPose extracts it).
+                # If the pose ALREADY carries a quote, that one rides the rails —
+                # don't append a second and double the dialogue.
                 sep = "" if body[-1] in ",.!?…" else ","
                 body = f'{body}{sep} "{speech}"'
             self.execute_cmd(f".{body}")
