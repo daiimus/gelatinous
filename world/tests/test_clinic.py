@@ -91,5 +91,35 @@ class TestDoctorArchetype(BaseEvenniaTest):
         tools = tool_names(persona)
         self.assertIn("diagnose", tools)
         self.assertIn("treat", tools)
+        self.assertIn("install", tools)
         self.assertIn("look", tools)            # BASE
         self.assertNotIn("prepare_drink", tools)  # not a bartender
+
+
+class TestDoctorInstall(BaseEvenniaTest):
+    """The install tool lays out the real incise -> install -> suture surgery."""
+
+    def test_resolve_cyberware_sides(self):
+        doc = create_object("typeclasses.clinic.Doctor", key="Doc3",
+                            location=self.room1)
+        self.assertEqual(doc._resolve_cyberware("right eye")[0], "CYBER_RIGHT_EYE")
+        self.assertEqual(doc._resolve_cyberware("a new heart")[0],
+                         "CYBERNETIC_HEART")
+        self.assertEqual(doc._resolve_cyberware("cyber arm, left"),
+                         ("CYBER_ARM", "left"))
+        self.assertEqual(doc._resolve_cyberware("nanite cloud"), (None, None))
+
+    def test_build_install_chart_lays_out_surgery(self):
+        from world.medical import charts as chart_lib
+        doc = create_object("typeclasses.clinic.Doctor", key="Doc4",
+                            location=self.room1)
+        patient = create_object("typeclasses.characters.Character", key="Pat4",
+                                location=self.room1)
+        chart = doc._build_install_chart(patient, "cyber arm left")
+        self.assertIsNotNone(chart)
+        self.assertEqual([s["verb"] for s in chart["steps"]],
+                         ["incise", "install", "suture"])
+        install = chart["steps"][1]
+        self.assertIn("organ_item_key", install["args"])
+        self.assertTrue(install["args"]["location"])      # an anchor was resolved
+        self.assertIsNotNone(chart_lib.get_chart(patient))  # saved on the patient

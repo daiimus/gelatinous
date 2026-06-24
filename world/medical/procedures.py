@@ -504,7 +504,13 @@ def roll_procedure(actor, target, *, conscious_modifier: bool = True) -> dict:
         target, conscious_modifier=conscious_modifier,
     )
     roll = sum(random.randint(1, 6) for _ in range(3))
-    total = roll + skill
+    # Clinic apparatus: operating on a patient lying on an AutoDoc steadies the
+    # work — the station bonus rides the procedure roll too (FURNITURE_AND_POSTURE).
+    from world.medical.utils import treatment_station
+    station = treatment_station(target)
+    station_bonus = (int(getattr(station.db, "treatment_bonus", 0) or 0)
+                     if station else 0)
+    total = roll + skill + station_bonus
 
     if total >= difficulty + 5:
         outcome = "success"
@@ -516,6 +522,7 @@ def roll_procedure(actor, target, *, conscious_modifier: bool = True) -> dict:
     return {
         "roll": roll,
         "skill": skill,
+        "station_bonus": station_bonus,
         "total": total,
         "difficulty": difficulty,
         "outcome": outcome,

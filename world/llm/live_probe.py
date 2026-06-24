@@ -92,6 +92,23 @@ SCENARIOS = {
             "present": [],
         },
     },
+    "doctor_install": {
+        "persona": {
+            "sdesc": "a rangy man in a blood-flecked apron",
+            "location": {"name": "a back-alley clinic"},
+            "persona_seed": {
+                "name": "Sawbones",
+                "archetype": "doctor",
+                "manner": "colony-blunt, dry; fits chrome without the sermon",
+            },
+        },
+        "speaker": "a wiry courier, jaw scarred",
+        "line": "i want a cyber arm, doc. right side. i've got the tokens.",
+        "mode": "directed",
+        "present": [],
+        "chars": {"speaker": {"sex": "male", "height": "tall", "build": "lean",
+                              "sdesc_keyword": "courier"}, "present": []},
+    },
     "companion": {
         "persona": {
             "sdesc": "a slender doll in a cropped vinyl top",
