@@ -115,7 +115,35 @@ class Room(ObjectParent, DefaultRoom):
         if isinstance(moved_obj, Character):
             # Only run decay check when a character enters (not every object move)
             self._check_corpse_decay()
-    
+            # Let any LLM-driven occupant clock the arrival (roster + reaction).
+            self._notify_llm_presence(moved_obj, entered=True)
+
+    def at_object_leave(self, moved_obj, target_location, **kwargs):
+        """Called when an object leaves this room. Let LLM-driven occupants
+        clock the departure so their sense of who's present stays current.
+        ``moved_obj`` is still in ``self.contents`` at this point; the notify
+        helper excludes it."""
+        super().at_object_leave(moved_obj, target_location, **kwargs)
+        from typeclasses.characters import Character
+        if isinstance(moved_obj, Character):
+            self._notify_llm_presence(moved_obj, entered=False)
+
+    def _notify_llm_presence(self, moved_obj, entered):
+        """Tell each LLM-driven character in the room that ``moved_obj`` just
+        entered/left. Decoupled by duck-typing — the room knows nothing about
+        the LLM brain beyond a ``notice_presence_change`` method, so non-LLM
+        occupants and items are untouched. Best-effort: a misbehaving NPC must
+        never block someone walking through a door."""
+        for obj in self.contents:
+            if obj is moved_obj:
+                continue
+            notify = getattr(obj, "notice_presence_change", None)
+            if callable(notify):
+                try:
+                    notify(moved_obj, entered)
+                except Exception:
+                    pass
+
     def _check_corpse_decay(self):
         """Check all corpses in room and remove those that have fully decayed."""
         from typeclasses.corpse import Corpse

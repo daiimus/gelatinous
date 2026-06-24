@@ -316,6 +316,86 @@ class TestBarStock(BaseEvenniaTest):
                               f"{r['name']}: unknown ingredient {k}")
 
 
+class TestOffMenuStock(BaseEvenniaTest):
+    """Off-menu service: a classic the bar carries the makings for is served
+    even when it isn't on the board (the bartending capability layer)."""
+
+    _FULL = None  # filled in setUp from the catalog
+
+    def setUp(self):
+        super().setUp()
+        from world.bar import INGREDIENT_CATALOG
+        self._FULL = list(INGREDIENT_CATALOG)
+
+    def test_negroni_from_full_kit(self):
+        from world.bar import mix_offmenu
+        r = mix_offmenu("can you do a negroni", self._FULL)
+        self.assertIsNotNone(r)
+        self.assertEqual(r["name"], "Negroni")
+        self.assertIn("alcohol", r["effects"])      # composed from components
+
+    def test_spirit_name_alias_pins_the_spin(self):
+        from world.bar import mix_offmenu
+        # 'Boulevardier' is the whiskey spin of a Negroni.
+        r = mix_offmenu("a boulevardier", self._FULL)
+        self.assertEqual(r["name"], "Boulevardier")
+
+    def test_ordered_spirit_makes_a_spin(self):
+        from world.bar import mix_offmenu
+        r = mix_offmenu("mezcal negroni", self._FULL)
+        self.assertEqual(r["name"], "Mezcal Negroni")
+
+    def test_none_when_a_component_is_unstocked(self):
+        from world.bar import mix_offmenu
+        # gin + aperitivo but NO sweet vermouth -> can't build a Negroni
+        self.assertIsNone(mix_offmenu("negroni", ["gin", "bitter_aperitivo"]))
+
+    def test_none_for_unknown_drink(self):
+        from world.bar import mix_offmenu
+        self.assertIsNone(mix_offmenu("a glass of nanofluid", self._FULL))
+
+    def test_colony_stock_makes_a_grimy_spin(self):
+        from world.bar import mix_offmenu
+        # base pantry (citrus + sweetener) + a colony spirit -> a Sour spin
+        r = mix_offmenu("a sour", ["grain_mash", "lime", "sugar_syrup"])
+        self.assertIsNotNone(r)
+        self.assertIn("Sour", r["name"])            # 'Grain Mash Sour'
+
+    def test_resolve_prefers_menu_over_stock(self):
+        from world.bar import resolve_drink
+        bar = MagicMock()
+        bar.db.menu = [{"name": "Rotgut", "order_keywords": ("rotgut",)}]
+        bar.db.stock = None
+        recipe, off = resolve_drink("a rotgut", bar)
+        self.assertFalse(off)
+        self.assertEqual(recipe["name"], "Rotgut")
+
+    def test_resolve_falls_to_offmenu_stock(self):
+        from world.bar import resolve_drink
+        bar = MagicMock()
+        bar.db.menu = []
+        bar.db.stock = self._FULL
+        recipe, off = resolve_drink("negroni", bar)
+        self.assertTrue(off)
+        self.assertEqual(recipe["name"], "Negroni")
+
+    def test_stockable_lists_classics_for_full_kit(self):
+        from world.bar import stockable_cocktails
+        names = stockable_cocktails(self._FULL)
+        self.assertIn("Negroni", names)
+        self.assertIn("Margarita", names)
+
+    def test_bar_stock_derives_from_menu_when_unset(self):
+        from world.bar import bar_stock, BASE_BAR_PANTRY, HUB_AND_HOWL_MENU
+        bar = MagicMock()
+        bar.db.stock = None
+        bar.db.menu = list(HUB_AND_HOWL_MENU)
+        stock = bar_stock(bar)
+        for k in BASE_BAR_PANTRY:
+            self.assertIn(k, stock)
+        self.assertIn("grain_mash", stock)          # a menu drink's ingredient
+
+
 class TestSnacks(BaseEvenniaTest):
     """Free bar snacks (§10): keyword match + room resolution."""
 
@@ -672,24 +752,86 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
             barmod.Bartender._fulfil_order(b, "a unicorn tear", patron)
         b.execute_cmd.assert_any_call("say Don't serve that here.")
 
-    def test_render_unified_emote(self):
-        # action + speech -> ONE action-led emote with the quote embedded
+    def test_render_unified_pose(self):
+        # action + speech -> ONE first-person .pose with the line woven in as a
+        # quote, fired through the REAL pose command (execute_cmd).
         b = self._bartender()
-        b._render_llm_reply("What's it to ya?", "wipes down the slab")
+        b._render_llm_reply("What's it to ya?", "wipe down the slab")
         b.execute_cmd.assert_called_once_with(
-            'pose wipes down the slab. "What\'s it to ya?"')
+            '.wipe down the slab, "What\'s it to ya?"')
 
     def test_render_action_only(self):
         b = self._bartender()
         b.execute_cmd.reset_mock()
-        b._render_llm_reply(None, "polishes a glass")
-        b.execute_cmd.assert_called_once_with("pose polishes a glass")
+        b._render_llm_reply(None, "polish a glass")
+        b.execute_cmd.assert_called_once_with(".polish a glass")
+
+    def test_render_strips_model_leading_dot(self):
+        # The model may prefix its own dot; we never double it.
+        b = self._bartender()
+        b.execute_cmd.reset_mock()
+        b._render_llm_reply(None, ".nod at the lean man")
+        b.execute_cmd.assert_called_once_with(".nod at the lean man")
 
     def test_render_speech_only(self):
         b = self._bartender()
         b.execute_cmd.reset_mock()
         b._render_llm_reply("just a sec", None)
         b.execute_cmd.assert_called_once_with("say just a sec")
+
+    # --- room presence: roster + enter/leave awareness ---
+
+    def _bind(self, b, *names):
+        for name in names:
+            setattr(b, name,
+                    getattr(barmod.Bartender, name).__get__(b, barmod.Bartender))
+
+    def test_present_others_excludes_self_and_speaker(self):
+        # The roster is who ELSE is here, by the name this NPC perceives them by.
+        b = self._bartender()
+        self._bind(b, "_present_others")
+        patron = self._speaker(name="a lean man")
+        other = self._speaker(name="a tall woman")
+        loc = MagicMock(); loc.contents = [b, patron, other]
+        b.location = loc
+        self.assertEqual(b._present_others(patron), ["a tall woman"])
+
+    def test_notice_arrival_buffers_and_reacts(self):
+        b = self._bartender()
+        self._bind(b, "notice_presence_change", "_observe_action",
+                   "_is_npc_speaker")
+        b.ndb.action_buffer = []
+        mover = self._speaker(name="a tall woman")
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as d:
+            b.notice_presence_change(mover, entered=True)
+        self.assertTrue(any("arrives" in e for e in b.ndb.action_buffer))
+        d.assert_called_once()
+        self.assertEqual(d.call_args.args[4], "arrival")  # gated arrival reaction
+
+    def test_notice_departure_buffers_no_reaction(self):
+        b = self._bartender()
+        self._bind(b, "notice_presence_change", "_observe_action",
+                   "_is_npc_speaker")
+        b.ndb.action_buffer = []
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as d:
+            b.notice_presence_change(self._speaker(name="a tall woman"),
+                                     entered=False)
+        self.assertTrue(any("leaves" in e for e in b.ndb.action_buffer))
+        d.assert_not_called()  # a departure is observe-only
+
+    def test_notice_npc_arrival_no_reaction(self):
+        # Another NPC walking in is logged but never provokes a reply (loop guard)
+        b = self._bartender()
+        self._bind(b, "notice_presence_change", "_observe_action",
+                   "_is_npc_speaker")
+        b.ndb.action_buffer = []
+        npc = self._speaker(name="another tender"); npc.db.llm_driven = True
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as d:
+            b.notice_presence_change(npc, entered=True)
+        d.assert_not_called()
 
     def test_llm_fallback_curt_line(self):
         b = self._bartender()
@@ -759,7 +901,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     def test_on_turn_action_tool_runs_real_command(self):
         b = self._bartender(); self._bind_loop(b)
         patron = self._speaker(); patron.id = 6
-        turn = {"speech": "Coming up", "action": "grabs a glass",
+        turn = {"speech": "Coming up", "action": "grab a glass",
                 "tool": "prepare_drink", "tool_argument": "Negroni"}
         with patch.object(llmnpc, "parse_turn", return_value=turn):
             b._on_turn(["m"], {}, patron, "a negroni", "a man", lambda: None, 0, "{}")
@@ -767,13 +909,15 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b._agentic_round.assert_not_called()              # terminal, no loop
 
     def test_on_turn_terminal_renders(self):
+        # Terminal turn: action+speech go out as ONE first-person .pose through
+        # the real pose command (execute_cmd), the line woven in as a quote.
         b = self._bartender(); self._bind_loop(b)
         patron = self._speaker(); patron.id = 8
-        turn = {"speech": "hey", "action": "nods", "tool": "none",
+        turn = {"speech": "hey", "action": "nod", "tool": "none",
                 "tool_argument": ""}
         with patch.object(llmnpc, "parse_turn", return_value=turn):
             b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, "{}")
-        b.execute_cmd.assert_any_call('pose nods. "hey"')
+        b.execute_cmd.assert_any_call('.nod, "hey"')
 
     def test_run_context_tool_look_and_stock(self):
         b = self._bartender()

@@ -1,12 +1,24 @@
 # LLM Gamemaster Spec
 
-> **Status:** 🟡 Proposal — **Phase 1 SHIPPED** (#707); the rest still designed,
-> not built (tracking #705). The first bridge is live: the Bartender NPC Sable
-> answers player speech with model-generated dialogue from a decoupled,
-> **OpenAI-compatible** inference backend (MLX / Ollama / cloud — swappable by
-> URL, no code change), seeded from her real identity, gated behind two switches,
-> fail-safe to scripted behaviour, drink mechanics untouched. Build ladder +
-> per-phase status in §10. A methodology for
+> **Status:** 🟡 Proposal — **Phases 1–2 SHIPPED; Phase 3 partial.** Phase 1
+> (#707): the Bartender NPC Sable answers player speech with model-generated
+> dialogue from a decoupled, **OpenAI-compatible** inference backend (MLX /
+> Ollama / cloud — swappable by URL, no code change), seeded from her real
+> identity, gated behind two switches, fail-safe to scripted behaviour, drink
+> mechanics untouched. **Phase 2** added per-NPC RAG memory (embeddings,
+> identity-gated retrieval, write-back) and a reusable LLM-NPC brain
+> (`LLMNpcMixin`) with archetypes (bartender, companion). **Phase 3 (partial):** a
+> small allow-listed action surface is live — `remember`/`feel`/`look` + archetype
+> tools (`prepare_drink`) — and **actuation runs through the REAL first-person
+> `.pose` command** (`execute_cmd`), so NPC poses get the game's per-observer
+> identity rendering and targeting for free (the NPC names people as *it* perceives
+> them — sdesc, or a name it has assigned — and the world renders each watcher's
+> view; validated live: the model emits well-formed dot-pose, incl. `I .verb`
+> continuations and multi-PC targeting). The Phase-3 **arbiter (capability +
+> consent gates)** and mechanical-verb routing to the tactical resolver are **not**
+> built yet (consent ties to the deferred Trust/Consent gate). Build ladder +
+> per-phase status in §10. Live-model validation harness: `world/llm/live_probe.py`.
+> A methodology for
 > running a **local LLM as a storyteller / gamemaster** that puppets NPCs:
 > dialogue, a bounded set of actions, real command use, and **per-NPC memory
 > sustained through RAG**. This document is deliberately **implementation-light**.
@@ -670,14 +682,30 @@ MLX, ChromaDB, or Evennia.
   - **No memory, no actions beyond speech/pose** (Phases 2–3). Tests:
     `world/tests/test_bar.py::TestBartenderLLMRouting`. *Deliverable met: in-persona
     conversation that fails safe when the sidecar is off or a gate is down.*
-- **Phase 2 — memory.** Add the Memory adapter: per-NPC RAG namespace, write-back,
-  identity-gated retrieval, built on `recognition_memory`. *Deliverable: the NPC
-  remembers a prior encounter across sessions.*
-- **Phase 3 — bounded actions.** Add the Action affordance list + the full
-  arbiter (§5.4) including the capability and **consent** gates. A small,
-  allow-listed verb surface. **Mechanical verbs route to the tactical resolver**
-  (§2.2), not straight to the model. *Deliverable: the NPC takes a real, governed
-  action through a command.*
+- ✅ **Phase 2 — memory.** The Memory adapter: per-NPC RAG namespace
+  (`world/llm/memory.py` — embeddings via the sidecar `/v1/embeddings`, exact
+  cosine top-k, salience/prune), identity-gated retrieval and write-back scoped to
+  the interlocutor's `apparent_uid` (rides `recognition_memory`). Plus the reusable
+  brain `typeclasses/llm_npc.py` `LLMNpcMixin` (engagement loop + agentic tool
+  loop) and archetypes in `world/llm/prompt.py` (bartender, companion) with
+  per-archetype tool scoping. **Identity & posing** (`NPC_MEMORY_AND_IDENTITY_SPEC`
+  §8): names-as-claims, spontaneous nicknames via the real `remember` command,
+  behaviour-driven valence (`feel`). *Deliverable met: the NPC remembers a prior
+  encounter across sessions and names people it knows.*
+- 🟡 **Phase 3 — bounded actions (PARTIAL).** Shipped: a small allow-listed action
+  surface (`remember`, `feel`, `look` + archetype `prepare_drink`/`check_stock`),
+  and **actuation through real commands** — speech via `say`, action via the REAL
+  first-person `.pose` (`execute_cmd('.<pose>')`), which gives per-observer identity
+  rendering + targeting for free. **Room presence**: an LLM NPC tracks who is in
+  the room (a live `[PRESENT]` roster) and clocks arrivals/departures via the
+  vanilla `at_object_receive`/`at_object_leave` room hooks (a non-NPC arrival may
+  trigger a gated greeting). Validated live (`world/llm/live_probe.py`): the model
+  emits well-formed dot-pose (base verbs, dotted later verbs, `I .verb`
+  continuations) and resolvable targeting. **NOT yet built:** the full arbiter
+  (§5.4) — the **capability and consent gates** — and **mechanical verbs routing
+  to the tactical resolver** (§2.2); consent ties to the deferred Trust/Consent
+  gate. *Deliverable partially met: governed social/expressive actions through real
+  commands; the mechanical/consented action surface remains.*
 - **Phase 4 — many NPCs & de-confliction.** One GM, multiple personas, serialised
   turns, priority queue, isolation verified across namespaces.
 - **Phase 5 — hardening.** Audit logging, kill switch, rate limits, forgetting/

@@ -3175,3 +3175,32 @@ CIGARETTE_PACK_NOIR = {
         ("cigarette_prototype", "CIGARETTE_NOIR"),
     ],
 }
+
+
+# ===========================================================================
+# Furniture (FURNITURE_AND_POSTURE) — things you sit on / lie on
+# ===========================================================================
+
+# A bar stool — sit at the bar. The Furniture typeclass defaults (sitting,
+# capacity 1, "on") are exactly right, so this just dresses it.
+BAR_STOOL = {
+    "prototype_key": "bar_stool",
+    "key": "bar stool",
+    "aliases": ["stool"],
+    "typeclass": "typeclasses.furniture.Furniture",
+    "desc": "A battered metal stool, its vinyl seat split and patched with tape.",
+    "tags": [("furniture", "category")],
+}
+
+# An AutoDoc / med-pod — lie in it to be worked on. The AutoDoc typeclass sets
+# the lying posture, the "in" preposition, and the medical-apparatus marker.
+AUTODOC = {
+    "prototype_key": "autodoc",
+    "key": "autodoc",
+    "aliases": ["auto-doc", "med pod", "medpod", "stretcher", "pod"],
+    "typeclass": "typeclasses.furniture.AutoDoc",
+    "desc": "A scuffed white medical pod, lid hinged back over a padded trough "
+            "of sensors and folded manipulator arms — a clinic's centrepiece, "
+            "waiting for a body to work on.",
+    "tags": [("furniture", "category"), ("medical", "category")],
+}

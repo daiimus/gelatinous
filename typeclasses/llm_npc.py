@@ -137,7 +137,9 @@ class LLMNpcMixin:
 
         now = monotonic()
         last = self.ndb.last_llm or 0
-        if mode == "ambient":
+        if mode in ("ambient", "arrival"):
+            # Volunteering into the room (overheard chatter or someone walking
+            # in) is rate-limited and probabilistic so the NPC doesn't pounce.
             if now - last < LLM_AMBIENT_COOLDOWN:
                 return True  # throttled: stay silent rather than spam
             if random.random() > LLM_AMBIENT_CHANCE:
@@ -155,12 +157,14 @@ class LLMNpcMixin:
         subject = self._memory_subject(patron)
         relationship = self._relationship_line(subject, patron)
         events = self._drain_actions()  # what we've witnessed since last reply
+        present = self._present_others(patron)  # who else is in the room now
         on_fail = on_fail or self._llm_silent
 
         def _go(memories):
             messages = build_messages(persona, speaker_name, line or "", mode,
                                       perception, history, memories=memories,
-                                      relationship=relationship, events=events)
+                                      relationship=relationship, events=events,
+                                      present=present)
             self._agentic_round(messages, persona, patron, line or "",
                                 speaker_name, on_fail, rounds=0)
 
@@ -199,6 +203,50 @@ class LLMNpcMixin:
     def _load_memories(self):
         """This NPC's stored memory records as plain dicts (deserialized)."""
         return deserialize(self.db.llm_memories) or []
+
+    # --- room presence: who's here, who comes and goes -------------------
+
+    def _present_others(self, patron=None):
+        """The characters sharing this NPC's room right now, each by the name
+        THIS NPC perceives them by (so the model can reference them and the
+        world renders per-observer). The current speaker is excluded — they're
+        already in PERCEPTION — and other NPCs are kept (they're really here).
+        Capped to keep the prompt bounded in a crowded room."""
+        loc = self.location
+        if not loc:
+            return []
+        names = []
+        for obj in loc.contents:
+            if obj is self or obj is patron:
+                continue
+            if not hasattr(obj, "get_sdesc"):
+                continue
+            try:
+                name = obj.get_display_name(self)
+            except Exception:  # noqa: BLE001 — never break a reply over a roster
+                continue
+            if name:
+                names.append(name)
+        return names[:8]
+
+    def notice_presence_change(self, mover, entered):
+        """The room tells us a character entered (``entered=True``) or left.
+
+        We BUFFER it cheaply as a witnessed event (no LLM) — it rides the next
+        reply via ``[RECENTLY]`` — so the NPC's sense of the room stays current.
+        A non-NPC ARRIVAL may additionally provoke a gated, probabilistic
+        reaction (a greeting/acknowledgement), throttled like ambient chatter so
+        the NPC notices newcomers without pouncing on everyone who walks by.
+        Departures and other NPCs' comings/goings are observe-only."""
+        if not self.db.llm_driven or mover is self:
+            return
+        try:
+            name = mover.get_display_name(self)
+        except Exception:  # noqa: BLE001
+            return
+        self._observe_action(mover, f"{name} {'arrives' if entered else 'leaves'}.")
+        if (entered and llm_enabled() and not self._is_npc_speaker(mover)):
+            delay(1.5, self._try_llm_reply, None, mover, "arrival")
 
     # --- ambient action-awareness (§8.4) ---------------------------------
 
@@ -351,7 +399,7 @@ class LLMNpcMixin:
                                 on_fail, rounds + 1)
             return
         # Terminal: render speech/action, route any action tool, remember.
-        self._render_llm_reply(turn["speech"], turn["action"])
+        self._render_llm_reply(turn["speech"], turn["action"], patron)
         self._handle_action_tool(tool, arg, patron)
         self._remember_turn(patron, line, speaker_name, turn["speech"],
                             turn["action"])
@@ -418,21 +466,33 @@ class LLMNpcMixin:
             return f'"{speech}"'
         return ""
 
-    def _render_llm_reply(self, speech, action):
-        """Render the sidecar reply as ONE fluid emote — the MUD-native way to act
-        and speak in a single beat. The embedded quote rides the hearing-gated
-        speech rails (``tokenize_emote`` → ``SpeechToken``) and character refs in
-        the action resolve per-observer. Falls back to a bare pose or say."""
+    def _render_llm_reply(self, speech, action, patron=None):
+        """Render the sidecar reply through the REAL ``.pose`` command — the
+        first-person pose-with-targeting the players use.
+
+        The model writes ``action`` as a first-person dot-pose ("lean across the
+        bar", "slide onto the lean man's lap"): the leading word is its verb, it
+        refers to itself with "I"/"my", and it targets anyone else by the
+        description shown in PRESENT/PERCEPTION. We hand that straight to
+        ``execute_cmd('.<action>')`` — so ``CmdDotPose`` does the conjugation,
+        the per-observer character resolution (every target rendered as the
+        watcher knows them), and the hearing-gated speech rails, exactly as for a
+        player. The spoken line rides along as an embedded quote. No bespoke
+        rendering, no name-guessing — the NPC simply uses the command.
+
+        Speech with no pose falls back to a bare ``say``."""
         if not self.location:
             return
         speech = speech.strip().strip('"').strip() if speech else None
-        action = action.strip() if action else None
-        if action and speech:
-            if action[-1] not in ".!?…,":
-                action += "."
-            self.execute_cmd(f'pose {action} "{speech}"')
-        elif action:
-            self.execute_cmd(f"pose {action}")
+        action = action.strip().lstrip(".").strip() if action else None
+        if action:
+            body = action
+            if speech:
+                # Weave the line into the pose as a quote so it reads as one beat
+                # and still rides the say/hearing rails (CmdDotPose extracts it).
+                sep = "" if body[-1] in ",.!?…" else ","
+                body = f'{body}{sep} "{speech}"'
+            self.execute_cmd(f".{body}")
         elif speech:
             self.execute_cmd(f"say {speech}")
 

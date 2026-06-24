@@ -13,6 +13,8 @@ import re
 
 from evennia import create_object
 
+from world.grammar import with_article
+
 #: Base typeclass for spawned drinks. Must be an ``Item`` — the custom CmdGet
 #: only picks up ``typeclasses.items.Item`` instances.
 DRINK_TYPECLASS = "typeclasses.items.Item"
@@ -504,6 +506,162 @@ def compose_taste(ingredients, cocktail):
         return authored
     clause = compose_flavour(ingredients)
     return f"It tastes of {clause}." if clause else ""
+
+
+# ---------------------------------------------------------------------------
+# Off-menu service — a classic the bar can mix from stock, even off the board
+# ---------------------------------------------------------------------------
+# A bar's MENU is its curated, priced board; its STOCK is the ingredient keys it
+# carries (an explicit ``db.stock``, else derived from the menu + base pantry —
+# see ``bar_stock`` / ``derive_bar_stock``). A capable bartender can mix any
+# classic whose components are all in stock — "not on the board, but the makings
+# are behind it." Mirrors the drink-order fallback: deterministic capability (do
+# I have the makings?), through the same make-a-drink path, no LLM needed.
+
+
+def _stock_index(stock):
+    """Map a stock (catalog keys) → ({role: key}, {spirit: key}). First key
+    wins per role/spirit (stock is a presence list, not quantities)."""
+    roles, spirits = {}, {}
+    for key in stock or ():
+        entry = INGREDIENT_CATALOG.get(key)
+        if not entry:
+            continue
+        role = entry.get("role")
+        if role == ROLE_SPIRIT:
+            spirits.setdefault(entry.get("spirit"), key)
+        elif role:
+            roles.setdefault(role, key)
+    return roles, spirits
+
+
+def _spirit_catalog_key(spirit):
+    for key, entry in INGREDIENT_CATALOG.items():
+        if entry.get("role") == ROLE_SPIRIT and entry.get("spirit") == spirit:
+            return key
+    return None
+
+
+def _match_cocktail(order_text):
+    """The COCKTAILS template named in ``order_text`` (+ a spirit pinned when the
+    matched alias implies one, e.g. 'Boulevardier' → whiskey). Longest alias
+    wins, so 'Whiskey Sour' beats a bare 'Sour'. Returns (template, spirit|None)."""
+    low = (order_text or "").lower()
+    best, best_spirit, best_len = None, None, 0
+    for template in COCKTAILS:
+        aliases = [(template["name"], None)]
+        aliases += [(nm, sp) for sp, nm in
+                    (template.get("spirit_names") or {}).items()]
+        # The spin's base word ("{spirit} Sour" -> "Sour") names the family, so
+        # "a sour" maps to the Daiquiri template (spirit chosen from stock/order).
+        spin_base = (template.get("spin") or "").replace("{spirit}", "").strip(" &")
+        if spin_base:
+            aliases.append((spin_base, None))
+        for nm, sp in aliases:
+            if nm.lower() in low and len(nm) > best_len:
+                best, best_spirit, best_len = template, sp, len(nm)
+    return best, best_spirit
+
+
+def _choose_spirit(template, pinned, order_text, spirits_in_stock):
+    """Pick the spirit for a spirit-keyed cocktail: a pinned/ordered spirit if
+    stocked, else the canonical, else any stocked spirit (a grimy spin).
+    Returns (spirit|None, ok) — ``ok`` False means no usable spirit is stocked."""
+    if not template.get("spirit_keyed", True):
+        return None, True
+    if pinned:
+        return pinned, (pinned in spirits_in_stock)
+    low = (order_text or "").lower()
+    for spirit in spirits_in_stock:
+        if spirit and spirit.lower() in low:
+            return spirit, True
+    canonical = template.get("canonical")
+    if canonical in spirits_in_stock:
+        return canonical, True
+    if spirits_in_stock:
+        return next(iter(spirits_in_stock)), True
+    return canonical, False
+
+
+def _sum_contributions(entries):
+    """Sum catalog entries' substance contributions, capped per substance
+    (mirrors :func:`mix_effects` on real items)."""
+    total = {}
+    for entry in entries:
+        for sub, doses in (entry.get("contributions") or {}).items():
+            total[sub] = min(MIX_EFFECT_CAP, total.get(sub, 0) + doses)
+    return total
+
+
+def mix_offmenu(order_text, stock):
+    """A servable recipe dict for a classic the bar can mix from ``stock``, or
+    ``None``. Resolves the named cocktail, requires every component role (and a
+    spirit, when spirit-keyed) to be in stock, and composes the drink — name,
+    effects, and taste from the actual stocked components.
+
+    ``stock`` is a list of catalog keys (see ``bar_stock``).
+    """
+    template, pinned = _match_cocktail(order_text)
+    if not template:
+        return None
+    roles_in_stock, spirits_in_stock = _stock_index(stock or ())
+    if not template["roles"] <= set(roles_in_stock):
+        return None
+    spirit, ok = _choose_spirit(template, pinned, order_text, spirits_in_stock)
+    if not ok:
+        return None
+
+    keys = [roles_in_stock[role] for role in template["roles"]]
+    if spirit:
+        spirit_key = _spirit_catalog_key(spirit)
+        if spirit_key:
+            keys.append(spirit_key)
+    entries = [INGREDIENT_CATALOG[k] for k in keys]
+    name = name_cocktail(template, spirit)
+    method = COCKTAIL_METHOD.get(template["name"], "mix")
+    return {
+        "name": name,
+        "desc": f"an off-menu {name.lower()}",
+        "effects": _sum_contributions(entries),
+        "sips": 3,
+        "taste": COCKTAIL_TASTE.get(name) or compose_taste([], name),
+        "craft": f"digs out the bottles and {method}s up "
+                 f"{with_article(name.lower())}",
+    }
+
+
+def stockable_cocktails(stock):
+    """Names of classic cocktails the bar can fully mix from ``stock`` (so the
+    bartender knows what it can offer off the board)."""
+    roles_in_stock, spirits_in_stock = _stock_index(stock or ())
+    names = []
+    for template in COCKTAILS:
+        if not template["roles"] <= set(roles_in_stock):
+            continue
+        if template.get("spirit_keyed", True) and not spirits_in_stock:
+            continue
+        names.append(template["name"])
+    return names
+
+
+def bar_stock(bar):
+    """The ingredient keys a bar carries: an explicit ``db.stock`` if a builder
+    set one, else derived from the menu + the base pantry (the canonical model,
+    matching ``commands/bar_menu._bar_stock``)."""
+    explicit = getattr(bar.db, "stock", None) if bar else None
+    if explicit:
+        return [k for k in explicit if k in INGREDIENT_CATALOG]
+    return derive_bar_stock((bar.db.menu if bar else None) or [])
+
+
+def resolve_drink(order_text, bar):
+    """Resolve an order to a makeable recipe: the bar's MENU first, then its
+    STOCK (off-menu classics). Returns ``(recipe, is_offmenu)`` or ``(None, False)``."""
+    recipe = match_recipe(order_text, (bar.db.menu if bar else None) or [])
+    if recipe:
+        return recipe, False
+    off = mix_offmenu(order_text, bar_stock(bar)) if bar else None
+    return (off, True) if off else (None, False)
 
 
 _VESSEL_RE = re.compile(r"^\w+ of (.+)$")

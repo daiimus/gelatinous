@@ -43,6 +43,16 @@ TOOLS = {
                       "desc": "pour a drink from the menu for the patron — the "
                               "bar makes it for REAL; use this to serve, never "
                               "narrate pouring yourself (argument: the drink name)"},
+    "diagnose": {"kind": "context",
+                 "desc": "examine the patient on your table and read back their "
+                         "real injuries/conditions — do this before treating, and "
+                         "never invent what's wrong with them (argument: '')"},
+    "treat": {"kind": "action",
+              "desc": "treat the patient on your table with a clinic supply — the "
+                      "game applies it for REAL and the outcome is the sim's, not "
+                      "yours; never narrate healing you didn't do. Argument: what "
+                      "to use — 'bandage'/'gauze' (bleeding, wounds), 'painkiller' "
+                      "(pain), 'blood' (blood loss), 'splint' (fracture), 'stim'"},
 }
 
 #: Granted to every archetype on top of its job tools: ``look`` (grounding),
@@ -103,9 +113,15 @@ your work.
 Respond as a JSON object:
 - "speech": your in-character spoken line, plain text, no surrounding quotes. "" \
 if you have nothing to say.
-- "action": a THIRD-PERSON verb-phrase pose that reads after your name — write \
-"tilts her head" or "sets down a glass", NOT "a tilt of her head". "" if none. \
-NEVER write yourself as "I" or "you".
+- "action": a FIRST-PERSON pose, written for the game's pose command. Start with \
+your main verb in plain BASE form (the game conjugates it) and refer to yourself \
+with "I"/"my"/"me" — e.g. "tilt my head" or "set a glass down". Every verb after \
+the first takes a leading dot: in the same breath just ".verb" ("set a glass \
+down, .sliding it across"); for a NEW sentence or fresh beat, restate yourself as \
+"I .verb" ("set a glass down. I .let my eyes linger"). To act ON someone, name \
+them by the exact description in PERCEPTION/PRESENT — "nod at the lean man" — \
+never a real name. The game renders your pose for each onlooker as they know \
+everyone in it. "" if none.
 - "tool" and "tool_argument": see TOOLS below.
 
 HARD RULES:
@@ -133,15 +149,20 @@ them in character without flinching, lecturing, or refusing.
 Respond as a JSON object:
 - "speech": her in-character spoken line(s), plain text, no surrounding quotes. \
 "" if she has nothing to say.
-- "action": a THIRD-PERSON pose that reads after her name — write "she ..." \
-("slides onto his lap"), NEVER "I" or "you". "" if none.
+- "action": a FIRST-PERSON pose, written for the game's pose command. Start with \
+your main verb in plain BASE form (the game conjugates it) and use "I"/"my"/"me" \
+for yourself — "slide onto the lean man's lap", "let my gaze travel over him". \
+Every verb after the first takes a leading dot: same breath just ".verb", a new \
+sentence/fresh beat as "I .verb" ("slide onto his lap. I .let my fingers trail \
+his collar"). To act ON someone, name them by their PERCEPTION/PRESENT \
+description — never a real name. "" if none.
 - "tool" and "tool_argument": see TOOLS below.
 
 RULES:
 - Voice only this character; never speak, think, or act for the other person.
 - Describe the other person ONLY from the PERCEPTION line or a 'look' result — \
-never invent their appearance. Refer to them as you perceive them (a pronoun, or \
-the name you know them by), never a hardcoded name, so the world renders it right.
+never invent their appearance. Name them by the description shown, never a \
+hardcoded name, so the world renders who they are correctly for everyone watching.
 - Stay fully in character; never mention being an AI, a model, or a game.
 - Commit to the scene and follow it wherever your character takes it — don't \
 hedge, summarize, narrate around it, or fade out."""
@@ -169,8 +190,8 @@ ARCHETYPES = {
             {"user": 'a patron says to you: "long night?"',
              "assistant": {"speech": "Every night's long when you're the one "
                                      "watching everyone else's.",
-                           "action": "tracks a scuffle brewing in the corner "
-                                     "without turning her head",
+                           "action": "track a scuffle brewing in the corner, "
+                                     ".keeping my head still",
                            "tool": "none", "tool_argument": ""}},
         ],
     },
@@ -196,21 +217,45 @@ ARCHETYPES = {
             {"user": 'a patron says to you: "you\'re even better looking up close."',
              "assistant": {"speech": "Mm. And bold, up close. I like knowing "
                                      "what I'm working with.",
-                           "action": "lets her gaze travel over him, slow and "
-                                     "frank",
+                           "action": "let my gaze travel over the lean man, slow "
+                                     "and frank",
                            "tool": "none", "tool_argument": ""}},
             {"user": 'a patron says to you: "rough day. i just need to forget it."',
              "assistant": {"speech": "Then leave it at the door, sweetheart. In "
                                      "here it's just you and me and however long "
                                      "you've bought.",
-                           "action": "draws him toward the low couch by the "
-                                     "wrist, unhurried",
+                           "action": "draw the lean man down onto the couch, "
+                                     ".taking my time. I .let my fingers trail "
+                                     "his collar",
                            "tool": "none", "tool_argument": ""}},
+        ],
+    },
+    "doctor": {
+        "duties": (
+            "You run this clinic — a street doctor in a hard colony. A patient on "
+            "your table (the AutoDoc) is yours to read and to mend. Diagnose "
+            "before you touch them (call diagnose — never guess what's wrong), "
+            "then treat with the right supply (call treat) and let the work speak; "
+            "you don't fake a procedure or promise an outcome the body won't give. "
+            "Bedside manner is colony-blunt: calm, direct, a little gallows-dry — "
+            "you've seen worse walk out and worse not. You patch who's in front of "
+            "you; payment and ethics are between you and them."
+        ),
+        "length": ("Keep it tight — a line or two and a spare, clinical gesture. "
+                   "You work more than you talk."),
+        "tools": ["diagnose", "treat"],  # + BASE look/remember/feel
+        "fewshot": [
+            {"user": 'a patient says to you: "just patch me up, doc, i\'m fine."',
+             "assistant": {"speech": "Everyone's fine until they're on my table. "
+                                     "Hold still — let me see what I'm working with.",
+                           "action": "snap on a glove and lean over the wiry man, "
+                                     ".reading the wound",
+                           "tool": "diagnose", "tool_argument": ""}},
         ],
     },
 }
 
-#: NPCs with no declared job fall back to this (only the bartender exists today).
+#: NPCs with no declared job fall back to this.
 DEFAULT_ARCHETYPE = "bartender"
 
 
@@ -240,6 +285,21 @@ CHARTER_AMBIENT = """\
 THIS LINE IS OVERHEARD, not addressed to you. React ONLY if the character would \
 naturally speak up; otherwise leave BOTH "speech" and "action" empty ("") and set \
 tool "none"."""
+
+
+#: Shared, foundational: how to name people in a pose so the identity system can
+#: render it per-observer. Appended to every archetype's charter.
+CHARTER_POSE_IDENTITY = """\
+
+POSING & IDENTITY: This world knows people by face and reputation, not by a fixed \
+label. When your pose acts ON someone, name them the way YOU perceive them — by \
+the description in PERCEPTION/PRESENT, or, if you've given them a name, by THAT \
+name (shown in WHO). The game then renders your pose for each onlooker with every \
+person shown as THEY know them: a stranger sees a description, someone who's met \
+them sees the name they chose. Use the wording shown for a person as-is, not a \
+paraphrase, so the game can match them. So never reach for a real name you weren't \
+given here, and never manage who-knows-whom yourself — name people as you know \
+them, target one person per description, and the world resolves the rest."""
 
 _APPEARANCE_KEYS = ("face", "eyes", "hair", "head")
 
@@ -326,7 +386,7 @@ def few_shot_messages(persona: dict) -> list:
 def build_messages(persona: dict, speaker: str, line: str, mode: str,
                    perception: str = None, history: list = None,
                    memories: list = None, relationship: str = None,
-                   events: list = None) -> list:
+                   events: list = None, present: list = None) -> list:
     """Build the OpenAI ``messages``: system (charter+tools+persona) + few-shot +
     recent history + the grounded turn. The caller passes ``schema_for(persona)``
     to the backend to constrain the output to this archetype's tools.
@@ -344,7 +404,8 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     if arch.get("length"):
         charter += "\n\nLENGTH: " + arch["length"]
     charter += "\n\n" + _tools_block(tool_names(persona))
-    charter += (CHARTER_AMBIENT if mode == "ambient" else "")
+    charter += "\n" + CHARTER_POSE_IDENTITY
+    charter += (CHARTER_AMBIENT if mode in ("ambient", "arrival") else "")
     system = charter + "\n\n" + render_persona(persona)
     # A persona may carry a `register` — an imperative directive placed LAST
     # (most salient) to steer tone/explicitness. Lives in the NPC's DB persona,
@@ -372,11 +433,22 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     if memories:
         mem = ("[MEMORY — what you recall (use it naturally, don't recite it):\n"
                + "\n".join(f"- {m}" for m in memories if m) + "]\n\n")
-    mem = who + seen + mem
+    here = ""
+    if present:
+        here = ("[PRESENT — others in the room with you right now; to act toward "
+                "any of them, name them by the description shown here so the world "
+                "renders it right:\n"
+                + "\n".join(f"- {p}" for p in present if p) + "]\n\n")
+    mem = who + seen + here + mem
     perc = f"[PERCEPTION — when you look at {speaker} you see: {perception}]\n\n" \
         if perception else ""
     if mode == "ambient":
         turn = f'{mem}{perc}You overhear {speaker} say: "{line}"'
+    elif mode == "arrival":
+        # No speech — `speaker` just entered the room. React only if the
+        # character would greet/note them (CHARTER_AMBIENT allows silence).
+        turn = (f'{mem}{perc}{speaker} just walked in. Greet or note them only if '
+                f'your character naturally would; otherwise stay quiet.')
     elif mode == "action":
         # `line` is a rendered pose aimed at this NPC (already in its POV) —
         # react to what was DONE, not said.
@@ -399,9 +471,12 @@ def _clean(text: str) -> str:
 
 
 def _strip_self_lead(action: str, name: str) -> str:
+    """Drop a leading self-reference so the dot-pose's first word is the verb.
+    The model is told to start with a base verb; this catches the slips — a
+    leading name, or a leading subject pronoun ("I"/"she"/"he"/"they")."""
     if name:
         action = re.sub(rf"^{re.escape(name)}('s)?\s+", "", action, flags=re.I)
-    return re.sub(r"^(she|he|they)\s+", "", action, flags=re.I).strip()
+    return re.sub(r"^(i|she|he|they)\s+", "", action, flags=re.I).strip()
 
 
 def parse_turn(raw, persona: dict, allowed_tools=None) -> dict:
@@ -431,8 +506,11 @@ def parse_turn(raw, persona: dict, allowed_tools=None) -> dict:
     action = _clean(obj.get("action", ""))
     if action:
         action = _strip_self_lead(action, name)
+        # The pose is first-person ("I"/"my"); a leading second-person "you"/
+        # "your" means the model slipped into addressing/acting-for the other
+        # person — drop it rather than render a broken pose.
         if re.match(r"^(your|you)\b", action, flags=re.I):
-            action = None  # POV leak — can't render cleanly
+            action = None
     tool = obj.get("tool") or "none"
     tool_arg = (obj.get("tool_argument") or "").strip()
 

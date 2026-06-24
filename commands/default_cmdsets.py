@@ -41,6 +41,7 @@ from commands.CmdGraffiti import CmdGraffiti, CmdPress
 from commands.CmdCharacter import CmdDescribe, CmdSkintone, CmdVoice
 from commands.CmdCharacter import CmdRemember, CmdForget, CmdRecall, CmdMemory
 from commands.CmdCommunication import CmdSay, CmdTo, CmdWhisper, CmdEmote, CmdDotPose
+from commands.CmdFurniture import CmdSit, CmdLie, CmdStand
 from commands.forensics import CmdAutopsy, CmdSever
 from commands import CmdSurgical
 from world.emote_templates import SOCIAL_COMMANDS
@@ -153,6 +154,11 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         
         # Add grapple command for initiating grappling combat
         self.add(CmdGrapple())
+
+        # Posture / furniture — sit, lie, stand (FURNITURE_AND_POSTURE)
+        self.add(CmdSit())
+        self.add(CmdLie())
+        self.add(CmdStand())
         
         # Add the entire combat command set
         self.add(CombatCmdSet)

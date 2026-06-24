@@ -861,6 +861,11 @@ def render_for_observer(
         elif isinstance(token, CharRefToken):
             # Resolve character reference per-observer
             display_name = token.character.get_display_name(observer)
+            # Drop a redundant article right before the ref — the resolved name
+            # carries its own ("the a gaunt courier" -> "a gaunt courier", "the
+            # Roony" -> "Roony"). Both players and LLM NPCs write "the <sdesc>".
+            if parts:
+                parts[-1] = re.sub(r"\b(?:the|an?)\s+$", "", parts[-1], flags=re.I)
             parts.append(display_name)
             has_prior_content = True
 
@@ -868,6 +873,18 @@ def render_for_observer(
 
     # Post-processing: capitalize first alphabetic character
     result = capitalize_first(result)
+
+    # Post-processing: capitalize the start of each new sentence, so multi-beat
+    # poses read cleanly — "...set a glass down. I .let my eyes linger" renders
+    # "...sets a glass down. He lets his eyes linger" (the "I .verb" continuation
+    # that restates the subject for conjugation). Only a BARE sentence-ender +
+    # space is treated as a boundary: punctuation closing a quote ("Get down!"
+    # you shout) continues the same narrative clause and must stay lowercase.
+    result = re.sub(
+        r'([.!?]\s+)([a-z])',
+        lambda m: m.group(1) + m.group(2).upper(),
+        result,
+    )
 
     # Post-processing: auto-punctuation
     stripped = result.rstrip()
@@ -1040,6 +1057,9 @@ def render_emote_for_observer(
             )
         elif isinstance(token, CharRefToken):
             display_name = token.character.get_display_name(observer)
+            # Drop a redundant article right before the ref (see render_for_observer).
+            if parts:
+                parts[-1] = re.sub(r"\b(?:the|an?)\s+$", "", parts[-1], flags=re.I)
             parts.append(display_name)
 
     action = "".join(parts)
