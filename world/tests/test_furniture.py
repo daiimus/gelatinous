@@ -161,6 +161,21 @@ class TestAutoDocApparatus(BaseEvenniaTest):
         self.assertEqual(r["station_bonus"], 3)
 
 
+class TestFurnitureIntegration(BaseEvenniaTest):
+    """An @integrate Furniture (a fixed AutoDoc) is woven into the room desc and
+    NOT listed as a loose object."""
+
+    def test_integrated_autodoc_woven_not_listed(self):
+        room = create_object("typeclasses.rooms.Room", key="op")
+        pod = create_object(AutoDoc, key="autodoc", location=room)
+        pod.db.integrate = True
+        pod.db.integration_fallback = "An autodoc squats at the center of the room."
+        looker = _char(room)
+        self.assertNotIn("autodoc", room.get_display_things(looker))
+        self.assertIn("squats at the center",
+                      room.get_integrated_objects_content(looker))
+
+
 class TestBarSeating(BaseEvenniaTest):
     """A bar comes stocked with stools, and many can sit at once."""
 
