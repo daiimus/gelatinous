@@ -255,13 +255,16 @@ class TestParseTurn(TestCase):
                                  tool="prepare_drink", tool_argument="Negroni"),
                          _PERSONA)
         self.assertEqual(out["speech"], "Coming up.")
-        self.assertEqual(out["action"], "grabs a glass")
+        self.assertEqual(out["action"], "grab a glass")  # de-conjugated to base
         self.assertEqual(out["tool"], "prepare_drink")
         self.assertEqual(out["tool_argument"], "Negroni")
 
     def test_self_lead_stripped(self):
+        # "Sable smirks" -> strip the name, then de-conjugate "smirks" -> "smirk"
+        # so the dot-pose engine conjugates it once ("Sable smirks"), not twice
+        # ("smirkses").
         out = parse_turn(self._t(speech="hi", action="Sable smirks"), _PERSONA)
-        self.assertEqual(out["action"], "smirks")
+        self.assertEqual(out["action"], "smirk")
 
     def test_pov_leak_action_dropped(self):
         out = parse_turn(self._t(speech="hey", action="your eyes meet his"),
@@ -286,10 +289,62 @@ class TestParseTurn(TestCase):
     def test_prose_fallback(self):
         out = parse_turn('*smirks* "what now?"', _PERSONA)
         self.assertEqual(out["speech"], "what now?")
-        self.assertEqual(out["action"], "smirks")
+        self.assertEqual(out["action"], "smirk")  # de-conjugated to base
         self.assertEqual(out["tool"], "none")
 
     def test_schema_tool_enum(self):
         self.assertEqual(TURN_SCHEMA["properties"]["tool"]["enum"],
                          ["none", "look", "remember", "feel", "check_stock",
                           "prepare_drink", "diagnose", "treat", "install"])
+
+
+class TestPoseNormalization(TestCase):
+    """parse_turn well-forms a sloppy model pose into valid dot-pose input:
+    conjugated verbs back to base, undotted continuation verbs dotted, and
+    unbalanced quotes dropped — so the engine conjugates/targets correctly."""
+
+    def _action(self, action):
+        return parse_turn(json.dumps(
+            {"speech": "", "action": action, "tool": "none",
+             "tool_argument": ""}), _PERSONA)["action"]
+
+    def test_leading_conjugated_verb_debased(self):
+        # "leans" would render "leanses"; feed the base so it conjugates once.
+        self.assertEqual(self._action("leans across the bar"),
+                         "lean across the bar")
+
+    def test_sibilant_conjugation_debased(self):
+        self.assertEqual(self._action("watches the door"), "watch the door")
+        self.assertEqual(self._action("tries the lock"), "try the lock")
+
+    def test_base_s_verb_preserved(self):
+        # "kiss"/"focus" are already base forms — don't mangle to "kis"/"focu".
+        self.assertEqual(self._action("kiss the man's knuckles"),
+                         "kiss the man's knuckles")
+        self.assertEqual(self._action("focus on the glass"), "focus on the glass")
+
+    def test_undotted_continuation_verb_gets_dotted(self):
+        # "as I take in" must dot so it conjugates ("takes"), not "she take in".
+        self.assertEqual(self._action("lean back as I take in the room"),
+                         "lean back as I .take in the room")
+
+    def test_new_sentence_I_verb_gets_dotted(self):
+        # A leading "I" is dropped by _strip_self_lead (first word becomes the
+        # verb); the dotting catches a SUBSEQUENT "I .verb" restating the subject.
+        self.assertEqual(self._action("nod, then I take a slow breath"),
+                         "nod, then I .take a slow breath")
+
+    def test_already_dotted_continuation_untouched(self):
+        self.assertEqual(self._action("lean back, .sliding it over"),
+                         "lean back, .sliding it over")
+
+    def test_dotted_conjugated_verb_debased(self):
+        self.assertEqual(self._action("set it down, .slides it across"),
+                         "set it down, .slide it across")
+
+    def test_participle_preserved(self):
+        self.assertEqual(self._action("lean in, smiling slow"),
+                         "lean in, smiling slow")
+
+    def test_unbalanced_quote_dropped(self):
+        self.assertEqual(self._action('nod once"'), "nod once")

@@ -486,6 +486,58 @@ def _strip_self_lead(action: str, name: str) -> str:
     return re.sub(r"^(i|she|he|they)\s+", "", action, flags=re.I).strip()
 
 
+#: Verbs whose base form already ends in -s/-ss — never strip them to a stem.
+_S_BASE_VERBS = frozenset({
+    "focus", "kiss", "miss", "press", "pass", "toss", "cross", "dress",
+    "bless", "hiss", "fuss", "brush", "address", "caress", "undress", "gas",
+})
+#: Leading subject words that aren't verbs (strip_self_lead handles most).
+_LEAD_NON_VERBS = frozenset({"i", "she", "he", "they", "you"})
+
+_CONT_I_RE = re.compile(r"\bI\s+(?!\.)([a-zA-Z])")
+_DOTTED_VERB_RE = re.compile(r"(?<!\.)\.([a-zA-Z]+)")
+_LEAD_VERB_RE = re.compile(r"^([a-zA-Z]+)")
+
+
+def _debase_verb(word: str) -> str:
+    """Best-effort de-conjugate a third-person verb the model slipped into back
+    to the base form the dot-pose engine expects (the engine does the
+    conjugating — feeding it "leans" yields "leanses"). Participles (-ing) and
+    known base-form -s verbs pass through untouched."""
+    low = word.lower()
+    if low in _S_BASE_VERBS or low.endswith("ing") or not low.endswith("s"):
+        return word
+    if low.endswith("ies") and len(low) > 3:
+        return word[:-3] + "y"
+    if low.endswith(("shes", "ches", "sses", "xes", "zes")):
+        return word[:-2]
+    if low.endswith("oes"):
+        return word[:-2]
+    if low.endswith("ss"):
+        return word                       # base "kiss"/"press" (defensive)
+    return word[:-1]                       # leans -> lean, smiles -> smile
+
+
+def _normalize_pose(action: str) -> str:
+    """Coerce a sloppy model pose into well-formed dot-pose input so the engine's
+    conjugation and per-observer targeting work. Three slips the model repeats:
+    a continuation verb that dropped its dot ("as I take in" -> "as I .take in",
+    so it conjugates instead of rendering "she take in"); an already-conjugated
+    verb where a base form is expected ("leans" -> "lean"); and unbalanced stray
+    quotes that would mis-split the speech/pose segments."""
+    if not action:
+        return action
+    if action.count('"') % 2:                       # unbalanced -> drop them all
+        action = action.replace('"', "")
+    action = _CONT_I_RE.sub(lambda m: "I ." + m.group(1), action)
+    if not action.startswith("."):
+        m = _LEAD_VERB_RE.match(action)
+        if m and m.group(1).lower() not in _LEAD_NON_VERBS:
+            action = _debase_verb(m.group(1)) + action[m.end():]
+    action = _DOTTED_VERB_RE.sub(lambda m: "." + _debase_verb(m.group(1)), action)
+    return action.strip()
+
+
 def parse_turn(raw, persona: dict, allowed_tools=None) -> dict:
     """Normalise a constrained turn into ``{speech, action, tool, tool_argument}``.
 
@@ -518,6 +570,9 @@ def parse_turn(raw, persona: dict, allowed_tools=None) -> dict:
         # person — drop it rather than render a broken pose.
         if re.match(r"^(your|you)\b", action, flags=re.I):
             action = None
+        else:
+            # Well-form the dot-pose: dot continuation verbs, de-conjugate slips.
+            action = _normalize_pose(action)
     tool = obj.get("tool") or "none"
     tool_arg = (obj.get("tool_argument") or "").strip()
 
