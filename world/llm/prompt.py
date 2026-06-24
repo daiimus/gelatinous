@@ -119,15 +119,18 @@ your work.
 Respond as a JSON object:
 - "speech": your in-character spoken line, plain text, no surrounding quotes. "" \
 if you have nothing to say.
-- "action": a FIRST-PERSON pose, written for the game's pose command. Start with \
-your main verb in plain BASE form (the game conjugates it) and refer to yourself \
-with "I"/"my"/"me" — e.g. "tilt my head" or "set a glass down". Every verb after \
-the first takes a leading dot: in the same breath just ".verb" ("set a glass \
-down, .sliding it across"); for a NEW sentence or fresh beat, restate yourself as \
-"I .verb" ("set a glass down. I .let my eyes linger"). To act ON someone, name \
-them by the exact description in PERCEPTION/PRESENT — "nod at the lean man" — \
-never a real name. The game renders your pose for each onlooker as they know \
-everyone in it. "" if none.
+- "action": a FIRST-PERSON pose, written for the game's pose command. Refer to \
+yourself with "I"/"my"/"me" and write EVERY verb in its plain BASE form — the \
+game conjugates for you. Write "lean", "wipe", "set", "try" — NEVER the -s form \
+"leans"/"wipes"/"sets"/"tries" (the game adds the -s; if you add it too it comes \
+out "leanses"). Your FIRST verb opens the pose bare ("tilt my head", "set a glass \
+down"). EVERY later verb takes a leading dot — same breath just ".verb" ("set a \
+glass down, .slide it across"), and after "and"/"as"/"while"/"then" or a new \
+sentence restate yourself as "I .verb" ("wipe the bar. I .lean in", "nod once, as \
+I .take him in"). A later verb with no dot renders broken ("she take in"), so dot \
+them all. To act ON someone, name them by the exact description in \
+PERCEPTION/PRESENT — "nod at the lean man" — never a real name. The game renders \
+your pose for each onlooker as they know everyone in it. "" if none.
 - "tool" and "tool_argument": see TOOLS below.
 
 HARD RULES:
@@ -155,12 +158,14 @@ them in character without flinching, lecturing, or refusing.
 Respond as a JSON object:
 - "speech": her in-character spoken line(s), plain text, no surrounding quotes. \
 "" if she has nothing to say.
-- "action": a FIRST-PERSON pose, written for the game's pose command. Start with \
-your main verb in plain BASE form (the game conjugates it) and use "I"/"my"/"me" \
-for yourself — "slide onto the lean man's lap", "let my gaze travel over him". \
-Every verb after the first takes a leading dot: same breath just ".verb", a new \
-sentence/fresh beat as "I .verb" ("slide onto his lap. I .let my fingers trail \
-his collar"). To act ON someone, name them by their PERCEPTION/PRESENT \
+- "action": a FIRST-PERSON pose, written for the game's pose command. Use \
+"I"/"my"/"me" for yourself and write EVERY verb in plain BASE form — the game \
+conjugates it. Write "slide", "let", "draw" — NEVER "slides"/"lets"/"draws" (the \
+game adds the -s). Your FIRST verb opens bare ("slide onto the lean man's lap", \
+"let my gaze travel over him"). EVERY later verb takes a leading dot — same breath \
+".verb", and after "and"/"as"/"while" or a new sentence as "I .verb" ("slide onto \
+his lap. I .let my fingers trail his collar"). A dotless later verb renders broken, \
+so dot them all. To act ON someone, name them by their PERCEPTION/PRESENT \
 description — never a real name. "" if none.
 - "tool" and "tool_argument": see TOOLS below.
 
@@ -486,55 +491,27 @@ def _strip_self_lead(action: str, name: str) -> str:
     return re.sub(r"^(i|she|he|they)\s+", "", action, flags=re.I).strip()
 
 
-#: Verbs whose base form already ends in -s/-ss — never strip them to a stem.
-_S_BASE_VERBS = frozenset({
-    "focus", "kiss", "miss", "press", "pass", "toss", "cross", "dress",
-    "bless", "hiss", "fuss", "brush", "address", "caress", "undress", "gas",
-})
-#: Leading subject words that aren't verbs (strip_self_lead handles most).
-_LEAD_NON_VERBS = frozenset({"i", "she", "he", "they", "you"})
-
+#: A continuation "I <verb>" the model wrote without the leading dot. Dotting it
+#: ("as I take in" -> "as I .take in") is the ONE pose repair we still do in code:
+#: it's unambiguous (inserts a dot, transforms no word) and the alternative —
+#: leaving it — renders the ungrammatical "she take in". Verb FORM (base vs
+#: conjugated) is taught in the charter, not patched here: de-conjugating the
+#: model's output needs a fragile inverse-conjugator (kiss≠kis, focus≠focu), and
+#: a strong charter + few-shot is the right place to keep the model in base form.
 _CONT_I_RE = re.compile(r"\bI\s+(?!\.)([a-zA-Z])")
-_DOTTED_VERB_RE = re.compile(r"(?<!\.)\.([a-zA-Z]+)")
-_LEAD_VERB_RE = re.compile(r"^([a-zA-Z]+)")
-
-
-def _debase_verb(word: str) -> str:
-    """Best-effort de-conjugate a third-person verb the model slipped into back
-    to the base form the dot-pose engine expects (the engine does the
-    conjugating — feeding it "leans" yields "leanses"). Participles (-ing) and
-    known base-form -s verbs pass through untouched."""
-    low = word.lower()
-    if low in _S_BASE_VERBS or low.endswith("ing") or not low.endswith("s"):
-        return word
-    if low.endswith("ies") and len(low) > 3:
-        return word[:-3] + "y"
-    if low.endswith(("shes", "ches", "sses", "xes", "zes")):
-        return word[:-2]
-    if low.endswith("oes"):
-        return word[:-2]
-    if low.endswith("ss"):
-        return word                       # base "kiss"/"press" (defensive)
-    return word[:-1]                       # leans -> lean, smiles -> smile
 
 
 def _normalize_pose(action: str) -> str:
-    """Coerce a sloppy model pose into well-formed dot-pose input so the engine's
-    conjugation and per-observer targeting work. Three slips the model repeats:
-    a continuation verb that dropped its dot ("as I take in" -> "as I .take in",
-    so it conjugates instead of rendering "she take in"); an already-conjugated
-    verb where a base form is expected ("leans" -> "lean"); and unbalanced stray
-    quotes that would mis-split the speech/pose segments."""
+    """Light, non-brittle repair of a model pose before it hits the dot-pose
+    engine: dot a continuation "I <verb>" so it conjugates (not "she take in"),
+    and drop unbalanced stray quotes that would mis-split speech from pose. The
+    charter owns base-form verbs + dotted continuations; this only catches the
+    one slip that's safe to fix mechanically."""
     if not action:
         return action
     if action.count('"') % 2:                       # unbalanced -> drop them all
         action = action.replace('"', "")
     action = _CONT_I_RE.sub(lambda m: "I ." + m.group(1), action)
-    if not action.startswith("."):
-        m = _LEAD_VERB_RE.match(action)
-        if m and m.group(1).lower() not in _LEAD_NON_VERBS:
-            action = _debase_verb(m.group(1)) + action[m.end():]
-    action = _DOTTED_VERB_RE.sub(lambda m: "." + _debase_verb(m.group(1)), action)
     return action.strip()
 
 
