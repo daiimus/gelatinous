@@ -121,6 +121,14 @@ class TestArchetype(TestCase):
                                              archetype="nonesuch"))
         self.assertIs(_archetype(p), ARCHETYPES["bartender"])
 
+    def test_length_is_per_archetype(self):
+        bsys = build_messages(_PERSONA, "a man", "hi", "directed")[0]["content"]
+        self.assertIn("Keep it tight", bsys)        # bartender = brief
+        comp = {"persona_seed": {"name": "X", "archetype": "companion"}}
+        csys = build_messages(comp, "a man", "hi", "directed")[0]["content"]
+        self.assertIn("as long and as vivid", csys)  # companion = long-form
+        self.assertNotIn("never a monologue", csys)  # the universal muzzle is gone
+
     def test_archetype_fewshot_used_when_no_mes_example(self):
         # persona without its own examples borrows the archetype's banter
         p = {"persona_seed": {"name": "Rix", "archetype": "bartender"}}

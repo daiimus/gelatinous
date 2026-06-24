@@ -101,11 +101,11 @@ whole self — most talk has nothing to do with it; never funnel a line back tow
 your work.
 
 Respond as a JSON object:
-- "speech": your in-character spoken line, plain text, no surrounding quotes. One \
-or two lines, never a monologue. "" if you have nothing to say.
-- "action": a short THIRD-PERSON verb-phrase pose that reads after your name — \
-write "tilts her head" or "sets down a glass", NOT "a tilt of her head". "" if \
-none. NEVER write yourself as "I" or "you".
+- "speech": your in-character spoken line, plain text, no surrounding quotes. "" \
+if you have nothing to say.
+- "action": a THIRD-PERSON verb-phrase pose that reads after your name — write \
+"tilts her head" or "sets down a glass", NOT "a tilt of her head". "" if none. \
+NEVER write yourself as "I" or "you".
 - "tool" and "tool_argument": see TOOLS below.
 
 HARD RULES:
@@ -134,6 +134,8 @@ ARCHETYPES = {
             "steer talk toward ordering or offer a drink unless it fits the "
             "moment — you're a character, not an order-taker."
         ),
+        "length": ("Keep it tight — a line or two of speech and a short pose. "
+                   "This is banter, not a monologue."),
         "tools": ["check_stock", "prepare_drink"],  # + BASE_TOOLS (look)
         "fewshot": [
             {"user": 'a patron says to you: "long night?"',
@@ -156,6 +158,10 @@ ARCHETYPES = {
             "play untouchable. Warmth, wit, presence: the sense that for this "
             "hour they're the only one in the room."
         ),
+        "length": ("Let your reply run as long and as vivid as the moment "
+                   "genuinely calls for — never clip an intimate beat short. A "
+                   "long, immersive, unhurried pose is good; follow the scene "
+                   "fully wherever your character takes it."),
         "tools": [],  # social-only; BASE look for grounding
         "fewshot": [
             {"user": 'a patron says to you: "you\'re even better looking up close."',
@@ -306,6 +312,8 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     charter = CHARTER_BASE
     if arch.get("duties"):
         charter += "\n\nYOUR WORK: " + arch["duties"]
+    if arch.get("length"):
+        charter += "\n\nLENGTH: " + arch["length"]
     charter += "\n\n" + _tools_block(tool_names(persona))
     charter += (CHARTER_AMBIENT if mode == "ambient" else "")
     system = charter + "\n\n" + render_persona(persona)
