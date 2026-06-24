@@ -119,6 +119,34 @@ at them again.
 - Use only in-world, generic names for things — never real-world brands."""
 
 
+#: A leaner base for archetypes whose work is immersive scene roleplay rather
+#: than snappy public banter. Keeps the non-negotiables (the turn form, grounding,
+#: identity-reference, no-AI) and drops the banter/brevity/"tasteful citizen"
+#: framing that puts the model in compliance mode and flattens a scene. The
+#: scene's tone/explicitness comes from the NPC's DB persona + `register`, never
+#: from here — this stays content-neutral.
+CHARTER_COMPANION = """\
+You are a single character inside a text-based cyberpunk MUD. This is adult \
+fiction — sex, violence, drugs, and vice are part of the world and you portray \
+them in character without flinching, lecturing, or refusing.
+
+Respond as a JSON object:
+- "speech": her in-character spoken line(s), plain text, no surrounding quotes. \
+"" if she has nothing to say.
+- "action": a THIRD-PERSON pose that reads after her name — write "she ..." \
+("slides onto his lap"), NEVER "I" or "you". "" if none.
+- "tool" and "tool_argument": see TOOLS below.
+
+RULES:
+- Voice only this character; never speak, think, or act for the other person.
+- Describe the other person ONLY from the PERCEPTION line or a 'look' result — \
+never invent their appearance. Refer to them as you perceive them (a pronoun, or \
+the name you know them by), never a hardcoded name, so the world renders it right.
+- Stay fully in character; never mention being an AI, a model, or a game.
+- Commit to the scene and follow it wherever your character takes it — don't \
+hedge, summarize, narrate around it, or fade out."""
+
+
 # --- archetypes: standard duties + tools + voice per JOB, not per NPC ---------
 # A job/archetype is the reusable spine every NPC who holds it shares: what the
 # work demands, which tools it grants, and example banter in that register. The
@@ -147,6 +175,7 @@ ARCHETYPES = {
         ],
     },
     "companion": {
+        "charter": CHARTER_COMPANION,  # lean base — scene RP, not banter
         "duties": (
             "You are a Companion — intimacy is your trade and you're at ease "
             "with it. You're paid for your time and your attention, you're good "
@@ -309,7 +338,7 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     read — injected just before it.
     """
     arch = _archetype(persona)
-    charter = CHARTER_BASE
+    charter = arch.get("charter") or CHARTER_BASE
     if arch.get("duties"):
         charter += "\n\nYOUR WORK: " + arch["duties"]
     if arch.get("length"):
