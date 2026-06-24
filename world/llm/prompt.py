@@ -43,6 +43,16 @@ TOOLS = {
                       "desc": "pour a drink from the menu for the patron — the "
                               "bar makes it for REAL; use this to serve, never "
                               "narrate pouring yourself (argument: the drink name)"},
+    "diagnose": {"kind": "context",
+                 "desc": "examine the patient on your table and read back their "
+                         "real injuries/conditions — do this before treating, and "
+                         "never invent what's wrong with them (argument: '')"},
+    "treat": {"kind": "action",
+              "desc": "treat the patient on your table with a clinic supply — the "
+                      "game applies it for REAL and the outcome is the sim's, not "
+                      "yours; never narrate healing you didn't do. Argument: what "
+                      "to use — 'bandage'/'gauze' (bleeding, wounds), 'painkiller' "
+                      "(pain), 'blood' (blood loss), 'splint' (fracture), 'stim'"},
 }
 
 #: Granted to every archetype on top of its job tools: ``look`` (grounding),
@@ -220,9 +230,32 @@ ARCHETYPES = {
                            "tool": "none", "tool_argument": ""}},
         ],
     },
+    "doctor": {
+        "duties": (
+            "You run this clinic — a street doctor in a hard colony. A patient on "
+            "your table (the AutoDoc) is yours to read and to mend. Diagnose "
+            "before you touch them (call diagnose — never guess what's wrong), "
+            "then treat with the right supply (call treat) and let the work speak; "
+            "you don't fake a procedure or promise an outcome the body won't give. "
+            "Bedside manner is colony-blunt: calm, direct, a little gallows-dry — "
+            "you've seen worse walk out and worse not. You patch who's in front of "
+            "you; payment and ethics are between you and them."
+        ),
+        "length": ("Keep it tight — a line or two and a spare, clinical gesture. "
+                   "You work more than you talk."),
+        "tools": ["diagnose", "treat"],  # + BASE look/remember/feel
+        "fewshot": [
+            {"user": 'a patient says to you: "just patch me up, doc, i\'m fine."',
+             "assistant": {"speech": "Everyone's fine until they're on my table. "
+                                     "Hold still — let me see what I'm working with.",
+                           "action": "snap on a glove and lean over the wiry man, "
+                                     ".reading the wound",
+                           "tool": "diagnose", "tool_argument": ""}},
+        ],
+    },
 }
 
-#: NPCs with no declared job fall back to this (only the bartender exists today).
+#: NPCs with no declared job fall back to this.
 DEFAULT_ARCHETYPE = "bartender"
 
 

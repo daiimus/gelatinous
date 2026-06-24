@@ -71,6 +71,27 @@ SCENARIOS = {
                          "sdesc_keyword": "droog"}],
         },
     },
+    "doctor": {
+        "persona": {
+            "sdesc": "a rangy man in a blood-flecked apron",
+            "location": {"name": "a back-alley clinic"},
+            "persona_seed": {
+                "name": "Sawbones",
+                "archetype": "doctor",
+                "manner": "colony-blunt, dry, unsentimental; patches who's in "
+                          "front of him, no lectures",
+            },
+        },
+        "speaker": "a wiry courier, jaw scarred",
+        "line": "took a knife to the ribs, doc. can you fix it?",
+        "mode": "directed",
+        "present": [],
+        "chars": {
+            "speaker": {"sex": "male", "height": "tall", "build": "lean",
+                        "sdesc_keyword": "courier"},
+            "present": [],
+        },
+    },
     "companion": {
         "persona": {
             "sdesc": "a slender doll in a cropped vinyl top",
