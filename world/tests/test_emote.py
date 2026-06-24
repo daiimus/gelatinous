@@ -1083,6 +1083,30 @@ class TestAssignedNameTokenTargeting(TestCase):
         names = [name for name, _char, _rc in candidates]
         self.assertEqual(names.count("Wendy"), 1)
 
+    def test_article_token_not_a_candidate(self) -> None:
+        """An assigned name like "the labor guy" must NOT make a bare article
+        a targeting handle — else every literal "the" in emote prose resolves
+        to the character ("sets it on the bar" -> "sets it on <name> bar")."""
+        self.actor.recognition_memory = {
+            apparent_uid_for(self.wendy): {"assigned_name": "the labor guy"},
+        }
+        candidates = build_char_candidates(
+            self.actor, [self.actor, self.wendy]
+        )
+        names = [name for name, _char, _rc in candidates]
+        self.assertNotIn("the", names)
+        self.assertIn("labor", names)   # content words still target
+        self.assertIn("guy", names)
+
+    def test_article_in_assigned_name_not_resolved_in_prose(self) -> None:
+        """End-to-end: a literal "the" in a pose does not resolve to the
+        remembered character whose assigned name begins with "the"."""
+        self.actor.recognition_memory = {
+            apparent_uid_for(self.wendy): {"assigned_name": "the labor guy"},
+        }
+        refs = self._resolve("set a glass down on the counter.")
+        self.assertEqual(refs, [])
+
     def test_sdesc_word_does_not_overmatch(self) -> None:
         """Assigned-name tokenizing must not affect sdesc word matching.
 
