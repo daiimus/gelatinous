@@ -121,6 +121,14 @@ class TestArchetype(TestCase):
                                              archetype="nonesuch"))
         self.assertIs(_archetype(p), ARCHETYPES["bartender"])
 
+    def test_companion_uses_lean_charter(self):
+        comp = {"persona_seed": {"name": "X", "archetype": "companion"}}
+        csys = build_messages(comp, "a man", "hi", "directed")[0]["content"]
+        self.assertIn("Commit to the scene", csys)            # lean charter
+        self.assertNotIn("never funnel a line back", csys)    # banter-charter only
+        bsys = build_messages(_PERSONA, "a man", "hi", "directed")[0]["content"]
+        self.assertIn("never funnel a line back", bsys)       # bartender keeps it
+
     def test_register_appended_last(self):
         p = {"persona_seed": {"name": "X", "archetype": "companion",
                               "register": "ZZ_REGISTER_ZZ"}}
