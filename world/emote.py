@@ -256,6 +256,18 @@ def _spans_overlap(
     return False
 
 
+#: Function words never used as standalone targeting handles. When an assigned
+#: recognition name is tokenized into single-word candidates (step 2b below), a
+#: name like "the labor guy" must NOT make a literal "the" (or "a"/"of"/…) in
+#: emote prose resolve to that character — every "the" in "sets it on the bar"
+#: would otherwise be rewritten to their name. Matching the full assigned name
+#: or its content words ("labor", "guy") still works.
+_ASSIGNED_NAME_STOPWORDS = frozenset({
+    "the", "a", "an", "of", "and", "to", "in", "on", "at", "with", "for",
+    "from", "by",
+})
+
+
 def build_char_candidates(
     actor: "Character",
     room_occupants: Sequence["Character"],
@@ -318,7 +330,8 @@ def build_char_candidates(
         if assigned:
             existing = [n for n, _rc in names]
             for token in assigned.split():
-                if token and token not in existing:
+                if (token and token.lower() not in _ASSIGNED_NAME_STOPWORDS
+                        and token not in existing):
                     names.append((token, False))
                     existing.append(token)
 
