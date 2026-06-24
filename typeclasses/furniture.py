@@ -14,20 +14,15 @@ object), never stored, so it can't desync when someone is moved, KO'd, or delete
 from typeclasses.objects import Object
 
 
-class Furniture(Object):
-    """Something you can sit on or lie on — a stool, a couch, a stretcher."""
+class Seating:
+    """Mixin: the occupancy/posture API for anything you can sit on or lie in —
+    a loose :class:`Furniture` object, OR a fixed fixture like a bar (the stools
+    are part of it). The owning class sets ``db.postures`` / ``db.capacity`` /
+    ``db.preposition`` in its own ``at_object_creation``; these methods only read
+    them, so an object with no postures set isn't sittable. Occupancy is derived
+    from the room — a moved/KO'd/deleted occupant never lingers."""
 
-    def at_object_creation(self):
-        super().at_object_creation()
-        self.db.postures = ("sitting",)   # postures this furniture allows
-        self.db.capacity = 1              # how many can occupy it at once
-        self.db.preposition = "on"        # "sits ON a stool" / "lies IN a pod"
-        self.locks.add("get:false()")     # furniture stays put
-
-    # --- occupancy (derived live from the room) --------------------------
     def occupants(self):
-        """Characters currently occupying this furniture (same room, pointed
-        here). Derived, so a moved/KO'd/deleted occupant never lingers."""
         loc = self.location
         if not loc:
             return []
@@ -43,6 +38,17 @@ class Furniture(Object):
 
     def primary_posture(self):
         return (self.db.postures or ("sitting",))[0]
+
+
+class Furniture(Seating, Object):
+    """A loose object you can sit on or lie on — a stool, a couch, a stretcher."""
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        self.db.postures = ("sitting",)   # postures this furniture allows
+        self.db.capacity = 1              # how many can occupy it at once
+        self.db.preposition = "on"        # "sits ON a stool" / "lies IN a pod"
+        self.locks.add("get:false()")     # furniture stays put
 
 
 class AutoDoc(Furniture):

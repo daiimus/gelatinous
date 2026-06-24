@@ -177,20 +177,26 @@ class TestFurnitureIntegration(BaseEvenniaTest):
 
 
 class TestBarSeating(BaseEvenniaTest):
-    """A bar comes stocked with stools, and many can sit at once."""
+    """The bar IS the seating — `sit at bar` fills one of its slots; no loose
+    stool objects clutter the room."""
 
-    def test_bar_spawns_stools(self):
+    def test_bar_is_sittable_capacity_ten(self):
         from typeclasses.bar import BarCounter, BAR_STOOL_COUNT
+        from typeclasses.furniture import Seating
         bar = create_object(BarCounter, key="bar", location=self.room1)
-        stools = [o for o in self.room1.contents if isinstance(o, Furniture)]
-        self.assertEqual(len(stools), BAR_STOOL_COUNT)
-        self.assertEqual(bar.stock_stools(), 0)        # idempotent
+        self.assertIsInstance(bar, Seating)
+        self.assertTrue(bar.allows("sitting"))
+        self.assertEqual(bar.db.capacity, BAR_STOOL_COUNT)
+        # no loose stool objects spawned into the room
+        self.assertEqual(
+            [o for o in self.room1.contents if isinstance(o, Furniture)], [])
 
-    def test_many_sit_on_distinct_stools(self):
+    def test_many_sit_at_the_bar(self):
         from typeclasses.bar import BarCounter
-        create_object(BarCounter, key="bar", location=self.room1)
+        bar = create_object(BarCounter, key="bar", location=self.room1)
         sitters = [_char(self.room1, key=f"P{i}") for i in range(3)]
         for s in sitters:
-            _run(s, CmdSit, "on stool")
-        self.assertTrue(all(s.db.furniture is not None for s in sitters))
-        self.assertEqual(len({s.db.furniture for s in sitters}), 3)  # distinct
+            _run(s, CmdSit, "at bar")
+        # all seated, all on the one fixture (the bar), filling its slots
+        self.assertTrue(all(s.db.furniture == bar for s in sitters))
+        self.assertEqual(len(bar.occupants()), 3)

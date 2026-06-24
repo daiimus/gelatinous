@@ -11,7 +11,7 @@ import re
 from commands.command import Command
 from world.grammar import with_article
 
-from typeclasses.furniture import Furniture
+from typeclasses.furniture import Seating
 
 #: Leading prepositions a player may type ("sit DOWN ON the stool").
 _LEAD = re.compile(r"^(down\s+|back\s+)?(on|in|at|onto|into)\s+", re.I)
@@ -40,7 +40,7 @@ def _find_furniture(caller, arg, posture):
     if not loc:
         caller.msg("There's nothing here to do that on.")
         return None
-    furnis = [o for o in loc.contents if isinstance(o, Furniture)]
+    furnis = [o for o in loc.contents if isinstance(o, Seating)]
     on_what = "lie on" if posture == "lying" else "sit on"
     if arg:
         matches = caller.search(arg, candidates=furnis, quiet=True) or []
