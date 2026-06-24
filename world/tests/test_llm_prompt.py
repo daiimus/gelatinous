@@ -105,6 +105,26 @@ class TestBuildMessages(TestCase):
         self.assertIn("RECENTLY", turn)
         self.assertIn("pissed on the bar", turn)
 
+    def test_present_roster_injected(self):
+        msgs = build_messages(_PERSONA, "a man", "hi", "directed",
+                              present=["a tall woman", "Jax"])
+        turn = msgs[-1]["content"]
+        self.assertIn("PRESENT", turn)
+        self.assertIn("a tall woman", turn)
+        self.assertIn("Jax", turn)
+
+    def test_no_present_no_roster_block(self):
+        msgs = build_messages(_PERSONA, "a man", "hi", "directed")
+        self.assertNotIn("PRESENT", msgs[-1]["content"])
+
+    def test_arrival_mode_frames_a_walk_in(self):
+        msgs = build_messages(_PERSONA, "a lean man", "", "arrival")
+        turn = msgs[-1]["content"]
+        self.assertIn("walked in", turn)
+        self.assertNotIn("says to you", turn)
+        # arrival, like ambient, permits silence (CHARTER_AMBIENT appended)
+        self.assertIn("overhear", msgs[0]["content"].lower())
+
 
 class TestArchetype(TestCase):
     def test_empty_persona_defaults_to_bartender(self):

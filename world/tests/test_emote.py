@@ -902,6 +902,99 @@ class TestCharacterReferences(TestCase):
 
 
 # ===================================================================
+# Tests: LLM pose targeting rides the identity system
+# ===================================================================
+
+
+class TestLLMPoseTargetingByPerceivedHandle(TestCase):
+    """The contract behind LLM posing: the handle an NPC perceives a target by
+    (``get_display_name`` — exactly what the PRESENT/PERCEPTION/WHO prompt blocks
+    show) is what dot-pose targeting resolves. So an NPC told to 'name them as
+    you perceive them' produces a pose that resolves to the right object and
+    renders per-observer — no bespoke binding needed."""
+
+    def setUp(self):
+        self.npc = _make_character(
+            key="Bliss", sex="female", height="short", build="slight",
+            sdesc_keyword="doll", sleeve_uid="uid-bliss",
+        )
+        self.target = _make_character(
+            key="Laszlo", sex="male", height="tall", build="lean",
+            sdesc_keyword="man", sleeve_uid="uid-laz",
+        )
+
+    def test_sdesc_handle_resolves(self):
+        # The exact string PRESENT/PERCEPTION would show the NPC for the target.
+        handle = self.target.get_display_name(self.npc)
+        tokens = tokenize_dot_pose(
+            f"nod at {handle}", self.npc, [self.npc, self.target])
+        refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertTrue(any(r.character is self.target for r in refs))
+
+    def test_assigned_name_handle_resolves_and_renders_per_observer(self):
+        # When the NPC has named the target (WHO shows "you know them as 'Laz'"),
+        # posing ".nod at Laz" resolves — and a stranger still sees the sdesc.
+        self.npc.recognition_memory = {
+            apparent_uid_for(self.target): {"assigned_name": "Laz"},
+        }
+        tokens = tokenize_dot_pose(
+            "nod at Laz", self.npc, [self.npc, self.target])
+        refs = [t for t in tokens if isinstance(t, CharRefToken)]
+        self.assertTrue(any(r.character is self.target for r in refs))
+        stranger = _make_character(
+            key="Onlooker", sex="male", height="average", build="average",
+            sleeve_uid="uid-on3", recognition_memory={},
+        )
+        rendered = render_for_observer(tokens, self.npc, stranger)
+        self.assertNotIn("Laz", rendered)   # the NPC's private name never leaks
+        self.assertIn("man", rendered)       # stranger sees the target's sdesc
+
+    def test_article_before_charref_is_not_doubled(self):
+        # "the courier" -> the keyword resolves to the sdesc (which has its own
+        # article) — the leading "the" must be dropped, not doubled.
+        tokens = tokenize_dot_pose(
+            "rest a hand on the courier's arm", self.npc, [self.npc, self.target])
+        stranger = _make_character(
+            key="Onlooker", sex="male", height="average", build="average",
+            sleeve_uid="uid-on6", recognition_memory={},
+        )
+        rendered = render_for_observer(tokens, self.npc, stranger)
+        self.assertNotIn("the a ", rendered)
+        self.assertNotIn("the an ", rendered)
+
+    def test_i_verb_continuation_conjugates_and_capitalizes(self):
+        # The multi-beat pattern the model is taught: a new sentence restates the
+        # subject as "I .verb" so its verb conjugates per-observer and the
+        # sentence is capitalized — "...down. I .let..." -> "...down. She lets..."
+        action = "set a glass down. I .let my eyes linger"
+        tokens = tokenize_dot_pose(action, self.npc, [self.npc])
+        stranger = _make_character(
+            key="Onlooker", sex="male", height="average", build="average",
+            sleeve_uid="uid-on5", recognition_memory={},
+        )
+        rendered = render_for_observer(tokens, self.npc, stranger)
+        self.assertIn(". She lets her eyes linger", rendered)  # Bliss is female
+        self.assertNotIn(". she lets", rendered)               # sentence-capped
+        self.assertNotIn("Let", rendered)                       # not a literal verb
+
+    def test_realistic_llm_dot_pose_renders_cleanly(self):
+        # A first-person dot-pose as the model is told to emit it, end to end:
+        # base-form first verb, a dotted second verb, a target by sdesc.
+        handle = self.target.get_display_name(self.npc)  # "a lean man"
+        action = f"lean across the bar toward {handle}, .sliding a glass over"
+        tokens = tokenize_dot_pose(action, self.npc, [self.npc, self.target])
+        stranger = _make_character(
+            key="Onlooker", sex="male", height="average", build="average",
+            sleeve_uid="uid-on4", recognition_memory={},
+        )
+        rendered = render_for_observer(tokens, self.npc, stranger)
+        self.assertIn("leans across the bar", rendered)  # base verb conjugated
+        self.assertIn("sliding a glass over", rendered)   # participle passes through
+        self.assertIn(handle, rendered)   # target resolved to its sdesc, not text
+        self.assertNotIn("Bliss", rendered)               # NPC name never leaks
+
+
+# ===================================================================
 # Tests: Assigned-name word-token targeting (Issue #260)
 # ===================================================================
 

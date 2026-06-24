@@ -748,6 +748,17 @@ def get_effectiveness(item, condition_type):
     return effectiveness.get(condition_type, 5)  # Default 5/10
 
 
+def treatment_station(target):
+    """The medical apparatus a patient is on — an AutoDoc they're lying in — or
+    ``None``. Treating a patient on a station adds its steadying bonus
+    (FURNITURE_AND_POSTURE / the clinic apparatus). Defensive: no furniture or a
+    non-medical seat → ``None``."""
+    furn = getattr(getattr(target, "db", None), "furniture", None)
+    if furn and getattr(getattr(furn, "db", None), "is_medical", False):
+        return furn
+    return None
+
+
 def calculate_treatment_success(item, user, target, condition_type):
     """
     Calculate treatment success based on user's medical skill and item effectiveness.
@@ -776,8 +787,14 @@ def calculate_treatment_success(item, user, target, condition_type):
     
     # Roll dice (3d6)
     roll = sum(random.randint(1, 6) for _ in range(3))
-    total = roll + medical_skill
-    
+
+    # Clinic apparatus: treating a patient lying on an AutoDoc steadies the work
+    # (FURNITURE_AND_POSTURE). The station's bonus is added to the check.
+    station = treatment_station(target)
+    station_bonus = int(getattr(station.db, "treatment_bonus", 0) or 0) if station else 0
+
+    total = roll + medical_skill + station_bonus
+
     # Determine success level
     if total >= difficulty + 5:
         success_level = "success"
@@ -785,10 +802,11 @@ def calculate_treatment_success(item, user, target, condition_type):
         success_level = "partial_success"
     else:
         success_level = "failure"
-        
+
     return {
         "roll": roll,
         "medical_skill": medical_skill,
+        "station_bonus": station_bonus,
         "total": total,
         "difficulty": difficulty,
         "success_level": success_level

@@ -23,7 +23,7 @@ from evennia.utils.evmenu import EvMenu
 from world.grammar import with_article
 from world.bar import (
     INGREDIENT_CATALOG,
-    derive_bar_stock,
+    bar_stock,
     make_drink,
     make_drink_from_recipe,
     make_ingredient,
@@ -85,12 +85,8 @@ def _loaded(bar):
 
 
 def _bar_stock(bar):
-    """The bottomless ingredient keys this bar carries — an explicit db.stock if
-    a builder set one, else auto-derived from the menu + base pantry."""
-    stock = bar.db.stock
-    if stock:
-        return [k for k in stock if k in INGREDIENT_CATALOG]
-    return derive_bar_stock(bar.db.menu or [])
+    """The bottomless ingredient keys this bar carries (canonical helper)."""
+    return bar_stock(bar)
 
 
 def _clear_load(caller, bar):

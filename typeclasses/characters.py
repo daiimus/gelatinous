@@ -1277,7 +1277,19 @@ class Character(
             **kwargs: Forwarded to the parent hook (e.g. ``move_type``).
         """
         super().at_post_move(source_location, **kwargs)
+        # You can't carry a seat between rooms — moving puts you on your feet
+        # (FURNITURE_AND_POSTURE; silent, the move messages already narrate it).
+        if self.db.furniture or (self.db.posture and self.db.posture != "standing"):
+            self._clear_posture()
         self._refresh_recognition_recency()
+
+    def _clear_posture(self):
+        """Return to standing — drop any furniture occupancy and the transient
+        placement line. Safe to call when already standing."""
+        self.db.posture = "standing"
+        self.db.furniture = None
+        if self.temp_place:
+            self.temp_place = ""
 
     def _refresh_recognition_recency(self):
         """Bump recognition recency for every visible character we know.

@@ -27,13 +27,19 @@ from world.grammar import capitalize_first, with_article
 from world.shop.utils import format_currency
 from world.bar import (
     DEFAULT_BAR_SNACKS,
+    bar_stock,
     make_drink_from_recipe,
     match_recipe,
+    resolve_drink,
+    stockable_cocktails,
 )
 
 #: Price colour on the menu — the same burnt orange (XTERM-256 |520) the
 #: operate menu uses for parenthetical/secondary info, for cross-UI consistency.
 MENU_PRICE_COLOR = "|520"
+
+#: Seats a bar comes stocked with (FURNITURE_AND_POSTURE).
+BAR_STOOL_COUNT = 10
 
 
 # ---------------------------------------------------------------------------
@@ -133,10 +139,11 @@ class CmdBarPrepare(Command):
         if not query:
             caller.msg("Prepare what? (try the menu to see what's on offer.)")
             return
-        recipe = match_recipe(query, bar.db.menu or [])
+        recipe, _offmenu = resolve_drink(query, bar)
         if not recipe:
             caller.msg(
-                f"That's not on {bar.get_display_name(caller)}'s menu."
+                f"That's not on {bar.get_display_name(caller)}'s menu, and you "
+                f"can't make it from what's in stock."
             )
             return
         drink = make_drink_from_recipe(recipe, location=bar)
@@ -219,6 +226,9 @@ class BarCounter(Item):
     def at_object_creation(self):
         super().at_object_creation()
         self.db.menu = []
+        # Stock (what the bar carries → what it can mix off-menu) is derived from
+        # the menu + base pantry by default (see world.bar.bar_stock); a builder
+        # may set an explicit db.stock to widen/narrow it.
         self.db.snacks = list(DEFAULT_BAR_SNACKS)  # free bottomless nibbles (§10)
         self.db.register = 0
         self.db.owner = None
@@ -237,6 +247,31 @@ class BarCounter(Item):
             "A salvaged |cbar|n runs along one side of the room, its surface "
             "scarred by years of set-down glasses."
         )
+        # Seating: a bar comes with stools (FURNITURE_AND_POSTURE). Idempotent,
+        # and safe if the counter has no room yet. Existing bars are backfilled
+        # once at the DB level (`for b in BarCounter.objects.all(): b.stock_stools()`).
+        self.stock_stools()
+
+    def stock_stools(self, count=BAR_STOOL_COUNT):
+        """Spawn this bar's seating into its room — once (guarded by a flag).
+        Returns how many stools were added."""
+        if self.db.stools_spawned:
+            return 0
+        room = self.location
+        if not room:
+            return 0
+        from evennia.prototypes.spawner import spawn
+        from world.prototypes import BAR_STOOL
+        added = 0
+        for _ in range(count):
+            try:
+                stool = spawn(BAR_STOOL)[0]
+                stool.move_to(room, quiet=True, move_hooks=False)
+                added += 1
+            except Exception:  # noqa: BLE001 — never let seating break bar setup
+                break
+        self.db.stools_spawned = bool(added)
+        return added
 
     @staticmethod
     def _is_staff(char):
@@ -399,8 +434,10 @@ class Bartender(LLMNpcMixin, Character):
         if not self.location or getattr(patron, "location", None) is not self.location:
             return
         bar = self._find_bar()
-        menu = (bar.db.menu if bar else None) or self.db.menu or []
-        recipe = match_recipe(order_text, menu)
+        # MENU first, then off-menu from STOCK — a classic the bar carries the
+        # makings for is served even if it's not on the board.
+        recipe, _offmenu = resolve_drink(order_text, bar) if bar else (
+            match_recipe(order_text, self.db.menu or []), False)
         if not recipe:
             # An addressed line that isn't an order becomes conversation when the
             # LLM is driving her; otherwise the curt scripted line still stands.
@@ -445,7 +482,15 @@ class Bartender(LLMNpcMixin, Character):
             bar = self._find_bar()
             menu = (bar.db.menu if bar else None) or self.db.menu or []
             names = [r.get("name") for r in menu if r.get("name")]
-            return ("Serves: " + ", ".join(names)) if names else "nothing on tap"
+            parts = [("Board: " + ", ".join(names)) if names else "nothing on the board"]
+            # Surface the off-menu capability so she can offer a classic she
+            # stocks the makings for even when it isn't on the board.
+            off = stockable_cocktails(bar_stock(bar)) if bar else []
+            if off:
+                shown = ", ".join(off[:8])
+                parts.append("Off the board, can mix from stock: " + shown
+                             + (", and more" if len(off) > 8 else ""))
+            return ". ".join(parts) + "."
         return super()._run_context_tool(tool, arg, patron)
 
     def _handle_action_tool(self, tool, arg, patron):
