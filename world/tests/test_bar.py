@@ -529,7 +529,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     cooldown, loop-guard, fail-safe. Orders + gratitude paths stay untouched."""
 
     _REAL = (
-        "_classify_speech", "_mentions_self", "_name_aliases",
+        "_classify_speech", "_is_npc_speaker", "_mentions_self", "_name_aliases",
         "_handle_directed_speech", "_try_llm_reply",
         "_render_llm_reply", "_llm_fallback", "_llm_silent",
     )

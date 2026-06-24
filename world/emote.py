@@ -934,9 +934,12 @@ def render_dot_pose(
         rendered = render_for_observer(tokens, actor, observer)
         # An embedded quote rides the shared speech rails: hearing listeners get
         # the words, and a listener the pose points at counts as addressed.
-        payload = speech_payload(
-            observer, actor, words, addressed=(id(observer) in referenced)
-        )
+        addressed = id(observer) in referenced
+        payload = speech_payload(observer, actor, words, addressed=addressed)
+        # A WORDLESS pose carries no speech_payload, but a listener it's aimed at
+        # still needs to know — so an action-aware NPC can REACT to a pose
+        # directed at it (`.runs a hand up her arm`), not just silently observe.
+        payload.setdefault("addressed", addressed)
         observer.msg(text=rendered, type="pose", from_obj=actor, **payload)
 
 

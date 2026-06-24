@@ -49,19 +49,39 @@ class TestActionAwareness(TestCase):
         b = MagicMock()
         b.db.llm_driven = True
         b.ndb.action_buffer = None
+        b._is_npc_speaker = lambda s: False
         for m in ("at_msg_receive", "_observe_action", "_drain_actions"):
             _bind(b, m)
         return b
 
-    def test_pose_is_observed_not_reacted(self):
+    def test_ambient_pose_is_observed_not_reacted(self):
         b = self._npc()
         with patch.object(llmnpc, "llm_enabled", return_value=True), \
                 patch.object(llmnpc, "delay") as d:
             b.at_msg_receive(text="the drifter pisses on the bar",
-                             from_obj=MagicMock(), type="pose")
+                             from_obj=MagicMock(), type="pose")  # not addressed
         d.assert_not_called()   # observed cheaply, NO LLM reaction
         self.assertEqual(b.ndb.action_buffer,
                          ["the drifter pisses on the bar"])
+
+    def test_addressed_pose_triggers_action_reaction(self):
+        b = self._npc()
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as d:
+            b.at_msg_receive(text="a lean man runs a hand up your arm",
+                             from_obj=MagicMock(), type="pose", addressed=True)
+        self.assertIn("a lean man runs a hand up your arm", b.ndb.action_buffer)
+        d.assert_called_once()                  # observed AND reacts
+        self.assertIn("action", d.call_args.args)
+
+    def test_addressed_pose_from_npc_ignored(self):
+        b = self._npc()
+        b._is_npc_speaker = lambda s: True      # another NPC posing at us
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as d:
+            b.at_msg_receive(text="the bartender nods at you",
+                             from_obj=MagicMock(), type="pose", addressed=True)
+        d.assert_not_called()                   # loop guard: observe, don't react
 
     def test_drain_returns_and_clears(self):
         b = self._npc()

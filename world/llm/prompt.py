@@ -334,6 +334,10 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
         if perception else ""
     if mode == "ambient":
         turn = f'{mem}{perc}You overhear {speaker} say: "{line}"'
+    elif mode == "action":
+        # `line` is a rendered pose aimed at this NPC (already in its POV) —
+        # react to what was DONE, not said.
+        turn = f'{mem}{perc}{line}\n\n({speaker} just did that, directed at you — react.)'
     else:
         turn = f'{mem}{perc}{speaker} says to you: "{line}"'
     messages.append({"role": "user", "content": turn})
