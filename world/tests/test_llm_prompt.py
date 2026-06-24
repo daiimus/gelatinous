@@ -121,6 +121,12 @@ class TestArchetype(TestCase):
                                              archetype="nonesuch"))
         self.assertIs(_archetype(p), ARCHETYPES["bartender"])
 
+    def test_register_appended_last(self):
+        p = {"persona_seed": {"name": "X", "archetype": "companion",
+                              "register": "ZZ_REGISTER_ZZ"}}
+        sys = build_messages(p, "a man", "hi", "directed")[0]["content"]
+        self.assertTrue(sys.rstrip().endswith("ZZ_REGISTER_ZZ"))
+
     def test_length_is_per_archetype(self):
         bsys = build_messages(_PERSONA, "a man", "hi", "directed")[0]["content"]
         self.assertIn("Keep it tight", bsys)        # bartender = brief

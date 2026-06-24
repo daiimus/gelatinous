@@ -317,6 +317,12 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     charter += "\n\n" + _tools_block(tool_names(persona))
     charter += (CHARTER_AMBIENT if mode == "ambient" else "")
     system = charter + "\n\n" + render_persona(persona)
+    # A persona may carry a `register` — an imperative directive placed LAST
+    # (most salient) to steer tone/explicitness. Lives in the NPC's DB persona,
+    # not the repo, so content-sensitive direction stays out of the codebase.
+    register = ((persona or {}).get("persona_seed") or {}).get("register")
+    if register:
+        system += "\n\n" + str(register)
     messages = [{"role": "system", "content": system}]
     messages += few_shot_messages(persona)
     for h in (history or []):
