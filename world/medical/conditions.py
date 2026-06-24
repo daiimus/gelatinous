@@ -8,11 +8,8 @@ like bleeding. Conditions are managed by per-character MedicalScript instances.
 import random
 import time
 from .constants import (
-    INJURY_SEVERITY_MULTIPLIERS,
     BLOOD_LOSS_PER_SEVERITY,
-    HEALING_EFFECTIVENESS,
     BLEEDING_DAMAGE_THRESHOLDS,
-    CONDITION_TRIGGERS,
     BLEEDING_CLOT_HAZARD_PER_MINUTE,
     BLEEDING_TREATED_MULTIPLIER,
     BLEEDING_SELF_CLOT_MAX_SEVERITY,
@@ -226,11 +223,6 @@ class MedicalCondition:
         # No ticker cleanup needed - script handles lifecycle
         pass
         
-    def apply_treatment(self, treatment_quality="adequate"):
-        """Apply medical treatment to this condition."""
-        self.treated = True
-        # Subclasses should override for specific treatment effects
-
 
 class BleedingCondition(MedicalCondition):
     """Bleeding: blood loss over time, severity-tiered (#507).
@@ -374,19 +366,6 @@ class BleedingCondition(MedicalCondition):
             rate = rate * BLEEDING_TREATED_MULTIPLIER
         return rate
         
-    def apply_treatment(self, treatment_quality="adequate"):
-        """Apply medical treatment to bleeding."""
-        super().apply_treatment(treatment_quality)
-        
-        # Treatment effectiveness
-        effectiveness = HEALING_EFFECTIVENESS.get(treatment_quality, 0.5)
-        severity_reduction = max(1, int(self.severity * effectiveness))
-        
-        self.severity = max(0, self.severity - severity_reduction)
-        # Residual loss slows via the treated multiplier in
-        # get_blood_loss_rate (derived live) — no stored rate to
-        # mutate (#507).
-        
     @property
     def display_name(self):
         """Severity-tiered label — "arterial bleeding", not "minor"."""
@@ -438,16 +417,6 @@ class PainCondition(MedicalCondition):
         """Return pain contribution from this condition."""
         return self.severity  # Pain conditions contribute their full severity to total pain
         
-    def apply_treatment(self, treatment_quality="adequate"):
-        """Apply medical treatment to pain."""
-        super().apply_treatment(treatment_quality)
-
-        # Pain treatment is very effective
-        effectiveness = HEALING_EFFECTIVENESS.get(treatment_quality, 0.5)
-        severity_reduction = max(1, int(self.severity * effectiveness * 1.5))  # Extra effective
-
-        self.severity = max(0, self.severity - severity_reduction)
-
     @classmethod
     def from_dict(cls, data):
         """Deserialize a pain condition from persistence.
@@ -572,18 +541,6 @@ class InfectionCondition(MedicalCondition):
             return 0.5
         return 0.0  # severity 10+ — disabling check catches it too
 
-    def apply_treatment(self, treatment_quality="adequate"):
-        """Apply medical treatment to infection."""
-        super().apply_treatment(treatment_quality)
-        
-        # Treatment is crucial for infections
-        effectiveness = HEALING_EFFECTIVENESS.get(treatment_quality, 0.5)
-        severity_reduction = max(1, int(self.severity * effectiveness))
-        
-        self.severity = max(0, self.severity - severity_reduction)
-        
-        # Stop progression when treated
-        self.base_progression_chance = 0
 
 
 def create_condition_from_damage(damage_amount, damage_type, location=None):
@@ -668,17 +625,6 @@ class ConsciousnessSuppressionCondition(MedicalCondition):
     def get_consciousness_penalty(self):
         """Return direct consciousness penalty from this condition."""
         return self.consciousness_penalty
-        
-    def apply_treatment(self, treatment_quality="adequate"):
-        """Apply medical treatment to consciousness suppression."""
-        super().apply_treatment(treatment_quality)
-        
-        # Medical treatment can help with some types of suppression
-        if self.suppression_type in ["sedative", "anesthesia"]:
-            effectiveness = HEALING_EFFECTIVENESS.get(treatment_quality, 0.5)
-            severity_reduction = max(1, int(self.severity * effectiveness))
-            self.severity = max(0, self.severity - severity_reduction)
-            self.consciousness_penalty = min(1.0, self.severity * 0.15)
         
     def to_dict(self):
         """Serialize condition for persistence."""
@@ -889,25 +835,6 @@ def deserialize_condition(condition_dict):
     if condition_type == "renal_failure":
         return RenalFailureCondition.from_dict(condition_dict)
     return MedicalCondition.from_dict(condition_dict)
-
-
-def remove_condition_by_type(character, condition_type):
-    """
-    Remove all conditions of a specific type from character.
-    
-    Args:
-        character: Character to remove conditions from
-        condition_type: Type of condition to remove
-    """
-    if not hasattr(character, 'medical_state'):
-        return
-        
-    medical_state = character.medical_state
-    conditions_to_remove = [c for c in medical_state.conditions if c.condition_type == condition_type]
-    
-    for condition in conditions_to_remove:
-        medical_state.conditions.remove(condition)
-        condition.end_condition(character)
 
 
 def set_infection_environmental_risk(character, modifier, reason="environmental conditions"):

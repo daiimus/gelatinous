@@ -774,7 +774,9 @@ def calculate_treatment_success(item, user, target, condition_type):
     """
     import random
     
-    # Get user's medical skill (based on Intellect)
+    # Get user's medical skill (based on Intellect). NOTE: the wound-care path
+    # (treatments.roll_treatment) uses a richer motorics-aware skill model;
+    # unifying the two is a future balance pass.
     user_intellect = getattr(user, 'intellect', 1)
     medical_skill = user_intellect * 2  # Convert intellect to medical skill
     

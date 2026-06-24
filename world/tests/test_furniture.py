@@ -151,6 +151,15 @@ class TestAutoDocApparatus(BaseEvenniaTest):
         res = calculate_treatment_success(item, self.medic, self.patient, "bleeding")
         self.assertEqual(res["station_bonus"], 0)   # patient not on the pod
 
+    def test_wound_care_roll_also_gets_station_bonus(self):
+        # The OTHER live treatment path (treatments.roll_treatment, via
+        # apply_wound_care) gets the AutoDoc bonus too.
+        from world.medical.treatments import roll_treatment
+        self.patient.db.furniture = self.pod
+        r = roll_treatment(self.medic, target_difficulty=10, item_rating=0,
+                           target=self.patient)
+        self.assertEqual(r["station_bonus"], 3)
+
 
 class TestBarSeating(BaseEvenniaTest):
     """A bar comes stocked with stools, and many can sit at once."""

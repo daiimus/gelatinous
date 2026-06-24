@@ -64,6 +64,11 @@ def calculate_treatment_skill(actor) -> float:
     Same formula as the procedure verbs: intellect-weighted, with
     motorics contributing for steady hands.  Matches the formula at
     HEALTH_AND_SUBSTANCE_SYSTEM_SPEC line 1434.
+
+    NOTE: the *other* live treatment path (``world.medical.utils.
+    calculate_treatment_success``, used by apply/inject for medical items)
+    uses a cruder intellect-only skill formula. Unifying the two on this
+    motorics-aware model is a future balance pass.
     """
     intellect = getattr(actor, "intellect", 0) or 0
     motorics = getattr(actor, "motorics", 0) or 0
@@ -102,16 +107,22 @@ def calculate_treatment_difficulty(
     return target
 
 
-def roll_treatment(actor, target_difficulty: int, item_rating: int) -> dict:
-    """3d6 + skill + item rating vs target.
+def roll_treatment(actor, target_difficulty: int, item_rating: int,
+                   target=None) -> dict:
+    """3d6 + skill + item rating (+ AutoDoc station bonus) vs target.
 
-    Returns a dict with ``roll`` (the 3d6 sum), ``total`` (after
-    bonuses), ``target`` (the difficulty), and ``outcome``
-    (success / partial / failure based on the threshold ladder).
+    When ``target`` is lying on a medical station (an AutoDoc), the station's
+    steadying bonus is added — the clinic perk reaches wound-care rolls too.
+    Returns ``roll`` / ``skill`` / ``item_rating`` / ``station_bonus`` /
+    ``total`` / ``target`` / ``outcome`` (success / partial / failure).
     """
     roll = sum(random.randint(1, 6) for _ in range(3))
     skill = calculate_treatment_skill(actor)
-    total = roll + int(skill) + int(item_rating)
+    from world.medical.utils import treatment_station
+    station = treatment_station(target)
+    station_bonus = (int(getattr(station.db, "treatment_bonus", 0) or 0)
+                     if station else 0)
+    total = roll + int(skill) + int(item_rating) + station_bonus
     if total >= WOUND_CARE_SUCCESS_THRESHOLD:
         outcome = SUCCESS
     elif total >= WOUND_CARE_PARTIAL_THRESHOLD:
@@ -122,6 +133,7 @@ def roll_treatment(actor, target_difficulty: int, item_rating: int) -> dict:
         "roll": roll,
         "skill": skill,
         "item_rating": item_rating,
+        "station_bonus": station_bonus,
         "total": total,
         "target": target_difficulty,
         "outcome": outcome,
@@ -364,7 +376,7 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
     # category effectiveness rating as the modifier.
     for category in WOUND_CARE_PARALLEL_CATEGORIES:
         rating = int(effectiveness.get(category, 0))
-        roll_result = roll_treatment(actor, difficulty, rating)
+        roll_result = roll_treatment(actor, difficulty, rating, target=target)
         result["rolls"][category] = roll_result
         _apply_category_outcome(
             target, location, category, roll_result["outcome"], result,
