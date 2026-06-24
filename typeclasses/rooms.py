@@ -370,12 +370,13 @@ class Room(ObjectParent, DefaultRoom):
             integrated_objects.append((priority, obj, True))
         
         for obj in self.contents:
-            # Check objects for integration - currently supports Items, GraffitiObjects, BloodPools, and ShopContainers
-            # TODO: Consider expanding to other object types or using a more generic approach
-            if not (obj.is_typeclass("typeclasses.items.Item") or 
-                    obj.is_typeclass("typeclasses.objects.GraffitiObject") or 
+            # Check objects for integration - Items, GraffitiObjects, BloodPools,
+            # ShopContainers, and Furniture (a fixed AutoDoc/bar woven into the desc).
+            if not (obj.is_typeclass("typeclasses.items.Item") or
+                    obj.is_typeclass("typeclasses.objects.GraffitiObject") or
                     obj.is_typeclass("typeclasses.objects.BloodPool") or
-                    obj.is_typeclass("typeclasses.shopkeeper.ShopContainer")):
+                    obj.is_typeclass("typeclasses.shopkeeper.ShopContainer") or
+                    obj.is_typeclass("typeclasses.furniture.Furniture")):
                 continue
             
             # Skip if already added as flying object
@@ -616,12 +617,13 @@ class Room(ObjectParent, DefaultRoom):
             if obj.is_typeclass("typeclasses.exits.Exit"):
                 continue
             
-            # Skip @integrate items - they're handled in room description  
-            # Check Items, GraffitiObjects, BloodPools, and ShopContainers for integration
-            if ((obj.is_typeclass("typeclasses.items.Item") or 
-                 obj.is_typeclass("typeclasses.objects.GraffitiObject") or 
+            # Skip @integrate objects - they're handled in room description
+            # (Items, GraffitiObjects, BloodPools, ShopContainers, Furniture).
+            if ((obj.is_typeclass("typeclasses.items.Item") or
+                 obj.is_typeclass("typeclasses.objects.GraffitiObject") or
                  obj.is_typeclass("typeclasses.objects.BloodPool") or
-                 obj.is_typeclass("typeclasses.shopkeeper.ShopContainer")) and 
+                 obj.is_typeclass("typeclasses.shopkeeper.ShopContainer") or
+                 obj.is_typeclass("typeclasses.furniture.Furniture")) and
                 obj.db.integrate):
                 continue
             
