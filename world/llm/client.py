@@ -64,12 +64,21 @@ def request_turn(messages, on_turn, on_fail, schema=None):
 
     def _at_return(content):
         if not content:
+            # Empty body = the model returned nothing usable — usually a turn
+            # truncated against LLM_GM_MAX_TOKENS, occasionally a genuine decline.
+            # Logged so a rash of fallbacks points at the right dial.
+            logger.log_warn("LLM turn empty (no content — likely truncation; "
+                            "check LLM_GM_MAX_TOKENS)")
             on_fail()
             return
         on_turn(content)
 
     def _at_err(failure):
-        logger.log_err(f"LLM backend call failed: {failure}")
+        # Name the failure mode so we can dial the right knob: a *Timeout means
+        # the turn ran past LLM_GM_TIMEOUT; a ConnectionError means the sidecar's
+        # down; anything else is a backend bug.
+        exc = getattr(failure, "value", failure)
+        logger.log_err(f"LLM backend call failed [{type(exc).__name__}]: {exc}")
         on_fail()
 
     run_async(_thread_fn, at_return=_at_return, at_err=_at_err)

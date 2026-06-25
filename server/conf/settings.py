@@ -266,7 +266,8 @@ LLM_GM_URL = "http://host.docker.internal:8765/v1/chat/completions"
 LLM_GM_MODEL = ""          # backend-specific model id; blank lets local servers default
 LLM_GM_API_KEY = ""        # Bearer token for cloud backends; blank for local
 LLM_GM_TIMEOUT = 40        # seconds; per-round budget (warm 24B constrained gen ~17s/round)
-LLM_GM_MAX_TOKENS = 120    # short NPC turns (a line + an action, no truncation)
+LLM_GM_MAX_TOKENS = 180    # a turn = a line + an action + a thought; headroom so
+                           # the 3rd channel doesn't truncate (was 120 for 2 fields)
 LLM_GM_TEMPERATURE = 0.8   # characterful but coherent
 
 ######################################################################

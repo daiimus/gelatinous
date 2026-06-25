@@ -131,7 +131,8 @@ never a real name you weren't given, never "you". "" if you do nothing visible.
 say nothing.
 - "thought": your private inner monologue — what you THINK but don't show. No one \
 hears it (a mind-reader might). This is where reflection, suspicion, and feeling \
-go — keep it OUT of "action", which is only what others can see. "" if none.
+go — keep it OUT of "action", which is only what others can see. A phrase or two, \
+not a paragraph. "" if none.
 - "tool" and "tool_argument": see TOOLS below.
 
 HARD RULES:
@@ -169,7 +170,8 @@ if you do nothing visible.
 - "speech": what she SAYS out loud, plain text, no surrounding quotes. "" if she \
 says nothing.
 - "thought": her private inner monologue — what she THINKS but doesn't show. No \
-one hears it. Keep reflection and feeling here, OUT of "action". "" if none.
+one hears it. Keep reflection and feeling here, OUT of "action". A phrase or two, \
+not a paragraph. "" if none.
 - "tool" and "tool_argument": see TOOLS below.
 
 RULES:
