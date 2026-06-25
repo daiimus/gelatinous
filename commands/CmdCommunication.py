@@ -17,6 +17,7 @@ from evennia.commands.command import Command
 from world.emote import (
     render_dot_pose,
     render_emote,
+    render_think,
     tokenize_dot_pose,
     tokenize_emote,
 )
@@ -335,3 +336,39 @@ class CmdDotPose(Command):
 
         # Broadcast to room (each observer gets a unique rendering)
         render_dot_pose(tokens, caller, location)
+
+
+class CmdThink(Command):
+    """
+    Think to yourself — private roleplay, shown as a thoughtbubble.
+
+    Usage:
+        think <thought>
+
+    Your thought is normally private. For now, staff (Builder+) in the room
+    can also perceive it — a window into what characters (and NPCs) are
+    thinking. A telepathy/psychic sense will gate this for players later.
+
+    Example:
+        think these are my innermost thoughts.
+          You see:        You think . o O ( these are my innermost thoughts. )
+          A builder sees: A lanky man thinks . o O ( these are my innermost thoughts. )
+    """
+
+    key = "think"
+    locks = "cmd:all()"
+    help_category = "Social"
+
+    def func(self) -> None:
+        caller = self.caller
+
+        if not self.args or not self.args.strip():
+            caller.msg("Think what?")
+            return
+
+        location = caller.location
+        if not location:
+            caller.msg("You have nowhere to think.")
+            return
+
+        render_think(caller, self.args.strip(), location)

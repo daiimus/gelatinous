@@ -40,7 +40,8 @@ from commands.CmdExplosives import (
 from commands.CmdGraffiti import CmdGraffiti, CmdPress
 from commands.CmdCharacter import CmdDescribe, CmdSkintone, CmdVoice
 from commands.CmdCharacter import CmdRemember, CmdForget, CmdRecall, CmdMemory
-from commands.CmdCommunication import CmdSay, CmdTo, CmdWhisper, CmdEmote, CmdDotPose
+from commands.CmdCommunication import (
+    CmdSay, CmdTo, CmdWhisper, CmdEmote, CmdDotPose, CmdThink)
 from commands.CmdFurniture import CmdSit, CmdLie, CmdStand
 from commands.forensics import CmdAutopsy, CmdSever
 from commands import CmdSurgical
@@ -226,6 +227,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdWhisper())
         self.add(CmdEmote())
         self.add(CmdDotPose())
+        self.add(CmdThink())
 
         # Add pre-built social emote template commands (nod, shrug, etc.)
         for cmd_cls in SOCIAL_COMMANDS:
