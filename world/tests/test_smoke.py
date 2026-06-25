@@ -497,3 +497,40 @@ class TestCmdSnuff(TestCase):
         room.contents.append(caller)
         self._run(caller, "cigarette")
         self.assertTrue(any("isn't lit" in m for m in caller.msgs))
+
+
+# ---------------------------------------------------------------------
+# CigarettePack self-destruct (real DB — at_object_leave hook)
+# ---------------------------------------------------------------------
+from evennia import create_object  # noqa: E402
+from evennia.utils.test_resources import BaseEvenniaTest  # noqa: E402
+
+
+class TestCigarettePackEmptyDestroys(BaseEvenniaTest):
+    """Pulling the LAST cigarette crushes the empty pack (#: drink-pack hygiene)."""
+
+    def _pack_with(self, n):
+        # Patch the auto-fill spawn (the prototype registry isn't loaded in
+        # tests) and control the contents directly.
+        with patch("typeclasses.smoke.spawn", return_value=[]):
+            pack = create_object("typeclasses.smoke.CigarettePack",
+                                 key="pack of Noir cigarettes",
+                                 location=self.room1)
+        cigs = [create_object("typeclasses.objects.Object", key=f"cig{i}",
+                              location=pack) for i in range(n)]
+        return pack, cigs
+
+    def test_last_cigarette_destroys_pack(self):
+        # delay(0, …) runs inline so the deferred delete fires within the test.
+        with patch("typeclasses.smoke.delay", lambda _t, fn, *a, **k: fn(*a, **k)):
+            pack, cigs = self._pack_with(2)
+            cigs[0].move_to(self.char1, quiet=True)
+            self.assertTrue(pack.pk, "pack must survive while a cigarette remains")
+            cigs[1].move_to(self.char1, quiet=True)
+            self.assertIsNone(pack.pk, "empty pack must self-destruct")
+
+    def test_pack_survives_with_cigs_left(self):
+        with patch("typeclasses.smoke.delay", lambda _t, fn, *a, **k: fn(*a, **k)):
+            pack, cigs = self._pack_with(3)
+            cigs[0].move_to(self.char1, quiet=True)
+            self.assertTrue(pack.pk)
