@@ -1120,3 +1120,32 @@ def render_emote(
             observer, actor, words, addressed=(id(observer) in referenced)
         )
         observer.msg(text=rendered, type="pose", from_obj=actor, **payload)
+
+
+#: The MUSH thoughtbubble: ``Name thinks . o O ( ... )``.
+_THINK_BUBBLE = "thinks . o O ( {text} )"
+
+
+def render_think(actor: "Character", thought: str, location: object) -> None:
+    """Broadcast an inner thought, heard only by who can perceive it.
+
+    A thought is private roleplay (an NPC's interiority, a player musing). For
+    now the only perceivers are the actor themselves and any **Builder+** in the
+    room — staff watching a scene see what characters are thinking. The hook is
+    deliberately a perceiver test so a future telepathy/psychic SENSE can drop in
+    here (see EMOTE_POSE_SPEC.md) without touching callers. The actor's name is
+    resolved per-observer, exactly like an emote.
+    """
+    for observer in location.contents:
+        if not hasattr(observer, "msg"):
+            continue
+        if observer is actor:
+            observer.msg(f"You think . o O ( {thought} )")
+            continue
+        try:
+            perceives = observer.check_permstring("Builder")
+        except Exception:  # noqa: BLE001 — non-account observers can't perceive
+            perceives = False
+        if perceives:
+            name = capitalize_first(actor.get_display_name(observer))
+            observer.msg(name + " " + _THINK_BUBBLE.format(text=thought))

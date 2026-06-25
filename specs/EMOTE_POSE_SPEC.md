@@ -166,6 +166,30 @@ class CmdWhisper(Command):
 
 **Visibility rule:** Room observers see that a whisper occurred and between whom, but NOT the speech content. Only the speaker and target receive the content.
 
+### Think (`think`)
+
+Private roleplay — a character's interiority, rendered as the MUSH thoughtbubble. The thinker's name resolves per-observer like an emote; the content is shown only to perceivers.
+
+**Command class:**
+
+```python
+class CmdThink(Command):
+    key = "think"
+    locks = "cmd:all()"
+    help_category = "Social"
+```
+
+**Examples** (actor thinks "these are my innermost thoughts."):
+
+| Audience | Sees |
+|---|---|
+| Actor | You think . o O ( these are my innermost thoughts. ) |
+| Builder+ in room (knows actor as "Bob") | Bob thinks . o O ( these are my innermost thoughts. ) |
+| Builder+ in room (doesn't know actor) | A lanky man thinks . o O ( these are my innermost thoughts. ) |
+| Everyone else | (nothing) |
+
+**Perceiver rule (v1):** only the actor and **Builder+** in the room perceive a thought — staff watching a scene see what characters (and LLM NPCs) are thinking. The implementation (`render_think`) gates on a single perceiver test, so a future **telepathy/psychic sense** drops in there (slotting into `world/perception.py`'s capacity/sense framework) without changing callers. This is the channel an LLM NPC uses for interiority instead of leaking private thought into its visible `emote`.
+
 ---
 
 ## First-Person Pose Syntax
