@@ -534,3 +534,25 @@ class TestCigarettePackEmptyDestroys(BaseEvenniaTest):
             pack, cigs = self._pack_with(3)
             cigs[0].move_to(self.char1, quiet=True)
             self.assertTrue(pack.pk)
+
+
+class TestDisposableLighterDepletes(TestCase):
+    """A disposable lighter (``db.uses_left``) burns a charge per light and is
+    binned when spent; the infinite zippo (no ``uses_left``) is untouched."""
+
+    def test_disposable_depletes_then_dies(self):
+        from commands.CmdSmoke import CmdLight
+        caller, lighter = _FakeCharacter(), _lighter()
+        lighter.db.uses_left = 2
+        CmdLight._spend_lighter(caller, lighter)
+        self.assertEqual(lighter.db.uses_left, 1)
+        self.assertFalse(lighter.deleted)
+        CmdLight._spend_lighter(caller, lighter)
+        self.assertTrue(lighter.deleted)        # last charge spent
+
+    def test_infinite_lighter_untouched(self):
+        from commands.CmdSmoke import CmdLight
+        caller, lighter = _FakeCharacter(), _lighter()   # no uses_left set
+        CmdLight._spend_lighter(caller, lighter)
+        self.assertFalse(lighter.deleted)
+        self.assertIsNone(getattr(lighter.db, "uses_left", None))

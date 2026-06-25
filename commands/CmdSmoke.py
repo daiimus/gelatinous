@@ -161,7 +161,7 @@ class CmdLight(Command):
                 char_refs={"actor": caller},
                 exclude=[caller],
             )
-        del lighter  # used for the contract check; no further action
+        self._spend_lighter(caller, lighter)
 
     def _light_other(self, caller, owner_phrase, cigarette_phrase, lighter):
         target = resolve_character_target(caller, owner_phrase)
@@ -204,7 +204,28 @@ class CmdLight(Command):
                 char_refs={"actor": caller, "target": target},
                 exclude=[caller, target],
             )
-        del lighter
+        self._spend_lighter(caller, lighter)
+
+    @staticmethod
+    def _spend_lighter(caller, lighter):
+        """Burn a charge off a DISPOSABLE lighter and bin it when it's spent.
+
+        A disposable lighter carries ``uses_left``; each successful light costs
+        one, and the dead lighter is destroyed at zero. An infinite lighter (the
+        zippo — no ``uses_left``) is never touched, so this is a no-op for it.
+        """
+        uses = getattr(lighter.db, "uses_left", None)
+        if uses is None:
+            return                              # infinite-use (zippo)
+        uses = int(uses) - 1
+        if uses <= 0:
+            caller.msg(f"The {lighter.key} coughs out its last flame — "
+                       f"you toss the dead lighter.")
+            lighter.delete()
+            return
+        lighter.db.uses_left = uses
+        if uses <= 3:
+            caller.msg(f"The {lighter.key} is running low — {uses} left.")
 
 
 # ---------------------------------------------------------------------
