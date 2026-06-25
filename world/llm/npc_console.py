@@ -173,6 +173,9 @@ def build_scene(archetype, persona_seed, with_bar=True):
                            key="Laszlo", location=room)
     puppet.height, puppet.build, puppet.sex = "above-average", "stocky", "male"
     puppet.sdesc_keyword = "droog"
+    # Builder perm so the harness PERCEIVES the NPC's `think` output (v1 gate),
+    # letting us watch its interiority alongside the visible emote.
+    puppet.permissions.add("Builder")
 
     # Capture everything the PUPPET receives — that is the player's screen.
     def capture(*args, **kwargs):
@@ -199,7 +202,8 @@ def exchange(npc, puppet, line, show_raw):
         parsed = _LAST.get("parsed", {})
         print(f"  \033[2mmodel.raw   : {raw!r}\033[0m")
         print(f"  \033[2mnormalized  : speech={parsed.get('speech')!r} "
-              f"action={parsed.get('action')!r}\033[0m")
+              f"action={parsed.get('action')!r} "
+              f"thought={parsed.get('thought')!r}\033[0m")
 
 
 def drain(transcript):

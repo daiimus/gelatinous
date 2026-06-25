@@ -753,25 +753,32 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b.execute_cmd.assert_any_call("say Don't serve that here.")
 
     def test_render_unified_pose(self):
-        # action + speech -> ONE first-person .pose with the line woven in as a
-        # quote, fired through the REAL pose command (execute_cmd).
+        # action + speech -> ONE third-person `emote` with the line woven in as a
+        # quote, fired through the REAL emote command (execute_cmd).
         b = self._bartender()
-        b._render_llm_reply("What's it to ya?", "wipe down the slab")
+        b._render_llm_reply("What's it to ya?", "wipes down the slab")
         b.execute_cmd.assert_called_once_with(
-            '.wipe down the slab, "What\'s it to ya?"')
+            'emote wipes down the slab, "What\'s it to ya?"')
 
     def test_render_action_only(self):
         b = self._bartender()
         b.execute_cmd.reset_mock()
-        b._render_llm_reply(None, "polish a glass")
-        b.execute_cmd.assert_called_once_with(".polish a glass")
+        b._render_llm_reply(None, "polishes a glass")
+        b.execute_cmd.assert_called_once_with("emote polishes a glass")
 
-    def test_render_strips_model_leading_dot(self):
-        # The model may prefix its own dot; we never double it.
+    def test_render_thought_goes_to_think(self):
+        # The private interiority channel routes to the REAL `think` command.
         b = self._bartender()
         b.execute_cmd.reset_mock()
-        b._render_llm_reply(None, ".nod at the lean man")
-        b.execute_cmd.assert_called_once_with(".nod at the lean man")
+        b._render_llm_reply(None, None, "He's lying to me.")
+        b.execute_cmd.assert_called_once_with("think He's lying to me.")
+
+    def test_render_action_and_thought(self):
+        b = self._bartender()
+        b.execute_cmd.reset_mock()
+        b._render_llm_reply(None, "wipes the bar", "Trouble walking in.")
+        b.execute_cmd.assert_any_call("emote wipes the bar")
+        b.execute_cmd.assert_any_call("think Trouble walking in.")
 
     def test_render_speech_only(self):
         b = self._bartender()
@@ -901,7 +908,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     def test_on_turn_action_tool_runs_real_command(self):
         b = self._bartender(); self._bind_loop(b)
         patron = self._speaker(); patron.id = 6
-        turn = {"speech": "Coming up", "action": "grab a glass",
+        turn = {"speech": "Coming up", "action": "grabs a glass", "thought": None,
                 "tool": "prepare_drink", "tool_argument": "Negroni"}
         with patch.object(llmnpc, "parse_turn", return_value=turn):
             b._on_turn(["m"], {}, patron, "a negroni", "a man", lambda: None, 0, "{}")
@@ -909,15 +916,15 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b._agentic_round.assert_not_called()              # terminal, no loop
 
     def test_on_turn_terminal_renders(self):
-        # Terminal turn: action+speech go out as ONE first-person .pose through
-        # the real pose command (execute_cmd), the line woven in as a quote.
+        # Terminal turn: action+speech go out as ONE third-person `emote` through
+        # the real emote command (execute_cmd), the line woven in as a quote.
         b = self._bartender(); self._bind_loop(b)
         patron = self._speaker(); patron.id = 8
-        turn = {"speech": "hey", "action": "nod", "tool": "none",
-                "tool_argument": ""}
+        turn = {"speech": "hey", "action": "nods", "thought": None,
+                "tool": "none", "tool_argument": ""}
         with patch.object(llmnpc, "parse_turn", return_value=turn):
             b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, "{}")
-        b.execute_cmd.assert_any_call('.nod, "hey"')
+        b.execute_cmd.assert_any_call('emote nods, "hey"')
 
     def test_run_context_tool_look_and_stock(self):
         b = self._bartender()
