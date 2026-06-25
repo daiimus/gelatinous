@@ -28,6 +28,17 @@ Run (throwaway container, reaches the host sidecar via host.docker.internal):
       --say "rough night?" --say "what do you recommend I drink?"'
 
     # interactive: drop --say and pass --repl, then type lines (Ctrl-D to end).
+
+REACTIVE puppeting (roleplay AGAINST the sidecar NPC, turn by turn): pass --state
+<file> and ONE --say per call; the NPC's conversation + memory persist to <file>
+across the throwaway-DB invocations, so it remembers between your turns. Read its
+reply, craft the next line off it, call again. --as-name / --as-keyword choose who
+you play (so the NPC perceives you as e.g. a "fixer" named "Vince"):
+
+    ...python world/llm/npc_console.py --raw --state /usr/src/game/.rp_state.json \
+      --as-name "Vince" --as-keyword "fixer" --say "<your next line>"'
+
+The state file lands in the mounted repo dir (gitignored). Delete it to start fresh.
 """
 
 from __future__ import annotations
@@ -161,6 +172,9 @@ def build_scene(archetype, persona_seed, with_bar=True):
     npc.db.llm_persona = persona_seed
     # Give the NPC a real presentation so it renders as a person, not its key.
     npc.height, npc.build, npc.sex = "tall", "lean", "male"
+    # Stable identity UID so recognition/memory keying survives a fresh-DB rebuild
+    # across `--state` session turns (apparent_uid derives from the sleeve).
+    npc.sleeve_uid = "harness-npc"
     if archetype == "bartender" and with_bar:
         bar = create_object("typeclasses.bar.BarCounter",
                             key="the hull-slab bar", location=room)
@@ -173,6 +187,7 @@ def build_scene(archetype, persona_seed, with_bar=True):
                            key="Laszlo", location=room)
     puppet.height, puppet.build, puppet.sex = "above-average", "stocky", "male"
     puppet.sdesc_keyword = "droog"
+    puppet.sleeve_uid = "harness-puppet"   # stable, for cross-turn recognition
     # Builder perm so the harness PERCEIVES the NPC's `think` output (v1 gate),
     # letting us watch its interiority alongside the visible emote.
     puppet.permissions.add("Builder")
@@ -187,6 +202,38 @@ def build_scene(archetype, persona_seed, with_bar=True):
 
     puppet.msg = capture
     return room, npc, puppet, transcript
+
+
+# --------------------------------------------------------------------------
+# Session persistence — carry the NPC's memory across throwaway-DB invocations
+# so I can puppet REACTIVELY: send a line, read the reply, craft the next, and
+# the NPC remembers the conversation between my turns. (ndb/db are wiped with
+# the container; we serialise the bits that make a conversation continuous.)
+# --------------------------------------------------------------------------
+def restore_state(npc, puppet, path):
+    if not path or not os.path.exists(path):
+        return
+    with open(path) as fh:
+        state = json.load(fh)
+    if state.get("history"):
+        npc.ndb.llm_history = {npc._hist_key(puppet): state["history"]}
+    if state.get("recognition"):
+        npc.recognition_memory = state["recognition"]
+    if state.get("memories"):
+        npc.db.llm_memories = state["memories"]
+
+
+def save_state(npc, puppet, path):
+    if not path:
+        return
+    from evennia.utils.dbserialize import deserialize   # _Saver* -> plain py
+    state = deserialize({
+        "history": (npc.ndb.llm_history or {}).get(npc._hist_key(puppet), []),
+        "recognition": npc.recognition_memory or {},
+        "memories": npc.db.llm_memories or [],
+    })
+    with open(path, "w") as fh:
+        json.dump(state, fh)
 
 
 # --------------------------------------------------------------------------
@@ -229,6 +276,12 @@ def main():
     ap.add_argument("--model", default=os.environ.get("LLM_GM_MODEL", ""))
     ap.add_argument("--url", default=os.environ.get("LLM_GM_URL", ""))
     ap.add_argument("--timeout", type=int, default=0)
+    ap.add_argument("--state", help="persist/restore the NPC's conversation + "
+                    "memory to this file, so REACTIVE turn-by-turn play (one "
+                    "--say per call) continues across invocations")
+    ap.add_argument("--as-name", help="the puppet's display name (who I play)")
+    ap.add_argument("--as-keyword",
+                    help="the puppet's sdesc keyword (e.g. 'medic', 'courier')")
     args = ap.parse_args()
 
     bootstrap()
@@ -242,7 +295,14 @@ def main():
     seed.setdefault("archetype", args.archetype)
 
     room, npc, puppet, transcript = build_scene(args.archetype, seed)
-    print(f"scene: {npc.key} ({args.archetype}) and {puppet.key} in {room.key}")
+    if args.as_name:
+        puppet.key = args.as_name
+    if args.as_keyword:
+        puppet.sdesc_keyword = args.as_keyword
+    restore_state(npc, puppet, args.state)
+    turns = len((npc.ndb.llm_history or {}).get(npc._hist_key(puppet), []))
+    print(f"scene: {npc.key} ({args.archetype}) and {puppet.key} in {room.key}"
+          + (f"  [resumed, {turns} prior turns]" if turns else ""))
 
     try:
         for line in args.say:
@@ -258,6 +318,7 @@ def main():
                 exchange(npc, puppet, line, args.raw)
                 drain(transcript)
     finally:
+        save_state(npc, puppet, args.state)   # persist before tearing down
         # Ephemeral scene — leave no objects behind (matters if ever run on a
         # real db; harmless in the throwaway).
         for obj in (puppet, npc, room):

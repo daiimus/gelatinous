@@ -22,3 +22,7 @@ server/conf/secret_settings.py
 
 # Live-dir room-desc rollback snapshots — never commit
 room_desc_snapshot_*.json
+
+# npc_console reactive-session state (local test artifact)
+*.rp_state.json
+.rp_state.json
