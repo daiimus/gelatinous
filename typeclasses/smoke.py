@@ -8,6 +8,7 @@ uses-left are set via prototype attributes + Tags.
 from __future__ import annotations
 
 from evennia.prototypes.spawner import spawn
+from evennia.utils import delay
 
 from typeclasses.items import Item
 from world.smoke import (
@@ -70,3 +71,22 @@ class CigarettePack(Item):
             # smoke command picks the right flavor bank even after
             # the cigarette has been removed from the pack.
             cig.db.substance = substance
+
+    def at_object_leave(self, moved_obj, target_location, **kwargs):
+        """Crush the empty pack once its last cigarette is drawn.
+
+        ``at_object_leave`` fires while the cigarette is *still* in
+        ``self.contents`` (its move hasn't committed yet), so we check
+        whether anything OTHER than the leaver remains. If not, this was the
+        last one — defer the delete to the next tick (``delay(0, …)``) so the
+        cigarette's move finishes first and ``self.delete()`` doesn't try to
+        relocate the in-flight cigarette.
+        """
+        super().at_object_leave(moved_obj, target_location, **kwargs)
+        if any(obj is not moved_obj for obj in self.contents):
+            return                              # cigarettes still inside
+        taker = target_location
+        if taker and hasattr(taker, "msg"):
+            taker.msg(f"That's the last one — you crumple the empty "
+                      f"{self.key} and toss it aside.")
+        delay(0, self.delete)
