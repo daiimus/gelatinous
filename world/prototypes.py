@@ -3092,6 +3092,25 @@ ZIPPO_LIGHTER = {
     ],
 }
 
+# Disposable lighter — finite ``uses_left``; CmdLight burns a charge per light
+# and bins it when spent (vs. the infinite zippo above).
+DISPOSABLE_LIGHTER = {
+    "typeclass": "typeclasses.items.Item",
+    "key": "disposable lighter",
+    "aliases": ["lighter", "disposable", "bic"],
+    "desc": (
+        "A cheap translucent-plastic lighter, the kind that lives in a "
+        "pocket until the flint gives out.  A sliver of fluid sloshes "
+        "behind the scratched casing."
+    ),
+    "tags": [
+        ("lighter", "item_role"),
+    ],
+    "attrs": [
+        ("uses_left", 20),
+    ],
+}
+
 
 # Base cigarette.  Branded subtypes override ``brand``.
 CIGARETTE_BASE = {
