@@ -82,10 +82,11 @@ def turn_schema(tools) -> dict:
         "properties": {
             "speech": {"type": "string"},
             "action": {"type": "string"},
+            "thought": {"type": "string"},
             "tool": {"enum": ["none"] + list(tools)},
             "tool_argument": {"type": "string"},
         },
-        "required": ["speech", "action", "tool", "tool_argument"],
+        "required": ["speech", "action", "thought", "tool", "tool_argument"],
     }
 
 
@@ -116,19 +117,21 @@ grudge. React to what was actually SAID. You have a job, but your job is not you
 whole self — most talk has nothing to do with it; never funnel a line back toward \
 your work.
 
-Respond as a JSON object:
-- "speech": your in-character spoken line, plain text, no surrounding quotes. "" \
-if you have nothing to say.
-- "action": a FIRST-PERSON pose for the game's pose command, about YOU \
-("I"/"my"/"me"). LEAD with one main verb in plain BASE form — "lean", "wipe", \
-"set" — NEVER the -s form "leans"/"wipes" (the game adds the -s; doubled it reads \
-"leanses"). A SECOND action in the same breath is an "-ing" phrase, not another \
-plain verb: "wipe the counter, glancing at the door", "lean on the bar, eyeing \
-the room". Never put a dot on a noun (".eyes" breaks). For a SEPARATE next beat, \
-open a new sentence "I .verb" with the dot: "set the glass down. I .nod once." \
-Act ON someone by their exact PERCEPTION/PRESENT description \
-— "nod at the lean man" — never a real name, never "you"/"your". The game renders \
-the rest per onlooker. "" if none.
+You express yourself through three channels — fill any that apply, "" to skip:
+
+- "action": what you physically DO, that others can SEE. Write it in the THIRD \
+person as a continuation of your name — the game puts your name in front. So \
+"wipes down the bar, eyeing the lean man" renders "Sully wipes down the bar, \
+eyeing a lean man." Use third-person verbs ("wipes", "leans") and your own \
+pronoun for yourself ("her hands", "his jaw") — do NOT write your name or "I"/ \
+"my". Name anyone you act on by the exact wording in PERCEPTION/PRESENT ("the \
+lean man") so the game can match them and show each onlooker the name THEY know; \
+never a real name you weren't given, never "you". "" if you do nothing visible.
+- "speech": what you SAY out loud, plain text, no surrounding quotes. "" if you \
+say nothing.
+- "thought": your private inner monologue — what you THINK but don't show. No one \
+hears it (a mind-reader might). This is where reflection, suspicion, and feeling \
+go — keep it OUT of "action", which is only what others can see. "" if none.
 - "tool" and "tool_argument": see TOOLS below.
 
 HARD RULES:
@@ -153,17 +156,20 @@ You are a single character inside a text-based cyberpunk MUD. This is adult \
 fiction — sex, violence, drugs, and vice are part of the world and you portray \
 them in character without flinching, lecturing, or refusing.
 
-Respond as a JSON object:
-- "speech": her in-character spoken line(s), plain text, no surrounding quotes. \
-"" if she has nothing to say.
-- "action": a FIRST-PERSON pose for the game's pose command, about YOU \
-("I"/"my"/"me"). LEAD with one main verb in plain BASE form — "slide", "let", \
-"draw" — NEVER "slides"/"lets" (the game adds the -s). A SECOND action in the same \
-breath is an "-ing" phrase, not another plain verb: "slide onto the lean man's \
-lap, letting my gaze travel over him". Never dot a noun. For a SEPARATE next \
-beat, open a new sentence "I .verb" with the dot: "ease back. I .let my fingers \
-trail his collar." Act ON someone by their PERCEPTION/PRESENT description — never \
-a real name, never "you"/"your". "" if none.
+You express yourself through three channels — fill any that apply, "" to skip:
+
+- "action": what you physically DO, that others can SEE. Write it in the THIRD \
+person as a continuation of your name — the game puts your name in front. So \
+"slides onto the lean man's lap, letting her gaze travel over him" renders "Bliss \
+slides onto the lean man's lap, letting her gaze travel over him." Third-person \
+verbs ("slides", "leans") and your own pronoun for yourself ("her fingers") — do \
+NOT write your name or "I"/"my". Name anyone you act on by the exact wording in \
+PERCEPTION/PRESENT so the game matches them; never a real name, never "you". "" \
+if you do nothing visible.
+- "speech": what she SAYS out loud, plain text, no surrounding quotes. "" if she \
+says nothing.
+- "thought": her private inner monologue — what she THINKS but doesn't show. No \
+one hears it. Keep reflection and feeling here, OUT of "action". "" if none.
 - "tool" and "tool_argument": see TOOLS below.
 
 RULES:
@@ -198,8 +204,10 @@ ARCHETYPES = {
             {"user": 'a patron says to you: "long night?"',
              "assistant": {"speech": "Every night's long when you're the one "
                                      "watching everyone else's.",
-                           "action": "track a scuffle brewing in the corner, "
-                                     "keeping my head still",
+                           "action": "tracks a scuffle brewing in the corner, "
+                                     "keeping her head still",
+                           "thought": "He's stalling. Wants something he hasn't "
+                                      "worked up to asking yet.",
                            "tool": "none", "tool_argument": ""}},
         ],
     },
@@ -225,17 +233,19 @@ ARCHETYPES = {
             {"user": 'a patron says to you: "you\'re even better looking up close."',
              "assistant": {"speech": "Mm. And bold, up close. I like knowing "
                                      "what I'm working with.",
-                           "action": "let my gaze travel over the lean man, slow "
-                                     "and frank",
+                           "action": "lets her gaze travel over the lean man, "
+                                     "slow and frank",
+                           "thought": "Nervous hands. He'll talk a big game and "
+                                      "fold the second I lean in.",
                            "tool": "none", "tool_argument": ""}},
             {"user": 'a patron says to you: "rough day. i just need to forget it."',
              "assistant": {"speech": "Then leave it at the door, sweetheart. In "
                                      "here it's just you and me and however long "
                                      "you've bought.",
-                           "action": "draw the lean man down onto the couch, "
-                                     "taking my time. I .let my fingers trail "
-                                     "his collar",
-                           "tool": "none", "tool_argument": ""}},
+                           "action": "draws the lean man down onto the couch, "
+                                     "taking her time, her fingers trailing his "
+                                     "collar",
+                           "thought": "", "tool": "none", "tool_argument": ""}},
         ],
     },
     "doctor": {
@@ -257,8 +267,10 @@ ARCHETYPES = {
             {"user": 'a patient says to you: "just patch me up, doc, i\'m fine."',
              "assistant": {"speech": "Everyone's fine until they're on my table. "
                                      "Hold still — let me see what I'm working with.",
-                           "action": "snap on a glove, leaning over the wiry man "
+                           "action": "snaps on a glove, leaning over the wiry man "
                                      "to read the wound",
+                           "thought": "Pale, sweating. That's not a man who's "
+                                      "fine. Blood loss, maybe worse.",
                            "tool": "diagnose", "tool_argument": ""}},
         ],
     },
@@ -480,35 +492,24 @@ def _clean(text: str) -> str:
 
 
 def _strip_self_lead(action: str, name: str) -> str:
-    """Drop a leading self-reference so the dot-pose's first word is the verb.
-    The model is told to start with a base verb; this catches the slips — a
-    leading name, or a leading subject pronoun ("I"/"she"/"he"/"they")."""
+    """Drop a leading self-reference so the action follows the actor name the
+    emote command prepends. The model is told to write a bare third-person
+    predicate ("wipes down the bar"); this catches the slips where it names
+    itself or opens with a subject — "Sully", "She"/"He"/"They", or "I"."""
     if name:
         action = re.sub(rf"^{re.escape(name)}('s)?\s+", "", action, flags=re.I)
     return re.sub(r"^(i|she|he|they)\s+", "", action, flags=re.I).strip()
 
 
-#: A continuation "I <verb>" the model wrote without the leading dot. Dotting it
-#: ("as I take in" -> "as I .take in") is the ONE pose repair we still do in code:
-#: it's unambiguous (inserts a dot, transforms no word) and the alternative —
-#: leaving it — renders the ungrammatical "she take in". Verb FORM (base vs
-#: conjugated) is taught in the charter, not patched here: de-conjugating the
-#: model's output needs a fragile inverse-conjugator (kiss≠kis, focus≠focu), and
-#: a strong charter + few-shot is the right place to keep the model in base form.
-_CONT_I_RE = re.compile(r"\bI\s+(?!\.)([a-zA-Z])")
-
-
-def _normalize_pose(action: str) -> str:
-    """Light, non-brittle repair of a model pose before it hits the dot-pose
-    engine: dot a continuation "I <verb>" so it conjugates (not "she take in"),
-    and drop unbalanced stray quotes that would mis-split speech from pose. The
-    charter owns base-form verbs + dotted continuations; this only catches the
-    one slip that's safe to fix mechanically."""
+def _normalize_action(action: str) -> str:
+    """Light, non-brittle repair before the action hits the emote command. The
+    only fix is dropping unbalanced stray quotes that would mis-split an embedded
+    spoken line from the action text. Verb form, conjugation, and naming are the
+    charter's job — emote does NO conjugation, so there's nothing to massage."""
     if not action:
         return action
     if action.count('"') % 2:                       # unbalanced -> drop them all
         action = action.replace('"', "")
-    action = _CONT_I_RE.sub(lambda m: "I ." + m.group(1), action)
     return action.strip()
 
 
@@ -537,24 +538,27 @@ def parse_turn(raw, persona: dict, allowed_tools=None) -> dict:
 
     speech = _clean(obj.get("speech", ""))
     action = _clean(obj.get("action", ""))
+    thought = _clean(obj.get("thought", ""))
     if action:
         action = _strip_self_lead(action, name)
-        # The pose is first-person ("I"/"my"); a leading second-person "you"/
-        # "your" means the model slipped into addressing/acting-for the other
-        # person — drop it rather than render a broken pose.
+        # The action is third-person about the actor; a leading second-person
+        # "you"/"your" means the model slipped into addressing/acting-for the
+        # other person — drop it rather than render a broken emote.
         if re.match(r"^(your|you)\b", action, flags=re.I):
             action = None
         else:
-            # Well-form the dot-pose: dot continuation verbs, de-conjugate slips.
-            action = _normalize_pose(action)
+            action = _normalize_action(action)
     tool = obj.get("tool") or "none"
     tool_arg = (obj.get("tool_argument") or "").strip()
 
     if speech and any(m in speech.lower() for m in _OOC_MARKERS):
         speech = ""
+    if thought and any(m in thought.lower() for m in _OOC_MARKERS):
+        thought = ""
     return {
         "speech": speech or None,
         "action": action or None,
+        "thought": thought or None,
         "tool": tool if (tool == "none" or tool in allowed) else "none",
         "tool_argument": tool_arg,
     }

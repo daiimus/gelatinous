@@ -295,38 +295,65 @@ class TestParseTurn(TestCase):
                           "prepare_drink", "diagnose", "treat", "install"])
 
 
-class TestPoseNormalization(TestCase):
-    """parse_turn does the ONE non-brittle pose repair: dot an undotted
-    continuation "I <verb>" so it conjugates (not "she take in"), and drop
-    unbalanced quotes. Verb FORM (base vs -s) is the charter's job, not patched
-    here — so a conjugated verb passes through untouched."""
+class TestActionNormalization(TestCase):
+    """The action is third-person prose routed to the `emote` command (no
+    conjugation), so parse_turn only: strips a leading self-reference (emote
+    prepends the name), drops a POV-leak "you", drops unbalanced quotes, and
+    otherwise passes the prose through verbatim — emote has nothing to massage."""
 
     def _action(self, action):
         return parse_turn(json.dumps(
-            {"speech": "", "action": action, "tool": "none",
+            {"speech": "", "action": action, "thought": "", "tool": "none",
              "tool_argument": ""}), _PERSONA)["action"]
 
-    def test_undotted_continuation_verb_gets_dotted(self):
-        # "as I take in" must dot so it conjugates ("takes"), not "she take in".
-        self.assertEqual(self._action("lean back as I take in the room"),
-                         "lean back as I .take in the room")
+    def test_third_person_prose_passes_through(self):
+        self.assertEqual(self._action("wipes down the bar, eyeing the lean man"),
+                         "wipes down the bar, eyeing the lean man")
 
-    def test_new_sentence_I_verb_gets_dotted(self):
-        # A leading "I" is dropped by _strip_self_lead (first word becomes the
-        # verb); the dotting catches a SUBSEQUENT "I .verb" restating the subject.
-        self.assertEqual(self._action("nod, then I take a slow breath"),
-                         "nod, then I .take a slow breath")
+    def test_leading_self_name_stripped(self):
+        # _PERSONA's name is "Sable"; emote prepends it, so drop a leading self.
+        self.assertEqual(self._action("Sable leans on the bar"),
+                         "leans on the bar")
 
-    def test_already_dotted_continuation_untouched(self):
-        self.assertEqual(self._action("lean back, .sliding it over"),
-                         "lean back, .sliding it over")
+    def test_leading_self_pronoun_stripped(self):
+        self.assertEqual(self._action("She rinses a glass"), "rinses a glass")
 
-    def test_verb_form_not_patched(self):
-        # We DON'T de-conjugate — the charter keeps the model in base form. A
-        # conjugated verb passes through unchanged (no fragile inverse-conjugator).
-        self.assertEqual(self._action("leans across the bar"),
-                         "leans across the bar")
-        self.assertEqual(self._action("kiss the knuckles"), "kiss the knuckles")
+    def test_no_dot_insertion(self):
+        # Dots are dot-pose syntax; emote renders them literally, so we must NOT
+        # add them. "I take" stays untouched (no ".take"), conjugation untouched.
+        self.assertEqual(self._action("nods, then she takes a slow breath"),
+                         "nods, then she takes a slow breath")
+
+    def test_pov_leak_you_dropped(self):
+        out = parse_turn(json.dumps(
+            {"speech": "hi", "action": "your eyes meet his", "thought": "",
+             "tool": "none", "tool_argument": ""}), _PERSONA)
+        self.assertIsNone(out["action"])
 
     def test_unbalanced_quote_dropped(self):
-        self.assertEqual(self._action('nod once"'), "nod once")
+        self.assertEqual(self._action('nods once"'), "nods once")
+
+
+class TestThoughtChannel(TestCase):
+    """The new third channel: parse_turn surfaces `thought`, OOC-filtered."""
+
+    def _turn(self, **kw):
+        base = {"speech": "", "action": "", "thought": "", "tool": "none",
+                "tool_argument": ""}
+        base.update(kw)
+        return parse_turn(json.dumps(base), _PERSONA)
+
+    def test_thought_passes_through(self):
+        self.assertEqual(self._turn(thought="He's lying to me.")["thought"],
+                         "He's lying to me.")
+
+    def test_empty_thought_is_null(self):
+        self.assertIsNone(self._turn()["thought"])
+
+    def test_ooc_thought_dropped(self):
+        self.assertIsNone(self._turn(thought="As an AI I think...")["thought"])
+
+    def test_schema_has_thought(self):
+        from world.llm.prompt import TURN_SCHEMA
+        self.assertIn("thought", TURN_SCHEMA["properties"])
+        self.assertIn("thought", TURN_SCHEMA["required"])

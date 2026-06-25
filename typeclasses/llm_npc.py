@@ -398,11 +398,12 @@ class LLMNpcMixin:
             self._agentic_round(extended, persona, patron, line, speaker_name,
                                 on_fail, rounds + 1)
             return
-        # Terminal: render speech/action, route any action tool, remember.
-        self._render_llm_reply(turn["speech"], turn["action"], patron)
+        # Terminal: render speech/action/thought, route any action tool, remember.
+        self._render_llm_reply(turn["speech"], turn["action"], turn["thought"],
+                               patron)
         self._handle_action_tool(tool, arg, patron)
         self._remember_turn(patron, line, speaker_name, turn["speech"],
-                            turn["action"])
+                            turn["action"], turn["thought"])
         # Long-term memory: persist what was learned (async, post-render).
         self._store_memory(patron, speaker_name, line, turn["speech"])
 
@@ -439,9 +440,10 @@ class LLMNpcMixin:
         except Exception:  # noqa: BLE001 — naming is best-effort
             pass
 
-    def _remember_turn(self, patron, line, speaker_name, speech, action):
+    def _remember_turn(self, patron, line, speaker_name, speech, action,
+                       thought=None):
         """Append the rendered turn to short-term memory (anti-repetition)."""
-        reply = self._reconstruct_reply(speech, action)
+        reply = self._reconstruct_reply(speech, action, thought)
         if not reply:
             return
         hist = self.ndb.llm_history or {}
@@ -455,48 +457,50 @@ class LLMNpcMixin:
         self.ndb.llm_history = hist
 
     @staticmethod
-    def _reconstruct_reply(speech, action):
+    def _reconstruct_reply(speech, action, thought=None):
         """Re-form the model's own reply for the history (so it sees its prior
-        gestures and phrasing, in the same format it produces)."""
-        if action and speech:
-            return f'*{action}* "{speech}"'
+        gestures, phrasing, AND interiority, in the format it produces)."""
+        parts = []
         if action:
-            return f"*{action}*"
+            parts.append(f"*{action}*")
         if speech:
-            return f'"{speech}"'
-        return ""
+            parts.append(f'"{speech}"')
+        if thought:
+            parts.append(f"( {thought} )")
+        return " ".join(parts)
 
-    def _render_llm_reply(self, speech, action, patron=None):
-        """Render the sidecar reply through the REAL ``.pose`` command — the
-        first-person pose-with-targeting the players use.
+    def _render_llm_reply(self, speech, action, thought=None, patron=None):
+        """Render the sidecar reply through the REAL roleplay commands players
+        use — one channel per field, no bespoke rendering.
 
-        The model writes ``action`` as a first-person dot-pose ("lean across the
-        bar", "slide onto the lean man's lap"): the leading word is its verb, it
-        refers to itself with "I"/"my", and it targets anyone else by the
-        description shown in PRESENT/PERCEPTION. We hand that straight to
-        ``execute_cmd('.<action>')`` — so ``CmdDotPose`` does the conjugation,
-        the per-observer character resolution (every target rendered as the
-        watcher knows them), and the hearing-gated speech rails, exactly as for a
-        player. The spoken line rides along as an embedded quote. No bespoke
-        rendering, no name-guessing — the NPC simply uses the command.
-
-        Speech with no pose falls back to a bare ``say``."""
+        The model writes ``action`` as a third-person predicate ("wipes down the
+        bar, eyeing the lean man") — exactly the register an RP model is fluent
+        in. We hand it to ``execute_cmd('emote <action>')``: ``CmdEmote`` prepends
+        the NPC's per-observer name, resolves each referenced character as the
+        watcher knows them, and rides the hearing-gated speech rails — and does NO
+        verb conjugation, so the model's natural prose renders as-is. The spoken
+        line rides along as an embedded quote (one beat); speech with no action
+        falls back to a bare ``say``. ``thought`` (private interiority) goes to
+        ``execute_cmd('think <thought>')`` — perceived only by the actor and a
+        mind-reader, so it never leaks onto the visible stage."""
         if not self.location:
             return
         speech = speech.strip().strip('"').strip() if speech else None
-        action = action.strip().lstrip(".").strip() if action else None
+        action = action.strip() if action else None
+        thought = thought.strip() if thought else None
         if action:
             body = action
             if speech and '"' not in body:
-                # Weave the line into the pose as a quote so it reads as one beat
-                # and still rides the say/hearing rails (CmdDotPose extracts it).
-                # If the pose ALREADY carries a quote, that one rides the rails —
-                # don't append a second and double the dialogue.
+                # Weave the line in as a quote so it reads as one beat and still
+                # rides the say/hearing rails (render_emote extracts it). If the
+                # action already carries a quote, that one rides — don't double.
                 sep = "" if body[-1] in ",.!?…" else ","
                 body = f'{body}{sep} "{speech}"'
-            self.execute_cmd(f".{body}")
+            self.execute_cmd(f"emote {body}")
         elif speech:
             self.execute_cmd(f"say {speech}")
+        if thought:
+            self.execute_cmd(f"think {thought}")
 
     def _llm_silent(self):
         """Sidecar failed or declined on conversation: stay quiet."""
