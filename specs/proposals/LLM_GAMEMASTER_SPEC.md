@@ -9,15 +9,24 @@
 > identity-gated retrieval, write-back) and a reusable LLM-NPC brain
 > (`LLMNpcMixin`) with archetypes (bartender, companion). **Phase 3 (partial):** a
 > small allow-listed action surface is live — `remember`/`feel`/`look` + archetype
-> tools (`prepare_drink`) — and **actuation runs through the REAL first-person
-> `.pose` command** (`execute_cmd`), so NPC poses get the game's per-observer
-> identity rendering and targeting for free (the NPC names people as *it* perceives
-> them — sdesc, or a name it has assigned — and the world renders each watcher's
-> view; validated live: the model emits well-formed dot-pose, incl. `I .verb`
-> continuations and multi-PC targeting). The Phase-3 **arbiter (capability +
-> consent gates)** and mechanical-verb routing to the tactical resolver are **not**
-> built yet (consent ties to the deferred Trust/Consent gate). Build ladder +
-> per-phase status in §10. Live-model validation harness: `world/llm/live_probe.py`.
+> tools (`prepare_drink`) — and **actuation runs through the REAL roleplay commands
+> players use, one channel per turn-field** (`execute_cmd`), so NPC output gets the
+> game's per-observer identity rendering and targeting for free. The turn is
+> `{speech, action, thought, tool}`, dispatched: **`action` → `emote`** (3rd-person,
+> the register an RP-tuned model is fluent in — the command does NO conjugation, so
+> the model's natural prose renders as-is), **`speech` → `say`**, **`thought` →
+> `think`** (private interiority, perceived only by the actor + a mind-reader, so it
+> never leaks onto the visible stage). **This replaced an earlier 1st-person
+> dot-pose render (#789):** the dot-pose DSL (base-form verbs + leading dots) is a
+> *human* input ergonomic that fought the prose model and drifted to conjugated
+> narration under load ("glanceses"); for an NPC, verbs are always 3rd-person to
+> every observer, so the conjugation machinery was unnecessary — `emote` dissolved
+> the format problem at the root. `think` (#787) is a new real RP verb players share.
+> The Phase-3 **arbiter (capability + consent gates)** and mechanical-verb routing
+> to the tactical resolver are **not** built yet (consent ties to the deferred
+> Trust/Consent gate). Build ladder + per-phase status in §10. Validation harnesses:
+> `world/llm/live_probe.py` (volume format scorer) + `world/llm/npc_console.py`
+> (reactive turn-by-turn play against the sidecar NPC).
 > A methodology for
 > running a **local LLM as a storyteller / gamemaster** that puppets NPCs:
 > dialogue, a bounded set of actions, real command use, and **per-NPC memory
@@ -424,9 +433,20 @@ schema:
 - **`memory`** is the model's own nomination of what to remember (the write-back
   seed, §6), with a salience it assigns.
 
+**As shipped** (the concrete contract, backend-constrained via `outlines`): a flat
+per-turn object **`{speech, action, thought, tool, tool_argument}`** — three
+expression channels plus one tool. `action` is a 3rd-person predicate (→ `emote`),
+`speech` is the spoken line (→ `say`), `thought` is private interiority (→ `think`),
+and `tool` is a single allow-listed action/context tool scoped to the archetype.
+The model fills any channel that applies (`""` to skip) and the renderer dispatches
+each to its real command — so writing in the model's native register (3rd-person
+narrative prose) *is* writing a valid pose. `thought` keeps the model's storytelling
+interiority OFF the visible stage rather than fighting it.
+
 Parse defensively: malformed output → **discard the turn** (fail quiet, §1.7),
 optionally one retry with a "return valid schema only" reminder. Never actuate
-from a partial parse.
+from a partial parse. (Light, non-brittle cleanup only: strip a leading
+self-reference, drop an unbalanced quote, OOC-filter — `parse_turn`.)
 
 ### 5.4 · Arbitrate — validate, gate, de-conflict
 
@@ -465,10 +485,13 @@ What survives is a small set of **approved, executable** intents.
 Approved intents become real game effects through the **same paths a player's
 input takes**:
 
-- **Speech** → the speech backbone's broadcast (per-observer identity/voice/
-  hearing rendering applies automatically).
-- **Actions** → `execute_cmd` on the NPC object (Appendix A). The command runs
-  through the normal cmdset, permissions, and system hooks — combat, movement,
+- **Expression channels** → the matching real RP command via `execute_cmd`:
+  `action`→`emote` (3rd-person; prepends the per-observer name, resolves char-refs,
+  no conjugation), `speech`→`say` (or woven into the emote as an embedded quote, one
+  beat), `thought`→`think` (perceiver-gated: actor + Builder/mind-reader). Per-observer
+  identity/voice/hearing rendering applies automatically.
+- **Actions** (the `tool`) → `execute_cmd` on the NPC object (Appendix A). The command
+  runs through the normal cmdset, permissions, and system hooks — combat, movement,
   economy all behave exactly as for a player. If the command fails in-world, that
   *is* the outcome; the GM doesn't get to override it.
 
@@ -694,14 +717,20 @@ MLX, ChromaDB, or Evennia.
   encounter across sessions and names people it knows.*
 - 🟡 **Phase 3 — bounded actions (PARTIAL).** Shipped: a small allow-listed action
   surface (`remember`, `feel`, `look` + archetype `prepare_drink`/`check_stock`),
-  and **actuation through real commands** — speech via `say`, action via the REAL
-  first-person `.pose` (`execute_cmd('.<pose>')`), which gives per-observer identity
+  and **actuation through real commands, one channel per turn-field** — `action`→
+  `emote` (3rd-person, no conjugation), `speech`→`say`, `thought`→`think` (private
+  interiority, perceiver-gated) — all `execute_cmd`, giving per-observer identity
   rendering + targeting for free. **Room presence**: an LLM NPC tracks who is in
   the room (a live `[PRESENT]` roster) and clocks arrivals/departures via the
   vanilla `at_object_receive`/`at_object_leave` room hooks (a non-NPC arrival may
-  trigger a gated greeting). Validated live (`world/llm/live_probe.py`): the model
-  emits well-formed dot-pose (base verbs, dotted later verbs, `I .verb`
-  continuations) and resolvable targeting. **NOT yet built:** the full arbiter
+  trigger a gated greeting). **Render history (#789):** an earlier 1st-person
+  dot-pose render was retired for NPCs — the DSL fought the prose model (conjugation
+  drift under load); `emote` is 3rd-person-native and dissolved it. Validated via
+  `live_probe.py` (volume format scorer) + `npc_console.py` (reactive play). Tuning
+  knobs that matter under a permanently-loaded sidecar: `LLM_GM_MAX_TOKENS` (180 —
+  fits line+action+thought) and `LLM_GM_TIMEOUT` (60s — rescues slow turns from the
+  curt fallback); `on_fail` logs the reason (empty/truncation vs timeout vs conn).
+  **NOT yet built:** the full arbiter
   (§5.4) — the **capability and consent gates** — and **mechanical verbs routing
   to the tactical resolver** (§2.2); consent ties to the deferred Trust/Consent
   gate. *Deliverable partially met: governed social/expressive actions through real

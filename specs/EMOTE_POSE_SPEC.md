@@ -8,6 +8,7 @@ This specification defines the emote, pose, and communication command system for
 - **Traditional emote (`emote`)** — Third-person emoting with identity-aware character references
 - **Say (`say`)** — Speech with per-observer speaker attribution
 - **Whisper (`whisper`)** — Directed speech with per-observer attribution for speaker and target
+- **Think (`think`)** — Private interiority as the MUSH thoughtbubble `Name thinks . o O ( … )`, perceived only by the actor and (v1) Builder+; the interiority channel LLM NPCs use instead of leaking thought into their visible emote
 - **Grammar engine (`world/grammar.py`)** — Shared infrastructure for verb conjugation, pronoun transformation, and article handling
 
 This system is the **communication counterpart** to the Identity & Recognition System (see `IDENTITY_RECOGNITION_SPEC.md`). The identity spec defines *how characters are perceived*; this spec defines *how that perception is expressed in communication*. The grammar engine defined here is the canonical implementation referenced by both specs.
