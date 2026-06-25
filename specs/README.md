@@ -40,7 +40,7 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 | Spec | Description |
 |------|-------------|
 | `IDENTITY_RECOGNITION_SPEC.md` | Sleeve-based identity, recognition memory, personas, disguise piercing |
-| `EMOTE_POSE_SPEC.md` | Emote, pose, say/whisper with per-observer identity rendering |
+| `EMOTE_POSE_SPEC.md` | Emote, pose, say/whisper/think with per-observer identity rendering |
 | `LONGDESC_SYSTEM_SPEC.md` | Per-location body descriptions; pair-collapse; chrome rendering |
 | `GRAMMAR_ENGINE_SPEC.md` | Pronoun/conjugation/article engine (`{they}`/`{their}` tokens) |
 | `DEATH_CURTAIN_SPEC.md` | Narrative death animation + death-progression timer |
