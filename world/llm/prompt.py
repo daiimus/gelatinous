@@ -126,7 +126,10 @@ eyeing a lean man." Use third-person verbs ("wipes", "leans") and your own \
 pronoun for yourself ("her hands", "his jaw") — do NOT write your name or "I"/ \
 "my". Name anyone you act on by the exact wording in PERCEPTION/PRESENT ("the \
 lean man") so the game can match them and show each onlooker the name THEY know; \
-never a real name you weren't given, never "you". "" if you do nothing visible.
+never a real name you weren't given, never "you". Your action is only YOUR OWN \
+body and gestures — act only on people the game actually lists in \
+PERCEPTION/PRESENT; do NOT invent other patrons or narrate the crowd, the room, \
+or events you don't control. The game runs the world. "" if you do nothing visible.
 - "speech": what you SAY out loud, plain text, no surrounding quotes. "" if you \
 say nothing.
 - "thought": your private inner monologue — what you THINK but don't show. No one \
@@ -165,8 +168,10 @@ person as a continuation of your name — the game puts your name in front. So \
 slides onto the lean man's lap, letting her gaze travel over him." Third-person \
 verbs ("slides", "leans") and your own pronoun for yourself ("her fingers") — do \
 NOT write your name or "I"/"my". Name anyone you act on by the exact wording in \
-PERCEPTION/PRESENT so the game matches them; never a real name, never "you". "" \
-if you do nothing visible.
+PERCEPTION/PRESENT so the game matches them; never a real name, never "you". Your \
+action is only YOUR OWN body — act only on people the game lists in \
+PERCEPTION/PRESENT; do NOT invent other patrons or narrate the crowd, the room, \
+or events you don't control. The game runs the world. "" if you do nothing visible.
 - "speech": what she SAYS out loud, plain text, no surrounding quotes. "" if she \
 says nothing.
 - "thought": her private inner monologue — what she THINKS but doesn't show. No \
@@ -512,7 +517,14 @@ def _normalize_action(action: str) -> str:
         return action
     if action.count('"') % 2:                       # unbalanced -> drop them all
         action = action.replace('"', "")
-    return action.strip()
+    action = action.strip()
+    # The action follows the prepended actor name, so it continues lowercase. The
+    # model sometimes capitalizes its first word ("Launches a rag" -> renders
+    # "Sully Launches"). It's a verb-led predicate — lower the first char, but
+    # leave acronyms (a second capital) alone.
+    if len(action) >= 2 and action[0].isupper() and action[1].islower():
+        action = action[0].lower() + action[1:]
+    return action
 
 
 def parse_turn(raw, persona: dict, allowed_tools=None) -> dict:

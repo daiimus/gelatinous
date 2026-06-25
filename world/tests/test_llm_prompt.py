@@ -333,6 +333,14 @@ class TestActionNormalization(TestCase):
     def test_unbalanced_quote_dropped(self):
         self.assertEqual(self._action('nods once"'), "nods once")
 
+    def test_leading_capital_lowered(self):
+        # emote prepends the name, so a capitalized first word continues lowercase.
+        self.assertEqual(self._action("Launches a rag at the spill"),
+                         "launches a rag at the spill")
+
+    def test_acronym_first_word_preserved(self):
+        self.assertEqual(self._action("ODs on the floor"), "ODs on the floor")
+
 
 class TestThoughtChannel(TestCase):
     """The new third channel: parse_turn surfaces `thought`, OOC-filtered."""
