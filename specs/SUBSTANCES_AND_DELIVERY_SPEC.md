@@ -81,6 +81,15 @@ Optional state:
 | Lit | Tag `("lit", "cigarette_state")` (smoke only) | bool |
 | Sealed / opened | Tag (TBD when bottles arrive) | bool |
 | Loaded (pipe) | `db.substance` set to non-null when loaded | implicit |
+| Ignition charges | `db.uses_left` on the **lighter** (absent = infinite) | int / unset |
+
+**Ignition source charges**: a lighter's `db.uses_left` (when
+present) is an independent charge counter, decremented per
+`CmdLight`.  An unset `uses_left` means infinite — the reusable
+Zippo carries no counter; the `DISPOSABLE_LIGHTER` prototype
+seeds `uses_left = 20` and is consumed to nothing.  This is the
+same `uses_left` field as cigarette puffs, used on a different
+item layer (the ignition source rather than the consumable).
 
 **Why tags for booleans + delivery method**: per AGENTS.md.  DB-
 indexed, no pickle round-trip.
@@ -194,7 +203,22 @@ migration from the old `medical_type` strings.
 * **`commands/CmdSmoke.py`** — `light` / `smoke` / `snuff`
   routing on the `("smoke", "delivery_method")` tag.  Cross-
   character syntax via possessive parser.  Each puff applies one
-  dose through `apply_substance` (#458).
+  dose through `apply_substance` (#458).  `CmdLight._spend_lighter`
+  burns one `db.uses_left` charge per light (#803): unset =
+  infinite (Zippo), zero → the lighter announces its last flame
+  and `delete()`s itself, with a low-charge warning at ≤3.
+* **`typeclasses/smoke.py`** — `CigarettePack` is a container
+  that lazily `spawn`s its cigarettes on first open.  Its
+  `at_object_leave` self-destructs the pack when the **last**
+  cigarette is drawn (#801): once no cigarette remains, it tells
+  the taker "that's the last one" and `delay(0, self.delete)`s the
+  empty pack rather than leaving a junk husk in inventory.
+* **Vending** — a street `cigarette machine` (a live-placed
+  `ShopContainer` fixture, not a repo prototype) sells the
+  `CIGARETTE_PACK_NOIR` pack and a `DISPOSABLE_LIGHTER` (both
+  zero-cost for now).  It carries an integration desc with only
+  the words "cigarette machine" colored cyan, and a `get:false()`
+  lock so the fixture itself can't be picked up.
 * **`world/substances/`** (#458) — `Substance` /
   `SubstanceEffect` dataclasses, registry with the two tobacco
   entries, `apply_substance` pipeline feeding the medical
