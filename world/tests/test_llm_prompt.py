@@ -65,15 +65,14 @@ class TestBuildMessages(TestCase):
     def test_render_persona_defensive(self):
         self.assertIn("the bartender", render_persona({}))
 
-    def test_persona_states_self_gender(self):
-        # Authoritative self-pronouns so the model doesn't mis-gender itself.
-        def p(sex):
-            return render_persona({"sdesc": "x", "sex": sex,
-                                   "persona_seed": {"name": "N"}})
-        self.assertIn("he/him", p("male"))
-        self.assertIn("she/her", p("female"))
-        self.assertIn("they/them", p("ambiguous"))   # falls through
-        self.assertIn("they/them", p(None))
+    def test_persona_surfaces_pronouns(self):
+        # render_persona surfaces the pronouns build_persona pre-derives from the
+        # canonical gender engine — no duplicate sex->pronoun mapping here.
+        out = render_persona({"persona_seed": {"name": "N"}, "pronouns": "he/him"})
+        self.assertIn("refer to yourself as he/him", out.lower())
+        # Absent (e.g. a hand-authored lint fixture) -> no gender line, no crash.
+        self.assertNotIn("refer to yourself",
+                         render_persona({"persona_seed": {"name": "N"}}).lower())
 
     def test_memories_injected_before_turn(self):
         msgs = build_messages(_PERSONA, "a man", "remember me?", "directed",
