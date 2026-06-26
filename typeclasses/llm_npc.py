@@ -151,7 +151,7 @@ class LLMNpcMixin:
         # Capture everything reactor-side BEFORE threading (SQLite/Evennia-thread
         # contract). The agentic loop re-calls from the reactor-side callback.
         persona = build_persona(self)
-        speaker_name = patron.get_display_name(self)
+        speaker_name = self._address_handle(patron)
         perception = self._perceive(patron)
         history = self._recent_history(patron)
         subject = self._memory_subject(patron)
@@ -206,9 +206,22 @@ class LLMNpcMixin:
 
     # --- room presence: who's here, who comes and goes -------------------
 
+    def _address_handle(self, target):
+        """The handle the model should use to REFER to ``target``: a name this NPC
+        has assigned it, else the clothing-free CORE sdesc ("a stocky droog") —
+        NOT the full sdesc, whose garment clause ("...in an armored leather
+        jacket") makes the model point at, and paraphrase, clothing. The char-ref
+        matcher resolves the short form; the render restores the full per-observer
+        identity for onlookers."""
+        from world.identity import get_assigned_name, get_short_sdesc
+        try:
+            return get_assigned_name(self, target) or get_short_sdesc(target)
+        except Exception:  # noqa: BLE001 — fall back to the standard display name
+            return target.get_display_name(self)
+
     def _present_others(self, patron=None):
-        """The characters sharing this NPC's room right now, each by the name
-        THIS NPC perceives them by (so the model can reference them and the
+        """The characters sharing this NPC's room right now, each by the handle
+        THIS NPC would address them by (so the model can reference them and the
         world renders per-observer). The current speaker is excluded — they're
         already in PERCEPTION — and other NPCs are kept (they're really here).
         Capped to keep the prompt bounded in a crowded room."""
@@ -221,10 +234,7 @@ class LLMNpcMixin:
                 continue
             if not hasattr(obj, "get_sdesc"):
                 continue
-            try:
-                name = obj.get_display_name(self)
-            except Exception:  # noqa: BLE001 — never break a reply over a roster
-                continue
+            name = self._address_handle(obj)
             if name:
                 names.append(name)
         return names[:8]

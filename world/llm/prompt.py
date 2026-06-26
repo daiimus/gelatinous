@@ -126,7 +126,9 @@ eyeing a lean man." Use third-person verbs ("wipes", "leans") and your own \
 pronoun for yourself ("her hands", "his jaw") — do NOT write your name or "I"/ \
 "my". Name anyone you act on by the exact wording in PERCEPTION/PRESENT ("the \
 lean man") so the game can match them and show each onlooker the name THEY know; \
-never a real name you weren't given, never "you". Your action is only YOUR OWN \
+never a real name you weren't given, never "you". Refer to people by who they ARE \
+(the lean man, the droog) — never by what they wear or carry (the jacket, the \
+boots). Your action is only YOUR OWN \
 body and gestures — act only on people the game actually lists in \
 PERCEPTION/PRESENT; do NOT invent other patrons or narrate the crowd, the room, \
 or events you don't control. The game runs the world. "" if you do nothing visible.
@@ -168,7 +170,8 @@ person as a continuation of your name — the game puts your name in front. So \
 slides onto the lean man's lap, letting her gaze travel over him." Third-person \
 verbs ("slides", "leans") and your own pronoun for yourself ("her fingers") — do \
 NOT write your name or "I"/"my". Name anyone you act on by the exact wording in \
-PERCEPTION/PRESENT so the game matches them; never a real name, never "you". Your \
+PERCEPTION/PRESENT so the game matches them; never a real name, never "you". Refer \
+to people by who they ARE, never by what they wear or carry. Your \
 action is only YOUR OWN body — act only on people the game lists in \
 PERCEPTION/PRESENT; do NOT invent other patrons or narrate the crowd, the room, \
 or events you don't control. The game runs the world. "" if you do nothing visible.
