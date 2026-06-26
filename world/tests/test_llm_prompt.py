@@ -65,6 +65,16 @@ class TestBuildMessages(TestCase):
     def test_render_persona_defensive(self):
         self.assertIn("the bartender", render_persona({}))
 
+    def test_persona_states_self_gender(self):
+        # Authoritative self-pronouns so the model doesn't mis-gender itself.
+        def p(sex):
+            return render_persona({"sdesc": "x", "sex": sex,
+                                   "persona_seed": {"name": "N"}})
+        self.assertIn("he/him", p("male"))
+        self.assertIn("she/her", p("female"))
+        self.assertIn("they/them", p("ambiguous"))   # falls through
+        self.assertIn("they/them", p(None))
+
     def test_memories_injected_before_turn(self):
         msgs = build_messages(_PERSONA, "a man", "remember me?", "directed",
                               memories=["he stiffed you on a tab last week",
