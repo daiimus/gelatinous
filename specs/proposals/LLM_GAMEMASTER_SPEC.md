@@ -413,6 +413,24 @@ The prompt is composed, in priority order, to fit the context budget:
 Budget discipline: charter + persona + affordances are fixed cost; memory and
 transcript are the elastic middle, trimmed to fit.
 
+**How the NPC refers to people (and itself).** Two refinements keep references
+grounded in identity, not surface description:
+
+- **Self-gender** — the persona card carries the NPC's own pronouns (`he/him`),
+  derived from the *canonical* gender engine (`get_apparent_gender` →
+  `transform_pronoun`, the same one emotes/identity use), so the model never
+  mis-genders itself ("her shoulder" for a male NPC) and never drifts from how the
+  world renders the character.
+- **Referencing others by who they are, not what they wear** — the handles the
+  model is given for the speaker and the PRESENT roster are the **clothing-free
+  CORE sdesc** (`get_short_sdesc` → "a stocky droog"), not the full feature-laden
+  sdesc ("…in an armored leather jacket"). An RP-prose model otherwise fixates on
+  (and paraphrases) garments. The charter reinforces this: NAME the person by the
+  shown handle — never a bare "them"/"their" (resolves to no one) nor what they
+  wear. The render then resolves per-observer, including the **second-person**
+  carve-out (a reference to the observer renders "you"/"your" — see
+  `EMOTE_POSE_SPEC.md`).
+
 ### 5.3 · Infer — structured intents out
 
 The model returns a **structured list of intents**, not free text. A minimal
