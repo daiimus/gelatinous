@@ -430,7 +430,7 @@ When `observer == actor`:
 | VerbToken | Base form (no conjugation): "lean", "ask" |
 | PronounToken | Second-person form: I→you, my→your, me→you, mine→yours, myself→yourself |
 | SpeechToken | `process_speech(text, speaker, observer)` (default: verbatim in quotes) |
-| CharRefToken | `get_display_name(actor)` for the referenced character |
+| CharRefToken | `_resolve_charref` — `"you"`/`"your"` if the ref is the actor (self-ref), else `get_display_name(actor)` |
 
 The actor's own reference (implicit from first verb, or explicit `I`) renders as **"You"** (capitalized if sentence-initial, lowercase otherwise).
 
@@ -444,7 +444,7 @@ When `observer != actor`:
 | VerbToken | `conjugate_third_person(base_form)`: lean→leans, ask→asks |
 | PronounToken | Third-person, gender-matched: I→he/she/they, my→his/her/their |
 | SpeechToken | `process_speech(text, speaker, observer)` |
-| CharRefToken | `get_display_name(observer)` for the referenced character |
+| CharRefToken | `_resolve_charref` — `"you"`/`"your"` if the ref IS the observer, else `get_display_name(observer)` |
 
 The actor's name renders as `get_display_name(observer)` — "Jorge", "a lanky man", etc.
 
@@ -467,7 +467,7 @@ The actor may be referenced multiple times in a single emote. The renderer track
 - Actor: "your", "you", "yours", "yourself"
 - Observer: "his"/"her"/"their", "him"/"her"/"them", etc.
 
-**Character references** (other characters in the emote) **always** render as full display names via `get_display_name(observer)`. No pronoun substitution for non-actor characters.
+**Character references** (other characters in the emote) render as full display names via `get_display_name(observer)` — with **one carve-out: a reference to the observer themselves renders second-person** (`you`, or `your` for the possessive). So a pose that targets you reads "watches **you**", never your own name; everyone else still resolves to the name that observer knows them by. No pronoun substitution for any other (non-actor, non-observer) character. This is the same rule for dot-pose and traditional emote — both resolve char-refs through `_resolve_charref(character, observer)`.
 
 ### Rendering Trace
 
@@ -791,7 +791,7 @@ Multiple characters match the same name: The ordinal system applies (`2nd tall m
 
 ### Self-Reference
 
-Actor types their own name as a character reference in an emote: The system resolves it to the actor's character object. At render time, it renders via `get_display_name(observer)` for the actor object. For dot-pose self-view, this would produce the actor's own name (from `get_display_name(self)` returning `.key`). Technically valid but unusual.
+Actor types their own name as a character reference in an emote: The system resolves it to the actor's character object. At render time, `_resolve_charref` makes it **second-person for the actor's own view** ("you") — since the referenced character is the observer — and the per-observer name for everyone else. (Previously this rendered the actor's own `.key` via `get_display_name(self)`, which was "technically valid but unusual"; the second-person carve-out fixes it.)
 
 ### Combat Context
 

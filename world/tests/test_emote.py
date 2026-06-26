@@ -1956,3 +1956,46 @@ class TestShortSdesc(TestCase):
                                build="athletic", sdesc_keyword="woman",
                                sleeve_uid="uid-short2")
         self.assertFalse(get_short_sdesc(char, article=False).startswith(("a ", "an ")))
+
+
+class TestSecondPersonObserverRef(TestCase):
+    """A char-ref pointing at the OBSERVER renders second-person (you/your), not
+    the observer's own name — in both dot-pose and traditional emote. A third
+    party still sees the referenced character's sdesc."""
+
+    def setUp(self):
+        from world.emote import (tokenize_emote, render_emote_for_observer,
+                                  tokenize_dot_pose, render_for_observer)
+        self.tok_emote, self.render_emote = tokenize_emote, render_emote_for_observer
+        self.tok_dot, self.render_dot = tokenize_dot_pose, render_for_observer
+        self.actor = _make_character(key="Sully", sex="female", height="tall",
+                                     build="lean", sdesc_keyword="bartender",
+                                     sleeve_uid="uid-sully")
+        self.you = _make_character(key="Laszlo", sex="male", height="short",
+                                   build="stocky", sdesc_keyword="droog",
+                                   sleeve_uid="uid-laszlo")
+
+    def test_emote_ref_to_observer_is_you(self):
+        toks = self.tok_emote("nods at the droog", self.actor, [self.you])
+        out = self.render_emote(toks, self.actor, self.you).lower()
+        self.assertIn("nods at you", out)
+
+    def test_emote_possessive_is_your(self):
+        toks = self.tok_emote("eyes the droog's hands", self.actor, [self.you])
+        out = self.render_emote(toks, self.actor, self.you).lower()
+        self.assertIn("your hands", out)
+        self.assertNotIn("you's", out)
+
+    def test_dotpose_ref_to_observer_is_you(self):
+        toks = self.tok_dot("nod at the droog", self.actor, [self.actor, self.you])
+        out = self.render_dot(toks, self.actor, self.you).lower()
+        self.assertIn("you", out)
+        self.assertNotIn("droog", out)            # not the observer's own sdesc
+
+    def test_third_party_still_sees_sdesc(self):
+        stranger = _make_character(key="S", sex="male", height="average",
+                                   build="average", sdesc_keyword="figure",
+                                   sleeve_uid="uid-str", recognition_memory={})
+        toks = self.tok_emote("nods at the droog", self.actor, [self.you])
+        out = self.render_emote(toks, self.actor, stranger).lower()
+        self.assertIn("droog", out)               # named, not "you"
