@@ -11,7 +11,22 @@ See ``specs/proposals/LLM_GAMEMASTER_SPEC.md`` §5.2 (persona card).
 
 from evennia.utils.dbserialize import deserialize
 
+from world.grammar import transform_pronoun
+from world.identity import get_apparent_gender
 from world.voice import get_voice_description, get_voice_ending, voice_phrase
+
+
+def _self_pronouns(npc) -> str:
+    """The NPC's own subject/object pronouns ("he/him") from the SAME canonical
+    gender derivation the emote/identity engine uses (``get_apparent_gender`` ->
+    ``transform_pronoun``), so the persona never disagrees with how the world
+    renders this character's gender. Falls back to they/them on any hiccup."""
+    try:
+        gender = get_apparent_gender(npc)
+        return (f"{transform_pronoun('I', 'third', gender)}/"
+                f"{transform_pronoun('me', 'third', gender)}")
+    except Exception:  # noqa: BLE001 — never break persona-building over pronouns
+        return "they/them"
 
 
 def build_persona(npc) -> dict:
@@ -50,6 +65,7 @@ def build_persona(npc) -> dict:
         "height": npc.height,
         "build": npc.build,
         "sex": npc.sex,
+        "pronouns": _self_pronouns(npc),   # canonical self-gender (he/him, …)
         "species": npc.species,
         "voice": voice_phrase(npc),
         "voice_description": get_voice_description(npc),
