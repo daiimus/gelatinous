@@ -1935,3 +1935,24 @@ class TestOrdinalCharRefsInEmotes(TestCase):
         # "man" should still match via regular path (first match)
         self.assertEqual(len(char_refs), 1)
         self.assertIs(char_refs[0].character, self.jorge)
+
+
+class TestShortSdesc(TestCase):
+    """get_short_sdesc — the clothing-free CORE handle (descriptor + keyword),
+    so an LLM NPC references the person ('a lanky man'), never the garment."""
+
+    def test_core_form_no_feature_clause(self):
+        from world.identity import get_short_sdesc
+        char = _make_character(key="X", sex="male", height="tall", build="lean",
+                               sdesc_keyword="man", sleeve_uid="uid-short")
+        short = get_short_sdesc(char)
+        self.assertTrue(short.startswith(("a ", "an ")), short)
+        self.assertIn("man", short)
+        self.assertNotIn(" in ", short)          # never a garment/feature clause
+
+    def test_no_article_option(self):
+        from world.identity import get_short_sdesc
+        char = _make_character(key="Y", sex="female", height="short",
+                               build="athletic", sdesc_keyword="woman",
+                               sleeve_uid="uid-short2")
+        self.assertFalse(get_short_sdesc(char, article=False).startswith(("a ", "an ")))

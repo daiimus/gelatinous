@@ -672,6 +672,34 @@ def compose_sdesc(
     return base
 
 
+def get_short_sdesc(char, article: bool = True) -> str:
+    """The clothing-free CORE sdesc — descriptor + keyword, no distinguishing
+    feature/garment clause: ``"a stocky droog"`` vs the full ``"a stocky droog in
+    an armored leather jacket"``.
+
+    Use this where a reference should point at the PERSON, not what they happen to
+    be wearing — e.g. the handle an LLM NPC addresses someone by (so it says "the
+    stocky droog" instead of fixating on, and paraphrasing, the jacket). The
+    char-ref matcher already accepts this short form, and the render layer restores
+    the full per-observer identity. Falls back to keyword/key when descriptors
+    aren't set.
+    """
+    from world.grammar import DEFAULT_SDESC_KEYWORDS, get_article
+    descriptor = ""
+    height, build = getattr(char, "height", None), getattr(char, "build", None)
+    if height and build:
+        try:
+            descriptor = get_physical_descriptor(height, build)
+        except (KeyError, AttributeError):
+            descriptor = ""
+    keyword = (getattr(char, "sdesc_keyword", None) or DEFAULT_SDESC_KEYWORDS.get(
+        getattr(char, "gender", "neutral"), "person"))
+    core = compose_sdesc(descriptor, keyword).strip() if descriptor else keyword
+    if not core:
+        return getattr(char, "key", "someone")
+    return f"{get_article(core)} {core}" if article else core
+
+
 # =========================================================================
 # Disguise Adjective
 # =========================================================================
