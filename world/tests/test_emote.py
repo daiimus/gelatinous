@@ -1968,7 +1968,7 @@ class TestSecondPersonObserverRef(TestCase):
                                   tokenize_dot_pose, render_for_observer)
         self.tok_emote, self.render_emote = tokenize_emote, render_emote_for_observer
         self.tok_dot, self.render_dot = tokenize_dot_pose, render_for_observer
-        self.actor = _make_character(key="Sully", sex="female", height="tall",
+        self.actor = _make_character(key="Sully", sex="male", height="tall",
                                      build="lean", sdesc_keyword="bartender",
                                      sleeve_uid="uid-sully")
         self.you = _make_character(key="Laszlo", sex="male", height="short",
