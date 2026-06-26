@@ -219,7 +219,7 @@ ARCHETYPES = {
              "assistant": {"speech": "Every night's long when you're the one "
                                      "watching everyone else's.",
                            "action": "tracks a scuffle brewing in the corner, "
-                                     "keeping her head still",
+                                     "staying perfectly still",
                            "thought": "He's stalling. Wants something he hasn't "
                                       "worked up to asking yet.",
                            "tool": "none", "tool_argument": ""}},
@@ -338,6 +338,14 @@ them, target one person per description, and the world resolves the rest."""
 
 _APPEARANCE_KEYS = ("face", "eyes", "hair", "head")
 
+#: NPC sex -> (self-noun, pronoun set) — the authoritative self-gender injected
+#: into the persona so the model doesn't mis-gender itself. Anything not listed
+#: (ambiguous/neutral/nonbinary/other/unset) falls through to they/them.
+_SELF_PRONOUNS = {
+    "male": ("a man", "he/him"),
+    "female": ("a woman", "she/her"),
+}
+
 
 def _personality(seed: dict) -> str:
     if seed.get("personality"):
@@ -369,6 +377,11 @@ def render_persona(persona: dict) -> str:
 
     if persona.get("sdesc"):
         lines.append(f"To strangers you appear as {persona['sdesc']}.")
+    # Authoritative self-gender — the few-shot/charter examples can't be allowed to
+    # mis-gender the NPC (a male bartender rendered "her shoulder").
+    who, pron = _SELF_PRONOUNS.get((persona.get("sex") or "").lower(),
+                                   ("nonbinary", "they/them"))
+    lines.append(f"You are {who}; refer to yourself as {pron}.")
     longdescs = persona.get("longdescs") or {}
     appearance = [longdescs[k] for k in _APPEARANCE_KEYS if longdescs.get(k)]
     if persona.get("skintone"):
