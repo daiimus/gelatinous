@@ -392,7 +392,9 @@ class CmdHarvest(Command):
                     f"{target.get_display_name(caller)}."
                 )
                 return
-            readable = ", ".join(o.replace("_", " ") for o in harvestable)
+            from world.anatomy import get_organ_display_name
+            readable = ", ".join(
+                get_organ_display_name(o, species) for o in harvestable)
             caller.msg(
                 f"Harvestable organs in {target.get_display_name(caller)}: "
                 f"{readable}.\nUsage: harvest <organ> from <target>"

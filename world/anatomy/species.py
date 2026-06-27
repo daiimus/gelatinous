@@ -1274,6 +1274,43 @@ def _derive_robot(base: dict) -> dict:
             "chassis and severed fluid lines; it will corrode no further."
         ),
     }
+
+    # Component names: a living robot's medical readout / surgery / severed
+    # parts read mechanically (processor core, power core, optical sensors,
+    # actuator struts) instead of the shared organic ORGAN_DISPLAY names.
+    # Consumed by ``world.anatomy.organs.get_organ_display_name(name, species)``.
+    # Organs without an entry fall back to the organic name. Organ
+    # DESCRIPTIONS (the prose) stay organic for now — a later authoring pass.
+    robot["organ_display"] = {
+        "brain": "processor core",
+        "heart": "power core",
+        "left_eye": "left optical sensor",
+        "right_eye": "right optical sensor",
+        "left_ear": "left audio sensor",
+        "right_ear": "right audio sensor",
+        "nose": "chemical sensor",
+        "tongue": "vocal modulator",
+        "jaw": "mandible servo",
+        "cervical_spine": "neck servo column",
+        "left_lung": "left cooling unit",
+        "right_lung": "right cooling unit",
+        "liver": "fluid reclaimer",
+        "stomach": "fuel cell",
+        "left_kidney": "left coolant filter",
+        "right_kidney": "right coolant filter",
+        "thoracolumbar_spine": "spinal strut",
+        "pelvis": "pelvic frame",
+        "left_humerus": "left upper-arm strut",
+        "right_humerus": "right upper-arm strut",
+        "left_metacarpals": "left hand servos",
+        "right_metacarpals": "right hand servos",
+        "left_femur": "left thigh strut",
+        "right_femur": "right thigh strut",
+        "left_tibia": "left shin strut",
+        "right_tibia": "right shin strut",
+        "left_metatarsals": "left foot servos",
+        "right_metatarsals": "right foot servos",
+    }
     return robot
 
 
@@ -1814,7 +1851,7 @@ def get_species_organ_name(
         or prefixes.get("fresh")
         or "{organ}"
     )
-    organ_display = get_organ_display_name(organ_name)
+    organ_display = get_organ_display_name(organ_name, species if is_known else None)
     species_display = spec.get("display_name", "") if is_known else ""
     rendered = template.format(species=species_display, organ=organ_display)
     # Collapse any leading whitespace left behind when species_display

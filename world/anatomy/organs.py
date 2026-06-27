@@ -317,14 +317,30 @@ ORGAN_DISPLAY = {
 }
 
 
-def get_organ_display_name(organ_name):
+def get_organ_display_name(organ_name, species=None):
     """Return the player-facing display name for an organ.
 
-    Falls back to the underscore-stripped canonical key when the
-    organ isn't registered in :data:`ORGAN_DISPLAY` — defensive
-    against new organs added to :data:`world.medical.constants.ORGANS`
-    before their display metadata lands.
+    Resolution order:
+
+    1. A per-species ``organ_display`` override (a robot's ``brain`` reads
+       "processor core", a mechanical species renames its components) —
+       declared on the species in :data:`world.anatomy.species.SPECIES_DEFINITIONS`.
+    2. The shared :data:`ORGAN_DISPLAY` organic name.
+    3. The underscore-stripped canonical key (defensive default for organs
+       whose display metadata hasn't landed yet).
+
+    ``species`` is optional so legacy callers keep working unchanged; pass
+    the target's species to get species-aware component names.
     """
+    if species:
+        # Lazy import — ``species`` imports this module, so a top-level
+        # import here would be circular.
+        from world.anatomy.species import SPECIES_DEFINITIONS
+        spec = SPECIES_DEFINITIONS.get(species)
+        if spec:
+            override = (spec.get("organ_display") or {}).get(organ_name)
+            if override:
+                return override
     entry = ORGAN_DISPLAY.get(organ_name)
     if entry and entry.get("display_name"):
         return entry["display_name"]

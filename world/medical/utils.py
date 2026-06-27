@@ -965,7 +965,9 @@ def apply_medical_effects(item, user, target, **kwargs):
             actual_healed = organ.heal(heal_amount)
             
             if actual_healed > 0:
-                organ_display_name = organ_name.replace('_', ' ').title()
+                from world.anatomy import get_organ_display_name
+                species = getattr(getattr(target, "db", None), "species", None)
+                organ_display_name = get_organ_display_name(organ_name, species).title()
                 result_msg = f"Surgical procedure completed. {organ_display_name} healed for {actual_healed} HP ({organ.current_hp}/{organ.max_hp})."
             else:
                 result_msg = "Surgical procedure completed, but no further healing was possible."
