@@ -221,6 +221,10 @@ consent rules as player-initiated ones. Reserve the seam now.
   hunt state machine — suspicious → search last-known position (Dijkstra) → alert
   allies (a bus event) → give up → routine. The director hosts that state machine;
   awareness is the cheap, LLM-free signal that makes the population feel watchful.
+* **Robots & the police MOB (`ROBOT_SPECIES_AND_MOB_SPEC`).** The director's
+  **first MOB consumer**: a security-robot patrol/detect/challenge/restrain state
+  machine that exercises this spec end-to-end (routines, LEO response, alert
+  propagation, the trust-gated lawful restraint) — deterministically, no LLM.
 
 ## 9 · Build ladder
 
