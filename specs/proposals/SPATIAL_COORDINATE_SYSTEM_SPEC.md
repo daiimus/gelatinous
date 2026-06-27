@@ -1,11 +1,18 @@
 # Spatial Coordinate System Specification
 
-> **Status:** 📋 Proposal — not implemented. Designs a unified integer
-> `(X, Y, Z)` coordinate volume laid over the existing hand-built world, as
-> the shared backbone for navigation, ranged systems (vehicle combat / radar),
-> verticality & gravity, NPC dispatch, and — later — destructible and
-> procedurally-generated space. Inspired by Evennia's `XYZGrid` contrib but
-> deliberately adopting only its **data model**, not its authoring model.
+> **Status:** 🟡 Proposal — **Phases 1–2 SHIPPED & LIVE** (2026-06-27, #847 /
+> #851); verticality + reserved seams ahead. A unified integer `(X, Y, Z)`
+> coordinate volume laid over the existing hand-built world, as the shared
+> backbone for navigation, ranged systems (vehicle combat / radar), verticality
+> & gravity, NPC dispatch, and — later — destructible and procedurally-generated
+> space. Inspired by Evennia's `XYZGrid` contrib but deliberately adopting only
+> its **data model**, not its authoring model.
+>
+> **Live:** the world is seeded — **309 rooms** coordinates from 'Central Span'
+> #1005 = `(0,0,0)`, **0 geometry contradictions** (only Limbo + debug rooms
+> off-grid). `world/spatial` exposes `get_xyz`/`room.xyz`, `distance`,
+> `rooms_within`, `bearing`, the A\* `find_path`/`find_path_exits`/`path_length`/
+> `is_reachable`, and the `@coordseed` / `@path` builder commands.
 
 ## 1 · Intent — why coordinates, and why now
 
@@ -272,8 +279,8 @@ Designed-for now so we don't paint into a corner; implemented later.
 
 | Phase | Scope | Unblocks |
 |---|---|---|
-| **1 — Substrate** | Coordinate tags + `.xyz` property + `distance`/`rooms_within` + `@coordseed` seeding tool + warp-exit tag | Ranged systems; everything downstream |
-| **2 — Pathfinder** | A\* over exit graph w/ coordinate heuristic (`world/spatial/pathfind.py`) | NPC dispatch; auto-walk |
+| **1 — Substrate** | ✅ **SHIPPED** (#847): `room.db.xyz` + `.xyz` property + `distance`/`rooms_within`/`bearing` + `@coordseed` (world seeded, 0 contradictions) + warp-exit tag. (Storage is `db.xyz`, not tags — see §10.) | Ranged systems; everything downstream |
+| **2 — Pathfinder** | ✅ **SHIPPED** (#851): A\* over the exit graph w/ coordinate heuristic (`world/spatial/pathfind.py`); `@path` inspector | NPC dispatch ✅; auto-walk |
 | **3 — Verticality** | Generalize jump/sky-room gravity onto Z; `passable`/floor flags | Vertical content; falling |
 | **— Parallel —** | Vehicle combat + radar (consume Phase 1 distance/bearing) | — |
 | **Reserved** | Destruction/repair · procedural mines · GPS/quiverbloom minimap | Pie-in-the-sky roadmap |
