@@ -85,10 +85,14 @@ keeps stealth *gear- and world-driven* rather than stat-driven:
   (combat, shouting) spike detectability.
 * **Distance** — coordinate distance bands degrade passive detection.
 
-### 3.3 · What you can hide
+### 3.3 · What you can hide, and the commands
 
-* **Self** — `hide` enters a hidden state in the current room (best in cover /
-  shadow / crowd).
+* **Self (static)** — `hide` / `unhide` toggles the hidden state in the current
+  room (best in cover / shadow / crowd).
+* **Self (moving)** — `sneak <direction>` is "move while hiding": it carries you
+  through an exit and **induces the hidden state** on arrival (a fresh contest in
+  the new room). Sneaking is the in-motion form of `hide`; the same toggle state,
+  re-rolled per room, with the movement penalty from §3.2.
 * **Object** — `hide <object>` stashes an item in the room; `search` may turn it
   up. (Stashed contraband, a planted bug, a dropped weapon.)
 
@@ -113,6 +117,17 @@ level toward each hidden thing:
 The level **modulates what `can_perceive` returns for that observer** — this is
 the graded gate in action. Levels rise on failed-hide / successful-search /
 noise events and **decay over time** when contact is lost (the give-up arc).
+
+**The "lurking" tell.** When a hidden character *is* perceived — a *Detected*
+observer, or a failed hide roll where the watcher still sees them — they do **not**
+render normally. The stealth state contributes a placement at the top of the
+existing hierarchy (`override_place` > `temp_place` > `look_place` > "standing
+here." in `get_display_characters`), so to those who see them they read as
+**"lurking in the shadows"** rather than "standing here." Failed concealment
+doesn't restore a normal appearance; it makes you *visibly furtive* — onlookers
+can tell this is someone who doesn't want to be seen. (At *Suspicious* the
+watcher gets only the "you sense something" cue, no placement; the lurking
+placement appears at *Detected*.)
 
 **Identical loop, two consumers.** The same per-observer awareness data is:
 * **rendered to a PC** ("you sense something nearby…" at *Suspicious*; the target
