@@ -124,11 +124,14 @@ class CmdDamageTest(Command):
                 caller.msg(f"|yYou now have {total_wounds} total wounds.|n")
             
             # Show organ damage - organs are now Organ objects, not dicts
+            from world.anatomy import get_organ_display_name
+            species = getattr(getattr(caller, "db", None), "species", None)
             damaged_organs = []
             for organ_name, organ in medical_state.organs.items():
                 if organ.current_hp < organ.max_hp:
                     damage_taken = organ.max_hp - organ.current_hp
-                    damaged_organs.append(f"{organ_name} ({damage_taken} damage)")
+                    damaged_organs.append(
+                        f"{get_organ_display_name(organ_name, species)} ({damage_taken} damage)")
             
             if damaged_organs:
                 caller.msg("|yDamaged organs:|n")
@@ -245,8 +248,10 @@ class CmdMedicalInfo(Command):
         
     def _show_organs(self, caller, target, medical_state):
         """Show detailed organ information."""
+        from world.anatomy import get_organ_display_name
+        species = getattr(getattr(target, "db", None), "species", None)
         table = EvTable("Organ", "HP", "Status", "Location", border="cells")
-        
+
         for organ_name, organ in medical_state.organs.items():
             hp_str = f"{organ.current_hp}/{organ.max_hp}"
             
@@ -263,7 +268,7 @@ class CmdMedicalInfo(Command):
             else:
                 status = "|RDestroyed|n"
                 
-            table.add_row(organ_name.replace('_', ' ').title(), hp_str, status, organ.container)
+            table.add_row(get_organ_display_name(organ_name, species).title(), hp_str, status, organ.container)
             
         target_name = "Your" if target == caller else f"{target.get_display_name(caller)}'s"
         caller.msg(f"|c{target_name} Organ Status:|n\n{table}")
