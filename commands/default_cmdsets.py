@@ -27,6 +27,7 @@ from commands import CmdMedicalItems
 from commands import CmdSmoke
 from commands.CmdSpawnMob import CmdSpawnMob
 from commands.CmdCoordSeed import CmdCoordSeed
+from commands.CmdPath import CmdPath
 from commands.bar_menu import CmdSpawnIngredient
 from commands.CmdBug import CmdBug
 from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
@@ -139,6 +140,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdCharacter.CmdStats)
         self.add(CmdSpawnMob())
         self.add(CmdCoordSeed())
+        self.add(CmdPath())
         self.add(CmdSpawnIngredient())
         self.add(CmdAdmin.CmdHeal())
         self.add(CmdAdmin.CmdPeace())
