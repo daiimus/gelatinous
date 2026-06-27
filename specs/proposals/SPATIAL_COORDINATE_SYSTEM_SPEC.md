@@ -294,20 +294,29 @@ consumer of Phase 2 and gets its own spec.
 * **Scipy dependency.** XYZGrid's pathfinder needs `scipy`; our own A\* over the
   exit graph can be pure-Python (`heapq`) and avoid the dependency — preferred
   for the Docker image unless profiling says otherwise.
-* **Spatial-query implementation (structure by layer).** Range/proximity queries
-  hide behind `rooms_within()` / `slice()` (rooms) and a parallel entity-query
-  seam (vehicles/radar), so the *structure* is an implementation detail swappable
-  without touching callers. The call, by layer:
-  * **Room layer** — few, static, lattice-uniform, point-like. Start with a
-    **linear scan**; graduate to a pure-Python **spatial hash** (dict keyed by
-    `(x,y,z)` + per-Z-plane index) if it gets hot. An R-tree buys nothing here.
-  * **Entity layer** (vehicles, blast radii, radar contacts) — many, moving every
-    tick, with **extent**, over non-uniform space. This is where **R-tree / BVH
-    algorithms** pay off: bounding-box overlap (radar sweep / firing arc / AoE)
-    and **nearest-neighbour** (e.g. *dispatch responder selection* — closest LEO
-    to an incident). Implement the algorithm **pure-Python first**; pull in a
-    native lib (`rtree`/`libspatialindex`, or `scipy.cKDTree` for point-NN) only
-    if profiling on the real box demands it — same discipline as the pure-Python
-    A\* call. KD-tree for pure-point NN; R-tree when objects have boxes *and*
-    churn (the vehicle case); grid hash for uniform high-churn.
-  * **Pathfinding** uses neither — it's graph A\* over the exit network (§5).
+* **Spatial-query implementation — the math, not a dependency.** Range/proximity
+  queries hide behind `rooms_within()` / `slice()` (rooms) and a parallel
+  entity-query seam (vehicles/radar), so the *structure* is swappable without
+  touching callers. Principle: **lift the algorithm, don't take the repo** —
+  pure-Python, the lightest structure per query, built only when a profiled query
+  is hot. **No runtime dependency is warranted** (candidate survey, 2026-06):
+  the pure-Python R-tree libs (`pyrtree`, `rtreelib`) are **2D-only and
+  insert-then-query** — no churn, no third axis — which is wrong for our 3D,
+  mutating world; and `rtree`/`libspatialindex`, `scipy.cKDTree`, and sklearn are
+  native deps we avoid (same discipline as the pure-Python A\* call). By layer:
+  * **Room layer / entity broad-phase** — a roll-our-own **3D spatial hash**
+    (dict keyed by `(x,y,z)` cells; O(1) churn, 3D-native, ~50 lines; ref:
+    pygame `SpatialHashMap`, `dankolbman/spatialpartitioning`). The workhorse.
+    Caveat: a large-radius range query scans the covering ring of cells — fine
+    for small radii; for clustered/sparse volumes (mines, sky) an **octree** is
+    the escalation if the hash degrades.
+  * **Point nearest-neighbour** (e.g. *dispatch responder selection* — closest
+    LEO to an incident) — if it profiles hot, **vendor a ~60-line KD-tree**
+    (permissive-licensed reference impls: `Vectorized/Python-KD-Tree`,
+    `stefankoegl/kdtree`) rather than add a dependency.
+  * **Entity extent / bbox overlap** (radar sweep, firing arc, AoE) — broad-phase
+    through the spatial hash, then an exact box test; a full R-tree is overkill at
+    our counts. R-tree's edge is extent *and* churn — but no usable pure-Python 3D
+    impl exists, so we'd build a small BVH only if profiling ever proves the need.
+  * **Pathfinding** uses neither — graph A\* over the exit network (§5),
+    pure-Python `heapq`.
