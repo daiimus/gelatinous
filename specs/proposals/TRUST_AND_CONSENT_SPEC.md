@@ -92,7 +92,7 @@ not all commands exist yet):
 | `escort` / `follow` | movement-coupling (lead/drag the target's movement) | |
 | `grab` / `grapple` | consensual restraint (let them grab/restrain you uncontested) | the "strap me in willingly" path |
 | `heal` | **all** medical commands — treat, bandage, inject, install, **operate, harvest** | **deliberately blanket** (§3.1) |
-| `search` / `frisk` | frisk / search / loot the target | |
+| `search` / `frisk` | frisk / search / loot the target — **identifies the items on their person** (worn, carried, **and concealed**) | the active counter to organic concealment (§3.2) |
 
 ### 3.1 · `heal` is intentionally all-medical — betrayal included
 
@@ -102,6 +102,17 @@ while you're awake — including malpractice and **harvesting your organs**. The
 betrayal affordance (you trusted your ripperdoc; they cut out your kidney) is a
 **feature**, not a footgun. We do *not* split benevolent treatment from invasive
 surgery in the trust layer — the danger is the point.
+
+### 3.2 · `frisk` — what it reveals
+
+`frisk <target>` **identifies the items on a person: worn, carried, and the
+concealed holdout the sdesc normally hides.** It is a *reveal*, not a contest —
+so it rides the standard consent gate (consent, or an unconscious / restrained /
+dead target). It is the lawful/forceful inspection: a security bot frisks a
+subdued suspect, a medic frisks a willing patient, you frisk a corpse. It is the
+information step that precedes confiscation or theft. Contrast **theft**
+(`steal`/`pickpocket`), which is the *nonconsensual contest* version and lives in
+`STEALTH_AND_DETECTION_SPEC` §6.2 — frisk asks, theft takes.
 
 ## 4 · Command surface
 

@@ -168,15 +168,58 @@ deterministic**, which is exactly why this scales without LLM cost.
 
 ---
 
-## 6 · Ambush & breaking stealth
+## 6 · Applied contest — ambush, theft, breaking stealth
 
-* **Surprise opener** — acting on a target at **Unaware** toward you is an
-  ambush: a first-strike advantage routed through the existing aim/initiative
-  systems (`world/combat`), not a new combat path.
-* **Breaking stealth** — attacking, loud actions, or being searched-and-found
-  pushes the relevant observers to **Alert** and drops your hidden state for
-  them. Stealth is broken **per-observer**: ambushing one guard doesn't auto-
-  reveal you to one across the building (until alert propagation reaches them).
+### 6.1 · Ambush
+
+Acting on a target at **Unaware** toward you is an ambush: a first-strike
+advantage routed through the existing aim/initiative systems (`world/combat`),
+not a new combat path.
+
+### 6.2 · Theft (steal & pickpocket)
+
+**Theft is applied stealth** — a nonconsensual Resonance/Motorics contest whose
+risk is *getting caught*. It is the contest engine (§3) and the awareness meter
+(§4) pointed at taking things, not a separate system.
+
+* **`steal <item> from <target>`** — take a *specific, perceivable* item (a
+  visible worn/carried object). Contest: thief vs the victim's awareness, modified
+  by §3.2 (crowd/distraction help; a prominent or worn item is harder than a loose
+  one; a victim in active combat is distracted). **Success** → the item transfers
+  with little awareness gained. **Failure** → *caught*: the victim (and witnesses
+  in LoS) jump toward **Alert** toward the thief, recognition keys on the thief's
+  **apparent-UID** (a mask/disguise protects you — `IDENTITY_RECOGNITION_SPEC`),
+  and a witnessed theft can raise a **dispatch** event (the victim swings, a guard
+  responds).
+* **`pickpocket <target>`** — **tokens (currency) only**: a blind grab for cash,
+  lower-stakes and more deniable than targeted theft (you don't choose *what*, you
+  lift *some*). Same contest and caught-consequences, tuned lighter. Specific
+  items are the riskier `steal`.
+* **Subdued / unconscious / dead target** → **free action** (it's just looting),
+  via the `TRUST_AND_CONSENT_SPEC` predicate. The contest only matters for an
+  awake target who could notice — which is the whole skill.
+* **Concealed items** can't be `steal`-targeted until revealed: you take what you
+  can perceive (sdesc-visible) or what a `frisk` (§6.3) has surfaced. Frisk-then-
+  steal on a subdued mark is the mugging loop.
+* **Proximity** required (same room, close/adjacent) — theft rides the combat
+  proximity substrate.
+
+### 6.3 · Frisk (the consent-gated reveal)
+
+`frisk <target>` **identifies the items on a person — worn, carried, and
+concealed** (the holdout the sdesc hides). It is **not** a contest: it is the
+`search`/`frisk` action class in `TRUST_AND_CONSENT_SPEC`, so it **requires
+consent, or a target who is unconscious / restrained / dead** (the free-action
+path). Frisk is the active counter to organic concealment (§9) and the
+information step before confiscation or `steal`. *(Effect defined here; gating
+owned by the trust spec.)*
+
+### 6.4 · Breaking stealth
+
+Attacking, loud actions, a failed theft, or being searched-and-found pushes the
+relevant observers to **Alert** and drops your hidden state for them. Stealth
+breaks **per-observer**: ambushing or robbing one guard doesn't auto-reveal you
+to one across the building (until alert propagation reaches them).
 
 ---
 
@@ -240,8 +283,8 @@ unchanged).
 | **Dispatch** (`NPC_DISPATCH_AND_SIMULATION_SPEC`) | Awareness drives the deterministic NPC state machine; alert propagation is a bus event. |
 | **Identity** (`IDENTITY_RECOGNITION_SPEC`) | Parallel concealment axis; awareness store mirrors `recognition_memory` and keys on apparent-UID (detected-as-presence ≠ identified). |
 | **Crowd** | Concealment for blending; noise for searching. |
-| **Combat** | Ambush opener; attacking breaks stealth per-observer. |
-| **Trust** (`TRUST_AND_CONSENT_SPEC`) | `search`/`frisk` are the active reveals; frisking a subdued target surfaces stashed items. |
+| **Combat** | Ambush opener; attacking breaks stealth per-observer; a caught theft can trigger retaliation / a dispatch response. |
+| **Trust** (`TRUST_AND_CONSENT_SPEC`) | `frisk` is the *consent-gated* reveal (its effect defined in §3.2 there); `steal`/`pickpocket` (§6.2) are the *nonconsensual contest* — frisk asks, theft takes. On a subdued target both are free actions. |
 
 ---
 
@@ -254,6 +297,7 @@ unchanged).
 | **3 — Gate integration** | Awareness clause in `can_perceive`/`filter_present`; hidden filtered from passive perception; AoE/sound/search bypass | Reuses phase's choke points |
 | **4 — NPC hunt** | Deterministic state machine + last-known position + Dijkstra search + alert propagation (dispatch) | The headline MUD feature |
 | **5 — Ambush** | Surprise opener via existing aim/initiative; break-on-attack | |
+| **6 — Theft** | `steal <item> from <target>` + `pickpocket <target>` (tokens) as contests off the §3 engine; caught → awareness spike + recognition + dispatch; free action on subdued. `frisk` reveal lands with the trust gate | Applied stealth (§6.2) |
 
 Phases 1–2 are the testable core; the gate integration (3) is the safety-
 critical step; the hunt (4) is the showcase.
