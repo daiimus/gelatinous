@@ -1147,10 +1147,13 @@ def _derive_synthetic_humanoid(base: dict) -> dict:
         "moderate": "synth {part}", "advanced": "inert synth {part}",
         "skeletal": "stripped synth {part}",
     }
+    # Organ names already carry "synthetic" (organ_display below), so the
+    # organ-decay prefix drops the redundant "synth" token (a harvested
+    # synth heart reads "synthetic heart", not "synth synthetic heart").
     synth["decay_organ_prefixes"] = {
-        "fresh": "synth {organ}", "early": "synth {organ}",
-        "moderate": "synth {organ}", "advanced": "inert synth {organ}",
-        "skeletal": "desiccated synth {organ}",
+        "fresh": "{organ}", "early": "{organ}",
+        "moderate": "{organ}", "advanced": "inert {organ}",
+        "skeletal": "desiccated {organ}",
     }
     synth["decay_corpse_names"] = {
         "fresh": "deactivated synth", "early": "deactivated synth",
@@ -1180,6 +1183,16 @@ def _derive_synthetic_humanoid(base: dict) -> dict:
             "A stripped synthetic frame. Little remains but the structural "
             "chassis and dried synthetic tissue; it will decompose no further."
         ),
+    }
+
+    # Component names: a synth's organs read as engineered "synthetic"
+    # versions of the human organ (synthetic heart, synthetic left eye) in
+    # the medical readout / surgery / severed parts. Derived from the human
+    # organic name (which equals the stripped key) so it stays DRY.
+    # Consumed by ``world.anatomy.organs.get_organ_display_name(name, species)``.
+    synth["organ_display"] = {
+        organ: f"synthetic {organ.replace('_', ' ')}"
+        for organ in synth["organs"]
     }
     return synth
 

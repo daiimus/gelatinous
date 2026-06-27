@@ -32,9 +32,12 @@ class TestRobotOrganDisplay(TestCase):
         self.assertEqual(get_organ_display_name("brain"), "brain")
         self.assertEqual(get_organ_display_name("left_eye", None), "left eye")
 
-    def test_synth_unaffected(self):
-        # Synth has no organ_display override → still organic names.
-        self.assertEqual(get_organ_display_name("brain", "synthetic_humanoid"), "brain")
+    def test_synth_has_its_own_names(self):
+        # Synth now carries "synthetic <organ>" names (a distinct register
+        # from the robot's mechanical components).
+        self.assertEqual(
+            get_organ_display_name("brain", "synthetic_humanoid"),
+            "synthetic brain")
 
     def test_unmapped_organ_defensive_fallback(self):
         # Unknown organ on a robot falls back to the stripped key.

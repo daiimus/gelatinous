@@ -1063,7 +1063,7 @@ class Organ(Item):
         # when neither tagline nor prose is registered (e.g. ``refuse``
         # condition with no registered prose) the helper returns ``""``
         # and we leave the engine default in place.
-        prose = get_organ_default_description(organ_name, condition)
+        prose = get_organ_default_description(organ_name, condition, species)
         composed = prepend_condition_to_desc(condition, prose)
         if composed:
             self.db.desc = composed
