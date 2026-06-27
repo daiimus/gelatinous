@@ -41,6 +41,13 @@ BLEEDING_ROOM_BY_SPECIES: dict[str, dict[str, str]] = {
         "severe":   "|BCobalt|n fluid runs freely from {actor}'s wounds, pooling on the ground.",
         "grievous": "{actor} leaves a trail of |Bcobalt|n fluid, their wounds venting freely.",
     },
+    "robot": {
+        # Amber hydraulic fluid, not blood (see species blood_color).
+        "minor":    "Beads of |yamber|n fluid weep from {actor}'s seams.",
+        "moderate": "|yAmber|n hydraulic fluid steadily leaks from {actor}, slicking the plating.",
+        "severe":   "|yAmber|n fluid runs freely from {actor}'s ruptured lines, pooling on the ground.",
+        "grievous": "{actor} trails |yamber|n fluid, severed lines venting under pressure.",
+    },
 }
 
 
@@ -89,6 +96,15 @@ DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
         "stab":          "|B{actor} jerks, cobalt fluid venting, then goes inert.|n",
         "slash":         "|B{actor} jerks, cobalt fluid venting, then goes inert.|n",
     },
+    "robot": {
+        # Amber fluid; the unit powers down rather than draws a last breath.
+        "blood loss":    "|y{actor}'s amber fluid spreads beneath their stilled chassis.|n",
+        "heart failure": "|y{actor}'s frame shudders once and powers down, servos locking.|n",
+        "head":          "|y{actor}'s optics flicker out and the chassis drops, inert.|n",
+        "brain":         "|y{actor}'s optics flicker out and the chassis drops, inert.|n",
+        "stab":          "|y{actor} jerks, amber fluid venting, then goes inert.|n",
+        "slash":         "|y{actor} jerks, amber fluid venting, then goes inert.|n",
+    },
 }
 
 # Generic fallback when no cause matches.
@@ -96,6 +112,7 @@ _GENERIC_DEATH_BY_SPECIES: dict[str, str] = {
     "human": "|R{actor} draws their final breath and grows still.|n",
     "rat":   "|R{actor}'s small body falls still.|n",
     "synthetic_humanoid": "|B{actor}'s systems fall dark and the frame goes still.|n",
+    "robot": "|y{actor}'s systems fall dark and the chassis goes still.|n",
 }
 
 
