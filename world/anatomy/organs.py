@@ -347,14 +347,28 @@ def get_organ_display_name(organ_name, species=None):
     return (organ_name or "").replace("_", " ")
 
 
-def get_organ_default_description(organ_name, condition):
+def get_organ_default_description(organ_name, condition, species=None):
     """Return the default prose for an organ at a given condition.
 
-    Returns an empty string when the organ has no registered prose
-    or the condition isn't one of pristine / damaged / putrid (or,
-    for bones, ``desiccated`` — issue #213).  Callers should treat
-    empty as "render nothing" rather than asserting.
+    A per-species override (robot / synthetic) is consulted first so a
+    harvested "power core" reads mechanically instead of as a glistening
+    muscle; organs/conditions absent from the override fall back to the
+    organic :data:`ORGAN_DISPLAY` prose.
+
+    Returns an empty string when no prose is registered or the condition
+    isn't one of pristine / damaged / putrid (or, for bones,
+    ``desiccated`` — issue #213).  Callers should treat empty as "render
+    nothing" rather than asserting. ``species`` is optional so legacy
+    callers keep working unchanged.
     """
+    if species:
+        from world.anatomy.organ_descriptions import (
+            ORGAN_DESCRIPTIONS_BY_SPECIES,
+        )
+        override = (ORGAN_DESCRIPTIONS_BY_SPECIES.get(species) or {}).get(
+            organ_name)
+        if override and override.get(condition):
+            return override[condition]
     entry = ORGAN_DISPLAY.get(organ_name)
     if not entry:
         return ""

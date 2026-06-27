@@ -2361,7 +2361,7 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
 
     item.key = get_species_organ_name(species, organ_name, decay_stage)
 
-    prose = get_organ_default_description(organ_name, condition)
+    prose = get_organ_default_description(organ_name, condition, species)
     if prose:
         item.db.desc = prose
 
