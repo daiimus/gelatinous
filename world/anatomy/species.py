@@ -1188,6 +1188,98 @@ SPECIES_DEFINITIONS["synthetic_humanoid"] = _derive_synthetic_humanoid(
     SPECIES_DEFINITIONS["human"])
 
 
+# =====================================================================
+# ROBOT — derived from human. A fully mechanical humanoid chassis.
+# =====================================================================
+#
+# A walking machine: humanoid in FORM and human in MECHANICS (organs,
+# capacities, severability, and the capacity-derived death model all
+# inherit unchanged — destroy the brain-slot processor or the heart-slot
+# power core and the unit deactivates), but mechanical in PRESENTATION.
+# Derived from human via deepcopy + targeted overrides so it stays DRY
+# and tracks future human-anatomy changes.
+#
+# This pass establishes the chassis identity at the SAFE, species-level
+# surfaces (the same ones the synthetic species uses): tougher frame,
+# no biological infection, a non-rotting body that is deactivated →
+# stripped for parts, and a distinct hydraulic fluid so spilled pools
+# read as a machine's, not a body's. Appendage names stay humanoid
+# (arm/hand/leg) — it is a humanoid robot.
+#
+# DEFERRED to a follow-up "mechanical presentation" pass (the same layer
+# the synthetic species also defers): per-organ ``inorganic`` flags
+# (note: ``is_augment_organ`` treats inorganic organs as installed
+# chrome, so a robot's native components must NOT be naively flagged
+# without handling that coupling), component organ-name divergence
+# (brain → "processor core", heart → "power core" — needs a species hook
+# in the organ-display path), and pruning breathing / blood_filtration.
+ROBOT_ORGAN_DURABILITY = 1.5  # armored frame + hardened components
+
+
+def _derive_robot(base: dict) -> dict:
+    robot = copy.deepcopy(base)
+    robot["display_name"] = "robot"
+
+    # Hydraulic/coolant fluid — amber, visually distinct from blood so a
+    # mixed pool reads as a mixture. Machines leak fluid, not blood.
+    robot["blood_color"] = {"name": "amber", "code": "|y", "dried": "tar-black"}
+
+    # Machines don't culture biological infection — the species-level
+    # analog of an inorganic graft ("chrome doesn't go septic", #516).
+    robot["infection_immune"] = True
+
+    # Tougher: armored frame and hardened components take more punishment.
+    for organ in robot["organs"].values():
+        organ["max_hp"] = int(round(organ["max_hp"] * ROBOT_ORGAN_DURABILITY))
+
+    # The chassis does not decay. Time advances it from a freshly
+    # deactivated unit toward an inert, stripped frame — never rot or
+    # skeletonization. Glance token is the short "robot".
+    robot["decay_part_prefixes"] = {
+        "fresh": "robot {part}", "early": "robot {part}",
+        "moderate": "robot {part}", "advanced": "wrecked robot {part}",
+        "skeletal": "stripped robot {part}",
+    }
+    robot["decay_organ_prefixes"] = {
+        "fresh": "robot {organ}", "early": "robot {organ}",
+        "moderate": "robot {organ}", "advanced": "fried robot {organ}",
+        "skeletal": "salvaged robot {organ}",
+    }
+    robot["decay_corpse_names"] = {
+        "fresh": "deactivated robot", "early": "deactivated robot",
+        "moderate": "inert robot chassis",
+        "advanced": "wrecked robot chassis",
+        "skeletal": "stripped robot frame",
+    }
+    robot["decay_corpse_descriptions"] = {
+        "fresh": (
+            "A freshly deactivated robot. {base_desc} The chassis is intact, "
+            "servos ticking as they cool, fluid lines uncut."
+        ),
+        "early": (
+            "A deactivated robot. {base_desc} The frame has gone still and "
+            "cold, indicator lights dark, yet shows no sign of corrosion."
+        ),
+        "moderate": (
+            "An inert robot chassis. The plating has dulled and settled, but "
+            "it does not rot — only the faint reek of scorched circuitry."
+        ),
+        "advanced": (
+            "A wrecked robot chassis. Panels hang open and components have "
+            "been pulled or fried, the frame slackening, but it does not "
+            "putrefy."
+        ),
+        "skeletal": (
+            "A stripped robot frame. Little remains but the structural "
+            "chassis and severed fluid lines; it will corrode no further."
+        ),
+    }
+    return robot
+
+
+SPECIES_DEFINITIONS["robot"] = _derive_robot(SPECIES_DEFINITIONS["human"])
+
+
 def _resolve_species(species: str | None) -> dict:
     """Return the species definition, falling back to ``human``.
 
