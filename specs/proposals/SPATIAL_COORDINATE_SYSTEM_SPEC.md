@@ -170,6 +170,45 @@ The aim is that the live jump/sky-room behaviour keeps working unchanged and
 simply becomes *expressible in coordinate terms*, so future vertical content
 (rooftops, lift shafts, the undercity) composes from the same primitive.
 
+### 6.1 · Face state — walls, floors, and breaching
+
+"What if someone wants to walk through a wall?" is the question that proves the
+two-truths split, so the model names it explicitly. Each room **face** (±X, ±Y,
+±Z — the six cardinal neighbours, plus diagonals) is in one of three states,
+**derived** from the coordinate volume + exit graph, not stored:
+
+| Face state | Condition | Meaning |
+|---|---|---|
+| **open** | a room exists at the neighbour coordinate **and** an exit connects to it | a door / hall / the −Z drop you fall through |
+| **barrier** | a room exists at the neighbour coordinate **but no exit** does | a **wall** (or, on the −Z face, a **floor** — `has_floor`) |
+| **solid** | **no** room at the neighbour coordinate | rock / the unbuilt void |
+
+This unifies walls with the gravity model: **a wall is the horizontal analogue
+of a floor** — both are *barrier* faces. The −Z barrier is already special-cased
+by `has_floor`/`passable` (§6); an X/Y barrier is a wall. One concept covers
+walls, floors, and ceilings.
+
+"Through the wall" then decomposes cleanly, and each path is already a seam
+elsewhere in this spec:
+
+1. **Breach / destroy** (§8) — flips a **barrier → open** by *adding an exit*
+   between the two coordinate-adjacent rooms. The coordinate volume supplies the
+   one fact the exit graph can't: *which* room is on the far side to connect to.
+   After the breach, walking through is ordinary movement.
+2. **Phase / noclip / teleport** — a coordinate-driven move to the neighbour
+   coordinate that **bypasses the exit-graph check** (cyber phase-shift, ghosting,
+   staff). This is where coordinates express "the room spatially *that-way*"
+   independent of connectivity.
+3. **Dig into the void** — a **solid** face has nothing beyond; the wall holds
+   absolutely. For procedural mines (§8), that absence is the trigger to
+   *instantiate* a new room at the neighbour coordinate (tunnel into fresh rock).
+
+Derived face state also throws off free detail: wall-aware destruction targeting
+("blow the **east** wall"), correct minimap rendering (walls vs. openings), and
+directional sensory leak ("movement through the **north** wall" — audio from a
+coordinate-adjacent room with a barrier face). Warp exits (§3) are *not* walls —
+they're deliberate non-Euclidean links, excluded from face-state geometry.
+
 ## 7 · Ranged systems (parallel consumers)
 
 Once §3 lands, distance/bearing are available independent of pathfinding:
@@ -184,14 +223,24 @@ Once §3 lands, distance/bearing are available independent of pathfinding:
 Both are *parallel* consumers — unblocked the moment the substrate exists, with
 no dependency on the pathfinder.
 
+**Two query domains, not one.** Range queries over **rooms** (few, static,
+lattice-uniform, point-like) are not the same problem as range queries over
+**entities** — vehicles, blast radii, radar contacts — which are *many*,
+*moving every tick*, and carry *extent* (footprints, arcs, AoE), often over
+non-uniform space (sky, mine networks). The room-layer queries want a simple
+spatial hash; the entity-layer queries are where bounding-volume / nearest-
+neighbour algorithms (R-tree / BVH / KD-tree) actually earn their keep. See the
+**spatial-query implementation** note in §10 for the structure-by-layer call.
+
 ## 8 · Reserved seams (future phases — corner-proofed, not built)
 
 Designed-for now so we don't paint into a corner; implemented later.
 
 * **Room destruction / repair.** Mutating a room's exits (blow open a wall, seal
-  a door) changes the exit graph → the pathfinder adapts for free; coordinates
-  are unaffected. Repair restores edges. Needs a damage-state model on
-  rooms/exits (separate spec).
+  a door) flips a **face state** (§6.1) — `barrier → open` on breach, the reverse
+  on repair — by adding/removing the exit edge; coordinates are unaffected and
+  the pathfinder adapts for free. The coordinate volume supplies *which* room the
+  breach connects to. Needs a damage-state model on rooms/exits (separate spec).
 * **Procedural mines.** Coordinates become the **addressing scheme for space
   that doesn't exist yet**: tunnelling at `(x, y, z)` instantiates the room on
   demand at that address and links it to its neighbour. The signed integer
@@ -245,3 +294,20 @@ consumer of Phase 2 and gets its own spec.
 * **Scipy dependency.** XYZGrid's pathfinder needs `scipy`; our own A\* over the
   exit graph can be pure-Python (`heapq`) and avoid the dependency — preferred
   for the Docker image unless profiling says otherwise.
+* **Spatial-query implementation (structure by layer).** Range/proximity queries
+  hide behind `rooms_within()` / `slice()` (rooms) and a parallel entity-query
+  seam (vehicles/radar), so the *structure* is an implementation detail swappable
+  without touching callers. The call, by layer:
+  * **Room layer** — few, static, lattice-uniform, point-like. Start with a
+    **linear scan**; graduate to a pure-Python **spatial hash** (dict keyed by
+    `(x,y,z)` + per-Z-plane index) if it gets hot. An R-tree buys nothing here.
+  * **Entity layer** (vehicles, blast radii, radar contacts) — many, moving every
+    tick, with **extent**, over non-uniform space. This is where **R-tree / BVH
+    algorithms** pay off: bounding-box overlap (radar sweep / firing arc / AoE)
+    and **nearest-neighbour** (e.g. *dispatch responder selection* — closest LEO
+    to an incident). Implement the algorithm **pure-Python first**; pull in a
+    native lib (`rtree`/`libspatialindex`, or `scipy.cKDTree` for point-NN) only
+    if profiling on the real box demands it — same discipline as the pure-Python
+    A\* call. KD-tree for pure-point NN; R-tree when objects have boxes *and*
+    churn (the vehicle case); grid hash for uniform high-churn.
+  * **Pathfinding** uses neither — it's graph A\* over the exit network (§5).
