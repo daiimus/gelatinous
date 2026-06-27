@@ -10,6 +10,7 @@ from world.namebank import (
 from world.identity import (
     HEIGHTS, BUILDS, HAIR_COLORS, HAIR_STYLES,
     RAT_SIZES, RAT_COATS,
+    ROBOT_FINISHES, ROBOT_CHASSIS,
 )
 from world.identity_utils import msg_room_identity
 from world.mob_flavor import apply_random_flavor
@@ -40,12 +41,18 @@ class CmdSpawnMob(Command):
                    (stock filler description, no longdescs, no look_place)
                    for clean diagnostic spawns.
         /rat     - spawn an anatomically distinct rat instead of a
-                   humanoid. Skips the human-flavored short-description,
-                   longdesc, and look_place pass (it's all humanoid
-                   vocabulary).  Medical state initializes with rat
-                   organs; longdesc surfaces seed to the rat default set
-                   (snout / fur / forelegs / tail / etc.).  See
-                   ``SPECIES_AUTHORING.md`` for adding more species.
+                   humanoid. Medical state initializes with rat organs;
+                   flavor (short desc / longdesc / look_place) dispatches
+                   to the rat tables.  See ``SPECIES_AUTHORING.md``.
+        /robot   - spawn a humanoid robot. Mechanical chassis (amber
+                   hydraulic fluid, non-rotting frame, infection-immune,
+                   tougher components); key composes to "a {finish}
+                   {chassis} robot"; renders neutral (they/their); flavor
+                   dispatches to the robot tables.
+        /synth   - spawn a synthetic humanoid (replicant). Passes as
+                   human in appearance and flavor, but its medical state
+                   uses the synthetic anatomy (cobalt fluid, non-rotting,
+                   infection-immune).
     """
 
     key = "@spawnmob"
@@ -66,18 +73,25 @@ class CmdSpawnMob(Command):
                     blank = True
                 if "rat" in switches:
                     species = "rat"
+                if "robot" in switches:
+                    species = "robot"
+                if "synth" in switches:
+                    species = "synthetic_humanoid"
                 raw_args = parts[1] if len(parts) > 1 else ""
 
         # Assign sex with chance of ambiguity
         sex = choice(["male", "female"])
         if randint(1, 10) <= 2:  # 20% chance to use ambiguous
             sex = "ambiguous"
+        if species == "robot":
+            sex = "ambiguous"  # machines render neutral (they/their)
 
         # Name: humans pull from the name banks; non-humans compose
         # a rich species-flavored sdesc key (a rat gets a size + coat
         # pair like "a wiry brown rat" rather than the bare "a rat").
         # See world.identity.RAT_SIZES / RAT_COATS.
-        if species == "human":
+        if species in ("human", "synthetic_humanoid"):
+            # A synthetic passes as human — same name banks and identity.
             if sex == "male":
                 first = choice(FIRST_NAMES_MALE)
             elif sex == "female":
@@ -89,6 +103,10 @@ class CmdSpawnMob(Command):
         elif species == "rat":
             mob_name = raw_args or (
                 f"a {choice(RAT_SIZES)} {choice(RAT_COATS)} rat"
+            )
+        elif species == "robot":
+            mob_name = raw_args or (
+                f"a {choice(ROBOT_FINISHES)} {choice(ROBOT_CHASSIS)} robot"
             )
         else:
             mob_name = raw_args or f"a {species}"
@@ -125,10 +143,11 @@ class CmdSpawnMob(Command):
         mob.intellect = roll_stat()
         mob.motorics = roll_stat()
 
-        # Humanoid-only identity attributes — rats don't have human
-        # height / build / hair properties.  Sdesc rendering for non-
-        # humans falls back to ``.key`` ("a rat") naturally.
-        if species == "human":
+        # Humanoid-identity attributes (height / build / hair) — humans
+        # and synthetics (replicants pass as human).  Rats and robots
+        # skip these; their sdesc renders from the composed ``.key``
+        # ("a wiry brown rat", "a battered security robot") naturally.
+        if species in ("human", "synthetic_humanoid"):
             # Randomize so the mob gets a proper sdesc (e.g. "a gaunt
             # man with blonde braids") instead of falling back to
             # ``.key``.

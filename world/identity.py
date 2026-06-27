@@ -78,6 +78,33 @@ RAT_COATS: tuple[str, ...] = (
     "scarred",
 )
 
+#: Robot sdesc-key composition (parallels the rat size/coat axes). A
+#: spawned robot's key reads "a {finish} {chassis} robot" — e.g. "a
+#: battered security robot", "a rust-streaked utility robot".
+ROBOT_FINISHES: tuple[str, ...] = (
+    "matte-black",
+    "scuffed",
+    "battered",
+    "rust-streaked",
+    "olive-drab",
+    "dented",
+    "grimy",
+    "scorched",
+    "chrome-trimmed",
+    "weather-beaten",
+)
+
+ROBOT_CHASSIS: tuple[str, ...] = (
+    "industrial",
+    "security",
+    "utility",
+    "maintenance",
+    "loader",
+    "sentry",
+    "courier",
+    "labor",
+)
+
 #: Physical descriptor table.  ``PHYSICAL_DESCRIPTOR_TABLE[height][build]``
 #: yields a single adjective describing the character's silhouette.
 #:
