@@ -49,6 +49,13 @@ class Room(ObjectParent, DefaultRoom):
     #: Non-visual sense layers, in render order.
     SENSE_LAYER_ORDER = ("auditory", "olfactory", "tactile", "atmospheric")
 
+    @property
+    def xyz(self):
+        """The room's signed ``(x, y, z)`` coordinates, or ``None`` when
+        off-grid. Set by ``@coordseed`` (spatial substrate, Phase 1)."""
+        from world.spatial import get_xyz
+        return get_xyz(self)
+
     def get_display_desc(self, looker, **kwargs):
         """Perception-aware room description (CAPACITY_CONSUMERS spec §5).
 
