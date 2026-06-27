@@ -1,12 +1,21 @@
 # NPC Dispatch & World Simulation Specification
 
-> **Status:** 📋 Proposal — not implemented. Designs the **director**: a
-> hardcoded, deterministic world-simulation engine that manages the NPC
-> population (spawn / despawn / routine / death) and **dispatches** them in
-> response to world events — routing them through the spatial pathfinder. The
-> LLM-NPC puppeting layer brings selected NPCs to life **only when a player is
-> there to witness it and the moment is worth the cost.** Depends on
-> `SPATIAL_COORDINATE_SYSTEM_SPEC` (traversal, proximity, routing).
+> **Status:** 🟡 Proposal — **dispatch core SHIPPED & LIVE** (2026-06-27, #853);
+> remaining layers below. Designs the **director**: a hardcoded, deterministic
+> world-simulation engine that manages the NPC population (spawn / despawn /
+> routine / death) and **dispatches** them in response to world events — routing
+> them through the spatial pathfinder. The LLM-NPC puppeting layer brings
+> selected NPCs to life **only when a player is there to witness it and the
+> moment is worth the cost.** Built on `SPATIAL_COORDINATE_SYSTEM_SPEC`
+> (Phases 1–2 shipped: coordinate volume + A\* pathfinder).
+>
+> **Shipped (the dispatch core, `world/director/`):** `travel_to` —
+> pathfinder-driven NPC movement (one step/tick over the real exit graph,
+> re-pathed each step, moves via real exit commands); `WorldEvent` +
+> `ROLE_RESPONDS_TO` + `find_responders` (NPCs by `db.role`, nearest-first by
+> travel distance) + `dispatch` (severity-scaled) + `raise_event`; the
+> `@dispatch` builder command. **Open design (next): the population/identity
+> layer that prevents "small-worlding" — see §10.**
 
 ## 1 · Intent
 
@@ -230,19 +239,46 @@ consent rules as player-initiated ones. Reserve the seam now.
 
 | Phase | Scope | Notes |
 |---|---|---|
-| **1 — Population registry & LOD** | Census, persistent vs ephemeral, spawn-on-approach / despawn-on-leave | Needs coordinate proximity (spatial Phase 1) |
-| **2 — Roles & routines** | Role data model, deterministic schedules, routine movement via pathfinder | Needs spatial Phase 2 |
-| **3 — Event bus & dispatcher** | Events, matching, selection, routing, monitor, resolve | The "dispatch system" proper |
+| **3 — Event bus & dispatcher** | ✅ **CORE SHIPPED** (#853): `WorldEvent`, `ROLE_RESPONDS_TO`, `find_responders` (nearest-by-travel), `dispatch` (severity-scaled), `travel_to` (the routine-movement primitive too), `@dispatch`. Monitor/resolve + a real event bus still ahead. | The "dispatch system" proper |
+| **1 — Population registry & LOD** | Census, persistent vs ephemeral, spawn-on-approach / despawn-on-leave. **The anti-small-worlding layer (§10).** | Needs coordinate proximity (spatial Phase 1 ✅) |
+| **2 — Roles & routines** | `db.role` ✅; deterministic schedules + routine movement (consumes `travel_to`) ahead | Needs spatial Phase 2 ✅ |
 | **4 — Deterministic interaction vocabulary** | Templated NPC↔NPC / NPC↔PC exchanges via real commands | Zero-LLM baseline |
 | **5 — LLM escalation gate** | Witnessed + salient + budget; generalize bartender gate | Reuses LLM-NPC pipeline |
 | **— Parallel —** | Gig/favor loop as events; faction/rep state | Player hook |
 | **Reserved** | Mining-incident integration; LEO jurisdictions at scale | Tie to mines (spatial reserved seam) |
 
-Phases 1–3 are the deterministic simulation core and are worth shipping before
-any LLM escalation exists — the world should feel alive on rules alone.
+The dispatch core (Phase 3) shipped first because it directly proves the spatial
+substrate; the population/identity layer (Phase 1) is the next priority because
+it's what makes a small literal map read as a large colony (§10).
 
 ## 10 · Risks & open questions
 
+* **Small-worlding (the headline design problem, owed a discussion).** The
+  colony is *conceptually* large (thousands of inhabitants) but the literal map
+  is small (~309 rooms) with few NPCs. If the same handful of NPCs are visibly
+  dispatched everywhere, the world reads as a tiny stage with a small recurring
+  cast. The **dispatch core is identity-agnostic** — it routes whatever NPCs
+  exist; the cure lives in the **population + identity** layer:
+  * **Identity scarcity makes the world feel large.** The recognition system
+    (`IDENTITY_RECOGNITION_SPEC`) decides whether a player perceives an NPC as a
+    *distinct individual* or an *interchangeable type*. Most NPCs must read as
+    **anonymous types** ("a security robot", "a dockworker") so the player never
+    assembles a small cast list; the few **named persistents** (Sable, Vance)
+    are the deliberate, special exceptions recognition memory holds. A small
+    object pool can then present as a large populace.
+  * **Ephemeral generation over a fixed roster.** Responders/crowd/labour are
+    mostly **flash-temp** — spawned with varied presentations on demand and
+    despawned after — so the populace is *generated*, not *rostered*.
+  * **Materialize over teleport-walk.** A responder trekking 30 rooms across the
+    whole map exposes both the geography's smallness and the cast. Prefer
+    **distributed standing forces** (precinct/station-local units that walk a
+    *believable* short distance) or **off-screen materialization** ("a unit
+    rolls up"); reserve the long visible walk for when it adds tension.
+  * **Crowd/ambient carries the unseen masses** — the thousands are *felt*
+    (density, distant events), not instantiated.
+  Open: how anonymous vs. named the population should be; station-based vs.
+  roving forces; the walk-vs-materialize rule; how aggressively recognition is
+  gated so the same object can recur unrecognised.
 * **NPC↔NPC combinatorics.** Even deterministic exchanges can explode if every
   pair interacts every tick. **Lean:** rate-limit interactions per NPC, gate on
   co-presence + a low ambient roll (mirror the bartender ambient cooldown),
