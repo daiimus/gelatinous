@@ -165,3 +165,8 @@ The model is resolved; these are the corners to settle during build:
 - `world/medical` operate/harvest/install — invasive consumers that gate on the
   free-action path today and defer the conscious path here.
 - `NPC_DISPATCH_AND_SIMULATION_SPEC` §6 — NPC-on-player actions defer to this gate.
+- `PHASE_LAYER_SPEC` §5.3 — a **jacked-in decker's body** (left in meatspace
+  while its owner is in the net) reads as unable-to-resist, so the contest
+  predicate makes it a **free-action target** — frisk/move/harm the slumped body.
+  Emergent from §1, no special case. (Acting *across* phases is impossible —
+  perception windows are perceive-only — so consent never spans phases.)

@@ -259,6 +259,14 @@ Designed-for now so we don't paint into a corner; implemented later.
     so a future renderer can project the cloud without reaching into room
     internals. That query is the only thing this spec owes the minimap; the
     renderer itself is a separate display spec.
+* **Phase layer (the net).** A per-entity **phase** partition rides *alongside*
+  `(x, y, z)` — same coordinates, separate co-located realities (meatspace vs the
+  net), default-deny with perception windows. Phase is **not** a fourth metric
+  axis (no distance/adjacency/gravity); it's a membership tag handled in
+  `PHASE_LAYER_SPEC`. Its hooks into this system: range queries (`rooms_within`,
+  `slice`, radar) gain a phase filter; exits may be phase-tagged so the A\*
+  pathfinder filters edges by phase; `slice()`/`get_display_desc` branch on the
+  viewer's phase so the net renders the same volume differently.
 
 ## 9 · Build ladder
 

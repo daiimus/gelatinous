@@ -211,6 +211,11 @@ consent rules as player-initiated ones. Reserve the seam now.
 * **NPC memory & identity.** Persistent NPCs carry recognition memory / voice;
   ephemerals generally do not (cost). The director decides who is "someone."
 * **Medical / death-curtain.** Lifecycle monitoring (§3) hooks death here.
+* **Phase layer (`PHASE_LAYER_SPEC`).** The director is **phase-scoped**: census,
+  LOD materialization, routines, and events all carry a phase — never render
+  `phase = net` NPCs to a `phase = meat` player. Most events are single-phase; a
+  few are deliberate **cross-phase causal** bridges (an EMP frying net nodes) and
+  route through the same bus naming both phases.
 
 ## 9 · Build ladder
 
