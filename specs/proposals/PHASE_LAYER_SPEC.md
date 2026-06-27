@@ -270,6 +270,11 @@ class PerceptionWindow:
 * **Trust & consent.** Acting across a phase is impossible (windows are
   perceive-only), so consent never spans phases. The jacked-in body (§5.3) is the
   notable interaction: it's a free-action target in meat while its owner is away.
+* **Stealth & detection (`STEALTH_AND_DETECTION_SPEC`).** Phase's **graded
+  sibling**: phase is binary co-presence, stealth is a per-observer *awareness*
+  contest *within* a phase. Both resolve through the same `can_perceive` /
+  `filter_present` gate — phase removes you from consequence, stealth only from
+  passive notice.
 * **Identity & recognition.** A net-avatar has its *own* presentation/sdesc
   (`IDENTITY_RECOGNITION_SPEC`) — you might not know a decker's meat identity from
   their net avatar, and vice-versa. Recognition is per-presentation, so this works

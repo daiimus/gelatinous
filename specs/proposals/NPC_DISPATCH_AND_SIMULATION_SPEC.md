@@ -216,6 +216,11 @@ consent rules as player-initiated ones. Reserve the seam now.
   `phase = net` NPCs to a `phase = meat` player. Most events are single-phase; a
   few are deliberate **cross-phase causal** bridges (an EMP frying net nodes) and
   route through the same bus naming both phases.
+* **Stealth & detection (`STEALTH_AND_DETECTION_SPEC`).** A hidden target feeds an
+  NPC's **graded awareness meter**, which drives a *deterministic* (non-LLM)
+  hunt state machine — suspicious → search last-known position (Dijkstra) → alert
+  allies (a bus event) → give up → routine. The director hosts that state machine;
+  awareness is the cheap, LLM-free signal that makes the population feel watchful.
 
 ## 9 · Build ladder
 
