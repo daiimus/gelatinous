@@ -136,10 +136,14 @@ def distance(room_a: Any, room_b: Any) -> float | None:
 
 
 def all_coordinate_rooms() -> list:
-    """Every on-grid room. Linear scan (small worlds); the seam a spatial
-    hash slots behind later."""
-    from typeclasses.rooms import Room
-    return [r for r in Room.objects.all() if get_xyz(r) is not None]
+    """Every on-grid object (rooms carry the coordinates). A targeted
+    attribute query — not ``Room.objects.all()``, which returns only the
+    exact ``Room`` typeclass and would miss ``StreetRoom`` / ``IndoorRoom``
+    / ``BridgeRoom`` subclasses. The query is the seam a spatial hash slots
+    behind later."""
+    from evennia.objects.models import ObjectDB
+    rooms = ObjectDB.objects.filter(db_attributes__db_key="xyz").distinct()
+    return [r for r in rooms if get_xyz(r) is not None]
 
 
 def rooms_within(room: Any, n: float) -> list:
