@@ -25,6 +25,12 @@ from world.spatial.coordinates import (
     seed_coordinates,
     set_xyz,
 )
+from world.spatial.pathfind import (
+    find_path,
+    find_path_exits,
+    is_reachable,
+    path_length,
+)
 
 __all__ = [
     "DIRECTION_ALIASES",
@@ -34,9 +40,13 @@ __all__ = [
     "clear_xyz",
     "distance",
     "exit_direction",
+    "find_path",
+    "find_path_exits",
     "get_xyz",
+    "is_reachable",
     "is_warp_exit",
     "normalize_direction",
+    "path_length",
     "rooms_within",
     "seed_coordinates",
     "set_xyz",
