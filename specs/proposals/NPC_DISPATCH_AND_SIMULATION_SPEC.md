@@ -9,16 +9,24 @@
 > moment is worth the cost.** Built on `SPATIAL_COORDINATE_SYSTEM_SPEC`
 > (Phases 1–2 shipped: coordinate volume + A\* pathfinder).
 >
-> **Shipped (the dispatch core, `world/director/`):** `travel_to` —
-> pathfinder-driven NPC movement (one step/tick over the real exit graph,
-> re-pathed each step, moves via real exit commands); `WorldEvent` +
-> `ROLE_RESPONDS_TO` + `find_responders` (NPCs by `db.role`, nearest-first by
-> travel distance) + `dispatch` (severity-scaled) + `raise_event`; the
-> `@dispatch` builder command. **Identification design RESOLVED (§5.1,
-> 2026-06-30): crime is an information problem — witness (crowd-gated, spawned,
-> interdictable) → radio report → perception-graded BOLO → base-synced intel →
-> tiered-confidence action. Depends on `RADIO_COMMS_SPEC` (to draft).
-> Population/identity presentation layer still open — see §10.**
+> **Shipped (`world/director/`):** the dispatch core (#853): `travel_to`
+> (pathfinder-driven movement via real exit commands), `WorldEvent` +
+> `find_responders` (by `db.role`, nearest-by-travel) + `dispatch`
+> (severity-scaled) + `@dispatch`. The **assignment lifecycle** (#863): en
+> route → on-scene (role-keyed `ARRIVAL_HANDLERS`) → linger → return-to-post;
+> committed responders skip other incidents (the finite pool is real);
+> `@dispatch/status`. **Crime slice 1** (#867): `build_bolo`/`match_bolo` —
+> the responder gets a perception-graded **BOLO** (apparent_uid + coarse
+> silhouette), scans who it can *see* on scene, and acts on **tiered
+> confidence** (high → challenge + watch cycle; low → question the lookalike —
+> mistaken identity intended; blind bot scans nothing).
+>
+> **Identification design RESOLVED (§5.1, 2026-06-30); crime taxonomy + heat
+> (§5.2, 2026-06-30).** Chain status: BOLO ✅ · tiered confidence ✅ (detain
+> deferred to the trust gate) · witness spawn ⬜ · radio report ⬜
+> (`RADIO_COMMS_SPEC` drafted #859; magic placeholder until built) · base
+> intel-sync ⬜ · no-trace window ⬜. Population/identity presentation layer
+> still open — see §10.
 
 ## 1 · Intent
 
@@ -150,9 +158,14 @@ the time system (shift change), the medical system (death), the gig system
 3. **Route** — A\* over the real exit graph (coordinate spec §5) toward the
    event; respects locks, warps, and collapsed tunnels automatically.
 4. **Monitor** — track arrival, resolution, and casualties; a responder death
-   re-enters the bus as a new event.
+   re-enters the bus as a new event. *(Arrival tracking + role-keyed handlers
+   ✅ #863; casualty-monitoring ⬜.)*
 5. **Resolve** — on completion, return standing NPCs to routine; despawn the
-   flash-temp squad after a grace period.
+   flash-temp squad after a grace period. *(Linger → return-to-post ✅ #863;
+   flash-temp despawn ⬜ — the population layer.)*
+
+*(Steps 1–3 shipped in #853 minus `jurisdiction` scoping and flash-temp
+materialization, both ⬜ pending the population layer.)*
 
 Dispatch is the bridge between the **simulation** (who exists, where, doing
 what) and the **spatial system** (how they get there). It is fully
@@ -362,7 +375,7 @@ consent rules as player-initiated ones. Reserve the seam now.
   **first MOB consumer**: a security-robot patrol/detect/challenge/restrain state
   machine that exercises this spec end-to-end (routines, LEO response, alert
   propagation, the trust-gated lawful restraint) — deterministically, no LLM.
-* **Radio comms (`RADIO_COMMS_SPEC`, to draft).** The colony's primary comms and
+* **Radio comms (`RADIO_COMMS_SPEC`, 📋 drafted #859).** The colony's primary comms and
   the carrier for §5.1's report link: witness reports, dispatch orders, and the
   base intel-sync all ride radio. Jamming/antenna sabotage/walkie-snatching cut
   the chain. Until it ships, the report step is a magic placeholder.

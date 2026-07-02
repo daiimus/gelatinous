@@ -139,6 +139,16 @@ chassis prototype can be spawned deterministic, LLM, or pilotable.
 The first MOB, and the first thing that exercises the new world-sim stack
 end-to-end — deterministically.
 
+> **Status note (2026-06-30):** the **reactive half is live** — dispatch →
+> route → arrive → **BOLO scan-and-match** → challenge/question →
+> watch → return-to-post (#853/#863/#867, `world/director/security.py`).
+> That covers the *Challenge* step keyed off a reported crime. The
+> **Patrol** and **Detect** steps below remain ahead: Detect specifies the
+> stealth **awareness meter** (`STEALTH_AND_DETECTION_SPEC` §4, unbuilt) —
+> the shipped high-confidence *watch cycle* is an interim stand-in the
+> awareness meter will subsume. *Escalate/Restrain* stay sequenced behind
+> the trust gate, as below.
+
 **Behaviour state machine** (hardcoded; consumes the specced systems):
 
 ```
