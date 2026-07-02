@@ -77,7 +77,18 @@ class CmdPatrol(Command):
             return
 
         if "status" in switches:
+            import time
             from evennia.objects.models import ObjectDB
+            from evennia.scripts.models import ScriptDB
+            script = ScriptDB.objects.filter(
+                db_key="director_routines").first()
+            if script:
+                last = getattr(script.db, "last_tick", None)
+                ago = f"{int(time.time() - last)}s ago" if last else "NEVER"
+                caller.msg(f"Heartbeat: last tick {ago} "
+                           f"(counts: {getattr(script.db, 'last_counts', None)})")
+            else:
+                caller.msg("Heartbeat: no script exists.")
             npcs = ([self._find_npc(args)] if args else [
                 o for o in ObjectDB.objects.filter(
                     db_attributes__db_key="patrol_beat").distinct()])
