@@ -80,14 +80,17 @@ def is_assigned(npc: Any) -> bool:
 
 
 def assign(npc: Any, event: Any) -> bool:
-    """Commit *npc* to *event*: record the assignment (posting it back to
-    its current room) and start travel. Returns ``False`` if travel could
-    not start (unreachable). Reassignment cancels the previous assignment.
-    """
+    """Commit *npc* to *event*: record the assignment and start travel.
+    The return point is the NPC's **base** (``db.post``) when one is set
+    — a posted responder goes home to the precinct, not to wherever it
+    happened to be standing — else its current room. Returns ``False`` if
+    travel could not start (unreachable). Reassignment cancels the
+    previous assignment."""
     if npc is None or event is None or getattr(event, "location", None) is None:
         return False
     clear_assignment(npc)
-    assignment = Assignment(npc=npc, event=event, post=npc.location)
+    post = getattr(getattr(npc, "db", None), "post", None) or npc.location
+    assignment = Assignment(npc=npc, event=event, post=post)
     _ACTIVE[npc] = assignment
     if npc.ndb is not None:
         setattr(npc.ndb, _NDB_KEY, assignment)
