@@ -10,6 +10,16 @@ deterministic interaction vocabulary, and the LLM escalation gate are
 later layers.
 """
 
+from world.director.assignment import (
+    Assignment,
+    active_assignments,
+    assign,
+    clear_assignment,
+    get_assignment,
+    is_assigned,
+    register_arrival_handler,
+    resolve,
+)
 from world.director.dispatch import (
     ROLE_RESPONDS_TO,
     WorldEvent,
@@ -24,12 +34,20 @@ from world.director.travel import (
 )
 
 __all__ = [
+    "Assignment",
     "ROLE_RESPONDS_TO",
     "WorldEvent",
+    "active_assignments",
+    "assign",
+    "clear_assignment",
     "dispatch",
     "find_responders",
+    "get_assignment",
+    "is_assigned",
     "is_travelling",
     "raise_event",
+    "register_arrival_handler",
+    "resolve",
     "stop_travel",
     "travel_to",
 ]

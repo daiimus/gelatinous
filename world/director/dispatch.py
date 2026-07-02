@@ -12,7 +12,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from world.director.travel import travel_to
 from world.spatial import path_length
 
 
@@ -74,14 +73,23 @@ def find_responders(event: WorldEvent) -> list:
 
 def dispatch(event: WorldEvent) -> list:
     """Send the nearest eligible responders to *event* (count scaled by
-    ``severity``). Returns the list of dispatched NPCs."""
+    ``severity``) as tracked **assignments** (en route → on scene → linger
+    → return to post; see ``world/director/assignment.py``). Already-
+    assigned responders are committed elsewhere and skipped — the finite
+    pool is real, which is what makes overwhelming it a tactic. Returns
+    the list of dispatched NPCs."""
+    from world.director.assignment import assign, is_assigned
     ranked = find_responders(event)
     if not ranked:
         return []
-    count = min(len(ranked), max(1, int(event.severity)))
+    count = max(1, int(event.severity))
     dispatched = []
-    for _steps, npc in ranked[:count]:
-        if travel_to(npc, event.location):
+    for _steps, npc in ranked:
+        if len(dispatched) >= count:
+            break
+        if is_assigned(npc):
+            continue  # committed to another incident
+        if assign(npc, event):
             dispatched.append(npc)
     return dispatched
 
