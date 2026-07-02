@@ -157,22 +157,10 @@ class DirectorRoutineScript(DefaultScript):
 
 
 def ensure_heartbeat() -> Any:
-    """Get-or-create the global heartbeat script and (re)arm its timer
-    **in the calling process**. Called from ``at_server_start`` (the
-    guarantee) and ``@patrol`` (belt-and-braces).
-
-    An existing row is ``restart()``-ed rather than trusted: the DB
-    ``is_active`` flag can be True while no timer is armed in this
-    process (e.g. a row created from an external ``evennia shell``)."""
-    from evennia import create_script
-    from evennia.scripts.models import ScriptDB
-    existing = ScriptDB.objects.filter(db_key=SCRIPT_KEY).first()
-    if existing:
-        try:
-            existing.restart(interval=HEARTBEAT_SECONDS)
-        except Exception:  # noqa: BLE001 — a broken row must not block boot
-            pass
-        return existing
-    return create_script(
-        "world.director.routines.DirectorRoutineScript",
-        key=SCRIPT_KEY, persistent=True, autostart=True)
+    """The global heartbeat, via ``settings.GLOBAL_SCRIPTS`` — Evennia's
+    canonical always-on-script container (the server creates, starts, and
+    keeps it alive at every boot; a hand-created row from an external
+    ``evennia shell`` never gets its timer armed, learned the hard way).
+    Accessing the attribute triggers creation if it doesn't exist yet."""
+    from evennia import GLOBAL_SCRIPTS
+    return getattr(GLOBAL_SCRIPTS, SCRIPT_KEY, None)

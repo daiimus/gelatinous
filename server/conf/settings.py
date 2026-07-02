@@ -271,6 +271,24 @@ LLM_GM_TIMEOUT = 60        # seconds; per-round budget. The sidecar is always un
                            # a turn) the wait still lands inside the natural beat.
 LLM_GM_MAX_TOKENS = 180    # a turn = a line + an action + a thought; headroom so
                            # the 3rd channel doesn't truncate (was 120 for 2 fields)
+
+######################################################################
+# Director (world simulation)
+######################################################################
+
+# The director heartbeat (patrol beats + security-complement respawn) as a
+# GLOBAL_SCRIPTS entry — Evennia's canonical always-on-script mechanism:
+# the server creates it, starts it, and keeps it alive at every boot.
+# (Hand-created script rows from an external `evennia shell` never get
+# their repeat timer armed by the running server — learned 2026-07-02.)
+GLOBAL_SCRIPTS = {
+    "director_routines": {
+        "typeclass": "world.director.routines.DirectorRoutineScript",
+        "interval": 45,
+        "persistent": True,
+        "desc": "Director heartbeat: patrol beats + complement respawn.",
+    },
+}
 LLM_GM_TEMPERATURE = 0.8   # characterful but coherent
 
 ######################################################################

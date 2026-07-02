@@ -30,15 +30,7 @@ def at_server_start():
     This is called every time the server starts up, regardless of
     how it was shut down.
     """
-    # Director heartbeat (patrol beats + security-complement respawn).
-    # Ensured HERE — in the server process at boot — because a script row
-    # created from an external `evennia shell` never gets its repeat
-    # timer armed by the running server (observed live 2026-07-02).
-    try:
-        from world.director.routines import ensure_heartbeat
-        ensure_heartbeat()
-    except Exception:  # noqa: BLE001 — the game must boot regardless
-        pass
+    pass
 
 
 def at_server_stop():
