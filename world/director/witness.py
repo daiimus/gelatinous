@@ -98,8 +98,11 @@ def can_report(witness: Any) -> bool:
 def witness_report(witness: Any, event: Any) -> bool:
     """The window closes: if the witness can still report, the event goes
     to the dispatcher (magic radio until ``RADIO_COMMS_SPEC`` builds the
-    transmission for real). Either way the witness is scheduled to leave.
-    Returns whether the report went out."""
+    transmission for real). Then the witness **flees the scene to cower**
+    — real movement over the exit graph via the director's travel
+    primitive, not a vanish — the proof-of-concept for the future where
+    every NPC's comings and goings run on the dispatch system. Returns
+    whether the report went out."""
     from world.director.dispatch import raise_event
     reported = False
     if can_report(witness):
@@ -114,9 +117,50 @@ def witness_report(witness: Any, event: Any) -> bool:
             reported = True
         except Exception:  # noqa: BLE001 — a broken dispatch must not strand us
             pass
-    if witness is not None:
+        flee_and_cower(witness)
+    elif witness is not None:
+        # Silenced (dead/unconscious) — cleanup only; the dead belong to
+        # the corpse pipeline, the downed get hauled off eventually.
         delay(WITNESS_DESPAWN_DELAY, despawn_witness, witness)
     return reported
+
+
+#: How far (straight-line rooms) the witness will run to find a corner.
+COWER_RADIUS = 4
+
+
+def flee_and_cower(witness: Any) -> None:
+    """Walk the witness to a nearby room (director travel — visible,
+    step-by-step, through real exits) and have it cower there; it slips
+    away and despawns only after a long grace, off the scene instead of
+    evaporating in front of everyone."""
+    from world.director.travel import travel_to
+    from world.spatial import rooms_within
+    destination = None
+    try:
+        nearby = rooms_within(witness.location, COWER_RADIUS)
+        if nearby:
+            destination = choice(nearby)
+    except Exception:  # noqa: BLE001 — no spatial data, cower in place
+        pass
+    try:
+        witness.execute_cmd("emote bolts from the scene, head down.")
+    except Exception:  # noqa: BLE001
+        pass
+    if destination is None or not travel_to(
+            witness, destination, on_arrive=_cower, on_fail=_cower):
+        _cower(witness)
+
+
+def _cower(witness: Any) -> None:
+    """Arrived (or cornered): hunker down, then despawn after the grace."""
+    try:
+        witness.look_place = ("cowering against the wall, arms wrapped "
+                              "tight, eyes on the door.")
+        witness.execute_cmd("emote presses into cover, shaking.")
+    except Exception:  # noqa: BLE001
+        pass
+    delay(WITNESS_DESPAWN_DELAY, despawn_witness, witness)
 
 
 def despawn_witness(witness: Any) -> None:

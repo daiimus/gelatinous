@@ -32,7 +32,7 @@ from world.director.assignment import (
     resolve,
 )
 from world.director.intel import is_wanted, log_local_sighting, sync_bot_intel
-from world.identity import get_apparent_uid, get_short_sdesc
+from world.identity import get_apparent_uid
 from world.perception import can_see
 
 #: Seconds between watch re-scans when a high-confidence suspect is held.
@@ -147,9 +147,8 @@ def _engage(npc: Any, assignment: Any, suspect: Any) -> None:
     if assignment.payload.get("engaged"):
         return
     assignment.payload["engaged"] = True
-    handle = get_short_sdesc(suspect)
-    _cmd(npc, f"say Cease — {handle}. Violence in progress: "
-              f"force is authorized.")
+    _cmd(npc, "say Cease, Colonist. Violence in progress: "
+              "force is authorized.")
     _cmd(npc, "/shotgun")   # deploy the integrated riot gun
     _cmd(npc, f"attack {getattr(suspect, 'key', suspect)}")
 
@@ -195,9 +194,8 @@ def security_arrival(npc: Any, assignment: Any) -> None:
             # escalate straight to the Engage rung.
             _engage(npc, assignment, suspect)
         else:
-            handle = get_short_sdesc(suspect)
-            _cmd(npc, f"say You — {handle}. Hold your position. "
-                      f"You match an active report.")
+            _cmd(npc, "say Colonist. Hold your position. "
+                      "You match an active report.")
             _aim_lock(npc, suspect)
         assignment.payload["watch_rounds"] = WATCH_ROUNDS
         delay(WATCH_SECONDS, _watch_tick, npc)
@@ -210,16 +208,14 @@ def security_arrival(npc: Any, assignment: Any) -> None:
         if _in_combat(flagged):
             _engage(npc, assignment, flagged)
         else:
-            handle = get_short_sdesc(flagged)
-            _cmd(npc, f"say You — {handle}. You're flagged in the system. "
-                      f"Hold your position.")
+            _cmd(npc, "say Colonist. You're flagged in the system. "
+                      "Hold your position.")
             _aim_lock(npc, flagged)
         assignment.payload["watch_rounds"] = WATCH_ROUNDS
         delay(WATCH_SECONDS, _watch_tick, npc)
     elif confidence == "low":
-        handle = get_short_sdesc(suspect)
-        _cmd(npc, f"say You there — {handle}. You fit a description. "
-                  f"State your business here.")
+        _cmd(npc, "say You there, Colonist. You fit a description. "
+                  "State your business here.")
         delay(INVESTIGATE_SECONDS, resolve, npc)
     else:
         _cmd(npc, "emote finds nothing that matches its report and "

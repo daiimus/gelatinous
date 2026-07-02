@@ -80,7 +80,6 @@ class TestBolo(TestCase):
         self.assertIsNone(match_bolo({}, _Char("x", uid="abc123")))
 
 
-@patch("world.director.security.get_short_sdesc", return_value="a tall lean drifter")
 @patch("world.director.security.get_apparent_uid", side_effect=_fake_uid)
 @patch("world.director.security.can_see", return_value=True)
 @patch("world.director.security.delay")
