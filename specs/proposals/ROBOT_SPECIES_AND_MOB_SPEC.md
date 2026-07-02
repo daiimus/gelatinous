@@ -178,8 +178,14 @@ Patrol (routine) ─▶ Detect ─▶ Challenge ─▶ Escalate ─▶ Restrain 
      contest as the counterplay**: breaking the lock and running is allowed,
      and fleeing an aim lock is itself information. No touch, no consent
      question — detainment by threat posture. The unit lowers its weapon
-     when it stands down. Secbots spawn with a wielded `LIGHT_PISTOL` (the
-     colony security sidearm).
+     when it stands down. **Robots don't wield weapons — they mount them:**
+     secbots are factory-fitted with the `ROBOT_SHOTGUN_MODULE` (an
+     `integrated_weapon` forearm module seated as a standalone augment
+     organ, the tail pattern). Same augment backend as human chrome
+     (`SHOTGUN_MODULE`), species-true presentation — a subsystem on the
+     frame's bill of materials, not grafted chrome. `/shotgun` deploys the
+     `ROBOT_ARM_GUN` (which reuses the already-machine-toned
+     `cybernetic_shotgun` combat bank).
   2. **Grapple — lawful restraint** *(⬜, sequenced behind the trust gate)*:
      an uncooperative or fleeing subject is subdued by grapple/cuff — the
      conscious-and-unrestrained contest per `TRUST_AND_CONSENT_SPEC`.

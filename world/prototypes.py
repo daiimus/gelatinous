@@ -3223,3 +3223,72 @@ AUTODOC = {
             "waiting for a body to work on.",
     "tags": [("furniture", "category"), ("medical", "category")],
 }
+
+
+# ===================================================================
+# ROBOT MODULES (ROBOT_SPECIES_AND_MOB_SPEC)
+# ===================================================================
+# Robots use the SAME augment backend as human chrome (organ_spec,
+# hardpoints, integrated-weapon abilities) but present it species-true:
+# a robot's "cyberware" is factory equipment — modules seated in a
+# frame, not chrome grafted into flesh.  The deployed weapon reuses the
+# ``cybernetic_shotgun`` combat message bank (already machine-toned:
+# "servos whine up to pressure", "the forearm housing locks rigid").
+
+#: The security unit's factory armament, shared by the item prototype
+#: below and the ``@spawnmob/secbot`` factory-fit (which seats it as a
+#: standalone augment organ — the tail pattern — since a robot's frame
+#: comes from the plant with the module already in it).
+ROBOT_SHOTGUN_MODULE_SPEC = {
+    "container": "{side}_arm", "max_hp": 12, "hit_weight": "rare",
+    "inorganic": True, "prosthetic_frame": True,
+    "hardpoint": "forearm", "module_type": "forearm",
+    "abilities": {
+        "shotgun": {
+            "type": "integrated_weapon",
+            "slot": "{side}_hand",
+            "weapon_prototype": "ROBOT_ARM_GUN",
+            "deploy_msg": "Your {side} forearm housing unlocks along its service seam — the manipulator folds back into its stowage recess and the riot gun rotates up and seats with a hard mechanical clack.",
+            "retract_msg": "The riot gun swings down into the forearm housing; the panel seals and the manipulator redeploys, actuators cycling through their check pattern.",
+            "deployed_longdesc": "The forearm housing stands open along its service seam, a stub riot-gun barrel deployed and locked where the manipulator should be.",
+            "deployed_longdesc_slot": "Where the {side} manipulator should be, the wrist assembly terminates in a hardmounted firing socket — the hand has folded back into its stowage recess.",
+            "deploy_room": "{actor}'s forearm housing unlocks with a clack of releasing latches — a stub riot gun rotates up out of the frame where its hand just stowed.",
+            "retract_room": "{actor}'s arm-gun folds down into the forearm housing; the service panel seals and its manipulator redeploys, fingers cycling once.",
+        },
+    },
+}
+
+# Integrated Shotgun Module — the robot-frame counterpart of the human
+# SHOTGUN_MODULE.  Same coupling standard, species-gated to robot frames;
+# harvestable from a wrecked chassis and reseatable in another.
+ROBOT_SHOTGUN_MODULE = {
+    "key": "integrated shotgun module",
+    "typeclass": "typeclasses.items.Organ",
+    "aliases": ["riot module", "robot weapon module", "arm gun module"],
+    "desc": "A riot shotgun in a robot-frame module format: barrel shroud, feed system, and deployment servos in a sealed unit stenciled with a municipal parts code. The coupling collar is standard chassis gauge. This is not aftermarket chrome — it left the plant as part of a security frame's bill of materials.",
+    "tags": [("medical_item", "item_type"), ("augment", "item_type")],
+    "attrs": [
+        ("module_type", "forearm"),
+        ("condition", "pristine"),
+        ("compatible_species", ["robot"]),
+        ("organ_spec", ROBOT_SHOTGUN_MODULE_SPEC),
+    ],
+}
+
+# The integrated weapon the module deploys.  Locked + flagged integrated
+# by the ability layer; reuses the machine-toned ``cybernetic_shotgun``
+# combat message bank.
+ROBOT_ARM_GUN = {
+    "prototype_parent": "RANGED_WEAPON_BASE",
+    "key": "arm-mounted riot gun",
+    "aliases": ["riot gun", "arm gun"],
+    "desc": "A riot shotgun hardmounted in a robot forearm — short, shrouded, and structural. The barrel shroud is load-bearing frame member; the feed system disappears into the elbow actuator housing. No grip, no trigger, no sling mount: the weapon is a subsystem, fired the way the arm is moved — by the frame that owns it.",
+    "damage": 20,
+    "locks": "get:false();drop:false();give:false()",
+    "attrs": [
+        ("weapon_type", "cybernetic_shotgun"),
+        ("damage_type", "bullet"),
+        ("hands_required", 1),
+        ("integrated", True),
+    ],
+}

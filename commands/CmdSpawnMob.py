@@ -63,6 +63,29 @@ class CmdSpawnMob(Command):
     key = "@spawnmob"
     locks = "cmd:perm(Builders) or perm(Developers)"
 
+    @staticmethod
+    def _factory_fit_armament(mob, side="right"):
+        """Seat the integrated shotgun module as a standalone augment organ
+        (the tail pattern): the robot left the plant with it, so no surgery
+        pipeline — the formatted ``organ_spec`` goes straight onto the
+        medical state. Same backend as installed human chrome; ``/shotgun``
+        deploys it via the normal ability layer."""
+        from world.medical.core import Organ
+        from world.prototypes import ROBOT_SHOTGUN_MODULE_SPEC
+
+        def _fmt(value):
+            if isinstance(value, str):
+                return value.replace("{side}", side)
+            if isinstance(value, dict):
+                return {k: _fmt(v) for k, v in value.items()}
+            return value
+
+        spec = _fmt(dict(ROBOT_SHOTGUN_MODULE_SPEC))
+        organ_name = "integrated_shotgun_module"
+        state = mob.medical_state
+        state.organs[organ_name] = Organ(organ_name, organ_data=spec)
+        mob.save_medical_state()
+
     def func(self):
         caller = self.caller
 
@@ -198,15 +221,15 @@ class CmdSpawnMob(Command):
             mob.db.role = "security"
             mob.db.llm_persona = dict(SECURITY_BOT_PERSONA)
             mob.db.llm_driven = True
-            # Issue sidearm + wield it (via the real command) so the unit
-            # can hold suspects at aim — the innocuous detainment rung.
+            # Factory armament: seat the integrated shotgun module in the
+            # right forearm as a standalone augment organ (the tail
+            # pattern) — a robot's weapon is a subsystem it left the plant
+            # with, not a wielded item. Same augment backend as human
+            # chrome; robot-true presentation. /shotgun deploys it.
             try:
-                from evennia.prototypes.spawner import spawn as proto_spawn
-                pistol = proto_spawn("LIGHT_PISTOL")[0]
-                pistol.move_to(mob, quiet=True)
-                mob.execute_cmd("wield pistol")
+                self._factory_fit_armament(mob)
             except Exception:
-                pass  # an unarmed unit still functions; arm it by hand
+                pass  # an unarmed unit still functions; refit by hand
 
         caller.msg(f"You manifest {mob_name} into the world.")
         msg_room_identity(
