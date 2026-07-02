@@ -198,6 +198,58 @@ class TestSecurityArrival(TestCase):
         bot.execute_cmd.assert_not_called()
 
     @patch("world.director.security.log_local_sighting")
+    def test_crime_in_progress_engages_instead_of_aiming(self, _log, *_m):
+        # Suspect actively in combat on arrival -> the Engage rung: deploy
+        # the arm gun and attack; no polite aim lock.
+        from world.combat.constants import NDB_COMBAT_HANDLER
+        perp = _Char("perp", uid="PERP", height="tall", build="lean")
+        setattr(perp.ndb, NDB_COMBAT_HANDLER, MagicMock())
+        bot = self._scene(perp)
+        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        security_arrival(bot, a)
+        cmds = [c.args[0] for c in bot.execute_cmd.call_args_list]
+        self.assertIn("/shotgun", cmds)
+        self.assertIn("attack perp", cmds)
+        self.assertNotIn("aim perp", cmds)
+        self.assertTrue(a.payload["engaged"])
+
+    @patch("world.director.security.log_local_sighting")
+    def test_engage_fires_once_per_assignment(self, _log, *_m):
+        perp = _Char("perp", uid="PERP")
+        bot = self._scene(perp)
+        a = _assignment(bot, {"uid": "PERP", "height": None, "build": None})
+        smod._engage(bot, a, perp)
+        first_count = bot.execute_cmd.call_count
+        smod._engage(bot, a, perp)
+        self.assertEqual(bot.execute_cmd.call_count, first_count)
+
+    def test_watch_never_walks_home_mid_fight(self, mock_delay, *_m):
+        from world.combat.constants import NDB_COMBAT_HANDLER
+        perp = _Char("perp", uid="PERP")
+        bot = self._scene(perp)
+        a = _assignment(bot, {"uid": "PERP", "height": None, "build": None})
+        a.payload["watch_rounds"] = 1
+        setattr(bot.ndb, NDB_COMBAT_HANDLER, MagicMock())  # bot is fighting
+        with patch("world.director.security.resolve") as mock_resolve:
+            smod._watch_tick(bot)
+            mock_resolve.assert_not_called()               # stays on scene
+        self.assertEqual(a.payload["watch_rounds"], 1)     # no round burned
+        self.assertIs(mock_delay.call_args.args[1], smod._watch_tick)
+
+    @patch("world.director.security.log_local_sighting")
+    def test_held_suspect_turning_violent_escalates(self, _log, mock_delay, *_m):
+        from world.combat.constants import NDB_COMBAT_HANDLER
+        perp = _Char("perp", uid="PERP")
+        bot = self._scene(perp)
+        a = _assignment(bot, {"uid": "PERP", "height": None, "build": None})
+        a.payload["watch_rounds"] = 3
+        setattr(perp.ndb, NDB_COMBAT_HANDLER, MagicMock())  # suspect fighting
+        smod._watch_tick(bot)
+        cmds = [c.args[0] for c in bot.execute_cmd.call_args_list]
+        self.assertIn("attack perp", cmds)
+        self.assertTrue(a.payload["engaged"])
+
+    @patch("world.director.security.log_local_sighting")
     @patch("world.director.security.is_wanted")
     def test_wanted_face_flagged_without_event_bolo(self, mock_wanted,
                                                     mock_log, mock_delay, *_m):

@@ -189,8 +189,14 @@ Patrol (routine) ─▶ Detect ─▶ Challenge ─▶ Escalate ─▶ Restrain 
   2. **Grapple — lawful restraint** *(⬜, sequenced behind the trust gate)*:
      an uncooperative or fleeing subject is subdued by grapple/cuff — the
      conscious-and-unrestrained contest per `TRUST_AND_CONSENT_SPEC`.
-  3. **Combat — force** *(⬜)*: only when attacked or when directives
-     authorize it; non-lethal bias.
+  3. **Combat — force** *(🟡 engage-on-violence SHIPPED)*: **violence in
+     progress in front of the unit authorizes force** — a confirmed suspect
+     currently in combat (on arrival, or turning violent under watch) skips
+     detainment: the unit warns once, deploys the arm gun (`/shotgun`), and
+     attacks (all real commands; the combat handler owns the fight from
+     there). A unit **never walks home mid-fight** (the watch loop defers
+     while it is in combat). Still ahead: force *initiation* beyond
+     violence-in-progress (fleeing-felon directives, lethality tuning).
 
   The **general NPC combat order-of-operations** (all NPCs, not just
   security) is the same requirement one level down — hardcoded reflexes for:
