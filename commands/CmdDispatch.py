@@ -80,9 +80,14 @@ class CmdDispatch(Command):
             caller.msg("You have no location to raise an event in.")
             return
 
+        # Attach a BOLO snapshot of the instigator (§5.1: the responder
+        # gets a description, never the perp object). Raising the event
+        # on yourself means YOU match the report when the unit arrives.
+        from world.director import build_bolo
         event = WorldEvent(
             type=etype, location=caller.location,
             severity=severity, source=caller,
+            payload={"bolo": build_bolo(caller)},
         )
         ranked = find_responders(event)
         if not ranked:

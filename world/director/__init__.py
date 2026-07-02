@@ -27,6 +27,10 @@ from world.director.dispatch import (
     find_responders,
     raise_event,
 )
+from world.director.security import (
+    build_bolo,
+    match_bolo,
+)
 from world.director.travel import (
     is_travelling,
     stop_travel,
@@ -39,12 +43,14 @@ __all__ = [
     "WorldEvent",
     "active_assignments",
     "assign",
+    "build_bolo",
     "clear_assignment",
     "dispatch",
     "find_responders",
     "get_assignment",
     "is_assigned",
     "is_travelling",
+    "match_bolo",
     "raise_event",
     "register_arrival_handler",
     "resolve",
