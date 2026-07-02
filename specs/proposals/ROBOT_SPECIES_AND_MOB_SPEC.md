@@ -166,6 +166,33 @@ Patrol (routine) ─▶ Detect ─▶ Challenge ─▶ Escalate ─▶ Restrain 
   bot *is* the deterministic AI that spec was built to showcase.
 * **Challenge / Escalate** — verbal warning → show of force → restraint, via
   **real commands**.
+
+  **Escalation ladder & combat order-of-operations (DESIGN RESOLVED
+  2026-06-30; aim rung SHIPPED).** How an NPC responds under pressure is
+  **hardcoded, never LLM-dependent** — combat timing can't wait on a model;
+  the LLM only talks. The security ladder, each rung a real command:
+
+  1. **Aim — innocuous detainment** *(✅ shipped)*: on a confirmed match the
+     unit levels its sidearm and takes an **aim lock** — the existing aim
+     system pins the subject in place (they cannot move), with the **flee
+     contest as the counterplay**: breaking the lock and running is allowed,
+     and fleeing an aim lock is itself information. No touch, no consent
+     question — detainment by threat posture. The unit lowers its weapon
+     when it stands down. Secbots spawn with a wielded `LIGHT_PISTOL` (the
+     colony security sidearm).
+  2. **Grapple — lawful restraint** *(⬜, sequenced behind the trust gate)*:
+     an uncooperative or fleeing subject is subdued by grapple/cuff — the
+     conscious-and-unrestrained contest per `TRUST_AND_CONSENT_SPEC`.
+  3. **Combat — force** *(⬜)*: only when attacked or when directives
+     authorize it; non-lethal bias.
+
+  The **general NPC combat order-of-operations** (all NPCs, not just
+  security) is the same requirement one level down — hardcoded reflexes for:
+  **wield-on-threat** (draw a carried weapon when combat starts), **range
+  discipline** (advance/retreat to the wielded weapon's engagement range;
+  the #616 auto-prioritizer already picks among in-hand weapons per
+  engagement), and **respond/flee thresholds**. ⬜ — the next behaviour
+  layer after the security ladder proves the shape.
 * **Restrain — the trust seam.** A police bot grabbing a **conscious,
   unrestrained, non-consenting citizen** must route through
   `TRUST_AND_CONSENT_SPEC`: it cannot act freely on an able-to-resist target, so

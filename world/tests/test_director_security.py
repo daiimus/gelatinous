@@ -25,6 +25,7 @@ class _Char:
 
     def __init__(self, name, uid=None, height=None, build=None):
         self.name = name
+        self.key = name
         self.uid = uid
         self.height = height
         self.build = build
@@ -168,6 +169,33 @@ class TestSecurityArrival(TestCase):
         a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
         security_arrival(bot, a)
         mock_log.assert_called_once_with(bot, "PERP", "assault")
+
+    @patch("world.director.security.log_local_sighting")
+    def test_high_match_takes_aim_lock(self, _log, *_m):
+        # The innocuous detainment rung: challenge, then hold at aim.
+        perp = _Char("perp", uid="PERP", height="tall", build="lean")
+        bot = self._scene(perp)
+        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        security_arrival(bot, a)
+        cmds = [c.args[0] for c in bot.execute_cmd.call_args_list]
+        self.assertIn("aim perp", cmds)
+
+    @patch("world.director.security.log_local_sighting")
+    def test_stand_down_releases_aim(self, _log, mock_delay, *_m):
+        perp = _Char("perp", uid="PERP")
+        bot = self._scene(perp)
+        a = _assignment(bot, {"uid": "PERP", "height": None, "build": None})
+        a.payload["watch_rounds"] = 1
+        bot.ndb.aiming_at = perp                   # holding the lock
+        with patch("world.director.security.resolve"):
+            smod._watch_tick(bot)                  # final round: stands down
+        cmds = [c.args[0] for c in bot.execute_cmd.call_args_list]
+        self.assertIn("aim stop", cmds)
+
+    def test_no_aim_release_when_not_aiming(self, *_m):
+        bot = _Char("bot", uid="BOT")
+        smod._release_aim(bot)
+        bot.execute_cmd.assert_not_called()
 
     @patch("world.director.security.log_local_sighting")
     @patch("world.director.security.is_wanted")

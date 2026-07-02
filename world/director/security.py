@@ -117,6 +117,19 @@ def _cmd(npc: Any, command: str) -> None:
         pass
 
 
+def _aim_lock(npc: Any, suspect: Any) -> None:
+    """The innocuous detainment rung: hold the suspect at aim (the aim
+    lock pins them in place; a flee contest is their counterplay). A real
+    command — the same aim any player uses."""
+    _cmd(npc, f"aim {getattr(suspect, 'key', suspect)}")
+
+
+def _release_aim(npc: Any) -> None:
+    """Lower the weapon when standing down (only if actually aiming)."""
+    if getattr(getattr(npc, "ndb", None), "aiming_at", None) is not None:
+        _cmd(npc, "aim stop")
+
+
 def _scan_wanted(npc: Any):
     """First perceivable character whose *current* presentation is on the
     force-wide wanted record: ``(uid, char, entry)`` or ``(None,)*3``.
@@ -156,6 +169,7 @@ def security_arrival(npc: Any, assignment: Any) -> None:
         handle = get_short_sdesc(suspect)
         _cmd(npc, f"say You — {handle}. Hold your position. "
                   f"You match an active report.")
+        _aim_lock(npc, suspect)
         assignment.payload["watch_rounds"] = WATCH_ROUNDS
         delay(WATCH_SECONDS, _watch_tick, npc)
         return
@@ -167,6 +181,7 @@ def security_arrival(npc: Any, assignment: Any) -> None:
         handle = get_short_sdesc(flagged)
         _cmd(npc, f"say You — {handle}. You're flagged in the system. "
                   f"Hold your position.")
+        _aim_lock(npc, flagged)
         assignment.payload["watch_rounds"] = WATCH_ROUNDS
         delay(WATCH_SECONDS, _watch_tick, npc)
     elif confidence == "low":
@@ -199,6 +214,7 @@ def _watch_tick(npc: Any) -> None:
     if not holding or rounds <= 0:
         if holding:
             _cmd(npc, "emote logs the subject's presence and stands down.")
+        _release_aim(npc)   # lower the weapon before walking home
         resolve(npc)
         return
     _cmd(npc, "emote holds position, optics locked on its subject.")
