@@ -9,12 +9,12 @@ truths:
 * **The BOLO is snapshotted at crime time** — what witnesses saw *then*.
   Changing your presentation afterward defeats the match later; the
   report doesn't retroactively improve.
-* **The report takes time** (``REPORT_DELAY``): the force learns nothing
-  until the report "arrives". Today this delay is the acknowledged
-  magic placeholder for the witness→radio chain (slice 3 replaces it
-  with a real crowd-gated witness NPC + radio transmission); it already
-  functions as a proto **interdiction window** — leave the scene before
-  the response rolls.
+* **Someone has to see it** (slice 3, ``world/director/witness.py``): the
+  crowd gate decides whether a witness exists at all — no witness, **no
+  report ever** (an empty alley is free). When one spawns, the report
+  window is a *person*: silence them (dead/unconscious) before
+  ``WITNESS_REPORT_DELAY`` closes and the force never learns. (The radio
+  transmission itself stays magic until ``RADIO_COMMS_SPEC`` builds it.)
 * **One report per scene** (``REPORT_DEBOUNCE``, keyed room+type): a
   brawl is one incident, not a report per punch — and the BOLO belongs
   to the *first* aggressor.
@@ -30,13 +30,10 @@ from typing import Any
 
 from evennia.utils import delay
 
-from world.director.dispatch import WorldEvent, raise_event
+from world.director.dispatch import WorldEvent
 from world.director.security import build_bolo
+from world.director.witness import WITNESS_REPORT_DELAY, spawn_witness, witness_report
 
-#: Seconds between the act and the force learning of it (the report
-#: "arriving"). Placeholder for the witness→radio chain; also the proto
-#: interdiction window.
-REPORT_DELAY = 45.0
 #: One report per (room, crime type) within this window.
 REPORT_DEBOUNCE = 120.0
 
@@ -60,9 +57,10 @@ def report_crime(crime_type: str, location: Any, perp: Any = None,
                  severity: int | None = None) -> bool:
     """An instrumented act calls this at the moment of commission.
 
-    Snapshots the BOLO now, debounces per scene, and schedules the
-    delayed delivery to the dispatcher. Returns ``True`` if a report was
-    actually filed (not debounced/excluded).
+    Debounces per scene, rolls the **crowd-gated witness**, snapshots the
+    BOLO now, and hands the report window to the witness. Returns ``True``
+    if a witness saw it (a report is *pending* — not yet guaranteed: the
+    witness can still be silenced before the window closes).
     """
     if location is None:
         return False
@@ -77,6 +75,13 @@ def report_crime(crime_type: str, location: Any, perp: Any = None,
         return False
     _RECENT[key] = now
 
+    # §5.1: no witness, no report — the empty alley is free. (The scene
+    # stays debounced either way: the same brawl doesn't re-roll a witness
+    # every swing.)
+    witness = spawn_witness(location)
+    if witness is None:
+        return False
+
     event = WorldEvent(
         type=crime_type,
         location=location,
@@ -85,14 +90,5 @@ def report_crime(crime_type: str, location: Any, perp: Any = None,
         source=perp,
         payload={"bolo": build_bolo(perp)},   # crime-time presentation
     )
-    delay(REPORT_DELAY, _deliver, event)
+    delay(WITNESS_REPORT_DELAY, witness_report, witness, event)
     return True
-
-
-def _deliver(event: WorldEvent) -> None:
-    """The report 'arrives' — hand it to the dispatcher. (Slice 3 puts a
-    real witness + radio transmission between the act and this call.)"""
-    try:
-        raise_event(event)
-    except Exception:  # noqa: BLE001 — a broken report must not raise into delay
-        pass

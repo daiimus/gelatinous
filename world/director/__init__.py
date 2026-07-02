@@ -35,6 +35,12 @@ from world.director.security import (
     build_bolo,
     match_bolo,
 )
+from world.director.witness import (
+    can_report,
+    spawn_witness,
+    witness_chance,
+    witness_report,
+)
 from world.director.travel import (
     is_travelling,
     stop_travel,
@@ -49,6 +55,7 @@ __all__ = [
     "active_assignments",
     "assign",
     "build_bolo",
+    "can_report",
     "clear_assignment",
     "dispatch",
     "find_responders",
@@ -60,6 +67,9 @@ __all__ = [
     "register_arrival_handler",
     "report_crime",
     "resolve",
+    "spawn_witness",
     "stop_travel",
     "travel_to",
+    "witness_chance",
+    "witness_report",
 ]
