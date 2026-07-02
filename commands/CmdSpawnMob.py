@@ -63,29 +63,6 @@ class CmdSpawnMob(Command):
     key = "@spawnmob"
     locks = "cmd:perm(Builders) or perm(Developers)"
 
-    @staticmethod
-    def _factory_fit_armament(mob, side="right"):
-        """Seat the integrated shotgun module as a standalone augment organ
-        (the tail pattern): the robot left the plant with it, so no surgery
-        pipeline — the formatted ``organ_spec`` goes straight onto the
-        medical state. Same backend as installed human chrome; ``/shotgun``
-        deploys it via the normal ability layer."""
-        from world.medical.core import Organ
-        from world.prototypes import ROBOT_SHOTGUN_MODULE_SPEC
-
-        def _fmt(value):
-            if isinstance(value, str):
-                return value.replace("{side}", side)
-            if isinstance(value, dict):
-                return {k: _fmt(v) for k, v in value.items()}
-            return value
-
-        spec = _fmt(dict(ROBOT_SHOTGUN_MODULE_SPEC))
-        organ_name = "integrated_shotgun_module"
-        state = mob.medical_state
-        state.organs[organ_name] = Organ(organ_name, organ_data=spec)
-        mob.save_medical_state()
-
     def func(self):
         caller = self.caller
 
@@ -143,14 +120,25 @@ class CmdSpawnMob(Command):
         else:
             mob_name = raw_args or f"a {species}"
 
-        # Create the character. A security unit gets the LLMNpc typeclass
-        # (Character + the LLM brain, dormant until db.llm_driven) so the
-        # same body can be dispatched by the director AND voiced by the
-        # model when spoken to.
-        typeclass = ("typeclasses.llm_npc.LLMNpc" if secbot
-                     else "typeclasses.characters.Character")
+        # /secbot delegates wholesale to the population factory — the SAME
+        # code the director's respawn loop uses, so a hand-spawned unit and
+        # an alcove replacement are identical (posted to the base, armed,
+        # voiced). See world/director/population.py.
+        if secbot:
+            from world.director.population import spawn_secbot
+            mob = spawn_secbot(caller.location, name=(raw_args or None))
+            caller.msg(f"You manifest {mob.key} into the world.")
+            msg_room_identity(
+                location=caller.location,
+                template="{mob} powers up, status lights climbing to green.",
+                char_refs={"mob": mob},
+                exclude=[caller],
+            )
+            return
+
+        # Create the character
         mob = create_object(
-            typeclass=typeclass,
+            typeclass="typeclasses.characters.Character",
             key=mob_name,
             location=caller.location,
             home=caller.location
@@ -212,30 +200,6 @@ class CmdSpawnMob(Command):
             )
         else:
             apply_random_flavor(mob)
-
-        # Security wiring: dispatchable (role) + voiced (stock persona,
-        # LLM on). The deterministic layer stays authoritative — the model
-        # only talks.
-        if secbot:
-            from world.llm.personas import SECURITY_BOT_PERSONA
-            mob.db.role = "security"
-            mob.db.llm_persona = dict(SECURITY_BOT_PERSONA)
-            mob.db.llm_driven = True
-            # LLMNpc's at_object_creation seeds height/build="average" as an
-            # identity safety net (right for human LLM NPCs, wrong for a
-            # chassis — it composed "an average person"). Clear them so the
-            # sdesc falls back to the robot key ("a scuffed sentry robot").
-            mob.height = None
-            mob.build = None
-            # Factory armament: seat the integrated shotgun module in the
-            # right forearm as a standalone augment organ (the tail
-            # pattern) — a robot's weapon is a subsystem it left the plant
-            # with, not a wielded item. Same augment backend as human
-            # chrome; robot-true presentation. /shotgun deploys it.
-            try:
-                self._factory_fit_armament(mob)
-            except Exception:
-                pass  # an unarmed unit still functions; refit by hand
 
         caller.msg(f"You manifest {mob_name} into the world.")
         msg_room_identity(

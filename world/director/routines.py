@@ -144,6 +144,11 @@ class DirectorRoutineScript(DefaultScript):
 
     def at_repeat(self):
         tick_all()
+        try:
+            from world.director.population import maintain_security_complement
+            maintain_security_complement()
+        except Exception:  # noqa: BLE001 — respawn must not stall the beats
+            pass
 
 
 def ensure_heartbeat() -> Any:
