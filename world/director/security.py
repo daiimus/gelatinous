@@ -130,6 +130,30 @@ def _release_aim(npc: Any) -> None:
         _cmd(npc, "aim stop")
 
 
+def _in_combat(char: Any) -> bool:
+    """Is *char* currently in an active combat handler?"""
+    try:
+        from world.combat.constants import NDB_COMBAT_HANDLER
+        return getattr(getattr(char, "ndb", None), NDB_COMBAT_HANDLER,
+                       None) is not None
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _engage(npc: Any, assignment: Any, suspect: Any) -> None:
+    """The Engage rung: violence in progress in front of the unit
+    authorizes force. Deploy the arm gun and attack — real commands; the
+    combat handler owns the fight from here. Fires once per assignment."""
+    if assignment.payload.get("engaged"):
+        return
+    assignment.payload["engaged"] = True
+    handle = get_short_sdesc(suspect)
+    _cmd(npc, f"say Cease — {handle}. Violence in progress: "
+              f"force is authorized.")
+    _cmd(npc, "/shotgun")   # deploy the integrated riot gun
+    _cmd(npc, f"attack {getattr(suspect, 'key', suspect)}")
+
+
 def _scan_wanted(npc: Any):
     """First perceivable character whose *current* presentation is on the
     force-wide wanted record: ``(uid, char, entry)`` or ``(None,)*3``.
@@ -166,10 +190,15 @@ def security_arrival(npc: Any, assignment: Any) -> None:
         # returns to post and syncs (the §5.1 latency window).
         log_local_sighting(npc, bolo.get("uid"),
                            getattr(event, "type", "crime"))
-        handle = get_short_sdesc(suspect)
-        _cmd(npc, f"say You — {handle}. Hold your position. "
-                  f"You match an active report.")
-        _aim_lock(npc, suspect)
+        if _in_combat(suspect):
+            # Crime IN PROGRESS in front of the unit — skip detainment,
+            # escalate straight to the Engage rung.
+            _engage(npc, assignment, suspect)
+        else:
+            handle = get_short_sdesc(suspect)
+            _cmd(npc, f"say You — {handle}. Hold your position. "
+                      f"You match an active report.")
+            _aim_lock(npc, suspect)
         assignment.payload["watch_rounds"] = WATCH_ROUNDS
         delay(WATCH_SECONDS, _watch_tick, npc)
         return
@@ -178,10 +207,13 @@ def security_arrival(npc: Any, assignment: Any) -> None:
     if flagged is not None:
         log_local_sighting(npc, wanted_uid,
                            entry.get("last_crime") or "wanted")
-        handle = get_short_sdesc(flagged)
-        _cmd(npc, f"say You — {handle}. You're flagged in the system. "
-                  f"Hold your position.")
-        _aim_lock(npc, flagged)
+        if _in_combat(flagged):
+            _engage(npc, assignment, flagged)
+        else:
+            handle = get_short_sdesc(flagged)
+            _cmd(npc, f"say You — {handle}. You're flagged in the system. "
+                      f"Hold your position.")
+            _aim_lock(npc, flagged)
         assignment.payload["watch_rounds"] = WATCH_ROUNDS
         delay(WATCH_SECONDS, _watch_tick, npc)
     elif confidence == "low":
@@ -198,17 +230,27 @@ def security_arrival(npc: Any, assignment: Any) -> None:
 def _watch_tick(npc: Any) -> None:
     """Re-scan while holding a suspect (event-BOLO match *or* a face on
     the wanted record); give up after ``WATCH_ROUNDS`` cycles or when no
-    subject holds."""
+    subject holds. A unit in combat never walks home mid-fight, and a held
+    suspect who turns violent gets the Engage rung."""
     from world.director.assignment import get_assignment
     assignment = get_assignment(npc)
     if assignment is None:
         return  # stood down meanwhile
+    if _in_combat(npc):
+        # The fight owns the unit; keep monitoring without burning rounds.
+        delay(WATCH_SECONDS, _watch_tick, npc)
+        return
     bolo = (getattr(assignment.event, "payload", None) or {}).get("bolo")
     confidence, suspect = _scan(npc, bolo)
     holding = confidence == "high"
     if not holding:
-        _uid, flagged, _entry = _scan_wanted(npc)
-        holding = flagged is not None
+        _uid, suspect, _entry = _scan_wanted(npc)
+        holding = suspect is not None
+    if holding and _in_combat(suspect):
+        # The held suspect started (or resumed) violence under watch.
+        _engage(npc, assignment, suspect)
+        delay(WATCH_SECONDS, _watch_tick, npc)
+        return
     rounds = assignment.payload.get("watch_rounds", 0) - 1
     assignment.payload["watch_rounds"] = rounds
     if not holding or rounds <= 0:

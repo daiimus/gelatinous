@@ -221,6 +221,12 @@ class CmdSpawnMob(Command):
             mob.db.role = "security"
             mob.db.llm_persona = dict(SECURITY_BOT_PERSONA)
             mob.db.llm_driven = True
+            # LLMNpc's at_object_creation seeds height/build="average" as an
+            # identity safety net (right for human LLM NPCs, wrong for a
+            # chassis — it composed "an average person"). Clear them so the
+            # sdesc falls back to the robot key ("a scuffed sentry robot").
+            mob.height = None
+            mob.build = None
             # Factory armament: seat the integrated shotgun module in the
             # right forearm as a standalone augment organ (the tail
             # pattern) — a robot's weapon is a subsystem it left the plant
