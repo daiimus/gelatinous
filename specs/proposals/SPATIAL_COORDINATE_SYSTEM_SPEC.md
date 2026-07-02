@@ -87,7 +87,7 @@ display. (Open question §10.)
 * **Signed integers** `(x, y, z)`. Origin **`(0, 0, 0)`** at the central ground
   space; the world extrapolates outward and downward from there.
 * **Axes:** `+X` east / `+Y` north / `+Z` up. Therefore **`Z < 0` =
-  undercity / mines**, **`Z = 0` = ground**, **`Z > 0` = upper levels / sky**.
+  the Drifts (mines / sewers)**, **`Z = 0` = ground**, **`Z > 0` = upper levels / sky**.
   A signed origin makes "below ground" literally negative — readable and
   symmetric.
 * **One unit = one room step** along a cardinal exit. Visual/described distance
@@ -175,7 +175,7 @@ axis** rather than inventing a parallel one:
 
 The aim is that the live jump/sky-room behaviour keeps working unchanged and
 simply becomes *expressible in coordinate terms*, so future vertical content
-(rooftops, lift shafts, the undercity) composes from the same primitive.
+(rooftops, lift shafts, the Drifts) composes from the same primitive.
 
 ### 6.1 · Face state — walls, floors, and breaching
 

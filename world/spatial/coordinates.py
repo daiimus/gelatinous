@@ -4,7 +4,7 @@ walk for the spatial substrate (Phase 1).
 See ``specs/proposals/SPATIAL_COORDINATE_SYSTEM_SPEC.md``.
 
 Axes: ``+X`` east / ``+Y`` north / ``+Z`` up. Origin ``(0, 0, 0)`` at the
-central ground room; the undercity is ``Z < 0``, upper levels ``Z > 0``.
+central ground room; the Drifts (mines/sewers) are ``Z < 0``, upper levels ``Z > 0``.
 One unit = one room step along a cardinal exit.
 """
 
