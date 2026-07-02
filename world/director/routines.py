@@ -143,12 +143,17 @@ class DirectorRoutineScript(DefaultScript):
         self.persistent = True
 
     def at_repeat(self):
-        tick_all()
+        counts = tick_all()
         try:
             from world.director.population import maintain_security_complement
             maintain_security_complement()
         except Exception:  # noqa: BLE001 — respawn must not stall the beats
             pass
+        # Tick telemetry (DB-backed → visible cross-process; surfaced by
+        # @patrol/status as "last tick Ns ago").
+        import time
+        self.db.last_tick = time.time()
+        self.db.last_counts = counts
 
 
 def ensure_heartbeat() -> Any:
