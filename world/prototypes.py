@@ -3276,8 +3276,10 @@ ROBOT_SHOTGUN_MODULE = {
 }
 
 # The integrated weapon the module deploys.  Locked + flagged integrated
-# by the ability layer; reuses the machine-toned ``cybernetic_shotgun``
-# combat message bank.
+# by the ability layer; carries its OWN robot-voiced combat bank
+# (``world/combat/messages/robot_riot_gun.py`` — municipal-machine
+# register: targeting solutions, LETHAL FORCE AUTHORIZED, casings off
+# frame ports), distinct from the human chrome's ``cybernetic_shotgun``.
 ROBOT_ARM_GUN = {
     "prototype_parent": "RANGED_WEAPON_BASE",
     "key": "arm-mounted riot gun",
@@ -3286,7 +3288,7 @@ ROBOT_ARM_GUN = {
     "damage": 20,
     "locks": "get:false();drop:false();give:false()",
     "attrs": [
-        ("weapon_type", "cybernetic_shotgun"),
+        ("weapon_type", "robot_riot_gun"),
         ("damage_type", "bullet"),
         ("hands_required", 1),
         ("integrated", True),

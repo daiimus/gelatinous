@@ -45,11 +45,48 @@ class TestRobotModulePrototypes(TestCase):
         self.assertNotIn("skin", joined)
         self.assertIn("plant", ROBOT_SHOTGUN_MODULE["desc"])
 
-    def test_arm_gun_reuses_machine_toned_bank(self):
+    def test_arm_gun_has_its_own_robot_bank(self):
         self.assertEqual(_attr(ROBOT_ARM_GUN, "weapon_type"),
-                         "cybernetic_shotgun")
+                         "robot_riot_gun")
         self.assertTrue(_attr(ROBOT_ARM_GUN, "integrated"))
         self.assertIn("get:false()", ROBOT_ARM_GUN["locks"])
+
+
+class TestRobotRiotGunBank(TestCase):
+    def _bank(self):
+        from world.combat.messages.robot_riot_gun import MESSAGES
+        return MESSAGES
+
+    def test_all_phases_present_and_populated(self):
+        bank = self._bank()
+        for phase in ("initiate", "hit", "miss", "kill"):
+            self.assertIn(phase, bank)
+            self.assertGreaterEqual(len(bank[phase]), 5, phase)
+
+    def test_every_entry_has_three_perspectives(self):
+        for phase, entries in self._bank().items():
+            for entry in entries:
+                for key in ("attacker_msg", "victim_msg", "observer_msg"):
+                    self.assertIn(key, entry, f"{phase}: {entry}")
+                    self.assertTrue(entry[key])
+                # victim/observer must name the machine
+                self.assertIn("{attacker_name}",
+                              entry["victim_msg"] + entry["observer_msg"])
+
+    def test_register_is_municipal_machine(self):
+        joined = str(self._bank()).lower()
+        for token in ("servo", "vocalizer", "ferrocrete", "compensator",
+                      "lethal force authorized", "re-acquiring"):
+            self.assertIn(token, joined)
+        # no flesh-register leakage from the human chrome bank
+        self.assertNotIn("your vision", joined)
+        self.assertNotIn("your skeleton", joined)
+
+    def test_loader_resolves_the_bank(self):
+        import importlib
+        module = importlib.import_module(
+            "world.combat.messages.robot_riot_gun")
+        self.assertTrue(getattr(module, "MESSAGES"))
 
 
 class TestFactoryFit(TestCase):
