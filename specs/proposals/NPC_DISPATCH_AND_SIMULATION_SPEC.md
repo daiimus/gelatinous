@@ -14,8 +14,11 @@
 > re-pathed each step, moves via real exit commands); `WorldEvent` +
 > `ROLE_RESPONDS_TO` + `find_responders` (NPCs by `db.role`, nearest-first by
 > travel distance) + `dispatch` (severity-scaled) + `raise_event`; the
-> `@dispatch` builder command. **Open design (next): the population/identity
-> layer that prevents "small-worlding" — see §10.**
+> `@dispatch` builder command. **Identification design RESOLVED (§5.1,
+> 2026-06-30): crime is an information problem — witness (crowd-gated, spawned,
+> interdictable) → radio report → perception-graded BOLO → base-synced intel →
+> tiered-confidence action. Depends on `RADIO_COMMS_SPEC` (to draft).
+> Population/identity presentation layer still open — see §10.**
 
 ## 1 · Intent
 
@@ -156,6 +159,75 @@ what) and the **spatial system** (how they get there). It is fully
 deterministic; the LLM enters only if step 4 puts a responder in front of a
 player during a salient beat.
 
+### 5.1 · Crime is an information problem — the chain (DESIGN RESOLVED 2026-06-30)
+
+A responder must never be handed the perpetrator as an object reference — that
+omniscience is the real "small-worlding." **The security force is a
+bounded-rational agent: it knows only what was perceived, reported,
+transmitted, and synced — and every link of that chain is attackable.**
+
+```
+crime happens
+ → is anyone there to see it?         WITNESS — gated by crowd
+   → witness spawns as a real NPC     interdictable (intimidate/bribe/harm/kill)
+     → can they report it?            COMMS — radio; break the chain
+       → what did they actually see?  BOLO — perception-graded, can mislead
+         → does the force know yet?   INTEL — syncs at base, not instantly
+           → can a bot act on it?     bounded attention, tiered confidence
+```
+
+Each link, and the play it creates:
+
+* **Witnesses are gated by crowd, and are real.** Whether a crime *has* a
+  witness derives from the room's **crowd** level (no crowd → no witness →
+  no report). When there is one, the witness **spawns as an actual NPC** —
+  so a PC can interdict them: intimidate, bribe, harm, or kill the witness
+  before the report goes out. Multiple witnesses **corroborate** (sharpen the
+  BOLO) or **conflict** — and witnesses **can mislead** (a false description
+  sends the force after the wrong profile; manipulating witnesses is play).
+* **Reports travel by radio** (`RADIO_COMMS_SPEC`, the colony's primary comms).
+  No transmission → the force never learns. Disrupting comms is a first-class
+  criminal avenue: snatch the walkie from a witness's hand, break the rooftop
+  antenna, jam the band. Until radio ships, dispatch's report step is an
+  acknowledged *magic placeholder*.
+* **The BOLO is a perception-graded descriptor, not a handle.** What the event
+  carries is *what witnesses saw*: a clear witness yields the perp's
+  `apparent_uid` (the identity system's presentation hash); a poor/distant one
+  yields only a coarse descriptor (build/height); one who *recognised* the perp
+  yields a name. On scene, a responder **scans who it can currently perceive**
+  (perception-gated — stealth/blindness apply) and matches against the BOLO.
+  Consequences fall out of the identity system for free: **flight** (not
+  present), **disguise/re-sleeve** (UID changes → BOLO stale), **blending**
+  (a coarse descriptor matches many → ambiguity), **looking generic is cover**.
+* **Mistaken identity is intended.** Matching yields a **confidence**, and
+  action is **tiered**: high confidence → detain; low confidence → challenge /
+  question / observe (friction, not instant injustice). A coarse BOLO can put
+  an innocent lookalike in the hot seat — and a smart perp exploits that.
+* **Intel is hybrid and syncs at base.** A bot's identifications are **per-bot**
+  knowledge until it **returns to base and syncs**, only then joining the
+  force-wide wanted record. The force knows your face *eventually*; a given bot
+  still has to *see* you (per-bot perception always gates action). The sync
+  latency is an exploitable window; the base is a meaningful place (and target).
+  Repeat offenders accumulate a record keyed to `apparent_uid` — which a
+  re-sleeve or disguise resets (a clean face costs something).
+* **Attention & triage are bounded.** A responder continuously triages its
+  assigned event against what it *perceives en route* — an armed individual, an
+  active assault, graffiti-in-progress — by severity × immediacy × proximity.
+  It can be **preempted / distracted** (bait play). At the force level,
+  **capacity is finite** (a configured pool of security bots + deployment
+  dynamics, later): multiple incidents force allocation, some go unanswered —
+  **overwhelming the force is an intended heist tactic**.
+* **The no-trace window.** A skilled criminal can render witnesses inert —
+  *including security bots* (they are perceivers, not oracles) — before acting:
+  gas, blackout, EMP. Ties to the cross-phase EMP seam (`PHASE_LAYER_SPEC` §9)
+  and the robot chassis (an EMP'd bot saw nothing, reports nothing). No
+  perceiver → no chain → no consequence. Reserved as a seam.
+
+The colony feels large because information is **expensive, lossy, and
+physical**. Scouting (crowd timing), violence (silence the witness), sabotage
+(kill the comms), deception (disguise / false reports), speed (beat the sync),
+and coordination (overwhelm the pool) are all valid ways to get away with it.
+
 ## 6 · Interaction & the LLM escalation gate
 
 The hardest part, by your call, is **NPC↔NPC interaction** — and the answer is
@@ -234,6 +306,16 @@ consent rules as player-initiated ones. Reserve the seam now.
   **first MOB consumer**: a security-robot patrol/detect/challenge/restrain state
   machine that exercises this spec end-to-end (routines, LEO response, alert
   propagation, the trust-gated lawful restraint) — deterministically, no LLM.
+* **Radio comms (`RADIO_COMMS_SPEC`, to draft).** The colony's primary comms and
+  the carrier for §5.1's report link: witness reports, dispatch orders, and the
+  base intel-sync all ride radio. Jamming/antenna sabotage/walkie-snatching cut
+  the chain. Until it ships, the report step is a magic placeholder.
+* **Identity & recognition (`IDENTITY_RECOGNITION_SPEC`) — the BOLO substrate.**
+  §5.1's identification runs on `apparent_uid` (presentation hash): disguise/
+  re-sleeve defeats a BOLO and resets a wanted record; recognition memory is
+  what lets a witness yield a *name*.
+* **Crowd system — witness generation.** Crowd level decides whether a crime
+  has a witness at all; a witness materializes as a real NPC (§5.1).
 
 ## 9 · Build ladder
 
