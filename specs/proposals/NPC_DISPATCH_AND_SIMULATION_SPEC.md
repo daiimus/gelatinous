@@ -269,7 +269,7 @@ consent rules as player-initiated ones. Reserve the seam now.
   commands.
 * **Mining incident → S&R.** Mining system raises `mining_incident` (a collapse,
   a death) deep at `Z < 0`. Dispatcher deploys a flash-temp S&R crew, routes
-  them down through the vertical/undercity rooms, runs the rescue
+  them down through the vertical Drifts rooms, runs the rescue
   deterministically; despawns the crew after.
 * **Shift change → a drink.** Time system raises `shift_change`. A worker's
   routine reroutes to the bar; they order from Sable via the deterministic

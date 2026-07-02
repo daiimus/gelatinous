@@ -60,7 +60,7 @@ Traffic is organized by **channel** (a small integer dial / named band):
   channel, coverage extends to the union of the antenna network — practically
   city-wide *while the antennae stand*. Kill the right antenna → a **coverage
   hole** (a district goes dark for that channel).
-* **Vertical matters**: rooftop antennae see far; the undercity (`Z < 0`) is
+* **Vertical matters**: rooftop antennae see far; the Drifts (`Z < 0` — the future mines/sewers) is
   naturally radio-dark unless wired repeaters are placed — mines and tunnels
   are out of contact by default (ties to the mining/S&R fiction: a collapse
   cuts contact).
@@ -109,7 +109,7 @@ real play.
 * **Dispatch / director** — the §3 mapping; replaces the report placeholder.
 * **Spatial** — range/coverage from `distance` / `rooms_within`; antennae live
   at real coordinates (kill *this* rooftop → *this* district's hole);
-  undercity dark-by-default.
+  the Drifts dark-by-default.
 * **Voice / identity** — §2.4; voice recognition + modulators carry over.
 * **Perception** — hearing gates reception; a transmission into a room is an
   auditory event (stealth: a squawking radio gives you away).
