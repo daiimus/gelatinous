@@ -228,6 +228,62 @@ physical**. Scouting (crowd timing), violence (silence the witness), sabotage
 (kill the comms), deception (disguise / false reports), speed (beat the sync),
 and coordination (overwhelm the pool) are all valid ways to get away with it.
 
+### 5.2 · Crime taxonomy & heat (DESIGN RESOLVED 2026-06-30)
+
+**Crimes are mechanical acts, not declarations.** There is no "commit crime"
+verb — a mugging *is* grapple+frisk+steal; shoplifting *is* a stealth-take from
+a shop container; vandalism *is* the graffiti command. The crime layer
+**instruments existing acts**: it classifies what happened, decides who noticed
+(§5.1), and raises the event. Anything the systems permit, you can do — the
+only question is whether you were *seen*.
+
+| Crime | The act | Severity (1–5, tunable) | How the force learns |
+|---|---|---|---|
+| Shoplifting | stealth-take from a shop | 1 | often never; stocktake shrinkage later (no BOLO) |
+| Vandalism | graffiti on property | 1 | witnessed-in-the-act only |
+| Pickpocketing | `pickpocket` (tokens) | 1–2 | victim notices late/never; coarse BOLO |
+| Mugging | threaten/grapple → frisk → steal | 2–3 | **the victim reports** (if alive, conscious, able) |
+| Armed robbery | wielded weapon + take (shop/NPC) | 3–4 | victim + crowd witnesses; good BOLO |
+| Assault | combat on an unwilling target | 3–4 | loud — crowd-gated witnesses |
+| Murder | death | 5 | **discovered via the corpse** → forensic BOLO off `signature_at_death` (`world/forensics.py`, exists) |
+| Sabotage | break antenna / infrastructure | 2–3 | discovered when the hole is noticed |
+
+**Three report paths** (what actually varies per crime):
+1. **Witnessed at commission** — the §5.1 chain as designed (loud crimes).
+2. **Victim-reports** — the victim *is* the witness; everything in §5.1 applies
+   to them (silence, snatch the walkie, intimidate). A mugging done right
+   leaves a victim who *chooses* not to report.
+3. **Discovered later** — quiet crimes raise events off the *evidence*:
+   stocktake shrinkage (no BOLO), a found corpse (**forensic BOLO** — degraded,
+   cold-trail), a district gone radio-dark. Note the grim emergent truth:
+   unwitnessed murder is *quieter* than assault — finishing the job silences
+   the best witness. Intended.
+
+**NPC victims** (what makes mugging/robbery real):
+* **Pockets** — civilians spawn with **100–500 tokens** (everything is priced
+  at 0 today, so this sets the reference scale; worth mugging, not farming).
+* **Reactions** — comply / flee / resist, **role-weighted for now** (a laborer
+  complies, a ganger resists, a shopkeeper raises the alarm). Future: a
+  **nature/demeanor/traits axis** on NPCs informs both these deterministic
+  reactions *and* the LLM persona when one is puppeted — one personality
+  substrate, two consumers.
+* **The report step** — the victim runs the §5.1 witness pipeline on
+  themselves: delay (the interdiction window), then report if able.
+
+**Heat — the spatio-temporal crime map.** Crimes accumulate **heat** at their
+coordinates over time (decaying), and heat **dictates patrol allocation**:
+hot districts draw patrols, quiet ones thin out. Getting away with quiet crime
+is consequence-*free for you* but raises district heat — the world responds to
+patterns, not just incidents. **Except where it deliberately doesn't:** certain
+areas are **purposefully under-patrolled due to special interests** — a
+per-district patrol bias the heat system honors (gang arrangements, corporate
+carve-outs). Corruption is data, not lore; discovering *which* districts are
+cold-by-design is player knowledge worth having.
+
+**Dependency:** mugging/shoplifting/pickpocketing need the **theft verbs**
+(`steal`/`pickpocket`/frisk-reveal, `STEALTH_AND_DETECTION_SPEC` §6.2) —
+specced, unbuilt; crime pulls them forward in the build order.
+
 ## 6 · Interaction & the LLM escalation gate
 
 The hardest part, by your call, is **NPC↔NPC interaction** — and the answer is
