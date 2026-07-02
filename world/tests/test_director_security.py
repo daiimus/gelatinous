@@ -34,6 +34,10 @@ class _Char:
         self.db = SimpleNamespace(role="security")
         self.execute_cmd = MagicMock()
 
+    def get_sdesc(self):
+        # the identity handle the resolver matches (fakes use their name)
+        return self.name
+
     def is_typeclass(self, path, exact=False):
         return True
 
@@ -264,6 +268,41 @@ class TestSecurityArrival(TestCase):
         self.assertIn("flagged in the system", said)
         mock_log.assert_called_once_with(bot, "OLDFACE", "robbery")
         self.assertIs(mock_delay.call_args.args[1], smod._watch_tick)
+
+
+class TestTargetToken(TestCase):
+    """The unit must target via the identity-aware resolver's language —
+    validated against the REAL matcher, not a mock (the live bug: real
+    keys are builder-gated, so 'attack <key>' resolved nothing)."""
+
+    def test_token_is_the_sdesc_not_the_key(self):
+        suspect = _Char("Elizabeth von Fischer")
+        suspect.get_sdesc = lambda: "stout woman with black curls"
+        self.assertEqual(smod._target_token(suspect),
+                         "stout woman with black curls")
+
+    def test_sdesc_token_matches_via_real_identity_matcher(self):
+        from world.search import identity_match_characters
+
+        class _IdChar:
+            def __init__(self, key, sdesc):
+                self.key = key
+                self._sdesc = sdesc
+
+            def get_sdesc(self):
+                return self._sdesc
+
+        searcher = _IdChar("bot", "scuffed loader robot")
+        perp = _IdChar("Elizabeth von Fischer",
+                       "stout woman with black curls")
+        bystander = _IdChar("Joe Moody", "compact man with gray curls")
+        candidates = [searcher, perp, bystander]
+        token = smod._target_token(perp)
+        matches = identity_match_characters(searcher, token, candidates)
+        self.assertEqual(matches, [perp])
+        # and the real key would NOT have matched (the live bug)
+        self.assertEqual(
+            identity_match_characters(searcher, perp.key, candidates), [])
 
 
 @patch("world.director.security.sync_bot_intel")

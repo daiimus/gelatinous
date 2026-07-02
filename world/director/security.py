@@ -117,11 +117,27 @@ def _cmd(npc: Any, command: str) -> None:
         pass
 
 
+def _target_token(suspect: Any) -> str:
+    """A string the identity-aware combat resolver will actually match
+    for *suspect*: their current **sdesc**, which substring-matches
+    itself. Real keys are builder-gated by the recognition system —
+    ``attack Elizabeth von Fischer`` resolves nothing for an NPC. The
+    unit targets what it perceives, exactly like a player typing
+    ``attack stout woman``."""
+    try:
+        sdesc = suspect.get_sdesc()
+        if sdesc:
+            return sdesc
+    except Exception:  # noqa: BLE001
+        pass
+    return str(getattr(suspect, "key", suspect))
+
+
 def _aim_lock(npc: Any, suspect: Any) -> None:
     """The innocuous detainment rung: hold the suspect at aim (the aim
     lock pins them in place; a flee contest is their counterplay). A real
     command — the same aim any player uses."""
-    _cmd(npc, f"aim {getattr(suspect, 'key', suspect)}")
+    _cmd(npc, f"aim {_target_token(suspect)}")
 
 
 def _release_aim(npc: Any) -> None:
@@ -150,7 +166,7 @@ def _engage(npc: Any, assignment: Any, suspect: Any) -> None:
     _cmd(npc, "say Cease, Colonist. Violence in progress: "
               "force is authorized.")
     _cmd(npc, "/shotgun")   # deploy the integrated riot gun
-    _cmd(npc, f"attack {getattr(suspect, 'key', suspect)}")
+    _cmd(npc, f"attack {_target_token(suspect)}")
 
 
 def _scan_wanted(npc: Any):
