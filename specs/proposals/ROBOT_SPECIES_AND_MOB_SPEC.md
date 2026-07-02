@@ -184,8 +184,12 @@ Patrol (routine) ─▶ Detect ─▶ Challenge ─▶ Escalate ─▶ Restrain 
      organ, the tail pattern). Same augment backend as human chrome
      (`SHOTGUN_MODULE`), species-true presentation — a subsystem on the
      frame's bill of materials, not grafted chrome. `/shotgun` deploys the
-     `ROBOT_ARM_GUN` (which reuses the already-machine-toned
-     `cybernetic_shotgun` combat bank).
+     `ROBOT_ARM_GUN`, which carries its **own robot-voiced combat bank**
+     (`robot_riot_gun.py`, #885/#895 — house-style, `{hit_location}`-
+     grounded; distinct from the human chrome's `cybernetic_shotgun`).
+     Deterministic lines address people as **"Colonist"** (never sdesc/
+     name, #888), and targeting resolves via the suspect's sdesc through
+     the identity-aware pipeline (#890 — real keys are builder-gated).
   2. **Grapple — lawful restraint** *(⬜, sequenced behind the trust gate)*:
      an uncooperative or fleeing subject is subdued by grapple/cuff — the
      conscious-and-unrestrained contest per `TRUST_AND_CONSENT_SPEC`.
