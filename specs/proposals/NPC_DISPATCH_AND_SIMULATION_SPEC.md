@@ -23,7 +23,7 @@
 >
 > **Identification design RESOLVED (§5.1, 2026-06-30); crime taxonomy + heat
 > (§5.2, 2026-06-30).** Chain status: BOLO ✅ · tiered confidence ✅ (detain
-> deferred to the trust gate) · combat auto-raise ✅ #871 (45s→witness window, per-scene debounce, crime-time BOLO) · witness spawn ✅ #873 (crowd-gated, interdictable, first flash-temp ephemeral) · base intel-sync ✅ #876 (per-bot sightings → force-wide wanted record only on return-to-post; latency window real; repeat-offender counts; @dispatch/wanted) · radio report ⬜
+> deferred to the trust gate) · combat auto-raise ✅ #871 (45s→witness window, per-scene debounce, crime-time BOLO) · witness spawn ✅ #873 (crowd-gated, interdictable, first flash-temp ephemeral; flees to cower via director travel #888) · base intel-sync ✅ #876 (per-bot sightings → force-wide wanted record only on return-to-post; latency window real; repeat-offender counts; @dispatch/wanted) · radio report ⬜
 > (`RADIO_COMMS_SPEC` drafted #859; magic placeholder until built) ·
 > no-trace window ⬜. Population/identity presentation layer
 > still open — see §10.
