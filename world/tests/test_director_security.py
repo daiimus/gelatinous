@@ -160,3 +160,47 @@ class TestSecurityArrival(TestCase):
         with patch("world.director.security.resolve") as mock_resolve:
             smod._watch_tick(bot)                  # round 2: gives up
             mock_resolve.assert_called_once_with(bot)
+
+    @patch("world.director.security.log_local_sighting")
+    def test_high_match_logs_local_sighting(self, mock_log, *_m):
+        perp = _Char("perp", uid="PERP", height="tall", build="lean")
+        bot = self._scene(perp)
+        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        security_arrival(bot, a)
+        mock_log.assert_called_once_with(bot, "PERP", "assault")
+
+    @patch("world.director.security.log_local_sighting")
+    @patch("world.director.security.is_wanted")
+    def test_wanted_face_flagged_without_event_bolo(self, mock_wanted,
+                                                    mock_log, mock_delay, *_m):
+        # No BOLO hit on THIS incident — but a bystander is on file.
+        felon = _Char("felon", uid="OLDFACE", height="short", build="heavy")
+        bot = self._scene(felon)
+        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        mock_wanted.side_effect = (
+            lambda uid: {"count": 2, "last_crime": "robbery"}
+            if uid == "OLDFACE" else None)
+        security_arrival(bot, a)
+        said = " ".join(str(c) for c in bot.execute_cmd.call_args_list)
+        self.assertIn("flagged in the system", said)
+        mock_log.assert_called_once_with(bot, "OLDFACE", "robbery")
+        self.assertIs(mock_delay.call_args.args[1], smod._watch_tick)
+
+
+@patch("world.director.security.sync_bot_intel")
+class TestSecurityCompletion(TestCase):
+    def test_registered_and_syncs_at_post(self, mock_sync):
+        from world.director.assignment import COMPLETION_HANDLERS
+        self.assertIs(COMPLETION_HANDLERS.get("security"),
+                      smod.security_completion)
+        bot = _Char("bot", uid="BOT")
+        mock_sync.return_value = 2
+        smod.security_completion(bot, MagicMock())
+        mock_sync.assert_called_once_with(bot)
+        self.assertTrue(bot.execute_cmd.called)  # the uplink emote
+
+    def test_no_sightings_no_uplink_noise(self, mock_sync):
+        bot = _Char("bot", uid="BOT")
+        mock_sync.return_value = 0
+        smod.security_completion(bot, MagicMock())
+        bot.execute_cmd.assert_not_called()

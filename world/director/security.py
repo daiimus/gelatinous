@@ -26,7 +26,12 @@ from typing import Any
 
 from evennia.utils import delay
 
-from world.director.assignment import register_arrival_handler, resolve
+from world.director.assignment import (
+    register_arrival_handler,
+    register_completion_handler,
+    resolve,
+)
+from world.director.intel import is_wanted, log_local_sighting, sync_bot_intel
 from world.identity import get_apparent_uid, get_short_sdesc
 from world.perception import can_see
 
@@ -112,15 +117,56 @@ def _cmd(npc: Any, command: str) -> None:
         pass
 
 
+def _scan_wanted(npc: Any):
+    """First perceivable character whose *current* presentation is on the
+    force-wide wanted record: ``(uid, char, entry)`` or ``(None,)*3``.
+    Per-bot perception still gates — the force knowing a face doesn't let
+    a bot that can't see act on it."""
+    if not can_see(npc) or npc.location is None:
+        return None, None, None
+    for obj in getattr(npc.location, "contents", None) or []:
+        if obj is npc:
+            continue
+        if not (hasattr(obj, "is_typeclass")
+                and obj.is_typeclass("typeclasses.characters.Character",
+                                     exact=False)):
+            continue
+        uid = get_apparent_uid(obj)
+        entry = is_wanted(uid)
+        if entry:
+            return uid, obj, entry
+    return None, None, None
+
+
 def security_arrival(npc: Any, assignment: Any) -> None:
-    """On-scene behavior for ``role == "security"``: scan, match, act."""
+    """On-scene behavior for ``role == "security"``: scan, match, act.
+
+    Priority: the event's BOLO (this incident) beats the wanted record
+    (old business) — but a face on file gets challenged even when it has
+    nothing to do with *this* call."""
     _cmd(npc, "emote sweeps the scene with a slow sensor pass.")
-    bolo = (getattr(assignment.event, "payload", None) or {}).get("bolo")
+    event = assignment.event
+    bolo = (getattr(event, "payload", None) or {}).get("bolo")
     confidence, suspect = _scan(npc, bolo)
     if confidence == "high":
+        # Confirmed identification — known to THIS bot only until it
+        # returns to post and syncs (the §5.1 latency window).
+        log_local_sighting(npc, bolo.get("uid"),
+                           getattr(event, "type", "crime"))
         handle = get_short_sdesc(suspect)
         _cmd(npc, f"say You — {handle}. Hold your position. "
                   f"You match an active report.")
+        assignment.payload["watch_rounds"] = WATCH_ROUNDS
+        delay(WATCH_SECONDS, _watch_tick, npc)
+        return
+    # No hit on this incident — but is anyone here already on file?
+    wanted_uid, flagged, entry = _scan_wanted(npc)
+    if flagged is not None:
+        log_local_sighting(npc, wanted_uid,
+                           entry.get("last_crime") or "wanted")
+        handle = get_short_sdesc(flagged)
+        _cmd(npc, f"say You — {handle}. You're flagged in the system. "
+                  f"Hold your position.")
         assignment.payload["watch_rounds"] = WATCH_ROUNDS
         delay(WATCH_SECONDS, _watch_tick, npc)
     elif confidence == "low":
@@ -135,18 +181,23 @@ def security_arrival(npc: Any, assignment: Any) -> None:
 
 
 def _watch_tick(npc: Any) -> None:
-    """Re-scan while holding a high-confidence suspect; give up after
-    ``WATCH_ROUNDS`` cycles or when the suspect no longer matches."""
+    """Re-scan while holding a suspect (event-BOLO match *or* a face on
+    the wanted record); give up after ``WATCH_ROUNDS`` cycles or when no
+    subject holds."""
     from world.director.assignment import get_assignment
     assignment = get_assignment(npc)
     if assignment is None:
         return  # stood down meanwhile
     bolo = (getattr(assignment.event, "payload", None) or {}).get("bolo")
     confidence, suspect = _scan(npc, bolo)
+    holding = confidence == "high"
+    if not holding:
+        _uid, flagged, _entry = _scan_wanted(npc)
+        holding = flagged is not None
     rounds = assignment.payload.get("watch_rounds", 0) - 1
     assignment.payload["watch_rounds"] = rounds
-    if confidence != "high" or rounds <= 0:
-        if confidence == "high":
+    if not holding or rounds <= 0:
+        if holding:
             _cmd(npc, "emote logs the subject's presence and stands down.")
         resolve(npc)
         return
@@ -154,4 +205,13 @@ def _watch_tick(npc: Any) -> None:
     delay(WATCH_SECONDS, _watch_tick, npc)
 
 
+def security_completion(npc: Any, assignment: Any) -> None:
+    """Back at post: sync local sightings into the force-wide wanted
+    record (§5.1 — intel goes force-wide only *here*; the walk home is
+    the latency window, and a bot that never makes it back never syncs)."""
+    if sync_bot_intel(npc):
+        _cmd(npc, "emote docks at its post and uplinks patrol data.")
+
+
 register_arrival_handler("security", security_arrival)
+register_completion_handler("security", security_completion)
