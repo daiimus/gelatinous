@@ -27,6 +27,10 @@ class CmdPatrol(Command):
                                             every loop automatically
         @patrol/auto <npc> = <radius>     - auto-beat: sample nearby rooms
                                             within <radius> of the base
+        @patrol/base [complement]         - designate THIS room the security
+                                            base: secbots spawn/post/sync/
+                                            respawn here; the heartbeat keeps
+                                            <complement> units alive (default 1)
         @patrol/status [npc]              - show posts and beats
         @patrol/clear <npc>               - take <npc> off patrol (keeps post)
 
@@ -52,6 +56,25 @@ class CmdPatrol(Command):
         caller = self.caller
         switches = self.switches or []
         args = self.args.strip()
+
+        if "base" in switches:
+            from world.director.population import set_security_base
+            if caller.location is None:
+                caller.msg("You have no location to designate.")
+                return
+            try:
+                complement = int(args) if args else 1
+            except ValueError:
+                caller.msg("Complement must be a number.")
+                return
+            set_security_base(caller.location, complement)
+            ensure_heartbeat()
+            caller.msg(
+                f"{caller.location.get_display_name(caller)} is now the "
+                f"security base: secbots spawn, post, sync, and respawn "
+                f"here; the heartbeat maintains a complement of "
+                f"{complement}.")
+            return
 
         if "status" in switches:
             from evennia.objects.models import ObjectDB

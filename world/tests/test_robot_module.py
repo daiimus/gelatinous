@@ -91,10 +91,10 @@ class TestRobotRiotGunBank(TestCase):
 
 class TestFactoryFit(TestCase):
     def test_seats_side_formatted_organ_and_saves(self):
-        from commands.CmdSpawnMob import CmdSpawnMob
+        from world.director.population import factory_fit_armament
         mob = MagicMock()
         mob.medical_state.organs = {}
-        CmdSpawnMob._factory_fit_armament(mob, side="right")
+        factory_fit_armament(mob, side="right")
         organ = mob.medical_state.organs["integrated_shotgun_module"]
         self.assertEqual(organ.data["container"], "right_arm")
         ability = organ.data["abilities"]["shotgun"]
