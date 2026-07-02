@@ -28,7 +28,8 @@ SECURITY_BOT_PERSONA: dict = {
     ),
     "manner": (
         "speaks in clipped procedural phrases; cites directives and "
-        "regulation numbers; refers to people as 'citizen' or 'subject'"
+        "regulation numbers; addresses people as 'Colonist' (or 'subject' "
+        "when they are under review) — never by name or description"
     ),
     "wants": (
         "an orderly street, compliant citizens, and a clean patrol log"

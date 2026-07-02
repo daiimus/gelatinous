@@ -92,16 +92,16 @@ class TestInterdiction(TestCase):
         self.assertFalse(can_report(_witness(located=False)))
         self.assertFalse(can_report(None))
 
-    @patch("world.director.witness.delay")
+    @patch("world.director.witness.flee_and_cower")
     @patch("world.director.dispatch.raise_event")
-    def test_live_witness_reports_and_leaves(self, mock_raise, mock_delay):
+    def test_live_witness_reports_then_flees_to_cower(self, mock_raise,
+                                                      mock_flee):
         w = _witness()
         event = MagicMock()
         self.assertTrue(witness_report(w, event))
         mock_raise.assert_called_once_with(event)
-        # calls it in visibly, then is scheduled to slip away
-        self.assertTrue(w.execute_cmd.called)
-        self.assertIs(mock_delay.call_args.args[1], despawn_witness)
+        self.assertTrue(w.execute_cmd.called)      # calls it in visibly
+        mock_flee.assert_called_once_with(w)       # then RUNS, not vanishes
 
     @patch("world.director.witness.delay")
     @patch("world.director.dispatch.raise_event")
@@ -110,6 +110,35 @@ class TestInterdiction(TestCase):
         self.assertFalse(witness_report(w, MagicMock()))
         mock_raise.assert_not_called()   # the force never learns
         mock_delay.assert_called_once()  # the body still gets cleanup
+
+    @patch("world.director.witness.delay")
+    @patch("world.director.travel.travel_to")
+    def test_flee_travels_to_nearby_room_then_cowers(self, mock_travel,
+                                                     mock_delay):
+        from world.director.witness import flee_and_cower
+        dest = _Room("alley")
+        w = _witness()
+        mock_travel.return_value = True
+        with patch("world.spatial.rooms_within", return_value=[dest]):
+            flee_and_cower(w)
+        self.assertEqual(mock_travel.call_args.args[1], dest)
+        # arrival callback = the cower
+        on_arrive = mock_travel.call_args.kwargs["on_arrive"]
+        on_arrive(w)
+        self.assertIn("cowering", w.look_place)
+        self.assertIs(mock_delay.call_args.args[1], despawn_witness)
+
+    @patch("world.director.witness.delay")
+    @patch("world.director.travel.travel_to")
+    def test_flee_cowers_in_place_when_nowhere_to_run(self, mock_travel,
+                                                      mock_delay):
+        from world.director.witness import flee_and_cower
+        w = _witness()
+        with patch("world.spatial.rooms_within", return_value=[]):
+            flee_and_cower(w)
+        mock_travel.assert_not_called()
+        self.assertIn("cowering", w.look_place)
+        self.assertIs(mock_delay.call_args.args[1], despawn_witness)
 
     def test_despawn_deletes_living_witness(self):
         w = _witness()
