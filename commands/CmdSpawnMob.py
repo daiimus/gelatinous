@@ -53,6 +53,11 @@ class CmdSpawnMob(Command):
                    human in appearance and flavor, but its medical state
                    uses the synthetic anatomy (cobalt fluid, non-rotting,
                    infection-immune).
+        /secbot  - spawn a complete security unit: a robot wired for
+                   duty — ``role=security`` (answers dispatch, scans
+                   BOLOs, syncs intel) on the LLMNpc typeclass with the
+                   stock security persona seeded and ``llm_driven`` on,
+                   so it also *talks* like a municipal machine.
     """
 
     key = "@spawnmob"
@@ -64,6 +69,7 @@ class CmdSpawnMob(Command):
         # Parse switches
         raw_args = self.args.strip()
         blank = False
+        secbot = False
         species = "human"
         if raw_args.startswith('/'):
             parts = raw_args[1:].split(None, 1)
@@ -77,6 +83,9 @@ class CmdSpawnMob(Command):
                     species = "robot"
                 if "synth" in switches:
                     species = "synthetic_humanoid"
+                if "secbot" in switches:
+                    secbot = True
+                    species = "robot"
                 raw_args = parts[1] if len(parts) > 1 else ""
 
         # Assign sex with chance of ambiguity
@@ -111,9 +120,14 @@ class CmdSpawnMob(Command):
         else:
             mob_name = raw_args or f"a {species}"
 
-        # Create the character
+        # Create the character. A security unit gets the LLMNpc typeclass
+        # (Character + the LLM brain, dormant until db.llm_driven) so the
+        # same body can be dispatched by the director AND voiced by the
+        # model when spoken to.
+        typeclass = ("typeclasses.llm_npc.LLMNpc" if secbot
+                     else "typeclasses.characters.Character")
         mob = create_object(
-            typeclass="typeclasses.characters.Character",
+            typeclass=typeclass,
             key=mob_name,
             location=caller.location,
             home=caller.location
@@ -175,6 +189,15 @@ class CmdSpawnMob(Command):
             )
         else:
             apply_random_flavor(mob)
+
+        # Security wiring: dispatchable (role) + voiced (stock persona,
+        # LLM on). The deterministic layer stays authoritative — the model
+        # only talks.
+        if secbot:
+            from world.llm.personas import SECURITY_BOT_PERSONA
+            mob.db.role = "security"
+            mob.db.llm_persona = dict(SECURITY_BOT_PERSONA)
+            mob.db.llm_driven = True
 
         caller.msg(f"You manifest {mob_name} into the world.")
         msg_room_identity(
