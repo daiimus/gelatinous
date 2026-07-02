@@ -19,6 +19,7 @@ class CmdDispatch(Command):
         @dispatch <type> [severity]   - raise an event; send responders
         @dispatch                     - list event types and who'd respond
         @dispatch/status              - show active assignments (the pool)
+        @dispatch/wanted              - show the force-wide wanted record
 
     Eligible NPCs are those whose ``db.role`` responds to the event type
     (set one with ``@set <npc>/role = security``). The nearest are routed
@@ -38,6 +39,20 @@ class CmdDispatch(Command):
     def func(self):
         caller = self.caller
         args = self.args.strip()
+
+        if "wanted" in (self.switches or []):
+            from world.director import get_wanted_record
+            record = get_wanted_record()
+            if not record:
+                caller.msg("The wanted record is empty — no faces on file.")
+                return
+            caller.msg(f"|cForce-wide wanted record ({len(record)}):|n")
+            for uid, entry in record.items():
+                caller.msg(
+                    f"  [{uid}] sightings: {entry.get('count', 0)}, "
+                    f"last crime: {entry.get('last_crime', '?')}"
+                )
+            return
 
         if "status" in (self.switches or []):
             from world.director import active_assignments

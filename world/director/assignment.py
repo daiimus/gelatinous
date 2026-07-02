@@ -36,6 +36,11 @@ _ACTIVE: dict = {}
 #: scene. The seam the crime layer (scan/match/challenge) plugs into.
 ARRIVAL_HANDLERS: dict[str, Callable] = {}
 
+#: role -> callable(npc, assignment) run when the assignment completes
+#: (the responder is back at its post). The seam base-intel-sync plugs
+#: into: what a bot learned on scene goes force-wide only *here*.
+COMPLETION_HANDLERS: dict[str, Callable] = {}
+
 
 @dataclass
 class Assignment:
@@ -52,6 +57,12 @@ def register_arrival_handler(role: str, handler: Callable) -> None:
     """Register *handler(npc, assignment)* to run when a responder with
     ``db.role == role`` arrives on scene."""
     ARRIVAL_HANDLERS[role] = handler
+
+
+def register_completion_handler(role: str, handler: Callable) -> None:
+    """Register *handler(npc, assignment)* to run when a responder with
+    ``db.role == role`` finishes its assignment back at its post."""
+    COMPLETION_HANDLERS[role] = handler
 
 
 def get_assignment(npc: Any):
@@ -135,6 +146,13 @@ def _done(npc: Any) -> None:
     assignment = _ACTIVE.get(npc)
     if assignment is not None:
         assignment.state = "done"
+        role = getattr(getattr(npc, "db", None), "role", None)
+        handler = COMPLETION_HANDLERS.get(role)
+        if handler is not None:
+            try:
+                handler(npc, assignment)
+            except Exception:  # noqa: BLE001 — completion flavour must not strand
+                pass
     clear_assignment(npc)
 
 
