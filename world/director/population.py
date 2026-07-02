@@ -84,12 +84,15 @@ def spawn_secbot(location: Any, name: str | None = None) -> Any:
     from evennia import create_object
     from random import randint as _randint
     from world.anatomy import get_species_default_longdesc_locations
-    from world.identity import ROBOT_CHASSIS, ROBOT_FINISHES
+    from world.identity import ROBOT_FINISHES
     from world.llm.personas import SECURITY_BOT_PERSONA
     from world.medical.core import MedicalState
     from world.mob_flavor import apply_random_flavor
 
-    key = name or f"a {choice(ROBOT_FINISHES)} {choice(ROBOT_CHASSIS)} robot"
+    # A secbot IS a security robot — the varied chassis vocabulary
+    # (courier/loader/industrial, ROBOT_CHASSIS) belongs to other robots.
+    # Finish still varies so units read as a fleet, not clones.
+    key = name or f"a {choice(ROBOT_FINISHES)} security robot"
     mob = create_object(
         typeclass="typeclasses.llm_npc.LLMNpc",
         key=key, location=location, home=location,

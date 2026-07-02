@@ -120,3 +120,23 @@ class TestSpawnPostsToBase(TestCase):
                    return_value=None):
             unit = spawn_secbot(spawn_room)
         self.assertIs(unit.db.post, spawn_room)
+
+    @patch("world.director.population.factory_fit_armament")
+    @patch("world.mob_flavor.apply_random_flavor")
+    @patch("world.medical.core.MedicalState")
+    @patch("world.anatomy.get_species_default_longdesc_locations",
+           return_value={})
+    @patch("evennia.create_object")
+    def test_secbot_is_always_a_security_robot(self, mock_create, *_m):
+        # A secbot IS a security robot — never courier/loader/industrial
+        # (that chassis vocabulary belongs to other robots).
+        from world.director.population import spawn_secbot
+        mob = MagicMock()
+        mob.db = SimpleNamespace()
+        mock_create.return_value = mob
+        with patch("world.director.population.get_security_base",
+                   return_value=None):
+            for _ in range(6):
+                spawn_secbot(MagicMock(name="room"))
+                key = mock_create.call_args.kwargs["key"]
+                self.assertIn("security robot", key)
