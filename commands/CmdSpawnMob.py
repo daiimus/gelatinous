@@ -198,6 +198,15 @@ class CmdSpawnMob(Command):
             mob.db.role = "security"
             mob.db.llm_persona = dict(SECURITY_BOT_PERSONA)
             mob.db.llm_driven = True
+            # Issue sidearm + wield it (via the real command) so the unit
+            # can hold suspects at aim — the innocuous detainment rung.
+            try:
+                from evennia.prototypes.spawner import spawn as proto_spawn
+                pistol = proto_spawn("LIGHT_PISTOL")[0]
+                pistol.move_to(mob, quiet=True)
+                mob.execute_cmd("wield pistol")
+            except Exception:
+                pass  # an unarmed unit still functions; arm it by hand
 
         caller.msg(f"You manifest {mob_name} into the world.")
         msg_room_identity(
