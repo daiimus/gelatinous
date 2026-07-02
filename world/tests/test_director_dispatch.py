@@ -91,18 +91,28 @@ class TestDispatch(TestCase):
         ranked = find_responders(ev)
         self.assertEqual([npc for _s, npc in ranked], [other])
 
-    @patch("world.director.dispatch.travel_to", return_value=True)
+    @patch("world.director.assignment.assign", return_value=True)
+    @patch("world.director.assignment.is_assigned", return_value=False)
     @patch("world.director.dispatch.find_responders")
-    def test_dispatch_sends_severity_count_nearest(self, mock_fr, mock_travel):
+    def test_dispatch_sends_severity_count_nearest(self, mock_fr, _ia, mock_assign):
         a, b, c = _npc(_Room("a")), _npc(_Room("b")), _npc(_Room("c"))
         mock_fr.return_value = [(1, a), (2, b), (3, c)]
         sent = dispatch(WorldEvent("assault", _Room("e"), severity=2))
         self.assertEqual(sent, [a, b])  # nearest 2
-        self.assertEqual(mock_travel.call_count, 2)
+        self.assertEqual(mock_assign.call_count, 2)
 
-    @patch("world.director.dispatch.travel_to", return_value=True)
+    @patch("world.director.assignment.assign", return_value=True)
+    @patch("world.director.assignment.is_assigned")
+    @patch("world.director.dispatch.find_responders")
+    def test_dispatch_skips_committed_responders(self, mock_fr, mock_ia, _assign):
+        a, b, c = _npc(_Room("a")), _npc(_Room("b")), _npc(_Room("c"))
+        mock_fr.return_value = [(1, a), (2, b), (3, c)]
+        mock_ia.side_effect = lambda npc: npc is a  # nearest is busy
+        sent = dispatch(WorldEvent("assault", _Room("e"), severity=2))
+        self.assertEqual(sent, [b, c])  # skips the committed one
+
     @patch("world.director.dispatch.find_responders", return_value=[])
-    def test_dispatch_no_responders(self, _fr, _travel):
+    def test_dispatch_no_responders(self, _fr):
         self.assertEqual(dispatch(WorldEvent("assault", _Room("e"))), [])
 
 

@@ -18,10 +18,13 @@ class CmdDispatch(Command):
     Usage:
         @dispatch <type> [severity]   - raise an event; send responders
         @dispatch                     - list event types and who'd respond
+        @dispatch/status              - show active assignments (the pool)
 
     Eligible NPCs are those whose ``db.role`` responds to the event type
     (set one with ``@set <npc>/role = security``). The nearest are routed
     to you over the exit graph; ``severity`` (default 1) scales how many.
+    A dispatched responder arrives, investigates, lingers, then returns
+    to its post; while assigned it will not answer other incidents.
 
     Example:
         @set guard/role = security
@@ -35,6 +38,23 @@ class CmdDispatch(Command):
     def func(self):
         caller = self.caller
         args = self.args.strip()
+
+        if "status" in (self.switches or []):
+            from world.director import active_assignments
+            assignments = active_assignments()
+            if not assignments:
+                caller.msg("No active assignments — the pool is idle.")
+                return
+            caller.msg(f"|cActive assignments ({len(assignments)}):|n")
+            for a in assignments:
+                loc = a.event.location
+                caller.msg(
+                    f"  {a.npc.get_display_name(caller)} — {a.event.type} at "
+                    f"{loc.get_display_name(caller) if loc else '?'} "
+                    f"[{a.state}] (post: "
+                    f"{a.post.get_display_name(caller) if a.post else '?'})"
+                )
+            return
 
         if not args:
             caller.msg("|cEvent types → responding roles:|n")
