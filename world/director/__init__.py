@@ -27,6 +27,10 @@ from world.director.dispatch import (
     find_responders,
     raise_event,
 )
+from world.director.crime import (
+    CRIME_SEVERITY,
+    report_crime,
+)
 from world.director.security import (
     build_bolo,
     match_bolo,
@@ -39,6 +43,7 @@ from world.director.travel import (
 
 __all__ = [
     "Assignment",
+    "CRIME_SEVERITY",
     "ROLE_RESPONDS_TO",
     "WorldEvent",
     "active_assignments",
@@ -53,6 +58,7 @@ __all__ = [
     "match_bolo",
     "raise_event",
     "register_arrival_handler",
+    "report_crime",
     "resolve",
     "stop_travel",
     "travel_to",

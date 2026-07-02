@@ -264,6 +264,16 @@ class CmdAttack(Command):
             final_handler.enroll_room(caller.location)
             final_handler.enroll_room(target.location)
 
+        # --- CRIME REPORT (dispatch spec §5.2): attacking is an assault.
+        # The report is delayed/debounced inside report_crime (one incident
+        # per scene; BOLO snapshotted now, at crime time). Never allowed to
+        # break combat.
+        try:
+            from world.director.crime import report_crime
+            report_crime("assault", caller.location, perp=caller)
+        except Exception:
+            pass
+
         # --- CAPTURE PRE-ADDITION COMBAT STATE ---
         caller_was_in_final_handler = any(e["char"] == caller for e in final_handler.db.combatants)
         target_was_in_final_handler = any(e["char"] == target for e in final_handler.db.combatants)
