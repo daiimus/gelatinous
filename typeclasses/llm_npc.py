@@ -441,6 +441,15 @@ class LLMNpcMixin:
             self._remember_person(patron, arg)
         elif tool == "feel" and arg and patron:
             self._set_valence(self._memory_subject(patron), arg)
+        elif tool == "style" and arg:
+            # Adjust own clothing through the REAL zip/rollup commands —
+            # the fiction and the worn state stay in agreement.
+            parts = str(arg).strip().split(None, 1)
+            verb = parts[0].lower() if parts else ""
+            garment = parts[1] if len(parts) > 1 else ""
+            if verb in ("zip", "unzip", "button", "unbutton",
+                        "rollup", "unroll") and garment:
+                self.execute_cmd(f"{verb} {garment}")
         elif tool == "release":
             # The character has decided the exchange is over: drop the
             # conversation hold so the routine (patrol/drift) resumes on

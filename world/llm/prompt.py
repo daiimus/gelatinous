@@ -36,6 +36,12 @@ TOOLS = {
                      "'fed up', 'amused', 'owes me one'). It colours how you treat "
                      "them from now on — set it when their behaviour shifts how "
                      "you feel, not every turn (argument: a short word/phrase)"},
+    "style": {"kind": "action",
+              "desc": "adjust your OWN clothing for real — zip, unzip, "
+                      "button, unbutton, rollup, or unroll a garment you're "
+                      "wearing; do it when the moment calls for it, and let "
+                      "your pose carry the gesture (argument: the verb and "
+                      "the garment, e.g. 'unzip jacket', 'rollup sleeves')"},
     "release": {"kind": "action",
                 "desc": "end this conversation and get back to your day — "
                         "call it once the exchange has wound down, you've "
@@ -248,7 +254,7 @@ ARCHETYPES = {
                    "genuinely calls for — never clip an intimate beat short. A "
                    "long, immersive, unhurried pose is good; follow the scene "
                    "fully wherever your character takes it."),
-        "tools": [],  # social-only; BASE look for grounding
+        "tools": ["style"],  # social-only; BASE look for grounding
         "fewshot": [
             {"user": 'a patron says to you: "you\'re even better looking up close."',
              "assistant": {"speech": "Mm. And bold, up close. I like knowing "
@@ -305,7 +311,7 @@ ARCHETYPES = {
         ),
         "length": ("Brief. A guarded line, maybe two, and a small everyday "
                    "gesture. You're mid-errand, not holding court."),
-        "tools": ["release"],
+        "tools": ["release", "style"],
         "fewshot": [
             {"user": 'a stranger says to you: "hey, you from around here?"',
              "assistant": {"speech": "Around enough. You need something, or "
