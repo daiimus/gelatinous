@@ -211,3 +211,29 @@ class TestHideCommand(TestCase):
         item.move_to.assert_called_once_with(room, quiet=True)
         self.assertTrue(item.db.hidden)
         self.assertTrue(item.db.stash_roll)
+
+
+class TestStateTransitionsBreakStealth(TestCase):
+    """KO/death own override_place — a hidden character who drops must stop
+    being hidden (no "lurking" corpse, no body fading to invisible as
+    trackers' awareness decays). Pins the source-level calls."""
+
+    def test_unconscious_and_death_paths_break_stealth(self):
+        import inspect
+        import typeclasses.characters as chars
+        source = inspect.getsource(chars)
+        anchors = [
+            'self.override_place = "unconscious and motionless."',
+            'self.override_place = "lying motionless and deceased."',
+        ]
+        for anchor in anchors:
+            idx = 0
+            while True:
+                idx = source.find(anchor, idx)
+                if idx == -1:
+                    break
+                window = source[idx:idx + 400]
+                self.assertIn("break_stealth", window,
+                              f"override_place write without break_stealth "
+                              f"nearby: {anchor}")
+                idx += len(anchor)
