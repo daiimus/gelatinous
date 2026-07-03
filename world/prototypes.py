@@ -3632,3 +3632,276 @@ PIPE_WRENCH = {
     "weapon_type": "pipe_wrench",
     "damage_type": "blunt",
 }
+
+
+# ===================================================================
+# STREET FASHION + COMPANION LINE (style_configs give the nuance:
+# zip/unzip closures, rollup adjustments — same machinery as DEV_HOODIE)
+# ===================================================================
+
+SYNTHWEAVE_SHEATH = {
+    "prototype_key": "SYNTHWEAVE_SHEATH",
+    "key": "synthweave sheath dress",
+    "aliases": ["dress", "sheath"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A fitted sheath dress in liquid-black synthweave, cut to the knee with a side-zip from hip to hem. The fabric carries a faint pearlescent sheen and never wrinkles — engineered, like its usual wearers, to look effortless.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A liquid-{color}black|n synthweave sheath, fitted from shoulder to knee, its pearlescent sheen shifting as {they} move"),
+        ("coverage", ["chest", "back", "abdomen", "groin", "left_thigh", "right_thigh"]),
+        ("layer", 2),
+        ("color", "black"),
+        ("material", "synthweave"),
+        ("weight", 0.4),
+        ("style_configs", {
+            "closure": {
+                "zipped": {"coverage_mod": [], "desc_mod": ""},
+                "unzipped": {
+                    "coverage_mod": ["-left_thigh"],
+                    "desc_mod": "A liquid-{color}black|n synthweave sheath with the side-zip run open hip to hem, the slit baring one thigh with every stride",
+                },
+            },
+        }),
+        ("style_properties", {"closure": "zipped"}),
+    ],
+}
+
+MESH_TOP = {
+    "prototype_key": "MESH_TOP",
+    "key": "mesh top",
+    "aliases": ["mesh", "sheer top"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A long-sleeved top of fine industrial mesh, more suggestion than fabric. Colony street fashion at its most honest: it keeps off exactly nothing.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A fine {color}smoke|n-grey mesh top, more suggestion than fabric, skin reading through the weave"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
+        ("layer", 1),
+        ("color", "smoke"),
+        ("material", "mesh"),
+        ("weight", 0.1),
+    ],
+}
+
+CROPPED_JACKET = {
+    "prototype_key": "CROPPED_JACKET",
+    "key": "cropped jacket",
+    "aliases": ["crop jacket"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A cropped moto-cut jacket in dyed synth-leather, hem stopping at the ribs, with an off-center zip and a collar built to be worn up.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A cropped {color}oxblood|n synth-leather jacket ending at the ribs, collar up, zip catching the light"),
+        ("coverage", ["chest", "back", "left_arm", "right_arm"]),
+        ("layer", 3),
+        ("color", "oxblood"),
+        ("material", "synth-leather"),
+        ("weight", 0.9),
+        ("style_configs", {
+            "closure": {
+                "zipped": {
+                    "coverage_mod": [],
+                    "desc_mod": "A cropped {color}oxblood|n synth-leather jacket zipped to the throat, collar up like a closed door",
+                },
+                "unzipped": {
+                    "coverage_mod": ["-chest"],
+                    "desc_mod": "A cropped {color}oxblood|n synth-leather jacket hanging open off the shoulders, framing whatever's worn beneath",
+                },
+            },
+        }),
+        ("style_properties", {"closure": "unzipped"}),
+    ],
+}
+
+HEELED_BOOTS = {
+    "prototype_key": "HEELED_BOOTS",
+    "key": "heeled boots",
+    "aliases": ["heels"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Knee-high boots in polished synth-leather on a sculpted heel — high enough to announce every step on ferrocrete, stable enough to run in if the night turns.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Knee-high {color}black|n heeled boots, polished to a street-lamp shine, announcing every step"),
+        ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin"]),
+        ("layer", 2),
+        ("color", "black"),
+        ("material", "synth-leather"),
+        ("weight", 1.0),
+    ],
+}
+
+SYNTH_COLLAR = {
+    "prototype_key": "SYNTH_COLLAR",
+    "key": "sleek collar",
+    "aliases": ["collar", "choker"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A slim collar of brushed alloy on a synthweave band, closed with a magnetic clasp. On some necks it's jewelry; on a synth's, it reads uncomfortably like a maker's mark.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A slim brushed-{color}silver|n collar at the throat, clasp winking with each turn of the head"),
+        ("coverage", ["neck"]),
+        ("layer", 1),
+        ("color", "silver"),
+        ("material", "alloy"),
+        ("weight", 0.1),
+    ],
+}
+
+LONG_COAT = {
+    "prototype_key": "LONG_COAT",
+    "key": "long coat",
+    "aliases": ["duster", "coat"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "An ankle-length coat in heavy stormcloth, collar wide enough to hide in, cut to move like weather. The colony's most democratic garment: everyone from companions to gun-hands wears one eventually.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "An ankle-length {color}charcoal|n stormcloth coat moving like low weather around {them}"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
+        ("layer", 3),
+        ("color", "charcoal"),
+        ("material", "stormcloth"),
+        ("weight", 1.8),
+        ("style_configs", {
+            "closure": {
+                "zipped": {
+                    "coverage_mod": [],
+                    "desc_mod": "An ankle-length {color}charcoal|n stormcloth coat fastened to the collar, a moving column of weather",
+                },
+                "unzipped": {
+                    "coverage_mod": ["-chest", "-abdomen"],
+                    "desc_mod": "An ankle-length {color}charcoal|n stormcloth coat worn open, billowing back from whatever's underneath",
+                },
+            },
+        }),
+        ("style_properties", {"closure": "unzipped"}),
+    ],
+}
+
+BOMBER_JACKET = {
+    "prototype_key": "BOMBER_JACKET",
+    "key": "bomber jacket",
+    "aliases": ["bomber"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A nylon bomber with ribbed cuffs and a two-way zip, the shoulders patched with the ghost-stitching of insignia long since cut off.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A {color}forest|n-green nylon bomber, cuffs ribbed tight, ghost-stitching where patches used to live"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
+        ("layer", 3),
+        ("color", "forest"),
+        ("material", "nylon"),
+        ("weight", 0.8),
+        ("style_configs", {
+            "closure": {
+                "zipped": {"coverage_mod": [], "desc_mod": ""},
+                "unzipped": {
+                    "coverage_mod": ["-chest"],
+                    "desc_mod": "A {color}forest|n-green nylon bomber hanging open, ribbed hem swinging loose",
+                },
+            },
+        }),
+        ("style_properties", {"closure": "zipped"}),
+    ],
+}
+
+FLANNEL_SHIRT = {
+    "prototype_key": "FLANNEL_SHIRT",
+    "key": "flannel shirt",
+    "aliases": ["flannel"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A brushed-flannel work shirt in a red-black check, buttons mismatched from a decade of replacements. Sleeves made to be rolled.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A {color}red|n-black check flannel, soft with wear, buttons mismatched down the front"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
+        ("layer", 2),
+        ("color", "red"),
+        ("material", "flannel"),
+        ("weight", 0.6),
+        ("style_configs", {
+            "adjustable": {
+                "normal": {"coverage_mod": [], "desc_mod": ""},
+                "rolled": {
+                    "coverage_mod": [],
+                    "desc_mod": "A {color}red|n-black check flannel with the sleeves rolled past the elbow, forearms bare for work",
+                },
+            },
+            "closure": {
+                "zipped": {"coverage_mod": [], "desc_mod": ""},
+                "unzipped": {
+                    "coverage_mod": ["-chest", "-abdomen"],
+                    "desc_mod": "A {color}red|n-black check flannel worn open over whatever's beneath, tails loose",
+                },
+            },
+        }),
+        ("style_properties", {"adjustable": "normal", "closure": "zipped"}),
+    ],
+}
+
+TANK_TOP = {
+    "prototype_key": "TANK_TOP",
+    "key": "ribbed tank top",
+    "aliases": ["tank", "tank top"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A ribbed cotton tank in colony white — which is to say, grey. Cut close, holds its shape, asks nothing.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A ribbed {color}grey|n-white tank cut close to the body, shoulders bare"),
+        ("coverage", ["chest", "back", "abdomen"]),
+        ("layer", 1),
+        ("color", "grey"),
+        ("material", "cotton"),
+        ("weight", 0.2),
+    ],
+}
+
+SLIT_SKIRT = {
+    "prototype_key": "SLIT_SKIRT",
+    "key": "slit skirt",
+    "aliases": ["skirt"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A long bias-cut skirt in matte synthetic, slit high on one side. Moves like smoke; stops traffic like a wall.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A long matte-{color}black|n skirt slit high up one side, baring a stripe of thigh with each step"),
+        ("coverage", ["groin", "right_thigh", "left_shin", "right_shin"]),
+        ("layer", 2),
+        ("color", "black"),
+        ("material", "synthetic"),
+        ("weight", 0.4),
+    ],
+}
+
+LEATHER_TROUSERS = {
+    "prototype_key": "LEATHER_TROUSERS",
+    "key": "leather trousers",
+    "aliases": ["leathers"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Close-cut trousers in matte synth-leather, seams double-stitched, knees pre-scuffed by the factory or the street — impossible to say which.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Close-cut matte-{color}black|n synth-leather trousers, catching light along the seams"),
+        ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
+        ("layer", 2),
+        ("color", "black"),
+        ("material", "synth-leather"),
+        ("weight", 0.9),
+    ],
+}
+
+HIGH_TOPS = {
+    "prototype_key": "HIGH_TOPS",
+    "key": "high-top sneakers",
+    "aliases": ["sneakers", "high-tops", "hightops"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Canvas high-tops re-soled at least once, laces replaced with paracord. Street standard: quiet, quick, and dry enough.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Scuffed {color}white|n canvas high-tops laced with paracord"),
+        ("coverage", ["left_foot", "right_foot"]),
+        ("layer", 2),
+        ("color", "white"),
+        ("material", "canvas"),
+        ("weight", 0.6),
+    ],
+}

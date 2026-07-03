@@ -27,7 +27,7 @@ class _Room:
 class TestRoles(TestCase):
     def test_every_role_is_complete(self):
         for role, spec in CIVILIAN_ROLES.items():
-            self.assertTrue(spec["wardrobe"], role)
+            self.assertTrue(spec.get("wardrobe") or spec.get("outfits"), role)
             self.assertGreaterEqual(len(spec["ambient"]), 3, role)
             self.assertIn(spec["reaction"], ("comply", "flee", "resist"), role)
             self.assertIn("armed", spec, role)
@@ -67,14 +67,61 @@ class TestRoles(TestCase):
         self.assertIn("colonist", ARCHETYPES)
         self.assertEqual(ARCHETYPES["colonist"]["tools"], ["release"])
 
+    def _all_garments(self, spec):
+        out = []
+        for entry in spec.get("wardrobe", []):
+            out.extend(entry if isinstance(entry, list) else [entry])
+        for outfit in spec.get("outfits", []):
+            out.extend(outfit)
+        return out
+
     def test_no_disguise_items_in_wardrobes(self):
         # Essential disguise items would scramble civilian apparent_uids
         # (witness/BOLO identity must stay stable).
         for role, spec in CIVILIAN_ROLES.items():
-            for proto in spec["wardrobe"]:
+            for proto in self._all_garments(spec):
                 self.assertNotIn("MASK", proto, role)
                 self.assertNotIn("HOOD_UP", proto, role)
                 self.assertNotIn("WIG", proto, role)
+
+    def test_all_garments_reference_real_prototypes(self):
+        from world import prototypes as protos
+        for role, spec in CIVILIAN_ROLES.items():
+            for key in self._all_garments(spec):
+                self.assertTrue(hasattr(protos, key), f"{role}: {key}")
+
+    def test_companion_outfits_are_coherent_looks(self):
+        outfits = CIVILIAN_ROLES["synth_companion"]["outfits"]
+        self.assertGreaterEqual(len(outfits), 3)
+        for outfit in outfits:
+            self.assertIn("HEELED_BOOTS", outfit)   # every look walks
+
+    def test_register_merged_from_serverconfig(self):
+        from unittest.mock import patch as _patch
+        import world.director.civilians as _c
+        with _patch("evennia.server.models.ServerConfig") as mock_sc, \
+             _patch("evennia.create_object") as mock_create, \
+             _patch("evennia.prototypes.spawner.spawn") as mock_spawn, \
+             _patch("world.mob_flavor.apply_random_flavor"), \
+             _patch("world.anatomy.get_species_default_longdesc_locations",
+                    return_value={}), \
+             _patch("world.medical.core.MedicalState"), \
+             _patch("world.spatial.rooms_within", return_value=[]), \
+             _patch("world.spatial.is_reachable", return_value=True):
+            mock_sc.objects.conf.return_value = {
+                "synth_companion": "EXPLICIT-DIRECTIVE-SENTINEL"}
+            garment = MagicMock(); garment.key = "dress"
+            mock_spawn.return_value = [garment]
+            npc = MagicMock(); npc.db = SimpleNamespace()
+            mock_create.return_value = npc
+            _c.spawn_civilian("synth_companion", _Room("alley"))
+            self.assertEqual(npc.db.llm_persona["register"],
+                             "EXPLICIT-DIRECTIVE-SENTINEL")
+            # roles WITHOUT a configured register stay clean
+            npc2 = MagicMock(); npc2.db = SimpleNamespace()
+            mock_create.return_value = npc2
+            _c.spawn_civilian("miner", _Room("street"))
+            self.assertNotIn("register", npc2.db.llm_persona)
 
     def test_ambient_beat_by_role(self):
         npc = SimpleNamespace(db=SimpleNamespace(role="miner"))
