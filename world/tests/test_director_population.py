@@ -101,6 +101,7 @@ class TestSpawnPostsToBase(TestCase):
         self.assertIs(unit.db.post, base)
         self.assertEqual(unit.db.patrol_beat, [street_a, street_b])
         self.assertEqual(unit.db.role, "security")
+        self.assertTrue(unit.db.is_npc)   # canonical marker (absence = PC)
         self.assertTrue(unit.db.llm_driven)
         self.assertIsNone(unit.height)   # chassis renders via its key
 

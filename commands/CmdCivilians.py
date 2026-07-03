@@ -5,7 +5,7 @@ The refine-on-the-fly surface for the civilian layer
 iterated on, so everything here is cheap to redo.
 """
 
-from evennia import Command
+from evennia import default_cmds
 
 from world.director.civilians import (
     CIVILIAN_ROLES,
@@ -15,7 +15,7 @@ from world.director.civilians import (
 )
 
 
-class CmdCivilians(Command):
+class CmdCivilians(default_cmds.MuxCommand):
     """
     Manage the civilian population.
 

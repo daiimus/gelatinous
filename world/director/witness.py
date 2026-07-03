@@ -69,6 +69,7 @@ def spawn_witness(location: Any) -> Any | None:
         return None
     witness.height = choice(HEIGHTS)
     witness.build = choice(BUILDS)
+    witness.db.is_npc = True   # the canonical NPC marker (absence = PC)
     witness.db.tokens = randint(*WITNESS_TOKENS)          # §5.2 pockets
     witness.db.is_witness = True
     # The visible tell — this is who saw you, and what they're about to do.

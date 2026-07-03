@@ -111,6 +111,7 @@ def spawn_secbot(location: Any, name: str | None = None) -> Any:
     # Security wiring: dispatchable + voiced; deterministic layer stays
     # authoritative. Chassis renders via its robot key, not the humanoid
     # descriptor table (LLMNpc's safety-net seeds height/build).
+    mob.db.is_npc = True   # the canonical NPC marker (absence = PC)
     mob.db.role = "security"
     mob.db.llm_persona = dict(SECURITY_BOT_PERSONA)
     mob.db.llm_driven = True

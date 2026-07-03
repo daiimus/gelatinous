@@ -166,6 +166,7 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     apply_random_flavor(npc)   # sdesc + @longdescs + look_place
 
     # Role, management tag, pockets, LLM persona.
+    npc.db.is_npc = True   # the canonical NPC marker (absence = PC)
     npc.db.role = role
     npc.tags.add(CIV_TAG, category=CIV_TAG_CATEGORY)
     npc.db.tokens = randint(*TOKEN_RANGE)
