@@ -1986,6 +1986,32 @@ class TestSecondPersonObserverRef(TestCase):
         self.assertIn("your hands", out)
         self.assertNotIn("you's", out)
 
+    def test_emote_curly_possessive_is_your(self):
+        # LLM actors emit typographic apostrophes; the cleanup must catch them
+        toks = self.tok_emote("eyes the droog\u2019s hands", self.actor,
+                              [self.you])
+        out = self.render_emote(toks, self.actor, self.you).lower()
+        self.assertIn("your hands", out)
+        self.assertNotIn("you\u2019s", out)
+
+    def test_emote_doubled_ref_collapses_for_target(self):
+        # "you the droog's shirt" (bare you + the reference) must not render
+        # "you you's shirt" — the dangling you drops like an article
+        toks = self.tok_emote("buttons you the droog's shirt", self.actor,
+                              [self.you])
+        out = self.render_emote(toks, self.actor, self.you).lower()
+        self.assertIn("buttons your shirt", out)
+        self.assertNotIn("you you", out)
+
+    def test_emote_doubled_ref_collapses_for_third_party(self):
+        stranger = _make_character(key="S2", sex="male", height="average",
+                                   build="average", sdesc_keyword="figure",
+                                   sleeve_uid="uid-str2", recognition_memory={})
+        toks = self.tok_emote("buttons you the droog's shirt", self.actor,
+                              [self.you])
+        out = self.render_emote(toks, self.actor, stranger).lower()
+        self.assertNotIn("you", out.split("buttons", 1)[1].split("shirt")[0])
+
     def test_dotpose_ref_to_observer_is_you(self):
         toks = self.tok_dot("nod at the droog", self.actor, [self.actor, self.you])
         out = self.render_dot(toks, self.actor, self.you).lower()

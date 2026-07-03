@@ -607,8 +607,16 @@ _OOC_MARKERS = ("as an ai", "language model", "i cannot", "i am an ai")
 _MAX_LEN = 500
 
 
+#: Models love typographic quotes; the game's speech rails, quote extraction,
+#: and the emote renderer's you's->your cleanup all key on ASCII. Normalise
+#: at the source so every downstream consumer sees straight quotes.
+_SMART_QUOTES = str.maketrans({"’": "'", "‘": "'",
+                               "“": '"', "”": '"'})
+
+
 def _clean(text: str) -> str:
-    text = (text or "").strip().strip("\"'*").strip()
+    text = (text or "").translate(_SMART_QUOTES)
+    text = text.strip().strip("\"'*").strip()
     text = re.sub(r"^[A-Z][a-z]+:\s*", "", text)
     return re.sub(r"\s+", " ", text).strip()[:_MAX_LEN]
 
