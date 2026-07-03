@@ -286,6 +286,27 @@ class LLMNpcMixin:
 
     # --- ambient action-awareness (§8.4) ---------------------------------
 
+    def perceive_forced_command(self, raw):
+        """An outside will (the admin ``force`` command) just drove this body.
+
+        Let the brain perceive what it did as its OWN act — the GM speaks
+        *through* the NPC, so the model carries on owning the line/gesture
+        instead of having no memory of it next turn. Buffered like any
+        witnessed event; it rides the next reply's [RECENTLY] block."""
+        if not self.db.llm_driven or not raw:
+            return
+        raw = " ".join(str(raw).split())
+        parts = raw.split(None, 1)
+        verb = parts[0].lower() if parts else ""
+        rest = parts[1] if len(parts) > 1 else ""
+        if verb in ("say", "'") and rest:
+            text = f'You yourself just said: "{rest}"'
+        elif verb in ("pose", "emote", ";", ":") and rest:
+            text = f"You yourself just did: {rest}"
+        else:
+            text = f"You yourself just did this: {raw}"
+        self._observe_action(self, text)
+
     def _observe_action(self, actor, text):
         """Buffer a witnessed room action — reactor-side, NO LLM. Already
         rendered from this NPC's POV (names resolved), so just keep the text."""

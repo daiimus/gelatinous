@@ -1206,3 +1206,44 @@ class CmdKeywords(Command):
         else:
             caller.msg(f"|rFailed:|n {reason}")
 
+
+
+class CmdForce(Command):
+    """
+    Force an object to execute a command.
+
+    Usage:
+        force <object> = <command string>
+
+    Example:
+        force bob = get stick
+
+    An LLM-driven NPC perceives what it was made to do — the compelled
+    line or gesture enters its awareness as its own act, so it carries
+    the moment forward coherently in conversation.
+    """
+
+    key = "force"
+    locks = "cmd:perm(spawn) or perm(Builder)"
+    help_category = "Building"
+
+    def parse(self):
+        lhs, _, rhs = (self.args or "").partition("=")
+        self.lhs, self.rhs = lhs.strip(), rhs.strip()
+
+    def func(self):
+        if not self.lhs or not self.rhs:
+            self.msg("You must provide a target and a command string to execute.")
+            return
+        targ = self.caller.search(self.lhs)
+        if not targ:
+            return
+        if not targ.access(self.caller, "edit"):
+            self.msg(f"You don't have permission to force {targ} to execute commands.")
+            return
+        targ.execute_cmd(self.rhs)
+        # An LLM brain gets to know what its body was just made to do.
+        perceive = getattr(targ, "perceive_forced_command", None)
+        if callable(perceive):
+            perceive(self.rhs)
+        self.msg(f"You have forced {targ} to: {self.rhs}")
