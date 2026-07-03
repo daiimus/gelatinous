@@ -254,11 +254,17 @@ class LLMNpcMixin:
         loc = self.location
         if not loc:
             return []
+        from world.perception import can_perceive
         names = []
         for obj in loc.contents:
             if obj is self or obj is patron:
                 continue
             if not hasattr(obj, "get_sdesc"):
+                continue
+            # Presence gate (stealth spec §7): the model's PRESENT roster
+            # only lists people this NPC actually perceives — a hidden
+            # character doesn't leak into an NPC brain's context.
+            if not can_perceive(self, obj):
                 continue
             name = self._address_handle(obj)
             if name:

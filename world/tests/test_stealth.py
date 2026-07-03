@@ -384,3 +384,81 @@ class TestStealthAttribution(TestCase):
                 patch("world.stealth.is_hidden_from", return_value=False):
             self.assertEqual(
                 resolve_speaker_attribution(speaker, observer), "a shadow")
+
+
+class TestLeakSweep(TestCase):
+    """Leak-completeness (spec §7): no enumeration path shows a hidden
+    target to an unaware observer. Each test drives one real path."""
+
+    def _hidden_char(self):
+        c = _char(hidden=True)
+        c.get_sdesc = lambda: "a shape"
+        return c
+
+    def test_choke_basics(self):
+        from world.perception import can_perceive, filter_present
+        looker = _char()
+        hidden, plain = self._hidden_char(), _char()
+        with _uid_for(None):
+            self.assertFalse(can_perceive(looker, hidden))
+            self.assertTrue(can_perceive(looker, plain))
+            self.assertEqual(filter_present(looker, [hidden, plain]),
+                             [plain])
+            set_awareness(looker, hidden, ALERT)
+            self.assertTrue(can_perceive(looker, hidden))
+
+    def test_adjacent_sightings_do_not_count_hidden(self):
+        from typeclasses.rooms import Room
+        looker = _char()
+        hidden = self._hidden_char()
+        adjacent = _room(hidden)
+        exit_obj = MagicMock()
+        exit_obj.destination = adjacent
+        exit_obj.key = "north"
+        room = MagicMock()
+        room.exits = [exit_obj]
+        sightings = Room.get_adjacent_character_sightings.__get__(room)
+        with _uid_for(None):
+            self.assertEqual(sightings(looker), "")
+            set_awareness(looker, hidden, ALERT)
+            self.assertIn("lone figure", sightings(looker))
+
+    def test_identity_targeting_refuses_hidden(self):
+        from commands._identity_targeting import resolve_character_target
+        caller = _char()
+        caller.check_permstring.return_value = False
+        hidden = self._hidden_char()
+        with _uid_for(None), \
+                patch("commands._identity_targeting."
+                      "identity_match_characters",
+                      side_effect=lambda c, q, cands: list(cands)):
+            self.assertIsNone(
+                resolve_character_target(caller, "shape",
+                                         candidates=[hidden]))
+            set_awareness(caller, hidden, ALERT)
+            self.assertIs(
+                resolve_character_target(caller, "shape",
+                                         candidates=[hidden]),
+                hidden)
+
+    def test_emote_charref_candidates_exclude_hidden(self):
+        from world.emote import build_char_candidates
+        actor = _char()
+        hidden = self._hidden_char()
+        with _uid_for(None):
+            names = [c for _n, c, _rc in
+                     build_char_candidates(actor, [actor, hidden])]
+        self.assertNotIn(hidden, names)
+
+    def test_llm_present_roster_excludes_hidden(self):
+        from typeclasses.llm_npc import LLMNpcMixin
+        npc = _char()
+        hidden = self._hidden_char()
+        room = _room(npc, hidden)
+        npc.location = room
+        npc._address_handle = lambda t: "a shape"
+        present = LLMNpcMixin._present_others.__get__(npc)
+        with _uid_for(None):
+            self.assertEqual(present(), [])
+            set_awareness(npc, hidden, ALERT)
+            self.assertEqual(present(), ["a shape"])
