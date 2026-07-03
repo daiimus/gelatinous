@@ -24,7 +24,10 @@ status_server() {
 }
 
 echo "--- reload ---"
-docker exec -w "$GAME" "$CONTAINER" evennia reload --settings settings.py 2>&1 | tail -2
+# timeout: a reload with an LLM generation in flight can block forever
+# inside `evennia reload` itself — cap it so the recovery branch below
+# always gets its turn.
+timeout 45 docker exec -w "$GAME" "$CONTAINER" evennia reload --settings settings.py 2>&1 | tail -2     || echo "(reload command timed out — falling through to recovery)"
 
 sleep 8
 if [ "$(status_server)" -ge 1 ]; then
