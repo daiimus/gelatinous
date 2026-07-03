@@ -428,3 +428,34 @@ class TestCmdForceHook(TestCase):
         targ.access.return_value = True
         self._cmd(targ).func()
         targ.execute_cmd.assert_called_once_with("say hello there")
+
+
+class TestRoomDescPerception(TestCase):
+    def test_perceived_desc_ansi_stripped(self):
+        from typeclasses.llm_persona import _room_desc
+        npc = MagicMock()
+        npc.location.get_display_desc = (
+            lambda looker, **kw: "|rNeon|n  bleeds over   wet ferrocrete.")
+        self.assertEqual(_room_desc(npc), "Neon bleeds over wet ferrocrete.")
+
+    def test_falls_back_to_db_desc(self):
+        from typeclasses.llm_persona import _room_desc
+        npc = MagicMock()
+        npc.location = MagicMock(spec=["db"])
+        npc.location.db.desc = "A bare service corridor."
+        self.assertEqual(_room_desc(npc), "A bare service corridor.")
+
+    def test_long_desc_sentence_bounded(self):
+        from typeclasses.llm_persona import _room_desc
+        npc = MagicMock()
+        npc.location.get_display_desc = (
+            lambda looker, **kw: ("A sentence about the street. " * 40))
+        out = _room_desc(npc)
+        self.assertLessEqual(len(out), 500)
+        self.assertTrue(out.endswith("street."))
+
+    def test_no_location_none(self):
+        from typeclasses.llm_persona import _room_desc
+        npc = MagicMock()
+        npc.location = None
+        self.assertIsNone(_room_desc(npc))

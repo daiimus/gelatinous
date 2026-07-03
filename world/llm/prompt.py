@@ -487,6 +487,10 @@ def render_persona(persona: dict) -> str:
         # duties (a bartender tends the bar; a companion works the floor), never
         # from a hardcoded role baked into the shared persona render.
         lines.append(f"You are at {loc['name']}.")
+    if loc.get("desc"):
+        lines.append(f"Your surroundings: {loc['desc']} Ground your gestures "
+                     "in what is actually here — never invent fixtures, "
+                     "furniture, or weather this place doesn't offer.")
     menu = persona.get("menu")
     if menu:
         lines.append("Your bar serves ONLY: " + ", ".join(menu) + " (no beer, no "
