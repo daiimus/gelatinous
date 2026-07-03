@@ -3316,6 +3316,23 @@ WORK_COVERALLS = {
         ("color", "grey"),
         ("material", "twill"),
         ("weight", 1.4),
+        ("style_configs", {
+            "adjustable": {
+                "normal": {"coverage_mod": [], "desc_mod": ""},
+                "rolled": {
+                    "coverage_mod": ["-left_arm", "-right_arm"],
+                    "desc_mod": "Heavy {color}grey|n twill coveralls with the sleeves rolled past the elbow, forearms bare for the work",
+                },
+            },
+            "closure": {
+                "zipped": {"coverage_mod": [], "desc_mod": ""},
+                "unzipped": {
+                    "coverage_mod": ["-chest"],
+                    "desc_mod": "Heavy {color}grey|n twill coveralls unzipped to the sternum, hanging open over whatever's beneath",
+                },
+            },
+        }),
+        ("style_properties", {"adjustable": "normal", "closure": "zipped"}),
     ],
 }
 
@@ -3401,6 +3418,16 @@ DUST_PONCHO = {
         ("color", "olive"),
         ("material", "canvas"),
         ("weight", 1.1),
+        ("style_configs", {
+            "closure": {
+                "zipped": {
+                    "coverage_mod": [],
+                    "desc_mod": "A waxed {color}olive|n canvas poncho snapped shut down both sides, a weatherproof tent of a garment",
+                },
+                "unzipped": {"coverage_mod": [], "desc_mod": ""},
+            },
+        }),
+        ("style_properties", {"closure": "unzipped"}),
     ],
 }
 
@@ -3435,6 +3462,16 @@ COMPANY_WINDBREAKER = {
         ("color", "blue"),
         ("material", "nylon"),
         ("weight", 0.5),
+        ("style_configs", {
+            "closure": {
+                "zipped": {"coverage_mod": [], "desc_mod": ""},
+                "unzipped": {
+                    "coverage_mod": ["-chest"],
+                    "desc_mod": "A corporate-{color}blue|n windbreaker hanging open, the logo\'d panel flapping with each step",
+                },
+            },
+        }),
+        ("style_properties", {"closure": "zipped"}),
     ],
 }
 
@@ -3446,12 +3483,22 @@ THERMAL_SHIRT = {
     "desc": "A long-sleeved thermal in waffle-knit cotton, collar stretched from being pulled on in the dark. The colony runs cold underground and colder above.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A waffle-knit {color}charcoal|n thermal, sleeves pushed to the elbow, collar gone soft"),
+        ("worn_desc", "A waffle-knit {color}charcoal|n thermal, collar gone soft with years of pulling on"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("layer", 1),
         ("color", "charcoal"),
         ("material", "cotton"),
         ("weight", 0.5),
+        ("style_configs", {
+            "adjustable": {
+                "normal": {"coverage_mod": [], "desc_mod": ""},
+                "rolled": {
+                    "coverage_mod": [],
+                    "desc_mod": "A waffle-knit {color}charcoal|n thermal with the sleeves pushed past the elbow, collar gone soft",
+                },
+            },
+        }),
+        ("style_properties", {"adjustable": "normal"}),
     ],
 }
 
@@ -3554,6 +3601,16 @@ COMPANY_COAT = {
         ("color", "charcoal"),
         ("material", "wool"),
         ("weight", 1.2),
+        ("style_configs", {
+            "closure": {
+                "zipped": {"coverage_mod": [], "desc_mod": ""},
+                "unzipped": {
+                    "coverage_mod": ["-chest", "-abdomen"],
+                    "desc_mod": "A pressed {color}charcoal|n company coat worn open off the shoulders, authority at ease",
+                },
+            },
+        }),
+        ("style_properties", {"closure": "zipped"}),
     ],
 }
 
