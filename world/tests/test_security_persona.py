@@ -15,8 +15,9 @@ class TestSecurityArchetype(TestCase):
         arch = ARCHETYPES["security"]
         for key in ("duties", "length", "tools", "fewshot"):
             self.assertIn(key, arch)
-        # action belongs to the deterministic layer — no action tools.
-        self.assertEqual(arch["tools"], [])
+        # combat/detain stays deterministic; `release` (end a chat) is the
+        # one conversational action it owns.
+        self.assertEqual(arch["tools"], ["release"])
 
     def test_fewshot_is_machine_register(self):
         shots = ARCHETYPES["security"]["fewshot"]

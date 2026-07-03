@@ -62,13 +62,24 @@ def _in_combat(npc: Any) -> bool:
     return check(npc)
 
 
+def _is_conversing(npc: Any) -> bool:
+    """Mid-conversation with a player (the LLM engagement hold): the NPC
+    defers its routine until the model calls ``release`` or the hold's
+    inactivity window lapses — nobody walks out of an exchange because a
+    heartbeat said so."""
+    from time import monotonic
+    until = getattr(getattr(npc, "ndb", None), "llm_engaged_until", None)
+    return bool(until and until > monotonic())
+
+
 def is_patrol_idle(npc: Any) -> bool:
     """Free to take a patrol step: not assigned, not mid-travel, not
-    fighting, and actually somewhere."""
+    fighting, not mid-conversation, and actually somewhere."""
     return (npc.location is not None
             and not is_assigned(npc)
             and not is_travelling(npc)
-            and not _in_combat(npc))
+            and not _in_combat(npc)
+            and not _is_conversing(npc))
 
 
 # --------------------------------------------------------------------------
