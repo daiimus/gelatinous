@@ -227,3 +227,125 @@ class TestRecall(TestCase):
         re.assert_not_called()                            # nothing to recall
         self.assertIsNone(bm.call_args.kwargs.get("memories"))
         b._agentic_round.assert_called_once()
+
+
+class TestConversationHold(TestCase):
+    """RP-session continuity: poses refresh the hold, the engaged partner
+    stays 'directed' without re-naming the NPC, release ends it."""
+
+    def _npc(self):
+        b = MagicMock()
+        b.db.llm_driven = True
+        b.location = "room"
+        b.ndb.last_llm = 0
+        b.ndb.llm_engaged_until = None
+        b.ndb.llm_engaged_with = None
+        b._memory_subject = lambda p: f"#{p.id}"
+        b._load_memories = lambda: []
+        b._relationship_line = lambda subject, patron: None
+        b._drain_actions = lambda: []
+        b._perceive = lambda p: None
+        b._recent_history = lambda p: []
+        b._agentic_round = MagicMock()
+        b._llm_silent = lambda: None
+        b._hist_key = lambda p: f"#{p.id}"
+        b._is_npc_speaker = lambda s: False
+        for m in ("_try_llm_reply", "_classify_speech", "_is_engaged_with",
+                  "_handle_action_tool"):
+            _bind(b, m)
+        return b
+
+    def _patron(self):
+        p = MagicMock()
+        p.id = 5
+        p.location = "room"
+        return p
+
+    def test_directed_pose_refreshes_hold(self):
+        b, patron = self._npc(), self._patron()
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "build_persona", return_value={}), \
+                patch.object(llmnpc, "build_messages", return_value=["m"]):
+            b._try_llm_reply("leans close", patron, "action")
+        self.assertIsNotNone(b.ndb.llm_engaged_until)
+        self.assertEqual(b.ndb.llm_engaged_with, "#5")
+
+    def test_engaged_partner_stays_directed_in_a_crowd(self):
+        from time import monotonic
+        b, patron = self._npc(), self._patron()
+        b.ndb.llm_engaged_until = monotonic() + 60
+        b.ndb.llm_engaged_with = "#5"
+        b._mentions_self = lambda s: False
+        b._is_alone_with = lambda s: False      # crowded room
+        self.assertEqual(b._classify_speech("more of that", patron), "directed")
+
+    def test_stranger_stays_ambient_while_npc_is_engaged(self):
+        from time import monotonic
+        b = self._npc()
+        b.ndb.llm_engaged_until = monotonic() + 60
+        b.ndb.llm_engaged_with = "#5"
+        b._mentions_self = lambda s: False
+        b._is_alone_with = lambda s: False
+        other = MagicMock()
+        other.id = 9
+        self.assertEqual(b._classify_speech("hey", other), "ambient")
+
+    def test_expired_hold_is_not_engagement(self):
+        b, patron = self._npc(), self._patron()
+        b.ndb.llm_engaged_until = 1.0          # long past
+        b.ndb.llm_engaged_with = "#5"
+        self.assertFalse(b._is_engaged_with(patron))
+
+    def test_release_clears_hold_and_partner(self):
+        b = self._npc()
+        b.ndb.llm_engaged_until = 123.0
+        b.ndb.llm_engaged_with = "#5"
+        b._handle_action_tool("release", "", MagicMock())
+        self.assertIsNone(b.ndb.llm_engaged_until)
+        self.assertIsNone(b.ndb.llm_engaged_with)
+
+
+class TestStyleTool(TestCase):
+    def _npc(self):
+        b = MagicMock()
+        _bind(b, "_handle_action_tool")
+        return b
+
+    def test_remove_and_wear_route_to_real_commands(self):
+        b = self._npc()
+        b._handle_action_tool("style", "remove mesh top", MagicMock())
+        b.execute_cmd.assert_called_once_with("remove mesh top")
+        b.execute_cmd.reset_mock()
+        b._handle_action_tool("style", "wear long coat", MagicMock())
+        b.execute_cmd.assert_called_once_with("wear long coat")
+
+    def test_unknown_verb_refused(self):
+        b = self._npc()
+        b._handle_action_tool("style", "eat hat", MagicMock())
+        b.execute_cmd.assert_not_called()
+
+
+class TestEchoGuard(TestCase):
+    """A pose aimed at the NPC must never come straight back as its reply."""
+
+    def _turn(self, turn, line):
+        b = MagicMock()
+        _bind(b, "_on_turn")
+        with patch.object(llmnpc, "parse_turn", return_value=dict(turn)), \
+                patch.object(llmnpc, "tool_names", return_value=[]):
+            b._on_turn([], {}, MagicMock(), line, "a man", lambda: None, 0, "{}")
+        return b._render_llm_reply.call_args.args
+
+    def test_parroted_pose_dropped_before_render(self):
+        line = "runs a hand down the synth's arm, smiling slowly"
+        speech, action = self._turn(
+            {"speech": None, "thought": None, "tool": "none", "tool_argument": "",
+             "action": "runs a hand down the synth's arm, smiling"}, line)[:2]
+        self.assertIsNone(action)
+
+    def test_original_action_renders(self):
+        speech, action = self._turn(
+            {"speech": "mm", "thought": None, "tool": "none", "tool_argument": "",
+             "action": "arches into the touch, unhurried"},
+            "runs a hand down the synth's arm")[:2]
+        self.assertEqual(action, "arches into the touch, unhurried")

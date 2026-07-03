@@ -29,14 +29,15 @@ from typeclasses.llm_persona import build_persona
 from world.llm import memory as mem
 from world.llm.client import llm_enabled, request_embedding, request_turn
 from world.llm.prompt import (
-    CONTEXT_TOOLS, build_messages, parse_turn, schema_for, tool_names,
+    CONTEXT_TOOLS, build_messages, is_echo, parse_turn, schema_for, tool_names,
 )
 
 LLM_DIRECTED_COOLDOWN = 4.0    # min seconds between replies to direct address/name
-LLM_ENGAGE_HOLD = 180.0        # conversation hold: an engaged NPC defers its
+LLM_ENGAGE_HOLD = 600.0        # conversation hold: an engaged NPC defers its
                                # routine (patrol/drift) until the model calls
                                # the `release` tool or this inactivity window
-                               # lapses (failsafe for walked-away-from NPCs)
+                               # lapses (failsafe for walked-away-from NPCs).
+                               # Generous: a long RP pose takes minutes to type.
 LLM_AMBIENT_COOLDOWN = 45.0    # rarely volunteers into overheard chatter
 LLM_AMBIENT_CHANCE = 0.35      # ...and not every eligible time
 LLM_HISTORY_TURNS = 6          # recent turns kept per interlocutor (anti-repetition)
@@ -100,9 +101,20 @@ class LLMNpcMixin:
         """Cheap reactor-side gate: ``directed`` | ``ambient`` | ``ignore``."""
         if self._is_npc_speaker(speaker):
             return "ignore"
+        # Mid-conversation, the engaged partner doesn't have to keep naming
+        # this NPC — their lines stay directed (else a busy room demotes them
+        # to ambient and the NPC goes near-mute mid-scene).
+        if self._is_engaged_with(speaker):
+            return "directed"
         if self._mentions_self(speech) or self._is_alone_with(speaker):
             return "directed"
         return "ambient"
+
+    def _is_engaged_with(self, speaker):
+        """Whether the conversation hold is active AND held for this speaker."""
+        until = self.ndb.llm_engaged_until
+        return bool(until and monotonic() < until
+                    and self.ndb.llm_engaged_with == self._hist_key(speaker))
 
     def _is_alone_with(self, speaker):
         """True when no other character shares the room — so the speaker can only
@@ -152,11 +164,14 @@ class LLMNpcMixin:
         elif now - last < LLM_DIRECTED_COOLDOWN:
             return True
         self.ndb.last_llm = now
-        if mode == "directed":
+        if mode in ("directed", "action"):
             # Conversation hold: don't wander off mid-exchange. Rolling —
-            # refreshed every directed turn; the model releases it early via
-            # the `release` tool.
+            # refreshed every directed turn AND every pose aimed at us (an RP
+            # scene is mostly poses); the model releases it early via the
+            # `release` tool. Keyed to the partner so their lines stay
+            # directed without re-naming us each turn.
             self.ndb.llm_engaged_until = now + LLM_ENGAGE_HOLD
+            self.ndb.llm_engaged_with = self._hist_key(patron)
 
         # Capture everything reactor-side BEFORE threading (SQLite/Evennia-thread
         # contract). The agentic loop re-calls from the reactor-side callback.
@@ -406,6 +421,11 @@ class LLMNpcMixin:
     def _on_turn(self, messages, persona, patron, line, speaker_name, on_fail,
                  rounds, raw):
         turn = parse_turn(raw, persona, tool_names(persona))
+        # Echo guard: a pose aimed at the NPC sometimes comes straight back
+        # as its "own" action (or speech). Parroting reads broken — drop it.
+        for field in ("action", "speech"):
+            if turn[field] and is_echo(turn[field], line):
+                turn[field] = None
         tool, arg = turn["tool"], turn["tool_argument"]
         # Context tool: run the real read, feed the result back, loop.
         if tool in CONTEXT_TOOLS and rounds < LLM_MAX_TOOL_ROUNDS:
@@ -448,7 +468,7 @@ class LLMNpcMixin:
             verb = parts[0].lower() if parts else ""
             garment = parts[1] if len(parts) > 1 else ""
             if verb in ("zip", "unzip", "button", "unbutton",
-                        "rollup", "unroll") and garment:
+                        "rollup", "unroll", "remove", "wear") and garment:
                 self.execute_cmd(f"{verb} {garment}")
         elif tool == "release":
             # The character has decided the exchange is over: drop the
@@ -456,6 +476,7 @@ class LLMNpcMixin:
             # the next heartbeat. The goodbye itself rides the normal
             # speech/action channels of this same turn.
             self.ndb.llm_engaged_until = None
+            self.ndb.llm_engaged_with = None
 
     def _remember_person(self, patron, name):
         """Privately name/nickname the interlocutor via the REAL ``remember``

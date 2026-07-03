@@ -29,6 +29,28 @@ def _self_pronouns(npc) -> str:
         return "they/them"
 
 
+def _wardrobe(npc) -> tuple:
+    """(wearing, carrying): worn garments — with their live style state, so the
+    model knows what's zipped/rolled and what the `style` tool can act on — and
+    the loose inventory. This is the NPC's real self-knowledge of its own kit;
+    without it the model invents clothing it isn't wearing."""
+    wearing, carrying = [], []
+    try:
+        worn = list(npc.get_worn_items() or [])
+        for item in worn:
+            entry = item.key
+            props = getattr(item, "style_properties", None) or {}
+            states = sorted(str(v) for v in props.values() if v and v != "normal")
+            if states:
+                entry += f" ({', '.join(states)})"
+            wearing.append(entry)
+        worn_ids = {id(i) for i in worn}
+        carrying = [obj.key for obj in npc.contents if id(obj) not in worn_ids]
+    except Exception:  # noqa: BLE001 — never break persona-building over kit
+        pass
+    return wearing, carrying
+
+
 def build_persona(npc) -> dict:
     """Build the persona dict from the NPC's real fields. Defensive throughout.
 
@@ -58,8 +80,12 @@ def build_persona(npc) -> dict:
         bar_menu = (bar.db.menu if bar else None) or npc.db.menu or []
         menu = [r.get("name") for r in bar_menu if r.get("name")] or None
 
+    wearing, carrying = _wardrobe(npc)
+
     return {
         "sdesc": npc.get_sdesc(),
+        "wearing": wearing,
+        "carrying": carrying,
         "longdescs": longdescs,
         "skintone": getattr(npc.db, "skintone", None),
         "height": npc.height,

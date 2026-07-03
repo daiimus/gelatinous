@@ -9,8 +9,8 @@ from unittest import TestCase
 
 from world.llm.prompt import (
     ARCHETYPES, BASE_TOOLS, CONTEXT_TOOLS, TOOLS, TURN_SCHEMA, _archetype,
-    build_messages, parse_turn, render_persona, schema_for, tool_names,
-    turn_schema,
+    build_messages, is_echo, parse_turn, render_persona, schema_for,
+    tool_names, turn_schema,
 )
 
 _PERSONA = {
@@ -375,3 +375,65 @@ class TestThoughtChannel(TestCase):
         from world.llm.prompt import TURN_SCHEMA
         self.assertIn("thought", TURN_SCHEMA["properties"])
         self.assertIn("thought", TURN_SCHEMA["required"])
+
+
+class TestQuoteNormalization(TestCase):
+    """The say/hearing rails only extract double-quoted dialogue — a model that
+    slips into single quotes must be repaired, without eating contractions."""
+
+    def _turn(self, action="", speech=""):
+        raw = json.dumps({"speech": speech, "action": action, "thought": "",
+                          "tool": "none", "tool_argument": ""})
+        return parse_turn(raw, {})
+
+    def test_single_quoted_dialogue_promoted(self):
+        turn = self._turn(action="leans in, 'come closer,' she murmurs")
+        self.assertIn('"come closer,"', turn["action"])
+
+    def test_contractions_survive(self):
+        turn = self._turn(action="shrugs, it's fine, don't fuss")
+        self.assertEqual(turn["action"], "shrugs, it's fine, don't fuss")
+
+    def test_speech_sheds_single_quote_wrapper(self):
+        turn = self._turn(speech="'stay a while'")
+        self.assertEqual(turn["speech"], "stay a while")
+
+    def test_double_quotes_left_alone(self):
+        turn = self._turn(action='smiles, "you first," and waits')
+        self.assertEqual(turn["action"], 'smiles, "you first," and waits')
+
+
+class TestIsEcho(TestCase):
+    def test_parroted_pose_detected(self):
+        line = "traces a finger along the companion's jaw, slow and deliberate"
+        self.assertTrue(
+            is_echo("traces a finger along the companion's jaw, slow", line))
+
+    def test_short_gesture_allowed(self):
+        # brief overlapping gestures are legitimate reciprocation
+        self.assertFalse(is_echo("smiles back", "smiles at the synth warmly"))
+
+    def test_fresh_reply_allowed(self):
+        self.assertFalse(is_echo("tilts her head, amused, and pours a drink",
+                                 "asks about the weather outside"))
+
+    def test_empty_never_echo(self):
+        self.assertFalse(is_echo("", "anything"))
+        self.assertFalse(is_echo("anything", ""))
+
+
+class TestWardrobeCard(TestCase):
+    def test_wearing_and_carrying_rendered(self):
+        text = render_persona({"wearing": ["mesh top (unzipped)", "slit skirt"],
+                               "carrying": ["heeled boots"]})
+        self.assertIn("mesh top (unzipped), slit skirt", text)
+        self.assertIn("carrying: heeled boots", text)
+
+    def test_stripped_reads_naked(self):
+        # an empty (but present) wardrobe means undressed — the model must
+        # know it, not invent an outfit
+        text = render_persona({"wearing": [], "carrying": []})
+        self.assertIn("wearing nothing", text)
+
+    def test_legacy_persona_has_no_wardrobe_line(self):
+        self.assertNotIn("wearing", render_persona(dict(_PERSONA)).lower())
