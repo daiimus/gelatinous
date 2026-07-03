@@ -51,6 +51,35 @@ def _wardrobe(npc) -> tuple:
     return wearing, carrying
 
 
+def _room_desc(npc) -> str | None:
+    """The room as THIS NPC perceives it — ``get_display_desc`` composes the
+    sense layers for the looker (a blind NPC doesn't get the visual prose), so
+    the model grounds itself in the street it's actually standing on instead
+    of inventing a generic interior. ANSI-stripped, sentence-bounded trim."""
+    loc = npc.location
+    if not loc:
+        return None
+    try:
+        getter = getattr(loc, "get_display_desc", None)
+        raw = getter(npc) if callable(getter) else None
+        raw = raw or getattr(loc.db, "desc", None)
+        if not raw:
+            return None
+        from evennia.utils.ansi import strip_ansi
+        text = " ".join(strip_ansi(str(raw)).split())
+        if len(text) > 500:
+            cut = text[:500]
+            for end in (". ", "! ", "? "):
+                i = cut.rfind(end)
+                if i > 200:
+                    cut = cut[: i + 1]
+                    break
+            text = cut.rstrip()
+        return text
+    except Exception:  # noqa: BLE001 — never break persona-building over a room
+        return None
+
+
 def build_persona(npc) -> dict:
     """Build the persona dict from the NPC's real fields. Defensive throughout.
 
@@ -68,7 +97,7 @@ def build_persona(npc) -> dict:
     if npc.location:
         location = {
             "name": npc.location.key,
-            "desc": getattr(npc.location.db, "desc", None),
+            "desc": _room_desc(npc),
         }
 
     # The bar's real menu, so she knows exactly what she serves (and what she

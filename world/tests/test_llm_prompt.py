@@ -457,3 +457,19 @@ class TestStyleAdoption(TestCase):
         msgs = build_messages({"persona_seed": {"archetype": "bartender"}},
                               "a man", "hi", "directed")
         self.assertNotIn("REALLY changes", msgs[0]["content"])
+
+
+class TestSurroundings(TestCase):
+    """The room desc must reach the card — an NPC that only knows the room's
+    NAME invents carpet on a street."""
+
+    def test_room_desc_rendered_with_grounding_rule(self):
+        text = render_persona({"location": {
+            "name": "Dust Row",
+            "desc": "A cracked ferrocrete street under sodium light."}})
+        self.assertIn("A cracked ferrocrete street", text)
+        self.assertIn("never invent fixtures", text)
+
+    def test_no_desc_no_surroundings_line(self):
+        text = render_persona({"location": {"name": "Dust Row", "desc": None}})
+        self.assertNotIn("Your surroundings", text)
