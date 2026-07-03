@@ -1,6 +1,6 @@
 # Trust & Consent Spec
 
-> **Status: ✅ PHASE 1 SHIPPED (2026-07-03) — §9 P2/P3 pending.** The gate
+> **Status: ✅ SHIPPED IN FULL (2026-07-03, Phases 1–3).** The gate
 > (`world/consent.py`: `can_contest` / `is_restrained` / `check_consent`),
 > the grant store, the `trust`/`distrust` commands (§4), and the Phase-1
 > consumers — third-party clothing (`dress` class) and the full medical
@@ -10,13 +10,27 @@
 > retrofitted onto the `search` class — the legacy too-lively-to-frisk gate
 > replaced by `check_consent`; corpse objects stay always-searchable; the
 > manifest now reads the real worn registry, in-hand items, carried
-> pockets, and tokens. The §7 recommendations were implemented as written
+> pockets, and tokens. **PHASE 3 SHIPPED (2026-07-03):** movement coupling —
+> `follow <person>` (ungated self-action; the follower moves SECOND,
+> trailing the leader through the real exit; `stop following` ends it, and
+> a follower who can't keep up loses the trail), and `escort <person>`
+> (the `escort` class: the escortee is ushered AHEAD — they move FIRST
+> through each exit, consent re-checked per move so a revoked grant
+> releases them at the next doorway; a refused doorway stops the leader at
+> the threshold; unconscious targets can't walk — grapple-drag them).
+> Dragging remains EMERGENT from grapple + movement with no command, by
+> design. The dispatch coercive seam now needs only director/AI content
+> (when bots choose to restrain-then-move), which belongs to the dispatch
+> arc. Future (user-stated): motorics-based movement DELAY will sequence
+> these beats into organic chase scenes; a stealth `shadow` command =
+> follow while unseen (STEALTH_AND_DETECTION_SPEC). The §7 recommendations
+> were implemented as written
 > (duress grants stand; per-command gate check; shared `is_restrained`
 > unifying grapple + `db.restraining` furniture with a legacy-AutoDoc
 > fallback; strict consciousness binary; presence-required grants /
-> memory-based revokes). Remaining: §9 P3 (escort/movement-coupling +
-> the dispatch coercive-authority seam). Design history: 2026-06-26 core
-> pass; 2026-07-02 deep-dig (`dress` class, NPC self-action only, §7/§9).
+> memory-based revokes). **ALL §9 PHASES COMPLETE.** Design history:
+> 2026-06-26 core pass; 2026-07-02 deep-dig (`dress` class, NPC
+> self-action only, §7/§9).
 
 ## 0 · Purpose
 

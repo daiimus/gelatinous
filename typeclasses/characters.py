@@ -1282,6 +1282,23 @@ class Character(
         if self.db.furniture or (self.db.posture and self.db.posture != "standing"):
             self._clear_posture()
         self._refresh_recognition_recency()
+        # Movement coupling: followers trail through the exit just taken
+        # (a follower moves SECOND — we have already arrived). Terminates
+        # naturally on chains: only followers still in the source room move.
+        if source_location is not None:
+            from world.movement_coupling import bring_followers
+            bring_followers(self, source_location)
+
+    def at_pre_move(self, destination, **kwargs):
+        """Extends the default: an escort moves FIRST — the escortee is
+        ushered through the exit ahead of us; if the way refuses them, our
+        own move stops at the threshold too (movement_coupling)."""
+        if not super().at_pre_move(destination, **kwargs):
+            return False
+        if self.db.escorting and destination is not None:
+            from world.movement_coupling import usher_escortee
+            return usher_escortee(self, destination)
+        return True
 
     def _clear_posture(self):
         """Return to standing — drop any furniture occupancy and the transient
