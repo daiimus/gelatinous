@@ -1,11 +1,14 @@
 # Trust & Consent Spec
 
 > **Status: 🚧 DESIGN RESOLVED — NOT YET CLEARED FOR BUILD.** The core model is
-> now settled (2026-06-26 design pass); what remains is build sequencing and a
-> short list of edge cases (§7). The user has flagged this as **"SUPER
-> IMPORTANT"** and decides when implementation starts — do not build ahead of
-> that call. This doc exists so the decisions survive and so new third-party
-> commands have a clean gate to defer to rather than inventing one-off logic.
+> settled (2026-06-26 design pass; 2026-07-02 deep-dig pass added the `dress`
+> action class, resolved NPC participation to *self-action only*, and recorded
+> recommended resolutions for the §7 edge cases + a proposed build sequence
+> §9). The user has flagged this as **"SUPER IMPORTANT"** and a **roadblock
+> before a true alpha**; they decide when implementation starts — do not build
+> ahead of that call. This doc exists so the decisions survive and so new
+> third-party commands have a clean gate to defer to rather than inventing
+> one-off logic.
 
 ## 0 · Purpose
 
@@ -93,6 +96,7 @@ not all commands exist yet):
 | `grab` / `grapple` | consensual restraint (let them grab/restrain you uncontested) | the "strap me in willingly" path |
 | `heal` | **all** medical commands — treat, bandage, inject, install, **operate, harvest** | **deliberately blanket** (§3.1) |
 | `search` / `frisk` | frisk / search / loot the target — **identifies the items on their person** (worn, carried, **and concealed**) | the active counter to organic concealment (§3.2) |
+| `dress` | dress / undress (strip) the target's clothing | the class `CmdClothing`'s third-party paths defer to today via their "requires the trust/consent system" placeholder (§3.3) |
 
 ### 3.1 · `heal` is intentionally all-medical — betrayal included
 
@@ -114,6 +118,18 @@ information step that precedes confiscation or theft. Contrast **theft**
 (`steal`/`pickpocket`), which is the *nonconsensual contest* version and lives in
 `STEALTH_AND_DETECTION_SPEC` §6.2 — frisk asks, theft takes.
 
+### 3.3 · `dress` — narrow by design (2026-07-02)
+
+`dress` covers **third-party clothing manipulation only** — dressing someone,
+undressing/stripping them. It is deliberately **narrow**, not a broader
+"intimacy" class: intimacy in this game is expressed through free-form poses,
+which stay ungated social fiction, and no further mechanical contact verbs are
+foreseen (the ones that exist — frisk, grapple, heal, escort — are already
+classed). If a new contact verb ever appears it gets its own class by the same
+pattern. Note the companion case does NOT ride this class in practice: an LLM
+companion wears/removes her own clothing via the `style` tool (self-action,
+§6), so the player's request is answered by *her* act, no grant needed.
+
 ## 4 · Command surface
 
 | Command | Effect |
@@ -134,35 +150,51 @@ you." A UID you've since forgotten falls back to the display-label snapshot take
 at grant time. You always see trust the way you *perceive* the trusted party —
 consistent with how the rest of the identity system renders.
 
-## 6 · NPC participation
+## 6 · NPC participation — **self-action only** (resolved 2026-07-02)
 
-NPCs are character objects and use the same `db.consent_grants` store, so an NPC
-*can* grant or hold trust — but it will be **rare**. Two relevant cases:
+NPCs are character objects and the `db.consent_grants` store works on them like
+anyone — but **NPCs do not grant trust in practice**. The decided stance:
 
-* **NPC as grantor** — a paid RipperDoc with standing `heal` consent; betrayal
-  carries rep cost (ties to the gig/favor loop, growth direction). AI decides.
+* **NPC as grantor** — **no.** No LLM `trust` tool is planned; an NPC never
+  hands a player standing consent. Where an NPC *cooperates*, it acts on
+  ITSELF through its own real commands — the canonical case is the LLM
+  companion wearing/removing her own clothing via the `style` tool. The
+  player asks; the NPC does. This keeps consent as an in-fiction act every
+  time rather than a stored permission, and players can never mechanically
+  act on a conscious NPC's body (the restrain/unconscious paths aside).
+  (A RipperDoc-style standing `heal` grant remains *technically possible*
+  via the shared store if a future design wants it — nothing structural
+  forbids it — but it is out of scope and off the roadmap.)
 * **NPC as actor on a player** — a security bot cannot heal/search a *conscious,
   unrestrained, untrusting* player; it must lawfully **restrain** them first
   (grapple / cuffs / pod). This is the dispatch spec's reserved seam
   (`NPC_DISPATCH_AND_SIMULATION_SPEC` §6) — sequence coercive authority content
   *after* this gate exists.
 
-## 7 · Open edge cases (remaining)
+## 7 · Open edge cases — recommended resolutions (2026-07-02 dig)
 
-The model is resolved; these are the corners to settle during build:
+The model is resolved; recommended resolutions below were presented in the
+2026-07-02 deep-dig and not contested — confirm-or-veto at build time:
 
-1. **Consent under duress** — trust granted while grappled/threatened. Probably
-   valid-but-revocable; confirm.
-2. **Revoke mid-procedure** — distrusting someone partway through a multi-step
-   medical/surgical action. Does the in-flight action complete or abort?
-3. **Restraint detection** — the exact predicate for `is_restrained` must unify
-   the grapple state (`world/combat/grappling.py`) with restraint-device state
-   (healing pod / chair furniture, clinic furniture system). One shared helper.
-4. **Consciousness threshold** — does a groggy-but-awake target (low
-   `consciousness`) still `can_contest`, or is there a middle band? Lean: strict
-   conscious/unconscious line via the runtime `consciousness` value.
-5. **Command parse / target resolution** — resolving `<person>` to an apparent
-   UID when the target is present vs. only in recognition memory vs. disguised.
+1. **Consent under duress** — trust granted while grappled/threatened.
+   **Recommend: valid-but-revocable.** Bargaining your way out of a grapple is
+   world-appropriate; a grant is a grant, and it can be revoked the moment
+   you're free.
+2. **Revoke mid-procedure** — **recommend: no special machinery.** Multi-step
+   surgery is multiple commands; the gate is checked per command invocation,
+   so revocation naturally takes effect at the next step. The in-flight step
+   completes; nothing aborts mid-swing.
+3. **Restraint detection** — **recommend:** one shared helper in
+   `world/consent.py` unifying the grapple state
+   (`world/combat/grappling.py`) with a `restraining` property on furniture
+   (healing pod / restraint chair, clinic furniture system). Both sources
+   exist today; pure plumbing.
+4. **Consciousness threshold** — **recommend: strict binary** on the runtime
+   `consciousness` value, no groggy middle band. Groggy-but-awake contests.
+5. **Command parse / target resolution** — **recommend: presence-asymmetric.**
+   Granting requires the person PRESENT (you trust who you can see; UID
+   captured at grant time). Revoking works from your trust list by remembered
+   name/snapshot label. Matches how perception gates everything else.
 
 ## 8 · Cross-references
 
@@ -181,3 +213,20 @@ The model is resolved; these are the corners to settle during build:
   predicate makes it a **free-action target** — frisk/move/harm the slumped body.
   Emergent from §1, no special case. (Acting *across* phases is impossible —
   perception windows are perceive-only — so consent never spans phases.)
+
+## 9 · Build sequencing (proposed, 2026-07-02)
+
+When the build is cleared:
+
+* **Phase 1 — the gate + existing consumers.** `world/consent.py`
+  (`can_contest`, `is_restrained`, `check_consent(actor, target,
+  action_class)`), the `db.consent_grants` store, the `trust`/`distrust`
+  command surface (§4), and retrofit of the two consumer families that exist
+  today: third-party clothing (`CmdClothing` dress/undress — retiring its
+  placeholder message) and the medical suite (treat/operate/install/harvest).
+  This alone retires the alpha roadblock for player↔player play.
+* **Phase 2 — `frisk`.** New command per §3.2; the information step the
+  stealth spec's theft contest contrasts against.
+* **Phase 3 — escort/movement-coupling + the dispatch coercive-authority
+  seam** (`NPC_DISPATCH_AND_SIMULATION_SPEC` §6): lawful restrain-then-act
+  for security NPCs.
