@@ -765,8 +765,9 @@ def _resolve_charref(character: "Character", observer: "Character") -> str:
 
 #: Possessive cleanup: a second-person char-ref leaves "you's" where the source
 #: had "the droog's" (the ref became "you", the trailing "'s" stayed). Fix it to
-#: "your", preserving sentence-initial capitalisation.
-_YOU_POSSESSIVE_RE = re.compile(r"\b([Yy])ou's\b")
+#: "your", preserving sentence-initial capitalisation. Accepts the typographic
+#: apostrophe too — LLM-driven actors emit those.
+_YOU_POSSESSIVE_RE = re.compile(r"\b([Yy])ou[’']s\b")
 
 
 def _fix_you_possessive(text: str) -> str:
@@ -900,9 +901,12 @@ def render_for_observer(
             # Drop a redundant article right before the ref — the resolved name
             # carries its own ("the a gaunt courier" -> "a gaunt courier", "the
             # Roony" -> "Roony", "the lean man" -> "you"). Players and NPCs alike
-            # write "the <sdesc>".
+            # write "the <sdesc>". A dangling bare "you" is dropped the same
+            # way: an actor who doubles the reference ("buttons you the lean
+            # man's shirt") otherwise renders "you you's" for the target.
             if parts:
-                parts[-1] = re.sub(r"\b(?:the|an?)\s+$", "", parts[-1], flags=re.I)
+                parts[-1] = re.sub(r"(?:\b(?:the|an?|you)\s+)+$", "",
+                                   parts[-1], flags=re.I)
             parts.append(display_name)
             has_prior_content = True
 
@@ -1095,9 +1099,11 @@ def render_emote_for_observer(
         elif isinstance(token, CharRefToken):
             # Second-person when the ref points at the observer (see _resolve_charref).
             display_name = _resolve_charref(token.character, observer)
-            # Drop a redundant article right before the ref (see render_for_observer).
+            # Drop a redundant article or dangling bare "you" right before the
+            # ref (see render_for_observer).
             if parts:
-                parts[-1] = re.sub(r"\b(?:the|an?)\s+$", "", parts[-1], flags=re.I)
+                parts[-1] = re.sub(r"(?:\b(?:the|an?|you)\s+)+$", "",
+                                   parts[-1], flags=re.I)
             parts.append(display_name)
 
     action = _fix_you_possessive("".join(parts))

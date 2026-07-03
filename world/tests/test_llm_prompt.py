@@ -473,3 +473,22 @@ class TestSurroundings(TestCase):
     def test_no_desc_no_surroundings_line(self):
         text = render_persona({"location": {"name": "Dust Row", "desc": None}})
         self.assertNotIn("Your surroundings", text)
+
+
+class TestSmartQuoteNormalization(TestCase):
+    def _turn(self, action="", speech=""):
+        raw = json.dumps({"speech": speech, "action": action, "thought": "",
+                          "tool": "none", "tool_argument": ""})
+        return parse_turn(raw, {})
+
+    def test_curly_apostrophe_normalized(self):
+        turn = self._turn(action="eyes the lean man\u2019s hands")
+        self.assertEqual(turn["action"], "eyes the lean man's hands")
+
+    def test_curly_double_quotes_normalized(self):
+        turn = self._turn(action="grins, \u201ccome closer,\u201d she purrs")
+        self.assertIn('"come closer,"', turn["action"])
+
+    def test_curly_single_quoted_dialogue_promoted(self):
+        turn = self._turn(action="leans in, \u2018stay a while,\u2019 she murmurs")
+        self.assertIn('"stay a while,"', turn["action"])
