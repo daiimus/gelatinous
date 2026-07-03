@@ -49,8 +49,14 @@ CIVILIAN_ROLES: dict[str, dict] = {
     # reports: witness posture for the future civilian-witness integration
     # ("fast" = calls it in eagerly, "never" = street code, None = normal).
     "miner": {
-        "wardrobe": ["WORK_COVERALLS", "PIT_BOOTS", "MINING_HELMET",
-                     "NECK_REBREATHER", "WORK_GLOVES"],
+        "outfits": [
+            ["WORK_COVERALLS", "PIT_BOOTS", "MINING_HELMET",
+             "NECK_REBREATHER", "WORK_GLOVES"],
+            ["FLANNEL_SHIRT", "CARGO_TROUSERS", "PIT_BOOTS",
+             "MINING_HELMET", "WORK_GLOVES"],
+            ["THERMAL_SHIRT", "WORK_COVERALLS", "PIT_BOOTS", "KNIT_CAP",
+             "NECK_REBREATHER"],
+        ],
         "reaction": "resist", "armed": False, "reports": None,
         "ambient": [
             "coughs shaft-deep and spits something the colony put there.",
@@ -69,8 +75,11 @@ CIVILIAN_ROLES: dict[str, dict] = {
         },
     },
     "scavver": {
-        "wardrobe": ["UTILITY_HARNESS", "THERMAL_SHIRT", "CARGO_TROUSERS",
-                     "PIT_BOOTS", "KNIT_CAP"],
+        "wardrobe": ["UTILITY_HARNESS",
+                     ["THERMAL_SHIRT", "FLANNEL_SHIRT", "TANK_TOP"],
+                     ["CARGO_TROUSERS", "LEATHER_TROUSERS", "BLUE_JEANS"],
+                     ["PIT_BOOTS", "HIGH_TOPS", "COMBAT_BOOTS"],
+                     ["KNIT_CAP", "DUST_PONCHO"]],
         "reaction": "flee", "armed": True, "reports": None,
         "weapon_pool": ["BOX_CUTTER", "SHIV", "CROWBAR", "PIPE_WRENCH"],
         "ambient": [
@@ -90,7 +99,10 @@ CIVILIAN_ROLES: dict[str, dict] = {
         },
     },
     "hawker": {
-        "wardrobe": ["HAWKERS_APRON", "COTTON_TSHIRT", "CARGO_TROUSERS"],
+        "wardrobe": ["HAWKERS_APRON",
+                     ["COTTON_TSHIRT", "TANK_TOP", "FLANNEL_SHIRT"],
+                     ["CARGO_TROUSERS", "BLUE_JEANS"],
+                     ["HIGH_TOPS", "COMBAT_BOOTS"]],
         "reaction": "comply", "armed": False, "reports": "fast",
         "stock": ["CIGARETTE_PACK_NOIR", "CIGARETTE_PACK_NOIR",
                   "DISPOSABLE_LIGHTER"],
@@ -111,7 +123,9 @@ CIVILIAN_ROLES: dict[str, dict] = {
         },
     },
     "ganger": {
-        "wardrobe": ["GANG_CUT", ["BLUE_JEANS", "LEATHER_TROUSERS"],
+        "wardrobe": ["GANG_CUT",
+                     ["TANK_TOP", "THERMAL_SHIRT", "MESH_TOP"],
+                     ["BLUE_JEANS", "LEATHER_TROUSERS"],
                      ["COMBAT_BOOTS", "HIGH_TOPS"]],
         "reaction": "resist", "armed": True, "reports": "never",
         "weapon_pool": ["SHIV", "TIRE_IRON", "BRASS_KNUCKLES", "HEAVY_CHAIN",
@@ -133,7 +147,10 @@ CIVILIAN_ROLES: dict[str, dict] = {
         },
     },
     "salaryman": {
-        "wardrobe": ["COMPANY_COAT", "COTTON_TSHIRT", "CARGO_TROUSERS"],
+        "wardrobe": [["COMPANY_COAT", "COMPANY_WINDBREAKER"],
+                     ["COTTON_TSHIRT", "THERMAL_SHIRT"],
+                     ["CARGO_TROUSERS", "BLUE_JEANS"],
+                     "COMBAT_BOOTS"],
         "reaction": "comply", "armed": False, "reports": "fast",
         "ambient": [
             "checks a tally-book against the street like the street owes a figure.",
@@ -179,8 +196,10 @@ CIVILIAN_ROLES: dict[str, dict] = {
     },
     "synth_company_man": {
         "species": "synthetic_humanoid",
-        "wardrobe": ["HIVIS_VEST", "COMPANY_WINDBREAKER", "CARGO_TROUSERS",
-                     "MINING_HELMET"],
+        "wardrobe": ["HIVIS_VEST", "MINING_HELMET",
+                     ["COMPANY_WINDBREAKER", "COMPANY_COAT"],
+                     ["CARGO_TROUSERS", "WORK_COVERALLS"],
+                     ["PIT_BOOTS", "COMBAT_BOOTS"]],
         "reaction": "comply", "armed": False, "reports": "fast",
         "ambient": [
             "barks 'shift rotation is POSTED' at nobody in particular.",
@@ -200,7 +219,10 @@ CIVILIAN_ROLES: dict[str, dict] = {
     },
     "addict": {
         "wardrobe": [["THERMAL_SHIRT", "FLANNEL_SHIRT", "TANK_TOP"],
-                     "BLUE_JEANS", ["KNIT_CAP", "HIGH_TOPS"]],
+                     ["BLUE_JEANS", "CARGO_TROUSERS"],
+                     "HIGH_TOPS",
+                     ["KNIT_CAP", "LONG_COAT", "BOMBER_JACKET",
+                      "DUST_PONCHO"]],
         "reaction": "flee", "armed": False, "reports": None,
         "ambient": [
             "pats through every pocket in an order worn smooth by habit.",
