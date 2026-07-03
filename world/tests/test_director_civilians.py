@@ -54,6 +54,14 @@ class TestRoles(TestCase):
             self.assertEqual(CIVILIAN_ROLES[role]["species"],
                              "synthetic_humanoid")
 
+    def test_weapon_pools_reference_real_prototypes(self):
+        from world import prototypes as protos
+        for role, spec in CIVILIAN_ROLES.items():
+            for key in spec.get("weapon_pool", []):
+                self.assertTrue(hasattr(protos, key), f"{role}: {key}")
+            if spec.get("armed"):
+                self.assertTrue(spec.get("weapon_pool"), f"{role} armed, no pool")
+
     def test_colonist_archetype_registered(self):
         from world.llm.prompt import ARCHETYPES
         self.assertIn("colonist", ARCHETYPES)
@@ -227,25 +235,24 @@ class TestConversationHold(TestCase):
 class TestReactToAttack(TestCase):
     """§5.2 victim reactions: resist draws, comply yields, flee runs."""
 
-    def _victim(self, reaction, blade=False):
-        v = SimpleNamespace(
-            db=SimpleNamespace(reaction=reaction, role="x"),
-            contents=([SimpleNamespace(key="a dagger")] if blade else []),
+    def _victim(self, reaction, weapon=None):
+        return SimpleNamespace(
+            db=SimpleNamespace(reaction=reaction, role="x",
+                               carried_weapon=weapon),
             execute_cmd=MagicMock())
-        return v
 
     @patch("evennia.utils.delay")
-    def test_resist_draws_carried_blade(self, mock_delay):
+    def test_resist_draws_carried_weapon(self, mock_delay):
         from world.director.civilians import react_to_attack
-        v = self._victim("resist", blade=True)
+        v = self._victim("resist", weapon="tire iron")
         react_to_attack(v, MagicMock())
         cmds = [c.args for c in mock_delay.call_args_list]
-        self.assertTrue(any("wield dagger" in str(a) for a in cmds))
+        self.assertTrue(any("wield tire iron" in str(a) for a in cmds))
 
     @patch("evennia.utils.delay")
     def test_resist_unarmed_just_fights(self, mock_delay):
         from world.director.civilians import react_to_attack
-        v = self._victim("resist", blade=False)
+        v = self._victim("resist", weapon=None)
         react_to_attack(v, MagicMock())
         mock_delay.assert_not_called()   # handler default = fists
 

@@ -3556,3 +3556,79 @@ COMPANY_COAT = {
         ("weight", 1.2),
     ],
 }
+
+
+# ===================================================================
+# STREET-TIER WEAPONS (low-tier contemporary arms — the colony's back
+# alleys; message banks already existed, prototypes now match)
+# ===================================================================
+
+SHIV = {
+    "prototype_parent": "MELEE_WEAPON_BASE",
+    "key": "shiv",
+    "aliases": ["spike"],
+    "desc": "A hand-ground spike of scrap steel wound with tape for a grip. Nobody manufactures these; everybody makes them.",
+    "damage": 5,
+    "weapon_type": "shiv",
+    "damage_type": "stab",
+}
+
+TIRE_IRON = {
+    "prototype_parent": "MELEE_WEAPON_BASE",
+    "key": "tire iron",
+    "aliases": ["iron", "lug wrench"],
+    "desc": "A cross-ended tire iron in pitted chrome. Its second career began the night somebody realized it fit the hand better than the lug.",
+    "damage": 8,
+    "weapon_type": "tire_iron",
+    "damage_type": "blunt",
+}
+
+BRASS_KNUCKLES = {
+    "prototype_parent": "MELEE_WEAPON_BASE",
+    "key": "brass knuckles",
+    "aliases": ["knuckles", "knucks"],
+    "desc": "Four finger-holes and a palm bar in dull cast brass, edges worn smooth by pockets and use.",
+    "damage": 6,
+    "weapon_type": "brass_knuckles",
+    "damage_type": "blunt",
+}
+
+HEAVY_CHAIN = {
+    "prototype_parent": "MELEE_WEAPON_BASE",
+    "key": "heavy chain",
+    "aliases": ["chain"],
+    "desc": "A meter of galvanized cargo chain with the last link ground open. Loud to carry, louder to use.",
+    "damage": 7,
+    "weapon_type": "chain",
+    "damage_type": "blunt",
+}
+
+BOX_CUTTER = {
+    "prototype_parent": "MELEE_WEAPON_BASE",
+    "key": "box cutter",
+    "aliases": ["cutter", "razor knife"],
+    "desc": "A workaday box cutter with a thumb-slide and a fresh segment snapped forward. A tool, mostly.",
+    "damage": 5,
+    "weapon_type": "box_cutter",
+    "damage_type": "cut",
+}
+
+CROWBAR = {
+    "prototype_parent": "MELEE_WEAPON_BASE",
+    "key": "crowbar",
+    "aliases": ["prybar", "pry bar"],
+    "desc": "A flat-ended crowbar in chipped red enamel. Opens crates, doors, and arguments.",
+    "damage": 9,
+    "weapon_type": "crowbar",
+    "damage_type": "blunt",
+}
+
+PIPE_WRENCH = {
+    "prototype_parent": "MELEE_WEAPON_BASE",
+    "key": "pipe wrench",
+    "aliases": ["wrench"],
+    "desc": "A foot and a half of drop-forged pipe wrench, jaw rusted open at a permanent two inches. Still a tool; increasingly an argument.",
+    "damage": 8,
+    "weapon_type": "pipe_wrench",
+    "damage_type": "blunt",
+}

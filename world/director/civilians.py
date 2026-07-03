@@ -72,6 +72,7 @@ CIVILIAN_ROLES: dict[str, dict] = {
         "wardrobe": ["UTILITY_HARNESS", "THERMAL_SHIRT", "CARGO_TROUSERS",
                      "PIT_BOOTS", "KNIT_CAP"],
         "reaction": "flee", "armed": True, "reports": None,
+        "weapon_pool": ["BOX_CUTTER", "SHIV", "CROWBAR", "PIPE_WRENCH"],
         "ambient": [
             "weighs a salvaged bracket in one hand, then makes it disappear.",
             "strips a connector off a dead conduit with two practiced twists.",
@@ -112,6 +113,8 @@ CIVILIAN_ROLES: dict[str, dict] = {
     "ganger": {
         "wardrobe": ["GANG_CUT", "BLUE_JEANS", "COMBAT_BOOTS"],
         "reaction": "resist", "armed": True, "reports": "never",
+        "weapon_pool": ["SHIV", "TIRE_IRON", "BRASS_KNUCKLES", "HEAVY_CHAIN",
+                        "BASEBALL_BAT", "BOX_CUTTER"],
         "ambient": [
             "posts up against the wall like the wall should be grateful.",
             "sizes up a passerby, files the number away, looks elsewhere.",
@@ -306,7 +309,9 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
             continue
     if spec.get("armed"):
         try:
-            proto_spawn("DAGGER")[0].move_to(npc, quiet=True)
+            weapon = proto_spawn(choice(spec.get("weapon_pool") or ["SHIV"]))[0]
+            weapon.move_to(npc, quiet=True)
+            npc.db.carried_weapon = weapon.key   # what react_to_attack draws
         except Exception:  # noqa: BLE001
             pass
 
@@ -384,17 +389,12 @@ def react_to_attack(victim: Any, attacker: Any) -> None:
             pass
 
     if reaction == "resist":
-        if getattr(victim.db, "role", None) and _carries_blade(victim):
-            delay(1.0, _cmd, "wield dagger")
+        weapon = getattr(victim.db, "carried_weapon", None)
+        if weapon:
+            delay(1.0, _cmd, f"wield {weapon}")
     elif reaction == "comply":
         delay(1.5, _cmd, "stop attacking")
         delay(2.0, _cmd, "emote throws both hands up, wanting none of this.")
     elif reaction == "flee":
         delay(1.5, _cmd, "flee")
 
-
-def _carries_blade(npc: Any) -> bool:
-    try:
-        return any("dagger" in (o.key or "").lower() for o in npc.contents)
-    except Exception:  # noqa: BLE001
-        return False
