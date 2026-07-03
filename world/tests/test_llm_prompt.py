@@ -519,3 +519,10 @@ class TestSecondPersonRepair(TestCase):
     def test_dialogue_untouched(self):
         out = self._action('pins the lean man, "you, you magnificent thing"')
         self.assertIn('"you, you magnificent thing"', out)
+
+
+class TestRememberNamingDiscipline(TestCase):
+    def test_remember_desc_forbids_pronouns_and_punctuation(self):
+        desc = TOOLS["remember"]["desc"]
+        self.assertIn("no punctuation", desc)
+        self.assertIn("never a pronoun", desc)
