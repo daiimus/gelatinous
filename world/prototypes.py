@@ -943,7 +943,7 @@ BLACK_WIG = {
     "desc": "A shoulder-length wig of glossy jet-black synthetic hair, cut to a blunt fringe. The mesh cap is fine enough to pass for a natural hairline at conversational distance.",
     "attrs": [
         ("coverage", ["hair", "head"]),
-        ("worn_desc", "A glossy {color}black|n shoulder-length wig with a blunt fringe"),
+        ("worn_desc", "A glossy fall of {color}black|n shoulder-length hair, cut to a blunt fringe"),
         ("layer", 2),
         ("color", "black"),
         ("material", "synthetic"),
@@ -976,7 +976,7 @@ BLOND_WIG = {
     "desc": "A chin-length blond wig in honey-gold synthetic fibre, layered for volume. The cap is mesh-lined and the parting has been hand-stitched to mimic a real scalp.",
     "attrs": [
         ("coverage", ["hair", "head"]),
-        ("worn_desc", "A honey-{color}blond|n chin-length wig layered for volume"),
+        ("worn_desc", "Honey-{color}blond|n chin-length hair, layered full and loose"),
         ("layer", 2),
         ("color", "gold"),
         ("material", "synthetic"),
@@ -1000,7 +1000,7 @@ BROWN_WIG = {
     "desc": "A mid-length brown wig in walnut-toned synthetic fibre, parted off-centre. The cap is a soft stretch mesh and the ends have been heat-set into a loose wave.",
     "attrs": [
         ("coverage", ["hair", "head"]),
-        ("worn_desc", "A walnut-{color}brown|n mid-length wig parted off-centre with loose waves"),
+        ("worn_desc", "Walnut-{color}brown|n mid-length hair parted off-centre, falling in loose waves"),
         ("layer", 2),
         ("color", "brown"),
         ("material", "synthetic"),
@@ -3292,5 +3292,267 @@ ROBOT_ARM_GUN = {
         ("damage_type", "bullet"),
         ("hands_required", 1),
         ("integrated", True),
+    ],
+}
+
+
+# ===================================================================
+# COLONY WORKWEAR (civilian wardrobe line — clean core garments;
+# dust/grime/blood are FUTURE dynamic factors from environment/injury,
+# never baked into the prose)
+# ===================================================================
+
+WORK_COVERALLS = {
+    "prototype_key": "WORK_COVERALLS",
+    "key": "grey work coveralls",
+    "aliases": ["coveralls", "jumpsuit", "overalls"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Standard-issue colony coveralls in heavy grey twill: reinforced knees and elbows, a double-stitched tool loop at the hip, and a chest patch where a shift-tag clips. The cut is boxy and the zip runs collar to crotch.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Heavy {color}grey|n twill coveralls, boxy and utilitarian, the chest patch waiting for a shift-tag"),
+        ("coverage", ["chest", "back", "abdomen", "groin", "left_thigh", "right_thigh", "left_shin", "right_shin", "left_arm", "right_arm"]),
+        ("layer", 2),
+        ("color", "grey"),
+        ("material", "twill"),
+        ("weight", 1.4),
+    ],
+}
+
+MINING_HELMET = {
+    "prototype_key": "MINING_HELMET",
+    "key": "mining helmet",
+    "aliases": ["helmet", "hardhat", "hard hat"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A scuffproof composite mining helmet with a lamp bracket riveted above the brim and a chin strap gone soft with use. The lamp itself is company property and rarely survives the walk home.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A {color}yellow|n composite mining helmet, lamp bracket empty, chin strap hanging loose"),
+        ("coverage", ["head"]),
+        ("layer", 2),
+        ("color", "yellow"),
+        ("material", "composite"),
+        ("weight", 0.7),
+    ],
+}
+
+NECK_REBREATHER = {
+    "prototype_key": "NECK_REBREATHER",
+    "key": "rebreather",
+    "aliases": ["mask", "breather", "respirator rig"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A half-mask rebreather on a rubberized neck strap, filters screwed in at each cheek. Worn slung at the throat, ready to pull up when the air goes bad — down-shaft, or on a bad wind day.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A half-mask rebreather slung at the throat on a {color}black|n rubber strap, filters capped"),
+        ("coverage", ["neck"]),
+        ("layer", 2),
+        ("color", "black"),
+        ("material", "rubber"),
+        ("weight", 0.6),
+    ],
+}
+
+PIT_BOOTS = {
+    "prototype_key": "PIT_BOOTS",
+    "key": "pit boots",
+    "aliases": ["boots", "work boots"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Steel-shanked pit boots laced to the shin, with a gum-rubber sole thick enough to shrug off dropped stock and hot slag alike. Heavy, honest footwear.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Steel-shanked {color}brown|n pit boots laced to the shin, gum-rubber soled"),
+        ("coverage", ["left_foot", "right_foot"]),
+        ("layer", 2),
+        ("color", "brown"),
+        ("material", "leather"),
+        ("weight", 1.6),
+    ],
+}
+
+WORK_GLOVES = {
+    "prototype_key": "WORK_GLOVES",
+    "key": "work gloves",
+    "aliases": ["gloves"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Split-leather work gloves with reinforced palms and elastic cuffs. The kind bought by the crate and worn until the stitching gives.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Split-leather {color}tan|n work gloves, palms reinforced, cuffs elastic"),
+        ("coverage", ["left_hand", "right_hand"]),
+        ("layer", 2),
+        ("color", "tan"),
+        ("material", "leather"),
+        ("weight", 0.3),
+    ],
+}
+
+DUST_PONCHO = {
+    "prototype_key": "DUST_PONCHO",
+    "key": "canvas poncho",
+    "aliases": ["poncho", "dust poncho"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A waxed-canvas poncho cut wide at the shoulder, with a drawstring hood collar and snap closures down each side. Colony streetwear for wind days.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A waxed {color}olive|n canvas poncho hanging wide off the shoulders, side-snaps half done"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
+        ("layer", 3),
+        ("color", "olive"),
+        ("material", "canvas"),
+        ("weight", 1.1),
+    ],
+}
+
+HIVIS_VEST = {
+    "prototype_key": "HIVIS_VEST",
+    "key": "hi-vis vest",
+    "aliases": ["vest", "hivis", "safety vest"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A company-issue high-visibility vest in signal orange with two reflective chest bands. The back is stencilled PROPERTY OF THE COMPANY in letters that outlast the vest.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A signal-{color}orange|n hi-vis vest, reflective bands catching the light, company stencil across the back"),
+        ("coverage", ["chest", "back"]),
+        ("layer", 3),
+        ("color", "orange"),
+        ("material", "mesh"),
+        ("weight", 0.3),
+    ],
+}
+
+COMPANY_WINDBREAKER = {
+    "prototype_key": "COMPANY_WINDBREAKER",
+    "key": "company windbreaker",
+    "aliases": ["windbreaker", "jacket"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A lightweight company windbreaker in corporate blue, the logo screen-printed over the heart. Issued at orientation; worn until it isn't.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A corporate-{color}blue|n windbreaker, company logo printed over the heart"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
+        ("layer", 3),
+        ("color", "blue"),
+        ("material", "nylon"),
+        ("weight", 0.5),
+    ],
+}
+
+THERMAL_SHIRT = {
+    "prototype_key": "THERMAL_SHIRT",
+    "key": "thermal shirt",
+    "aliases": ["thermal", "longshirt"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A long-sleeved thermal in waffle-knit cotton, collar stretched from being pulled on in the dark. The colony runs cold underground and colder above.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A waffle-knit {color}charcoal|n thermal, sleeves pushed to the elbow, collar gone soft"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
+        ("layer", 1),
+        ("color", "charcoal"),
+        ("material", "cotton"),
+        ("weight", 0.5),
+    ],
+}
+
+CARGO_TROUSERS = {
+    "prototype_key": "CARGO_TROUSERS",
+    "key": "cargo trousers",
+    "aliases": ["cargos", "trousers", "pants"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Ripstop cargo trousers with bellows pockets at each thigh and a webbing belt sewn straight into the waist. Colony cut: roomy, hemmed high of the boot.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Ripstop {color}khaki|n cargo trousers, thigh pockets bellowed with the day's carrying"),
+        ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
+        ("layer", 2),
+        ("color", "khaki"),
+        ("material", "ripstop"),
+        ("weight", 0.8),
+    ],
+}
+
+KNIT_CAP = {
+    "prototype_key": "KNIT_CAP",
+    "key": "knit cap",
+    "aliases": ["cap", "beanie", "watch cap"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A ribbed knit watch cap, cuffed once. The kind of hat that lives in a coat pocket eleven months a year and on a head the twelfth.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A ribbed {color}black|n knit cap cuffed low over the ears"),
+        ("coverage", ["head"]),
+        ("layer", 2),
+        ("color", "black"),
+        ("material", "wool"),
+        ("weight", 0.1),
+    ],
+}
+
+UTILITY_HARNESS = {
+    "prototype_key": "UTILITY_HARNESS",
+    "key": "utility harness",
+    "aliases": ["harness", "rig"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A webbing utility harness hung with empty carabiners, cable loops, and a dozen pouches sized for parts, tools, and whatever fits. A scavver's second spine.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A webbing utility harness criss-crossing the torso, {color}grey|n pouches and carabiners at every strap"),
+        ("coverage", ["chest", "back"]),
+        ("layer", 3),
+        ("color", "grey"),
+        ("material", "webbing"),
+        ("weight", 0.9),
+    ],
+}
+
+GANG_CUT = {
+    "prototype_key": "GANG_CUT",
+    "key": "sleeveless cut",
+    "aliases": ["cut", "gang jacket", "colors"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A sleeveless heavy-canvas cut, collar torn off, back panel left bare where a set's colors get painted on. Wearing one unmarked is an invitation; wearing one marked is an allegiance.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A sleeveless {color}black|n canvas cut, back panel painted with set colors"),
+        ("coverage", ["chest", "back"]),
+        ("layer", 3),
+        ("color", "black"),
+        ("material", "canvas"),
+        ("weight", 0.7),
+    ],
+}
+
+HAWKERS_APRON = {
+    "prototype_key": "HAWKERS_APRON",
+    "key": "hawker's apron",
+    "aliases": ["apron"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A many-pocketed trade apron tied at the waist, each pouch sized to a different denomination of merchandise. The strings have been retied so many times they're mostly knot.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A many-pocketed {color}brown|n trade apron tied at the waist, pouches lumpy with stock"),
+        ("coverage", ["chest", "abdomen"]),
+        ("layer", 3),
+        ("color", "brown"),
+        ("material", "canvas"),
+        ("weight", 0.6),
+    ],
+}
+
+COMPANY_COAT = {
+    "prototype_key": "COMPANY_COAT",
+    "key": "company coat",
+    "aliases": ["coat", "agent coat"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A knee-length coat in company charcoal, creases pressed sharp, the breast pocket exactly deep enough for a tally-book. Authority you can dry-clean.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A pressed {color}charcoal|n company coat falling to the knee, tally-book squared in the breast pocket"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
+        ("layer", 3),
+        ("color", "charcoal"),
+        ("material", "wool"),
+        ("weight", 1.2),
     ],
 }
