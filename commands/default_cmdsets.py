@@ -36,6 +36,9 @@ from commands.CmdBug import CmdBug
 from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
 from commands.CmdFixCharacterOwnership import CmdFixCharacterOwnership
 from commands.CmdTrust import CmdDistrust, CmdTrust
+from commands.CmdFollow import (
+    CmdEscort, CmdFollow, CmdStopEscorting, CmdStopFollowing,
+)
 from commands.combat.cmdset_combat import CombatCmdSet
 from commands.combat.special_actions import CmdAim, CmdGrapple
 from commands.CmdThrow import CmdThrow, CmdPull, CmdCatch
@@ -168,6 +171,13 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # behind the third-party action gate (world/consent.py).
         self.add(CmdTrust())
         self.add(CmdDistrust())
+
+        # Movement coupling (trust spec Phase 3): follow trails, escort
+        # ushers ahead; dragging stays emergent from grapple + movement.
+        self.add(CmdFollow())
+        self.add(CmdStopFollowing())
+        self.add(CmdEscort())
+        self.add(CmdStopEscorting())
         
         # Add aim command for ranged combat preparation
         self.add(CmdAim())
