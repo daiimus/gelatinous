@@ -92,8 +92,11 @@ class CmdCivilians(default_cmds.MuxCommand):
         caller.msg(f"|cRoles:|n {', '.join(sorted(CIVILIAN_ROLES))}")
         caller.msg(f"|cLive civilians: {len(civs)}|n")
         for npc in civs[:30]:
+            # NB: Evennia's .db returns None for unset attrs (getattr
+            # defaults never fire) — coerce before format specs.
+            role = npc.db.role or "?"
             caller.msg(
-                f"  {npc.key[:24]:24} [{getattr(npc.db, 'role', '?'):8}] @ "
+                f"  {npc.key[:24]:24} [{role:8}] @ "
                 f"{npc.location.key[:28] if npc.location else '(none)'}")
         if len(civs) > 30:
             caller.msg(f"  … and {len(civs) - 30} more.")
