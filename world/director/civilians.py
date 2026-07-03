@@ -170,12 +170,22 @@ CIVILIAN_ROLES: dict[str, dict] = {
     },
     "synth_companion": {
         "species": "synthetic_humanoid",
-        "outfits": [
-            ["SYNTHWEAVE_SHEATH", "HEELED_BOOTS", "SYNTH_COLLAR"],
-            ["MESH_TOP", "SLIT_SKIRT", "HEELED_BOOTS", "CROPPED_JACKET"],
-            ["TANK_TOP", "LEATHER_TROUSERS", "HEELED_BOOTS", "LONG_COAT",
-             "SYNTH_COLLAR"],
-        ],
+        "outfits": {
+            "female": [
+                ["SYNTHWEAVE_SHEATH", "HEELED_BOOTS", "SYNTH_COLLAR"],
+                ["MESH_TOP", "SLIT_SKIRT", "HEELED_BOOTS", "CROPPED_JACKET"],
+                ["TANK_TOP", "LEATHER_TROUSERS", "HEELED_BOOTS", "LONG_COAT",
+                 "SYNTH_COLLAR"],
+            ],
+            "male": [
+                ["MESH_TOP", "LEATHER_TROUSERS", "COMBAT_BOOTS",
+                 "SYNTH_COLLAR"],
+                ["TANK_TOP", "LEATHER_TROUSERS", "HIGH_TOPS",
+                 "CROPPED_JACKET", "SYNTH_COLLAR"],
+                ["TANK_TOP", "BLUE_JEANS", "LONG_COAT", "HIGH_TOPS",
+                 "SYNTH_COLLAR"],
+            ],
+        },
         "reaction": "flee", "armed": False, "reports": None,
         "ambient": [
             "catches a passerby's eye and holds it two heartbeats past casual.",
@@ -298,9 +308,7 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     npc.resonance = _randint(1, 3)
     npc.intellect = _randint(1, 3)
     npc.motorics = _randint(1, 3)
-    apply_random_flavor(npc)   # sdesc + @longdescs + look_place
-
-    # Species: synth roles get the synthetic anatomy (mirrors @spawnmob's
+    # Species FIRST: synth roles get the synthetic anatomy (mirrors @spawnmob's
     # generic non-human path — species, longdesc seed, medical re-init).
     species = spec.get("species")
     if species:
@@ -310,6 +318,8 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
         npc.longdesc = get_species_default_longdesc_locations(species)
         npc._medical_state = MedicalState(npc)
         npc.db.medical_state = npc._medical_state.to_dict()
+
+    apply_random_flavor(npc)   # AFTER species — sdesc + @longdescs + look_place
 
     # Role, management tag, pockets, LLM persona, reaction posture.
     npc.db.is_npc = True   # the canonical NPC marker (absence = PC)
@@ -336,7 +346,11 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     # A role may define coherent "outfits" (one full look rolled per spawn)
     # and/or a "wardrobe" whose entries are a prototype key OR a list of
     # alternatives (pick one) — so a population mixes instead of cloning.
-    garments = list(choice(spec["outfits"])) if spec.get("outfits") else []
+    outfits = spec.get("outfits")
+    if isinstance(outfits, dict):
+        # sex-keyed looks (ambiguous falls back to any pool)
+        outfits = outfits.get(sex) or next(iter(outfits.values()))
+    garments = list(choice(outfits)) if outfits else []
     for entry in spec.get("wardrobe", []):
         garments.append(choice(entry) if isinstance(entry, list) else entry)
     for proto in garments:
