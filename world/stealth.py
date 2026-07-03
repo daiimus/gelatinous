@@ -185,17 +185,38 @@ def break_stealth(char, *, quiet=False):
     hidden state and makes everyone present fully aware (spec §6.4 —
     per-room here; alert propagation is the hunt phase's job). Strict
     ``is True``: the state is only ever written as a literal, and test
-    doubles with auto-attributes must not read as hidden."""
+    doubles with auto-attributes must not read as hidden.
+
+    Non-quiet breaks add the EMERGENCE beat: observers who couldn't see
+    the character get "…emerges from concealment." *before* whatever gave
+    them away renders, so a voice never just materializes mid-sentence.
+    Trackers (who've been watching them lurk) get no redundant line.
+    Quiet is for callers that narrate the moment themselves (unhide) or
+    where emergence reads wrong (collapsing unconscious, movement)."""
     if getattr(getattr(char, "db", None), "hidden", False) is not True:
         return False
-    char.db.hidden = False
     room = char.location
+    emergence = []
+    if not quiet:
+        emergence = [obs for obs in (room.contents if room else [])
+                     if obs is not char and hasattr(obs, "get_sdesc")
+                     and is_hidden_from(char, obs)]
+    char.db.hidden = False
     for observer in (room.contents if room else []):
         if observer is char or not hasattr(observer, "get_sdesc"):
             continue
         set_awareness(observer, char, ALERT)
     if not quiet:
         char.msg("You abandon any pretense of hiding.")
+        from world.grammar import capitalize_first
+        for observer in emergence:
+            try:
+                observer.msg(
+                    f"{capitalize_first(char.get_display_name(observer))} "
+                    f"emerges from concealment."
+                )
+            except Exception:  # noqa: BLE001 — narration is best-effort
+                pass
     return True
 
 

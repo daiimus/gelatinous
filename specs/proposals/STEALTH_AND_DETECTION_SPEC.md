@@ -246,6 +246,18 @@ relevant observers to **Alert** and drops your hidden state for them. Stealth
 breaks **per-observer**: ambushing or robbing one guard doesn't auto-reveal you
 to one across the building (until alert propagation reaches them).
 
+**The emergence beat (2026-07-03):** when stealth breaks as a side effect of
+an action (speech, a pose), observers who couldn't see you get
+"…emerges from concealment." *before* the words render — a voice never just
+materializes mid-sentence. Trackers who watched you lurk get no redundant line.
+
+**The whisper carve-out (2026-07-03, user-decided):** `whisper` does NOT break
+stealth — it's the creepy channel. A whisper from a speaker the target cannot
+see arrives **unattributed** ("Someone unseen whispers at your ear, …"), leaves
+the target **Suspicious**, and bystanders who can't see the whisperer see
+nothing at all. Syntax: ``whisper "Wakka." to <person>`` (legacy
+``whisper <person> = <message>`` still accepted).
+
 ---
 
 ## 7 · Perception-gate integration (the safety model)

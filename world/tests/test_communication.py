@@ -623,6 +623,7 @@ class TestCmdWhisper(TestCase):
         cmd.caller = caller
         cmd.args = f" {args}"
         cmd.cmdstring = "whisper"
+        cmd.parse()
 
         room = MagicMock()
         room.contents = room_contents
@@ -744,11 +745,12 @@ class TestCmdWhisper(TestCase):
         cmd.caller = jorge
         cmd.args = " just talking"
         cmd.cmdstring = "whisper"
+        cmd.parse()
         jorge.location = MagicMock()
 
         cmd.func()
         jorge.msg.assert_called_once_with(
-            "Usage: whisper <target> = <message>"
+            'Usage: whisper "<message>" to <person>'
         )
 
 

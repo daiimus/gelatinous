@@ -120,33 +120,43 @@ class CmdWhisper(Command):
     Whisper a message to a specific target.
 
     Usage:
-        whisper <target> = <message>
+        whisper "Wakka." to <person>
+        whisper <person> = <message>     (legacy form)
 
-    The target hears the full message. Other observers only see that
-    a whisper occurred — they do not see the content.
+    The target hears the full message. Other observers only see that a
+    whisper occurred — never the content.
+
+    Whispering does NOT give you away: a whisper from someone the target
+    cannot see arrives as a voice with no owner — they'll know something
+    is there, not who or where.
     """
 
     key = "whisper"
     locks = "cmd:all()"
     help_category = "Social"
 
+    def parse(self):
+        """Accept `whisper "text" to <person>` (canonical) or the legacy
+        `whisper <person> = <text>`."""
+        import re
+        self.speech = self.target_str = ""
+        raw = (self.args or "").strip()
+        match = re.match(r'^"(?P<speech>[^"]+)"\s+to\s+(?P<target>.+)$', raw)
+        if match:
+            self.speech = match.group("speech").strip()
+            self.target_str = match.group("target").strip()
+            return
+        if "=" in raw:
+            target_str, _, speech = raw.partition("=")
+            self.target_str = target_str.strip()
+            self.speech = speech.strip()
+
     def func(self):
         caller = self.caller
-        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
-        from world.stealth import break_stealth
-        break_stealth(caller)
-
-        if not self.args or "=" not in self.args:
-            caller.msg("Usage: whisper <target> = <message>")
+        if not self.speech or not self.target_str:
+            caller.msg('Usage: whisper "<message>" to <person>')
             return
-
-        target_str, _, speech = self.args.partition("=")
-        target_str = target_str.strip()
-        speech = speech.strip()
-
-        if not target_str or not speech:
-            caller.msg("Usage: whisper <target> = <message>")
-            return
+        speech, target_str = self.speech, self.target_str
 
         location = caller.location
         if not location:
@@ -158,31 +168,60 @@ class CmdWhisper(Command):
         if not target:
             return  # search() already sent error message
 
+        # A whisper never breaks stealth (STEALTH_AND_DETECTION_SPEC §6.4
+        # carve-out): it's the creepy channel. From a hidden speaker the
+        # target can't see, the voice arrives with no owner — and leaves
+        # them knowing SOMETHING is there.
+        from world.stealth import (
+            SUSPICIOUS, get_awareness, is_hidden_from, set_awareness,
+        )
+        unseen = is_hidden_from(caller, target)
+
         # Actor sees their own message
         target_name_for_actor = target.get_display_name(caller)
         caller.msg(f'You whisper to {target_name_for_actor}, "{speech}"')
 
         # Target hears the full message — unless deaf, in which case they feel
         # the lean-in but can't make out the words (CAPACITY_CONSUMERS §4).
-        speaker_name_for_target = capitalize_first(
-            caller.get_display_name(target)
-        )
-        if can_hear(target):
-            target_text = (
-                f'{speaker_name_for_target} whispers to you, "{speech}"'
-            )
+        if unseen:
+            speaker_name_for_target = "Someone unseen"
         else:
-            target_text = (
-                f"{speaker_name_for_target} leans in to whisper, but you "
-                f"can't make out a word of it."
+            speaker_name_for_target = capitalize_first(
+                caller.get_display_name(target)
             )
+        if can_hear(target):
+            if unseen:
+                target_text = (
+                    f'Someone unseen whispers at your ear, "{speech}"'
+                )
+            else:
+                target_text = (
+                    f'{speaker_name_for_target} whispers to you, "{speech}"'
+                )
+        else:
+            if unseen:
+                target_text = (
+                    "You feel a breath at your ear, but you can't make "
+                    "out a word of it."
+                )
+            else:
+                target_text = (
+                    f"{speaker_name_for_target} leans in to whisper, but you "
+                    f"can't make out a word of it."
+                )
         target.msg(text=target_text, type="whisper", from_obj=caller)
+        if unseen:
+            if get_awareness(target, caller) < SUSPICIOUS:
+                set_awareness(target, caller, SUSPICIOUS)
 
-        # Room observers see that a whisper occurred, but NOT the content
+        # Room observers see that a whisper occurred, but NOT the content.
+        # Observers who can't see the whisperer see nothing at all.
         for observer in location.contents:
             if observer is caller or observer is target:
                 continue
             if not hasattr(observer, "msg"):
+                continue
+            if is_hidden_from(caller, observer):
                 continue
             speaker_name = caller.get_display_name(observer)
             target_name = target.get_display_name(observer)
