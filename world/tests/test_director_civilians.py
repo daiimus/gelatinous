@@ -130,6 +130,7 @@ class TestRoles(TestCase):
             mock_sc.objects.conf.return_value = {
                 "synth_companion": "EXPLICIT-DIRECTIVE-SENTINEL"}
             garment = MagicMock(); garment.key = "dress"
+            garment.layer = 2                  # sortable for inner-to-outer
             mock_spawn.return_value = [garment]
             npc = MagicMock(); npc.db = SimpleNamespace()
             mock_create.return_value = npc
@@ -164,6 +165,7 @@ class TestSpawn(TestCase):
         mock_within.return_value = haunts + [sky]
         garment = MagicMock()
         garment.key = "cotton t-shirt"
+        garment.layer = 1                      # sortable for inner-to-outer
         mock_spawn.return_value = [garment]
         npc = MagicMock()
         npc.db = SimpleNamespace()
@@ -467,3 +469,58 @@ class TestSynthFlavor(TestCase):
         for robot_word in ("servo", "actuator", "chassis", "optics",
                            "vocalizer"):
             self.assertNotIn(robot_word, joined)
+
+
+class TestWardrobeLayering(TestCase):
+    """The barefoot-companion bug class: same-layer collisions and
+    outer-before-inner wear orders silently strip garments."""
+
+    def _proto_attr(self, key, attr):
+        from world import prototypes as protos
+        proto = getattr(protos, key)
+        return dict(a[:2] for a in proto["attrs"]).get(attr)
+
+    def test_footwear_sits_on_the_footwear_layer(self):
+        # COMBAT_BOOTS convention: layer 3, "doesn't conflict with pants".
+        for key in ("HEELED_BOOTS", "PIT_BOOTS", "HIGH_TOPS"):
+            self.assertGreaterEqual(self._proto_attr(key, "layer"), 3, key)
+
+    def test_no_same_layer_same_slot_collisions_in_any_look(self):
+        # Simulate every role's possible look; no two garments may claim
+        # the same location on the same layer.
+        from itertools import product
+        from world import prototypes as protos
+
+        def garment(key):
+            attrs = dict(a[:2] for a in getattr(protos, key)["attrs"])
+            return attrs.get("layer", 2), attrs.get("coverage", [])
+
+        for role, spec in CIVILIAN_ROLES.items():
+            looks = []
+            outfits = spec.get("outfits") or []
+            if isinstance(outfits, dict):
+                for pool in outfits.values():
+                    looks.extend([list(o) for o in pool])
+            else:
+                looks.extend([list(o) for o in outfits])
+            wardrobe = spec.get("wardrobe") or []
+            if wardrobe:
+                slots = [e if isinstance(e, list) else [e] for e in wardrobe]
+                looks.extend([list(c) for c in product(*slots)])
+            for look in looks:
+                seen = {}
+                for key in look:
+                    layer, coverage = garment(key)
+                    for loc in coverage:
+                        self.assertNotIn(
+                            (loc, layer), seen,
+                            f"{role}: {key} vs {seen.get((loc, layer))} "
+                            f"at {loc} layer {layer}")
+                        seen[(loc, layer)] = key
+
+    def test_spawn_wears_inner_to_outer(self):
+        import inspect
+        from world.director import civilians as _c
+        source = inspect.getsource(_c.spawn_civilian)
+        self.assertIn('sorted(items, key=lambda i: getattr(i, "layer", 2))',
+                      source)

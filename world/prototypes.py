@@ -3380,7 +3380,7 @@ PIT_BOOTS = {
         ("category", "clothing"),
         ("worn_desc", "Steel-shanked {color}brown|n pit boots laced to the shin, gum-rubber soled"),
         ("coverage", ["left_foot", "right_foot"]),
-        ("layer", 2),
+        ("layer", 3),  # footwear layer — worn over trousers, never conflicts
         ("color", "brown"),
         ("material", "leather"),
         ("weight", 1.6),
@@ -3441,7 +3441,7 @@ HIVIS_VEST = {
         ("category", "clothing"),
         ("worn_desc", "A signal-{color}orange|n hi-vis vest, reflective bands catching the light, company stencil across the back"),
         ("coverage", ["chest", "back"]),
-        ("layer", 3),
+        ("layer", 4),  # worn OVER the jacket/coat (armor-layer precedent)
         ("color", "orange"),
         ("material", "mesh"),
         ("weight", 0.3),
@@ -3780,7 +3780,7 @@ HEELED_BOOTS = {
         ("category", "clothing"),
         ("worn_desc", "Knee-high {color}black|n heeled boots, polished to a street-lamp shine, announcing every step"),
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin"]),
-        ("layer", 2),
+        ("layer", 3),  # footwear layer — worn over trousers, never conflicts
         ("color", "black"),
         ("material", "synth-leather"),
         ("weight", 1.0),
@@ -3814,7 +3814,7 @@ LONG_COAT = {
         ("category", "clothing"),
         ("worn_desc", "An ankle-length {color}charcoal|n stormcloth coat moving like low weather around {them}"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
-        ("layer", 3),
+        ("layer", 4),  # over-everything duster — clears knee-high boots at the shins
         ("color", "charcoal"),
         ("material", "stormcloth"),
         ("weight", 1.8),
@@ -3956,7 +3956,7 @@ HIGH_TOPS = {
         ("category", "clothing"),
         ("worn_desc", "Scuffed {color}white|n canvas high-tops laced with paracord"),
         ("coverage", ["left_foot", "right_foot"]),
-        ("layer", 2),
+        ("layer", 3),  # footwear layer — worn over trousers, never conflicts
         ("color", "white"),
         ("material", "canvas"),
         ("weight", 0.6),
