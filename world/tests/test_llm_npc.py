@@ -367,3 +367,64 @@ class TestEchoGuard(TestCase):
              "action": "arches into the touch, unhurried"},
             "runs a hand down the synth's arm")[:2]
         self.assertEqual(action, "arches into the touch, unhurried")
+
+
+class TestForcePerception(TestCase):
+    """Admin `force` speaks THROUGH the NPC — the brain must own the act."""
+
+    def _npc(self):
+        b = MagicMock()
+        b.db.llm_driven = True
+        b.ndb.action_buffer = None
+        _bind(b, "perceive_forced_command")
+        _bind(b, "_observe_action")
+        return b
+
+    def test_forced_say_reads_as_own_words(self):
+        b = self._npc()
+        b.perceive_forced_command("say follow me, quick")
+        self.assertIn('You yourself just said: "follow me, quick"',
+                      b.ndb.action_buffer)
+
+    def test_forced_pose_reads_as_own_act(self):
+        b = self._npc()
+        b.perceive_forced_command("emote checks the door twice")
+        self.assertIn("You yourself just did: checks the door twice",
+                      b.ndb.action_buffer)
+
+    def test_other_commands_buffer_verbatim(self):
+        b = self._npc()
+        b.perceive_forced_command("remove slit skirt")
+        self.assertIn("You yourself just did this: remove slit skirt",
+                      b.ndb.action_buffer)
+
+    def test_not_llm_driven_ignored(self):
+        b = self._npc()
+        b.db.llm_driven = False
+        b.perceive_forced_command("say hi")
+        self.assertFalse(b.ndb.action_buffer)
+
+
+class TestCmdForceHook(TestCase):
+    def _cmd(self, targ):
+        from commands.CmdAdmin import CmdForce
+        cmd = CmdForce()
+        cmd.caller = MagicMock()
+        cmd.caller.search.return_value = targ
+        cmd.msg = MagicMock()
+        cmd.args = "bliss = say hello there"
+        cmd.parse()
+        return cmd
+
+    def test_force_notifies_llm_brain(self):
+        targ = MagicMock()
+        targ.access.return_value = True
+        self._cmd(targ).func()
+        targ.execute_cmd.assert_called_once_with("say hello there")
+        targ.perceive_forced_command.assert_called_once_with("say hello there")
+
+    def test_plain_object_without_brain_still_forced(self):
+        targ = MagicMock(spec=["access", "execute_cmd"])
+        targ.access.return_value = True
+        self._cmd(targ).func()
+        targ.execute_cmd.assert_called_once_with("say hello there")

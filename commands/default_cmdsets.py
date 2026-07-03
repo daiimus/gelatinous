@@ -159,6 +159,9 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         
         # Add bug reporting command
         self.add(CmdBug())
+
+        # force override: an LLM-driven NPC perceives what it was made to do
+        self.add(CmdAdmin.CmdForce())
         
         # Add aim command for ranged combat preparation
         self.add(CmdAim())
