@@ -524,6 +524,25 @@ class TestRememberNameGuard(TestCase):
             b._remember_person(MagicMock(), junk)
             b.execute_cmd.assert_not_called()
 
+    def test_contentless_names_rejected(self):
+        # determiner/demonstrative + generic person-word = not a name
+        for junk in ("that guy", "the one", "this one", "that man",
+                     "the lady", "you two"):
+            b = self._npc()
+            b._remember_person(MagicMock(), junk)
+            b.execute_cmd.assert_not_called()
+
+    def test_contentful_names_accepted(self):
+        for good in ("the foot guy", "tab dodger", "Roony",
+                     "the negotiating ninja"):
+            b = self._npc()
+            patron = MagicMock()
+            patron.get_display_name = lambda looker=None, **k: "a lean man"
+            with patch("world.identity.get_assigned_name", return_value=None):
+                b._remember_person(patron, good)
+            b.execute_cmd.assert_called_once_with(
+                f"remember a lean man as {good}")
+
     def test_trailing_punctuation_stripped(self):
         b = self._npc()
         patron = MagicMock()

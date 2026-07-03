@@ -524,10 +524,16 @@ class LLMNpcMixin:
         name = " ".join(str(name).split())[:40].strip(" .,!?;:'\"")
         if not name or " as " in name.lower():
             return
-        # Pronouns aren't names — a stored "you"/"him" becomes the address
-        # handle and poisons every subsequent pose reference.
-        if name.lower() in ("you", "your", "yours", "me", "my", "him", "his",
-                            "her", "hers", "them", "their", "they", "it", "us"):
+        # A name needs at least one CONTENT word. Pronouns, demonstratives,
+        # and generic person-words aren't names — "you", "that guy", "the
+        # one" would become the address handle and poison every subsequent
+        # pose reference (and their common tokens would spuriously match
+        # ordinary prose in the emote matcher).
+        from world.emote import _ASSIGNED_NAME_STOPWORDS
+        junk = _ASSIGNED_NAME_STOPWORDS | {
+            "me", "my", "mine", "us", "we", "who", "someone", "anybody",
+        }
+        if all(w.lower() in junk for w in name.split()):
             return
         try:
             from world.identity import get_assigned_name

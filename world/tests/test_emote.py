@@ -1096,7 +1096,12 @@ class TestAssignedNameTokenTargeting(TestCase):
         names = [name for name, _char, _rc in candidates]
         self.assertNotIn("the", names)
         self.assertIn("labor", names)   # content words still target
-        self.assertIn("guy", names)
+        # generic person-words are too common in prose to stand alone as
+        # candidates ("watches the guy by the door" must not resolve to
+        # whoever happens to be remembered as "the labor guy"); the full
+        # name still matches
+        self.assertNotIn("guy", names)
+        self.assertIn("the labor guy", names)
 
     def test_article_in_assigned_name_not_resolved_in_prose(self) -> None:
         """End-to-end: a literal "the" in a pose does not resolve to the
@@ -2025,3 +2030,20 @@ class TestSecondPersonObserverRef(TestCase):
         toks = self.tok_emote("nods at the droog", self.actor, [self.you])
         out = self.render_emote(toks, self.actor, stranger).lower()
         self.assertIn("droog", out)               # named, not "you"
+
+
+class TestAssignedNameStopwords(TestCase):
+    """Common-word tokens of an assigned name must not become standalone
+    match candidates — a name like "that guy" would otherwise make every
+    prose "that" a reference to this character."""
+
+    def test_dangerous_tokens_stopworded(self):
+        from world.emote import _ASSIGNED_NAME_STOPWORDS as sw
+        for word in ("that", "this", "one", "you", "her", "guy", "man",
+                     "woman", "person"):
+            self.assertIn(word, sw)
+
+    def test_content_words_still_candidates(self):
+        from world.emote import _ASSIGNED_NAME_STOPWORDS as sw
+        for word in ("ninja", "dodger", "foot", "wendy"):
+            self.assertNotIn(word, sw)
