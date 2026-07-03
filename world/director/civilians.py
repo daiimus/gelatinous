@@ -79,7 +79,7 @@ CIVILIAN_ROLES: dict[str, dict] = {
                      ["THERMAL_SHIRT", "FLANNEL_SHIRT", "TANK_TOP"],
                      ["CARGO_TROUSERS", "LEATHER_TROUSERS", "BLUE_JEANS"],
                      ["PIT_BOOTS", "HIGH_TOPS", "COMBAT_BOOTS"],
-                     ["KNIT_CAP", "DUST_PONCHO"]],
+                     ["KNIT_CAP", "MINING_HELMET"]],
         "reaction": "flee", "armed": True, "reports": None,
         "weapon_pool": ["BOX_CUTTER", "SHIV", "CROWBAR", "PIPE_WRENCH"],
         "ambient": [
@@ -353,13 +353,23 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     garments = list(choice(outfits)) if outfits else []
     for entry in spec.get("wardrobe", []):
         garments.append(choice(entry) if isinstance(entry, list) else entry)
+    # Spawn everything first, then wear inner-to-outer (ascending layer):
+    # the clothing system refuses an inner layer over an outer one, so a
+    # role listing its identity piece first (cut, apron, harness) was
+    # silently stripping the tops worn after it.
+    items = []
     for proto in garments:
         try:
             item = proto_spawn(proto)[0]
             item.move_to(npc, quiet=True)
+            items.append(item)
+        except Exception:  # noqa: BLE001 — a missing garment isn't fatal
+            continue
+    for item in sorted(items, key=lambda i: getattr(i, "layer", 2)):
+        try:
             npc.execute_cmd(f"wear {item.key}")
             _randomize_styles(npc, item)
-        except Exception:  # noqa: BLE001 — a missing garment isn't fatal
+        except Exception:  # noqa: BLE001
             continue
 
     # Stock (a hawker sells something real — and muggable) + a blade for
