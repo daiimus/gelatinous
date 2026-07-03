@@ -224,6 +224,18 @@ class ConsumptionCommand(Command):
         except AttributeError:
             errors.append(f"{target.get_display_name(user)} cannot receive medical treatment.")
             
+        # Trust/consent gate (TRUST_AND_CONSENT_SPEC §3, `heal` class):
+        # treating someone ELSE who can contest requires their trust.
+        if target is not user:
+            from world.consent import check_consent
+            if not check_consent(user, target, "heal"):
+                errors.append(
+                    f"{target.get_display_name(user)} is conscious and "
+                    f"would resist treatment — they'd need to trust you "
+                    f"to heal them (or be restrained)."
+                )
+                return errors
+
         # Check consciousness for certain procedures
         if hasattr(target, 'is_unconscious') and target.is_unconscious():
             # Some procedures can be done on unconscious patients

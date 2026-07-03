@@ -35,6 +35,7 @@ from commands.bar_menu import CmdSpawnIngredient
 from commands.CmdBug import CmdBug
 from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
 from commands.CmdFixCharacterOwnership import CmdFixCharacterOwnership
+from commands.CmdTrust import CmdDistrust, CmdTrust
 from commands.combat.cmdset_combat import CombatCmdSet
 from commands.combat.special_actions import CmdAim, CmdGrapple
 from commands.CmdThrow import CmdThrow, CmdPull, CmdCatch
@@ -162,6 +163,11 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
 
         # force override: an LLM-driven NPC perceives what it was made to do
         self.add(CmdAdmin.CmdForce())
+
+        # Trust & consent (TRUST_AND_CONSENT_SPEC Phase 1): the grant surface
+        # behind the third-party action gate (world/consent.py).
+        self.add(CmdTrust())
+        self.add(CmdDistrust())
         
         # Add aim command for ranged combat preparation
         self.add(CmdAim())

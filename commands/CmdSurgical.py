@@ -128,6 +128,19 @@ def _resolve_target(caller, raw_name):
         allow_self=False,
     )
     if identity_match is not None:
+        # Trust/consent gate (TRUST_AND_CONSENT_SPEC §3, `heal` class):
+        # surgery on someone ELSE who can contest requires their trust.
+        # One seam for every surgical verb (operate/incise/harvest/
+        # install/suture route their character targets through here).
+        from world.consent import check_consent
+        if identity_match is not caller and not check_consent(
+                caller, identity_match, "heal"):
+            caller.msg(
+                f"{identity_match.get_display_name(caller)} is conscious "
+                f"and would resist the knife — they'd need to trust you "
+                f"to heal them (or be restrained)."
+            )
+            return None
         return identity_match
 
     # Stage 2 — inventory fallback (non-character targets only;

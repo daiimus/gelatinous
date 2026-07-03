@@ -62,6 +62,11 @@ class AutoDoc(Furniture):
         self.db.postures = ("lying",)
         self.db.preposition = "in"
         self.db.is_medical = True
+        # Restraint device (TRUST_AND_CONSENT_SPEC §1): a pod-bound patient
+        # cannot contest — being strapped in is what authorizes treatment.
+        # world/consent.is_restrained also treats any medical lie-in pod as
+        # restraining, so AutoDocs created before this flag behave the same.
+        self.db.restraining = True
         # Clinic apparatus: operating on a patient lying here steadies the work —
         # a bonus to the treatment check (world.medical.utils.calculate_treatment_
         # success). The clinic's medical-supply STOCK (real items the doctor draws)
