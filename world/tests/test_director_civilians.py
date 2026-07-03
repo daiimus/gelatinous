@@ -402,3 +402,40 @@ class TestClothingStyles(TestCase):
         npc.execute_cmd.assert_not_called()   # junk verbs never execute
         LLMNpcMixin._handle_action_tool(npc, "style", "unzip", None)
         npc.execute_cmd.assert_not_called()   # verb without garment
+
+
+class TestSynthFlavor(TestCase):
+    """Full synth flavor tables: passes for human, but if you know you know."""
+
+    def test_registered_in_all_axes(self):
+        from world.mob_flavor import (_LONGDESCS_BY_SPECIES,
+                                      _LOOK_PLACES_BY_SPECIES,
+                                      _SHORT_DESCS_BY_SPECIES)
+        for table in (_LONGDESCS_BY_SPECIES, _LOOK_PLACES_BY_SPECIES,
+                      _SHORT_DESCS_BY_SPECIES):
+            self.assertIn("synthetic_humanoid", table)
+
+    def test_full_humanoid_slot_coverage(self):
+        from world.mob_flavor.longdescs import LONGDESCS
+        from world.mob_flavor.longdescs_synth import LONGDESCS_SYNTH
+        self.assertEqual(set(LONGDESCS_SYNTH), set(LONGDESCS))
+        for slot, options in LONGDESCS_SYNTH.items():
+            self.assertGreaterEqual(len(options), 3, slot)
+
+    def test_pair_slots_use_braced_nouns(self):
+        from world.mob_flavor.longdescs_synth import LONGDESCS_SYNTH
+        for slot in ("eyes", "ears", "arms", "hands", "thighs", "shins",
+                     "feet"):
+            for line in LONGDESCS_SYNTH[slot]:
+                self.assertIn("{" + slot + "}", line, slot)
+
+    def test_register_is_uncanny_not_mechanical(self):
+        # Synths PASS — no robot vocabulary leaks into the prose.
+        from world.mob_flavor.longdescs_synth import LONGDESCS_SYNTH
+        from world.mob_flavor.short_descs_synth import SHORT_DESCS_SYNTH
+        joined = (str(LONGDESCS_SYNTH) + str(SHORT_DESCS_SYNTH)).lower()
+        for tell in ("symmetr", "poreless", "engineered"):
+            self.assertIn(tell, joined)
+        for robot_word in ("servo", "actuator", "chassis", "optics",
+                           "vocalizer"):
+            self.assertNotIn(robot_word, joined)

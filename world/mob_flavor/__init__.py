@@ -35,12 +35,15 @@ from world.anatomy import get_species_pair_keys
 from world.mob_flavor.longdescs import LONGDESCS
 from world.mob_flavor.longdescs_rat import LONGDESCS_RAT
 from world.mob_flavor.longdescs_robot import LONGDESCS_ROBOT
+from world.mob_flavor.longdescs_synth import LONGDESCS_SYNTH
 from world.mob_flavor.look_places import LOOK_PLACES
 from world.mob_flavor.look_places_rat import LOOK_PLACES_RAT
 from world.mob_flavor.look_places_robot import LOOK_PLACES_ROBOT
+from world.mob_flavor.look_places_synth import LOOK_PLACES_SYNTH
 from world.mob_flavor.short_descs import SHORT_DESCS
 from world.mob_flavor.short_descs_rat import SHORT_DESCS_RAT
 from world.mob_flavor.short_descs_robot import SHORT_DESCS_ROBOT
+from world.mob_flavor.short_descs_synth import SHORT_DESCS_SYNTH
 
 
 # Species → data-table mappings. New species: add an entry per axis.
@@ -48,18 +51,21 @@ _SHORT_DESCS_BY_SPECIES: dict[str, list[str]] = {
     "human": SHORT_DESCS,
     "rat":   SHORT_DESCS_RAT,
     "robot": SHORT_DESCS_ROBOT,
+    "synthetic_humanoid": SHORT_DESCS_SYNTH,
 }
 
 _LOOK_PLACES_BY_SPECIES: dict[str, list[str]] = {
     "human": LOOK_PLACES,
     "rat":   LOOK_PLACES_RAT,
     "robot": LOOK_PLACES_ROBOT,
+    "synthetic_humanoid": LOOK_PLACES_SYNTH,
 }
 
 _LONGDESCS_BY_SPECIES: dict[str, dict[str, list[str]]] = {
     "human": LONGDESCS,
     "rat":   LONGDESCS_RAT,
     "robot": LONGDESCS_ROBOT,
+    "synthetic_humanoid": LONGDESCS_SYNTH,
 }
 
 
