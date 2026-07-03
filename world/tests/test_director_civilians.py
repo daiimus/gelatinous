@@ -420,7 +420,35 @@ class TestSynthFlavor(TestCase):
         from world.mob_flavor.longdescs_synth import LONGDESCS_SYNTH
         self.assertEqual(set(LONGDESCS_SYNTH), set(LONGDESCS))
         for slot, options in LONGDESCS_SYNTH.items():
-            self.assertGreaterEqual(len(options), 3, slot)
+            if isinstance(options, dict):
+                for sex, pool in options.items():
+                    self.assertGreaterEqual(len(pool), 2, f"{slot}.{sex}")
+            else:
+                self.assertGreaterEqual(len(options), 3, slot)
+
+    def test_chest_groin_are_sex_keyed(self):
+        from world.mob_flavor.longdescs_synth import LONGDESCS_SYNTH
+        for slot in ("chest", "groin"):
+            entry = LONGDESCS_SYNTH[slot]
+            self.assertIsInstance(entry, dict, slot)
+            for sex in ("male", "female", "any"):
+                self.assertIn(sex, entry, slot)
+        # anatomically correct: female chest names breasts; male stays flat
+        female_chest = str(LONGDESCS_SYNTH["chest"]["female"]).lower()
+        male_chest = str(LONGDESCS_SYNTH["chest"]["male"]).lower()
+        self.assertIn("breast", female_chest)
+        self.assertNotIn("breast", male_chest)
+
+    def test_random_longdesc_resolves_sex_pools(self):
+        from world.mob_flavor import random_longdesc
+        from world.mob_flavor.longdescs_synth import LONGDESCS_SYNTH
+        line = random_longdesc("chest", "synthetic_humanoid", sex="female")
+        self.assertIn(line, LONGDESCS_SYNTH["chest"]["female"])
+        line = random_longdesc("chest", "synthetic_humanoid", sex="male")
+        self.assertIn(line, LONGDESCS_SYNTH["chest"]["male"])
+        # unknown sex falls to the any pool
+        line = random_longdesc("chest", "synthetic_humanoid", sex="ambiguous")
+        self.assertIn(line, LONGDESCS_SYNTH["chest"]["any"])
 
     def test_pair_slots_use_braced_nouns(self):
         from world.mob_flavor.longdescs_synth import LONGDESCS_SYNTH

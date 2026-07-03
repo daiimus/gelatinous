@@ -86,7 +86,7 @@ def random_look_place(species=None) -> str:
     return choice(table)
 
 
-def random_longdesc(slot: str, species=None) -> str | None:
+def random_longdesc(slot: str, species=None, sex=None) -> str | None:
     """Return a random longdesc template for ``slot``.
 
     ``slot`` is the data-side key — either a singular location (``"hair"``,
@@ -94,9 +94,19 @@ def random_longdesc(slot: str, species=None) -> str | None:
     for symmetric pairs. Returns ``None`` when no entries are seeded for
     this species — extended anatomy and any new locations fall into this
     case until flavor data is authored.
+
+    A slot's entries may be a flat list (unisex) or a **sex-keyed dict**
+    (``{"male": [...], "female": [...], "any": [...]}``) for anatomy where
+    gender-correct prose matters (chest, groin). Resolution: the mob's
+    sex → the ``"any"`` pool → all pools flattened (never empty-handed).
     """
     table = _LONGDESCS_BY_SPECIES[_resolve_species(species)]
     entries = table.get(slot)
+    if isinstance(entries, dict):
+        pool = entries.get(sex) or entries.get("any")
+        if not pool:
+            pool = [line for lines in entries.values() for line in lines]
+        entries = pool
     if not entries:
         return None
     return choice(entries)
@@ -137,7 +147,8 @@ def apply_random_flavor(mob) -> None:
         sides_present = [loc for loc in (left, right) if loc in available]
         if not sides_present:
             continue
-        entry = random_longdesc(pair_key, species)
+        entry = random_longdesc(pair_key, species,
+                                sex=getattr(mob, "sex", None))
         if entry is None:
             continue
         for side in sides_present:
@@ -147,6 +158,7 @@ def apply_random_flavor(mob) -> None:
     # Remaining (singular) locations — keyed in the species' longdesc
     # table by location name.
     for location in available - handled:
-        entry = random_longdesc(location, species)
+        entry = random_longdesc(location, species,
+                                sex=getattr(mob, "sex", None))
         if entry is not None:
             mob.set_longdesc(location, entry)
