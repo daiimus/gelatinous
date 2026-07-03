@@ -47,6 +47,9 @@ class CmdSay(Command):
 
     def func(self):
         caller = self.caller
+        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
+        from world.stealth import break_stealth
+        break_stealth(caller)
 
         if not self.args:
             caller.msg("Say what?")
@@ -84,6 +87,9 @@ class CmdTo(Command):
 
     def func(self):
         caller = self.caller
+        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
+        from world.stealth import break_stealth
+        break_stealth(caller)
 
         args = (self.args or "").strip()
         parts = args.split(None, 1)
@@ -126,6 +132,9 @@ class CmdWhisper(Command):
 
     def func(self):
         caller = self.caller
+        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
+        from world.stealth import break_stealth
+        break_stealth(caller)
 
         if not self.args or "=" not in self.args:
             caller.msg("Usage: whisper <target> = <message>")
@@ -217,6 +226,9 @@ class CmdEmote(Command):
 
     def func(self):
         caller = self.caller
+        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
+        from world.stealth import break_stealth
+        break_stealth(caller)
 
         if not self.args:
             caller.msg("What do you want to emote?")
@@ -288,6 +300,9 @@ class CmdDotPose(Command):
 
     def func(self) -> None:
         caller = self.caller
+        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
+        from world.stealth import break_stealth
+        break_stealth(caller)
 
         # Extract the emote text from raw_string.
         # raw_string looks like ".lean back." — strip the leading "."

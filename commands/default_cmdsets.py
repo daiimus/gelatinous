@@ -39,6 +39,7 @@ from commands.CmdTrust import CmdDistrust, CmdTrust
 from commands.CmdFollow import (
     CmdEscort, CmdFollow, CmdStopEscorting, CmdStopFollowing,
 )
+from commands.CmdStealth import CmdHide, CmdSearch, CmdSneak, CmdUnhide
 from commands.combat.cmdset_combat import CombatCmdSet
 from commands.combat.special_actions import CmdAim, CmdGrapple
 from commands.CmdThrow import CmdThrow, CmdPull, CmdCatch
@@ -178,6 +179,13 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdStopFollowing())
         self.add(CmdEscort())
         self.add(CmdStopEscorting())
+
+        # Stealth (STEALTH_AND_DETECTION_SPEC P1-2 + passive tier): the
+        # hide/search contest and the graded awareness store.
+        self.add(CmdHide())
+        self.add(CmdUnhide())
+        self.add(CmdSneak())
+        self.add(CmdSearch())
         
         # Add aim command for ranged combat preparation
         self.add(CmdAim())
