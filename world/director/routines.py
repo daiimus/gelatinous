@@ -77,15 +77,35 @@ def is_patrol_idle(npc: Any) -> bool:
 
 def tick_npc(npc: Any) -> str:
     """Advance one NPC's patrol by one nudge. Returns what happened
-    (for diagnostics): ``skip`` / ``travel`` / ``waypoint`` / ``none``."""
+    (for diagnostics): ``skip`` / ``wait`` / ``travel`` / ``waypoint`` /
+    ``none``.
+
+    * **Cadence** (``db.patrol_cadence``, default 1): act only every Nth
+      tick — civilians drift at a stroll while security marches.
+    * **Stagger**: a fresh/reloaded NPC starts at a *random* beat index,
+      so multiple units on the same loop spread out instead of walking
+      in lockstep.
+    """
+    from random import randrange
     beat = get_beat(npc)
     if not beat:
         return "none"
     if not is_patrol_idle(npc):
         return "skip"
-    idx = int(getattr(npc.ndb, "patrol_idx", None) or 0) % len(beat)
+    cadence = int(getattr(npc.db, "patrol_cadence", None) or 1)
+    if cadence > 1:
+        waited = int(getattr(npc.ndb, "patrol_wait", None) or 0) + 1
+        if waited < cadence:
+            npc.ndb.patrol_wait = waited
+            return "wait"
+        npc.ndb.patrol_wait = 0
+    idx = getattr(npc.ndb, "patrol_idx", None)
+    if idx is None:
+        idx = randrange(len(beat))          # stagger across the loop
+    idx = int(idx) % len(beat)
     waypoint = beat[idx]
     if npc.location != waypoint:
+        npc.ndb.patrol_idx = idx            # keep aiming here
         travel_to(npc, waypoint)
         return "travel"
     # Arrived: run the waypoint hook, then aim for the next stop.
@@ -95,22 +115,33 @@ def tick_npc(npc: Any) -> str:
 
 
 def at_waypoint(npc: Any) -> None:
-    """Waypoint hook. Security: sweep for wanted faces — a hit raises a
-    ``disturbance`` on the spot and the dispatch/challenge machinery
-    (usually assigning this very patroller) takes it from there."""
-    if getattr(getattr(npc, "db", None), "role", None) != "security":
+    """Waypoint hook, by role. Security: sweep for wanted faces — a hit
+    raises a ``disturbance`` on the spot and the dispatch/challenge
+    machinery (usually assigning this very patroller) takes it from
+    there. Civilians: a role-flavored ambient beat (the seed of the §6
+    deterministic interaction vocabulary)."""
+    role = getattr(getattr(npc, "db", None), "role", None)
+    if role == "security":
+        try:
+            from world.director.dispatch import WorldEvent, raise_event
+            from world.director.security import _scan_wanted
+            _uid, flagged, _entry = _scan_wanted(npc)
+            if flagged is not None:
+                raise_event(WorldEvent("disturbance", npc.location,
+                                       severity=1, source=flagged))
+            else:
+                npc.execute_cmd("emote pans a slow sensor sweep across the "
+                                "street and moves on.")
+        except Exception:  # noqa: BLE001 — a bad sweep must not stall the beat
+            pass
         return
+    # Civilian ambience: one flavored idle beat per arrival.
     try:
-        from world.director.dispatch import WorldEvent, raise_event
-        from world.director.security import _scan_wanted
-        _uid, flagged, _entry = _scan_wanted(npc)
-        if flagged is not None:
-            raise_event(WorldEvent("disturbance", npc.location,
-                                   severity=1, source=flagged))
-        else:
-            npc.execute_cmd("emote pans a slow sensor sweep across the "
-                            "street and moves on.")
-    except Exception:  # noqa: BLE001 — a bad sweep must not stall the beat
+        from world.director.civilians import ambient_beat
+        line = ambient_beat(npc)
+        if line:
+            npc.execute_cmd(f"emote {line}")
+    except Exception:  # noqa: BLE001 — ambience must not stall the drift
         pass
 
 
