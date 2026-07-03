@@ -1066,21 +1066,30 @@ class CmdWrest(Command):
 
 class CmdFrisk(Command):
     """
-    Thoroughly search an unconscious character, corpse, or dead person for items.
-    
+    Pat someone down — a full manifest of what they carry.
+
     Usage:
         frisk <target>
-        
-    This command allows you to pat down and search another character
-    or corpse, revealing all items they are carrying or wearing.
-    The target must be unconscious, dead, or a corpse to be frisked.
+
+    Reveals everything on a person: worn garments, what's in their
+    hands, and what they carry in their pockets (the things looking
+    at them never shows), plus their tokens.
+
+    Frisk is a REVEAL, not a contest (TRUST_AND_CONSENT_SPEC §3.2):
+    it works freely on a target who cannot contest — unconscious,
+    dead, restrained, or a corpse — and on a conscious, free target
+    only when they've trusted you to search them (``trust <person>
+    to search``). The lawful/forceful inspection: a security unit
+    frisks a subdued suspect, a medic frisks a willing patient, you
+    frisk a corpse. It is the information step before confiscation
+    or theft.
     """
-    
+
     key = "frisk"
     aliases = ["patdown"]
     locks = "cmd:all()"
     help_category = "General"
-    
+
     def func(self):
         caller = self.caller
         
@@ -1102,30 +1111,27 @@ class CmdFrisk(Command):
             caller.msg("You can't frisk yourself.")
             return
             
-        # Check if target can be frisked (must be unconscious, dead, or corpse)
-        can_frisk = False
-        frisk_reason = ""
-        
-        # Check if it's a corpse (proper typeclass check)
-        if hasattr(target, 'typeclass_path') and 'corpse' in target.typeclass_path.lower():
-            can_frisk = True
-            frisk_reason = "corpse"
-        # Also check direct inheritance
-        elif target.__class__.__name__ == 'Corpse':
-            can_frisk = True
-            frisk_reason = "corpse"
-        # Check if character is dead using medical system
-        elif hasattr(target, 'medical_state') and target.medical_state and target.medical_state.is_dead():
-            can_frisk = True
-            frisk_reason = "dead"
-        # Check if character is unconscious using medical system  
-        elif hasattr(target, 'medical_state') and target.medical_state and target.medical_state.is_unconscious():
-            can_frisk = True
-            frisk_reason = "unconscious"
-            
-        if not can_frisk:
-            caller.msg(f"{target.get_display_name(caller)} is too lively to frisk. They need to be unconscious, dead, or a corpse.")
-            return
+        # Corpse objects (not characters) are always searchable loot.
+        is_corpse = (
+            (hasattr(target, 'typeclass_path')
+             and 'corpse' in target.typeclass_path.lower())
+            or target.__class__.__name__ == 'Corpse'
+        )
+        frisk_reason = "corpse" if is_corpse else "search"
+
+        # Trust/consent gate (TRUST_AND_CONSENT_SPEC §3.2, `search`
+        # class): free on a target who cannot contest (unconscious /
+        # dead / restrained); a conscious, free target must have
+        # trusted the caller to search them.
+        if not is_corpse:
+            from world.consent import check_consent
+            if not check_consent(caller, target, "search"):
+                caller.msg(
+                    f"{target.get_display_name(caller)} is conscious and "
+                    f"would resist being searched — they'd need to trust "
+                    f"you to search them (or be restrained)."
+                )
+                return
         
         # Get target's gender for pronouns. Living targets follow the
         # apparent presentation (disguises shift pronouns); corpses
@@ -1155,8 +1161,9 @@ class CmdFrisk(Command):
         target_name = target.get_display_name(caller)
         caller.msg(f"You square up to {target_name} and begin patting {them} down thoroughly.")
         
-        # Send message to target (if they're a character and conscious)
-        if hasattr(target, 'msg') and target.has_account and frisk_reason == "unconscious":
+        # Notify the target — a conscious (trusted or restrained) target
+        # certainly feels it; an unconscious one's client just filters it.
+        if frisk_reason != "corpse" and hasattr(target, 'msg'):
             target.msg(f"{caller.get_display_name(target)} squares up to you and begins patting you down thoroughly.")
             
         # Send message to room (excluding caller and target)
@@ -1173,8 +1180,8 @@ class CmdFrisk(Command):
         
         # Get all contents (both worn and carried)
         all_items = target.contents
-        
-        if not all_items:
+
+        if not all_items and not target.db.tokens:
             caller.msg(f"You feel nothing on {target_name}.")
             return
             
@@ -1188,37 +1195,50 @@ class CmdFrisk(Command):
         delay(delay_seconds, self._show_frisk_results, caller, target, all_items, them, target_name)
     
     def _show_frisk_results(self, caller, target, all_items, them, target_name):
-        """Show the frisk results after the delay."""
-        # Separate worn vs carried items
-        worn_items = []
-        carried_items = []
-        
-        for item in all_items:
-            # Check if item is worn (common patterns for worn items)
-            if item.db.worn is not None:
-                worn_items.append(item)
-            elif hasattr(item, 'worn') and item.worn:
-                worn_items.append(item)
-            # Check if it's in a wear location
-            elif item.db.wear_location is not None:
-                worn_items.append(item)
-            else:
-                carried_items.append(item)
-                
-        # Build the results message
+        """The manifest (TRUST_AND_CONSENT_SPEC §3.2): worn, in-hand, and
+        carried — the pockets a mere look never shows — plus tokens."""
+        # Worn: the wearer's real registry (the clothing mixin), falling
+        # back to legacy per-item flags for non-mixin targets (corpses).
+        get_worn = getattr(target, "get_worn_items", None)
+        if callable(get_worn):
+            worn_items = list(get_worn() or [])
+        else:
+            worn_items = [
+                item for item in all_items
+                if item.db.worn is not None
+                or getattr(item, "worn", None)
+                or item.db.wear_location is not None
+            ]
+        worn_ids = {id(item) for item in worn_items}
+
+        # In hand: wielded/held items.
+        hands = getattr(target, "hands", None) or {}
+        held_items = []
+        for item in hands.values():
+            if item and not any(item is held for held in held_items):
+                held_items.append(item)   # a two-handed grip lists once
+        held_ids = {id(item) for item in held_items}
+
+        carried_items = [
+            item for item in all_items
+            if id(item) not in worn_ids and id(item) not in held_ids
+        ]
+
         result_lines = [f"You feel the following on {target_name}:"]
-        
-        # Add worn items first
         for item in worn_items:
-            # Get item's short description, pad it for alignment
             desc = item.get_display_name(caller)
-            padded_desc = f"{desc:<40} (worn)"
-            result_lines.append(padded_desc)
-            
-        # Add carried items
+            result_lines.append(f"{desc:<40} (worn)")
+        for item in held_items:
+            desc = item.get_display_name(caller)
+            result_lines.append(f"{desc:<40} (in hand)")
         for item in carried_items:
-            desc = item.get_display_name(caller)
-            result_lines.append(desc)
-            
-        # Send the results
+            result_lines.append(item.get_display_name(caller))
+
+        tokens = target.db.tokens
+        if tokens:
+            result_lines.append(f"{tokens} tokens")
+
+        if len(result_lines) == 1:
+            caller.msg(f"You feel nothing on {target_name}.")
+            return
         caller.msg("\n".join(result_lines))
