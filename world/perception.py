@@ -170,3 +170,27 @@ def has_reduced_perception(looker: Any) -> bool:
     gets a little more texture from the senses that remain.
     """
     return bool(blocked_senses(looker))
+
+
+# ---------------------------------------------------------------------------
+# The presence gate (STEALTH_AND_DETECTION_SPEC §7 / PHASE_LAYER_SPEC §3)
+# ---------------------------------------------------------------------------
+
+def can_perceive(looker, target) -> bool:
+    """THE presence gate: whether *looker* passively perceives *target* as
+    present at all. Today this is stealth's graded clause (an Unaware /
+    Suspicious looker doesn't perceive a hidden target); the phase layer's
+    binary clause slots in here when it lands. Deliberate bypasses (AoE,
+    area sound, active `search`) must NOT route through this — hidden is
+    concealment, never invulnerability."""
+    try:
+        from world.stealth import is_hidden_from
+        return not is_hidden_from(target, looker)
+    except Exception:  # noqa: BLE001 — fail-open: perception over paranoia
+        return True
+
+
+def filter_present(looker, entities):
+    """The single enumeration choke (leak-completeness discipline): every
+    path that lists 'who is here' for a looker filters through this."""
+    return [e for e in entities if can_perceive(looker, e)]

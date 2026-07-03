@@ -310,8 +310,13 @@ def build_char_candidates(
 
     candidates: list[tuple[str, "Character", bool]] = []
 
+    from world.perception import can_perceive
     for char in room_occupants:
         if char is actor:
+            continue
+        # Presence gate (stealth spec §7): you can't pose AT someone
+        # you're unaware of — no char-ref candidacy for hidden targets.
+        if not can_perceive(actor, char):
             continue
 
         names: list[tuple[str, bool]] = []

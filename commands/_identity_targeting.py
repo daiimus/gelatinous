@@ -130,6 +130,12 @@ def resolve_character_target(
     else:
         candidates = list(candidates)
 
+    # Presence gate (stealth spec §7): you can't passively TARGET someone
+    # you're unaware of — attack/operate/frisk/trust all resolve through
+    # here. Detection (a search, their slip) is the precondition.
+    from world.perception import filter_present
+    candidates = filter_present(caller, candidates)
+
     matches = identity_match_characters(caller, stripped, candidates)
 
     if not matches and caller.check_permstring(PERM_BUILDER):

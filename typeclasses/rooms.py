@@ -614,12 +614,16 @@ class Room(ObjectParent, DefaultRoom):
             if not destination:
                 continue
                 
-            # Count visible characters (excluding looker)
+            # Count visible characters (excluding looker); the presence
+            # gate keeps hidden characters out of adjacent sightings
+            # (stealth spec §7 — no leak through the doorway glance)
+            from world.perception import can_perceive
             char_count = 0
             for obj in destination.contents:
                 if (obj.is_typeclass("typeclasses.characters.Character") 
                     and obj != looker 
-                    and obj.access(looker, "view")):
+                    and obj.access(looker, "view")
+                    and can_perceive(looker, obj)):
                     char_count += 1
             
             if char_count > 0:

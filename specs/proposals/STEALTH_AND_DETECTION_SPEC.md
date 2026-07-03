@@ -8,11 +8,20 @@
 > Unaware/Suspicious; the *Suspicious* "prickling sense" cue; the "lurking
 > in the shadows" placement for the Detected; hidden objects out of the
 > things list; hidden movers' announcements suppressed to the unaware), and
-> break-on-action (speech, attack, open movement). NOT yet built: the full
-> perception-gate choke (§7 — say/emote/combat-target leak sweep; note the
-> phase layer's `filter_present` does NOT exist yet, §7 must build it), the
-> NPC hunt (§5), ambush advantage (§6.1), theft (§6.2), environmental
-> modifiers (light/cover/crowd — v1 is the flat tier spread).
+> break-on-action (speech, attack, open movement). **PHASE 3 (LEAK SWEEP)
+> SHIPPED (2026-07-03):** `world/perception.py` now owns the presence gate —
+> `can_perceive(looker, target)` + the single enumeration choke
+> `filter_present` (built HERE; the phase layer's binary clause slots in
+> later) — wired through: room roster (P1), adjacent-room sightings,
+> identity targeting (`resolve_character_target` — attack/operate/frisk/
+> trust all refuse targets you're unaware of), emote char-ref candidacy
+> (can't pose AT someone you're unaware of), the LLM NPC PRESENT roster,
+> move announcements, whisper bystanders, and speech attribution
+> (stealth-aware `resolve_speaker_attribution` — hidden speakers attribute
+> by VOICE). Leak-completeness tests drive each real path. Deliberate
+> bypasses hold: AoE, area sound, `search`. NOT yet built: the NPC hunt
+> (§5), ambush advantage (§6.1), theft (§6.2), environmental modifiers
+> (light/cover/crowd — v1 is the flat tier spread).
 > Original abstract: designs the **presence-concealment**
 > layer: `hide` (self or object) vs `search` (a room), resolved as an opposed
 > **Resonance/Motorics** contest, surfaced as a **per-observer graded awareness
