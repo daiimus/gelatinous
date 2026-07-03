@@ -41,12 +41,24 @@ LONGDESCS_SYNTH: dict[str, list[str]] = {
         "{Their} throat moves in a swallow now and then, evenly spaced, a habit kept for company.",
         "Under the jaw, where a razor would nick anyone else, {their} skin runs unbroken and faintly seamless.",
     ],
-    "chest": [
-        "{Their} chest rises and falls in perfect, unlabored time — breath as a courtesy rather than a need.",
-        "{Their} chest is sculpted to the anatomy charts' best day, warm to the eye and engineered to the touch.",
-        "The skin of {their} chest is even-toned everywhere, unfreckled, unscarred, unweathered — a history of nothing.",
-        "{Their} heartbeat is there if you press for it: steady, unhurried, and precisely as expected.",
-    ],
+    "chest": {
+        "female": [
+            "{Their} breasts are full and flawlessly matched, riding high with an engineered defiance of gravity, the skin smooth and even to the last inch.",
+            "{Their} breasts carry a soft, deliberate weight — shaped by intention rather than chance, and shaped well.",
+            "{Their} chest is a study in designed curves: breasts symmetrical to the millimetre, dark-tipped and unweathered, warm in a way that invites belief.",
+            "{Their} breasts rise and settle with each courteous breath, perfect in the way that makes a second look feel like the point.",
+        ],
+        "male": [
+            "{Their} chest is broad and cleanly muscled, pectorals cut to the anatomy charts' best day and finished smooth.",
+            "{Their} chest carries sculpted, even muscle beneath poreless skin — built the way sketches promise and bodies rarely deliver.",
+            "{Their} chest is warm, hard-planed, and utterly unscarred, a landscape of deliberate muscle with a heartbeat kept precisely where expected.",
+            "The lines of {their} chest descend in engineered relief, each muscle in agreement with the next — designed to be admired at close range.",
+        ],
+        "any": [
+            "{Their} chest rises and falls in perfect, unlabored time — breath as a courtesy rather than a need.",
+            "The skin of {their} chest is even-toned everywhere, unfreckled, unscarred, unweathered — a history of nothing.",
+        ],
+    },
     "back": [
         "{Their} back is a clean map of muscle laid exactly where the textbook wants it, no side favored.",
         "{Their} spine draws one true line — none of the lean and list a body earns by carrying things badly.",
@@ -57,12 +69,24 @@ LONGDESCS_SYNTH: dict[str, list[str]] = {
         "{Their} midsection carries the taut economy of a body that has never overeaten, gone hungry, or aged.",
         "The muscle of {their} stomach shows in a soft, symmetric relief, less earned than specified.",
     ],
-    "groin": [
-        "{Their} hips move with an easy, level roll, engineered where a person is merely built.",
-        "{They} {are} complete, anatomically fluent, and — to the knowing eye — finished to companion-grade tolerances.",
-        "Everything about {their} lower body reads fully human; the difference is that it was decided, not inherited.",
-        "{Their} proportions through the hips are the deliberate kind — designed for compatibility, not chance.",
-    ],
+    "groin": {
+        "female": [
+            "{Their} hips flare in a deliberate, generous curve, and what they frame is fully, warmly human in every way that matters — decided, not inherited, and decided well.",
+            "Between the smooth sweep of {their} hips, {they} {are} anatomically complete and companion-fluent — soft where softness persuades, and made to be discovered.",
+            "{Their} sex is as finished as the rest of the design: correct, inviting, and warm past the point where engineering usually stops.",
+            "{Their} lower body moves with a rolling, unhurried promise — hips built for the eye, and everything they carry built for more than that.",
+        ],
+        "male": [
+            "{Their} hips are lean and level, and {they} {are} generously, unambiguously male — anatomy specified rather than inherited, and specified with confidence.",
+            "{They} {are} complete and companion-fluent below the waist: correct in every particular, substantial by design, warm past where engineering usually stops.",
+            "The cut of {their} lower body draws the eye downward on purpose — deliberate lines converging on anatomy that was clearly nobody's afterthought.",
+            "{Their} sex is as considered as the rest of the build — fully human in form and function, sized to reassure, made to be found.",
+        ],
+        "any": [
+            "{Their} hips move with an easy, level roll, engineered where a person is merely built.",
+            "Everything about {their} lower body reads fully human; the difference is that it was decided, not inherited.",
+        ],
+    },
     "eyes": [
         "{Their} {eyes} {are} beautifully made — the irises patterned a shade too regularly, like guilloché under glass.",
         "{Their} {eyes} {adjust} to the light in one smooth sweep, none of the flutter of a living pupil finding its level.",
