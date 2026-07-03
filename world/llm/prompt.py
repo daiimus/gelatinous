@@ -28,14 +28,18 @@ TOOLS = {
                          "they gave you, OR a nickname you privately coin from "
                          "what you know about them (e.g. 'the foot guy', 'tab "
                          "dodger'). Private to you; from then on you know them by "
-                         "it. Do it when someone's worth tagging, not every turn "
-                         "(argument: the name)"},
+                         "it. Do it when someone's worth tagging, not every turn. "
+                         "The argument is the NAME ONLY: one to four plain "
+                         "words, no punctuation, no sentence, and never a "
+                         "pronoun like 'you' or 'him' — you'll be using this "
+                         "word as their name in your poses from now on"},
     "feel": {"kind": "action",
              "desc": "update your private read on the person you're speaking to, "
                      "based on what they've done and said (e.g. 'wary', 'fond', "
                      "'fed up', 'amused', 'owes me one'). It colours how you treat "
                      "them from now on — set it when their behaviour shifts how "
-                     "you feel, not every turn (argument: a short word/phrase)"},
+                     "you feel, not every turn (argument: a short plain-English "
+                     "word or phrase)"},
     "style": {"kind": "action",
               "desc": "adjust your OWN clothing for real — zip, unzip, "
                       "button, unbutton, rollup, unroll, remove, or wear a "
