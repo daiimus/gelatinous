@@ -32,7 +32,7 @@ docker exec -w "$GAME" "$CONTAINER" evennia reload --settings settings.py 2>&1 |
 reload_pid=$!
 waited=0
 while kill -0 "$reload_pid" 2>/dev/null; do
-    if [ "$waited" -ge 45 ]; then
+    if [ "$waited" -ge 150 ]; then
         kill "$reload_pid" 2>/dev/null
         echo "(reload timed out after ${waited}s — falling through to recovery)"
         break
