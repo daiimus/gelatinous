@@ -146,17 +146,13 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     from world.identity import BUILDS, HAIR_COLORS, HAIR_STYLES, HEIGHTS
     from world.mob_flavor import apply_random_flavor
     from world.namebank import (
-        FIRST_NAMES_AMBIGUOUS, FIRST_NAMES_FEMALE, FIRST_NAMES_MALE, LAST_NAMES,
+        FIRST_NAMES_FEMALE, FIRST_NAMES_MALE, LAST_NAMES,
     )
     from world.spatial import rooms_within
 
-    # Gendered by default; ~20% ambiguous (the even three-way roll made a
-    # third of the street read as ungendered — mirrors @spawnmob's weights).
+    # Civilians are male or female — no ambiguous (user call 2026-07-03).
     sex = choice(["male", "female"])
-    if randint(1, 10) <= 2:
-        sex = "ambiguous"
-    first = {"male": FIRST_NAMES_MALE, "female": FIRST_NAMES_FEMALE,
-             "ambiguous": FIRST_NAMES_AMBIGUOUS}[sex]
+    first = {"male": FIRST_NAMES_MALE, "female": FIRST_NAMES_FEMALE}[sex]
     npc = create_object(
         typeclass="typeclasses.llm_npc.LLMNpc",
         key=f"{choice(first)} {choice(LAST_NAMES)}",
