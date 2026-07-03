@@ -437,3 +437,23 @@ class TestWardrobeCard(TestCase):
 
     def test_legacy_persona_has_no_wardrobe_line(self):
         self.assertNotIn("wearing", render_persona(dict(_PERSONA)).lower())
+
+
+class TestStyleAdoption(TestCase):
+    """The model imitates few-shot far more than tool descriptions — pin the
+    companion demonstration and the style-granted charter rule."""
+
+    def test_companion_fewshot_demonstrates_style_tool(self):
+        shots = ARCHETYPES["companion"]["fewshot"]
+        self.assertTrue(any(s["assistant"].get("tool") == "style"
+                            for s in shots))
+
+    def test_style_rule_present_when_granted(self):
+        msgs = build_messages({"persona_seed": {"archetype": "companion"}},
+                              "a man", "hi", "directed")
+        self.assertIn("REALLY changes", msgs[0]["content"])
+
+    def test_style_rule_absent_when_not_granted(self):
+        msgs = build_messages({"persona_seed": {"archetype": "bartender"}},
+                              "a man", "hi", "directed")
+        self.assertNotIn("REALLY changes", msgs[0]["content"])

@@ -17,6 +17,7 @@ agentic loop back on the reactor. See ``LLM_GAMEMASTER_SPEC`` Phase 1.
 
 import json
 import random
+import re
 from functools import partial
 from time import monotonic
 
@@ -462,11 +463,27 @@ class LLMNpcMixin:
         elif tool == "feel" and arg and patron:
             self._set_valence(self._memory_subject(patron), arg)
         elif tool == "style" and arg:
-            # Adjust own clothing through the REAL zip/rollup commands —
-            # the fiction and the worn state stay in agreement.
-            parts = str(arg).strip().split(None, 1)
+            # Adjust own clothing through the REAL zip/rollup/remove/wear
+            # commands — the fiction and the worn state stay in agreement.
+            # The model writes the argument in natural register ("take off
+            # her mesh top (unzipped)"), so normalise onto the command
+            # grammar rather than silently dropping the call.
+            arg = " ".join(str(arg).split())
+            low = arg.lower()
+            if low.startswith("take off "):
+                arg = "remove " + arg[9:]
+            elif low.startswith("put on "):
+                arg = "wear " + arg[7:]
+            parts = arg.split(None, 1)
             verb = parts[0].lower() if parts else ""
+            verb = {"strip": "remove", "doff": "remove",
+                    "shed": "remove", "don": "wear"}.get(verb, verb)
             garment = parts[1] if len(parts) > 1 else ""
+            # bare item key only: no possessive/article lead, no copied
+            # style-state parenthetical from the wardrobe card
+            garment = re.sub(r"^(?:her|his|their|its|my|the|a|an)\s+",
+                             "", garment, flags=re.I)
+            garment = re.sub(r"\s*\([^)]*\)\s*$", "", garment).strip()
             if verb in ("zip", "unzip", "button", "unbutton",
                         "rollup", "unroll", "remove", "wear") and garment:
                 self.execute_cmd(f"{verb} {garment}")
