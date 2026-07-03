@@ -68,14 +68,17 @@ def speech_payload(observer, speaker, words, *, addressed=False):
     return {"speech": words, "addressed": bool(addressed)}
 
 
-def render_speech_line(speaker, observer, speech, *, target=None, flavor=None):
-    """The per-observer ``say``/``to`` line.
+def render_speech_line(speaker, observer, speech, *, target=None, flavor=None,
+                       verb="says"):
+    """The per-observer ``say``/``to``/``whisper`` line.
 
     Hearing gates the *content* (the words); sight + the voice channel gate the
-    *attribution* (who). Mirrors the sight/hearing chain (CAPACITY_CONSUMERS
-    §4.5). Passing ``target`` makes it a directed ``to`` line
-    ("... says to you/<name>, ..."); the caller is responsible for skipping
-    observers with no channel at all.
+    *attribution* (who) — including stealth: a speaker hidden from the observer
+    attributes by VOICE, not sight (world.voice). Mirrors the sight/hearing
+    chain (CAPACITY_CONSUMERS §4.5). Passing ``target`` makes it a directed
+    line ("... says to you/<name>, ..."); ``verb`` swaps the register
+    ("whispers"). The caller is responsible for skipping observers with no
+    channel at all.
     """
     heard = can_hear(observer)
     seen = can_see(observer)
@@ -91,20 +94,21 @@ def render_speech_line(speaker, observer, speech, *, target=None, flavor=None):
 
     if heard:
         if target is None:
-            verb = f"says, |x*{flavor}*|n" if (seen and flavor) else "says,"
+            rendered_verb = (f"{verb}, |x*{flavor}*|n"
+                             if (seen and flavor) else f"{verb},")
         else:
-            verb = (
-                f"says to {target_ref}, |x*{flavor}*|n"
+            rendered_verb = (
+                f"{verb} to {target_ref}, |x*{flavor}*|n"
                 if (seen and flavor)
-                else f"says to {target_ref},"
+                else f"{verb} to {target_ref},"
             )
-        return f'{speaker_name} {verb} "{speech}"'
+        return f'{speaker_name} {rendered_verb} "{speech}"'
 
     # Deaf but watching: the act is visible, the content is not.
     if target is None:
-        return f"{speaker_name} says something you can't make out."
+        return f"{speaker_name} {verb} something you can't make out."
     return (
-        f"{speaker_name} says something to {target_ref}, "
+        f"{speaker_name} {verb} something to {target_ref}, "
         f"but you can't make it out."
     )
 

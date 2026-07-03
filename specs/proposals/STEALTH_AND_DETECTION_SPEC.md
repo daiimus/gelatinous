@@ -252,11 +252,18 @@ an action (speech, a pose), observers who couldn't see you get
 materializes mid-sentence. Trackers who watched you lurk get no redundant line.
 
 **The whisper carve-out (2026-07-03, user-decided):** `whisper` does NOT break
-stealth — it's the creepy channel. A whisper from a speaker the target cannot
-see arrives **unattributed** ("Someone unseen whispers at your ear, …"), leaves
-the target **Suspicious**, and bystanders who can't see the whisperer see
-nothing at all. Syntax: ``whisper "Wakka." to <person>`` (legacy
-``whisper <person> = <message>`` still accepted).
+stealth — it's the creepy channel — and it **rides the say parent** (the
+shared speech rails, `world/speech.py`): voice flavour/garble apply, the
+structured speech payload reaches NPC brains, and attribution follows the
+full **sight → voice → someone** chain, now stealth-aware — concealment
+gates the VISUAL attribution channel (`resolve_speaker_attribution`), so a
+hidden whisperer with a voice the target KNOWS gets named by it ("Roony
+whispers to you, …"); an unknown voice reads "Someone whispers to you, …";
+a voice modulator defeats the recognition. An unseen whisper leaves the
+target **Suspicious**, and bystanders perceive a whisper visually (the
+lean-in) — those who can't see the whisperer see nothing. Syntax:
+``whisper "Wakka." to <person>`` (legacy ``whisper <person> = <message>``
+still accepted).
 
 ---
 

@@ -169,9 +169,13 @@ class CmdWhisper(Command):
             return  # search() already sent error message
 
         # A whisper never breaks stealth (STEALTH_AND_DETECTION_SPEC §6.4
-        # carve-out): it's the creepy channel. From a hidden speaker the
-        # target can't see, the voice arrives with no owner — and leaves
-        # them knowing SOMETHING is there.
+        # carve-out): it's the creepy channel. It rides the SAY parent —
+        # the shared speech rails — so attribution follows the full
+        # sight→voice→someone chain (a hidden whisperer with a KNOWN voice
+        # gets named by it; a modulator defeats that), voice flavour and
+        # garble apply, and the structured payload reaches NPC brains.
+        from world.speech import render_speech_line, speech_payload
+        from world.speech import visible_voice_flavor
         from world.stealth import (
             SUSPICIOUS, get_awareness, is_hidden_from, set_awareness,
         )
@@ -181,47 +185,32 @@ class CmdWhisper(Command):
         target_name_for_actor = target.get_display_name(caller)
         caller.msg(f'You whisper to {target_name_for_actor}, "{speech}"')
 
-        # Target hears the full message — unless deaf, in which case they feel
-        # the lean-in but can't make out the words (CAPACITY_CONSUMERS §4).
-        if unseen:
-            speaker_name_for_target = "Someone unseen"
-        else:
-            speaker_name_for_target = capitalize_first(
-                caller.get_display_name(target)
-            )
-        if can_hear(target):
-            if unseen:
-                target_text = (
-                    f'Someone unseen whispers at your ear, "{speech}"'
-                )
-            else:
-                target_text = (
-                    f'{speaker_name_for_target} whispers to you, "{speech}"'
-                )
-        else:
-            if unseen:
-                target_text = (
-                    "You feel a breath at your ear, but you can't make "
-                    "out a word of it."
-                )
-            else:
-                target_text = (
-                    f"{speaker_name_for_target} leans in to whisper, but you "
-                    f"can't make out a word of it."
-                )
-        target.msg(text=target_text, type="whisper", from_obj=caller)
-        if unseen:
-            if get_awareness(target, caller) < SUSPICIOUS:
-                set_awareness(target, caller, SUSPICIOUS)
+        # Target line via the parent renderer: hearing gates content,
+        # sight/voice/stealth gate attribution (CAPACITY_CONSUMERS §4.5).
+        flavor = visible_voice_flavor(caller)
+        target_text = render_speech_line(
+            caller, target, speech, target=target, flavor=flavor,
+            verb="whispers",
+        )
+        payload = speech_payload(target, caller, speech, addressed=True)
+        target.msg(text=target_text, type="whisper", from_obj=caller,
+                   **payload)
+        if unseen and get_awareness(target, caller) < SUSPICIOUS:
+            # A voice with no visible owner: they know SOMETHING is here.
+            set_awareness(target, caller, SUSPICIOUS)
 
-        # Room observers see that a whisper occurred, but NOT the content.
-        # Observers who can't see the whisperer see nothing at all.
+        # Room observers see that a whisper occurred, but NOT the content —
+        # a whisper is a visual event to bystanders (the lean-in), so only
+        # those who can see the whisperer perceive it at all.
+        from world.perception import can_see
         for observer in location.contents:
             if observer is caller or observer is target:
                 continue
             if not hasattr(observer, "msg"):
                 continue
             if is_hidden_from(caller, observer):
+                continue
+            if not can_see(observer):
                 continue
             speaker_name = caller.get_display_name(observer)
             target_name = target.get_display_name(observer)
