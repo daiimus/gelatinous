@@ -558,29 +558,19 @@ class CmdZip(Command):
 # the consent layer can't gracefully extend.
 
 
-def _can_third_party_clothing(target):
-    """Permission gate for dress / undress (#307 PR-H3 + memory).
+def _can_third_party_clothing(caller, target):
+    """Permission gate for dress / undress (#307 PR-H3; trust layer #967).
 
-    Returns True when the target is in a state where third-party
-    clothing manipulation is allowed without explicit consent:
-    severed appendage, unconscious character, dead character.
-    The trust/consent layer will extend this contract to cover
-    conscious cooperative targets; until then it's the limit.
+    Severed appendages are always dressable. Characters ride the shared
+    consent gate (TRUST_AND_CONSENT_SPEC ``dress`` class): free when the
+    target cannot contest (unconscious / dead / restrained), otherwise the
+    target must have trusted the caller to dress them.
     """
     from typeclasses.items import Appendage
     if isinstance(target, Appendage):
         return True
-
-    medical_state = getattr(target, "medical_state", None)
-    if medical_state is None:
-        return False
-    is_dead = getattr(medical_state, "is_dead", None)
-    is_unconscious = getattr(medical_state, "is_unconscious", None)
-    if callable(is_dead) and is_dead():
-        return True
-    if callable(is_unconscious) and is_unconscious():
-        return True
-    return False
+    from world.consent import check_consent
+    return check_consent(caller, target, "dress")
 
 
 def _resolve_clothing_target(caller, target_phrase):
@@ -660,11 +650,11 @@ class CmdDress(Command):
         dress severed left arm in leather glove
         dress corpse in burial shroud
 
-    Target must be unconscious, dead, or a severed appendage —
-    conscious cooperative dressing requires the trust/consent
-    system, which isn't implemented yet.  The clothing item must
-    be in your inventory; it transfers to the target along with
-    the worn registration.
+    Works freely on a target who cannot contest — unconscious,
+    dead, restrained, or a severed appendage. A conscious, free
+    target must have trusted you to dress them (see ``help
+    trust``). The clothing item must be in your inventory; it
+    transfers to the target along with the worn registration.
 
     Related: undress, wear, remove.
     """
@@ -699,12 +689,11 @@ class CmdDress(Command):
         if isinstance(item, list):
             item = item[0]
 
-        if not _can_third_party_clothing(target):
+        if not _can_third_party_clothing(caller, target):
             caller.msg(
                 f"{target.get_display_name(caller)} is conscious "
-                f"and would resist. (Cooperative dressing of a "
-                f"conscious target requires the trust/consent system, "
-                f"which isn't implemented yet.)"
+                f"and would resist — they'd need to trust you to "
+                f"dress them (or be restrained)."
             )
             return
 
@@ -805,8 +794,9 @@ class CmdUndress(Command):
     item by name (substring match against the target's worn
     items).  Removed items transfer to your inventory.
 
-    Target must be unconscious, dead, or a severed appendage —
-    same gate as ``dress``.
+    Works freely on a target who cannot contest (unconscious,
+    dead, restrained, or a severed appendage); a conscious, free
+    target must have trusted you — same gate as ``dress``.
 
     Related: dress, remove.
     """
@@ -838,12 +828,11 @@ class CmdUndress(Command):
         if target is None:
             return
 
-        if not _can_third_party_clothing(target):
+        if not _can_third_party_clothing(caller, target):
             caller.msg(
                 f"{target.get_display_name(caller)} is conscious "
-                f"and would resist. (Cooperative undressing of a "
-                f"conscious target requires the trust/consent "
-                f"system, which isn't implemented yet.)"
+                f"and would resist — they'd need to trust you to "
+                f"dress them (or be restrained)."
             )
             return
 

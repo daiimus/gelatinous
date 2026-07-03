@@ -1,14 +1,18 @@
 # Trust & Consent Spec
 
-> **Status: 🚧 DESIGN RESOLVED — NOT YET CLEARED FOR BUILD.** The core model is
-> settled (2026-06-26 design pass; 2026-07-02 deep-dig pass added the `dress`
-> action class, resolved NPC participation to *self-action only*, and recorded
-> recommended resolutions for the §7 edge cases + a proposed build sequence
-> §9). The user has flagged this as **"SUPER IMPORTANT"** and a **roadblock
-> before a true alpha**; they decide when implementation starts — do not build
-> ahead of that call. This doc exists so the decisions survive and so new
-> third-party commands have a clean gate to defer to rather than inventing
-> one-off logic.
+> **Status: ✅ PHASE 1 SHIPPED (2026-07-03) — §9 P2/P3 pending.** The gate
+> (`world/consent.py`: `can_contest` / `is_restrained` / `check_consent`),
+> the grant store, the `trust`/`distrust` commands (§4), and the Phase-1
+> consumers — third-party clothing (`dress` class) and the full medical
+> suite (`heal` class: treat items via `check_medical_requirements`,
+> operate/incise/harvest/install/suture via the shared surgical target
+> resolver) — are live. The §7 recommendations were implemented as written
+> (duress grants stand; per-command gate check; shared `is_restrained`
+> unifying grapple + `db.restraining` furniture with a legacy-AutoDoc
+> fallback; strict consciousness binary; presence-required grants /
+> memory-based revokes). Remaining: §9 P2 (`frisk`) and P3 (escort +
+> dispatch coercive seam). Design history: 2026-06-26 core pass;
+> 2026-07-02 deep-dig (`dress` class, NPC self-action only, §7/§9).
 
 ## 0 · Purpose
 

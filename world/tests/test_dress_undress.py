@@ -78,15 +78,25 @@ def _no_medical_target():
 
 
 class PermissionGate(TestCase):
+    """The gate now rides world/consent.py (trust layer, #967): a caller
+    with no trust grant from the target. Free-path expectations are
+    unchanged from the pre-trust contract."""
+
+    def _caller(self):
+        from unittest.mock import MagicMock
+        return MagicMock()
 
     def test_conscious_character_rejected(self):
-        self.assertFalse(_can_third_party_clothing(_conscious_char()))
+        self.assertFalse(
+            _can_third_party_clothing(self._caller(), _conscious_char()))
 
     def test_unconscious_character_allowed(self):
-        self.assertTrue(_can_third_party_clothing(_unconscious_char()))
+        self.assertTrue(
+            _can_third_party_clothing(self._caller(), _unconscious_char()))
 
     def test_dead_character_allowed(self):
-        self.assertTrue(_can_third_party_clothing(_dead_char()))
+        self.assertTrue(
+            _can_third_party_clothing(self._caller(), _dead_char()))
 
     def test_target_without_medical_state_rejected(self):
         """Defensive: targets that have no medical surface and aren't
@@ -94,8 +104,20 @@ class PermissionGate(TestCase):
         non-character clothing targets (mannequins, idols) will need
         their own path."""
         self.assertFalse(
-            _can_third_party_clothing(_no_medical_target())
+            _can_third_party_clothing(self._caller(), _no_medical_target())
         )
+
+    def test_conscious_character_with_trust_allowed(self):
+        """The new path: a conscious target who has trusted the caller
+        to dress them passes the gate."""
+        from unittest.mock import patch
+        from world.consent import grant_trust
+        caller, target = self._caller(), _conscious_char()
+        target.db = type("D", (), {"consent_grants": None})()
+        caller.get_display_name = lambda looker=None, **k: "a medic"
+        with patch("world.identity.get_apparent_uid", return_value="uid-1"):
+            grant_trust(target, caller, "dress")
+            self.assertTrue(_can_third_party_clothing(caller, target))
 
     def test_severed_appendage_allowed(self):
         """Appendage targets are universally dressable (no consent
@@ -110,7 +132,8 @@ class PermissionGate(TestCase):
         # patching ``typeclasses.items.Appendage`` is what matters.
         with patch("typeclasses.items.Appendage", _FakeAppendage):
             sentinel = _FakeAppendage()
-            self.assertTrue(_can_third_party_clothing(sentinel))
+            from unittest.mock import MagicMock
+            self.assertTrue(_can_third_party_clothing(MagicMock(), sentinel))
 
 
 # ---------------------------------------------------------------------
