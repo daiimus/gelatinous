@@ -60,6 +60,7 @@ class TestTick(TestCase):
     def test_walks_to_next_waypoint(self, mock_travel, *_m):
         base, a = _Room("base"), _Room("a")
         npc = _Npc(a, post=base, beat=[a])   # cycle [base, a]; idx 0 -> base
+        npc.ndb.patrol_idx = 0               # pin (fresh NPCs stagger randomly)
         self.assertEqual(tick_npc(npc), "travel")
         self.assertEqual(mock_travel.call_args.args[1], base)
 
@@ -67,6 +68,7 @@ class TestTick(TestCase):
     def test_arrival_advances_and_sweeps(self, mock_hook, *_m):
         base, a = _Room("base"), _Room("a")
         npc = _Npc(base, post=base, beat=[a])  # at waypoint 0 (base)
+        npc.ndb.patrol_idx = 0                 # pin (fresh NPCs stagger randomly)
         self.assertEqual(tick_npc(npc), "waypoint")
         self.assertEqual(npc.ndb.patrol_idx, 1)
         mock_hook.assert_called_once_with(npc)

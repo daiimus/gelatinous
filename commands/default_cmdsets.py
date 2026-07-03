@@ -30,6 +30,7 @@ from commands.CmdCoordSeed import CmdCoordSeed
 from commands.CmdPath import CmdPath
 from commands.CmdDispatch import CmdDispatch
 from commands.CmdPatrol import CmdPatrol
+from commands.CmdCivilians import CmdCivilians
 from commands.bar_menu import CmdSpawnIngredient
 from commands.CmdBug import CmdBug
 from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
@@ -145,6 +146,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdPath())
         self.add(CmdDispatch())
         self.add(CmdPatrol())
+        self.add(CmdCivilians())
         self.add(CmdSpawnIngredient())
         self.add(CmdAdmin.CmdHeal())
         self.add(CmdAdmin.CmdPeace())
