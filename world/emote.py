@@ -265,6 +265,14 @@ def _spans_overlap(
 _ASSIGNED_NAME_STOPWORDS = frozenset({
     "the", "a", "an", "of", "and", "to", "in", "on", "at", "with", "for",
     "from", "by",
+    # demonstratives / pronouns / quantifiers — a name like "that guy" must
+    # not make every prose "that" a match for this character
+    "that", "this", "these", "those", "one", "ones", "two", "some", "any",
+    "you", "your", "he", "she", "it", "him", "her", "his", "hers",
+    "they", "them", "their",
+    # generic person-words: matchable via the full name or the sdesc
+    # composites, but too common in prose to stand alone as a candidate
+    "guy", "man", "woman", "girl", "boy", "person", "lady", "fellow",
 })
 
 
