@@ -492,3 +492,30 @@ class TestSmartQuoteNormalization(TestCase):
     def test_curly_single_quoted_dialogue_promoted(self):
         turn = self._turn(action="leans in, \u2018stay a while,\u2019 she murmurs")
         self.assertIn('"stay a while,"', turn["action"])
+
+
+class TestSecondPersonRepair(TestCase):
+    """The screenshot class: "grabs you you.'s shirt", "presses you you.
+    against the wall" — model-written second-person damage, repaired outside
+    quoted speech."""
+
+    def _action(self, action):
+        raw = json.dumps({"speech": "", "action": action, "thought": "",
+                          "tool": "none", "tool_argument": ""})
+        return parse_turn(raw, {})["action"]
+
+    def test_doubled_you_possessive(self):
+        out = self._action("grabs you you's shirt by the collar")
+        self.assertEqual(out, "grabs your shirt by the collar")
+
+    def test_doubled_you_with_period_possessive(self):
+        out = self._action("grabs you you.'s shirt by the collar")
+        self.assertEqual(out, "grabs your shirt by the collar")
+
+    def test_doubled_you_with_stray_period(self):
+        out = self._action("presses you you. against the wall")
+        self.assertEqual(out, "presses you against the wall")
+
+    def test_dialogue_untouched(self):
+        out = self._action('pins the lean man, "you, you magnificent thing"')
+        self.assertIn('"you, you magnificent thing"', out)

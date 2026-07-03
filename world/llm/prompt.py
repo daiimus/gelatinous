@@ -616,7 +616,12 @@ _SMART_QUOTES = str.maketrans({"’": "'", "‘": "'",
 
 def _clean(text: str) -> str:
     text = (text or "").translate(_SMART_QUOTES)
-    text = text.strip().strip("\"'*").strip()
+    text = text.strip().strip("*").strip()
+    # Unwrap symmetric quote WRAPPING only ('"hi"' -> hi). A one-sided strip
+    # would eat the closing quote of an action that ENDS in embedded dialogue
+    # ('leans in, "hi"'), unbalancing it so every quote gets dropped.
+    while len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+        text = text[1:-1].strip()
     text = re.sub(r"^[A-Z][a-z]+:\s*", "", text)
     return re.sub(r"\s+", " ", text).strip()[:_MAX_LEN]
 
@@ -643,6 +648,21 @@ def _normalize_action(action: str) -> str:
     does NO conjugation, so there's nothing to massage."""
     if not action:
         return action
+    # Second-person cleanup — the model's context is full of "you" meaning
+    # ITSELF (other people's poses rendered from its POV), so it slips into
+    # calling its interlocutor "you", doubling it, and even punctuating it
+    # like a name ("grabs you you.'s shirt"). Repair the mechanical damage
+    # OUTSIDE quoted speech (dialogue is verbatim); _render_llm_reply then
+    # resolves surviving second-person onto the patron's real handle so
+    # every observer reads the right name.
+    def _fix_second_person(seg):
+        seg = re.sub(r"\byou[.,]?\s+(?=you\b)", "", seg, flags=re.I)
+        seg = re.sub(r"\byou\.?'s\b", "your", seg, flags=re.I)
+        seg = re.sub(r"\byou\.\s+(?=[a-z])", "you ", seg)
+        return seg
+    chunks = action.split('"')
+    chunks[0::2] = [_fix_second_person(c) for c in chunks[0::2]]
+    action = '"'.join(chunks)
     if '"' not in action:
         # 'come here,' she purrs → "come here," — the lookarounds keep
         # contractions (don't, it's) from reading as quote marks.

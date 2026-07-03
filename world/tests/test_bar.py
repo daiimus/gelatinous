@@ -612,7 +612,8 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         "_classify_speech", "_is_npc_speaker", "_is_engaged_with",
         "_mentions_self", "_name_aliases",
         "_handle_directed_speech", "_try_llm_reply",
-        "_render_llm_reply", "_llm_fallback", "_llm_silent",
+        "_render_llm_reply", "_resolve_second_person",
+        "_llm_fallback", "_llm_silent",
     )
 
     def _bartender(self, llm_driven=True, location="room"):
@@ -630,6 +631,8 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
             setattr(b, name, bound)
         # default: not alone (so ambient stays ambient); override per test
         b._is_alone_with = lambda speaker: False
+        # real _resolve_second_person needs a concrete handle
+        b._address_handle = lambda t: "a lean man"
         # default: no long-term memories → _try_llm_reply skips the embed round-
         # trip and goes straight to generation (Phase 2; override per test)
         b._load_memories = lambda: []
