@@ -6,13 +6,17 @@
 > consumers — third-party clothing (`dress` class) and the full medical
 > suite (`heal` class: treat items via `check_medical_requirements`,
 > operate/incise/harvest/install/suture via the shared surgical target
-> resolver) — are live. The §7 recommendations were implemented as written
+> resolver) — are live. **PHASE 2 SHIPPED (2026-07-03):** `frisk` (§3.2)
+> retrofitted onto the `search` class — the legacy too-lively-to-frisk gate
+> replaced by `check_consent`; corpse objects stay always-searchable; the
+> manifest now reads the real worn registry, in-hand items, carried
+> pockets, and tokens. The §7 recommendations were implemented as written
 > (duress grants stand; per-command gate check; shared `is_restrained`
 > unifying grapple + `db.restraining` furniture with a legacy-AutoDoc
 > fallback; strict consciousness binary; presence-required grants /
-> memory-based revokes). Remaining: §9 P2 (`frisk`) and P3 (escort +
-> dispatch coercive seam). Design history: 2026-06-26 core pass;
-> 2026-07-02 deep-dig (`dress` class, NPC self-action only, §7/§9).
+> memory-based revokes). Remaining: §9 P3 (escort/movement-coupling +
+> the dispatch coercive-authority seam). Design history: 2026-06-26 core
+> pass; 2026-07-02 deep-dig (`dress` class, NPC self-action only, §7/§9).
 
 ## 0 · Purpose
 

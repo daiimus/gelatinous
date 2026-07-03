@@ -276,3 +276,116 @@ class TestDistrustCommand(TestCase):
         cmd.func()
         self.assertIn("don't have any trust extended",
                       cmd.caller.msg.call_args.args[0])
+
+
+class TestFriskGate(TestCase):
+    """Phase 2: frisk rides the `search` class (spec §3.2) — free on the
+    helpless, trust-gated on the conscious, corpse objects always loot."""
+
+    _ROOM = None
+
+    def _cmd(self, target):
+        from commands.CmdInventory import CmdFrisk
+        room = MagicMock()
+        room.contents = []
+        type(self)._ROOM = room
+        target.location = room
+        cmd = CmdFrisk()
+        cmd.caller = MagicMock()
+        cmd.caller.location = room
+        cmd.caller.search.return_value = target
+        cmd.args = "someone"
+        return cmd
+
+    def _target(self, **kwargs):
+        t = _char(**kwargs)
+        t.contents = []
+        t.db.tokens = None
+        t.typeclass_path = "typeclasses.characters.Character"
+        t.__class__.__name__ = "MagicMock"
+        return t
+
+    def test_conscious_stranger_refused(self):
+        target = self._target()
+        cmd = self._cmd(target)
+        with patch("world.identity.get_apparent_uid", return_value="uid-1"):
+            cmd.func()
+        self.assertIn("would resist being searched",
+                      cmd.caller.msg.call_args.args[0])
+
+    def test_conscious_with_search_trust_allowed(self):
+        from world.consent import grant_trust
+        target = self._target()
+        cmd = self._cmd(target)
+        cmd.caller.get_display_name = lambda looker=None, **k: "a guard"
+        with patch("world.identity.get_apparent_uid", return_value="uid-1"), \
+                patch("world.identity.get_apparent_gender",
+                      return_value="female"):
+            grant_trust(target, cmd.caller, "search")
+            cmd.func()
+        out = " ".join(str(c.args[0]) for c in cmd.caller.msg.call_args_list)
+        self.assertIn("patting", out)          # the frisk proceeded
+        self.assertNotIn("would resist", out)
+
+    def test_unconscious_target_free(self):
+        target = self._target(unconscious=True)
+        cmd = self._cmd(target)
+        with patch("world.identity.get_apparent_gender",
+                   return_value="male"):
+            cmd.func()
+        out = " ".join(str(c.args[0]) for c in cmd.caller.msg.call_args_list)
+        self.assertIn("patting", out)
+
+
+class TestFriskManifest(TestCase):
+    def _run(self, target):
+        from commands.CmdInventory import CmdFrisk
+        cmd = CmdFrisk()
+        caller = MagicMock()
+        cmd._show_frisk_results(caller, target, list(target.contents),
+                                "them", "a lean man")
+        return caller.msg.call_args.args[0]
+
+    def _item(self, name):
+        item = MagicMock()
+        item.get_display_name = lambda looker=None, **k: name
+        item.db.worn = None
+        item.db.wear_location = None
+        item.worn = None
+        return item
+
+    def test_worn_hand_carried_and_tokens_sections(self):
+        jacket, shiv, pack = (self._item("a cropped jacket"),
+                              self._item("a shiv"),
+                              self._item("a pack of cigarettes"))
+        target = MagicMock()
+        target.contents = [jacket, shiv, pack]
+        target.get_worn_items = lambda: [jacket]
+        target.hands = {"left": shiv, "right": None}
+        target.db.tokens = 240
+        out = self._run(target)
+        self.assertIn("a cropped jacket", out)
+        self.assertIn("(worn)", out)
+        self.assertIn("a shiv", out)
+        self.assertIn("(in hand)", out)
+        self.assertIn("a pack of cigarettes", out)
+        self.assertIn("240 tokens", out)
+
+    def test_two_handed_grip_lists_once(self):
+        crowbar = self._item("a crowbar")
+        target = MagicMock()
+        target.contents = [crowbar]
+        target.get_worn_items = lambda: []
+        target.hands = {"left": crowbar, "right": crowbar}
+        target.db.tokens = None
+        out = self._run(target)
+        self.assertEqual(out.count("a crowbar"), 1)
+
+    def test_tokens_only_target_still_reveals(self):
+        target = MagicMock()
+        target.contents = []
+        target.get_worn_items = lambda: []
+        target.hands = {}
+        target.db.tokens = 120
+        out = self._run(target)
+        self.assertIn("120 tokens", out)
