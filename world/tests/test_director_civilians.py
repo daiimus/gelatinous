@@ -65,7 +65,7 @@ class TestRoles(TestCase):
     def test_colonist_archetype_registered(self):
         from world.llm.prompt import ARCHETYPES
         self.assertIn("colonist", ARCHETYPES)
-        self.assertEqual(ARCHETYPES["colonist"]["tools"], ["release"])
+        self.assertEqual(ARCHETYPES["colonist"]["tools"], ["release", "style"])
 
     def _all_garments(self, spec):
         out = []
@@ -325,3 +325,61 @@ class TestReactToAttack(TestCase):
         pc = SimpleNamespace(db=SimpleNamespace(reaction=None))
         react_to_attack(pc, MagicMock())
         mock_delay.assert_not_called()
+
+
+class TestClothingStyles(TestCase):
+    """Spawn-time style randomization + the LLM `style` tool."""
+
+    def _item(self, closure=None, adjustable=None):
+        configs, props = {}, {}
+        if closure:
+            configs["closure"] = {}; props["closure"] = closure
+        if adjustable:
+            configs["adjustable"] = {}; props["adjustable"] = adjustable
+        item = SimpleNamespace(key="work coveralls",
+                               db=SimpleNamespace(style_configs=configs,
+                                                  style_properties=props))
+        return item
+
+    @patch("random.random", return_value=0.1)   # always under threshold
+    def test_randomize_toggles_via_real_commands(self, _r):
+        from world.director.civilians import _randomize_styles
+        npc = SimpleNamespace(execute_cmd=MagicMock())
+        _randomize_styles(npc, self._item(closure="zipped", adjustable="normal"))
+        cmds = [c.args[0] for c in npc.execute_cmd.call_args_list]
+        self.assertIn("unzip work coveralls", cmds)
+        self.assertIn("rollup work coveralls", cmds)
+
+    @patch("random.random", return_value=0.99)  # never under threshold
+    def test_randomize_can_leave_defaults(self, _r):
+        from world.director.civilians import _randomize_styles
+        npc = SimpleNamespace(execute_cmd=MagicMock())
+        _randomize_styles(npc, self._item(closure="zipped"))
+        npc.execute_cmd.assert_not_called()
+
+    def test_plain_garment_no_styling(self):
+        from world.director.civilians import _randomize_styles
+        npc = SimpleNamespace(execute_cmd=MagicMock())
+        item = SimpleNamespace(key="boots",
+                               db=SimpleNamespace(style_configs=None,
+                                                  style_properties=None))
+        _randomize_styles(npc, item)
+        npc.execute_cmd.assert_not_called()
+
+    def test_style_tool_registered(self):
+        from world.llm.prompt import ARCHETYPES, TOOLS
+        self.assertIn("style", TOOLS)
+        self.assertIn("style", ARCHETYPES["colonist"]["tools"])
+        self.assertIn("style", ARCHETYPES["companion"]["tools"])
+
+    def test_style_handler_routes_real_verbs_only(self):
+        from typeclasses.llm_npc import LLMNpcMixin
+        npc = SimpleNamespace(execute_cmd=MagicMock(),
+                              ndb=SimpleNamespace(), location=MagicMock())
+        LLMNpcMixin._handle_action_tool(npc, "style", "unzip jacket", None)
+        npc.execute_cmd.assert_called_once_with("unzip jacket")
+        npc.execute_cmd.reset_mock()
+        LLMNpcMixin._handle_action_tool(npc, "style", "detonate jacket", None)
+        npc.execute_cmd.assert_not_called()   # junk verbs never execute
+        LLMNpcMixin._handle_action_tool(npc, "style", "unzip", None)
+        npc.execute_cmd.assert_not_called()   # verb without garment

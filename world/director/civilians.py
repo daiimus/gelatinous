@@ -344,6 +344,7 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
             item = proto_spawn(proto)[0]
             item.move_to(npc, quiet=True)
             npc.execute_cmd(f"wear {item.key}")
+            _randomize_styles(npc, item)
         except Exception:  # noqa: BLE001 — a missing garment isn't fatal
             continue
 
@@ -445,3 +446,21 @@ def react_to_attack(victim: Any, attacker: Any) -> None:
     elif reaction == "flee":
         delay(1.5, _cmd, "flee")
 
+
+
+def _randomize_styles(npc: Any, item: Any) -> None:
+    """Roll lived-in clothing states at spawn — through the REAL zip/rollup
+    commands, so coverage mods and worn_descs stay truthful. Some coveralls
+    arrive half-unzipped, some sleeves rolled: a street, not a uniform."""
+    from random import random as _roll
+    configs = getattr(item.db, "style_configs", None) or {}
+    props = getattr(item.db, "style_properties", None) or {}
+    try:
+        if "closure" in configs and _roll() < 0.40:
+            verb = "unzip" if props.get("closure") == "zipped" else "zip"
+            npc.execute_cmd(f"{verb} {item.key}")
+        if "adjustable" in configs and _roll() < 0.35:
+            verb = "unroll" if props.get("adjustable") == "rolled" else "rollup"
+            npc.execute_cmd(f"{verb} {item.key}")
+    except Exception:  # noqa: BLE001 — style flair must never break a spawn
+        pass
