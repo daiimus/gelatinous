@@ -71,7 +71,10 @@ class TestRoles(TestCase):
         out = []
         for entry in spec.get("wardrobe", []):
             out.extend(entry if isinstance(entry, list) else [entry])
-        for outfit in spec.get("outfits", []):
+        outfits = spec.get("outfits") or []
+        if isinstance(outfits, dict):
+            outfits = [o for pool in outfits.values() for o in pool]
+        for outfit in outfits:
             out.extend(outfit)
         return out
 
@@ -90,11 +93,27 @@ class TestRoles(TestCase):
             for key in self._all_garments(spec):
                 self.assertTrue(hasattr(protos, key), f"{role}: {key}")
 
-    def test_companion_outfits_are_coherent_looks(self):
+    def test_companion_outfits_are_sex_keyed_and_shod(self):
         outfits = CIVILIAN_ROLES["synth_companion"]["outfits"]
-        self.assertGreaterEqual(len(outfits), 3)
-        for outfit in outfits:
-            self.assertIn("HEELED_BOOTS", outfit)   # every look walks
+        self.assertIn("female", outfits)
+        self.assertIn("male", outfits)
+        footwear = {"HEELED_BOOTS", "COMBAT_BOOTS", "HIGH_TOPS"}
+        for sex, pool in outfits.items():
+            self.assertGreaterEqual(len(pool), 3, sex)
+            for outfit in pool:
+                self.assertTrue(footwear & set(outfit), f"{sex}: {outfit}")
+        # dresses/skirts stay out of the male pool
+        male_garments = {g for o in outfits["male"] for g in o}
+        self.assertFalse({"SYNTHWEAVE_SHEATH", "SLIT_SKIRT"} & male_garments)
+
+    def test_synth_longdescs_survive_spawn_order(self):
+        # Live bug: the species longdesc re-seed ran AFTER the flavor pass
+        # and wiped all authored prose. Pin the order in the source.
+        import inspect
+        from world.director import civilians as _c
+        source = inspect.getsource(_c.spawn_civilian)
+        self.assertLess(source.index("get_species_default_longdesc_locations"),
+                        source.index("apply_random_flavor(npc)"))
 
     def test_register_merged_from_serverconfig(self):
         from unittest.mock import patch as _patch
