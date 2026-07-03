@@ -237,3 +237,103 @@ class TestStateTransitionsBreakStealth(TestCase):
                               f"override_place write without break_stealth "
                               f"nearby: {anchor}")
                 idx += len(anchor)
+
+
+class TestEmergenceBeat(TestCase):
+    """A voice must never materialize mid-sentence: a non-quiet break gives
+    formerly-unaware observers the emergence line; trackers get nothing."""
+
+    def test_unaware_observers_get_emergence_line(self):
+        room = _room()
+        hider = _char(hidden=True, room=room)
+        hider.get_display_name = lambda looker=None, **k: "a lean man"
+        unaware, tracker = _char(), _char()
+        unaware.get_sdesc = tracker.get_sdesc = lambda: "x"
+        room.contents = [hider, unaware, tracker]
+        with _uid_for(None):
+            set_awareness(tracker, hider, ALERT)
+            break_stealth(hider)
+        self.assertIn("emerges from concealment",
+                      unaware.msg.call_args.args[0])
+        tracker.msg.assert_not_called()
+
+    def test_quiet_break_has_no_emergence(self):
+        room = _room()
+        hider = _char(hidden=True, room=room)
+        unaware = _char()
+        unaware.get_sdesc = lambda: "x"
+        room.contents = [hider, unaware]
+        with _uid_for(None):
+            break_stealth(hider, quiet=True)
+        unaware.msg.assert_not_called()
+
+
+class TestWhisperStealth(TestCase):
+    """Whisper is the creepy channel: it never breaks stealth, arrives
+    unattributed from an unseen speaker, and leaves the target Suspicious."""
+
+    def _cmd(self, caller, args):
+        from commands.CmdCommunication import CmdWhisper
+        cmd = CmdWhisper()
+        cmd.caller = caller
+        cmd.args = args
+        cmd.parse()
+        return cmd
+
+    def _pair(self, hidden=False):
+        room = _room()
+        caller = _char(hidden=hidden, room=room)
+        target = _char(room=room)
+        target.get_display_name = lambda looker=None, **k: "a lean man"
+        caller.get_display_name = lambda looker=None, **k: "a shadow"
+        caller.search.return_value = target
+        room.contents = [caller, target]
+        return caller, target
+
+    def test_new_syntax_parses(self):
+        caller, target = self._pair()
+        cmd = self._cmd(caller, '"Wakka." to lean man')
+        self.assertEqual(cmd.speech, "Wakka.")
+        self.assertEqual(cmd.target_str, "lean man")
+
+    def test_legacy_syntax_still_parses(self):
+        caller, target = self._pair()
+        cmd = self._cmd(caller, "lean man = Wakka.")
+        self.assertEqual(cmd.speech, "Wakka.")
+        self.assertEqual(cmd.target_str, "lean man")
+
+    def test_hidden_whisper_stays_hidden_and_unattributed(self):
+        caller, target = self._pair(hidden=True)
+        cmd = self._cmd(caller, '"Wakka." to lean man')
+        with _uid_for(None), \
+                patch("commands.CmdCommunication.can_hear",
+                      return_value=True):
+            cmd.func()
+        self.assertTrue(caller.db.hidden)               # never breaks
+        text = target.msg.call_args.kwargs.get("text")
+        self.assertIn("Someone unseen whispers", text)
+        self.assertNotIn("shadow", text)                # no attribution
+        with _uid_for(None):
+            self.assertEqual(get_awareness(target, caller), SUSPICIOUS)
+
+    def test_visible_whisper_attributed(self):
+        caller, target = self._pair(hidden=False)
+        cmd = self._cmd(caller, '"Wakka." to lean man')
+        with _uid_for(None), \
+                patch("commands.CmdCommunication.can_hear",
+                      return_value=True):
+            cmd.func()
+        text = target.msg.call_args.kwargs.get("text")
+        self.assertIn("A shadow whispers to you", text)
+
+    def test_bystander_who_cannot_see_whisperer_sees_nothing(self):
+        caller, target = self._pair(hidden=True)
+        bystander = _char()
+        bystander.get_sdesc = lambda: "x"
+        caller.location.contents.append(bystander)
+        cmd = self._cmd(caller, '"Wakka." to lean man')
+        with _uid_for(None), \
+                patch("commands.CmdCommunication.can_hear",
+                      return_value=True):
+            cmd.func()
+        bystander.msg.assert_not_called()
