@@ -88,7 +88,8 @@ class LLMNpcMixin:
     def _is_npc_speaker(self, speaker):
         """Loop guard: another NPC, so we never react (speech or pose) and two
         LLM-driven NPCs can't ping-pong."""
-        return bool(getattr(speaker.db, "is_bartender_npc", False)
+        return bool(getattr(speaker.db, "is_npc", False)
+                    or getattr(speaker.db, "is_bartender_npc", False)
                     or getattr(speaker.db, "llm_driven", False))
 
     def _classify_speech(self, speech, speaker):

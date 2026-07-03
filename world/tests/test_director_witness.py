@@ -71,6 +71,7 @@ class TestSpawnWitness(TestCase):
         self.assertIn("bystander", mock_create.call_args.kwargs["key"])
         self.assertTrue(WITNESS_TOKENS[0] <= w.db.tokens <= WITNESS_TOKENS[1])
         self.assertTrue(w.db.is_witness)
+        self.assertTrue(w.db.is_npc)   # canonical marker (absence = PC)
         self.assertIn("walkie-talkie", w.look_place)  # the visible tell
         w.execute_cmd.assert_called_once()            # reacts on the scene
 

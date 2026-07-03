@@ -143,6 +143,7 @@ class CmdSpawnMob(Command):
             location=caller.location,
             home=caller.location
         )
+        mob.db.is_npc = True   # the canonical NPC marker (absence = PC)
 
         # Set species before re-initializing the species-dependent
         # surfaces (longdesc default set, medical state).

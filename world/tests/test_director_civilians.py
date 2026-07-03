@@ -76,6 +76,7 @@ class TestSpawn(TestCase):
         out = spawn_civilian("vendor", anchor)
         self.assertIs(out, npc)
         self.assertEqual(npc.db.role, "vendor")
+        self.assertTrue(npc.db.is_npc)   # canonical marker (absence = PC)
         self.assertTrue(TOKEN_RANGE[0] <= npc.db.tokens <= TOKEN_RANGE[1])
         self.assertTrue(npc.db.llm_driven)
         self.assertEqual(npc.db.llm_persona["archetype"], "colonist")

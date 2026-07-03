@@ -5,13 +5,13 @@ A builder/debug window onto the director's dispatch core
 your location via the spatial pathfinder.
 """
 
-from evennia import Command
+from evennia import default_cmds
 
 from world.director import WorldEvent, find_responders, raise_event
 from world.director.dispatch import ROLE_RESPONDS_TO
 
 
-class CmdDispatch(Command):
+class CmdDispatch(default_cmds.MuxCommand):
     """
     Raise a world event at your location and dispatch responders.
 

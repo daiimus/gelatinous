@@ -5,7 +5,7 @@ The builder interface to the director's routines layer
 the bot, give it a beat — the heartbeat does the rest.
 """
 
-from evennia import Command
+from evennia import default_cmds
 
 from world.director.routines import (
     HEARTBEAT_SECONDS,
@@ -14,7 +14,7 @@ from world.director.routines import (
 )
 
 
-class CmdPatrol(Command):
+class CmdPatrol(default_cmds.MuxCommand):
     """
     Post an NPC to a base of operations and set its patrol beat.
 

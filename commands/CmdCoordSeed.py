@@ -7,7 +7,7 @@ geometry contradictions (a direction that doesn't reverse) are reported,
 not silently resolved — fix the exit, or tag it ``warp`` to exclude it.
 """
 
-from evennia import Command
+from evennia import default_cmds
 
 from world.spatial import (
     clear_xyz,
@@ -17,7 +17,7 @@ from world.spatial import (
 from world.spatial.coordinates import all_coordinate_rooms
 
 
-class CmdCoordSeed(Command):
+class CmdCoordSeed(default_cmds.MuxCommand):
     """
     Seed the world with (x, y, z) coordinates.
 
