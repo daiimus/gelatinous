@@ -335,6 +335,11 @@ class Character(
         
         # Set unconscious placement description
         self.override_place = "unconscious and motionless."
+
+        # Unconsciousness breaks stealth (you can't keep concealment out
+        # cold) — also keeps the KO placement from rendering as "lurking".
+        from world.stealth import break_stealth
+        break_stealth(self, quiet=True)
         
         # Check if character is in active combat - if so, defer unconsciousness message
         is_in_combat = hasattr(self.ndb, NDB_COMBAT_HANDLER) and getattr(self.ndb, NDB_COMBAT_HANDLER) is not None
@@ -637,6 +642,10 @@ class Character(
         
         # Set death placement description for persistent visual indication
         self.override_place = "lying motionless and deceased."
+
+        # Death breaks stealth — a corpse doesn't hide itself.
+        from world.stealth import break_stealth
+        break_stealth(self, quiet=True)
         
         # Always show death analysis when character dies.
         # debug_death_analysis is fail-soft internally and the audit
@@ -699,6 +708,10 @@ class Character(
         
         # Set placement description
         self.override_place = "unconscious and motionless."
+
+        # Unconsciousness breaks stealth (see set_unconscious).
+        from world.stealth import break_stealth
+        break_stealth(self, quiet=True)
         
         # Notify area
         if self.location:
@@ -850,6 +863,10 @@ class Character(
         
         # Update placement description for permanent death
         self.override_place = "lying motionless and deceased."
+
+        # Death breaks stealth — a corpse doesn't hide itself.
+        from world.stealth import break_stealth
+        break_stealth(self, quiet=True)
         
         # Ensure death cmdset is applied (should already be done)
         if not hasattr(self, '_death_cmdset_applied'):
