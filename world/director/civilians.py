@@ -111,7 +111,8 @@ CIVILIAN_ROLES: dict[str, dict] = {
         },
     },
     "ganger": {
-        "wardrobe": ["GANG_CUT", "BLUE_JEANS", "COMBAT_BOOTS"],
+        "wardrobe": ["GANG_CUT", ["BLUE_JEANS", "LEATHER_TROUSERS"],
+                     ["COMBAT_BOOTS", "HIGH_TOPS"]],
         "reaction": "resist", "armed": True, "reports": "never",
         "weapon_pool": ["SHIV", "TIRE_IRON", "BRASS_KNUCKLES", "HEAVY_CHAIN",
                         "BASEBALL_BAT", "BOX_CUTTER"],
@@ -152,7 +153,12 @@ CIVILIAN_ROLES: dict[str, dict] = {
     },
     "synth_companion": {
         "species": "synthetic_humanoid",
-        "wardrobe": ["COTTON_TSHIRT", "BLUE_JEANS"],
+        "outfits": [
+            ["SYNTHWEAVE_SHEATH", "HEELED_BOOTS", "SYNTH_COLLAR"],
+            ["MESH_TOP", "SLIT_SKIRT", "HEELED_BOOTS", "CROPPED_JACKET"],
+            ["TANK_TOP", "LEATHER_TROUSERS", "HEELED_BOOTS", "LONG_COAT",
+             "SYNTH_COLLAR"],
+        ],
         "reaction": "flee", "armed": False, "reports": None,
         "ambient": [
             "catches a passerby's eye and holds it two heartbeats past casual.",
@@ -193,7 +199,8 @@ CIVILIAN_ROLES: dict[str, dict] = {
         },
     },
     "addict": {
-        "wardrobe": ["THERMAL_SHIRT", "BLUE_JEANS", "KNIT_CAP"],
+        "wardrobe": [["THERMAL_SHIRT", "FLANNEL_SHIRT", "TANK_TOP"],
+                     "BLUE_JEANS", ["KNIT_CAP", "HIGH_TOPS"]],
         "reaction": "flee", "armed": False, "reports": None,
         "ambient": [
             "pats through every pocket in an order worn smooth by habit.",
@@ -287,13 +294,30 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     npc.db.role = role
     npc.tags.add(CIV_TAG, category=CIV_TAG_CATEGORY)
     npc.db.tokens = randint(*TOKEN_RANGE)
-    npc.db.llm_persona = dict(spec["persona"])
+    persona = dict(spec["persona"])
+    # Role registers (tone/explicitness directives) live OUT of the repo —
+    # a ServerConfig dict, set live, merged at spawn (the Sable pattern:
+    # content-sensitive direction never enters the codebase).
+    try:
+        from evennia.server.models import ServerConfig
+        registers = ServerConfig.objects.conf("LLM_ROLE_REGISTERS") or {}
+        if registers.get(role):
+            persona["register"] = registers[role]
+    except Exception:  # noqa: BLE001 — no conf, no register
+        pass
+    npc.db.llm_persona = persona
     npc.db.llm_driven = True
     npc.db.reaction = spec.get("reaction", "comply")
     npc.db.reports = spec.get("reports")
 
     # Wardrobe — spawned into inventory, worn through the real command.
-    for proto in spec["wardrobe"]:
+    # A role may define coherent "outfits" (one full look rolled per spawn)
+    # and/or a "wardrobe" whose entries are a prototype key OR a list of
+    # alternatives (pick one) — so a population mixes instead of cloning.
+    garments = list(choice(spec["outfits"])) if spec.get("outfits") else []
+    for entry in spec.get("wardrobe", []):
+        garments.append(choice(entry) if isinstance(entry, list) else entry)
+    for proto in garments:
         try:
             item = proto_spawn(proto)[0]
             item.move_to(npc, quiet=True)
