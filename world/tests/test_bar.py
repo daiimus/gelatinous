@@ -609,7 +609,8 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     cooldown, loop-guard, fail-safe. Orders + gratitude paths stay untouched."""
 
     _REAL = (
-        "_classify_speech", "_is_npc_speaker", "_mentions_self", "_name_aliases",
+        "_classify_speech", "_is_npc_speaker", "_is_engaged_with",
+        "_mentions_self", "_name_aliases",
         "_handle_directed_speech", "_try_llm_reply",
         "_render_llm_reply", "_llm_fallback", "_llm_silent",
     )
@@ -621,6 +622,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b.db.llm_driven = llm_driven
         b.db.is_bartender_npc = True
         b.ndb.last_llm = 0
+        b.ndb.llm_engaged_until = None    # no conversation hold by default
         b.location = location
         b._is_gratitude = barmod.Bartender._is_gratitude  # real staticmethod
         for name in self._REAL:
@@ -637,6 +639,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         s = MagicMock()
         s.db.is_bartender_npc = False
         s.db.llm_driven = False
+        s.db.is_npc = False               # auto-mock truthiness reads as NPC
         s.location = location
         s.get_display_name = lambda looker=None, **kw: name
         return s
@@ -797,6 +800,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         # The roster is who ELSE is here, by the name this NPC perceives them by.
         b = self._bartender()
         self._bind(b, "_present_others")
+        b._address_handle = lambda t: t.get_display_name(b)
         patron = self._speaker(name="a lean man")
         other = self._speaker(name="a tall woman")
         loc = MagicMock(); loc.contents = [b, patron, other]

@@ -38,10 +38,13 @@ TOOLS = {
                      "you feel, not every turn (argument: a short word/phrase)"},
     "style": {"kind": "action",
               "desc": "adjust your OWN clothing for real — zip, unzip, "
-                      "button, unbutton, rollup, or unroll a garment you're "
-                      "wearing; do it when the moment calls for it, and let "
-                      "your pose carry the gesture (argument: the verb and "
-                      "the garment, e.g. 'unzip jacket', 'rollup sleeves')"},
+                      "button, unbutton, rollup, unroll, remove, or wear a "
+                      "garment (what you're wearing and carrying is listed "
+                      "in your card). Undressing or dressing HAPPENS through "
+                      "this tool — never just narrate it in your pose; call "
+                      "it once per garment and let the pose carry the "
+                      "gesture (argument: the verb and the garment, e.g. "
+                      "'unzip jacket', 'remove mesh top', 'wear long coat')"},
     "release": {"kind": "action",
                 "desc": "end this conversation and get back to your day — "
                         "call it once the exchange has wound down, you've "
@@ -453,6 +456,16 @@ def render_persona(persona: dict) -> str:
         lines.append("Notable about you: " + " ".join(appearance))
     if persona.get("voice"):
         lines.append(f"Your voice: {persona['voice']}.")
+    wearing = persona.get("wearing")
+    if wearing:
+        lines.append("You are wearing (this is your COMPLETE outfit — the "
+                     "'style' tool acts on these, by these names): "
+                     + ", ".join(wearing) + ".")
+    elif persona.get("wearing") is not None:
+        lines.append("You are wearing nothing.")
+    carrying = persona.get("carrying")
+    if carrying:
+        lines.append("You are carrying: " + ", ".join(carrying) + ".")
     loc = persona.get("location") or {}
     if loc.get("name"):
         # Neutral placement — what the NPC *does* here comes from its archetype
@@ -576,7 +589,7 @@ _MAX_LEN = 500
 
 
 def _clean(text: str) -> str:
-    text = (text or "").strip().strip('"*').strip()
+    text = (text or "").strip().strip("\"'*").strip()
     text = re.sub(r"^[A-Z][a-z]+:\s*", "", text)
     return re.sub(r"\s+", " ", text).strip()[:_MAX_LEN]
 
@@ -591,13 +604,22 @@ def _strip_self_lead(action: str, name: str) -> str:
     return re.sub(r"^(i|she|he|they)\s+", "", action, flags=re.I).strip()
 
 
+_SINGLE_QUOTED_RE = re.compile(r"(?<!\w)'([^']+)'(?!\w)")
+
+
 def _normalize_action(action: str) -> str:
-    """Light, non-brittle repair before the action hits the emote command. The
-    only fix is dropping unbalanced stray quotes that would mis-split an embedded
-    spoken line from the action text. Verb form, conjugation, and naming are the
-    charter's job — emote does NO conjugation, so there's nothing to massage."""
+    """Light, non-brittle repair before the action hits the emote command:
+    drop unbalanced stray quotes that would mis-split an embedded spoken line,
+    and promote single-quoted dialogue to double quotes (the say/hearing rails
+    only extract ``"…"``, so a single-quoted line would render as flat pose
+    text). Verb form, conjugation, and naming are the charter's job — emote
+    does NO conjugation, so there's nothing to massage."""
     if not action:
         return action
+    if '"' not in action:
+        # 'come here,' she purrs → "come here," — the lookarounds keep
+        # contractions (don't, it's) from reading as quote marks.
+        action = _SINGLE_QUOTED_RE.sub(r'"\1"', action)
     if action.count('"') % 2:                       # unbalanced -> drop them all
         action = action.replace('"', "")
     action = action.strip()
@@ -659,6 +681,22 @@ def parse_turn(raw, persona: dict, allowed_tools=None) -> dict:
         "tool": tool if (tool == "none" or tool in allowed) else "none",
         "tool_argument": tool_arg,
     }
+
+
+def is_echo(reply: str, line: str) -> bool:
+    """True when the model parroted the incoming line back at the player —
+    a pose aimed at an NPC sometimes comes straight back as the NPC's own
+    action. Token-containment test: a reply of 4+ words whose words nearly
+    all appear in the incoming line is an echo, not a response. Short
+    gestures ("nods back", "smiles") legitimately overlap and pass."""
+    if not reply or not line:
+        return False
+    reply_words = re.sub(r"[^a-z0-9 ]+", "", reply.lower()).split()
+    if len(reply_words) < 4:
+        return False
+    line_words = set(re.sub(r"[^a-z0-9 ]+", "", line.lower()).split())
+    overlap = sum(1 for w in reply_words if w in line_words)
+    return overlap / len(reply_words) >= 0.8
 
 
 _QUOTE_RE = re.compile(r'"([^"]*)"')
