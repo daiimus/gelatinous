@@ -32,6 +32,11 @@ HAUNT_RADIUS = 6
 #: §5.2 pockets: worth mugging, not worth farming.
 TOKEN_RANGE = (100, 500)
 
+#: Human skintone spectrum (the alien/synthetic tones — alabaster, cobalt,
+#: chrome, … — belong to synths; a random civilian is baseline human).
+HUMAN_SKINTONES = ("porcelain", "pale", "fair", "light", "golden",
+                   "tan", "olive", "brown", "rich")
+
 
 # --------------------------------------------------------------------------
 # Roles (data-authored; add a dict, get a population)
@@ -145,7 +150,11 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     )
     from world.spatial import rooms_within
 
-    sex = choice(["male", "female", "ambiguous"])
+    # Gendered by default; ~20% ambiguous (the even three-way roll made a
+    # third of the street read as ungendered — mirrors @spawnmob's weights).
+    sex = choice(["male", "female"])
+    if randint(1, 10) <= 2:
+        sex = "ambiguous"
     first = {"male": FIRST_NAMES_MALE, "female": FIRST_NAMES_FEMALE,
              "ambiguous": FIRST_NAMES_AMBIGUOUS}[sex]
     npc = create_object(
@@ -156,9 +165,14 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     npc.sex = sex
     npc.height = choice(HEIGHTS)
     npc.build = choice(BUILDS)
+    npc.db.skintone = choice(HUMAN_SKINTONES)
     if randint(1, 5) > 1:
         npc.hair_color = choice(HAIR_COLORS)
         npc.hair_style = choice(HAIR_STYLES)
+    # A voice — so radio/blind recognition and say-flavor work like anyone's.
+    from world.voice import get_voice_descriptions, get_voice_endings
+    npc.db.voice_description = choice(sorted(get_voice_descriptions()))
+    npc.db.voice_ending = choice(sorted(get_voice_endings()))
     npc.grit = _randint(1, 3)
     npc.resonance = _randint(1, 3)
     npc.intellect = _randint(1, 3)
@@ -182,10 +196,18 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
         except Exception:  # noqa: BLE001 — a missing garment isn't fatal
             continue
 
-    # Haunts: a few nearby rooms, drifted between at a stroll.
+    # Haunts: a few nearby rooms, drifted between at a stroll. Coordinate
+    # distance alone can offer rooms no pedestrian belongs in — sky rooms
+    # ("In the Air", the jump/fall transit volume) and rooms with no
+    # walkable route — so filter to walkable, floored destinations.
     npc.db.post = anchor
     try:
-        nearby = rooms_within(anchor, HAUNT_RADIUS)
+        from world.spatial import is_reachable
+        nearby = [
+            room for room in rooms_within(anchor, HAUNT_RADIUS)
+            if not getattr(room.db, "is_sky_room", False)
+            and is_reachable(anchor, room, max_steps=HAUNT_RADIUS * 4)
+        ]
     except Exception:  # noqa: BLE001
         nearby = []
     if nearby:

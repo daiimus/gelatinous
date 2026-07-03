@@ -67,7 +67,8 @@ class CmdCivilians(default_cmds.MuxCommand):
                 caller.msg("Usage: @civilians/populate <n>")
                 return
             streets = [r for r in all_coordinate_rooms()
-                       if "Room" in r.typeclass_path]
+                       if "Room" in r.typeclass_path
+                       and not getattr(r.db, "is_sky_room", False)]
             if not streets:
                 caller.msg("No coordinate rooms to populate.")
                 return

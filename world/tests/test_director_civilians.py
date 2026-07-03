@@ -19,8 +19,9 @@ from world.director.civilians import (
 
 
 class _Room:
-    def __init__(self, name):
+    def __init__(self, name, sky=False):
         self.name = name
+        self.db = SimpleNamespace(is_sky_room=sky)
 
 
 class TestRoles(TestCase):
@@ -56,16 +57,18 @@ class TestRoles(TestCase):
 
 
 class TestSpawn(TestCase):
+    @patch("world.spatial.is_reachable", return_value=True)
     @patch("world.spatial.rooms_within")
     @patch("world.mob_flavor.apply_random_flavor")
     @patch("evennia.prototypes.spawner.spawn")
     @patch("evennia.create_object")
     def test_spawn_full_wiring(self, mock_create, mock_spawn, _flavor,
-                               mock_within):
+                               mock_within, _reach):
         anchor = _Room("Maxwell Street")
         haunts = [_Room("a"), _Room("b"), _Room("c"), _Room("d"),
                   _Room("e"), _Room("f")]
-        mock_within.return_value = haunts
+        sky = _Room("In the Air", sky=True)
+        mock_within.return_value = haunts + [sky]
         garment = MagicMock()
         garment.key = "cotton t-shirt"
         mock_spawn.return_value = [garment]
@@ -88,6 +91,12 @@ class TestSpawn(TestCase):
         # haunts sampled from nearby; slow cadence
         self.assertTrue(2 <= len(npc.db.patrol_beat) <= 4)
         self.assertTrue(all(h in haunts for h in npc.db.patrol_beat))
+        self.assertNotIn(sky, npc.db.patrol_beat)   # no air haunts
+        # presentation completeness (live report: genders/skintones/voices)
+        from world.director.civilians import HUMAN_SKINTONES
+        self.assertIn(npc.db.skintone, HUMAN_SKINTONES)
+        self.assertTrue(npc.db.voice_description)
+        self.assertTrue(npc.db.voice_ending)
         self.assertTrue(3 <= npc.db.patrol_cadence <= 6)
         self.assertIs(npc.db.post, anchor)
 
