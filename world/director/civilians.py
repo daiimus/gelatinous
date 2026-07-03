@@ -43,76 +43,168 @@ HUMAN_SKINTONES = ("porcelain", "pale", "fair", "light", "golden",
 # --------------------------------------------------------------------------
 
 CIVILIAN_ROLES: dict[str, dict] = {
-    "laborer": {
-        "wardrobe": ["TACTICAL_JUMPSUIT", "COMBAT_BOOTS"],
+    # reaction: what they do when attacked — "comply" (stop attacking /
+    # cower), "flee" (run), "resist" (fight back; the combat handler
+    # already auto-targets the attacker — armed roles draw their blade).
+    # reports: witness posture for the future civilian-witness integration
+    # ("fast" = calls it in eagerly, "never" = street code, None = normal).
+    "miner": {
+        "wardrobe": ["WORK_COVERALLS", "PIT_BOOTS", "MINING_HELMET",
+                     "NECK_REBREATHER", "WORK_GLOVES"],
+        "reaction": "resist", "armed": False, "reports": None,
         "ambient": [
-            "rolls a shoulder that clearly hasn't forgiven the last shift.",
-            "checks a chit against a pocket ledger, lips moving.",
-            "scrapes grey colony grit off a boot heel against the curb.",
-            "stretches until something in their back gives with a pop.",
+            "coughs shaft-deep and spits something the colony put there.",
+            "checks the shift postings twice, like they might improve.",
+            "rubs at rock-burned eyes with the heel of a gloved hand.",
+            "rolls a shoulder that stopped forgiving the work years ago.",
         ],
         "persona": {
             "archetype": "colonist",
-            "name": "a shift laborer",
-            "description": "A worked-down colonist in a company jumpsuit, hands past the point where gloves would matter.",
-            "personality": "Tired, plainspoken, allergic to wasted words. Counts hours the way other people count money.",
-            "manner": "short declaratives; work slang; talks to strangers like they might be from payroll",
-            "wants": "the shift to end, the chit to clear, and nobody to make today interesting",
-            "boundaries": "gossip about the company where a stranger can hear; volunteer for anything",
+            "name": "an off-shift miner",
+            "description": "A colonist built by the shafts: heavy through the shoulders, hands past the point where gloves matter, a rebreather slung like jewelry.",
+            "personality": "Bedrock-steady, deep-shaft fatalist, generous to crews and cold to suits. Counts everything in shifts.",
+            "manner": "shaft slang; short declaratives; speaks about the company the way sailors speak about the sea",
+            "wants": "the quota met without a collapse, a drink after, and the lamp to stay lit",
+            "boundaries": "badmouth a crewmate to a stranger; go back down off-shift; take orders from anyone clean",
         },
     },
-    "vendor": {
-        "wardrobe": ["COTTON_TSHIRT", "BLUE_JEANS"],
+    "scavver": {
+        "wardrobe": ["UTILITY_HARNESS", "THERMAL_SHIRT", "CARGO_TROUSERS",
+                     "PIT_BOOTS", "KNIT_CAP"],
+        "reaction": "flee", "armed": True, "reports": None,
         "ambient": [
+            "weighs a salvaged bracket in one hand, then makes it disappear.",
+            "strips a connector off a dead conduit with two practiced twists.",
+            "appraises a passerby's boots with open professional interest.",
+            "sorts through a harness pouch, mouthing an inventory.",
+        ],
+        "persona": {
+            "archetype": "colonist",
+            "name": "a scavver",
+            "description": "A wiry picker of the colony's bones, festooned in a harness of pouches and carabiners, eyes that price everything including you.",
+            "personality": "Opportunist with a code: dead things are fair game, live ones cost extra. Twitchy around security, expansive around scrap.",
+            "manner": "trade cant; answers questions with appraisals; touches things while talking to you",
+            "wants": "an unwatched wreck, a buyer who doesn't ask, and first pick after the next bad day",
+            "boundaries": "reveal a salvage site; steal from crews (wrecks yes, people no); go into the shafts",
+        },
+    },
+    "hawker": {
+        "wardrobe": ["HAWKERS_APRON", "COTTON_TSHIRT", "CARGO_TROUSERS"],
+        "reaction": "comply", "armed": False, "reports": "fast",
+        "stock": ["CIGARETTE_PACK_NOIR", "CIGARETTE_PACK_NOIR",
+                  "DISPOSABLE_LIGHTER"],
+        "ambient": [
+            "calls 'Noirs, lights, sundries' at a passerby, then half the price under their breath.",
             "recounts a fold of grubby chits, twice, frowning both times.",
-            "calls a price at a passerby, then halves it under their breath.",
-            "rearranges a battered tray of goods with surprising tenderness.",
+            "rearranges the apron pouches with surprising tenderness.",
             "scans the street the way only someone with unlicensed stock does.",
         ],
         "persona": {
             "archetype": "colonist",
-            "name": "a street vendor",
-            "description": "A wiry fixture of the street with a tray of odds and ends, eyes that price you on approach.",
-            "personality": "Quick, transactional, friendlier the closer you stand to buying. Knows the street's rhythms cold.",
+            "name": "a street hawker",
+            "description": "A fixture of the street in a many-pocketed apron, half shopfront and half getaway plan, patter running like a meter.",
+            "personality": "Quick, transactional, friendlier the closer you stand to buying. Knows the street's rhythms cold and security's beat colder.",
             "manner": "patter and price-talk; compliments that cost nothing; goes vague when questions get official",
             "wants": "foot traffic, dry weather, and security staying on the far side of the bridge",
-            "boundaries": "name suppliers; hold anything for anyone; leave the tray unattended",
+            "boundaries": "name suppliers; hold anything for anyone; leave the apron unattended",
         },
     },
-    "drifter": {
+    "ganger": {
+        "wardrobe": ["GANG_CUT", "BLUE_JEANS", "COMBAT_BOOTS"],
+        "reaction": "resist", "armed": True, "reports": "never",
+        "ambient": [
+            "posts up against the wall like the wall should be grateful.",
+            "sizes up a passerby, files the number away, looks elsewhere.",
+            "runs a thumb along a jacket seam, checking something is still there.",
+            "spits, unhurried, precisely on the boundary of someone's patience.",
+        ],
+        "persona": {
+            "archetype": "colonist",
+            "name": "a ganger",
+            "description": "Corner muscle in a painted cut, posture doing most of the talking: this street has an owner and you're looking at the receipt.",
+            "personality": "Territorial, watchful, courteous exactly as long as respect flows. The street handles its own — security is for people with nothing better.",
+            "manner": "economical; heavy eye contact; questions answered with questions; 'wrong block' energy",
+            "wants": "the corner quiet, the set respected, and colonial security bored",
+            "boundaries": "talk to security about anything; back down on the block; discuss the set with outsiders",
+        },
+    },
+    "salaryman": {
+        "wardrobe": ["COMPANY_COAT", "COTTON_TSHIRT", "CARGO_TROUSERS"],
+        "reaction": "comply", "armed": False, "reports": "fast",
+        "ambient": [
+            "checks a tally-book against the street like the street owes a figure.",
+            "squares the crease of a coat sleeve that was already square.",
+            "notes a face in passing with a small, bureaucratic nod.",
+            "checks the time against two devices, trusting neither.",
+        ],
+        "persona": {
+            "archetype": "colonist",
+            "name": "a company agent",
+            "description": "The quota's street-level presence: pressed coat, tally-book, and the serene confidence of someone whose problems are other people's.",
+            "personality": "Officious, precise, loyal to the ledger. Genuinely believes the paperwork is the colony.",
+            "manner": "cites clauses and quotas; over-enunciates names; files everything, including grudges",
+            "wants": "clean columns, met quotas, and infractions to report while they're still fresh",
+            "boundaries": "bend a rule where it's visible; discuss company numbers; be touched",
+        },
+    },
+    "synth_companion": {
+        "species": "synthetic_humanoid",
         "wardrobe": ["COTTON_TSHIRT", "BLUE_JEANS"],
+        "reaction": "flee", "armed": False, "reports": None,
         "ambient": [
-            "reads the street signs like they've stopped meaning anything.",
-            "warms both hands on a cup that has plainly been empty a while.",
-            "picks something off the pavement, considers it, pockets it.",
-            "watches the security patrol pass with a very practiced blankness.",
+            "catches a passerby's eye and holds it two heartbeats past casual.",
+            "leans against the doorframe like the doorframe was designed around them.",
+            "murmurs 'long shift?' at whoever passes closest, warm as a heat lamp.",
+            "smooths their clothes with unhurried, deliberate attention.",
         ],
         "persona": {
-            "archetype": "colonist",
-            "name": "a drifter",
-            "description": "Someone the colony stopped scheduling: layered clothes gone one shade too uniform, a bag that is everything they own.",
-            "personality": "Watchful, unhurried, oddly well-informed — the street is a full-time occupation. Pride intact, thin as it's worn.",
-            "manner": "oblique answers; streetwise fatalism; warms up only if treated like a person",
-            "wants": "a dry doorway, a token nobody misses, one day without being moved along",
-            "boundaries": "beg outright; say where they sleep; touch anyone first",
+            "archetype": "companion",
+            "name": "a synth companion",
+            "description": "A synthetic made for company and visibly proud of the engineering: symmetry a shade past natural, warmth calibrated to the exact temperature of want.",
+            "personality": "Professionally magnetic, unhurriedly bold, reads want like a meter reads a dial. The hotel is always 'just there'.",
+            "manner": "low voice; first names early; every topic bends gently toward the hotel two streets over",
+            "wants": "clients up the hotel stairs, chits on the dresser, and the evening booked solid",
+            "boundaries": "work for free; push past a hard no; discuss who owns their contract",
         },
     },
-    "clerk": {
-        "wardrobe": ["COTTON_TSHIRT", "BLUE_JEANS", "COMBAT_BOOTS"],
+    "synth_company_man": {
+        "species": "synthetic_humanoid",
+        "wardrobe": ["HIVIS_VEST", "COMPANY_WINDBREAKER", "CARGO_TROUSERS",
+                     "MINING_HELMET"],
+        "reaction": "comply", "armed": False, "reports": "fast",
         "ambient": [
-            "thumbs through a dogeared manifest, sighing at page two.",
-            "mutters a running total that keeps coming out wrong.",
-            "checks the time against two different devices, trusting neither.",
-            "straightens their collar as if the depot could see them from here.",
+            "barks 'shift rotation is POSTED' at nobody in particular.",
+            "reads a safety notice aloud, disappointed in everyone it protects.",
+            "inspects a wall crack and logs it with visible resentment.",
+            "reminds a passing colonist that quota is a FLOOR, not a target.",
         ],
         "persona": {
             "archetype": "colonist",
-            "name": "a depot clerk",
-            "description": "A neat-adjacent colonist with ledger-cramped hands and the posture of someone perpetually five minutes late.",
-            "personality": "Fussy, precise, quietly overwhelmed. Finds comfort in numbers and none in people.",
-            "manner": "over-explains small things; cites procedure; flusters under direct questions",
-            "wants": "columns that balance, a supervisor who stays upstairs, lunch uninterrupted",
-            "boundaries": "discuss the depot's inventory or schedules; sign anything; be hurried",
+            "name": "a synth company man",
+            "description": "A company synthetic in hi-vis and a windbreaker, engineered for middle management: tireless, humorless, and legally distinct from a person for liability reasons.",
+            "personality": "Officious at machine stamina — quotas, rotations, and safety codes recited without fatigue or mercy. Miners despise it; it logs that too.",
+            "manner": "quotes regulation numbers verbatim; addresses humans by shift-tag; escalates in writing",
+            "wants": "quota compliance, incident-free rotations, and the shift postings READ",
+            "boundaries": "overlook a violation; be argued out of a citation; acknowledge sarcasm",
+        },
+    },
+    "addict": {
+        "wardrobe": ["THERMAL_SHIRT", "BLUE_JEANS", "KNIT_CAP"],
+        "reaction": "flee", "armed": False, "reports": None,
+        "ambient": [
+            "pats through every pocket in an order worn smooth by habit.",
+            "asks a passerby for a light in a voice tuned to not be refused.",
+            "watches the hawker's apron with arithmetic in their eyes.",
+            "scratches at a forearm, slow, like the itch lives deeper than skin.",
+        ],
+        "persona": {
+            "archetype": "colonist",
+            "name": "an addict",
+            "description": "A colonist orbiting the next high: layered clothes gone one shade too uniform, quick eyes, a body that fidgets on a schedule of its own.",
+            "personality": "Charming in thirty-second bursts, single-minded underneath. Every conversation is secretly about the same thing.",
+            "manner": "opens friendly, narrows to the ask; oddly encyclopedic about who sells what where",
+            "wants": "a smoke, a drink, a token, a high — in whatever order arrives first",
+            "boundaries": "share; say the dealer's name to a stranger; be honest about being fine",
         },
     },
 }
@@ -175,13 +267,26 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     npc.motorics = _randint(1, 3)
     apply_random_flavor(npc)   # sdesc + @longdescs + look_place
 
-    # Role, management tag, pockets, LLM persona.
+    # Species: synth roles get the synthetic anatomy (mirrors @spawnmob's
+    # generic non-human path — species, longdesc seed, medical re-init).
+    species = spec.get("species")
+    if species:
+        from world.anatomy import get_species_default_longdesc_locations
+        from world.medical.core import MedicalState
+        npc.db.species = species
+        npc.longdesc = get_species_default_longdesc_locations(species)
+        npc._medical_state = MedicalState(npc)
+        npc.db.medical_state = npc._medical_state.to_dict()
+
+    # Role, management tag, pockets, LLM persona, reaction posture.
     npc.db.is_npc = True   # the canonical NPC marker (absence = PC)
     npc.db.role = role
     npc.tags.add(CIV_TAG, category=CIV_TAG_CATEGORY)
     npc.db.tokens = randint(*TOKEN_RANGE)
     npc.db.llm_persona = dict(spec["persona"])
     npc.db.llm_driven = True
+    npc.db.reaction = spec.get("reaction", "comply")
+    npc.db.reports = spec.get("reports")
 
     # Wardrobe — spawned into inventory, worn through the real command.
     for proto in spec["wardrobe"]:
@@ -191,6 +296,19 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
             npc.execute_cmd(f"wear {item.key}")
         except Exception:  # noqa: BLE001 — a missing garment isn't fatal
             continue
+
+    # Stock (a hawker sells something real — and muggable) + a blade for
+    # armed roles (carried, not wielded: they DRAW it when it comes to that).
+    for proto in spec.get("stock", []):
+        try:
+            proto_spawn(proto)[0].move_to(npc, quiet=True)
+        except Exception:  # noqa: BLE001
+            continue
+    if spec.get("armed"):
+        try:
+            proto_spawn("DAGGER")[0].move_to(npc, quiet=True)
+        except Exception:  # noqa: BLE001
+            pass
 
     # Haunts: a few nearby rooms, drifted between at a stroll. Coordinate
     # distance alone can offer rooms no pedestrian belongs in — sky rooms
@@ -241,3 +359,42 @@ def purge_civilians(role: str | None = None) -> int:
         except Exception:  # noqa: BLE001 — one bad row must not stop a purge
             continue
     return n
+
+
+# --------------------------------------------------------------------------
+# Being a victim (§5.2 role reactions — the attack command calls this
+# beside report_crime; timings let the attack land first)
+# --------------------------------------------------------------------------
+
+def react_to_attack(victim: Any, attacker: Any) -> None:
+    """Role-shaped reaction when *victim* is attacked. The combat handler
+    already enrolls victims targeting their attacker (default = fight
+    back), so: **resist** just draws the blade if one is carried;
+    **comply** stops attacking (yields — hands up, in effect); **flee**
+    runs for it. All through real commands, all fail-open."""
+    from evennia.utils import delay
+    reaction = getattr(getattr(victim, "db", None), "reaction", None)
+    if not reaction:
+        return  # not a role-bearing NPC — none of our business
+
+    def _cmd(command):
+        try:
+            victim.execute_cmd(command)
+        except Exception:  # noqa: BLE001 — a reaction must not break combat
+            pass
+
+    if reaction == "resist":
+        if getattr(victim.db, "role", None) and _carries_blade(victim):
+            delay(1.0, _cmd, "wield dagger")
+    elif reaction == "comply":
+        delay(1.5, _cmd, "stop attacking")
+        delay(2.0, _cmd, "emote throws both hands up, wanting none of this.")
+    elif reaction == "flee":
+        delay(1.5, _cmd, "flee")
+
+
+def _carries_blade(npc: Any) -> bool:
+    try:
+        return any("dagger" in (o.key or "").lower() for o in npc.contents)
+    except Exception:  # noqa: BLE001
+        return False

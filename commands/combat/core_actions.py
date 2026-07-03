@@ -273,6 +273,13 @@ class CmdAttack(Command):
             report_crime("assault", caller.location, perp=caller)
         except Exception:
             pass
+        # Victim reaction (§5.2 role postures): comply / flee / resist —
+        # the director shapes how a role-bearing NPC answers violence.
+        try:
+            from world.director.civilians import react_to_attack
+            react_to_attack(target, caller)
+        except Exception:
+            pass
 
         # --- CAPTURE PRE-ADDITION COMBAT STATE ---
         caller_was_in_final_handler = any(e["char"] == caller for e in final_handler.db.combatants)

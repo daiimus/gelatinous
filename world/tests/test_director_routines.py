@@ -96,8 +96,10 @@ class TestWaypointSweep(TestCase):
         mock_raise.assert_not_called()
         npc.execute_cmd.assert_called_once()
 
-    def test_non_security_no_sweep(self):
-        npc = _Npc(_Room("corner"), role="miner")
+    def test_hookless_role_no_waypoint_action(self):
+        # "miner" is a real civilian role now (ambient emotes) — a role
+        # with no hook of any kind stays silent.
+        npc = _Npc(_Room("corner"), role="cartographer")
         at_waypoint(npc)
         npc.execute_cmd.assert_not_called()
 

@@ -29,11 +29,30 @@ class TestRoles(TestCase):
         for role, spec in CIVILIAN_ROLES.items():
             self.assertTrue(spec["wardrobe"], role)
             self.assertGreaterEqual(len(spec["ambient"]), 3, role)
+            self.assertIn(spec["reaction"], ("comply", "flee", "resist"), role)
+            self.assertIn("armed", spec, role)
+            self.assertIn("reports", spec, role)
             persona = spec["persona"]
-            self.assertEqual(persona["archetype"], "colonist", role)
+            self.assertIn(persona["archetype"], ("colonist", "companion"), role)
             for key in ("name", "description", "personality", "manner",
                         "wants", "boundaries"):
                 self.assertTrue(persona.get(key), f"{role}.{key}")
+
+    def test_colony_roster_shape(self):
+        self.assertEqual(
+            sorted(CIVILIAN_ROLES),
+            ["addict", "ganger", "hawker", "miner", "salaryman", "scavver",
+             "synth_companion", "synth_company_man"])
+        # teeth: at least two resist roles, and armed ones carry blades
+        resisters = [r for r, s in CIVILIAN_ROLES.items()
+                     if s["reaction"] == "resist"]
+        self.assertGreaterEqual(len(resisters), 2)
+        self.assertEqual(CIVILIAN_ROLES["ganger"]["reports"], "never")
+        self.assertEqual(CIVILIAN_ROLES["hawker"]["stock"][0],
+                         "CIGARETTE_PACK_NOIR")
+        for role in ("synth_companion", "synth_company_man"):
+            self.assertEqual(CIVILIAN_ROLES[role]["species"],
+                             "synthetic_humanoid")
 
     def test_colonist_archetype_registered(self):
         from world.llm.prompt import ARCHETYPES
@@ -50,8 +69,8 @@ class TestRoles(TestCase):
                 self.assertNotIn("WIG", proto, role)
 
     def test_ambient_beat_by_role(self):
-        npc = SimpleNamespace(db=SimpleNamespace(role="laborer"))
-        self.assertIn(ambient_beat(npc), CIVILIAN_ROLES["laborer"]["ambient"])
+        npc = SimpleNamespace(db=SimpleNamespace(role="miner"))
+        self.assertIn(ambient_beat(npc), CIVILIAN_ROLES["miner"]["ambient"])
         self.assertIsNone(ambient_beat(
             SimpleNamespace(db=SimpleNamespace(role="security"))))
 
@@ -76,9 +95,11 @@ class TestSpawn(TestCase):
         npc.db = SimpleNamespace()
         mock_create.return_value = npc
 
-        out = spawn_civilian("vendor", anchor)
+        out = spawn_civilian("hawker", anchor)
         self.assertIs(out, npc)
-        self.assertEqual(npc.db.role, "vendor")
+        self.assertEqual(npc.db.role, "hawker")
+        self.assertEqual(npc.db.reaction, "comply")
+        self.assertEqual(npc.db.reports, "fast")
         self.assertTrue(npc.db.is_npc)   # canonical marker (absence = PC)
         self.assertTrue(TOKEN_RANGE[0] <= npc.db.tokens <= TOKEN_RANGE[1])
         self.assertTrue(npc.db.llm_driven)
@@ -87,7 +108,7 @@ class TestSpawn(TestCase):
         # dressed via the REAL command
         worn = [c.args[0] for c in npc.execute_cmd.call_args_list
                 if c.args[0].startswith("wear ")]
-        self.assertEqual(len(worn), len(CIVILIAN_ROLES["vendor"]["wardrobe"]))
+        self.assertEqual(len(worn), len(CIVILIAN_ROLES["hawker"]["wardrobe"]))
         # haunts sampled from nearby; slow cadence
         self.assertTrue(2 <= len(npc.db.patrol_beat) <= 4)
         self.assertTrue(all(h in haunts for h in npc.db.patrol_beat))
@@ -102,23 +123,23 @@ class TestSpawn(TestCase):
 
     def test_bad_role_or_anchor(self):
         self.assertIsNone(spawn_civilian("astronaut", _Room("x")))
-        self.assertIsNone(spawn_civilian("vendor", None))
+        self.assertIsNone(spawn_civilian("hawker", None))
 
 
 class TestPurgeSafety(TestCase):
     @patch("world.director.civilians.all_civilians")
     def test_purge_is_tag_scoped_and_role_filterable(self, mock_all):
-        a = MagicMock(); a.db = SimpleNamespace(role="vendor"); a.contents = []
-        b = MagicMock(); b.db = SimpleNamespace(role="drifter"); b.contents = []
+        a = MagicMock(); a.db = SimpleNamespace(role="hawker"); a.contents = []
+        b = MagicMock(); b.db = SimpleNamespace(role="addict"); b.contents = []
         mock_all.return_value = [a, b]
-        self.assertEqual(purge_civilians("vendor"), 1)
+        self.assertEqual(purge_civilians("hawker"), 1)
         a.delete.assert_called_once()
         b.delete.assert_not_called()
 
     @patch("world.director.civilians.all_civilians")
     def test_purge_all_takes_clothes_along(self, mock_all):
         shirt = MagicMock()
-        a = MagicMock(); a.db = SimpleNamespace(role="clerk")
+        a = MagicMock(); a.db = SimpleNamespace(role="miner")
         a.contents = [shirt]
         mock_all.return_value = [a]
         self.assertEqual(purge_civilians(), 1)
@@ -132,7 +153,7 @@ class TestCadenceAndStagger(TestCase):
     def _npc(self, location, post, beat, cadence=None):
         return SimpleNamespace(
             location=location, ndb=SimpleNamespace(),
-            db=SimpleNamespace(role="drifter", post=post, patrol_beat=beat,
+            db=SimpleNamespace(role="addict", post=post, patrol_beat=beat,
                               patrol_cadence=cadence),
             execute_cmd=MagicMock())
 
@@ -166,7 +187,7 @@ class TestConversationHold(TestCase):
         return SimpleNamespace(
             location=_Room("street"), ndb=SimpleNamespace(
                 llm_engaged_until=engaged_until),
-            db=SimpleNamespace(role="vendor", post=None, patrol_beat=None,
+            db=SimpleNamespace(role="hawker", post=None, patrol_beat=None,
                                patrol_cadence=None),
             execute_cmd=MagicMock())
 
@@ -201,3 +222,52 @@ class TestConversationHold(TestCase):
                               location=MagicMock())
         LLMNpcMixin._handle_action_tool(npc, "release", "", MagicMock())
         self.assertIsNone(npc.ndb.llm_engaged_until)
+
+
+class TestReactToAttack(TestCase):
+    """§5.2 victim reactions: resist draws, comply yields, flee runs."""
+
+    def _victim(self, reaction, blade=False):
+        v = SimpleNamespace(
+            db=SimpleNamespace(reaction=reaction, role="x"),
+            contents=([SimpleNamespace(key="a dagger")] if blade else []),
+            execute_cmd=MagicMock())
+        return v
+
+    @patch("evennia.utils.delay")
+    def test_resist_draws_carried_blade(self, mock_delay):
+        from world.director.civilians import react_to_attack
+        v = self._victim("resist", blade=True)
+        react_to_attack(v, MagicMock())
+        cmds = [c.args for c in mock_delay.call_args_list]
+        self.assertTrue(any("wield dagger" in str(a) for a in cmds))
+
+    @patch("evennia.utils.delay")
+    def test_resist_unarmed_just_fights(self, mock_delay):
+        from world.director.civilians import react_to_attack
+        v = self._victim("resist", blade=False)
+        react_to_attack(v, MagicMock())
+        mock_delay.assert_not_called()   # handler default = fists
+
+    @patch("evennia.utils.delay")
+    def test_comply_yields(self, mock_delay):
+        from world.director.civilians import react_to_attack
+        v = self._victim("comply")
+        react_to_attack(v, MagicMock())
+        cmds = str([c.args for c in mock_delay.call_args_list])
+        self.assertIn("stop attacking", cmds)
+
+    @patch("evennia.utils.delay")
+    def test_flee_runs(self, mock_delay):
+        from world.director.civilians import react_to_attack
+        v = self._victim("flee")
+        react_to_attack(v, MagicMock())
+        cmds = str([c.args for c in mock_delay.call_args_list])
+        self.assertIn("flee", cmds)
+
+    @patch("evennia.utils.delay")
+    def test_reactionless_target_is_ignored(self, mock_delay):
+        from world.director.civilians import react_to_attack
+        pc = SimpleNamespace(db=SimpleNamespace(reaction=None))
+        react_to_attack(pc, MagicMock())
+        mock_delay.assert_not_called()
