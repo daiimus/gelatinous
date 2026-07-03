@@ -36,6 +36,12 @@ TOOLS = {
                      "'fed up', 'amused', 'owes me one'). It colours how you treat "
                      "them from now on — set it when their behaviour shifts how "
                      "you feel, not every turn (argument: a short word/phrase)"},
+    "release": {"kind": "action",
+                "desc": "end this conversation and get back to your day — "
+                        "call it once the exchange has wound down, you've "
+                        "said your piece, or you'd simply rather move on; "
+                        "your speech/action this turn are your goodbye "
+                        "(argument: '')"},
     "check_stock": {"kind": "context",
                     "desc": "list exactly what the bar can serve right now "
                             "(argument: '')"},
@@ -299,7 +305,7 @@ ARCHETYPES = {
         ),
         "length": ("Brief. A guarded line, maybe two, and a small everyday "
                    "gesture. You're mid-errand, not holding court."),
-        "tools": [],
+        "tools": ["release"],
         "fewshot": [
             {"user": 'a stranger says to you: "hey, you from around here?"',
              "assistant": {"speech": "Around enough. You need something, or "
@@ -326,7 +332,7 @@ ARCHETYPES = {
         ),
         "length": ("One or two clipped lines, machine-cadence. No warmth, no "
                    "filler. A short mechanical pose at most."),
-        "tools": [],  # + BASE_TOOLS (look) — action is the deterministic layer's job
+        "tools": ["release"],  # may end an exchange; combat/detain stays deterministic
         "fewshot": [
             {"user": 'a bystander says to you: "what happened here?"',
              "assistant": {"speech": "Incident under review. Details are "

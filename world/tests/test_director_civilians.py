@@ -38,7 +38,7 @@ class TestRoles(TestCase):
     def test_colonist_archetype_registered(self):
         from world.llm.prompt import ARCHETYPES
         self.assertIn("colonist", ARCHETYPES)
-        self.assertEqual(ARCHETYPES["colonist"]["tools"], [])
+        self.assertEqual(ARCHETYPES["colonist"]["tools"], ["release"])
 
     def test_no_disguise_items_in_wardrobes(self):
         # Essential disguise items would scramble civilian apparent_uids
@@ -157,3 +157,47 @@ class TestCadenceAndStagger(TestCase):
             rmod.tick_npc(npc)   # cadence 1 (None) → acts immediately
             seen.add(getattr(npc.ndb, "patrol_idx", None))
         self.assertGreater(len(seen), 2)   # spread, not lockstep at 0
+
+class TestConversationHold(TestCase):
+    """The LLM engagement hold: an engaged NPC defers its drift until the
+    model releases it (or the inactivity window lapses)."""
+
+    def _npc(self, engaged_until=None):
+        return SimpleNamespace(
+            location=_Room("street"), ndb=SimpleNamespace(
+                llm_engaged_until=engaged_until),
+            db=SimpleNamespace(role="vendor", post=None, patrol_beat=None,
+                               patrol_cadence=None),
+            execute_cmd=MagicMock())
+
+    @patch("world.director.routines._in_combat", return_value=False)
+    @patch("world.director.routines.is_travelling", return_value=False)
+    @patch("world.director.routines.is_assigned", return_value=False)
+    def test_engaged_npc_is_not_idle(self, *_m):
+        from time import monotonic
+        held = self._npc(engaged_until=monotonic() + 100)
+        self.assertFalse(rmod.is_patrol_idle(held))
+
+    @patch("world.director.routines._in_combat", return_value=False)
+    @patch("world.director.routines.is_travelling", return_value=False)
+    @patch("world.director.routines.is_assigned", return_value=False)
+    def test_lapsed_or_released_hold_frees_the_npc(self, *_m):
+        from time import monotonic
+        lapsed = self._npc(engaged_until=monotonic() - 5)
+        self.assertTrue(rmod.is_patrol_idle(lapsed))
+        released = self._npc(engaged_until=None)
+        self.assertTrue(rmod.is_patrol_idle(released))
+
+    def test_release_tool_registered_for_mobile_archetypes(self):
+        from world.llm.prompt import ARCHETYPES, TOOLS
+        self.assertIn("release", TOOLS)
+        self.assertEqual(TOOLS["release"]["kind"], "action")
+        self.assertIn("release", ARCHETYPES["colonist"]["tools"])
+        self.assertIn("release", ARCHETYPES["security"]["tools"])
+
+    def test_release_handler_clears_the_hold(self):
+        from typeclasses.llm_npc import LLMNpcMixin
+        npc = SimpleNamespace(ndb=SimpleNamespace(llm_engaged_until=999.0),
+                              location=MagicMock())
+        LLMNpcMixin._handle_action_tool(npc, "release", "", MagicMock())
+        self.assertIsNone(npc.ndb.llm_engaged_until)

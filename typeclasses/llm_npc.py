@@ -33,6 +33,10 @@ from world.llm.prompt import (
 )
 
 LLM_DIRECTED_COOLDOWN = 4.0    # min seconds between replies to direct address/name
+LLM_ENGAGE_HOLD = 180.0        # conversation hold: an engaged NPC defers its
+                               # routine (patrol/drift) until the model calls
+                               # the `release` tool or this inactivity window
+                               # lapses (failsafe for walked-away-from NPCs)
 LLM_AMBIENT_COOLDOWN = 45.0    # rarely volunteers into overheard chatter
 LLM_AMBIENT_CHANCE = 0.35      # ...and not every eligible time
 LLM_HISTORY_TURNS = 6          # recent turns kept per interlocutor (anti-repetition)
@@ -148,6 +152,11 @@ class LLMNpcMixin:
         elif now - last < LLM_DIRECTED_COOLDOWN:
             return True
         self.ndb.last_llm = now
+        if mode == "directed":
+            # Conversation hold: don't wander off mid-exchange. Rolling —
+            # refreshed every directed turn; the model releases it early via
+            # the `release` tool.
+            self.ndb.llm_engaged_until = now + LLM_ENGAGE_HOLD
 
         # Capture everything reactor-side BEFORE threading (SQLite/Evennia-thread
         # contract). The agentic loop re-calls from the reactor-side callback.
@@ -426,12 +435,18 @@ class LLMNpcMixin:
         return ""
 
     def _handle_action_tool(self, tool, arg, patron):
-        """Route an action tool to a real command. ``remember``/``feel`` are
-        universal; subclasses extend then call super."""
+        """Route an action tool to a real command. ``remember``/``feel``/
+        ``release`` are universal; subclasses extend then call super."""
         if tool == "remember" and arg and patron and self.location:
             self._remember_person(patron, arg)
         elif tool == "feel" and arg and patron:
             self._set_valence(self._memory_subject(patron), arg)
+        elif tool == "release":
+            # The character has decided the exchange is over: drop the
+            # conversation hold so the routine (patrol/drift) resumes on
+            # the next heartbeat. The goodbye itself rides the normal
+            # speech/action channels of this same turn.
+            self.ndb.llm_engaged_until = None
 
     def _remember_person(self, patron, name):
         """Privately name/nickname the interlocutor via the REAL ``remember``
