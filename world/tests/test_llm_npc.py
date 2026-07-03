@@ -459,3 +459,76 @@ class TestRoomDescPerception(TestCase):
         npc = MagicMock()
         npc.location = None
         self.assertIsNone(_room_desc(npc))
+
+
+class TestSecondPersonResolution(TestCase):
+    """Surviving second-person in an ACTION resolves onto the patron's handle
+    so the emote engine renders it per-observer (bystanders read the name,
+    the target reads you/your)."""
+
+    def _npc(self):
+        b = MagicMock()
+        b._address_handle = lambda p: "the lean man"
+        _bind(b, "_resolve_second_person")
+        return b
+
+    def test_bare_you_becomes_handle(self):
+        b = self._npc()
+        out = b._resolve_second_person(
+            "presses you against the wall, pinning you there", MagicMock())
+        self.assertEqual(out, "presses the lean man against the wall, "
+                              "pinning the lean man there")
+
+    def test_your_becomes_handle_possessive(self):
+        b = self._npc()
+        out = b._resolve_second_person("traces your collarbone", MagicMock())
+        self.assertEqual(out, "traces the lean man's collarbone")
+
+    def test_yourself_becomes_handle(self):
+        b = self._npc()
+        out = b._resolve_second_person("lets you steady yourself", MagicMock())
+        self.assertEqual(out, "lets the lean man steady the lean man")
+
+    def test_contractions_survive(self):
+        b = self._npc()
+        out = b._resolve_second_person("hums like you've never heard",
+                                       MagicMock())
+        self.assertIn("you've never heard", out)
+
+    def test_quoted_speech_untouched(self):
+        b = self._npc()
+        out = b._resolve_second_person(
+            'leans close to you, "you want to play dress-up with me,"',
+            MagicMock())
+        self.assertIn('"you want to play dress-up with me,"', out)
+        self.assertTrue(out.startswith("leans close to the lean man"))
+
+    def test_no_handle_no_rewrite(self):
+        b = MagicMock()
+        b._address_handle = lambda p: None
+        _bind(b, "_resolve_second_person")
+        out = b._resolve_second_person("watches you", MagicMock())
+        self.assertEqual(out, "watches you")
+
+
+class TestRememberNameGuard(TestCase):
+    def _npc(self):
+        b = MagicMock()
+        b.location = "room"
+        _bind(b, "_remember_person")
+        return b
+
+    def test_pronoun_names_rejected(self):
+        for junk in ("you", "You.", "him", "her", "them"):
+            b = self._npc()
+            b._remember_person(MagicMock(), junk)
+            b.execute_cmd.assert_not_called()
+
+    def test_trailing_punctuation_stripped(self):
+        b = self._npc()
+        patron = MagicMock()
+        patron.get_display_name = lambda looker=None, **k: "a lean man"
+        with patch("world.identity.get_assigned_name", return_value=None):
+            b._remember_person(patron, "the negotiating ninja.")
+        b.execute_cmd.assert_called_once_with(
+            "remember a lean man as the negotiating ninja")

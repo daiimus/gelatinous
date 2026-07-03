@@ -521,8 +521,13 @@ class LLMNpcMixin:
         command (NPC_MEMORY_AND_IDENTITY_SPEC §4) — keyed on their apparent_uid
         in this NPC's recognition memory. Skips a no-op re-name so the LLM can't
         churn the same nickname every turn."""
-        name = " ".join(str(name).split())[:40]
+        name = " ".join(str(name).split())[:40].strip(" .,!?;:'\"")
         if not name or " as " in name.lower():
+            return
+        # Pronouns aren't names — a stored "you"/"him" becomes the address
+        # handle and poisons every subsequent pose reference.
+        if name.lower() in ("you", "your", "yours", "me", "my", "him", "his",
+                            "her", "hers", "them", "their", "they", "it", "us"):
             return
         try:
             from world.identity import get_assigned_name
@@ -582,6 +587,8 @@ class LLMNpcMixin:
         speech = speech.strip().strip('"').strip() if speech else None
         action = action.strip() if action else None
         thought = thought.strip() if thought else None
+        if action and patron:
+            action = self._resolve_second_person(action, patron)
         if action:
             body = action
             if speech and '"' not in body:
@@ -595,6 +602,33 @@ class LLMNpcMixin:
             self.execute_cmd(f"say {speech}")
         if thought:
             self.execute_cmd(f"think {thought}")
+
+    def _resolve_second_person(self, action, patron):
+        """Resolve the model's second-person slips onto the patron's handle.
+
+        Everything the model reads renders "you" as the NPC itself, so it
+        drifts into calling its interlocutor "you"/"your" in its own ACTION.
+        A literal "you" in a broadcast pose is wrong for every observer but
+        the target (a bystander reads it as themselves). Rewriting it to the
+        patron's handle (the PERCEPTION wording) lets the emote engine's
+        char-ref matcher resolve it per-observer — the target still reads
+        "you"/"your", a bystander reads the name THEY know. Quoted speech is
+        dialogue and stays verbatim; contractions (you've) are left alone."""
+        try:
+            handle = self._address_handle(patron)
+        except Exception:  # noqa: BLE001
+            return action
+        if not handle:
+            return action
+
+        def _rewrite(seg):
+            seg = re.sub(r"\byours?\b", f"{handle}'s", seg, flags=re.I)
+            return re.sub(r"\byou(?:rself)?\b(?!['’])", handle, seg,
+                          flags=re.I)
+
+        chunks = action.split('"')
+        chunks[0::2] = [_rewrite(c) for c in chunks[0::2]]
+        return '"'.join(chunks)
 
     def _llm_silent(self):
         """Sidecar failed or declined on conversation: stay quiet."""
