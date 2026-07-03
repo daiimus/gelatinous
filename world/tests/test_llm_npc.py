@@ -324,6 +324,24 @@ class TestStyleTool(TestCase):
         b._handle_action_tool("style", "eat hat", MagicMock())
         b.execute_cmd.assert_not_called()
 
+    def test_natural_synonyms_map_to_real_verbs(self):
+        # the model writes in its own register — normalise, don't drop
+        for arg, cmd in (("take off mesh top", "remove mesh top"),
+                         ("put on long coat", "wear long coat"),
+                         ("strip slit skirt", "remove slit skirt"),
+                         ("shed cropped jacket", "remove cropped jacket")):
+            b = self._npc()
+            b._handle_action_tool("style", arg, MagicMock())
+            b.execute_cmd.assert_called_once_with(cmd)
+
+    def test_possessive_and_state_parenthetical_stripped(self):
+        # "her mesh top (unzipped)" — possessive lead + the wardrobe card's
+        # style-state suffix both break the command matcher
+        b = self._npc()
+        b._handle_action_tool("style", "remove her mesh top (unzipped)",
+                              MagicMock())
+        b.execute_cmd.assert_called_once_with("remove mesh top")
+
 
 class TestEchoGuard(TestCase):
     """A pose aimed at the NPC must never come straight back as its reply."""

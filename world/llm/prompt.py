@@ -117,6 +117,11 @@ def _tools_block(tools) -> str:
             lines.append(f'- "{name}": {entry["desc"]}')
     lines.append('- "none": no tool this turn.')
     lines.append("After a context tool you get a [tool result]; then reply for real.")
+    if "style" in tools:
+        lines.append('Your clothing only REALLY changes when you call "style" — '
+                     "a pose alone doesn't remove, put on, or open anything. "
+                     "Whenever your action involves your own clothing, pose the "
+                     "gesture AND call the tool in the same turn.")
     return "\n".join(lines)
 
 
@@ -275,6 +280,16 @@ ARCHETYPES = {
                                      "taking her time, her fingers trailing his "
                                      "collar",
                            "thought": "", "tool": "none", "tool_argument": ""}},
+            # Demonstrates the style tool: the pose carries the gesture, the
+            # tool makes it real — clothing never comes off by narration alone.
+            {"user": 'a patron says to you: "let\'s get you out of that jacket."',
+             "assistant": {"speech": "Since you ask so nicely.",
+                           "action": "peels the cropped jacket off her "
+                                     "shoulders and lets it slide from one "
+                                     "finger to the floor",
+                           "thought": "",
+                           "tool": "style",
+                           "tool_argument": "remove cropped jacket"}},
         ],
     },
     "doctor": {
