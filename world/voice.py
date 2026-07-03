@@ -455,8 +455,21 @@ def resolve_speaker_attribution(speaker: Any, observer: Any) -> str:
     """
     if observer is speaker:
         return getattr(speaker, "key", GENERIC_UNSEEN_SPEAKER)
-    if can_see(observer):
+    if can_see(observer) and not _speaker_concealed(speaker, observer):
         return speaker.get_display_name(observer)
     if can_hear(observer):
         return attempt_voice_discern(observer, speaker) or GENERIC_UNSEEN_SPEAKER
     return GENERIC_UNSEEN_SPEAKER
+
+
+def _speaker_concealed(speaker, observer) -> bool:
+    """Stealth gates the VISUAL attribution channel: a speaker hidden from
+    this observer can't be identified by sight, so attribution falls
+    through to the voice determination — you can hide your body, not a
+    voice someone knows (a modulator handles that). Best-effort: no
+    stealth state means not concealed."""
+    try:
+        from world.stealth import is_hidden_from
+        return is_hidden_from(speaker, observer)
+    except Exception:  # noqa: BLE001
+        return False

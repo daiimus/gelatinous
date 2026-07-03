@@ -269,8 +269,10 @@ class TestEmergenceBeat(TestCase):
 
 
 class TestWhisperStealth(TestCase):
-    """Whisper is the creepy channel: it never breaks stealth, arrives
-    unattributed from an unseen speaker, and leaves the target Suspicious."""
+    """Whisper is the creepy channel ON THE SAY PARENT: never breaks
+    stealth, rides the shared speech rails (attribution via the
+    sight/voice/stealth chain, payload for NPC brains), leaves an
+    unseen-whispered target Suspicious."""
 
     def _cmd(self, caller, args):
         from commands.CmdCommunication import CmdWhisper
@@ -290,6 +292,20 @@ class TestWhisperStealth(TestCase):
         room.contents = [caller, target]
         return caller, target
 
+    def _run(self, caller, rendered='Someone whispers to you, "Wakka."'):
+        cmd = self._cmd(caller, '"Wakka." to lean man')
+        with _uid_for(None), \
+                patch("world.speech.render_speech_line",
+                      return_value=rendered) as render, \
+                patch("world.speech.speech_payload",
+                      return_value={"speech": "Wakka.",
+                                    "addressed": True}), \
+                patch("world.speech.visible_voice_flavor",
+                      return_value=None), \
+                patch("world.perception.can_see", return_value=True):
+            cmd.func()
+        return render
+
     def test_new_syntax_parses(self):
         caller, target = self._pair()
         cmd = self._cmd(caller, '"Wakka." to lean man')
@@ -302,38 +318,69 @@ class TestWhisperStealth(TestCase):
         self.assertEqual(cmd.speech, "Wakka.")
         self.assertEqual(cmd.target_str, "lean man")
 
-    def test_hidden_whisper_stays_hidden_and_unattributed(self):
+    def test_hidden_whisper_never_breaks_stealth(self):
         caller, target = self._pair(hidden=True)
-        cmd = self._cmd(caller, '"Wakka." to lean man')
-        with _uid_for(None), \
-                patch("commands.CmdCommunication.can_hear",
-                      return_value=True):
-            cmd.func()
-        self.assertTrue(caller.db.hidden)               # never breaks
-        text = target.msg.call_args.kwargs.get("text")
-        self.assertIn("Someone unseen whispers", text)
-        self.assertNotIn("shadow", text)                # no attribution
+        self._run(caller)
+        self.assertTrue(caller.db.hidden)
         with _uid_for(None):
             self.assertEqual(get_awareness(target, caller), SUSPICIOUS)
 
-    def test_visible_whisper_attributed(self):
+    def test_rides_the_say_parent(self):
+        caller, target = self._pair()
+        render = self._run(caller)
+        render.assert_called_once()
+        self.assertEqual(render.call_args.kwargs.get("verb"), "whispers")
+        # the structured payload reaches the target's msg (NPC brains hear)
+        self.assertEqual(target.msg.call_args.kwargs.get("speech"), "Wakka.")
+        self.assertTrue(target.msg.call_args.kwargs.get("addressed"))
+
+    def test_visible_whisper_leaves_no_awareness_mark(self):
         caller, target = self._pair(hidden=False)
-        cmd = self._cmd(caller, '"Wakka." to lean man')
-        with _uid_for(None), \
-                patch("commands.CmdCommunication.can_hear",
-                      return_value=True):
-            cmd.func()
-        text = target.msg.call_args.kwargs.get("text")
-        self.assertIn("A shadow whispers to you", text)
+        self._run(caller, rendered='A shadow whispers to you, "Wakka."')
+        with _uid_for(None):
+            self.assertEqual(get_awareness(target, caller), UNAWARE)
 
     def test_bystander_who_cannot_see_whisperer_sees_nothing(self):
         caller, target = self._pair(hidden=True)
         bystander = _char()
         bystander.get_sdesc = lambda: "x"
         caller.location.contents.append(bystander)
-        cmd = self._cmd(caller, '"Wakka." to lean man')
-        with _uid_for(None), \
-                patch("commands.CmdCommunication.can_hear",
-                      return_value=True):
-            cmd.func()
+        self._run(caller)
         bystander.msg.assert_not_called()
+
+
+class TestStealthAttribution(TestCase):
+    """Concealment gates the VISUAL attribution channel: a hidden speaker
+    attributes by voice — a known voice names them, a stranger's reads as
+    'someone'."""
+
+    def test_hidden_speaker_attributes_by_voice(self):
+        from world.voice import resolve_speaker_attribution
+        speaker, observer = _char(hidden=True), _char()
+        with patch("world.voice.can_see", return_value=True), \
+                patch("world.voice.can_hear", return_value=True), \
+                patch("world.voice.attempt_voice_discern",
+                      return_value="Roony"), \
+                patch("world.stealth.is_hidden_from", return_value=True):
+            self.assertEqual(
+                resolve_speaker_attribution(speaker, observer), "Roony")
+
+    def test_hidden_speaker_unknown_voice_is_someone(self):
+        from world.voice import resolve_speaker_attribution
+        speaker, observer = _char(hidden=True), _char()
+        with patch("world.voice.can_see", return_value=True), \
+                patch("world.voice.can_hear", return_value=True), \
+                patch("world.voice.attempt_voice_discern",
+                      return_value=None), \
+                patch("world.stealth.is_hidden_from", return_value=True):
+            self.assertEqual(
+                resolve_speaker_attribution(speaker, observer), "someone")
+
+    def test_visible_speaker_attributes_by_sight(self):
+        from world.voice import resolve_speaker_attribution
+        speaker, observer = _char(), _char()
+        speaker.get_display_name = lambda looker=None, **k: "a shadow"
+        with patch("world.voice.can_see", return_value=True), \
+                patch("world.stealth.is_hidden_from", return_value=False):
+            self.assertEqual(
+                resolve_speaker_attribution(speaker, observer), "a shadow")
