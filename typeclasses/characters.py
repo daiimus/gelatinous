@@ -1211,11 +1211,18 @@ class Character(
         template = (
             f"{{actor}} is leaving {origin_name}, heading for {dest_name}."
         )
+        exclude = [self]
+        if self.db.hidden is True:
+            # A hidden mover's departure only reaches those tracking them —
+            # you can't watch someone leave whom you never knew was there.
+            from world.stealth import is_hidden_from
+            exclude += [obs for obs in self.location.contents
+                        if obs is not self and is_hidden_from(self, obs)]
         msg_room_identity(
             self.location,
             template,
             {"actor": self},
-            exclude=[self],
+            exclude=exclude,
         )
 
     def announce_move_to(
@@ -1255,11 +1262,17 @@ class Character(
         template = (
             f"{{actor}} arrives to {dest_name} from {origin_name}."
         )
+        exclude = [self]
+        if self.db.hidden is True:
+            # A sneaking arrival isn't announced — the fresh hide contest in
+            # the new room (CmdSneak) decides who catches the slip-in.
+            exclude += [obs for obs in self.location.contents
+                        if obs is not self]
         msg_room_identity(
             self.location,
             template,
             {"actor": self},
-            exclude=[self],
+            exclude=exclude,
         )
 
     def at_post_move(self, source_location, **kwargs):
@@ -1288,13 +1301,28 @@ class Character(
         if source_location is not None:
             from world.movement_coupling import bring_followers
             bring_followers(self, source_location)
+        # Stealth passive tier (spec §4): entering a room is a free glance
+        # at anything hidden here — rate-limited, weaker than a search, but
+        # a perceptive walker inherently spots a clumsy hider.
+        if self.location:
+            from world.stealth import passive_check
+            for obj in self.location.contents:
+                if obj is not self \
+                        and getattr(obj.db, "hidden", False) is True \
+                        and hasattr(obj, "get_sdesc"):
+                    passive_check(self, obj)
 
     def at_pre_move(self, destination, **kwargs):
         """Extends the default: an escort moves FIRST — the escortee is
         ushered through the exit ahead of us; if the way refuses them, our
-        own move stops at the threshold too (movement_coupling)."""
+        own move stops at the threshold too (movement_coupling). Walking
+        off openly while hidden gives you away (stealth spec §6.4) —
+        ``sneak`` sets the ndb flag that keeps concealment through a move."""
         if not super().at_pre_move(destination, **kwargs):
             return False
+        if self.db.hidden is True and not self.ndb.sneaking:
+            from world.stealth import break_stealth
+            break_stealth(self, quiet=True)
         if self.db.escorting and destination is not None:
             from world.movement_coupling import usher_escortee
             return usher_escortee(self, destination)

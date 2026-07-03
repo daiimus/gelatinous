@@ -1,6 +1,19 @@
 # Stealth & Detection Spec — Hiding, Searching, and Graded Awareness
 
-> **Status:** 📋 Proposal — not implemented. Designs the **presence-concealment**
+> **Status:** 🚧 **PHASES 1–2 + PASSIVE TIER + DISPLAY INTEGRATION SHIPPED
+> (2026-07-03).** Live: `world/stealth.py` (opposed Motorics-hider vs
+> Resonance-searcher contest; per-observer graded awareness store keyed on
+> apparent-uid, lazy decay), `hide`/`unhide`/`sneak`/`search` commands, the
+> **passive tier** (§3.4), display integration (room roster filters
+> Unaware/Suspicious; the *Suspicious* "prickling sense" cue; the "lurking
+> in the shadows" placement for the Detected; hidden objects out of the
+> things list; hidden movers' announcements suppressed to the unaware), and
+> break-on-action (speech, attack, open movement). NOT yet built: the full
+> perception-gate choke (§7 — say/emote/combat-target leak sweep; note the
+> phase layer's `filter_present` does NOT exist yet, §7 must build it), the
+> NPC hunt (§5), ambush advantage (§6.1), theft (§6.2), environmental
+> modifiers (light/cover/crowd — v1 is the flat tier spread).
+> Original abstract: designs the **presence-concealment**
 > layer: `hide` (self or object) vs `search` (a room), resolved as an opposed
 > **Resonance/Motorics** contest, surfaced as a **per-observer graded awareness
 > meter** (unaware → suspicious → searching → alert) that drives **deterministic
@@ -98,6 +111,18 @@ keeps stealth *gear- and world-driven* rather than stat-driven:
 
 `search` is the active counter: it spends an action to roll against everything
 hidden in the room, raising the searcher's awareness on success.
+
+### 3.4 · The passive tier (2026-07-03, user-decided)
+
+Between "never noticed" and "actively searched" sits the free glance:
+**entering a room and looking around each run a passive check** against
+hidden things — weaker than `search` (the active bonus is withheld) and
+**rate-limited per observer→target** (repeat looks reuse the standing
+result until a cooldown passes or the hider re-rolls), so look-spam never
+equals searching. A clear win spots the hider outright (Detected); a near
+miss yields *Suspicious* ("you get the prickling sense that you are not
+alone here"). The point: someone perceptive vs someone terrible at hiding
+will spot them **inherently**, no action spent.
 
 ---
 

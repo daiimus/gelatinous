@@ -485,19 +485,40 @@ class Room(ObjectParent, DefaultRoom):
         Returns:
             str: Combined crowd and character placement descriptions
         """
+        from world.stealth import (
+            SUSPICIOUS, get_awareness, is_hidden_from, passive_check,
+        )
+
         characters = []
-        
+        sensed_presence = False
+
         for obj in self.contents:
             if obj.is_typeclass("typeclasses.characters.Character") and obj != looker:
-                if obj.access(looker, "view"):
-                    characters.append(obj)
-        
+                if not obj.access(looker, "view"):
+                    continue
+                # Stealth (STEALTH_AND_DETECTION_SPEC §4): looking runs the
+                # free PASSIVE tier against hidden characters — penalized
+                # and rate-limited, so a glance can spot a clumsy hider but
+                # look-spam never equals a search. Unaware/Suspicious keep
+                # them off the roster; Suspicious earns the cue line.
+                if getattr(obj.db, "hidden", False) is True:
+                    passive_check(looker, obj)
+                    if is_hidden_from(obj, looker):
+                        if get_awareness(looker, obj) >= SUSPICIOUS:
+                            sensed_presence = True
+                        continue
+                characters.append(obj)
+
         # Get crowd contributions (appears before character listings)
         crowd_msg = crowd_system.get_crowd_contributions(self, looker)
-        
+
+        cue = ("You get the prickling sense that you are not alone here."
+               if sensed_presence else "")
+
         if not characters:
-            # No characters, but might still have crowd messages
-            return crowd_msg if crowd_msg else ""
+            # No characters, but might still have crowd/suspicion messages
+            parts = [p for p in (crowd_msg, cue) if p]
+            return "\n".join(parts) if parts else ""
         
         # Group characters by their placement description
         placement_groups = {}
@@ -513,6 +534,13 @@ class Room(ObjectParent, DefaultRoom):
                         temp_place if temp_place else
                         look_place if look_place else
                         "standing here.")
+
+            # The "lurking" tell (stealth spec §4): failed concealment
+            # doesn't restore a normal appearance — to whoever sees them,
+            # a hidden character reads as visibly furtive, top of the
+            # placement hierarchy.
+            if getattr(char.db, "hidden", False) is True:
+                placement = "lurking in the shadows."
 
             # Resolve {aim_target} template in placement (used by aim system)
             if "{aim_target}" in placement:
@@ -562,6 +590,8 @@ class Room(ObjectParent, DefaultRoom):
             all_displays.append(character_display)
         if adjacent_sightings:
             all_displays.append(adjacent_sightings)
+        if cue:
+            all_displays.append(cue)
         
         return " ".join(all_displays) if all_displays else ""
     
@@ -622,6 +652,11 @@ class Room(ObjectParent, DefaultRoom):
             
             # Skip exits (handled by get_display_footer)
             if obj.is_typeclass("typeclasses.exits.Exit"):
+                continue
+
+            # Skip stashed objects (stealth spec §3.3) until a search
+            # turns them up
+            if getattr(obj.db, "hidden", False) is True:
                 continue
             
             # Skip @integrate objects - they're handled in room description

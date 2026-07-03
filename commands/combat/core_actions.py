@@ -56,6 +56,11 @@ class CmdAttack(Command):
     def func(self):
         caller = self.caller
         args = self.args.strip()
+        # Attacking gives you away (STEALTH_AND_DETECTION_SPEC §6.4) — the
+        # ambush ADVANTAGE (spec §6.1) lands with the ambush phase; v1 is
+        # just honesty: violence is loud.
+        from world.stealth import break_stealth
+        break_stealth(caller, quiet=True)
         splattercast = get_splattercast()
 
         if not args:
