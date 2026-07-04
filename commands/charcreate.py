@@ -319,7 +319,7 @@ def create_character_from_template(account, template, sex="ambiguous"):
     
     # Set defaults
     # death_count starts at 1 via AttributeProperty in Character class
-    char.db.archived = False
+    char.unarchive_character()   # attribute + sleeve-tag index in sync
     
     return char
 
@@ -429,7 +429,7 @@ def create_flash_clone(account, old_character):
         char.db.stack_id = str(uuid.uuid4())
     
     # Reset state
-    char.db.archived = False
+    char.unarchive_character()   # attribute + sleeve-tag index in sync
     char.db.current_sleeve_birth = time.time()
     
     return char
@@ -488,8 +488,8 @@ def _charcreate_exit_callback(caller, menu):
     Called when the character creation menu exits.
     Only disconnects if character creation was NOT completed.
     """
-    # Check if they have any ACTIVE (non-archived) characters
-    active_characters = [char for char in caller.characters if not char.db.archived]
+    # Check if they have any ACTIVE (non-archived) characters (tag-indexed)
+    active_characters = caller.active_sleeves
     
     if active_characters:
         # They completed creation - just close menu, don't disconnect
@@ -1448,7 +1448,7 @@ def first_char_finalize(caller, raw_string, **kwargs):
         
         # Set defaults
         # death_count starts at 1 via AttributeProperty in Character class
-        char.db.archived = False
+        char.unarchive_character()   # attribute + sleeve-tag index in sync
         
         # Generate unique Stack ID
         import uuid

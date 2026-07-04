@@ -136,6 +136,48 @@ class Account(DefaultAccount):
 
     """
 
+    def _sleeves_split(self):
+        """Split this account's characters into (active, archived) using the
+        ``archived`` tag index (spec §9 step 3) — ONE database query for the
+        whole split instead of a ``db.archived`` attribute read per character
+        (accounts accumulate archived sleeves forever; actives are capped by
+        MAX_NR_CHARACTERS). Order of ``self.characters`` is preserved.
+
+        Self-healing: the few tag-active sleeves are verified against the
+        legacy ``db.archived`` attribute — a True without the tag (pre-index
+        sleeve, stray staff @py) is healed into the index on the spot, so an
+        archived husk can never read as active (at_post_login auto-puppets
+        actives)."""
+        chars = [c for c in self.characters if c]
+        if not chars:
+            return [], []
+        from evennia.objects.models import ObjectDB
+        archived_ids = set(ObjectDB.objects.filter(
+            id__in=[c.id for c in chars],
+            db_tags__db_key="archived",
+            db_tags__db_category="sleeve",
+        ).values_list("id", flat=True))
+        active, archived = [], []
+        for char in chars:
+            if char.id in archived_ids:
+                archived.append(char)
+            elif char.db.archived is True:      # legacy flag, no tag: heal
+                char.tags.add("archived", category="sleeve")
+                archived.append(char)
+            else:
+                active.append(char)
+        return active, archived
+
+    @property
+    def active_sleeves(self):
+        """This account's non-archived characters (tag-indexed, one query)."""
+        return self._sleeves_split()[0]
+
+    @property
+    def archived_sleeves(self):
+        """This account's archived sleeves (tag-indexed, one query)."""
+        return self._sleeves_split()[1]
+
     def check_available_slots(self, **kwargs):
         """
         Override Evennia's default to exclude archived characters from slot count.
@@ -148,20 +190,16 @@ class Account(DefaultAccount):
                will halt character creation. If not, character creation can proceed.
         """
         from django.conf import settings
-        
+
         # Get max allowed characters
         max_slots = settings.MAX_NR_CHARACTERS
         if max_slots is None:
             # No limit
             return None
-        
+
         # Count only active (non-archived) characters
-        active_count = 0
-        for char in self.characters:
-            if char.db.archived:
-                continue
-            active_count += 1
-        
+        active_count = len(self.active_sleeves)
+
         # Check if we have slots available
         available_slots = max(0, max_slots - active_count)
         
@@ -188,17 +226,9 @@ class Account(DefaultAccount):
         max_slots = settings.MAX_NR_CHARACTERS
         if max_slots is None:
             return False
-        
-        # Count active (non-archived) characters - defensive coding
-        active_count = 0
-        for char in self.characters:
-            if not char:
-                continue
-            if char.db.archived:
-                continue
-            active_count += 1
-        
-        return active_count >= max_slots
+
+        # Count active (non-archived) characters via the tag index
+        return len(self.active_sleeves) >= max_slots
 
     def at_post_login(self, session=None, **kwargs):
         """
@@ -209,18 +239,10 @@ class Account(DefaultAccount):
         - Starting character creation for new accounts
         - Handling archived characters
         """
-        # Use Evennia's account.characters (the _playable_characters list) - this is the authoritative source
-        all_characters = self.characters.all()
-        
-        # Filter for active (non-archived) characters
-        # Be defensive: only treat explicitly archived=True as archived
-        active_chars = []
-        for char in all_characters:
-            # Only exclude if explicitly archived
-            if char.db.archived is True:
-                continue
-            active_chars.append(char)
-        
+        # Split the account's sleeves on the tag index — one query, and the
+        # archived list is reused below for the last_character restore.
+        active_chars, archived_sleeves = self._sleeves_split()
+
         # CRITICAL: Only start character creation if there are ZERO active characters
         if not active_chars:
             # No active characters - start character creation
@@ -230,18 +252,11 @@ class Account(DefaultAccount):
                 
                 # Restore last_character if it's missing but we have archived characters
                 # This handles cases where last_character was cleared or lost
-                if not self.db.last_character:
-                    # Find most recently archived character
-                    archived_chars = []
-                    for char in all_characters:
-                        if char.db.archived is True:
-                            archived_date = char.db.archived_date or 0
-                            archived_chars.append((archived_date, char))
-                    
-                    # Sort by archive date (most recent first) and use the newest
-                    if archived_chars:
-                        archived_chars.sort(reverse=True, key=lambda x: x[0])
-                        self.db.last_character = archived_chars[0][1]
+                if not self.db.last_character and archived_sleeves:
+                    # Most recently archived sleeve (tag-indexed split above)
+                    self.db.last_character = max(
+                        archived_sleeves,
+                        key=lambda c: c.db.archived_date or 0)
                 
                 # Check if they have a last_character (from death or manual archival)
                 # If so, use respawn flow with flash clone + template options

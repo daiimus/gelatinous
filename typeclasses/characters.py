@@ -453,6 +453,20 @@ class Character(
         except Exception as e:
             return f"Error in death analysis: {e}"
     
+    @property
+    def is_archived(self):
+        """Whether this sleeve is archived. Reads the tag index first (fast,
+        tag-cached), falling back to the legacy ``db.archived`` attribute for
+        sleeves archived before the tag existed."""
+        return bool(self.tags.has("archived", category="sleeve")
+                    or self.db.archived is True)
+
+    def unarchive_character(self):
+        """Clear archive state (attribute AND tag) — the single place both
+        stores are kept in sync when a sleeve is marked active."""
+        self.db.archived = False
+        self.tags.remove("archived", category="sleeve")
+
     def archive_character(self, reason="manual", disconnect_msg=None):
         """
         Archive this character and disconnect any active sessions.
@@ -476,10 +490,14 @@ class Character(
         # (This ensures "Jorge Jackson" -> "Jorge Jackson II" etc.)
         self.death_count += 1
         
-        # Set archive flags
+        # Set archive flags. The db attributes are the display/audit record;
+        # the TAG is the query index (spec §9 step 3) — account/website sleeve
+        # listings filter on it in one query instead of reading db.archived
+        # off every character.
         self.db.archived = True
         self.db.archived_reason = reason
         self.db.archived_date = time.time()
+        self.tags.add("archived", category="sleeve")
 
         # Engrave the OOC tombstone on the owning account — who the sleeve
         # was, born, died (DEATH_AND_SLEEVE_LIFECYCLE_SPEC §9). Every archive
