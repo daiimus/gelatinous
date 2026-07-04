@@ -1,50 +1,51 @@
-# Decking Spec — Runs, Traces, and the Net's Game Loop
+# Decking & the Matrix — Runs, Traces, and the Net's Game Loop
 
 > **Status:** 📋 **DESIGN DRAFT — spec-first, build-later.** The net's
 > *substrate* is `PHASE_LAYER_SPEC` (net = a phase over the same geography;
 > the two-body model; the single perception gate), which is itself unbuilt and
 > depends on the vertical/coordinate world. So this whole system is
 > **deliberately spec-now, build-when-the-world-is-ready** — the solution and
-> the vibes sharpen as the colony fills in. Primary reference:
-> **uplink-headless-mod** (https://github.com/hosler/uplink-headless-mod) — a
-> reverse-engineered, GUI-stripped *Uplink* whose engine reduces the entire
-> hacking genre to ~40 discrete commands. That reduction is the proof:
-> **Uplink's loop is already a text game.** We adopt its loop (bounce →
-> intrude → work under a trace → clean logs → jack out) and its CLI, then make
-> it ours with a **roll-your-own programming layer** (§6) and one unifying
-> doctrine: **everything is a file** (§2).
+> the vibes sharpen as the colony fills in.
+>
+> **Design lineage:** the classic net-runner loop (bounce → intrude →
+> work-under-a-trace → clean-logs → jack-out) reduces cleanly to a small set
+> of discrete commands — proof that the hacking genre is *already* a text
+> game. We take that loop and CLI shape as the skeleton, then make it ours
+> with a **roll-your-own programming layer** (§6) and one unifying doctrine:
+> **everything is a file** (§2). Specific source material is intentionally
+> paraphrased, not cited.
 
 ---
 
-## 1 · Why Uplink, specifically
+## 1 · Why the discrete-command model
 
-The headless mod demonstrates four things that map straight onto a MUD:
+The reduction of the genre to a handful of operations demonstrates four things
+that map straight onto a MUD:
 
-1. **A discrete command surface is enough.** ~40 operations carry the whole
-   game — connect/bounce/navigate, file & log ops, LAN scan, cracking,
-   tracing, mail/missions/BBS, hardware & software shopping. The GUI was
+1. **A discrete command surface is enough.** A few dozen operations carry the
+   whole game — connect/bounce/navigate, file & log ops, LAN scan, cracking,
+   tracing, mail/jobs/boards, hardware & software acquisition. The GUI was
    always incidental to the loop.
 2. **Timed async operations are the tension.** Cracks and copies take real
    seconds while a trace advances — tension without twitch. Evennia's `delay`
    and the director heartbeat already run this shape.
 3. **Layered navigation** (map → node → console) mirrors rooms → objects →
    commands. The MUD *is* the interface metaphor; nothing to invent.
-4. **Missions close the loop** (accept → run → deliver → get paid) — which is
+4. **Jobs close the loop** (accept → run → deliver → get paid) — which is
    Gelatinous's gig/favor direction verbatim.
 
-We take Uplink's **CLI vocabulary** as the starting command set (`connect`,
-`bounce`, `scan`, `navigate`, `files`, `copy`, `delete`, `logs`, `crack`,
-`trace`, `mail`, `missions`, `bbs`, `balance`, `buy`) and its **hardware axis**
-(CPU / memory / modem as capability tiers). What we add on top — the
-programming layer and the file doctrine — is what makes it Gelatinous rather
-than a port.
+We take a **CLI vocabulary** as the starting command set (`connect`, `bounce`,
+`scan`, `navigate`, `files`, `copy`, `delete`, `logs`, `crack`, `trace`,
+`mail`, `jobs`, `board`, `balance`, `buy`) and a **hardware axis** (CPU /
+memory / modem as capability tiers). What we add on top — the programming
+layer and the file doctrine — is what makes it Gelatinous rather than a port.
 
 ## 2 · Everything is a file (the doctrine)
 
 The net is not a minigame bolted beside the world — it is the **data layer of
 the world**, and in that layer *everything is a file*:
 
-* A **gig / contract** is a file on a BBS or a fixer's host.
+* A **gig / contract** is a file on a board or a fixer's host.
 * A **contact / dossier** is a file (who knows whom; a face-to-name link).
 * A **schematic** — clothing, a weapon, a cyberware mod — is a file you feed a
   **3-D printer** to fabricate the real object (ties crafting to the net).
@@ -75,13 +76,13 @@ phase-gated; changing it goes through the same validation the meat systems use.
 | Net as a phase; two-body model; perception gate | `PHASE_LAYER_SPEC` | specced, unbuilt |
 | Everything-is-a-file doctrine (§2) | this spec | draft |
 | Net topology over real geography (§4) | this spec | draft |
-| The run loop: bounce, intrusion, logs (§5) | this spec ← Uplink | draft |
+| The run loop: bounce, intrusion, logs (§5) | this spec | draft |
 | **Programs — roll-your-own (§6)** | this spec | draft |
 | Trace = the hunt, pointed at the net (§7) | this spec ← `world/director/hunt.py` | draft |
 | ICE = deterministic NPCs (§8) | this spec ← robot/mob pattern | draft |
 | Deck & components = gear (§9) | this spec ← parked-stats stance | draft |
 | Data as target (§10) | this spec ← `intel.py`, crafting | draft |
-| Jobs = gigs over the BBS (§11) | this spec ← growth direction | draft |
+| Jobs = gigs over a board (§11) | this spec ← growth direction | draft |
 | Cross-phase effects (cameras, doors, radio taps) | `PHASE_LAYER_SPEC` §7/§9 | reserved |
 
 ## 4 · Topology — hosts live somewhere
@@ -103,7 +104,7 @@ the machine that runs them:
 Navigation is movement; the map is the room graph; "layered navigation" comes
 free.
 
-## 5 · The run loop (Uplink's, adapted)
+## 5 · The run loop
 
 1. **Jack in** — from a fixed terminal or a portable **deck**. The body slumps
    in meat-space: a **free-action target** (the trust spec's `can_contest`
@@ -112,7 +113,7 @@ free.
 2. **Bounce** — route your entry through public/compromised nodes before the
    target. Your bounce path is *real* — the literal sequence of net-rooms your
    connection traverses — and **the trace walks it back**. More hops = longer
-   trace runway but slower work; the classic Uplink tension.
+   trace runway but slower work; the classic tension.
 3. **Intrude** — reach a host's entry node; get past its gate (a **crack**
    program vs. the host's auth) to enter the interior.
 4. **Work** — the objective: `copy` a file, `delete`/edit one, `scan` a LAN,
@@ -126,17 +127,18 @@ free.
 
 ## 6 · Programs — roll-your-own (the headline twist)
 
-Uplink sells you `Cracker_v3.exe`. **We let you write it.** A decker's tools
-are **programs they author** from a palette of instructions, and the program's
-sophistication is bounded by what instructions they can use and what their deck
-can run. This replaces "buy a better tool" with "*write* a better tool," which
-fits the gear/favor progression stance and makes hacking a craft.
+The genre convention is "buy `Cracker_v3.exe`, click it." **We let you write
+it.** A decker's tools are **programs they author** from a palette of
+instructions, and a program's sophistication is bounded by what instructions
+they can use and what their deck can run. This replaces "buy a better tool"
+with "*write* a better tool," which fits the gear/favor progression stance and
+makes hacking a craft.
 
 ### 6.1 · The model
 
 * A **program** is an ordered list of **instructions** (steps that run top to
   bottom), each an operation with **typed arguments validated as you build**
-  (a malformed program won't save — the reference model).
+  (a malformed program won't save).
 * Instructions span primitives (connect, read, output/log, a bare crack),
   **control flow** (loop, branch), **variables**, **network ops** (scan,
   bounce, copy), and **security ops** (delete-log, spoof, forge). The richer
@@ -155,15 +157,15 @@ Two gates decide what you can write and run (user-decided 2026-07-03):
   rewrite. Some instructions are additionally gated on **acquired knowledge**
   — an instruction library you buy, find, or extract — so an unlock can also
   be *a place you went and a thing you did*, keeping it true to gear/favor.
-* **What your deck can run** — the **Uplink hardware axis** (§9): CPU sets
-  execution speed, memory sets program size, and the rig's grade sets how much
-  **heat** (trace pressure) it can absorb before it cooks. **Better rigs
-  handle more heat; rare components are harder to acquire** — the scarcity is
-  the progression.
+* **What your deck can run** — the **hardware axis** (§9): CPU sets execution
+  speed, memory sets program size, and the rig's grade sets how much **heat**
+  (trace pressure) it can absorb before it cooks. **Better rigs handle more
+  heat; rare components are harder to acquire** — the scarcity is the
+  progression.
 
 Net: Intellect (→ skill) opens the *vocabulary*; the rig sets the *envelope*.
-A brilliant decker on a cheap deck writes elegant programs they can't run
-big; a rich one on a monster rig runs brute-force garbage that still works.
+A brilliant decker on a cheap deck writes elegant programs they can't run big;
+a rich one on a monster rig runs brute-force garbage that still works.
 
 ### 6.3 · Authoring — the operate model, both ways
 
@@ -207,7 +209,7 @@ meter a security bot reads on the street — one behavior model, two theatres.
 
 ## 9 · The deck & components — gear
 
-The rig is the gear axis (Uplink's hardware, our scarcity):
+The rig is the gear axis (the hardware model, our scarcity):
 
 * **CPU** — execution speed (how fast a program's instructions run vs. the
   trace clock).
@@ -236,10 +238,10 @@ Because everything is a file (§2), a run's objective is concrete and varied:
 * **Plant / forge** — write a file into a host: false evidence, a backdoor, a
   logic bomb.
 
-## 11 · Jobs — gigs over the BBS
+## 11 · Jobs — gigs over a board
 
 A decking contract is a **gig** (growth direction) that lives as a file on a
-BBS or fixer host: accept → run → deliver the payload (a copied file, a
+board or fixer host: accept → run → deliver the payload (a copied file, a
 confirmed edit) → get paid in tokens, gear, or favor. The net gives the
 gig/favor economy its first rich, repeatable content loop and a reason to own
 a deck.
@@ -284,8 +286,8 @@ a deck.
 | **2** | Topology + run loop: hosts, bounce, connect/crack/navigate/files/copy/logs | phase 0 |
 | **3** | Trace (the net hunt) + ICE | phase 2, hunt.py |
 | **4** | Data-as-target: crime-DB edits, schematics→printer, sabotage | phase 2, intel/crafting |
-| **5** | Gigs over the BBS; radio cross-tap; economy | growth-direction systems |
+| **5** | Gigs over a board; radio cross-tap; economy | growth-direction systems |
 
 Phase 1 is the one piece that can be **prototyped now** — the programming
-model doesn't need the net to exist to be authored and tested. Everything
-else waits for the vertical world.
+model doesn't need the net to exist to be authored and tested. Everything else
+waits for the vertical world.
