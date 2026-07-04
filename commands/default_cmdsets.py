@@ -41,6 +41,7 @@ from commands.CmdFollow import (
 )
 from commands.CmdStealth import CmdHide, CmdSearch, CmdSneak, CmdUnhide
 from commands.CmdTheft import CmdPickpocket, CmdSteal
+from commands.CmdRadio import CmdTransmit, CmdTune, CmdToggle
 from commands.combat.cmdset_combat import CombatCmdSet
 from commands.combat.special_actions import CmdAim, CmdGrapple
 from commands.CmdThrow import CmdThrow, CmdPull, CmdCatch
@@ -192,6 +193,13 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # contest pointed at taking things.
         self.add(CmdSteal())
         self.add(CmdPickpocket())
+
+        # Comm devices (RADIO_COMMS_SPEC Phase 1): transmit/tune/toggle,
+        # device-general (radio is the first consumer). `to <radio>, msg`
+        # also transmits (CmdTo retarget).
+        self.add(CmdTransmit())
+        self.add(CmdTune())
+        self.add(CmdToggle())
         
         # Add aim command for ranged combat preparation
         self.add(CmdAim())

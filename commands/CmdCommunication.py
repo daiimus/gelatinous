@@ -107,6 +107,17 @@ class CmdTo(Command):
         if not target:
             return  # search() already sent the error message
 
+        # `to <radio>, <message>` transmits over the device (RADIO_COMMS_SPEC):
+        # the directed-speech verb, retargeted at a comm device you carry.
+        from world.radio import is_radio, transmit
+        if is_radio(target):
+            if target not in caller.contents:
+                caller.msg(f"You aren't carrying "
+                           f"{target.get_display_name(caller)}.")
+                return
+            transmit(caller, speech, target)
+            return
+
         # Actor sees their own message; the room hears it through the shared
         # speech backbone. `to` is just `say` with a target: the addressee is
         # rendered "you", and the structured payload marks them `addressed` so

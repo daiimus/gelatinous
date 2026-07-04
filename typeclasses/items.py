@@ -598,12 +598,45 @@ class Item(DefaultObject):
         super().at_delete()
 
 
+class Radio(Item):
+    """A comm device — a walkie-talkie (RADIO_COMMS_SPEC Phase 1).
+
+    Powered on/off (``db.radio_on``), tuned to a frequency (``db.frequency``,
+    or the special ``"scan"`` sweep). A powered, tuned radio echoes matching
+    traffic to whoever carries it (``world/radio.py``); the ``transmit`` /
+    ``tune`` / ``toggle`` verbs drive it. The state readout is on the FACE —
+    visible only when powered; a dark display tells you nothing.
+    """
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        self.db.is_radio = True
+        self.db.radio_on = False
+        self.db.frequency = None
+
+    def return_appearance(self, looker, **kwargs):
+        appearance = super().return_appearance(looker, **kwargs)
+        if getattr(self.db, "radio_on", False):
+            from world.radio import SCAN
+            freq = self.db.frequency
+            if freq == SCAN:
+                readout = "SWEEP — cycling the bands"
+            elif freq:
+                readout = f"{freq}, receiving"
+            else:
+                readout = "on, untuned"
+            appearance += f"\n\n|cThe display glows: {readout}.|n"
+        else:
+            appearance += "\n\n|xThe display is dark.|n"
+        return appearance
+
+
 class SprayCanItem(Item):
     """
     Spray paint can for graffiti system.
     Contains finite paint and selectable colors.
     """
-    
+
     def at_object_creation(self):
         """Initialize spray can with paint and color attributes."""
         super().at_object_creation()
