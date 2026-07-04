@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 from world.combat.constants import (
     DB_CHAR, DB_GRAPPLED_BY_DBREF, DB_GRAPPLING_DBREF, DB_TARGET_DBREF,
-    NDB_AIMED_AT_BY, NDB_AIMING_AT, NDB_PROXIMITY,
+    NDB_AIMED_AT_BY, NDB_AIMING_AT,
 )
 import world.combat.utils as cu
 
@@ -26,7 +26,7 @@ def _char(dbref):
     c.key = f"char{dbref}"
     c._dbref = dbref
     # bare ndb: nothing aiming by default
-    for attr in (NDB_AIMING_AT, NDB_AIMED_AT_BY, NDB_PROXIMITY):
+    for attr in (NDB_AIMING_AT, NDB_AIMED_AT_BY):
         setattr(c.ndb, attr, None)
     c.location = "room"
     return c
@@ -92,48 +92,3 @@ class TestOrphanAim(TestCase):
         entries = [_entry(a, target=2), _entry(b, target=None)]
         removed = self._run(self._handler(entries))
         self.assertNotIn(b, removed)       # b is targeted by a
-
-
-class TestOrphanProximity(TestCase):
-    """Melee proximity is a combat relationship (only combat establishes it),
-    so a yielder held at melee range must not be swept — the close-quarters
-    twin of the aim hold."""
-
-    def _run(self, handler):
-        removed = []
-        orig_remove = cu.remove_combatant
-        cu.remove_combatant = lambda h, ch: removed.append(ch)
-        orig_dbref = cu.get_character_dbref
-        cu.get_character_dbref = lambda ch: getattr(ch, "_dbref", None)
-        try:
-            cu.detect_and_remove_orphaned_combatants(handler)
-        finally:
-            cu.remove_combatant = orig_remove
-            cu.get_character_dbref = orig_dbref
-        return removed
-
-    def _handler(self, entries):
-        h = MagicMock(); h.db.combatants = entries
-        return h
-
-    def test_in_melee_proximity_is_held(self):
-        a, b = _char(1), _char(2)
-        setattr(a.ndb, NDB_PROXIMITY, {b})
-        setattr(b.ndb, NDB_PROXIMITY, {a})
-        entries = [_entry(a, target=None), _entry(b, target=None)]
-        removed = self._run(self._handler(entries))
-        self.assertNotIn(b, removed)
-        self.assertNotIn(a, removed)
-
-    def test_stale_proximity_partner_gone_is_orphaned(self):
-        a, b = _char(1), _char(2)
-        b.location = "elsewhere"          # partner not present
-        setattr(a.ndb, NDB_PROXIMITY, {b})
-        removed = self._run(self._handler([_entry(a, target=None)]))
-        self.assertIn(a, removed)
-
-    def test_empty_proximity_set_is_orphaned(self):
-        a = _char(1)
-        setattr(a.ndb, NDB_PROXIMITY, set())
-        removed = self._run(self._handler([_entry(a, target=None)]))
-        self.assertIn(a, removed)
