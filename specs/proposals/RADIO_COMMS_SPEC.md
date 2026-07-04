@@ -1,6 +1,8 @@
 # Radio Comms Spec — The Colony's Primary Communications
 
-> **Status:** 📋 Proposal — not implemented. **PHASE 1 SCOPED & DECIDED
+> **Status:** 🚧 **PHASE 1 CORE SHIPPED (2026-07-04): player-facing radio is LIVE** — `world/radio.py` (single staff-locked channel + device-gated voice echo), `Radio` typeclass + `WALKIE_TALKIE` prototype, `transmit`/`xmit`/`xm` + `to <radio>,` retarget, `tune <device> to <freq|scan>`, `toggle <device> [on/off]`, state-aware look-readout (frequency shown only when powered). Voice-attributed (recognition on the air, modulator-defeatable), hearing-gated, every powered carried radio receives its band (scan catches all, freq-tagged). **NOT YET: the witness/dispatch links ride radio** (next slice — rewire `witness.py`/dispatch to transmit-if-deviced), device acquisition placement (vendor/loot/spawn kit), and all Phase 2 (antennae/range/battery/jamming/encryption). Original scoping below.
+>
+> **PHASE 1 SCOPED & DECIDED
 > (2026-07-03, §7): buildable now, vertical-independent** — devices +
 > channel-system backend + voice-over-radio + the witness-report and
 > dispatch-order links. Phase 2 (range/antennae/coverage) waits on the
