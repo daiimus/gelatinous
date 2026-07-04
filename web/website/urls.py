@@ -12,8 +12,9 @@ from django.conf import settings
 
 from evennia.web.website.urls import urlpatterns as evennia_website_urlpatterns
 from web.website.views.characters import (
-    CharacterCreateView, 
+    CharacterCreateView,
     CharacterArchiveView,
+    CharacterManageView,
     StaffCharacterListView,
     OwnerOnlyCharacterDetailView,
     OwnerOnlyCharacterUpdateView
@@ -57,6 +58,9 @@ urlpatterns = [
     
     # Custom character creation with GRIM stats
     path("characters/create/", CharacterCreateView.as_view(), name="character-create"),
+
+    # Manage Sleeves with the memorial wall (tombstones — spec §9 step 2)
+    path("characters/manage/", CharacterManageView.as_view(), name="character-manage"),
     
     # Custom archive (instead of delete) - preserves Stack data
     path(

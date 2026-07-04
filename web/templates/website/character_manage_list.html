@@ -80,7 +80,39 @@ Manage Sleeves
           </p>
         </div>
         {% endif %}
-          
+
+        {% if memorial %}
+        <hr class="border-secondary mt-4" />
+        <h2 class="text-uppercase text-muted" style="font-family: 'Courier New', monospace; letter-spacing: 0.1em; font-size: 1rem;">Memorial Wall</h2>
+        <div class="table-responsive">
+          <table class="table table-dark table-sm" style="font-family: 'Courier New', monospace;">
+            <thead class="border-secondary">
+              <tr class="text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.05em;">
+                <th class="border-secondary" style="width: 40%;">Designation</th>
+                <th class="border-secondary" style="width: 30%;">Born</th>
+                <th class="border-secondary" style="width: 30%;">Died</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for stone in memorial %}
+              <tr class="border-secondary" style="font-size: 0.85rem;">
+                <td class="border-secondary text-white" style="width: 40%;">{{ stone.name }}</td>
+                <td class="border-secondary text-muted" style="width: 30%;">
+                  {% if stone.born %}{{ stone.born|date:"Y-m-d" }}{% else %}&mdash;{% endif %}
+                </td>
+                <td class="border-secondary text-muted" style="width: 30%;">
+                  {% if stone.died %}{{ stone.died|date:"Y-m-d" }}{% else %}&mdash;{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="text-muted" style="font-family: 'Courier New', monospace; font-size: 0.75rem;">
+          {{ memorial|length }} sleeve(s) remembered
+        </div>
+        {% endif %}
+
       </div>
     </div>
   </div>
