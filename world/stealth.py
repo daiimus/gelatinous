@@ -69,7 +69,9 @@ def get_awareness(observer, target) -> int:
 
 def set_awareness(observer, target, level, *, roll_stamp=False):
     """Record awareness (only non-default records are stored — spec §12
-    bounding). ``roll_stamp`` also marks a passive-roll timestamp."""
+    bounding). ``roll_stamp`` also marks a passive-roll timestamp. A
+    SUSPICIOUS+ record stamps the target's LAST-KNOWN ROOM — the hunt's
+    destination (spec §5)."""
     records = _records(observer)
     key = _target_key(target)
     rec = dict(records.get(key) or {})
@@ -81,8 +83,46 @@ def set_awareness(observer, target, level, *, roll_stamp=False):
         rec["t"] = now
         if roll_stamp:
             rec["t_roll"] = now
+        if level >= SUSPICIOUS:
+            room = getattr(target, "location", None)
+            room_id = getattr(room, "id", None)
+            if room_id is not None:
+                rec["last_room"] = room_id
         records[key] = rec
     observer.db.awareness = records
+
+
+def seed_awareness(observer, target_key, level, last_room_id=None):
+    """Write an awareness record BY KEY — alert propagation between NPCs
+    (spec §5) hands a colleague the target's key and last-known room
+    without ever holding the target object."""
+    records = _records(observer)
+    if level <= UNAWARE:
+        records.pop(target_key, None)
+    else:
+        rec = dict(records.get(target_key) or {})
+        rec["level"] = max(int(level), int(rec.get("level", UNAWARE)))
+        rec["t"] = time.time()
+        if last_room_id is not None:
+            rec["last_room"] = last_room_id
+        records[target_key] = rec
+    observer.db.awareness = records
+
+
+def hunt_records(observer) -> list:
+    """The observer's decayed awareness records for the hunt:
+    ``[(target_key, level, last_room_id, t)]``, strongest first."""
+    now = time.time()
+    out = []
+    for key, rec in _records(observer).items():
+        level = int(rec.get("level", UNAWARE))
+        elapsed = max(0.0, now - float(rec.get("t", 0)))
+        level = max(UNAWARE, level - int(elapsed // AWARENESS_DECAY))
+        if level > UNAWARE:
+            out.append((key, level, rec.get("last_room"),
+                        float(rec.get("t", 0))))
+    out.sort(key=lambda r: (-r[1], -r[3]))
+    return out
 
 
 def _passive_ready(observer, target) -> bool:
