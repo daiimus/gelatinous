@@ -802,7 +802,20 @@ class DeathProgressionScript(DefaultScript):
             splattercast.msg(f"DEATH_MEDICAL_CLEANUP_FAIL: {getattr(character, 'key', '?')} - {e}")
             import traceback
             splattercast.msg(f"DEATH_MEDICAL_CLEANUP_TRACE: {traceback.format_exc()}")
-        
+
+        # NPCs don't respawn: the corpse created above carries the full
+        # forensic record, so a dead NPC object is DELETED outright instead of
+        # archived to Limbo (the PC-only respawn flow — last_character, new-char
+        # creation). Without this branch every dead NPC accumulates in Limbo
+        # forever as a nameless ghost (a long-standing leak; #4590 cleanup).
+        # Guard on ``account is None`` — only player characters ever carry an
+        # account, so this can never delete a PC.
+        if account is None:
+            splattercast = get_splattercast()
+            splattercast.msg(f"DEATH_NPC_CLEANUP: deleting dead NPC {getattr(character, 'key', '?')}")
+            character.delete()
+            return
+
         # Move character to limbo/OOC room (Evennia's default limbo is #2)
         # Use move_hooks=False to prevent medical script spam on teleport
         try:
