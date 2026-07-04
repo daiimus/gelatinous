@@ -197,3 +197,71 @@ class TestCommands(TestCase):
                 patch("world.radio.transmit") as tx:
             cmd.func()
         tx.assert_called_once_with(caller, "on my way", dev)
+
+
+class TestCommsOrgan(TestCase):
+    """Security bots hear via a built-in comms organ (ear module), not a
+    carried walkie — and go deaf when it's destroyed (the EMP/mute seam)."""
+
+    def _bot(self, freq="911MHz", destroyed=False):
+        bot = MagicMock()
+        bot.db.role = "security"
+        organ = MagicMock()
+        organ.data = {"radio_frequency": freq}
+        organ.is_destroyed = lambda: destroyed
+        bot.medical_state.organs = {"comms_module": organ}
+        return bot
+
+    def test_intact_organ_reports_frequency(self):
+        from world.radio import comms_organ_frequency
+        self.assertEqual(comms_organ_frequency(self._bot()), "911MHz")
+
+    def test_destroyed_organ_is_deaf(self):
+        from world.radio import comms_organ_frequency
+        self.assertIsNone(comms_organ_frequency(
+            self._bot(destroyed=True)))
+
+    def test_no_medical_state_is_deaf(self):
+        from world.radio import comms_organ_frequency
+        c = MagicMock(); c.medical_state = None
+        self.assertIsNone(comms_organ_frequency(c))
+
+    def test_bot_receives_emergency_transmission(self):
+        from world.radio import EMERGENCY_BAND, transmit
+        speaker = _char()
+        dev = _radio(freq=EMERGENCY_BAND)
+        bot = self._bot(freq=EMERGENCY_BAND)
+        with patch.object(radio, "_all_powered_radios", return_value=[dev]), \
+                patch.object(radio, "_comms_bots_on", return_value=[bot]), \
+                patch.object(radio, "_log_to_channel"), \
+                patch("world.perception.can_hear", return_value=True), \
+                patch("world.voice.attempt_voice_discern", return_value=None), \
+                patch("world.voice.get_voice_description", return_value="tinny"), \
+                patch("world.voice.voice_phrase", return_value=None):
+            transmit(speaker, "unit down", dev)
+        bot.msg.assert_called_once()
+        self.assertIn("unit down", bot.msg.call_args.args[0])
+
+
+class TestWitnessGating(TestCase):
+    def _witness(self, walkie=None):
+        w = MagicMock()
+        w.contents = [walkie] if walkie else []
+        return w
+
+    def test_walkie_present_and_tuned_gates_report_true(self):
+        from world.director.witness import _witness_walkie
+        from world.radio import EMERGENCY_BAND
+        walkie = _radio(freq=EMERGENCY_BAND)
+        self.assertIs(_witness_walkie(self._witness(walkie)), walkie)
+
+    def test_snatched_walkie_no_report(self):
+        from world.director.witness import _witness_walkie
+        self.assertIsNone(_witness_walkie(self._witness(None)))
+
+    def test_off_or_wrong_band_walkie_no_report(self):
+        from world.director.witness import _witness_walkie
+        off = _radio(on=False, freq="911MHz")
+        self.assertIsNone(_witness_walkie(self._witness(off)))
+        wrong = _radio(on=True, freq="447")
+        self.assertIsNone(_witness_walkie(self._witness(wrong)))
