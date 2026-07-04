@@ -31,9 +31,17 @@
 > PROPAGATE (every other security unit seeded to Searching at the
 > sighting room); budget out / record decayed → give-up beat, records
 > dropped, patrol resumes. v1 fan-out is adjacency, not full Dijkstra;
-> hunters are role=security. NOT yet built: ambush advantage (§6.1),
-> theft (§6.2), environmental modifiers (light/cover/crowd — v1 is the
-> flat tier spread).
+> hunters are role=security. **2026-07-03 follow-ups (user-decided):**
+> the CROWD hider bonus is live (first environmental modifier — crowd
+> density, up to +3, helps the hider at every contest tier; "blending
+> in" is mechanically real; light/cover still ride the coordinate
+> integration), and REACQUIRE IS WANTED-GATED — hiding is suspicious
+> enough to investigate, but the full response (challenge + disturbance
+> + propagation) is reserved for a target on the wanted record (same
+> apparent-uid key); a clean colonist caught lurking gets "Loitering
+> noted, Colonist. Move along." and the record is zeroed (roll-stamped
+> to rate-limit an instant re-flag). NOT yet built: ambush advantage
+> (§6.1), theft (§6.2), light/cover modifiers.
 > Original abstract: designs the **presence-concealment**
 > layer: `hide` (self or object) vs `search` (a room), resolved as an opposed
 > **Resonance/Motorics** contest, surfaced as a **per-observer graded awareness

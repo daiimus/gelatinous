@@ -130,10 +130,25 @@ def _passive_ready(observer, target) -> bool:
     return time.time() - float(rec.get("t_roll", 0)) >= PASSIVE_COOLDOWN
 
 
+def crowd_hider_bonus(room) -> int:
+    """Blending in: crowd density is concealment (spec §3.2). A hotspot
+    throng is worth up to +3 to the hider; an empty street gives nothing.
+    First environmental modifier to land — light/cover ride the
+    coordinate integration later."""
+    try:
+        from world.crowd import crowd_system
+        level = int(crowd_system.calculate_crowd_level(room) or 0)
+        return max(0, min(level, 3))
+    except Exception:  # noqa: BLE001 — no crowd system, no bonus
+        return 0
+
+
 def contest(hider, observer, *, hider_bonus=0, observer_bonus=0) -> int:
     """One opposed roll. Positive margin = the OBSERVER wins (spots them);
     zero or negative = the hider holds. Hider leans Motorics, observer
-    Resonance (spec §3.1 working direction)."""
+    Resonance (spec §3.1 working direction). The hider's room's crowd
+    density always helps them — blending in is real at every tier."""
+    hider_bonus += crowd_hider_bonus(getattr(hider, "location", None))
     hide_total = randint(1, 20) + _stat(hider, "motorics") + hider_bonus
     seek_total = randint(1, 20) + _stat(observer, "resonance") + observer_bonus
     return seek_total - hide_total

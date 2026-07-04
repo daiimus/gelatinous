@@ -93,6 +93,8 @@ class TestHuntMachine(TestCase):
                 patch("world.stealth.set_awareness"), \
                 patch("world.stealth._target_key",
                       return_value="uid-prey"), \
+                patch("world.director.intel.is_wanted",
+                      return_value={"count": 2}), \
                 patch("world.director.dispatch.raise_event") as raised, \
                 patch.object(hunt, "propagate_alert") as propagate:
             self.assertTrue(tick_hunt(npc))
@@ -146,3 +148,34 @@ class TestPropagation(TestCase):
             n = propagate_alert(npc, "uid-prey", 55)
         self.assertEqual(n, 1)
         seed.assert_called_once_with(ally, "uid-prey", SEARCHING, 55)
+
+
+class TestInnocentLurker(TestCase):
+    """Hiding without a wanted record draws a move-along, not an incident
+    — the full response is reserved for actual cause."""
+
+    def test_clean_colonist_gets_move_along(self):
+        npc = _npc()
+        npc.location.id = 55
+        prey = MagicMock()
+        with patch("world.stealth.hunt_records",
+                   return_value=_rec(level=ALERT)), \
+                patch("world.director.travel.is_travelling",
+                      return_value=False), \
+                patch.object(hunt, "_present_target", return_value=prey), \
+                patch("world.stealth.set_awareness") as aware, \
+                patch("world.stealth._target_key",
+                      return_value="uid-prey"), \
+                patch("world.director.intel.is_wanted",
+                      return_value=None), \
+                patch("world.director.dispatch.raise_event") as raised, \
+                patch.object(hunt, "propagate_alert") as propagate:
+            self.assertTrue(tick_hunt(npc))
+        say = [c.args[0] for c in npc.execute_cmd.call_args_list
+               if c.args[0].startswith("say ")]
+        self.assertTrue(say and "Move along" in say[0])
+        raised.assert_not_called()
+        propagate.assert_not_called()
+        self.assertFalse(is_hunting(npc))
+        # record zeroed but roll-stamped (rate-limits an instant re-flag)
+        self.assertTrue(aware.call_args.kwargs.get("roll_stamp"))

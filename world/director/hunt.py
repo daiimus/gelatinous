@@ -35,6 +35,7 @@ ORIENT_EMOTE = ("snaps alert, optics sweeping for something it "
                 "half-caught.")
 GIVEUP_EMOTE = "abandons its sweep and resumes its rounds."
 CHALLENGE_LINE = "Halt, Colonist. Remain where you are."
+MOVE_ALONG_LINE = "Loitering noted, Colonist. Move along."
 
 
 def _room_by_id(room_id) -> Optional[Any]:
@@ -78,8 +79,26 @@ def _give_up(npc, target_key) -> None:
 
 
 def _engage(npc, target) -> None:
-    """Reacquired: challenge, hand off to dispatch, propagate the alert."""
-    from world.stealth import ALERT, _target_key, set_awareness
+    """Reacquired. WHO you are decides what happens next: hiding is
+    suspicious enough to investigate, but the full response is reserved
+    for people security has actual cause against (the wanted record,
+    keyed on the same apparent-uid as awareness). A clean colonist caught
+    lurking gets a move-along, not an incident."""
+    from world.director.intel import is_wanted
+    from world.stealth import (
+        ALERT, UNAWARE, _target_key, set_awareness,
+    )
+    key = _target_key(target)
+    if not is_wanted(key):
+        # Case closed: no dispatch, no propagation. The zeroed-but-stamped
+        # record rate-limits an immediate re-flag of the same lurker.
+        npc.ndb.hunt = None
+        set_awareness(npc, target, UNAWARE, roll_stamp=True)
+        try:
+            npc.execute_cmd(f"say {MOVE_ALONG_LINE}")
+        except Exception:  # noqa: BLE001
+            pass
+        return
     set_awareness(npc, target, ALERT)
     npc.ndb.hunt = None
     try:

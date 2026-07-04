@@ -462,3 +462,32 @@ class TestLeakSweep(TestCase):
             self.assertEqual(present(), [])
             set_awareness(npc, hidden, ALERT)
             self.assertEqual(present(), ["a shape"])
+
+
+class TestCrowdBonus(TestCase):
+    """Blending in is real: crowd density is a hider bonus at every tier."""
+
+    def test_dense_crowd_tips_the_contest(self):
+        from world.stealth import contest
+        hider, seeker = _char(motorics=1), _char(resonance=2)
+        room = MagicMock()
+        hider.location = room
+        with patch("world.stealth.randint", return_value=10), \
+                patch("world.crowd.CrowdSystem.calculate_crowd_level",
+                      return_value=3):
+            # 10+1+3 vs 10+2: hider holds in the throng
+            self.assertLessEqual(contest(hider, seeker), 0)
+        with patch("world.stealth.randint", return_value=10), \
+                patch("world.crowd.CrowdSystem.calculate_crowd_level",
+                      return_value=0):
+            # empty street: the same match-up loses
+            self.assertGreater(contest(hider, seeker), 0)
+
+    def test_bonus_clamped(self):
+        from world.stealth import crowd_hider_bonus
+        with patch("world.crowd.CrowdSystem.calculate_crowd_level",
+                   return_value=9):
+            self.assertEqual(crowd_hider_bonus(MagicMock()), 3)
+        with patch("world.crowd.CrowdSystem.calculate_crowd_level",
+                   side_effect=Exception("no crowd")):
+            self.assertEqual(crowd_hider_bonus(MagicMock()), 0)
