@@ -46,6 +46,16 @@ def notify_adjacent_rooms_of_explosion(explosion_room):
     if not explosion_room:
         return
 
+    # An explosion is an INCIDENT: raise a sourceless disturbance so
+    # security responds and the scene runs hot (situational cause — a
+    # hidden presence near a fresh blast is reasonable suspicion).
+    try:
+        from world.director.dispatch import WorldEvent, raise_event
+        raise_event(WorldEvent("disturbance", explosion_room, severity=2,
+                               source=None))
+    except Exception:  # noqa: BLE001 — dispatch down must not mute the blast
+        pass
+
     # Get all exits from the explosion room
     exits = explosion_room.exits
 

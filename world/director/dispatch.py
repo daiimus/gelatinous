@@ -94,7 +94,58 @@ def dispatch(event: WorldEvent) -> list:
     return dispatched
 
 
+#: How long an incident scene stays HOT (situational cause for the hunt).
+INCIDENT_WINDOW = 600.0
+_INCIDENT_KEY = "director_incidents"
+
+
+def _log_incident(event: WorldEvent) -> None:
+    """Roll the incident log (ServerConfig, capped): every raised event
+    marks its room; entries expire after INCIDENT_WINDOW."""
+    if event.location is None:
+        return
+    import time
+    from evennia.server.models import ServerConfig
+    now = time.time()
+    log = [entry for entry in (ServerConfig.objects.conf(_INCIDENT_KEY) or [])
+           if now - float(entry.get("t", 0)) < INCIDENT_WINDOW]
+    log.append({"room": getattr(event.location, "id", None), "t": now,
+                "type": event.type,
+                "known_source": event.source is not None})
+    ServerConfig.objects.conf(_INCIDENT_KEY, log[-50:])
+
+
+def incident_context(room, *, window: float = INCIDENT_WINDOW) -> bool:
+    """Reasonable suspicion (stealth spec, user-decided 2026-07-03): an
+    UNRESOLVED incident (no known instigator) is hot in or adjacent to
+    *room*. Context, not status: near a fresh sourceless disturbance —
+    an explosion, an anonymous crime — a hidden presence IS cause."""
+    if room is None:
+        return False
+    import time
+    from evennia.server.models import ServerConfig
+    ids = {getattr(room, "id", None)}
+    for exit_obj in getattr(room, "exits", []) or []:
+        dest = getattr(exit_obj, "destination", None)
+        if dest is not None:
+            ids.add(dest.id)
+    now = time.time()
+    for entry in ServerConfig.objects.conf(_INCIDENT_KEY) or []:
+        if entry.get("known_source"):
+            continue  # a known perp is hunted by uid, not by vicinity
+        if now - float(entry.get("t", 0)) >= window:
+            continue
+        if entry.get("room") in ids:
+            return True
+    return False
+
+
 def raise_event(event: WorldEvent) -> list:
-    """Raise *event* onto the director. Currently routes straight to the
-    dispatcher; the seam where a full event bus / monitor lands later."""
+    """Raise *event* onto the director. Logs the incident (situational
+    cause for the hunt), then routes to the dispatcher; the seam where a
+    full event bus / monitor lands later."""
+    try:
+        _log_incident(event)
+    except Exception:  # noqa: BLE001 — logging must not block dispatch
+        pass
     return dispatch(event)
