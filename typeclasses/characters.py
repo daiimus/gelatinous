@@ -1225,9 +1225,23 @@ class Character(
         dest_name = (
             destination.get_display_name(self) if destination else "somewhere"
         )
-        template = (
-            f"{{actor}} is leaving {origin_name}, heading for {dest_name}."
-        )
+        if dest_name == origin_name:
+            # Adjacent rooms sharing a display name (street segments) read
+            # absurd as "leaving X, heading for X" — name the DIRECTION.
+            direction = None
+            for ex in getattr(self.location, "exits", []) or []:
+                if getattr(ex, "destination", None) == destination:
+                    direction = ex.key
+                    break
+            template = (
+                f"{{actor}} is leaving {origin_name}, heading {direction}."
+                if direction else
+                f"{{actor}} is moving on down {origin_name}."
+            )
+        else:
+            template = (
+                f"{{actor}} is leaving {origin_name}, heading for {dest_name}."
+            )
         exclude = [self]
         if self.db.hidden is True:
             # A hidden mover's departure only reaches those tracking them —
@@ -1276,9 +1290,23 @@ class Character(
             else "somewhere"
         )
         dest_name = self.location.get_display_name(self)
-        template = (
-            f"{{actor}} arrives to {dest_name} from {origin_name}."
-        )
+        if origin_name == dest_name:
+            # Same-named street segments: name the direction they came
+            # from (the exit here that leads back the way they came).
+            direction = None
+            for ex in getattr(self.location, "exits", []) or []:
+                if getattr(ex, "destination", None) == source_location:
+                    direction = ex.key
+                    break
+            template = (
+                f"{{actor}} arrives from the {direction}."
+                if direction else
+                f"{{actor}} arrives, moving along {dest_name}."
+            )
+        else:
+            template = (
+                f"{{actor}} arrives to {dest_name} from {origin_name}."
+            )
         exclude = [self]
         if self.db.hidden is True:
             # A sneaking arrival isn't announced — the fresh hide contest in
