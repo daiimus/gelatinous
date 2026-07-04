@@ -43,11 +43,19 @@
 > detected innocent simply reads as visibly furtive via the crowd-aware
 > lurk placement ("a nervous, somewhat off face in the crowd" in a
 > throng; "lurking in the shadows" in an empty room). A pardon mid-hunt
-> stands the bot down silently. **Marked for eventual reconsideration
-> (user):** whether/where loitering itself warrants a response — e.g.
-> zone-dependent (corporate blocks vs the sprawl) — revisit with the
-> faction/zone work. NOT yet built: ambush advantage (§6.1), theft
-> (§6.2), light/cover modifiers.
+> stands the bot down silently. **SITUATIONAL CAUSE (user-decided, same
+> day):** cause has two axes — STATUS (the wanted record) and SITUATION:
+> every `raise_event` logs an incident (ServerConfig, rolling, 10-min
+> window); a **sourceless** event (an explosion — detonations now raise
+> a severity-2 sourceless `disturbance` — an anonymous crime) runs the
+> scene HOT in its room + adjacents, and a hidden presence near a hot
+> scene IS reasonable suspicion: the hunt commits and the reacquire
+> challenge applies even without a wanted record. Known-source events
+> don't heat the scene (that perp is hunted by uid). **Marked for
+> eventual reconsideration (user):** whether/where loitering itself
+> warrants a response — e.g. zone-dependent (corporate blocks vs the
+> sprawl) — revisit with the faction/zone work. NOT yet built: ambush
+> advantage (§6.1), theft (§6.2), light/cover modifiers.
 > Original abstract: designs the **presence-concealment**
 > layer: `hide` (self or object) vs `search` (a room), resolved as an opposed
 > **Resonance/Motorics** contest, surfaced as a **per-observer graded awareness

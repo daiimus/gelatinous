@@ -191,3 +191,127 @@ class TestInnocentLurker(TestCase):
             hunt._engage(npc, prey)
         npc.execute_cmd.assert_not_called()
         self.assertTrue(aware.call_args.kwargs.get("roll_stamp"))
+
+
+class TestSituationalCause(TestCase):
+    """Reasonable suspicion (user-decided): near a fresh UNRESOLVED
+    incident, a hidden presence is cause even without a wanted record."""
+
+    def test_unwanted_hider_hunted_near_hot_incident(self):
+        npc = _npc()
+        with patch("world.stealth.hunt_records",
+                   return_value=_rec(level=SUSPICIOUS)), \
+                patch("world.director.travel.is_travelling",
+                      return_value=False), \
+                patch.object(hunt, "_present_target", return_value=None), \
+                patch("world.director.intel.is_wanted",
+                      return_value=None), \
+                patch("world.director.dispatch.incident_context",
+                      return_value=True):
+            self.assertTrue(tick_hunt(npc))
+        self.assertTrue(is_hunting(npc))
+
+    def test_unwanted_hider_ignored_when_scene_is_cold(self):
+        npc = _npc()
+        with patch("world.stealth.hunt_records",
+                   return_value=_rec(level=SUSPICIOUS)), \
+                patch("world.director.travel.is_travelling",
+                      return_value=False), \
+                patch("world.director.intel.is_wanted",
+                      return_value=None), \
+                patch("world.director.dispatch.incident_context",
+                      return_value=False), \
+                patch.object(hunt, "_room_by_id", return_value=None):
+            self.assertFalse(tick_hunt(npc))
+        npc.execute_cmd.assert_not_called()
+
+    def test_engage_allows_incident_cause(self):
+        npc = _npc()
+        npc.location.id = 55
+        prey = MagicMock()
+        with patch.object(hunt, "propagate_alert") as propagate, \
+                patch("world.stealth.set_awareness"), \
+                patch("world.stealth._target_key",
+                      return_value="uid-prey"), \
+                patch("world.director.intel.is_wanted",
+                      return_value=None), \
+                patch("world.director.dispatch.incident_context",
+                      return_value=True), \
+                patch("world.director.dispatch.raise_event"):
+            hunt._engage(npc, prey)
+        say = [c.args[0] for c in npc.execute_cmd.call_args_list
+               if c.args[0].startswith("say ")]
+        self.assertTrue(say and "Halt, Colonist" in say[0])
+        propagate.assert_called_once()
+
+
+class TestIncidentLog(TestCase):
+    """The dispatch-side incident store: sourceless events run a scene hot
+    in the room and its adjacents; known-source events don't; heat fades."""
+
+    def _clear(self):
+        from evennia.server.models import ServerConfig
+        ServerConfig.objects.conf("director_incidents", delete=True)
+
+    def test_sourceless_event_heats_room_and_adjacents(self):
+        from world.director.dispatch import (
+            WorldEvent, incident_context, raise_event,
+        )
+        self._clear()
+        scene = MagicMock()
+        scene.id = 900
+        scene.exits = []
+        with patch("world.director.dispatch.dispatch", return_value=[]):
+            raise_event(WorldEvent("disturbance", scene, source=None))
+        self.assertTrue(incident_context(scene))
+        adjacent = MagicMock()
+        adjacent.id = 901
+        exit_obj = MagicMock()
+        exit_obj.destination = scene
+        adjacent.exits = [exit_obj]
+        self.assertTrue(incident_context(adjacent))
+        far = MagicMock()
+        far.id = 999
+        far.exits = []
+        self.assertFalse(incident_context(far))
+        self._clear()
+
+    def test_known_source_event_is_not_situational_cause(self):
+        from world.director.dispatch import (
+            WorldEvent, incident_context, raise_event,
+        )
+        self._clear()
+        scene = MagicMock()
+        scene.id = 902
+        scene.exits = []
+        with patch("world.director.dispatch.dispatch", return_value=[]):
+            raise_event(WorldEvent("disturbance", scene,
+                                   source=MagicMock()))
+        self.assertFalse(incident_context(scene))
+        self._clear()
+
+    def test_heat_fades_with_the_window(self):
+        from world.director.dispatch import (
+            WorldEvent, incident_context, raise_event,
+        )
+        self._clear()
+        scene = MagicMock()
+        scene.id = 903
+        scene.exits = []
+        with patch("world.director.dispatch.dispatch", return_value=[]):
+            raise_event(WorldEvent("disturbance", scene, source=None))
+        self.assertFalse(incident_context(scene, window=0.0))
+        self._clear()
+
+    def test_explosions_raise_sourceless_incidents(self):
+        from commands.explosion_utils import (
+            notify_adjacent_rooms_of_explosion,
+        )
+        room = MagicMock()
+        room.exits = []
+        with patch("world.director.dispatch.raise_event") as raised:
+            notify_adjacent_rooms_of_explosion(room)
+        event = raised.call_args.args[0]
+        self.assertEqual(event.type, "disturbance")
+        self.assertIsNone(event.source)
+        self.assertIs(event.location, room)

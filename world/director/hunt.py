@@ -77,26 +77,43 @@ def _give_up(npc, target_key) -> None:
         pass
 
 
-def _wanted_only(records) -> list:
-    """The silent uid check (user-decided 2026-07-03): a hunt requires
-    CAUSE. Awareness records whose apparent-uid isn't on the wanted
-    record are ignored — an innocent hider is clocked (they render as a
-    nervous face to whoever detects them) but never hunted, challenged,
-    or rousted. No small-worlding: hiding is not a crime."""
+def _has_cause(npc, record) -> bool:
+    """A hunt requires CAUSE (user-decided 2026-07-03), from either axis:
+
+    * **Status** — the presence's apparent-uid is on the wanted record
+      (silent check).
+    * **Situation** — an UNRESOLVED incident (sourceless disturbance: an
+      explosion, an anonymous crime) is hot in/adjacent to where the
+      presence was sensed, or where the bot stands. Reasonable
+      suspicion: near a fresh blast, a hidden person IS the lead.
+
+    Without either, the presence is ignored — an innocent hider is
+    clocked (the nervous-face render) but never hunted or rousted."""
+    from world.director.dispatch import incident_context
     from world.director.intel import is_wanted
-    return [rec for rec in records if is_wanted(rec[0])]
+    key, _level, last_room_id, _t = record
+    if is_wanted(key):
+        return True
+    if incident_context(npc.location):
+        return True
+    return incident_context(_room_by_id(last_room_id))
+
+
+def _with_cause(npc, records) -> list:
+    return [rec for rec in records if _has_cause(npc, rec)]
 
 
 def _engage(npc, target) -> None:
-    """Reacquired a WANTED target: challenge, hand off to dispatch,
+    """Reacquired a target WITH CAUSE: challenge, hand off to dispatch,
     propagate. Defensive re-check — a pardon mid-hunt stands the bot
     down silently (no message; there was never a public incident)."""
+    from world.director.dispatch import incident_context
     from world.director.intel import is_wanted
     from world.stealth import (
         ALERT, UNAWARE, _target_key, set_awareness,
     )
     key = _target_key(target)
-    if not is_wanted(key):
+    if not is_wanted(key) and not incident_context(npc.location):
         npc.ndb.hunt = None
         set_awareness(npc, target, UNAWARE, roll_stamp=True)
         return
@@ -165,7 +182,7 @@ def tick_hunt(npc) -> bool:
     if is_travelling(npc):
         return bool(state)          # en route to a sweep — stay committed
 
-    records = _wanted_only(hunt_records(npc))
+    records = _with_cause(npc, hunt_records(npc))
     best = records[0] if records else None
     if best is None:
         if state:
