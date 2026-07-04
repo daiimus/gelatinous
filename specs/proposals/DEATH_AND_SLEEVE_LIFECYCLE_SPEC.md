@@ -213,27 +213,32 @@ Two concerns share the death moment but want opposite lifetimes:
   reminisce).
 
 The fix: one small, immutable **DeathRecord**, written at permanent death (§3),
-that marks the death's *existence* — nothing more. **It carries neither cause of
-death nor location.** The player isn't owed an explanation, and a location is
-actionable intelligence ("go check where I died"); the record is a **tribute**,
-not a report. This sleeve was, and ended — a name and a date.
+that marks the sleeve's *existence* — nothing more. **A tombstone: who the sleeve
+was, born, died.** It carries neither cause of death nor location — the player
+isn't owed an explanation, and a location is actionable intelligence ("go check
+where I died"). A tribute, not a report.
 
 ```
-DeathRecord {                     # tiny, permanent; survives corpse removal
+DeathRecord {                     # a tombstone; permanent, survives corpse removal
     id                            # stable key
-    sleeve / account              # who died (null account = NPC → skip for web)
-    when                          # death_time — a date on a memorial, nothing more
+    sleeve / account              # who the sleeve was (null account = NPC → skip)
+    born                          # current_sleeve_birth — decant time
+    died                          # death_time
     corpse_ref                    # -> Corpse while it exists; null once a gig
                                   #   hauls the body away (internal key, never
                                   #   surfaced on the web view)
 }
 ```
 
+The `born` field already exists on the sleeve (`db.current_sleeve_birth`, set at
+decant/creation — §5); the record just engraves it alongside `died`. Name, two
+dates, nothing else — everything a headstone says, and everything it doesn't.
+
 **Deliberate split — three layers, three lifetimes:**
 
 | Consumer | Reads | Character | Surface |
 |---|---|---|---|
-| **Web "Manage Sleeves" / memorial** | DeathRecord (existence facts) + archived sleeve | **OOC** — a rare, deliberate exception to the everything-is-IC rule; a tribute to the player | light, sentimental, permanent |
+| **Web "Manage Sleeves" / memorial** | DeathRecord (tombstone: name, born, died) + archived sleeve | **OOC** — a rare, deliberate exception to the everything-is-IC rule; a tribute to the player | light, sentimental, permanent |
 | **In-game `autopsy` / forensics** | the **corpse** (organ inventory, wounds, medical snapshot) | IC | investigative — detailed, physical, disappears with the body |
 | **Morgue records** *(future)* | an **IC database/file** a morgue populates with cause of death — readable AND **manipulable by players** (falsify a cause, erase an entry) | IC | the "everything is a file" layer; where cause-of-death *actually* lives once it exists anywhere |
 
@@ -274,7 +279,7 @@ persist — which is the desired behavior now, and doubles as free playtesting o
    id onto the corpse (`corpse_ref` back on it) and, for PCs, the archived sleeve.
    Purely additive; changes nothing play-facing.
 2. **Web nostalgia review** — point "Manage Sleeves" at the DeathRecord's
-   existence facts (who/when only — no cause, no location, no autopsy coupling).
+   tombstone (name, born, died — no cause, no location, no autopsy coupling).
 3. **Tag/index archived sleeves** — convert the account/website sleeve listing off
    the Limbo scan.
 4. **Corpse cleanup gig** — *deferred*, built atop the NPC-faction gig/freelancer
