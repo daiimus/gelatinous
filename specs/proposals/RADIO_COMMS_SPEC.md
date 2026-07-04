@@ -194,7 +194,91 @@ Antennae/repeaters/coverage holes, real coordinate range, the Drifts-dark
 rule, jamming devices, **power/battery**, encryption/scrambling, and the
 robot built-in-transceiver attacks (ride the robot-component work).
 
-## 7 · Risks & open questions
+## 7 · NPC radio comprehension — the next slice (📋 designed, not built)
+
+Phase 1 built the physical medium and a scripted witness one-shot, but radio
+does **not** yet reach the NPC brains. Today: an LLM NPC with a powered walkie
+hears nothing (radio `.msg` carries no `speech` payload → `at_msg_receive`'s
+`if not speech: return True` drops it); it has no way to key up; and security
+bots *receive* the report but no behaviour consumes it (dispatch rides
+`raise_event`, independent of hearing). This slice bridges radio ↔ the LLM-NPC
+layer. **Payoff:** a dispatcher who answers over the air, a fixer who calls a
+job in, a companion you can raise from across the city, secbot chatter on the
+band — all through the real device, all voice-attributed.
+
+### 7.1 · Hearing — radio into the brain
+
+A radio transmission delivered to an LLM NPC must reach `at_msg_receive` as
+**heard words tagged as radio** — distinct from in-room speech, so the model
+knows the source is the *air* (a remote voice), not the person beside it. The
+turn frames it that way ("over the radio, <voice> says: …"). Attribution is
+**voice-only** (the echo render's rule): the NPC recognises a known voice
+(voice memory) or hears "an unfamiliar voice"; a modulator defeats it. The NPC
+hears **only the band(s) its device is tuned to** — a unit on 911MHz hears
+911MHz, not the whole spectrum.
+
+### 7.2 · Gating (the crux — saturation is the enemy)
+
+Radio reaches *every* listener on a band at once, so ungated it would fire an
+LLM turn on every NPC per squawk and saturate the single-threaded model. Reuse
+the room-speech discipline exactly:
+
+* **Directed radio** — the transmission names this NPC (callsign / name / role
+  — "Unit 7, respond"; "all units"). Eligible to answer, subject to the
+  directed cooldown.
+* **Ambient radio** — general chatter. **Observe-only** into the action buffer
+  (no LLM call), with the rare gated volunteer (ambient cooldown + roll) —
+  mirrors ambient poses/room-speech.
+* **Loop guard** — an **NPC-sourced** transmission is never LLM-reacted (the
+  existing `_is_npc_speaker` guard). This is load-bearing: the witness's
+  report and any bot chatter are NPC-sourced, so bots hearing the witness
+  don't spin up turns, and two NPCs on a band can't ping-pong.
+* **"All units" de-confliction** — a broadcast addressed to many must not make
+  *all* of them answer. One responds (nearest / a single elected speaker),
+  the rest observe — this is the multi-NPC de-confliction the LLM spec parks
+  as future; radio is its first forcing case.
+
+### 7.3 · Transmitting — the NPC keys up
+
+Through the **real command** (the execute-cmd mandate), never a backdoor: a
+`radio`/`transmit` **action tool** in the LLM turn schema (archetype-scoped —
+granted to dispatcher/security/fixer/companion, withheld from a mute
+colonist), routed to `transmit`/`to <device>,`. The persona/context carries the
+NPC's radio state ("you carry a walkie tuned to 911MHz", or the bot's comms
+organ) so the model knows it *can*. On a radio-heard turn the model **chooses
+its channel** — answer over the air (the radio tool) or speak in the room
+(normal `say`) — a startled bystander mutters aloud; a dispatcher keys back.
+
+### 7.4 · Security bots come along for free
+
+Secbots are already `LLMNpc` + a comms organ (they receive). Wiring §7.1–7.3
+gives them **gated radio voice** with no new plumbing: a bot hears a report and
+its LLM brain may key up ("Unit responding, en route") — *flavour* — while the
+**deterministic dispatch (`raise_event` + hunt) stays authoritative** for the
+actual action. Clean split: the director moves the body, the LLM works the mic.
+
+### 7.5 · The physical gate holds
+
+No new perception path around the device: an NPC hears/speaks radio only with a
+**powered, tuned** device (walkie or intact comms organ). Snatch the walkie,
+break it, destroy the ear → the NPC goes deaf/mute exactly as the mechanics
+already enforce for the witness and the EMP-muted bot. Comprehension rides the
+same physical gate players do.
+
+### 7.6 · Risks
+
+* **Saturation / cost** — the gating (§7.2) is the whole game; radio turns
+  count against the LLM budget like any other, and a busy band could be
+  expensive. Ambient-observe-only + de-confliction bound it.
+* **NPC↔NPC loops** — the `_is_npc_speaker` guard must cover radio-sourced
+  speech, or dispatcher↔unit chatter ping-pongs.
+* **De-confliction** — "all units" needs a single-answerer election; getting
+  this wrong is either silence or a chorus.
+* **Channel choice** — the model conflating radio-back vs room-speech would
+  have a bot muttering to an empty street or answering a face-to-face question
+  over the air. The turn framing (§7.1) must be unambiguous.
+
+## 8 · Risks & open questions
 
 * **Jamming device** — dedicated jammer item (area denial around a coordinate)
   vs. only infrastructure attacks at v1? Lean: v1 = antennae + walkie
