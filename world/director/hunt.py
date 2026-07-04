@@ -35,7 +35,6 @@ ORIENT_EMOTE = ("snaps alert, optics sweeping for something it "
                 "half-caught.")
 GIVEUP_EMOTE = "abandons its sweep and resumes its rounds."
 CHALLENGE_LINE = "Halt, Colonist. Remain where you are."
-MOVE_ALONG_LINE = "Loitering noted, Colonist. Move along."
 
 
 def _room_by_id(room_id) -> Optional[Any]:
@@ -78,26 +77,28 @@ def _give_up(npc, target_key) -> None:
         pass
 
 
+def _wanted_only(records) -> list:
+    """The silent uid check (user-decided 2026-07-03): a hunt requires
+    CAUSE. Awareness records whose apparent-uid isn't on the wanted
+    record are ignored — an innocent hider is clocked (they render as a
+    nervous face to whoever detects them) but never hunted, challenged,
+    or rousted. No small-worlding: hiding is not a crime."""
+    from world.director.intel import is_wanted
+    return [rec for rec in records if is_wanted(rec[0])]
+
+
 def _engage(npc, target) -> None:
-    """Reacquired. WHO you are decides what happens next: hiding is
-    suspicious enough to investigate, but the full response is reserved
-    for people security has actual cause against (the wanted record,
-    keyed on the same apparent-uid as awareness). A clean colonist caught
-    lurking gets a move-along, not an incident."""
+    """Reacquired a WANTED target: challenge, hand off to dispatch,
+    propagate. Defensive re-check — a pardon mid-hunt stands the bot
+    down silently (no message; there was never a public incident)."""
     from world.director.intel import is_wanted
     from world.stealth import (
         ALERT, UNAWARE, _target_key, set_awareness,
     )
     key = _target_key(target)
     if not is_wanted(key):
-        # Case closed: no dispatch, no propagation. The zeroed-but-stamped
-        # record rate-limits an immediate re-flag of the same lurker.
         npc.ndb.hunt = None
         set_awareness(npc, target, UNAWARE, roll_stamp=True)
-        try:
-            npc.execute_cmd(f"say {MOVE_ALONG_LINE}")
-        except Exception:  # noqa: BLE001
-            pass
         return
     set_awareness(npc, target, ALERT)
     npc.ndb.hunt = None
@@ -164,7 +165,7 @@ def tick_hunt(npc) -> bool:
     if is_travelling(npc):
         return bool(state)          # en route to a sweep — stay committed
 
-    records = hunt_records(npc)
+    records = _wanted_only(hunt_records(npc))
     best = records[0] if records else None
     if best is None:
         if state:

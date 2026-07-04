@@ -275,6 +275,18 @@ def break_stealth(char, *, quiet=False):
     return True
 
 
+def lurk_placement(room) -> str:
+    """How a DETECTED hidden character reads to whoever sees them (the
+    spec §4 "lurking" tell, crowd-aware): failed concealment in a busy
+    room reads as a nervous face in the throng; in an empty one, as
+    skulking in the shadows. Either way: visibly someone who doesn't
+    want to be seen."""
+    if crowd_hider_bonus(room) >= 2:
+        return ("holding an unconvincing calm — a nervous, somewhat off "
+                "face in the crowd.")
+    return "lurking in the shadows."
+
+
 def is_hidden_from(target, looker) -> bool:
     """The display gate: hidden AND the looker is not yet aware enough to
     place them. Suspicious knows *a* presence, not who/where — still

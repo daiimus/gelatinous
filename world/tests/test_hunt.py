@@ -27,10 +27,16 @@ def _rec(key="uid-prey", level=SEARCHING, last_room=77):
     return [(key, level, last_room, 100.0)]
 
 
+def _all_wanted():
+    """Most machine tests assume the target has cause on file."""
+    return patch("world.director.intel.is_wanted",
+                 return_value={"count": 1})
+
+
 class TestHuntMachine(TestCase):
     def test_no_records_no_hunt(self):
         npc = _npc()
-        with patch("world.stealth.hunt_records", return_value=[]), \
+        with _all_wanted(), patch("world.stealth.hunt_records", return_value=[]), \
                 patch("world.director.travel.is_travelling",
                       return_value=False):
             self.assertFalse(tick_hunt(npc))
@@ -38,7 +44,7 @@ class TestHuntMachine(TestCase):
 
     def test_suspicious_commits_with_orient_beat(self):
         npc = _npc()
-        with patch("world.stealth.hunt_records",
+        with _all_wanted(), patch("world.stealth.hunt_records",
                    return_value=_rec(level=SUSPICIOUS)), \
                 patch("world.director.travel.is_travelling",
                       return_value=False), \
@@ -56,7 +62,7 @@ class TestHuntMachine(TestCase):
         last_room.id = 77
         npc.ndb.hunt = {"key": "uid-prey", "budget": SEARCH_BUDGET,
                         "swept": [], "last_room": 77}
-        with patch("world.stealth.hunt_records", return_value=_rec()), \
+        with _all_wanted(), patch("world.stealth.hunt_records", return_value=_rec()), \
                 patch("world.director.travel.is_travelling",
                       return_value=False), \
                 patch("world.director.travel.travel_to") as travel, \
@@ -71,7 +77,8 @@ class TestHuntMachine(TestCase):
         npc = _npc(room=last_room)
         npc.ndb.hunt = {"key": "uid-prey", "budget": 2,
                         "swept": [], "last_room": 77}
-        with patch("world.stealth.hunt_records", return_value=_rec()), \
+        with _all_wanted(), \
+                patch("world.stealth.hunt_records", return_value=_rec()), \
                 patch("world.director.travel.is_travelling",
                       return_value=False), \
                 patch.object(hunt, "_room_by_id", return_value=last_room), \
@@ -109,7 +116,8 @@ class TestHuntMachine(TestCase):
         npc = _npc()
         npc.ndb.hunt = {"key": "uid-prey", "budget": 0,
                         "swept": [77], "last_room": 77}
-        with patch("world.stealth.hunt_records", return_value=_rec()), \
+        with _all_wanted(), \
+                patch("world.stealth.hunt_records", return_value=_rec()), \
                 patch("world.director.travel.is_travelling",
                       return_value=False), \
                 patch.object(hunt, "_room_by_id", return_value=None), \
@@ -151,31 +159,35 @@ class TestPropagation(TestCase):
 
 
 class TestInnocentLurker(TestCase):
-    """Hiding without a wanted record draws a move-along, not an incident
-    — the full response is reserved for actual cause."""
+    """A hunt requires CAUSE (user-decided): an unwanted hidden presence
+    is silently ignored — no orient, no sweep, no roust. Hiding is not
+    a crime; the detected innocent just reads as a nervous face."""
 
-    def test_clean_colonist_gets_move_along(self):
+    def test_clean_colonist_is_silently_ignored(self):
         npc = _npc()
-        npc.location.id = 55
         prey = MagicMock()
         with patch("world.stealth.hunt_records",
                    return_value=_rec(level=ALERT)), \
                 patch("world.director.travel.is_travelling",
                       return_value=False), \
                 patch.object(hunt, "_present_target", return_value=prey), \
+                patch("world.director.intel.is_wanted",
+                      return_value=None), \
+                patch("world.director.dispatch.raise_event") as raised:
+            self.assertFalse(tick_hunt(npc))     # patrol proceeds normally
+        npc.execute_cmd.assert_not_called()      # no emote, no say, nothing
+        raised.assert_not_called()
+        self.assertFalse(is_hunting(npc))
+
+    def test_pardon_mid_hunt_stands_down_silently(self):
+        npc = _npc()
+        prey = MagicMock()
+        with patch.object(hunt, "propagate_alert"), \
                 patch("world.stealth.set_awareness") as aware, \
                 patch("world.stealth._target_key",
                       return_value="uid-prey"), \
                 patch("world.director.intel.is_wanted",
-                      return_value=None), \
-                patch("world.director.dispatch.raise_event") as raised, \
-                patch.object(hunt, "propagate_alert") as propagate:
-            self.assertTrue(tick_hunt(npc))
-        say = [c.args[0] for c in npc.execute_cmd.call_args_list
-               if c.args[0].startswith("say ")]
-        self.assertTrue(say and "Move along" in say[0])
-        raised.assert_not_called()
-        propagate.assert_not_called()
-        self.assertFalse(is_hunting(npc))
-        # record zeroed but roll-stamped (rate-limits an instant re-flag)
+                      return_value=None):
+            hunt._engage(npc, prey)
+        npc.execute_cmd.assert_not_called()
         self.assertTrue(aware.call_args.kwargs.get("roll_stamp"))
