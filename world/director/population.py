@@ -168,6 +168,32 @@ def count_posted_secbots(base: Any) -> int:
     return n
 
 
+def ensure_comms_fitted() -> int:
+    """Upkeep: factory-fit the comms module into any LIVE security unit that
+    never got one (units spawned before the transceiver shipped, #1009).
+    Idempotent — a unit whose organs already carry the module (even a
+    DESTROYED one: an EMP'd ear stays dead, we don't magically re-arm it)
+    is a dict-key check, no write. Runs in-process from the heartbeat's
+    at_start, so the running server's idmapper stays authoritative."""
+    from evennia.objects.models import ObjectDB
+    fitted = 0
+    for bot in ObjectDB.objects.filter(
+            db_attributes__db_key="role").distinct():
+        if getattr(bot.db, "role", None) != "security":
+            continue
+        state = getattr(bot, "medical_state", None)
+        if state is None:
+            continue
+        if "comms_module" in (getattr(state, "organs", None) or {}):
+            continue
+        try:
+            factory_fit_comms(bot)
+            fitted += 1
+        except Exception:  # noqa: BLE001 — one odd unit never stops the sweep
+            continue
+    return fitted
+
+
 def maintain_security_complement() -> Any | None:
     """One heartbeat of the respawn loop: if living posted units fall
     short of the base's complement, cycle ONE replacement out of the

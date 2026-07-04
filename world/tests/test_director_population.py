@@ -43,6 +43,39 @@ class TestComplementCount(TestCase):
         self.assertEqual(count_posted_secbots(base), 1)
 
 
+class TestEnsureCommsFitted(TestCase):
+    """The reload-time upkeep sweep: fit the comms module into pre-#1009
+    units, never touch a unit that already has one (even destroyed)."""
+
+    def _unit(self, organs):
+        bot = MagicMock(name="bot")
+        bot.db = SimpleNamespace(role="security")
+        bot.medical_state = SimpleNamespace(organs=organs)
+        return bot
+
+    @patch("world.director.population.factory_fit_comms")
+    @patch("evennia.objects.models.ObjectDB")
+    def test_fits_only_units_missing_the_module(self, mock_db, mock_fit):
+        from world.director.population import ensure_comms_fitted
+        bare = self._unit({})                              # pre-#1009: fit
+        fitted = self._unit({"comms_module": MagicMock()})  # has one: skip
+        destroyed = self._unit({"comms_module": MagicMock()})  # EMP'd: skip
+        civilian = MagicMock(); civilian.db = SimpleNamespace(role="miner")
+        mock_db.objects.filter.return_value.distinct.return_value = [
+            bare, fitted, destroyed, civilian]
+        self.assertEqual(ensure_comms_fitted(), 1)
+        mock_fit.assert_called_once_with(bare)
+
+    @patch("world.director.population.factory_fit_comms",
+           side_effect=RuntimeError("bad unit"))
+    @patch("evennia.objects.models.ObjectDB")
+    def test_one_bad_unit_never_stops_the_sweep(self, mock_db, _fit):
+        from world.director.population import ensure_comms_fitted
+        units = [self._unit({}), self._unit({})]
+        mock_db.objects.filter.return_value.distinct.return_value = units
+        self.assertEqual(ensure_comms_fitted(), 0)   # both failed, no raise
+
+
 class TestMaintain(TestCase):
     @patch("world.director.population.spawn_secbot")
     @patch("world.director.population.count_posted_secbots", return_value=2)
