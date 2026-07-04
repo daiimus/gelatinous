@@ -40,6 +40,7 @@ from commands.CmdFollow import (
     CmdEscort, CmdFollow, CmdStopEscorting, CmdStopFollowing,
 )
 from commands.CmdStealth import CmdHide, CmdSearch, CmdSneak, CmdUnhide
+from commands.CmdTheft import CmdPickpocket, CmdSteal
 from commands.combat.cmdset_combat import CombatCmdSet
 from commands.combat.special_actions import CmdAim, CmdGrapple
 from commands.CmdThrow import CmdThrow, CmdPull, CmdCatch
@@ -186,6 +187,11 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdUnhide())
         self.add(CmdSneak())
         self.add(CmdSearch())
+
+        # Theft (STEALTH_AND_DETECTION_SPEC §6.2): applied stealth — the
+        # contest pointed at taking things.
+        self.add(CmdSteal())
+        self.add(CmdPickpocket())
         
         # Add aim command for ranged combat preparation
         self.add(CmdAim())

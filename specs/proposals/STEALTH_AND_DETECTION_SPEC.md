@@ -238,11 +238,23 @@ deterministic**, which is exactly why this scales without LLM cost.
 
 ## 6 · Applied contest — ambush, theft, breaking stealth
 
-### 6.1 · Ambush
+### 6.1 · Ambush — SHIPPED (2026-07-03)
 
-Acting on a target at **Unaware** toward you is an ambush: a first-strike
-advantage routed through the existing aim/initiative systems (`world/combat`),
-not a new combat path.
+Acting on a target who **can't perceive you** is an ambush: the opener lands
+with a first-strike advantage, routed through existing systems, not a new
+combat path. `world.stealth.is_ambush(attacker, target)` = the presence gate
+(`not can_perceive(target, attacker)`), read BEFORE `break_stealth` flips them
+to Alert. Covers **both** the combat and non-combat openers (user-decided):
+
+* **attack / grapple** — `AMBUSH_INITIATIVE_BONUS` (+20) folds into the
+  attacker's combat initiative via `add_combatant(..., ambush_bonus=)`, so
+  from concealment you act first; the grapple resolves on that first turn
+  before the target can contest. "You strike/lunge from concealment!"
+* **theft** — `AMBUSH_CONTEST_BONUS` (+6) on the steal/pickpocket contest
+  (§6.2): a mark who doesn't know you're there is far easier to lift.
+
+v1 scope: initiative primacy (going first IS the ambush). A separate accuracy
+bump is a future tune — deliberately not a stealth-insta-kill.
 
 ### 6.2 · Theft (steal & pickpocket)
 
@@ -250,15 +262,20 @@ not a new combat path.
 risk is *getting caught*. It is the contest engine (§3) and the awareness meter
 (§4) pointed at taking things, not a separate system.
 
-* **`steal <item> from <target>`** — take a *specific, perceivable* item (a
-  visible worn/carried object). Contest: thief vs the victim's awareness, modified
-  by §3.2 (crowd/distraction help; a prominent or worn item is harder than a loose
-  one; a victim in active combat is distracted). **Success** → the item transfers
-  with little awareness gained. **Failure** → *caught*: the victim (and witnesses
-  in LoS) jump toward **Alert** toward the thief, recognition keys on the thief's
-  **apparent-UID** (a mask/disguise protects you — `IDENTITY_RECOGNITION_SPEC`),
-  and a witnessed theft can raise a **dispatch** event (the victim swings, a guard
-  responds).
+**SHIPPED (2026-07-03; user-corrected: no frisk gate).**
+
+* **`steal <target>`** — lift something **at random from what they're
+  carrying** (not worn, not in-hand). No frisk required: theft is accessible
+  to anyone. **`steal <item> from <target>`** is the *precision path* — go for
+  a named piece, but only one you can actually perceive/reach (frisked,
+  tipped, in plain sight); intel lets you CHOOSE, it's never a gate.
+  Contest: thief-vs-victim (world.stealth.contest, crowd + ambush folded in).
+  **Success** → the item transfers, clean. **Failure** → *caught*: the victim
+  and every witness in LoS jump to **Alert** toward the thief, recognition
+  keys on the thief's **apparent-UID** (a mask protects you), and a
+  **sourceless `crime` event** runs the block hot (situational cause — the
+  hunt reads it). Same-room is the ONLY spatial gate — theft is stealth, not
+  combat, so it never requires proximity or an advance.
 * **`pickpocket <target>`** — **tokens (currency) only**: a blind grab for cash,
   lower-stakes and more deniable than targeted theft (you don't choose *what*, you
   lift *some*). Same contest and caught-consequences, tuned lighter. Specific
