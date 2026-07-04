@@ -17,6 +17,7 @@ from evennia.web.website.views.characters import (
     CharacterListView as EvenniaCharacterListView,
     CharacterDetailView as EvenniaCharacterDetailView,
     CharacterUpdateView as EvenniaCharacterUpdateView,
+    CharacterManageView as EvenniaCharacterManageView,
     CharacterMixin
 )
 
@@ -366,6 +367,41 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         else:
             messages.error(self.request, "Character creation failed.")
             return self.form_invalid(form)
+
+
+class CharacterManageView(EvenniaCharacterManageView):
+    """
+    Manage Sleeves + the memorial wall (DEATH_AND_SLEEVE_LIFECYCLE_SPEC §9
+    step 2).
+
+    Adds the account's tombstones to the page context: who the sleeve was,
+    born, died — nothing else. This is the game's one sanctioned OOC surface
+    (a tribute to the player); cause and location never appear here, and the
+    internal dbref/corpse keys are deliberately stripped before rendering.
+    """
+
+    def get_context_data(self, **kwargs):
+        from datetime import datetime
+        context = super().get_context_data(**kwargs)
+        memorial = []
+        records = self.request.user.db.death_records or []
+        for rec in records:
+            try:
+                if not rec.get("name") and not rec.get("died"):
+                    continue  # a record with neither name nor date is noise
+                born = rec.get("born")
+                died = rec.get("died")
+                memorial.append({
+                    "name": rec.get("name") or "an unnamed sleeve",
+                    "born": datetime.fromtimestamp(born) if born else None,
+                    "died": datetime.fromtimestamp(died) if died else None,
+                })
+            except (TypeError, ValueError, OSError, OverflowError):
+                continue  # one malformed record never breaks the wall
+        memorial.sort(key=lambda r: (r["died"] is None,
+                                     r["died"] or datetime.min))
+        context["memorial"] = memorial
+        return context
 
 
 class CharacterArchiveView(LoginRequiredMixin, CharacterMixin, View):
