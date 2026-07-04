@@ -16,7 +16,7 @@ layer is being refined — refinement is the point right now.
 
 from __future__ import annotations
 
-from random import choice, randint, sample
+from random import choice, randint, random, sample
 from typing import Any
 
 #: Management tag — every spawned civilian carries it; purge is scoped to it.
@@ -130,6 +130,9 @@ CIVILIAN_ROLES: dict[str, dict] = {
         "reaction": "resist", "armed": True, "reports": "never",
         "weapon_pool": ["SHIV", "TIRE_IRON", "BRASS_KNUCKLES", "HEAVY_CHAIN",
                         "BASEBALL_BAT", "BOX_CUTTER"],
+        # The set runs on comms: some gangers carry a walkie (loot/frisk/steal
+        # path). Each entry rolls independently — see the chance_stock loop.
+        "chance_stock": [("WALKIE_TALKIE", 0.33)],
         "ambient": [
             "posts up against the wall like the wall should be grateful.",
             "sizes up a passerby, files the number away, looks elsewhere.",
@@ -375,6 +378,15 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     # Stock (a hawker sells something real — and muggable) + a blade for
     # armed roles (carried, not wielded: they DRAW it when it comes to that).
     for proto in spec.get("stock", []):
+        try:
+            proto_spawn(proto)[0].move_to(npc, quiet=True)
+        except Exception:  # noqa: BLE001
+            continue
+    # Probabilistic kit: (prototype_key, chance) rolled per item, so only some
+    # of a role's members carry it (e.g. a walkie on ~1-in-3 gangers).
+    for proto, chance in spec.get("chance_stock", []):
+        if random() >= chance:
+            continue
         try:
             proto_spawn(proto)[0].move_to(npc, quiet=True)
         except Exception:  # noqa: BLE001

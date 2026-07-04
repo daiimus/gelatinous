@@ -1,6 +1,6 @@
 # Radio Comms Spec — The Colony's Primary Communications
 
-> **Status:** 🚧 **PHASE 1 CORE SHIPPED (2026-07-04): player-facing radio is LIVE** — `world/radio.py` (single staff-locked channel + device-gated voice echo), `Radio` typeclass + `WALKIE_TALKIE` prototype, `transmit`/`xmit`/`xm` + `to <radio>,` retarget, `tune <device> to <freq|scan>`, `toggle <device> [on/off]`, state-aware look-readout (frequency shown only when powered). Voice-attributed (recognition on the air, modulator-defeatable), hearing-gated, every powered carried radio receives its band (scan catches all, freq-tagged). **WITNESS LINK + BOT TRANSCEIVERS ALSO SHIPPED (#1009):** the witness spawns with a real `WALKIE_TALKIE` on the **emergency band (911MHz)** and `witness_report` gates on it — snatch/break/KO = no report (a physical interdiction beside killing them; robbing them nets a walkie pre-tuned to the cop channel). Security bots carry a built-in **comms module** (ear/antenna augment organ, `factory_fit_comms`, like the riot gun) tuned to 911MHz — they hear the net via `comms_organ_frequency`; destroy/harvest the ear and the bot goes deaf (EMP/mute seam via medical hit-location). **REMAINING P1:** player device acquisition placement (vendor/loot/spawn kit). **PHASE 2:** antennae/range/coverage, battery, jamming, encryption (gated on verticality). Original scoping below.
+> **Status:** 🚧 **PHASE 1 CORE SHIPPED (2026-07-04): player-facing radio is LIVE** — `world/radio.py` (single staff-locked channel + device-gated voice echo), `Radio` typeclass + `WALKIE_TALKIE` prototype, `transmit`/`xmit`/`xm` + `to <radio>,` retarget, `tune <device> to <freq|scan>`, `toggle <device> [on/off]`, state-aware look-readout (frequency shown only when powered). Voice-attributed (recognition on the air, modulator-defeatable), hearing-gated, every powered carried radio receives its band (scan catches all, freq-tagged). **WITNESS LINK + BOT TRANSCEIVERS ALSO SHIPPED (#1009):** the witness spawns with a real `WALKIE_TALKIE` on the **emergency band (911MHz)** and `witness_report` gates on it — snatch/break/KO = no report (a physical interdiction beside killing them; robbing them nets a walkie pre-tuned to the cop channel). Security bots carry a built-in **comms module** (ear/antenna augment organ, `factory_fit_comms`, like the riot gun) tuned to 911MHz — they hear the net via `comms_organ_frequency`; destroy/harvest the ear and the bot goes deaf (EMP/mute seam via medical hit-location). **ACQUISITION PLACED (2026-07-04):** the Colonial Armory stocks `WALKIE_TALKIE` at 0 tokens (live shop object) and ~1-in-3 gangers carry one (`chance_stock`) — Phase 1 is now player-obtainable end to end. **PHASE 2:** antennae/range/coverage, battery, jamming, encryption (gated on verticality). Original scoping below.
 >
 > **PHASE 1 SCOPED & DECIDED
 > (2026-07-03, §7): buildable now, vertical-independent** — devices +
@@ -167,6 +167,13 @@ The **walkie-talkie item**: held/carried, powered, tuned to one frequency.
 Acquisition = **all three**: vendor purchase (the store), loot (gangers /
 security units carry them), and spawn kit where role-appropriate. Snatchable
 via the existing theft/wrest machinery; breakable via ordinary damage.
+
+**Shipped placement (2026-07-04):** the **Colonial Armory** stocks
+`WALKIE_TALKIE` at **0 tokens** (a live builder change to the hand-built shop
+object, not a prototype), and the **ganger** civilian role carries one on a
+**~1-in-3** roll (`chance_stock` in `world/director/civilians.py`) — a
+loot/frisk/steal path. Witnesses already spawn with an emergency-band walkie
+(#1009). Broader vendor/loot spread waits on Phase 2 geography.
 
 ### 6.3 · Tuning & discovery
 
