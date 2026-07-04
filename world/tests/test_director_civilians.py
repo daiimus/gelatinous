@@ -62,6 +62,18 @@ class TestRoles(TestCase):
             if spec.get("armed"):
                 self.assertTrue(spec.get("weapon_pool"), f"{role} armed, no pool")
 
+    def test_chance_stock_references_real_prototypes(self):
+        from world import prototypes as protos
+        for role, spec in CIVILIAN_ROLES.items():
+            for key, chance in spec.get("chance_stock", []):
+                self.assertTrue(hasattr(protos, key), f"{role}: {key}")
+                self.assertTrue(0.0 < chance <= 1.0, f"{role}: {key} {chance}")
+
+    def test_ganger_carries_a_walkie(self):
+        self.assertIn(
+            ("WALKIE_TALKIE", 0.33),
+            CIVILIAN_ROLES["ganger"].get("chance_stock", []))
+
     def test_colonist_archetype_registered(self):
         from world.llm.prompt import ARCHETYPES
         self.assertIn("colonist", ARCHETYPES)
@@ -142,6 +154,38 @@ class TestRoles(TestCase):
             mock_create.return_value = npc2
             _c.spawn_civilian("miner", _Room("street"))
             self.assertNotIn("register", npc2.db.llm_persona)
+
+    def _spawn_ganger_with_roll(self, roll):
+        """Spawn a ganger with civilians.random pinned to *roll*; return the
+        list of prototype keys that were actually spawned."""
+        from unittest.mock import patch as _patch
+        import world.director.civilians as _c
+        spawned = []
+
+        def _fake_spawn(proto):
+            spawned.append(proto)
+            item = MagicMock(); item.key = str(proto); item.layer = 2
+            return [item]
+
+        with _patch("evennia.create_object") as mock_create, \
+             _patch("evennia.prototypes.spawner.spawn", side_effect=_fake_spawn), \
+             _patch("world.mob_flavor.apply_random_flavor"), \
+             _patch("world.anatomy.get_species_default_longdesc_locations",
+                    return_value={}), \
+             _patch("world.medical.core.MedicalState"), \
+             _patch("world.spatial.rooms_within", return_value=[]), \
+             _patch("world.spatial.is_reachable", return_value=True), \
+             _patch.object(_c, "random", return_value=roll):
+            npc = MagicMock(); npc.db = SimpleNamespace()
+            mock_create.return_value = npc
+            _c.spawn_civilian("ganger", _Room("alley"))
+        return spawned
+
+    def test_chance_stock_roll_gates_the_walkie(self):
+        # roll below the 0.33 threshold → the walkie spawns...
+        self.assertIn("WALKIE_TALKIE", self._spawn_ganger_with_roll(0.1))
+        # ...at or above it → no walkie.
+        self.assertNotIn("WALKIE_TALKIE", self._spawn_ganger_with_roll(0.9))
 
     def test_ambient_beat_by_role(self):
         npc = SimpleNamespace(db=SimpleNamespace(role="miner"))
