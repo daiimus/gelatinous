@@ -3971,9 +3971,10 @@ HIGH_TOPS = {
 WALKIE_TALKIE = {
     "prototype_key": "WALKIE_TALKIE",
     "typeclass": "typeclasses.items.Radio",
-    "key": "a battered walkie-talkie",
-    "aliases": ["walkie", "walkie-talkie", "radio", "handset", "magpie", "awe"],
-    "desc": ("A knock-around AWE Magpie — a handheld transceiver in scuffed "
+    "key": "AWE Magpie-01 radio",
+    "aliases": ["walkie", "walkie-talkie", "radio", "handset", "magpie",
+                "magpie-01", "awe"],
+    "desc": ("A knock-around AWE Magpie-01 — a handheld transceiver in scuffed "
              "high-impact plastic, its stubby antenna taped at the base and a "
              "rubberised push-to-talk worn pale by a thousand thumbs. The "
              "Ashford Wireless & Electric wordmark and its little etched magpie "
