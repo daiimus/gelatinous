@@ -1140,23 +1140,12 @@ def detect_and_remove_orphaned_combatants(handler):
             and getattr(aimer, "location", None) == char.location
             and getattr(aimer.ndb, NDB_AIMING_AT, None) == char)
 
-        # MELEE PROXIMITY is the close-quarters twin of aim (#1002): proximity
-        # is only ever established by combat (advance/charge/grapple), so
-        # being in someone's face IS being in the fight. A yielder held at
-        # melee range must no more be swept than one held at gunpoint. Live
-        # partner required (proximity is same-room and cleared on move, but
-        # guard against a stale set member all the same).
-        prox = getattr(char.ndb, NDB_PROXIMITY, None)
-        is_in_proximity = bool(
-            prox and any(getattr(o, "location", None) == char.location
-                         for o in prox))
-
         # Yielding status for context logging (but not considered in orphan check)
         is_yielding = entry.get(DB_IS_YIELDING, False)
 
         # If combatant has no combat relationships, they are orphaned
         if not (has_target or is_grappling or is_grappled or is_targeted
-                or is_aiming or is_aimed_at or is_in_proximity):
+                or is_aiming or is_aimed_at):
             yield_context = " (yielding)" if is_yielding else " (not yielding)"
             splattercast.msg(f"ORPHAN_DETECT: {char.key} is orphaned{yield_context} - no target, not grappling, not grappled, not targeted, not aiming/aimed-at")
             orphaned_chars.append(char)
