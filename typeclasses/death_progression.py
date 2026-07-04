@@ -486,7 +486,18 @@ class DeathProgressionScript(DefaultScript):
             
             # 3. Transition character out of play (includes unpuppeting now)
             self._transition_character_to_death(character)
-            
+
+            # 3b. Link the tombstone to the body (spec §9): the archive above
+            # engraved the record; the corpse ref is an internal key that goes
+            # stale once the world removes the body — by design. Account is
+            # the pre-unpuppet capture; NPCs (account None) no-op inside.
+            try:
+                from world.death_records import stamp_corpse
+                stamp_corpse(character, corpse, account=account)
+            except Exception:  # noqa: BLE001 — the memorial never blocks death
+                pass
+
+
             # 4. Initiate character creation for account
             if account and session:
                 self._initiate_new_character_creation(account, character, session)
@@ -808,13 +819,22 @@ class DeathProgressionScript(DefaultScript):
         # archived to Limbo (the PC-only respawn flow — last_character, new-char
         # creation). Without this branch every dead NPC accumulates in Limbo
         # forever as a nameless ghost (a long-standing leak; #4590 cleanup).
-        # Guard on ``account is None`` — only player characters ever carry an
-        # account, so this can never delete a PC.
+        # DOUBLE guard: ``account is None`` AND the canonical ``db.is_npc``
+        # marker (every spawn path sets it; PCs never carry it) — so a PC that
+        # somehow dies accountless (offline death, half-wiped state) can never
+        # be deleted. The failure direction is a flagged Limbo ghost, not a
+        # lost player character.
         if account is None:
+            if character.db.is_npc is True:
+                splattercast = get_splattercast()
+                splattercast.msg(f"DEATH_NPC_CLEANUP: deleting dead NPC {getattr(character, 'key', '?')}")
+                character.delete()
+                return
             splattercast = get_splattercast()
-            splattercast.msg(f"DEATH_NPC_CLEANUP: deleting dead NPC {getattr(character, 'key', '?')}")
-            character.delete()
-            return
+            splattercast.msg(
+                f"DEATH_TRANSITION_WARN: {getattr(character, 'key', '?')} is "
+                f"accountless but not flagged is_npc — archiving instead of "
+                f"deleting (investigate)")
 
         # Move character to limbo/OOC room (Evennia's default limbo is #2)
         # Use move_hooks=False to prevent medical script spam on teleport

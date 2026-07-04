@@ -480,7 +480,18 @@ class Character(
         self.db.archived = True
         self.db.archived_reason = reason
         self.db.archived_date = time.time()
-        
+
+        # Engrave the OOC tombstone on the owning account — who the sleeve
+        # was, born, died (DEATH_AND_SLEEVE_LIFECYCLE_SPEC §9). Every archive
+        # gets one (death or manual retirement); idempotent per sleeve.
+        # Guarded: a memorial bug must never block the archive itself.
+        try:
+            from world.death_records import add_record
+            add_record(self, died=self.db.archived_date)
+        except Exception as e:
+            splattercast = get_splattercast()
+            splattercast.msg(f"ARCHIVE_RECORD_ERROR: {self.key} - {e}")
+
         # Move character to Limbo to prevent appearing as NPC in game world
         from evennia import search_object
         limbo = search_object("#2")  # Limbo is always dbref #2

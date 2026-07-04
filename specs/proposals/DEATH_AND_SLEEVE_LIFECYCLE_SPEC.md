@@ -9,9 +9,18 @@
 > [`HEALTH_AND_SUBSTANCE_SYSTEM_SPEC`](../HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md)
 > (corpse/forensics), and
 > [`WEB_RESPAWN_CHARACTER_CREATION_SPEC`](../WEB_RESPAWN_CHARACTER_CREATION_SPEC.md)
-> (decant/sleeve). §8 (rough edges) and §9 (**optimization proposal — the
-> DeathRecord spine**) are NOT yet built. **Recent change folded in:** dead NPCs
-> are now **deleted**, not archived (#1022) — see §4.
+> (decant/sleeve). **§9 STEP 1 SHIPPED (2026-07-04): the DeathRecord tombstone
+> is LIVE** — `world/death_records.py` engraves `{name, born, died, corpse_ref}`
+> on the owning account (`account.db.death_records`) from `archive_character`;
+> the death path stamps the corpse ref post-archive. **Scope decision: EVERY
+> archived sleeve gets a tombstone** (death or manual retirement; `died` = the
+> archive moment). Legacy sleeves backfilled (39 archived + reconstructions
+> from account-linked corpses). The NPC-delete guard (#1022) hardened to a
+> DOUBLE guard (`account is None` AND canonical `db.is_npc`) — an accountless
+> unflagged character archives with a warning, never deletes. §9 steps 2–3
+> (web view, sleeve tag/index) and 4–5 (cleanup gig, morgue IC records) remain
+> unbuilt. **Recent change folded in:** dead NPCs are **deleted**, not archived
+> (#1022) — see §4.
 
 ---
 
@@ -275,9 +284,14 @@ persist — which is the desired behavior now, and doubles as free playtesting o
 
 **Suggested build order (each shippable alone, additive, low-risk):**
 
-1. **DeathRecord object** — write it in `_create_corpse_from_character`; stamp its
-   id onto the corpse (`corpse_ref` back on it) and, for PCs, the archived sleeve.
-   Purely additive; changes nothing play-facing.
+1. ✅ **DeathRecord object** (SHIPPED 2026-07-04) — `world/death_records.py`;
+   engraved from `archive_character` (covers death AND manual retirement — the
+   all-archives scope decision), corpse ref stamped post-archive in
+   `_handle_corpse_creation_and_transition`. Stored as
+   `account.db.death_records` (plain attribute list — no new typeclass, the
+   web view already reads the account). `born` falls back to the object's
+   creation date for legacy sleeves. Legacy backfill: all archived sleeves +
+   tombstones reconstructed from account-linked corpses whose husks are gone.
 2. **Web nostalgia review** — point "Manage Sleeves" at the DeathRecord's
    tombstone (name, born, died — no cause, no location, no autopsy coupling).
 3. **Tag/index archived sleeves** — convert the account/website sleeve listing off

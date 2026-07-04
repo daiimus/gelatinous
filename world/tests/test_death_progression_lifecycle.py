@@ -207,12 +207,48 @@ class TestCompletion(_LifecycleBase):
         to Limbo (the PC-only respawn flow). Guards the #4590 ghost leak."""
         from evennia.objects.models import ObjectDB
         npc = create_object(Character, key="doomed mook", location=self.room1)
+        npc.db.is_npc = True                # the canonical NPC marker
         self.assertIsNone(npc.account)      # NPC: no account
         npc_id = npc.id
         self.script._transition_character_to_death(npc)
         self.assertFalse(
             ObjectDB.objects.filter(id=npc_id).exists(),
             "dead NPC should be deleted, not left as a ghost")
+
+    def test_accountless_without_npc_marker_is_never_deleted(self):
+        """The double guard's failure direction: accountless but NOT flagged
+        is_npc (an offline PC death, a half-wiped husk) must archive, never
+        delete — a flagged Limbo ghost beats a lost player character."""
+        from evennia.objects.models import ObjectDB
+        mystery = create_object(Character, key="unflagged husk",
+                                location=self.room1)
+        self.assertIsNone(mystery.account)
+        mystery_id = mystery.id
+        self.script._transition_character_to_death(mystery)
+        self.assertTrue(
+            ObjectDB.objects.filter(id=mystery_id).exists(),
+            "accountless-but-unflagged character must never be deleted")
+        mystery.delete()  # test cleanup
+
+    def test_pc_death_engraves_tombstone_with_corpse_ref(self):
+        """The sleeve loop's memorial (spec §9): permanent death of a PC
+        writes {name, born, died, corpse_dbref} onto the owning account."""
+        from world.death_records import get_records
+        self.char1.msg = MagicMock()
+        self.account.db.death_records = []
+        with patch("world.identity_utils.msg_room_identity"), \
+                patch.object(self.char1, "apply_final_death_state",
+                             create=True):
+            self.script._complete_death_progression()
+        records = get_records(self.account)
+        self.assertEqual(len(records), 1)
+        rec = records[0]
+        self.assertEqual(rec["sleeve_dbref"], self.char1.dbref)
+        self.assertEqual(rec["name"], self.char1.key)
+        self.assertIsNotNone(rec["born"])       # date_created fallback
+        self.assertIsNotNone(rec["died"])
+        self.assertIsNotNone(rec["corpse_dbref"])   # linked to the body
+        self.script = None  # completion deleted the script; tearDown guard
 
     def test_corpse_handoff_failure_is_contained_and_loud(self):
         """The deliberate guard: a corpse-creation bug is logged to the
