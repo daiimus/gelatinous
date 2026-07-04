@@ -103,6 +103,16 @@ def tick_npc(npc: Any) -> str:
         return "none"
     if not is_patrol_idle(npc):
         return "skip"
+    # The hunt owns an idle security unit before the beat does (stealth
+    # spec §5): awareness records of hidden presences turn the patroller
+    # into a hunter until it reacquires or gives up.
+    if getattr(npc.db, "role", None) == "security":
+        try:
+            from world.director.hunt import tick_hunt
+            if tick_hunt(npc):
+                return "hunt"
+        except Exception:  # noqa: BLE001 — a broken hunt must not stall beats
+            pass
     cadence = int(getattr(npc.db, "patrol_cadence", None) or 1)
     if cadence > 1:
         waited = int(getattr(npc.ndb, "patrol_wait", None) or 0) + 1

@@ -19,9 +19,21 @@
 > move announcements, whisper bystanders, and speech attribution
 > (stealth-aware `resolve_speaker_attribution` — hidden speakers attribute
 > by VOICE). Leak-completeness tests drive each real path. Deliberate
-> bypasses hold: AoE, area sound, `search`. NOT yet built: the NPC hunt
-> (§5), ambush advantage (§6.1), theft (§6.2), environmental modifiers
-> (light/cover/crowd — v1 is the flat tier spread).
+> bypasses hold: AoE, area sound, `search`. **PHASE 4 (THE HUNT) SHIPPED
+> (2026-07-03):** `world/director/hunt.py` — the deterministic state
+> machine off the awareness meter, ticked by the director heartbeat
+> before the patrol beat: Suspicious → orient beat (the player's audible
+> cue) + commit; Searching → director-travel to the LAST-KNOWN room
+> (stamped on awareness records) and sweep it with the REAL `search`
+> command, fanning through unswept adjacents on a bounded budget
+> (SEARCH_BUDGET=4); reacquire → challenge ("Halt, Colonist."), raise a
+> `disturbance` (existing dispatch/challenge machinery takes over), and
+> PROPAGATE (every other security unit seeded to Searching at the
+> sighting room); budget out / record decayed → give-up beat, records
+> dropped, patrol resumes. v1 fan-out is adjacency, not full Dijkstra;
+> hunters are role=security. NOT yet built: ambush advantage (§6.1),
+> theft (§6.2), environmental modifiers (light/cover/crowd — v1 is the
+> flat tier spread).
 > Original abstract: designs the **presence-concealment**
 > layer: `hide` (self or object) vs `search` (a room), resolved as an opposed
 > **Resonance/Motorics** contest, surfaced as a **per-observer graded awareness
