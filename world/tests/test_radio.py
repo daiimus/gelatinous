@@ -40,6 +40,15 @@ class TestDevicePredicates(TestCase):
     def test_scan_mode(self):
         self.assertTrue(is_scanning(_radio(freq=SCAN)))
         self.assertFalse(is_scanning(_radio(freq="447")))
+        self.assertTrue(is_scanning(_radio(freq="SCAN")))   # case-insensitive
+
+    def test_same_band_is_case_insensitive(self):
+        from world.radio import same_band
+        self.assertTrue(same_band("911MHz", "911mhz"))   # tuned vs constant
+        self.assertTrue(same_band(" 447 ", "447"))
+        self.assertFalse(same_band("447", "891"))
+        self.assertFalse(same_band(None, "447"))         # untuned = no band
+        self.assertFalse(same_band("447", None))
 
     def test_transmit_device_prefers_worn_then_held(self):
         worn, held = _radio(), _radio()
@@ -98,6 +107,21 @@ class TestTransmit(TestCase):
                 patch.object(radio, "_log_to_channel"):
             transmit(speaker, "hi", dev)
         listener.msg.assert_not_called()
+
+    def test_band_match_ignores_case(self):
+        # Device tuned "911MHz" (constant) reaches a walkie the player tuned
+        # as "911mhz" — the case-insensitivity that lets typed bands connect.
+        speaker = _char()
+        dev, heard = _radio(freq="911MHz"), _radio(freq="911mhz")
+        listener = MagicMock(); heard.location = listener
+        with self._world([dev, heard]), \
+                patch.object(radio, "_log_to_channel"), \
+                patch("world.perception.can_hear", return_value=True), \
+                patch("world.voice.attempt_voice_discern", return_value=None), \
+                patch("world.voice.get_voice_description", return_value="flat"), \
+                patch("world.voice.voice_phrase", return_value=None):
+            transmit(speaker, "unit down", dev)
+        self.assertIn("unit down", listener.msg.call_args.args[0])
 
     def test_scanning_radio_catches_all_bands_tagged(self):
         speaker = _char()

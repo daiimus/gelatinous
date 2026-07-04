@@ -49,7 +49,19 @@ def frequency_of(device: Any) -> Optional[str]:
 
 
 def is_scanning(device: Any) -> bool:
-    return frequency_of(device) == SCAN
+    freq = frequency_of(device)
+    return isinstance(freq, str) and freq.strip().lower() == SCAN
+
+
+def same_band(a: Any, b: Any) -> bool:
+    """Two frequencies are the same band, compared case-insensitively. Players
+    type what a scanner shows them and the ``tune`` command preserves case, but
+    the emergency-band constant and the bot comms-organ specs are mixed-case —
+    so ``911MHz`` typed as ``911mhz`` must still reach dispatch. None never
+    matches (an untuned radio is on no band)."""
+    if a is None or b is None:
+        return False
+    return str(a).strip().lower() == str(b).strip().lower()
 
 
 # --------------------------------------------------------------------------
@@ -172,7 +184,7 @@ def _comms_bots_on(frequency: str) -> list:
             db_attributes__db_key="role").distinct():
         if getattr(char.db, "role", None) != "security":
             continue
-        if comms_organ_frequency(char) == frequency:
+        if same_band(comms_organ_frequency(char), frequency):
             out.append(char)
     return out
 
@@ -254,7 +266,7 @@ def _deliver(speaker: Any, message: str, frequency: str,
         if radio is exclude_device:
             continue
         scanning = is_scanning(radio)
-        if scanning or frequency_of(radio) == frequency:
+        if scanning or same_band(frequency_of(radio), frequency):
             _send(radio.location, tagged=scanning)   # holder hears it
 
     for bot in _comms_bots_on(frequency):
