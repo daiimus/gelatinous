@@ -523,7 +523,7 @@ def clear_mutual_aim(char1, char2):
 # COMBATANT MANAGEMENT (moved from handler.py)
 # ===================================================================
 
-def add_combatant(handler, char, target=None, initial_grappling=None, initial_grappled_by=None, initial_is_yielding=False):
+def add_combatant(handler, char, target=None, initial_grappling=None, initial_grappled_by=None, initial_is_yielding=False, ambush_bonus=0):
     """
     Add a character to combat.
     
@@ -572,6 +572,7 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
             randint(1, 20)
             + get_numeric_stat(char, "motorics", 0)
             + surplus_limb_initiative_bonus(char)
+            + int(ambush_bonus or 0)   # first-strike from an ambush (§6.1)
         ),
         DB_TARGET_DBREF: target_dbref,
         DB_GRAPPLING_DBREF: get_character_dbref(initial_grappling),

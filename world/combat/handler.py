@@ -421,7 +421,7 @@ class CombatHandler(DefaultScript):
         
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_MERGE: Merged {other_handler.key} into {self.key}. Now managing {len(our_rooms)} rooms with {len(our_combatants)} combatants.")
 
-    def add_combatant(self, char, target=None, initial_grappling=None, initial_grappled_by=None, initial_is_yielding=False):
+    def add_combatant(self, char, target=None, initial_grappling=None, initial_grappled_by=None, initial_is_yielding=False, ambush_bonus=0):
         """
         Add a character to combat.
         
@@ -432,7 +432,7 @@ class CombatHandler(DefaultScript):
             initial_grappled_by: Optional character grappling this char initially
             initial_is_yielding: Whether the character starts yielding
         """
-        add_combatant(self, char, target, initial_grappling, initial_grappled_by, initial_is_yielding)
+        add_combatant(self, char, target, initial_grappling, initial_grappled_by, initial_is_yielding, ambush_bonus=ambush_bonus)
 
     def remove_combatant(self, char):
         """

@@ -111,9 +111,21 @@ class CmdGrapple(Command):
         caller_is_in_combat = any(e["char"] == caller for e in handler.db.combatants)
         target_is_in_combat = any(e["char"] == target for e in handler.db.combatants)
 
+        # Ambush (STEALTH_AND_DETECTION_SPEC §6.1): grappling a target who
+        # can't perceive you rides the same first-strike primacy as a
+        # strike — the grapple resolves on your turn, and going first means
+        # it lands before they can act. Read BEFORE break_stealth.
+        from world.stealth import (
+            AMBUSH_INITIATIVE_BONUS, break_stealth, is_ambush,
+        )
+        ambush = AMBUSH_INITIATIVE_BONUS if is_ambush(caller, target) else 0
+        if ambush and not caller_is_in_combat:
+            caller.msg("You lunge from concealment!")
+        break_stealth(caller, quiet=True)
+
         if not caller_is_in_combat:
             log_combat_action(caller, "grapple_initiate", target, details="initiating grapple combat")
-            handler.add_combatant(caller) 
+            handler.add_combatant(caller, ambush_bonus=ambush)
             handler.add_combatant(target) 
         elif not target_is_in_combat: 
             log_combat_action(caller, "grapple_join", target, details="attempting to grapple (adding target to combat)")

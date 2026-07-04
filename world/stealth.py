@@ -287,6 +287,27 @@ def lurk_placement(room) -> str:
     return "lurking in the shadows."
 
 
+# --- ambush (spec §6.1): the opener against an unaware target -----------
+AMBUSH_INITIATIVE_BONUS = 20   # first-strike primacy from concealment
+AMBUSH_CONTEST_BONUS = 6       # ambush edge on a theft contest
+
+
+def is_ambush(attacker, target) -> bool:
+    """The opener lands as an AMBUSH when *target* can't perceive
+    *attacker* — they don't know you're there. Reuses the presence gate,
+    so a hidden attacker the target hasn't detected qualifies and a
+    plainly-visible one never does. Drives first-strike combat (initiative
+    primacy), uncontested-because-first grapples, and easier theft. MUST be
+    read BEFORE break_stealth (which flips the target to Alert)."""
+    if attacker is target:
+        return False
+    try:
+        from world.perception import can_perceive
+        return not can_perceive(target, attacker)
+    except Exception:  # noqa: BLE001 — no gate = no ambush
+        return False
+
+
 def is_hidden_from(target, looker) -> bool:
     """The display gate: hidden AND the looker is not yet aware enough to
     place them. Suspicious knows *a* presence, not who/where — still

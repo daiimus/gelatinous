@@ -56,11 +56,6 @@ class CmdAttack(Command):
     def func(self):
         caller = self.caller
         args = self.args.strip()
-        # Attacking gives you away (STEALTH_AND_DETECTION_SPEC §6.4) — the
-        # ambush ADVANTAGE (spec §6.1) lands with the ambush phase; v1 is
-        # just honesty: violence is loud.
-        from world.stealth import break_stealth
-        break_stealth(caller, quiet=True)
         splattercast = get_splattercast()
 
         if not args:
@@ -296,9 +291,19 @@ class CmdAttack(Command):
             if caller_entry_snapshot:
                 original_caller_target_in_handler = final_handler.get_target_obj(caller_entry_snapshot)
 
+        # --- Ambush (STEALTH_AND_DETECTION_SPEC §6.1): striking a target
+        # who can't perceive you is a first-strike. Read BEFORE breaking
+        # stealth (which flips them to Alert), apply as initiative primacy,
+        # THEN attacking gives you away (§6.4). ---
+        from world.stealth import AMBUSH_INITIATIVE_BONUS, break_stealth, is_ambush
+        ambush = AMBUSH_INITIATIVE_BONUS if is_ambush(caller, target) else 0
+        if ambush and not caller_was_in_final_handler:
+            caller.msg("You strike from concealment!")
+        break_stealth(caller, quiet=True)
+
         # --- Add combatants to the final_handler ---
         if not caller_was_in_final_handler:
-            final_handler.add_combatant(caller, target=target)
+            final_handler.add_combatant(caller, target=target, ambush_bonus=ambush)
         else: 
             caller_entry = next((e for e in final_handler.db.combatants if e["char"] == caller), None)
             if caller_entry: # Ensure entry exists
