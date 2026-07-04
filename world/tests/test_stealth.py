@@ -491,3 +491,15 @@ class TestCrowdBonus(TestCase):
         with patch("world.crowd.CrowdSystem.calculate_crowd_level",
                    side_effect=Exception("no crowd")):
             self.assertEqual(crowd_hider_bonus(MagicMock()), 0)
+
+
+class TestLurkPlacement(TestCase):
+    def test_crowd_aware_read(self):
+        from world.stealth import lurk_placement
+        with patch("world.crowd.CrowdSystem.calculate_crowd_level",
+                   return_value=3):
+            self.assertIn("nervous", lurk_placement(MagicMock()))
+        with patch("world.crowd.CrowdSystem.calculate_crowd_level",
+                   return_value=0):
+            self.assertIn("lurking in the shadows",
+                          lurk_placement(MagicMock()))

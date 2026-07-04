@@ -537,10 +537,12 @@ class Room(ObjectParent, DefaultRoom):
 
             # The "lurking" tell (stealth spec §4): failed concealment
             # doesn't restore a normal appearance — to whoever sees them,
-            # a hidden character reads as visibly furtive, top of the
-            # placement hierarchy.
+            # a hidden character reads as visibly furtive (crowd-aware:
+            # a nervous face in a throng, a shadow-skulker in an empty
+            # room), top of the placement hierarchy.
             if getattr(char.db, "hidden", False) is True:
-                placement = "lurking in the shadows."
+                from world.stealth import lurk_placement
+                placement = lurk_placement(self)
 
             # Resolve {aim_target} template in placement (used by aim system)
             if "{aim_target}" in placement:

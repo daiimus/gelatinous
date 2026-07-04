@@ -35,13 +35,19 @@
 > the CROWD hider bonus is live (first environmental modifier — crowd
 > density, up to +3, helps the hider at every contest tier; "blending
 > in" is mechanically real; light/cover still ride the coordinate
-> integration), and REACQUIRE IS WANTED-GATED — hiding is suspicious
-> enough to investigate, but the full response (challenge + disturbance
-> + propagation) is reserved for a target on the wanted record (same
-> apparent-uid key); a clean colonist caught lurking gets "Loitering
-> noted, Colonist. Move along." and the record is zeroed (roll-stamped
-> to rate-limit an instant re-flag). NOT yet built: ambush advantage
-> (§6.1), theft (§6.2), light/cover modifiers.
+> integration), and **THE HUNT REQUIRES CAUSE** (user-decided, revised
+> same day): the wanted-record check (same apparent-uid key) is SILENT
+> and gates hunt COMMITMENT itself — an unwanted hidden presence is
+> ignored entirely (no orient, no sweep, no roust; hiding is not a
+> crime and security must not small-world every wallflower). The
+> detected innocent simply reads as visibly furtive via the crowd-aware
+> lurk placement ("a nervous, somewhat off face in the crowd" in a
+> throng; "lurking in the shadows" in an empty room). A pardon mid-hunt
+> stands the bot down silently. **Marked for eventual reconsideration
+> (user):** whether/where loitering itself warrants a response — e.g.
+> zone-dependent (corporate blocks vs the sprawl) — revisit with the
+> faction/zone work. NOT yet built: ambush advantage (§6.1), theft
+> (§6.2), light/cover modifiers.
 > Original abstract: designs the **presence-concealment**
 > layer: `hide` (self or object) vs `search` (a room), resolved as an opposed
 > **Resonance/Motorics** contest, surfaced as a **per-observer graded awareness
