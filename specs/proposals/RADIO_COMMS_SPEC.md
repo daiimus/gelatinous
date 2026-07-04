@@ -1,6 +1,10 @@
 # Radio Comms Spec — The Colony's Primary Communications
 
-> **Status:** 📋 Proposal — not implemented. Designs **radio** as Gelatinous's
+> **Status:** 📋 Proposal — not implemented. **PHASE 1 SCOPED & DECIDED
+> (2026-07-03, §7): buildable now, vertical-independent** — devices +
+> channel-system backend + voice-over-radio + the witness-report and
+> dispatch-order links. Phase 2 (range/antennae/coverage) waits on the
+> high-rise buildout. Designs **radio** as Gelatinous's
 > primary means of communication: handheld walkie-talkies, base stations, and
 > rooftop antenna infrastructure, carried over channels with coordinate-based
 > range. Radio is the **carrier for the dispatch information chain**
@@ -87,7 +91,8 @@ Mapping `NPC_DISPATCH_AND_SIMULATION_SPEC` §5.1's links onto the medium:
 |---|---|---|
 | Witness report | witness NPC transmits on a public/security band from their walkie | **snatch the walkie** from their hand; harm them first; no device → they must physically travel to report |
 | Dispatch order | base broadcasts to units on the security channel | jam the band; coverage hole (break the antenna) → units in the dark |
-| Unit ↔ base | bots report/receive via built-in transceivers | EMP/destroy the transceiver component; the intel-sync stays physical (return-to-base) but *urgent* traffic rides radio |
+| Unit ↔ base | bots report/receive via built-in transceivers | EMP/destroy the transceiver component; *urgent* traffic rides radio |
+| Intel-sync | **NOT radio (decided 2026-07-03): the force-wide intel/wanted sync is NET-driven** — it's a file on a host (`DECKING_MATRIX.md` §2/§10); radio carries voices, the net carries databases | hack the host (the marquee decking run), not the airwaves |
 | Backup call | an engaged bot calls for reinforcement | mute the bot before it transmits (the no-trace window §5.1) |
 
 A jammed/holed/deviceless link doesn't degrade gracefully into magic — **the
@@ -120,7 +125,64 @@ real play.
 * **Gigs/factions** — org channels give gangs/employers a coordination
   texture; a gig can arrive over the air.
 
-## 6 · Risks & open questions
+## 6 · Phase 1 — scoped & decided (2026-07-03)
+
+Everything vertical-independent; range is **abstracted** (Option A): the
+*device* is the gate, not the distance — a functional, tuned walkie reaches
+the network (assumed present); a snatched/broken/absent one doesn't. Phase 2
+physicalizes range with antennae/coverage when the high-rises exist.
+
+### 6.1 · Backend — frequencies ARE channels
+
+Each frequency is an **Evennia Channel**, subscription-locked to staff:
+
+* **Admin/builder view** — subscribe directly: the raw channel readout
+  (Name, Voice/attribution metadata, Frequency) — the whole grid,
+  monitorable like any channel. The channel system also gives history,
+  persistence, and distribution for free.
+* **Player view** — players NEVER subscribe. A walkie tuned to the
+  frequency **echoes** the channel's traffic to its holder, re-rendered
+  through the say/voice rails: the speaker's **voice phrase**, **voice
+  recognition** (recognisable on the air; a modulator defeats it),
+  **hearing-gated**, attributed **by voice only** (never sight). "A gravelly
+  voice crackles over the walkie: …"
+* **Transmitting** — `radio <message>` posts to the tuned channel *through
+  the device*; every tuned walkie echoes it. No device, no voice on the air.
+
+### 6.2 · Devices & acquisition
+
+The **walkie-talkie item**: held/carried, powered, tuned to one frequency.
+Acquisition = **all three**: vendor purchase (the store), loot (gangers /
+security units carry them), and spawn kit where role-appropriate. Snatchable
+via the existing theft/wrest machinery; breakable via ordinary damage.
+
+### 6.3 · Tuning & discovery
+
+`radio/tune <frequency>` — a walkie hears only its tuned band. Discovery is
+**scanning** (sweep bands and listen), **lucky guesses**, and **captured
+walkies** (a lifted security handheld arrives tuned to their band — the
+listening post). Secrecy is procedural, not cryptographic (encryption is a
+later phase).
+
+### 6.4 · The dispatch chain in Phase 1
+
+* **Witness report** — the marquee: a witness NPC transmits its report from
+  its OWN walkie on a public/security band. **Snatch or break the device
+  before it keys up and the report never goes out** — silence-the-witness,
+  literal, riding theft + dispatch (both live).
+* **Dispatch orders** — the force runs its own frequency: base-to-units
+  traffic rides it (tunable by anyone who finds the band — scanner play
+  against security is on from day one).
+* **Intel-sync** — explicitly NOT radio (§3): net-driven, owned by
+  `DECKING_MATRIX.md`.
+
+### 6.5 · Explicitly deferred to Phase 2+
+
+Antennae/repeaters/coverage holes, real coordinate range, the Drifts-dark
+rule, jamming devices, **power/battery**, encryption/scrambling, and the
+robot built-in-transceiver attacks (ride the robot-component work).
+
+## 7 · Risks & open questions
 
 * **Jamming device** — dedicated jammer item (area denial around a coordinate)
   vs. only infrastructure attacks at v1? Lean: v1 = antennae + walkie
