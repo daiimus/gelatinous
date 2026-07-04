@@ -111,7 +111,29 @@ def build_persona(npc) -> dict:
 
     wearing, carrying = _wardrobe(npc)
 
+    # Radio state (RADIO_COMMS_SPEC §7.3): what the brain can key up with —
+    # a worn/held powered walkie, or a built-in comms organ. None = no way
+    # onto the air (the radio tool would refuse, so don't advertise it).
+    radio = None
+    try:
+        from world.radio import (
+            active_transmit_radio, comms_organ_frequency, frequency_of,
+            is_powered,
+        )
+        device = active_transmit_radio(npc)
+        if device is not None and is_powered(device):
+            band = frequency_of(device)
+            radio = (f"a radio tuned to {band}" if band
+                     else "a radio tuned to nothing")
+        else:
+            band = comms_organ_frequency(npc)
+            if band:
+                radio = f"a built-in comms module tuned to {band}"
+    except Exception:  # noqa: BLE001 — persona building never breaks on comms
+        radio = None
+
     return {
+        "radio": radio,
         "sdesc": npc.get_sdesc(),
         "wearing": wearing,
         "carrying": carrying,

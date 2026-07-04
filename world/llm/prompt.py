@@ -55,6 +55,14 @@ TOOLS = {
                         "said your piece, or you'd simply rather move on; "
                         "your speech/action this turn are your goodbye "
                         "(argument: '')"},
+    "radio": {"kind": "action",
+              "desc": "key up your radio and speak over the air — everyone "
+                      "tuned to your band hears it, wherever they are, and "
+                      "your device transmits for REAL. Use it to answer a "
+                      "radio call or raise someone who is NOT in the room; "
+                      "to talk to someone standing in front of you, just "
+                      "speak (argument: exactly the words you say on the "
+                      "air)"},
     "check_stock": {"kind": "context",
                     "desc": "list exactly what the bar can serve right now "
                             "(argument: '')"},
@@ -360,7 +368,9 @@ ARCHETYPES = {
         ),
         "length": ("One or two clipped lines, machine-cadence. No warmth, no "
                    "filler. A short mechanical pose at most."),
-        "tools": ["release"],  # may end an exchange; combat/detain stays deterministic
+        # radio: the unit's comms organ keys up for real (§7.4) — flavour on
+        # the air; combat/detain/dispatch stay deterministic.
+        "tools": ["release", "radio"],
         "fewshot": [
             {"user": 'a bystander says to you: "what happened here?"',
              "assistant": {"speech": "Incident under review. Details are "
@@ -485,6 +495,9 @@ def render_persona(persona: dict) -> str:
     carrying = persona.get("carrying")
     if carrying:
         lines.append("You are carrying: " + ", ".join(carrying) + ".")
+    if persona.get("radio"):
+        lines.append(f"You have {persona['radio']} — the 'radio' tool "
+                     f"transmits over it; everyone on that band hears you.")
     loc = persona.get("location") or {}
     if loc.get("name"):
         # Neutral placement — what the NPC *does* here comes from its archetype
@@ -552,7 +565,8 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
         charter += "\n\nLENGTH: " + arch["length"]
     charter += "\n\n" + _tools_block(tool_names(persona))
     charter += "\n" + CHARTER_POSE_IDENTITY
-    charter += (CHARTER_AMBIENT if mode in ("ambient", "arrival") else "")
+    charter += (CHARTER_AMBIENT
+                if mode in ("ambient", "arrival", "radio_ambient") else "")
     system = charter + "\n\n" + render_persona(persona)
     # A persona may carry a `register` — an imperative directive placed LAST
     # (most salient) to steer tone/explicitness. Lives in the NPC's DB persona,
@@ -589,7 +603,21 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     mem = who + seen + here + mem
     perc = f"[PERCEPTION — when you look at {speaker} you see: {perception}]\n\n" \
         if perception else ""
-    if mode == "ambient":
+    if mode == "radio":
+        # `speaker` is a VOICE handle — the far end is NOT in the room. The
+        # framing must be unambiguous (§7.6) or the model answers a remote
+        # call face-to-face, or mutters at the air to a present patron.
+        turn = (f'{mem}Over your radio you hear {speaker} say: "{line}"\n\n'
+                f"(That came over the AIR — the speaker is somewhere else, "
+                f"not in the room with you. To answer THEM, use the radio "
+                f"tool; anything in speech/action happens here in the room, "
+                f"seen only by those present.)")
+    elif mode == "radio_ambient":
+        turn = (f'{mem}Radio chatter on your band — {speaker}: "{line}" '
+                f"(Not addressed to you; the speaker is somewhere else. Key "
+                f"up — the radio tool — only if your character truly would; "
+                f"staying silent is normal.)")
+    elif mode == "ambient":
         turn = f'{mem}{perc}You overhear {speaker} say: "{line}"'
     elif mode == "arrival":
         # No speech — `speaker` just entered the room. React only if the

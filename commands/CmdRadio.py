@@ -75,6 +75,14 @@ class CmdTransmit(Command):
         else:
             device = active_transmit_radio(caller)
             if device is None:
+                # Built-in comms organ fallback (a security unit's ear module,
+                # or any future implanted transceiver): same command, no
+                # handheld required. world.radio.transmit_organ gates on the
+                # organ being intact.
+                from world.radio import comms_organ_frequency, transmit_organ
+                if comms_organ_frequency(caller):
+                    transmit_organ(caller, self.message)
+                    return
                 caller.msg("You have no radio worn or in hand to transmit "
                            "with.")
                 return
