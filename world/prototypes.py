@@ -3983,3 +3983,18 @@ WALKIE_TALKIE = {
         ("frequency", None),
     ],
 }
+
+
+#: The security unit's built-in transceiver (RADIO_COMMS_SPEC §2.1): a comms
+#: module seated in an ear/antenna, factory-fit like the riot gun. Carries
+#: the radio metadata the receiver reads (`radio_frequency`); intact + on-band
+#: = the unit hears the net. Destroy/harvest the ear (medical hit-location)
+#: and the bot goes deaf — the EMP/mute seam, for free.
+ROBOT_COMMS_MODULE_SPEC = {
+    "container": "{side}_ear", "max_hp": 6, "hit_weight": "rare",
+    "inorganic": True, "prosthetic_frame": True,
+    "radio_frequency": "911MHz",   # the emergency band (world.radio)
+    "longdesc": ("Where the {side} ear should be, a mesh-grilled comms pod "
+                 "sits flush to the chassis, a stub antenna folded along the "
+                 "skull line."),
+}

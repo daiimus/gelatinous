@@ -75,6 +75,20 @@ def spawn_witness(location: Any) -> Any | None:
     # The visible tell — this is who saw you, and what they're about to do.
     witness.look_place = ("edging away from the scene, one hand on a "
                           "battered walkie-talkie.")
+    # The report rides a REAL device now (RADIO_COMMS_SPEC): a walkie tuned to
+    # the emergency band. Snatch or break it before the window closes and the
+    # report never goes out — a physical interdiction beside killing them. And
+    # robbing the witness nets you a walkie already tuned to the cop channel.
+    try:
+        from evennia.prototypes.spawner import spawn
+        from world.prototypes import WALKIE_TALKIE
+        from world.radio import EMERGENCY_BAND
+        walkie = spawn(WALKIE_TALKIE)[0]
+        walkie.location = witness
+        walkie.db.radio_on = True
+        walkie.db.frequency = EMERGENCY_BAND
+    except Exception:  # noqa: BLE001 — no device = they can't call it in
+        pass
     try:
         witness.execute_cmd(
             "emote flinches back from the scene, fumbling for a "
@@ -82,6 +96,21 @@ def spawn_witness(location: Any) -> Any | None:
     except Exception:  # noqa: BLE001
         pass
     return witness
+
+
+def _witness_walkie(witness: Any) -> Any | None:
+    """The witness's own working walkie — powered, on the emergency band, and
+    still in their possession. None once it's snatched or broken."""
+    try:
+        from world.radio import (
+            EMERGENCY_BAND, carried_radios, frequency_of, is_powered,
+        )
+        for radio in carried_radios(witness):
+            if is_powered(radio) and frequency_of(radio) == EMERGENCY_BAND:
+                return radio
+    except Exception:  # noqa: BLE001
+        pass
+    return None
 
 
 def can_report(witness: Any) -> bool:
@@ -106,7 +135,10 @@ def witness_report(witness: Any, event: Any) -> bool:
     whether the report went out."""
     from world.director.dispatch import raise_event
     reported = False
-    if can_report(witness):
+    walkie = _witness_walkie(witness)
+    # The report needs BOTH a live witness AND a working radio (§3): the force
+    # never learns if the witness is silenced OR the walkie is gone/broken.
+    if can_report(witness) and walkie is not None:
         try:
             witness.execute_cmd(
                 "emote raises the walkie-talkie and calls it in, voice "
@@ -114,16 +146,29 @@ def witness_report(witness: Any, event: Any) -> bool:
         except Exception:  # noqa: BLE001
             pass
         try:
-            raise_event(event)
+            from world.radio import transmit
+            transmit(witness, _report_line(witness), walkie)  # real air-traffic
+        except Exception:  # noqa: BLE001 — the transmission is best-effort...
+            pass
+        try:
+            raise_event(event)   # ...the dispatch response is what matters
             reported = True
         except Exception:  # noqa: BLE001 — a broken dispatch must not strand us
             pass
         flee_and_cower(witness)
     elif witness is not None:
-        # Silenced (dead/unconscious) — cleanup only; the dead belong to
-        # the corpse pipeline, the downed get hauled off eventually.
+        # Silenced — dead/unconscious OR the walkie snatched/broken. No report
+        # goes out; cleanup only (the dead belong to the corpse pipeline).
         delay(WITNESS_DESPAWN_DELAY, despawn_witness, witness)
     return reported
+
+
+def _report_line(witness: Any) -> str:
+    """What the witness says over the air — a rattled, unhelpful call-in
+    (no perp detail; the BOLO the force acts on rides the dispatch event)."""
+    where = getattr(getattr(witness, "location", None), "key", "the street")
+    return (f"Someone call it in — there's trouble on {where}, get a unit "
+            f"down here!")
 
 
 #: How far (straight-line rooms) the witness will run to find a corner.

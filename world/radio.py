@@ -24,6 +24,9 @@ from typing import Any, Optional
 RADIO_CHANNEL_KEY = "Radio"
 #: The special "frequency" that receives every band (scanner sweep mode).
 SCAN = "scan"
+#: The colony's distress channel — witnesses call it in here, security
+#: monitors it. No band plan yet, so a real-world emergency band stands in.
+EMERGENCY_BAND = "911MHz"
 
 
 # --------------------------------------------------------------------------
@@ -142,6 +145,38 @@ def _all_powered_radios():
         if is_radio(o) and is_powered(o)]
 
 
+def comms_organ_frequency(char: Any) -> Optional[str]:
+    """The band a character's BUILT-IN comms organ is tuned to, if it has a
+    functional one (a security bot's ear/antenna module — §2.1). None when
+    the organ is absent or destroyed (the EMP/shoot-the-ear mute seam falls
+    out of the medical hit-location system for free)."""
+    state = getattr(char, "medical_state", None)
+    if state is None:
+        return None
+    for organ in (getattr(state, "organs", None) or {}).values():
+        try:
+            freq = (getattr(organ, "data", None) or {}).get("radio_frequency")
+            if freq and not organ.is_destroyed():
+                return freq
+        except Exception:  # noqa: BLE001 — a broken organ record just doesn't hear
+            continue
+    return None
+
+
+def _comms_bots_on(frequency: str) -> list:
+    """Security units whose built-in comms organ is tuned to *frequency* and
+    intact — role-scoped so it's a bounded query, not a full character scan."""
+    from evennia.objects.models import ObjectDB
+    out = []
+    for char in ObjectDB.objects.filter(
+            db_attributes__db_key="role").distinct():
+        if getattr(char.db, "role", None) != "security":
+            continue
+        if comms_organ_frequency(char) == frequency:
+            out.append(char)
+    return out
+
+
 def _render_radio_line(speaker: Any, listener: Any, message: str,
                        frequency: str, *, tagged: bool) -> str:
     """A received transmission, VOICE-attributed (never sight — you can't see
@@ -190,22 +225,37 @@ def transmit(speaker: Any, message: str, device: Any) -> bool:
 
     speaker.msg(f'You transmit on {frequency}: "{message}"')
     _log_to_channel(speaker, message, frequency)
+    _deliver(speaker, message, frequency, device)
+    return True
 
-    for radio in _all_powered_radios():
-        if radio is device:
-            continue
-        scanning = is_scanning(radio)
-        if not scanning and frequency_of(radio) != frequency:
-            continue
-        holder = radio.location
-        if holder is None or not hasattr(holder, "msg"):
-            continue  # a radio on the ground squawks to nobody in P1
-        if holder is speaker:
-            continue
+
+def _deliver(speaker: Any, message: str, frequency: str,
+             exclude_device: Any) -> None:
+    """Echo a transmission to every receiver on *frequency*: powered walkies
+    (tuned or scanning) held by a character, and security units with a live
+    built-in comms organ. Deduped per receiver so a bot holding a walkie AND
+    wearing a comms organ hears it once."""
+    delivered = set()
+
+    def _send(listener, *, tagged):
+        if listener is None or listener is speaker or id(listener) in delivered:
+            return
+        if not hasattr(listener, "msg"):
+            return
+        delivered.add(id(listener))
         try:
-            holder.msg(_render_radio_line(
-                speaker, holder, message, frequency, tagged=scanning),
+            listener.msg(_render_radio_line(
+                speaker, listener, message, frequency, tagged=tagged),
                 type="radio", from_obj=speaker)
         except Exception:  # noqa: BLE001 — one bad listener never stops the net
+            pass
+
+    for radio in _all_powered_radios():
+        if radio is exclude_device:
             continue
-    return True
+        scanning = is_scanning(radio)
+        if scanning or frequency_of(radio) == frequency:
+            _send(radio.location, tagged=scanning)   # holder hears it
+
+    for bot in _comms_bots_on(frequency):
+        _send(bot, tagged=False)                      # built-in transceiver

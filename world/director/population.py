@@ -76,6 +76,20 @@ def factory_fit_armament(mob: Any, side: str = "right") -> None:
     mob.save_medical_state()
 
 
+def factory_fit_comms(mob: Any, side: str = "left") -> None:
+    """Seat the built-in comms module (transceiver) in an ear/antenna —
+    factory equipment like the riot gun. Tuned to the emergency band; the
+    radio receiver reads it via world.radio.comms_organ_frequency, so the
+    unit hears the net until the ear is destroyed/harvested."""
+    from world.medical.core import Organ
+    from world.prototypes import ROBOT_COMMS_MODULE_SPEC
+    spec = {k: (v.replace("{side}", side) if isinstance(v, str) else v)
+            for k, v in dict(ROBOT_COMMS_MODULE_SPEC).items()}
+    state = mob.medical_state
+    state.organs["comms_module"] = Organ("comms_module", organ_data=spec)
+    mob.save_medical_state()
+
+
 def spawn_secbot(location: Any, name: str | None = None) -> Any:
     """Build a complete security unit at *location*: robot species +
     LLMNpc brain + persona + role + factory armament, **posted to the
@@ -120,6 +134,10 @@ def spawn_secbot(location: Any, name: str | None = None) -> Any:
     try:
         factory_fit_armament(mob)
     except Exception:  # noqa: BLE001 — an unarmed unit still functions
+        pass
+    try:
+        factory_fit_comms(mob)   # built-in transceiver (one ear)
+    except Exception:  # noqa: BLE001 — a deaf unit still patrols
         pass
     # Belong to the base: post there; adopt the base's standing beat.
     base = get_security_base()
