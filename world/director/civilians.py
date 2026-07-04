@@ -456,11 +456,29 @@ def purge_civilians(role: str | None = None) -> int:
 # --------------------------------------------------------------------------
 
 def react_to_attack(victim: Any, attacker: Any) -> None:
-    """Role-shaped reaction when *victim* is attacked. The combat handler
-    already enrolls victims targeting their attacker (default = fight
-    back), so: **resist** just draws the blade if one is carried;
-    **comply** stops attacking (yields — hands up, in effect); **flee**
-    runs for it. All through real commands, all fail-open."""
+    """Role-shaped reaction when *victim* is attacked — an ESCALATION LADDER,
+    not a stateless one-shot (the old form re-fired the same reaction on
+    every swing: hands thrown up three times in one fight).
+
+    First attack answers with the role's posture; CONTINUED violence climbs:
+
+    * **comply** → hands up. Attacked again → compliance didn't buy safety:
+      **flee**. Attacked still → cornered (armed roles draw — see flee).
+    * **flee** → run. Attacked again: unarmed keeps trying to run (a retry —
+      flee can fail); ARMED turns cornered rat — draws and stands
+      (**resist**). A scavver denied an exit is dangerous.
+    * **resist** → draw once. Terminal: they're already fighting; no
+      re-reaction, no spam.
+
+    The rung persists on the NPC (``ndb.reaction_stage``) for its remaining
+    life — a hawker whose surrender was answered with violence doesn't offer
+    it twice; next time they run straight away. All through real commands,
+    all fail-open.
+
+    LLM NPCs additionally get the event OBSERVED into their action buffer —
+    no forced LLM call, no scripted dialogue; the next turn they take knows
+    they were just attacked and reacts in their own voice (combat informs
+    the prompt, the model owns the words)."""
     from evennia.utils import delay
     reaction = getattr(getattr(victim, "db", None), "reaction", None)
     if not reaction:
@@ -472,15 +490,66 @@ def react_to_attack(victim: Any, attacker: Any) -> None:
         except Exception:  # noqa: BLE001 — a reaction must not break combat
             pass
 
-    if reaction == "resist":
-        weapon = getattr(victim.db, "carried_weapon", None)
-        if weapon:
-            delay(1.0, _cmd, f"wield {weapon}")
-    elif reaction == "comply":
-        delay(1.5, _cmd, "stop attacking")
-        delay(2.0, _cmd, "emote throws both hands up, wanting none of this.")
-    elif reaction == "flee":
+    stage = getattr(victim.ndb, "reaction_stage", None)
+    armed = bool(getattr(victim.db, "carried_weapon", None))
+    if stage == "resisting":
+        return  # already fighting for their life — nothing to escalate
+
+    if stage is None:
+        # First violence: the role's posture.
+        if reaction == "resist":
+            if armed:
+                delay(1.0, _cmd, f"wield {victim.db.carried_weapon}")
+            victim.ndb.reaction_stage = "resisting"
+            _inform_brain(victim, attacker, "drew on them" if armed
+                          else "squared up")
+        elif reaction == "comply":
+            delay(1.5, _cmd, "stop attacking")
+            delay(2.0, _cmd,
+                  "emote throws both hands up, wanting none of this.")
+            victim.ndb.reaction_stage = "complied"
+            _inform_brain(victim, attacker, "threw your hands up")
+        elif reaction == "flee":
+            delay(1.5, _cmd, "flee")
+            victim.ndb.reaction_stage = "fleeing"
+            _inform_brain(victim, attacker, "bolted")
+        return
+
+    if stage == "complied":
+        # Hands up didn't stop it — surrender is off the table now.
         delay(1.5, _cmd, "flee")
+        victim.ndb.reaction_stage = "fleeing"
+        _inform_brain(victim, attacker, "ran for it — surrender bought "
+                      "nothing")
+        return
+
+    if stage == "fleeing":
+        if armed:
+            # Cornered rat: no exit worked, violence keeps coming — draw
+            # and stand. A picker with a box cutter and no way out.
+            delay(1.0, _cmd, f"wield {victim.db.carried_weapon}")
+            victim.ndb.reaction_stage = "resisting"
+            _inform_brain(victim, attacker, "turned, cornered, and drew")
+        else:
+            delay(1.5, _cmd, "flee")   # unarmed: keep trying to get out
+            _inform_brain(victim, attacker, "kept running")
+
+
+def _inform_brain(victim: Any, attacker: Any, what_you_did: str) -> None:
+    """Combat informs the LLM prompt (never scripts it): buffer the attack +
+    this NPC's own mechanical response as a witnessed event, so the next
+    turn the model takes carries it. Cheap — no LLM call is made here."""
+    observe = getattr(victim, "_observe_action", None)
+    if not callable(observe) or getattr(victim.db, "llm_driven", None) is not True:
+        return
+    try:
+        handle = victim._address_handle(attacker)
+    except Exception:  # noqa: BLE001
+        handle = "someone"
+    try:
+        observe(attacker, f"{handle} just attacked you — you {what_you_did}.")
+    except Exception:  # noqa: BLE001 — flavour must never break a reaction
+        pass
 
 
 

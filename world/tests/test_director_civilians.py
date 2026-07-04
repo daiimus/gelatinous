@@ -345,12 +345,15 @@ class TestConversationHold(TestCase):
 
 
 class TestReactToAttack(TestCase):
-    """§5.2 victim reactions: resist draws, comply yields, flee runs."""
+    """§5.2 victim reactions: resist draws, comply yields, flee runs —
+    and CONTINUED violence climbs the escalation ladder instead of
+    re-firing the same reaction (the spam guard)."""
 
-    def _victim(self, reaction, weapon=None):
+    def _victim(self, reaction, weapon=None, stage=None):
         return SimpleNamespace(
             db=SimpleNamespace(reaction=reaction, role="x",
                                carried_weapon=weapon),
+            ndb=SimpleNamespace(reaction_stage=stage),
             execute_cmd=MagicMock())
 
     @patch("evennia.utils.delay")
@@ -390,6 +393,73 @@ class TestReactToAttack(TestCase):
         pc = SimpleNamespace(db=SimpleNamespace(reaction=None))
         react_to_attack(pc, MagicMock())
         mock_delay.assert_not_called()
+
+    # --- the escalation ladder -------------------------------------------
+
+    @patch("evennia.utils.delay")
+    def test_complier_attacked_again_flees(self, mock_delay):
+        from world.director.civilians import react_to_attack
+        v = self._victim("comply", stage="complied")
+        react_to_attack(v, MagicMock())
+        cmds = str([c.args for c in mock_delay.call_args_list])
+        self.assertIn("flee", cmds)
+        self.assertNotIn("hands up", cmds)      # surrender not re-offered
+        self.assertEqual(v.ndb.reaction_stage, "fleeing")
+
+    @patch("evennia.utils.delay")
+    def test_armed_flee_cornered_draws(self, mock_delay):
+        # The cornered rat: a fleeing ARMED civilian attacked again turns
+        # and draws instead of re-fleeing forever.
+        from world.director.civilians import react_to_attack
+        v = self._victim("flee", weapon="box cutter", stage="fleeing")
+        react_to_attack(v, MagicMock())
+        cmds = str([c.args for c in mock_delay.call_args_list])
+        self.assertIn("wield box cutter", cmds)
+        self.assertEqual(v.ndb.reaction_stage, "resisting")
+
+    @patch("evennia.utils.delay")
+    def test_unarmed_flee_keeps_running(self, mock_delay):
+        from world.director.civilians import react_to_attack
+        v = self._victim("flee", weapon=None, stage="fleeing")
+        react_to_attack(v, MagicMock())
+        cmds = str([c.args for c in mock_delay.call_args_list])
+        self.assertIn("flee", cmds)              # a retry, not an escalation
+        self.assertEqual(v.ndb.reaction_stage, "fleeing")
+
+    @patch("evennia.utils.delay")
+    def test_resisting_is_terminal_no_spam(self, mock_delay):
+        from world.director.civilians import react_to_attack
+        v = self._victim("resist", weapon="shiv", stage="resisting")
+        react_to_attack(v, MagicMock())
+        mock_delay.assert_not_called()           # already fighting: silence
+
+    @patch("evennia.utils.delay")
+    def test_first_reaction_sets_stage(self, mock_delay):
+        from world.director.civilians import react_to_attack
+        v = self._victim("comply")
+        react_to_attack(v, MagicMock())
+        self.assertEqual(v.ndb.reaction_stage, "complied")
+
+    @patch("evennia.utils.delay")
+    def test_llm_brain_is_informed_not_scripted(self, mock_delay):
+        # Combat informs the prompt: the event lands in the action buffer;
+        # no LLM call is forced and no dialogue is scripted.
+        from world.director.civilians import react_to_attack
+        v = self._victim("comply")
+        v.db.llm_driven = True
+        v._observe_action = MagicMock()
+        v._address_handle = lambda a: "a lean man"
+        react_to_attack(v, MagicMock())
+        observed = v._observe_action.call_args.args[1]
+        self.assertIn("a lean man just attacked you", observed)
+        self.assertIn("threw your hands up", observed)
+
+    @patch("evennia.utils.delay")
+    def test_non_llm_victim_gets_no_brain_call(self, mock_delay):
+        from world.director.civilians import react_to_attack
+        v = self._victim("comply")              # no llm_driven, no buffer
+        react_to_attack(v, MagicMock())         # must not raise
+        self.assertEqual(v.ndb.reaction_stage, "complied")
 
 
 class TestClothingStyles(TestCase):

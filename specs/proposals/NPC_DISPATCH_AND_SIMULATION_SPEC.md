@@ -280,6 +280,26 @@ only question is whether you were *seen*.
   **nature/demeanor/traits axis** on NPCs informs both these deterministic
   reactions *and* the LLM persona when one is puppeted — one personality
   substrate, two consumers.
+
+  **✅ ESCALATION LADDER (shipped 2026-07-04):** reactions are stateful
+  (`ndb.reaction_stage`), not a stateless one-shot — continued violence
+  climbs: **comply → flee** (surrender answered with violence is off the
+  table; the rung persists, so a beaten hawker never re-offers hands-up),
+  **flee → resist when armed** (the *cornered rat*: a scavver denied an
+  exit turns and draws; unarmed keeps retrying the run), **resist is
+  terminal** (no re-reaction, no spam — the old form re-fired the same
+  emote every swing). Dialogue is NEVER scripted: for LLM NPCs the attack +
+  their own mechanical response is *observed into the action buffer*
+  (combat informs the prompt; the model owns the words, no forced turn).
+
+  **Decision (2026-07-04, closes the #1004 revert question):** melee
+  **proximity is positional, not combat membership** — the orphan sweep
+  keeps target/targeted-by/grapple/aim relationships only. An attacker who
+  ever swung holds their victim via target-lock; the sole dissolve case is
+  someone who closed distance but never attacked, and re-attacking simply
+  re-forms combat. Watch item: yield-to-dissolve initiative resets (fix, if
+  ever needed, is re-engage initiative carry-over — not
+  proximity-as-membership).
 * **The report step** — the victim runs the §5.1 witness pipeline on
   themselves: delay (the interdiction window), then report if able.
 
