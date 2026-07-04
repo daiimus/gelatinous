@@ -294,8 +294,15 @@ persist — which is the desired behavior now, and doubles as free playtesting o
    tombstones reconstructed from account-linked corpses whose husks are gone.
 2. **Web nostalgia review** — point "Manage Sleeves" at the DeathRecord's
    tombstone (name, born, died — no cause, no location, no autopsy coupling).
-3. **Tag/index archived sleeves** — convert the account/website sleeve listing off
-   the Limbo scan.
+3. ✅ **Tag/index archived sleeves** (SHIPPED 2026-07-04) — `archive_character`
+   adds the `archived` tag (category `sleeve`) as the query index;
+   `Account._sleeves_split` / `active_sleeves` / `archived_sleeves` split the
+   account's characters in ONE tag query (self-healing: a legacy
+   `db.archived=True` without the tag is healed into the index on read, so an
+   archived husk can never auto-puppet as active). All account/web/charcreate
+   scans converted; `Character.is_archived` (tag-first) + `unarchive_character`
+   (keeps attribute and tag in sync) are the canonical accessors. Legacy
+   sleeves backfilled live.
 4. **Corpse cleanup gig** — *deferred*, built atop the NPC-faction gig/freelancer
    loop. Removal nulls `corpse_ref`; the record persists. Until then, remains are
    intentional world-tells.

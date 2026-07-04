@@ -52,8 +52,9 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 # Check if character still exists and is accessible
                 _ = old_char.key
                 
-                # Check if character is actually archived/dead (default False for legacy)
-                is_archived = old_char.db.archived or False
+                # Check if character is actually archived/dead (tag-first, with
+                # legacy db.archived fallback inside the property)
+                is_archived = old_char.is_archived
                 
                 # If not archived, they're alive - clear last_character and proceed to normal creation
                 if not is_archived:
@@ -66,16 +67,10 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 # last_character reference is broken/invalid, clear it
                 account.db.last_character = None
         
-        # Check if account has reached max character limit
-        active_characters = []
-        for char in account.characters:
-            # Defensive check - ensure character is accessible
-            if not char:
-                continue
-            archived = char.db.archived or False
-            if not archived:
-                active_characters.append(char)
-        
+        # Check if account has reached max character limit (tag-indexed split,
+        # one query — spec §9 step 3)
+        active_characters = account.active_sleeves
+
         from django.conf import settings
         max_chars = settings.MAX_NR_CHARACTERS
         
@@ -126,7 +121,8 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 
                 # Ensure archived attribute exists (db attribute, not AttributeProperty)
                 if old_character.db.archived is None:
-                    old_character.db.archived = False  # Legacy characters were active when they died
+                    # Legacy characters were active when they died
+                    old_character.unarchive_character()
                     
             except (AttributeError, TypeError, Exception) as e:
                 # Old character reference is invalid/deleted - clear it
@@ -267,13 +263,8 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         # Note: Account.check_available_slots() override in typeclasses/accounts.py
         # handles the primary slot checking. This view-level check provides additional
         # user-friendly validation before the character creation attempt.
-        active_characters = []
-        for char in account.characters:
-            # Access archived status via db.archived (returns None if unset)
-            archived = char.db.archived or False
-            if not archived:
-                active_characters.append(char)
-        
+        active_characters = account.active_sleeves   # tag-indexed, one query
+
         from django.conf import settings
         max_chars = settings.MAX_NR_CHARACTERS
         
@@ -337,7 +328,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             character.db.stack_id = str(uuid.uuid4())
             character.db.original_creation = time.time()
             character.db.current_sleeve_birth = time.time()
-            character.db.archived = False
+            character.unarchive_character()   # attribute + sleeve-tag index in sync
             # death_count defaults to 1 via AttributeProperty in Character class
             
             # WEB-CREATED CHARACTERS: Make invisible until puppeted
