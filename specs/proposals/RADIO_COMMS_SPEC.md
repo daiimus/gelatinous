@@ -132,22 +132,32 @@ Everything vertical-independent; range is **abstracted** (Option A): the
 the network (assumed present); a snatched/broken/absent one doesn't. Phase 2
 physicalizes range with antennae/coverage when the high-rises exist.
 
-### 6.1 · Backend — frequencies ARE channels
+### 6.1 · Backend — ONE channel, the walkie sorts it out
 
-Each frequency is an **Evennia Channel**, subscription-locked to staff:
+**A single staff-locked Evennia Channel ("Radio") carries ALL traffic**;
+each transmission is tagged with its **frequency**, and the tuned walkie
+filters at echo time (decided 2026-07-03 — one channel beats
+channel-per-frequency):
 
-* **Admin/builder view** — subscribe directly: the raw channel readout
-  (Name, Voice/attribution metadata, Frequency) — the whole grid,
-  monitorable like any channel. The channel system also gives history,
-  persistence, and distribution for free.
-* **Player view** — players NEVER subscribe. A walkie tuned to the
-  frequency **echoes** the channel's traffic to its holder, re-rendered
-  through the say/voice rails: the speaker's **voice phrase**, **voice
-  recognition** (recognisable on the air; a modulator defeats it),
-  **hearing-gated**, attributed **by voice only** (never sight). "A gravelly
-  voice crackles over the walkie: …"
-* **Transmitting** — `radio <message>` posts to the tuned channel *through
-  the device*; every tuned walkie echoes it. No device, no voice on the air.
+* **Why one**: frequencies are a *dial* — an effectively continuous number
+  space (scanning / lucky guesses) — so per-frequency channels would mean
+  unbounded channel creation/GC. One channel makes frequency pure data:
+  retuning is a device attribute write, no subscription churn. And the
+  admin gets **one log**: the entire grid as a single chronological
+  stream — `[447] <Name> (<voice>): "…"` — which is both the live monitor
+  and the forensic timeline. Per-band views are a filter, not an object.
+* **Admin/builder view** — subscribe to the one channel: raw readout with
+  Name, Voice/attribution metadata, and Frequency per line. History,
+  persistence, and staff distribution come free from the channel system.
+* **Player view** — players NEVER subscribe. A walkie tuned to a frequency
+  **echoes** only matching traffic to its holder, re-rendered through the
+  say/voice rails: the speaker's **voice phrase**, **voice recognition**
+  (recognisable on the air; a modulator defeats it), **hearing-gated**,
+  attributed **by voice only** (never sight). "A gravelly voice crackles
+  over the walkie: …"
+* **Transmitting** — `radio <message>` posts to the channel *through the
+  device*, tagged with the device's frequency; every matching-tuned walkie
+  echoes it. No device, no voice on the air.
 
 ### 6.2 · Devices & acquisition
 
