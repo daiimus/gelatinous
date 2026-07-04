@@ -194,6 +194,17 @@ class DirectorRoutineScript(DefaultScript):
         self.interval = HEARTBEAT_SECONDS
         self.persistent = True
 
+    def at_start(self):
+        """Once per server start/reload: upkeep that must be true of the
+        standing population, applied in-process (never via external shell —
+        idmapper). Today: factory-fit the comms module into any security
+        unit spawned before the transceiver existed (#1009). Idempotent."""
+        try:
+            from world.director.population import ensure_comms_fitted
+            ensure_comms_fitted()
+        except Exception:  # noqa: BLE001 — upkeep must not stall the beats
+            pass
+
     def at_repeat(self):
         counts = tick_all()
         try:
