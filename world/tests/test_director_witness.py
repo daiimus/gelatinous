@@ -73,7 +73,11 @@ class TestSpawnWitness(TestCase):
         self.assertTrue(w.db.is_witness)
         self.assertTrue(w.db.is_npc)   # canonical marker (absence = PC)
         self.assertIn("walkie-talkie", w.look_place)  # the visible tell
-        w.execute_cmd.assert_called_once()            # reacts on the scene
+        # Readies the walkie the PLAYER way — real commands, no backdoor.
+        cmds = [c.args[0] for c in w.execute_cmd.call_args_list]
+        self.assertIn("wield magpie", cmds)
+        self.assertIn("toggle magpie on", cmds)
+        self.assertTrue(any(c.startswith("tune magpie ") for c in cmds))
 
     def test_no_location_no_witness(self):
         self.assertIsNone(spawn_witness(None))
@@ -93,15 +97,19 @@ class TestInterdiction(TestCase):
         self.assertFalse(can_report(_witness(located=False)))
         self.assertFalse(can_report(None))
 
+    @patch("world.director.witness._witness_walkie")
     @patch("world.director.witness.flee_and_cower")
     @patch("world.director.dispatch.raise_event")
     def test_live_witness_reports_then_flees_to_cower(self, mock_raise,
-                                                      mock_flee):
+                                                      mock_flee, mock_walkie):
+        mock_walkie.return_value = MagicMock()     # a readied walkie in hand
         w = _witness()
         event = MagicMock()
         self.assertTrue(witness_report(w, event))
         mock_raise.assert_called_once_with(event)
-        self.assertTrue(w.execute_cmd.called)      # calls it in visibly
+        # Calls it in the PLAYER way — transmits over the air via `xmit`.
+        cmds = [c.args[0] for c in w.execute_cmd.call_args_list]
+        self.assertTrue(any(c.startswith("xmit ") for c in cmds))
         mock_flee.assert_called_once_with(w)       # then RUNS, not vanishes
 
     @patch("world.director.witness.delay")

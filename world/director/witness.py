@@ -79,21 +79,22 @@ def spawn_witness(location: Any) -> Any | None:
     # the emergency band. Snatch or break it before the window closes and the
     # report never goes out — a physical interdiction beside killing them. And
     # robbing the witness nets you a walkie already tuned to the cop channel.
+    #
+    # The witness readies it the way a PLAYER would — real commands, no
+    # backdoor: wield it, power it, tune it to the distress band. The NPC path
+    # is identical to the player path so it's a level playing field (and the
+    # NPCs lead by example). If any verb fails the report simply won't go out.
     try:
         from evennia.prototypes.spawner import spawn
         from world.prototypes import WALKIE_TALKIE
         from world.radio import EMERGENCY_BAND
-        walkie = spawn(WALKIE_TALKIE)[0]
-        walkie.location = witness
-        walkie.db.radio_on = True
-        walkie.db.frequency = EMERGENCY_BAND
-    except Exception:  # noqa: BLE001 — no device = they can't call it in
-        pass
-    try:
+        spawn(WALKIE_TALKIE)[0].move_to(witness, quiet=True)
         witness.execute_cmd(
-            "emote flinches back from the scene, fumbling for a "
-            "walkie-talkie.")
-    except Exception:  # noqa: BLE001
+            "emote flinches back from the scene, fumbling for a walkie-talkie.")
+        witness.execute_cmd("wield magpie")
+        witness.execute_cmd("toggle magpie on")
+        witness.execute_cmd(f"tune magpie to {EMERGENCY_BAND}")
+    except Exception:  # noqa: BLE001 — no readied device = they can't call it in
         pass
     return witness
 
@@ -103,10 +104,11 @@ def _witness_walkie(witness: Any) -> Any | None:
     still in their possession. None once it's snatched or broken."""
     try:
         from world.radio import (
-            EMERGENCY_BAND, carried_radios, frequency_of, is_powered,
+            EMERGENCY_BAND, carried_radios, frequency_of, is_powered, same_band,
         )
         for radio in carried_radios(witness):
-            if is_powered(radio) and frequency_of(radio) == EMERGENCY_BAND:
+            if is_powered(radio) and same_band(
+                    frequency_of(radio), EMERGENCY_BAND):
                 return radio
     except Exception:  # noqa: BLE001
         pass
@@ -139,15 +141,15 @@ def witness_report(witness: Any, event: Any) -> bool:
     # The report needs BOTH a live witness AND a working radio (§3): the force
     # never learns if the witness is silenced OR the walkie is gone/broken.
     if can_report(witness) and walkie is not None:
+        # Call it in the way a player would: transmit over the wielded walkie
+        # (the `xmit` verb picks the held radio automatically), then a shaken
+        # emote for the bystanders who can only see them, not hear the air.
+        # Same commands, same rules — the report is real air-traffic, not a
+        # scripted broadcast.
         try:
+            witness.execute_cmd(f"xmit {_report_line(witness)}")
             witness.execute_cmd(
-                "emote raises the walkie-talkie and calls it in, voice "
-                "shaking.")
-        except Exception:  # noqa: BLE001
-            pass
-        try:
-            from world.radio import transmit
-            transmit(witness, _report_line(witness), walkie)  # real air-traffic
+                "emote lowers the walkie-talkie, hand still shaking.")
         except Exception:  # noqa: BLE001 — the transmission is best-effort...
             pass
         try:

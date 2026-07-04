@@ -121,12 +121,14 @@ class CmdTune(Command):
         device = _resolve_device(caller, self.device_phrase)
         if device is None:
             return
-        freq = self.freq.lower()
-        if freq == SCAN:
+        freq = self.freq.strip()
+        if freq.lower() == SCAN:
             device.db.frequency = SCAN
             caller.msg(f"You set {device.get_display_name(caller)} sweeping "
                        f"the bands.")
             return
+        # Store the band as typed (clean display); matching is case-insensitive
+        # in world.radio.same_band, so 911mhz and 911MHz are the same channel.
         device.db.frequency = freq
         state = "" if is_powered(device) else " (it's switched off)"
         caller.msg(f"You tune {device.get_display_name(caller)} to "
