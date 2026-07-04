@@ -3972,11 +3972,14 @@ WALKIE_TALKIE = {
     "prototype_key": "WALKIE_TALKIE",
     "typeclass": "typeclasses.items.Radio",
     "key": "a battered walkie-talkie",
-    "aliases": ["walkie", "walkie-talkie", "radio", "handset"],
-    "desc": ("A knock-around handheld transceiver in scuffed high-impact "
-             "plastic, its stubby antenna taped at the base and a rubberised "
-             "push-to-talk worn pale by a thousand thumbs. A small monochrome "
-             "display sits above the dial."),
+    "aliases": ["walkie", "walkie-talkie", "radio", "handset", "magpie", "awe"],
+    "desc": ("A knock-around AWE Magpie — a handheld transceiver in scuffed "
+             "high-impact plastic, its stubby antenna taped at the base and a "
+             "rubberised push-to-talk worn pale by a thousand thumbs. The "
+             "Ashford Wireless & Electric wordmark and its little etched magpie "
+             "have half-rubbed off the casing — the same mark you'd find on a "
+             "cheap hotplate — and a small monochrome display sits above the "
+             "dial."),
     "attrs": [
         ("is_radio", True),
         ("radio_on", False),
