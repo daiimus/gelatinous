@@ -201,6 +201,19 @@ class TestCompletion(_LifecycleBase):
         self.assertFalse(self.char1.scripts.get("death_progression"))
         self.script = None  # tearDown guard
 
+    def test_dead_npc_is_deleted_not_archived(self):
+        """A dead NPC leaves a corpse, not a Limbo ghost: the transition
+        deletes the accountless character outright rather than archiving it
+        to Limbo (the PC-only respawn flow). Guards the #4590 ghost leak."""
+        from evennia.objects.models import ObjectDB
+        npc = create_object(Character, key="doomed mook", location=self.room1)
+        self.assertIsNone(npc.account)      # NPC: no account
+        npc_id = npc.id
+        self.script._transition_character_to_death(npc)
+        self.assertFalse(
+            ObjectDB.objects.filter(id=npc_id).exists(),
+            "dead NPC should be deleted, not left as a ghost")
+
     def test_corpse_handoff_failure_is_contained_and_loud(self):
         """The deliberate guard: a corpse-creation bug is logged to the
         audit sink AND the server log, does not raise, and therefore
