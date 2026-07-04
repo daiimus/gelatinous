@@ -210,10 +210,15 @@ class CmdFlee(Command):
                     # Import and execute the attack command from the aimer's perspective
                     from commands.combat.core_actions import CmdAttack
                     
-                    # Create a temporary attack command instance for the aimer
+                    # Create a temporary attack command instance for the aimer.
+                    # Pass the RESOLVED object — args carries only the aimer's
+                    # perceived name for messages; a raw key would fail the
+                    # identity pipeline AND leak the real name (#1002).
                     attack_cmd = CmdAttack()
                     attack_cmd.caller = current_aimer_for_break_attempt
-                    attack_cmd.args = caller.key  # Target is the caller who failed to flee
+                    attack_cmd.pre_resolved_target = caller
+                    attack_cmd.args = caller.get_display_name(
+                        current_aimer_for_break_attempt)
                     attack_cmd.cmdstring = "attack"
                     
                     # Display messages about the aimer's opportunity attack

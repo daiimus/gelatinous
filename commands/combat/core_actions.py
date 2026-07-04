@@ -114,9 +114,17 @@ class CmdAttack(Command):
             obj for obj in target_room.contents
             if inherits_from(obj, "typeclasses.characters.Character")
         ]
-        target = resolve_character_target(
-            caller, target_search_name, candidates=potential_targets
-        )
+        # System-driven attacks (the flee/aim-break opportunity attack) hand
+        # us the ALREADY-RESOLVED object — never round-trip a real key
+        # through the player-facing search, which both fails the identity
+        # pipeline and leaks the key in the failure message.
+        target = getattr(self, "pre_resolved_target", None)
+        if target is not None and target.location is not target_room:
+            target = None
+        if target is None:
+            target = resolve_character_target(
+                caller, target_search_name, candidates=potential_targets
+            )
         if not target:
             caller.msg(f"You don't see '{target_search_name}' {(f'in the {aiming_direction} direction' if aiming_direction else 'here')}.")
             return

@@ -1116,14 +1116,38 @@ def detect_and_remove_orphaned_combatants(handler):
         is_grappling = entry.get(DB_GRAPPLING_DBREF) is not None
         is_grappled = entry.get(DB_GRAPPLED_BY_DBREF) is not None
         is_targeted = char_dbref in targeted_dbrefs
-        
+
+        # AIM is a first-class combat relationship (#1002): someone with a
+        # bead drawn — or someone under another's bead — is engaged and must
+        # NOT be swept. Without this, a target who yields (comply reaction ->
+        # no target) or whose attacker switches aim reads as "orphaned" and
+        # is ejected + un-aim-locked, so it strolls out of a fight it's very
+        # much still in. Aiming/aimed-at keeps it held.
+        #
+        # LIVENESS-CHECKED, not just present: clear_aim_state clears a
+        # character's own fields but NOT the reciprocal on the other party,
+        # so a bare `aimed_at_by`/`aiming_at` can go stale (aimer gone, or
+        # switched targets). A stale ref must NOT make a combatant
+        # un-orphanable forever — so we require the relationship to be
+        # mutually live (both present, same room, reciprocally pointed).
+        aim_target = getattr(char.ndb, NDB_AIMING_AT, None)
+        is_aiming = bool(
+            aim_target is not None
+            and getattr(aim_target, "location", None) == char.location)
+        aimer = getattr(char.ndb, NDB_AIMED_AT_BY, None)
+        is_aimed_at = bool(
+            aimer is not None
+            and getattr(aimer, "location", None) == char.location
+            and getattr(aimer.ndb, NDB_AIMING_AT, None) == char)
+
         # Yielding status for context logging (but not considered in orphan check)
         is_yielding = entry.get(DB_IS_YIELDING, False)
-        
+
         # If combatant has no combat relationships, they are orphaned
-        if not (has_target or is_grappling or is_grappled or is_targeted):
+        if not (has_target or is_grappling or is_grappled or is_targeted
+                or is_aiming or is_aimed_at):
             yield_context = " (yielding)" if is_yielding else " (not yielding)"
-            splattercast.msg(f"ORPHAN_DETECT: {char.key} is orphaned{yield_context} - no target, not grappling, not grappled, not targeted")
+            splattercast.msg(f"ORPHAN_DETECT: {char.key} is orphaned{yield_context} - no target, not grappling, not grappled, not targeted, not aiming/aimed-at")
             orphaned_chars.append(char)
     
     # Remove all orphaned combatants
