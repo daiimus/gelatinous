@@ -351,7 +351,8 @@ class TestEchoGuard(TestCase):
         _bind(b, "_on_turn")
         with patch.object(llmnpc, "parse_turn", return_value=dict(turn)), \
                 patch.object(llmnpc, "tool_names", return_value=[]):
-            b._on_turn([], {}, MagicMock(), line, "a man", lambda: None, 0, "{}")
+            b._on_turn([], {}, MagicMock(), line, "a man", lambda: None, 0,
+                       None, "{}")
         return b._render_llm_reply.call_args.args
 
     def test_parroted_pose_dropped_before_render(self):

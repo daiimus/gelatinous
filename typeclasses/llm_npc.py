@@ -63,6 +63,13 @@ class LLMNpcMixin:
         # on the next reply. This is what keeps the single-threaded model from
         # saturating: poses cost nothing until they ride a turn we're making.
         speech = kwargs.get("speech")
+        # Radio traffic (RADIO_COMMS_SPEC §7): delivery already enforced the
+        # physical gate (powered tuned device / intact comms organ) and the
+        # hearing gate (a deaf listener gets no ``speech``). Distinct from
+        # room speech — the source is the AIR, not someone beside us.
+        if kwargs.get("type") == "radio":
+            self._hear_radio(speech, speaker, kwargs)
+            return True
         if kwargs.get("type") == "pose" and not speech:
             if self.db.llm_driven:
                 self._observe_action(speaker, text)
@@ -111,6 +118,68 @@ class LLMNpcMixin:
             return "directed"
         return "ambient"
 
+    # --- radio comprehension (RADIO_COMMS_SPEC §7) ------------------------
+
+    #: Band-wide address forms — "answer whoever's out there". Only the
+    #: ELECTED unit answers these (§7.2 de-confliction).
+    _RADIO_BROADCAST_PHRASES = ("all units", "any unit", "all stations",
+                                "anyone on this band", "anyone copy",
+                                "does anyone copy")
+
+    def _hear_radio(self, speech, speaker, kwargs):
+        """A transmission reached this NPC's device. Gate exactly like room
+        speech so a busy band can't saturate the model (§7.2):
+
+        * named directly → answer (directed cooldown);
+        * band-wide broadcast → only the elected receiver answers;
+        * NPC-sourced (witness reports, bot chatter) → observe-only, ever —
+          the loop guard that keeps two NPCs from ping-ponging on the air;
+        * everything else → observe into the buffer + the rare gated
+          volunteer, mirroring ambient room chatter."""
+        if not self.db.llm_driven or not speech:
+            return   # no brain to reach, or deaf (delivery sent no words)
+        voice = self._radio_voice_handle(speaker)
+        freq = kwargs.get("radio_frequency") or "the air"
+        overheard = f'Over the radio ({freq}), {voice} said: "{speech}"'
+        if not llm_enabled() or self._is_npc_speaker(speaker):
+            self._observe_action(speaker, overheard)
+            return
+        low = speech.lower()
+        broadcast = any(p in low for p in self._RADIO_BROADCAST_PHRASES)
+        if self._mentions_self(speech):
+            mode = "radio"                    # named: answer, cooldown-gated
+        elif broadcast and kwargs.get("radio_elected"):
+            mode = "radio"                    # "all units": we're the answerer
+        elif broadcast:
+            self._observe_action(speaker, overheard)
+            return                            # someone else's call to take
+        else:
+            # General chatter: buffer it (colours the next turn), and pass
+            # through the ambient gates for the rare volunteer.
+            self._observe_action(speaker, overheard)
+            mode = "radio_ambient"
+        delay(1.5, self._try_llm_reply, speech, speaker, mode)
+
+    def _radio_voice_handle(self, speaker):
+        """How this NPC knows the voice on the air — voice-only attribution
+        (shared with the player echo render; a modulator defeats it)."""
+        try:
+            from world.radio import radio_voice_handle
+            return radio_voice_handle(speaker, self)
+        except Exception:  # noqa: BLE001 — attribution is never load-bearing
+            return "an unfamiliar voice"
+
+    def _radio_subject(self, patron):
+        """Memory scoping for a voice on the air: the VOICE identity, never
+        the visual one — over radio this NPC has never SEEN the speaker, so
+        dossier/memory must not leak cross-sensory identity."""
+        try:
+            from world.voice import get_apparent_voice_uid
+            uid = get_apparent_voice_uid(patron)
+            return f"voice:{uid}" if uid else self._hist_key(patron)
+        except Exception:  # noqa: BLE001
+            return self._hist_key(patron)
+
     def _is_engaged_with(self, speaker):
         """Whether the conversation hold is active AND held for this speaker."""
         until = self.ndb.llm_engaged_until
@@ -149,13 +218,18 @@ class LLMNpcMixin:
         """
         if not self.db.llm_driven or not llm_enabled():
             return False
-        if (not self.location
+        radio = mode in ("radio", "radio_ambient")
+        # Radio is the one channel that legitimately crosses rooms — the
+        # device is the gate (§7.5), already enforced at delivery. Everything
+        # else requires sharing the room.
+        if not radio and (
+                not self.location
                 or getattr(patron, "location", None) is not self.location):
             return False
 
         now = monotonic()
         last = self.ndb.last_llm or 0
-        if mode in ("ambient", "arrival"):
+        if mode in ("ambient", "arrival", "radio_ambient"):
             # Volunteering into the room (overheard chatter or someone walking
             # in) is rate-limited and probabilistic so the NPC doesn't pounce.
             if now - last < LLM_AMBIENT_COOLDOWN:
@@ -176,11 +250,16 @@ class LLMNpcMixin:
 
         # Capture everything reactor-side BEFORE threading (SQLite/Evennia-thread
         # contract). The agentic loop re-calls from the reactor-side callback.
+        # Radio turns attribute by VOICE and carry no visual perception — the
+        # speaker isn't in front of us (§7.1); memory scopes to the voice
+        # identity so nothing cross-sensory leaks.
         persona = build_persona(self)
-        speaker_name = self._address_handle(patron)
-        perception = self._perceive(patron)
+        speaker_name = (self._radio_voice_handle(patron) if radio
+                        else self._address_handle(patron))
+        perception = None if radio else self._perceive(patron)
         history = self._recent_history(patron)
-        subject = self._memory_subject(patron)
+        subject = (self._radio_subject(patron) if radio
+                   else self._memory_subject(patron))
         relationship = self._relationship_line(subject, patron)
         events = self._drain_actions()  # what we've witnessed since last reply
         present = self._present_others(patron)  # who else is in the room now
@@ -192,7 +271,8 @@ class LLMNpcMixin:
                                       relationship=relationship, events=events,
                                       present=present)
             self._agentic_round(messages, persona, patron, line or "",
-                                speaker_name, on_fail, rounds=0)
+                                speaker_name, on_fail, rounds=0,
+                                subject=subject)
 
         def _with_query_vec(vec):
             # reactor-side: score this NPC's memories against the line, inject.
@@ -380,16 +460,18 @@ class LLMNpcMixin:
         d[subject] = entry
         self.db.llm_dossiers = d
 
-    def _store_memory(self, patron, speaker_name, line, speech):
+    def _store_memory(self, patron, speaker_name, line, speech, subject=None):
         """Remember this exchange: embed it off-reactor, then write a record
         (scoped to the interlocutor) and prune. Fire-and-forget — runs after the
-        reply has already rendered, so it never delays the NPC."""
+        reply has already rendered, so it never delays the NPC. ``subject``
+        overrides the scoping identity (voice-scoped on radio turns) so
+        storage always matches what retrieval will look under."""
         if not line:
             return
         text = f'{speaker_name} said: "{line}"'
         if speech:
             text += f' — I answered: "{speech}"'
-        subject = self._memory_subject(patron)
+        subject = subject or self._memory_subject(patron)
 
         def _save(vec):
             recs = self._load_memories()
@@ -435,19 +517,21 @@ class LLMNpcMixin:
     # --- the agentic tool loop (constrained turn → context tools → reply) ----
 
     def _agentic_round(self, messages, persona, patron, line, speaker_name,
-                       on_fail, rounds):
+                       on_fail, rounds, subject=None):
         """One constrained generation; the reactor-side callback either runs a
-        context tool and loops, or renders the final reply + any action tool."""
+        context tool and loops, or renders the final reply + any action tool.
+        ``subject`` is the memory-scoping identity for this turn (voice-scoped
+        on radio turns) — threaded through so storage matches retrieval."""
         request_turn(
             messages,
             on_turn=partial(self._on_turn, messages, persona, patron, line,
-                            speaker_name, on_fail, rounds),
+                            speaker_name, on_fail, rounds, subject),
             on_fail=on_fail,
             schema=schema_for(persona),  # tool enum scoped to the archetype
         )
 
     def _on_turn(self, messages, persona, patron, line, speaker_name, on_fail,
-                 rounds, raw):
+                 rounds, subject, raw):
         turn = parse_turn(raw, persona, tool_names(persona))
         # Echo guard: a pose aimed at the NPC sometimes comes straight back
         # as its "own" action (or speech). Parroting reads broken — drop it.
@@ -464,7 +548,7 @@ class LLMNpcMixin:
                 {"role": "user", "content": f"[tool result · {tool}] {result}"},
             ]
             self._agentic_round(extended, persona, patron, line, speaker_name,
-                                on_fail, rounds + 1)
+                                on_fail, rounds + 1, subject=subject)
             return
         # Terminal: render speech/action/thought, route any action tool, remember.
         self._render_llm_reply(turn["speech"], turn["action"], turn["thought"],
@@ -473,7 +557,8 @@ class LLMNpcMixin:
         self._remember_turn(patron, line, speaker_name, turn["speech"],
                             turn["action"], turn["thought"])
         # Long-term memory: persist what was learned (async, post-render).
-        self._store_memory(patron, speaker_name, line, turn["speech"])
+        self._store_memory(patron, speaker_name, line, turn["speech"],
+                           subject=subject)
 
     def _run_context_tool(self, tool, arg, patron):
         """Run a read-only context tool and return its result for the model.
@@ -514,6 +599,14 @@ class LLMNpcMixin:
             if verb in ("zip", "unzip", "button", "unbutton",
                         "rollup", "unroll", "remove", "wear") and garment:
                 self.execute_cmd(f"{verb} {garment}")
+        elif tool == "radio" and arg:
+            # Key up for REAL through the transmit command (§7.3) — worn/held
+            # walkie first; the command's own fallback covers a built-in comms
+            # organ. No device = the command refuses = the NPC stays mute,
+            # exactly as it would for a player (§7.5).
+            words = " ".join(str(arg).split()).strip().strip('"').strip()
+            if words:
+                self.execute_cmd(f"xmit {words}")
         elif tool == "release":
             # The character has decided the exchange is over: drop the
             # conversation hold so the routine (patrol/drift) resumes on

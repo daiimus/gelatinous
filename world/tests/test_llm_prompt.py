@@ -301,7 +301,7 @@ class TestParseTurn(TestCase):
     def test_schema_tool_enum(self):
         self.assertEqual(TURN_SCHEMA["properties"]["tool"]["enum"],
                          ["none", "look", "remember", "feel", "style",
-                          "release", "check_stock", "prepare_drink",
+                          "release", "radio", "check_stock", "prepare_drink",
                           "diagnose", "treat", "install"])
 
 

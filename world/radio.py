@@ -189,26 +189,30 @@ def _comms_bots_on(frequency: str) -> list:
     return out
 
 
+def radio_voice_handle(speaker: Any, listener: Any) -> str:
+    """How *listener* knows the voice on the air: a recognised voice names
+    them (voice memory; a modulator defeats it), else the voice descriptor,
+    else "an unfamiliar voice". Attribution is VOICE-ONLY — you can't see the
+    far end. Shared by the echo render and the NPC brain (§7.1)."""
+    from world.voice import attempt_voice_discern, get_voice_description
+    known = attempt_voice_discern(listener, speaker)
+    if known:
+        return known
+    desc = get_voice_description(speaker)
+    return f"a {desc} voice" if desc else "an unfamiliar voice"
+
+
 def _render_radio_line(speaker: Any, listener: Any, message: str,
                        frequency: str, *, tagged: bool) -> str:
     """A received transmission, VOICE-attributed (never sight — you can't see
     the far end) and hearing-gated. ``tagged`` prefixes the frequency (scanner
     sweep mode caught it off-band)."""
     from world.perception import can_hear
-    from world.voice import (
-        attempt_voice_discern, get_voice_description, voice_phrase,
-    )
+    from world.voice import voice_phrase
     band = f"[{frequency}] " if tagged else ""
     if not can_hear(listener):
         return f"{band}Your radio crackles, but you can't make out a word."
-    # Attribution: a known voice names them; else the voice descriptor; else
-    # a bare "someone". Mirrors resolve_speaker_attribution's voice branch.
-    known = attempt_voice_discern(listener, speaker)
-    if known:
-        who = known
-    else:
-        desc = get_voice_description(speaker)
-        who = f"a {desc} voice" if desc else "an unfamiliar voice"
+    who = radio_voice_handle(speaker, listener)
     flavour = voice_phrase(speaker)
     flav = f" |x*{flavour}*|n" if flavour else ""
     return (f'{band}{who[:1].upper()}{who[1:]} crackles over the radio{flav}: '
@@ -241,33 +245,80 @@ def transmit(speaker: Any, message: str, device: Any) -> bool:
     return True
 
 
+def transmit_organ(speaker: Any, message: str) -> bool:
+    """Key up a BUILT-IN comms organ — the transceiver a security unit wears
+    in its ear (§2.1). No handheld needed; the organ's intactness is the
+    physical gate (destroyed ear = mute, same as deaf). Same air, same log,
+    same delivery as a walkie. ``transmit``'s no-device fallback routes here,
+    so a bot keys up through the identical player command."""
+    frequency = comms_organ_frequency(speaker)
+    if not frequency:
+        speaker.msg("You have no working comms module to transmit with.")
+        return False
+    speaker.msg(f'You transmit on {frequency}: "{message}"')
+    _log_to_channel(speaker, message, frequency)
+    _deliver(speaker, message, frequency, None)
+    return True
+
+
 def _deliver(speaker: Any, message: str, frequency: str,
              exclude_device: Any) -> None:
     """Echo a transmission to every receiver on *frequency*: powered walkies
     (tuned or scanning) held by a character, and security units with a live
     built-in comms organ. Deduped per receiver so a bot holding a walkie AND
-    wearing a comms organ hears it once."""
-    delivered = set()
+    wearing a comms organ hears it once.
 
-    def _send(listener, *, tagged):
-        if listener is None or listener is speaker or id(listener) in delivered:
+    Each hearing listener also gets the STRUCTURED speech payload the say
+    rails use (``speech=<words>``, world.speech) plus radio kwargs — so an NPC
+    brain reads one shape regardless of the carrying verb (§7.1). A deaf
+    listener gets the static line and no words. One listener among the
+    LLM-driven receivers is ELECTED (``radio_elected=True``) — the §7.2
+    single-answerer for "all units"-style broadcasts, so a band-wide call
+    can't raise a chorus."""
+    receivers = []          # (listener, tagged), deduped, order-stable
+    seen = set()
+
+    def _collect(listener, *, tagged):
+        if listener is None or listener is speaker or id(listener) in seen:
             return
         if not hasattr(listener, "msg"):
             return
-        delivered.add(id(listener))
-        try:
-            listener.msg(_render_radio_line(
-                speaker, listener, message, frequency, tagged=tagged),
-                type="radio", from_obj=speaker)
-        except Exception:  # noqa: BLE001 — one bad listener never stops the net
-            pass
+        seen.add(id(listener))
+        receivers.append((listener, tagged))
 
     for radio in _all_powered_radios():
         if radio is exclude_device:
             continue
         scanning = is_scanning(radio)
         if scanning or same_band(frequency_of(radio), frequency):
-            _send(radio.location, tagged=scanning)   # holder hears it
+            _collect(radio.location, tagged=scanning)   # holder hears it
 
     for bot in _comms_bots_on(frequency):
-        _send(bot, tagged=False)                      # built-in transceiver
+        _collect(bot, tagged=False)                      # built-in transceiver
+
+    # Single-answerer election: deterministic (lowest dbref) among LLM-driven
+    # receivers. Range is abstracted in P1, so "nearest" has no meaning yet.
+    elected = None
+    try:
+        candidates = [l for l, _ in receivers
+                      if getattr(getattr(l, "db", None), "llm_driven", False)
+                      is True]
+        if candidates:
+            elected = min(candidates, key=lambda l: getattr(l, "id", 0) or 0)
+    except Exception:  # noqa: BLE001 — election is best-effort flavour
+        elected = None
+
+    from world.perception import can_hear
+    for listener, tagged in receivers:
+        try:
+            payload = {}
+            if can_hear(listener):
+                payload["speech"] = message   # the say-rails contract
+            listener.msg(_render_radio_line(
+                speaker, listener, message, frequency, tagged=tagged),
+                type="radio", from_obj=speaker,
+                radio_frequency=frequency,
+                radio_elected=(listener is elected),
+                **payload)
+        except Exception:  # noqa: BLE001 — one bad listener never stops the net
+            pass

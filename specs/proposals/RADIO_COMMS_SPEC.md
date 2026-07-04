@@ -201,7 +201,24 @@ Antennae/repeaters/coverage holes, real coordinate range, the Drifts-dark
 rule, jamming devices, **power/battery**, encryption/scrambling, and the
 robot built-in-transceiver attacks (ride the robot-component work).
 
-## 7 · NPC radio comprehension — the next slice (📋 designed, not built)
+## 7 · NPC radio comprehension — ✅ SHIPPED (2026-07-04)
+
+> **Shipped as designed, all six sub-sections.** Delivery attaches the
+> say-rails structured payload (`speech=` for hearing listeners only) +
+> `radio_frequency`/`radio_elected`; `LLMNpcMixin._hear_radio` gates exactly
+> like room speech (named → answer; broadcast → elected unit only —
+> deterministic lowest-dbref election in `_deliver`; NPC-sourced →
+> observe-only loop guard; chatter → buffer + rare `radio_ambient`
+> volunteer). Radio turns attribute by VOICE (`radio_voice_handle`, shared
+> with the echo render), carry no visual perception, and scope memory to the
+> VOICE identity (`voice:<uid>` subject threaded through storage so nothing
+> cross-sensory leaks). Transmit = the `radio` action tool (granted to
+> `security`; withheld from `colonist`) → the REAL `xmit` command, whose new
+> no-handheld fallback keys a built-in comms organ (`transmit_organ`) — so
+> bots and any future implanted player transmit through the identical
+> command. Persona card advertises the device + band. Turn framing makes
+> air-vs-room unambiguous (§7.6). Physical gates hold throughout: delivery
+> is the hearing gate, the command refusal is the mute gate.
 
 Phase 1 built the physical medium and a scripted witness one-shot, but radio
 does **not** yet reach the NPC brains. Today: an LLM NPC with a powered walkie
