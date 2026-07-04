@@ -257,7 +257,7 @@ a deck.
 | **Stealth / theft** (`STEALTH_AND_DETECTION_SPEC`) | Hardware theft is the meat route to a net prize (§2); net "noise" mirrors stealth's contest. |
 | **Identity** | Net actions key on apparent-UID; a decker can be traced-as-presence without being named (voice/face parallel). |
 | **Crafting / 3-D printer** | Schematics are stealable/printable files (§2, §10). |
-| **Radio** (`RADIO_COMMS_SPEC`) | Reserved cross-phase tap: a decker reads/spoofs radio traffic from the net (§9 there). |
+| **Radio** (`RADIO_COMMS_SPEC`) | Reserved cross-phase tap: a decker reads/spoofs radio traffic from the net. **The security intel-sync is NET-driven, not radio** (decided 2026-07-03): the wanted/intel database is a hosted file — radio carries voices, the net carries databases. |
 | **Coordinates / verticality** | Hosts live at real coords in towers — the shared high-rise dependency that gates the build. |
 
 ## 13 · Risks & open questions
