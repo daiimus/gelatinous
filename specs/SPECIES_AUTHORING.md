@@ -13,7 +13,7 @@ Two files hold the per-species data; everything else in the codebase consumes th
 
 Two optional secondary places:
 
-- **`world/medical/wounds/messages/*.py`** — per-injury-type wound prose. The existing tables are species-agnostic (humans share them). If a species needs distinct destruction or severance prose, declare a species-keyed overlay on each injury-type module (currently only human prose is shipped).
+- **`world/medical/wounds/messages/*.py`** — per-injury-type wound prose. The existing tables are species-agnostic (humans share them). **Species packs (shipped 2026-07-05):** a species whose wounds must not read as human flesh registers a COMPLETE pack module in `messages.SPECIES_PACKS` (`robot.py` — torn plating, amber hydraulic weep, weld-seam scars; `synth.py` — cobalt blood, pearlescent seam scars). A pack species renders ALL surface-wound prose (every stage, plus `DESTROYED_BY_LOCATION` and `COMPOUND_DESCRIPTIONS`) from its pack — it never falls through to the shared flesh tables, which is the no-leak guarantee (pin new packs with a completeness test like `test_species_wounds.py`). Pack prose should hardcode the species `blood_color` (`world/anatomy/species.py`) and match the register of its `organ_descriptions.py` entries so surface and organ damage read as one body. Humans and pack-less species (rat, ...) keep the shared modules unchanged.
 - **`world/anatomy/organs.py`** — `ORGAN_DISPLAY` for organ-name display. Species-agnostic today; new species reuse the existing mammalian organ names where biologically equivalent.
 
 ## Required tables in `SPECIES_DEFINITIONS[species]`

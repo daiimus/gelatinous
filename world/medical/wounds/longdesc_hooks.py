@@ -248,7 +248,7 @@ def _compound_phrase(worst_wound, others_count, character=None):
         worst_wound['severity'], worst_wound['severity'].lower()
     )
 
-    template = _resolve_compound_template(injury_type, stage)
+    template = _resolve_compound_template(injury_type, stage, character)
     if template:
         format_vars = {
             'severity': severity,
@@ -474,7 +474,7 @@ def _pair_base_noun(location):
     return location.replace("_", " ")
 
 
-def _resolve_compound_template(injury_type, stage):
+def _resolve_compound_template(injury_type, stage, character=None):
     """
     Resolve a random compound template for an injury type and stage.
 
@@ -498,17 +498,25 @@ def _resolve_compound_template(injury_type, stage):
     # (sever_character_body sets current_hp/wound_stage but not
     # injury_type).  Fall through to the generic compound table when
     # the injury type is missing or non-string.
-    module = (
-        getattr(messages, injury_type, None)
-        if isinstance(injury_type, str)
-        else None
-    )
-    if module is not None:
-        compound = getattr(module, 'COMPOUND_DESCRIPTIONS', None)
-    if not compound:
-        compound = getattr(messages.generic, 'COMPOUND_DESCRIPTIONS', None)
-    if not compound:
-        return None
+    # Species routing mirrors get_wound_description: a pack species draws
+    # compound prose from its pack only (never human flesh vocabulary).
+    pack = messages.species_pack(character)
+    if pack is not None:
+        compound = getattr(pack, 'COMPOUND_DESCRIPTIONS', None)
+        if not compound:
+            return None   # pack species with no compound set: inline fallback
+    else:
+        module = (
+            getattr(messages, injury_type, None)
+            if isinstance(injury_type, str)
+            else None
+        )
+        if module is not None:
+            compound = getattr(module, 'COMPOUND_DESCRIPTIONS', None)
+        if not compound:
+            compound = getattr(messages.generic, 'COMPOUND_DESCRIPTIONS', None)
+        if not compound:
+            return None
 
     variants = compound.get(stage) or compound.get('fresh')
     if not variants:
