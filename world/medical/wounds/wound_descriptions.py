@@ -30,14 +30,24 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
     Returns:
         str: Formatted wound description ready for longdesc integration
     """
-    # Get the appropriate message module for this injury type
-    try:
-        message_module = getattr(messages, injury_type)
-        wound_messages = message_module.WOUND_DESCRIPTIONS
-    except AttributeError:
-        # Fallback to generic wound descriptions
-        message_module = messages.generic
-        wound_messages = message_module.WOUND_DESCRIPTIONS
+    # Species routing (SPECIES_AUTHORING §wounds): a robot doesn't bleed and
+    # a synth doesn't bleed RED — a species with a registered pack renders
+    # ALL its wound prose from that pack (complete across stages, so human
+    # flesh vocabulary can never leak onto the wrong chassis). Humans and
+    # pack-less species (rat, ...) keep the shared per-injury-type modules.
+    pack = messages.species_pack(character)
+    if pack is not None:
+        message_module = pack
+        wound_messages = pack.WOUND_DESCRIPTIONS
+    else:
+        # Get the appropriate message module for this injury type
+        try:
+            message_module = getattr(messages, injury_type)
+            wound_messages = message_module.WOUND_DESCRIPTIONS
+        except AttributeError:
+            # Fallback to generic wound descriptions
+            message_module = messages.generic
+            wound_messages = message_module.WOUND_DESCRIPTIONS
 
     # Issue #347: destroyed-stage overlay keyed by (injury_type, location).
     # Limb-vocabulary doesn't fit sensory destruction ("His left eye
