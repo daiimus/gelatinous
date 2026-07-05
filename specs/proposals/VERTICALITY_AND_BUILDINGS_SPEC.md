@@ -10,7 +10,12 @@
 > §1 + rooftops; §2–§3 can trail without blocking it. Builds directly on
 > [`SPATIAL_COORDINATE_SYSTEM_SPEC`](SPATIAL_COORDINATE_SYSTEM_SPEC.md)
 > (Phases 1–2 LIVE: the (X,Y,Z) volume, A\* pathing, face-state model §6.1,
-> jump/fall gravity §6).
+> jump/fall gravity §6). **Design pass 2026-07-05 (user calls):** no `@stack`
+> builder command (floors are just up/down exits, hand-authored); access is
+> **BIOMETRIC, not keys/codes/cards** (grants are files; forgery is the
+> attack — §2.2); **B&E is a PvE mechanic** (player-rented rooms are not
+> player-burglary targets — §3.2); venues carry distinguished proper names
+> ("The Aster" register — and the bar should be named in the same pass).
 
 ---
 
@@ -90,21 +95,14 @@ its effective height is simply `room.xyz[2]`. The range model (P2's problem,
 not this spec's) reads height off coordinates; this spec only owes it
 rooftops that *have* correct Z.
 
-### 1.4 · Builder authoring — `@stack`
+### 1.4 · Builder authoring — plain exits, by hand
 
-Hand-digging N floors with coordinates is error-prone. One builder command
-covers 90% of construction:
-
-```
-@stack <building name> = <floors>[, <footprint room>]
-```
-
-Creates `<floors>` rooms straight up from the footprint room's coordinates,
-links them with a stairwell chain, names them ("Aster Hotel — Third Floor"),
-seeds coordinates, flags the top room `is_rooftop`. Builders then decorate
-rooms individually as always (the spatial spec's stance: coordinates are the
-data model, hand-authoring stays the authoring model). Lifts, doors, and
-room splits (multiple rooms per floor) are manual follow-ups.
+**Decided (2026-07-05): no `@stack` command.** A floor is a room and a
+stairwell is an up/down exit pair — builders author them exactly like any
+other room and exit, seeding coordinates with the existing `@coordseed`
+flow. The spatial spec's stance holds: coordinates are the data model,
+hand-authoring is the authoring model, and vertical construction needs no
+special tooling.
 
 ---
 
@@ -133,19 +131,30 @@ than path through it: the A\* pathfinder treats **locked doors as blocked
 edges for NPCs without the key** (a per-traverser edge filter, same seam the
 phase layer already reserves in spatial §8).
 
-### 2.2 · Keys, codes, and access-as-record
+### 2.2 · Biometric access — everything is a file (DECIDED 2026-07-05)
 
-Two access forms, deliberately both:
+**No keys, no codes, no cards.** Players shouldn't have to memorize
+combinations or retain key items; the colony's locks read **biometrics**.
 
-* **Physical key** — an object; possession is access. Stealable, copyable
-  (later), loanable — all the emergent play of a thing in a hand.
-* **Keycode** — a fact: the door stores a grant list / code, access checked
-  against the character (or a carried keycard object). **This is the decking
-  seam**: a keycode is *a record on a device*, exactly the "everything is a
-  file" thesis in physical form. When decking arrives, door grants are
-  readable/falsifiable/erasable files. Until then they're just attributes —
-  but shaped as records from day one (grant entries: who/until-when/issued-by)
-  so the future hack has something honest to hack.
+* **The biometric IS the sleeve.** The identity system already carries the
+  canonical body signature (`sleeve_uid` / the identity-signature spine) —
+  a door doesn't need new sensing, it needs a *read* of the identity the
+  game already tracks. Present at the door; the lock checks your sleeve
+  against its grant file.
+* **The grant is a FILE on the lock** — entries of
+  `{sleeve, until, issued_by}`. Readable, falsifiable, erasable when
+  decking arrives; honest attributes until then. The lock is the first
+  everyday device whose behaviour is entirely record-driven.
+* **The personal credential is a FILE on the cyberbrain** — the roadmap
+  already marks cyberbrains as hackable/transferable/wipeable memory
+  stores (NPC_MEMORY_AND_IDENTITY_SPEC affordances); an access credential
+  is the first mundane thing worth storing there.
+* **The attack is FORGERY, not theft.** You don't steal a key — you present
+  **someone else's biometrics**: spoofing a sleeve signature rides the
+  identity/disguise machinery (a deep-enough disguise, a harvested
+  credential, or — later — a decked falsification of the grant file
+  itself). Depth and counterplay belong to the identity and decking specs;
+  this spec only owes them a lock that checks a signature against a record.
 
 Locks live on the DOOR, not the room, so one room can have a locked front
 door and an openable window-exit (breach-in-waiting).
@@ -166,8 +175,10 @@ Forcing a door = the face-state flip the spatial spec reserves for
 destruction: `locked → open (broken)`. A broken door can't re-close until
 repaired. Needs the damage-state model the spatial spec already defers;
 this spec just requires the door state enum to include `broken` so the
-future breach has a landing slot. Lockpicking likewise reserved (skill
-system is parked by explicit user decision).
+future breach has a landing slot. Lockpicking-analogues (biometric
+spoofing hardware, forced-entry tools) likewise reserved. Per §3.2,
+breach targeting is **PvE-directed**: NPC doors are breachable, player
+tenants' doors are not (v1).
 
 ---
 
@@ -187,15 +198,16 @@ A `RentalKiosk` in the hotel lobby — the AutoDoc/vendor interaction pattern
   1. Single room — 50 tokens/night
   2. ... (rooms currently available)
 > rent 1 for 3 nights
-  150 tokens. Room 304. The kiosk spits out a keycard.
+  150 tokens. The kiosk scans you. Room 304 knows your body now.
 ```
 
 * Payment in **tokens** — the first real sink; prices finally mean something
   (mugging pockets ↔ paying rent closes an actual loop).
-* The grant: a **keycard object** (physical form, stealable — that's a
-  feature: room invasion via pickpocket is exactly the game) carrying the
-  code; the door's grant record carries the expiry.
-* **Expiry**: at lease end the door's grant lapses (record-driven, checked
+* The grant: the kiosk **enrolls your biometric** (§2.2) — writes a
+  `{sleeve, until, issued_by}` entry to the room's lock file. Nothing to
+  carry, nothing to memorize; the kiosk reads the sleeve standing at it,
+  same as the door will.
+* **Expiry**: at lease end the lock's grant lapses (record-driven, checked
   at the door — no sweeper needed to *enforce*). A housekeeping sweep
   (director-side, like the population upkeep pattern) later resets expired
   rooms: unclaimed possessions to a lost-and-found bin behind the desk
@@ -206,8 +218,14 @@ A `RentalKiosk` in the hotel lobby — the AutoDoc/vendor interaction pattern
 * **Private** — closed/locked door = real perception privacy (§2.3). The
   first place a character can sleep/log out with stakes lowered, stage a
   scene, or stash goods.
-* **Not a vault** — storage is only as safe as the door. Breach/theft paths
-  stay open by design (crime playground, not player housing entitlement).
+* **B&E is a PvE mechanic (DECIDED 2026-07-05, revisitable).** Breaking
+  and entering points at **NPC-held spaces** — corp floors, NPC apartments,
+  the hotel's *other* rooms — not at player tenants: a player's rented room
+  is not a target other players can breach in v1. (User is on the fence
+  long-term; the mechanics don't preclude flipping this later — it's a
+  target-eligibility rule, not an architecture.) A rented room is therefore
+  genuinely safe storage against other players, while the world's NPC
+  interiors become the burglary playground.
 * **Not permanent** — leases lapse; long-term housing is a later, separate
   decision (this kiosk deliberately rents by the night to stay small).
 
@@ -258,10 +276,13 @@ director can call it later without changes.
    floors are implicit barriers until the destruction spec.
 3. **Door sound model** — muffled-existence-only (proposed) vs. Resonance
    /perception checks to make out words through doors (richer, more code).
-4. **Keycard vs. attribute grant for players** — proposal ships BOTH (card
-   carries the code; door records the grant) — confirm the theft-of-keycard
-   consequence is wanted (stolen card = access until expiry, no re-issue v1).
+4. ~~Keycard vs. attribute grant~~ — **RESOLVED (2026-07-05): biometric
+   only** (§2.2). No items, no memorized codes; forgery is the attack.
 5. **Pricing** — 50 tokens/night against 100–500-token pockets: is one
    mugging ≈ one-to-three nights the intended economy scale?
-6. **Naming** — "The Aster" is a placeholder; the hotel wants a real name
-   (and a brand, per the AWE/PAM naming schema).
+6. ~~Naming~~ — **RESOLVED (2026-07-05): venues carry distinguished proper
+   names** in "The Aster" register (NOT the AWE/PAM gear-brand schema —
+   that's for manufactured goods). The hotel keeps a name of this shape,
+   and **the bar should receive its proper name in the same pass**.
+7. **B&E scope** — decided PvE-directed for v1 (§3.2), user on the fence
+   long-term; revisit after tenancy plays.
