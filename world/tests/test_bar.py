@@ -908,7 +908,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         turn = {"speech": None, "action": None, "tool": "look",
                 "tool_argument": "patron"}
         with patch.object(llmnpc, "parse_turn", return_value=turn):
-            b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, "{}")
+            b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, None, "{}")
         b._agentic_round.assert_called_once()           # looped to gather context
         b.execute_cmd.assert_not_called()               # no terminal render yet
 
@@ -918,7 +918,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         turn = {"speech": "Coming up", "action": "grabs a glass", "thought": None,
                 "tool": "prepare_drink", "tool_argument": "Negroni"}
         with patch.object(llmnpc, "parse_turn", return_value=turn):
-            b._on_turn(["m"], {}, patron, "a negroni", "a man", lambda: None, 0, "{}")
+            b._on_turn(["m"], {}, patron, "a negroni", "a man", lambda: None, 0, None, "{}")
         b.execute_cmd.assert_any_call("prepare Negroni")  # the REAL command
         b._agentic_round.assert_not_called()              # terminal, no loop
 
@@ -930,7 +930,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         turn = {"speech": "hey", "action": "nods", "thought": None,
                 "tool": "none", "tool_argument": ""}
         with patch.object(llmnpc, "parse_turn", return_value=turn):
-            b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, "{}")
+            b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, None, "{}")
         b.execute_cmd.assert_any_call('emote nods, "hey"')
 
     def test_run_context_tool_look_and_stock(self):

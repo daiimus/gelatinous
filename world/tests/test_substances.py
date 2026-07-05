@@ -542,6 +542,7 @@ class TestDeliveryWiring(TestCase):
 
         item = MagicMock()
         item.db = _FakeDB(substance="alcohol")
+        item.key = "bottle of rotgut"
         item.get_display_name = lambda looker=None: "bottle of rotgut"
         target = MagicMock()
         cmd, parse_result = self._drink_cmd(item, target)
@@ -579,6 +580,7 @@ class TestDeliveryWiring(TestCase):
 
         item = MagicMock()
         item.db = _FakeDB()  # no substance, no uses
+        item.key = "mystery snack"
         item.get_display_name = lambda looker=None: "mystery snack"
         cmd, parse_result = self._drink_cmd(item, None)
         parse_result["target"] = cmd.caller

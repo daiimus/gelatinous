@@ -17,7 +17,7 @@ class TestSecurityArchetype(TestCase):
             self.assertIn(key, arch)
         # combat/detain stays deterministic; `release` (end a chat) is the
         # one conversational action it owns.
-        self.assertEqual(arch["tools"], ["release"])
+        self.assertEqual(arch["tools"], ["release", "radio"])
 
     def test_fewshot_is_machine_register(self):
         shots = ARCHETYPES["security"]["fewshot"]
