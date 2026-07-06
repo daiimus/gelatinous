@@ -274,8 +274,13 @@ director can call it later without changes.
    /floor semantics per spatial §6 generalization *now* (breach a floor →
    fall through), or defer floor-breaching entirely? Proposal: defer;
    floors are implicit barriers until the destruction spec.
-3. **Door sound model** — muffled-existence-only (proposed) vs. Resonance
-   /perception checks to make out words through doors (richer, more code).
+3. ~~Door sound model~~ — **RESOLVED (2026-07-05): muffled-existence-only,
+   full stop.** A closed door leaks the fact of sound, never content; no
+   perception checks, no listen-at-door verb in this spec. Eavesdropping
+   arrives later as **chrome**: a cybernetic-ear **sound-amplification
+   module** granting `/listen` at adjacent exits (doors included) — the
+   existing augment grammar (CYBER_EAR hardpoint + module ability, the
+   JAWZ//blindsight pattern), belonging to the augments spec, not this one.
 4. ~~Keycard vs. attribute grant~~ — **RESOLVED (2026-07-05): biometric
    only** (§2.2). No items, no memorized codes; forgery is the attack.
 5. **Pricing** — 50 tokens/night against 100–500-token pockets: is one
