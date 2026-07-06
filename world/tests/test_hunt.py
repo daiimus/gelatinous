@@ -108,6 +108,10 @@ class TestHuntMachine(TestCase):
         say = [c.args[0] for c in npc.execute_cmd.call_args_list
                if c.args[0].startswith("say ")]
         self.assertTrue(say and "Halt, Colonist" in say[0])
+        # Backup request rides the real air (comms organ) — no magic radio.
+        xmit = [c.args[0] for c in npc.execute_cmd.call_args_list
+                if c.args[0].startswith("xmit ")]
+        self.assertTrue(xmit and "backup" in xmit[0].lower())
         raised.assert_called_once()
         propagate.assert_called_once_with(npc, "uid-prey", 55)
         self.assertFalse(is_hunting(npc))     # dispatch owns it now

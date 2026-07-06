@@ -86,6 +86,10 @@ class TestWaypointSweep(TestCase):
         self.assertEqual(event.type, "disturbance")
         self.assertIs(event.source, felon)
         self.assertEqual(event.location, npc.location)
+        # ...and the unit called it in over the REAL air first (comms organ
+        # via xmit's no-handheld fallback) — no magic radio.
+        cmds = [c.args[0] for c in npc.execute_cmd.call_args_list]
+        self.assertTrue(any(c.startswith("xmit ") for c in cmds), cmds)
 
     @patch("world.director.security._scan_wanted",
            return_value=(None, None, None))
