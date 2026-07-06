@@ -48,9 +48,13 @@ class CmdTransmit(Command):
 
     def parse(self):
         raw = (self.args or "").strip()
+        self.raw_message = raw
         self.message = self.device_phrase = ""
-        # "<message> on <device>" — split on the LAST " on " so the message
-        # can contain the word "on".
+        # "<message> on <device>" — split on the LAST " on " as a CANDIDATE.
+        # The split is only honored if the trailing phrase resolves to a
+        # carried radio (func) — otherwise the " on " belonged to the message
+        # ("there's trouble on Cobb Street") and the whole line transmits.
+        # This grammar ambiguity silently ate every witness report (#1049).
         low = raw.lower()
         idx = low.rfind(" on ")
         if idx != -1:
@@ -59,20 +63,36 @@ class CmdTransmit(Command):
         else:
             self.message = raw
 
+    def _carried_radio_named(self, caller, phrase):
+        """The carried radio *phrase* names, or None — resolved QUIETLY (no
+        error spam: a failed match just means the words were message, not a
+        device clause)."""
+        try:
+            matches = caller.search(phrase, candidates=list(caller.contents),
+                                    quiet=True)
+        except Exception:  # noqa: BLE001
+            return None
+        if not matches:
+            return None
+        matches = matches if isinstance(matches, list) else [matches]
+        for obj in matches:
+            if is_radio(obj):
+                return obj
+        return None
+
     def func(self):
         caller = self.caller
-        if not self.message:
+        if not self.raw_message:
             caller.msg("Transmit what?")
             return
+        device = None
         if self.device_phrase:
-            device = _resolve_device(caller, self.device_phrase)
+            device = self._carried_radio_named(caller, self.device_phrase)
             if device is None:
-                return
-            if device not in caller.contents:
-                caller.msg(f"You aren't carrying "
-                           f"{device.get_display_name(caller)}.")
-                return
-        else:
+                # No carried radio by that name — the " on " was part of the
+                # message itself. Transmit the whole line on the default.
+                self.message = self.raw_message
+        if device is None:
             device = active_transmit_radio(caller)
             if device is None:
                 # Built-in comms organ fallback (a security unit's ear module,
