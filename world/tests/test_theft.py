@@ -110,6 +110,25 @@ class TestSteal(TestCase):
         chip.move_to.assert_not_called()           # the lift failed
         caught.assert_called_once_with(cmd.caller, target)
 
+    def test_caught_report_rides_the_witness_pipeline(self):
+        # No magic radio: the botched lift routes through report_crime
+        # (crowd-gated witness + real walkie), never a raw raise_event.
+        from commands.CmdTheft import _caught
+        thief = MagicMock()
+        room = MagicMock(); room.contents = []
+        thief.location = room
+        victim = MagicMock()
+        with patch("commands.CmdTheft.set_awareness"), \
+                patch("world.director.crime.report_crime") as report, \
+                patch("world.director.dispatch.raise_event") as raw:
+            _caught(thief, victim)
+        report.assert_called_once()
+        args, kwargs = report.call_args
+        self.assertEqual(args[0], "pickpocketing")
+        self.assertIs(args[1], room)
+        self.assertIsNone(kwargs.get("perp"))   # witnessed-but-unidentified
+        raw.assert_not_called()
+
     def test_subdued_mark_is_free_loot(self):
         chip = _item("a chip")
         target = _target(contents=[chip])
@@ -198,12 +217,10 @@ class TestCaughtConsequences(TestCase):
         with patch("commands.CmdTheft.set_awareness") as aware, \
                 patch("world.perception.can_see",
                       side_effect=lambda o: o is witness), \
-                patch("world.director.dispatch.raise_event") as raised:
+                patch("world.director.crime.report_crime") as report:
             _caught(thief, victim)
         awared = {c.args[0] for c in aware.call_args_list}
         self.assertIn(victim, awared)
         self.assertIn(witness, awared)
         self.assertNotIn(blindfolded, awared)      # can't see = not alerted
-        event = raised.call_args.args[0]
-        self.assertEqual(event.type, "crime")
-        self.assertIsNone(event.source)            # unidentified -> hot scene
+        report.assert_called_once()                # the real pipeline, no raw raise

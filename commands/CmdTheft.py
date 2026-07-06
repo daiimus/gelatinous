@@ -47,9 +47,15 @@ def _caught(thief, victim):
                 set_awareness(obs, thief, ALERT)
         except Exception:  # noqa: BLE001
             continue
+    # The report rides the REAL pipeline (RADIO_COMMS_SPEC / dispatch §5.1):
+    # report_crime rolls the crowd-gated witness, who calls it in over an
+    # actual walkie after the interdiction window — no magic radio. Empty
+    # alley = no witness = the force never learns; and the thief gets the
+    # window to silence the snitch. perp stays None by design: the theft is
+    # witnessed-but-unidentified (the situational cause the hunt reads).
     try:
-        from world.director.dispatch import WorldEvent, raise_event
-        raise_event(WorldEvent("crime", room, severity=1, source=None))
+        from world.director.crime import report_crime
+        report_crime("pickpocketing", room, perp=None)
     except Exception:  # noqa: BLE001 — dispatch down ≠ theft crash
         pass
 

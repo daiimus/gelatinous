@@ -148,6 +148,17 @@ def at_waypoint(npc: Any) -> None:
             from world.director.security import _scan_wanted
             _uid, flagged, _entry = _scan_wanted(npc)
             if flagged is not None:
+                # Call it in over the REAL air first (the unit's comms
+                # organ; xmit's no-handheld fallback) — anyone tuned to
+                # 911MHz hears the net light up. Best-effort flavour; the
+                # deterministic raise below is what dispatch acts on.
+                try:
+                    where = getattr(npc.location, "key", "position")
+                    npc.execute_cmd(
+                        f"xmit Dispatch — flagged match on {where}, "
+                        f"moving to challenge.")
+                except Exception:  # noqa: BLE001 — a mute unit still raises
+                    pass
                 raise_event(WorldEvent("disturbance", npc.location,
                                        severity=1, source=flagged))
             else:

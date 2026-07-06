@@ -123,6 +123,13 @@ def _engage(npc, target) -> None:
         npc.execute_cmd(f"say {CHALLENGE_LINE}")
     except Exception:  # noqa: BLE001
         pass
+    # Backup request rides the REAL air (comms organ via xmit's fallback) —
+    # audible to anyone on 911MHz. Flavour only; the raise stays authoritative.
+    try:
+        where = getattr(npc.location, "key", "position")
+        npc.execute_cmd(f"xmit Unit engaging — backup to {where}.")
+    except Exception:  # noqa: BLE001 — a mute unit still raises
+        pass
     try:
         from world.director.dispatch import WorldEvent, raise_event
         raise_event(WorldEvent("disturbance", npc.location, severity=2,

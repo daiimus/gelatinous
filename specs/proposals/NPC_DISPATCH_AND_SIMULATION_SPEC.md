@@ -23,7 +23,7 @@
 >
 > **Identification design RESOLVED (§5.1, 2026-06-30); crime taxonomy + heat
 > (§5.2, 2026-06-30).** Chain status: BOLO ✅ · tiered confidence ✅ (detain
-> deferred to the trust gate) · combat auto-raise ✅ #871 (45s→witness window, per-scene debounce, crime-time BOLO) · witness spawn ✅ #873 (crowd-gated, interdictable, first flash-temp ephemeral; flees to cower via director travel #888) · base intel-sync ✅ #876 (per-bot sightings → force-wide wanted record only on return-to-post; latency window real; repeat-offender counts; @dispatch/wanted) · radio report ⬜
+> deferred to the trust gate) · combat auto-raise ✅ #871 (45s→witness window, per-scene debounce, crime-time BOLO) · witness spawn ✅ #873 (crowd-gated, interdictable, first flash-temp ephemeral; flees to cower via director travel #888) · base intel-sync ✅ #876 (per-bot sightings → force-wide wanted record only on return-to-post; latency window real; repeat-offender counts; @dispatch/wanted) · radio report ✅ (2026-07-05: NO magic radios left on the crime chain — witness calls ride a real walkie via wield/xmit (#1009/#1020); a caught theft routes through report_crime's crowd-gated witness instead of a raw raise_event; patrol wanted-flags and hunt challenges key the unit's comms organ on 911MHz (xmit fallback) before the deterministic raise — the security net is audible to anyone tuned in. Explosions stay direct: a detonation is its own broadcast)
 > (`RADIO_COMMS_SPEC` drafted #859; magic placeholder until built) ·
 > no-trace window ⬜. Population/identity presentation layer
 > still open — see §10.
