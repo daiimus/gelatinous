@@ -172,6 +172,35 @@ class TestCommands(TestCase):
         self.assertEqual(cmd.message, "meet at the docks")
         self.assertEqual(cmd.device_phrase, "the black handset")
 
+    def test_message_containing_on_transmits_whole_line(self):
+        # THE witness bug (#1049): "there's trouble on Cobb Street" parsed
+        # "Cobb Street..." as a device name and silently ate every report.
+        # The on-split is only honored when it names a carried radio.
+        from commands.CmdRadio import CmdTransmit
+        dev = _radio(freq="911MHz")
+        caller = _char(worn=[dev], contents=[dev])
+        caller.search = lambda phrase, **kw: []   # no device by that name
+        line = ("Someone call it in — there's trouble on Cobb Street, "
+                "get a unit down here!")
+        cmd = CmdTransmit(); cmd.caller = caller
+        cmd.args = line
+        cmd.parse()
+        with patch("commands.CmdRadio.transmit") as tx:
+            cmd.func()
+        tx.assert_called_once_with(caller, line, dev)   # FULL line, default dev
+
+    def test_on_split_still_honored_for_a_carried_radio(self):
+        from commands.CmdRadio import CmdTransmit
+        worn, named = _radio(freq="447"), _radio(freq="911MHz")
+        caller = _char(worn=[worn], contents=[worn, named])
+        caller.search = lambda phrase, **kw: [named]    # resolves the handset
+        cmd = CmdTransmit(); cmd.caller = caller
+        cmd.args = "meet at the docks on the black handset"
+        cmd.parse()
+        with patch("commands.CmdRadio.transmit") as tx:
+            cmd.func()
+        tx.assert_called_once_with(caller, "meet at the docks", named)
+
     def test_transmit_no_radio_worn_or_held(self):
         from commands.CmdRadio import CmdTransmit
         cmd = CmdTransmit()
