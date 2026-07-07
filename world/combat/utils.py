@@ -535,6 +535,13 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
         initial_grappled_by: Optional character grappling this char initially
         initial_is_yielding: Whether the character starts yielding
     """
+    # BREAKING (CHANNELED_ACTIONS_SPEC §2.3): entering combat ends a
+    # channel, even before the first hit lands.
+    try:
+        from world.channeled import interrupt_channel
+        interrupt_channel(char)
+    except Exception:  # noqa: BLE001
+        pass
     from .constants import (
         DB_COMBATANTS, DB_CHAR, DB_TARGET_DBREF,
         DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, DB_IS_YIELDING, 

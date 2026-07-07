@@ -112,80 +112,161 @@ class CmdGraffiti(Command):
         else:
             self.caller.msg(f"You can't use {can.get_display_name(self.caller)} for spraying - unknown contents: {aerosol_contents}.")
     
+    #: Channeled-tagging rates (CHANNELED_ACTIONS_SPEC §3): the can-rattle
+    #: setup, then one second of exposure per letter. Length IS risk — a
+    #: 10-char throw-up is ~13s; a 100-char manifesto stands you in public
+    #: past the whole witness window.
+    SPRAY_SETUP_SECONDS = 3.0
+    SPRAY_SECONDS_PER_CHAR = 1.0
+
     def _handle_spray_paint_with_spraypaint(self, spray_can, message):
-        """Handle spray painting with a spray paint can."""
+        """Spray painting is a CHANNELED act: duration proportional to the
+        letter count, visible tell, interruptible. The full tag lands at
+        completion; an interruption lands the letters finished so far with
+        the ellipsis truncation (an interrupted tag is evidence). Paint
+        deducts at resolution, pro-rata."""
         if not message:
             self.caller.msg("You need to specify a message to spray.")
             return
-        
+
         if len(message) > 100:
             self.caller.msg("Your message is too long! Keep it under 100 characters.")
             return
-        
+
         # Check if spray can has paint
         if spray_can.db.aerosol_level <= 0:
             self.caller.msg(f"{spray_can.get_display_name(self.caller)} is empty!")
             return
-        
-        # Calculate paint needed (1 paint per character)
-        paint_needed = len(message)
-        paint_available = spray_can.db.aerosol_level
-        
-        # Determine actual message length based on available paint
+
+        from world.channeled import begin_channel
+        caller = self.caller
+        duration = (self.SPRAY_SETUP_SECONDS
+                    + len(message) * self.SPRAY_SECONDS_PER_CHAR)
+
+        def _complete():
+            self._land_tag(caller, spray_can, message)
+
+        def _interrupted(fraction):
+            worked = fraction * duration - self.SPRAY_SETUP_SECONDS
+            letters = int(max(0.0, worked) / self.SPRAY_SECONDS_PER_CHAR)
+            letters = min(letters, len(message))
+            if letters <= 0:
+                caller.msg("You break off before the nozzle ever touches "
+                           "the wall.")
+                msg_room_identity(
+                    location=caller.location,
+                    template="{actor} breaks off, spray can still rattling, "
+                             "the wall untouched.",
+                    char_refs={"actor": caller},
+                    exclude=[caller],
+                )
+                return
+            # The letters finished so far land — with the ellipsis the
+            # paint-out path already renders. Evidence of interruption.
+            self._land_tag(caller, spray_can, message[:letters] + "...",
+                           interrupted=True)
+
+        started = begin_channel(
+            caller, duration,
+            tell="crouched at the wall, spray can hissing.",
+            on_complete=_complete, on_interrupt=_interrupted,
+            key="spraying")
+        if not started:
+            return
+        caller.msg(f"You shake {spray_can.get_display_name(caller)}, the "
+                   f"rattle sharp, and set to work on the wall.")
+        msg_room_identity(
+            location=caller.location,
+            template="{actor} shakes a rattling spray can and sets to work "
+                     "on the wall.",
+            char_refs={"actor": caller},
+            exclude=[caller],
+        )
+
+    def _land_tag(self, caller, spray_can, message, interrupted=False):
+        """Resolve a tag onto the wall (full or partial): deduct paint for
+        the characters actually sprayed, write the graffiti, message the
+        room, and file the vandalism report — tagging is a crime the
+        crowd-gated witness pipeline can now fairly see (the act occupied
+        real, public time)."""
+        if not caller.location:
+            return
+        # Paint deducts at resolution (1/char actually sprayed, ellipsis
+        # free); the can may have less left than the tag needs.
+        paint_needed = len(message.rstrip(".")) if interrupted else len(message)
+        paint_available = spray_can.db.aerosol_level or 0
         ran_out_mid_message = False
         if paint_needed > paint_available:
-            message = message[:paint_available] + "..."  # Add ellipsis to show it was cut off
+            message = message[:paint_available] + "..."
             paint_used = paint_available
             ran_out_mid_message = True
         else:
             paint_used = paint_needed
-        
+
         # Get the current color and name before using paint (in case can gets deleted)
         current_color = spray_can.db.current_color or "white"  # Default fallback
-        can_name_for_message = spray_can.get_display_name(self.caller)
-        
+        can_name_for_message = spray_can.get_display_name(caller)
+
         # Use the paint
         spray_can.use_paint(paint_used)
-        
+
         # Find or create the room's graffiti object
         graffiti_obj = None
-        for obj in self.caller.location.contents:
+        for obj in caller.location.contents:
             if isinstance(obj, GraffitiObject):
                 graffiti_obj = obj
                 break
-        
+
         if not graffiti_obj:
             # Create new graffiti object for this room
             graffiti_obj = create_object(
                 typeclass=GraffitiObject,
                 key="graffiti",
-                location=self.caller.location
+                location=caller.location
             )
-        
+
         # Add the graffiti message to the object
-        graffiti_obj.add_graffiti(message, current_color, self.caller)
-        
+        graffiti_obj.add_graffiti(message, current_color, caller)
+
         # Messages - using proper Evennia color formatting
         color_code = GRAFFITI_COLOR_MAP.get(current_color.lower() if current_color else 'white', 'w')
         colored_message = f"|{color_code}{message}|n"
-        
-        # Create appropriate message based on whether can ran out
-        if ran_out_mid_message:
-            self.caller.msg(f"You start to spray on the wall with a {can_name_for_message}, but it runs out of paint mid-message! You manage to spray '{colored_message}' before the can crumples up and becomes useless.")
+
+        if interrupted:
+            caller.msg(f"Your hand jerks away mid-letter — '{colored_message}' "
+                       f"is all that made it onto the wall.")
             msg_room_identity(
-                location=self.caller.location,
+                location=caller.location,
+                template=f"{{actor}} breaks off mid-tag, leaving "
+                         f"'{colored_message}' half-finished on the wall.",
+                char_refs={"actor": caller},
+                exclude=[caller],
+            )
+        elif ran_out_mid_message:
+            caller.msg(f"You start to spray on the wall with a {can_name_for_message}, but it runs out of paint mid-message! You manage to spray '{colored_message}' before the can crumples up and becomes useless.")
+            msg_room_identity(
+                location=caller.location,
                 template=f"{{actor}} starts to spray on the wall, but their can runs out of paint mid-message, managing only '{colored_message}' before tossing the empty can aside.",
-                char_refs={"actor": self.caller},
-                exclude=[self.caller],
+                char_refs={"actor": caller},
+                exclude=[caller],
             )
         else:
-            self.caller.msg(f"You spray '{colored_message}' on the wall with a {can_name_for_message}.")
+            caller.msg(f"You spray '{colored_message}' on the wall with a {can_name_for_message}.")
             msg_room_identity(
-                location=self.caller.location,
+                location=caller.location,
                 template=f"{{actor}} sprays '{colored_message}' on the wall.",
-                char_refs={"actor": self.caller},
-                exclude=[self.caller],
+                char_refs={"actor": caller},
+                exclude=[caller],
             )
+
+        # Vandalism is a crime (dispatch §5.2 taxonomy — carried the entry
+        # since the crime slice; this is its first caller). Crowd-gated
+        # witness, real walkie, interdiction window: all the real rails.
+        try:
+            from world.director.crime import report_crime
+            report_crime("vandalism", caller.location, perp=caller)
+        except Exception:  # noqa: BLE001 — dispatch down ≠ graffiti crash
+            pass
     
     def _handle_clean_with_solvent(self, solvent_can):
         """Handle cleaning graffiti and blood stains with a solvent can."""

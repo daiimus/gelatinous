@@ -219,11 +219,15 @@ Unified graffiti system providing player-driven street expression through spray 
 
 ### Known Limitations
 - No message persistence across server restarts for graffiti objects
-- No built-in anti-spam protection beyond resource limits
 - Color palette fixed to 7 standard ANSI colors
 
 ### Future Enhancement Opportunities
-- **Action delays** - spray painting/cleaning takes time, prevents movement during action
+- ~~Action delays~~ — ✅ SHIPPED (2026-07-06, CHANNELED_ACTIONS_SPEC):
+  spraying is a channeled act (3s setup + 1s/letter — duration proportional
+  to tag length, the anti-spam that is also the fiction); movement blocked,
+  violence interrupts (partial tag lands with ellipsis, pro-rata paint), and
+  tagging files a real `vandalism` crime report (crowd-gated witness).
+  Cleaning delays: next consumer.
 - **Identical tag stacking** - repeated messages get consolidated with quantity descriptors
   - Single: "Scrawled in red paint: WAKKA RULES"  
   - Multiple colors: "Scrawled in |rp|ba|gi|yn|mt obsessively: WAKKA RULES"
