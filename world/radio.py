@@ -19,6 +19,7 @@ generalise to any future comm gear.
 
 from __future__ import annotations
 
+import random
 from typing import Any, Optional
 
 RADIO_CHANNEL_KEY = "Radio"
@@ -323,13 +324,32 @@ def transmit_organ(speaker: Any, message: str) -> bool:
     return True
 
 
+#: The mutter-catch curve: an even roll hears half the letters; each point
+#: of margin swings comprehension by this much. Below the floor the words
+#: are just noise (the act-only line).
+MUTTER_CLARITY_STEP = 0.15
+MUTTER_CLARITY_FLOOR = 0.2
+
+
+def _obscure_heard(message: str, clarity: float) -> str:
+    """Drop letters the listener didn't catch: each letter survives with
+    probability *clarity*, the rest render as ``-`` — fragments of a low
+    voice ("c-ver the b-ck d--r"), spacing and punctuation intact so the
+    SHAPE of the sentence stays audible."""
+    drop = 1.0 - max(0.0, min(1.0, clarity))
+    return "".join("-" if ch.isalpha() and random.random() < drop else ch
+                   for ch in message)
+
+
 def _mutter_into(speaker: Any, message: str) -> None:
-    """The xmit register: a low voice into the handset. Each bystander who
-    can hear rolls to CATCH the words — listener Intellect vs the speaker's
-    Resonance (the voice-discern pairing) — a pass renders the full line, a
-    miss (or deafness) just the act. Sight-only observers see the act. The
-    counter-play is the band: a same-room listener whose radio matches
-    hears the CONTENT off their own handset regardless (perspective 4)."""
+    """The xmit register: a low voice into the handset. Each hearing
+    bystander rolls to catch it — listener Intellect vs the speaker's
+    Resonance (the voice-discern pairing) — and the MARGIN sets how much
+    survives: a clean win hears every word, an even ear catches fragments
+    ("c-ver the b-ck d--r"), a bad miss (or deafness) gets only the act.
+    Sight-only observers see the act. The counter-play is the band: a
+    same-room listener whose radio matches hears the CONTENT off their own
+    handset regardless (perspective 4)."""
     location = getattr(speaker, "location", None)
     if location is None:
         return
@@ -352,19 +372,24 @@ def _mutter_into(speaker: Any, message: str) -> None:
             seen = can_see(observer)
             if not heard and not seen:
                 continue
-            caught = False
+            clarity = 0.0
             if heard:
                 try:
                     o_roll, s_roll, _ = opposed_roll(
                         observer, speaker, "intellect", "resonance")
-                    caught = o_roll >= s_roll
+                    clarity = max(0.0, min(1.0, 0.5 + (o_roll - s_roll)
+                                           * MUTTER_CLARITY_STEP))
                 except Exception:  # noqa: BLE001 — no dice, no eavesdrop
-                    caught = False
-            if caught:
+                    clarity = 0.0
+            if clarity >= MUTTER_CLARITY_FLOOR:
+                caught = (message if clarity >= 1.0
+                          else _obscure_heard(message, clarity))
                 text = render_speech_line(
-                    speaker, observer, message, flavor=flavor,
+                    speaker, observer, caught, flavor=flavor,
                     verb="mutters into the radio")
-                payload = speech_payload(observer, speaker, message)
+                # The payload carries exactly what THIS listener heard —
+                # an NPC brain reacts to the fragments, not the secret.
+                payload = speech_payload(observer, speaker, caught)
                 observer.msg(text=text, type="say", from_obj=speaker,
                              **payload)
             else:
