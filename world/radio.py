@@ -53,14 +53,46 @@ def is_scanning(device: Any) -> bool:
     return isinstance(freq, str) and freq.strip().lower() == SCAN
 
 
+#: The handheld's tunable range, in megahertz — a bounded spectrum makes
+#: scanning/guessing/jamming meaningful (a band plan exists to be searched).
+BAND_MIN, BAND_MAX = 1.0, 999.9
+
+
+def normalize_band(raw: Any) -> Optional[str]:
+    """Canonicalize a dialed frequency: a NUMBER (optional one decimal),
+    optional ``MHz`` suffix any case, within the tunable range — rendered
+    as ``911MHz`` / ``101.5MHz``. Returns None for anything a dial can't
+    say (``banana`` is not a frequency). ``scan`` is not a band; callers
+    handle it before this."""
+    if raw is None:
+        return None
+    text = str(raw).strip().lower()
+    if text.endswith("mhz"):
+        text = text[:-3].strip()
+    if not text:
+        return None
+    try:
+        value = float(text)
+    except (TypeError, ValueError):
+        return None
+    if not (BAND_MIN <= value <= BAND_MAX):
+        return None
+    value = round(value, 1)
+    shown = str(int(value)) if value == int(value) else f"{value:.1f}"
+    return f"{shown}MHz"
+
+
 def same_band(a: Any, b: Any) -> bool:
-    """Two frequencies are the same band, compared case-insensitively. Players
-    type what a scanner shows them and the ``tune`` command preserves case, but
-    the emergency-band constant and the bot comms-organ specs are mixed-case —
-    so ``911MHz`` typed as ``911mhz`` must still reach dispatch. None never
-    matches (an untuned radio is on no band)."""
+    """Two frequencies are the same band. Both sides normalize through the
+    canonical dial format first — so a legacy loose value (``912``) matches
+    its canonical form (``912MHz``), and case never matters. Non-numeric
+    values fall back to a case-insensitive string compare (future named
+    bands); None never matches (an untuned radio is on no band)."""
     if a is None or b is None:
         return False
+    na, nb = normalize_band(a), normalize_band(b)
+    if na is not None and nb is not None:
+        return na == nb
     return str(a).strip().lower() == str(b).strip().lower()
 
 

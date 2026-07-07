@@ -161,12 +161,20 @@ class CmdTune(Command):
             caller.msg(f"You set {device.get_display_name(caller)} sweeping "
                        f"the bands.")
             return
-        # Store the band as typed (clean display); matching is case-insensitive
-        # in world.radio.same_band, so 911mhz and 911MHz are the same channel.
-        device.db.frequency = freq
+        # The dial reads megahertz, not prose: a band is a NUMBER in the
+        # tunable range, stored canonically ('912' -> 912MHz) so every
+        # radio tuned to the same number lands on the same channel.
+        from world.radio import BAND_MAX, BAND_MIN, normalize_band
+        band = normalize_band(freq)
+        if band is None:
+            caller.msg(f"The dial reads megahertz — a number from "
+                       f"{int(BAND_MIN)} to {BAND_MAX} (or 'scan'). "
+                       f"'{freq}' isn't a frequency.")
+            return
+        device.db.frequency = band
         state = "" if is_powered(device) else " (it's switched off)"
         caller.msg(f"You tune {device.get_display_name(caller)} to "
-                   f"{freq}{state}.")
+                   f"{band}{state}.")
 
 
 class CmdToggle(Command):

@@ -177,7 +177,12 @@ loot/frisk/steal path. Witnesses already spawn with an emergency-band walkie
 
 ### 6.3 · Tuning & discovery
 
-`radio/tune <frequency>` — a walkie hears only its tuned band. Discovery is
+`radio/tune <frequency>` — a walkie hears only its tuned band. **The dial
+reads megahertz (DECIDED 2026-07-06):** a band is a NUMBER, 1–999.9 MHz at
+one-decimal resolution (~10k channels — searchable, not infinite), stored
+canonically (`912` → `912MHz`; `normalize_band`); prose is refused ("'banana'
+isn't a frequency"). `same_band` normalizes both sides, so legacy loose
+values keep matching. Discovery is
 **scanning** (sweep bands and listen), **lucky guesses**, and **captured
 walkies** (a lifted security handheld arrives tuned to their band — the
 listening post). Secrecy is procedural, not cryptographic (encryption is a
