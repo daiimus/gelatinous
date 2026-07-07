@@ -50,6 +50,42 @@ class TestDevicePredicates(TestCase):
         self.assertFalse(same_band(None, "447"))         # untuned = no band
         self.assertFalse(same_band("447", None))
 
+    def test_same_band_normalizes_legacy_loose_values(self):
+        from world.radio import same_band
+        self.assertTrue(same_band("912", "912MHz"))      # pre-dial data
+        self.assertTrue(same_band("101.5", "101.5mhz"))
+        self.assertTrue(same_band("911.0", "911MHz"))    # trailing .0 folds
+
+    def test_normalize_band_is_a_dial_not_prose(self):
+        from world.radio import normalize_band
+        self.assertEqual(normalize_band("912"), "912MHz")
+        self.assertEqual(normalize_band("911mhz"), "911MHz")
+        self.assertEqual(normalize_band(" 101.5 MHz".replace(" MHz", "MHz")),
+                         "101.5MHz")
+        self.assertEqual(normalize_band("101.54"), "101.5MHz")  # one decimal
+        self.assertIsNone(normalize_band("banana"))      # not a frequency
+        self.assertIsNone(normalize_band("0"))           # below the dial
+        self.assertIsNone(normalize_band("1000"))        # above the dial
+        self.assertIsNone(normalize_band(""))
+        self.assertIsNone(normalize_band(None))
+
+    def test_tune_rejects_prose_and_stores_canonical(self):
+        from commands.CmdRadio import CmdTune
+        dev = _radio()
+        # prose refused
+        cmd = CmdTune(); cmd.args = "walkie to banana"
+        cmd.caller = MagicMock(); cmd.caller.ndb.channel = None
+        cmd.caller.search.return_value = dev
+        cmd.parse(); cmd.func()
+        self.assertIn("isn't a frequency", cmd.caller.msg.call_args.args[0])
+        self.assertNotEqual(dev.db.frequency, "banana")
+        # loose number stored canonically
+        cmd2 = CmdTune(); cmd2.args = "walkie to 912"
+        cmd2.caller = MagicMock(); cmd2.caller.ndb.channel = None
+        cmd2.caller.search.return_value = dev
+        cmd2.parse(); cmd2.func()
+        self.assertEqual(dev.db.frequency, "912MHz")
+
     def test_transmit_device_prefers_worn_then_held(self):
         worn, held = _radio(), _radio()
         c = _char(worn=[worn], hands={"r": held})
