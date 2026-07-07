@@ -152,11 +152,29 @@ channel-per-frequency):
   Name, Voice/attribution metadata, and Frequency per line. History,
   persistence, and staff distribution come free from the channel system.
 * **Player view** — players NEVER subscribe. A walkie tuned to a frequency
-  **echoes** only matching traffic to its holder, re-rendered through the
-  say/voice rails: the speaker's **voice phrase**, **voice recognition**
-  (recognisable on the air; a modulator defeats it), **hearing-gated**,
-  attributed **by voice only** (never sight). "A gravelly voice crackles
-  over the walkie: …"
+  **echoes** matching traffic, re-rendered through the say/voice rails: the
+  speaker's **voice phrase**, **voice recognition** (recognisable on the
+  air; a modulator defeats it), **hearing-gated**, attributed **by voice
+  only** (never sight). "A gravelly voice crackles over the walkie: …"
+
+  **AMENDED (2026-07-06) — the four-perspective display model.** The
+  original text scoped the echo "to its holder"; the physical stance (§2.4
+  literally says *speaker grille*) demands more, so:
+  1. **Speaker** — `You transmit on 911MHz: "…"` (unchanged).
+  2. **Speaker's ROOM** — transmitting is talking out loud: the words ride
+     the say rails (`says into the radio,`) with full per-observer
+     attribution/hearing/garble/stealth. The witness calling in your
+     assault is audible to whoever stands beside them.
+  3. **Remote listeners** — the crackle line, voice-only attribution,
+     scan-tagged (unchanged).
+  4. **A receiving walkie's ROOM** — the grille is a speaker: traffic is
+     audible to everyone in the radio's room (carried → the holder's room;
+     lying on the floor → its room), hearing-gated per observer ("A radio
+     nearby crackles…" for non-holders when deaf). Carrying a live radio
+     is a stealth liability — as the `toggle` help always promised.
+     **Comms ORGANS stay internal** (in the ear = private to the unit).
+     **Same-room suppression:** whoever stands with the speaker heard the
+     words live (perspective 2) — their radio does not double-render.
 * **Transmitting** — `radio <message>` posts to the channel *through the
   device*, tagged with the device's frequency; every matching-tuned walkie
   echoes it. No device, no voice on the air.
