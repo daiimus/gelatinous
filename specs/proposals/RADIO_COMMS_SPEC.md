@@ -161,10 +161,14 @@ channel-per-frequency):
   original text scoped the echo "to its holder"; the physical stance (§2.4
   literally says *speaker grille*) demands more, so:
   1. **Speaker** — `You transmit on 911MHz: "…"` (unchanged).
-  2. **Speaker's ROOM** — transmitting is talking out loud: the words ride
-     the say rails (`says into the radio,`) with full per-observer
-     attribution/hearing/garble/stealth. The witness calling in your
-     assault is audible to whoever stands beside them.
+  2. **Speaker's ROOM** — two registers (playtest-decided 2026-07-07):
+     `xmit` is keying the handset and speaking **LOW** — each bystander
+     rolls to CATCH the words (listener Intellect vs speaker Resonance,
+     the voice-discern pairing); a miss shows only the act ("mutters
+     something into the radio"). `to <radio>, <message>` is **openly**
+     addressing the device — ordinary room speech, everyone hears (the
+     full say rails, `says into the radio,`). Whisper stays contentless
+     to bystanders; the mutter sits between whisper and say.
   3. **Remote listeners** — the crackle line, voice-only attribution,
      scan-tagged (unchanged).
   4. **A receiving walkie's ROOM** — the grille is a speaker: traffic is
@@ -173,8 +177,11 @@ channel-per-frequency):
      nearby crackles…" for non-holders when deaf). Carrying a live radio
      is a stealth liability — as the `toggle` help always promised.
      **Comms ORGANS stay internal** (in the ear = private to the unit).
-     **Same-room suppression:** whoever stands with the speaker heard the
-     words live (perspective 2) — their radio does not double-render.
+     **DOUBLE RENDER (2026-07-07, playtest-decided — replaces the earlier
+     same-room suppression):** a matching radio beside the speaker DOES
+     echo. With xmit's low voice this is load-bearing counter-play: you
+     may fail to catch the mutter, but if your handset repeats it you've
+     just learned you share their band — and heard the content anyway.
 * **Transmitting** — `radio <message>` posts to the channel *through the
   device*, tagged with the device's frequency; every matching-tuned walkie
   echoes it. No device, no voice on the air.

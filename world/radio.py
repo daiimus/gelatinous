@@ -253,8 +253,15 @@ def _render_radio_line(speaker: Any, listener: Any, message: str,
             f'"{message}"')
 
 
-def transmit(speaker: Any, message: str, device: Any) -> bool:
+def transmit(speaker: Any, message: str, device: Any,
+             overt: bool = False) -> bool:
     """Speaker transmits *message* over *device* on its tuned frequency.
+
+    ``overt`` is HOW the words leave the mouth (decided 2026-07-07):
+    ``xmit`` (overt=False) is keying the handset and speaking into it, LOW —
+    bystanders must catch it (opposed hearing check, §_mutter_into);
+    ``to <radio>, <message>`` (overt=True) is openly addressing the device —
+    ordinary room speech everyone present hears.
 
     Returns False (with the speaker messaged) if the device can't send —
     off, or in scan mode (sweeping, not parked on a band). Otherwise posts to
@@ -275,7 +282,10 @@ def transmit(speaker: Any, message: str, device: Any) -> bool:
 
     speaker.msg(f'You transmit on {frequency}: "{message}"')
     _log_to_channel(speaker, message, frequency)
-    _speak_aloud(speaker, message, verb="says into the radio")
+    if overt:
+        _speak_aloud(speaker, message, verb="says into the radio")
+    else:
+        _mutter_into(speaker, message)
     _deliver(speaker, message, frequency, device)
     return True
 
@@ -313,6 +323,60 @@ def transmit_organ(speaker: Any, message: str) -> bool:
     return True
 
 
+def _mutter_into(speaker: Any, message: str) -> None:
+    """The xmit register: a low voice into the handset. Each bystander who
+    can hear rolls to CATCH the words — listener Intellect vs the speaker's
+    Resonance (the voice-discern pairing) — a pass renders the full line, a
+    miss (or deafness) just the act. Sight-only observers see the act. The
+    counter-play is the band: a same-room listener whose radio matches
+    hears the CONTENT off their own handset regardless (perspective 4)."""
+    location = getattr(speaker, "location", None)
+    if location is None:
+        return
+    try:
+        from world.combat.dice import opposed_roll
+        from world.grammar import capitalize_first
+        from world.perception import can_hear, can_see
+        from world.speech import (
+            render_speech_line, speech_payload, visible_voice_flavor,
+        )
+        from world.voice import resolve_speaker_attribution
+        flavor = visible_voice_flavor(speaker)
+        contents = getattr(location, "contents", None)
+        if not isinstance(contents, (list, tuple)):
+            return
+        for observer in contents:
+            if observer is speaker or not hasattr(observer, "msg"):
+                continue
+            heard = can_hear(observer)
+            seen = can_see(observer)
+            if not heard and not seen:
+                continue
+            caught = False
+            if heard:
+                try:
+                    o_roll, s_roll, _ = opposed_roll(
+                        observer, speaker, "intellect", "resonance")
+                    caught = o_roll >= s_roll
+                except Exception:  # noqa: BLE001 — no dice, no eavesdrop
+                    caught = False
+            if caught:
+                text = render_speech_line(
+                    speaker, observer, message, flavor=flavor,
+                    verb="mutters into the radio")
+                payload = speech_payload(observer, speaker, message)
+                observer.msg(text=text, type="say", from_obj=speaker,
+                             **payload)
+            else:
+                who = capitalize_first(
+                    resolve_speaker_attribution(speaker, observer))
+                observer.msg(
+                    f"{who} mutters something into the radio.",
+                    type="say", from_obj=speaker)
+    except Exception:  # noqa: BLE001 — room render never blocks the air
+        pass
+
+
 def _deliver(speaker: Any, message: str, frequency: str,
              exclude_device: Any) -> None:
     """Echo a transmission to every receiver on *frequency*: powered walkies
@@ -329,19 +393,15 @@ def _deliver(speaker: Any, message: str, frequency: str,
     can't raise a chorus."""
     receivers = []          # (listener, tagged, own), deduped, order-stable
     seen = set()
-    speaker_room = getattr(speaker, "location", None)
 
     def _collect(listener, *, tagged, own):
         if listener is None or listener is speaker or id(listener) in seen:
             return
         if not hasattr(listener, "msg"):
             return
-        # Same-room suppression: whoever stands WITH the speaker already
-        # heard the words live (perspective 3, the say rails) — their radio
-        # echoing it back would be double render, not physics worth keeping.
-        if (speaker_room is not None
-                and getattr(listener, "location", None) is speaker_room):
-            return
+        # No same-room suppression (decided 2026-07-07): a matching radio
+        # beside the speaker DOES echo — with xmit's low voice, your own
+        # handset repeating the words is how you learn you share their band.
         seen.add(id(listener))
         receivers.append((listener, tagged, own))
 
