@@ -43,6 +43,13 @@ class ArmorMixin:
             tuple: (died: bool, actual_damage: int) - Whether character died
                 and actual damage applied after armor
         """
+        # BREAKING (CHANNELED_ACTIONS_SPEC §2.3): contact ends a channel.
+        try:
+            from world.channeled import interrupt_channel
+            interrupt_channel(self)
+        except Exception:
+            pass
+
         if not isinstance(amount, int) or amount <= 0:
             return (False, 0)
 

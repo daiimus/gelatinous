@@ -654,6 +654,13 @@ class Character(
             splattercast.msg(f"AT_DEATH_SKIP: {self.key} already processed death (db flag), skipping")
             return
             
+        # BREAKING (CHANNELED_ACTIONS_SPEC §2.3): dying ends any channel.
+        try:
+            from world.channeled import interrupt_channel
+            interrupt_channel(self)
+        except Exception:  # noqa: BLE001
+            pass
+
         # Mark death as processed IMMEDIATELY using db (persistent) to prevent ANY race conditions
         self.db.death_processed = True
         
@@ -719,6 +726,12 @@ class Character(
         """
         if not force_test and not self.is_unconscious():
             return
+        # BREAKING (CHANNELED_ACTIONS_SPEC §2.3): collapsing ends a channel.
+        try:
+            from world.channeled import interrupt_channel
+            interrupt_channel(self)
+        except Exception:  # noqa: BLE001
+            pass
             
         # Check if character has builder/developer permissions
         if not force_test and self.locks.check(self, "perm(Builder)"):
@@ -1364,6 +1377,14 @@ class Character(
             **kwargs: Forwarded to the parent hook (e.g. ``move_type``).
         """
         super().at_post_move(source_location, **kwargs)
+        # BREAKING (CHANNELED_ACTIONS_SPEC §2.3): a move that happened while
+        # channeling was FORCED (voluntary moves are blocked at at_pre_move) —
+        # dragged, thrown, gravity. The act breaks with a partial.
+        try:
+            from world.channeled import interrupt_channel
+            interrupt_channel(self)
+        except Exception:  # noqa: BLE001
+            pass
         # You can't carry a seat between rooms — moving puts you on your feet
         # (FURNITURE_AND_POSTURE; silent, the move messages already narrate it).
         if self.db.furniture or (self.db.posture and self.db.posture != "standing"):
@@ -1393,6 +1414,11 @@ class Character(
         off openly while hidden gives you away (stealth spec §6.4) —
         ``sneak`` sets the ndb flag that keeps concealment through a move."""
         if not super().at_pre_move(destination, **kwargs):
+            return False
+        # BLOCKED (CHANNELED_ACTIONS_SPEC §2.2): channels prevent movement —
+        # leaving requires an explicit 'stop'. Never a silent cancel.
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self):
             return False
         if self.db.hidden is True and not self.ndb.sneaking:
             from world.stealth import break_stealth

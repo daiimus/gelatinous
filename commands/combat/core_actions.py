@@ -54,6 +54,9 @@ class CmdAttack(Command):
     help_category = "Combat"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):
+            return  # BLOCKED (CHANNELED_ACTIONS_SPEC §2.2)
         caller = self.caller
         args = self.args.strip()
         splattercast = get_splattercast()
@@ -547,7 +550,15 @@ class CmdStop(Command):
     def func(self):
         caller = self.caller
         args = self.args.strip().lower()
-        
+
+        # Channeled act (CHANNELED_ACTIONS_SPEC §2.2): bare `stop`, or
+        # `stop <act>` naming it, aborts deliberately — you keep the partial.
+        from world.channeled import is_channeling, stop_channel
+        channel_key = is_channeling(caller)
+        if channel_key and (not args or args == channel_key):
+            stop_channel(caller)
+            return
+
         if not args:
             caller.msg(MSG_STOP_WHAT)
             return

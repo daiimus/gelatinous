@@ -40,6 +40,9 @@ class CmdWield(Command):
 
     def func(self):
         caller = self.caller
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(caller):
+            return  # BLOCKED (CHANNELED_ACTIONS_SPEC §2.2): hands are busy
         args = self.args.strip().lower()
 
         if not args:

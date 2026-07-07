@@ -1,6 +1,12 @@
 # Channeled Actions Spec — timed, interruptible acts
 
-> **Status:** 📋 **PROPOSAL (2026-07-06) — design only.** The game's first
+> **Status:** ✅ **SHIPPED (2026-07-06)** — `world/channeled.py` (the
+> primitive), taxonomy wired (BLOCKED: movement/wield/attack/xmit-tune-
+> toggle + bare `stop` to abort; BREAKING: take_damage, combat enrollment,
+> grapple establish, unconscious/death, forced movement via at_post_move),
+> graffiti as first consumer (3s + 1s/char, partial-with-ellipsis on
+> interrupt, pro-rata paint, vandalism reports). Solvent cleaning + the
+> wrest/disarm seam are the next consumers. Originally: The game's first
 > generic **timed-act primitive**: an action that occupies its actor for a
 > real duration, shows a visible tell, and resolves to a full result on
 > completion or a **partial result on interruption**. First consumer:

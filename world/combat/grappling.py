@@ -69,6 +69,12 @@ def establish_grapple(combat_handler, grappler, victim):
     """
     if grappler == victim:
         return False, MSG_CANNOT_GRAPPLE_SELF
+    # BREAKING (CHANNELED_ACTIONS_SPEC §2.3): being seized ends a channel.
+    try:
+        from world.channeled import interrupt_channel
+        interrupt_channel(victim)
+    except Exception:  # noqa: BLE001
+        pass
     
     # Get combatant entries
     grappler_entry = None

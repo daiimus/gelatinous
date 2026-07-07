@@ -81,6 +81,9 @@ class CmdTransmit(Command):
         return None
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):
+            return  # BLOCKED (CHANNELED_ACTIONS_SPEC §2.2): device work is hands-work
         caller = self.caller
         if not self.raw_message:
             caller.msg("Transmit what?")
@@ -142,6 +145,9 @@ class CmdTune(Command):
                 self.device_phrase = raw
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):
+            return  # BLOCKED (CHANNELED_ACTIONS_SPEC §2.2): device work is hands-work
         caller = self.caller
         if not self.device_phrase or not self.freq:
             caller.msg("Usage: tune <device> to <frequency>")
@@ -188,6 +194,9 @@ class CmdToggle(Command):
             self.device_phrase, self.state = parts[0].strip(), parts[1].lower()
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):
+            return  # BLOCKED (CHANNELED_ACTIONS_SPEC §2.2): device work is hands-work
         caller = self.caller
         if not self.device_phrase:
             caller.msg("Toggle what?")
