@@ -157,12 +157,13 @@ def voice_phrase(char: Any, language: str = "Common") -> str | None:
     """
     desc = get_voice_description(char)
     ending = get_voice_ending(char)
+    from world.grammar import with_article
     if desc and ending:
-        body = f"in a {desc} {ending}"
+        body = f"in {with_article(f'{desc} {ending}')}"
     elif desc:
-        body = f"in a {desc} voice"
+        body = f"in {with_article(f'{desc} voice')}"
     elif ending:
-        body = f"in a {ending}"
+        body = f"in {with_article(ending)}"
     else:
         return None
     return f"speaking {language}, {body}"
