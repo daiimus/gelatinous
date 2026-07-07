@@ -66,6 +66,17 @@ class TestEnsureCommsFitted(TestCase):
         self.assertEqual(ensure_comms_fitted(), 1)
         mock_fit.assert_called_once_with(bare)
 
+    @patch("world.director.population.factory_fit_comms")
+    @patch("evennia.objects.models.ObjectDB")
+    def test_sweep_heals_missing_voices(self, mock_db, _fit):
+        from world.director.population import ensure_comms_fitted
+        mute = self._unit({"comms_module": MagicMock()})
+        mute.db.voice_description = None
+        mock_db.objects.filter.return_value.distinct.return_value = [mute]
+        ensure_comms_fitted()
+        self.assertIn(mute.db.voice_description, ("clipped", "flinty", "icy"))
+        self.assertIn(mute.db.voice_ending, ("monotone", "hum"))
+
     @patch("world.director.population.factory_fit_comms",
            side_effect=RuntimeError("bad unit"))
     @patch("evennia.objects.models.ObjectDB")
