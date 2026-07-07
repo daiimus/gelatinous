@@ -113,7 +113,8 @@ def render_speech_line(speaker, observer, speech, *, target=None, flavor=None,
     )
 
 
-def broadcast_speech(speaker, speech, location, *, target=None, speech_type="say"):
+def broadcast_speech(speaker, speech, location, *, target=None, speech_type="say",
+                     verb="says"):
     """Render and broadcast a spoken line to a room.
 
     Shared by ``say`` (``target=None``) and ``to`` (``target=<character>``).
@@ -129,7 +130,7 @@ def broadcast_speech(speaker, speech, location, *, target=None, speech_type="say
         if not can_hear(observer) and not can_see(observer):
             continue  # no channel — suppressed
         text = render_speech_line(
-            speaker, observer, speech, target=target, flavor=flavor
+            speaker, observer, speech, target=target, flavor=flavor, verb=verb
         )
         payload = speech_payload(
             observer, speaker, speech, addressed=(observer is target)

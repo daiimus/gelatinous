@@ -235,15 +235,17 @@ def radio_voice_handle(speaker: Any, listener: Any) -> str:
 
 
 def _render_radio_line(speaker: Any, listener: Any, message: str,
-                       frequency: str, *, tagged: bool) -> str:
+                       frequency: str, *, tagged: bool, own: bool = True) -> str:
     """A received transmission, VOICE-attributed (never sight — you can't see
     the far end) and hearing-gated. ``tagged`` prefixes the frequency (scanner
-    sweep mode caught it off-band)."""
+    sweep mode caught it off-band); ``own`` distinguishes your handset from
+    a grille you're merely standing near."""
     from world.perception import can_hear
     from world.voice import voice_phrase
     band = f"[{frequency}] " if tagged else ""
     if not can_hear(listener):
-        return f"{band}Your radio crackles, but you can't make out a word."
+        source = "Your radio" if own else "A radio nearby"
+        return f"{band}{source} crackles, but you can't make out a word."
     who = radio_voice_handle(speaker, listener)
     flavour = voice_phrase(speaker)
     flav = f" |x*{flavour}*|n" if flavour else ""
@@ -273,8 +275,25 @@ def transmit(speaker: Any, message: str, device: Any) -> bool:
 
     speaker.msg(f'You transmit on {frequency}: "{message}"')
     _log_to_channel(speaker, message, frequency)
+    _speak_aloud(speaker, message, verb="says into the radio")
     _deliver(speaker, message, frequency, device)
     return True
+
+
+def _speak_aloud(speaker: Any, message: str, verb: str) -> None:
+    """Perspective 3 (§2.4 — radio is PHYSICAL): transmitting is talking,
+    out loud, in a room. The spoken line rides the say rails so bystanders
+    get per-observer attribution, hearing gating, garble, and stealth for
+    free — the witness calling in your assault is audible to the person
+    standing next to them."""
+    location = getattr(speaker, "location", None)
+    if location is None:
+        return
+    try:
+        from world.speech import broadcast_speech
+        broadcast_speech(speaker, message, location, verb=verb)
+    except Exception:  # noqa: BLE001 — room render never blocks the air
+        pass
 
 
 def transmit_organ(speaker: Any, message: str) -> bool:
@@ -289,6 +308,7 @@ def transmit_organ(speaker: Any, message: str) -> bool:
         return False
     speaker.msg(f'You transmit on {frequency}: "{message}"')
     _log_to_channel(speaker, message, frequency)
+    _speak_aloud(speaker, message, verb="says over comms")
     _deliver(speaker, message, frequency, None)
     return True
 
@@ -307,32 +327,47 @@ def _deliver(speaker: Any, message: str, frequency: str,
     LLM-driven receivers is ELECTED (``radio_elected=True``) — the §7.2
     single-answerer for "all units"-style broadcasts, so a band-wide call
     can't raise a chorus."""
-    receivers = []          # (listener, tagged), deduped, order-stable
+    receivers = []          # (listener, tagged, own), deduped, order-stable
     seen = set()
+    speaker_room = getattr(speaker, "location", None)
 
-    def _collect(listener, *, tagged):
+    def _collect(listener, *, tagged, own):
         if listener is None or listener is speaker or id(listener) in seen:
             return
         if not hasattr(listener, "msg"):
             return
+        # Same-room suppression: whoever stands WITH the speaker already
+        # heard the words live (perspective 3, the say rails) — their radio
+        # echoing it back would be double render, not physics worth keeping.
+        if (speaker_room is not None
+                and getattr(listener, "location", None) is speaker_room):
+            return
         seen.add(id(listener))
-        receivers.append((listener, tagged))
+        receivers.append((listener, tagged, own))
 
     for radio in _all_powered_radios():
         if radio is exclude_device:
             continue
         scanning = is_scanning(radio)
         if scanning or same_band(frequency_of(radio), frequency):
-            _collect(radio.location, tagged=scanning)   # holder hears it
+            # Perspective 4: a walkie has a GRILLE — the traffic is audible
+            # to the whole room the radio is in, not just its holder (the
+            # toggle help has promised this since P1). A carried radio fans
+            # to the holder's room; one on the floor fans to its room.
+            holder = radio.location
+            for listener in _grille_audience(holder):
+                _collect(listener, tagged=scanning, own=(listener is holder))
 
     for bot in _comms_bots_on(frequency):
-        _collect(bot, tagged=False)                      # built-in transceiver
+        # A comms ORGAN is internal — in the ear, not on a grille. Private
+        # to the unit; the room hears nothing.
+        _collect(bot, tagged=False, own=True)
 
     # Single-answerer election: deterministic (lowest dbref) among LLM-driven
     # receivers. Range is abstracted in P1, so "nearest" has no meaning yet.
     elected = None
     try:
-        candidates = [l for l, _ in receivers
+        candidates = [l for l, _, _ in receivers
                       if getattr(getattr(l, "db", None), "llm_driven", False)
                       is True]
         if candidates:
@@ -341,16 +376,38 @@ def _deliver(speaker: Any, message: str, frequency: str,
         elected = None
 
     from world.perception import can_hear
-    for listener, tagged in receivers:
+    for listener, tagged, own in receivers:
         try:
             payload = {}
             if can_hear(listener):
                 payload["speech"] = message   # the say-rails contract
             listener.msg(_render_radio_line(
-                speaker, listener, message, frequency, tagged=tagged),
+                speaker, listener, message, frequency, tagged=tagged,
+                own=own),
                 type="radio", from_obj=speaker,
                 radio_frequency=frequency,
                 radio_elected=(listener is elected),
                 **payload)
         except Exception:  # noqa: BLE001 — one bad listener never stops the net
             pass
+
+
+def _grille_audience(holder: Any) -> list:
+    """Who hears a receiving walkie's grille. A radio carried by someone
+    fans to their whole room (holder included); one lying in a room fans to
+    that room's contents. Strictly typed (isinstance list) so a mock or
+    malformed location degrades to holder-only, never to silence."""
+    if holder is None:
+        return []
+    room = getattr(holder, "location", None)
+    contents = getattr(room, "contents", None) if room is not None else None
+    if isinstance(contents, (list, tuple)):          # carried: holder's room
+        audience = list(contents)
+        if holder not in audience:
+            audience.append(holder)
+        return audience
+    contents = getattr(holder, "contents", None)
+    if (isinstance(contents, (list, tuple))
+            and not hasattr(holder, "hands")):       # on the floor of a room
+        return list(contents)
+    return [holder]                                   # fallback: holder only

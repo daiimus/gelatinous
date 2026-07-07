@@ -185,6 +185,88 @@ class TestTransmit(TestCase):
         self.assertIn("crackles", line)
         self.assertNotIn("secret", line)
 
+    def test_transmit_is_audible_in_the_speakers_room(self):
+        # Perspective 3 (§2.4 radio is physical): transmitting is talking out
+        # loud — the words ride the say rails to the speaker's room.
+        speaker = _char()
+        dev = _radio(freq="447")
+        with self._world([dev]), \
+                patch.object(radio, "_log_to_channel"), \
+                patch("world.speech.broadcast_speech") as bs:
+            transmit(speaker, "cover the back door", dev)
+        bs.assert_called_once()
+        args, kwargs = bs.call_args
+        self.assertEqual(args[1], "cover the back door")
+        self.assertIs(args[2], speaker.location)
+        self.assertEqual(kwargs.get("verb"), "says into the radio")
+
+    def test_grille_fans_to_the_receiving_radios_room(self):
+        # Perspective 4: a walkie has a grille — the whole room hears it,
+        # not just the holder ('a powered radio is also audible').
+        from types import SimpleNamespace
+        speaker = _char()
+        dev = _radio(freq="447")
+        holder, bystander = MagicMock(), MagicMock()
+        holder.db.llm_driven = False
+        bystander.db.llm_driven = False
+        room = SimpleNamespace(contents=[holder, bystander])
+        holder.location = room
+        bystander.location = room
+        heard = _radio(freq="447")
+        heard.location = holder
+        with self._world([dev, heard]), \
+                patch.object(radio, "_log_to_channel"), \
+                patch("world.speech.broadcast_speech"), \
+                patch("world.perception.can_hear", return_value=True), \
+                patch("world.voice.attempt_voice_discern", return_value=None), \
+                patch("world.voice.get_voice_description", return_value="flat"), \
+                patch("world.voice.voice_phrase", return_value=None):
+            transmit(speaker, "come in", dev)
+        holder.msg.assert_called_once()
+        bystander.msg.assert_called_once()      # the grille reached them
+        self.assertIn("come in", bystander.msg.call_args.args[0])
+
+    def test_same_room_listener_hears_live_voice_not_the_echo(self):
+        # Whoever stands WITH the speaker heard the words live (say rails);
+        # their own radio must not double-render the transmission.
+        from types import SimpleNamespace
+        speaker = _char()
+        dev = _radio(freq="447")
+        friend = MagicMock()
+        friend.db.llm_driven = False
+        room = SimpleNamespace(contents=[])
+        speaker.location = room
+        friend.location = room                   # standing with the speaker
+        heard = _radio(freq="447")
+        heard.location = friend
+        with self._world([dev, heard]), \
+                patch.object(radio, "_log_to_channel"), \
+                patch("world.speech.broadcast_speech"):
+            transmit(speaker, "quiet now", dev)
+        friend.msg.assert_not_called()           # no radio echo in-room
+
+    def test_ground_radio_fans_to_its_room(self):
+        # A walkie left on the floor squawks to whoever's in the room —
+        # a planted/abandoned live radio is a real presence.
+        from types import SimpleNamespace
+        speaker = _char()
+        dev = _radio(freq="447")
+        visitor = MagicMock()
+        visitor.db.llm_driven = False
+        room = SimpleNamespace(contents=[visitor])   # no 'hands': a room
+        ground_radio = _radio(freq="447")
+        ground_radio.location = room
+        with self._world([dev, ground_radio]), \
+                patch.object(radio, "_log_to_channel"), \
+                patch("world.speech.broadcast_speech"), \
+                patch("world.perception.can_hear", return_value=True), \
+                patch("world.voice.attempt_voice_discern", return_value=None), \
+                patch("world.voice.get_voice_description", return_value="flat"), \
+                patch("world.voice.voice_phrase", return_value=None):
+            transmit(speaker, "anyone there?", dev)
+        visitor.msg.assert_called_once()
+        self.assertIn("anyone there?", visitor.msg.call_args.args[0])
+
     def test_off_device_refuses_transmit(self):
         speaker = _char()
         dev = _radio(on=False, freq="447")
