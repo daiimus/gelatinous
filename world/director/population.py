@@ -126,6 +126,11 @@ def spawn_secbot(location: Any, name: str | None = None) -> Any:
     # authoritative. Chassis renders via its robot key, not the humanoid
     # descriptor table (LLMNpc's safety-net seeds height/build).
     mob.db.is_npc = True   # the canonical NPC marker (absence = PC)
+    # A voice in the MECHANICAL register of the curated vocab — the unit's
+    # radio traffic ("Unit engaging — backup to ...") should read machine.
+    from random import choice as _choice
+    mob.db.voice_description = _choice(("clipped", "flinty", "icy"))
+    mob.db.voice_ending = _choice(("monotone", "hum"))
     mob.db.role = "security"
     mob.db.llm_persona = dict(SECURITY_BOT_PERSONA)
     mob.db.llm_driven = True
@@ -181,6 +186,15 @@ def ensure_comms_fitted() -> int:
             db_attributes__db_key="role").distinct():
         if getattr(bot.db, "role", None) != "security":
             continue
+        # Voice self-heal (same upkeep spirit): a pre-voice unit's radio
+        # traffic rendered "an unfamiliar voice" — give it the mechanical
+        # register its factory now ships with. Idempotent.
+        if getattr(bot.db, "voice_description", None) is None:
+            try:
+                bot.db.voice_description = choice(("clipped", "flinty", "icy"))
+                bot.db.voice_ending = choice(("monotone", "hum"))
+            except Exception:  # noqa: BLE001
+                pass
         state = getattr(bot, "medical_state", None)
         if state is None:
             continue

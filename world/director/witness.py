@@ -69,6 +69,15 @@ def spawn_witness(location: Any) -> Any | None:
         return None
     witness.height = choice(HEIGHTS)
     witness.build = choice(BUILDS)
+    # A voice (like spawn_civilian rolls) — the witness's whole purpose is
+    # being HEARD on the emergency band; without a descriptor every report
+    # rendered as "an unfamiliar voice" (uniformly anonymous snitches).
+    try:
+        from world.voice import get_voice_descriptions, get_voice_endings
+        witness.db.voice_description = choice(sorted(get_voice_descriptions()))
+        witness.db.voice_ending = choice(sorted(get_voice_endings()))
+    except Exception:  # noqa: BLE001 — flavour never blocks the spawn
+        pass
     witness.db.is_npc = True   # the canonical NPC marker (absence = PC)
     witness.db.tokens = randint(*WITNESS_TOKENS)          # §5.2 pockets
     witness.db.is_witness = True

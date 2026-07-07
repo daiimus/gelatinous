@@ -73,6 +73,11 @@ class TestSpawnWitness(TestCase):
         self.assertTrue(w.db.is_witness)
         self.assertTrue(w.db.is_npc)   # canonical marker (absence = PC)
         self.assertIn("walkie-talkie", w.look_place)  # the visible tell
+        # A voice: the snitch's whole purpose is being HEARD on the air —
+        # without a descriptor every report was "an unfamiliar voice".
+        from world.voice import get_voice_descriptions, get_voice_endings
+        self.assertIn(w.db.voice_description, get_voice_descriptions())
+        self.assertIn(w.db.voice_ending, get_voice_endings())
         # Readies the walkie the PLAYER way — real commands, no backdoor.
         cmds = [c.args[0] for c in w.execute_cmd.call_args_list]
         self.assertIn("wield magpie", cmds)
