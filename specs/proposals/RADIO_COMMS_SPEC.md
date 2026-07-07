@@ -163,9 +163,13 @@ channel-per-frequency):
   1. **Speaker** — `You transmit on 911MHz: "…"` (unchanged).
   2. **Speaker's ROOM** — two registers (playtest-decided 2026-07-07):
      `xmit` is keying the handset and speaking **LOW** — each bystander
-     rolls to CATCH the words (listener Intellect vs speaker Resonance,
-     the voice-discern pairing); a miss shows only the act ("mutters
-     something into the radio"). `to <radio>, <message>` is **openly**
+     rolls to catch it (listener Intellect vs speaker Resonance, the
+     voice-discern pairing) and the MARGIN grades comprehension
+     (playtest-refined 2026-07-07): a clean win hears every word, an even
+     ear catches letter-dropped fragments ("c-ver the b-ck d--r" — shape
+     and punctuation intact, letters lost), a bad miss gets only the act
+     ("mutters something into the radio"). An NPC brain's speech payload
+     carries exactly the fragments that listener heard, not the secret. `to <radio>, <message>` is **openly**
      addressing the device — ordinary room speech, everyone hears (the
      full say rails, `says into the radio,`). Whisper stays contentless
      to bystanders; the mutter sits between whisper and say.

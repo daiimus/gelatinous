@@ -212,28 +212,51 @@ class TestTransmit(TestCase):
         self.assertEqual(args[1], "cover the back door")
         self.assertEqual(kwargs.get("verb"), "says into the radio")
 
-    def test_mutter_catch_is_an_opposed_roll(self):
+    def test_mutter_clarity_grades_with_the_roll_margin(self):
+        # Margin sets comprehension: a clean win hears every word, an even
+        # ear catches fragments, a bad miss gets only the act.
         from types import SimpleNamespace
         speaker = MagicMock()
-        listener_sharp = MagicMock()
-        listener_dull = MagicMock()
-        room = SimpleNamespace(contents=[listener_sharp, listener_dull])
+        sharp, even, dull = MagicMock(), MagicMock(), MagicMock()
+        room = SimpleNamespace(contents=[sharp, even, dull])
         speaker.location = room
-        rolls = {id(listener_sharp): (10, 5), id(listener_dull): (2, 9)}
+        rolls = {id(sharp): (10, 5),    # margin +5 -> clarity 1.0: verbatim
+                 id(even): (5, 5),      # margin  0 -> clarity 0.5: fragments
+                 id(dull): (2, 9)}      # margin -7 -> below floor: act only
+        rendered = []
+        def _render(spk, obs, msg, **kw):
+            rendered.append((obs, msg))
+            return f'X mutters into the radio, "{msg}"'
         with patch("world.combat.dice.opposed_roll",
                    side_effect=lambda o, s, *a: (*rolls[id(o)], None)), \
                 patch("world.perception.can_hear", return_value=True), \
                 patch("world.perception.can_see", return_value=True), \
                 patch("world.speech.visible_voice_flavor", return_value=None), \
                 patch("world.speech.render_speech_line",
-                      return_value='X mutters into the radio, "plan b"'), \
+                      side_effect=_render), \
                 patch("world.voice.resolve_speaker_attribution",
                       return_value="a lean man"):
-            radio._mutter_into(speaker, "plan b")
-        self.assertIn("plan b", listener_sharp.msg.call_args.kwargs["text"])
-        dull_text = listener_dull.msg.call_args.args[0]
+            radio._mutter_into(speaker, "cover the back door")
+        by_obs = {id(o): m for o, m in rendered}
+        self.assertEqual(by_obs[id(sharp)], "cover the back door")  # verbatim
+        fragments = by_obs[id(even)]
+        self.assertIn("-", fragments)                # some letters lost...
+        self.assertNotEqual(fragments, "cover the back door")
+        self.assertEqual(len(fragments), len("cover the back door"))
+        self.assertTrue(any(c.isalpha() for c in fragments))  # ...not all
+        dull_text = dull.msg.call_args.args[0]
         self.assertIn("mutters something into the radio", dull_text)
-        self.assertNotIn("plan b", dull_text)
+        self.assertNotIn("cover", dull_text)
+
+    def test_obscure_heard_keeps_shape_loses_letters(self):
+        from world.radio import _obscure_heard
+        msg = "meet at the docks, nine."
+        self.assertEqual(_obscure_heard(msg, 1.0), msg)      # perfect ear
+        blanked = _obscure_heard(msg, 0.0)
+        self.assertEqual(len(blanked), len(msg))             # shape intact
+        self.assertNotIn("m", blanked)                       # letters gone
+        self.assertIn(",", blanked)                          # punctuation stays
+        self.assertIn(" ", blanked)
 
     def test_grille_fans_to_the_receiving_radios_room(self):
         # Perspective 4: a walkie has a grille — the whole room hears it,
