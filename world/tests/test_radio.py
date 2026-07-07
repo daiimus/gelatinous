@@ -185,20 +185,55 @@ class TestTransmit(TestCase):
         self.assertIn("crackles", line)
         self.assertNotIn("secret", line)
 
-    def test_transmit_is_audible_in_the_speakers_room(self):
-        # Perspective 3 (§2.4 radio is physical): transmitting is talking out
-        # loud — the words ride the say rails to the speaker's room.
+    def test_xmit_mutters_discreetly_in_the_speakers_room(self):
+        # xmit = keying the handset and speaking LOW: the room gets the
+        # mutter render (opposed catch checks), never the open say line.
+        speaker = _char()
+        dev = _radio(freq="447")
+        with self._world([dev]), \
+                patch.object(radio, "_log_to_channel"), \
+                patch.object(radio, "_mutter_into") as mut, \
+                patch("world.speech.broadcast_speech") as bs:
+            transmit(speaker, "cover the back door", dev)
+        mut.assert_called_once_with(speaker, "cover the back door")
+        bs.assert_not_called()
+
+    def test_overt_transmit_speaks_openly(self):
+        # `to <radio>, ...` = openly addressing the device: ordinary room
+        # speech via the say rails, everyone present hears.
         speaker = _char()
         dev = _radio(freq="447")
         with self._world([dev]), \
                 patch.object(radio, "_log_to_channel"), \
                 patch("world.speech.broadcast_speech") as bs:
-            transmit(speaker, "cover the back door", dev)
+            transmit(speaker, "cover the back door", dev, overt=True)
         bs.assert_called_once()
         args, kwargs = bs.call_args
         self.assertEqual(args[1], "cover the back door")
-        self.assertIs(args[2], speaker.location)
         self.assertEqual(kwargs.get("verb"), "says into the radio")
+
+    def test_mutter_catch_is_an_opposed_roll(self):
+        from types import SimpleNamespace
+        speaker = MagicMock()
+        listener_sharp = MagicMock()
+        listener_dull = MagicMock()
+        room = SimpleNamespace(contents=[listener_sharp, listener_dull])
+        speaker.location = room
+        rolls = {id(listener_sharp): (10, 5), id(listener_dull): (2, 9)}
+        with patch("world.combat.dice.opposed_roll",
+                   side_effect=lambda o, s, *a: (*rolls[id(o)], None)), \
+                patch("world.perception.can_hear", return_value=True), \
+                patch("world.perception.can_see", return_value=True), \
+                patch("world.speech.visible_voice_flavor", return_value=None), \
+                patch("world.speech.render_speech_line",
+                      return_value='X mutters into the radio, "plan b"'), \
+                patch("world.voice.resolve_speaker_attribution",
+                      return_value="a lean man"):
+            radio._mutter_into(speaker, "plan b")
+        self.assertIn("plan b", listener_sharp.msg.call_args.kwargs["text"])
+        dull_text = listener_dull.msg.call_args.args[0]
+        self.assertIn("mutters something into the radio", dull_text)
+        self.assertNotIn("plan b", dull_text)
 
     def test_grille_fans_to_the_receiving_radios_room(self):
         # Perspective 4: a walkie has a grille — the whole room hears it,
@@ -226,9 +261,10 @@ class TestTransmit(TestCase):
         bystander.msg.assert_called_once()      # the grille reached them
         self.assertIn("come in", bystander.msg.call_args.args[0])
 
-    def test_same_room_listener_hears_live_voice_not_the_echo(self):
-        # Whoever stands WITH the speaker heard the words live (say rails);
-        # their own radio must not double-render the transmission.
+    def test_same_room_matching_radio_echoes_the_mutter(self):
+        # Decided 2026-07-07 (double render): xmit is a LOW voice — but a
+        # same-room listener whose radio shares the band hears the CONTENT
+        # off their own handset. The echo is how you learn you share a band.
         from types import SimpleNamespace
         speaker = _char()
         dev = _radio(freq="447")
@@ -241,9 +277,14 @@ class TestTransmit(TestCase):
         heard.location = friend
         with self._world([dev, heard]), \
                 patch.object(radio, "_log_to_channel"), \
-                patch("world.speech.broadcast_speech"):
+                patch.object(radio, "_mutter_into"), \
+                patch("world.perception.can_hear", return_value=True), \
+                patch("world.voice.attempt_voice_discern", return_value=None), \
+                patch("world.voice.get_voice_description", return_value="flat"), \
+                patch("world.voice.voice_phrase", return_value=None):
             transmit(speaker, "quiet now", dev)
-        friend.msg.assert_not_called()           # no radio echo in-room
+        friend.msg.assert_called_once()          # the echo arrives
+        self.assertIn("quiet now", friend.msg.call_args.args[0])
 
     def test_ground_radio_fans_to_its_room(self):
         # A walkie left on the floor squawks to whoever's in the room —
@@ -367,7 +408,7 @@ class TestCommands(TestCase):
         with patch("world.stealth.break_stealth"), \
                 patch("world.radio.transmit") as tx:
             cmd.func()
-        tx.assert_called_once_with(caller, "on my way", dev)
+        tx.assert_called_once_with(caller, "on my way", dev, overt=True)
 
 
 class TestCommsOrgan(TestCase):

@@ -38,7 +38,9 @@ class CmdTransmit(Command):
     WEARING first, then one in your HAND; you can't transmit through a radio
     that's only in your pocket.
 
-    Directed speech works too: ``to <radio>, <message>`` transmits the same way.
+    You transmit LOW — people around you must catch what you mutter into
+    the handset (a sharp ear might). To speak into the radio openly so the
+    whole room hears, address it instead: ``to <radio>, <message>``.
     """
 
     key = "transmit"

@@ -115,7 +115,7 @@ class CmdTo(Command):
                 caller.msg(f"You aren't carrying "
                            f"{target.get_display_name(caller)}.")
                 return
-            transmit(caller, speech, target)
+            transmit(caller, speech, target, overt=True)   # spoken openly
             return
 
         # Actor sees their own message; the room hears it through the shared
