@@ -236,7 +236,8 @@ Unified graffiti system providing player-driven street expression through spray 
   - Display priority: unique tags first, stacked tags after (de-emphasized)
   - Rewards variety, discourages spam with vague acknowledgment
   - Cleaning interaction: solvent still works character-by-character, ignores stacking
-  - Case-insensitive matching for consolidation
+  - Case-insensitive matching for consolidation — via the `world/fuzzy.py`
+    facade (2026-07-07), so near-duplicates (typo/variant tags) consolidate too
 - **Graffiti aging mechanics** - fade over time
 - **Gang/faction-specific colors** - restricted color palettes
 - **Skill-based quality levels** - novice vs expert graffiti

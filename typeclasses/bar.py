@@ -476,7 +476,22 @@ class Bartender(LLMNpcMixin, Character):
         """Route ``prepare_drink`` to the real ``prepare`` command (the bar makes
         the drink for real); delegate the rest (e.g. ``remember``) to the mixin."""
         if tool == "prepare_drink" and arg and self.location:
-            self.execute_cmd(f"prepare {arg}")
+            drink = " ".join(str(arg).split())
+            # Resolve the model's phrasing against the REAL menu (fuzzy
+            # facade): "a mug of rotgut"/"rotgutt" → the menu name. No
+            # match = pass through; `prepare` declines off-menu itself.
+            try:
+                from world.fuzzy import best_match
+                find_bar = getattr(self, "_find_bar", None)
+                bar = find_bar() if callable(find_bar) else None
+                menu = (bar.db.menu if bar else None) or self.db.menu or []
+                names = [r.get("name") for r in menu if r.get("name")]
+                hit = best_match(drink, names)
+                if hit:
+                    drink = hit[0]
+            except Exception:  # noqa: BLE001 — resolution is best-effort
+                pass
+            self.execute_cmd(f"prepare {drink}")
             return
         LLMNpcMixin._handle_action_tool(self, tool, arg, patron)
 

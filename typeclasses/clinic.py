@@ -114,6 +114,14 @@ class Doctor(LLMNpcMixin, Character):
         entry = CLINIC_SUPPLIES.get(key)
         if not entry:  # loose: any supply word inside the phrase
             entry = next((v for k, v in CLINIC_SUPPLIES.items() if k in key), None)
+        if not entry:  # fuzzy: "pain killer", "bandge" (world.fuzzy facade)
+            try:
+                from world.fuzzy import best_match
+                hit = best_match(key, list(CLINIC_SUPPLIES))
+                if hit:
+                    entry = CLINIC_SUPPLIES[hit[0]]
+            except Exception:  # noqa: BLE001 — resolution is best-effort
+                entry = None
         if not entry or not patient:
             return
         proto_key, verb = entry

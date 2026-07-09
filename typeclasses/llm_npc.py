@@ -598,6 +598,22 @@ class LLMNpcMixin:
             garment = re.sub(r"\s*\([^)]*\)\s*$", "", garment).strip()
             if verb in ("zip", "unzip", "button", "unbutton",
                         "rollup", "unroll", "remove", "wear") and garment:
+                # Resolve the model's phrasing against the REAL wardrobe
+                # (worn + carried) — fuzzy facade (world.fuzzy), so "mesh
+                # top" finds "a mesh top" and a typo still lands. No match
+                # above the floor = fall through with the cleaned phrase
+                # (the command's own search gets its chance).
+                try:
+                    from world.fuzzy import best_match
+                    candidates = list(self.get_worn_items() or [])
+                    candidates += [o for o in (self.contents or [])
+                                   if o not in candidates]
+                    hit = best_match(garment, candidates,
+                                     key=lambda o: getattr(o, "key", ""))
+                    if hit:
+                        garment = hit[0].key
+                except Exception:  # noqa: BLE001 — resolution is best-effort
+                    pass
                 self.execute_cmd(f"{verb} {garment}")
         elif tool == "radio" and arg:
             # Key up for REAL through the transmit command (§7.3) — worn/held
