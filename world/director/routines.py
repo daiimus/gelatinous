@@ -211,8 +211,11 @@ class DirectorRoutineScript(DefaultScript):
         idmapper). Today: factory-fit the comms module into any security
         unit spawned before the transceiver existed (#1009). Idempotent."""
         try:
-            from world.director.population import ensure_comms_fitted
+            from world.director.population import (
+                ensure_base_station, ensure_comms_fitted,
+            )
             ensure_comms_fitted()
+            ensure_base_station()
         except Exception:  # noqa: BLE001 — upkeep must not stall the beats
             pass
 

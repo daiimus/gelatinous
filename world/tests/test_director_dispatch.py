@@ -122,3 +122,58 @@ class TestDispatchWiring(TestCase):
         cs = CharacterCmdSet()
         cs.at_cmdset_creation()
         self.assertIn("@dispatch", [c.key for c in cs.commands])
+
+
+class TestDispatcherAck(TestCase):
+    """The dispatcher's voice: deterministic template acks on 911MHz via
+    the base's REAL console — no console = no voice (the physical gate)."""
+
+    def _event(self, etype="assault", where="Cobb Street"):
+        ev = MagicMock()
+        ev.type = etype
+        ev.location = MagicMock()
+        ev.location.key = where
+        return ev
+
+    @patch("evennia.utils.delay")
+    def test_ack_names_the_crime_place_and_count(self, mock_delay):
+        from world.director.dispatch import _ack_on_air
+        _ack_on_air(self._event(), [MagicMock(), MagicMock()])
+        line = mock_delay.call_args.args[2]
+        self.assertIn("an assault at Cobb Street", line)
+        self.assertIn("2 units responding", line)
+
+    @patch("evennia.utils.delay")
+    def test_single_unit_reads_singular(self, mock_delay):
+        from world.director.dispatch import _ack_on_air
+        _ack_on_air(self._event("vandalism"), [MagicMock()])
+        line = mock_delay.call_args.args[2]
+        self.assertIn("vandalism in progress", line)
+        self.assertIn("Unit responding", line)
+
+    @patch("evennia.utils.delay")
+    def test_drained_pool_is_announced(self, mock_delay):
+        # 'No units available' on a scanner = the finite pool made audible.
+        from world.director.dispatch import _ack_on_air
+        _ack_on_air(self._event("disturbance"), [])
+        line = mock_delay.call_args.args[2]
+        self.assertIn("No units available", line)
+
+    def test_transmit_rides_the_real_console(self):
+        from world.director.dispatch import _transmit_ack
+        station = MagicMock()
+        with patch("world.director.population.get_base_station",
+                   return_value=station), \
+                patch("world.radio.transmit") as tx:
+            _transmit_ack("Dispatch copies.")
+        tx.assert_called_once_with(station, "Dispatch copies.", station,
+                                   overt=True)
+
+    def test_no_console_no_voice(self):
+        # Sabotage seam: console gone/off = dispatch has no voice.
+        from world.director.dispatch import _transmit_ack
+        with patch("world.director.population.get_base_station",
+                   return_value=None), \
+                patch("world.radio.transmit") as tx:
+            _transmit_ack("Dispatch copies.")
+        tx.assert_not_called()

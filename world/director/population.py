@@ -208,6 +208,43 @@ def ensure_comms_fitted() -> int:
     return fitted
 
 
+def ensure_base_station() -> Any | None:
+    """Upkeep: the security base carries its dispatch console (the
+    RADIO_COMMS_SPEC §2.1 base station — the voice that acknowledges
+    reports on 911MHz). Idempotent; in-process (heartbeat at_start).
+    Returns the station (existing or newly installed), or None without
+    a designated base."""
+    base = get_security_base()
+    if base is None:
+        return None
+    for obj in base.contents:
+        if getattr(getattr(obj, "db", None), "is_base_station", None) is True:
+            return obj
+    try:
+        from evennia.prototypes.spawner import spawn
+        from world.prototypes import BASE_STATION
+        station = spawn(BASE_STATION)[0]
+        station.location = base
+        return station
+    except Exception:  # noqa: BLE001 — a mute base still dispatches
+        return None
+
+
+def get_base_station() -> Any | None:
+    """The base's live, powered dispatch console, or None (no base, no
+    console, console off/broken = dispatch has no voice — the physical
+    gate: sabotage the console and the net goes quiet)."""
+    from world.radio import is_powered, is_radio
+    base = get_security_base()
+    if base is None:
+        return None
+    for obj in base.contents:
+        if (getattr(getattr(obj, "db", None), "is_base_station", None) is True
+                and is_radio(obj) and is_powered(obj)):
+            return obj
+    return None
+
+
 def maintain_security_complement() -> Any | None:
     """One heartbeat of the respawn loop: if living posted units fall
     short of the base's complement, cycle ONE replacement out of the
