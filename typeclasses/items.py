@@ -651,18 +651,40 @@ class DispatchConsole(Radio):
     #: Seconds between answered lines — the console is terse, not chatty.
     ANSWER_COOLDOWN = 10.0
     #: The register. Instructions live game-side so the backend stays dumb.
-    #: EVERYTHING on this band is dispatch's traffic (it is the emergency
-    #: channel) — hails get procedure, chatter gets channel discipline.
+    #: Small-model practices (the 19:15 misfires taught this): EXAMPLES over
+    #: adjectives — a 3B parrots unlabeled scaffolding and inverts roles
+    #: without exemplars showing exactly what "your reply" means. Context is
+    #: labeled, the traffic is labeled, and the output contract is explicit:
+    #: only the spoken line, nothing else.
     INSTRUCTIONS = (
-        "You are the dispatch operator of a colonial security force in a "
-        "gritty fictional cyberpunk game, monitoring the colony's EMERGENCY "
-        "radio band. Everything you hear arrives on that band. Answer in "
-        "ONE short, flat, procedural line — no exclamation marks, no "
-        "warmth, no questions unless operationally necessary. Acknowledge "
-        "genuine reports and hails; state unit availability when asked; "
-        "direct callers to give a location. If the traffic is idle chatter, "
-        "greetings, or non-emergency use of the band, tell them curtly to "
-        "keep this channel clear. Stay strictly in-world."
+        "You are DISPATCH: the radio dispatch operator of a colonial "
+        "security force in a gritty fictional cyberpunk game, monitoring "
+        "the colony's emergency band. You never identify as anything else "
+        "and you never speak for callers.\n"
+        "You receive [CONTEXT] (facts for you alone — never repeat it) and "
+        "[TRAFFIC] (what the caller said). Reply with ONLY the words you "
+        "speak on the air: one short, flat, procedural line. No exclamation "
+        "marks, no warmth, no brackets, no labels, no narration. Never "
+        "repeat or paraphrase the caller's words back to them.\n"
+        "Acknowledge genuine reports and hails; state unit availability "
+        "when asked; direct callers to give a location. Idle chatter or "
+        "non-emergency use of the band gets told curtly to keep the "
+        "channel clear.\n"
+        "EXAMPLES:\n"
+        "[CONTEXT] Units available: 3. [TRAFFIC] a husky voice: "
+        "\"Dispatch, shots fired on Volta Street!\"\n"
+        "Copy, shots fired on Volta Street. Units responding. Stay off "
+        "the street.\n"
+        "[CONTEXT] Units available: 0. [TRAFFIC] a reedy voice: "
+        "\"Anyone there? I need help at the docks.\"\n"
+        "Copy, docks. No units available. Shelter in place and keep this "
+        "channel open.\n"
+        "[CONTEXT] Units available: 2. [TRAFFIC] an unfamiliar voice: "
+        "\"How's your day going?\"\n"
+        "Keep this channel clear.\n"
+        "[CONTEXT] Units available: 4. [TRAFFIC] a flat voice: "
+        "\"Dispatch, do you copy?\"\n"
+        "Dispatch copies. Go ahead."
     )
     FALLBACK_LINE = "Dispatch copies. State your traffic and location."
 
@@ -708,13 +730,47 @@ class DispatchConsole(Radio):
             voice = radio_voice_handle(speaker, self)
         except Exception:  # noqa: BLE001
             voice = "an unknown voice"
-        prompt = (f"Units available: {units}. Radio traffic from {voice}: "
-                  f'"{speech}"')
+        prompt = (f'[CONTEXT] Units available: {units}. '
+                  f'[TRAFFIC] {voice}: "{speech}"')
         request_civic_line(
             self.INSTRUCTIONS, prompt,
-            on_reply=self._answer,
+            on_reply=lambda text: self._answer(
+                self._clean_reply(text, heard=speech)),
             on_fail=lambda: self._answer(self.FALLBACK_LINE),
         )
+
+    def _clean_reply(self, text, heard=None):
+        """Reply sanitation (the GM lane's practices, scaled down): the model
+        must return ONLY a spoken line. First line only; quotes/labels
+        stripped; brackets (stage directions) removed; any echo of the
+        prompt scaffolding (the exact 19:15 misfire) OR of the caller's own
+        words (the GM lane's echo guard — 'Copy, how's your day going?')
+        rejects the reply in favour of the template fallback."""
+        import re
+        line = " ".join(str(text or "").split())
+        line = line.split("\n")[0].strip().strip('"').strip()
+        line = re.sub(r"^(dispatch|operator|you)\s*:\s*", "", line,
+                      flags=re.I)
+        line = re.sub(r"\[[^\]]*\]", "", line).strip()   # stage directions
+        line = line.strip().strip('"').strip()
+        low = line.lower()
+        scaffolding = ("units available:", "[context]", "[traffic]",
+                       "radio traffic from")
+        if not line or len(line) > 200 or any(s in low for s in scaffolding):
+            return self.FALLBACK_LINE
+        if heard:
+            try:
+                from world.llm.prompt import is_echo
+                # Strip the procedural lead ('Copy, ...') before the echo
+                # check so a legitimate acknowledgment that RESTATES a
+                # report isn't punished — only naked parroting is.
+                bare = re.sub(r"^(copy|roger|acknowledged)[,.\s]*", "",
+                              low).strip()
+                if bare and is_echo(bare, heard):
+                    return self.FALLBACK_LINE
+            except Exception:  # noqa: BLE001 — the guard is best-effort
+                pass
+        return line
 
     def _units_available(self):
         try:
