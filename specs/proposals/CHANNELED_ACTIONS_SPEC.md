@@ -5,8 +5,11 @@
 > toggle + bare `stop` to abort; BREAKING: take_damage, combat enrollment,
 > grapple establish, unconscious/death, forced movement via at_post_move),
 > graffiti as first consumer (3s + 1s/char, partial-with-ellipsis on
-> interrupt, pro-rata paint, vandalism reports). Solvent cleaning + the
-> wrest/disarm seam are the next consumers. Originally: The game's first
+> interrupt, pro-rata paint, vandalism reports). **Solvent cleaning SHIPPED
+> as second consumer (2026-07-10)**: 3s + 1s/solvent-unit; graffiti scrubs
+> pro-rata on interruption; **blood breaks down only at completion** (the
+> solvent needs dwell time — bailing mid-scrub leaves the evidence). The
+> wrest/disarm seam remains the next consumer. Originally: The game's first
 > generic **timed-act primitive**: an action that occupies its actor for a
 > real duration, shows a visible tell, and resolves to a full result on
 > completion or a **partial result on interruption**. First consumer:

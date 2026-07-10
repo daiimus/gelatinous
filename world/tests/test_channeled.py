@@ -172,6 +172,91 @@ class TestGraffitiChannel(TestCase):
         can.use_paint.assert_not_called()
 
 
+class TestCleaningChannel(TestCase):
+    """Solvent cleaning — the second consumer: per-unit duration, graffiti
+    scrubs pro-rata on interruption, blood needs the full dwell."""
+
+    def _cmd(self):
+        from commands.CmdGraffiti import CmdGraffiti
+        cmd = CmdGraffiti()
+        caller = MagicMock()
+        caller.ndb = SimpleNamespace(channel=None)
+        caller.override_place = None
+        cmd.caller = caller
+        return cmd, caller
+
+    def _solvent(self, level=256):
+        can = MagicMock()
+        can.db.aerosol_level = level
+        can.db.quality = None
+        can.get_display_name = lambda looker=None: "a solvent can"
+        return can
+
+    def _graffiti(self):
+        from typeclasses.objects import GraffitiObject
+        g = MagicMock(spec=GraffitiObject)
+        g.has_graffiti.return_value = True
+        g.db = SimpleNamespace(is_blood_pool=False)
+        g.remove_random_characters.return_value = 5
+        return g
+
+    def test_clean_channels_per_unit(self):
+        cmd, caller = self._cmd()
+        can = self._solvent()
+        wall = self._graffiti()
+        caller.location.contents = [wall]
+        with patch.object(ch, "delay") as d, \
+                patch("commands.CmdGraffiti.msg_room_identity"):
+            cmd._handle_clean_with_solvent(can)
+        self.assertEqual(is_channeling(caller), "cleaning")
+        duration = d.call_args.args[0]
+        self.assertAlmostEqual(duration, 3.0 + 10 * 1.0)   # 10-unit scrub
+        can.use_solvent.assert_not_called()    # cost deducts at RESOLUTION
+
+    def test_completion_scrubs_and_spends(self):
+        cmd, caller = self._cmd()
+        can = self._solvent()
+        wall = self._graffiti()
+        caller.location.contents = [wall]
+        with patch.object(ch, "delay") as d, \
+                patch("commands.CmdGraffiti.msg_room_identity"), \
+                patch("commands.CmdGraffiti.delay"):
+            cmd._handle_clean_with_solvent(can)
+            ch._finish(*d.call_args.args[2:])
+        can.use_solvent.assert_called_once_with(10)
+        wall.remove_random_characters.assert_called_once_with(10)
+
+    def test_interrupt_scrubs_pro_rata_no_blood(self):
+        from typeclasses.objects import BloodPool
+        cmd, caller = self._cmd()
+        can = self._solvent()
+        wall = self._graffiti()
+        blood = MagicMock(spec=BloodPool)
+        blood.db = SimpleNamespace(is_blood_pool=True,
+                                   bleeding_incidents=[1])
+        caller.location.contents = [wall, blood]
+        with patch.object(ch, "delay"), \
+                patch("commands.CmdGraffiti.msg_room_identity"), \
+                patch("commands.CmdGraffiti.delay"), \
+                patch.object(ch, "monotonic", side_effect=[100.0, 107.0]):
+            cmd._handle_clean_with_solvent(can)
+            interrupt_channel(caller)          # 7s in: 4 units worked
+        can.use_solvent.assert_called_once_with(4)
+        wall.remove_random_characters.assert_called_once_with(4)
+        blood.clean_with_solvent.assert_not_called()   # needs full dwell
+
+    def test_nothing_to_clean_never_channels(self):
+        cmd, caller = self._cmd()
+        can = self._solvent()
+        caller.location.contents = []
+        with patch.object(ch, "delay") as d:
+            cmd._handle_clean_with_solvent(can)
+        d.assert_not_called()
+        self.assertIsNone(is_channeling(caller))
+        self.assertIn("nothing here to clean",
+                      caller.msg.call_args.args[0])
+
+
 class TestTaxonomyWiring(TestCase):
     """The BLOCKED gates and BREAKING seams actually call the primitive."""
 
