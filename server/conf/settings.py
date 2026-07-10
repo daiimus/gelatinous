@@ -262,6 +262,12 @@ LOGGING = {
 # (a 127.0.0.1 URL would mean the container itself). Set LLM_GM_API_KEY for cloud
 # providers (sent as a Bearer token); leave blank for local servers.
 LLM_GM_ENABLED = False
+# The civic lane (dispatch console's answering voice; kiosks/files later):
+# a SECOND OpenAI-compatible endpoint. Off by default; the deterministic
+# template dispatcher is the floor either way.
+CIVIC_LLM_ENABLED = False
+CIVIC_LLM_URL = "http://host.docker.internal:8766/v1/chat/completions"
+CIVIC_LLM_TIMEOUT = 10
 LLM_GM_URL = "http://host.docker.internal:8765/v1/chat/completions"
 LLM_GM_MODEL = ""          # backend-specific model id; blank lets local servers default
 LLM_GM_API_KEY = ""        # Bearer token for cloud backends; blank for local

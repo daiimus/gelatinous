@@ -177,3 +177,96 @@ class TestDispatcherAck(TestCase):
                 patch("world.radio.transmit") as tx:
             _transmit_ack("Dispatch copies.")
         tx.assert_not_called()
+
+
+class TestDispatchConsoleAnswers(TestCase):
+    """The console's answering brain: names-dispatch traffic from players
+    gets a civic-LLM line (template fallback structural); NPC traffic and
+    unaddressed squawks never do."""
+
+    def _console(self):
+        from typeclasses.items import DispatchConsole
+        from types import SimpleNamespace
+        c = MagicMock(spec=DispatchConsole)
+        c.ndb = SimpleNamespace(last_answer=None)
+        c.db = SimpleNamespace(is_base_station=True, radio_on=True)
+        for m in ("_maybe_answer",):
+            setattr(c, m, DispatchConsole._maybe_answer.__get__(
+                c, DispatchConsole))
+        c.ADDRESS_WORDS = DispatchConsole.ADDRESS_WORDS
+        c.ANSWER_COOLDOWN = DispatchConsole.ANSWER_COOLDOWN
+        c.INSTRUCTIONS = DispatchConsole.INSTRUCTIONS
+        c.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
+        c._units_available = lambda: 2
+        return c
+
+    def _player(self):
+        p = MagicMock()
+        p.db = SimpleNamespace(is_npc=None, llm_driven=None,
+                               is_base_station=None)
+        return p
+
+    def _kwargs(self, speech):
+        return {"type": "radio", "speech": speech,
+                "radio_frequency": "911MHz"}
+
+    def test_addressed_player_traffic_gets_a_civic_line(self):
+        c = self._console()
+        with patch("world.llm.client.civic_enabled", return_value=True), \
+                patch("world.llm.client.request_civic_line") as req, \
+                patch("world.radio.radio_voice_handle",
+                      return_value="a husky voice"):
+            c._maybe_answer(self._player(), self._kwargs(
+                "Dispatch, do you copy?"))
+        req.assert_called_once()
+        prompt = req.call_args.args[1]
+        self.assertIn("Units available: 2", prompt)
+        self.assertIn("a husky voice", prompt)
+        # the reply callback keys the console
+        req.call_args.kwargs["on_reply"]("Dispatch copies. Go ahead.")
+        c._answer.assert_called_once_with("Dispatch copies. Go ahead.")
+
+    def test_civic_disabled_falls_back_to_template(self):
+        c = self._console()
+        with patch("world.llm.client.civic_enabled", return_value=False):
+            c._maybe_answer(self._player(), self._kwargs(
+                "Dispatch, anyone there?"))
+        c._answer.assert_called_once_with(c.FALLBACK_LINE)
+
+    def test_failure_falls_back_to_template(self):
+        c = self._console()
+        with patch("world.llm.client.civic_enabled", return_value=True), \
+                patch("world.llm.client.request_civic_line") as req, \
+                patch("world.radio.radio_voice_handle",
+                      return_value="a voice"):
+            c._maybe_answer(self._player(), self._kwargs("Dispatch?"))
+        req.call_args.kwargs["on_fail"]()
+        c._answer.assert_called_once_with(c.FALLBACK_LINE)
+
+    def test_npc_traffic_is_never_answered(self):
+        # Loop guard: the witness's report names no answer; unit chatter
+        # and our own acks likewise.
+        c = self._console()
+        npc = self._player()
+        npc.db.is_npc = True
+        with patch("world.llm.client.civic_enabled", return_value=True), \
+                patch("world.llm.client.request_civic_line") as req:
+            c._maybe_answer(npc, self._kwargs(
+                "Someone call it in — trouble near dispatch!"))
+        req.assert_not_called()
+        c._answer.assert_not_called()
+
+    def test_unaddressed_traffic_is_ignored(self):
+        c = self._console()
+        with patch("world.llm.client.civic_enabled", return_value=True), \
+                patch("world.llm.client.request_civic_line") as req:
+            c._maybe_answer(self._player(), self._kwargs(
+                "meet me at the docks, nine sharp"))
+        req.assert_not_called()
+
+    def test_cooldown_gates_repeat_answers(self):
+        c = self._console()
+        with patch("world.llm.client.civic_enabled", return_value=False):
+            c._maybe_answer(self._player(), self._kwargs("Dispatch, copy?"))
+            c._maybe_answer(self._player(), self._kwargs("Dispatch, copy?!"))
+        self.assertEqual(c._answer.call_count, 1)   # second inside cooldown

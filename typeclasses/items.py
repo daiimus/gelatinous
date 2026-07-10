@@ -631,6 +631,123 @@ class Radio(Item):
         return appearance
 
 
+
+class DispatchConsole(Radio):
+    """The security base's dispatch console — the first ANSWERING device.
+
+    Template acks ride dispatch events (world/director/dispatch); this class
+    adds the LONG TAIL: radio traffic that addresses dispatch by name gets an
+    answered line through the civic LLM lane (CIVIC_LLM_* settings — an
+    OpenAI-compatible endpoint; the game neither knows nor cares what serves
+    it), with a deterministic canned reply as the structural fallback. The
+    console cannot go silent from a model failure — only from being switched
+    off or destroyed (the physical gate).
+
+    Gating mirrors the NPC radio discipline: non-NPC-sourced traffic only
+    (the loop guard — this console is itself is_npc-marked so LLM units
+    never reply-chain on IT), must name dispatch, cooldown between answers.
+    """
+
+    #: Traffic must name dispatch to get an answer (not every squawk).
+    ADDRESS_WORDS = ("dispatch", "control", "base")
+    #: Seconds between answered lines — the console is terse, not chatty.
+    ANSWER_COOLDOWN = 10.0
+    #: The register. Instructions live game-side so the backend stays dumb.
+    INSTRUCTIONS = (
+        "You are the dispatch operator of a colonial security force in a "
+        "gritty fictional cyberpunk game. You answer radio traffic in ONE "
+        "short, flat, procedural line — no exclamation marks, no warmth, "
+        "no questions unless operationally necessary. You acknowledge, "
+        "state unit availability when asked, and direct callers to report "
+        "incidents with a location. Stay strictly in-world."
+    )
+    FALLBACK_LINE = "Dispatch copies. State your traffic and location."
+
+    def at_msg_receive(self, text=None, from_obj=None, **kwargs):
+        try:
+            self._maybe_answer(from_obj, kwargs)
+        except Exception:  # noqa: BLE001 — the console never breaks delivery
+            pass
+        return True
+
+    def _maybe_answer(self, speaker, kwargs):
+        if kwargs.get("type") != "radio":
+            return
+        speech = kwargs.get("speech")
+        if not speech or speaker is None or speaker is self:
+            return
+        # Loop guard: NPC/device-sourced traffic (witness reports, unit
+        # chatter, our own acks) is never answered — players talk, we answer.
+        db = getattr(speaker, "db", None)
+        if (getattr(db, "is_npc", None) is True
+                or getattr(db, "llm_driven", None) is True
+                or getattr(db, "is_base_station", None) is True):
+            return
+        low = speech.lower()
+        if not any(word in low for word in self.ADDRESS_WORDS):
+            return
+        from time import monotonic
+        last = getattr(self.ndb, "last_answer", None) or 0
+        now = monotonic()
+        if now - last < self.ANSWER_COOLDOWN:
+            return
+        self.ndb.last_answer = now
+
+        from world.llm.client import civic_enabled, request_civic_line
+        if not civic_enabled():
+            self._answer(self.FALLBACK_LINE)
+            return
+        # Ground the model: live availability + the caller's voice handle.
+        units = self._units_available()
+        try:
+            from world.radio import radio_voice_handle
+            voice = radio_voice_handle(speaker, self)
+        except Exception:  # noqa: BLE001
+            voice = "an unknown voice"
+        prompt = (f"Units available: {units}. Radio traffic from {voice}: "
+                  f'"{speech}"')
+        request_civic_line(
+            self.INSTRUCTIONS, prompt,
+            on_reply=self._answer,
+            on_fail=lambda: self._answer(self.FALLBACK_LINE),
+        )
+
+    def _units_available(self):
+        try:
+            from world.director.assignment import is_assigned
+            from world.director.population import get_security_base
+            base = get_security_base()
+            if base is None:
+                return 0
+            n = 0
+            from evennia.objects.models import ObjectDB
+            for obj in ObjectDB.objects.filter(
+                    db_attributes__db_key="role").distinct():
+                if (getattr(obj.db, "role", None) == "security"
+                        and not is_assigned(obj)):
+                    try:
+                        if not obj.is_dead():
+                            n += 1
+                    except Exception:  # noqa: BLE001
+                        continue
+            return n
+        except Exception:  # noqa: BLE001
+            return 0
+
+    def _answer(self, line):
+        """Key up — through the real transmit path, overt (a console
+        announces). Re-checks its own power at send time: switched off
+        between hearing and answering = silence, honestly."""
+        try:
+            from world.radio import is_powered, transmit
+            line = " ".join(str(line).split())[:200]
+            if not line or not is_powered(self):
+                return
+            transmit(self, line, self, overt=True)
+        except Exception:  # noqa: BLE001
+            pass
+
+
 class SprayCanItem(Item):
     """
     Spray paint can for graffiti system.
