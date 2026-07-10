@@ -267,7 +267,7 @@ LLM_GM_ENABLED = False
 # template dispatcher is the floor either way.
 CIVIC_LLM_ENABLED = False
 CIVIC_LLM_URL = "http://host.docker.internal:8766/v1/chat/completions"
-CIVIC_LLM_TIMEOUT = 10
+CIVIC_LLM_TIMEOUT = 6   # bounds shutdown-wait on in-flight civic threads
 LLM_GM_URL = "http://host.docker.internal:8765/v1/chat/completions"
 LLM_GM_MODEL = ""          # backend-specific model id; blank lets local servers default
 LLM_GM_API_KEY = ""        # Bearer token for cloud backends; blank for local
