@@ -238,7 +238,7 @@ class TestOperatorObservesNeverReplies(TestCase):
 
     def test_operator_named_on_air_observes_only(self):
         b = MagicMock()
-        b.key = "Vess"
+        b.key = "Petra"
         b.sdesc_keyword = None
         b.db.llm_driven = True
         b.db.dispatch_operator = True
@@ -251,9 +251,9 @@ class TestOperatorObservesNeverReplies(TestCase):
             _bind(b, m)
         with patch.object(llmnpc, "llm_enabled", return_value=True), \
                 patch.object(llmnpc, "delay") as d:
-            b._hear_radio("Vess, you there?", MagicMock(),
+            b._hear_radio("Petra, you there?", MagicMock(),
                           {"type": "radio", "radio_frequency": "911MHz",
                            "radio_elected": True})
         d.assert_not_called()                    # no second brain on the air
         self.assertTrue(b.ndb.action_buffer)     # ...but she heard it
-        self.assertIn("Vess, you there?", b.ndb.action_buffer[0])
+        self.assertIn("Petra, you there?", b.ndb.action_buffer[0])
