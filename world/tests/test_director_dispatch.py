@@ -193,7 +193,6 @@ class TestDispatchConsoleAnswers(TestCase):
         for m in ("_maybe_answer",):
             setattr(c, m, DispatchConsole._maybe_answer.__get__(
                 c, DispatchConsole))
-        c.ADDRESS_WORDS = DispatchConsole.ADDRESS_WORDS
         c.ANSWER_COOLDOWN = DispatchConsole.ANSWER_COOLDOWN
         c.INSTRUCTIONS = DispatchConsole.INSTRUCTIONS
         c.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
@@ -256,13 +255,17 @@ class TestDispatchConsoleAnswers(TestCase):
         req.assert_not_called()
         c._answer.assert_not_called()
 
-    def test_unaddressed_traffic_is_ignored(self):
+    def test_all_band_traffic_is_answered_even_chatter(self):
+        # It's the EMERGENCY band: everything on it is dispatch's traffic.
+        # Idle chatter gets channel discipline (register-level), not silence.
         c = self._console()
         with patch("world.llm.client.civic_enabled", return_value=True), \
-                patch("world.llm.client.request_civic_line") as req:
-            c._maybe_answer(self._player(), self._kwargs(
-                "meet me at the docks, nine sharp"))
-        req.assert_not_called()
+                patch("world.llm.client.request_civic_line") as req, \
+                patch("world.radio.radio_voice_handle",
+                      return_value="a voice"):
+            c._maybe_answer(self._player(), self._kwargs("Hey there."))
+        req.assert_called_once()
+        self.assertIn("Hey there.", req.call_args.args[1])
 
     def test_cooldown_gates_repeat_answers(self):
         c = self._console()
