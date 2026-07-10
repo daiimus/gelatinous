@@ -648,18 +648,21 @@ class DispatchConsole(Radio):
     never reply-chain on IT), must name dispatch, cooldown between answers.
     """
 
-    #: Traffic must name dispatch to get an answer (not every squawk).
-    ADDRESS_WORDS = ("dispatch", "control", "base")
     #: Seconds between answered lines — the console is terse, not chatty.
     ANSWER_COOLDOWN = 10.0
     #: The register. Instructions live game-side so the backend stays dumb.
+    #: EVERYTHING on this band is dispatch's traffic (it is the emergency
+    #: channel) — hails get procedure, chatter gets channel discipline.
     INSTRUCTIONS = (
         "You are the dispatch operator of a colonial security force in a "
-        "gritty fictional cyberpunk game. You answer radio traffic in ONE "
-        "short, flat, procedural line — no exclamation marks, no warmth, "
-        "no questions unless operationally necessary. You acknowledge, "
-        "state unit availability when asked, and direct callers to report "
-        "incidents with a location. Stay strictly in-world."
+        "gritty fictional cyberpunk game, monitoring the colony's EMERGENCY "
+        "radio band. Everything you hear arrives on that band. Answer in "
+        "ONE short, flat, procedural line — no exclamation marks, no "
+        "warmth, no questions unless operationally necessary. Acknowledge "
+        "genuine reports and hails; state unit availability when asked; "
+        "direct callers to give a location. If the traffic is idle chatter, "
+        "greetings, or non-emergency use of the band, tell them curtly to "
+        "keep this channel clear. Stay strictly in-world."
     )
     FALLBACK_LINE = "Dispatch copies. State your traffic and location."
 
@@ -683,9 +686,10 @@ class DispatchConsole(Radio):
                 or getattr(db, "llm_driven", None) is True
                 or getattr(db, "is_base_station", None) is True):
             return
-        low = speech.lower()
-        if not any(word in low for word in self.ADDRESS_WORDS):
-            return
+        # No address gate (playtest-decided 2026-07-10): this is the
+        # EMERGENCY band — everything a player says on it is dispatch's
+        # traffic. Idle chatter gets channel discipline from the register
+        # ("keep this channel clear"), not silence.
         from time import monotonic
         last = getattr(self.ndb, "last_answer", None) or 0
         now = monotonic()
