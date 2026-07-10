@@ -468,15 +468,49 @@ class CmdPress(Command):
     def func(self):
         """Execute the press command."""
         if not self.args:
-            self.caller.msg("Usage: press <color> on <spray_can>")
+            self.caller.msg("Usage: press <color> on <spray_can>, or "
+                            "press <button> for buttons and panels.")
             return
-        
+
         if " on " not in self.args:
-            self.caller.msg("Usage: press <color> on <spray_can>")
+            # no "on" — a wall button or panel (elevators etc.), not a can
+            if self._press_pressable():
+                return
+            self.caller.msg("Usage: press <color> on <spray_can>, or "
+                            "press <button> for buttons and panels.")
             return
         
         # Split color and can name
         color_part, can_part = self.args.rsplit(" on ", 1)
+        return self._press_spray_can(color_part, can_part)
+
+    def _press_pressable(self):
+        """Route `press <arg>` to a pressable object in the room.
+
+        Match by the object's name/aliases first (`press call button`),
+        then offer the raw arg to each pressable's `at_press` as a label
+        (`press 2` on an elevator panel). Returns True when handled.
+        """
+        arg = self.args.strip()
+        location = self.caller.location
+        if not location:
+            return False
+        pressables = [obj for obj in location.contents
+                      if obj.db.pressable is True
+                      and hasattr(obj, "at_press")]
+        if not pressables:
+            return False
+        low = arg.lower()
+        for obj in pressables:
+            names = [obj.key.lower()] + [a.lower() for a in obj.aliases.all()]
+            if low in names or any(low in name for name in names):
+                return bool(obj.at_press(self.caller, None))
+        for obj in pressables:
+            if obj.at_press(self.caller, arg):
+                return True
+        return False
+
+    def _press_spray_can(self, color_part, can_part):
         new_color = color_part.strip().lower()
         can_name = can_part.strip()
         
