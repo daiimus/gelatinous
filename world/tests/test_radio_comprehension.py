@@ -229,3 +229,31 @@ class TestRadioTool(TestCase):
         msgs2 = build_messages({}, "a flat voice", "quiet night",
                                "radio_ambient")
         self.assertIn("Radio chatter", msgs2[-1]["content"])
+
+
+class TestOperatorObservesNeverReplies(TestCase):
+    """The dispatch operator's own brain never radio-replies (the console
+    is her radio voice) — but the traffic lands in her buffer, so her
+    face-to-face turns know what's been on the band."""
+
+    def test_operator_named_on_air_observes_only(self):
+        b = MagicMock()
+        b.key = "Vess"
+        b.sdesc_keyword = None
+        b.db.llm_driven = True
+        b.db.dispatch_operator = True
+        b.ndb.action_buffer = None
+        b._is_npc_speaker = lambda s: False
+        b._radio_voice_handle = lambda s: "a husky voice"
+        b._name_aliases = lambda: []
+        b._RADIO_BROADCAST_PHRASES = llmnpc.LLMNpcMixin._RADIO_BROADCAST_PHRASES
+        for m in ("_hear_radio", "_observe_action", "_mentions_self"):
+            _bind(b, m)
+        with patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as d:
+            b._hear_radio("Vess, you there?", MagicMock(),
+                          {"type": "radio", "radio_frequency": "911MHz",
+                           "radio_elected": True})
+        d.assert_not_called()                    # no second brain on the air
+        self.assertTrue(b.ndb.action_buffer)     # ...but she heard it
+        self.assertIn("Vess, you there?", b.ndb.action_buffer[0])

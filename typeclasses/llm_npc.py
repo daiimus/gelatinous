@@ -144,6 +144,14 @@ class LLMNpcMixin:
         if not llm_enabled() or self._is_npc_speaker(speaker):
             self._observe_action(speaker, overheard)
             return
+        # The dispatch operator OBSERVES the band, never radio-replies —
+        # the console speaks for her on the air (civic lane, her voice);
+        # a second brain answering the same call would double-render at
+        # the base. The buffer means the traffic still colours her
+        # face-to-face turns: she KNOWS what's been on the band tonight.
+        if getattr(self.db, "dispatch_operator", None) is True:
+            self._observe_action(speaker, overheard)
+            return
         low = speech.lower()
         broadcast = any(p in low for p in self._RADIO_BROADCAST_PHRASES)
         if self._mentions_self(speech):
