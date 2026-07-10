@@ -58,14 +58,36 @@ convenience.
 * **Stairwell** — a plain exit pair (`up`/`down` aliases) between `(x,y,z)`
   and `(x,y,z±1)`. Nothing new mechanically; the A\* pathfinder already walks
   any exit edge, so NPC dispatch/pursuit climbs stairs for free.
-* **Lift/elevator** — v1 is a **warp exit** (spatial §3's non-Euclidean
-  escape hatch): `enter lift` at the lobby, exit at the chosen floor.
-  Simplest shippable form: one exit per served floor from a small lift-car
-  room ("press 3"). A scheduled/moving car is flavour we can add later
-  without changing the topology. **Design call:** lifts are where access
-  control meets construction (keycard floors) — the lift exit takes the same
-  lock seam as doors (§2.4), so a corp tower's executive floor is just a
-  locked lift exit.
+* **Lift/elevator — THE CAR MODEL (DECIDED 2026-07-10, supersedes the
+  warp-exit v1; resolves open question 1).** A real elevator is three
+  parts:
+  1. **Landings** — one room per served floor (the Constabulary alcove
+     #4939 and 2F landing #4957 are the prototype pair). Each landing has
+     an `elevator` exit whose destination is always THE CAR — but
+     traversal is gated on the car being AT that floor ("The doors are
+     shut. Press the call button.").
+  2. **The CAR** — a real room. Passengers stand in it, talk in it, fight
+     in it — a moving room where scenes happen. Its single `out` exit is
+     **re-pointed by the controller** to the current landing; it refuses
+     mid-travel ("The car is moving.").
+  3. **The CONTROLLER** — script state: `floors` (ordered landings),
+     `current`, `moving`. `press <floor>` inside the car; a **call
+     button object at each landing** (`press call`) summons it. Motion is
+     script-timed (~6s per floor + door dwell), with door messages at both
+     ends and in the car. The car's position is honest world-state: you
+     can miss it, hold it, or corner someone in it.
+
+  **Why this over the alternatives** (warp-exit-per-floor, or a bare
+  timed exit): only the car model makes the elevator's whereabouts a fact
+  in the world — sabotage, ambushes, and "hold the door" all need the car
+  to be somewhere. No channeled action is needed: the CAR moves, not the
+  actor (riders stay free).
+
+  **Security seam:** per-floor access rides the §2.2 biometric model — a
+  secured floor's button checks the presser's sleeve against a grant file
+  (the 2F landing's amber reader is the fiction already in place).
+  Sabotage seams reserved: cut power = car stuck; the grant file =
+  decking. Call buttons are vandalizable objects.
 * **Ladders/fire escapes** — stairwell idiom with different messaging;
   candidate for `climb`-gated traversal (existing climb verb) so they're
   slower/riskier under pursuit.
@@ -268,8 +290,9 @@ director can call it later without changes.
 
 ## 6 · Open questions (user calls wanted before build)
 
-1. **Lift v1** — warp-exit-per-floor (simple, shippable) vs. a moving car
-   (flavourful, stateful). Proposal assumes warp-exit v1.
+1. ~~Lift v1~~ — **RESOLVED (2026-07-10): the moving CAR** (user call,
+   §1.1) — landings + car room + controller; first install is the
+   Constabulary shaft (alcove #4939 ↔ 2F landing #4957).
 2. **Sky-room interplay** — do building interiors above z=0 need `passable`
    /floor semantics per spatial §6 generalization *now* (breach a floor →
    fall through), or defer floor-breaching entirely? Proposal: defer;
