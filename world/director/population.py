@@ -251,7 +251,7 @@ def spawn_dispatch_operator(base: Any) -> Any:
         key="Vess", location=base, home=base,
     )
     op.height = "short"
-    op.build = "wiry"
+    op.build = "lean"
     op.sex = "female"
     op.db.is_npc = True
     op.db.dispatch_operator = True
@@ -261,6 +261,12 @@ def spawn_dispatch_operator(base: Any) -> Any:
     op.db.llm_driven = True
     op.look_place = ("seated at the dispatch console, headset on, one eye "
                      "on the board.")
+    # Take the actual chair when the base has one (real posture, not just
+    # the placement line) — fail-open: she stands if the furniture's gone.
+    try:
+        op.execute_cmd("sit dispatch chair")
+    except Exception:  # noqa: BLE001
+        pass
     return op
 
 
