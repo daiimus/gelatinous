@@ -197,6 +197,7 @@ class TestDispatchConsoleAnswers(TestCase):
         c.INSTRUCTIONS = DispatchConsole.INSTRUCTIONS
         c.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
         c._units_available = lambda: 2
+        c._clean_reply = lambda text, heard=None: text   # sanitizer has its own suite
         return c
 
     def _player(self):
@@ -273,3 +274,48 @@ class TestDispatchConsoleAnswers(TestCase):
             c._maybe_answer(self._player(), self._kwargs("Dispatch, copy?"))
             c._maybe_answer(self._player(), self._kwargs("Dispatch, copy?!"))
         self.assertEqual(c._answer.call_count, 1)   # second inside cooldown
+
+
+class TestConsoleReplySanitation(TestCase):
+    """The civic lane's reply guards (the GM lane's practices, scaled
+    down): scaffolding echoes, stage directions, and caller-parroting all
+    degrade to the template fallback — never onto the air."""
+
+    def _console(self):
+        from typeclasses.items import DispatchConsole
+        return DispatchConsole.__new__(DispatchConsole)
+
+    def test_scaffolding_echo_rejected(self):
+        # The literal 19:15 misfire, on tape in the radio log.
+        c = self._console()
+        bad = ('Units available: 5. Radio traffic from an unfamiliar '
+               'voice: "How\'s your day going?" [Radio traffic is dead.]')
+        self.assertEqual(c._clean_reply(bad, heard="How's your day going?"),
+                         c.FALLBACK_LINE)
+
+    def test_caller_parrot_rejected(self):
+        c = self._console()
+        self.assertEqual(
+            c._clean_reply("Copy, how's your day going?",
+                           heard="How's your day going?"),
+            c.FALLBACK_LINE)
+
+    def test_legitimate_restatement_passes(self):
+        c = self._console()
+        good = "Copy, shots fired on Volta Street. Units responding."
+        self.assertEqual(
+            c._clean_reply(good, heard="Dispatch, shots fired on Volta Street!"),
+            good)
+
+    def test_stage_directions_and_labels_stripped(self):
+        c = self._console()
+        self.assertEqual(
+            c._clean_reply('Dispatch: "Copy. Go ahead." [static]',
+                           heard="hello dispatch"),
+            "Copy. Go ahead.")
+
+    def test_empty_or_overlong_falls_back(self):
+        c = self._console()
+        self.assertEqual(c._clean_reply("", heard="x"), c.FALLBACK_LINE)
+        self.assertEqual(c._clean_reply("y" * 300, heard="x"),
+                         c.FALLBACK_LINE)
