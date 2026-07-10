@@ -268,36 +268,107 @@ class CmdGraffiti(Command):
         except Exception:  # noqa: BLE001 — dispatch down ≠ graffiti crash
             pass
     
+    #: Channeled-cleaning rates (CHANNELED_ACTIONS_SPEC §3): shake and prep,
+    #: then a second of scrubbing per solvent unit worked in. Symmetric with
+    #: tagging — undoing the wall costs real public time too.
+    CLEAN_SETUP_SECONDS = 3.0
+    CLEAN_SECONDS_PER_UNIT = 1.0
+
     def _handle_clean_with_solvent(self, solvent_can):
-        """Handle cleaning graffiti and blood stains with a solvent can."""
-        
+        """Cleaning is a CHANNELED act: duration proportional to the solvent
+        worked in. Graffiti scrubs pro-rata on interruption; BLOOD breaks
+        down only at completion — the solvent needs dwell time, so bailing
+        mid-scrub leaves the evidence."""
+
         # Check if solvent can has uses left
         if solvent_can.db.aerosol_level <= 0:
             self.caller.msg(f"{solvent_can.get_display_name(self.caller)} is empty!")
             return
-        
-        # Find both graffiti and blood pool objects
+
+        # Anything to clean? (validated before the channel starts)
+        has_graffiti = has_blood = False
+        for obj in self.caller.location.contents:
+            if isinstance(obj, GraffitiObject) and obj.has_graffiti():
+                has_graffiti = True
+            elif ((isinstance(obj, BloodPool) or obj.db.is_blood_pool)
+                    and obj.db.bleeding_incidents):
+                has_blood = True
+
+        if not has_graffiti and not has_blood:
+            self.caller.msg("There's nothing here to clean.")
+            return
+
+        from world.channeled import begin_channel
+        caller = self.caller
+        planned_units = min(10, solvent_can.db.aerosol_level)
+        duration = (self.CLEAN_SETUP_SECONDS
+                    + planned_units * self.CLEAN_SECONDS_PER_UNIT)
+
+        def _complete():
+            self._apply_solvent(caller, solvent_can, planned_units,
+                                include_blood=True)
+
+        def _interrupted(fraction):
+            worked = fraction * duration - self.CLEAN_SETUP_SECONDS
+            units = int(max(0.0, worked) / self.CLEAN_SECONDS_PER_UNIT)
+            units = min(units, planned_units)
+            if units <= 0:
+                caller.msg("You break off before the solvent bites.")
+                msg_room_identity(
+                    location=caller.location,
+                    template="{actor} breaks off, solvent can in hand, the "
+                             "wall untouched.",
+                    char_refs={"actor": caller},
+                    exclude=[caller],
+                )
+                return
+            # Partial scrub: graffiti loses what you worked in; blood needs
+            # the full dwell — an interrupted scrub leaves the evidence.
+            self._apply_solvent(caller, solvent_can, units,
+                                include_blood=False, interrupted=True)
+
+        started = begin_channel(
+            caller, duration,
+            tell="scrubbing at the wall, solvent fumes sharp.",
+            on_complete=_complete, on_interrupt=_interrupted,
+            key="cleaning")
+        if not started:
+            return
+        caller.msg(f"You shake {solvent_can.get_display_name(caller)} and "
+                   f"set to scrubbing.")
+        msg_room_identity(
+            location=caller.location,
+            template="{actor} shakes a solvent can and sets to scrubbing "
+                     "the wall.",
+            char_refs={"actor": caller},
+            exclude=[caller],
+        )
+
+    def _apply_solvent(self, caller, solvent_can, solvent_used,
+                       include_blood=True, interrupted=False):
+        """Resolve a scrub: deduct the units actually worked in, degrade
+        graffiti by that many characters, break down blood (full dwell
+        only), and message the room."""
+        if not caller.location:
+            return
+        # Re-find targets at resolution (the world may have changed mid-scrub)
         graffiti_obj = None
         blood_pools = []
-        
-        for obj in self.caller.location.contents:
+        for obj in caller.location.contents:
             if isinstance(obj, GraffitiObject):
                 graffiti_obj = obj
             elif isinstance(obj, BloodPool) or obj.db.is_blood_pool:
                 blood_pools.append(obj)
-        
-        # Check if there's anything to clean
         has_graffiti = graffiti_obj and graffiti_obj.has_graffiti()
-        has_blood = any(pool.db.bleeding_incidents for pool in blood_pools)
-        
+        has_blood = (include_blood
+                     and any(p.db.bleeding_incidents for p in blood_pools))
         if not has_graffiti and not has_blood:
-            self.caller.msg("There's nothing here to clean.")
             return
-        
-        # Use solvent (up to 10 units)
-        solvent_used = min(10, solvent_can.db.aerosol_level)
+        solvent_used = min(solvent_used, solvent_can.db.aerosol_level or 0)
+        if solvent_used <= 0:
+            return
         solvent_can.use_solvent(solvent_used)
-        
+
         # Track what was cleaned
         graffiti_cleaned = False
         blood_cleaned = False
@@ -319,7 +390,7 @@ class CmdGraffiti(Command):
                     if solvent_can.db.quality is not None:
                         tool_quality = solvent_can.db.quality
                     
-                    cleaned_volume, clean_result = blood_pool.clean_with_solvent(self.caller, tool_quality)
+                    cleaned_volume, clean_result = blood_pool.clean_with_solvent(caller, tool_quality)
                     if cleaned_volume > 0:
                         blood_cleaned = True
                         cleaned_items.append("|Rblood stains|n")
@@ -342,17 +413,17 @@ class CmdGraffiti(Command):
                 action_desc = "watching the stains break down and fade"
             
             # Immediate action message
-            self.caller.msg(f"You apply solvent to the {item_desc}, {action_desc}.")
+            caller.msg(f"You apply solvent to the {item_desc}, {action_desc}.")
             msg_room_identity(
-                location=self.caller.location,
+                location=caller.location,
                 template=f"{{actor}} applies solvent to the {item_desc}, {action_desc}.",
-                char_refs={"actor": self.caller},
-                exclude=[self.caller],
+                char_refs={"actor": caller},
+                exclude=[caller],
             )
             
             # Delayed atmospheric message to everyone including the player
             def delayed_message():
-                if self.caller.location:  # Make sure location still exists
+                if caller.location:  # Make sure location still exists
                     if graffiti_cleaned and blood_cleaned:
                         evaporate_desc = "The colors break down and the solvent evaporates, taking the stains with it."
                     elif graffiti_cleaned:
@@ -360,7 +431,7 @@ class CmdGraffiti(Command):
                     else:  # blood only
                         evaporate_desc = f"The solvent breaks down the evidence and evaporates, removing the {item_desc}."
                     
-                    self.caller.location.msg_contents(evaporate_desc)
+                    caller.location.msg_contents(evaporate_desc)
             
             delay(3, delayed_message)
             
