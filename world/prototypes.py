@@ -3997,7 +3997,7 @@ WALKIE_TALKIE = {
 #: reply-chain on it).
 BASE_STATION = {
     "prototype_key": "BASE_STATION",
-    "typeclass": "typeclasses.items.Radio",
+    "typeclass": "typeclasses.items.DispatchConsole",
     "key": "a dispatch console",
     "aliases": ["console", "station", "base station", "dispatch"],
     "desc": ("A hard-wired dispatch console bolted to the wall, all worn "

@@ -125,3 +125,55 @@ def request_embedding(text, on_done, on_fail):
         on_fail()
 
     run_async(_thread_fn, at_return=_at_return, at_err=_at_err)
+
+
+# --------------------------------------------------------------------------
+# The civic lane — a SECOND OpenAI-compatible endpoint for the colony's
+# institutional voices (the dispatch console's long tail; kiosks/files
+# later). Deliberately backend-agnostic like everything here: the game
+# speaks Chat Completions to CIVIC_LLM_URL and has no idea what serves it
+# (an on-device shim today; point it at the MLX sidecar and nothing
+# changes). Consumers MUST keep a deterministic fallback — the civic
+# backend is allowed to refuse/fail, the fiction is not.
+# --------------------------------------------------------------------------
+
+def civic_enabled() -> bool:
+    return bool(getattr(settings, "CIVIC_LLM_ENABLED", False))
+
+
+def request_civic_line(instructions, prompt, on_reply, on_fail):
+    """One short institutional line: ``instructions`` (the persona/register)
+    + ``prompt`` (the traffic to answer) -> ``on_reply(text)`` or
+    ``on_fail()``. Same reactor contract as request_turn: pure network in
+    the thread, callbacks on the reactor."""
+    url = getattr(settings, "CIVIC_LLM_URL",
+                  "http://host.docker.internal:8766/v1/chat/completions")
+    timeout = getattr(settings, "CIVIC_LLM_TIMEOUT", 10)
+    body = {"messages": [
+        {"role": "system", "content": instructions},
+        {"role": "user", "content": prompt},
+    ]}
+
+    def _thread_fn():
+        resp = requests.post(url, json=body,
+                             headers={"Content-Type": "application/json"},
+                             timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json()
+        choices = data.get("choices") or []
+        if not choices:
+            return None
+        text = (choices[0].get("message") or {}).get("content") or ""
+        return " ".join(text.split()) or None
+
+    def _at_return(text):
+        if not text:
+            on_fail()
+            return
+        on_reply(text)
+
+    def _at_err(failure):
+        logger.log_err(f"Civic LLM call failed: {failure}")
+        on_fail()
+
+    run_async(_thread_fn, at_return=_at_return, at_err=_at_err)

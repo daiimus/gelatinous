@@ -219,6 +219,16 @@ def ensure_base_station() -> Any | None:
         return None
     for obj in base.contents:
         if getattr(getattr(obj, "db", None), "is_base_station", None) is True:
+            # Typeclass self-heal: consoles installed before the answering
+            # brain existed swap up in place (attributes preserved).
+            try:
+                from typeclasses.items import DispatchConsole
+                if not isinstance(obj, DispatchConsole):
+                    obj.swap_typeclass(
+                        "typeclasses.items.DispatchConsole",
+                        clean_attributes=False, run_start_hooks=None)
+            except Exception:  # noqa: BLE001 — a dumb console still acks
+                pass
             return obj
     try:
         from evennia.prototypes.spawner import spawn
