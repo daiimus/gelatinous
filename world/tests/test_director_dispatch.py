@@ -164,10 +164,27 @@ class TestDispatcherAck(TestCase):
         station = MagicMock()
         with patch("world.director.population.get_base_station",
                    return_value=station), \
+                patch("world.director.population.get_dispatch_operator",
+                      return_value=None), \
                 patch("world.radio.transmit") as tx:
             _transmit_ack("Dispatch copies.")
         tx.assert_called_once_with(station, "Dispatch copies.", station,
                                    overt=True)
+
+    def test_ack_is_the_operators_voice_when_present(self):
+        # The same words in a smoky rasp: acks attribute to the human at
+        # the desk; her absence is audible (automation voice).
+        from world.director.dispatch import _transmit_ack
+        station, vess = MagicMock(), MagicMock()
+        with patch("world.director.population.get_base_station",
+                   return_value=station), \
+                patch("world.director.population.get_dispatch_operator",
+                      return_value=vess), \
+                patch("world.radio.transmit") as tx:
+            _transmit_ack("Dispatch copies.")
+        tx.assert_called_once_with(vess, "Dispatch copies.", station,
+                                   overt=True)
+
 
     def test_no_console_no_voice(self):
         # Sabotage seam: console gone/off = dispatch has no voice.
@@ -198,6 +215,8 @@ class TestDispatchConsoleAnswers(TestCase):
         c.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
         c._units_available = lambda: 2
         c._clean_reply = lambda text, heard=None: text   # sanitizer has its own suite
+        c._operator = lambda: None                       # automation by default
+        c.OPERATOR_INSTRUCTIONS = DispatchConsole.OPERATOR_INSTRUCTIONS
         return c
 
     def _player(self):
@@ -224,14 +243,15 @@ class TestDispatchConsoleAnswers(TestCase):
         self.assertIn("a husky voice", prompt)
         # the reply callback keys the console
         req.call_args.kwargs["on_reply"]("Dispatch copies. Go ahead.")
-        c._answer.assert_called_once_with("Dispatch copies. Go ahead.")
+        c._answer.assert_called_once_with("Dispatch copies. Go ahead.",
+                                          speaker=None)
 
     def test_civic_disabled_falls_back_to_template(self):
         c = self._console()
         with patch("world.llm.client.civic_enabled", return_value=False):
             c._maybe_answer(self._player(), self._kwargs(
                 "Dispatch, anyone there?"))
-        c._answer.assert_called_once_with(c.FALLBACK_LINE)
+        c._answer.assert_called_once_with(c.FALLBACK_LINE, speaker=None)
 
     def test_failure_falls_back_to_template(self):
         c = self._console()
@@ -241,7 +261,7 @@ class TestDispatchConsoleAnswers(TestCase):
                       return_value="a voice"):
             c._maybe_answer(self._player(), self._kwargs("Dispatch?"))
         req.call_args.kwargs["on_fail"]()
-        c._answer.assert_called_once_with(c.FALLBACK_LINE)
+        c._answer.assert_called_once_with(c.FALLBACK_LINE, speaker=None)
 
     def test_npc_traffic_is_never_answered(self):
         # Loop guard: the witness's report names no answer; unit chatter
@@ -267,6 +287,21 @@ class TestDispatchConsoleAnswers(TestCase):
             c._maybe_answer(self._player(), self._kwargs("Hey there."))
         req.assert_called_once()
         self.assertIn("Hey there.", req.call_args.args[1])
+
+    def test_operator_present_uses_her_register_and_voice(self):
+        c = self._console()
+        vess = MagicMock()
+        c._operator = lambda: vess
+        with patch("world.llm.client.civic_enabled", return_value=True), \
+                patch("world.llm.client.request_civic_line") as req, \
+                patch("world.radio.radio_voice_handle",
+                      return_value="a voice"):
+            c._maybe_answer(self._player(), self._kwargs(
+                "Dispatch, do you copy?"))
+        self.assertIs(req.call_args.args[0], c.OPERATOR_INSTRUCTIONS)
+        req.call_args.kwargs["on_reply"]("Dispatch. Go ahead.")
+        c._answer.assert_called_once_with("Dispatch. Go ahead.",
+                                          speaker=vess)
 
     def test_cooldown_gates_repeat_answers(self):
         c = self._console()

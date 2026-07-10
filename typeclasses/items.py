@@ -688,6 +688,42 @@ class DispatchConsole(Radio):
     )
     FALLBACK_LINE = "Dispatch copies. State your traffic and location."
 
+    #: When a LIVE OPERATOR is at the desk, the civic lane speaks AS HER —
+    #: same structure/guards as the automation register, but the exemplars
+    #: carry a person: dry, tired, human. (The playtest verdict on the
+    #: automation register: "mechanical, sure, but not a person on the
+    #: other side of a radio." This is the person.)
+    OPERATOR_INSTRUCTIONS = (
+        "You are Vess: the HUMAN dispatch operator of a colonial security "
+        "force in a gritty fictional cyberpunk game — a woman with twenty "
+        "years on this desk, working the colony's emergency radio band. "
+        "You are tired, dry, procedurally exact, and human. You never "
+        "identify as a machine and never speak for callers.\n"
+        "You receive [CONTEXT] (facts for you alone — never repeat it) and "
+        "[TRAFFIC] (what the caller said). Reply with ONLY the words you "
+        "speak on the air: one short line, flat but human. No exclamation "
+        "marks, no brackets, no labels, no narration. Never repeat or "
+        "paraphrase the caller's words back to them.\n"
+        "Acknowledge real reports and hails; state unit availability when "
+        "asked; get a location out of people. Idle chatter gets moved off "
+        "your channel — dry, not cruel.\n"
+        "EXAMPLES:\n"
+        "[CONTEXT] Units available: 3. [TRAFFIC] a husky voice: "
+        "\"Dispatch, shots fired on Volta Street!\"\n"
+        "Copy, shots fired on Volta. Units rolling. Keep your head down "
+        "out there.\n"
+        "[CONTEXT] Units available: 0. [TRAFFIC] a reedy voice: "
+        "\"Anyone there? I need help at the docks.\"\n"
+        "Copy, docks. I've got nobody left to send you, sweetheart. Find "
+        "a door that locks and stay behind it.\n"
+        "[CONTEXT] Units available: 2. [TRAFFIC] an unfamiliar voice: "
+        "\"How's your day going?\"\n"
+        "This channel's for blood and fire, caller. Clear it.\n"
+        "[CONTEXT] Units available: 4. [TRAFFIC] a flat voice: "
+        "\"Dispatch, do you copy?\"\n"
+        "Dispatch. Go ahead."
+    )
+
     def at_msg_receive(self, text=None, from_obj=None, **kwargs):
         try:
             self._maybe_answer(from_obj, kwargs)
@@ -719,9 +755,14 @@ class DispatchConsole(Radio):
             return
         self.ndb.last_answer = now
 
+        # A live operator at the desk answers AS HERSELF (her voice on the
+        # air, her register in the words); an empty/dead/kidnapped desk
+        # falls back to the console's automation voice — a difference
+        # anyone on the band can hear.
+        operator = self._operator()
         from world.llm.client import civic_enabled, request_civic_line
         if not civic_enabled():
-            self._answer(self.FALLBACK_LINE)
+            self._answer(self.FALLBACK_LINE, speaker=operator)
             return
         # Ground the model: live availability + the caller's voice handle.
         units = self._units_available()
@@ -732,11 +773,14 @@ class DispatchConsole(Radio):
             voice = "an unknown voice"
         prompt = (f'[CONTEXT] Units available: {units}. '
                   f'[TRAFFIC] {voice}: "{speech}"')
+        instructions = (self.OPERATOR_INSTRUCTIONS if operator
+                        else self.INSTRUCTIONS)
         request_civic_line(
-            self.INSTRUCTIONS, prompt,
+            instructions, prompt,
             on_reply=lambda text: self._answer(
-                self._clean_reply(text, heard=speech)),
-            on_fail=lambda: self._answer(self.FALLBACK_LINE),
+                self._clean_reply(text, heard=speech), speaker=operator),
+            on_fail=lambda: self._answer(self.FALLBACK_LINE,
+                                         speaker=operator),
         )
 
     def _clean_reply(self, text, heard=None):
@@ -794,16 +838,35 @@ class DispatchConsole(Radio):
         except Exception:  # noqa: BLE001
             return 0
 
-    def _answer(self, line):
-        """Key up — through the real transmit path, overt (a console
-        announces). Re-checks its own power at send time: switched off
-        between hearing and answering = silence, honestly."""
+    def _operator(self):
+        """The live human at the desk, or None (→ automation voice)."""
+        try:
+            from world.director.population import get_dispatch_operator
+            return get_dispatch_operator()
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _answer(self, line, speaker=None):
+        """Key up — through the real transmit path, overt. When a live
+        operator is at the desk, SHE is the speaker (her voice on the air,
+        recognisable, rememberable, modulator-defeatable like anyone's);
+        otherwise the console's own attendant voice. Re-checks power at
+        send time: switched off between hearing and answering = silence,
+        honestly. Re-checks the speaker too: an operator downed mid-reply
+        doesn't speak."""
         try:
             from world.radio import is_powered, transmit
             line = " ".join(str(line).split())[:200]
             if not line or not is_powered(self):
                 return
-            transmit(self, line, self, overt=True)
+            who = speaker if speaker is not None else self._operator()
+            if who is not None:
+                try:
+                    if who.is_dead() or who.is_unconscious():
+                        who = None
+                except Exception:  # noqa: BLE001
+                    pass
+            transmit(who or self, line, self, overt=True)
         except Exception:  # noqa: BLE001
             pass
 

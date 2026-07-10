@@ -125,7 +125,9 @@ def _ack_on_air(event: WorldEvent, dispatched: list) -> None:
         else:
             line = (f"Dispatch copies — {what} at {where}. "
                     f"No units available.")
-        delay(2.0, _transmit_ack, line)
+        # A human beat, not a database trigger: the pause varies.
+        from random import uniform
+        delay(uniform(1.5, 3.5), _transmit_ack, line)
     except Exception:  # noqa: BLE001 — the ack is flavour; dispatch is done
         pass
 
@@ -134,12 +136,18 @@ def _transmit_ack(line: str) -> None:
     """Key the base console. Late-bound so the console can die (or be
     switched off) between the event and the ack — silence, honestly."""
     try:
-        from world.director.population import get_base_station
+        from world.director.population import (
+            get_base_station, get_dispatch_operator,
+        )
         from world.radio import transmit
         station = get_base_station()
         if station is None:
             return
-        transmit(station, line, station, overt=True)
+        # The ack is the OPERATOR's voice when someone's at the desk —
+        # the same words read differently in a smoky rasp than from the
+        # attendant. Absence is audible.
+        speaker = get_dispatch_operator() or station
+        transmit(speaker, line, station, overt=True)
     except Exception:  # noqa: BLE001
         pass
 

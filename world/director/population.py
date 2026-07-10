@@ -240,6 +240,68 @@ def ensure_base_station() -> Any | None:
         return None
 
 
+def spawn_dispatch_operator(base: Any) -> Any:
+    """The human at the desk (Operator v1: Vess). Face-to-face she's a
+    GM-lane NPC; ON THE AIR the console's civic lane speaks AS her — her
+    voice, her register — so the far end of the radio is a person."""
+    from evennia import create_object
+    from world.llm.personas import DISPATCH_OPERATOR_PERSONA
+    op = create_object(
+        typeclass="typeclasses.llm_npc.LLMNpc",
+        key="Vess", location=base, home=base,
+    )
+    op.height = "short"
+    op.build = "wiry"
+    op.sex = "female"
+    op.db.is_npc = True
+    op.db.dispatch_operator = True
+    op.db.voice_description = "smoky"
+    op.db.voice_ending = "rasp"
+    op.db.llm_persona = dict(DISPATCH_OPERATOR_PERSONA)
+    op.db.llm_driven = True
+    op.look_place = ("seated at the dispatch console, headset on, one eye "
+                     "on the board.")
+    return op
+
+
+def ensure_dispatch_operator() -> Any | None:
+    """Upkeep (heartbeat at_start): the base has someone at the desk.
+    Idempotent; a dead operator is left to the corpse pipeline and a new
+    one is NOT auto-hired here (absence = the console's automation voice —
+    the bleak attendant — until staffing recovers at the next reload)."""
+    base = get_security_base()
+    if base is None:
+        return None
+    for obj in base.contents:
+        if getattr(getattr(obj, "db", None), "dispatch_operator", None) is True:
+            return obj
+    try:
+        op = spawn_dispatch_operator(base)
+        op.execute_cmd("emote settles into the chair at the dispatch "
+                       "console and pulls the headset on.")
+        return op
+    except Exception:  # noqa: BLE001 — an empty desk still automates
+        return None
+
+
+def get_dispatch_operator() -> Any | None:
+    """The LIVE operator at the desk, or None (dead, unconscious, absent,
+    kidnapped = the automation answers — a difference players can hear)."""
+    base = get_security_base()
+    if base is None:
+        return None
+    for obj in base.contents:
+        if getattr(getattr(obj, "db", None), "dispatch_operator", None) is not True:
+            continue
+        try:
+            if obj.is_dead() or obj.is_unconscious():
+                return None
+        except Exception:  # noqa: BLE001 — no medical read, assume working
+            pass
+        return obj
+    return None
+
+
 def get_base_station() -> Any | None:
     """The base's live, powered dispatch console, or None (no base, no
     console, console off/broken = dispatch has no voice — the physical

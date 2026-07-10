@@ -233,3 +233,43 @@ class TestBaseStation(TestCase):
         self.assertIs(get_base_station(), live)
         base.contents = [dead]                    # switched off: no voice
         self.assertIsNone(get_base_station())
+
+
+class TestDispatchOperator(TestCase):
+    """The human at the desk: live lookup (dead/absent -> automation) and
+    idempotent upkeep."""
+
+    def _op(self, dead=False, unconscious=False):
+        op = MagicMock()
+        op.db = SimpleNamespace(dispatch_operator=True)
+        op.is_dead.return_value = dead
+        op.is_unconscious.return_value = unconscious
+        return op
+
+    @patch("world.director.population.get_security_base")
+    def test_live_operator_found(self, mock_base):
+        from world.director.population import get_dispatch_operator
+        vess = self._op()
+        base = MagicMock(); base.contents = [vess]
+        mock_base.return_value = base
+        self.assertIs(get_dispatch_operator(), vess)
+
+    @patch("world.director.population.get_security_base")
+    def test_dead_or_unconscious_operator_is_no_operator(self, mock_base):
+        from world.director.population import get_dispatch_operator
+        base = MagicMock()
+        mock_base.return_value = base
+        base.contents = [self._op(dead=True)]
+        self.assertIsNone(get_dispatch_operator())      # automation answers
+        base.contents = [self._op(unconscious=True)]
+        self.assertIsNone(get_dispatch_operator())
+
+    @patch("world.director.population.get_security_base")
+    def test_upkeep_is_idempotent(self, mock_base):
+        from world.director.population import ensure_dispatch_operator
+        vess = self._op()
+        base = MagicMock(); base.contents = [vess]
+        mock_base.return_value = base
+        with patch("world.director.population.spawn_dispatch_operator") as sp:
+            self.assertIs(ensure_dispatch_operator(), vess)
+        sp.assert_not_called()

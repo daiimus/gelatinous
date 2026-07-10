@@ -213,9 +213,11 @@ class DirectorRoutineScript(DefaultScript):
         try:
             from world.director.population import (
                 ensure_base_station, ensure_comms_fitted,
+                ensure_dispatch_operator,
             )
             ensure_comms_fitted()
             ensure_base_station()
+            ensure_dispatch_operator()
         except Exception:  # noqa: BLE001 — upkeep must not stall the beats
             pass
 
