@@ -80,18 +80,68 @@ def dispatch(event: WorldEvent) -> list:
     the list of dispatched NPCs."""
     from world.director.assignment import assign, is_assigned
     ranked = find_responders(event)
-    if not ranked:
-        return []
-    count = max(1, int(event.severity))
     dispatched = []
-    for _steps, npc in ranked:
-        if len(dispatched) >= count:
-            break
-        if is_assigned(npc):
-            continue  # committed to another incident
-        if assign(npc, event):
-            dispatched.append(npc)
+    if ranked:
+        count = max(1, int(event.severity))
+        for _steps, npc in ranked:
+            if len(dispatched) >= count:
+                break
+            if is_assigned(npc):
+                continue  # committed to another incident
+            if assign(npc, event):
+                dispatched.append(npc)
+    _ack_on_air(event, dispatched)
     return dispatched
+
+
+#: The dispatcher's phrasebook — deterministic templates, no LLM (the
+#: RAM-gated AFM "civic lane" may voice the long tail someday; the core
+#: acknowledgment is three slots and needs no model).
+_EVENT_PHRASES = {
+    "assault": "an assault",
+    "disturbance": "a disturbance",
+    "pickpocketing": "a reported theft",
+    "vandalism": "vandalism in progress",
+    "crime": "a reported incident",
+}
+
+
+def _ack_on_air(event: WorldEvent, dispatched: list) -> None:
+    """Dispatch acknowledges on 911MHz — through the base's REAL console
+    (RADIO_COMMS_SPEC §2.1 base station; no console, or console off/broken,
+    = no voice: the physical gate players can sabotage). Deterministic
+    template, delayed a beat so it lands after the report it answers.
+    A drained pool is announced too — "no units available" on a scanner
+    tells a listening crew the force is overwhelmed, which is the finite
+    pool made audible."""
+    try:
+        from evennia.utils import delay
+        what = _EVENT_PHRASES.get(event.type, f"a reported {event.type}")
+        where = getattr(event.location, "key", "an unknown location")
+        if dispatched:
+            n = len(dispatched)
+            units = "Unit" if n == 1 else f"{n} units"
+            line = f"Dispatch copies — {what} at {where}. {units} responding."
+        else:
+            line = (f"Dispatch copies — {what} at {where}. "
+                    f"No units available.")
+        delay(2.0, _transmit_ack, line)
+    except Exception:  # noqa: BLE001 — the ack is flavour; dispatch is done
+        pass
+
+
+def _transmit_ack(line: str) -> None:
+    """Key the base console. Late-bound so the console can die (or be
+    switched off) between the event and the ack — silence, honestly."""
+    try:
+        from world.director.population import get_base_station
+        from world.radio import transmit
+        station = get_base_station()
+        if station is None:
+            return
+        transmit(station, line, station, overt=True)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 #: How long an incident scene stays HOT (situational cause for the hunt).

@@ -3989,6 +3989,33 @@ WALKIE_TALKIE = {
 }
 
 
+#: The security base's fixed transceiver (RADIO_COMMS_SPEC §2.1: "base
+#: station") — the voice of dispatch. A powered, 911MHz-locked console that
+#: acknowledges reports on the air (deterministic template lines, no LLM).
+#: PHYSICAL: switch it off or wreck it and dispatch goes silent. The is_npc
+#: marker is the radio loop-guard (LLM units observe its traffic, never
+#: reply-chain on it).
+BASE_STATION = {
+    "prototype_key": "BASE_STATION",
+    "typeclass": "typeclasses.items.Radio",
+    "key": "a dispatch console",
+    "aliases": ["console", "station", "base station", "dispatch"],
+    "desc": ("A hard-wired dispatch console bolted to the wall, all worn "
+             "toggles and a fat coiled mic on a hook. A band readout burns "
+             "steady at 911MHz; the cooling fan never quite stops."),
+    "locks": "get:false()",
+    "attrs": [
+        ("is_radio", True),
+        ("radio_on", True),
+        ("frequency", "911MHz"),
+        ("is_base_station", True),
+        ("is_npc", True),
+        ("voice_description", "clipped"),
+        ("voice_ending", "monotone"),
+    ],
+}
+
+
 #: The security unit's built-in transceiver (RADIO_COMMS_SPEC §2.1): a comms
 #: module seated in an ear/antenna, factory-fit like the riot gun. Carries
 #: the radio metadata the receiver reads (`radio_frequency`); intact + on-band

@@ -185,3 +185,51 @@ class TestSpawnPostsToBase(TestCase):
                 spawn_secbot(MagicMock(name="room"))
                 key = mock_create.call_args.kwargs["key"]
                 self.assertIn("security robot", key)
+
+
+class TestBaseStation(TestCase):
+    """The base's dispatch console: installed by upkeep, idempotent, and
+    only a live powered console counts as dispatch's voice."""
+
+    def _station(self, on=True):
+        s = MagicMock()
+        s.db = SimpleNamespace(is_base_station=True, is_radio=True,
+                               radio_on=on, frequency="911MHz")
+        return s
+
+    @patch("world.director.population.get_security_base", return_value=None)
+    def test_no_base_no_station(self, _base):
+        from world.director.population import ensure_base_station
+        self.assertIsNone(ensure_base_station())
+
+    @patch("world.director.population.get_security_base")
+    def test_existing_console_is_kept(self, mock_base):
+        from world.director.population import ensure_base_station
+        station = self._station()
+        base = MagicMock(); base.contents = [station]
+        mock_base.return_value = base
+        with patch("evennia.prototypes.spawner.spawn") as sp:
+            self.assertIs(ensure_base_station(), station)
+        sp.assert_not_called()                    # idempotent
+
+    @patch("world.director.population.get_security_base")
+    def test_missing_console_is_installed(self, mock_base):
+        from world.director.population import ensure_base_station
+        base = MagicMock(); base.contents = []
+        mock_base.return_value = base
+        newborn = MagicMock()
+        with patch("evennia.prototypes.spawner.spawn",
+                   return_value=[newborn]):
+            self.assertIs(ensure_base_station(), newborn)
+        self.assertIs(newborn.location, base)
+
+    @patch("world.director.population.get_security_base")
+    def test_powered_console_is_the_voice_off_is_silence(self, mock_base):
+        from world.director.population import get_base_station
+        live, dead = self._station(on=True), self._station(on=False)
+        base = MagicMock()
+        mock_base.return_value = base
+        base.contents = [live]
+        self.assertIs(get_base_station(), live)
+        base.contents = [dead]                    # switched off: no voice
+        self.assertIsNone(get_base_station())
