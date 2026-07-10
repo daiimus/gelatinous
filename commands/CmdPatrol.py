@@ -31,6 +31,11 @@ class CmdPatrol(default_cmds.MuxCommand):
                                             base: secbots spawn/post/sync/
                                             respawn here; the heartbeat keeps
                                             <complement> units alive (default 1)
+        @patrol/dispatch                  - designate THIS room the dispatch
+                                            room: the console and the operator
+                                            live here (respawns stay at the
+                                            base); without one, dispatch works
+                                            from the base itself
         @patrol/status [npc]              - show posts and beats
         @patrol/clear <npc>               - take <npc> off patrol (keeps post)
 
@@ -74,6 +79,21 @@ class CmdPatrol(default_cmds.MuxCommand):
                 f"security base: secbots spawn, post, sync, and respawn "
                 f"here; the heartbeat maintains a complement of "
                 f"{complement}.")
+            return
+
+        if "dispatch" in switches:
+            from world.director.population import set_dispatch_room
+            if caller.location is None:
+                caller.msg("You have no location to designate.")
+                return
+            set_dispatch_room(caller.location)
+            ensure_heartbeat()
+            caller.msg(
+                f"{caller.location.get_display_name(caller)} is now the "
+                f"dispatch room: the console and the operator live here "
+                f"(the heartbeat installs them if missing); respawns stay "
+                f"at the security base. Move existing hardware and staff "
+                f"yourself if you want THEM rather than fresh ones.")
             return
 
         if "status" in switches:

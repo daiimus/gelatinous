@@ -48,7 +48,7 @@ SECURITY_BOT_PERSONA: dict = {
 
 DISPATCH_OPERATOR_PERSONA: dict = {
     "archetype": "colonist",
-    "name": "Vess",
+    "name": "Petra",
     "description": (
         "A woman somewhere past fifty with the posture of someone who has "
         "sat the same chair for twenty years and won it. Headset worn like "

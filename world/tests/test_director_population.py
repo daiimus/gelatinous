@@ -188,7 +188,7 @@ class TestSpawnPostsToBase(TestCase):
 
 
 class TestBaseStation(TestCase):
-    """The base's dispatch console: installed by upkeep, idempotent, and
+    """The dispatch room's console: installed by upkeep, idempotent, and
     only a live powered console counts as dispatch's voice."""
 
     def _station(self, on=True):
@@ -197,12 +197,12 @@ class TestBaseStation(TestCase):
                                radio_on=on, frequency="911MHz")
         return s
 
-    @patch("world.director.population.get_security_base", return_value=None)
+    @patch("world.director.population.get_dispatch_room", return_value=None)
     def test_no_base_no_station(self, _base):
         from world.director.population import ensure_base_station
         self.assertIsNone(ensure_base_station())
 
-    @patch("world.director.population.get_security_base")
+    @patch("world.director.population.get_dispatch_room")
     def test_existing_console_is_kept(self, mock_base):
         from world.director.population import ensure_base_station
         station = self._station()
@@ -212,7 +212,7 @@ class TestBaseStation(TestCase):
             self.assertIs(ensure_base_station(), station)
         sp.assert_not_called()                    # idempotent
 
-    @patch("world.director.population.get_security_base")
+    @patch("world.director.population.get_dispatch_room")
     def test_missing_console_is_installed(self, mock_base):
         from world.director.population import ensure_base_station
         base = MagicMock(); base.contents = []
@@ -223,7 +223,7 @@ class TestBaseStation(TestCase):
             self.assertIs(ensure_base_station(), newborn)
         self.assertIs(newborn.location, base)
 
-    @patch("world.director.population.get_security_base")
+    @patch("world.director.population.get_dispatch_room")
     def test_powered_console_is_the_voice_off_is_silence(self, mock_base):
         from world.director.population import get_base_station
         live, dead = self._station(on=True), self._station(on=False)
@@ -246,7 +246,7 @@ class TestDispatchOperator(TestCase):
         op.is_unconscious.return_value = unconscious
         return op
 
-    @patch("world.director.population.get_security_base")
+    @patch("world.director.population.get_dispatch_room")
     def test_live_operator_found(self, mock_base):
         from world.director.population import get_dispatch_operator
         vess = self._op()
@@ -254,7 +254,7 @@ class TestDispatchOperator(TestCase):
         mock_base.return_value = base
         self.assertIs(get_dispatch_operator(), vess)
 
-    @patch("world.director.population.get_security_base")
+    @patch("world.director.population.get_dispatch_room")
     def test_dead_or_unconscious_operator_is_no_operator(self, mock_base):
         from world.director.population import get_dispatch_operator
         base = MagicMock()
@@ -264,7 +264,7 @@ class TestDispatchOperator(TestCase):
         base.contents = [self._op(unconscious=True)]
         self.assertIsNone(get_dispatch_operator())
 
-    @patch("world.director.population.get_security_base")
+    @patch("world.director.population.get_dispatch_room")
     def test_upkeep_is_idempotent(self, mock_base):
         from world.director.population import ensure_dispatch_operator
         vess = self._op()
@@ -273,3 +273,36 @@ class TestDispatchOperator(TestCase):
         with patch("world.director.population.spawn_dispatch_operator") as sp:
             self.assertIs(ensure_dispatch_operator(), vess)
         sp.assert_not_called()
+
+class TestDispatchRoomDesignation(TestCase):
+    """The ear/garage split: dispatch prefers its own tagged room and
+    falls back to the base, so an untagged world behaves as before."""
+
+    @patch("world.director.population.get_security_base")
+    @patch("evennia.objects.models.ObjectDB")
+    def test_tagged_room_wins(self, mock_db, mock_base):
+        from world.director.population import get_dispatch_room
+        upstairs = MagicMock(name="dispatch ops")
+        mock_db.objects.filter.return_value.first.return_value = upstairs
+        self.assertIs(get_dispatch_room(), upstairs)
+        mock_base.assert_not_called()
+
+    @patch("world.director.population.get_security_base")
+    @patch("evennia.objects.models.ObjectDB")
+    def test_untagged_world_falls_back_to_the_base(self, mock_db, mock_base):
+        from world.director.population import get_dispatch_room
+        mock_db.objects.filter.return_value.first.return_value = None
+        base = MagicMock(name="landing pad")
+        mock_base.return_value = base
+        self.assertIs(get_dispatch_room(), base)
+
+    @patch("evennia.objects.models.ObjectDB")
+    def test_redesignation_clears_the_old_tag(self, mock_db):
+        from world.director.population import DISPATCH_TAG, set_dispatch_room
+        old, new = MagicMock(name="old"), MagicMock(name="new")
+        mock_db.objects.filter.return_value.first.return_value = old
+        set_dispatch_room(new)
+        old.tags.remove.assert_called_once_with(DISPATCH_TAG,
+                                                category="director")
+        new.tags.add.assert_called_once_with(DISPATCH_TAG,
+                                             category="director")

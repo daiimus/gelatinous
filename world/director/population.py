@@ -14,6 +14,11 @@ A room designated the **security base** (``@patrol/base``, tag
   deleted units simply fall out of the count — no death-hook plumbing,
   the census self-heals.
 
+The **dispatch room** (``@patrol/dispatch``, tag ``("dispatch_room",
+"director")``) is an optional split: the console and the operator live
+there while spawn/sync/respawn stay at the base. Without one, dispatch
+works from the base — the ear and the garage are the same room.
+
 This is deliberately the seed of the spec's population registry (§3):
 role + home + lifecycle, for one role at one base. The general registry
 grows out of it.
@@ -27,6 +32,10 @@ from typing import Any
 #: Room tag marking the security base.
 BASE_TAG = "security_base"
 BASE_TAG_CATEGORY = "director"
+
+#: Room tag marking the dispatch room — where the console and the
+#: operator live. Optional: without one, dispatch works from the base.
+DISPATCH_TAG = "dispatch_room"
 
 
 # --------------------------------------------------------------------------
@@ -49,6 +58,30 @@ def set_security_base(room: Any, complement: int = 1) -> None:
         old.tags.remove(BASE_TAG, category=BASE_TAG_CATEGORY)
     room.tags.add(BASE_TAG, category=BASE_TAG_CATEGORY)
     room.db.security_complement = int(complement)
+
+
+def get_dispatch_room() -> Any | None:
+    """The room dispatch answers from: the ``dispatch_room``-tagged room
+    if one is designated, else the security base. Decouples the ear from
+    the garage — units respawn at the BASE; the console and the operator
+    live HERE."""
+    from evennia.objects.models import ObjectDB
+    room = ObjectDB.objects.filter(
+        db_tags__db_key=DISPATCH_TAG,
+        db_tags__db_category=BASE_TAG_CATEGORY).first()
+    return room if room is not None else get_security_base()
+
+
+def set_dispatch_room(room: Any) -> None:
+    """Designate *room* as THE dispatch room (single room — any previous
+    designation is cleared)."""
+    from evennia.objects.models import ObjectDB
+    old = ObjectDB.objects.filter(
+        db_tags__db_key=DISPATCH_TAG,
+        db_tags__db_category=BASE_TAG_CATEGORY).first()
+    if old is not None and old != room:
+        old.tags.remove(DISPATCH_TAG, category=BASE_TAG_CATEGORY)
+    room.tags.add(DISPATCH_TAG, category=BASE_TAG_CATEGORY)
 
 
 # --------------------------------------------------------------------------
@@ -209,12 +242,12 @@ def ensure_comms_fitted() -> int:
 
 
 def ensure_base_station() -> Any | None:
-    """Upkeep: the security base carries its dispatch console (the
+    """Upkeep: the dispatch room carries its console (the
     RADIO_COMMS_SPEC §2.1 base station — the voice that acknowledges
     reports on 911MHz). Idempotent; in-process (heartbeat at_start).
     Returns the station (existing or newly installed), or None without
-    a designated base."""
-    base = get_security_base()
+    a designated dispatch room or base."""
+    base = get_dispatch_room()
     if base is None:
         return None
     for obj in base.contents:
@@ -241,14 +274,14 @@ def ensure_base_station() -> Any | None:
 
 
 def spawn_dispatch_operator(base: Any) -> Any:
-    """The human at the desk (Operator v1: Vess). Face-to-face she's a
+    """The human at the desk (Operator v1: Petra). Face-to-face she's a
     GM-lane NPC; ON THE AIR the console's civic lane speaks AS her — her
     voice, her register — so the far end of the radio is a person."""
     from evennia import create_object
     from world.llm.personas import DISPATCH_OPERATOR_PERSONA
     op = create_object(
         typeclass="typeclasses.llm_npc.LLMNpc",
-        key="Vess", location=base, home=base,
+        key="Petra", location=base, home=base,
     )
     op.height = "short"
     op.build = "lean"
@@ -271,11 +304,12 @@ def spawn_dispatch_operator(base: Any) -> Any:
 
 
 def ensure_dispatch_operator() -> Any | None:
-    """Upkeep (heartbeat at_start): the base has someone at the desk.
+    """Upkeep (heartbeat at_start): the dispatch room has someone at the
+    desk.
     Idempotent; a dead operator is left to the corpse pipeline and a new
     one is NOT auto-hired here (absence = the console's automation voice —
     the bleak attendant — until staffing recovers at the next reload)."""
-    base = get_security_base()
+    base = get_dispatch_room()
     if base is None:
         return None
     for obj in base.contents:
@@ -293,7 +327,7 @@ def ensure_dispatch_operator() -> Any | None:
 def get_dispatch_operator() -> Any | None:
     """The LIVE operator at the desk, or None (dead, unconscious, absent,
     kidnapped = the automation answers — a difference players can hear)."""
-    base = get_security_base()
+    base = get_dispatch_room()
     if base is None:
         return None
     for obj in base.contents:
@@ -309,11 +343,11 @@ def get_dispatch_operator() -> Any | None:
 
 
 def get_base_station() -> Any | None:
-    """The base's live, powered dispatch console, or None (no base, no
+    """The dispatch room's live, powered console, or None (no room, no
     console, console off/broken = dispatch has no voice — the physical
     gate: sabotage the console and the net goes quiet)."""
     from world.radio import is_powered, is_radio
-    base = get_security_base()
+    base = get_dispatch_room()
     if base is None:
         return None
     for obj in base.contents:
