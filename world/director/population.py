@@ -353,6 +353,10 @@ def get_base_station() -> Any | None:
     for obj in base.contents:
         if (getattr(getattr(obj, "db", None), "is_base_station", None) is True
                 and is_radio(obj) and is_powered(obj)):
+            antenna = getattr(obj.db, "antenna", None)
+            if antenna is not None and getattr(
+                    getattr(antenna, "db", None), "intact", None) is not True:
+                return None   # mast down = dispatch has no voice
             return obj
     return None
 

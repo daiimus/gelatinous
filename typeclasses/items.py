@@ -859,6 +859,12 @@ class DispatchConsole(Radio):
             line = " ".join(str(line).split())[:200]
             if not line or not is_powered(self):
                 return
+            # the transmission mast (roof antenna) is part of the voice:
+            # linked and wrecked = no carrier, honestly (sabotage seam)
+            antenna = self.db.antenna
+            if antenna is not None and getattr(
+                    getattr(antenna, "db", None), "intact", None) is not True:
+                return
             who = speaker if speaker is not None else self._operator()
             if who is not None:
                 try:
