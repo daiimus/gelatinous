@@ -365,6 +365,141 @@ def transmit_organ(speaker: Any, message: str) -> bool:
 MUTTER_CLARITY_STEP = 0.15
 MUTTER_CLARITY_FLOOR = 0.2
 
+# --- Phase 2 range (RADIO_COMMS_SPEC, decided 2026-07-10) -----------------
+#: Handheld / comms-organ transmit reach, in city grid cells.
+RADIO_TX_RANGE = 12
+#: A base station riding an intact mast: colony-wide.
+MAST_TX_RANGE = 999
+#: Inside this fraction of reach the signal is crisp.
+RANGE_CLEAR_FRACTION = 0.7
+#: Between full reach and this fraction: a static wash, existence only.
+RANGE_STATIC_FRACTION = 1.15
+#: Extra cells of reach per z-level of the transmit room (rooftops matter).
+RANGE_ELEVATION_BONUS = 2
+
+
+def _chebyshev(a, b):
+    """Grid distance, matching the pathfinder heuristic."""
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1])) + abs(a[2] - b[2])
+
+
+def _grid_room(obj):
+    """The nearest containing room WITH coordinates (a held radio's
+    room is its holder's room). None = off-grid (range fails open)."""
+    from world.spatial import get_xyz
+    node = obj
+    for _ in range(3):
+        if node is None:
+            return None
+        try:
+            if get_xyz(node) is not None:
+                return node
+        except Exception:  # noqa: BLE001 — malformed coords read off-grid
+            return None
+        node = getattr(node, "location", None)
+    return None
+
+
+def _effective_tx_range(device, origin_xyz):
+    """Transmit reach in cells. A base station rides its mast: intact
+    (or none linked) = MAST_TX_RANGE, wrecked = handheld reach (the
+    desk radio still keys, but only locally). Handhelds/organs use
+    ``db.tx_range`` or the default. The transmit room's elevation adds
+    reach."""
+    base = None
+    try:
+        if device is not None:
+            db = getattr(device, "db", None)
+            explicit = getattr(db, "tx_range", None)
+            if getattr(db, "is_base_station", None) is True:
+                antenna = getattr(db, "antenna", None)
+                if antenna is not None and getattr(
+                        getattr(antenna, "db", None), "intact",
+                        None) is not True:
+                    base = RADIO_TX_RANGE
+                else:
+                    base = explicit or MAST_TX_RANGE
+            elif explicit:
+                base = float(explicit)
+    except Exception:  # noqa: BLE001
+        base = None
+    if base is None:
+        base = RADIO_TX_RANGE
+    try:
+        z = origin_xyz[2] if origin_xyz else 0
+        return float(base) + RANGE_ELEVATION_BONUS * max(0, int(z))
+    except Exception:  # noqa: BLE001
+        return float(base)
+
+
+def _relay_points(frequency, exclude_device, origin_xyz, origin_range):
+    """(xyz, reach) per qualifying repeater: a powered base station on
+    the band with an intact (or absent) mast, on-grid, and within the
+    ORIGIN's reach — a repeater must hear you to repeat you. One hop;
+    repeaters regenerate the signal clean."""
+    from world.spatial import get_xyz
+    out = []
+    if origin_xyz is None:
+        return out
+    for radio in _all_powered_radios():
+        try:
+            if radio is exclude_device:
+                continue
+            if getattr(radio.db, "is_base_station", None) is not True:
+                continue
+            if not same_band(frequency_of(radio), frequency):
+                continue
+            antenna = getattr(radio.db, "antenna", None)
+            if antenna is not None and getattr(
+                    getattr(antenna, "db", None), "intact", None) is not True:
+                continue
+            room = _grid_room(radio)
+            xyz = get_xyz(room) if room is not None else None
+            if xyz is None:
+                continue
+            if _chebyshev(origin_xyz, xyz) > origin_range:
+                continue
+            out.append((xyz, _effective_tx_range(radio, xyz)))
+        except Exception:  # noqa: BLE001 — one odd repeater never mutes a band
+            continue
+    return out
+
+
+def _reception_fraction(origin_xyz, origin_range, relays, listener_obj):
+    """Best-path distance/reach fraction for a receiver. 0.0 (crisp)
+    whenever anyone involved is off-grid — range NEVER silences rooms
+    the coordinate grid doesn't cover."""
+    from world.spatial import get_xyz
+    if origin_xyz is None:
+        return 0.0
+    room = _grid_room(listener_obj)
+    xyz = get_xyz(room) if room is not None else None
+    if xyz is None:
+        return 0.0
+    best = _chebyshev(origin_xyz, xyz) / max(float(origin_range), 1.0)
+    for rxyz, rrange in relays:
+        frac = _chebyshev(rxyz, xyz) / max(float(rrange), 1.0)
+        if frac < best:
+            best = frac
+    return best
+
+
+def _clarity_for_fraction(fraction):
+    """Map a range fraction to a reception grade:
+    ('clear'|'fuzzy'|'static'|'gone', clarity). Fuzzy rides the same
+    letter-drop renderer as the mutter machinery — the fringe of
+    coverage sounds like fragments, not a cliff."""
+    if fraction <= RANGE_CLEAR_FRACTION:
+        return ("clear", 1.0)
+    if fraction <= 1.0:
+        span = ((fraction - RANGE_CLEAR_FRACTION)
+                / (1.0 - RANGE_CLEAR_FRACTION))
+        return ("fuzzy", max(MUTTER_CLARITY_FLOOR,
+                             1.0 - span * (1.0 - MUTTER_CLARITY_FLOOR)))
+    if fraction <= RANGE_STATIC_FRACTION:
+        return ("static", 0.0)
+    return ("gone", 0.0)
+
 
 def _obscure_heard(message: str, clarity: float) -> str:
     """Drop letters the listener didn't catch: each letter survives with
@@ -451,10 +586,23 @@ def _deliver(speaker: Any, message: str, frequency: str,
     LLM-driven receivers is ELECTED (``radio_elected=True``) — the §7.2
     single-answerer for "all units"-style broadcasts, so a band-wide call
     can't raise a chorus."""
-    receivers = []          # (listener, tagged, own), deduped, order-stable
+    receivers = []   # (listener, tagged, own, grade, clarity), order-stable
     seen = set()
 
-    def _collect(listener, *, tagged, own):
+    # Phase 2 range: where is this transmission coming from, how far
+    # does it carry, and which repeaters regenerate it? Off-grid
+    # origins fail open (everyone hears clean — Phase 1 behaviour).
+    from world.spatial import get_xyz
+    try:
+        origin_room = _grid_room(speaker)
+        origin_xyz = get_xyz(origin_room) if origin_room is not None else None
+    except Exception:  # noqa: BLE001
+        origin_xyz = None
+    origin_range = _effective_tx_range(exclude_device, origin_xyz)
+    relays = _relay_points(frequency, exclude_device, origin_xyz,
+                           origin_range)
+
+    def _collect(listener, *, tagged, own, grade, clarity):
         if listener is None or listener is speaker or id(listener) in seen:
             return
         if not hasattr(listener, "msg"):
@@ -463,32 +611,44 @@ def _deliver(speaker: Any, message: str, frequency: str,
         # beside the speaker DOES echo — with xmit's low voice, your own
         # handset repeating the words is how you learn you share their band.
         seen.add(id(listener))
-        receivers.append((listener, tagged, own))
+        receivers.append((listener, tagged, own, grade, clarity))
 
     for radio in _all_powered_radios():
         if radio is exclude_device:
             continue
         scanning = is_scanning(radio)
         if scanning or same_band(frequency_of(radio), frequency):
+            # the receiving SET's position decides reception; everyone
+            # at its grille hears the same grade
+            grade, clarity = _clarity_for_fraction(
+                _reception_fraction(origin_xyz, origin_range, relays, radio))
+            if grade == "gone":
+                continue
             # Perspective 4: a walkie has a GRILLE — the traffic is audible
             # to the whole room the radio is in, not just its holder (the
             # toggle help has promised this since P1). A carried radio fans
             # to the holder's room; one on the floor fans to its room.
             holder = radio.location
             for listener in _grille_audience(holder):
-                _collect(listener, tagged=scanning, own=(listener is holder))
+                _collect(listener, tagged=scanning, own=(listener is holder),
+                         grade=grade, clarity=clarity)
 
     for bot in _comms_bots_on(frequency):
         # A comms ORGAN is internal — in the ear, not on a grille. Private
         # to the unit; the room hears nothing.
-        _collect(bot, tagged=False, own=True)
+        grade, clarity = _clarity_for_fraction(
+            _reception_fraction(origin_xyz, origin_range, relays, bot))
+        if grade == "gone":
+            continue
+        _collect(bot, tagged=False, own=True, grade=grade, clarity=clarity)
 
     # Single-answerer election: deterministic (lowest dbref) among LLM-driven
-    # receivers. Range is abstracted in P1, so "nearest" has no meaning yet.
+    # receivers who actually got WORDS (a static-drowned unit can't answer).
     elected = None
     try:
-        candidates = [l for l, _, _ in receivers
-                      if getattr(getattr(l, "db", None), "llm_driven", False)
+        candidates = [l for l, _, _, grade, _ in receivers
+                      if grade in ("clear", "fuzzy")
+                      and getattr(getattr(l, "db", None), "llm_driven", False)
                       is True]
         if candidates:
             elected = min(candidates, key=lambda l: getattr(l, "id", 0) or 0)
@@ -496,13 +656,25 @@ def _deliver(speaker: Any, message: str, frequency: str,
         elected = None
 
     from world.perception import can_hear
-    for listener, tagged, own in receivers:
+    for listener, tagged, own, grade, clarity in receivers:
         try:
+            band = f"[{frequency}] " if tagged else ""
+            if grade == "static":
+                # past the edge of coverage: existence, not content
+                source = "Your radio" if own else "A radio nearby"
+                listener.msg(
+                    f"{band}{source} hisses — a voice buried somewhere "
+                    f"in distant static.",
+                    type="radio", from_obj=speaker,
+                    radio_frequency=frequency, radio_elected=False)
+                continue
+            heard = message if clarity >= 1.0                 else _obscure_heard(message, clarity)
             payload = {}
             if can_hear(listener):
-                payload["speech"] = message   # the say-rails contract
+                payload["speech"] = heard   # the say-rails contract:
+                # an NPC reacts to exactly the fragments it caught
             listener.msg(_render_radio_line(
-                speaker, listener, message, frequency, tagged=tagged,
+                speaker, listener, heard, frequency, tagged=tagged,
                 own=own),
                 type="radio", from_obj=speaker,
                 radio_frequency=frequency,
