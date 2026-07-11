@@ -60,6 +60,15 @@ def _neighbors(room: Any, traverser: Any):
                     continue
             except Exception:  # noqa: BLE001 — never break routing over a lock
                 pass
+            # verticality §2.1: a locked door the traverser's sleeve can't
+            # answer is a blocked edge — dispatch routes around it
+            blocks = getattr(ex, "door_blocks", None)
+            if callable(blocks):
+                try:
+                    if blocks(traverser):
+                        continue
+                except Exception:  # noqa: BLE001
+                    pass
         yield dest, ex
 
 

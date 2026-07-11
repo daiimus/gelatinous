@@ -141,7 +141,15 @@ special tooling.
 permanently *open* and a missing edge is permanently *barrier*; a door is an
 edge that can be **either, at runtime** — the first operable face.
 
-### 2.1 · The state model
+### 2.1 · The state model — ✅ SHIPPED 2026-07-10 (§2.1 + §2.2; the
+door IS the exit, per user call). `typeclasses/doors.py DoorExit`
+(mirrored pair, open/closed/locked, broken seam reserved), player verbs
+`open/close/lock/unlock/knock`, builder `@door` (+/grant /revoke /list
+/force), grant files in `world/access.py`, pathfinder blocked-edge
+filter live in `world/spatial/pathfind.py`, and the elevator's
+`db.floor_locks` consumes the same grant model. §2.3 sound-muffling
+awaits a cross-room sound layer (none exists yet — closed doors are
+already the gate when it lands); §2.4 breach stays reserved.
 
 `DoorExit(Exit)` with a mirrored twin (Evennia exits are one-way; a door is
 the *pair*, state shared so both sides agree):
