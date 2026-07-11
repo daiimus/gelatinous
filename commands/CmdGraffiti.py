@@ -462,11 +462,20 @@ class CmdPress(Command):
     """
     
     key = "press"
+    aliases = ["call"]
     locks = "cmd:all()"
     help_category = "General"
-    
+
     def func(self):
         """Execute the press command."""
+        if getattr(self, "cmdstring", "").lower() == "call":
+            # `call` = press the call button here (elevator shorthand);
+            # any trailing words ("call elevator") are just as welcome
+            self.args = "call"
+            if not self._press_pressable():
+                self.caller.msg("There's no call button here.")
+            return
+
         if not self.args:
             self.caller.msg("Usage: press <color> on <spray_can>, or "
                             "press <button> for buttons and panels.")

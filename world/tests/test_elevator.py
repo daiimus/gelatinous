@@ -232,3 +232,24 @@ class TestPressRouting(TestCase):
         cmd._press_spray_can = MagicMock()
         cmd.func()
         cmd._press_spray_can.assert_called_once_with("blue", "spray can")
+
+    def test_call_is_press_call(self):
+        btn = self._pressable("call button", aliases=["button"])
+        cmd = self._cmd("", [btn])
+        cmd.cmdstring = "call"
+        cmd.func()
+        btn.at_press.assert_called_once_with(cmd.caller, None)
+
+    def test_call_with_trailing_words_still_lands(self):
+        btn = self._pressable("call button")
+        cmd = self._cmd("elevator", [btn])
+        cmd.cmdstring = "call"
+        cmd.func()
+        btn.at_press.assert_called_once_with(cmd.caller, None)
+
+    def test_call_without_a_button_says_so(self):
+        cmd = self._cmd("", [])
+        cmd.cmdstring = "call"
+        cmd.func()
+        self.assertIn("no call button",
+                      cmd.caller.msg.call_args.args[0])
