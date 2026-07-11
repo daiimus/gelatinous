@@ -465,9 +465,14 @@ class DeathProgressionScript(DefaultScript):
         splattercast.msg(f"DEATH_PROGRESSION: {character.key} completed - corpse created, character transitioned")
         splattercast.msg(f"DEATH_SCRIPT_CLEANUP: Stopping and deleting death progression script for {character.key}")
             
-        # Stop and delete the script to clean up completely
-        self.stop()
-        self.delete()
+        # Stop and delete the script to clean up completely. Corpse
+        # creation/character transition can cascade-delete this script
+        # first, and stopping an already-deleted script raises on its
+        # id-less attribute handler (seen live 2026-07-06/07) — guard
+        # on pk, the same idiom Evennia core uses in Script.delete().
+        if self.pk:
+            self.stop()
+            self.delete()
 
     def _handle_corpse_creation_and_transition(self, character):
         """
