@@ -47,8 +47,13 @@ if [ "$(status_server)" -ge 1 ]; then
     echo "--- reload clean, server running ---"
 else
     echo "--- server did not come back: recovering lingering process ---"
+    # Kill BOTH failure shapes: a wedged server process AND a hung
+    # `evennia reload` launcher — the launcher outlives the timed-out
+    # host-side docker exec and lingers as a rogue AMP peer on the
+    # portal (the "Unhandled Command: MsgPortal2Server" spam; needed
+    # manual kills on all three 2026-07-10 wedges).
     docker exec "$CONTAINER" bash -lc '
-        pids=$(ps -o pid=,args= -e | grep "server/server.py" | grep -v grep | awk "{print \$1}")
+        pids=$(ps -o pid=,args= -e | grep -E "server/server\.py|evennia reload" | grep -v grep | awk "{print \$1}")
         for p in $pids; do kill "$p" 2>/dev/null; done
         sleep 4
         for p in $pids; do kill -9 "$p" 2>/dev/null; done

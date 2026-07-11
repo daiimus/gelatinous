@@ -128,16 +128,12 @@ class MedicalCondition:
             return
         
         if not self.requires_ticker:
-            splattercast.msg(f"CONDITION_START: {self.condition_type} for {character.key} doesn't require ticker")
             return
             
-        splattercast.msg(f"CONDITION_START: Adding {self.condition_type} severity {self.severity} to {character.key}")
         
         # Ensure character has medical script running
         medical_script = start_medical_script(character)
-        if medical_script:
-            splattercast.msg(f"CONDITION_START: Medical script active for {character.key}")
-        else:
+        if not medical_script:
             splattercast.msg(f"CONDITION_START: Failed to start medical script for {character.key}")
             
     def tick_effect(self, character, elapsed_minutes=1.0):
@@ -296,7 +292,6 @@ class BleedingCondition(MedicalCondition):
                 clot_hazard *= 2
             if hazard_fires(clot_hazard, elapsed_minutes):
                 self.severity = max(0, self.severity - 1)
-                splattercast.msg(f"BLEEDING_HEAL: {character.key} bleeding severity reduced to {self.severity}")
 
     def _location_tourniqueted(self, medical_state) -> bool:
         """True when any organ at this location carries an applied
@@ -405,7 +400,6 @@ class PainCondition(MedicalCondition):
         # Natural pain reduction — per-minute hazard over elapsed.
         if hazard_fires(PAIN_DECAY_HAZARD_PER_MINUTE, elapsed_minutes):
             self.severity = max(0, self.severity - 1)
-            splattercast.msg(f"PAIN_HEAL: {character.key} pain severity reduced to {self.severity}")
             
         # Note: Individual pain messages removed - now handled by consolidated messaging in medical script
             
@@ -471,7 +465,6 @@ class InfectionCondition(MedicalCondition):
                 heal_hazard *= max(BLOOD_FILTRATION_HEAL_FLOOR, filtration)
             if hazard_fires(heal_hazard, elapsed_minutes):
                 self.severity = max(0, self.severity - 1)
-                splattercast.msg(f"INFECTION_HEAL: {character.key} infection severity reduced to {self.severity}")
         else:
             worsen_hazard = INFECTION_WORSEN_HAZARD_PER_MINUTE * self.environmental_modifier
             if filtration is not None:
@@ -616,7 +609,6 @@ class ConsciousnessSuppressionCondition(MedicalCondition):
             self.severity = max(0, self.severity - 1)
             # Recalculate consciousness penalty
             self.consciousness_penalty = min(1.0, self.severity * 0.15)
-            splattercast.msg(f"CONSCIOUSNESS_RECOVERY: {character.key} {self.suppression_type} severity reduced to {self.severity} (penalty: {self.consciousness_penalty:.2f})")
             
     def should_end(self):
         """Consciousness suppression ends when severity reaches 0."""

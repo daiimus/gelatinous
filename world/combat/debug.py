@@ -8,10 +8,16 @@ its own channel lookups.
 Two destinations, one entry point:
 
 * **Audit file** (always on) — every message is appended to
-  ``server/logs/combat_audit.log`` via Evennia's async file logger.
-  This is the long-term record for investigating player bug reports,
-  cheating accusations, and combat disputes.  File writes happen on
-  the logger's thread pool, never blocking the reactor.
+  ``server/logs/combat_audit.log`` via a stdlib ``logging`` rotating
+  file handler owned by this module.  This is the long-term record
+  for investigating player bug reports, cheating accusations, and
+  combat disputes.  (Previously Evennia's threaded ``logger.log_file``
+  carried these writes; its cached handle is closed on the reactor
+  every 500th access while queued thread writes still hold it, so
+  every recycle boundary silently dropped the queue — 7.9k lost lines
+  rendered as ``NoneType: None`` before #1094 unmasked it.  The
+  stdlib handler locks per-write and rotates safely; Evennia core
+  stays untouched.)
 * **Splattercast channel** (gated) — live in-game broadcast for
   active debugging sessions.  Off by default; enable by setting
   ``SPLATTERCAST_LIVE = True`` in ``server/conf/settings.py``.
@@ -32,16 +38,49 @@ Functions:
 
 from __future__ import annotations
 
+import logging
+import logging.handlers
+import os
+
 from django.conf import settings
 from django.core.exceptions import AppRegistryNotReady
 from django.db import Error as DatabaseError
 
 from evennia.comms.models import ChannelDB
-from evennia.utils import logger
 
 from .constants import SPLATTERCAST_CHANNEL
 
 COMBAT_AUDIT_FILENAME = "combat_audit.log"
+
+# Per-process audit logger cache (mirrors _CHANNEL_CACHE below).
+_AUDIT_LOGGER: list = []
+
+
+def _get_audit_logger():
+    """The stdlib logger writing ``combat_audit.log``.
+
+    Thread-safe (the logging module locks per handler), rotation-safe
+    (rollover happens under that same lock), and reactor-friendly: the
+    handler buffers through the OS page cache, so a write is
+    microseconds — the same synchronous discipline twisted uses for
+    server.log itself.  Rotation size follows the existing
+    CHANNEL_LOG_ROTATE_SIZE convention."""
+    if _AUDIT_LOGGER:
+        return _AUDIT_LOGGER[0]
+    log = logging.getLogger("gelatinous.combat_audit")
+    if not log.handlers:
+        handler = logging.handlers.RotatingFileHandler(
+            os.path.join(settings.LOG_DIR, COMBAT_AUDIT_FILENAME),
+            maxBytes=max(1000, getattr(settings, "CHANNEL_LOG_ROTATE_SIZE",
+                                       10_000_000)),
+            backupCount=100, encoding="utf-8")
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s [-] %(message)s", datefmt="%y-%m-%d %H:%M:%S"))
+        log.addHandler(handler)
+        log.setLevel(logging.INFO)
+        log.propagate = False
+    _AUDIT_LOGGER.append(log)
+    return log
 
 class _NullChannel:
     """No-op message sink.
@@ -89,7 +128,7 @@ class _AuditRouter:
         # break combat for players, so the (and only the) expected I/O
         # failure mode is swallowed; anything else surfaces.
         try:
-            logger.log_file(str(message), filename=COMBAT_AUDIT_FILENAME)
+            _get_audit_logger().info(str(message))
         except OSError:
             pass
         # Opt-in live mirror.  A developer who set SPLATTERCAST_LIVE is

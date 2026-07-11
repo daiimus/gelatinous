@@ -1080,7 +1080,6 @@ class MedicalState:
                 if character:
                     from world.combat.debug import get_splattercast
                     splattercast = get_splattercast()
-                    splattercast.msg(f"ADD_CONDITION: Starting ticker for {condition.condition_type} on {character.key}")
                     condition.start_condition(character)
                 else:
                     from world.combat.debug import get_splattercast
