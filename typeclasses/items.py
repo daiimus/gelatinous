@@ -648,8 +648,10 @@ class DispatchConsole(Radio):
     never reply-chain on IT), must name dispatch, cooldown between answers.
     """
 
-    #: Seconds between answered lines — the console is terse, not chatty.
-    ANSWER_COOLDOWN = 10.0
+    #: Seconds between answered lines — short enough for back-and-forth
+    #: (user call 2026-07-11: interlopers get to vibe with dispatch),
+    #: long enough to stop reply-storms.
+    ANSWER_COOLDOWN = 4.0
     #: The register. Instructions live game-side so the backend stays dumb.
     #: Small-model practices (the 19:15 misfires taught this): EXAMPLES over
     #: adjectives — a 3B parrots unlabeled scaffolding and inverts roles
@@ -687,9 +689,15 @@ class DispatchConsole(Radio):
         "Dispatch copies. Go ahead."
     )
     FALLBACK_LINE = "Dispatch copies. State your traffic and location."
-    #: The chatter register's structural fallback — FALLBACK_LINE asks for
-    #: traffic, which is an invitation; chatter gets the door instead.
-    CHATTER_LINE = "Keep this channel clear."
+    #: The chatter register's structural fallbacks — FALLBACK_LINE asks
+    #: for traffic, which is an invitation; chatter gets the door. A few
+    #: doors, so the brush-off doesn't read as a recording.
+    CHATTER_LINES = (
+        "Keep this channel clear.",
+        "This channel's for blood and fire, caller.",
+        "Take it to the house band, caller. This one's for emergencies.",
+        "Unless something's burning or bleeding, clear the channel.",
+    )
 
     #: When a LIVE OPERATOR is at the desk, the civic lane speaks AS HER —
     #: same structure/guards as the automation register, but the exemplars
@@ -722,7 +730,12 @@ class DispatchConsole(Radio):
         "a door that locks and stay behind it.\n"
         "[CONTEXT] Units available: 2. [TRAFFIC] an unfamiliar voice: "
         "\"How's your day going?\"\n"
-        "This channel's for blood and fire, caller. Clear it.\n"
+        "Twenty years of other people's worst days, caller. Keep the "
+        "channel clear.\n"
+        "[CONTEXT] Units available: 6. The caller's traffic is idle "
+        "chatter, not an incident report. [TRAFFIC] a flat voice: \"I "
+        "sure could go for some coffee.\"\n"
+        "So could I, caller. Neither of us is getting one on this band.\n"
         "[CONTEXT] Units available: 4. [TRAFFIC] a flat voice: "
         "\"Dispatch, do you copy?\"\n"
         "Dispatch. Go ahead."
@@ -805,7 +818,8 @@ class DispatchConsole(Radio):
         chatter = (isinstance(verdict, dict)
                    and (verdict.get("is_incident_report") is not True
                         or verdict.get("incident_type") in (None, "none")))
-        fallback = self.CHATTER_LINE if chatter else self.FALLBACK_LINE
+        from random import choice
+        fallback = choice(self.CHATTER_LINES) if chatter else self.FALLBACK_LINE
         request_civic_line(
             instructions, prompt,
             on_reply=lambda text: self._answer(
@@ -824,9 +838,10 @@ class DispatchConsole(Radio):
         if (verdict.get("is_incident_report") is not True
                 or verdict.get("incident_type") in (None, "none")):
             return (" The caller's traffic is idle chatter, not an "
-                    "incident report — move it off the channel; do not "
-                    "promise or send units, and do not repeat or grant "
-                    "what they asked for.")
+                    "incident report. No units, no promises, nothing "
+                    "granted or fetched — but give them a line of your "
+                    "own before you move them along: dry, quick, "
+                    "human. You can spare one sentence for a regular.")
         where = str(verdict.get("location_text") or "").strip()
         place = f" at {where}" if where else ""
         kind = verdict.get("incident_type")
@@ -858,7 +873,8 @@ class DispatchConsole(Radio):
         low = line.lower()
         scaffolding = ("units available:", "[context]", "[traffic]",
                        "radio traffic from")
-        reject = self.CHATTER_LINE if chatter else self.FALLBACK_LINE
+        from random import choice
+        reject = choice(self.CHATTER_LINES) if chatter else self.FALLBACK_LINE
         if not line or len(line) > 200 or any(s in low for s in scaffolding):
             return reject
         # The no-false-units backstop: whatever the model says, a claim
@@ -869,20 +885,25 @@ class DispatchConsole(Radio):
                 r"dispatched|en route|inbound|on the way|coming|headed|"
                 r"moving)\b", low):
             return reject
-        # The parrot guard ("Coffee, please." — 2026-07-11): on chatter,
-        # a SHORT reply that repeats a content word from the caller is
-        # the small model latching onto the noun, not Petra being dry.
-        # Long replies keep their wit ("this channel's for blood and
-        # fire, not coffee runs"); is_echo catches long full parrots.
+        # The parrot guard ("Coffee, please." — 2026-07-11, loosened same
+        # day for banter): on chatter, a SHORT reply is struck only when
+        # it adds NOTHING of its own — every content word already came
+        # from the caller. Quips that reference the noun but bring their
+        # own words ("so could I, caller") are the vibe and survive;
+        # is_echo catches long full parrots.
         if chatter and heard:
+            # courtesy filler is not "her own words" — "Coffee, please."
+            # is still a parrot
+            stop = {"the", "and", "for", "you", "your", "could", "some",
+                    "sure", "this", "that", "have", "get", "was", "are",
+                    "just", "not", "with", "please", "caller", "copy",
+                    "roger", "thanks", "thank", "sorry"}
             words = re.findall(r"[a-z0-9]+", low)
-            if len(words) < 7:
+            if 0 < len(words) < 7:
+                content = {w for w in words if len(w) >= 3 and w not in stop}
                 heard_content = {w for w in re.findall(
                     r"[a-z0-9]+", str(heard).lower()) if len(w) >= 3}
-                heard_content -= {"the", "and", "for", "you", "could",
-                                  "some", "sure", "this", "that", "have",
-                                  "get", "was", "are", "just"}
-                if any(w in heard_content for w in words):
+                if content and content <= heard_content:
                     return reject
         if heard:
             try:

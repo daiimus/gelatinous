@@ -184,7 +184,7 @@ class TestGroundedVoiceLane(TestCase):
         ctx = console._verdict_context(
             {"is_incident_report": False, "incident_type": "none"}, None)
         self.assertIn("idle chatter", ctx)
-        self.assertIn("do not promise", ctx)
+        self.assertIn("No units, no promises", ctx)
 
     def test_context_for_confirmed_dispatch(self):
         console = self._console()
@@ -264,7 +264,7 @@ class TestParrotGuard(TestCase):
         from typeclasses.items import DispatchConsole
         console = MagicMock()
         console.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
-        console.CHATTER_LINE = DispatchConsole.CHATTER_LINE
+        console.CHATTER_LINES = DispatchConsole.CHATTER_LINES
         console._clean_reply = DispatchConsole._clean_reply.__get__(
             console, DispatchConsole)
         return console
@@ -274,7 +274,15 @@ class TestParrotGuard(TestCase):
         line = console._clean_reply(
             "Coffee, please.",
             heard="I sure could go for some coffee.", chatter=True)
-        self.assertEqual(line, console.CHATTER_LINE)
+        self.assertIn(line, console.CHATTER_LINES)
+
+    def test_short_quip_with_own_words_survives(self):
+        # referencing the noun while adding her own words IS the vibe
+        console = self._console()
+        good = "So could I, caller."
+        line = console._clean_reply(
+            good, heard="I sure could go for some coffee.", chatter=True)
+        self.assertEqual(line, good)
 
     def test_long_wit_keeps_the_noun(self):
         console = self._console()
@@ -303,4 +311,4 @@ class TestParrotGuard(TestCase):
         line = console._clean_reply(
             "Copy. Coffee. Units rolling.",
             heard="I sure could go for some coffee.", chatter=True)
-        self.assertEqual(line, console.CHATTER_LINE)
+        self.assertIn(line, console.CHATTER_LINES)
