@@ -815,6 +815,21 @@ class Room(ObjectParent, DefaultRoom):
             
         return final
     
+    def _visible_exits(self, looker):
+        """Exits *looker* may see. A view-locked exit (``view:false()`` —
+        the standard secret-door mechanism, e.g. the rooftop hatch) stays
+        out of the exit prose entirely; it can still be traversed by
+        name by anyone who knows it's there."""
+        out = []
+        for ex in (self.exits or []):
+            try:
+                if not ex.access(looker, "view"):
+                    continue
+            except Exception:  # noqa: BLE001 — a broken lock stays visible
+                pass
+            out.append(ex)
+        return out
+
     def get_custom_exit_display(self, looker):
         """
         Get smart exit display using natural language based on destination room types.
@@ -825,8 +840,8 @@ class Room(ObjectParent, DefaultRoom):
         # Sky rooms don't display exits
         if self.is_sky_room:
             return ""
-            
-        exits = self.exits
+
+        exits = self._visible_exits(looker)
         if not exits:
             return ""
         
