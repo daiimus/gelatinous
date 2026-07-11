@@ -49,6 +49,7 @@ _SWEEP_LOCALES = {
     "sky": "across the open air",
     "interior": "across the room",
     "constabulary": "across the floor",
+    "shaft": "up the shaft",
 }
 
 
