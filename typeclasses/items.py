@@ -687,6 +687,9 @@ class DispatchConsole(Radio):
         "Dispatch copies. Go ahead."
     )
     FALLBACK_LINE = "Dispatch copies. State your traffic and location."
+    #: The chatter register's structural fallback — FALLBACK_LINE asks for
+    #: traffic, which is an invitation; chatter gets the door instead.
+    CHATTER_LINE = "Keep this channel clear."
 
     #: When a LIVE OPERATOR is at the desk, the civic lane speaks AS HER —
     #: same structure/guards as the automation register, but the exemplars
@@ -799,14 +802,18 @@ class DispatchConsole(Radio):
         instructions = (self.OPERATOR_INSTRUCTIONS if operator
                         else self.INSTRUCTIONS)
         units_moved = bool(dispatched)
+        chatter = (isinstance(verdict, dict)
+                   and (verdict.get("is_incident_report") is not True
+                        or verdict.get("incident_type") in (None, "none")))
+        fallback = self.CHATTER_LINE if chatter else self.FALLBACK_LINE
         request_civic_line(
             instructions, prompt,
             on_reply=lambda text: self._answer(
                 self._clean_reply(text, heard=speech,
-                                  units_moved=units_moved),
+                                  units_moved=units_moved,
+                                  chatter=chatter),
                 speaker=operator),
-            on_fail=lambda: self._answer(self.FALLBACK_LINE,
-                                         speaker=operator),
+            on_fail=lambda: self._answer(fallback, speaker=operator),
         )
 
     def _verdict_context(self, verdict, dispatched):
@@ -818,7 +825,8 @@ class DispatchConsole(Radio):
                 or verdict.get("incident_type") in (None, "none")):
             return (" The caller's traffic is idle chatter, not an "
                     "incident report — move it off the channel; do not "
-                    "promise or send units.")
+                    "promise or send units, and do not repeat or grant "
+                    "what they asked for.")
         where = str(verdict.get("location_text") or "").strip()
         place = f" at {where}" if where else ""
         kind = verdict.get("incident_type")
@@ -832,7 +840,8 @@ class DispatchConsole(Radio):
                 "dispatched (scene already handled or nobody free). Do "
                 "not claim units are responding.")
 
-    def _clean_reply(self, text, heard=None, units_moved=False):
+    def _clean_reply(self, text, heard=None, units_moved=False,
+                     chatter=False):
         """Reply sanitation (the GM lane's practices, scaled down): the model
         must return ONLY a spoken line. First line only; quotes/labels
         stripped; brackets (stage directions) removed; any echo of the
@@ -849,8 +858,9 @@ class DispatchConsole(Radio):
         low = line.lower()
         scaffolding = ("units available:", "[context]", "[traffic]",
                        "radio traffic from")
+        reject = self.CHATTER_LINE if chatter else self.FALLBACK_LINE
         if not line or len(line) > 200 or any(s in low for s in scaffolding):
-            return self.FALLBACK_LINE
+            return reject
         # The no-false-units backstop: whatever the model says, a claim
         # that units are moving is struck unless dispatch actually moved
         # them this turn. The model proposes; determinism disposes.
@@ -858,7 +868,22 @@ class DispatchConsole(Radio):
                 r"\bunits?\b[^.!?]*\b(roll(?:ing|s)?|respond(?:ing|s)?|"
                 r"dispatched|en route|inbound|on the way|coming|headed|"
                 r"moving)\b", low):
-            return self.FALLBACK_LINE
+            return reject
+        # The parrot guard ("Coffee, please." — 2026-07-11): on chatter,
+        # a SHORT reply that repeats a content word from the caller is
+        # the small model latching onto the noun, not Petra being dry.
+        # Long replies keep their wit ("this channel's for blood and
+        # fire, not coffee runs"); is_echo catches long full parrots.
+        if chatter and heard:
+            words = re.findall(r"[a-z0-9]+", low)
+            if len(words) < 7:
+                heard_content = {w for w in re.findall(
+                    r"[a-z0-9]+", str(heard).lower()) if len(w) >= 3}
+                heard_content -= {"the", "and", "for", "you", "could",
+                                  "some", "sure", "this", "that", "have",
+                                  "get", "was", "are", "just"}
+                if any(w in heard_content for w in words):
+                    return reject
         if heard:
             try:
                 from world.llm.prompt import is_echo
@@ -868,7 +893,7 @@ class DispatchConsole(Radio):
                 bare = re.sub(r"^(copy|roger|acknowledged)[,.\s]*", "",
                               low).strip()
                 if bare and is_echo(bare, heard):
-                    return self.FALLBACK_LINE
+                    return reject
             except Exception:  # noqa: BLE001 — the guard is best-effort
                 pass
         return line
