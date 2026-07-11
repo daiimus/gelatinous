@@ -47,3 +47,32 @@ class CrowdProfileRoutingTests(TestCase):
         self.assertIn("bass", joined)
         # Unknown profile falls back to default without error.
         self.assertTrue(get_crowd_messages(4, profile="bogus"))
+
+
+class TestResidentialProfile(TestCase):
+    """The residential pool: cube hotels draw tenant life, never street
+    vendors or bar counters."""
+
+    def test_cube_hotel_routes_residential(self):
+        from world.crowd.crowd_messages import crowd_profile_for_room_type
+        self.assertEqual(crowd_profile_for_room_type("cube hotel"),
+                         "residential")
+        self.assertEqual(crowd_profile_for_room_type("CUBE HOTEL"),
+                         "residential")
+
+    def test_all_intensities_populated(self):
+        from world.crowd.crowd_messages import CROWD_MESSAGES
+        pool = CROWD_MESSAGES["residential"]
+        for intensity in ("sparse", "moderate", "heavy", "packed"):
+            self.assertIn(intensity, pool)
+            self.assertTrue(pool[intensity].get("visual"))
+            self.assertTrue(pool[intensity].get("auditory"))
+
+    def test_residential_pool_is_distinct(self):
+        from world.crowd.crowd_messages import CROWD_MESSAGES
+        residential = {m for tier in CROWD_MESSAGES["residential"].values()
+                       for msgs in tier.values() for m in msgs}
+        for other in ("default", "interior", "nightclub"):
+            other_msgs = {m for tier in CROWD_MESSAGES[other].values()
+                          for msgs in tier.values() for m in msgs}
+            self.assertFalse(residential & other_msgs)

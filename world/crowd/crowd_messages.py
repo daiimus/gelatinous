@@ -665,7 +665,104 @@ CROWD_MESSAGES['constabulary'] = {
     },
 }
 
+# --------------------------------------------------------------------------
+# RESIDENTIAL — cube hotels, flophouses, tenant floors. Deliberately a
+# different world from 'interior' (no counters, no drink orders) and from
+# 'default' (no vendors or haulers indoors): it's people LIVING stacked —
+# sleep, laundry, small meals, low-key coming and going. Selected by
+# room.type (cube hotel) via crowd_profile_for_room_type.
+# --------------------------------------------------------------------------
+CROWD_MESSAGES['residential'] = {
+        'sparse': {
+            'visual': [
+                "a tenant dozes upright in a chair, keys still hooked on one finger",
+                "someone in yesterday's clothes squints at the rental kiosk like it owes them",
+                "a resident shuffles through in shower sandals, towel over one shoulder",
+                "somebody eats noodles out of the container by the vending machine, unhurried",
+                "a tenant sorts a small sack of laundry with the patience of the unemployed",
+                "someone checks a cubby of mail slots twice, finds nothing twice",
+            ],
+            'auditory': [
+                "a cube door seals somewhere down the way with a soft pneumatic sigh",
+                "a vending machine drops something heavy into its tray and hums on",
+                "slippered footsteps pass and fade without hurry",
+                "someone's radio murmurs through a wall, too low to make out",
+                "a kettle or a cheap heater ticks as it warms somewhere close",
+            ],
+            'olfactory': [
+                "instant noodles and soap powder trade places in the recycled air",
+                "somebody's cooking drifts through — oil, garlic, nothing fancy",
+            ],
+            'tactile': [
+                "the recycled air sits warm and lived-in, thick with other people's sleep",
+            ],
+            'atmospheric': [
+                "the building has the settled quiet of people home and minding their own",
+                "half the mail slots gape open; the other half were forced at some point",
+            ],
+        },
+        'moderate': {
+            'visual': [
+                "a few tenants queue at the vending machine, exact change ready",
+                "neighbours trade complaints in a doorway, arms crossed, in no rush to finish",
+                "someone hauls a mattress roll through, apologising to nobody",
+                "a resident argues quietly with the rental kiosk and loses",
+                "two kids race the corridor and are gone before anyone objects",
+            ],
+            'auditory': [
+                "cube doors sigh open and sealed shut in ragged rhythm",
+                "an argument through a wall rises, thinks better of it, and settles",
+                "laundry water slaps a basin somewhere and someone hums over it",
+                "the floor carries footsteps overhead, unhurried, back and forth",
+            ],
+            'olfactory': [
+                "several dinners fight it out in the recycled air and nobody wins",
+                "steam and soap from somebody's wash drift warm through the corridor",
+            ],
+            'tactile': [
+                "the air is warmer for the bodies home and moving behind the walls",
+            ],
+            'atmospheric': [
+                "the building is awake: doors, footsteps, dinner smells, low voices",
+            ],
+        },
+        'heavy': {
+            'visual': [
+                "tenants cluster in the corridor, talking over each other about the same thing",
+                "someone pushes through with a crate of belongings, moving in or moving out fast",
+                "a queue for the kiosk has formed and grown opinions",
+            ],
+            'auditory': [
+                "too many conversations fill the corridor for any one of them to win",
+                "someone bangs on a cube door and keeps banging",
+                "a baby cries somewhere above and sets off a dog somewhere below",
+            ],
+            'olfactory': [
+                "sweat and dinner and soap crowd the recycled air past its capacity",
+            ],
+            'atmospheric': [
+                "the whole floor is out of its cubes at once and the corridor wasn't built for it",
+            ],
+        },
+        'packed': {
+            'visual': [
+                "the corridor is wall to wall with tenants, nobody moving anywhere fast",
+                "somebody climbs over the vending machine queue to get to their own door",
+            ],
+            'auditory': [
+                "the noise of the whole building compresses into one close, echoing din",
+            ],
+            'atmospheric': [
+                "a building's worth of people in a corridor built for a mattress roll and a bad day",
+            ],
+        },
+}
+
 NIGHTCLUB_ROOM_TYPES = {'nightclub', 'club'}
+
+RESIDENTIAL_ROOM_TYPES = {
+    'cube hotel',
+}
 
 #: Enclosed bar/venue room types that draw on the 'interior' crowd pool rather
 #: than the open-air street 'default'. Anything unlisted falls back to 'default'.
@@ -676,12 +773,14 @@ INTERIOR_ROOM_TYPES = {
 
 def crowd_profile_for_room_type(room_type):
     """Map a ``room.type`` to a crowd profile
-    ('default'|'interior'|'nightclub'|'constabulary')."""
+    ('default'|'interior'|'nightclub'|'constabulary'|'residential')."""
     t = str(room_type or "").lower()
     if t == 'constabulary':
         return 'constabulary'
     if t in NIGHTCLUB_ROOM_TYPES:
         return 'nightclub'
+    if t in RESIDENTIAL_ROOM_TYPES:
+        return 'residential'
     if t in INTERIOR_ROOM_TYPES:
         return 'interior'
     return 'default'
