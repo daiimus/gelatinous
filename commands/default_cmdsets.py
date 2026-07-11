@@ -50,7 +50,6 @@ from commands.CmdExplosives import (
     CmdClearDetonator,
 )
 from commands.CmdGraffiti import CmdGraffiti, CmdPress
-from commands.CmdRental import CmdRent
 from commands.CmdDoors import (CmdOpenDoor, CmdCloseDoor, CmdLockDoor,
                                CmdUnlockDoor, CmdKnock, CmdDoorAdmin)
 from commands.CmdCharacter import CmdDescribe, CmdSkintone, CmdVoice
@@ -258,7 +257,6 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdUnlockDoor())
         self.add(CmdKnock())
         self.add(CmdDoorAdmin())
-        self.add(CmdRent())
         self.add(CmdPress())
         
         # Add unified describe command (short desc + keyword + longdesc).

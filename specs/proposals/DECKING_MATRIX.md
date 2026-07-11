@@ -291,3 +291,15 @@ a deck.
 Phase 1 is the one piece that can be **prototyped now** — the programming
 model doesn't need the net to exist to be authored and tested. Everything else
 waits for the vertical world.
+
+
+## Physical interface layer — TERMINALS (groundwork shipped 2026-07-11)
+
+`typeclasses/terminals.py`: fixed machines operated through the
+ordinary `press`/`push` grammar (`press rent on kiosk`), sharing the
+`at_press(presser, arg)` contract with elevator panels and call
+buttons. First citizen: the Queen of Cups rental terminal (housing
+records = the grant files on cube doors, §2.2 shape). When this spec
+builds, these are the boxes whose records become net-visible files —
+the buttons remain the street-level interface; the truth moves to the
+host.

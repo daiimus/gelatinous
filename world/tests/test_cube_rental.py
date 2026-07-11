@@ -122,3 +122,51 @@ class TestVacancy(TestCase):
         cube = _cube()
         cube.db.cube_door = None
         self.assertFalse(is_free(cube))
+
+
+class TestTerminalPressGrammar(TestCase):
+    """The kiosk speaks press (user call): press rent on kiosk /
+    press confirm on kiosk / bare press = status."""
+
+    def _terminal_obj(self, cubes):
+        from types import SimpleNamespace
+        from typeclasses.terminals import RentalTerminal
+        t = MagicMock()
+        t.key = "rental terminal"
+        t.db = SimpleNamespace(pressable=True, rental_terminal=True,
+                               cubes=list(cubes))
+        for name in ("at_press", "_press_rent", "_press_status", "_cubes"):
+            setattr(t, name,
+                    getattr(RentalTerminal, name).__get__(t, RentalTerminal))
+        return t
+
+    def test_press_rent_claims(self):
+        tenant = _char()
+        cube = _cube()
+        terminal = self._terminal_obj([cube])
+        self.assertTrue(terminal.at_press(tenant, "rent"))
+        self.assertIs(tenant.db.residence, cube)
+        self.assertIn("yours", tenant.msg.call_args_list[-1].args[0])
+
+    def test_relocation_wants_explicit_confirm(self):
+        tenant = _char()
+        old, new = _cube("R1-01"), _cube("R2-02")
+        old_terminal = self._terminal_obj([old])
+        old_terminal.at_press(tenant, "rent")
+        new_terminal = self._terminal_obj([new])
+        self.assertTrue(new_terminal.at_press(tenant, "rent"))
+        self.assertIs(tenant.db.residence, old)        # not yet moved
+        self.assertIn("press confirm on kiosk",
+                      tenant.msg.call_args.args[0])
+        self.assertTrue(new_terminal.at_press(tenant, "confirm"))
+        self.assertIs(tenant.db.residence, new)
+
+    def test_bare_press_reads_status(self):
+        tenant = _char()
+        terminal = self._terminal_obj([_cube()])
+        self.assertTrue(terminal.at_press(tenant, None))
+        self.assertIn("unspent", tenant.msg.call_args.args[0])
+
+    def test_unknown_button_is_not_ours(self):
+        terminal = self._terminal_obj([_cube()])
+        self.assertFalse(terminal.at_press(_char(), "jackpot"))
