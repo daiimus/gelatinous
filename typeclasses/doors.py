@@ -3,14 +3,11 @@
 A door is a mirrored PAIR of ``DoorExit``s (Evennia exits are one-way;
 the Evennia contrib door pattern shares state across the pair so both
 sides always agree). States: **open** (free traversal), **closed**
-(walking through auto-opens it), **locked** (blocked unless the
-traverser's sleeve is on the grant file — §2.2 biometric model, via
-``world.access``).
-
-Traversal through a locked door for a GRANTED sleeve is momentary:
-the reader flashes green, the door admits them, and it seals locked
-again behind — passage alone never de-secures a floor. Explicitly
-``open``-ing a locked door (granted) unlocks it for real.
+and **locked** (both block passage outright). The door is a physical
+state machine, not an auth check (user call 2026-07-10): passage
+requires the door OPEN — ``open`` opens it (a locked door needs your
+sleeve granted, and opening it unlocks it), ``close`` closes it,
+``lock`` seals it, and walking never changes the state.
 
 ``door_broken`` is the §2.4 breach seam: a broken door hangs open and
 cannot close or lock (reserved; nothing sets it yet).
@@ -22,10 +19,6 @@ walls it can't open.
 
 from typeclasses.exits import Exit
 from world.access import is_granted
-
-READER_DENIED_MSG = "The reader beside the door blinks red. The lock holds."
-DOOR_CLOSED_HINT = "You could knock."
-
 
 class DoorExit(Exit):
     """One side of a door. State lives mirrored on both sides."""
@@ -83,9 +76,10 @@ class DoorExit(Exit):
 
     def door_blocks(self, traverser):
         """Pathfinder hook: is this edge impassable for *traverser*?
-        Closed-but-unlocked doors don't block (traversal auto-opens);
-        only a lock the traverser's sleeve can't answer does."""
-        return self.is_locked_for(traverser)
+        Any not-open door blocks — passage requires the door open, and
+        no NPC behaviour opens doors yet. (When granted NPCs learn the
+        open verb, this refines to a lock-vs-grant check.)"""
+        return not self.is_open()
 
     # ------------------------------------------------------------------
     # messaging
@@ -119,30 +113,17 @@ class DoorExit(Exit):
     # ------------------------------------------------------------------
 
     def _traverse_gate(self, traversing_object):
-        """May *traversing_object* pass right now? Handles the door's
-        own state changes and messaging; returns True to proceed."""
-        if self.db.door_broken is True:
+        """May *traversing_object* pass right now? Passage requires the
+        door OPEN — walking never opens, unlocks, or closes anything."""
+        if self.is_open():
             return True
         if self.db.door_locked is True:
-            if is_granted(traversing_object, self.db.access_grants):
-                # momentary admission — seals locked again behind them
-                traversing_object.msg(
-                    "The reader flashes green; the lock releases just "
-                    "long enough to let you through, then seals again.")
-                self._both_rooms_msg(
-                    "The door unseals briefly to let someone through, "
-                    "then locks again.", exclude=[traversing_object])
-                return True
             traversing_object.msg(
-                f"{READER_DENIED_MSG} {DOOR_CLOSED_HINT}")
-            return False
-        if self.db.door_closed is True:
-            # walking through an unlocked door opens it
-            self._mirror(door_closed=False)
-            traversing_object.msg("You push the door open.")
-            self._both_rooms_msg("The door swings open.",
-                                 exclude=[traversing_object])
-        return True
+                "The door is sealed. The reader beside it idles amber.")
+        else:
+            traversing_object.msg(
+                "The door is closed. You could open it.")
+        return False
 
     def at_traverse(self, traversing_object, target_location):
         if not self._traverse_gate(traversing_object):
