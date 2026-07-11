@@ -82,6 +82,7 @@ def release_with_window(char, cube):
         if entry.get("sleeve") == uid:
             entry["until"] = deadline
     door._mirror(access_grants=grants)
+    char.db.residence_handover = {"cube": cube, "until": deadline}
 
 
 def claim(char, cube, issued_by="rental terminal"):
@@ -94,6 +95,38 @@ def claim(char, cube, issued_by="rental terminal"):
     door._mirror(access_grants=grants)
     cube.db.resident = char
     char.db.residence = cube
+    from world.identity import _recognition_now_iso
+    char.db.residence_registered_at = _recognition_now_iso()
+
+
+def residence_report(char):
+    """The residence dossier for the ``memory`` report: unit, building/
+    vehicle name, street/port of origin, registration age, and any live
+    relocation handover. ``None`` if the credit is unspent."""
+    cube = residence_of(char)
+    if cube is None:
+        return None
+    handover = None
+    entry = getattr(getattr(char, "db", None), "residence_handover", None)
+    if entry:
+        try:
+            old = entry.get("cube")
+            left = float(entry.get("until") or 0) - time.time()
+            if left > 0 and old is not None and getattr(old, "pk", None):
+                # ceil: "answers 2h more" at 1h59m, never "0h"
+                handover = {"unit": old.key,
+                            "hours_left": max(1, -int(-left // 3600))}
+            else:
+                char.db.residence_handover = None    # expired: prune
+        except Exception:  # noqa: BLE001 — malformed handover prunes too
+            char.db.residence_handover = None
+    return {
+        "unit": cube.key,
+        "building": cube.db.residence_building,
+        "origin": cube.db.residence_origin,
+        "registered_at": char.db.residence_registered_at,
+        "handover": handover,
+    }
 
 
 def assign_cube(char, terminal):

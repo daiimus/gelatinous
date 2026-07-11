@@ -172,24 +172,89 @@ class TestTerminalPressGrammar(TestCase):
         self.assertFalse(terminal.at_press(_char(), "jackpot"))
 
 
-class TestMemoryResidenceLine(TestCase):
-    """`memory` ends with the residence the rental credit is spent on."""
+class TestResidenceReport(TestCase):
+    """`memory`'s REGISTERED RESIDENCE dossier data."""
 
-    def test_registered_residence_renders(self):
-        from commands.CmdCharacter import _residence_line
+    def _cube(self, key="R0-01"):
         cube = MagicMock()
         cube.pk = 42
-        cube.key = "R0-01"
-        cube.location.key = "Queen of Cups - Rack 0"
-        caller = MagicMock()
-        caller.db.residence = cube
-        line = _residence_line(caller)
-        self.assertIn("R0-01", line)
-        self.assertIn("Queen of Cups - Rack 0", line)
+        cube.key = key
+        cube.db.residence_building = "Queen of Cups"
+        cube.db.residence_origin = "Pessoa Street"
+        return cube
+
+    def test_full_dossier(self):
+        from world.rental import residence_report
+        char = MagicMock()
+        char.db.residence = self._cube()
+        char.db.residence_handover = None
+        char.db.residence_registered_at = "2026-07-11T00:00:00"
+        report = residence_report(char)
+        self.assertEqual(report["unit"], "R0-01")
+        self.assertEqual(report["building"], "Queen of Cups")
+        self.assertEqual(report["origin"], "Pessoa Street")
+        self.assertIsNone(report["handover"])
+
+    def test_live_handover_window(self):
+        import time as _time
+        from world.rental import residence_report
+        char = MagicMock()
+        char.db.residence = self._cube("R1-03")
+        old = self._cube("R0-01")
+        char.db.residence_handover = {"cube": old,
+                                      "until": _time.time() + 7200}
+        report = residence_report(char)
+        self.assertEqual(report["handover"]["unit"], "R0-01")
+        self.assertEqual(report["handover"]["hours_left"], 2)
+
+    def test_expired_handover_prunes(self):
+        import time as _time
+        from world.rental import residence_report
+        char = MagicMock()
+        char.db.residence = self._cube()
+        char.db.residence_handover = {"cube": self._cube("R0-02"),
+                                      "until": _time.time() - 5}
+        report = residence_report(char)
+        self.assertIsNone(report["handover"])
+        self.assertIsNone(char.db.residence_handover)
+
+    def test_unspent_credit(self):
+        from world.rental import residence_report
+        char = MagicMock()
+        char.db.residence = None
+        self.assertIsNone(residence_report(char))
+
+
+class TestMemoryReportPanel(TestCase):
+    """The @stats-format panel renderer."""
+
+    def test_rows_pad_to_uniform_width(self):
+        import re
+        from commands.CmdCharacter import _report_panel
+        panel = _report_panel(["MNEMONIC RECALL REPORT", None,
+                               "REGISTERED RESIDENCE", "Unit: R0-01"])
+        widths = {len(re.sub(r"\|.", "", line))
+                  for line in panel.splitlines()}
+        self.assertEqual(len(widths), 1)          # every row same width
+        self.assertEqual(panel.count("MNEMONIC"), 1)
+
+    def test_residence_rows_render_dossier(self):
+        from unittest.mock import patch
+        from commands.CmdCharacter import _residence_rows
+        report = {"unit": "R0-01", "building": "Queen of Cups",
+                  "origin": "Pessoa Street",
+                  "registered_at": "2026-07-11T00:00:00",
+                  "handover": {"unit": "R4-05", "hours_left": 46}}
+        with patch("world.rental.residence_report", return_value=report):
+            rows = _residence_rows(MagicMock())
+        joined = "\n".join(rows)
+        self.assertIn("Queen of Cups", joined)
+        self.assertIn("Pessoa Street", joined)
+        self.assertIn("R4-05 answers your sleeve 46h more", joined)
 
     def test_no_residence(self):
-        from commands.CmdCharacter import _residence_line
-        caller = MagicMock()
-        caller.db.residence = None
-        self.assertEqual(_residence_line(caller),
-                         "You hold no registered residence.")
+        from unittest.mock import patch
+        from commands.CmdCharacter import _residence_rows
+        with patch("world.rental.residence_report", return_value=None):
+            rows = _residence_rows(MagicMock())
+        self.assertEqual(rows, ["None on file."])
