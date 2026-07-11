@@ -255,3 +255,52 @@ class TestConsiderOnResult(TestCase):
         with patch("world.llm.client.civic_enabled", return_value=False):
             self.assertFalse(rr.consider_radio_report(
                 MagicMock(), self._speaker(), "gunfight!"))
+
+
+class TestParrotGuard(TestCase):
+    """The chatter register: short noun-parrots are struck, wit survives."""
+
+    def _console(self):
+        from typeclasses.items import DispatchConsole
+        console = MagicMock()
+        console.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
+        console.CHATTER_LINE = DispatchConsole.CHATTER_LINE
+        console._clean_reply = DispatchConsole._clean_reply.__get__(
+            console, DispatchConsole)
+        return console
+
+    def test_short_noun_parrot_is_struck(self):
+        console = self._console()
+        line = console._clean_reply(
+            "Coffee, please.",
+            heard="I sure could go for some coffee.", chatter=True)
+        self.assertEqual(line, console.CHATTER_LINE)
+
+    def test_long_wit_keeps_the_noun(self):
+        console = self._console()
+        good = ("This channel's for blood and fire, not coffee runs. "
+                "Clear it.")
+        line = console._clean_reply(
+            good, heard="I sure could go for some coffee.", chatter=True)
+        self.assertEqual(line, good)
+
+    def test_clean_discipline_line_untouched(self):
+        console = self._console()
+        line = console._clean_reply(
+            "Keep this channel clear.",
+            heard="I sure could go for some coffee.", chatter=True)
+        self.assertEqual(line, "Keep this channel clear.")
+
+    def test_non_chatter_short_replies_unaffected(self):
+        console = self._console()
+        line = console._clean_reply(
+            "Dispatch copies. Go ahead.",
+            heard="Dispatch, do you copy?", chatter=False)
+        self.assertEqual(line, "Dispatch copies. Go ahead.")
+
+    def test_chatter_rejections_use_the_discipline_line(self):
+        console = self._console()
+        line = console._clean_reply(
+            "Copy. Coffee. Units rolling.",
+            heard="I sure could go for some coffee.", chatter=True)
+        self.assertEqual(line, console.CHATTER_LINE)
