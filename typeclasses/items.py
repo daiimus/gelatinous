@@ -689,6 +689,9 @@ class DispatchConsole(Radio):
         "Dispatch copies. Go ahead."
     )
     FALLBACK_LINE = "Dispatch copies. State your traffic and location."
+    #: The confirmed-report ack when the model tries to announce units
+    #: anyway — units announce THEMSELVES; her job is the copy.
+    REPORT_ACK_LINE = "Dispatch copies."
     #: The chatter register's structural fallbacks — FALLBACK_LINE asks
     #: for traffic, which is an invitation; chatter gets the door. A few
     #: doors, so the brush-off doesn't read as a recording.
@@ -866,6 +869,12 @@ class DispatchConsole(Radio):
         import re
         line = " ".join(str(text or "").split())
         line = line.split("\n")[0].strip().strip('"').strip()
+        # small models stutter ("Units on the way. Units on the way."):
+        # collapse consecutive duplicate sentences before judging
+        parts = re.split(r"(?<=[.!?])\s+", line)
+        deduped = [p for i, p in enumerate(parts)
+                   if i == 0 or p.strip().lower() != parts[i - 1].strip().lower()]
+        line = " ".join(deduped)
         line = re.sub(r"^(dispatch|operator|you)\s*:\s*", "", line,
                       flags=re.I)
         line = re.sub(r"\[[^\]]*\]", "", line).strip()   # stage directions
@@ -877,14 +886,15 @@ class DispatchConsole(Radio):
         reject = choice(self.CHATTER_LINES) if chatter else self.FALLBACK_LINE
         if not line or len(line) > 200 or any(s in low for s in scaffolding):
             return reject
-        # The no-false-units backstop: whatever the model says, a claim
-        # that units are moving is struck unless dispatch actually moved
-        # them this turn. The model proposes; determinism disposes.
-        if not units_moved and re.search(
+        # The units-claim backstop, now unconditional (2026-07-11 "Units
+        # on the way to Recyc" x2): units announce THEMSELVES on the
+        # band. A false claim gets the register fallback; a true one
+        # gets the clean copy — never her own troop announcements.
+        if re.search(
                 r"\bunits?\b[^.!?]*\b(roll(?:ing|s)?|respond(?:ing|s)?|"
                 r"dispatched|en route|inbound|on the way|coming|headed|"
                 r"moving)\b", low):
-            return reject
+            return self.REPORT_ACK_LINE if units_moved else reject
         # The parrot guard ("Coffee, please." — 2026-07-11, loosened same
         # day for banter): on chatter, a SHORT reply is struck only when
         # it adds NOTHING of its own — every content word already came
