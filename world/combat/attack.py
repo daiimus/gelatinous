@@ -511,6 +511,20 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
         f"{target.key} (roll {target_roll}) with {weapon_name}"
     )
 
+    # NPC perception (#954): being attacked is personal — an LLM target
+    # buffers every swing against it (bystanders get the join/exit/end
+    # summary beats instead). Observe-only; resolution untouched.
+    if getattr(getattr(target, "db", None), "llm_driven", None) is True:
+        try:
+            from world.llm.observation import personal_attack_line
+            line = personal_attack_line(
+                attacker, target, weapon_name,
+                hit=attacker_roll > target_roll)
+            if line and callable(getattr(target, "_observe_action", None)):
+                target._observe_action(attacker, line)
+        except Exception:  # noqa: BLE001 — perception never breaks combat
+            pass
+
     if attacker_roll > target_roll:
         # Hit — calculate damage
         # NOTE: Strict > means ties favor the defender. This is intentional.

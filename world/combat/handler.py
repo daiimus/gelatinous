@@ -248,6 +248,15 @@ class CombatHandler(DefaultScript):
         # 2. Handler was created but never saved to database
         if not self.pk or not self.id:
             return
+
+        # NPC perception (#954): closure for bystander brains
+        try:
+            from world.llm.observation import observe_event
+            observe_event(self.obj,
+                          lambda observer: "The fight breaks off.",
+                          sound="the sounds of fighting die down")
+        except Exception:  # noqa: BLE001 — perception never breaks combat
+            pass
         
         splattercast = get_splattercast()
         

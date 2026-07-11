@@ -535,6 +535,17 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
         initial_grappled_by: Optional character grappling this char initially
         initial_is_yielding: Whether the character starts yielding
     """
+    # NPC perception (#954): bystander LLM brains learn who started on
+    # whom — observe-only, exception-contained, resolution untouched.
+    try:
+        from world.llm.observation import combat_join_line, observe_event
+        observe_event(getattr(char, "location", None),
+                      combat_join_line(char, target),
+                      sound="sudden violence erupts nearby",
+                      exclude=(char, target))
+    except Exception:  # noqa: BLE001 — perception never breaks combat
+        pass
+
     # BREAKING (CHANNELED_ACTIONS_SPEC §2.3): entering combat ends a
     # channel, even before the first hit lands.
     try:
@@ -838,6 +849,18 @@ def remove_combatant(handler, char):
                      and char.is_dead())
         conscious = not (callable(getattr(char, "is_unconscious", None))
                          and char.is_unconscious())
+        # NPC perception (#954): bystander brains remember how they left
+        try:
+            from world.llm.observation import combat_exit_line, observe_event
+            state = ("dead" if not alive
+                     else "unconscious" if not conscious else "walked")
+            observe_event(getattr(char, "location", None),
+                          combat_exit_line(char, state),
+                          sound=(None if state == "walked"
+                                 else "a body hits the floor nearby"),
+                          exclude=(char,))
+        except Exception:  # noqa: BLE001
+            pass
         if alive and conscious and getattr(char, "location", None):
             from world.identity_utils import msg_room_identity
             msg_room_identity(
