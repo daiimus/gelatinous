@@ -329,3 +329,42 @@ class TestParrotGuard(TestCase):
             "Copy. Coffee. Units rolling.",
             heard="I sure could go for some coffee.", chatter=True)
         self.assertIn(line, console.CHATTER_LINES)
+
+
+class TestPresenceBackstop(TestCase):
+    """She never leaves the desk: first-person promises to show up are
+    struck; wanting to is allowed; her own name label is scrubbed."""
+
+    def _console(self):
+        from typeclasses.items import DispatchConsole
+        console = MagicMock()
+        console.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
+        console.REPORT_ACK_LINE = DispatchConsole.REPORT_ACK_LINE
+        console.CHATTER_LINES = DispatchConsole.CHATTER_LINES
+        console._clean_reply = DispatchConsole._clean_reply.__get__(
+            console, DispatchConsole)
+        return console
+
+    def test_promise_to_show_up_is_struck(self):
+        console = self._console()
+        line = console._clean_reply(
+            "Got it, I'll be there in a minute.",
+            heard="wishing you were here, Petra.", chatter=True)
+        self.assertIn(line, console.CHATTER_LINES)
+
+    def test_on_my_way_is_struck(self):
+        console = self._console()
+        line = console._clean_reply("On my way.", chatter=True)
+        self.assertIn(line, console.CHATTER_LINES)
+
+    def test_wanting_to_is_not_a_promise(self):
+        console = self._console()
+        good = "Copy. You know what? I'd really like to."
+        self.assertEqual(console._clean_reply(good, chatter=True), good)
+
+    def test_own_name_label_scrubbed(self):
+        console = self._console()
+        line = console._clean_reply(
+            'Petra: "Just another day on the line."',
+            speaker_name="Petra")
+        self.assertEqual(line, "Just another day on the line.")
