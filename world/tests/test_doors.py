@@ -92,13 +92,15 @@ class TestDoorGate(TestCase):
         self.assertTrue(door._traverse_gate(walker))
         self.assertFalse(door.door_blocks(walker))
 
-    def test_any_closed_door_blocks_the_pathfinder(self):
-        # no NPC behaviour opens doors yet: a not-open door is a
-        # blocked edge regardless of grants
+    def test_locked_door_blocks_only_ungranted(self):
+        # travel opens doors en route now: closed-unlocked passes,
+        # locked passes only a granted sleeve
         alice = _sleeve("uid-alice")
-        closed = _door_factory(closed=True,
+        locked = _door_factory(closed=True, locked=True,
                                grants=[make_grant(alice)])
-        self.assertTrue(closed.door_blocks(alice))
+        self.assertFalse(locked.door_blocks(alice))
+        stranger = _sleeve("uid-stranger")
+        self.assertTrue(locked.door_blocks(stranger))
         open_door = _door_factory(closed=False)
         self.assertFalse(open_door.door_blocks(alice))
 
@@ -226,3 +228,69 @@ class TestAutolock(TestCase):
         door, caller = self._closer(autolock=False)
         self.assertTrue(door.db.door_closed)
         self.assertFalse(door.db.door_locked)
+
+
+class TestDoorBlocksForTravel(TestCase):
+    """Pathfinder edges: doors pass for those who could open them."""
+
+    def _door(self, closed=True, locked=False, grants=()):
+        door = MagicMock()
+        door.db = SimpleNamespace(door_closed=closed, door_locked=locked,
+                                  door_broken=False,
+                                  access_grants=list(grants))
+        door.is_open = dmod.DoorExit.is_open.__get__(door, dmod.DoorExit)
+        door.door_blocks = dmod.DoorExit.door_blocks.__get__(
+            door, dmod.DoorExit)
+        return door
+
+    def test_open_passes(self):
+        self.assertFalse(self._door(closed=False).door_blocks(MagicMock()))
+
+    def test_closed_unlocked_passes_anyone(self):
+        # travel opens it en route with the real verb
+        self.assertFalse(self._door(closed=True).door_blocks(MagicMock()))
+
+    def test_locked_blocks_ungranted(self):
+        door = self._door(closed=True, locked=True)
+        with patch("world.access.is_granted", return_value=False):
+            self.assertTrue(door.door_blocks(MagicMock()))
+
+    def test_locked_passes_granted(self):
+        door = self._door(closed=True, locked=True)
+        with patch("world.access.is_granted", return_value=True):
+            self.assertFalse(door.door_blocks(MagicMock()))
+
+
+class TestTravelOpensDoors(TestCase):
+    def test_step_opens_closed_door_then_walks(self):
+        from types import SimpleNamespace as NS
+        from world.director import travel as tmod
+        npc = MagicMock()
+        door_exit = MagicMock()
+        door_exit.key = "west"
+        door_exit.is_open = lambda: False
+        npc.ndb = NS(director_travel={
+            "destination": MagicMock(), "steps": 0, "step_delay": 1,
+            "on_arrive": None, "on_fail": None})
+        with patch.object(tmod, "find_path_exits",
+                          return_value=[door_exit]), \
+             patch.object(tmod, "delay"):
+            tmod._travel_step(npc)
+        self.assertEqual(
+            [c.args[0] for c in npc.execute_cmd.call_args_list],
+            ["open west", "west"])
+
+    def test_step_walks_plain_exits_directly(self):
+        from types import SimpleNamespace as NS
+        from world.director import travel as tmod
+        npc = MagicMock()
+        ex = MagicMock(spec=["key"])
+        ex.key = "north"
+        npc.ndb = NS(director_travel={
+            "destination": MagicMock(), "steps": 0, "step_delay": 1,
+            "on_arrive": None, "on_fail": None})
+        with patch.object(tmod, "find_path_exits", return_value=[ex]), \
+             patch.object(tmod, "delay"):
+            tmod._travel_step(npc)
+        self.assertEqual(
+            [c.args[0] for c in npc.execute_cmd.call_args_list], ["north"])

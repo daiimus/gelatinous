@@ -158,10 +158,12 @@ filter live in `world/spatial/pathfind.py`, and the elevator's
 `db.floor_locks` consumes the same grant model. §2.3 sound-muffling
 awaits a cross-room sound layer (none exists yet — closed doors are
 already the gate when it lands); §2.4 breach stays reserved.
-Follow-on owed: **NPCs learn the `open` verb** — refines the
-pathfinder's any-not-open-door blocked edge back to a grant check and
-lets granted NPCs (Petra) badge into their own offices; the seam is
-commented in `DoorExit.door_blocks`.
+**NPCs LEARNED `open` (2026-07-12):** `door_blocks` refined to the
+grant check (open passes; closed-unlocked passes anyone; locked passes
+granted sleeves only) and the travel layer issues the REAL `open` verb
+before stepping through a closed door en route — reader flashes, room
+messages, and grant checks all apply; a bounce re-pathfinds next tick.
+Security units hold grants on the Constabulary's own doors (live data).
 
 `DoorExit(Exit)` with a mirrored twin (Evennia exits are one-way; a door is
 the *pair*, state shared so both sides agree):
