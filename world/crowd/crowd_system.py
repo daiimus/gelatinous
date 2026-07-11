@@ -24,6 +24,7 @@ class CrowdSystem:
             'courier service': 0.3,
             'cube hotel': 0.1,
             'hospital': 0.7,
+            'constabulary': 0.3,
             'stairway': 0.1,
             'dead-end': -0.5,  # Can reduce crowd below base
         }

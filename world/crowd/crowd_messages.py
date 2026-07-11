@@ -562,6 +562,109 @@ CROWD_MESSAGES = {
 
 #: Dance-venue room types — the 'nightclub' pool (floor/bass/lights), a world
 #: apart from the bar-counter 'interior' pool.
+CROWD_MESSAGES['constabulary'] = {
+    'sparse': {
+        'visual': [
+            "a parolee waits under the number board, folding and refolding a summons",
+            "a clerk carries a fan of thermal-print folders from one counter to another",
+            "someone argues quietly with a counter grille and loses",
+            "a mop bucket stands mid-corridor, its owner gone official somewhere",
+        ],
+        'auditory': [
+            "a printer somewhere chews through another form",
+            "the number board clicks over for an empty bench",
+            "a bored voice reads a docket number twice, then gives up",
+        ],
+        'olfactory': [
+            "disinfectant and old paper hold the air in institutional balance",
+            "burnt coffee drifts from somewhere staff-only",
+        ],
+        'tactile': [
+            "the air sits still and processed, every draught filed away",
+            "the floor's fresh polish drags faintly underfoot",
+        ],
+        'atmospheric': [
+            "the room has the patience of a place that outlasts everyone in it",
+            "official quiet — the kind that listens back",
+            "fluorescent light flattens everything to paperwork",
+        ],
+    },
+    'moderate': {
+        'visual': [
+            "a queue shuffles forward one number at a time",
+            "somebody's guardian argues percentages with a clerk through the grille",
+            "a parolee signs in triplicate, the pen chained to the counter",
+            "a courier waits with a sealed evidence pouch and no eye contact",
+        ],
+        'auditory': [
+            "dockets are called in a flat voice that never repeats itself",
+            "a dispute at the counter rises and is stamped flat",
+            "keyboards and stamp-blocks keep an uneven office rhythm",
+        ],
+        'olfactory': [
+            "wet coats and disinfectant argue over the waiting room",
+            "somebody's contraband cigarette died recently and unrepentantly",
+        ],
+        'tactile': [
+            "elbows and folders brush past in the queue",
+            "the benches radiate the warmth of the last hundred waiters",
+        ],
+        'atmospheric': [
+            "processing hums along: names in, numbers out",
+            "everyone here is waiting on somebody official",
+            "the number board rules the room like small, slow weather",
+        ],
+    },
+    'heavy': {
+        'visual': [
+            "the benches are full and the wall is holding up the overflow",
+            "clerks triage a counter three deep in summonses",
+            "a knot of family works out whose fault the fine is, loudly",
+        ],
+        'auditory': [
+            "docket calls fight a room's worth of complaint and lose ground",
+            "somewhere in the press a child recites a case number like a rhyme",
+            "the printers have given up pretending to keep pace",
+        ],
+        'olfactory': [
+            "too many damp coats for the disinfectant to win",
+            "the sweat of long waits soaks into the old plastic seating",
+        ],
+        'tactile': [
+            "the queue compresses; strangers share elbow room and grudges",
+            "the air runs thick with radiator heat and exhaled patience",
+        ],
+        'atmospheric': [
+            "processing day: the whole district owes the counter something",
+            "tempers hold, barely, under fluorescent supervision",
+            "the room runs on the certainty that shouting changes nothing",
+        ],
+    },
+    'packed': {
+        'visual': [
+            "bodies wall-to-wall, folders held overhead like umbrellas",
+            "the number board has stopped meaning anything anyone can act on",
+            "clerks work behind lowered grilles, taking one form at a time",
+        ],
+        'auditory': [
+            "a hundred grievances merge into one institutional roar",
+            "the tannoy repeats an appeal for order nobody can hear",
+        ],
+        'olfactory': [
+            "the crush smells of wet wool, sweat, and defeated disinfectant",
+            "someone in the press has clearly been waiting since yesterday",
+        ],
+        'tactile': [
+            "the crowd moves you; queueing is now a fiction",
+            "shoulder to shoulder, folder to folder, no room to turn",
+        ],
+        'atmospheric': [
+            "the building is over capacity, enforcing calm by mass alone",
+            "riot weather, indoors, on paperwork",
+        ],
+    },
+}
+
 NIGHTCLUB_ROOM_TYPES = {'nightclub', 'club'}
 
 #: Enclosed bar/venue room types that draw on the 'interior' crowd pool rather
@@ -572,8 +675,11 @@ INTERIOR_ROOM_TYPES = {
 
 
 def crowd_profile_for_room_type(room_type):
-    """Map a ``room.type`` to a crowd profile ('default'|'interior'|'nightclub')."""
+    """Map a ``room.type`` to a crowd profile
+    ('default'|'interior'|'nightclub'|'constabulary')."""
     t = str(room_type or "").lower()
+    if t == 'constabulary':
+        return 'constabulary'
     if t in NIGHTCLUB_ROOM_TYPES:
         return 'nightclub'
     if t in INTERIOR_ROOM_TYPES:

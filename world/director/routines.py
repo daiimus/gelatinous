@@ -37,6 +37,25 @@ from world.director.travel import is_travelling, travel_to
 
 #: Seconds between heartbeat ticks (also the linger at each waypoint).
 HEARTBEAT_SECONDS = 45
+
+#: Patrol-sweep locale by room type (user note 2026-07-10: the hardcoded
+#: "across the street" read wrong indoors). Unknown types stay ambiguous.
+_SWEEP_LOCALES = {
+    "street": "across the street",
+    "intersection": "across the crossing",
+    "alley": "down the alley",
+    "corridor": "down the corridor",
+    "bridge": "along the span",
+    "sky": "across the open air",
+    "interior": "across the room",
+    "constabulary": "across the floor",
+}
+
+
+def _sweep_locale(room) -> str:
+    """The right patch of world for a sensor sweep to pan across."""
+    rtype = str(getattr(getattr(room, "db", None), "type", "") or "").lower()
+    return _SWEEP_LOCALES.get(rtype, "across its surroundings")
 #: Global script key.
 SCRIPT_KEY = "director_routines"
 
@@ -162,8 +181,8 @@ def at_waypoint(npc: Any) -> None:
                 raise_event(WorldEvent("disturbance", npc.location,
                                        severity=1, source=flagged))
             else:
-                npc.execute_cmd("emote pans a slow sensor sweep across the "
-                                "street and moves on.")
+                npc.execute_cmd("emote pans a slow sensor sweep "
+                                f"{_sweep_locale(npc.location)} and moves on.")
         except Exception:  # noqa: BLE001 — a bad sweep must not stall the beat
             pass
         return
