@@ -2601,17 +2601,18 @@ class CmdRecall(Command):
 
 class CmdMemory(Command):
     """
-    List everyone you remember by name.
+    Access your mnemonic recall report.
 
     Usage:
       memory
 
-    Shows a table of every person you've remembered, sorted by who
-    you've seen most recently.  People you've forgotten (cleared with
+    Renders a subject report of everyone you've remembered by name
+    (most recently seen first) and your registered residence —
+    building, street of origin, registration age, and any live
+    relocation handover.  People you've forgotten (cleared with
     |wforget|n) are not listed, even though their record is preserved.
 
-    Use |wrecall <name>|n to inspect a specific entry.  Your
-    registered residence, if you hold one, is listed at the end.
+    Use |wrecall <name>|n to inspect a specific entry.
     """
 
     key = "memory"
@@ -2631,63 +2632,96 @@ class CmdMemory(Command):
 
         memory = caller.recognition_memory or {}
 
-        # Filter to entries with a non-blank assigned_name
+        # Entries with a non-blank assigned_name, most recent first.
         named = [
             (uid, entry)
             for uid, entry in memory.items()
             if (entry.get("assigned_name") or "").strip()
         ]
-
-        if not named:
-            caller.msg("You don't remember anyone yet.")
-            caller.msg(_residence_line(caller))
-            return
-
-        # Sort by last_seen descending (recency).  Missing values sort last.
         named.sort(
             key=lambda pair: pair[1].get("last_seen") or "",
             reverse=True,
         )
 
-        from evennia.utils.evtable import EvTable
         from world.identity import get_linked_aliases
 
-        table = EvTable(
-            "|wName|n",
-            "|wLast seen as|n",
-            "|wWhere|n",
-            "|wWhen|n",
-            border="cells",
-        )
-        for uid, entry in named:
-            name_cell = entry.get("assigned_name", "")
+        rows = [
+            "MNEMONIC RECALL REPORT",
+            f"Subject: {caller.key[:38]}",
+            f"File Reference: GEL-MST/MR-{caller.id}",
+            None,
+            "KNOWN ASSOCIATES",
+            "",
+        ]
+        if not named:
+            rows.append("None on record.")
+        for index, (uid, entry) in enumerate(named):
+            if index:
+                rows.append("")
+            name = entry.get("assigned_name", "")
             if entry.get("lost_contact", False):
-                name_cell = f"{name_cell} |y(lost contact)|n"
+                name = f"{name} (lost contact)"
+            rows.append(name)
+            rows.append(
+                f"  {entry.get('sdesc_at_last_encounter', '(unknown)')}"
+            )
+            where = entry.get("location_last_seen", "(unknown)")
+            when = _format_relative_time(entry.get("last_seen", ""))
+            rows.append(f"  {where}, {when}")
             aliases = get_linked_aliases(memory, uid)
             if aliases:
-                name_cell = f"{name_cell}\n|x(aka {', '.join(aliases)})|n"
-            table.add_row(
-                name_cell,
-                entry.get("sdesc_at_last_encounter", "(unknown)"),
-                entry.get("location_last_seen", "(unknown)"),
-                _format_relative_time(entry.get("last_seen", "")),
-            )
+                rows.append(f"  aka: {', '.join(aliases)}")
+        rows += [None, "REGISTERED RESIDENCE", ""]
+        rows += _residence_rows(caller)
 
-        caller.msg(str(table))
-        caller.msg(_residence_line(caller))
+        session = None
+        if hasattr(caller, "sessions") and caller.sessions.all():
+            session = caller.sessions.all()[0]
+        caller.msg(_center_text(_report_panel(rows), session=session))
 
 
-def _residence_line(caller):
-    """The 'where do I live' tail of the memory command — the rental
-    credit's spend is a thing a person remembers."""
-    from world.rental import residence_of
+_PANEL_WIDTH = 48
 
-    cube = residence_of(caller)
-    if cube is None:
-        return "You hold no registered residence."
-    where = getattr(getattr(cube, "location", None), "key", None)
-    place = f", {where}" if where else ""
-    return f"Your residence: |w{cube.key}|n{place}."
+
+def _report_panel(rows):
+    """Render rows into the @stats-style boxed report (48-wide, report
+    green). A ``None`` row is a section rule; text rows are truncated
+    and padded to the panel width — keep them free of inline colour."""
+    rule = (f"{COLOR_SUCCESS}{BOX_TEE_RIGHT}{BOX_HORIZONTAL * _PANEL_WIDTH}"
+            f"{BOX_TEE_LEFT}{COLOR_NORMAL}")
+    out = [f"{COLOR_SUCCESS}{BOX_TOP_LEFT}{BOX_HORIZONTAL * _PANEL_WIDTH}"
+           f"{BOX_TOP_RIGHT}{COLOR_NORMAL}"]
+    for row in rows:
+        if row is None:
+            out.append(rule)
+            continue
+        content = f" {row}"[:_PANEL_WIDTH].ljust(_PANEL_WIDTH)
+        out.append(f"{COLOR_SUCCESS}{BOX_VERTICAL}{content}"
+                   f"{BOX_VERTICAL}{COLOR_NORMAL}")
+    out.append(f"{COLOR_SUCCESS}{BOX_BOTTOM_LEFT}{BOX_HORIZONTAL * _PANEL_WIDTH}"
+               f"{BOX_BOTTOM_RIGHT}{COLOR_NORMAL}")
+    return "\n".join(out)
+
+
+def _residence_rows(caller):
+    """The REGISTERED RESIDENCE section body — building/vehicle name,
+    street/port of origin, registration age, live handover window."""
+    from world.rental import residence_report
+
+    report = residence_report(caller)
+    if report is None:
+        return ["None on file."]
+    rows = [
+        f"Unit:       {report['unit']}",
+        f"Building:   {report['building'] or '(unregistered)'}",
+        f"Origin:     {report['origin'] or '(unregistered)'}",
+        f"Registered: {_format_relative_time(report['registered_at'])}",
+    ]
+    handover = report.get("handover")
+    if handover:
+        rows.append(f"Handover:   {handover['unit']} answers your "
+                    f"sleeve {handover['hours_left']}h more")
+    return rows
 
 
 # ===================================================================

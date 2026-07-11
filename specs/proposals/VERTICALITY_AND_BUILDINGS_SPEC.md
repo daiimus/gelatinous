@@ -150,7 +150,7 @@ door IS the exit, per user call). `typeclasses/doors.py DoorExit`
 requires the door OPEN — open/close are explicit verbs, walking never
 changes state, refined 2026-07-10 per user), player verbs
 `open/close/lock/unlock/knock`, builder `@door` (+/grant /revoke /list
-/force), **`memory` lists your registered residence (2026-07-11: the credit's spend is a thing a person remembers)**, **`db.door_autolock` spring latch (2026-07-11, user call:
+/force), **`memory` renders an @stats-format MNEMONIC RECALL REPORT (2026-07-11): KNOWN ASSOCIATES + REGISTERED RESIDENCE dossier — unit, building/vehicle name (`cube.db.residence_building`), street/port of origin (`cube.db.residence_origin`), registration age, live relocation-handover window; builders MUST set both residence attrs on new cubes**, **`db.door_autolock` spring latch (2026-07-11, user call:
 closing re-engages the lock, no grant needed — anyone can RESTORE
 security, only granted sleeves can remove it; cube doors ship with
 it)**, grant files in `world/access.py`, pathfinder blocked-edge
