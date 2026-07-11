@@ -50,11 +50,34 @@ def _live_grants(door):
     return out
 
 
+def _prune_dead_tenancy(cube):
+    """Sleeve-lifecycle seam (2026-07-12): a resident that is DELETED or
+    an ARCHIVED husk (its person resleeved into a new body, or gone for
+    good) no longer holds the cube. Lazily clears the occupancy record
+    and strips the stamped sleeve's grant so the cube returns to market
+    the moment anyone asks after it. Returns the live resident, or None."""
+    db = getattr(cube, "db", None)
+    resident = getattr(db, "resident", None)
+    if resident is None:
+        return None
+    alive = (getattr(resident, "pk", None)
+             and getattr(resident, "is_archived", False) is not True)
+    if alive:
+        return resident
+    cube.db.resident = None
+    uid = getattr(db, "resident_sleeve", None) or sleeve_uid_of(resident)
+    door = cube_door(cube)
+    if door is not None and uid:
+        grants = [g for g in _live_grants(door) if g.get("sleeve") != uid]
+        door._mirror(access_grants=grants)
+    return None
+
+
 def is_free(cube):
-    """Claimable: no resident AND no live grants (a mover's relocation
-    window keeps the cube off the market until it expires)."""
-    resident = getattr(getattr(cube, "db", None), "resident", None)
-    if resident is not None and getattr(resident, "pk", None):
+    """Claimable: no LIVE resident AND no live grants (a mover's
+    relocation window keeps the cube off the market until it expires;
+    a dead or archived tenant prunes on contact)."""
+    if _prune_dead_tenancy(cube) is not None:
         return False
     door = cube_door(cube)
     if door is None:
@@ -94,6 +117,7 @@ def claim(char, cube, issued_by="rental terminal"):
     grants.append(make_grant(char, issued_by=issued_by))   # until=None
     door._mirror(access_grants=grants)
     cube.db.resident = char
+    cube.db.resident_sleeve = sleeve_uid_of(char)   # survives deletion
     char.db.residence = cube
     from world.identity import _recognition_now_iso
     char.db.residence_registered_at = _recognition_now_iso()

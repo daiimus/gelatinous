@@ -258,3 +258,60 @@ class TestMemoryReportPanel(TestCase):
         with patch("world.rental.residence_report", return_value=None):
             rows = _residence_rows(MagicMock())
         self.assertEqual(rows, ["None on file."])
+
+
+class TestDeadTenancyPrune(TestCase):
+    """Sleeve-lifecycle seam: dead/archived tenants free their cubes."""
+
+    def _cube(self, resident, uid="uid-9"):
+        from types import SimpleNamespace
+        door = MagicMock()
+        door.pk = 7
+        door.db.access_grants = [{"sleeve": uid, "until": None,
+                                  "issued_by": "kiosk"},
+                                 {"sleeve": "other", "until": None,
+                                  "issued_by": "kiosk"}]
+        # _mirror really writes the grant file; mirror that in the mock
+        def mirror(**states):
+            if "access_grants" in states:
+                door.db.access_grants = states["access_grants"]
+        door._mirror.side_effect = mirror
+        cube = MagicMock()
+        cube.pk = 42
+        cube.db = SimpleNamespace(resident=resident, resident_sleeve=uid,
+                                  cube_door=door)
+        return cube, door
+
+    def test_archived_husk_frees_the_cube(self):
+        from world.rental import is_free
+        husk = MagicMock()
+        husk.pk = 3
+        husk.is_archived = True
+        cube, door = self._cube(husk)
+        free = is_free(cube)
+        self.assertIsNone(cube.db.resident)
+        kept = door._mirror.call_args.kwargs["access_grants"]
+        self.assertEqual([g["sleeve"] for g in kept], ["other"])
+        # cube not free overall (the OTHER grant still stands) but the
+        # dead tenancy itself is gone
+        self.assertFalse(free)
+
+    def test_deleted_resident_frees_via_stamp(self):
+        from world.rental import is_free
+        ghost = MagicMock()
+        ghost.pk = None                      # deleted object
+        cube, door = self._cube(ghost)
+        door.db.access_grants = [{"sleeve": "uid-9", "until": None,
+                                  "issued_by": "kiosk"}]
+        self.assertTrue(is_free(cube))
+        self.assertIsNone(cube.db.resident)
+
+    def test_live_resident_untouched(self):
+        from world.rental import is_free
+        tenant = MagicMock()
+        tenant.pk = 3
+        tenant.is_archived = False
+        cube, door = self._cube(tenant)
+        self.assertFalse(is_free(cube))
+        self.assertIs(cube.db.resident, tenant)
+        door._mirror.assert_not_called()
