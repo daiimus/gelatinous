@@ -457,18 +457,25 @@ def _relay_points(frequency, exclude_device, origin_xyz, origin_range):
             xyz = get_xyz(room) if room is not None else None
             if xyz is None:
                 continue
-            if _chebyshev(origin_xyz, xyz) > origin_range:
+            reach = _effective_tx_range(radio, xyz)
+            # reciprocity: the mast HEARS at mast range too — a repeater
+            # picks up any handheld its own big ears can reach
+            if _chebyshev(origin_xyz, xyz) > max(origin_range, reach):
                 continue
-            out.append((xyz, _effective_tx_range(radio, xyz)))
+            out.append((xyz, reach))
         except Exception:  # noqa: BLE001 — one odd repeater never mutes a band
             continue
     return out
 
 
 def _reception_fraction(origin_xyz, origin_range, relays, listener_obj):
-    """Best-path distance/reach fraction for a receiver. 0.0 (crisp)
-    whenever anyone involved is off-grid — range NEVER silences rooms
-    the coordinate grid doesn't cover."""
+    """Best-path distance/reach fraction for a receiver. The link is
+    RECIPROCAL: a mast-backed station hears at mast range, so the
+    effective reach of the direct path is max(transmit, receive) — a
+    witness's handheld reaches dispatch from across the colony because
+    the CONSOLE'S antenna is tall, not theirs. 0.0 (crisp) whenever
+    anyone involved is off-grid — range NEVER silences rooms the
+    coordinate grid doesn't cover."""
     from world.spatial import get_xyz
     if origin_xyz is None:
         return 0.0
@@ -476,7 +483,9 @@ def _reception_fraction(origin_xyz, origin_range, relays, listener_obj):
     xyz = get_xyz(room) if room is not None else None
     if xyz is None:
         return 0.0
-    best = _chebyshev(origin_xyz, xyz) / max(float(origin_range), 1.0)
+    rx_reach = _effective_tx_range(listener_obj, xyz)
+    link = max(float(origin_range), float(rx_reach), 1.0)
+    best = _chebyshev(origin_xyz, xyz) / link
     for rxyz, rrange in relays:
         frac = _chebyshev(rxyz, xyz) / max(float(rrange), 1.0)
         if frac < best:
