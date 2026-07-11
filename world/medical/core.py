@@ -1172,16 +1172,17 @@ class MedicalState:
             
         # Restore conditions via the shared factory (#307) so harvest /
         # install / persistence layers all reconstruct conditions the
-        # same way.
+        # same way.  Tickers are NOT restarted here: starting one reads
+        # ``character.medical_state``, and during a property-triggered
+        # load the state isn't installed until from_dict returns — the
+        # re-entrant load recursed to RecursionError, shedding every
+        # ticker condition on each rebuild (the Jorge loop). The caller
+        # that installs the state restarts them (load_medical_state).
         from .conditions import deserialize_condition
         for condition_dict in data.get("conditions", []):
             try:
                 condition = deserialize_condition(condition_dict)
                 medical_state.conditions.append(condition)
-                # Re-start condition ticker if character is available and not archived
-                # Archived characters are permanently dead; dying characters can still be resuscitated
-                if character and not character.db.archived:
-                    condition.start_condition(character)
             except Exception as e:
                 # Deliberate guard (#469): one corrupt persisted
                 # condition skips, the rest restore.  Audit-logged so
