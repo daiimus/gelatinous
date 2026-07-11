@@ -42,9 +42,9 @@ _RECENT: dict = {}
 #: phone-ins run one notch softer than witnessed crimes: a voice on the
 #: band is cheaper evidence than an NPC who saw it.
 REPORTED_EVENTS = {
-    "assault": ("assault", 2),
+    "assault": ("assault", 2),       # violence is the thing that scales
     "disturbance": ("disturbance", 1),
-    "fire": ("fire", 2),
+    "fire": ("fire", 1),
     "medical": ("disturbance", 1),   # wellness check — no medic role yet
     "theft": ("crime", 1),
 }
