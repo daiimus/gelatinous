@@ -36,7 +36,8 @@ class CmdTransmit(Command):
     with a powered radio on that band hears you, recognised by voice (a
     modulator hides you). With no device named, it uses a radio you're
     WEARING first, then one in your HAND; you can't transmit through a radio
-    that's only in your pocket.
+    that's only in your pocket. Seated at a dispatch board, the console
+    itself carries your voice — whoever holds the chair holds the desk.
 
     You transmit LOW — people around you must catch what you mutter into
     the handset (a sharp ear might). To speak into the radio openly so the

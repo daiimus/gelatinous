@@ -119,14 +119,38 @@ def _held_radios(char: Any) -> list:
 
 def active_transmit_radio(char: Any) -> Optional[Any]:
     """The device a ``transmit`` defaults to: a WORN radio first, then a HELD
-    one. Returns None if the character has neither worn nor held — a radio
-    merely carried in a pocket can receive but not be spoken through
-    (spec: 'unable to use the command unless it's worn or held')."""
+    one, then the DISPATCH BOARD the character is seated at (a powered base
+    station in their room — desk work, see ``seated_base_station``). Returns
+    None otherwise — a radio merely carried in a pocket can receive but not
+    be spoken through (spec: 'unable to use the command unless it's worn or
+    held')."""
     worn = _worn_radios(char)
     if worn:
         return worn[0]
     held = _held_radios(char)
-    return held[0] if held else None
+    if held:
+        return held[0]
+    return seated_base_station(char)
+
+
+def seated_base_station(char: Any) -> Optional[Any]:
+    """The board the character is WORKING: a powered base station in their
+    room while they sit at furniture there. Working a console is desk work —
+    you take the chair; a standing visitor doesn't key the colony's dispatch
+    voice by brushing past it. (Whoever holds the chair holds the voice: the
+    attribution stays honestly THEIRS — a seized desk broadcasts the seizer,
+    not the operator.)"""
+    furniture = getattr(getattr(char, "db", None), "furniture", None)
+    if furniture is None:
+        return None
+    room = getattr(char, "location", None)
+    if room is None or getattr(furniture, "location", None) is not room:
+        return None
+    for obj in getattr(room, "contents", []) or []:
+        if (getattr(getattr(obj, "db", None), "is_base_station", None) is True
+                and is_radio(obj) and is_powered(obj)):
+            return obj
+    return None
 
 
 def carried_radios(char: Any) -> list:

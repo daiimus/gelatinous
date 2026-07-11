@@ -108,12 +108,15 @@ class CmdTo(Command):
             return  # search() already sent the error message
 
         # `to <radio>, <message>` transmits over the device (RADIO_COMMS_SPEC):
-        # the directed-speech verb, retargeted at a comm device you carry.
-        from world.radio import is_radio, transmit
+        # the directed-speech verb, retargeted at a comm device you carry —
+        # or the dispatch board you're seated at (the desk seam).
+        from world.radio import is_radio, seated_base_station, transmit
         if is_radio(target):
-            if target not in caller.contents:
+            if (target not in caller.contents
+                    and target is not seated_base_station(caller)):
                 caller.msg(f"You aren't carrying "
-                           f"{target.get_display_name(caller)}.")
+                           f"{target.get_display_name(caller)} — and you'd "
+                           f"have to take the seat to work a console.")
                 return
             transmit(caller, speech, target, overt=True)   # spoken openly
             return

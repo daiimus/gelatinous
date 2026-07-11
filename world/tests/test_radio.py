@@ -500,3 +500,76 @@ class TestWitnessGating(TestCase):
         self.assertIsNone(_witness_walkie(self._witness(off)))
         wrong = _radio(on=True, freq="447")
         self.assertIsNone(_witness_walkie(self._witness(wrong)))
+
+
+class TestSeatedBoard(TestCase):
+    """The desk seam: seated at a powered base station's board, the
+    console is your transmit device — whoever holds the chair holds the
+    voice. Worn/held gear still wins; standing visitors get nothing."""
+
+    def _desk(self, *, seated=True, powered=True, chair_here=True):
+        from types import SimpleNamespace
+        room = MagicMock(name="dispatch ops")
+        chair = MagicMock(name="chair")
+        chair.location = room if chair_here else MagicMock(name="elsewhere")
+        station = _radio(on=powered)
+        station.db.is_base_station = True
+        station.location = room
+        room.contents = [chair, station]
+        char = _char()
+        char.location = room
+        char.db = SimpleNamespace(furniture=chair if seated else None)
+        return char, station
+
+    def test_seated_operator_gets_the_board(self):
+        from world.radio import seated_base_station
+        char, station = self._desk()
+        self.assertIs(seated_base_station(char), station)
+        self.assertIs(active_transmit_radio(char), station)
+
+    def test_standing_visitor_gets_nothing(self):
+        from world.radio import seated_base_station
+        char, _ = self._desk(seated=False)
+        self.assertIsNone(seated_base_station(char))
+        self.assertIsNone(active_transmit_radio(char))
+
+    def test_dead_board_or_absent_chair_is_no_desk(self):
+        from world.radio import seated_base_station
+        char, _ = self._desk(powered=False)
+        self.assertIsNone(seated_base_station(char))       # sabotage gate
+        char2, _ = self._desk(chair_here=False)
+        self.assertIsNone(seated_base_station(char2))      # chair moved out
+
+    def test_worn_radio_still_wins_over_the_board(self):
+        handheld = _radio()
+        char, station = self._desk()
+        char.get_worn_items = lambda: [handheld]
+        self.assertIs(active_transmit_radio(char), handheld)
+
+    def test_to_console_speaks_openly_from_the_seat(self):
+        from commands.CmdCommunication import CmdTo
+        char, station = self._desk()
+        char.contents = []
+        char.search.return_value = station
+        cmd = CmdTo()
+        cmd.caller = char
+        cmd.args = "console Dispatch to all units, hold your traffic."
+        with patch("world.radio.transmit") as tx, \
+                patch("world.stealth.break_stealth"):
+            cmd.func()
+        tx.assert_called_once()
+        self.assertTrue(tx.call_args.kwargs.get("overt"))
+
+    def test_to_console_refuses_the_standing(self):
+        from commands.CmdCommunication import CmdTo
+        char, station = self._desk(seated=False)
+        char.contents = []
+        char.search.return_value = station
+        cmd = CmdTo()
+        cmd.caller = char
+        cmd.args = "console hello"
+        with patch("world.radio.transmit") as tx, \
+                patch("world.stealth.break_stealth"):
+            cmd.func()
+        tx.assert_not_called()
+        self.assertIn("take the seat", char.msg.call_args.args[0])
