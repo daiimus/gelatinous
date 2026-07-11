@@ -442,6 +442,20 @@ class TestCommands(TestCase):
         cmd2.parse(); cmd2.func()
         self.assertFalse(dev.db.radio_on)         # explicit off
 
+    def test_toggle_refuses_non_devices(self):
+        # Evennia's db handler answers hasattr() for any name — the gate
+        # must use attributes.has, or "toggle mast" switches a steel pole
+        from commands.CmdRadio import CmdToggle
+        mast = MagicMock()
+        mast.attributes.has.return_value = False
+        mast.db.is_radio = None
+        mast.get_display_name.return_value = "antenna mast"
+        cmd = CmdToggle(); cmd.args = "mast"
+        cmd.caller = MagicMock(); cmd.caller.search.return_value = mast
+        cmd.parse(); cmd.func()
+        self.assertIn("nothing to switch",
+                      cmd.caller.msg.call_args.args[0])
+
     def test_to_retarget_transmits(self):
         from commands.CmdCommunication import CmdTo
         dev = _radio(freq="447")
