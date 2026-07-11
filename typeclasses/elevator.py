@@ -210,7 +210,13 @@ class ElevatorDoorExit(Exit):
 
 class ElevatorCarExit(Exit):
     """The car's `out` exit. Its destination is re-pointed on arrival;
-    it refuses while the car is between floors."""
+    it refuses while the car is between floors. Answers to `o` — the
+    mirror of the threshold side's `in`."""
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        if "o" not in self.aliases.all():
+            self.aliases.add("o")
 
     def at_traverse(self, traversing_object, target_location):
         car = self.location
