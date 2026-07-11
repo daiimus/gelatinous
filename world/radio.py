@@ -214,6 +214,28 @@ def _all_powered_radios():
         if is_radio(o) and is_powered(o)]
 
 
+def hears_emergency_band(char: Any) -> bool:
+    """A working receiver on the dispatch band: the built-in comms organ
+    (§2.1) or any powered carried radio tuned there. This is what makes
+    a security unit REACHABLE — dispatch orders are radio traffic, so a
+    deafened unit (shot ear, snatched or broken walkie) can't be raised,
+    doesn't roll, and drops out of the availability count. The sabotage
+    is the point: neutralize a unit without destroying it."""
+    try:
+        if same_band(comms_organ_frequency(char), EMERGENCY_BAND):
+            return True
+        for radio in carried_radios(char):
+            try:
+                if is_powered(radio) and same_band(
+                        frequency_of(radio), EMERGENCY_BAND):
+                    return True
+            except Exception:  # noqa: BLE001 — one broken set never deafens
+                continue
+    except Exception:  # noqa: BLE001 — no medical model = no organ, keep checking nothing
+        pass
+    return False
+
+
 def comms_organ_frequency(char: Any) -> Optional[str]:
     """The band a character's BUILT-IN comms organ is tuned to, if it has a
     functional one (a security bot's ear/antenna module — §2.1). None when
