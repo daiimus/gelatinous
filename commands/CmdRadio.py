@@ -215,7 +215,11 @@ class CmdToggle(Command):
         device = _resolve_device(caller, self.device_phrase, require_radio=False)
         if device is None:
             return
-        if not hasattr(device.db, "radio_on") and not is_radio(device):
+        # Evennia's db handler answers hasattr() for ANY name (missing
+        # attrs read as None, never AttributeError) — the strict check is
+        # attributes.has. Without it, "toggle mast" flips a meaningless
+        # flag on a steel pole and reports it switched (2026-07-11).
+        if not device.attributes.has("radio_on") and not is_radio(device):
             caller.msg(f"{device.get_display_name(caller)} has nothing to "
                        f"switch.")
             return
