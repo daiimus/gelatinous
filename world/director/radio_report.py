@@ -57,7 +57,11 @@ DISPATCH_VERDICT_SCHEMA = {
     "title": "DispatchVerdict",
     "type": "object",
     "x-order": ["is_incident_report", "incident_type", "location_text"],
-    "required": ["is_incident_report", "incident_type"],
+    # location_text REQUIRED (2026-07-11 probe): optional fields get
+    # skipped under constrained decoding ~1-in-3; forcing the field
+    # makes extraction 3/3, and a parroted/placeless value just fails
+    # resolution into the caller-room fallback. Gate discards the rest.
+    "required": ["is_incident_report", "incident_type", "location_text"],
     "properties": {
         "is_incident_report": {
             "type": "boolean",
@@ -75,8 +79,8 @@ DISPATCH_VERDICT_SCHEMA = {
         "location_text": {
             "type": "string",
             "description": ("The place the caller names for the "
-                            "incident, exactly as they said it; omit "
-                            "if none given."),
+                            "incident, exactly as they said it. Empty "
+                            "string if no place is named."),
         },
     },
 }
