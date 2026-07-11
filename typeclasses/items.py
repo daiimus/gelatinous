@@ -671,7 +671,8 @@ class DispatchConsole(Radio):
         "Acknowledge genuine reports and hails; state unit availability "
         "when asked; direct callers to give a location. Dispatched units "
         "announce themselves on this band — never say units are rolling, "
-        "responding, or on the way. Idle chatter or non-emergency use of "
+        "responding, or on the way. You are wired to the desk: never "
+        "promise to go anywhere, meet anyone, or bring anything. Idle chatter or non-emergency use of "
         "the band gets told curtly to keep the channel clear.\n"
         "EXAMPLES:\n"
         "[CONTEXT] Units available: 3. [TRAFFIC] a husky voice: "
@@ -721,7 +722,9 @@ class DispatchConsole(Radio):
         "Acknowledge real reports and hails; state unit availability when "
         "asked; get a location out of people. Dispatched units announce "
         "themselves on this band — never say units are rolling, "
-        "responding, or on the way. Idle chatter gets moved off your "
+        "responding, or on the way. You are chained to this desk while "
+        "you're on shift: never promise to go anywhere, meet anyone, or "
+        "bring anything, however much you might want to. Idle chatter gets moved off your "
         "channel — dry, not cruel.\n"
         "EXAMPLES:\n"
         "[CONTEXT] Units available: 3. [TRAFFIC] a husky voice: "
@@ -818,6 +821,7 @@ class DispatchConsole(Radio):
         instructions = (self.OPERATOR_INSTRUCTIONS if operator
                         else self.INSTRUCTIONS)
         units_moved = bool(dispatched)
+        speaker_name = getattr(operator, "key", None) if operator else None
         chatter = (isinstance(verdict, dict)
                    and (verdict.get("is_incident_report") is not True
                         or verdict.get("incident_type") in (None, "none")))
@@ -828,7 +832,8 @@ class DispatchConsole(Radio):
             on_reply=lambda text: self._answer(
                 self._clean_reply(text, heard=speech,
                                   units_moved=units_moved,
-                                  chatter=chatter),
+                                  chatter=chatter,
+                                  speaker_name=speaker_name),
                 speaker=operator),
             on_fail=lambda: self._answer(fallback, speaker=operator),
         )
@@ -859,7 +864,7 @@ class DispatchConsole(Radio):
                 "not claim units are responding.")
 
     def _clean_reply(self, text, heard=None, units_moved=False,
-                     chatter=False):
+                     chatter=False, speaker_name=None):
         """Reply sanitation (the GM lane's practices, scaled down): the model
         must return ONLY a spoken line. First line only; quotes/labels
         stripped; brackets (stage directions) removed; any echo of the
@@ -877,6 +882,11 @@ class DispatchConsole(Radio):
         line = " ".join(deduped)
         line = re.sub(r"^(dispatch|operator|you)\s*:\s*", "", line,
                       flags=re.I)
+        if speaker_name:
+            # the model labels its own line with the operator's name
+            # ('Petra: "..."') — strip it like any other label
+            line = re.sub(rf"^{re.escape(str(speaker_name))}\s*:\s*", "",
+                          line, flags=re.I).strip().strip('"').strip()
         line = re.sub(r"\[[^\]]*\]", "", line).strip()   # stage directions
         line = line.strip().strip('"').strip()
         low = line.lower()
@@ -895,6 +905,18 @@ class DispatchConsole(Radio):
                 r"dispatched|en route|inbound|on the way|coming|headed|"
                 r"moving)\b", low):
             return self.REPORT_ACK_LINE if units_moved else reject
+        # The presence backstop ("I'll be there in a minute" — 2026-07-11):
+        # she never leaves the desk; a first-person promise to show up is
+        # as false as phantom units. Recompute low: the label strip above
+        # may have changed the line.
+        low = line.lower()
+        if re.search(
+                r"\b(i'?ll be (?:there|right)|i will be there|"
+                r"i'?m coming|i am coming|on my way|be right there|"
+                r"there in a (?:minute|moment|sec)|there shortly|"
+                r"i'?ll (?:come|head|swing|stop) (?:by|over|down|up)?|"
+                r"i'?ll (?:meet|join|find) you)\b", low):
+            return reject
         # The parrot guard ("Coffee, please." — 2026-07-11, loosened same
         # day for banter): on chatter, a SHORT reply is struck only when
         # it adds NOTHING of its own — every content word already came

@@ -246,8 +246,8 @@ class TestDispatchConsoleAnswers(TestCase):
         c.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
         c._units_available = lambda: 2
         # sanitizer has its own suite
-        c._clean_reply = (lambda text, heard=None,
-                          units_moved=False, chatter=False: text)
+        c._clean_reply = (lambda text, heard=None, units_moved=False,
+                          chatter=False, speaker_name=None: text)
         c._operator = lambda: None                       # automation by default
         c.OPERATOR_INSTRUCTIONS = DispatchConsole.OPERATOR_INSTRUCTIONS
         return c
