@@ -38,15 +38,17 @@ from world.director.witness import WITNESS_REPORT_DELAY, spawn_witness, witness_
 REPORT_DEBOUNCE = 120.0
 
 #: Crime type → severity (the §5.2 taxonomy ladder; tunable).
+#: Frugal ladder (2026-07-11 user call: the pool is six units — VIOLENCE
+#: and explosions call in more; everything else gets one responder).
 CRIME_SEVERITY: dict[str, int] = {
     "shoplifting": 1,
     "vandalism": 1,
-    "pickpocketing": 2,
-    "mugging": 3,
-    "robbery": 4,
-    "assault": 3,
-    "murder": 5,
-    "sabotage": 3,
+    "pickpocketing": 1,
+    "mugging": 2,
+    "robbery": 2,
+    "assault": 2,
+    "murder": 3,
+    "sabotage": 1,
 }
 
 #: (location, crime_type) -> monotonic time of the last report.

@@ -102,6 +102,9 @@ class TestReportCrime(TestCase):
         mock_delay.assert_not_called()
 
     def test_taxonomy_ladder_shape(self):
-        self.assertEqual(CRIME_SEVERITY["murder"], 5)
+        # frugal ladder: violence scales, everything else sends one
+        self.assertEqual(CRIME_SEVERITY["murder"], 3)
         self.assertEqual(CRIME_SEVERITY["shoplifting"], 1)
+        self.assertEqual(CRIME_SEVERITY["sabotage"], 1)
         self.assertGreater(CRIME_SEVERITY["robbery"], CRIME_SEVERITY["pickpocketing"])
+        self.assertEqual(max(CRIME_SEVERITY.values()), 3)
