@@ -170,3 +170,26 @@ class TestTerminalPressGrammar(TestCase):
     def test_unknown_button_is_not_ours(self):
         terminal = self._terminal_obj([_cube()])
         self.assertFalse(terminal.at_press(_char(), "jackpot"))
+
+
+class TestMemoryResidenceLine(TestCase):
+    """`memory` ends with the residence the rental credit is spent on."""
+
+    def test_registered_residence_renders(self):
+        from commands.CmdCharacter import _residence_line
+        cube = MagicMock()
+        cube.pk = 42
+        cube.key = "R0-01"
+        cube.location.key = "Queen of Cups - Rack 0"
+        caller = MagicMock()
+        caller.db.residence = cube
+        line = _residence_line(caller)
+        self.assertIn("R0-01", line)
+        self.assertIn("Queen of Cups - Rack 0", line)
+
+    def test_no_residence(self):
+        from commands.CmdCharacter import _residence_line
+        caller = MagicMock()
+        caller.db.residence = None
+        self.assertEqual(_residence_line(caller),
+                         "You hold no registered residence.")

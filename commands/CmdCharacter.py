@@ -2610,7 +2610,8 @@ class CmdMemory(Command):
     you've seen most recently.  People you've forgotten (cleared with
     |wforget|n) are not listed, even though their record is preserved.
 
-    Use |wrecall <name>|n to inspect a specific entry.
+    Use |wrecall <name>|n to inspect a specific entry.  Your
+    registered residence, if you hold one, is listed at the end.
     """
 
     key = "memory"
@@ -2639,6 +2640,7 @@ class CmdMemory(Command):
 
         if not named:
             caller.msg("You don't remember anyone yet.")
+            caller.msg(_residence_line(caller))
             return
 
         # Sort by last_seen descending (recency).  Missing values sort last.
@@ -2672,6 +2674,20 @@ class CmdMemory(Command):
             )
 
         caller.msg(str(table))
+        caller.msg(_residence_line(caller))
+
+
+def _residence_line(caller):
+    """The 'where do I live' tail of the memory command — the rental
+    credit's spend is a thing a person remembers."""
+    from world.rental import residence_of
+
+    cube = residence_of(caller)
+    if cube is None:
+        return "You hold no registered residence."
+    where = getattr(getattr(cube, "location", None), "key", None)
+    place = f", {where}" if where else ""
+    return f"Your residence: |w{cube.key}|n{place}."
 
 
 # ===================================================================
