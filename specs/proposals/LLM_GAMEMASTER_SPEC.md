@@ -855,3 +855,26 @@ sourced as `mlx-community` 4-bit quants, scored with the §4.1 rubric on the
 target Mac mini, and bound behind the §9 Model adapter so swapping is a config
 change, not a code change. Re-evaluate every release cycle; uncensored
 creative-writing tunes move fast.
+
+
+## Holographic Parole Agents — DESIGN BANKED (user, 2026-07-10; NOT BUILT)
+
+The Constabulary lobby's public face (lobby #4936): the automaton era
+ends with PROJECTED agents.
+
+* **Seats 4 → 3**; each remaining seat gets a **PROJECTOR** — a
+  physical object, **hackable** (decking seam) and **vandalizable**
+  (damage seam). Break the projector, kill the service.
+* **SITTING in a seat auto-boots a holographic LLM parole agent
+  assigned to the sitter; leaving the seat kills it.** Sit-triggered
+  engagement replaces automaton logic entirely — dynamic on/off for
+  free, no idle brains burning tokens at an empty bench.
+* **Register:** civic — fines, parole check-ins, civic requests. The
+  HOLOGRAPHIC_MERCHANT precedent covers projected-being presentation.
+* **Lane (2026-07-11 doctrine):** the CIVIC/fast lane is the natural
+  fit — clerk-register, single-purpose dialogue at sub-second tempo,
+  structural fallback lines, guardrail-compatible content. The GM lane
+  stays reserved for characters with souls; a parole hologram is a
+  form with a face.
+* The broken automaton **#4951 stays** as set-dressing fossil (its
+  OUT OF ORDER grille clicks on).
