@@ -177,6 +177,12 @@ def check_rigged_grenade(character, exit_obj):
             # Check dud chance
             dud_chance = rigged_grenade.db.dud_chance if rigged_grenade.db.dud_chance is not None else 0.0
             if random.random() < dud_chance:
+                # #505: a dud's fuse is spent — drop the deadline
+                # or the reload sweep would cook it off again
+                try:
+                    rigged_grenade.attributes.remove('detonation_deadline')
+                except Exception:  # noqa: BLE001
+                    pass
                 if rigged_grenade.location:
                     rigged_grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=rigged_grenade.key))
                 return
@@ -283,6 +289,15 @@ def check_rigged_grenade(character, exit_obj):
 
 def start_standalone_grenade_ticker(grenade, explosion_callback=None):
     """Start a countdown ticker for grenades outside of CmdPull context."""
+    # #505: persist the DEADLINE — the per-second delay chain dies on
+    # reload, but the timestamp survives for the at_server_start sweep.
+    try:
+        import time as _time
+        _remaining = getattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0) or 0
+        grenade.db.detonation_deadline = _time.time() + float(_remaining)
+    except Exception:  # noqa: BLE001 — a stampless fuse still ticks live
+        pass
+
     def tick():
         try:
             # Check if grenade still exists and has countdown
@@ -362,6 +377,15 @@ def start_grenade_ticker(grenade):
     armor.  Candidates for unification once behavior requirements
     converge.
     """
+    # #505: persist the DEADLINE — the per-second delay chain dies on
+    # reload, but the timestamp survives for the at_server_start sweep.
+    try:
+        import time as _time
+        _remaining = getattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0) or 0
+        grenade.db.detonation_deadline = _time.time() + float(_remaining)
+    except Exception:  # noqa: BLE001 — a stampless fuse still ticks live
+        pass
+
     def tick():
         try:
             # Check if grenade still exists and has countdown
@@ -506,6 +530,12 @@ def explode_standalone_grenade(grenade):
         dud_chance = grenade.db.dud_chance if grenade.db.dud_chance is not None else 0.0
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Dud chance: {dud_chance}")
         if random.random() < dud_chance:
+            # #505: a dud's fuse is spent — drop the deadline
+            # or the reload sweep would cook it off again
+            try:
+                grenade.attributes.remove('detonation_deadline')
+            except Exception:  # noqa: BLE001
+                pass
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Grenade {grenade} is a dud")
             if grenade.location:
                 grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=grenade.key))
@@ -677,6 +707,39 @@ def explode_standalone_grenade(grenade):
         splattercast = get_splattercast()
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in explode_standalone_grenade: {e}")
         raise
+
+
+def sweep_armed_grenades():
+    """#505: fuses don't survive a reload — the per-second utils.delay
+    chains die with the process, freezing armed grenades mid-fuse (and
+    a frozen countdown reads as 'explodes in hand when thrown'). The
+    ticker starters persist ``db.detonation_deadline``; this
+    at_server_start sweep re-arms live fuses at their true remaining
+    time and cooks off overdue ones a beat after start (so the world
+    is fully loaded when the blast resolves). Returns
+    (rearmed, detonated)."""
+    import time as _time
+    from evennia.objects.models import ObjectDB
+    rearmed = detonated = 0
+    for obj in ObjectDB.objects.filter(
+            db_attributes__db_key="detonation_deadline").distinct():
+        try:
+            if obj.db.pin_pulled is not True:
+                obj.attributes.remove("detonation_deadline")
+                continue
+            remaining = float(obj.db.detonation_deadline or 0) - _time.time()
+            if remaining > 0:
+                setattr(obj.ndb, NDB_COUNTDOWN_REMAINING,
+                        max(1, int(remaining)))
+                start_standalone_grenade_ticker(obj)
+                rearmed += 1
+            else:
+                setattr(obj.ndb, NDB_COUNTDOWN_REMAINING, 0)
+                utils.delay(2, explode_standalone_grenade, obj)
+                detonated += 1
+        except Exception:  # noqa: BLE001 — one bad grenade never stops the sweep
+            continue
+    return rearmed, detonated
 
 
 def check_auto_defuse(character):
@@ -872,6 +935,12 @@ def trigger_auto_defuse_explosion(grenade):
         # Check dud chance
         dud_chance = grenade.db.dud_chance if grenade.db.dud_chance is not None else 0.0
         if random.random() < dud_chance:
+            # #505: a dud's fuse is spent — drop the deadline
+            # or the reload sweep would cook it off again
+            try:
+                grenade.attributes.remove('detonation_deadline')
+            except Exception:  # noqa: BLE001
+                pass
             if grenade.location:
                 grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=grenade.key))
             return
