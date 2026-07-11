@@ -820,10 +820,14 @@ class Room(ObjectParent, DefaultRoom):
         the standard secret-door mechanism, e.g. the rooftop hatch) stays
         out of the exit prose entirely; it can still be traversed by
         name by anyone who knows it's there."""
+        try:
+            found = list(getattr(looker.db, "found_exits", None) or [])
+        except Exception:  # noqa: BLE001 — no db, no discoveries
+            found = []
         out = []
         for ex in (self.exits or []):
             try:
-                if not ex.access(looker, "view"):
+                if not ex.access(looker, "view") and ex not in found:
                     continue
             except Exception:  # noqa: BLE001 — a broken lock stays visible
                 pass

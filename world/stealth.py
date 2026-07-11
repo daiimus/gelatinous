@@ -235,6 +235,41 @@ def active_search(searcher, room=None) -> tuple:
     return found_chars, found_objs
 
 
+#: Default difficulty for finding a view-locked (secret) exit — harder
+#: than a stashed object (10): a secret door is built to stay secret.
+SECRET_EXIT_DIFFICULTY = 14
+
+
+def search_hidden_exits(searcher, room=None) -> list:
+    """The hidden-exit arm of an active search: roll (stash idiom —
+    d20 + Resonance + the search bonus) against each view-locked exit's
+    ``db.search_difficulty``. Unlike stashed objects, a found exit
+    reveals PER SEARCHER: it lands in ``searcher.db.found_exits`` and
+    only that character's exit prose gains it. Returns newly found
+    exits."""
+    room = room or searcher.location
+    if room is None:
+        return []
+    already = list(searcher.db.found_exits or [])
+    found = []
+    for ex in (getattr(room, "exits", None) or []):
+        try:
+            if ex.access(searcher, "view"):
+                continue                      # not hidden (from them)
+        except Exception:  # noqa: BLE001 — broken lock reads visible
+            continue
+        if ex in already:
+            continue
+        difficulty = int(getattr(ex.db, "search_difficulty", None)
+                         or SECRET_EXIT_DIFFICULTY)
+        if randint(1, 20) + _stat(searcher, "resonance")                 + ACTIVE_SEARCH_BONUS > difficulty:
+            already.append(ex)
+            found.append(ex)
+    if found:
+        searcher.db.found_exits = already
+    return found
+
+
 def break_stealth(char, *, quiet=False):
     """Acting loudly (speaking, attacking, walking off openly) drops the
     hidden state and makes everyone present fully aware (spec §6.4 —
