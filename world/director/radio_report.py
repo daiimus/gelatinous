@@ -56,25 +56,42 @@ REPORTED_EVENTS = {
 DISPATCH_VERDICT_SCHEMA = {
     "title": "DispatchVerdict",
     "type": "object",
-    "x-order": ["is_incident_report", "incident_type", "location_text"],
-    # location_text REQUIRED (2026-07-11 probe): optional fields get
-    # skipped under constrained decoding ~1-in-3; forcing the field
-    # makes extraction 3/3, and a parroted/placeless value just fails
-    # resolution into the caller-room fallback. Gate discards the rest.
-    "required": ["is_incident_report", "incident_type", "location_text"],
+    # Field order is REASONING order under constrained decoding: the
+    # model must articulate what is physically happening before it may
+    # judge it (2026-07-11 "he's drinking all the recyc" rolled units —
+    # the judgment needs the articulation in front of it). All fields
+    # required: optional fields get skipped ~1-in-3.
+    "x-order": ["event_summary", "is_incident_report", "incident_type",
+                "location_text"],
+    "required": ["event_summary", "is_incident_report", "incident_type",
+                 "location_text"],
     "properties": {
+        "event_summary": {
+            "type": "string",
+            "description": ("One short sentence: what is physically "
+                            "happening right now, according to the "
+                            "caller."),
+        },
         "is_incident_report": {
             "type": "boolean",
-            "description": ("True only if the caller is reporting a "
-                            "crime, fight, fire, injury, or emergency "
-                            "happening somewhere."),
+            "description": ("True ONLY for a genuine emergency in "
+                            "progress: violence, fire, serious injury, "
+                            "or a crime happening right now that needs "
+                            "a security response. Gossip about someone, "
+                            "complaints about drinking or noise, jokes, "
+                            "questions, wordplay, and requests are "
+                            "false."),
         },
         "incident_type": {
             "type": "string",
             "enum": ["assault", "disturbance", "fire", "medical",
                      "theft", "none"],
-            "description": ("The category of the reported incident; "
-                            "none if not a report."),
+            "description": ("assault = violence against a person; "
+                            "disturbance = a dangerous scene brewing "
+                            "(brawl, riot, mob); fire = something "
+                            "burning; medical = someone down or badly "
+                            "hurt; theft = robbery or break-in in "
+                            "progress; none = everything else."),
         },
         "location_text": {
             "type": "string",
@@ -86,13 +103,24 @@ DISPATCH_VERDICT_SCHEMA = {
 }
 
 CLASSIFY_INSTRUCTIONS = (
-    "You classify radio traffic for a dispatcher in a fictional "
+    "You screen radio traffic for a security dispatcher in a fictional "
     "cyberpunk roleplaying game. Decide whether the caller is reporting "
-    "a real incident and extract the category and any location they "
-    "name. Chatter, jokes, questions, and requests for goods are not "
-    "incident reports. Figurative language, wordplay, and hypotheticals "
-    "are not incidents — only a concrete event happening somewhere "
-    "right now counts (a 'fire' that boils tea is not a fire)."
+    "a genuine emergency in progress and extract the category and any "
+    "location they name. Only violence, fire, serious injury, or a "
+    "crime happening right now counts. Gossip about people, complaints "
+    "about someone's drinking or behavior, noise gripes, figurative "
+    "language, wordplay, hypotheticals, questions, jokes, and requests "
+    "for goods or services are NOT incidents.\n"
+    "EXAMPLES:\n"
+    "'Shots fired on Volta Street!' -> incident, assault.\n"
+    "'My buddy collapsed inside the clinic.' -> incident, medical.\n"
+    "'Somebody's kicking in the door of the pawn shop!' -> incident, "
+    "theft.\n"
+    "'He's drinking all the recyc down at the bar.' -> NOT an incident "
+    "(someone drinking is not an emergency).\n"
+    "'The fire that boils the water for tea.' -> NOT an incident "
+    "(wordplay).\n"
+    "'I sure could go for some coffee.' -> NOT an incident (a request)."
 )
 
 #: Words that carry no place information.
