@@ -51,6 +51,10 @@ class ElevatorCar(IndoorRoom):
         self.db.moving = False
         self.db.target_floor = None
         self.db.floor_locks = {}
+        # The shaft's (x, y) grid column. When set, the car's coordinates
+        # are (shaft_x, shaft_y, landing_z) — the car sits IN the shaft at
+        # its floor's height, never in the threshold room's cell.
+        self.db.shaft_xy = None
 
     def at_init(self):
         super().at_init()
@@ -172,7 +176,12 @@ class ElevatorCar(IndoorRoom):
             from world.spatial import get_xyz, set_xyz
             xyz = get_xyz(landing)
             if xyz:
-                set_xyz(self, *xyz)
+                shaft = self.db.shaft_xy
+                if shaft:
+                    # the car rides its shaft column at the landing's height
+                    set_xyz(self, shaft[0], shaft[1], xyz[2])
+                else:
+                    set_xyz(self, *xyz)
         except Exception:
             pass
         if not quiet:
