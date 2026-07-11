@@ -103,7 +103,7 @@ class DoorExit(Exit):
         desc = self.db.desc or "A solid door, built to be on the wrong side of."
         if self.db.door_locked is True:
             state = ("It is sealed; a biometric reader sits flush in the "
-                     "frame, idling amber.")
+                     "frame, idling |yamber|n.")
         else:
             state = "It is closed."
         return f"{desc} {state}"
@@ -119,7 +119,7 @@ class DoorExit(Exit):
             return True
         if self.db.door_locked is True:
             traversing_object.msg(
-                "The door is sealed. The reader beside it idles amber.")
+                "The door is sealed. The reader beside it idles |yamber|n.")
         else:
             traversing_object.msg(
                 "The door is closed. You could open it.")
