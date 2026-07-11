@@ -52,10 +52,13 @@ REFLEX_DELAY_MIN, REFLEX_DELAY_MAX = 1.5, 3.0
 
 REFLEX_INSTRUCTIONS = (
     "You are {name}, {identity} in a gritty fictional cyberpunk "
-    "roleplaying game. Something just happened near you. React with "
-    "ONE short spoken line, in character — a bark, a curse, a warning, "
-    "a call for order. No narration, no asterisks, no quotation marks. "
-    "If your character would stay silent, reply with exactly: NOTHING"
+    "roleplaying game. Something just happened near you. Reply with "
+    "the ONE short line your character says out loud, in their own "
+    "voice. No narration, no asterisks, no quotation marks, no "
+    "examples. If your character would stay silent, reply with "
+    "exactly: NOTHING"
+    # (No example-noun lists: the 3B model parrots them — a probe
+    # literally answered "*Bark*". Small models get plain orders.)
 )
 
 
