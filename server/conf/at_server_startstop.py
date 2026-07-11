@@ -25,54 +25,12 @@ def at_server_init():
     pass
 
 
-def _install_logfile_failure_unmask():
-    """TEMPORARY INSTRUMENTATION — REMOVE once one failure is captured.
-
-    Evennia's ``logger.log_file`` (the threaded writer behind channel
-    history and the combat audit log) reports write failures via a bare
-    ``log_trace()`` inside a Twisted errback. There is no live exception
-    in an errback, so the server log gets literally ``NoneType: None``
-    and the actual Failure is discarded — 7.9k such lines since the
-    6.1.0 upgrade, in play-time bursts, reason unknown.
-
-    This is a faithful copy of ``log_file`` changing ONLY the errback:
-    it renders the failure's traceback plus the filename and a snippet
-    of the lost line, marked LOGFILE-UNMASK for grepping.
-    """
-    from evennia.utils import logger as _elog
-    from twisted.internet.threads import deferToThread
-
-    def log_file_unmasked(msg, filename="game.log"):
-        def callback(filehandle, msg):
-            msg = "\n%s [-] %s" % (_elog.timeformat(), msg.strip())
-            filehandle.write(msg)
-            # flush manually: the handle stays open (upstream comment)
-            filehandle.flush()
-
-        def errback(failure):
-            try:
-                _elog.log_err(
-                    f"LOGFILE-UNMASK: write to '{filename}' FAILED "
-                    f"(lost line: {str(msg)[:120]!r}) ->\n"
-                    f"{failure.getTraceback()}")
-            except Exception:  # noqa: BLE001 — never let the unmask crash
-                _elog.log_err("LOGFILE-UNMASK: write failed; failure "
-                              "unrenderable.")
-
-        filehandle = _elog._open_log_file(filename)
-        if filehandle:
-            deferToThread(callback, filehandle, msg).addErrback(errback)
-
-    _elog.log_file = log_file_unmasked
-    _elog.log_err("LOGFILE-UNMASK installed (temporary instrumentation).")
-
-
 def at_server_start():
     """
     This is called every time the server starts up, regardless of
     how it was shut down.
     """
-    _install_logfile_failure_unmask()
+    pass
 
 
 def at_server_stop():
