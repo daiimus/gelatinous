@@ -123,7 +123,7 @@ class ElevatorCar(IndoorRoom):
             return False
         if not self._floor_permitted(idx, presser):
             if presser:
-                presser.msg("The reader beside the panel blinks red. "
+                presser.msg("The reader beside the panel blinks |rred|n. "
                             "The button stays dark.")
             return False
         if self.db.moving:

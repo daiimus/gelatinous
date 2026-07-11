@@ -183,7 +183,7 @@ class TestElevatorFloorLock(TestCase):
         with patch.object(emod, "delay") as d:
             self.assertFalse(car.request_floor("2", mallory))
         d.assert_not_called()
-        self.assertIn("blinks red", mallory.msg.call_args.args[0])
+        self.assertIn("blinks |rred|n", mallory.msg.call_args.args[0])
 
     def test_secured_floor_lights_for_granted_sleeve(self):
         alice = _sleeve("uid-alice")

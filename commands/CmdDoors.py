@@ -72,11 +72,11 @@ class CmdOpenDoor(Command):
             return
         if door.db.door_locked is True:
             if not is_granted(self.caller, door.db.access_grants):
-                self.caller.msg("The reader beside the door blinks red. "
+                self.caller.msg("The reader beside the door blinks |rred|n. "
                                 "The lock holds.")
                 return
             door._mirror(door_locked=False, door_closed=False)
-            self.caller.msg("The reader flashes green; the lock releases "
+            self.caller.msg("The reader flashes |ggreen|n; the lock releases "
                             "and you swing the door open.")
         else:
             door._mirror(door_closed=False)
@@ -132,16 +132,17 @@ class CmdLockDoor(Command):
                             "to lock.")
             return
         if not is_granted(self.caller, door.db.access_grants):
-            self.caller.msg("The reader blinks red — this lock doesn't "
+            self.caller.msg("The reader blinks |rred|n — this lock doesn't "
                             "answer to your sleeve.")
             return
         if door.db.door_locked is True:
             self.caller.msg("It's already locked.")
             return
         door._mirror(door_closed=True, door_locked=True)
-        self.caller.msg("The reader flashes green; the door seals with a "
+        self.caller.msg("The reader flashes |rred|n; the door seals with a "
                         "solid clunk.")
-        door._both_rooms_msg("The door seals with a solid clunk.",
+        door._both_rooms_msg("The reader flashes |rred|n as the door seals "
+                             "with a solid clunk.",
                              exclude=[self.caller])
 
 
@@ -165,12 +166,13 @@ class CmdUnlockDoor(Command):
             self.caller.msg("It isn't locked.")
             return
         if not is_granted(self.caller, door.db.access_grants):
-            self.caller.msg("The reader blinks red — this lock doesn't "
+            self.caller.msg("The reader blinks |rred|n — this lock doesn't "
                             "answer to your sleeve.")
             return
         door._mirror(door_locked=False)
-        self.caller.msg("The reader flashes green; the lock releases.")
-        door._both_rooms_msg("The lock releases with a click.",
+        self.caller.msg("The reader flashes |ggreen|n; the lock releases.")
+        door._both_rooms_msg("The reader flashes |ggreen|n; the lock "
+                             "releases with a click.",
                              exclude=[self.caller])
 
 
