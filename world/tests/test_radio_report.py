@@ -138,3 +138,120 @@ class TestConsiderGuards(TestCase):
              patch("world.llm.client.request_civic_verdict") as req:
             rr.consider_radio_report(MagicMock(), MagicMock(), "assault!")
         req.assert_not_called()
+
+
+class TestGroundedVoiceLane(TestCase):
+    """The sequenced lanes: verdict grounds the voice; a units-moving
+    claim survives only when units actually moved."""
+
+    def _console(self):
+        from typeclasses.items import DispatchConsole
+        console = MagicMock()
+        console.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
+        console._clean_reply = DispatchConsole._clean_reply.__get__(
+            console, DispatchConsole)
+        console._verdict_context = DispatchConsole._verdict_context.__get__(
+            console, DispatchConsole)
+        return console
+
+    def test_false_units_claim_is_struck(self):
+        console = self._console()
+        line = console._clean_reply("Copy. Coffee. Units rolling.",
+                                    units_moved=False)
+        self.assertEqual(line, console.FALLBACK_LINE)
+
+    def test_true_units_claim_survives(self):
+        console = self._console()
+        line = console._clean_reply("Copy, Queen of Cups. Units rolling.",
+                                    units_moved=True)
+        self.assertIn("Units rolling", line)
+
+    def test_plain_discipline_line_untouched(self):
+        console = self._console()
+        line = console._clean_reply("Keep this channel clear.",
+                                    units_moved=False)
+        self.assertEqual(line, "Keep this channel clear.")
+
+    def test_no_units_available_statement_untouched(self):
+        # stating the drained pool is not a promise of movement
+        console = self._console()
+        line = console._clean_reply("Copy, docks. No units available.",
+                                    units_moved=False)
+        self.assertIn("No units available", line)
+
+    def test_context_for_chatter(self):
+        console = self._console()
+        ctx = console._verdict_context(
+            {"is_incident_report": False, "incident_type": "none"}, None)
+        self.assertIn("idle chatter", ctx)
+        self.assertIn("do not promise", ctx)
+
+    def test_context_for_confirmed_dispatch(self):
+        console = self._console()
+        ctx = console._verdict_context(
+            {"is_incident_report": True, "incident_type": "assault",
+             "location_text": "Rack 0"}, [MagicMock(), MagicMock()])
+        self.assertIn("2 units already dispatched", ctx)
+        self.assertIn("at Rack 0", ctx)
+
+    def test_context_for_held_report(self):
+        console = self._console()
+        ctx = console._verdict_context(
+            {"is_incident_report": True, "incident_type": "fire",
+             "location_text": ""}, None)
+        self.assertIn("NO new units", ctx)
+
+    def test_context_empty_when_classification_failed(self):
+        console = self._console()
+        self.assertEqual(console._verdict_context(None, None), "")
+
+
+class TestConsiderOnResult(TestCase):
+    """consider_radio_report reports its finding back for grounding."""
+
+    def _speaker(self):
+        speaker = MagicMock()
+        speaker.db.is_npc = None
+        speaker.db.llm_driven = None
+        speaker.db.is_base_station = None
+        return speaker
+
+    def test_on_result_receives_verdict_and_dispatched(self):
+        verdict = {"is_incident_report": True, "incident_type": "assault",
+                   "location_text": "Rack 0"}
+        results = []
+
+        def fake_request(instructions, prompt, schema, on_verdict, on_fail):
+            on_verdict(verdict)
+
+        with patch("world.llm.client.civic_enabled", return_value=True), \
+             patch("world.llm.client.request_civic_verdict",
+                   side_effect=fake_request), \
+             patch.object(rr, "apply_verdict",
+                          return_value=["unit"]) as applied:
+            in_flight = rr.consider_radio_report(
+                MagicMock(), self._speaker(), "gunfight!",
+                on_result=lambda v, d: results.append((v, d)))
+        self.assertTrue(in_flight)
+        applied.assert_called_once()
+        self.assertEqual(results, [(verdict, ["unit"])])
+
+    def test_on_result_none_none_on_failure(self):
+        results = []
+
+        def fake_request(instructions, prompt, schema, on_verdict, on_fail):
+            on_fail()
+
+        with patch("world.llm.client.civic_enabled", return_value=True), \
+             patch("world.llm.client.request_civic_verdict",
+                   side_effect=fake_request):
+            in_flight = rr.consider_radio_report(
+                MagicMock(), self._speaker(), "gunfight!",
+                on_result=lambda v, d: results.append((v, d)))
+        self.assertTrue(in_flight)
+        self.assertEqual(results, [(None, None)])
+
+    def test_declined_lane_returns_false(self):
+        with patch("world.llm.client.civic_enabled", return_value=False):
+            self.assertFalse(rr.consider_radio_report(
+                MagicMock(), self._speaker(), "gunfight!"))

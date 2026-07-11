@@ -132,31 +132,47 @@ def resolve_location(location_text, rooms):
     return best[1] if best else None
 
 
-def consider_radio_report(console, speaker, speech):
+def consider_radio_report(console, speaker, speech, on_result=None):
     """Classify player traffic; a confirmed report raises a real event.
-    Runs beside the voice lane and is NOT gated by its answer cooldown —
-    a second report inside ten seconds still rolls units even when the
-    operator stays silent. Silence on every failure."""
+    Not gated by the voice lane's answer cooldown — a second report
+    inside ten seconds still rolls units even when the operator stays
+    silent. Silence on every failure.
+
+    Returns True when a classification is IN FLIGHT — ``on_result
+    (verdict, dispatched)`` will fire exactly once on the reactor
+    (``(None, None)`` on failure), letting the voice lane speak GROUNDED
+    in what dispatch actually did. False = this lane declined (NPC
+    traffic, lane disabled); the caller proceeds ungrounded."""
     try:
         from world.llm.client import civic_enabled, request_civic_verdict
         if not civic_enabled():
-            return
+            return False
         if speaker is None or not speech:
-            return
+            return False
         db = getattr(speaker, "db", None)
         if (getattr(db, "is_npc", None) is True
                 or getattr(db, "llm_driven", None) is True
                 or getattr(db, "is_base_station", None) is True):
-            return
+            return False
+
+        def _report(verdict, dispatched):
+            if callable(on_result):
+                try:
+                    on_result(verdict, dispatched)
+                except Exception:  # noqa: BLE001 — voice never breaks units
+                    pass
 
         def on_verdict(verdict):
-            apply_verdict(verdict, speaker, speech)
+            dispatched = apply_verdict(verdict, speaker, speech)
+            _report(verdict, dispatched)
 
         request_civic_verdict(
             CLASSIFY_INSTRUCTIONS, f'Radio traffic: "{speech}"',
-            DISPATCH_VERDICT_SCHEMA, on_verdict, lambda: None)
+            DISPATCH_VERDICT_SCHEMA, on_verdict,
+            lambda: _report(None, None))
+        return True
     except Exception:  # noqa: BLE001 — the report lane never breaks radio
-        pass
+        return False
 
 
 def apply_verdict(verdict, speaker, speech):
