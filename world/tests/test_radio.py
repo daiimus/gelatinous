@@ -121,6 +121,28 @@ class TestTransmit(TestCase):
         self.assertIn("A gravelly voice crackles over the radio", line)
         self.assertIn("rendezvous at the docks", line)
 
+    def test_no_voice_flavour_sprinkle_on_the_air(self):
+        # The handle IS the voice — "A smoky voice ... *in a smoky rasp*"
+        # described itself twice (playtest, 2026-07-10). Say keeps the
+        # sprinkle; radio must not, even when the composer has one.
+        speaker = _char()
+        dev, heard = _radio(freq="447"), _radio(freq="447")
+        listener = MagicMock(); heard.location = listener
+        with self._world([dev, heard]), \
+                patch.object(radio, "_log_to_channel"), \
+                patch("world.perception.can_hear", return_value=True), \
+                patch("world.voice.attempt_voice_discern",
+                      return_value=None), \
+                patch("world.voice.get_voice_description",
+                      return_value="smoky"), \
+                patch("world.voice.voice_phrase",
+                      return_value="speaking Common, in a smoky rasp"):
+            transmit(speaker, "long day", dev)
+        line = listener.msg.call_args.args[0]
+        self.assertIn("A smoky voice crackles over the radio", line)
+        self.assertNotIn("rasp*", line)
+        self.assertNotIn("speaking Common", line)
+
     def test_known_voice_names_the_speaker(self):
         speaker = _char()
         dev, heard = _radio(freq="447"), _radio(freq="447")
