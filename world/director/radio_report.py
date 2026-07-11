@@ -90,7 +90,9 @@ CLASSIFY_INSTRUCTIONS = (
     "cyberpunk roleplaying game. Decide whether the caller is reporting "
     "a real incident and extract the category and any location they "
     "name. Chatter, jokes, questions, and requests for goods are not "
-    "incident reports."
+    "incident reports. Figurative language, wordplay, and hypotheticals "
+    "are not incidents — only a concrete event happening somewhere "
+    "right now counts (a 'fire' that boils tea is not a fire)."
 )
 
 #: Words that carry no place information.

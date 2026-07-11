@@ -148,6 +148,8 @@ class TestGroundedVoiceLane(TestCase):
         from typeclasses.items import DispatchConsole
         console = MagicMock()
         console.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
+        console.REPORT_ACK_LINE = DispatchConsole.REPORT_ACK_LINE
+        console.CHATTER_LINES = DispatchConsole.CHATTER_LINES
         console._clean_reply = DispatchConsole._clean_reply.__get__(
             console, DispatchConsole)
         console._verdict_context = DispatchConsole._verdict_context.__get__(
@@ -160,11 +162,26 @@ class TestGroundedVoiceLane(TestCase):
                                     units_moved=False)
         self.assertEqual(line, console.FALLBACK_LINE)
 
-    def test_true_units_claim_survives(self):
+    def test_true_units_claim_becomes_the_clean_copy(self):
+        # units announce THEMSELVES — even a true announcement from her
+        # is replaced with the bare ack (the chorus does the confirming)
         console = self._console()
         line = console._clean_reply("Copy, Queen of Cups. Units rolling.",
                                     units_moved=True)
-        self.assertIn("Units rolling", line)
+        self.assertEqual(line, console.REPORT_ACK_LINE)
+
+    def test_stuttered_sentences_collapse(self):
+        console = self._console()
+        line = console._clean_reply(
+            "Copy, Recyc. Units on the way to Recyc. Units on the way "
+            "to Recyc.", units_moved=True)
+        self.assertEqual(line, console.REPORT_ACK_LINE)   # claim struck too
+
+    def test_stutter_scrub_keeps_distinct_sentences(self):
+        console = self._console()
+        line = console._clean_reply(
+            "Dispatch copies. Dispatch copies. Go ahead.")
+        self.assertEqual(line, "Dispatch copies. Go ahead.")
 
     def test_plain_discipline_line_untouched(self):
         console = self._console()

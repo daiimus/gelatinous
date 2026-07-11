@@ -379,12 +379,23 @@ class TestConsoleReplySanitation(TestCase):
             c.FALLBACK_LINE)
 
     def test_legitimate_restatement_passes(self):
+        # restating the report is not echo-punished; a units announcement
+        # is stripped even when true (units announce themselves)
         c = self._console()
-        good = "Copy, shots fired on Volta Street. Units responding."
+        good = "Copy, shots fired on Volta Street. Stay off the street."
         self.assertEqual(
             c._clean_reply(good, heard="Dispatch, shots fired on Volta Street!",
                            units_moved=True),
             good)
+
+    def test_true_units_announcement_becomes_clean_copy(self):
+        from typeclasses.items import DispatchConsole
+        c = self._console()
+        line = c._clean_reply(
+            "Copy, shots fired on Volta Street. Units responding.",
+            heard="Dispatch, shots fired on Volta Street!",
+            units_moved=True)
+        self.assertEqual(line, DispatchConsole.REPORT_ACK_LINE)
 
     def test_units_claim_without_dispatch_is_struck(self):
         # the no-false-units backstop: "units rolling" for a coffee order
