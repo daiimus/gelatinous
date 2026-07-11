@@ -306,3 +306,45 @@ class TestDispatchRoomDesignation(TestCase):
                                                 category="director")
         new.tags.add.assert_called_once_with(DISPATCH_TAG,
                                              category="director")
+
+
+class TestDispatchAntenna(TestCase):
+    """The transmission mast is part of dispatch's voice: a linked,
+    wrecked antenna silences the station (first antenna in the game —
+    the roof sabotage seam). No linked antenna = old behaviour."""
+
+    def _station(self, antenna=None):
+        s = MagicMock()
+        s.db = SimpleNamespace(is_base_station=True, is_radio=True,
+                               radio_on=True, frequency="911MHz",
+                               antenna=antenna)
+        return s
+
+    def _antenna(self, intact=True):
+        a = MagicMock()
+        a.db = SimpleNamespace(intact=intact, dispatch_antenna=True)
+        return a
+
+    @patch("world.director.population.get_dispatch_room")
+    def test_intact_mast_keeps_the_voice(self, mock_room):
+        from world.director.population import get_base_station
+        station = self._station(antenna=self._antenna(intact=True))
+        base = MagicMock(); base.contents = [station]
+        mock_room.return_value = base
+        self.assertIs(get_base_station(), station)
+
+    @patch("world.director.population.get_dispatch_room")
+    def test_wrecked_mast_silences_dispatch(self, mock_room):
+        from world.director.population import get_base_station
+        station = self._station(antenna=self._antenna(intact=False))
+        base = MagicMock(); base.contents = [station]
+        mock_room.return_value = base
+        self.assertIsNone(get_base_station())
+
+    @patch("world.director.population.get_dispatch_room")
+    def test_no_mast_linked_is_old_behaviour(self, mock_room):
+        from world.director.population import get_base_station
+        station = self._station(antenna=None)
+        base = MagicMock(); base.contents = [station]
+        mock_room.return_value = base
+        self.assertIs(get_base_station(), station)
