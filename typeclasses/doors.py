@@ -80,10 +80,19 @@ class DoorExit(Exit):
 
     def door_blocks(self, traverser):
         """Pathfinder hook: is this edge impassable for *traverser*?
-        Any not-open door blocks — passage requires the door open, and
-        no NPC behaviour opens doors yet. (When granted NPCs learn the
-        open verb, this refines to a lock-vs-grant check.)"""
-        return not self.is_open()
+        Open passes. Closed-but-unlocked passes for anyone — the travel
+        layer issues the real ``open`` before stepping (§2.1: walking
+        itself never changes state). Locked passes only for a granted
+        sleeve, who can genuinely unlock it en route."""
+        if self.is_open():
+            return False
+        if self.db.door_locked is not True:
+            return False
+        try:
+            from world.access import is_granted
+            return not is_granted(traverser, self.db.access_grants)
+        except Exception:  # noqa: BLE001 — unreadable grants fail closed
+            return True
 
     # ------------------------------------------------------------------
     # messaging

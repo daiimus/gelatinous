@@ -96,5 +96,17 @@ def _travel_step(npc: Any) -> None:
         _finish(npc, state, "on_fail")
         return
     # Walk through the next exit via its real command (locks, messages, etc.).
-    npc.execute_cmd(exits[0].key)
+    nxt = exits[0]
+    try:
+        # A closed door on the route: open it first, through the REAL
+        # verb (grant checks, reader flashes, room messages all apply).
+        # The pathfinder only routes through doors this traverser can
+        # open, so a bounce here means the world changed mid-walk — the
+        # next tick re-pathfinds around it.
+        is_open = getattr(nxt, "is_open", None)
+        if callable(is_open) and not is_open():
+            npc.execute_cmd(f"open {nxt.key}")
+    except Exception:  # noqa: BLE001 — an odd exit never stalls travel
+        pass
+    npc.execute_cmd(nxt.key)
     delay(state["step_delay"], _travel_step, npc)
