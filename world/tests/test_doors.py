@@ -198,3 +198,31 @@ class TestElevatorFloorLock(TestCase):
         with patch.object(emod, "delay") as d:
             self.assertTrue(car.request_floor("1", _sleeve("uid-mallory")))
         d.assert_called_once()
+
+
+class TestAutolock(TestCase):
+    """The spring latch: closing an autolock door seals it — anyone may
+    restore security; only granted sleeves may remove it."""
+
+    def _closer(self, autolock=True, open_=True):
+        from commands.CmdDoors import CmdCloseDoor
+        door = _door_factory(closed=not open_, locked=False)
+        door.db.door_autolock = autolock
+        _bind(door, dmod.DoorExit, "is_open")
+        cmd = CmdCloseDoor()
+        cmd.args = "door"
+        cmd.caller = MagicMock()
+        with patch("commands.CmdDoors.find_door", return_value=door):
+            cmd.func()
+        return door, cmd.caller
+
+    def test_stranger_closing_reseals_the_lock(self):
+        door, caller = self._closer(autolock=True)
+        self.assertTrue(door.db.door_closed)
+        self.assertTrue(door.db.door_locked)           # spring latch
+        self.assertIn("re-engages", caller.msg.call_args.args[0])
+
+    def test_plain_doors_just_close(self):
+        door, caller = self._closer(autolock=False)
+        self.assertTrue(door.db.door_closed)
+        self.assertFalse(door.db.door_locked)

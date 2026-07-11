@@ -29,6 +29,10 @@ class DoorExit(Exit):
         self.db.door_closed = True     # a freshly hung door starts shut
         self.db.door_locked = False
         self.db.door_broken = False
+        # spring latch: closing this door re-engages the lock, no
+        # grant needed — anyone can RESTORE security, only granted
+        # sleeves can remove it (the hotel-door standard)
+        self.db.door_autolock = False
         self.db.access_grants = []     # §2.2 grant file: [{sleeve, until, issued_by}]
         if "door" not in self.aliases.all():
             self.aliases.add("door")

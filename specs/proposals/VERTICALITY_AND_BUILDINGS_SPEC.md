@@ -150,7 +150,10 @@ door IS the exit, per user call). `typeclasses/doors.py DoorExit`
 requires the door OPEN — open/close are explicit verbs, walking never
 changes state, refined 2026-07-10 per user), player verbs
 `open/close/lock/unlock/knock`, builder `@door` (+/grant /revoke /list
-/force), grant files in `world/access.py`, pathfinder blocked-edge
+/force), **`db.door_autolock` spring latch (2026-07-11, user call:
+closing re-engages the lock, no grant needed — anyone can RESTORE
+security, only granted sleeves can remove it; cube doors ship with
+it)**, grant files in `world/access.py`, pathfinder blocked-edge
 filter live in `world/spatial/pathfind.py`, and the elevator's
 `db.floor_locks` consumes the same grant model. §2.3 sound-muffling
 awaits a cross-room sound layer (none exists yet — closed doors are

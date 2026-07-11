@@ -106,6 +106,16 @@ class CmdCloseDoor(Command):
         if not door.is_open():
             self.caller.msg("It's already closed.")
             return
+        if door.db.door_autolock is True:
+            # the spring latch: anyone may close it, and closing it
+            # seals it — restoring security needs no authority
+            door._mirror(door_closed=True, door_locked=True)
+            self.caller.msg("You pull the door shut; the lock "
+                            "re-engages with a |rclunk|n.")
+            door._both_rooms_msg("The door swings shut and its lock "
+                                 "re-engages with a clunk.",
+                                 exclude=[self.caller])
+            return
         door._mirror(door_closed=True)
         self.caller.msg("You pull the door shut.")
         door._both_rooms_msg("The door swings shut.", exclude=[self.caller])
