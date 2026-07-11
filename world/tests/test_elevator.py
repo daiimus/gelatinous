@@ -26,7 +26,7 @@ def _car(floors, current=0, moving=False):
     car = MagicMock(name="car")
     car.db = SimpleNamespace(floors=floors, current_floor=current,
                              moving=moving, target_floor=None,
-                             floor_locks={})
+                             floor_locks={}, shaft_xy=None)
     car.contents = []
     _bind(car, emod.ElevatorCar,
           "floor_index", "current_landing", "is_docked_at",
@@ -98,6 +98,17 @@ class TestRide(TestCase):
         self.assertEqual(self.car.db.current_floor, 1)
         self.assertIs(out.destination, self.l2)
         self.l2.msg_contents.assert_called_once()      # doors open upstairs
+
+    def test_arrival_parks_the_car_in_its_shaft_column(self):
+        # The car never shares a threshold room's grid cell: with a
+        # shaft column set, it sits at (shaft_x, shaft_y, landing_z) —
+        # in the shaft, at the floor's height.
+        self.car.db.shaft_xy = (9, -18)
+        self.car.db.moving = True
+        with patch("world.spatial.get_xyz", return_value=(8, -18, 1)), \
+                patch("world.spatial.set_xyz") as set_xyz:
+            self.car._arrive(1)
+        set_xyz.assert_called_once_with(self.car, 9, -18, 1)
 
     def test_quiet_arrival_snaps_without_messages(self):
         self.car.db.moving = True

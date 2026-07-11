@@ -61,11 +61,18 @@ convenience.
 * **Lift/elevator — THE CAR MODEL (DECIDED 2026-07-10, supersedes the
   warp-exit v1; resolves open question 1).** A real elevator is three
   parts:
-  1. **Landings** — one room per served floor (the Constabulary alcove
-     #4939 and 2F landing #4957 are the prototype pair). Each landing has
-     an `elevator` exit whose destination is always THE CAR — but
-     traversal is gated on the car being AT that floor ("The doors are
-     shut. Press the call button.").
+  1. **Landings** — the ordinary rooms the doors open onto, one per
+     served floor (the Constabulary prototype: the LOBBY #4936 and the
+     2F SECURE CORRIDOR #4960 — the doors sit in their east walls). Each
+     landing has an `elevator` exit whose destination is always THE CAR —
+     but traversal is gated on the car being AT that floor ("The doors
+     are shut. Press the call button."). **The SHAFT is real too
+     (refined 2026-07-10, user call):** a stacked column of sealed rooms
+     (#4939/#4957 at (9,-18,z), joined up/down) that the car physically
+     occupies — `db.shaft_xy` parks the car's grid position at
+     (shaft_x, shaft_y, landing_z), never in a landing's cell. No
+     pedestrian exits touch the shaft; prying the doors to reach it is
+     future B&E texture.
   2. **The CAR** — a real room. Passengers stand in it, talk in it, fight
      in it — a moving room where scenes happen. Its single `out` exit is
      **re-pointed by the controller** to the current landing; it refuses
