@@ -72,7 +72,10 @@ convenience.
      occupies — `db.shaft_xy` parks the car's grid position at
      (shaft_x, shaft_y, landing_z), never in a landing's cell. No
      pedestrian exits touch the shaft; prying the doors to reach it is
-     future B&E texture.
+     future B&E texture. Shaft rooms carry their OWN room type
+     (`ShaftRoom`, `db.type="shaft"` — decided 2026-07-10): building-
+     agnostic for every future lift, "The shaft continues down" prose,
+     and the anchor for future climb/fall/car-hazard mechanics.
   2. **The CAR** — a real room. Passengers stand in it, talk in it, fight
      in it — a moving room where scenes happen. Its single `out` exit is
      **re-pointed by the controller** to the current landing; it refuses

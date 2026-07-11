@@ -172,3 +172,12 @@ class TestSearchFindsHiddenExits(TestCase):
         stranger.db = SimpleNamespace(found_exits=[])
         self.assertIn(hidden, room._visible_exits(finder))
         self.assertNotIn(hidden, room._visible_exits(stranger))
+
+
+class TestShaftRoomType(TestCase):
+    def test_sweep_locale(self):
+        self.assertEqual(_sweep_locale(_Room("shaft")), "up the shaft")
+
+    def test_shaft_type_has_no_crowd_modifier(self):
+        # shafts contribute nothing to crowd — absence is the contract
+        self.assertNotIn("shaft", CrowdSystem().room_type_modifiers)

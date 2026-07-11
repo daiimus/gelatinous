@@ -1143,6 +1143,27 @@ class AlleyRoom(Room):
         self.db.type = "alley"
 
 
+class ShaftRoom(Room):
+    """An elevator/service shaft interior — the sealed column a lift
+    car physically travels through (verticality §1.1). Building-
+    agnostic on purpose: every lift's shaft rooms take this type, so
+    prose reads "The shaft continues down" and future shaft mechanics
+    (climbing, falls, the car-arriving hazard) key off ``db.type ==
+    "shaft"`` instead of room lists. No crowd, ever.
+
+    Usage:
+        @tunnel up = Shaft (2F):typeclasses.rooms.ShaftRoom
+    """
+
+    def at_object_creation(self):
+        """Set default attributes for shaft rooms."""
+        super().at_object_creation()
+        self.db.crowd_base_level = 0
+        self.db.outside = False
+        self.db.is_sky_room = False
+        self.db.type = "shaft"
+
+
 class ConstabularyRoom(Room):
     """A room of the Colonial Constabulary — ONE type for the whole
     building (user call 2026-07-10) so crowd flavour reads
