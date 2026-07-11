@@ -49,6 +49,7 @@ from commands.CmdExplosives import (
     CmdRig, CmdDefuse, CmdScan, CmdDetonate, CmdDetonateList,
     CmdClearDetonator,
 )
+from commands.CmdBreach import CmdSabotage
 from commands.CmdGraffiti import CmdGraffiti, CmdPress
 from commands.CmdDoors import (CmdOpenDoor, CmdCloseDoor, CmdLockDoor,
                                CmdUnlockDoor, CmdKnock, CmdDoorAdmin)
@@ -251,6 +252,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         
         # Add graffiti system commands
         self.add(CmdGraffiti())
+        self.add(CmdSabotage())
         self.add(CmdOpenDoor())
         self.add(CmdCloseDoor())
         self.add(CmdLockDoor())
