@@ -50,6 +50,8 @@ from commands.CmdExplosives import (
     CmdClearDetonator,
 )
 from commands.CmdGraffiti import CmdGraffiti, CmdPress
+from commands.CmdDoors import (CmdOpenDoor, CmdCloseDoor, CmdLockDoor,
+                               CmdUnlockDoor, CmdKnock, CmdDoorAdmin)
 from commands.CmdCharacter import CmdDescribe, CmdSkintone, CmdVoice
 from commands.CmdCharacter import CmdRemember, CmdForget, CmdRecall, CmdMemory
 from commands.CmdCommunication import (
@@ -249,6 +251,12 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         
         # Add graffiti system commands
         self.add(CmdGraffiti())
+        self.add(CmdOpenDoor())
+        self.add(CmdCloseDoor())
+        self.add(CmdLockDoor())
+        self.add(CmdUnlockDoor())
+        self.add(CmdKnock())
+        self.add(CmdDoorAdmin())
         self.add(CmdPress())
         
         # Add unified describe command (short desc + keyword + longdesc).

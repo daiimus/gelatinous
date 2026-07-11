@@ -100,12 +100,31 @@ class ElevatorCar(IndoorRoom):
     # the two requests
     # ------------------------------------------------------------------
 
+    def _floor_permitted(self, idx, presser):
+        """The §2.2 biometric floor gate: ``db.floor_locks`` maps a floor
+        label to a grant file; a secured floor's button only lights for a
+        granted sleeve. Unsecured floors pass free."""
+        floors = self.db.floors or []
+        if not 0 <= idx < len(floors):
+            return False
+        locks = self.db.floor_locks or {}
+        grants = locks.get(str(floors[idx][1]))
+        if grants is None:
+            return True
+        from world.access import is_granted
+        return presser is not None and is_granted(presser, grants)
+
     def request_floor(self, label, presser=None):
         """A panel press inside the car."""
         idx = self.floor_index(label)
         if idx is None:
             if presser:
                 presser.msg("The panel has no such floor.")
+            return False
+        if not self._floor_permitted(idx, presser):
+            if presser:
+                presser.msg("The reader beside the panel blinks red. "
+                            "The button stays dark.")
             return False
         if self.db.moving:
             if presser:
