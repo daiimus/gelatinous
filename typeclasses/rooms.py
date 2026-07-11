@@ -839,7 +839,9 @@ class Room(ObjectParent, DefaultRoom):
         for exit_obj in exits:
             direction = exit_obj.key
             aliases = exit_obj.aliases.all()
-            alias = aliases[0] if aliases else None
+            # the paren hint is the tersest way to type the exit — pick the
+            # SHORTEST alias, not the first ("elevator (in)", not "(car)")
+            alias = min(aliases, key=len) if aliases else None
             destination = exit_obj.destination
             
             # Check if exit leads to a sky room (skip unless edge/gap)
