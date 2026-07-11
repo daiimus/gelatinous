@@ -61,3 +61,34 @@ class TestExitProse(TestCase):
     def test_irregular_plural_registered(self):
         self.assertEqual(TYPE_PLURALS.get("constabulary"),
                          "constabularies")
+
+
+class TestSecretExits(TestCase):
+    """View-locked exits stay out of the exit prose (the standard
+    Evennia secret-door mechanism; first consumer: the rooftop hatch)."""
+
+    def test_view_locked_exit_is_filtered(self):
+        from unittest.mock import MagicMock
+        from typeclasses.rooms import Room
+        room = MagicMock()
+        room._visible_exits = Room._visible_exits.__get__(room, Room)
+        visible = MagicMock()
+        visible.access.return_value = True
+        hidden = MagicMock()
+        hidden.access.return_value = False
+        room.exits = [visible, hidden]
+        looker = MagicMock()
+        result = room._visible_exits(looker)
+        self.assertIn(visible, result)
+        self.assertNotIn(hidden, result)
+        hidden.access.assert_called_with(looker, "view")
+
+    def test_broken_lock_stays_visible(self):
+        from unittest.mock import MagicMock
+        from typeclasses.rooms import Room
+        room = MagicMock()
+        room._visible_exits = Room._visible_exits.__get__(room, Room)
+        cursed = MagicMock()
+        cursed.access.side_effect = RuntimeError("lock exploded")
+        room.exits = [cursed]
+        self.assertEqual(room._visible_exits(MagicMock()), [cursed])
