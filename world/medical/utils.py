@@ -651,7 +651,24 @@ def load_medical_state(character):
     """
     medical_data = character.db.medical_state
     if medical_data:
-        character._medical_state = MedicalState.from_dict(medical_data, character)
+        state = MedicalState.from_dict(medical_data, character)
+        # Install BEFORE restarting tickers: start_condition reads
+        # character.medical_state (via start_medical_script), so the
+        # property must resolve without re-triggering this load — the
+        # re-entrant load recursed to RecursionError (the Jorge loop).
+        character._medical_state = state
+        # Re-start condition tickers (#307). Archived characters are
+        # permanently dead; dying ones can still be resuscitated.
+        if not character.db.archived:
+            for condition in list(state.conditions):
+                try:
+                    condition.start_condition(character)
+                except Exception as e:
+                    from world.combat.debug import get_splattercast
+                    get_splattercast().msg(
+                        f"CONDITION_RESTORE_ERROR: ticker restart failed "
+                        f"for {getattr(character, 'key', '?')}: {e}"
+                    )
         return True
     else:
         # Initialize new medical state if none exists
