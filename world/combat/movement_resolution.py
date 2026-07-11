@@ -850,9 +850,8 @@ def _resolve_charge_same_room(
                 f"attack triggered."
             )
 
-        # Apply charge failure penalty
-        # TODO: charge_penalty is set but never read — implement penalty
-        # mechanic (e.g., reduced dodge or accuracy next round) or remove
+        # Apply charge failure penalty — consumed by attack.py as a
+        # one-shot halved dodge on the next attack against them (#306)
         char.ndb.charge_penalty = True
         char.msg("|rYour failed charge leaves you off-balance!|n")
         splattercast.msg(
@@ -1016,8 +1015,7 @@ def _resolve_charge_cross_room(
                 f"cross-room charge on {target.key}."
             )
 
-        # Apply charge failure penalty
-        # TODO: charge_penalty is set but never read — implement penalty
-        # mechanic (e.g., reduced dodge or accuracy next round) or remove
+        # Apply charge failure penalty — consumed by attack.py as a
+        # one-shot halved dodge on the next attack against them (#306)
         char.ndb.charge_penalty = True
         char.msg("|rYour failed charge leaves you off-balance!|n")
