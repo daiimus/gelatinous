@@ -1,6 +1,7 @@
 # Death & Sleeve Lifecycle Spec
 
 > **Status:** 📋 **CONSOLIDATION + PROPOSAL (2026-07-04).** §1–§7 **document
+> **RESIDENCE CLEANUP SHIPPED (2026-07-12):** a DELETED or ARCHIVED-husk tenant no longer holds their cube — `world/rental.py _prune_dead_tenancy` lazily clears the occupancy record and strips the stamped sleeve's grant on the next market query (`cube.db.resident_sleeve` stamped at claim so deletion can't orphan the grant). Residence does NOT carry across resleeves by current design — the new sleeve claims fresh at the kiosk (the credit follows the person; the grant followed the sleeve).
 > shipped behavior** (traced from `typeclasses/death_progression.py`,
 > `typeclasses/characters.py`, `typeclasses/corpse.py`, `typeclasses/accounts.py`,
 > `commands/charcreate.py`) — this is the first single-source map of the
