@@ -667,14 +667,14 @@ class DispatchConsole(Radio):
         "marks, no warmth, no brackets, no labels, no narration. Never "
         "repeat or paraphrase the caller's words back to them.\n"
         "Acknowledge genuine reports and hails; state unit availability "
-        "when asked; direct callers to give a location. Idle chatter or "
-        "non-emergency use of the band gets told curtly to keep the "
-        "channel clear.\n"
+        "when asked; direct callers to give a location. Dispatched units "
+        "announce themselves on this band — never say units are rolling, "
+        "responding, or on the way. Idle chatter or non-emergency use of "
+        "the band gets told curtly to keep the channel clear.\n"
         "EXAMPLES:\n"
         "[CONTEXT] Units available: 3. [TRAFFIC] a husky voice: "
         "\"Dispatch, shots fired on Volta Street!\"\n"
-        "Copy, shots fired on Volta Street. Units responding. Stay off "
-        "the street.\n"
+        "Copy, shots fired on Volta Street. Stay off the street.\n"
         "[CONTEXT] Units available: 0. [TRAFFIC] a reedy voice: "
         "\"Anyone there? I need help at the docks.\"\n"
         "Copy, docks. No units available. Shelter in place and keep this "
@@ -705,13 +705,14 @@ class DispatchConsole(Radio):
         "marks, no brackets, no labels, no narration. Never repeat or "
         "paraphrase the caller's words back to them.\n"
         "Acknowledge real reports and hails; state unit availability when "
-        "asked; get a location out of people. Idle chatter gets moved off "
-        "your channel — dry, not cruel.\n"
+        "asked; get a location out of people. Dispatched units announce "
+        "themselves on this band — never say units are rolling, "
+        "responding, or on the way. Idle chatter gets moved off your "
+        "channel — dry, not cruel.\n"
         "EXAMPLES:\n"
         "[CONTEXT] Units available: 3. [TRAFFIC] a husky voice: "
         "\"Dispatch, shots fired on Volta Street!\"\n"
-        "Copy, shots fired on Volta. Units rolling. Keep your head down "
-        "out there.\n"
+        "Copy, shots fired on Volta. Keep your head down out there.\n"
         "[CONTEXT] Units available: 0. [TRAFFIC] a reedy voice: "
         "\"Anyone there? I need help at the docks.\"\n"
         "Copy, docks. I've got nobody left to send you, sweetheart. Find "
@@ -744,14 +745,26 @@ class DispatchConsole(Radio):
                 or getattr(db, "llm_driven", None) is True
                 or getattr(db, "is_base_station", None) is True):
             return
-        # The REPORT lane (units) runs beside the voice lane and is NOT
-        # gated by the answer cooldown — a confirmed incident report
-        # rolls real units even when the operator stays silent.
+        # SEQUENCED LANES (user call 2026-07-11: "Units rolling" for a
+        # coffee order): the verdict lane classifies FIRST, then the
+        # voice answers GROUNDED in what dispatch actually did — she
+        # never promises steel the deterministic layer declined to send.
+        # The report lane itself stays un-gated by the answer cooldown.
+        def _voice_reply(verdict, dispatched):
+            self._grounded_answer(speaker, speech, verdict, dispatched)
+
         try:
             from world.director.radio_report import consider_radio_report
-            consider_radio_report(self, speaker, speech)
+            classifying = consider_radio_report(self, speaker, speech,
+                                                on_result=_voice_reply)
         except Exception:  # noqa: BLE001 — reports never break the voice
-            pass
+            classifying = False
+        if not classifying:
+            _voice_reply(None, None)
+
+    def _grounded_answer(self, speaker, speech, verdict, dispatched):
+        """The voice lane, grounded in the verdict: cooldown-gated,
+        context-fed, with the deterministic no-false-units backstop."""
         # No address gate (playtest-decided 2026-07-10): this is the
         # EMERGENCY band — everything a player says on it is dispatch's
         # traffic. Idle chatter gets channel discipline from the register
@@ -772,26 +785,54 @@ class DispatchConsole(Radio):
         if not civic_enabled():
             self._answer(self.FALLBACK_LINE, speaker=operator)
             return
-        # Ground the model: live availability + the caller's voice handle.
+        # Ground the model: live availability, the verdict lane's
+        # finding, and the caller's voice handle.
         units = self._units_available()
         try:
             from world.radio import radio_voice_handle
             voice = radio_voice_handle(speaker, self)
         except Exception:  # noqa: BLE001
             voice = "an unknown voice"
-        prompt = (f'[CONTEXT] Units available: {units}. '
+        grounding = self._verdict_context(verdict, dispatched)
+        prompt = (f'[CONTEXT] Units available: {units}.{grounding} '
                   f'[TRAFFIC] {voice}: "{speech}"')
         instructions = (self.OPERATOR_INSTRUCTIONS if operator
                         else self.INSTRUCTIONS)
+        units_moved = bool(dispatched)
         request_civic_line(
             instructions, prompt,
             on_reply=lambda text: self._answer(
-                self._clean_reply(text, heard=speech), speaker=operator),
+                self._clean_reply(text, heard=speech,
+                                  units_moved=units_moved),
+                speaker=operator),
             on_fail=lambda: self._answer(self.FALLBACK_LINE,
                                          speaker=operator),
         )
 
-    def _clean_reply(self, text, heard=None):
+    def _verdict_context(self, verdict, dispatched):
+        """The verdict lane's finding, rendered as [CONTEXT] grounding.
+        Empty when classification failed — the backstop still holds."""
+        if not isinstance(verdict, dict):
+            return ""
+        if (verdict.get("is_incident_report") is not True
+                or verdict.get("incident_type") in (None, "none")):
+            return (" The caller's traffic is idle chatter, not an "
+                    "incident report — move it off the channel; do not "
+                    "promise or send units.")
+        where = str(verdict.get("location_text") or "").strip()
+        place = f" at {where}" if where else ""
+        kind = verdict.get("incident_type")
+        if dispatched:
+            n = len(dispatched)
+            return (f" A confirmed {kind} report{place}; {n} "
+                    f"unit{'s' if n != 1 else ''} already dispatched — "
+                    "they announce themselves on this band. Acknowledge "
+                    "the caller; do not announce units yourself.")
+        return (f" A reported {kind}{place}, but NO new units were "
+                "dispatched (scene already handled or nobody free). Do "
+                "not claim units are responding.")
+
+    def _clean_reply(self, text, heard=None, units_moved=False):
         """Reply sanitation (the GM lane's practices, scaled down): the model
         must return ONLY a spoken line. First line only; quotes/labels
         stripped; brackets (stage directions) removed; any echo of the
@@ -809,6 +850,14 @@ class DispatchConsole(Radio):
         scaffolding = ("units available:", "[context]", "[traffic]",
                        "radio traffic from")
         if not line or len(line) > 200 or any(s in low for s in scaffolding):
+            return self.FALLBACK_LINE
+        # The no-false-units backstop: whatever the model says, a claim
+        # that units are moving is struck unless dispatch actually moved
+        # them this turn. The model proposes; determinism disposes.
+        if not units_moved and re.search(
+                r"\bunits?\b[^.!?]*\b(roll(?:ing|s)?|respond(?:ing|s)?|"
+                r"dispatched|en route|inbound|on the way|coming|headed|"
+                r"moving)\b", low):
             return self.FALLBACK_LINE
         if heard:
             try:

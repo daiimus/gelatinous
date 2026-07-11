@@ -238,17 +238,24 @@ class TestDispatchConsoleAnswers(TestCase):
         c = MagicMock(spec=DispatchConsole)
         c.ndb = SimpleNamespace(last_answer=None)
         c.db = SimpleNamespace(is_base_station=True, radio_on=True)
-        for m in ("_maybe_answer",):
-            setattr(c, m, DispatchConsole._maybe_answer.__get__(
+        for m in ("_maybe_answer", "_grounded_answer", "_verdict_context"):
+            setattr(c, m, getattr(DispatchConsole, m).__get__(
                 c, DispatchConsole))
         c.ANSWER_COOLDOWN = DispatchConsole.ANSWER_COOLDOWN
         c.INSTRUCTIONS = DispatchConsole.INSTRUCTIONS
         c.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
         c._units_available = lambda: 2
-        c._clean_reply = lambda text, heard=None: text   # sanitizer has its own suite
+        # sanitizer has its own suite
+        c._clean_reply = lambda text, heard=None, units_moved=False: text
         c._operator = lambda: None                       # automation by default
         c.OPERATOR_INSTRUCTIONS = DispatchConsole.OPERATOR_INSTRUCTIONS
         return c
+
+    def _declined_report_lane(self):
+        """The report lane declining synchronously — the voice path then
+        runs ungrounded, inline (grounded paths have their own suite)."""
+        return patch("world.director.radio_report.consider_radio_report",
+                     return_value=False)
 
     def _player(self):
         p = MagicMock()
@@ -265,7 +272,8 @@ class TestDispatchConsoleAnswers(TestCase):
         with patch("world.llm.client.civic_enabled", return_value=True), \
                 patch("world.llm.client.request_civic_line") as req, \
                 patch("world.radio.radio_voice_handle",
-                      return_value="a husky voice"):
+                      return_value="a husky voice"), \
+                self._declined_report_lane():
             c._maybe_answer(self._player(), self._kwargs(
                 "Dispatch, do you copy?"))
         req.assert_called_once()
@@ -289,7 +297,8 @@ class TestDispatchConsoleAnswers(TestCase):
         with patch("world.llm.client.civic_enabled", return_value=True), \
                 patch("world.llm.client.request_civic_line") as req, \
                 patch("world.radio.radio_voice_handle",
-                      return_value="a voice"):
+                      return_value="a voice"), \
+                self._declined_report_lane():
             c._maybe_answer(self._player(), self._kwargs("Dispatch?"))
         req.call_args.kwargs["on_fail"]()
         c._answer.assert_called_once_with(c.FALLBACK_LINE, speaker=None)
@@ -314,7 +323,8 @@ class TestDispatchConsoleAnswers(TestCase):
         with patch("world.llm.client.civic_enabled", return_value=True), \
                 patch("world.llm.client.request_civic_line") as req, \
                 patch("world.radio.radio_voice_handle",
-                      return_value="a voice"):
+                      return_value="a voice"), \
+                self._declined_report_lane():
             c._maybe_answer(self._player(), self._kwargs("Hey there."))
         req.assert_called_once()
         self.assertIn("Hey there.", req.call_args.args[1])
@@ -326,7 +336,8 @@ class TestDispatchConsoleAnswers(TestCase):
         with patch("world.llm.client.civic_enabled", return_value=True), \
                 patch("world.llm.client.request_civic_line") as req, \
                 patch("world.radio.radio_voice_handle",
-                      return_value="a voice"):
+                      return_value="a voice"), \
+                self._declined_report_lane():
             c._maybe_answer(self._player(), self._kwargs(
                 "Dispatch, do you copy?"))
         self.assertIs(req.call_args.args[0], c.OPERATOR_INSTRUCTIONS)
@@ -370,8 +381,17 @@ class TestConsoleReplySanitation(TestCase):
         c = self._console()
         good = "Copy, shots fired on Volta Street. Units responding."
         self.assertEqual(
-            c._clean_reply(good, heard="Dispatch, shots fired on Volta Street!"),
+            c._clean_reply(good, heard="Dispatch, shots fired on Volta Street!",
+                           units_moved=True),
             good)
+
+    def test_units_claim_without_dispatch_is_struck(self):
+        # the no-false-units backstop: "units rolling" for a coffee order
+        c = self._console()
+        self.assertEqual(
+            c._clean_reply("Copy. Coffee. Units rolling.",
+                           heard="I sure could go for some coffee."),
+            c.FALLBACK_LINE)
 
     def test_stage_directions_and_labels_stripped(self):
         c = self._console()
