@@ -878,3 +878,32 @@ ends with PROJECTED agents.
   form with a face.
 * The broken automaton **#4951 stays** as set-dressing fossil (its
   OUT OF ORDER grille clicks on).
+
+
+## Third-Party Perception + The Reflex Lane — ✅ SHIPPED 2026-07-11
+
+**Combat perception (#954 combat slice, #1135):**
+`world/llm/observation.py observe_event` — witness-testimony beats
+(join w/ opening target, exits walked/out-cold/dead, fight end, plus
+per-swing personal attacks on LLM targets from their own POV) land in
+LLM bystanders' action buffers via per-observer identity rendering,
+perception-gated (blind hear the sound of it), exception-contained,
+observe-only. Buffer-only by design: model tempo (17–85s) can never
+honestly play a 6s combat round — brains speak at the next social
+beat. Remaining #954 scope: clothing/transfer perception + directed
+reactions.
+
+**The reflex lane (#1136):** the TWO-LANE DOCTRINE completed — the
+GM lane (24B) plays conversation tempo; the CIVIC lane's on-device
+small model (~0.65s) plays the FLINCH. On fight beats, ONE elected
+bystander (lowest dbref, combatants excluded, 90s NPC cooldown, one
+reflex per fight) barks a single line through `say`. **Input shaping
+is the wall:** the small model only ever sees fixed bloodless
+`REFLEX_BEATS` renditions — probed live: its guardrails match gore
+PHRASING, not events ("bleeding heavily… not moving" refused; a
+murder passed; profanity passes). Full-detail witness lines stay in
+the GM-lane buffer. Failure mode is silence at every layer. Persona
+steering confirmed at archetype level (bartender/dispatcher/robot
+probes produced three distinct registers from one identity clause);
+small models get plain orders — example-noun lists get parroted
+(#1137).
