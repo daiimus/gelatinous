@@ -252,7 +252,7 @@ question the trust spec deferred.)
   pre-existing). Belongings left after an expired window are the next
   tenant's problem/prize — flophouse rules.
 
-### 2.4 · The breach seam (reserved, not built)
+### 2.4 · The breach seam (MASTS SHIPPED 2026-07-11 #1164 — `sabotage`/`repair` channeled verbs on `db.breachable` structures; door-forcing stays reserved by user call: masts were the point, doors are a different fantasy)
 
 Forcing a door = the face-state flip the spatial spec reserves for
 destruction: `locked → open (broken)`. A broken door can't re-close until
