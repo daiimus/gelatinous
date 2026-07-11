@@ -197,3 +197,32 @@ class TestDeliveryByRange(TestCase):
                 patch("world.voice.voice_phrase", return_value=None):
             radio.transmit(speaker, "anyone copy?", dev)
         far_holder.msg.assert_not_called()   # the relay is dead steel now
+
+
+class TestReciprocity(TestCase):
+    """The mast hears at mast range: a distant handheld reaches a
+    mast-backed console (the witness→dispatch chain survives range),
+    and a repeater picks up anything its own ears cover."""
+
+    def test_console_hears_the_distant_witness(self):
+        console = _radio_at(_room(0, 0), base_station=True,
+                            antenna=_mast(True))
+        frac = _reception_fraction((30, 0, 0), RADIO_TX_RANGE, [], console)
+        self.assertLess(frac, 0.1)                     # clear at the desk
+
+    def test_wrecked_mast_deafens_the_console_too(self):
+        console = _radio_at(_room(0, 0), base_station=True,
+                            antenna=_mast(False))
+        frac = _reception_fraction((30, 0, 0), RADIO_TX_RANGE, [], console)
+        self.assertGreater(frac, 1.15)                 # gone
+
+    def test_relay_qualifies_by_its_own_ears(self):
+        from world.radio import _relay_points
+        from unittest.mock import patch
+        console = _radio_at(_room(0, 0), base_station=True,
+                            antenna=_mast(True), freq="911MHz")
+        with patch.object(radio, "_all_powered_radios",
+                          return_value=[console]):
+            relays = radio._relay_points("911MHz", None, (30, 0, 0),
+                                         RADIO_TX_RANGE)
+        self.assertEqual(len(relays), 1)               # heard the far call
