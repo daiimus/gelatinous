@@ -27,7 +27,7 @@ def _sleeve(uid):
     return char
 
 
-def _door(closed=True, locked=False, grants=None, broken=False):
+def _door_factory(closed=True, locked=False, grants=None, broken=False):
     door = MagicMock()
     door.db = SimpleNamespace(is_door=True, door_closed=closed,
                               door_locked=locked, door_broken=broken,
@@ -61,14 +61,14 @@ class TestGrantFile(TestCase):
 
 class TestDoorGate(TestCase):
     def test_open_door_passes_silently(self):
-        door = _door(closed=False)
+        door = _door_factory(closed=False)
         walker = MagicMock()
         self.assertTrue(door._traverse_gate(walker))
         walker.msg.assert_not_called()
 
     def test_closed_unlocked_auto_opens_both_sides(self):
-        door = _door(closed=True)
-        twin = _door(closed=True)
+        door = _door_factory(closed=True)
+        twin = _door_factory(closed=True)
         door.db.door_twin = twin
         twin.pk = 1
         walker = MagicMock()
@@ -78,7 +78,7 @@ class TestDoorGate(TestCase):
         self.assertIn("push the door open", walker.msg.call_args.args[0])
 
     def test_locked_refuses_the_ungranted(self):
-        door = _door(closed=True, locked=True,
+        door = _door_factory(closed=True, locked=True,
                      grants=[make_grant(_sleeve("uid-alice"))])
         mallory = _sleeve("uid-mallory")
         self.assertFalse(door._traverse_gate(mallory))
@@ -87,17 +87,44 @@ class TestDoorGate(TestCase):
 
     def test_locked_admits_granted_momentarily(self):
         alice = _sleeve("uid-alice")
-        door = _door(closed=True, locked=True, grants=[make_grant(alice)])
+        door = _door_factory(closed=True, locked=True, grants=[make_grant(alice)])
         self.assertTrue(door._traverse_gate(alice))
         self.assertTrue(door.db.door_locked)           # seals again behind
         self.assertTrue(door.db.door_closed)
         self.assertIn("flashes green", alice.msg.call_args.args[0])
 
     def test_broken_door_never_blocks(self):
-        door = _door(closed=True, locked=True, broken=True)
+        door = _door_factory(closed=True, locked=True, broken=True)
         walker = _sleeve("uid-anyone")
         self.assertTrue(door._traverse_gate(walker))
         self.assertFalse(door.door_blocks(walker))
+
+
+class TestClosedDoorBlocksSight(TestCase):
+    """§2.1: sight through a closed door is NONE — looking at the door
+    describes the door, never the far room's occupants."""
+
+    def _door(self, closed=True, locked=False, desc=None):
+        door = _door_base = _door_factory(closed=closed, locked=locked)
+        door.db.desc = desc
+        _bind(door, dmod.DoorExit, "return_appearance")
+        return door
+
+    def test_closed_door_shows_the_door_not_the_room(self):
+        door = self._door(closed=True, locked=False)
+        out = door.return_appearance(MagicMock())
+        self.assertIn("closed", out)
+        door.get_display_desc.assert_not_called()   # far-side view never built
+
+    def test_locked_door_mentions_the_reader(self):
+        door = self._door(closed=True, locked=True)
+        out = door.return_appearance(MagicMock())
+        self.assertIn("sealed", out)
+        self.assertIn("reader", out)
+
+    def test_authored_desc_is_kept(self):
+        door = self._door(closed=True, desc="Brushed steel, knee-scarred.")
+        self.assertIn("Brushed steel", door.return_appearance(MagicMock()))
 
 
 class TestPathfinderEdges(TestCase):

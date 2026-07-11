@@ -98,6 +98,23 @@ class DoorExit(Exit):
                 room.msg_contents(text, exclude=exclude)
 
     # ------------------------------------------------------------------
+    # appearance — a closed door blocks sight (§2.1: sight through a
+    # closed door is NONE; the exit pipeline otherwise composes the
+    # far room's view, people included, straight through sealed steel)
+    # ------------------------------------------------------------------
+
+    def return_appearance(self, looker, **kwargs):
+        if self.is_open():
+            return super().return_appearance(looker, **kwargs)
+        desc = self.db.desc or "A solid door, built to be on the wrong side of."
+        if self.db.door_locked is True:
+            state = ("It is sealed; a biometric reader sits flush in the "
+                     "frame, idling amber.")
+        else:
+            state = "It is closed."
+        return f"{desc} {state}"
+
+    # ------------------------------------------------------------------
     # traversal
     # ------------------------------------------------------------------
 
