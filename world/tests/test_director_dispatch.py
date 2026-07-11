@@ -136,20 +136,35 @@ class TestDispatcherAck(TestCase):
         return ev
 
     @patch("evennia.utils.delay")
-    def test_ack_names_the_crime_place_and_count(self, mock_delay):
-        from world.director.dispatch import _ack_on_air
-        _ack_on_air(self._event(), [MagicMock(), MagicMock()])
-        line = mock_delay.call_args.args[2]
-        self.assertIn("an assault at Cobb Street", line)
-        self.assertIn("2 units responding", line)
+    def test_units_answer_in_their_own_voices(self, mock_delay):
+        from world.director.dispatch import _ack_on_air, _unit_ack
+        a, b = MagicMock(), MagicMock()
+        a.id, b.id = 3258, 3298
+        _ack_on_air(self._event(), [a, b])
+        # one staggered ack per unit, each through ITS comms, no console echo
+        self.assertEqual(mock_delay.call_count, 2)
+        calls = mock_delay.call_args_list
+        self.assertEqual([c.args[1] for c in calls], [_unit_ack, _unit_ack])
+        self.assertEqual(calls[0].args[2], a)
+        self.assertIn("Unit 3258 responding — Cobb Street.", calls[0].args[3])
+        self.assertIn("Unit 3298 responding — Cobb Street.", calls[1].args[3])
+        self.assertLess(calls[0].args[0], calls[1].args[0])   # net discipline
 
-    @patch("evennia.utils.delay")
-    def test_single_unit_reads_singular(self, mock_delay):
-        from world.director.dispatch import _ack_on_air
-        _ack_on_air(self._event("vandalism"), [MagicMock()])
-        line = mock_delay.call_args.args[2]
-        self.assertIn("vandalism in progress", line)
-        self.assertIn("Unit responding", line)
+    def test_unit_ack_rides_the_real_verb(self):
+        from world.director.dispatch import _unit_ack
+        npc = MagicMock()
+        npc.is_dead.return_value = False
+        npc.is_unconscious.return_value = False
+        _unit_ack(npc, "Unit 1 responding — Cobb Street.")
+        npc.execute_cmd.assert_called_once_with(
+            "xmit Unit 1 responding — Cobb Street.")
+
+    def test_downed_unit_stays_silent(self):
+        from world.director.dispatch import _unit_ack
+        npc = MagicMock()
+        npc.is_dead.return_value = True
+        _unit_ack(npc, "Unit 1 responding — Cobb Street.")
+        npc.execute_cmd.assert_not_called()
 
     @patch("evennia.utils.delay")
     def test_drained_pool_is_announced(self, mock_delay):

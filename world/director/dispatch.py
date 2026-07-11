@@ -116,19 +116,45 @@ def _ack_on_air(event: WorldEvent, dispatched: list) -> None:
     pool made audible."""
     try:
         from evennia.utils import delay
+        from random import uniform
         what = _EVENT_PHRASES.get(event.type, f"a reported {event.type}")
         where = getattr(event.location, "key", "an unknown location")
         if dispatched:
-            n = len(dispatched)
-            units = "Unit" if n == 1 else f"{n} units"
-            line = f"Dispatch copies — {what} at {where}. {units} responding."
+            # The RESPONDERS answer, each in its own voice (user call
+            # 2026-07-11: dispatch restating the operator's ack was an
+            # echo). Staggered like real net discipline — units don't
+            # step on each other keying up.
+            beat = uniform(1.5, 3.0)
+            for npc in dispatched:
+                line = (f"Unit {getattr(npc, 'id', 0) or 0} responding "
+                        f"— {where}.")
+                delay(beat, _unit_ack, npc, line)
+                beat += uniform(1.5, 2.5)
         else:
+            # The drained pool stays DISPATCH's announcement — 'no units
+            # available' on a scanner is the finite pool made audible.
             line = (f"Dispatch copies — {what} at {where}. "
                     f"No units available.")
-        # A human beat, not a database trigger: the pause varies.
-        from random import uniform
-        delay(uniform(1.5, 3.5), _transmit_ack, line)
+            # A human beat, not a database trigger: the pause varies.
+            delay(uniform(1.5, 3.5), _transmit_ack, line)
     except Exception:  # noqa: BLE001 — the ack is flavour; dispatch is done
+        pass
+
+
+def _unit_ack(npc, line: str) -> None:
+    """A responder acknowledges on the air through its OWN comms — the
+    real ``xmit`` verb, which falls back to the built-in comms organ
+    (§2.1). Its voice, its callsign; a unit with a wrecked comms organ
+    stays silent, and one downed between dispatch and ack says nothing,
+    honestly."""
+    try:
+        if callable(getattr(npc, "is_dead", None)) and npc.is_dead():
+            return
+        if (callable(getattr(npc, "is_unconscious", None))
+                and npc.is_unconscious()):
+            return
+        npc.execute_cmd(f"xmit {line}")
+    except Exception:  # noqa: BLE001 — one mute unit never breaks dispatch
         pass
 
 
