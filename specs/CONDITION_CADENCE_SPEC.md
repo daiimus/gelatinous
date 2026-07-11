@@ -86,6 +86,10 @@ revision:
   rule §6.1.
 * **`utils.delay` timers do not survive reload**: a live grenade
   mid-fuse across a reload freezes into a hand-explosion trap.
+  **✅ FIXED (#505, 2026-07-11):** both ticker starters persist
+  `db.detonation_deadline`; the `at_server_start` sweep re-arms live
+  fuses at true remaining time and cooks off overdue ones; duds and
+  defuses clear the deadline.
   Out of scope here; tracked as its own issue (§6.3).
 
 ## 3 · Effect taxonomy

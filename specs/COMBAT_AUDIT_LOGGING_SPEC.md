@@ -48,9 +48,14 @@ object everywhere.
 Every `.msg()` on the router does up to two things:
 
 1. **Audit file — always on.** The message is appended to
-   `server/logs/combat_audit.log` via Evennia's async file logger
-   (`evennia.utils.logger.log_file`). Writes happen on the logger's
-   thread pool, never blocking the Twisted reactor. This is the
+   `server/logs/combat_audit.log` via a **module-owned stdlib
+   `logging.RotatingFileHandler`** (changed #1106, 2026-07-10:
+   Evennia's `logger.log_file` recycles its cached handle every 500th
+   access on the reactor while queued thread writes still hold it —
+   every recycle boundary silently dropped the queue, 7.9k lines
+   rendered as `NoneType: None` until #1094 unmasked it). The stdlib
+   handler locks per write and rotates safely; writes are buffered
+   microsecond appends. This is the
    durable record for investigating bug reports, cheating
    accusations, and combat disputes.
 
