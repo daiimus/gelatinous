@@ -14,6 +14,10 @@ from world.crowd import crowd_system
 from .objects import ObjectParent
 
 
+#: Irregular plurals for the exit lister's custom room types.
+TYPE_PLURALS = {"constabulary": "constabularies"}
+
+
 class Room(ObjectParent, DefaultRoom):
     """
     Rooms are like any Object, except their location is None
@@ -944,11 +948,20 @@ class Room(ObjectParent, DefaultRoom):
         for dest_type, exits in exit_groups['custom_types'].items():
             type_dirs = [self.format_direction_with_alias(direction, alias) 
                         for direction, alias in exits]
-            if len(type_dirs) == 1:
+            if dest_type and dest_type == self.db.type:
+                # inside a same-type venue the building CONTINUES rather
+                # than re-announcing itself ("there are constabularies to
+                # the north and south" reads like three police stations)
+                type_desc = (type_dirs[0] if len(type_dirs) == 1
+                             else self.format_direction_list(type_dirs))
+                descriptions.append(
+                    f"The {dest_type} continues to the {type_desc}.")
+            elif len(type_dirs) == 1:
                 descriptions.append(f"There is a {dest_type} to the {type_dirs[0]}.")
             else:
                 type_desc = self.format_direction_list(type_dirs)
-                descriptions.append(f"There are {dest_type}s to the {type_desc}.")
+                plural = TYPE_PLURALS.get(dest_type, f"{dest_type}s")
+                descriptions.append(f"There are {plural} to the {type_desc}.")
         
         # Format edges (grouped)
         if exit_groups['edges']:
@@ -1109,6 +1122,25 @@ class AlleyRoom(Room):
         self.db.outside = True
         self.db.is_sky_room = False
         self.db.type = "alley"
+
+
+class ConstabularyRoom(Room):
+    """A room of the Colonial Constabulary — ONE type for the whole
+    building (user call 2026-07-10) so crowd flavour reads
+    institutional (queue-and-counter, not street crush) and the exit
+    prose treats the building as continuous.
+
+    Usage:
+        @tunnel north = Booking:typeclasses.rooms.ConstabularyRoom
+    """
+
+    def at_object_creation(self):
+        """Set default attributes for constabulary rooms."""
+        super().at_object_creation()
+        self.db.crowd_base_level = 1
+        self.db.outside = False
+        self.db.is_sky_room = False
+        self.db.type = "constabulary"
 
 
 class CorridorRoom(Room):
