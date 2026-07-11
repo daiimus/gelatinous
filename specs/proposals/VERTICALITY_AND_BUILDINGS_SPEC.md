@@ -225,9 +225,13 @@ question the trust spec deferred.)
   sleeve opens/locks/unlocks it like any granted door. No new lock
   machinery. `cube.db.resident` = occupancy record;
   `char.db.residence` = the credit's spend.
-* **Rental terminal** (lobby object, `db.rental_terminal` +
-  `db.cubes`): `rent` = status/vacancies, `rent claim` = register
-  (`rent confirm` when relocating — a real decision made explicit).
+* **Rental terminal** (`typeclasses/terminals.py RentalTerminal`,
+  aliases `kiosk`, `db.cubes`): operated through the PRESS grammar
+  (user call 2026-07-11 — one interaction language for every machine):
+  `press kiosk` = status/vacancies, `press rent on kiosk` = register,
+  `press confirm on kiosk` = complete a relocation. `push` aliases
+  `press`. Terminals are the decking substrate's physical layer —
+  when the net lands, the buttons stay and the records become files.
 * **Relocation window** (`world/rental.py RELOCATION_WINDOW`, 48h):
   claiming elsewhere vacates the old cube immediately but its door
   answers the mover's sleeve for the window — time to move your

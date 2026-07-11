@@ -462,7 +462,7 @@ class CmdPress(Command):
     """
     
     key = "press"
-    aliases = ["call"]
+    aliases = ["call", "push"]
     locks = "cmd:all()"
     help_category = "General"
 
@@ -489,9 +489,29 @@ class CmdPress(Command):
                             "press <button> for buttons and panels.")
             return
         
-        # Split color and can name
+        # Split button/color and target name
         color_part, can_part = self.args.rsplit(" on ", 1)
+        # "press <button> on <machine>" — a named pressable in the room
+        # (terminals, panels) takes the button; spray cans keep the
+        # color grammar untouched (they live in hands/inventory).
+        if self._press_named_pressable(can_part.strip(),
+                                       color_part.strip()):
+            return
         return self._press_spray_can(color_part, can_part)
+
+    def _press_named_pressable(self, target_name, button):
+        location = self.caller.location
+        if not location:
+            return False
+        low = target_name.lower()
+        for obj in location.contents:
+            if obj.db.pressable is not True or not hasattr(obj, "at_press"):
+                continue
+            names = [obj.key.lower()] + [a.lower()
+                                         for a in obj.aliases.all()]
+            if low in names or any(low in name for name in names):
+                return bool(obj.at_press(self.caller, button))
+        return False
 
     def _press_pressable(self):
         """Route `press <arg>` to a pressable object in the room.
