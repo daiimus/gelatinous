@@ -188,7 +188,9 @@ class CmdSearch(Command):
             exclude=[caller],
         )
         found_chars, found_objs = active_search(caller)
-        if not found_chars and not found_objs:
+        from world.stealth import search_hidden_exits
+        found_exits = search_hidden_exits(caller)
+        if not found_chars and not found_objs and not found_exits:
             caller.msg("You search the area and find nothing out of place.")
             return
         for char in found_chars:
@@ -204,3 +206,6 @@ class CmdSearch(Command):
                 f"You turn up {obj.get_display_name(caller)}, "
                 f"stashed out of sight."
             )
+        for ex in found_exits:
+            caller.msg(ex.db.search_found_msg
+                       or f"You uncover a hidden way out: {ex.key}.")

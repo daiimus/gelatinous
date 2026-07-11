@@ -92,3 +92,83 @@ class TestSecretExits(TestCase):
         cursed.access.side_effect = RuntimeError("lock exploded")
         room.exits = [cursed]
         self.assertEqual(room._visible_exits(MagicMock()), [cursed])
+
+
+class TestSearchFindsHiddenExits(TestCase):
+    """`search` rolls against view-locked exits (stash idiom) and a
+    find is PER SEARCHER: it lands in db.found_exits and only that
+    character's exit prose gains the exit."""
+
+    def _searcher(self, found=None):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+        s = MagicMock()
+        s.db = SimpleNamespace(found_exits=list(found or []))
+        return s
+
+    def _hidden_exit(self, difficulty=None):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+        ex = MagicMock()
+        ex.access.return_value = False        # view-locked
+        ex.db = SimpleNamespace(search_difficulty=difficulty,
+                                search_found_msg=None)
+        return ex
+
+    def test_good_roll_finds_and_remembers(self):
+        from unittest.mock import MagicMock, patch
+        import world.stealth as st
+        searcher = self._searcher()
+        hatch = self._hidden_exit()
+        room = MagicMock(); room.exits = [hatch]
+        with patch.object(st, "randint", return_value=20), \
+                patch.object(st, "_stat", return_value=3):
+            found = st.search_hidden_exits(searcher, room)
+        self.assertEqual(found, [hatch])
+        self.assertIn(hatch, searcher.db.found_exits)
+
+    def test_bad_roll_finds_nothing(self):
+        from unittest.mock import MagicMock, patch
+        import world.stealth as st
+        searcher = self._searcher()
+        room = MagicMock(); room.exits = [self._hidden_exit()]
+        with patch.object(st, "randint", return_value=1), \
+                patch.object(st, "_stat", return_value=0):
+            self.assertEqual(st.search_hidden_exits(searcher, room), [])
+        self.assertEqual(searcher.db.found_exits, [])
+
+    def test_already_found_is_not_refound(self):
+        from unittest.mock import MagicMock, patch
+        import world.stealth as st
+        hatch = self._hidden_exit()
+        searcher = self._searcher(found=[hatch])
+        room = MagicMock(); room.exits = [hatch]
+        with patch.object(st, "randint", return_value=20), \
+                patch.object(st, "_stat", return_value=3):
+            self.assertEqual(st.search_hidden_exits(searcher, room), [])
+
+    def test_visible_exits_are_ignored(self):
+        from unittest.mock import MagicMock, patch
+        import world.stealth as st
+        plain = MagicMock()
+        plain.access.return_value = True
+        room = MagicMock(); room.exits = [plain]
+        with patch.object(st, "randint", return_value=20):
+            self.assertEqual(st.search_hidden_exits(self._searcher(), room),
+                             [])
+
+    def test_discovered_exit_appears_in_prose(self):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+        from typeclasses.rooms import Room
+        room = MagicMock()
+        room._visible_exits = Room._visible_exits.__get__(room, Room)
+        hidden = MagicMock()
+        hidden.access.return_value = False
+        room.exits = [hidden]
+        finder = MagicMock()
+        finder.db = SimpleNamespace(found_exits=[hidden])
+        stranger = MagicMock()
+        stranger.db = SimpleNamespace(found_exits=[])
+        self.assertIn(hidden, room._visible_exits(finder))
+        self.assertNotIn(hidden, room._visible_exits(stranger))
