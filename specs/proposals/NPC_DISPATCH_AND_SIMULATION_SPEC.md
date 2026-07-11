@@ -1,6 +1,7 @@
 # NPC Dispatch & World Simulation Specification
 
 > **Status:** 🟡 Proposal — **dispatch core SHIPPED & LIVE** (2026-06-27, #853);
+> **RADIO REPORTS ROLL REAL UNITS (2026-07-11):** player traffic on 911MHz is classified by the civic lane's structured-verdict contract (constrained decoding, `world/director/radio_report.py`) and a CONFIRMED report raises a real `WorldEvent` — two-signal gate (report flag AND type enum agree), plain-code location resolution against room names (fallback: the caller's room), 120s scene debounce, severity one notch under witnessed crime. Caller UNVERIFIED by design: false reports drain the finite pool (swatting is a mechanic). NPC/witness traffic never re-classifies (no double dispatch). Failure at any layer = silence; the deterministic on-air ack is the honest receipt that units rolled.
 > remaining layers below. Designs the **director**: a hardcoded, deterministic
 > world-simulation engine that manages the NPC population (spawn / despawn /
 > routine / death) and **dispatches** them in response to world events — routing

@@ -12,6 +12,8 @@ extends them across the agentic loop, §5.3) and orchestrates on the reactor in 
 callbacks.
 """
 
+import json
+
 import requests
 from django.conf import settings
 from evennia.utils import logger
@@ -174,6 +176,56 @@ def request_civic_line(instructions, prompt, on_reply, on_fail):
 
     def _at_err(failure):
         logger.log_err(f"Civic LLM call failed: {failure}")
+        on_fail()
+
+    run_async(_thread_fn, at_return=_at_return, at_err=_at_err)
+
+
+def request_civic_verdict(instructions, prompt, schema, on_verdict, on_fail):
+    """A structured verdict instead of a spoken line: *schema* (a JSON
+    Schema dict) rides the STANDARD OpenAI ``response_format`` contract,
+    so any backend that honours json_schema constrains the decode — the
+    game never learns who enforced it. The thread parses the reply;
+    ``on_verdict(dict)`` or ``on_fail()`` on the reactor."""
+    url = getattr(settings, "CIVIC_LLM_URL",
+                  "http://host.docker.internal:8766/v1/chat/completions")
+    timeout = getattr(settings, "CIVIC_LLM_TIMEOUT", 10)
+    body = {
+        "messages": [
+            {"role": "system", "content": instructions},
+            {"role": "user", "content": prompt},
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": schema.get("title") or "Verdict",
+                            "schema": schema},
+        },
+    }
+
+    def _thread_fn():
+        resp = requests.post(url, json=body,
+                             headers={"Content-Type": "application/json"},
+                             timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json()
+        choices = data.get("choices") or []
+        if not choices:
+            return None
+        text = (choices[0].get("message") or {}).get("content") or ""
+        try:
+            verdict = json.loads(text)
+        except (TypeError, ValueError):
+            return None
+        return verdict if isinstance(verdict, dict) else None
+
+    def _at_return(verdict):
+        if verdict is None:
+            on_fail()
+            return
+        on_verdict(verdict)
+
+    def _at_err(failure):
+        logger.log_err(f"Civic verdict call failed: {failure}")
         on_fail()
 
     run_async(_thread_fn, at_return=_at_return, at_err=_at_err)

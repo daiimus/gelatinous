@@ -744,6 +744,14 @@ class DispatchConsole(Radio):
                 or getattr(db, "llm_driven", None) is True
                 or getattr(db, "is_base_station", None) is True):
             return
+        # The REPORT lane (units) runs beside the voice lane and is NOT
+        # gated by the answer cooldown — a confirmed incident report
+        # rolls real units even when the operator stays silent.
+        try:
+            from world.director.radio_report import consider_radio_report
+            consider_radio_report(self, speaker, speech)
+        except Exception:  # noqa: BLE001 — reports never break the voice
+            pass
         # No address gate (playtest-decided 2026-07-10): this is the
         # EMERGENCY band — everything a player says on it is dispatch's
         # traffic. Idle chatter gets channel discipline from the register
