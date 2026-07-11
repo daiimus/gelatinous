@@ -854,6 +854,13 @@ class CmdArmorRepair(Command):
             )
             return
 
+        # Breachable infrastructure shares the verb (a mast is repaired,
+        # not worn) — that branch claims the command only when something
+        # breachable in the room matches; armor flow is untouched.
+        from commands.CmdBreach import try_repair_structure
+        if try_repair_structure(caller, self.args.strip()):
+            return
+
         # Parse arguments
         armor_name = args[0]
         repair_type = "standard"  # standard, field, or full
