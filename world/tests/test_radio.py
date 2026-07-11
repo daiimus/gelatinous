@@ -118,13 +118,13 @@ class TestTransmit(TestCase):
             ok = transmit(speaker, "rendezvous at the docks", dev)
         self.assertTrue(ok)
         line = listener.msg.call_args.args[0]
-        self.assertIn("A gravelly voice crackles over the radio", line)
+        self.assertIn("A voice crackles over the radio", line)
         self.assertIn("rendezvous at the docks", line)
 
-    def test_no_voice_flavour_sprinkle_on_the_air(self):
-        # The handle IS the voice — "A smoky voice ... *in a smoky rasp*"
-        # described itself twice (playtest, 2026-07-10). Say keeps the
-        # sprinkle; radio must not, even when the composer has one.
+    def test_voice_described_once_accent_before_the_words(self):
+        # Playtest shape (2026-07-10): generic handle, accent in italics
+        # between the colon and the quote — the voice is described ONCE.
+        # "A smoky voice ... *in a smoky rasp*" described itself twice.
         speaker = _char()
         dev, heard = _radio(freq="447"), _radio(freq="447")
         listener = MagicMock(); heard.location = listener
@@ -133,15 +133,15 @@ class TestTransmit(TestCase):
                 patch("world.perception.can_hear", return_value=True), \
                 patch("world.voice.attempt_voice_discern",
                       return_value=None), \
-                patch("world.voice.get_voice_description",
-                      return_value="smoky"), \
                 patch("world.voice.voice_phrase",
                       return_value="speaking Common, in a smoky rasp"):
             transmit(speaker, "long day", dev)
         line = listener.msg.call_args.args[0]
-        self.assertIn("A smoky voice crackles over the radio", line)
-        self.assertNotIn("rasp*", line)
-        self.assertNotIn("speaking Common", line)
+        self.assertIn('A voice crackles over the radio: '
+                      '|x*speaking Common, in a smoky rasp*|n "long day"',
+                      line)
+        self.assertNotIn("smoky voice", line)   # descriptor stays out of
+                                                # the handle
 
     def test_known_voice_names_the_speaker(self):
         speaker = _char()

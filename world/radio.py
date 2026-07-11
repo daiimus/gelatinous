@@ -266,18 +266,27 @@ def _render_radio_line(speaker: Any, listener: Any, message: str,
     sweep mode caught it off-band); ``own`` distinguishes your handset from
     a grille you're merely standing near.
 
-    No voice-flavour sprinkle here (dropped 2026-07-10): the sprinkle exists
-    for SAY, where the handle is a visual sdesc and the italics add voice
-    info. Radio attribution IS the voice — "A smoky voice ... *in a smoky
-    rasp*" described itself twice."""
+    The voice is described ONCE (playtest, 2026-07-10): a GENERIC handle —
+    "A voice", or the name when the listener knows it — with the accent
+    carried in italics before the words:
+
+        A voice crackles over the radio: *speaking Common, in a smoky
+        rasp* "Long day."
+
+    (The descriptive handle + accent-suffix arrangement described the same
+    voice twice. The NPC brain's buffer handle — ``radio_voice_handle`` —
+    keeps the descriptor: prose for a reader, not a render.)"""
     from world.perception import can_hear
+    from world.voice import attempt_voice_discern, voice_phrase
     band = f"[{frequency}] " if tagged else ""
     if not can_hear(listener):
         source = "Your radio" if own else "A radio nearby"
         return f"{band}{source} crackles, but you can't make out a word."
-    who = radio_voice_handle(speaker, listener)
+    who = attempt_voice_discern(listener, speaker) or "a voice"
+    accent = voice_phrase(speaker)
+    acc = f"|x*{accent}*|n " if accent else ""
     return (f'{band}{who[:1].upper()}{who[1:]} crackles over the radio: '
-            f'"{message}"')
+            f'{acc}"{message}"')
 
 
 def transmit(speaker: Any, message: str, device: Any,
