@@ -241,9 +241,11 @@ question the trust spec deferred.)
 * **First install: the Queen of Cups** (Pessoa Street, lobby #1917,
   stairwell column at (-2,-14,z)): per level a RACK room tunneled
   south of the stairwell with cubes w/sw/s/se/e named `R<level>-0<n>`
-  (w=01 … e=05). Ground rack holds only w+e (R0-01/R0-05) — the
-  building backs onto Kaspar Street at y=-16. Levels 1–4 carry the
-  full five: **22 cubes**. Rooms typed `cube hotel` (crowd modifier
+  (w=01 … e=05). Ground rack carries the full
+  five too (user call): R0-02/03/04 sit **half-sunk below street
+  grade at z=-1**, their berths directly under Kaspar Street's
+  sidewalk — the grid stays honest, no cell overlap. **25 cubes**
+  total. Rooms typed `cube hotel` (crowd modifier
   pre-existing). Belongings left after an expired window are the next
   tenant's problem/prize — flophouse rules.
 
