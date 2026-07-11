@@ -146,7 +146,9 @@ edge that can be **either, at runtime** — the first operable face.
 
 ### 2.1 · The state model — ✅ SHIPPED 2026-07-10 (§2.1 + §2.2; the
 door IS the exit, per user call). `typeclasses/doors.py DoorExit`
-(mirrored pair, open/closed/locked, broken seam reserved), player verbs
+(mirrored pair, open/closed/locked, broken seam reserved; passage
+requires the door OPEN — open/close are explicit verbs, walking never
+changes state, refined 2026-07-10 per user), player verbs
 `open/close/lock/unlock/knock`, builder `@door` (+/grant /revoke /list
 /force), grant files in `world/access.py`, pathfinder blocked-edge
 filter live in `world/spatial/pathfind.py`, and the elevator's

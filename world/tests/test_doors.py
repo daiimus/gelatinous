@@ -66,38 +66,41 @@ class TestDoorGate(TestCase):
         self.assertTrue(door._traverse_gate(walker))
         walker.msg.assert_not_called()
 
-    def test_closed_unlocked_auto_opens_both_sides(self):
+    def test_closed_door_refuses_until_opened(self):
+        # the door is a state machine: walking never opens it (user
+        # call 2026-07-10) — passage requires the open command first
         door = _door_factory(closed=True)
-        twin = _door_factory(closed=True)
-        door.db.door_twin = twin
-        twin.pk = 1
         walker = MagicMock()
-        self.assertTrue(door._traverse_gate(walker))
-        self.assertFalse(door.db.door_closed)
-        self.assertFalse(twin.db.door_closed)          # mirrored
-        self.assertIn("push the door open", walker.msg.call_args.args[0])
+        self.assertFalse(door._traverse_gate(walker))
+        self.assertTrue(door.db.door_closed)           # untouched
+        self.assertIn("closed", walker.msg.call_args.args[0])
+        self.assertIn("open it", walker.msg.call_args.args[0])
 
-    def test_locked_refuses_the_ungranted(self):
-        door = _door_factory(closed=True, locked=True,
-                     grants=[make_grant(_sleeve("uid-alice"))])
-        mallory = _sleeve("uid-mallory")
-        self.assertFalse(door._traverse_gate(mallory))
-        self.assertTrue(door.db.door_locked)           # unchanged
-        self.assertIn("blinks red", mallory.msg.call_args.args[0])
-
-    def test_locked_admits_granted_momentarily(self):
+    def test_locked_refuses_everyone_even_granted(self):
         alice = _sleeve("uid-alice")
-        door = _door_factory(closed=True, locked=True, grants=[make_grant(alice)])
-        self.assertTrue(door._traverse_gate(alice))
-        self.assertTrue(door.db.door_locked)           # seals again behind
+        door = _door_factory(closed=True, locked=True,
+                             grants=[make_grant(alice)])
+        for walker in (alice, _sleeve("uid-mallory")):
+            self.assertFalse(door._traverse_gate(walker))
+            self.assertIn("sealed", walker.msg.call_args.args[0])
+        self.assertTrue(door.db.door_locked)           # unchanged
         self.assertTrue(door.db.door_closed)
-        self.assertIn("flashes green", alice.msg.call_args.args[0])
 
     def test_broken_door_never_blocks(self):
         door = _door_factory(closed=True, locked=True, broken=True)
         walker = _sleeve("uid-anyone")
         self.assertTrue(door._traverse_gate(walker))
         self.assertFalse(door.door_blocks(walker))
+
+    def test_any_closed_door_blocks_the_pathfinder(self):
+        # no NPC behaviour opens doors yet: a not-open door is a
+        # blocked edge regardless of grants
+        alice = _sleeve("uid-alice")
+        closed = _door_factory(closed=True,
+                               grants=[make_grant(alice)])
+        self.assertTrue(closed.door_blocks(alice))
+        open_door = _door_factory(closed=False)
+        self.assertFalse(open_door.door_blocks(alice))
 
 
 class TestClosedDoorBlocksSight(TestCase):
