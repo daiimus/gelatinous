@@ -215,6 +215,34 @@ layers and the whisper/say pipeline rather than bolt on a special case.
 (Follow/escort: a closed door breaks the follow chain politely — the door
 question the trust spec deferred.)
 
+### 2.5 · Cube hotels & the housing guarantee — ✅ SHIPPED 2026-07-11 (user design)
+
+**The rental credit:** every person carries ONE — it *guarantees* one
+**permanent residence**. Not money; a right. Claiming spends nothing.
+
+* **The tenancy IS the grant file** (§2.2): permanent residence = a
+  grant with `until=None` on the cube's DoorExit; the resident's
+  sleeve opens/locks/unlocks it like any granted door. No new lock
+  machinery. `cube.db.resident` = occupancy record;
+  `char.db.residence` = the credit's spend.
+* **Rental terminal** (lobby object, `db.rental_terminal` +
+  `db.cubes`): `rent` = status/vacancies, `rent claim` = register
+  (`rent confirm` when relocating — a real decision made explicit).
+* **Relocation window** (`world/rental.py RELOCATION_WINDOW`, 48h):
+  claiming elsewhere vacates the old cube immediately but its door
+  answers the mover's sleeve for the window — time to move your
+  things — then fails closed on its own (`world.access` honours
+  `until`). A vacated cube stays OFF the market until the window
+  fully expires: no tenant overlaps.
+* **First install: the Queen of Cups** (Pessoa Street, lobby #1917,
+  stairwell column at (-2,-14,z)): per level a RACK room tunneled
+  south of the stairwell with cubes w/sw/s/se/e named `R<level>-0<n>`
+  (w=01 … e=05). Ground rack holds only w+e (R0-01/R0-05) — the
+  building backs onto Kaspar Street at y=-16. Levels 1–4 carry the
+  full five: **22 cubes**. Rooms typed `cube hotel` (crowd modifier
+  pre-existing). Belongings left after an expired window are the next
+  tenant's problem/prize — flophouse rules.
+
 ### 2.4 · The breach seam (reserved, not built)
 
 Forcing a door = the face-state flip the spatial spec reserves for
