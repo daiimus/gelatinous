@@ -506,6 +506,10 @@ class CmdDefuse(Command):
         # Clear countdown state
         setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
         grenade.db.pin_pulled = False  # Grenade is now safe
+        try:
+            grenade.attributes.remove("detonation_deadline")  # #505
+        except Exception:  # noqa: BLE001
+            pass
 
         # Clean up rigging if this was a rigged grenade
         self.cleanup_rigging(grenade)
@@ -667,6 +671,10 @@ class CmdDefuse(Command):
             # Check dud chance
             dud_chance = grenade.db.dud_chance if grenade.db.dud_chance is not None else 0.0
             if random.random() < dud_chance:
+                try:
+                    grenade.attributes.remove("detonation_deadline")
+                except Exception:  # noqa: BLE001 — #505 dud fuse is spent
+                    pass
                 if grenade.location:
                     grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=grenade.key))
                 return

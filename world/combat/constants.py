@@ -278,6 +278,9 @@ NDB_SKIP_ROUND = "skip_combat_round"
 
 # Charge system fields (temporary states)
 NDB_CHARGE_BONUS = "charge_attack_bonus_active"
+#: #306 — set on a failed charge; the next attack the charger must
+#: dodge finds them off-balance (one-shot, consumed in attack.py).
+NDB_CHARGE_PENALTY = "charge_penalty"
 NDB_CHARGE_VULNERABILITY = "charging_vulnerability_active"
 
 # Aiming state fields
@@ -378,6 +381,10 @@ DB_REQUIRES_PIN = "requires_pin"
 DB_DUD_CHANCE = "dud_chance"
 DB_BLAST_RADIUS = "blast_radius"
 DB_PIN_PULLED = "pin_pulled"
+#: #505 — the PERSISTED detonation deadline (epoch seconds). ndb fuse
+#: chains die on reload; this survives, and the at_server_start sweep
+#: re-arms live fuses / cooks off overdue ones from it.
+DB_DETONATION_DEADLINE = "detonation_deadline"
 
 # Exit properties
 DB_IS_EDGE = "is_edge"

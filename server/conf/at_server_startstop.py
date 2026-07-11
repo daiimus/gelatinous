@@ -30,7 +30,17 @@ def at_server_start():
     This is called every time the server starts up, regardless of
     how it was shut down.
     """
-    pass
+    # #505: re-arm or cook off grenade fuses that crossed the reload
+    try:
+        from commands.explosion_utils import sweep_armed_grenades
+        rearmed, detonated = sweep_armed_grenades()
+        if rearmed or detonated:
+            from evennia.utils import logger
+            logger.log_info(f"Grenade fuse sweep: {rearmed} re-armed, "
+                            f"{detonated} overdue (detonating).")
+    except Exception:  # noqa: BLE001 — a broken sweep must not stop the boot
+        from evennia.utils import logger
+        logger.log_trace("Grenade fuse sweep failed.")
 
 
 def at_server_stop():
