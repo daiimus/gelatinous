@@ -255,6 +255,8 @@ class CombatHandler(DefaultScript):
             observe_event(self.obj,
                           lambda observer: "The fight breaks off.",
                           sound="the sounds of fighting die down")
+            from world.llm.reflex import fire_combat_reflex
+            fire_combat_reflex(self, self.obj, "fight_ended")
         except Exception:  # noqa: BLE001 — perception never breaks combat
             pass
         
