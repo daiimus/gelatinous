@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from world.radio import hears_emergency_band
 from world.spatial import path_length
 
 
@@ -62,6 +63,10 @@ def find_responders(event: WorldEvent) -> list:
     ranked = []
     for npc in _npcs_with_roles(roles):
         if npc.location is None or npc is event.source:
+            continue
+        # dispatch orders are radio traffic: a unit that can't hear the
+        # band can't be raised — it stands at post, honestly unreachable
+        if not hears_emergency_band(npc):
             continue
         steps = path_length(npc.location, event.location, traverser=npc)
         if steps is None:

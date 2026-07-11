@@ -63,9 +63,10 @@ class TestDispatch(TestCase):
         self.assertIn("assault", ROLE_RESPONDS_TO)
         self.assertIn("security", ROLE_RESPONDS_TO["assault"])
 
+    @patch("world.director.dispatch.hears_emergency_band", return_value=True)
     @patch("world.director.dispatch.path_length")
     @patch("world.director.dispatch._npcs_with_roles")
-    def test_find_responders_ranked_nearest_first(self, mock_npcs, mock_pl):
+    def test_find_responders_ranked_nearest_first(self, mock_npcs, mock_pl, _hb):
         near = _npc(_Room("near"), "near")
         far = _npc(_Room("far"), "far")
         unreachable = _npc(_Room("unr"), "unr")
@@ -76,13 +77,28 @@ class TestDispatch(TestCase):
         ranked = find_responders(WorldEvent("assault", _Room("event")))
         self.assertEqual([npc for _s, npc in ranked], [near, far])  # unr dropped
 
+    @patch("world.director.dispatch.hears_emergency_band")
+    @patch("world.director.dispatch.path_length")
+    @patch("world.director.dispatch._npcs_with_roles")
+    def test_deafened_unit_is_unreachable(self, mock_npcs, mock_pl, mock_hb):
+        # dispatch orders are radio traffic: shoot the ear and the unit
+        # stands at post — never selected, never rolls
+        hearing = _npc(_Room("h"), "hearing")
+        deaf = _npc(_Room("d"), "deaf")
+        mock_npcs.return_value = [deaf, hearing]
+        mock_pl.side_effect = lambda start, goal, traverser=None: 1
+        mock_hb.side_effect = lambda npc: npc is hearing
+        ranked = find_responders(WorldEvent("assault", _Room("event")))
+        self.assertEqual([npc for _s, npc in ranked], [hearing])
+
     @patch("world.director.dispatch._npcs_with_roles", return_value=[])
     def test_unknown_event_type_no_responders(self, _m):
         self.assertEqual(find_responders(WorldEvent("picnic", _Room("e"))), [])
 
+    @patch("world.director.dispatch.hears_emergency_band", return_value=True)
     @patch("world.director.dispatch.path_length")
     @patch("world.director.dispatch._npcs_with_roles")
-    def test_source_excluded(self, mock_npcs, mock_pl):
+    def test_source_excluded(self, mock_npcs, mock_pl, _hb):
         src = _npc(_Room("s"), "src")
         other = _npc(_Room("o"), "other")
         mock_npcs.return_value = [src, other]
@@ -369,3 +385,41 @@ class TestConsoleReplySanitation(TestCase):
         self.assertEqual(c._clean_reply("", heard="x"), c.FALLBACK_LINE)
         self.assertEqual(c._clean_reply("y" * 300, heard="x"),
                          c.FALLBACK_LINE)
+
+
+class TestHearsEmergencyBand(TestCase):
+    """The reachability gate: comms organ or powered carried radio on
+    the dispatch band."""
+
+    def test_organ_on_band(self):
+        from world import radio
+        char = SimpleNamespace(contents=[])
+        with patch.object(radio, "comms_organ_frequency",
+                          return_value="911MHz"):
+            self.assertTrue(radio.hears_emergency_band(char))
+
+    def test_powered_carried_radio_on_band(self):
+        from world import radio
+        walkie = MagicMock()
+        walkie.db.is_radio = True
+        walkie.db.radio_on = True
+        walkie.db.frequency = "911mhz"     # case-insensitive band match
+        char = SimpleNamespace(contents=[walkie])
+        with patch.object(radio, "comms_organ_frequency",
+                          return_value=None):
+            self.assertTrue(radio.hears_emergency_band(char))
+
+    def test_deaf_unit_unreachable(self):
+        from world import radio
+        off = MagicMock()
+        off.db.is_radio = True
+        off.db.radio_on = False           # dead set doesn't count
+        off.db.frequency = "911MHz"
+        wrong = MagicMock()
+        wrong.db.is_radio = True
+        wrong.db.radio_on = True
+        wrong.db.frequency = "88.8MHz"    # house band isn't dispatch
+        char = SimpleNamespace(contents=[off, wrong])
+        with patch.object(radio, "comms_organ_frequency",
+                          return_value=None):
+            self.assertFalse(radio.hears_emergency_band(char))
