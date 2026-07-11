@@ -19,9 +19,27 @@ from world.combat.capacity import (
 )
 from world.medical.utils import select_hit_location, select_target_organ
 
+
+def _consume_charge_penalty(target):
+    """One-shot dodge multiplier for a failed charge (#306): 0.5 while
+    the off-balance flag is set (consumed on read), 1.0 otherwise."""
+    if getattr(getattr(target, "ndb", None), NDB_CHARGE_PENALTY,
+               None) is not True:
+        return 1.0
+    try:
+        delattr(target.ndb, NDB_CHARGE_PENALTY)
+    except Exception:  # noqa: BLE001 — the penalty still applies this once
+        pass
+    try:
+        target.msg("|rStill off-balance from your failed charge, you "
+                   "struggle to evade!|n")
+    except Exception:  # noqa: BLE001
+        pass
+    return 0.5
+
 from .constants import (
     DB_CHAR, DB_IS_YIELDING,
-    NDB_CHARGE_BONUS,
+    NDB_CHARGE_BONUS, NDB_CHARGE_PENALTY,
     NDB_PROXIMITY,
     WEAPON_TYPE_UNARMED,
     STAGGER_DELAY_INTERVAL, MAX_STAGGER_DELAY,
@@ -435,6 +453,16 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
         splattercast.msg(
             f"DODGE_MOVING: {target.key} moving factor {moving_factor:.2f} — "
             f"motorics {target_skill} -> {effective_dodge:.1f}"
+        )
+
+    # A failed charge leaves you off-balance (#306): the next attack you
+    # must dodge finds you overextended. One-shot — consumed on read.
+    penalty_factor = _consume_charge_penalty(target)
+    if penalty_factor < 1.0:
+        effective_dodge *= penalty_factor
+        splattercast.msg(
+            f"DODGE_CHARGE_PENALTY: {target.key} off-balance — dodge "
+            f"halved to {effective_dodge:.1f}"
         )
 
     # Roll for attack

@@ -830,7 +830,26 @@ def remove_combatant(handler, char):
         splattercast.msg("RMV_COMB: Updated database directly")
     
     splattercast.msg(f"{char.key} removed from combat.")
-    # TODO: Add narrative combat exit message (weapon lowering, stepping back, etc.)
+    # Narrative exit (#306): the fight visibly lets go of them — but only
+    # if they're leaving on their feet (the dead and unconscious have
+    # their own exits).
+    try:
+        alive = not (callable(getattr(char, "is_dead", None))
+                     and char.is_dead())
+        conscious = not (callable(getattr(char, "is_unconscious", None))
+                         and char.is_unconscious())
+        if alive and conscious and getattr(char, "location", None):
+            from world.identity_utils import msg_room_identity
+            msg_room_identity(
+                location=char.location,
+                template="{actor} lowers their guard and steps back "
+                         "from the fight.",
+                char_refs={"actor": char},
+                exclude=[char],
+            )
+            char.msg("You lower your guard and step back from the fight.")
+    except Exception:  # noqa: BLE001 — flavour never blocks the removal
+        pass
     
     # Stop combat if no combatants remain
     if len(combatants) == 0:
