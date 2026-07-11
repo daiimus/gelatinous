@@ -264,17 +264,19 @@ def _render_radio_line(speaker: Any, listener: Any, message: str,
     """A received transmission, VOICE-attributed (never sight — you can't see
     the far end) and hearing-gated. ``tagged`` prefixes the frequency (scanner
     sweep mode caught it off-band); ``own`` distinguishes your handset from
-    a grille you're merely standing near."""
+    a grille you're merely standing near.
+
+    No voice-flavour sprinkle here (dropped 2026-07-10): the sprinkle exists
+    for SAY, where the handle is a visual sdesc and the italics add voice
+    info. Radio attribution IS the voice — "A smoky voice ... *in a smoky
+    rasp*" described itself twice."""
     from world.perception import can_hear
-    from world.voice import voice_phrase
     band = f"[{frequency}] " if tagged else ""
     if not can_hear(listener):
         source = "Your radio" if own else "A radio nearby"
         return f"{band}{source} crackles, but you can't make out a word."
     who = radio_voice_handle(speaker, listener)
-    flavour = voice_phrase(speaker)
-    flav = f" |x*{flavour}*|n" if flavour else ""
-    return (f'{band}{who[:1].upper()}{who[1:]} crackles over the radio{flav}: '
+    return (f'{band}{who[:1].upper()}{who[1:]} crackles over the radio: '
             f'"{message}"')
 
 
