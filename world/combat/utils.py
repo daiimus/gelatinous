@@ -543,6 +543,9 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
                       combat_join_line(char, target),
                       sound="sudden violence erupts nearby",
                       exclude=(char, target))
+        from world.llm.reflex import fire_combat_reflex
+        fire_combat_reflex(handler, getattr(char, "location", None),
+                           "fight_started", exclude=(char, target))
     except Exception:  # noqa: BLE001 — perception never breaks combat
         pass
 
@@ -859,6 +862,10 @@ def remove_combatant(handler, char):
                           sound=(None if state == "walked"
                                  else "a body hits the floor nearby"),
                           exclude=(char,))
+            if state != "walked":
+                from world.llm.reflex import fire_combat_reflex
+                fire_combat_reflex(handler, getattr(char, "location", None),
+                                   "someone_down", exclude=(char,))
         except Exception:  # noqa: BLE001
             pass
         if alive and conscious and getattr(char, "location", None):
