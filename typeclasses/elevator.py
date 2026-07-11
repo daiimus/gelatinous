@@ -192,7 +192,14 @@ class ElevatorCar(IndoorRoom):
 
 class ElevatorDoorExit(Exit):
     """A landing's `elevator` exit. Destination is always the car;
-    traversal only works while the car is docked here, doors open."""
+    traversal only works while the car is docked here, doors open.
+    Answers to `in` as well — the natural verb at the threshold (the
+    car side's exit is keyed `out` to match)."""
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        if "in" not in self.aliases.all():
+            self.aliases.add("in")
 
     def at_traverse(self, traversing_object, target_location):
         if not car_docked(self.destination, self.location):
