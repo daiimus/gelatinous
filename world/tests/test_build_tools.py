@@ -69,3 +69,88 @@ class TestDoorStates(TestCase):
                                       ex("east", False, False), plain])
         self.assertEqual(_door_states(room),
                          "west locked, south closed, east open")
+
+
+class TestAirFill(TestCase):
+    """@airfill stamps the hand-proven parkour atom: SkyRoom + one-way
+    fall edge + plain exits to roofs + edge/gap exits from roofs in."""
+
+    def _index(self, cells):
+        index = {}
+        for cell, sky in cells.items():
+            room = MagicMock()
+            room.db = SimpleNamespace(is_sky_room=sky)
+            room.exits = []
+            index[cell] = room
+        return index
+
+    def test_candidates_need_roof_beside_and_floor_below(self):
+        from commands.CmdBuildTools import air_candidates
+        index = self._index({
+            (0, 0, 1): False,      # a rooftop at z=1
+            (0, 0, 0): False,      # street under the roof
+            (1, 0, 0): False,      # street beside it (support for air)
+        })
+        self.assertEqual(air_candidates(1, index), [(1, 0, 1)])
+
+    def test_no_support_below_no_air(self):
+        from commands.CmdBuildTools import air_candidates
+        index = self._index({(0, 0, 1): False, (0, 0, 0): False})
+        # the cell east of the roof has nothing under it — skip
+        self.assertEqual(air_candidates(1, index), [])
+
+    def test_sky_neighbours_never_seed(self):
+        # re-runs must not balloon outward ring by ring
+        from commands.CmdBuildTools import air_candidates
+        index = self._index({
+            (0, 0, 1): True,       # existing air
+            (0, 0, 0): False, (1, 0, 0): False,
+        })
+        self.assertEqual(air_candidates(1, index), [])
+
+    def test_box_limits_the_fill(self):
+        from commands.CmdBuildTools import air_candidates
+        index = self._index({
+            (0, 0, 1): False, (0, 0, 0): False,
+            (1, 0, 0): False, (-1, 0, 0): False,
+        })
+        self.assertEqual(air_candidates(1, index, box=(0, 0, 5, 5)),
+                         [(1, 0, 1)])
+
+    def test_fill_stamps_the_atom(self):
+        from commands import CmdBuildTools as bt
+        index = self._index({
+            (0, 0, 1): False,      # rooftop west of the new cell
+            (1, 0, 0): False,      # street below it
+        })
+        roof = index[(0, 0, 1)]
+        made_exits = []
+
+        def fake_create(tclass, key=None, aliases=None, location=None,
+                        destination=None):
+            obj = MagicMock()
+            obj.key = key
+            obj.db = SimpleNamespace(is_sky_room="rooms" in tclass)
+            obj.exits = []
+            if "exits" in tclass:
+                made_exits.append((location, key, destination,
+                                   obj))
+                if hasattr(location, "exits"):
+                    location.exits.append(obj)
+            return obj
+
+        with patch("evennia.create_object", side_effect=fake_create), \
+             patch("world.spatial.set_xyz"):
+            room, count = bt.fill_air_cell((1, 0, 1), index)
+        keys = [(src is room and "air" or "roof", key)
+                for src, key, dest, _e in made_exits]
+        self.assertIn(("air", "down"), keys)     # gravity's edge
+        self.assertIn(("air", "west"), keys)     # air -> roof, plain
+        self.assertIn(("roof", "east"), keys)    # roof -> air, edge+gap
+        roof_exit = next(e for src, key, dest, e in made_exits
+                         if key == "east")
+        self.assertIs(roof_exit.db.is_edge, True)
+        self.assertIs(roof_exit.db.is_gap, True)
+        # down is one-way: no exit hung on the street below
+        street = index[(1, 0, 0)]
+        self.assertEqual(street.exits, [])
