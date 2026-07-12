@@ -11,9 +11,9 @@ MESSAGES = {
             'observer_msg': "With a determined look, {attacker_name} poises the flare and its striker, preparing to unleash a searing light."
         },
         {
-            'attacker_msg': "You fumble for a moment, then produce a bright red flare, its purpose now grimly offensive.",
-            'victim_msg': "{attacker_name} fumbles for a moment, then produces a bright red flare, its purpose now grimly offensive.",
-            'observer_msg': "{attacker_name} fumbles for a moment, then produces a bright red flare, its purpose now grimly offensive."
+            'attacker_msg': "You fumble for a moment, then produce a bright {blood} flare, its purpose now grimly offensive.",
+            'victim_msg': "{attacker_name} fumbles for a moment, then produces a bright {blood} flare, its purpose now grimly offensive.",
+            'observer_msg': "{attacker_name} fumbles for a moment, then produces a bright {blood} flare, its purpose now grimly offensive."
         },
         {
             'attacker_msg': "A sharp scrape, and the flare in your {hit_location} erupts with a dazzling, intense light and a hiss of smoke.",

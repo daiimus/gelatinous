@@ -487,9 +487,9 @@ MESSAGES = {
             'observer_msg': "A spinning swing splits the side of {target_name}'s {hit_location}. They drop in sections."
         },
         {
-            'attacker_msg': "One arc, one hit — the jaw explodes in red. They never finish the scream.",
-            'victim_msg': "One arc, one hit — your {hit_location} explodes in red. You never finish the scream.",
-            'observer_msg': "One arc, one hit — {target_name}'s {hit_location} explodes in red. They never finish the scream."
+            'attacker_msg': "One arc, one hit — the jaw explodes in {blood}. They never finish the scream.",
+            'victim_msg': "One arc, one hit — your {hit_location} explodes in {blood}. You never finish the scream.",
+            'observer_msg': "One arc, one hit — {target_name}'s {hit_location} explodes in {blood}. They never finish the scream."
         },
         {
             'attacker_msg': "One blow to the back of the head. No twitch. Just down.",

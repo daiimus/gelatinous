@@ -109,7 +109,18 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
 
     # ── Build per-audience format kwargs ────────────────────────────
     # Non-character kwargs shared across all audiences
+    # Blood colour is the TARGET's, species-keyed (human crimson, synth
+    # cobalt, robot amber): templates say {blood} / {Blood} and hit the
+    # right fluid for whoever is actually being cut. Explicit kwargs win.
+    try:
+        from world.anatomy import get_species_blood_color
+        _blood = get_species_blood_color(
+            getattr(getattr(target, "db", None), "species", None))["name"]
+    except Exception:  # noqa: BLE001 — colour flavour never breaks combat
+        _blood = "crimson"
     shared_kwargs = {
+        "blood": _blood,
+        "Blood": _blood.capitalize(),
         "item_name": item_s,
         "item": item_s,
         "phase": phase,

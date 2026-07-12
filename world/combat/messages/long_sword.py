@@ -153,9 +153,9 @@ MESSAGES = {
     ],
     "hit": [
         {
-            'attacker_msg': "A swift cut from your long sword leaves a crimson line on {target_name}'s {hit_location}.",
-            'victim_msg': "A swift cut from {attacker_name}'s long sword leaves a crimson line on your {hit_location}.",
-            'observer_msg': "A swift cut from {attacker_name}'s long sword leaves a crimson line on {target_name}'s {hit_location}."
+            'attacker_msg': "A swift cut from your long sword leaves a {blood} line on {target_name}'s {hit_location}.",
+            'victim_msg': "A swift cut from {attacker_name}'s long sword leaves a {blood} line on your {hit_location}.",
+            'observer_msg': "A swift cut from {attacker_name}'s long sword leaves a {blood} line on {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "The long sword flashes, and your thrust finds a gap in {target_name}'s defense.",
@@ -522,9 +522,9 @@ MESSAGES = {
             'observer_msg': "A swift, merciless cut from the long sword, and {target_name} is no more."
         },
         {
-            'attacker_msg': "The long sword, stained crimson, is pulled free as {target_name} breathes their last.",
-            'victim_msg': "The long sword, stained crimson, is pulled free as you breathe your last.",
-            'observer_msg': "The long sword, stained crimson, is pulled free as {target_name} breathes their last."
+            'attacker_msg': "The long sword, stained {blood}, is pulled free as {target_name} breathes their last.",
+            'victim_msg': "The long sword, stained {blood}, is pulled free as you breathe your last.",
+            'observer_msg': "The long sword, stained {blood}, is pulled free as {target_name} breathes their last."
         },
         {
             'attacker_msg': "You deliver a coup de grâce with the long sword, ensuring {target_name} will not rise.",
@@ -577,9 +577,9 @@ MESSAGES = {
             'observer_msg': "{target_name}'s eyes widen in shock as {attacker_name}'s long sword delivers the final blow."
         },
         {
-            'attacker_msg': "A fountain of red erupts as your long sword finds its ultimate target.",
-            'victim_msg': "A fountain of red erupts as {attacker_name}'s long sword finds its ultimate target.",
-            'observer_msg': "A fountain of red erupts as {attacker_name}'s long sword finds its ultimate target."
+            'attacker_msg': "A fountain of {blood} erupts as your long sword finds its ultimate target.",
+            'victim_msg': "A fountain of {blood} erupts as {attacker_name}'s long sword finds its ultimate target.",
+            'observer_msg': "A fountain of {blood} erupts as {attacker_name}'s long sword finds its ultimate target."
         },
         {
             'attacker_msg': "You withdraw the long sword, leaving {target_name} to fall into the dust of defeat.",

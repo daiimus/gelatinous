@@ -188,9 +188,9 @@ MESSAGES = {
             'observer_msg': "A jab to the {hit_location} folds {target_name} sideways. They wheeze and flail."
         },
         {
-            'attacker_msg': "A quick bash to the {hit_location}. Red blossoms. {target_name} stumbles backward into bad footing.",
-            'victim_msg': "A quick bash to your {hit_location}. Red blossoms. You stumble backward into bad footing.",
-            'observer_msg': "A quick bash to the {hit_location}. Red blossoms. {target_name} stumbles backward into bad footing."
+            'attacker_msg': "A quick bash to the {hit_location}. {Blood} blossoms. {target_name} stumbles backward into bad footing.",
+            'victim_msg': "A quick bash to your {hit_location}. {Blood} blossoms. You stumble backward into bad footing.",
+            'observer_msg': "A quick bash to the {hit_location}. {Blood} blossoms. {target_name} stumbles backward into bad footing."
         },
         {
             'attacker_msg': "A short jab to the {hit_location} leaves {target_name} reeling and gasping.",

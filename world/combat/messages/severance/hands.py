@@ -15,9 +15,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name}'s blade takes {target_name}'s {hit_location} off at the wrist in a single arc. The hand falls still gripping at something it can no longer hold.",
             },
             {
-                "attacker_msg": "A clean horizontal stroke and {target_name}'s {hit_location} is gone — spinning to the floor, fingers curled, the wound spurting red in time with their pulse.",
+                "attacker_msg": "A clean horizontal stroke and {target_name}'s {hit_location} is gone — spinning to the floor, fingers curled, the wound spurting {blood} in time with their pulse.",
                 "victim_msg": "{attacker_name}'s clean horizontal stroke and your {hit_location} is gone — spinning to the floor, fingers curled.",
-                "observer_msg": "{attacker_name}'s clean horizontal stroke and {target_name}'s {hit_location} is gone — spinning to the floor, fingers curled, the wound spurting red.",
+                "observer_msg": "{attacker_name}'s clean horizontal stroke and {target_name}'s {hit_location} is gone — spinning to the floor, fingers curled, the wound spurting {blood}.",
             },
             {
                 "attacker_msg": "Bone parts at the joint and {target_name}'s {hit_location} drops to the deck with a wet slap, the body recoiling from its sudden incompleteness.",

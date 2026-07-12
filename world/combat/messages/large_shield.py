@@ -158,9 +158,9 @@ MESSAGES = {
             'observer_msg': "A brutal shoulder-check with the shield rattles {target_name}'s bones loose."
         },
         {
-            'attacker_msg': "A downed swing cracks into the {hit_location}. {target_name} howls, grasping at red pain.",
-            'victim_msg': "A downed swing cracks into your {hit_location}. You howl, grasping at red pain.",
-            'observer_msg': "A downed swing cracks into {target_name}'s {hit_location}. {target_name} howls, grasping at red pain."
+            'attacker_msg': "A downed swing cracks into the {hit_location}. {target_name} howls, grasping at {blood} pain.",
+            'victim_msg': "A downed swing cracks into your {hit_location}. You howl, grasping at {blood} pain.",
+            'observer_msg': "A downed swing cracks into {target_name}'s {hit_location}. {target_name} howls, grasping at {blood} pain."
         },
         {
             'attacker_msg': "A forceful bash into the {hit_location} folds {target_name} into a shrieking heap.",
@@ -203,9 +203,9 @@ MESSAGES = {
             'observer_msg': "A wide swing bowls {target_name} over. They hit the floor before they realize what hit them."
         },
         {
-            'attacker_msg': "The corner drives into the {hit_location} with finality. {target_name} folds inward, coughing red.",
-            'victim_msg': "The corner drives into your {hit_location} with finality. You fold inward, coughing red.",
-            'observer_msg': "The corner drives into {target_name}'s {hit_location} with finality. {target_name} folds inward, coughing red."
+            'attacker_msg': "The corner drives into the {hit_location} with finality. {target_name} folds inward, coughing {blood}.",
+            'victim_msg': "The corner drives into your {hit_location} with finality. You fold inward, coughing {blood}.",
+            'observer_msg': "The corner drives into {target_name}'s {hit_location} with finality. {target_name} folds inward, coughing {blood}."
         },
         {
             'attacker_msg': "The edge clips {target_name}'s {hit_location}. Something cracks. It might not heal right.",
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     'kill': [
         {
-            'attacker_msg': "A brutal downward blow flattens {target_name}'s {hit_location} into an unrecognizable red smear.",
-            'victim_msg': "A brutal downward blow flattens your {hit_location} into an unrecognizable red smear.",
-            'observer_msg': "A brutal downward blow flattens {target_name}'s {hit_location} into an unrecognizable red smear."
+            'attacker_msg': "A brutal downward blow flattens {target_name}'s {hit_location} into an unrecognizable {blood} smear.",
+            'victim_msg': "A brutal downward blow flattens your {hit_location} into an unrecognizable {blood} smear.",
+            'observer_msg': "A brutal downward blow flattens {target_name}'s {hit_location} into an unrecognizable {blood} smear."
         },
         {
             'attacker_msg': "A crushing downward blow breaks neck, spine, and noise alike.",

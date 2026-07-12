@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} jabs the closed points of the heavy shears into {target_name}'s {hit_location}, twisting the long handles for emphasis."
         },
         {
-            'attacker_msg': "The long shears slip under {target_name}'s chin, one blade drawing a thin red line with surprising force.",
-            'victim_msg': "The long shears slip under your chin, one blade drawing a thin red line with surprising force.",
-            'observer_msg': "The long shears slip under {target_name}'s chin, one blade drawing a thin red line with surprising force."
+            'attacker_msg': "The long shears slip under {target_name}'s chin, one blade drawing a thin {blood} line with surprising force.",
+            'victim_msg': "The long shears slip under your chin, one blade drawing a thin {blood} line with surprising force.",
+            'observer_msg': "The long shears slip under {target_name}'s chin, one blade drawing a thin {blood} line with surprising force."
         },
         {
             'attacker_msg': "A brutal, chopping cut across the Achilles with the heavy shears leaves {target_name} stumbling and crippled.",

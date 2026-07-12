@@ -243,7 +243,17 @@ def get_severance_message(
 
     item_s = item.key if item else "their weapon"
 
+    # Blood colour is the TARGET's, species-keyed — a severed synth limb
+    # sprays cobalt, a robot's arm weeps amber. Explicit kwargs win.
+    try:
+        from world.anatomy import get_species_blood_color
+        _blood = get_species_blood_color(
+            getattr(getattr(target, "db", None), "species", None))["name"]
+    except Exception:  # noqa: BLE001 — colour flavour never breaks the sever
+        _blood = "crimson"
     shared = {
+        "blood": _blood,
+        "Blood": _blood.capitalize(),
         "item_name": item_s,
         "item": item_s,
         **kwargs,

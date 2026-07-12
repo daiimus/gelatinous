@@ -193,9 +193,9 @@ MESSAGES = {
             "observer_msg": "The tennis racket's {hit_location}le becomes a weapon as {attacker_name} drives the butt end into {target_name}'s solar plexus."
         },
         {
-            "attacker_msg": "A championship-caliber stroke with your tennis racket leaves red welts across {target_name}'s exposed skin.",
-            "victim_msg": "A championship-caliber stroke from {attacker_name}'s tennis racket leaves red welts across your exposed skin!",
-            "observer_msg": "A championship-caliber stroke from the tennis racket leaves red welts across {target_name}'s exposed skin."
+            "attacker_msg": "A championship-caliber stroke with your tennis racket leaves {blood} welts across {target_name}'s exposed skin.",
+            "victim_msg": "A championship-caliber stroke from {attacker_name}'s tennis racket leaves {blood} welts across your exposed skin!",
+            "observer_msg": "A championship-caliber stroke from the tennis racket leaves {blood} welts across {target_name}'s exposed skin."
         },
         {
             "attacker_msg": "Your tennis racket's edge strikes {target_name} like a blade, the frame cutting deeper than expected.",

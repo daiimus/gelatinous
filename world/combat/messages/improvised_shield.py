@@ -163,9 +163,9 @@ MESSAGES = {
             'observer_msg': "A brutal strike catches the {hit_location}. Something cracks beneath."
         },
         {
-            'attacker_msg': "A full-bodied shove launches {target_name} {hit_location} across the floor. Scrapes. Groans. Red.",
-            'victim_msg': "A full-bodied shove launches you {hit_location} across the floor. Scrapes. Groans. Red.",
-            'observer_msg': "A full-bodied shove launches {target_name} {hit_location} across the floor. Scrapes. Groans. Red."
+            'attacker_msg': "A full-bodied shove launches {target_name} {hit_location} across the floor. Scrapes. Groans. {Blood}.",
+            'victim_msg': "A full-bodied shove launches you {hit_location} across the floor. Scrapes. Groans. {Blood}.",
+            'observer_msg': "A full-bodied shove launches {target_name} {hit_location} across the floor. Scrapes. Groans. {Blood}."
         },
         {
             'attacker_msg': "A quick shove plants the slab square into {target_name}'s {hit_location}. Blood blossoms on metal.",
@@ -243,9 +243,9 @@ MESSAGES = {
             'observer_msg': "The shield lifts like a blade, then drops like a judgment — flat across the {hit_location}."
         },
         {
-            'attacker_msg': "The shield smashes into the {hit_location}. {target_name} vomits red and goes down.",
-            'victim_msg': "The shield smashes into your {hit_location}. You vomit red and go down.",
-            'observer_msg': "The shield smashes into the {hit_location}. {target_name} vomits red and goes down."
+            'attacker_msg': "The shield smashes into the {hit_location}. {target_name} vomits {blood} and goes down.",
+            'victim_msg': "The shield smashes into your {hit_location}. You vomit {blood} and go down.",
+            'observer_msg': "The shield smashes into the {hit_location}. {target_name} vomits {blood} and goes down."
         },
         {
             'attacker_msg': "The shield smashes into {target_name}'s {hit_location} like a wrecking ball. They gasp and stagger {hit_location}.",

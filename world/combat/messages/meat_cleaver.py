@@ -6,9 +6,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} hefts a meat cleaver, the blade chipped and stained from old work."
         },
         {
-            'attacker_msg': "You wipe the cleaver on your apron, leaving a fresh red streak.",
-            'victim_msg': "{attacker_name} wipes the cleaver on their apron, leaving a fresh red streak.",
-            'observer_msg': "{attacker_name} wipes the cleaver on their apron, leaving a fresh red streak."
+            'attacker_msg': "You wipe the cleaver on your apron, leaving a fresh {blood} streak.",
+            'victim_msg': "{attacker_name} wipes the cleaver on their apron, leaving a fresh {blood} streak.",
+            'observer_msg': "{attacker_name} wipes the cleaver on their apron, leaving a fresh {blood} streak."
         },
         {
             'attacker_msg': "You swing the cleaver in a lazy arc, testing its weight.",
@@ -91,9 +91,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} lets the cleaver dangle from their fingers, swinging like a pendulum."
         },
         {
-            'attacker_msg': "You trace the edge along your palm, drawing a thin red line.",
-            'victim_msg': "{attacker_name} traces the edge along their palm, drawing a thin red line.",
-            'observer_msg': "{attacker_name} traces the edge along their palm, drawing a thin red line."
+            'attacker_msg': "You trace the edge along your palm, drawing a thin {blood} line.",
+            'victim_msg': "{attacker_name} traces the edge along their palm, drawing a thin {blood} line.",
+            'observer_msg': "{attacker_name} traces the edge along their palm, drawing a thin {blood} line."
         },
         {
             'attacker_msg': "You snap the cleaver from a belt loop, the motion practiced.",
@@ -131,9 +131,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} taps the cleaver against their teeth, grinning."
         },
         {
-            'attacker_msg': "You hold the cleaver like a brush, ready to paint in red.",
-            'victim_msg': "{attacker_name} holds the cleaver like a brush, ready to paint in red.",
-            'observer_msg': "{attacker_name} holds the cleaver like a brush, ready to paint in red."
+            'attacker_msg': "You hold the cleaver like a brush, ready to paint in {blood}.",
+            'victim_msg': "{attacker_name} holds the cleaver like a brush, ready to paint in {blood}.",
+            'observer_msg': "{attacker_name} holds the cleaver like a brush, ready to paint in {blood}."
         },
         {
             'attacker_msg': "You let the cleaver rest on your {hit_location}, eyes never leaving {target_name}.",
@@ -233,9 +233,9 @@ MESSAGES = {
             'observer_msg': "A chop to the {hit_location} leaves a deep, bubbling wound."
         },
         {
-            'attacker_msg': "The blade glides across {target_name}'s {hit_location}, leaving a red smile.",
-            'victim_msg': "The blade glides across your {hit_location}, leaving a red smile.",
-            'observer_msg': "The blade glides across {target_name}'s {hit_location}, leaving a red smile."
+            'attacker_msg': "The blade glides across {target_name}'s {hit_location}, leaving a {blood} smile.",
+            'victim_msg': "The blade glides across your {hit_location}, leaving a {blood} smile.",
+            'observer_msg': "The blade glides across {target_name}'s {hit_location}, leaving a {blood} smile."
         },
         {
             'attacker_msg': "You puncture {target_name}'s {hit_location}, twisting the blade before pulling it free.",
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} buries the cleaver in {target_name}'s {hit_location}, twisting for emphasis."
         },
         {
-            'attacker_msg': "The cleaver slips under {target_name}'s chin, drawing a thin red line.",
-            'victim_msg': "The cleaver slips under your chin, drawing a thin red line.",
-            'observer_msg': "The cleaver slips under {target_name}'s chin, drawing a thin red line."
+            'attacker_msg': "The cleaver slips under {target_name}'s chin, drawing a thin {blood} line.",
+            'victim_msg': "The cleaver slips under your chin, drawing a thin {blood} line.",
+            'observer_msg': "The cleaver slips under {target_name}'s chin, drawing a thin {blood} line."
         },
         {
             'attacker_msg': "A cut across the Achilles leaves {target_name} stumbling.",
@@ -552,9 +552,9 @@ MESSAGES = {
             'observer_msg': "A chop to the base of the skull ends it instantly."
         },
         {
-            'attacker_msg': "You carve a spiral down the chest. The pattern is red and final.",
-            'victim_msg': "{attacker_name} carves a spiral down the chest. The pattern is red and final.",
-            'observer_msg': "{attacker_name} carves a spiral down the chest. The pattern is red and final."
+            'attacker_msg': "You carve a spiral down the chest. The pattern is {blood} and final.",
+            'victim_msg': "{attacker_name} carves a spiral down the chest. The pattern is {blood} and final.",
+            'observer_msg': "{attacker_name} carves a spiral down the chest. The pattern is {blood} and final."
         },
         {
             'attacker_msg': "The blade slips into the mouth, blood pouring out.",

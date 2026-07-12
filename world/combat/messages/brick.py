@@ -193,9 +193,9 @@ MESSAGES = {
             "observer_msg": "A sideways swing catches {target_name} in the ear. They cry out, ears ringing, vision blurred."
         },
         {
-            "attacker_msg": "One blow to the nose shatters cartilage and sprays red. {target_name} reels backward, screaming.",
-            "victim_msg": "One blow to the nose shatters cartilage and sprays red. You reel backward, screaming.",
-            "observer_msg": "One blow to the nose shatters cartilage and sprays red. {target_name} reels backward, screaming."
+            "attacker_msg": "One blow to the nose shatters cartilage and sprays {blood}. {target_name} reels backward, screaming.",
+            "victim_msg": "One blow to the nose shatters cartilage and sprays {blood}. You reel backward, screaming.",
+            "observer_msg": "One blow to the nose shatters cartilage and sprays {blood}. {target_name} reels backward, screaming."
         },
         {
             "attacker_msg": "One hard swing and {target_name}'s ear is a ruin of cartilage and memory.",
@@ -243,9 +243,9 @@ MESSAGES = {
             "observer_msg": "The brick slams into {target_name}'s {hit_location}. They stagger {hit_location}, gasping, fingers clawing at nothing."
         },
         {
-            "attacker_msg": "The brick slams into {target_name}'s {hit_location} with a sickening crack. Blood flies in a red arc as they stumble.",
-            "victim_msg": "The brick slams into your {hit_location} with a sickening crack. Blood flies in a red arc as you stumble.",
-            "observer_msg": "The brick slams into {target_name}'s {hit_location} with a sickening crack. Blood flies in a red arc as they stumble."
+            "attacker_msg": "The brick slams into {target_name}'s {hit_location} with a sickening crack. Blood flies in a {blood} arc as they stumble.",
+            "victim_msg": "The brick slams into your {hit_location} with a sickening crack. Blood flies in a {blood} arc as you stumble.",
+            "observer_msg": "The brick slams into {target_name}'s {hit_location} with a sickening crack. Blood flies in a {blood} arc as they stumble."
         },
         {
             "attacker_msg": "The edge of the brick slices the {hit_location}. Blood pours into {target_name}'s eye as they shriek in confusion.",
@@ -517,9 +517,9 @@ MESSAGES = {
             "observer_msg": "The brick connects with the throat. {target_name} gasps, then gargles, then nothing."
         },
         {
-            "attacker_msg": "The brick hits the skull and doesn’t stop. You keep pushing. {target_name} becomes still beneath red dust.",
-            "victim_msg": "The brick hits the skull and doesn’t stop. {attacker_name} keeps pushing. You become still beneath red dust.",
-            "observer_msg": "The brick hits the skull and doesn’t stop. {attacker_name} keeps pushing. {target_name} becomes still beneath red dust."
+            "attacker_msg": "The brick hits the skull and doesn’t stop. You keep pushing. {target_name} becomes still beneath {blood} dust.",
+            "victim_msg": "The brick hits the skull and doesn’t stop. {attacker_name} keeps pushing. You become still beneath {blood} dust.",
+            "observer_msg": "The brick hits the skull and doesn’t stop. {attacker_name} keeps pushing. {target_name} becomes still beneath {blood} dust."
         },
         {
             "attacker_msg": "The brick lands across the nose and eyes. Everything caves inward. {target_name} never stands again.",

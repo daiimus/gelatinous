@@ -118,9 +118,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} twists, the blades carving a line across {target_name}'s guard and into flesh.",
         },
         {
-            "attacker_msg": "The fan hums as it connects, leaving a crimson mark on {target_name}'s {hit_location}.",
-            "victim_msg": "The fan hums as it connects, leaving a crimson mark on your {hit_location}.",
-            "observer_msg": "The fan hums as it connects, leaving a crimson mark on {target_name}'s {hit_location}.",
+            "attacker_msg": "The fan hums as it connects, leaving a {blood} mark on {target_name}'s {hit_location}.",
+            "victim_msg": "The fan hums as it connects, leaving a {blood} mark on your {hit_location}.",
+            "observer_msg": "The fan hums as it connects, leaving a {blood} mark on {target_name}'s {hit_location}.",
         },
         {
             "attacker_msg": "Your strike is a dance, blades flashing as they cut {target_name}'s {hit_location}.",

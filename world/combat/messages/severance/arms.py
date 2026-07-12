@@ -20,9 +20,9 @@ MESSAGES = {
                 "observer_msg": "Bone parts under {attacker_name}'s edge with a crunch. {target_name}'s {hit_location} detaches and falls, blood arcing from the open socket.",
             },
             {
-                "attacker_msg": "The chop is too hard, too low. {target_name}'s {hit_location} cartwheels away in a spray of red, fingers still twitching for a weapon that isn't there.",
-                "victim_msg": "The chop is too hard, too low. Your {hit_location} cartwheels away in a spray of red, fingers still twitching.",
-                "observer_msg": "{attacker_name}'s chop is too hard, too low. {target_name}'s {hit_location} cartwheels away in a spray of red, fingers still twitching for a weapon that isn't there.",
+                "attacker_msg": "The chop is too hard, too low. {target_name}'s {hit_location} cartwheels away in a spray of {blood}, fingers still twitching for a weapon that isn't there.",
+                "victim_msg": "The chop is too hard, too low. Your {hit_location} cartwheels away in a spray of {blood}, fingers still twitching.",
+                "observer_msg": "{attacker_name}'s chop is too hard, too low. {target_name}'s {hit_location} cartwheels away in a spray of {blood}, fingers still twitching for a weapon that isn't there.",
             },
             {
                 "attacker_msg": "You take {target_name}'s {hit_location} off at the joint and the limb goes one way while the body lurches the other, balance lost between heartbeats.",
@@ -107,9 +107,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name}'s blade grinds through {target_name}'s shoulder in a chorus of breaking bone. The {hit_location} comes free in a single ragged moment, hand still gripping at empty air.",
             },
             {
-                "attacker_msg": "You saw, tear, and *finish*. {target_name}'s {hit_location} comes apart in a slurry of red and gristle, the bone end ragged where it tore.",
-                "victim_msg": "{attacker_name} saws, tears, and *finishes*. Your {hit_location} comes apart in a slurry of red and gristle.",
-                "observer_msg": "{attacker_name} saws, tears, and *finishes*. {target_name}'s {hit_location} comes apart in a slurry of red and gristle, the bone end ragged where it tore.",
+                "attacker_msg": "You saw, tear, and *finish*. {target_name}'s {hit_location} comes apart in a slurry of {blood} and gristle, the bone end ragged where it tore.",
+                "victim_msg": "{attacker_name} saws, tears, and *finishes*. Your {hit_location} comes apart in a slurry of {blood} and gristle.",
+                "observer_msg": "{attacker_name} saws, tears, and *finishes*. {target_name}'s {hit_location} comes apart in a slurry of {blood} and gristle, the bone end ragged where it tore.",
             },
             {
                 "attacker_msg": "Chain teeth chew through {target_name}'s shoulder until the {hit_location} drops away, the wound a mess of pulped muscle and shredded skin.",

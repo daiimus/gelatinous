@@ -213,9 +213,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s well-aimed shot from the lever-action rifle strikes {target_name}'s {hit_location}, the impact clearly visible as they lurch. The lever is worked with smooth, almost contemptuous efficiency."
         },
         {
-            'attacker_msg': "A loud, sharp crack and a gout of crimson blood erupt as the lever-action rifle's bullet finds its mark on {target_name}. You cycle the action with a familiar rhythm, eyes still on {target_name}, ready for more.",
-            'victim_msg': "A loud, sharp crack and a gout of crimson blood erupt as the lever-action rifle's bullet finds its mark on you. {attacker_name} cycles the action with a familiar rhythm, eyes still on you, ready for more.",
-            'observer_msg': "A loud, sharp crack and a gout of crimson blood erupt as the lever-action rifle's bullet finds its mark on {target_name}. {attacker_name} cycles the action with a familiar rhythm, eyes still on {target_name}, ready for more."
+            'attacker_msg': "A loud, sharp crack and a gout of {blood} blood erupt as the lever-action rifle's bullet finds its mark on {target_name}. You cycle the action with a familiar rhythm, eyes still on {target_name}, ready for more.",
+            'victim_msg': "A loud, sharp crack and a gout of {blood} blood erupt as the lever-action rifle's bullet finds its mark on you. {attacker_name} cycles the action with a familiar rhythm, eyes still on you, ready for more.",
+            'observer_msg': "A loud, sharp crack and a gout of {blood} blood erupt as the lever-action rifle's bullet finds its mark on {target_name}. {attacker_name} cycles the action with a familiar rhythm, eyes still on {target_name}, ready for more."
         },
         {
             'attacker_msg': "The heavy, traditional slug from your lever-action rifle tears into {target_name}'s flesh, causing immediate, sharp, and debilitating pain. You work the lever with practiced speed, ready for another quick, aimed shot.",
@@ -492,9 +492,9 @@ MESSAGES = {
             'observer_msg': "A precise shot to {target_name}'s {hit_location} from {attacker_name}'s lever-action rifle drops {target_name} in a gurgling heap, blood pooling quickly. The lever is worked with a practiced, efficient flick of the wrist, ejecting and loading in one smooth, final movement."
         },
         {
-            'attacker_msg': "Your single, powerful shot from the lever-action rifle punches clean through {target_name}'s {hit_location}; they cough once, a spray of crimson, and are still. You cycle the lever methodically, eyes already moving on.",
-            'victim_msg': "{attacker_name}'s single, powerful shot from the lever-action rifle punches clean through your {hit_location}; you cough once, a spray of crimson, and are still. {attacker_name} cycles the lever methodically, eyes already moving on.",
-            'observer_msg': "{attacker_name}'s single, powerful shot from the lever-action rifle punches clean through {target_name}'s {hit_location}; they cough once, a spray of crimson, and are still. {attacker_name} cycles the lever methodically, eyes already moving on."
+            'attacker_msg': "Your single, powerful shot from the lever-action rifle punches clean through {target_name}'s {hit_location}; they cough once, a spray of {blood}, and are still. You cycle the lever methodically, eyes already moving on.",
+            'victim_msg': "{attacker_name}'s single, powerful shot from the lever-action rifle punches clean through your {hit_location}; you cough once, a spray of {blood}, and are still. {attacker_name} cycles the lever methodically, eyes already moving on.",
+            'observer_msg': "{attacker_name}'s single, powerful shot from the lever-action rifle punches clean through {target_name}'s {hit_location}; they cough once, a spray of {blood}, and are still. {attacker_name} cycles the lever methodically, eyes already moving on."
         },
         {
             'attacker_msg': "The unyielding, heavy slug from your lever-action rifle pierces {target_name}'s {hit_location} with a sickening crunch; they fall without a sound, instantly gone. A hot brass casing is ejected as you prepare another shot with a swift throw of the lever, though the need has passed.",

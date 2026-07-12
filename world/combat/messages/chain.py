@@ -198,9 +198,9 @@ MESSAGES = {
             "observer_msg": "Metal links crash into {target_name}'s {hit_location}. They buckle, stagger, and nearly fall."
         },
         {
-            "attacker_msg": "Metal links tear through cloth and skin, leaving a red path down {target_name}'s {hit_location}.",
-            "victim_msg": "Metal links tear through cloth and skin, leaving a red path down your {hit_location}.",
-            "observer_msg": "Metal links tear through cloth and skin, leaving a red path down {target_name}'s {hit_location}."
+            "attacker_msg": "Metal links tear through cloth and skin, leaving a {blood} path down {target_name}'s {hit_location}.",
+            "victim_msg": "Metal links tear through cloth and skin, leaving a {blood} path down your {hit_location}.",
+            "observer_msg": "Metal links tear through cloth and skin, leaving a {blood} path down {target_name}'s {hit_location}."
         },
         {
             "attacker_msg": "One end of the chain smashes into {target_name}'s {hit_location}, the other into their pride. Both break.",
@@ -253,9 +253,9 @@ MESSAGES = {
             "observer_msg": "The chain swings fast and wraps around {target_name}'s {hit_location}. The pull that follows unbalances them."
         },
         {
-            "attacker_msg": "The chain whips across {target_name}'s {hit_location}. Skin breaks, and the sleeve turns red.",
-            "victim_msg": "The chain whips across your {hit_location}. Skin breaks, and your sleeve turns red.",
-            "observer_msg": "The chain whips across {target_name}'s {hit_location}. Skin breaks, and the sleeve turns red."
+            "attacker_msg": "The chain whips across {target_name}'s {hit_location}. Skin breaks, and the sleeve turns {blood}.",
+            "victim_msg": "The chain whips across your {hit_location}. Skin breaks, and your sleeve turns {blood}.",
+            "observer_msg": "The chain whips across {target_name}'s {hit_location}. Skin breaks, and the sleeve turns {blood}."
         },
         {
             "attacker_msg": "The chain whips {target_name}'s fingers. Bones crunch. Their grip on anything disappears.",
@@ -562,9 +562,9 @@ MESSAGES = {
             "observer_msg": "The chain wraps twice around {target_name}'s {hit_location} — then yanks them off their feet and into a final, fatal blow."
         },
         {
-            "attacker_msg": "The final blow is a whirlwind of metal. When it ends, {target_name} is still — and red.",
-            "victim_msg": "The final blow is a whirlwind of metal. When it ends, you are still — and red.",
-            "observer_msg": "The final blow is a whirlwind of metal. When it ends, {target_name} is still — and red."
+            "attacker_msg": "The final blow is a whirlwind of metal. When it ends, {target_name} is still — and {blood}.",
+            "victim_msg": "The final blow is a whirlwind of metal. When it ends, you are still — and {blood}.",
+            "observer_msg": "The final blow is a whirlwind of metal. When it ends, {target_name} is still — and {blood}."
         },
         {
             "attacker_msg": "The final strike wraps the chain around {target_name}'s legs. They fall, and the follow-up ends them in a single brutal snap.",

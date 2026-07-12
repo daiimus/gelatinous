@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "The metal finds flesh with surgical precision. {target_name} gasps like they're drowning in air too thick to breathe."
         },
         {
-            'attacker_msg': "Your {hit_location} flicks, and the shiv disappears into {target_name}'s {hit_location}. For a moment, it's like the blade was never there—until the red starts to show.",
-            'victim_msg': "{attacker_name}'s {hit_location} flicks, and the shiv disappears into your {hit_location}. For a moment, it's like the blade was never there—until the red starts to show.",
-            'observer_msg': "{attacker_name}'s {hit_location} flicks, and the shiv disappears into {target_name}'s {hit_location}. For a moment, it's like the blade was never there—until the red starts to show."
+            'attacker_msg': "Your {hit_location} flicks, and the shiv disappears into {target_name}'s {hit_location}. For a moment, it's like the blade was never there—until the {blood} starts to show.",
+            'victim_msg': "{attacker_name}'s {hit_location} flicks, and the shiv disappears into your {hit_location}. For a moment, it's like the blade was never there—until the {blood} starts to show.",
+            'observer_msg': "{attacker_name}'s {hit_location} flicks, and the shiv disappears into {target_name}'s {hit_location}. For a moment, it's like the blade was never there—until the {blood} starts to show."
         },
         {
             'attacker_msg': "The blade parts skin like a zipper being pulled too fast. {target_name}'s mouth opens, but no sound comes—just the metallic taste of surprise.",
@@ -627,9 +627,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} feels {target_name}'s heartbeat through the steel, rapid and urgent, then slower, then gone. {target_name} sinks to the ground like they're genuflecting before death itself."
         },
         {
-            'attacker_msg': "The blade finds the soft space below {target_name}'s {hit_location} and whispers its way to their heart. They look down at the growing red stain with the detached curiosity of someone reading their own obituary.",
-            'victim_msg': "The blade finds the soft space below your {hit_location} and whispers its way to your {hit_location}. You look down at the growing red stain with the detached curiosity of someone reading their own obituary.",
-            'observer_msg': "The blade finds the soft space below {target_name}'s {hit_location} and whispers its way to their heart. {target_name} looks down at the growing red stain with the detached curiosity of someone reading their own obituary."
+            'attacker_msg': "The blade finds the soft space below {target_name}'s {hit_location} and whispers its way to their heart. They look down at the growing {blood} stain with the detached curiosity of someone reading their own obituary.",
+            'victim_msg': "The blade finds the soft space below your {hit_location} and whispers its way to your {hit_location}. You look down at the growing {blood} stain with the detached curiosity of someone reading their own obituary.",
+            'observer_msg': "The blade finds the soft space below {target_name}'s {hit_location} and whispers its way to their heart. {target_name} looks down at the growing {blood} stain with the detached curiosity of someone reading their own obituary."
         },
         {
             'attacker_msg': "You slide the shiv home with the tenderness of someone tucking a child into bed. {target_name}'s eyes flutter once, twice, then go still as pond water on windless day.",

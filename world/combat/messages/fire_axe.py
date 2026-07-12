@@ -81,9 +81,9 @@ MESSAGES = {
             'observer_msg': "The wood handle creaks under {attacker_name}'s grip. It remembers being swung. So does the crowd."
         },
         {
-            'attacker_msg': "There's no ceremony. Just the screech of boots, the swing of hips, and that red crescent of steel hanging in the air.",
-            'victim_msg': "There's no ceremony. Just the screech of boots, the swing of hips, and that red crescent of steel hanging in the air.",
-            'observer_msg': "There's no ceremony. Just the screech of boots, the swing of hips, and that red crescent of steel hanging in the air."
+            'attacker_msg': "There's no ceremony. Just the screech of boots, the swing of hips, and that {blood} crescent of steel hanging in the air.",
+            'victim_msg': "There's no ceremony. Just the screech of boots, the swing of hips, and that {blood} crescent of steel hanging in the air.",
+            'observer_msg': "There's no ceremony. Just the screech of boots, the swing of hips, and that {blood} crescent of steel hanging in the air."
         },
         {
             'attacker_msg': "There's no rush in your motion — just intent. The axe rises. So does dread.",
@@ -153,9 +153,9 @@ MESSAGES = {
     ],
     'hit': [
         {
-            'attacker_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one {hit_location}, disbelief painted in crimson.",
-            'victim_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. You drop to one {hit_location}, disbelief painted in crimson.",
-            'observer_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one {hit_location}, disbelief painted in crimson."
+            'attacker_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one {hit_location}, disbelief painted in {blood}.",
+            'victim_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. You drop to one {hit_location}, disbelief painted in {blood}.",
+            'observer_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one {hit_location}, disbelief painted in {blood}."
         },
         {
             'attacker_msg': "A downward cleave crashes through {target_name}'s {hit_location} and stays. You let go. The axe holds itself now.",
@@ -188,9 +188,9 @@ MESSAGES = {
             'observer_msg': "A vertical swing lands square on {target_name}'s {hit_location}. There's a wet crack — and then screaming."
         },
         {
-            'attacker_msg': "Blood mists the air as the edge bites into {target_name}'s {hit_location}. They scream and stumble, dragging red across the floor.",
-            'victim_msg': "Blood mists the air as the edge bites into your {hit_location}. You scream and stumble, dragging red across the floor.",
-            'observer_msg': "Blood mists the air as the edge bites into {target_name}'s {hit_location}. They scream and stumble, dragging red across the floor."
+            'attacker_msg': "Blood mists the air as the edge bites into {target_name}'s {hit_location}. They scream and stumble, dragging {blood} across the floor.",
+            'victim_msg': "Blood mists the air as the edge bites into your {hit_location}. You scream and stumble, dragging {blood} across the floor.",
+            'observer_msg': "Blood mists the air as the edge bites into {target_name}'s {hit_location}. They scream and stumble, dragging {blood} across the floor."
         },
         {
             'attacker_msg': "It hits with the sound of demolition. {target_name}'s {hit_location} caves, and for a moment their body forgets how to stand.",
@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "It hits with the sound of demolition. {target_name}'s {hit_location} caves, and for a moment their body forgets how to stand."
         },
         {
-            'attacker_msg': "It lands hard — not fast. The edge crunches bone and everything behind it. {target_name}'s cry is short-lived, smothered in red.",
-            'victim_msg': "It lands hard — not fast. The edge crunches bone and everything behind it. Your cry is short-lived, smothered in red.",
-            'observer_msg': "It lands hard — not fast. The edge crunches bone and everything behind it. {target_name}'s cry is short-lived, smothered in red."
+            'attacker_msg': "It lands hard — not fast. The edge crunches bone and everything behind it. {target_name}'s cry is short-lived, smothered in {blood}.",
+            'victim_msg': "It lands hard — not fast. The edge crunches bone and everything behind it. Your cry is short-lived, smothered in {blood}.",
+            'observer_msg': "It lands hard — not fast. The edge crunches bone and everything behind it. {target_name}'s cry is short-lived, smothered in {blood}."
         },
         {
             'attacker_msg': "It's not the edge but the weight that ruins {target_name}. They're struck flat, breath gone, {hit_location} shattered.",
@@ -395,9 +395,9 @@ MESSAGES = {
             'observer_msg': "The miss lands like a warning shot across time. {target_name} swears they saw their own ending in the motion blur."
         },
         {
-            'attacker_msg': "The red blade arcs through the room like punctuation — but the sentence doesn't land.",
-            'victim_msg': "The red blade arcs through the room like punctuation — but the sentence doesn't land.",
-            'observer_msg': "The red blade arcs through the room like punctuation — but the sentence doesn't land."
+            'attacker_msg': "The {blood} blade arcs through the room like punctuation — but the sentence doesn't land.",
+            'victim_msg': "The {blood} blade arcs through the room like punctuation — but the sentence doesn't land.",
+            'observer_msg': "The {blood} blade arcs through the room like punctuation — but the sentence doesn't land."
         },
         {
             'attacker_msg': "The strike was too high, too wide. {target_name} flinches anyway — the wind off the blade was enough to shift fate.",
@@ -512,9 +512,9 @@ MESSAGES = {
             'observer_msg': "The axe enters with resistance, then slides through like a confession. {target_name} drops, blood blooming beneath them."
         },
         {
-            'attacker_msg': "The axe lands in a downward slam, splitting {target_name}'s {hit_location} like fruit. Red and bone scatter in a cruel bouquet.",
-            'victim_msg': "The axe lands in a downward slam, splitting your {hit_location} like fruit. Red and bone scatter in a cruel bouquet.",
-            'observer_msg': "The axe lands in a downward slam, splitting {target_name}'s {hit_location} like fruit. Red and bone scatter in a cruel bouquet."
+            'attacker_msg': "The axe lands in a downward slam, splitting {target_name}'s {hit_location} like fruit. {Blood} and bone scatter in a cruel bouquet.",
+            'victim_msg': "The axe lands in a downward slam, splitting your {hit_location} like fruit. {Blood} and bone scatter in a cruel bouquet.",
+            'observer_msg': "The axe lands in a downward slam, splitting {target_name}'s {hit_location} like fruit. {Blood} and bone scatter in a cruel bouquet."
         },
         {
             'attacker_msg': "The axe lands with a sickening finality, splitting {target_name}'s {hit_location} clean down the center. They fall in silence, their scream stolen mid-birth.",
@@ -552,9 +552,9 @@ MESSAGES = {
             'observer_msg': "The edge drives through {target_name}'s {hit_location}, cleaving halfway down. They don't even hit the ground cleanly."
         },
         {
-            'attacker_msg': "The final blow catches {target_name} in the face, erasing features and expression alike. It's not a death — it's a red exclamation mark.",
-            'victim_msg': "The final blow catches you in the face, erasing features and expression alike. It's not a death — it's a red exclamation mark.",
-            'observer_msg': "The final blow catches {target_name} in the face, erasing features and expression alike. It's not a death — it's a red exclamation mark."
+            'attacker_msg': "The final blow catches {target_name} in the face, erasing features and expression alike. It's not a death — it's a {blood} exclamation mark.",
+            'victim_msg': "The final blow catches you in the face, erasing features and expression alike. It's not a death — it's a {blood} exclamation mark.",
+            'observer_msg': "The final blow catches {target_name} in the face, erasing features and expression alike. It's not a death — it's a {blood} exclamation mark."
         },
         {
             'attacker_msg': "The sound is wet and final. You yank the blade free from {target_name}'s ribcage with a grunt and no ceremony.",

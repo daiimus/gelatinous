@@ -482,9 +482,9 @@ STREETLIGHT_MESSAGES = {
             'observer_msg': "The ground cracks as {target_name} is driven into it by the force of the streetlight."
         },
         {
-            'attacker_msg': "A spray of red marks the end as the streetlight makes its final, fatal connection with {target_name}.",
-            'victim_msg': "A spray of red marks the end as the streetlight makes its final, fatal connection with you.",
-            'observer_msg': "A spray of red marks the end as the streetlight makes its final, fatal connection with {target_name}."
+            'attacker_msg': "A spray of {blood} marks the end as the streetlight makes its final, fatal connection with {target_name}.",
+            'victim_msg': "A spray of {blood} marks the end as the streetlight makes its final, fatal connection with you.",
+            'observer_msg': "A spray of {blood} marks the end as the streetlight makes its final, fatal connection with {target_name}."
         },
         {
             'attacker_msg': "{target_name} is utterly annihilated by the overwhelming power of the streetlight.",

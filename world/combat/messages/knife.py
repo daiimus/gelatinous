@@ -173,9 +173,9 @@ MESSAGES = {
             "observer_msg": "The knife lands in the side of the {hit_location}. Not fatal — yet. But close enough to ruin everything."
         },
         {
-            "attacker_msg": "Your knife slices across {target_name}'s {hit_location}. A red ribbon follows instantly.",
-            "victim_msg": "The knife slices across your {hit_location}. A red ribbon follows instantly.",
-            "observer_msg": "The knife slices across {target_name}'s {hit_location}. A red ribbon follows instantly."
+            "attacker_msg": "Your knife slices across {target_name}'s {hit_location}. A {blood} ribbon follows instantly.",
+            "victim_msg": "The knife slices across your {hit_location}. A {blood} ribbon follows instantly.",
+            "observer_msg": "The knife slices across {target_name}'s {hit_location}. A {blood} ribbon follows instantly."
         },
         {
             "attacker_msg": "Your knife slices along {target_name}'s {hit_location}, not deep — just enough to make them scream.",
@@ -218,9 +218,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} jabs the knife upward into the {hit_location}. {target_name} doubles over and stays there."
         },
         {
-            "attacker_msg": "You jam the knife into their {hit_location} and pull sideways. Red floods the ground.",
-            "victim_msg": "{attacker_name} jams the knife into your {hit_location} and pulls sideways. Red floods the ground.",
-            "observer_msg": "{attacker_name} jams the knife into the {hit_location} and pulls sideways. Red floods the ground."
+            "attacker_msg": "You jam the knife into their {hit_location} and pull sideways. {Blood} floods the ground.",
+            "victim_msg": "{attacker_name} jams the knife into your {hit_location} and pulls sideways. {Blood} floods the ground.",
+            "observer_msg": "{attacker_name} jams the knife into the {hit_location} and pulls sideways. {Blood} floods the ground."
         },
         {
             "attacker_msg": "You slash across their {hit_location}. The cut is shallow — but the pain is not.",
@@ -397,9 +397,9 @@ MESSAGES = {
             "observer_msg": "A flash of steel. A jerk of the wrist. {target_name} drops before they know what happened."
         },
         {
-            "attacker_msg": "A flurry of your stabs leaves {target_name} leaking red from every angle. They fall mid-step.",
-            "victim_msg": "A flurry of stabs leaves you leaking red from every angle. You fall mid-step into oblivion.",
-            "observer_msg": "A flurry of stabs leaves {target_name} leaking red from every angle. They fall mid-step."
+            "attacker_msg": "A flurry of your stabs leaves {target_name} leaking {blood} from every angle. They fall mid-step.",
+            "victim_msg": "A flurry of stabs leaves you leaking {blood} from every angle. You fall mid-step into oblivion.",
+            "observer_msg": "A flurry of stabs leaves {target_name} leaking {blood} from every angle. They fall mid-step."
         },
         {
             "attacker_msg": "Your slice across their gut spills everything. {target_name} looks down in disbelief, then nothing at all.",
@@ -412,9 +412,9 @@ MESSAGES = {
             "observer_msg": "A stab to the temple drops {target_name} like a switch was flipped. Darkness comes fast."
         },
         {
-            "attacker_msg": "Your strike to their neck opens a red smile. The grin doesn't last long.",
-            "victim_msg": "A strike to your {hit_location} opens a red smile. The grin doesn't last long. You fade away.",
-            "observer_msg": "A strike to the neck opens a red smile. The grin doesn't last long."
+            "attacker_msg": "Your strike to their neck opens a {blood} smile. The grin doesn't last long.",
+            "victim_msg": "A strike to your {hit_location} opens a {blood} smile. The grin doesn't last long. You fade away.",
+            "observer_msg": "A strike to the neck opens a {blood} smile. The grin doesn't last long."
         },
         {
             "attacker_msg": "Your swift, brutal puncture to their lungs. {target_name} tries to breathe. Then doesn't.",
@@ -477,9 +477,9 @@ MESSAGES = {
             "observer_msg": "The knife draws across the belly. {target_name} looks down. Then topples sideways in disbelief."
         },
         {
-            "attacker_msg": "Your knife drives into their throat. {target_name} chokes, stumbles, and falls — eyes wide, mouth red.",
-            "victim_msg": "The knife drives into your {hit_location}. You choke, stumble, and fall — eyes wide, mouth red.",
-            "observer_msg": "The knife drives into the throat. {target_name} chokes, stumbles, and falls — eyes wide, mouth red."
+            "attacker_msg": "Your knife drives into their throat. {target_name} chokes, stumbles, and falls — eyes wide, mouth {blood}.",
+            "victim_msg": "The knife drives into your {hit_location}. You choke, stumble, and fall — eyes wide, mouth {blood}.",
+            "observer_msg": "The knife drives into the throat. {target_name} chokes, stumbles, and falls — eyes wide, mouth {blood}."
         },
         {
             "attacker_msg": "Your knife slices up into their spine. {target_name} drops with a strange gasp and no control.",

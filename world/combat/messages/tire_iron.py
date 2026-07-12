@@ -218,9 +218,9 @@ MESSAGES = {
             'observer_msg': "The curved end hooks {target_name}'s {hit_location}. They go down like gravity was owed."
         },
         {
-            'attacker_msg': "The hook end cuts the {hit_location}. Red splits wide. {target_name} staggers.",
-            'victim_msg': "The hook end cuts your {hit_location}. Red splits wide. You stagger.",
-            'observer_msg': "The hook end cuts {target_name}'s {hit_location}. Red splits wide. They stagger."
+            'attacker_msg': "The hook end cuts the {hit_location}. {Blood} splits wide. {target_name} staggers.",
+            'victim_msg': "The hook end cuts your {hit_location}. {Blood} splits wide. You stagger.",
+            'observer_msg': "The hook end cuts {target_name}'s {hit_location}. {Blood} splits wide. They stagger."
         },
         {
             'attacker_msg': "The iron clips the {hit_location} of the {hit_location}. Blood joins the noise.",
@@ -263,9 +263,9 @@ MESSAGES = {
             'observer_msg': "The tool crashes down on {target_name}'s {hit_location}. Something crunches."
         },
         {
-            'attacker_msg': "The tool whistles before it lands on the {hit_location}. Red follows quickly.",
-            'victim_msg': "The tool whistles before it lands on your {hit_location}. Red follows quickly.",
-            'observer_msg': "The tool whistles before it lands on {target_name}'s {hit_location}. Red follows quickly."
+            'attacker_msg': "The tool whistles before it lands on the {hit_location}. {Blood} follows quickly.",
+            'victim_msg': "The tool whistles before it lands on your {hit_location}. {Blood} follows quickly.",
+            'observer_msg': "The tool whistles before it lands on {target_name}'s {hit_location}. {Blood} follows quickly."
         },
         {
             'attacker_msg': "You bury the tool into the {hit_location}. {target_name} can't walk away from this.",
@@ -537,9 +537,9 @@ MESSAGES = {
             'observer_msg': "The curved end buries into {target_name}'s {hit_location}. Their breathing halts. Life does too."
         },
         {
-            'attacker_msg': "The hook gouges the throat. Red arcs. The rest falls away.",
-            'victim_msg': "The hook gouges your {hit_location}. Red arcs. The rest falls away.",
-            'observer_msg': "The hook gouges {target_name}'s {hit_location}. Red arcs. The rest falls away."
+            'attacker_msg': "The hook gouges the throat. {Blood} arcs. The rest falls away.",
+            'victim_msg': "The hook gouges your {hit_location}. {Blood} arcs. The rest falls away.",
+            'observer_msg': "The hook gouges {target_name}'s {hit_location}. {Blood} arcs. The rest falls away."
         },
         {
             'attacker_msg': "The hook lands under the jaw. The body follows upward — then hits the ground.",

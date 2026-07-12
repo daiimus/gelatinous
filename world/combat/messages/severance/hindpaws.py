@@ -45,9 +45,9 @@ MESSAGES = {
     "laceration": {
         "grievous": [
             {
-                "attacker_msg": "The torn blow rips {target_name}'s {hit_location} away in a spray of red.",
-                "victim_msg": "{attacker_name}'s torn blow rips your {hit_location} away in a spray of red.",
-                "observer_msg": "{attacker_name}'s torn blow rips {target_name}'s {hit_location} away in a spray of red.",
+                "attacker_msg": "The torn blow rips {target_name}'s {hit_location} away in a spray of {blood}.",
+                "victim_msg": "{attacker_name}'s torn blow rips your {hit_location} away in a spray of {blood}.",
+                "observer_msg": "{attacker_name}'s torn blow rips {target_name}'s {hit_location} away in a spray of {blood}.",
             },
         ],
         "minor": [

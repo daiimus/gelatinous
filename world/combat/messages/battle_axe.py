@@ -163,9 +163,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s brutal upswing lifts {target_name} off their feet. Gravity and pain do the rest."
         },
         {
-            "attacker_msg": "A jab with your shaft, a spin, then blade — it all ends in red for {target_name}.",
-            "victim_msg": "A jab with {attacker_name}'s shaft, a spin, then blade — it all ends in red for you.",
-            "observer_msg": "A jab with {attacker_name}'s shaft, a spin, then blade — it all ends in red for {target_name}."
+            "attacker_msg": "A jab with your shaft, a spin, then blade — it all ends in {blood} for {target_name}.",
+            "victim_msg": "A jab with {attacker_name}'s shaft, a spin, then blade — it all ends in {blood} for you.",
+            "observer_msg": "A jab with {attacker_name}'s shaft, a spin, then blade — it all ends in {blood} for {target_name}."
         },
         {
             "attacker_msg": "Your rising cleave opens {target_name}'s {hit_location} like a door kicked in.",
@@ -258,9 +258,9 @@ MESSAGES = {
             "observer_msg": "The blade of {attacker_name}'s axe tears across {target_name}'s upper {hit_location}. They cry out, half-conscious and half-bleeding."
         },
         {
-            "attacker_msg": "The edge of your axe clips {target_name}'s {hit_location}. They sway as red pours like thoughts unwritten.",
-            "victim_msg": "The edge of {attacker_name}'s axe clips your {hit_location}. You sway as red pours like thoughts unwritten.",
-            "observer_msg": "The edge of {attacker_name}'s axe clips {target_name}'s {hit_location}. They sway as red pours like thoughts unwritten."
+            "attacker_msg": "The edge of your axe clips {target_name}'s {hit_location}. They sway as {blood} pours like thoughts unwritten.",
+            "victim_msg": "The edge of {attacker_name}'s axe clips your {hit_location}. You sway as {blood} pours like thoughts unwritten.",
+            "observer_msg": "The edge of {attacker_name}'s axe clips {target_name}'s {hit_location}. They sway as {blood} pours like thoughts unwritten."
         },
         {
             "attacker_msg": "The flat of your axe smashes {target_name}'s mouth. Teeth scatter. So does confidence.",
@@ -273,9 +273,9 @@ MESSAGES = {
             "observer_msg": "The haft of {attacker_name}'s axe jabs into {target_name}'s {hit_location}, then the blade follows. It’s brutal punctuation."
         },
         {
-            "attacker_msg": "The {hit_location} of your blade clips {target_name}'s {hit_location}. They reel, red staining their breath.",
-            "victim_msg": "The {hit_location} of {attacker_name}'s blade clips your {hit_location}. You reel, red staining your breath.",
-            "observer_msg": "The {hit_location} of {attacker_name}'s blade clips {target_name}'s {hit_location}. They reel, red staining their breath."
+            "attacker_msg": "The {hit_location} of your blade clips {target_name}'s {hit_location}. They reel, {blood} staining their breath.",
+            "victim_msg": "The {hit_location} of {attacker_name}'s blade clips your {hit_location}. You reel, {blood} staining your breath.",
+            "observer_msg": "The {hit_location} of {attacker_name}'s blade clips {target_name}'s {hit_location}. They reel, {blood} staining their breath."
         },
         {
             "attacker_msg": "You drive the {hit_location} of your axe into {target_name}'s {hit_location}. Bone cracks, skin parts.",
@@ -293,9 +293,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} plants their axe in {target_name}'s {hit_location}. The rip is messy and meaningful."
         },
         {
-            "attacker_msg": "You split {target_name}'s {hit_location} open to the bone with your axe. Red sprays like punctuation.",
-            "victim_msg": "{attacker_name} splits your {hit_location} open to the bone with their axe. Red sprays like punctuation.",
-            "observer_msg": "{attacker_name} splits {target_name}'s {hit_location} open to the bone with their axe. Red sprays like punctuation."
+            "attacker_msg": "You split {target_name}'s {hit_location} open to the bone with your axe. {Blood} sprays like punctuation.",
+            "victim_msg": "{attacker_name} splits your {hit_location} open to the bone with their axe. {Blood} sprays like punctuation.",
+            "observer_msg": "{attacker_name} splits {target_name}'s {hit_location} open to the bone with their axe. {Blood} sprays like punctuation."
         },
         {
             "attacker_msg": "You swing your axe across {target_name}'s waist. The scream is brief and blistering.",
@@ -517,9 +517,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s steel axe embeds in {target_name}'s gut. A twist, a jerk — {target_name} ends mid-grimace."
         },
         {
-            "attacker_msg": "Your axe bites deep into {target_name}'s {hit_location}. They crumple as red geysers upward.",
-            "victim_msg": "{attacker_name}'s axe bites deep into your {hit_location}. You crumple as red geysers upward.",
-            "observer_msg": "{attacker_name}'s axe bites deep into {target_name}'s {hit_location}. They crumple as red geysers upward."
+            "attacker_msg": "Your axe bites deep into {target_name}'s {hit_location}. They crumple as {blood} geysers upward.",
+            "victim_msg": "{attacker_name}'s axe bites deep into your {hit_location}. You crumple as {blood} geysers upward.",
+            "observer_msg": "{attacker_name}'s axe bites deep into {target_name}'s {hit_location}. They crumple as {blood} geysers upward."
         },
         {
             "attacker_msg": "Your axe connects mid-sentence. {target_name} never finishes the thought or the breath.",

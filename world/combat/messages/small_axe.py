@@ -253,9 +253,9 @@ MESSAGES = {
             'observer_msg': "The blade hacks into {target_name}'s {hit_location}. They stumble as blood fans out."
         },
         {
-            'attacker_msg': "The blade slashes across the {hit_location}. Red joins the room like a guest.",
-            'victim_msg': "The blade slashes across your {hit_location}. Red joins the room like a guest.",
-            'observer_msg': "The blade slashes across {target_name}'s {hit_location}. Red joins the room like a guest."
+            'attacker_msg': "The blade slashes across the {hit_location}. {Blood} joins the room like a guest.",
+            'victim_msg': "The blade slashes across your {hit_location}. {Blood} joins the room like a guest.",
+            'observer_msg': "The blade slashes across {target_name}'s {hit_location}. {Blood} joins the room like a guest."
         },
         {
             'attacker_msg': "The blade stabs into the {hit_location}. They gag on what doesn't matter anymore.",
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "The edge cuts from {target_name}'s chin to {hit_location}. Blood pours from both ends."
         },
         {
-            'attacker_msg': "The small axe bites into their {hit_location}. It sticks for a moment — then comes free red.",
-            'victim_msg': "The small axe bites into your {hit_location}. It sticks for a moment — then comes free red.",
-            'observer_msg': "The small axe bites into {target_name}'s {hit_location}. It sticks for a moment — then comes free red."
+            'attacker_msg': "The small axe bites into their {hit_location}. It sticks for a moment — then comes free {blood}.",
+            'victim_msg': "The small axe bites into your {hit_location}. It sticks for a moment — then comes free {blood}.",
+            'observer_msg': "The small axe bites into {target_name}'s {hit_location}. It sticks for a moment — then comes free {blood}."
         },
         {
             'attacker_msg': "The weapon slashes across the {hit_location}. It sticks, then jerks free wetly.",
@@ -310,9 +310,9 @@ MESSAGES = {
             'observer_msg': "A backhand blow punches into nothing. {target_name} is already gone."
         },
         {
-            'attacker_msg': "A mistimed arc slices a curtain instead. Red fabric flutters like mockery.",
-            'victim_msg': "A mistimed arc slices a curtain instead. Red fabric flutters like mockery.",
-            'observer_msg': "A mistimed arc slices a curtain instead. Red fabric flutters like mockery."
+            'attacker_msg': "A mistimed arc slices a curtain instead. {Blood} fabric flutters like mockery.",
+            'victim_msg': "A mistimed arc slices a curtain instead. {Blood} fabric flutters like mockery.",
+            'observer_msg': "A mistimed arc slices a curtain instead. {Blood} fabric flutters like mockery."
         },
         {
             'attacker_msg': "A quick slash shreds a tarp. They are already moving.",
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     'kill': [
         {
-            'attacker_msg': "A clean slash opens the neck. Words die in red.",
-            'victim_msg': "A clean slash opens your {hit_location}. Words die in red.",
-            'observer_msg': "A clean slash opens {target_name}'s {hit_location}. Words die in red."
+            'attacker_msg': "A clean slash opens the neck. Words die in {blood}.",
+            'victim_msg': "A clean slash opens your {hit_location}. Words die in {blood}.",
+            'observer_msg': "A clean slash opens {target_name}'s {hit_location}. Words die in {blood}."
         },
         {
             'attacker_msg': "A clean throat shot ends all noise. Permanently.",

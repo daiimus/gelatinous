@@ -9,9 +9,9 @@ MESSAGES = {
     "cut": {
         "grievous": [
             {
-                "attacker_msg": "Your blade catches {target_name}'s {hit_location} clean at the shoulder. The small limb spins away in a thin red arc.",
+                "attacker_msg": "Your blade catches {target_name}'s {hit_location} clean at the shoulder. The small limb spins away in a thin {blood} arc.",
                 "victim_msg": "{attacker_name}'s blade catches your {hit_location} clean at the shoulder. The limb spins away.",
-                "observer_msg": "{attacker_name}'s blade catches {target_name}'s {hit_location} clean at the shoulder. The small limb spins away in a thin red arc.",
+                "observer_msg": "{attacker_name}'s blade catches {target_name}'s {hit_location} clean at the shoulder. The small limb spins away in a thin {blood} arc.",
             },
             {
                 "attacker_msg": "The cut shears through {target_name}'s {hit_location} at the joint and the foreleg falls free, paw still curled.",
@@ -61,9 +61,9 @@ MESSAGES = {
     "laceration": {
         "grievous": [
             {
-                "attacker_msg": "The torn edge of your blow rips {target_name}'s {hit_location} away in a spray of red and tissue.",
-                "victim_msg": "{attacker_name}'s torn blow rips your {hit_location} away in a spray of red and tissue.",
-                "observer_msg": "{attacker_name}'s torn blow rips {target_name}'s {hit_location} away in a spray of red and tissue.",
+                "attacker_msg": "The torn edge of your blow rips {target_name}'s {hit_location} away in a spray of {blood} and tissue.",
+                "victim_msg": "{attacker_name}'s torn blow rips your {hit_location} away in a spray of {blood} and tissue.",
+                "observer_msg": "{attacker_name}'s torn blow rips {target_name}'s {hit_location} away in a spray of {blood} and tissue.",
             },
             {
                 "attacker_msg": "You tear {target_name}'s {hit_location} loose along a ragged seam, fur and flesh going together.",

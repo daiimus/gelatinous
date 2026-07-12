@@ -223,9 +223,9 @@ MESSAGES = {
             'observer_msg': "A quick slice becomes something more. {target_name} collapses mid-sentence, blood painting punctuation around their last word."
         },
         {
-            'attacker_msg': "A spray of red arcs into the air as you drive the saw into {target_name}'s {hit_location}. The sound is wet, grinding — unforgettable.",
-            'victim_msg': "A spray of red arcs into the air as {attacker_name} drives the saw into your {hit_location}. The sound is wet, grinding — unforgettable.",
-            'observer_msg': "A spray of red arcs into the air as {attacker_name} drives the saw into {target_name}'s {hit_location}. The sound is wet, grinding — unforgettable."
+            'attacker_msg': "A spray of {blood} arcs into the air as you drive the saw into {target_name}'s {hit_location}. The sound is wet, grinding — unforgettable.",
+            'victim_msg': "A spray of {blood} arcs into the air as {attacker_name} drives the saw into your {hit_location}. The sound is wet, grinding — unforgettable.",
+            'observer_msg': "A spray of {blood} arcs into the air as {attacker_name} drives the saw into {target_name}'s {hit_location}. The sound is wet, grinding — unforgettable."
         },
         {
             'attacker_msg': "A vertical plunge opens {target_name} from {hit_location} to {hit_location}. The wound screams even if they don't.",
@@ -278,14 +278,14 @@ MESSAGES = {
             'observer_msg': "Steel roars against bone. {target_name} crumples, twitching, as the saw finishes its sentence."
         },
         {
-            'attacker_msg': "Teeth meet body, and the world becomes red static. {target_name} convulses as your chainsaw chews its way through resistance.",
-            'victim_msg': "Teeth meet body, and the world becomes red static. You convulse as the chainsaw chews its way through resistance.",
-            'observer_msg': "Teeth meet body, and the world becomes red static. {target_name} convulses as the chainsaw chews its way through resistance."
+            'attacker_msg': "Teeth meet body, and the world becomes {blood} static. {target_name} convulses as your chainsaw chews its way through resistance.",
+            'victim_msg': "Teeth meet body, and the world becomes {blood} static. You convulse as the chainsaw chews its way through resistance.",
+            'observer_msg': "Teeth meet body, and the world becomes {blood} static. {target_name} convulses as the chainsaw chews its way through resistance."
         },
         {
-            'attacker_msg': "Your blade clips {target_name}'s {hit_location}, spraying red in tight spirals. They try to clutch it. There's nothing left to clutch.",
-            'victim_msg': "The blade clips your {hit_location}, spraying red in tight spirals. You try to clutch it. There's nothing left to clutch.",
-            'observer_msg': "The blade clips {target_name}'s {hit_location}, spraying red in tight spirals. They try to clutch it. There's nothing left to clutch."
+            'attacker_msg': "Your blade clips {target_name}'s {hit_location}, spraying {blood} in tight spirals. They try to clutch it. There's nothing left to clutch.",
+            'victim_msg': "The blade clips your {hit_location}, spraying {blood} in tight spirals. You try to clutch it. There's nothing left to clutch.",
+            'observer_msg': "The blade clips {target_name}'s {hit_location}, spraying {blood} in tight spirals. They try to clutch it. There's nothing left to clutch."
         },
         {
             'attacker_msg': "Your blade sinks in and {target_name} howls, twisting as pieces of them don't keep up. The chainsaw doesn't cut — it devours.",

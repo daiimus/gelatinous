@@ -5,7 +5,7 @@ given a bespoke ``CHROME_MESSAGES`` cell yet.  Selected when
 ``get_severance_message(..., material="chrome")`` finds no per-location
 chrome prose; ``{hit_location}`` fills in whichever part came off.
 
-Chrome doesn't bleed — it shears.  Prose here trades the spray of red
+Chrome doesn't bleed — it shears.  Prose here trades the spray of {blood}
 for sheared actuators, snapped cable looms, a hiss of coolant, and the
 dead-weight clatter of alloy hitting the floor.  Per-location modules
 (``arms``, ``hands``, ``tail``, ...) override with limb-specific

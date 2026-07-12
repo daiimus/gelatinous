@@ -141,9 +141,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} swings the blade low and close, testing the arc. The air recoils."
         },
         {
-            "attacker_msg": "You touch the edge to your thumb, drawing a line of red. The knife remembers.",
-            "victim_msg": "{attacker_name} touches the edge to their thumb, drawing a line of red. The knife remembers.",
-            "observer_msg": "{attacker_name} touches the edge to their thumb, drawing a line of red. The knife remembers."
+            "attacker_msg": "You touch the edge to your thumb, drawing a line of {blood}. The knife remembers.",
+            "victim_msg": "{attacker_name} touches the edge to their thumb, drawing a line of {blood}. The knife remembers.",
+            "observer_msg": "{attacker_name} touches the edge to their thumb, drawing a line of {blood}. The knife remembers."
         },
         {
             "attacker_msg": "You unsheathe the combat knife with a slow hiss of steel. It's not a weapon — it's a decision.",
@@ -173,9 +173,9 @@ MESSAGES = {
             "observer_msg": "A single slash to the {hit_location} leaves {target_name} paralyzed in panic and blood."
         },
         {
-            "attacker_msg": "A spinning jab hits the {hit_location}. {target_name} buckles, red blooming like a flower under pressure.",
-            "victim_msg": "A spinning jab hits the {hit_location}. You buckle, red blooming like a flower under pressure.",
-            "observer_msg": "A spinning jab hits the {hit_location}. {target_name} buckles, red blooming like a flower under pressure."
+            "attacker_msg": "A spinning jab hits the {hit_location}. {target_name} buckles, {blood} blooming like a flower under pressure.",
+            "victim_msg": "A spinning jab hits the {hit_location}. You buckle, {blood} blooming like a flower under pressure.",
+            "observer_msg": "A spinning jab hits the {hit_location}. {target_name} buckles, {blood} blooming like a flower under pressure."
         },
         {
             "attacker_msg": "A swift jab lands in the {hit_location}. {target_name} gasps and falls sideways.",
@@ -233,9 +233,9 @@ MESSAGES = {
             "observer_msg": "The edge sinks into the {hit_location}. {target_name} howls as their arm falls slack."
         },
         {
-            "attacker_msg": "The edge slices a long red line down {target_name}'s {hit_location}. Not fatal — yet.",
-            "victim_msg": "The edge slices a long red line down your {hit_location}. Not fatal — yet.",
-            "observer_msg": "The edge slices a long red line down {target_name}'s {hit_location}. Not fatal — yet."
+            "attacker_msg": "The edge slices a long {blood} line down {target_name}'s {hit_location}. Not fatal — yet.",
+            "victim_msg": "The edge slices a long {blood} line down your {hit_location}. Not fatal — yet.",
+            "observer_msg": "The edge slices a long {blood} line down {target_name}'s {hit_location}. Not fatal — yet."
         },
         {
             "attacker_msg": "The knife buries itself into {target_name}'s {hit_location} with a single, efficient thrust. They jerk once, then sag.",
@@ -243,9 +243,9 @@ MESSAGES = {
             "observer_msg": "The knife buries itself into {target_name}'s {hit_location} with a single, efficient thrust. They jerk once, then sag."
         },
         {
-            "attacker_msg": "The knife digs into the {hit_location}. A red bloom follows, fast and ugly.",
-            "victim_msg": "The knife digs into the {hit_location}. A red bloom follows, fast and ugly.",
-            "observer_msg": "The knife digs into the {hit_location}. A red bloom follows, fast and ugly."
+            "attacker_msg": "The knife digs into the {hit_location}. A {blood} bloom follows, fast and ugly.",
+            "victim_msg": "The knife digs into the {hit_location}. A {blood} bloom follows, fast and ugly.",
+            "observer_msg": "The knife digs into the {hit_location}. A {blood} bloom follows, fast and ugly."
         },
         {
             "attacker_msg": "The knife glides across {target_name}'s {hit_location}. Not deep, but devastatingly precise.",
@@ -457,14 +457,14 @@ MESSAGES = {
     ],
     "kill": [
         {
-            "attacker_msg": "A brutal strike to the side of the neck ends everything in a red cough and twitch.",
-            "victim_msg": "A brutal strike to the side of the neck ends everything in a red cough and twitch.",
-            "observer_msg": "A brutal strike to the side of the neck ends everything in a red cough and twitch."
+            "attacker_msg": "A brutal strike to the side of the neck ends everything in a {blood} cough and twitch.",
+            "victim_msg": "A brutal strike to the side of the neck ends everything in a {blood} cough and twitch.",
+            "observer_msg": "A brutal strike to the side of the neck ends everything in a {blood} cough and twitch."
         },
         {
-            "attacker_msg": "A final slash across the neck paints the floor red and quiet.",
-            "victim_msg": "A final slash across the neck paints the floor red and quiet.",
-            "observer_msg": "A final slash across the neck paints the floor red and quiet."
+            "attacker_msg": "A final slash across the neck paints the floor {blood} and quiet.",
+            "victim_msg": "A final slash across the neck paints the floor {blood} and quiet.",
+            "observer_msg": "A final slash across the neck paints the floor {blood} and quiet."
         },
         {
             "attacker_msg": "A final thrust into the base of the spine. {target_name} jerks once. Then stillness.",
@@ -497,9 +497,9 @@ MESSAGES = {
             "observer_msg": "A single, perfect hit to the heart. {target_name} jerks — then stills. It's done."
         },
         {
-            "attacker_msg": "A slash from hip to spine drops {target_name} in a waterfall of red. No mercy. No pause.",
-            "victim_msg": "A slash from hip to spine drops you in a waterfall of red. No mercy. No pause.",
-            "observer_msg": "A slash from hip to spine drops {target_name} in a waterfall of red. No mercy. No pause."
+            "attacker_msg": "A slash from hip to spine drops {target_name} in a waterfall of {blood}. No mercy. No pause.",
+            "victim_msg": "A slash from hip to spine drops you in a waterfall of {blood}. No mercy. No pause.",
+            "observer_msg": "A slash from hip to spine drops {target_name} in a waterfall of {blood}. No mercy. No pause."
         },
         {
             "attacker_msg": "A stab through the eye ends the fight before it ever really began.",

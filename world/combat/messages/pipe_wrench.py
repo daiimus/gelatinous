@@ -298,9 +298,9 @@ MESSAGES = {
             'observer_msg': "A brutal follow-through strike crashes into {target_name}'s {hit_location}, eliciting a hoarse scream."
         },
         {
-            'attacker_msg': "The jaws graze skin, leaving deep red gashes that bloom like rust in reverse.",
-            'victim_msg': "The jaws graze your skin, leaving deep red gashes that bloom like rust in reverse.",
-            'observer_msg': "The jaws graze {target_name}'s skin, leaving deep red gashes that bloom like rust in reverse."
+            'attacker_msg': "The jaws graze skin, leaving deep {blood} gashes that bloom like rust in reverse.",
+            'victim_msg': "The jaws graze your skin, leaving deep {blood} gashes that bloom like rust in reverse.",
+            'observer_msg': "The jaws graze {target_name}'s skin, leaving deep {blood} gashes that bloom like rust in reverse."
         }
     ],
     "miss": [

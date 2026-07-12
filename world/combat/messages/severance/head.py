@@ -17,9 +17,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name}'s blade carves through {target_name}'s neck in a single brutal arc. Their head spins free, eyes still tracking nothing, and meets the deck with a wet crack.",
             },
             {
-                "attacker_msg": "The cut is too deep, too fast. {target_name}'s head topples backward before the body knows it has lost its anchor — blood plumes in a wide red column.",
+                "attacker_msg": "The cut is too deep, too fast. {target_name}'s head topples backward before the body knows it has lost its anchor — blood plumes in a wide {blood} column.",
                 "victim_msg": "The cut is too deep, too fast. Your head topples backward before the body knows it has lost its anchor.",
-                "observer_msg": "The cut is too deep, too fast. {target_name}'s head topples backward before the body knows it has lost its anchor — blood plumes in a wide red column.",
+                "observer_msg": "The cut is too deep, too fast. {target_name}'s head topples backward before the body knows it has lost its anchor — blood plumes in a wide {blood} column.",
             },
             {
                 "attacker_msg": "You hew through {target_name}'s neck and feel the resistance vanish mid-stroke. Their head drops to the ground, mouth open in a question that will never close.",
@@ -27,9 +27,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name} hews through {target_name}'s neck and the resistance vanishes mid-stroke. The head drops to the ground, mouth open in a question that will never close.",
             },
             {
-                "attacker_msg": "Bone parts like wet wood. {target_name}'s head sails free, trailing a slow rope of red, and hits the floor before the body has begun to fall.",
-                "victim_msg": "Bone parts like wet wood. Your head sails free, trailing a slow rope of red.",
-                "observer_msg": "Bone parts like wet wood. {target_name}'s head sails free, trailing a slow rope of red, and hits the floor before the body has begun to fall.",
+                "attacker_msg": "Bone parts like wet wood. {target_name}'s head sails free, trailing a slow rope of {blood}, and hits the floor before the body has begun to fall.",
+                "victim_msg": "Bone parts like wet wood. Your head sails free, trailing a slow rope of {blood}.",
+                "observer_msg": "Bone parts like wet wood. {target_name}'s head sails free, trailing a slow rope of {blood}, and hits the floor before the body has begun to fall.",
             },
         ],
         "minor": [
@@ -109,9 +109,9 @@ MESSAGES = {
                 "observer_msg": "Teeth and torque take {target_name}'s head off in pieces. Bone fragments and tissue spray outward while the engine's note doesn't change.",
             },
             {
-                "attacker_msg": "The blade catches, drags, and *grinds*. {target_name}'s head comes apart at the neck in a slurry of red, and what's left of it lands separately.",
-                "victim_msg": "{attacker_name}'s blade catches, drags, and *grinds*. Your head comes apart at the neck in a slurry of red.",
-                "observer_msg": "{attacker_name}'s blade catches, drags, and *grinds*. {target_name}'s head comes apart at the neck in a slurry of red, and what's left of it lands separately.",
+                "attacker_msg": "The blade catches, drags, and *grinds*. {target_name}'s head comes apart at the neck in a slurry of {blood}, and what's left of it lands separately.",
+                "victim_msg": "{attacker_name}'s blade catches, drags, and *grinds*. Your head comes apart at the neck in a slurry of {blood}.",
+                "observer_msg": "{attacker_name}'s blade catches, drags, and *grinds*. {target_name}'s head comes apart at the neck in a slurry of {blood}, and what's left of it lands separately.",
             },
             {
                 "attacker_msg": "You saw, you tear, you *rip*. {target_name}'s head leaves the body in a single ragged motion, ribbons of meat trailing after it like banners.",

@@ -577,9 +577,9 @@ MESSAGES = {
             "observer_msg": "{target_name}'s eyes widen in sheer terror as {attacker_name}'s claymore descends for the final, obliterating blow."
         },
         {
-            "attacker_msg": "A fountain of crimson erupts as your claymore finds its ultimate, devastating target.",
-            "victim_msg": "A fountain of crimson erupts as {attacker_name}'s claymore finds its ultimate, devastating target.",
-            "observer_msg": "A fountain of crimson erupts as {attacker_name}'s claymore finds its ultimate, devastating target."
+            "attacker_msg": "A fountain of {blood} erupts as your claymore finds its ultimate, devastating target.",
+            "victim_msg": "A fountain of {blood} erupts as {attacker_name}'s claymore finds its ultimate, devastating target.",
+            "observer_msg": "A fountain of {blood} erupts as {attacker_name}'s claymore finds its ultimate, devastating target."
         },
         {
             "attacker_msg": "You withdraw the claymore with a grunt, leaving {target_name} a broken, bloody mess.",

@@ -224,7 +224,7 @@ MESSAGES = {
             "observer_msg": "A distinct *SPLAT* sound, followed by a series of increasingly desperate gurgles, is heard as {attacker_name}'s {item_name} hits {target_name}. The immediate area is now officially a biohazard zone, the stench overwhelming.",
         },
         {
-            "attacker_msg": "{target_name} lets out a strangled, gurgling yelp as your {item_name} works its dark magic. They look like they're about to paint the town brown, red, and several other unappetizing colors. Their body trembles violently.",
+            "attacker_msg": "{target_name} lets out a strangled, gurgling yelp as your {item_name} works its dark magic. They look like they're about to paint the town brown, {blood}, and several other unappetizing colors. Their body trembles violently.",
             "victim_msg": "You let out a strangled yelp as {attacker_name}'s {item_name} connects. An unstoppable force meets an all-too-movable object within you. The laws of physics are cruel and messy, and you are their unwilling demonstration.",
             "observer_msg": "{target_name} yelps and doubles over as {attacker_name}'s {item_name} hits. Things are clearly not going well internally for them. It's like watching a car crash in slow motion, if the car was full of chili and regret.",
         },

@@ -15,9 +15,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name}'s blade cleaves {target_name}'s {hit_location} from the hip in a sweeping arc. The leg crashes to the deck and the body topples after it in a slow, terrible cascade.",
             },
             {
-                "attacker_msg": "The femur parts under your edge with a deep crack. {target_name}'s {hit_location} comes away in a fountain of arterial red, and they go down before they can scream.",
-                "victim_msg": "Your femur parts under {attacker_name}'s edge with a deep crack. Your {hit_location} comes away in a fountain of arterial red.",
-                "observer_msg": "{target_name}'s femur parts under {attacker_name}'s edge with a deep crack. The {hit_location} comes away in a fountain of arterial red, and they go down before they can scream.",
+                "attacker_msg": "The femur parts under your edge with a deep crack. {target_name}'s {hit_location} comes away in a fountain of arterial {blood}, and they go down before they can scream.",
+                "victim_msg": "Your femur parts under {attacker_name}'s edge with a deep crack. Your {hit_location} comes away in a fountain of arterial {blood}.",
+                "observer_msg": "{target_name}'s femur parts under {attacker_name}'s edge with a deep crack. The {hit_location} comes away in a fountain of arterial {blood}, and they go down before they can scream.",
             },
             {
                 "attacker_msg": "Your chop catches at the hip joint and continues through. {target_name}'s {hit_location} cartwheels free, blood arcing high in a final salute.",
@@ -25,9 +25,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name}'s chop catches at {target_name}'s hip joint and continues through. The {hit_location} cartwheels free, blood arcing high in a final salute.",
             },
             {
-                "attacker_msg": "You take {target_name}'s {hit_location} off above the knee in a single hard stroke. The leg falls, the body collapses, and the deck is suddenly very red.",
+                "attacker_msg": "You take {target_name}'s {hit_location} off above the knee in a single hard stroke. The leg falls, the body collapses, and the deck is suddenly very {blood}.",
                 "victim_msg": "{attacker_name} takes your {hit_location} off above the knee in a single hard stroke. Your leg falls, your body collapses.",
-                "observer_msg": "{attacker_name} takes {target_name}'s {hit_location} off above the knee in a single hard stroke. The leg falls, the body collapses, and the deck is suddenly very red.",
+                "observer_msg": "{attacker_name} takes {target_name}'s {hit_location} off above the knee in a single hard stroke. The leg falls, the body collapses, and the deck is suddenly very {blood}.",
             },
         ],
         "minor": [
@@ -61,9 +61,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name} drives the point into {target_name}'s hip joint and *levers*. The {hit_location} pries loose with a wet crack and the body folds sideways.",
             },
             {
-                "attacker_msg": "Your thrust tears through the femoral head. {target_name}'s {hit_location} hangs by tendons for a moment, then falls away in a spray of red.",
+                "attacker_msg": "Your thrust tears through the femoral head. {target_name}'s {hit_location} hangs by tendons for a moment, then falls away in a spray of {blood}.",
                 "victim_msg": "{attacker_name}'s thrust tears through your femoral head. Your {hit_location} hangs by tendons for a moment, then falls.",
-                "observer_msg": "{attacker_name}'s thrust tears through {target_name}'s femoral head. The {hit_location} hangs by tendons for a moment, then falls away in a spray of red.",
+                "observer_msg": "{attacker_name}'s thrust tears through {target_name}'s femoral head. The {hit_location} hangs by tendons for a moment, then falls away in a spray of {blood}.",
             },
             {
                 "attacker_msg": "The point goes deep and rips through the joint capsule. {target_name}'s {hit_location} tears free, the wound a brutal ruin where the hip used to be.",
@@ -139,9 +139,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name} drags the blade through {target_name}'s thigh and the {hit_location} parts free, the cut ragged but the result undeniable.",
             },
             {
-                "attacker_msg": "The tear is uneven but the femur gives. {target_name}'s {hit_location} drops away in a wash of red.",
-                "victim_msg": "{attacker_name}'s tear is uneven but your femur gives. Your {hit_location} drops away in a wash of red.",
-                "observer_msg": "{attacker_name}'s tear is uneven but the femur gives. {target_name}'s {hit_location} drops away in a wash of red.",
+                "attacker_msg": "The tear is uneven but the femur gives. {target_name}'s {hit_location} drops away in a wash of {blood}.",
+                "victim_msg": "{attacker_name}'s tear is uneven but your femur gives. Your {hit_location} drops away in a wash of {blood}.",
+                "observer_msg": "{attacker_name}'s tear is uneven but the femur gives. {target_name}'s {hit_location} drops away in a wash of {blood}.",
             },
         ],
     },

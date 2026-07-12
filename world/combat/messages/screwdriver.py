@@ -36,9 +36,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} produces a screwdriver from nowhere, the metal stained and pitted."
         },
         {
-            "attacker_msg": "You press the flathead to your own palm, leaving a red dimple.",
-            "victim_msg": "{attacker_name} presses the flathead to their own palm, leaving a red dimple.",
-            "observer_msg": "{attacker_name} presses the flathead to their own palm, leaving a red dimple."
+            "attacker_msg": "You press the flathead to your own palm, leaving a {blood} dimple.",
+            "victim_msg": "{attacker_name} presses the flathead to their own palm, leaving a {blood} dimple.",
+            "observer_msg": "{attacker_name} presses the flathead to their own palm, leaving a {blood} dimple."
         },
         {
             "attacker_msg": "You flick the screwdriver in the air, catching it by the shaft.",
@@ -66,9 +66,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} balances the screwdriver on a fingertip, then lets it drop into their grip."
         },
         {
-            "attacker_msg": "You trace the tip along your {hit_location}, leaving a thin red line.",
-            "victim_msg": "{attacker_name} traces the tip along their forearm, leaving a thin red line.",
-            "observer_msg": "{attacker_name} traces the tip along their forearm, leaving a thin red line."
+            "attacker_msg": "You trace the tip along your {hit_location}, leaving a thin {blood} line.",
+            "victim_msg": "{attacker_name} traces the tip along their forearm, leaving a thin {blood} line.",
+            "observer_msg": "{attacker_name} traces the tip along their forearm, leaving a thin {blood} line."
         },
         {
             "attacker_msg": "You press the screwdriver to your lips, shushing {target_name} with a bloody smile.",
@@ -136,9 +136,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} flicks the screwdriver open like a switchblade—impossible, but intimidating."
         },
         {
-            "attacker_msg": "You hold the screwdriver like a brush, ready to paint in red.",
-            "victim_msg": "{attacker_name} holds the screwdriver like a brush, ready to paint in red.",
-            "observer_msg": "{attacker_name} holds the screwdriver like a brush, ready to paint in red."
+            "attacker_msg": "You hold the screwdriver like a brush, ready to paint in {blood}.",
+            "victim_msg": "{attacker_name} holds the screwdriver like a brush, ready to paint in {blood}.",
+            "observer_msg": "{attacker_name} holds the screwdriver like a brush, ready to paint in {blood}."
         },
         {
             "attacker_msg": "You let the screwdriver rest on your tongue for a heartbeat before spitting it into your {hit_location}.",
@@ -233,9 +233,9 @@ MESSAGES = {
             "observer_msg": "A jab to the {hit_location} leaves a thin, bubbling wound."
         },
         {
-            "attacker_msg": "The tip glides across {target_name}'s {hit_location}, leaving a red smile.",
-            "victim_msg": "The tip glides across your {hit_location}, leaving a red smile.",
-            "observer_msg": "The tip glides across {target_name}'s {hit_location}, leaving a red smile."
+            "attacker_msg": "The tip glides across {target_name}'s {hit_location}, leaving a {blood} smile.",
+            "victim_msg": "The tip glides across your {hit_location}, leaving a {blood} smile.",
+            "observer_msg": "The tip glides across {target_name}'s {hit_location}, leaving a {blood} smile."
         },
         {
             "attacker_msg": "You puncture {target_name}'s {hit_location}, twisting the tool before pulling it free.",
@@ -278,9 +278,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} jabs the tip into {target_name}'s {hit_location}, twisting for emphasis."
         },
         {
-            "attacker_msg": "The screwdriver slips under {target_name}'s chin, drawing a thin red line.",
-            "victim_msg": "The screwdriver slips under your chin, drawing a thin red line.",
-            "observer_msg": "The screwdriver slips under {target_name}'s chin, drawing a thin red line."
+            "attacker_msg": "The screwdriver slips under {target_name}'s chin, drawing a thin {blood} line.",
+            "victim_msg": "The screwdriver slips under your chin, drawing a thin {blood} line.",
+            "observer_msg": "The screwdriver slips under {target_name}'s chin, drawing a thin {blood} line."
         },
         {
             "attacker_msg": "A cut across the Achilles leaves {target_name} stumbling.",
@@ -552,9 +552,9 @@ MESSAGES = {
             "observer_msg": "A stab to the base of the skull ends it instantly."
         },
         {
-            "attacker_msg": "You carve a spiral down the chest. The pattern is red and final.",
-            "victim_msg": "{attacker_name} carves a spiral down the chest. The pattern is red and final.",
-            "observer_msg": "{attacker_name} carves a spiral down the chest. The pattern is red and final."
+            "attacker_msg": "You carve a spiral down the chest. The pattern is {blood} and final.",
+            "victim_msg": "{attacker_name} carves a spiral down the chest. The pattern is {blood} and final.",
+            "observer_msg": "{attacker_name} carves a spiral down the chest. The pattern is {blood} and final."
         },
         {
             "attacker_msg": "The tip slips into the mouth, blood pouring out.",

@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "A shallow swing slices open a {hit_location}. Blood drips like punctuation."
         },
         {
-            'attacker_msg': "A sideways hack lands across the {hit_location}line. {target_name} turns red and stumbles.",
-            'victim_msg': "A sideways hack lands across the {hit_location}line. You turn red and stumble.",
-            'observer_msg': "A sideways hack lands across the {hit_location}line. {target_name} turns red and stumbles."
+            'attacker_msg': "A sideways hack lands across the {hit_location}line. {target_name} turns {blood} and stumbles.",
+            'victim_msg': "A sideways hack lands across the {hit_location}line. You turn {blood} and stumble.",
+            'observer_msg': "A sideways hack lands across the {hit_location}line. {target_name} turns {blood} and stumbles."
         },
         {
             'attacker_msg': "A sideways strike splits the {hit_location}. Blood spurts. {target_name} stumbles with wide eyes.",
@@ -193,14 +193,14 @@ MESSAGES = {
             'observer_msg': "A sideways strike splits the {hit_location}. Blood spurts. {target_name} stumbles with wide eyes."
         },
         {
-            'attacker_msg': "A vicious swing catches {target_name} in the {hit_location}. They stagger sideways, leaking red.",
-            'victim_msg': "A vicious swing catches you in the {hit_location}. You stagger sideways, leaking red.",
-            'observer_msg': "A vicious swing catches {target_name} in the {hit_location}. They stagger sideways, leaking red."
+            'attacker_msg': "A vicious swing catches {target_name} in the {hit_location}. They stagger sideways, leaking {blood}.",
+            'victim_msg': "A vicious swing catches you in the {hit_location}. You stagger sideways, leaking {blood}.",
+            'observer_msg': "A vicious swing catches {target_name} in the {hit_location}. They stagger sideways, leaking {blood}."
         },
         {
-            'attacker_msg': "One flash of steel, and the hatchet cuts across {target_name}'s {hit_location}. Blood sprays in a crimson arc.",
-            'victim_msg': "One flash of steel, and the hatchet cuts across your {hit_location}. Blood sprays in a crimson arc.",
-            'observer_msg': "One flash of steel, and the hatchet cuts across {target_name}'s {hit_location}. Blood sprays in a crimson arc."
+            'attacker_msg': "One flash of steel, and the hatchet cuts across {target_name}'s {hit_location}. Blood sprays in a {blood} arc.",
+            'victim_msg': "One flash of steel, and the hatchet cuts across your {hit_location}. Blood sprays in a {blood} arc.",
+            'observer_msg': "One flash of steel, and the hatchet cuts across {target_name}'s {hit_location}. Blood sprays in a {blood} arc."
         },
         {
             'attacker_msg': "One precise chop lands just above the {hit_location}. Movement becomes collapse.",
@@ -462,9 +462,9 @@ MESSAGES = {
             'observer_msg': "A bright flash of steel opens {target_name} up from collarbone to sternum. Everything inside tries to get out."
         },
         {
-            'attacker_msg': "A deep cut across the throat opens {target_name} like a book. The final chapter is written in red.",
-            'victim_msg': "A deep cut across the throat opens you like a book. The final chapter is written in red.",
-            'observer_msg': "A deep cut across the throat opens {target_name} like a book. The final chapter is written in red."
+            'attacker_msg': "A deep cut across the throat opens {target_name} like a book. The final chapter is written in {blood}.",
+            'victim_msg': "A deep cut across the throat opens you like a book. The final chapter is written in {blood}.",
+            'observer_msg': "A deep cut across the throat opens {target_name} like a book. The final chapter is written in {blood}."
         },
         {
             'attacker_msg': "A diagonal slash cleaves from shoulder to hip. {target_name} falls in two separate pieces.",
@@ -517,9 +517,9 @@ MESSAGES = {
             'observer_msg': "One final strike across the heart. {target_name} stops everything."
         },
         {
-            'attacker_msg': "One fluid movement severs the carotid. {target_name} paints the ground red and collapses.",
-            'victim_msg': "One fluid movement severs the carotid. You paint the ground red and collapse.",
-            'observer_msg': "One fluid movement severs the carotid. {target_name} paints the ground red and collapses."
+            'attacker_msg': "One fluid movement severs the carotid. {target_name} paints the ground {blood} and collapses.",
+            'victim_msg': "One fluid movement severs the carotid. You paint the ground {blood} and collapse.",
+            'observer_msg': "One fluid movement severs the carotid. {target_name} paints the ground {blood} and collapses."
         },
         {
             'attacker_msg': "The blade cleaves the collarbone, opening {target_name} to the heart. The end is immediate.",

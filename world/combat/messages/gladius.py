@@ -522,9 +522,9 @@ MESSAGES = {
             'observer_msg': "A swift, savage cut from the gladius, and {target_name} is no more."
         },
         {
-            'attacker_msg': "The gladius, stained dark red, is wrenched free as {target_name} breathes their last, ragged breath.",
-            'victim_msg': "The gladius, stained dark red, is wrenched free as you breathe your last, ragged breath.",
-            'observer_msg': "The gladius, stained dark red, is wrenched free as {target_name} breathes their last, ragged breath."
+            'attacker_msg': "The gladius, stained dark {blood}, is wrenched free as {target_name} breathes their last, ragged breath.",
+            'victim_msg': "The gladius, stained dark {blood}, is wrenched free as you breathe your last, ragged breath.",
+            'observer_msg': "The gladius, stained dark {blood}, is wrenched free as {target_name} breathes their last, ragged breath."
         },
         {
             'attacker_msg': "You deliver a brutal coup de grâce with the gladius, ensuring {target_name} will not rise again.",
@@ -577,9 +577,9 @@ MESSAGES = {
             'observer_msg': "{target_name}'s eyes widen in terror as {attacker_name}'s gladius delivers the final, crushing blow."
         },
         {
-            'attacker_msg': "A fountain of crimson erupts as your gladius finds its ultimate, bloody target.",
-            'victim_msg': "A fountain of crimson erupts as {attacker_name}'s gladius finds its ultimate, bloody target.",
-            'observer_msg': "A fountain of crimson erupts as {attacker_name}'s gladius finds its ultimate, bloody target."
+            'attacker_msg': "A fountain of {blood} erupts as your gladius finds its ultimate, bloody target.",
+            'victim_msg': "A fountain of {blood} erupts as {attacker_name}'s gladius finds its ultimate, bloody target.",
+            'observer_msg': "A fountain of {blood} erupts as {attacker_name}'s gladius finds its ultimate, bloody target."
         },
         {
             'attacker_msg': "You withdraw the gladius with a grunt, leaving {target_name} to fall into the dust of defeat.",

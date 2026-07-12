@@ -51,9 +51,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} flicks the blade open with a practiced snap, the motion smooth and final."
         },
         {
-            'attacker_msg': "You trace the razor along your {hit_location}, leaving a thin red line.",
-            'victim_msg': "{attacker_name} traces the razor along their forearm, leaving a thin red line.",
-            'observer_msg': "{attacker_name} traces the razor along their forearm, leaving a thin red line."
+            'attacker_msg': "You trace the razor along your {hit_location}, leaving a thin {blood} line.",
+            'victim_msg': "{attacker_name} traces the razor along their forearm, leaving a thin {blood} line.",
+            'observer_msg': "{attacker_name} traces the razor along their forearm, leaving a thin {blood} line."
         },
         {
             'attacker_msg': "You hold the razor like a pen, ready to write something permanent.",
@@ -111,9 +111,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slides the blade out, the sound slicing through the silence."
         },
         {
-            'attacker_msg': "You hold the razor like a brush, ready to paint in red.",
-            'victim_msg': "{attacker_name} holds the razor like a brush, ready to paint in red.",
-            'observer_msg': "{attacker_name} holds the razor like a brush, ready to paint in red."
+            'attacker_msg': "You hold the razor like a brush, ready to paint in {blood}.",
+            'victim_msg': "{attacker_name} holds the razor like a brush, ready to paint in {blood}.",
+            'observer_msg': "{attacker_name} holds the razor like a brush, ready to paint in {blood}."
         },
         {
             'attacker_msg': "You flick the blade out, the click echoing like a countdown.",
@@ -552,9 +552,9 @@ MESSAGES = {
             'observer_msg': "A stab to the base of {target_name}'s {hit_location} ends it instantly."
         },
         {
-            'attacker_msg': "You carve a spiral down the chest. The pattern is red and final.",
-            'victim_msg': "{attacker_name} carves a spiral down your {hit_location}. The pattern is red and final.",
-            'observer_msg': "{attacker_name} carves a spiral down {target_name}'s {hit_location}. The pattern is red and final."
+            'attacker_msg': "You carve a spiral down the chest. The pattern is {blood} and final.",
+            'victim_msg': "{attacker_name} carves a spiral down your {hit_location}. The pattern is {blood} and final.",
+            'observer_msg': "{attacker_name} carves a spiral down {target_name}'s {hit_location}. The pattern is {blood} and final."
         },
         {
             'attacker_msg': "The blade slips into the mouth, blood pouring out.",

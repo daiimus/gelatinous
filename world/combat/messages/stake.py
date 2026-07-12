@@ -61,9 +61,9 @@ MESSAGES = {
             'observer_msg': "The sharpened wood scrapes against {attacker_name}'s belt as it's drawn. This isn't showtime — it's a verdict."
         },
         {
-            'attacker_msg': "The stake is already red at the tip. You plan to finish what someone else started.",
-            'victim_msg': "The stake is already red at the tip. {attacker_name} plans to finish what someone else started.",
-            'observer_msg': "The stake is already red at the tip. {attacker_name} plans to finish what someone else started."
+            'attacker_msg': "The stake is already {blood} at the tip. You plan to finish what someone else started.",
+            'victim_msg': "The stake is already {blood} at the tip. {attacker_name} plans to finish what someone else started.",
+            'observer_msg': "The stake is already {blood} at the tip. {attacker_name} plans to finish what someone else started."
         },
         {
             'attacker_msg': "The stake scrapes across the wall, carving its presence in the silence.",
@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "A quick jab to the {hit_location}. The crack is small. The pain isn't."
         },
         {
-            'attacker_msg': "A savage jab punctures cloth and flesh. {target_name} doubles over, {hit_location} clutching red.",
-            'victim_msg': "A savage jab punctures cloth and flesh. You double over, {hit_location} clutching red.",
-            'observer_msg': "A savage jab punctures cloth and flesh. {target_name} doubles over, {hit_location} clutching red."
+            'attacker_msg': "A savage jab punctures cloth and flesh. {target_name} doubles over, {hit_location} clutching {blood}.",
+            'victim_msg': "A savage jab punctures cloth and flesh. You double over, {hit_location} clutching {blood}.",
+            'observer_msg': "A savage jab punctures cloth and flesh. {target_name} doubles over, {hit_location} clutching {blood}."
         },
         {
             'attacker_msg': "A strike to the {hit_location} gouges flesh. {target_name}'s eye wells up — with blood, not tears.",
@@ -213,9 +213,9 @@ MESSAGES = {
             'observer_msg': "One sweeping stab catches the {hit_location}. The stumble is immediate."
         },
         {
-            'attacker_msg': "The point scrapes across the {hit_location}, leaving a ragged red ribbon.",
-            'victim_msg': "The point scrapes across your {hit_location}, leaving a ragged red ribbon.",
-            'observer_msg': "The point scrapes across the {hit_location}, leaving a ragged red ribbon."
+            'attacker_msg': "The point scrapes across the {hit_location}, leaving a ragged {blood} ribbon.",
+            'victim_msg': "The point scrapes across your {hit_location}, leaving a ragged {blood} ribbon.",
+            'observer_msg': "The point scrapes across the {hit_location}, leaving a ragged {blood} ribbon."
         },
         {
             'attacker_msg': "The point sinks into the soft space between collar and {hit_location}. {target_name} spasms, then drops.",

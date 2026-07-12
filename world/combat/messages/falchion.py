@@ -522,9 +522,9 @@ MESSAGES = {
             'observer_msg': "A swift, savage cut from the falchion, and {target_name} is no more, their body nearly hacked in two."
         },
         {
-            'attacker_msg': "The falchion, stained dark red, is wrenched free with a wet squelch as {target_name} breathes their last, ragged breath.",
-            'victim_msg': "The falchion, stained dark red, is wrenched free with a wet squelch as you breathe your last, ragged breath.",
-            'observer_msg': "The falchion, stained dark red, is wrenched free with a wet squelch as {target_name} breathes their last, ragged breath."
+            'attacker_msg': "The falchion, stained dark {blood}, is wrenched free with a wet squelch as {target_name} breathes their last, ragged breath.",
+            'victim_msg': "The falchion, stained dark {blood}, is wrenched free with a wet squelch as you breathe your last, ragged breath.",
+            'observer_msg': "The falchion, stained dark {blood}, is wrenched free with a wet squelch as {target_name} breathes their last, ragged breath."
         },
         {
             'attacker_msg': "You deliver a brutal coup de grâce with the falchion, ensuring {target_name} will not rise again from the mangled remains.",
@@ -577,9 +577,9 @@ MESSAGES = {
             'observer_msg': "{target_name}'s eyes widen in terror as {attacker_name}'s falchion delivers the final, crushing blow, splitting them open."
         },
         {
-            'attacker_msg': "A fountain of crimson erupts as your falchion finds its ultimate, bloody target with a savage chop.",
-            'victim_msg': "A fountain of crimson erupts as {attacker_name}'s falchion finds its ultimate, bloody target with a savage chop.",
-            'observer_msg': "A fountain of crimson erupts as {attacker_name}'s falchion finds its ultimate, bloody target with a savage chop."
+            'attacker_msg': "A fountain of {blood} erupts as your falchion finds its ultimate, bloody target with a savage chop.",
+            'victim_msg': "A fountain of {blood} erupts as {attacker_name}'s falchion finds its ultimate, bloody target with a savage chop.",
+            'observer_msg': "A fountain of {blood} erupts as {attacker_name}'s falchion finds its ultimate, bloody target with a savage chop."
         },
         {
             'attacker_msg': "You withdraw the falchion with a grunt, leaving {target_name} to fall into the dust of a brutal defeat.",

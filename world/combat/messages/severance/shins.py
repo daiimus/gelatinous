@@ -10,9 +10,9 @@ MESSAGES = {
     "cut": {
         "grievous": [
             {
-                "attacker_msg": "Your blade cleaves through {target_name}'s knee. The {hit_location} cartwheels away in a spray of red, and the body crashes to the deck without the leg to catch it.",
-                "victim_msg": "{attacker_name}'s blade cleaves through your knee. Your {hit_location} cartwheels away in a spray of red.",
-                "observer_msg": "{attacker_name}'s blade cleaves through {target_name}'s knee. The {hit_location} cartwheels away in a spray of red, and the body crashes to the deck without the leg to catch it.",
+                "attacker_msg": "Your blade cleaves through {target_name}'s knee. The {hit_location} cartwheels away in a spray of {blood}, and the body crashes to the deck without the leg to catch it.",
+                "victim_msg": "{attacker_name}'s blade cleaves through your knee. Your {hit_location} cartwheels away in a spray of {blood}.",
+                "observer_msg": "{attacker_name}'s blade cleaves through {target_name}'s knee. The {hit_location} cartwheels away in a spray of {blood}, and the body crashes to the deck without the leg to catch it.",
             },
             {
                 "attacker_msg": "The tibia parts under your edge with a deep, satisfying crack. {target_name}'s {hit_location} drops away and the body topples in a slow, terrible arc.",
@@ -139,9 +139,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name} drags the blade through {target_name}'s knee and the {hit_location} parts free, the cut ragged but the result clear.",
             },
             {
-                "attacker_msg": "The tear is uneven but the tibia surrenders. {target_name}'s {hit_location} drops away in a wash of red.",
+                "attacker_msg": "The tear is uneven but the tibia surrenders. {target_name}'s {hit_location} drops away in a wash of {blood}.",
                 "victim_msg": "{attacker_name}'s tear is uneven but your tibia surrenders. Your {hit_location} drops away.",
-                "observer_msg": "{attacker_name}'s tear is uneven but the tibia surrenders. {target_name}'s {hit_location} drops away in a wash of red.",
+                "observer_msg": "{attacker_name}'s tear is uneven but the tibia surrenders. {target_name}'s {hit_location} drops away in a wash of {blood}.",
             },
         ],
     },

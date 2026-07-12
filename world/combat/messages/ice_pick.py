@@ -111,9 +111,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} flicks the pick from a pocket and catches it with surgical precision."
         },
         {
-            'attacker_msg': "The air thickens as you step closer, pick now gleaming with the promise of red.",
-            'victim_msg': "The air thickens as {attacker_name} steps closer, pick now gleaming with the promise of red.",
-            'observer_msg': "The air thickens as {attacker_name} steps closer, pick now gleaming with the promise of red."
+            'attacker_msg': "The air thickens as you step closer, pick now gleaming with the promise of {blood}.",
+            'victim_msg': "The air thickens as {attacker_name} steps closer, pick now gleaming with the promise of {blood}.",
+            'observer_msg': "The air thickens as {attacker_name} steps closer, pick now gleaming with the promise of {blood}."
         },
         {
             'attacker_msg': "Your posture changes slightly, subtly. The pick points forward. The game has begun.",
@@ -163,9 +163,9 @@ MESSAGES = {
             'observer_msg': "The pick sinks just beneath the skin, then deeper, {attacker_name}'s eyes never blinking."
         },
         {
-            'attacker_msg': "{target_name} howls as the pick punches into their {hit_location}, a red bloom following.",
-            'victim_msg': "You howl as the pick punches into your {hit_location}, a red bloom following.",
-            'observer_msg': "{target_name} howls as the pick punches into their {hit_location}, a red bloom following."
+            'attacker_msg': "{target_name} howls as the pick punches into their {hit_location}, a {blood} bloom following.",
+            'victim_msg': "You howl as the pick punches into your {hit_location}, a {blood} bloom following.",
+            'observer_msg': "{target_name} howls as the pick punches into their {hit_location}, a {blood} bloom following."
         },
         {
             'attacker_msg': "You lunge forward and bury the point in {target_name}'s {hit_location}—metal meets bone with a crunch.",
@@ -203,9 +203,9 @@ MESSAGES = {
             'observer_msg': "A tight jab lands beneath {target_name}'s eye socket. Vision dims. Screams rise."
         },
         {
-            'attacker_msg': "You scrape the pick along {target_name}'s {hit_location}, leaving a cruel red slash.",
-            'victim_msg': "{attacker_name} scrapes the pick along your {hit_location}, leaving a cruel red slash.",
-            'observer_msg': "{attacker_name} scrapes the pick along {target_name}'s {hit_location}, leaving a cruel red slash."
+            'attacker_msg': "You scrape the pick along {target_name}'s {hit_location}, leaving a cruel {blood} slash.",
+            'victim_msg': "{attacker_name} scrapes the pick along your {hit_location}, leaving a cruel {blood} slash.",
+            'observer_msg': "{attacker_name} scrapes the pick along {target_name}'s {hit_location}, leaving a cruel {blood} slash."
         },
         {
             'attacker_msg': "A downward strike embeds the pick in {target_name}'s {hit_location}. Movement becomes agony.",
@@ -482,9 +482,9 @@ MESSAGES = {
             'observer_msg': "The pick vanishes into {target_name}'s {hit_location}. They slump forward like their strings were cut."
         },
         {
-            'attacker_msg': "A savage uppercut with the pick leaves {target_name}'s {hit_location} gurgling red.",
-            'victim_msg': "A savage uppercut with the pick leaves your {hit_location} gurgling red.",
-            'observer_msg': "A savage uppercut with the pick leaves {target_name}'s {hit_location} gurgling red."
+            'attacker_msg': "A savage uppercut with the pick leaves {target_name}'s {hit_location} gurgling {blood}.",
+            'victim_msg': "A savage uppercut with the pick leaves your {hit_location} gurgling {blood}.",
+            'observer_msg': "A savage uppercut with the pick leaves {target_name}'s {hit_location} gurgling {blood}."
         },
         {
             'attacker_msg': "The strike lands beneath {target_name}'s ear. They convulse—then die.",

@@ -163,9 +163,9 @@ MESSAGES = {
             'observer_msg': "A diagonal chop slams into {target_name}'s {hit_location}. The scream is instant."
         },
         {
-            'attacker_msg': "A fast horizontal sweep cuts deep into the {hit_location}. Red pours. {target_name} can't hold it in.",
-            'victim_msg': "A fast horizontal sweep cuts deep into your {hit_location}. Red pours. You can't hold it in.",
-            'observer_msg': "A fast horizontal sweep cuts deep into {target_name}'s {hit_location}. Red pours. {target_name} can't hold it in."
+            'attacker_msg': "A fast horizontal sweep cuts deep into the {hit_location}. {Blood} pours. {target_name} can't hold it in.",
+            'victim_msg': "A fast horizontal sweep cuts deep into your {hit_location}. {Blood} pours. You can't hold it in.",
+            'observer_msg': "A fast horizontal sweep cuts deep into {target_name}'s {hit_location}. {Blood} pours. {target_name} can't hold it in."
         },
         {
             'attacker_msg': "A fast swing slices the {hit_location} open. {target_name} drops like a marionette cut mid-step.",
@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "One chop across {target_name}'s {hit_location} leaves them on the ground — twitching, then still."
         },
         {
-            'attacker_msg': "One hack across the {hit_location} leaves a red canyon. {target_name} screams and stumbles.",
-            'victim_msg': "One hack across your {hit_location} leaves a red canyon. You scream and stumble.",
-            'observer_msg': "One hack across {target_name}'s {hit_location} leaves a red canyon. {target_name} screams and stumbles."
+            'attacker_msg': "One hack across the {hit_location} leaves a {blood} canyon. {target_name} screams and stumbles.",
+            'victim_msg': "One hack across your {hit_location} leaves a {blood} canyon. You scream and stumble.",
+            'observer_msg': "One hack across {target_name}'s {hit_location} leaves a {blood} canyon. {target_name} screams and stumbles."
         },
         {
             'attacker_msg': "One upward swing slices the {hit_location} open. The machete speaks in viscera.",
@@ -223,9 +223,9 @@ MESSAGES = {
             'observer_msg': "The blade carves along {target_name}'s {hit_location} with a ripping sound. {attacker_name} doesn't stop."
         },
         {
-            'attacker_msg': "The blade digs deep into the {hit_location}. You pull back, bringing red with it.",
-            'victim_msg': "The blade digs deep into your {hit_location}. {attacker_name} pulls back, bringing red with it.",
-            'observer_msg': "The blade digs deep into {target_name}'s {hit_location}. {attacker_name} pulls back, bringing red with it."
+            'attacker_msg': "The blade digs deep into the {hit_location}. You pull back, bringing {blood} with it.",
+            'victim_msg': "The blade digs deep into your {hit_location}. {attacker_name} pulls back, bringing {blood} with it.",
+            'observer_msg': "The blade digs deep into {target_name}'s {hit_location}. {attacker_name} pulls back, bringing {blood} with it."
         },
         {
             'attacker_msg': "The blade digs into the {hit_location}. {target_name} arches, screams, then folds inward.",
@@ -340,9 +340,9 @@ MESSAGES = {
             'observer_msg': "A reckless swing catches a doorframe. The wood splinters violently."
         },
         {
-            'attacker_msg': "A wide arc cuts through a curtain. Red doesn't bloom — yet.",
-            'victim_msg': "A wide arc cuts through a curtain. Red doesn't bloom — yet.",
-            'observer_msg': "A wide arc cuts through a curtain. Red doesn't bloom — yet."
+            'attacker_msg': "A wide arc cuts through a curtain. {Blood} doesn't bloom — yet.",
+            'victim_msg': "A wide arc cuts through a curtain. {Blood} doesn't bloom — yet.",
+            'observer_msg': "A wide arc cuts through a curtain. {Blood} doesn't bloom — yet."
         },
         {
             'attacker_msg': "A wild swing clips only a curtain. It flutters, unaware how close death came.",
@@ -462,9 +462,9 @@ MESSAGES = {
             'observer_msg': "A brutal diagonal blow severs life and posture. {target_name} folds like empty clothes."
         },
         {
-            'attacker_msg': "A clean sweep across the throat. {target_name} drops mid-stride, voice lost in red.",
-            'victim_msg': "A clean sweep across your {hit_location}. You drop mid-stride, voice lost in red.",
-            'observer_msg': "A clean sweep across {target_name}'s {hit_location}. {target_name} drops mid-stride, voice lost in red."
+            'attacker_msg': "A clean sweep across the throat. {target_name} drops mid-stride, voice lost in {blood}.",
+            'victim_msg': "A clean sweep across your {hit_location}. You drop mid-stride, voice lost in {blood}.",
+            'observer_msg': "A clean sweep across {target_name}'s {hit_location}. {target_name} drops mid-stride, voice lost in {blood}."
         },
         {
             'attacker_msg': "A cleaving strike separates shoulder from soul. {target_name} doesn't argue with gravity.",
@@ -537,9 +537,9 @@ MESSAGES = {
             'observer_msg': "The blade slams through {target_name}'s clavicle and lodges deep. {attacker_name} leaves it there."
         },
         {
-            'attacker_msg': "The last cut is slow and purposeful — across the neck. Red follows, then quiet.",
-            'victim_msg': "The last cut is slow and purposeful — across your {hit_location}. Red follows, then quiet.",
-            'observer_msg': "The last cut is slow and purposeful — across {target_name}'s {hit_location}. Red follows, then quiet."
+            'attacker_msg': "The last cut is slow and purposeful — across the neck. {Blood} follows, then quiet.",
+            'victim_msg': "The last cut is slow and purposeful — across your {hit_location}. {Blood} follows, then quiet.",
+            'observer_msg': "The last cut is slow and purposeful — across {target_name}'s {hit_location}. {Blood} follows, then quiet."
         },
         {
             'attacker_msg': "The machete hacks down into the shoulder, cleaving into the chest. {target_name} crumples like collapsed scaffolding.",

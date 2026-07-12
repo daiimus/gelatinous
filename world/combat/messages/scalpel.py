@@ -155,7 +155,7 @@ SCALPEL_MESSAGES = {
         {
             'attacker_msg': "You slice {target_name}'s {hit_location}, blood welling in a thin line.",
             'victim_msg': "{attacker_name}'s scalpel opens your {hit_location} with surgical precision.",
-            'observer_msg': "The scalpel draws a thin red line across {target_name}'s {hit_location}."
+            'observer_msg': "The scalpel draws a thin {blood} line across {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "The scalpel bites into {target_name}'s palm, nerves screaming.",
@@ -223,9 +223,9 @@ SCALPEL_MESSAGES = {
             'observer_msg': "The scalpel severs {target_name}'s Achilles tendon with one precise cut."
         },
         {
-            'attacker_msg': "The scalpel glides across {target_name}'s {hit_location}, leaving a red smile.",
+            'attacker_msg': "The scalpel glides across {target_name}'s {hit_location}, leaving a {blood} smile.",
             'victim_msg': "You feel the blade trace a grotesque smile across your {hit_location}.",
-            'observer_msg': "The scalpel carves a red smile across {target_name}'s {hit_location} line."
+            'observer_msg': "The scalpel carves a {blood} smile across {target_name}'s {hit_location} line."
         },
         {
             'attacker_msg': "You puncture {target_name}'s {hit_location}, twisting the blade before pulling it free.",
@@ -245,7 +245,7 @@ SCALPEL_MESSAGES = {
         {
             'attacker_msg': "You draw the scalpel across {target_name}'s {hit_location}—shallow, but terrifying.",
             'victim_msg': "The cold blade traces your {hit_location}, shallow but promising deeper cuts to come.",
-            'observer_msg': "The scalpel draws a thin red line across {target_name}'s {hit_location}."
+            'observer_msg': "The scalpel draws a thin {blood} line across {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "A quick flick opens {target_name}'s ear. Blood pours down their {hit_location}.",
@@ -268,9 +268,9 @@ SCALPEL_MESSAGES = {
             'observer_msg': "The blade slides into {target_name}'s {hit_location} and twists with surgical precision."
         },
         {
-            'attacker_msg': "The scalpel slips under {target_name}'s chin, drawing a thin red line.",
+            'attacker_msg': "The scalpel slips under {target_name}'s chin, drawing a thin {blood} line.",
             'victim_msg': "You feel the blade trace a delicate line of fire under your chin.",
-            'observer_msg': "The scalpel draws a precise red line beneath {target_name}'s {hit_location}."
+            'observer_msg': "The scalpel draws a precise {blood} line beneath {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "A cut across the Achilles leaves {target_name} stumbling.",
@@ -552,7 +552,7 @@ SCALPEL_MESSAGES = {
             'observer_msg': "The blade pierces {target_name}'s {hit_location} at the base. Death is immediate."
         },
         {
-            'attacker_msg': "You carve a spiral down the chest. The pattern is red and final.",
+            'attacker_msg': "You carve a spiral down the chest. The pattern is {blood} and final.",
             'victim_msg': "The scalpel traces a spiral of death down your {hit_location}, each cut deeper than the last.",
             'observer_msg': "The blade etches a deadly spiral down {target_name}'s {hit_location}, blood following each line."
         },

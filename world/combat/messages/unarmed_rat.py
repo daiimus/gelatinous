@@ -61,9 +61,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} sinks its incisors into {target_name}'s {hit_location} and tears.",
         },
         {
-            "attacker_msg": "Your claws rake across {target_name}'s {hit_location}, leaving four thin streaks of red.",
-            "victim_msg": "{attacker_name}'s claws rake across your {hit_location}, leaving four thin streaks of red.",
-            "observer_msg": "{attacker_name}'s claws rake across {target_name}'s {hit_location}, leaving four thin streaks of red.",
+            "attacker_msg": "Your claws rake across {target_name}'s {hit_location}, leaving four thin streaks of {blood}.",
+            "victim_msg": "{attacker_name}'s claws rake across your {hit_location}, leaving four thin streaks of {blood}.",
+            "observer_msg": "{attacker_name}'s claws rake across {target_name}'s {hit_location}, leaving four thin streaks of {blood}.",
         },
         {
             "attacker_msg": "You lunge and snap at {target_name}'s {hit_location}, jaws clamping shut on flesh.",

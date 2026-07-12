@@ -174,9 +174,9 @@ MESSAGES = {
             'observer_msg': "The rapier flashes, {attacker_name}'s thrust slipping past {target_name}'s guard to score a hit."
         },
         {
-            'attacker_msg': "Your blade darts in, leaving a stinging red line on {target_name}'s {hit_location}.",
-            'victim_msg': "{attacker_name}'s blade darts in, leaving a stinging red line on your {hit_location}.",
-            'observer_msg': "{attacker_name}'s blade darts in, leaving a stinging red line on {target_name}'s {hit_location}."
+            'attacker_msg': "Your blade darts in, leaving a stinging {blood} line on {target_name}'s {hit_location}.",
+            'victim_msg': "{attacker_name}'s blade darts in, leaving a stinging {blood} line on your {hit_location}.",
+            'observer_msg': "{attacker_name}'s blade darts in, leaving a stinging {blood} line on {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "Steel whispers as your rapier parries and ripostes, its tip finding {target_name}'s {hit_location}.",
@@ -588,9 +588,9 @@ MESSAGES = {
             'observer_msg': "{target_name}'s eyes glaze over as {attacker_name}'s rapier delivers the final, silent blow."
         },
         {
-            'attacker_msg': "A thin line of crimson is the only sign before {target_name} crumples from the rapier's fatal kiss.",
-            'victim_msg': "A thin line of crimson is the only sign before you crumple from the rapier's fatal kiss.",
-            'observer_msg': "A thin line of crimson is the only sign before {target_name} crumples from the rapier's fatal kiss."
+            'attacker_msg': "A thin line of {blood} is the only sign before {target_name} crumples from the rapier's fatal kiss.",
+            'victim_msg': "A thin line of {blood} is the only sign before you crumple from the rapier's fatal kiss.",
+            'observer_msg': "A thin line of {blood} is the only sign before {target_name} crumples from the rapier's fatal kiss."
         },
         {
             'attacker_msg': "You withdraw the rapier with a flourish, leaving {target_name} to the silence of death.",
@@ -608,9 +608,9 @@ MESSAGES = {
             'observer_msg': "No wasted motion, no hesitation; {attacker_name}'s rapier completes its grim purpose on {target_name}."
         },
         {
-            'attacker_msg': "The rapier, once gleaming, now carries a single drop of red as {target_name} succumbs.",
-            'victim_msg': "The rapier, once gleaming, now carries a single drop of red as you succumb.",
-            'observer_msg': "The rapier, once gleaming, now carries a single drop of red as {target_name} succumbs."
+            'attacker_msg': "The rapier, once gleaming, now carries a single drop of {blood} as {target_name} succumbs.",
+            'victim_msg': "The rapier, once gleaming, now carries a single drop of {blood} as you succumb.",
+            'observer_msg': "The rapier, once gleaming, now carries a single drop of {blood} as {target_name} succumbs."
         },
         {
             'attacker_msg': "You lower the rapier, {target_name} a fallen testament to its swift, lethal power.",

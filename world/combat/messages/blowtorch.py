@@ -183,9 +183,9 @@ MESSAGES = {
             "observer_msg": "Clothes catch fire. {target_name} panics, patting themselves uselessly as the heat spreads."
         },
         {
-            "attacker_msg": "Fire lances across {target_name}'s {hit_location}. One second of contact, and the skin balloons, red and ruined.",
-            "victim_msg": "Fire lances across your {hit_location}. One second of contact, and the skin balloons, red and ruined.",
-            "observer_msg": "Fire lances across {target_name}'s {hit_location}. One second of contact, and the skin balloons, red and ruined."
+            "attacker_msg": "Fire lances across {target_name}'s {hit_location}. One second of contact, and the skin balloons, {blood} and ruined.",
+            "victim_msg": "Fire lances across your {hit_location}. One second of contact, and the skin balloons, {blood} and ruined.",
+            "observer_msg": "Fire lances across {target_name}'s {hit_location}. One second of contact, and the skin balloons, {blood} and ruined."
         },
         {
             "attacker_msg": "Fire licks up {target_name}'s {hit_location}, blistering skin instantly. They paw at the wound like it’ll matter.",
@@ -198,9 +198,9 @@ MESSAGES = {
             "observer_msg": "Fire wraps around {target_name}'s {hit_location}, blistering with surgical cruelty. They howl and stagger {hit_location}, steaming."
         },
         {
-            "attacker_msg": "The blowtorch finds skin beneath {target_name}'s torn shirt. The result is instant, horrific, and red.",
-            "victim_msg": "The blowtorch finds skin beneath your torn shirt. The result is instant, horrific, and red.",
-            "observer_msg": "The blowtorch finds skin beneath {target_name}'s torn shirt. The result is instant, horrific, and red."
+            "attacker_msg": "The blowtorch finds skin beneath {target_name}'s torn shirt. The result is instant, horrific, and {blood}.",
+            "victim_msg": "The blowtorch finds skin beneath your torn shirt. The result is instant, horrific, and {blood}.",
+            "observer_msg": "The blowtorch finds skin beneath {target_name}'s torn shirt. The result is instant, horrific, and {blood}."
         },
         {
             "attacker_msg": "The blowtorch hisses like a snake as it roasts a path up {target_name}'s {hit_location}. They fall, rolling, trying to smother agony.",
