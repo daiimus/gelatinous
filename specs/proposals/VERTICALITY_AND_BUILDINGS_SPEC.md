@@ -158,7 +158,7 @@ filter live in `world/spatial/pathfind.py`, and the elevator's
 `db.floor_locks` consumes the same grant model. §2.3 sound-muffling
 awaits a cross-room sound layer (none exists yet — closed doors are
 already the gate when it lands); §2.4 breach stays reserved.
-**NPCs LEARNED `open` (2026-07-12):** `door_blocks` refined to the
+**`@airfill` SHIPPED (2026-07-13, #1210 — the parkour substrate):** generates aerial transit cells over the colony from the hand-proven 'In the Air' #190 atom — SkyRoom (jump-only, no exit display, civilians excluded, crowd 0) + one-way `down` fall edge + plain exits onto adjacent rooftops + `is_edge+is_gap` exits from the rooftops in. Eligibility: empty cell, ≥1 NON-sky same-z neighbour (sky never seeds — re-runs can't balloon), occupied cell directly below (gravity needs a delivery address). `/check` dry-runs; bounding box limits; 300-cell safety cap; never stomps authored exits. Build up, then `@airfill <z>` stitches the sky. **NPCs LEARNED `open` (2026-07-12):** `door_blocks` refined to the
 grant check (open passes; closed-unlocked passes anyone; locked passes
 granted sleeves only) and the travel layer issues the REAL `open` verb
 before stepping through a closed door en route — reader flashes, room
