@@ -6,7 +6,7 @@ with contradiction + warp handling.
 from __future__ import annotations
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from world.spatial import (
     DIRECTION_DELTAS,
@@ -203,3 +203,120 @@ class TestWiring(TestCase):
     def test_room_has_xyz_property(self):
         from typeclasses.rooms import Room
         self.assertIsInstance(Room.__dict__.get("xyz"), property)
+
+
+class TestSlopedExits(TestCase):
+    """Split-level geometry: sloped exits derive their z-step."""
+
+    def _world(self):
+        from types import SimpleNamespace
+
+        class Tags:
+            def __init__(self, *names):
+                self._names = set(names)
+
+            def has(self, name, category=None):
+                return name in self._names
+
+        class _Room:                    # identity-hashable (dict key)
+            def __init__(self, key):
+                self.key = key
+                self.exits = []
+
+        def room(key):
+            return _Room(key)
+
+        def link(a, b, direction, back, a_tags=(), b_tags=()):
+            a.exits.append(SimpleNamespace(
+                key=direction, destination=b, aliases=None,
+                tags=Tags(*a_tags)))
+            b.exits.append(SimpleNamespace(
+                key=back, destination=a, aliases=None, tags=Tags(*b_tags)))
+
+        return room, link
+
+    def test_sloped_south_steps_down(self):
+        from world.spatial.coordinates import seed_coordinates
+        room, link = self._world()
+        rack, cube = room("rack"), room("cube")
+        link(rack, cube, "south", "north",
+             a_tags=("slope_down",), b_tags=("slope_up",))
+        assigns, contras = seed_coordinates(rack)
+        self.assertEqual(assigns[cube], (0, -1, -1))
+        self.assertEqual(contras, [])
+
+    def test_mismatched_return_slope_contradicts(self):
+        from world.spatial.coordinates import seed_coordinates
+        room, link = self._world()
+        rack, cube = room("rack"), room("cube")
+        link(rack, cube, "south", "north", a_tags=("slope_down",))
+        assigns, contras = seed_coordinates(rack)
+        self.assertEqual(len(contras), 1)   # north back reads level: bug
+
+    def test_level_exits_unchanged(self):
+        from world.spatial.coordinates import seed_coordinates
+        room, link = self._world()
+        a, b = room("a"), room("b")
+        link(a, b, "east", "west")
+        assigns, contras = seed_coordinates(a)
+        self.assertEqual(assigns[b], (1, 0, 0))
+        self.assertEqual(contras, [])
+
+    def test_warp_still_excluded(self):
+        from world.spatial.coordinates import seed_coordinates
+        room, link = self._world()
+        a, b = room("a"), room("b")
+        link(a, b, "east", "west", a_tags=("warp",), b_tags=("warp",))
+        assigns, _ = seed_coordinates(a)
+        self.assertNotIn(b, assigns)
+
+
+class TestOriginPin(TestCase):
+    """@coordseed anchors at the pinned origin, never the caller."""
+
+    def _cmd(self, switches=(), args=""):
+        from commands.CmdCoordSeed import CmdCoordSeed
+        cmd = CmdCoordSeed()
+        cmd.switches = list(switches)
+        cmd.args = args
+        cmd.caller = MagicMock()
+        return cmd
+
+    def test_unpinned_seed_refuses(self):
+        cmd = self._cmd()
+        with patch("commands.CmdCoordSeed.pinned_origin",
+                   return_value=None), \
+             patch("commands.CmdCoordSeed.seed_coordinates") as seed:
+            cmd.func()
+        seed.assert_not_called()
+        self.assertIn("No origin is pinned",
+                      cmd.caller.msg.call_args.args[0])
+
+    def test_seed_uses_pinned_origin_not_caller(self):
+        origin = MagicMock()
+        cmd = self._cmd(switches=("check",))
+        with patch("commands.CmdCoordSeed.pinned_origin",
+                   return_value=origin), \
+             patch("commands.CmdCoordSeed.seed_coordinates",
+                   return_value=({}, [])) as seed:
+            cmd.func()
+        seed.assert_called_once_with(origin)
+
+    def test_origin_switch_pins_current_room(self):
+        cmd = self._cmd(switches=("origin",))
+        here = cmd.caller.location
+        with patch("commands.CmdCoordSeed.pinned_origin",
+                   return_value=None):
+            cmd.func()
+        here.tags.add.assert_called_once_with(
+            "coordseed_origin", category="spatial")
+
+    def test_repin_moves_the_tag(self):
+        cmd = self._cmd(switches=("origin",))
+        old = MagicMock()
+        with patch("commands.CmdCoordSeed.pinned_origin",
+                   return_value=old):
+            cmd.func()
+        old.tags.remove.assert_called_once_with(
+            "coordseed_origin", category="spatial")
+        cmd.caller.location.tags.add.assert_called_once()

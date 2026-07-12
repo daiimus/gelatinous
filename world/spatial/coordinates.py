@@ -45,6 +45,14 @@ DIRECTION_ALIASES: dict[str, str] = {
 WARP_TAG = "warp"
 WARP_TAG_CATEGORY = "exit_type"
 
+#: Tags marking a SLOPED exit: a cardinal step that also changes elevation
+#: (split-level architecture — the Queen of Cups' sunken berths sit at
+#: z-1 behind horizontal south doors). The seeder applies the z-delta on
+#: top of the direction's own; the return exit carries the opposite tag.
+#: Warp stays reserved for genuinely non-Euclidean links.
+SLOPE_DOWN_TAG = "slope_down"
+SLOPE_UP_TAG = "slope_up"
+
 
 def normalize_direction(token: Any) -> str | None:
     """Return the canonical direction for *token* (a key or alias), or
@@ -76,6 +84,22 @@ def exit_direction(exit_obj: Any) -> str | None:
         except Exception:  # noqa: BLE001 — never break seeding over aliases
             pass
     return None
+
+
+def slope_delta(exit_obj: Any) -> int:
+    """The extra z-step a sloped exit adds to its cardinal delta:
+    ``slope_down`` = -1, ``slope_up`` = +1, untagged = 0."""
+    tags = getattr(exit_obj, "tags", None)
+    if tags is None:
+        return 0
+    try:
+        if tags.has(SLOPE_DOWN_TAG, category=WARP_TAG_CATEGORY):
+            return -1
+        if tags.has(SLOPE_UP_TAG, category=WARP_TAG_CATEGORY):
+            return 1
+    except Exception:  # noqa: BLE001 — unreadable tags read as level
+        pass
+    return 0
 
 
 def is_warp_exit(exit_obj: Any) -> bool:
@@ -223,7 +247,7 @@ def seed_coordinates(origin: Any) -> tuple[dict, list]:
             if dest is None:
                 continue
             dx, dy, dz = DIRECTION_DELTAS[direction]
-            expected = (x + dx, y + dy, z + dz)
+            expected = (x + dx, y + dy, z + dz + slope_delta(ex))
             if dest in assignments:
                 if assignments[dest] != expected:
                     contradictions.append({
