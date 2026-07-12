@@ -577,9 +577,9 @@ MESSAGES = {
             'observer_msg': "{target_name}'s eyes widen in terror as {attacker_name}'s shard of glass delivers the final, agonizing, tearing blow."
         },
         {
-            'attacker_msg': "A fountain of crimson erupts as your shard of glass fatally severs an artery in {target_name}.",
-            'victim_msg': "A fountain of crimson erupts as {attacker_name}'s shard of glass fatally severs an artery in you.",
-            'observer_msg': "A fountain of crimson erupts as {attacker_name}'s shard of glass fatally severs an artery in {target_name}."
+            'attacker_msg': "A fountain of {blood} erupts as your shard of glass fatally severs an artery in {target_name}.",
+            'victim_msg': "A fountain of {blood} erupts as {attacker_name}'s shard of glass fatally severs an artery in you.",
+            'observer_msg': "A fountain of {blood} erupts as {attacker_name}'s shard of glass fatally severs an artery in {target_name}."
         },
         {
             'attacker_msg': "You discard the bloody shard of glass beside {target_name}'s corpse, a grim testament to its makeshift lethality.",

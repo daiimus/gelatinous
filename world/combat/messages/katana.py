@@ -153,9 +153,9 @@ MESSAGES = {
     ],
     'hit': [
         {
-            'attacker_msg': "The katana flashes and bites into {target_name} with surgical precision, a single clean line blooming red.",
-            'victim_msg': "The katana flashes and bites into you with surgical precision, a single clean line blooming red.",
-            'observer_msg': "The katana flashes and bites into {target_name} with surgical precision, a single clean line blooming red."
+            'attacker_msg': "The katana flashes and bites into {target_name} with surgical precision, a single clean line blooming {blood}.",
+            'victim_msg': "The katana flashes and bites into you with surgical precision, a single clean line blooming {blood}.",
+            'observer_msg': "The katana flashes and bites into {target_name} with surgical precision, a single clean line blooming {blood}."
         },
         {
             'attacker_msg': "You dance through the air, slicing a wide arc that cleaves across {target_name}'s {hit_location} in one fluid stroke.",
@@ -173,9 +173,9 @@ MESSAGES = {
             'observer_msg': "The strike lands like a signature, carving through {target_name}'s defenses with lethal artistry."
         },
         {
-            'attacker_msg': "{target_name} stumbles back, a red ribbon unraveling across their {hit_location} where you left your mark.",
-            'victim_msg': "You stumble back, a red ribbon unraveling across your {hit_location} where {attacker_name} left their mark.",
-            'observer_msg': "{target_name} stumbles back, a red ribbon unraveling across their {hit_location} where {attacker_name} left their mark."
+            'attacker_msg': "{target_name} stumbles back, a {blood} ribbon unraveling across their {hit_location} where you left your mark.",
+            'victim_msg': "You stumble back, a {blood} ribbon unraveling across your {hit_location} where {attacker_name} left their mark.",
+            'observer_msg': "{target_name} stumbles back, a {blood} ribbon unraveling across their {hit_location} where {attacker_name} left their mark."
         },
         {
             'attacker_msg': "The katana kisses flesh and exits before {target_name} finishes their breath—elegant, final.",
@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} glides past, and {target_name} realizes only too late the pain blooming across their {hit_location}."
         },
         {
-            'attacker_msg': "The katana's tip flicks and draws a crimson line across {target_name}'s {hit_location} like calligraphy in violence.",
-            'victim_msg': "The katana's tip flicks and draws a crimson line across your {hit_location} like calligraphy in violence.",
-            'observer_msg': "The katana's tip flicks and draws a crimson line across {target_name}'s {hit_location} like calligraphy in violence."
+            'attacker_msg': "The katana's tip flicks and draws a {blood} line across {target_name}'s {hit_location} like calligraphy in violence.",
+            'victim_msg': "The katana's tip flicks and draws a {blood} line across your {hit_location} like calligraphy in violence.",
+            'observer_msg': "The katana's tip flicks and draws a {blood} line across {target_name}'s {hit_location} like calligraphy in violence."
         },
         {
             'attacker_msg': "Steel arcs down in a vertical cleave that opens {target_name}'s {hit_location} like rotten fruit.",
@@ -218,9 +218,9 @@ MESSAGES = {
             'observer_msg': "The strike is graceful, cruel, and eerily quiet. {target_name} wails only after {attacker_name} steps away."
         },
         {
-            'attacker_msg': "A shallow slash opens {target_name}'s skin, a crimson thread trailing from your retreating figure.",
-            'victim_msg': "A shallow slash opens your skin, a crimson thread trailing from {attacker_name}'s retreating figure.",
-            'observer_msg': "A shallow slash opens {target_name}'s skin, a crimson thread trailing from {attacker_name}'s retreating figure."
+            'attacker_msg': "A shallow slash opens {target_name}'s skin, a {blood} thread trailing from your retreating figure.",
+            'victim_msg': "A shallow slash opens your skin, a {blood} thread trailing from {attacker_name}'s retreating figure.",
+            'observer_msg': "A shallow slash opens {target_name}'s skin, a {blood} thread trailing from {attacker_name}'s retreating figure."
         },
         {
             'attacker_msg': "{target_name} reels as the katana slices through fabric and sinew alike, beautiful and brutal.",
@@ -253,9 +253,9 @@ MESSAGES = {
             'observer_msg': "The katana hums as it glides through flesh. {target_name} drops to a knee, clutching something that's no longer intact."
         },
         {
-            'attacker_msg': "With a sidestep and a twist, you slice a crimson arc through {target_name}'s {hit_location}.",
-            'victim_msg': "With a sidestep and a twist, {attacker_name} slices a crimson arc through your {hit_location}.",
-            'observer_msg': "With a sidestep and a twist, {attacker_name} slices a crimson arc through {target_name}'s {hit_location}."
+            'attacker_msg': "With a sidestep and a twist, you slice a {blood} arc through {target_name}'s {hit_location}.",
+            'victim_msg': "With a sidestep and a twist, {attacker_name} slices a {blood} arc through your {hit_location}.",
+            'observer_msg': "With a sidestep and a twist, {attacker_name} slices a {blood} arc through {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "One slice, one pivot. {target_name} is left with pain, and you without expression.",
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "Blood spatters the wall in a streak as {attacker_name}'s blade finishes its arc through {target_name}'s {hit_location}."
         },
         {
-            'attacker_msg': "A whip of red mist trails the katana's path as you complete the perfect cut.",
-            'victim_msg': "A whip of red mist trails the katana's path as {attacker_name} completes the perfect cut.",
-            'observer_msg': "A whip of red mist trails the katana's path as {attacker_name} completes the perfect cut."
+            'attacker_msg': "A whip of {blood} mist trails the katana's path as you complete the perfect cut.",
+            'victim_msg': "A whip of {blood} mist trails the katana's path as {attacker_name} completes the perfect cut.",
+            'observer_msg': "A whip of {blood} mist trails the katana's path as {attacker_name} completes the perfect cut."
         },
         {
             'attacker_msg': "The blade hisses through the air before finding purchase in {target_name}'s {hit_location} with a brutal crunch.",
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     'kill': [
         {
-            'attacker_msg': "The katana exits {target_name} cleanly, leaving a red blossom where there was once a chest. They drop without sound.",
-            'victim_msg': "The katana exits you cleanly, leaving a red blossom where there was once a chest. You drop without sound.",
-            'observer_msg': "The katana exits {target_name} cleanly, leaving a red blossom where there was once a chest. They drop without sound."
+            'attacker_msg': "The katana exits {target_name} cleanly, leaving a {blood} blossom where there was once a chest. They drop without sound.",
+            'victim_msg': "The katana exits you cleanly, leaving a {blood} blossom where there was once a chest. You drop without sound.",
+            'observer_msg': "The katana exits {target_name} cleanly, leaving a {blood} blossom where there was once a chest. They drop without sound."
         },
         {
             'attacker_msg': "A downward arc. A moment of stillness. {target_name} collapses, their upper body sliding off at an angle.",
@@ -472,9 +472,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws a single horizontal line through the world—{target_name} falls in two parts."
         },
         {
-            'attacker_msg': "A gurgle, a flash of red, and {target_name} crumples. The katana barely slows.",
-            'victim_msg': "A gurgle, a flash of red, and you crumple. The katana barely slows.",
-            'observer_msg': "A gurgle, a flash of red, and {target_name} crumples. The katana barely slows."
+            'attacker_msg': "A gurgle, a flash of {blood}, and {target_name} crumples. The katana barely slows.",
+            'victim_msg': "A gurgle, a flash of {blood}, and you crumple. The katana barely slows.",
+            'observer_msg': "A gurgle, a flash of {blood}, and {target_name} crumples. The katana barely slows."
         },
         {
             'attacker_msg': "The blade glides through {target_name}'s {hit_location} with brutal grace, severing life like a whisper.",
@@ -502,9 +502,9 @@ MESSAGES = {
             'observer_msg': "The cut is too fast for {target_name} to register. Their body folds in on itself, blood blooming under them."
         },
         {
-            'attacker_msg': "{target_name}'s last breath is a red mist as the katana exits their throat.",
-            'victim_msg': "Your last breath is a red mist as the katana exits your {hit_location}.",
-            'observer_msg': "{target_name}'s last breath is a red mist as the katana exits their throat."
+            'attacker_msg': "{target_name}'s last breath is a {blood} mist as the katana exits their throat.",
+            'victim_msg': "Your last breath is a {blood} mist as the katana exits your {hit_location}.",
+            'observer_msg': "{target_name}'s last breath is a {blood} mist as the katana exits their throat."
         },
         {
             'attacker_msg': "A low strike severs both tendons and dignity. {target_name} topples face-first into silence.",
@@ -567,9 +567,9 @@ MESSAGES = {
             'observer_msg': "The blade exits spine and breath in one go. {target_name} falls twitching, face frozen in disbelief."
         },
         {
-            'attacker_msg': "Blood sprays the wall in a red signature—your name written in {target_name}'s last moment.",
-            'victim_msg': "Blood sprays the wall in a red signature—{attacker_name}'s name written in your last moment.",
-            'observer_msg': "Blood sprays the wall in a red signature—{attacker_name}'s name written in {target_name}'s last moment."
+            'attacker_msg': "Blood sprays the wall in a {blood} signature—your name written in {target_name}'s last moment.",
+            'victim_msg': "Blood sprays the wall in a {blood} signature—{attacker_name}'s name written in your last moment.",
+            'observer_msg': "Blood sprays the wall in a {blood} signature—{attacker_name}'s name written in {target_name}'s last moment."
         },
         {
             'attacker_msg': "You twist the katana on the way out. {target_name} is already dead, but it feels necessary.",

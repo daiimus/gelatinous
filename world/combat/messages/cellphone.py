@@ -193,9 +193,9 @@ MESSAGES = {
             "observer_msg": "The cellphone's unyielding surface smashes through {target_name}'s defenses and into flesh with painful efficiency, the antenna digging in."
         },
         {
-            "attacker_msg": "Your cellphone makes a glancing hit, but still slams hard against {target_name}'s {hit_location}, sending a jolt of pain and leaving a red welt.",
-            "victim_msg": "{attacker_name}'s cellphone makes a glancing hit, but still slams hard against your {hit_location}, sending a jolt of pain and leaving a red welt.",
-            "observer_msg": "{attacker_name}'s cellphone makes a glancing hit, but still slams hard against {target_name}'s {hit_location}, sending a jolt of pain and leaving a red welt."
+            "attacker_msg": "Your cellphone makes a glancing hit, but still slams hard against {target_name}'s {hit_location}, sending a jolt of pain and leaving a {blood} welt.",
+            "victim_msg": "{attacker_name}'s cellphone makes a glancing hit, but still slams hard against your {hit_location}, sending a jolt of pain and leaving a {blood} welt.",
+            "observer_msg": "{attacker_name}'s cellphone makes a glancing hit, but still slams hard against {target_name}'s {hit_location}, sending a jolt of pain and leaving a {blood} welt."
         },
         {
             "attacker_msg": "With a savage grunt, you drive the cellphone into {target_name}, who stumbles, trying to escape the jarring, repeated agony of the heavy plastic.",

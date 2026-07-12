@@ -208,9 +208,9 @@ MESSAGES = {
             'observer_msg': "Steel clips {target_name}'s {hit_location}. {target_name}'s scream is toothless — literally."
         },
         {
-            'attacker_msg': "Steel grazes the scalp. Red follows in a thick line.",
-            'victim_msg': "Steel grazes your scalp. Red follows in a thick line.",
-            'observer_msg': "Steel grazes {target_name}'s scalp. Red follows in a thick line."
+            'attacker_msg': "Steel grazes the scalp. {Blood} follows in a thick line.",
+            'victim_msg': "Steel grazes your scalp. {Blood} follows in a thick line.",
+            'observer_msg': "Steel grazes {target_name}'s scalp. {Blood} follows in a thick line."
         },
         {
             'attacker_msg': "Steel rakes across the {hit_location}. {target_name} arches, then falls.",
@@ -238,9 +238,9 @@ MESSAGES = {
             'observer_msg': "The axe punches into {target_name}'s {hit_location}. {target_name} folds around it, blood-first."
         },
         {
-            'attacker_msg': "The axe slashes into the {hit_location}. A red mist and two teeth fly together.",
-            'victim_msg': "The axe slashes into your {hit_location}. A red mist and two teeth fly together.",
-            'observer_msg': "The axe slashes into {target_name}'s {hit_location}. A red mist and two teeth fly together."
+            'attacker_msg': "The axe slashes into the {hit_location}. A {blood} mist and two teeth fly together.",
+            'victim_msg': "The axe slashes into your {hit_location}. A {blood} mist and two teeth fly together.",
+            'observer_msg': "The axe slashes into {target_name}'s {hit_location}. A {blood} mist and two teeth fly together."
         },
         {
             'attacker_msg': "The axe smashes into the {hit_location}. Bone snaps, blood sprays, silence follows.",
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "The {hit_location} of the axe strikes square in {target_name}'s {hit_location}. Breath exits, fast and final."
         },
         {
-            'attacker_msg': "You bring the blade into the {hit_location}. Red mists the air.",
-            'victim_msg': "{attacker_name} brings the blade into your {hit_location}. Red mists the air.",
-            'observer_msg': "{attacker_name} brings the blade into {target_name}'s {hit_location}. Red mists the air."
+            'attacker_msg': "You bring the blade into the {hit_location}. {Blood} mists the air.",
+            'victim_msg': "{attacker_name} brings the blade into your {hit_location}. {Blood} mists the air.",
+            'observer_msg': "{attacker_name} brings the blade into {target_name}'s {hit_location}. {Blood} mists the air."
         },
         {
             'attacker_msg': "You bury the blade in the {hit_location}. The tear is meaty and merciless.",
@@ -293,9 +293,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} cleaves {target_name}'s {hit_location} open. The wound gapes and gushes."
         },
         {
-            'attacker_msg': "You hack into the {hit_location}. The spray paints the moment red.",
-            'victim_msg': "{attacker_name} hacks into your {hit_location}. The spray paints the moment red.",
-            'observer_msg': "{attacker_name} hacks into {target_name}'s {hit_location}. The spray paints the moment red."
+            'attacker_msg': "You hack into the {hit_location}. The spray paints the moment {blood}.",
+            'victim_msg': "{attacker_name} hacks into your {hit_location}. The spray paints the moment {blood}.",
+            'observer_msg': "{attacker_name} hacks into {target_name}'s {hit_location}. The spray paints the moment {blood}."
         },
         {
             'attacker_msg': "You land a savage hit behind the {hit_location}. {target_name} crumples instantly.",

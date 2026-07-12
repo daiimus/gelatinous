@@ -203,9 +203,9 @@ MESSAGES = {
             'observer_msg': "One swift arc claps the {hit_location} of {target_name}'s {hit_location}. Bone groans. Blood follows."
         },
         {
-            'attacker_msg': "The baton rakes down {target_name}'s {hit_location}. They {hit_location} up, trailing red and curses.",
-            'victim_msg': "The baton rakes down your {hit_location}. You {hit_location} up, trailing red and curses.",
-            'observer_msg': "The baton rakes down {target_name}'s {hit_location}. They {hit_location} up, trailing red and curses."
+            'attacker_msg': "The baton rakes down {target_name}'s {hit_location}. They {hit_location} up, trailing {blood} and curses.",
+            'victim_msg': "The baton rakes down your {hit_location}. You {hit_location} up, trailing {blood} and curses.",
+            'observer_msg': "The baton rakes down {target_name}'s {hit_location}. They {hit_location} up, trailing {blood} and curses."
         },
         {
             'attacker_msg': "The baton slams into {target_name}'s {hit_location}. The echo is felt more than heard.",

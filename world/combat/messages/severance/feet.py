@@ -15,9 +15,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name}'s blade cleaves through {target_name}'s ankle in a low arc. The {hit_location} stays where it landed, while the leg lurches backward, finding no support.",
             },
             {
-                "attacker_msg": "The metatarsals shatter under your edge. {target_name}'s {hit_location} drops away in a spray of red, the stump beneath it shocked white.",
-                "victim_msg": "Your metatarsals shatter under {attacker_name}'s edge. Your {hit_location} drops away in a spray of red.",
-                "observer_msg": "{target_name}'s metatarsals shatter under {attacker_name}'s edge. The {hit_location} drops away in a spray of red, the stump beneath it shocked white.",
+                "attacker_msg": "The metatarsals shatter under your edge. {target_name}'s {hit_location} drops away in a spray of {blood}, the stump beneath it shocked white.",
+                "victim_msg": "Your metatarsals shatter under {attacker_name}'s edge. Your {hit_location} drops away in a spray of {blood}.",
+                "observer_msg": "{target_name}'s metatarsals shatter under {attacker_name}'s edge. The {hit_location} drops away in a spray of {blood}, the stump beneath it shocked white.",
             },
             {
                 "attacker_msg": "You take {target_name}'s {hit_location} off at the ankle joint and the body lurches forward, balance broken in a way nothing will fix.",
@@ -139,9 +139,9 @@ MESSAGES = {
                 "observer_msg": "{attacker_name} drags the blade through {target_name}'s ankle and the {hit_location} parts free, the cut ragged but the result clear.",
             },
             {
-                "attacker_msg": "The tear is uneven but the metatarsals surrender. {target_name}'s {hit_location} drops away in a wash of red.",
+                "attacker_msg": "The tear is uneven but the metatarsals surrender. {target_name}'s {hit_location} drops away in a wash of {blood}.",
                 "victim_msg": "{attacker_name}'s tear is uneven but your metatarsals surrender. Your {hit_location} drops away.",
-                "observer_msg": "{attacker_name}'s tear is uneven but the metatarsals surrender. {target_name}'s {hit_location} drops away in a wash of red.",
+                "observer_msg": "{attacker_name}'s tear is uneven but the metatarsals surrender. {target_name}'s {hit_location} drops away in a wash of {blood}.",
             },
         ],
     },

@@ -198,9 +198,9 @@ MESSAGES = {
             "observer_msg": "A short jab from {attacker_name}, perfectly placed. {target_name}'s {hit_location} snaps sideways like a marionette whose strings were yanked by a god."
         },
         {
-            "attacker_msg": "Your short, vicious jab connects with {target_name}'s nose. Blood erupts in a sharp spray, painting their teeth in red regret.",
-            "victim_msg": "A short, vicious jab from {attacker_name} connects with your nose. Blood erupts in a sharp spray, painting your teeth in red regret.",
-            "observer_msg": "A short, vicious jab from {attacker_name} connects with {target_name}'s nose. Blood erupts in a sharp spray, painting their teeth in red regret."
+            "attacker_msg": "Your short, vicious jab connects with {target_name}'s nose. Blood erupts in a sharp spray, painting their teeth in {blood} regret.",
+            "victim_msg": "A short, vicious jab from {attacker_name} connects with your nose. Blood erupts in a sharp spray, painting your teeth in {blood} regret.",
+            "observer_msg": "A short, vicious jab from {attacker_name} connects with {target_name}'s nose. Blood erupts in a sharp spray, painting their teeth in {blood} regret."
         },
         {
             "attacker_msg": "Blood sprays from {target_name}'s nose as your knuckles bury themselves in flesh. They look stunned, like betrayal just hit them in the {hit_location}.",
@@ -223,9 +223,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s knuckles drive through resistance. {target_name}'s breath explodes out, along with something more vital."
         },
         {
-            "attacker_msg": "Your knuckles meet {target_name}'s {hit_location} and the result is immediate — their {hit_location} whips sideways, a fine mist of spit and red trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of knees losing faith.",
-            "victim_msg": "{attacker_name}'s knuckles meet your {hit_location} and the result is immediate — your {hit_location} whips sideways, a fine mist of spit and red trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of your {hit_location}s losing faith.",
-            "observer_msg": "{attacker_name}'s knuckles meet {target_name}'s {hit_location} and the result is immediate — their {hit_location} whips sideways, a fine mist of spit and red trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of knees losing faith."
+            "attacker_msg": "Your knuckles meet {target_name}'s {hit_location} and the result is immediate — their {hit_location} whips sideways, a fine mist of spit and {blood} trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of knees losing faith.",
+            "victim_msg": "{attacker_name}'s knuckles meet your {hit_location} and the result is immediate — your {hit_location} whips sideways, a fine mist of spit and {blood} trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of your {hit_location}s losing faith.",
+            "observer_msg": "{attacker_name}'s knuckles meet {target_name}'s {hit_location} and the result is immediate — their {hit_location} whips sideways, a fine mist of spit and {blood} trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of knees losing faith."
         },
         {
             "attacker_msg": "No wasted motion from you — just the brutal truth of metal meeting {target_name}'s {hit_location}. They blink, then sway, then drop to a {hit_location}.",
@@ -273,9 +273,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s punch lands like a statement — final, declarative. {target_name}'s body reacts before they can, lurching backward with the grace of a collapsing shelf. For a moment, the room forgets how to breathe."
         },
         {
-            "attacker_msg": "Your punch lands with the sound of a cinder block hitting meat. {target_name} stumbles, dazed, as blood jumps from their mouth in a red arc.",
-            "victim_msg": "{attacker_name}'s punch lands with the sound of a cinder block hitting meat. You stumble, dazed, as blood jumps from your mouth in a red arc.",
-            "observer_msg": "{attacker_name}'s punch lands with the sound of a cinder block hitting meat. {target_name} stumbles, dazed, as blood jumps from their mouth in a red arc."
+            "attacker_msg": "Your punch lands with the sound of a cinder block hitting meat. {target_name} stumbles, dazed, as blood jumps from their mouth in a {blood} arc.",
+            "victim_msg": "{attacker_name}'s punch lands with the sound of a cinder block hitting meat. You stumble, dazed, as blood jumps from your mouth in a {blood} arc.",
+            "observer_msg": "{attacker_name}'s punch lands with the sound of a cinder block hitting meat. {target_name} stumbles, dazed, as blood jumps from their mouth in a {blood} arc."
         },
         {
             "attacker_msg": "Your punch sinks into {target_name} with a sound like a rotten wall caving in. {target_name} staggers, eyes wide, breath gone.",
@@ -627,9 +627,9 @@ MESSAGES = {
             "observer_msg": "It’s not the punch from {attacker_name} that kills {target_name} — it’s the fall, the angle, the way their skull meets the curb afterward. Brass just lit the fuse."
         },
         {
-            "attacker_msg": "No scream from {target_name}. No flailing. Just a twitch, a slump, and a red smear across the floor that won’t ask for explanation after your blow.",
-            "victim_msg": "No scream. No flailing. Just a twitch, a slump, and a red smear across the floor that won’t ask for explanation after {attacker_name}'s blow.",
-            "observer_msg": "No scream. No flailing. Just a twitch, a slump, and a red smear across the floor that won’t ask for explanation after {attacker_name}'s blow to {target_name}."
+            "attacker_msg": "No scream from {target_name}. No flailing. Just a twitch, a slump, and a {blood} smear across the floor that won’t ask for explanation after your blow.",
+            "victim_msg": "No scream. No flailing. Just a twitch, a slump, and a {blood} smear across the floor that won’t ask for explanation after {attacker_name}'s blow.",
+            "observer_msg": "No scream. No flailing. Just a twitch, a slump, and a {blood} smear across the floor that won’t ask for explanation after {attacker_name}'s blow to {target_name}."
         },
         {
             "attacker_msg": "No scream. No theatrics. Just a hard, efficient end from you — brass into {target_name}'s {hit_location}, collapse into stillness. You don’t gloat. You just exhale, letting the silence finish the sentence you started.",
@@ -752,9 +752,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s fist buries deep into {target_name}'s {hit_location}. There's no scream, just a twitch, then silence. Heavy. Permanent."
         },
         {
-            "attacker_msg": "Your fist connects with surgical malice. Your brass comes back red. {target_name} doesn’t come back at all.",
-            "victim_msg": "{attacker_name}'s fist connects with surgical malice. The brass comes back red. You don’t come back at all.",
-            "observer_msg": "{attacker_name}'s fist connects with surgical malice. The brass comes back red. {target_name} doesn’t come back at all."
+            "attacker_msg": "Your fist connects with surgical malice. Your brass comes back {blood}. {target_name} doesn’t come back at all.",
+            "victim_msg": "{attacker_name}'s fist connects with surgical malice. The brass comes back {blood}. You don’t come back at all.",
+            "observer_msg": "{attacker_name}'s fist connects with surgical malice. The brass comes back {blood}. {target_name} doesn’t come back at all."
         },
         {
             "attacker_msg": "Your fist connects with {target_name}'s {hit_location}. The sound they make isn’t human. Then there’s no sound at all.",

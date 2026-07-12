@@ -218,9 +218,9 @@ MESSAGES = {
             'observer_msg': "The chain tangles briefly before slamming into {target_name}'s {hit_location}. Improvised — but effective."
         },
         {
-            'attacker_msg': "The nunchaku catch {target_name}'s {hit_location}. A red bruise blooms. They barely stay upright.",
-            'victim_msg': "The nunchaku catch your {hit_location}. A red bruise blooms. You barely stay upright.",
-            'observer_msg': "The nunchaku catch {target_name}'s {hit_location}. A red bruise blooms. They barely stay upright."
+            'attacker_msg': "The nunchaku catch {target_name}'s {hit_location}. A {blood} bruise blooms. They barely stay upright.",
+            'victim_msg': "The nunchaku catch your {hit_location}. A {blood} bruise blooms. You barely stay upright.",
+            'observer_msg': "The nunchaku catch {target_name}'s {hit_location}. A {blood} bruise blooms. They barely stay upright."
         },
         {
             'attacker_msg': "The nunchaku snap into {target_name}'s {hit_location}. Their eyes roll before their knees even know to buckle.",
@@ -273,9 +273,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} lands a sharp blow to {target_name}'s {hit_location}. They hop {hit_location}, cursing through gritted teeth."
         },
         {
-            'attacker_msg': "You lash the nunchaku across {target_name}'s {hit_location}. A line of red blossoms under cloth.",
-            'victim_msg': "{attacker_name} lashes the nunchaku across your {hit_location}. A line of red blossoms under cloth.",
-            'observer_msg': "{attacker_name} lashes the nunchaku across {target_name}'s {hit_location}. A line of red blossoms under cloth."
+            'attacker_msg': "You lash the nunchaku across {target_name}'s {hit_location}. A line of {blood} blossoms under cloth.",
+            'victim_msg': "{attacker_name} lashes the nunchaku across your {hit_location}. A line of {blood} blossoms under cloth.",
+            'observer_msg': "{attacker_name} lashes the nunchaku across {target_name}'s {hit_location}. A line of {blood} blossoms under cloth."
         },
         {
             'attacker_msg': "You pivot and deliver a strike to the {hit_location} of {target_name}'s {hit_location}. They fold inward.",
@@ -492,9 +492,9 @@ MESSAGES = {
             'observer_msg': "A downward whip caves in the top of {target_name}'s {hit_location}. {attacker_name} doesn't look away."
         },
         {
-            'attacker_msg': "A rising strike drives into {target_name}'s {hit_location}. Red sprays. The silence is immediate.",
-            'victim_msg': "A rising strike drives into your {hit_location}. Red sprays. The silence is immediate.",
-            'observer_msg': "A rising strike drives into {target_name}'s {hit_location}. Red sprays. The silence is immediate."
+            'attacker_msg': "A rising strike drives into {target_name}'s {hit_location}. {Blood} sprays. The silence is immediate.",
+            'victim_msg': "A rising strike drives into your {hit_location}. {Blood} sprays. The silence is immediate.",
+            'observer_msg': "A rising strike drives into {target_name}'s {hit_location}. {Blood} sprays. The silence is immediate."
         },
         {
             'attacker_msg': "A spinning strike slams into {target_name}'s {hit_location}. They fall like a felled post, twitching once.",

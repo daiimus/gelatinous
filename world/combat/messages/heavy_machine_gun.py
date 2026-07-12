@@ -153,9 +153,9 @@ MESSAGES = {
     ],
     'hit': [
         {
-            'attacker_msg': "A cataclysmic, thundering *THOOM-THOOM-THOOM* as your heavy machine gun fires, massive bullets striking {target_name}'s {hit_location}, which simply explodes into red mist and bone fragments. You traverse slightly, empty links and smoking casings spewing from the ejection port.",
-            'victim_msg': "A cataclysmic, thundering *THOOM-THOOM-THOOM* as {attacker_name}'s heavy machine gun fires, massive bullets striking your {hit_location}, which simply explodes into red mist and bone fragments. {attacker_name} traverses slightly, empty links and smoking casings spewing from the ejection port.",
-            'observer_msg': "A cataclysmic, thundering *THOOM-THOOM-THOOM* as {attacker_name}'s heavy machine gun fires, massive bullets striking {target_name}'s {hit_location}, which simply explodes into red mist and bone fragments. {attacker_name} traverses slightly, empty links and smoking casings spewing from the ejection port."
+            'attacker_msg': "A cataclysmic, thundering *THOOM-THOOM-THOOM* as your heavy machine gun fires, massive bullets striking {target_name}'s {hit_location}, which simply explodes into {blood} mist and bone fragments. You traverse slightly, empty links and smoking casings spewing from the ejection port.",
+            'victim_msg': "A cataclysmic, thundering *THOOM-THOOM-THOOM* as {attacker_name}'s heavy machine gun fires, massive bullets striking your {hit_location}, which simply explodes into {blood} mist and bone fragments. {attacker_name} traverses slightly, empty links and smoking casings spewing from the ejection port.",
+            'observer_msg': "A cataclysmic, thundering *THOOM-THOOM-THOOM* as {attacker_name}'s heavy machine gun fires, massive bullets striking {target_name}'s {hit_location}, which simply explodes into {blood} mist and bone fragments. {attacker_name} traverses slightly, empty links and smoking casings spewing from the ejection port."
         },
         {
             'attacker_msg': "The heavy machine gun roars like a continuous cannon, and a stream of .50 caliber or larger slugs tears devastating, gaping holes completely through {target_name}'s {hit_location} and whatever was behind it, sending them cartwheeling. You fight the muzzle climb, keeping the stream of fire on target.",
@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s heavy machine gun fires with a thunderous, ground-shaking report, and {target_name} is struck with overwhelming, obliterating power, their form visibly disintegrating under the hail of fire. The bolt handle reciprocates violently, feeding more death."
         },
         {
-            'attacker_msg': "With a deafening, concussive roar, the stream of bullets from your HMG hits {target_name}'s {hit_location}; their midsection simply vanishes in a red cloud. You walk the fire across the target area, the ground still vibrating.",
-            'victim_msg': "With a deafening, concussive roar, the stream of bullets from {attacker_name}'s HMG hits your {hit_location}; your midsection simply vanishes in a red cloud. {attacker_name} walks the fire across the target area, the ground still vibrating.",
-            'observer_msg': "With a deafening, concussive roar, the stream of bullets from {attacker_name}'s HMG hits {target_name}'s {hit_location}; their midsection simply vanishes in a red cloud. {attacker_name} walks the fire across the target area, the ground still vibrating."
+            'attacker_msg': "With a deafening, concussive roar, the stream of bullets from your HMG hits {target_name}'s {hit_location}; their midsection simply vanishes in a {blood} cloud. You walk the fire across the target area, the ground still vibrating.",
+            'victim_msg': "With a deafening, concussive roar, the stream of bullets from {attacker_name}'s HMG hits your {hit_location}; your midsection simply vanishes in a {blood} cloud. {attacker_name} walks the fire across the target area, the ground still vibrating.",
+            'observer_msg': "With a deafening, concussive roar, the stream of bullets from {attacker_name}'s HMG hits {target_name}'s {hit_location}; their midsection simply vanishes in a {blood} cloud. {attacker_name} walks the fire across the target area, the ground still vibrating."
         },
         {
             'attacker_msg': "The heavy machine gun scores a devastating series of hits, massive bullets tearing through {target_name}'s {hit_location} and into their {hit_location}, nearly ripping them in half. Hot, oversized casings are ejected in a continuous stream as you hold down the trigger.",
@@ -213,9 +213,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s aimed burst from the heavy machine gun strikes {target_name}'s {hit_location}; the bone explodes into countless fragments, and the {hit_location} is torn away under the relentless impacts. The bolt cycles with smooth, powerful, and terrifying efficiency."
         },
         {
-            'attacker_msg': "A thunderous, continuous crackle and a horrific, explosive spray of red mist and body parts as the heavy machine gun's bullets find their mark on {target_name} with brutal, final effect. You keep firing, the cloud of debris that was {target_name} growing larger.",
-            'victim_msg': "A thunderous, continuous crackle and a horrific, explosive spray of red mist and body parts as the heavy machine gun's bullets find their mark on you with brutal, final effect. {attacker_name} keeps firing, the cloud of debris that was you growing larger.",
-            'observer_msg': "A thunderous, continuous crackle and a horrific, explosive spray of red mist and body parts as the heavy machine gun's bullets find their mark on {target_name} with brutal, final effect. {attacker_name} keeps firing, the cloud of debris that was {target_name} growing larger."
+            'attacker_msg': "A thunderous, continuous crackle and a horrific, explosive spray of {blood} mist and body parts as the heavy machine gun's bullets find their mark on {target_name} with brutal, final effect. You keep firing, the cloud of debris that was {target_name} growing larger.",
+            'victim_msg': "A thunderous, continuous crackle and a horrific, explosive spray of {blood} mist and body parts as the heavy machine gun's bullets find their mark on you with brutal, final effect. {attacker_name} keeps firing, the cloud of debris that was you growing larger.",
+            'observer_msg': "A thunderous, continuous crackle and a horrific, explosive spray of {blood} mist and body parts as the heavy machine gun's bullets find their mark on {target_name} with brutal, final effect. {attacker_name} keeps firing, the cloud of debris that was {target_name} growing larger."
         },
         {
             'attacker_msg': "The unyielding, armor-piercing slugs from your heavy machine gun tear into {target_name}'s flesh, causing immediate, catastrophic, and unsurvivable damage with each impact. You adjust the stream, ready for more precise, destructive fire.",
@@ -283,9 +283,9 @@ MESSAGES = {
             'observer_msg': "A painful, echoing, ground-shaking series of cracks as bullets from {attacker_name}'s heavy machine gun strike {target_name}'s {hit_location}, which, along with most of their chest cavity, are instantly atomized by the multiple hits. {attacker_name} continues the burst, chambering more heavy, destructive rounds."
         },
         {
-            'attacker_msg': "The projectiles from your heavy machine gun hit {target_name}'s {hit_location}; their entire upper {hit_location} explodes outward in a cloud of red under the sustained fire. The bolt cycles, ejecting casings with violent flicks.",
-            'victim_msg': "The projectiles from {attacker_name}'s heavy machine gun hit your {hit_location}; your entire upper {hit_location} explodes outward in a cloud of red under the sustained fire. The bolt cycles, ejecting casings with violent flicks.",
-            'observer_msg': "The projectiles from {attacker_name}'s heavy machine gun hit {target_name}'s {hit_location}; their entire upper {hit_location} explodes outward in a cloud of red under the sustained fire. The bolt cycles, ejecting casings with violent flicks."
+            'attacker_msg': "The projectiles from your heavy machine gun hit {target_name}'s {hit_location}; their entire upper {hit_location} explodes outward in a cloud of {blood} under the sustained fire. The bolt cycles, ejecting casings with violent flicks.",
+            'victim_msg': "The projectiles from {attacker_name}'s heavy machine gun hit your {hit_location}; your entire upper {hit_location} explodes outward in a cloud of {blood} under the sustained fire. The bolt cycles, ejecting casings with violent flicks.",
+            'observer_msg': "The projectiles from {attacker_name}'s heavy machine gun hit {target_name}'s {hit_location}; their entire upper {hit_location} explodes outward in a cloud of {blood} under the sustained fire. The bolt cycles, ejecting casings with violent flicks."
         },
         {
             'attacker_msg': "Your heavy machine gun delivers another brutal, penetrating, and utterly devastating series of impacts to {target_name}'s {hit_location}, which ceases to be recognizable. The bolt cycles, the sound a grim promise of more destruction.",
@@ -293,9 +293,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s heavy machine gun delivers another brutal, penetrating, and utterly devastating series of impacts to {target_name}'s {hit_location}, which ceases to be recognizable. The bolt cycles, the sound a grim promise of more destruction."
         },
         {
-            'attacker_msg': "A well-placed burst from the heavy machine gun leaves {target_name} as little more than a red stain and scattered fragments, dying instantly from massive, explosive wounds. You keep firing, ready if anything somehow survived.",
-            'victim_msg': "A well-placed burst from the heavy machine gun leaves you as little more than a red stain and scattered fragments, dying instantly from massive, explosive wounds. {attacker_name} keeps firing, ready if anything somehow survived.",
-            'observer_msg': "A well-placed burst from the heavy machine gun leaves {target_name} as little more than a red stain and scattered fragments, dying instantly from massive, explosive wounds. {attacker_name} keeps firing, ready if anything somehow survived."
+            'attacker_msg': "A well-placed burst from the heavy machine gun leaves {target_name} as little more than a {blood} stain and scattered fragments, dying instantly from massive, explosive wounds. You keep firing, ready if anything somehow survived.",
+            'victim_msg': "A well-placed burst from the heavy machine gun leaves you as little more than a {blood} stain and scattered fragments, dying instantly from massive, explosive wounds. {attacker_name} keeps firing, ready if anything somehow survived.",
+            'observer_msg': "A well-placed burst from the heavy machine gun leaves {target_name} as little more than a {blood} stain and scattered fragments, dying instantly from massive, explosive wounds. {attacker_name} keeps firing, ready if anything somehow survived."
         },
         {
             'attacker_msg': "The heavy machine gun, guided by your steady aim, inflicts telling, catastrophic, and instantly fatal injuries upon {target_name}, who is torn asunder by the stream of fire. A continuous stream of huge casings is ejected as the bolt cycles.",
@@ -457,9 +457,9 @@ MESSAGES = {
     ],
     'kill': [
         {
-            'attacker_msg': "Your heavy machine gun bullets strike {target_name} square in the forehead; their head, and indeed most of their upper body, simply explodes into a cloud of red mist and bone shrapnel under the sustained, brutal impacts, instantly obliterating them. You calmly cease fire, the barrel smoking, the job done.",
-            'victim_msg': "{attacker_name}'s heavy machine gun bullets strike you square in the forehead; your {hit_location}, and indeed most of your upper body, simply explodes into a cloud of red mist and bone shrapnel under the sustained, brutal impacts, instantly obliterating you. {attacker_name} calmly ceases fire, the barrel smoking, the job done.",
-            'observer_msg': "{attacker_name}'s heavy machine gun bullets strike {target_name} square in the forehead; their head, and indeed most of their upper body, simply explodes into a cloud of red mist and bone shrapnel under the sustained, brutal impacts, instantly obliterating them. {attacker_name} calmly ceases fire, the barrel smoking, the job done."
+            'attacker_msg': "Your heavy machine gun bullets strike {target_name} square in the forehead; their head, and indeed most of their upper body, simply explodes into a cloud of {blood} mist and bone shrapnel under the sustained, brutal impacts, instantly obliterating them. You calmly cease fire, the barrel smoking, the job done.",
+            'victim_msg': "{attacker_name}'s heavy machine gun bullets strike you square in the forehead; your {hit_location}, and indeed most of your upper body, simply explodes into a cloud of {blood} mist and bone shrapnel under the sustained, brutal impacts, instantly obliterating you. {attacker_name} calmly ceases fire, the barrel smoking, the job done.",
+            'observer_msg': "{attacker_name}'s heavy machine gun bullets strike {target_name} square in the forehead; their head, and indeed most of their upper body, simply explodes into a cloud of {blood} mist and bone shrapnel under the sustained, brutal impacts, instantly obliterating them. {attacker_name} calmly ceases fire, the barrel smoking, the job done."
         },
         {
             'attacker_msg': "The heavy machine gun roars like an artillery piece, and {target_name} clutches their chest as a massive, gaping hole appears from multiple impacts, their entire torso erupting outwards before they collapse, utterly destroyed. You smoothly traverse to the next target, the HMG ready again.",
@@ -547,9 +547,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} stands over {target_name}'s scattered, unrecognizable remains, the heavy machine gun held ready, the victor of a deadly, one-sided, and utterly decisive exchange. {attacker_name} chambers more rounds with practiced, grim ease, though the fight is over."
         },
         {
-            'attacker_msg': "A final, desperate move from {target_name} is futile; your heavy machine gun finds its mark with fatal, obliterating precision from multiple impacts, ending their existence in a flash of red. The bolt cycles, ready for the next target, if any dare appear.",
-            'victim_msg': "A final, desperate move from you is futile; {attacker_name}'s heavy machine gun finds its mark with fatal, obliterating precision from multiple impacts, ending your existence in a flash of red. The bolt cycles, ready for the next target, if any dare appear.",
-            'observer_msg': "A final, desperate move from {target_name} is futile; {attacker_name}'s heavy machine gun finds its mark with fatal, obliterating precision from multiple impacts, ending their existence in a flash of red. The bolt cycles, ready for the next target, if any dare appear."
+            'attacker_msg': "A final, desperate move from {target_name} is futile; your heavy machine gun finds its mark with fatal, obliterating precision from multiple impacts, ending their existence in a flash of {blood}. The bolt cycles, ready for the next target, if any dare appear.",
+            'victim_msg': "A final, desperate move from you is futile; {attacker_name}'s heavy machine gun finds its mark with fatal, obliterating precision from multiple impacts, ending your existence in a flash of {blood}. The bolt cycles, ready for the next target, if any dare appear.",
+            'observer_msg': "A final, desperate move from {target_name} is futile; {attacker_name}'s heavy machine gun finds its mark with fatal, obliterating precision from multiple impacts, ending their existence in a flash of {blood}. The bolt cycles, ready for the next target, if any dare appear."
         },
         {
             'attacker_msg': "The heavy machine gun's last burst ends with a sickening, wet, explosive series of thuds as it strikes {target_name} down, a grim, messy, and mercifully quick end to their resistance, leaving only fragments. You keep firing for a second, the sound sharp and distinct over the ringing in your ears.",
@@ -557,9 +557,9 @@ MESSAGES = {
             'observer_msg': "The heavy machine gun's last burst ends with a sickening, wet, explosive series of thuds as it strikes {target_name} down, a grim, messy, and mercifully quick end to their resistance, leaving only fragments. {attacker_name} keeps firing for a second, the sound sharp and distinct over the ringing in their ears."
         },
         {
-            'attacker_msg': "Your perfectly aimed burst from the heavy machine gun leaves {target_name} as little more than a rapidly dissipating red mist, a display of cold, overwhelming, lethal force from sustained fire. The bolt cycles, ready for the next command that doesn't come.",
-            'victim_msg': "{attacker_name}'s perfectly aimed burst from the heavy machine gun leaves you as little more than a rapidly dissipating red mist, a display of cold, overwhelming, lethal force from sustained fire. The bolt cycles, ready for the next command that doesn't come.",
-            'observer_msg': "{attacker_name}'s perfectly aimed burst from the heavy machine gun leaves {target_name} as little more than a rapidly dissipating red mist, a display of cold, overwhelming, lethal force from sustained fire. The bolt cycles, ready for the next command that doesn't come."
+            'attacker_msg': "Your perfectly aimed burst from the heavy machine gun leaves {target_name} as little more than a rapidly dissipating {blood} mist, a display of cold, overwhelming, lethal force from sustained fire. The bolt cycles, ready for the next command that doesn't come.",
+            'victim_msg': "{attacker_name}'s perfectly aimed burst from the heavy machine gun leaves you as little more than a rapidly dissipating {blood} mist, a display of cold, overwhelming, lethal force from sustained fire. The bolt cycles, ready for the next command that doesn't come.",
+            'observer_msg': "{attacker_name}'s perfectly aimed burst from the heavy machine gun leaves {target_name} as little more than a rapidly dissipating {blood} mist, a display of cold, overwhelming, lethal force from sustained fire. The bolt cycles, ready for the next command that doesn't come."
         },
         {
             'attacker_msg': "With grim, detached precision, you use the heavy machine gun to end {target_name}'s resistance permanently through a single, catastrophic, body-shattering burst of fire. A continuous stream of enormous spent casings hits the ground as the bolt cycles, then stops.",

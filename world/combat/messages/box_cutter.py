@@ -41,9 +41,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} rolls the box cutter between their fingers, the blade catching the light."
         },
         {
-            "attacker_msg": "You press the blade to your own forearm, drawing a thin red line just to prove a point.",
-            "victim_msg": "{attacker_name} presses the blade to their own forearm, drawing a thin red line just to prove a point.",
-            "observer_msg": "{attacker_name} presses the blade to their own forearm, drawing a thin red line just to prove a point."
+            "attacker_msg": "You press the blade to your own forearm, drawing a thin {blood} line just to prove a point.",
+            "victim_msg": "{attacker_name} presses the blade to their own forearm, drawing a thin {blood} line just to prove a point.",
+            "observer_msg": "{attacker_name} presses the blade to their own forearm, drawing a thin {blood} line just to prove a point."
         },
         {
             "attacker_msg": "You produce a battered box cutter from your pocket, thumb already on the slider.",
@@ -91,9 +91,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} balances the box cutter on a fingertip, then lets it drop into their grip."
         },
         {
-            "attacker_msg": "You wipe the blade clean on your shirt, leaving a red streak.",
-            "victim_msg": "{attacker_name} wipes the blade clean on their shirt, leaving a red streak.",
-            "observer_msg": "{attacker_name} wipes the blade clean on their shirt, leaving a red streak."
+            "attacker_msg": "You wipe the blade clean on your shirt, leaving a {blood} streak.",
+            "victim_msg": "{attacker_name} wipes the blade clean on their shirt, leaving a {blood} streak.",
+            "observer_msg": "{attacker_name} wipes the blade clean on their shirt, leaving a {blood} streak."
         },
         {
             "attacker_msg": "You press the blade to your lips, shushing {target_name} with a bloody smile.",
@@ -126,9 +126,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} lets the box cutter dangle from their fingers, blade swinging like a pendulum."
         },
         {
-            "attacker_msg": "You trace the blade along your {hit_location}, leaving a thin red line.",
-            "victim_msg": "{attacker_name} traces the blade along their forearm, leaving a thin red line.",
-            "observer_msg": "{attacker_name} traces the blade along their forearm, leaving a thin red line."
+            "attacker_msg": "You trace the blade along your {hit_location}, leaving a thin {blood} line.",
+            "victim_msg": "{attacker_name} traces the blade along their forearm, leaving a thin {blood} line.",
+            "observer_msg": "{attacker_name} traces the blade along their forearm, leaving a thin {blood} line."
         },
         {
             "attacker_msg": "You flick the blade open with a practiced snap.",
@@ -141,9 +141,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} slides the blade out, the sound slicing through the silence."
         },
         {
-            "attacker_msg": "You hold the box cutter like a brush, ready to paint in red.",
-            "victim_msg": "{attacker_name} holds the box cutter like a brush, ready to paint in red.",
-            "observer_msg": "{attacker_name} holds the box cutter like a brush, ready to paint in red."
+            "attacker_msg": "You hold the box cutter like a brush, ready to paint in {blood}.",
+            "victim_msg": "{attacker_name} holds the box cutter like a brush, ready to paint in {blood}.",
+            "observer_msg": "{attacker_name} holds the box cutter like a brush, ready to paint in {blood}."
         },
         {
             "attacker_msg": "You flick the blade out, the click echoing like a countdown.",
@@ -233,9 +233,9 @@ MESSAGES = {
             "observer_msg": "A jab from {attacker_name}'s box cutter to {target_name}'s {hit_location} leaves a thin, bubbling wound."
         },
         {
-            "attacker_msg": "Your blade glides across {target_name}'s {hit_location}, leaving a red smile.",
-            "victim_msg": "{attacker_name}'s blade glides across your {hit_location}, leaving a red smile.",
-            "observer_msg": "{attacker_name}'s blade glides across {target_name}'s {hit_location}, leaving a red smile."
+            "attacker_msg": "Your blade glides across {target_name}'s {hit_location}, leaving a {blood} smile.",
+            "victim_msg": "{attacker_name}'s blade glides across your {hit_location}, leaving a {blood} smile.",
+            "observer_msg": "{attacker_name}'s blade glides across {target_name}'s {hit_location}, leaving a {blood} smile."
         },
         {
             "attacker_msg": "You puncture {target_name}'s {hit_location}, twisting the blade before pulling it free.",
@@ -278,9 +278,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} jabs the blade into {target_name}'s {hit_location}, twisting for emphasis."
         },
         {
-            "attacker_msg": "Your box cutter slips under {target_name}'s chin, drawing a thin red line.",
-            "victim_msg": "{attacker_name}'s box cutter slips under your chin, drawing a thin red line.",
-            "observer_msg": "{attacker_name}'s box cutter slips under {target_name}'s chin, drawing a thin red line."
+            "attacker_msg": "Your box cutter slips under {target_name}'s chin, drawing a thin {blood} line.",
+            "victim_msg": "{attacker_name}'s box cutter slips under your chin, drawing a thin {blood} line.",
+            "observer_msg": "{attacker_name}'s box cutter slips under {target_name}'s chin, drawing a thin {blood} line."
         },
         {
             "attacker_msg": "A cut from your box cutter across the Achilles leaves {target_name} stumbling.",
@@ -552,9 +552,9 @@ MESSAGES = {
             "observer_msg": "A stab from {attacker_name}'s box cutter to the base of {target_name}'s {hit_location} ends it instantly."
         },
         {
-            "attacker_msg": "You carve a spiral down {target_name}'s {hit_location}. The pattern is red and final.",
-            "victim_msg": "{attacker_name} carves a spiral down your {hit_location}. The pattern is red and final.",
-            "observer_msg": "{attacker_name} carves a spiral down {target_name}'s {hit_location}. The pattern is red and final."
+            "attacker_msg": "You carve a spiral down {target_name}'s {hit_location}. The pattern is {blood} and final.",
+            "victim_msg": "{attacker_name} carves a spiral down your {hit_location}. The pattern is {blood} and final.",
+            "observer_msg": "{attacker_name} carves a spiral down {target_name}'s {hit_location}. The pattern is {blood} and final."
         },
         {
             "attacker_msg": "Your blade slips into {target_name}'s mouth, blood pouring out.",

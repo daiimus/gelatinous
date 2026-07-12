@@ -163,9 +163,9 @@ MESSAGES = {
             'observer_msg': "The arm-shotgun roars and {target_name}'s {hit_location} takes the column of shot point-blank."
         },
         {
-            'attacker_msg': "You fire from the wrist that isn't one. {target_name}'s {hit_location} blooms red where the pattern lands.",
-            'victim_msg': "{attacker_name} fires from a wrist that isn't one. Your {hit_location} blooms red where the pattern lands.",
-            'observer_msg': "{attacker_name} fires from a wrist that isn't one. {target_name}'s {hit_location} blooms red."
+            'attacker_msg': "You fire from the wrist that isn't one. {target_name}'s {hit_location} blooms {blood} where the pattern lands.",
+            'victim_msg': "{attacker_name} fires from a wrist that isn't one. Your {hit_location} blooms {blood} where the pattern lands.",
+            'observer_msg': "{attacker_name} fires from a wrist that isn't one. {target_name}'s {hit_location} blooms {blood}."
         },
         {
             'attacker_msg': "Thunder out of your forearm — {target_name} staggers, {hit_location} shredded, while your ejection port spits the casing in a neat arc.",
@@ -248,9 +248,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s arm barks once, businesslike. {target_name}'s {hit_location} absorbs the memo."
         },
         {
-            'attacker_msg': "Shot meets {target_name}'s {hit_location} in a red haze; the feed in your elbow ratchets the next round home.",
-            'victim_msg': "Shot meets your {hit_location} in a red haze; something in {attacker_name}'s elbow ratchets the next round home.",
-            'observer_msg': "Shot meets {target_name}'s {hit_location} in a red haze; {attacker_name}'s elbow ratchets the next round home."
+            'attacker_msg': "Shot meets {target_name}'s {hit_location} in a {blood} haze; the feed in your elbow ratchets the next round home.",
+            'victim_msg': "Shot meets your {hit_location} in a {blood} haze; something in {attacker_name}'s elbow ratchets the next round home.",
+            'observer_msg': "Shot meets {target_name}'s {hit_location} in a {blood} haze; {attacker_name}'s elbow ratchets the next round home."
         },
         {
             'attacker_msg': "The pattern lands tight — your arm holds zero better than flesh ever did — and {target_name}'s {hit_location} takes all of it.",
@@ -512,9 +512,9 @@ MESSAGES = {
             'observer_msg': "The blast lifts {target_name} into a wall; they slide down without any urgency of the living."
         },
         {
-            'attacker_msg': "Thunder from your own skeleton — {target_name} drops in a red mist and stays where the mist settles.",
+            'attacker_msg': "Thunder from your own skeleton — {target_name} drops in a {blood} mist and stays where the mist settles.",
             'victim_msg': "Thunder, mist, and the long quiet after.",
-            'observer_msg': "Thunder from {attacker_name}'s arm — {target_name} drops in a red mist and stays where it settles."
+            'observer_msg': "Thunder from {attacker_name}'s arm — {target_name} drops in a {blood} mist and stays where it settles."
         },
         {
             'attacker_msg': "{target_name} takes the full pattern in the {hit_location}, sits down hard, and never finishes the motion.",

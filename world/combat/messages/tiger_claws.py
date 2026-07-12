@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "A quick jab lands in {target_name}'s {hit_location}. They double over in sudden silence."
         },
         {
-            'attacker_msg': "A sharp jab to the {hit_location} opens a slice wide enough for red to rush out.",
-            'victim_msg': "A sharp jab to your {hit_location} opens a slice wide enough for red to rush out.",
-            'observer_msg': "A sharp jab to {target_name}'s {hit_location} opens a slice wide enough for red to rush out."
+            'attacker_msg': "A sharp jab to the {hit_location} opens a slice wide enough for {blood} to rush out.",
+            'victim_msg': "A sharp jab to your {hit_location} opens a slice wide enough for {blood} to rush out.",
+            'observer_msg': "A sharp jab to {target_name}'s {hit_location} opens a slice wide enough for {blood} to rush out."
         },
         {
             'attacker_msg': "A slash splits the {hit_location}. {target_name} drops what they were holding. Everything else follows.",
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "The tips rake upward across {target_name}'s {hit_location}. Their scream is instant, unfiltered."
         },
         {
-            'attacker_msg': "You backhand the claws across the {hit_location}. Red mist follows.",
-            'victim_msg': "{attacker_name} backhands the claws across your {hit_location}. Red mist follows.",
-            'observer_msg': "{attacker_name} backhands the claws across {target_name}'s {hit_location}. Red mist follows."
+            'attacker_msg': "You backhand the claws across the {hit_location}. {Blood} mist follows.",
+            'victim_msg': "{attacker_name} backhands the claws across your {hit_location}. {Blood} mist follows.",
+            'observer_msg': "{attacker_name} backhands the claws across {target_name}'s {hit_location}. {Blood} mist follows."
         },
         {
             'attacker_msg': "You grip and twist. The claws bury into the {hit_location} like punctuation.",
@@ -283,9 +283,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} lashes out and carves a path across {target_name}'s {hit_location}. It opens like confession."
         },
         {
-            'attacker_msg': "You lunge and slash the {hit_location}. Red blossoms from the tear.",
-            'victim_msg': "{attacker_name} lunges and slashes your {hit_location}. Red blossoms from the tear.",
-            'observer_msg': "{attacker_name} lunges and slashes {target_name}'s {hit_location}. Red blossoms from the tear."
+            'attacker_msg': "You lunge and slash the {hit_location}. {Blood} blossoms from the tear.",
+            'victim_msg': "{attacker_name} lunges and slashes your {hit_location}. {Blood} blossoms from the tear.",
+            'observer_msg': "{attacker_name} lunges and slashes {target_name}'s {hit_location}. {Blood} blossoms from the tear."
         },
         {
             'attacker_msg': "You slash downward. The claws leave tracks. So does {target_name}.",
@@ -298,9 +298,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slashes {target_name}'s {hit_location}. Skin parts like old paper."
         },
         {
-            'attacker_msg': "You sweep upward, the claws tearing a red stripe across the {hit_location}.",
-            'victim_msg': "{attacker_name} sweeps upward, the claws tearing a red stripe across your {hit_location}.",
-            'observer_msg': "{attacker_name} sweeps upward, the claws tearing a red stripe across {target_name}'s {hit_location}."
+            'attacker_msg': "You sweep upward, the claws tearing a {blood} stripe across the {hit_location}.",
+            'victim_msg': "{attacker_name} sweeps upward, the claws tearing a {blood} stripe across your {hit_location}.",
+            'observer_msg': "{attacker_name} sweeps upward, the claws tearing a {blood} stripe across {target_name}'s {hit_location}."
         }
     ],
     'miss': [
@@ -482,9 +482,9 @@ MESSAGES = {
             'observer_msg': "A rising slash opens {target_name}'s ribcage. Everything inside starts spilling outside."
         },
         {
-            'attacker_msg': "A savage swipe opens the throat. Red decorates the floor before the body finds it.",
-            'victim_msg': "A savage swipe opens your {hit_location}. Red decorates the floor before your body finds it.",
-            'observer_msg': "A savage swipe opens {target_name}'s {hit_location}. Red decorates the floor before their body finds it."
+            'attacker_msg': "A savage swipe opens the throat. {Blood} decorates the floor before the body finds it.",
+            'victim_msg': "A savage swipe opens your {hit_location}. {Blood} decorates the floor before your body finds it.",
+            'observer_msg': "A savage swipe opens {target_name}'s {hit_location}. {Blood} decorates the floor before their body finds it."
         },
         {
             'attacker_msg': "A single jab punctures the heart. The shock is fast. The end, faster.",
@@ -542,9 +542,9 @@ MESSAGES = {
             'observer_msg': "The claws hook under {target_name}'s chin and yank. The snap is final. Their fall is slow."
         },
         {
-            'attacker_msg': "The claws pierce the throat. {target_name} gargles red and falls silent.",
-            'victim_msg': "The claws pierce your {hit_location}. You gargle red and fall silent.",
-            'observer_msg': "The claws pierce {target_name}'s {hit_location}. They gargle red and fall silent."
+            'attacker_msg': "The claws pierce the throat. {target_name} gargles {blood} and falls silent.",
+            'victim_msg': "The claws pierce your {hit_location}. You gargle {blood} and fall silent.",
+            'observer_msg': "The claws pierce {target_name}'s {hit_location}. They gargle {blood} and fall silent."
         },
         {
             'attacker_msg': "The claws pin {target_name} to the wall. What follows is silence, and slumping.",

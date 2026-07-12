@@ -163,9 +163,9 @@ MESSAGES = {
             "observer_msg": "The cutlass flashes, {attacker_name}'s short, brutal chop landing heavily on {target_name}'s {hit_location}, drawing a howl."
         },
         {
-            "attacker_msg": "Your blade hacks down, the cutlass cleaving into {target_name}'s {hit_location} with a sickening thud and a spray of red.",
-            "victim_msg": "{attacker_name}'s blade hacks down, the cutlass cleaving into your {hit_location} with a sickening thud and a spray of red.",
-            "observer_msg": "{attacker_name}'s blade hacks down, the cutlass cleaving into {target_name}'s {hit_location} with a sickening thud and a spray of red."
+            "attacker_msg": "Your blade hacks down, the cutlass cleaving into {target_name}'s {hit_location} with a sickening thud and a spray of {blood}.",
+            "victim_msg": "{attacker_name}'s blade hacks down, the cutlass cleaving into your {hit_location} with a sickening thud and a spray of {blood}.",
+            "observer_msg": "{attacker_name}'s blade hacks down, the cutlass cleaving into {target_name}'s {hit_location} with a sickening thud and a spray of {blood}."
         },
         {
             "attacker_msg": "Steel rings as your cutlass deflects a blow and delivers a savage counter-chop to {target_name}'s {hit_location}.",
@@ -522,9 +522,9 @@ MESSAGES = {
             "observer_msg": "A swift, savage cut from the cutlass, and {target_name} is no more, another notch on the blade."
         },
         {
-            "attacker_msg": "The cutlass, stained dark red, is wrenched free as {target_name} breathes their last, ragged breath.",
-            "victim_msg": "The cutlass, stained dark red, is wrenched free as you breathe your last, ragged breath.",
-            "observer_msg": "The cutlass, stained dark red, is wrenched free as {target_name} breathes their last, ragged breath."
+            "attacker_msg": "The cutlass, stained dark {blood}, is wrenched free as {target_name} breathes their last, ragged breath.",
+            "victim_msg": "The cutlass, stained dark {blood}, is wrenched free as you breathe your last, ragged breath.",
+            "observer_msg": "The cutlass, stained dark {blood}, is wrenched free as {target_name} breathes their last, ragged breath."
         },
         {
             "attacker_msg": "You deliver a brutal coup de grâce with the cutlass, ensuring {target_name} will not rise again.",
@@ -577,9 +577,9 @@ MESSAGES = {
             "observer_msg": "{target_name}'s eyes widen in terror as {attacker_name}'s cutlass delivers the final, crushing blow."
         },
         {
-            "attacker_msg": "A fountain of crimson erupts as your cutlass finds its ultimate, bloody target.",
-            "victim_msg": "A fountain of crimson erupts as {attacker_name}'s cutlass finds its ultimate, bloody target.",
-            "observer_msg": "A fountain of crimson erupts as {attacker_name}'s cutlass finds its ultimate, bloody target."
+            "attacker_msg": "A fountain of {blood} erupts as your cutlass finds its ultimate, bloody target.",
+            "victim_msg": "A fountain of {blood} erupts as {attacker_name}'s cutlass finds its ultimate, bloody target.",
+            "observer_msg": "A fountain of {blood} erupts as {attacker_name}'s cutlass finds its ultimate, bloody target."
         },
         {
             "attacker_msg": "You withdraw the cutlass with a grunt, leaving {target_name} to fall into the dust of defeat.",

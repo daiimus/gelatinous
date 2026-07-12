@@ -253,9 +253,9 @@ MESSAGES = {
             "observer_msg": "The crowbar slaps the {hit_location} of the {hit_location}. It leaves bruises shaped like memory."
         },
         {
-            "attacker_msg": "The curved end rakes across {target_name}'s scalp, opening lines of red like handwriting.",
-            "victim_msg": "The curved end rakes across your scalp, opening lines of red like handwriting.",
-            "observer_msg": "The curved end rakes across {target_name}'s scalp, opening lines of red like handwriting."
+            "attacker_msg": "The curved end rakes across {target_name}'s scalp, opening lines of {blood} like handwriting.",
+            "victim_msg": "The curved end rakes across your scalp, opening lines of {blood} like handwriting.",
+            "observer_msg": "The curved end rakes across {target_name}'s scalp, opening lines of {blood} like handwriting."
         },
         {
             "attacker_msg": "The curved end sinks into {target_name}'s {hit_location} and rips free with a spray of blood and breath.",
@@ -487,9 +487,9 @@ MESSAGES = {
             "observer_msg": "A strike to the eye ends everything. Blood sprays. Screams stop."
         },
         {
-            "attacker_msg": "A two-handed slam leaves the face unrecognizable. {target_name} is more red than person.",
-            "victim_msg": "A two-handed slam leaves the face unrecognizable. You are more red than person.",
-            "observer_msg": "A two-handed slam leaves the face unrecognizable. {target_name} is more red than person."
+            "attacker_msg": "A two-handed slam leaves the face unrecognizable. {target_name} is more {blood} than person.",
+            "victim_msg": "A two-handed slam leaves the face unrecognizable. You are more {blood} than person.",
+            "observer_msg": "A two-handed slam leaves the face unrecognizable. {target_name} is more {blood} than person."
         },
         {
             "attacker_msg": "One brutal jab into the sternum stops the heart. The second makes sure.",

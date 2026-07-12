@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "The point lodges just beneath {target_name}'s {hit_location}. {attacker_name} doesn't pull it out clean."
         },
         {
-            'attacker_msg': "A downward rip carves a red crescent across {target_name}'s {hit_location}. The scream is hoarse and late.",
-            'victim_msg': "A downward rip carves a red crescent across your {hit_location}. The scream is hoarse and late.",
-            'observer_msg': "A downward rip carves a red crescent across {target_name}'s {hit_location}. The scream is hoarse and late."
+            'attacker_msg': "A downward rip carves a {blood} crescent across {target_name}'s {hit_location}. The scream is hoarse and late.",
+            'victim_msg': "A downward rip carves a {blood} crescent across your {hit_location}. The scream is hoarse and late.",
+            'observer_msg': "A downward rip carves a {blood} crescent across {target_name}'s {hit_location}. The scream is hoarse and late."
         },
         {
             'attacker_msg': "You slam the blunt edge into {target_name}'s {hit_location}, then follow through with the hook end.",
@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "The hook punches through {target_name}'s {hit_location}. They drop like something broken inside a bag."
         },
         {
-            'attacker_msg': "You catch {target_name} mid-turn, the hook tearing a chunk from their {hit_location} in a spray of red.",
-            'victim_msg': "{attacker_name} catches you mid-turn, the hook tearing a chunk from your {hit_location} in a spray of red.",
-            'observer_msg': "{attacker_name} catches {target_name} mid-turn, the hook tearing a chunk from their {hit_location} in a spray of red."
+            'attacker_msg': "You catch {target_name} mid-turn, the hook tearing a chunk from their {hit_location} in a spray of {blood}.",
+            'victim_msg': "{attacker_name} catches you mid-turn, the hook tearing a chunk from your {hit_location} in a spray of {blood}.",
+            'observer_msg': "{attacker_name} catches {target_name} mid-turn, the hook tearing a chunk from their {hit_location} in a spray of {blood}."
         },
         {
             'attacker_msg': "The meat hook lodges in {target_name}'s {hit_location}. You twist, and something vital gives.",
@@ -410,9 +410,9 @@ MESSAGES = {
             'observer_msg': "Too high, too slow. The hook spins above {target_name}'s ducked form."
         },
         {
-            'attacker_msg': "Your strike cuts a red arc in the air—but not in flesh.",
-            'victim_msg': "{attacker_name}'s strike cuts a red arc in the air—but not in flesh.",
-            'observer_msg': "{attacker_name}'s strike cuts a red arc in the air—but not in flesh."
+            'attacker_msg': "Your strike cuts a {blood} arc in the air—but not in flesh.",
+            'victim_msg': "{attacker_name}'s strike cuts a {blood} arc in the air—but not in flesh.",
+            'observer_msg': "{attacker_name}'s strike cuts a {blood} arc in the air—but not in flesh."
         },
         {
             'attacker_msg': "A scrape, a clatter, and no blood. Just failure.",
@@ -592,9 +592,9 @@ MESSAGES = {
             'observer_msg': "The hook lands, and {attacker_name} lets it go. It stays with the body."
         },
         {
-            'attacker_msg': "A splash of red on gray cement. You don't even watch them fall.",
-            'victim_msg': "A splash of red on gray cement. {attacker_name} doesn't even watch you fall.",
-            'observer_msg': "A splash of red on gray cement. {attacker_name} doesn't even watch them fall."
+            'attacker_msg': "A splash of {blood} on gray cement. You don't even watch them fall.",
+            'victim_msg': "A splash of {blood} on gray cement. {attacker_name} doesn't even watch you fall.",
+            'observer_msg': "A splash of {blood} on gray cement. {attacker_name} doesn't even watch them fall."
         },
         {
             'attacker_msg': "One final twist and the body gives way. The hook wins again.",

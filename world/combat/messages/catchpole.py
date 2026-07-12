@@ -233,9 +233,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} drives the hook into {target_name}'s {hit_location}, the blade sinking home with a wet, final thud."
         },
         {
-            "attacker_msg": "You rip the catchpole free and {target_name} staggers, clutching a wound blossoming with crimson.",
-            "victim_msg": "{attacker_name} rips the catchpole free and you stagger, clutching a wound blossoming with crimson.",
-            "observer_msg": "{attacker_name} rips the catchpole free and {target_name} staggers, clutching a wound blossoming with crimson."
+            "attacker_msg": "You rip the catchpole free and {target_name} staggers, clutching a wound blossoming with {blood}.",
+            "victim_msg": "{attacker_name} rips the catchpole free and you stagger, clutching a wound blossoming with {blood}.",
+            "observer_msg": "{attacker_name} rips the catchpole free and {target_name} staggers, clutching a wound blossoming with {blood}."
         },
         {
             "attacker_msg": "You drag {target_name} by the hook along the ground, flesh and fabric shredding beneath steel.",
@@ -452,9 +452,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} drives the catchpole's hook into {target_name}'s {hit_location}, tearing open windpipe and will in one brutal motion."
         },
         {
-            "attacker_msg": "You jerk the hook free from {target_name}'s {hit_location}, the gush of crimson painting the ground beneath them.",
-            "victim_msg": "{attacker_name} jerks the hook free from your {hit_location}, the gush of crimson painting the ground beneath you.",
-            "observer_msg": "{attacker_name} jerks the hook free from {target_name}'s {hit_location}, the gush of crimson painting the ground beneath them."
+            "attacker_msg": "You jerk the hook free from {target_name}'s {hit_location}, the gush of {blood} painting the ground beneath them.",
+            "victim_msg": "{attacker_name} jerks the hook free from your {hit_location}, the gush of {blood} painting the ground beneath you.",
+            "observer_msg": "{attacker_name} jerks the hook free from {target_name}'s {hit_location}, the gush of {blood} painting the ground beneath them."
         },
         {
             "attacker_msg": "You hook {target_name} under the jaw and lift, the steel snapping vertebrae like twigs.",

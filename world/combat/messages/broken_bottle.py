@@ -96,9 +96,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} grins without humor and lifts the bottle slowly—this is going to get close."
         },
         {
-            "attacker_msg": "You raise the broken glass to the light. It catches red, not gold.",
-            "victim_msg": "{attacker_name} raises the broken glass to the light. It catches red, not gold.",
-            "observer_msg": "{attacker_name} raises the broken glass to the light. It catches red, not gold."
+            "attacker_msg": "You raise the broken glass to the light. It catches {blood}, not gold.",
+            "victim_msg": "{attacker_name} raises the broken glass to the light. It catches {blood}, not gold.",
+            "observer_msg": "{attacker_name} raises the broken glass to the light. It catches {blood}, not gold."
         },
         {
             "attacker_msg": "You smash the bottle with a sudden movement, like it bit you first.",
@@ -178,9 +178,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} jabs the {hit_location} into {target_name}'s {hit_location}. Blood and glass both stick around."
         },
         {
-            "attacker_msg": "A wide slash from your bottle opens a red smile across {target_name}'s {hit_location}.",
-            "victim_msg": "A wide slash from {attacker_name}'s bottle opens a red smile across your {hit_location}.",
-            "observer_msg": "A wide slash from {attacker_name}'s bottle opens a red smile across {target_name}'s {hit_location}."
+            "attacker_msg": "A wide slash from your bottle opens a {blood} smile across {target_name}'s {hit_location}.",
+            "victim_msg": "A wide slash from {attacker_name}'s bottle opens a {blood} smile across your {hit_location}.",
+            "observer_msg": "A wide slash from {attacker_name}'s bottle opens a {blood} smile across {target_name}'s {hit_location}."
         },
         {
             "attacker_msg": "The jagged edge punches through {target_name}'s coat and into something vital beneath. You feel it give.",
@@ -228,9 +228,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} plunges the broken {hit_location} into {target_name}'s upper {hit_location}. Their scream cuts off halfway."
         },
         {
-            "attacker_msg": "A quick slash along the {hit_location} leaves red lines and a ruined sleeve on {target_name}.",
-            "victim_msg": "A quick slash along the {hit_location} leaves red lines and a ruined sleeve on you.",
-            "observer_msg": "A quick slash along the {hit_location} leaves red lines and a ruined sleeve on {target_name}."
+            "attacker_msg": "A quick slash along the {hit_location} leaves {blood} lines and a ruined sleeve on {target_name}.",
+            "victim_msg": "A quick slash along the {hit_location} leaves {blood} lines and a ruined sleeve on you.",
+            "observer_msg": "A quick slash along the {hit_location} leaves {blood} lines and a ruined sleeve on {target_name}."
         },
         {
             "attacker_msg": "The jagged edge punctures flesh, tears muscle, and leaves a story behind on {target_name}. You authored it.",

@@ -157,9 +157,9 @@ MESSAGES = {
     ],
     "kill": [
         {
-            'attacker_msg': "The throwing knife spins once, twice, then drives deep into {target_name}'s {hit_location}. They collapse, crimson spreading.",
-            'victim_msg': "The throwing knife spins once, twice, then drives deep into your {hit_location}. You collapse, crimson spreading.",
-            'observer_msg': "The throwing knife spins once, twice, then drives deep into {target_name}'s {hit_location}. They collapse, crimson spreading."
+            'attacker_msg': "The throwing knife spins once, twice, then drives deep into {target_name}'s {hit_location}. They collapse, {blood} spreading.",
+            'victim_msg': "The throwing knife spins once, twice, then drives deep into your {hit_location}. You collapse, {blood} spreading.",
+            'observer_msg': "The throwing knife spins once, twice, then drives deep into {target_name}'s {hit_location}. They collapse, {blood} spreading."
         },
         {
             'attacker_msg': "Perfect aim. The blade finds {target_name}'s {hit_location} with surgical precision, dropping them instantly.",

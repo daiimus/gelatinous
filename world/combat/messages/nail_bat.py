@@ -178,9 +178,9 @@ MESSAGES = {
             'observer_msg': "The nails sink into {target_name}'s {hit_location} and drag downward, leaving a trail of ragged meat."
         },
         {
-            'attacker_msg': "A burst of red follows as the bat caves in part of {target_name}'s {hit_location}, nails crunching into bone.",
-            'victim_msg': "A burst of red follows as the bat caves in part of your {hit_location}, nails crunching into bone.",
-            'observer_msg': "A burst of red follows as the bat caves in part of {target_name}'s {hit_location}, nails crunching into bone."
+            'attacker_msg': "A burst of {blood} follows as the bat caves in part of {target_name}'s {hit_location}, nails crunching into bone.",
+            'victim_msg': "A burst of {blood} follows as the bat caves in part of your {hit_location}, nails crunching into bone.",
+            'observer_msg': "A burst of {blood} follows as the bat caves in part of {target_name}'s {hit_location}, nails crunching into bone."
         },
         {
             'attacker_msg': "You spin once and land a two-handed strike to {target_name}'s {hit_location}, folding them in half.",
@@ -273,9 +273,9 @@ MESSAGES = {
             'observer_msg': "The wood splinters slightly on impact, but it's {target_name} who breaks more visibly."
         },
         {
-            'attacker_msg': "Nails rake across {target_name}'s {hit_location}—not deep, but enough to paint their shirt red.",
-            'victim_msg': "Nails rake across your {hit_location}—not deep, but enough to paint your shirt red.",
-            'observer_msg': "Nails rake across {target_name}'s {hit_location}—not deep, but enough to paint their shirt red."
+            'attacker_msg': "Nails rake across {target_name}'s {hit_location}—not deep, but enough to paint their shirt {blood}.",
+            'victim_msg': "Nails rake across your {hit_location}—not deep, but enough to paint your shirt {blood}.",
+            'observer_msg': "Nails rake across {target_name}'s {hit_location}—not deep, but enough to paint their shirt {blood}."
         },
         {
             'attacker_msg': "The bat lands hard in {target_name}'s {hit_location}. The crunch is audible. The scream, more so.",
@@ -587,9 +587,9 @@ MESSAGES = {
             'observer_msg': "The final hit echoes for a long time. {target_name} doesn't hear it."
         },
         {
-            'attacker_msg': "Crimson covers the walls. The bat, the body, and the battle are over.",
-            'victim_msg': "Crimson covers the walls. The bat, the body, and the battle are over.",
-            'observer_msg': "Crimson covers the walls. The bat, the body, and the battle are over."
+            'attacker_msg': "{Blood} covers the walls. The bat, the body, and the battle are over.",
+            'victim_msg': "{Blood} covers the walls. The bat, the body, and the battle are over.",
+            'observer_msg': "{Blood} covers the walls. The bat, the body, and the battle are over."
         },
         {
             'attacker_msg': "Nails pierce both lungs. {target_name} tries to scream, then forgets how.",

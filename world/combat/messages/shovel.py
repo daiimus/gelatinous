@@ -173,9 +173,9 @@ MESSAGES = {
             'observer_msg': "A jab to the {hit_location} folds {target_name} with a dry wheeze."
         },
         {
-            'attacker_msg': "A reverse swing smacks them in the {hit_location}. They lurch forward, gasping red.",
-            'victim_msg': "A reverse swing smacks you in the {hit_location}. You lurch forward, gasping red.",
-            'observer_msg': "A reverse swing smacks {target_name} in the {hit_location}. They lurch forward, gasping red."
+            'attacker_msg': "A reverse swing smacks them in the {hit_location}. They lurch forward, gasping {blood}.",
+            'victim_msg': "A reverse swing smacks you in the {hit_location}. You lurch forward, gasping {blood}.",
+            'observer_msg': "A reverse swing smacks {target_name} in the {hit_location}. They lurch forward, gasping {blood}."
         },
         {
             'attacker_msg': "A sharp uppercut with the edge clips the chin and sends them sprawling.",
@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "One sweep clips {target_name}'s {hit_location}. The limb drops like it just gave up."
         },
         {
-            'attacker_msg': "The curved edge hooks into their {hit_location}. It yanks red and raw.",
-            'victim_msg': "The curved edge hooks into your {hit_location}. It yanks red and raw.",
-            'observer_msg': "The curved edge hooks into {target_name}'s {hit_location}. It yanks red and raw."
+            'attacker_msg': "The curved edge hooks into their {hit_location}. It yanks {blood} and raw.",
+            'victim_msg': "The curved edge hooks into your {hit_location}. It yanks {blood} and raw.",
+            'observer_msg': "The curved edge hooks into {target_name}'s {hit_location}. It yanks {blood} and raw."
         },
         {
             'attacker_msg': "The edge cuts across the {hit_location}. Not deep — but enough to distract from what's next.",
@@ -522,9 +522,9 @@ MESSAGES = {
             'observer_msg': "The blade embeds in {target_name}'s gut. {attacker_name} wrenches it sideways. They crumple in two."
         },
         {
-            'attacker_msg': "The blade lands in the chest with a wet crunch. They fall inward, like folding paper soaked in red.",
-            'victim_msg': "The blade lands in your {hit_location} with a wet crunch. You fall inward, like folding paper soaked in red.",
-            'observer_msg': "The blade lands in {target_name}'s {hit_location} with a wet crunch. They fall inward, like folding paper soaked in red."
+            'attacker_msg': "The blade lands in the chest with a wet crunch. They fall inward, like folding paper soaked in {blood}.",
+            'victim_msg': "The blade lands in your {hit_location} with a wet crunch. You fall inward, like folding paper soaked in {blood}.",
+            'observer_msg': "The blade lands in {target_name}'s {hit_location} with a wet crunch. They fall inward, like folding paper soaked in {blood}."
         },
         {
             'attacker_msg': "The edge of the shovel punches into the eye socket. The scream dies with the pressure.",

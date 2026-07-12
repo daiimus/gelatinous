@@ -542,9 +542,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} delivers the killing blow with {item}, silencing {target_name} forever."
         },
         {
-            'attacker_msg': "The ground stains red as {target_name} falls to your {item}.",
-            'victim_msg': "The ground stains red as you fall to {attacker_name}'s {item}.",
-            'observer_msg': "The ground stains red as {target_name} falls to {attacker_name}'s {item}."
+            'attacker_msg': "The ground stains {blood} as {target_name} falls to your {item}.",
+            'victim_msg': "The ground stains {blood} as you fall to {attacker_name}'s {item}.",
+            'observer_msg': "The ground stains {blood} as {target_name} falls to {attacker_name}'s {item}."
         },
         {
             'attacker_msg': "No more resistance from {target_name}; {item} has done its work.",

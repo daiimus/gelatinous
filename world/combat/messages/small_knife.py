@@ -168,14 +168,14 @@ MESSAGES = {
             'observer_msg': "A quick swipe along the {hit_location} earns a gasp and a growing stain."
         },
         {
-            'attacker_msg': "A quick upward jab lands just under the {hit_location}. {target_name} wheezes, clutching at red.",
-            'victim_msg': "A quick upward jab lands just under your {hit_location}. You wheeze, clutching at red.",
-            'observer_msg': "A quick upward jab lands just under the {hit_location}. {target_name} wheezes, clutching at red."
+            'attacker_msg': "A quick upward jab lands just under the {hit_location}. {target_name} wheezes, clutching at {blood}.",
+            'victim_msg': "A quick upward jab lands just under your {hit_location}. You wheeze, clutching at {blood}.",
+            'observer_msg': "A quick upward jab lands just under the {hit_location}. {target_name} wheezes, clutching at {blood}."
         },
         {
-            'attacker_msg': "A slash across the {hit_location} draws a bright line of red. {target_name} flinches too late.",
-            'victim_msg': "A slash across your {hit_location} draws a bright line of red. You flinch too late.",
-            'observer_msg': "A slash across the {hit_location} draws a bright line of red. {target_name} flinches too late."
+            'attacker_msg': "A slash across the {hit_location} draws a bright line of {blood}. {target_name} flinches too late.",
+            'victim_msg': "A slash across your {hit_location} draws a bright line of {blood}. You flinch too late.",
+            'observer_msg': "A slash across the {hit_location} draws a bright line of {blood}. {target_name} flinches too late."
         },
         {
             'attacker_msg': "A slash lands across the top of the {hit_location}. {target_name} yells and jerks {hit_location}, leaving blood behind.",
@@ -462,9 +462,9 @@ MESSAGES = {
             'observer_msg': "A blade in the kidney. {target_name}'s eyes widen as the world goes quiet."
         },
         {
-            'attacker_msg': "A nick to the artery. {target_name} clutches their throat as life spills red between their fingers.",
-            'victim_msg': "A nick to the artery. You clutch your {hit_location} as life spills red between your fingers.",
-            'observer_msg': "A nick to the artery. {target_name} clutches their throat as life spills red between their fingers."
+            'attacker_msg': "A nick to the artery. {target_name} clutches their throat as life spills {blood} between their fingers.",
+            'victim_msg': "A nick to the artery. You clutch your {hit_location} as life spills {blood} between your fingers.",
+            'observer_msg': "A nick to the artery. {target_name} clutches their throat as life spills {blood} between their fingers."
         },
         {
             'attacker_msg': "A quick slice along the throat. {target_name} gurgles once, then falls silent forever.",

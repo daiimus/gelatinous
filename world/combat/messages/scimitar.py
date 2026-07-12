@@ -106,9 +106,9 @@ SCIMITAR_MESSAGES = {
             'observer_msg': "{attacker_name} slides the scimitar free, the sound a sibilant whisper of sharpened metal."
         },
         {
-            'attacker_msg': "The scimitar is an artist's brush in your skilled hand, ready to paint with strokes of red.",
-            'victim_msg': "The scimitar is an artist's brush in {attacker_name}'s skilled hand, ready to paint with strokes of red.",
-            'observer_msg': "The scimitar is an artist's brush in {attacker_name}'s skilled hand, ready to paint with strokes of red."
+            'attacker_msg': "The scimitar is an artist's brush in your skilled hand, ready to paint with strokes of {blood}.",
+            'victim_msg': "The scimitar is an artist's brush in {attacker_name}'s skilled hand, ready to paint with strokes of {blood}.",
+            'observer_msg': "The scimitar is an artist's brush in {attacker_name}'s skilled hand, ready to paint with strokes of {blood}."
         },
         {
             'attacker_msg': "You present the scimitar, its curved blade aimed towards {target_name}'s most vulnerable point.",
@@ -512,9 +512,9 @@ SCIMITAR_MESSAGES = {
             'observer_msg': "A swift, almost invisibly fast slash from the scimitar, and {target_name} is no more."
         },
         {
-            'attacker_msg': "The scimitar, stained crimson, is wiped clean as {target_name} breathes their last.",
-            'victim_msg': "The scimitar, stained crimson, is wiped clean as you breathe your last.",
-            'observer_msg': "The scimitar, stained crimson, is wiped clean as {target_name} breathes their last."
+            'attacker_msg': "The scimitar, stained {blood}, is wiped clean as {target_name} breathes their last.",
+            'victim_msg': "The scimitar, stained {blood}, is wiped clean as you breathe your last.",
+            'observer_msg': "The scimitar, stained {blood}, is wiped clean as {target_name} breathes their last."
         },
         {
             'attacker_msg': "You deliver a precise, flowing coup de grâce with the scimitar, ensuring {target_name} troubles no one.",
@@ -552,9 +552,9 @@ SCIMITAR_MESSAGES = {
             'observer_msg': "{attacker_name}'s perfectly executed spinning slash with the scimitar leaves {target_name} without a breath."
         },
         {
-            'attacker_msg': "With chilling efficiency, you use the scimitar to extinguish {target_name}'s life in a spray of red.",
-            'victim_msg': "With chilling efficiency, {attacker_name} uses the scimitar to extinguish your life in a spray of red.",
-            'observer_msg': "With chilling efficiency, {attacker_name} uses the scimitar to extinguish {target_name}'s life in a spray of red."
+            'attacker_msg': "With chilling efficiency, you use the scimitar to extinguish {target_name}'s life in a spray of {blood}.",
+            'victim_msg': "With chilling efficiency, {attacker_name} uses the scimitar to extinguish your life in a spray of {blood}.",
+            'observer_msg': "With chilling efficiency, {attacker_name} uses the scimitar to extinguish {target_name}'s life in a spray of {blood}."
         },
         {
             'attacker_msg': "The scimitar, an instrument of elegant death, claims {target_name} with a single, fatal sweep.",
@@ -567,9 +567,9 @@ SCIMITAR_MESSAGES = {
             'observer_msg': "{target_name}'s eyes glaze over as {attacker_name}'s scimitar delivers the final, silent cut."
         },
         {
-            'attacker_msg': "A wide gash of crimson is the only sign before {target_name} crumples from the scimitar's fatal caress.",
-            'victim_msg': "A wide gash of crimson is the only sign before you crumple from the scimitar's fatal caress.",
-            'observer_msg': "A wide gash of crimson is the only sign before {target_name} crumples from the scimitar's fatal caress."
+            'attacker_msg': "A wide gash of {blood} is the only sign before {target_name} crumples from the scimitar's fatal caress.",
+            'victim_msg': "A wide gash of {blood} is the only sign before you crumple from the scimitar's fatal caress.",
+            'observer_msg': "A wide gash of {blood} is the only sign before {target_name} crumples from the scimitar's fatal caress."
         },
         {
             'attacker_msg': "You sheathe the scimitar with a flourish, leaving {target_name} to the silence of death.",

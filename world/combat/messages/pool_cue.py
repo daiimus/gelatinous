@@ -126,9 +126,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} taps the cue against their teeth, grinning."
         },
         {
-            'attacker_msg': "You hold the cue like a brush, ready to paint in red.",
-            'victim_msg': "{attacker_name} holds the cue like a brush, ready to paint in red.",
-            'observer_msg': "{attacker_name} holds the cue like a brush, ready to paint in red."
+            'attacker_msg': "You hold the cue like a brush, ready to paint in {blood}.",
+            'victim_msg': "{attacker_name} holds the cue like a brush, ready to paint in {blood}.",
+            'observer_msg': "{attacker_name} holds the cue like a brush, ready to paint in {blood}."
         },
         {
             'attacker_msg': "You let the cue rest on your {hit_location}, eyes never leaving {target_name}.",
@@ -233,9 +233,9 @@ MESSAGES = {
             'observer_msg': "A jab to the {hit_location} leaves a deep, purple bruise."
         },
         {
-            'attacker_msg': "The shaft glides across {target_name}'s {hit_location}, leaving a red mark.",
-            'victim_msg': "The shaft glides across your {hit_location}, leaving a red mark.",
-            'observer_msg': "The shaft glides across {target_name}'s {hit_location}, leaving a red mark."
+            'attacker_msg': "The shaft glides across {target_name}'s {hit_location}, leaving a {blood} mark.",
+            'victim_msg': "The shaft glides across your {hit_location}, leaving a {blood} mark.",
+            'observer_msg': "The shaft glides across {target_name}'s {hit_location}, leaving a {blood} mark."
         },
         {
             'attacker_msg': "You smash the cue into {target_name}'s {hit_location}, splinters flying.",
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} buries the cue in {target_name}'s {hit_location}, snapping the wood."
         },
         {
-            'attacker_msg': "The cue slips under {target_name}'s chin, leaving a red welt.",
-            'victim_msg': "The cue slips under your chin, leaving a red welt.",
-            'observer_msg': "The cue slips under {target_name}'s chin, leaving a red welt."
+            'attacker_msg': "The cue slips under {target_name}'s chin, leaving a {blood} welt.",
+            'victim_msg': "The cue slips under your chin, leaving a {blood} welt.",
+            'observer_msg': "The cue slips under {target_name}'s chin, leaving a {blood} welt."
         },
         {
             'attacker_msg': "A blow across the Achilles leaves {target_name} stumbling.",
@@ -288,9 +288,9 @@ MESSAGES = {
             'observer_msg': "A blow across the Achilles leaves {target_name} stumbling."
         },
         {
-            'attacker_msg': "You carve a spiral up {target_name}'s {hit_location}. The pattern is purple and red.",
-            'victim_msg': "{attacker_name} carves a spiral up your {hit_location}. The pattern is purple and red.",
-            'observer_msg': "{attacker_name} carves a spiral up {target_name}'s {hit_location}. The pattern is purple and red."
+            'attacker_msg': "You carve a spiral up {target_name}'s {hit_location}. The pattern is purple and {blood}.",
+            'victim_msg': "{attacker_name} carves a spiral up your {hit_location}. The pattern is purple and {blood}.",
+            'observer_msg': "{attacker_name} carves a spiral up {target_name}'s {hit_location}. The pattern is purple and {blood}."
         },
         {
             'attacker_msg': "The cue cracks across the {hit_location}, breath leaving in a rush.",
@@ -552,9 +552,9 @@ MESSAGES = {
             'observer_msg': "A swing to the base of the skull ends it instantly."
         },
         {
-            'attacker_msg': "You carve a spiral down the chest. The pattern is red and final.",
-            'victim_msg': "{attacker_name} carves a spiral down the chest. The pattern is red and final.",
-            'observer_msg': "{attacker_name} carves a spiral down the chest. The pattern is red and final."
+            'attacker_msg': "You carve a spiral down the chest. The pattern is {blood} and final.",
+            'victim_msg': "{attacker_name} carves a spiral down the chest. The pattern is {blood} and final.",
+            'observer_msg': "{attacker_name} carves a spiral down the chest. The pattern is {blood} and final."
         },
         {
             'attacker_msg': "The tip slips into the mouth, blood pouring out.",

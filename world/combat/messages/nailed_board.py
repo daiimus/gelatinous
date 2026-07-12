@@ -131,9 +131,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} runs a finger along one nail. Blood beads. They smile like that's the point."
         },
         {
-            'attacker_msg': "You slap the board against your open palm. The nails glisten in dull red. Someone else's red.",
-            'victim_msg': "{attacker_name} slaps the board against their open palm. The nails glisten in dull red. Someone else's red.",
-            'observer_msg': "{attacker_name} slaps the board against their open palm. The nails glisten in dull red. Someone else's red."
+            'attacker_msg': "You slap the board against your open palm. The nails glisten in dull {blood}. Someone else's {blood}.",
+            'victim_msg': "{attacker_name} slaps the board against their open palm. The nails glisten in dull {blood}. Someone else's {blood}.",
+            'observer_msg': "{attacker_name} slaps the board against their open palm. The nails glisten in dull {blood}. Someone else's {blood}."
         },
         {
             'attacker_msg': "You spin the board once, chips of old blood flying off. It lands in both hands like an oath renewed.",
@@ -178,9 +178,9 @@ MESSAGES = {
             'observer_msg': "A low sweep cracks {target_name}'s {hit_location}. The nails tear muscle and leave splinters behind."
         },
         {
-            'attacker_msg': "A nail drags across {target_name}'s {hit_location}, leaving a torn line of pink and red. They scream with half a mouth.",
-            'victim_msg': "A nail drags across your {hit_location}, leaving a torn line of pink and red. You scream with half a mouth.",
-            'observer_msg': "A nail drags across {target_name}'s {hit_location}, leaving a torn line of pink and red. They scream with half a mouth."
+            'attacker_msg': "A nail drags across {target_name}'s {hit_location}, leaving a torn line of pink and {blood}. They scream with half a mouth.",
+            'victim_msg': "A nail drags across your {hit_location}, leaving a torn line of pink and {blood}. You scream with half a mouth.",
+            'observer_msg': "A nail drags across {target_name}'s {hit_location}, leaving a torn line of pink and {blood}. They scream with half a mouth."
         },
         {
             'attacker_msg': "It doesn't need power. The nails do the work. They punch through {target_name}'s {hit_location} like paper and leave chaos behind.",
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} jabs the plank forward like a spear. It lands in {target_name}'s {hit_location} and leaves a new hole on the way out."
         },
         {
-            'attacker_msg': "You jam the board into {target_name}'s {hit_location} and twist. Nails dig in, tangle in cloth, and come {hit_location} red.",
-            'victim_msg': "{attacker_name} jams the board into your {hit_location} and twists. Nails dig in, tangle in cloth, and come {hit_location} red.",
-            'observer_msg': "{attacker_name} jams the board into {target_name}'s {hit_location} and twists. Nails dig in, tangle in cloth, and come {hit_location} red."
+            'attacker_msg': "You jam the board into {target_name}'s {hit_location} and twist. Nails dig in, tangle in cloth, and come {hit_location} {blood}.",
+            'victim_msg': "{attacker_name} jams the board into your {hit_location} and twists. Nails dig in, tangle in cloth, and come {hit_location} {blood}.",
+            'observer_msg': "{attacker_name} jams the board into {target_name}'s {hit_location} and twists. Nails dig in, tangle in cloth, and come {hit_location} {blood}."
         },
         {
             'attacker_msg': "You plant your feet and slam the board forward. It hits {target_name}'s {hit_location}, bends inward, and breaks something important.",
@@ -293,9 +293,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} shoves the board into {target_name}'s {hit_location}, pinning them briefly before wrenching it free with a snap."
         },
         {
-            'attacker_msg': "You swing low. The nails bite into {target_name}'s {hit_location} and drag out red. The limp comes immediately.",
-            'victim_msg': "{attacker_name} swings low. The nails bite into your {hit_location} and drag out red. The limp comes immediately.",
-            'observer_msg': "{attacker_name} swings low. The nails bite into {target_name}'s {hit_location} and drag out red. The limp comes immediately."
+            'attacker_msg': "You swing low. The nails bite into {target_name}'s {hit_location} and drag out {blood}. The limp comes immediately.",
+            'victim_msg': "{attacker_name} swings low. The nails bite into your {hit_location} and drag out {blood}. The limp comes immediately.",
+            'observer_msg': "{attacker_name} swings low. The nails bite into {target_name}'s {hit_location} and drag out {blood}. The limp comes immediately."
         },
         {
             'attacker_msg': "You swing with full weight. The nails leave trails across {target_name}'s {hit_location} like rusted signatures.",
@@ -547,9 +547,9 @@ MESSAGES = {
             'observer_msg': "The nails hit {target_name}'s {hit_location} and stay. They make a sound like a clogged drain. Then collapse."
         },
         {
-            'attacker_msg': "The nails sink deep into {target_name}'s {hit_location}. When you pull away, nothing moves but red.",
-            'victim_msg': "The nails sink deep into your {hit_location}. When {attacker_name} pulls away, nothing moves but red.",
-            'observer_msg': "The nails sink deep into {target_name}'s {hit_location}. When {attacker_name} pulls away, nothing moves but red."
+            'attacker_msg': "The nails sink deep into {target_name}'s {hit_location}. When you pull away, nothing moves but {blood}.",
+            'victim_msg': "The nails sink deep into your {hit_location}. When {attacker_name} pulls away, nothing moves but {blood}.",
+            'observer_msg': "The nails sink deep into {target_name}'s {hit_location}. When {attacker_name} pulls away, nothing moves but {blood}."
         },
         {
             'attacker_msg': "The plank crashes into the back of {target_name}'s {hit_location}. They slump like strings were cut. Blood bubbles from the mouth.",

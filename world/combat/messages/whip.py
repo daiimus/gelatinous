@@ -158,9 +158,9 @@ MESSAGES = {
             'observer_msg': "A crack to the {hit_location} drops {target_name} with a twisted shout."
         },
         {
-            'attacker_msg': "A looping snap breaks open the {hit_location}. {target_name} stumbles through crimson.",
-            'victim_msg': "A looping snap breaks open your {hit_location}. You stumble through crimson.",
-            'observer_msg': "A looping snap breaks open the {hit_location}. {target_name} stumbles through crimson."
+            'attacker_msg': "A looping snap breaks open the {hit_location}. {target_name} stumbles through {blood}.",
+            'victim_msg': "A looping snap breaks open your {hit_location}. You stumble through {blood}.",
+            'observer_msg': "A looping snap breaks open the {hit_location}. {target_name} stumbles through {blood}."
         },
         {
             'attacker_msg': "A precise crack tags the {hit_location}. {target_name}'s grip falters and something metal clatters.",
@@ -233,9 +233,9 @@ MESSAGES = {
             'observer_msg': "The lash rips through a {hit_location}. The scream is sharp. The injury sharper."
         },
         {
-            'attacker_msg': "The strike cuts across the {hit_location}. The welt pulses red. So does {target_name}'s eye.",
-            'victim_msg': "The strike cuts across your {hit_location}. The welt pulses red. So does your eye.",
-            'observer_msg': "The strike cuts across the {hit_location}. The welt pulses red. So does {target_name}'s eye."
+            'attacker_msg': "The strike cuts across the {hit_location}. The welt pulses {blood}. So does {target_name}'s eye.",
+            'victim_msg': "The strike cuts across your {hit_location}. The welt pulses {blood}. So does your eye.",
+            'observer_msg': "The strike cuts across the {hit_location}. The welt pulses {blood}. So does {target_name}'s eye."
         },
         {
             'attacker_msg': "The tip finds the {hit_location}. The sound is wet. The reaction louder.",
@@ -243,14 +243,14 @@ MESSAGES = {
             'observer_msg': "The tip finds the {hit_location}. The sound is wet. The reaction louder."
         },
         {
-            'attacker_msg': "The whip carves across {target_name}'s {hit_location}. Red lines trail behind like ghost stories.",
-            'victim_msg': "The whip carves across your {hit_location}. Red lines trail behind like ghost stories.",
-            'observer_msg': "The whip carves across {target_name}'s {hit_location}. Red lines trail behind like ghost stories."
+            'attacker_msg': "The whip carves across {target_name}'s {hit_location}. {Blood} lines trail behind like ghost stories.",
+            'victim_msg': "The whip carves across your {hit_location}. {Blood} lines trail behind like ghost stories.",
+            'observer_msg': "The whip carves across {target_name}'s {hit_location}. {Blood} lines trail behind like ghost stories."
         },
         {
-            'attacker_msg': "The whip lashes across {target_name}'s {hit_location}. Red lines follow like cruel handwriting.",
-            'victim_msg': "The whip lashes across your {hit_location}. Red lines follow like cruel handwriting.",
-            'observer_msg': "The whip lashes across {target_name}'s {hit_location}. Red lines follow like cruel handwriting."
+            'attacker_msg': "The whip lashes across {target_name}'s {hit_location}. {Blood} lines follow like cruel handwriting.",
+            'victim_msg': "The whip lashes across your {hit_location}. {Blood} lines follow like cruel handwriting.",
+            'observer_msg': "The whip lashes across {target_name}'s {hit_location}. {Blood} lines follow like cruel handwriting."
         },
         {
             'attacker_msg': "The whip slams across {target_name}'s {hit_location}. The air leaves in a rush.",
@@ -522,9 +522,9 @@ MESSAGES = {
             'observer_msg': "The final flick sends leather through the air — and {target_name} through death."
         },
         {
-            'attacker_msg': "The lash snaps across the throat. Red sprays. The legs fold.",
-            'victim_msg': "The lash snaps across your {hit_location}. Red sprays. Your legs fold.",
-            'observer_msg': "The lash snaps across the throat. Red sprays. The legs fold."
+            'attacker_msg': "The lash snaps across the throat. {Blood} sprays. The legs fold.",
+            'victim_msg': "The lash snaps across your {hit_location}. {Blood} sprays. Your legs fold.",
+            'observer_msg': "The lash snaps across the throat. {Blood} sprays. The legs fold."
         },
         {
             'attacker_msg': "The lash spirals around the neck and yanks. Vertebrae snap like sticks.",

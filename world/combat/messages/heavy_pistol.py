@@ -502,9 +502,9 @@ MESSAGES = {
             "observer_msg": "The unyielding, massive slug from {attacker_name}'s pistol pierces a vital organ in {target_name}, which ruptures explosively; they fall, dead before they hit the ground, a heavy casing spinning and clattering."
         },
         {
-            "attacker_msg": "With a final, thunderous crack that echoes through the area, you finish {target_name} with a heavy bullet through the eye from your pistol, the back of their skull erupting in a spray of red mist, the slide cycling one last, brutal time.",
-            "victim_msg": "With a final, thunderous crack that echoes through the area, {attacker_name} finishes you with a heavy bullet through the eye from their pistol, the back of your {hit_location} erupting in a spray of red mist. You have perished.",
-            "observer_msg": "With a final, thunderous crack that echoes through the area, {attacker_name} finishes {target_name} with a heavy bullet through the eye from the pistol, the back of their skull erupting in a spray of red mist, the slide cycling one last, brutal time."
+            "attacker_msg": "With a final, thunderous crack that echoes through the area, you finish {target_name} with a heavy bullet through the eye from your pistol, the back of their skull erupting in a spray of {blood} mist, the slide cycling one last, brutal time.",
+            "victim_msg": "With a final, thunderous crack that echoes through the area, {attacker_name} finishes you with a heavy bullet through the eye from their pistol, the back of your {hit_location} erupting in a spray of {blood} mist. You have perished.",
+            "observer_msg": "With a final, thunderous crack that echoes through the area, {attacker_name} finishes {target_name} with a heavy bullet through the eye from the pistol, the back of their skull erupting in a spray of {blood} mist, the slide cycling one last, brutal time."
         },
         {
             "attacker_msg": "Your pistol, wielded with deadly, unwavering intent, punches catastrophic, instantly fatal holes in {target_name}, ending their life in a bloody, shocking spectacle, heavy brass glinting.",
