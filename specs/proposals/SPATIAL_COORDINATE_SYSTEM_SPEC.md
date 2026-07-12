@@ -1,6 +1,7 @@
 # Spatial Coordinate System Specification
 
 > **Status:** 🟡 Proposal — **Phases 1–2 SHIPPED & LIVE** (2026-06-27, #847 /
+> **GRID INTEGRITY PASS (2026-07-12, #1192):** (1) `@coordseed` origin is PINNED — a `coordseed_origin:spatial` room tag (`/origin` pins your current room; live = Central Span #1005); seeding anchors there regardless of where the builder stands, killing the re-frame-the-world footgun. (2) **Sloped exits** — `slope_down`/`slope_up:exit_type` tags carry a z-delta the seeder applies on top of the cardinal step, making split-level architecture (QoC sunken berths, z-1 behind horizontal south doors) first-class DERIVABLE geometry; a missing opposite tag on the return exit surfaces as a contradiction. `warp` stays reserved for genuinely non-Euclidean links. (3) Builder QoL (#1194): `@room` (one-surface profile: type+crowd-pool routing, base/computed crowd, outside, coords, sense coverage, door states) and `@building <prefix>` / `/radius` (whole-structure audit table — drift reads straight off it).
 > #851); verticality + reserved seams ahead. A unified integer `(X, Y, Z)`
 > coordinate volume laid over the existing hand-built world, as the shared
 > backbone for navigation, ranged systems (vehicle combat / radar), verticality
