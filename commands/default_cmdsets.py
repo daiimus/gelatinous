@@ -26,6 +26,7 @@ from commands import CmdConsumption
 from commands import CmdMedicalItems
 from commands import CmdSmoke
 from commands.CmdSpawnMob import CmdSpawnMob
+from commands.CmdBuildTools import CmdBuildingAudit, CmdRoomProfile
 from commands.CmdCoordSeed import CmdCoordSeed
 from commands.CmdPath import CmdPath
 from commands.CmdDispatch import CmdDispatch
@@ -153,6 +154,8 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdCharacter.CmdStats)
         self.add(CmdSpawnMob())
         self.add(CmdCoordSeed())
+        self.add(CmdRoomProfile())
+        self.add(CmdBuildingAudit())
         self.add(CmdPath())
         self.add(CmdDispatch())
         self.add(CmdPatrol())
