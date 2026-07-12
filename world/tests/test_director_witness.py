@@ -68,7 +68,15 @@ class TestSpawnWitness(TestCase):
         mock_create.return_value = shell
         w = spawn_witness(_Room("scene"))
         self.assertIs(w, shell)
-        self.assertIn("bystander", mock_create.call_args.kwargs["key"])
+        key = mock_create.call_args.kwargs["key"]
+        self.assertTrue(key.startswith("a "))
+        # the key carries a ROLE noun from the default street pool now,
+        # not a generic bystander
+        from world.director.civilians import CIVILIAN_ROLES
+        from world.director.witness import DEFAULT_WITNESS_ROLES
+        nouns = [CIVILIAN_ROLES[r]["persona"]["name"].split(" ", 1)[1]
+                 for r in DEFAULT_WITNESS_ROLES]
+        self.assertTrue(any(key.endswith(n) for n in nouns), key)
         self.assertTrue(WITNESS_TOKENS[0] <= w.db.tokens <= WITNESS_TOKENS[1])
         self.assertTrue(w.db.is_witness)
         self.assertTrue(w.db.is_npc)   # canonical marker (absence = PC)
@@ -163,3 +171,73 @@ class TestInterdiction(TestCase):
         w = _witness(dead=True)
         despawn_witness(w)
         w.delete.assert_not_called()
+
+
+class TestNeighborhoodWitness(TestCase):
+    """The witness is the neighborhood: role by room type, posture live."""
+
+    def _room_of_type(self, rtype):
+        room = MagicMock()
+        room.db.type = rtype
+        return room
+
+    def test_room_types_pick_their_people(self):
+        from world.director.witness import witness_role_for
+        self.assertEqual(witness_role_for(self._room_of_type("agridome")),
+                         "grower")
+        self.assertEqual(witness_role_for(self._room_of_type("cube hotel")),
+                         "tenant")
+        self.assertEqual(witness_role_for(self._room_of_type("sump")),
+                         "sump_tech")
+        self.assertIn(witness_role_for(self._room_of_type("market")),
+                      ("stall_vendor", "hawker", "scavver"))
+
+    def test_unknown_type_draws_the_street(self):
+        from world.director.witness import (
+            DEFAULT_WITNESS_ROLES, witness_role_for)
+        self.assertIn(witness_role_for(self._room_of_type("laundromat")),
+                      DEFAULT_WITNESS_ROLES)
+        self.assertIn(witness_role_for(_Room("no db at all")),
+                      DEFAULT_WITNESS_ROLES)
+
+    def test_all_pool_roles_exist_and_none_never_report_by_accident(self):
+        from world.director.civilians import CIVILIAN_ROLES
+        from world.director.witness import (
+            DEFAULT_WITNESS_ROLES, WITNESS_ROLE_POOLS)
+        every = {r for pool in WITNESS_ROLE_POOLS.values() for r in pool}
+        every |= set(DEFAULT_WITNESS_ROLES)
+        for role in every:
+            self.assertIn(role, CIVILIAN_ROLES, role)
+            # pools hold people who MIGHT report; street code roles
+            # (ganger) are excluded on purpose
+            self.assertNotEqual(CIVILIAN_ROLES[role].get("reports"),
+                                "never", role)
+
+    def test_never_posture_is_street_code(self):
+        w = _witness()
+        w.db.report_posture = "never"
+        event = MagicMock()
+        with patch("world.director.witness.flee_and_cower") as flee, \
+             patch("world.director.dispatch.raise_event") as raised:
+            reported = witness_report(w, event)
+        self.assertFalse(reported)
+        raised.assert_not_called()
+        w.execute_cmd.assert_not_called()   # no xmit — silence
+        flee.assert_called_once_with(w)
+
+    def test_fast_posture_halves_the_window(self):
+        from world.director import crime as cmod
+        perp = MagicMock()
+        perp.db.role = None
+        room = MagicMock()
+        room.id = 7
+        fast_witness = MagicMock()
+        fast_witness.db.report_posture = "fast"
+        cmod._RECENT.clear()
+        with patch.object(cmod, "spawn_witness",
+                          return_value=fast_witness), \
+             patch.object(cmod, "delay") as mock_delay, \
+             patch.object(cmod, "build_bolo", return_value={}):
+            cmod.report_crime("assault", room, perp=perp)
+        self.assertAlmostEqual(mock_delay.call_args.args[0],
+                               cmod.WITNESS_REPORT_DELAY * 0.5)
