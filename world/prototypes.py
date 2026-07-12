@@ -4252,7 +4252,7 @@ GROWERS_APRON = {
     "attrs": [
         ("category", "clothing"),
         ("worn_desc", "A nutrient-stained {color}green-brown|n rubber apron, tools sprouting from the front pocket"),
-        ("coverage", ["chest", "abdomen", "groin", "left_thigh", "right_thigh"]),
+        ("coverage", ["chest", "abdomen", "groin"]),
         ("layer", 3),
         ("color", "green-brown"),
         ("material", "rubber"),
