@@ -226,3 +226,66 @@ class TestReciprocity(TestCase):
             relays = radio._relay_points("911MHz", None, (30, 0, 0),
                                          RADIO_TX_RANGE)
         self.assertEqual(len(relays), 1)               # heard the far call
+
+
+class TestOrderReach(TestCase):
+    """Orders ARE radio traffic: a wrecked mast collapses command reach
+    to walkie range; a switched-off console commands nothing."""
+
+    def _unit_at(self, x, y, z=0):
+        unit = MagicMock()
+        unit.db = SimpleNamespace(tx_range=None, is_base_station=None)
+        unit.location = _room(x, y, z)
+        return unit
+
+    def _console(self, intact=True, on=True, x=0, y=0):
+        c = _radio_at(_room(x, y), base_station=True,
+                      antenna=_mast(intact))
+        c.db.radio_on = on
+        return c
+
+    def test_intact_mast_commands_the_colony(self):
+        from world.radio import order_reaches
+        with patch.object(radio, "_all_powered_radios", return_value=[]):
+            self.assertTrue(order_reaches(self._unit_at(200, 200),
+                                          console=self._console()))
+
+    def test_wrecked_mast_collapses_to_walkie_range(self):
+        from world.radio import order_reaches
+        console = self._console(intact=False)
+        with patch.object(radio, "_all_powered_radios", return_value=[]):
+            self.assertTrue(order_reaches(self._unit_at(5, 5),
+                                          console=console))
+            self.assertFalse(order_reaches(self._unit_at(40, 40),
+                                           console=console))
+
+    def test_switched_off_console_commands_nothing(self):
+        from world.radio import order_reaches
+        console = self._console(on=False)
+        self.assertFalse(order_reaches(self._unit_at(1, 1),
+                                       console=console))
+
+    def test_no_console_is_a_pre_radio_world(self):
+        from world.radio import order_reaches
+        with patch("world.director.population.get_base_station",
+                   return_value=None):
+            self.assertTrue(order_reaches(self._unit_at(40, 40)))
+
+    def test_off_grid_unit_fails_open(self):
+        from world.radio import order_reaches
+        unit = MagicMock()
+        unit.db = SimpleNamespace(tx_range=None, is_base_station=None)
+        unit.location = None
+        with patch.object(radio, "_all_powered_radios", return_value=[]):
+            self.assertTrue(order_reaches(unit,
+                                          console=self._console(False)))
+
+    def test_repeater_extends_a_wrecked_masts_orders(self):
+        from world.radio import order_reaches
+        console = self._console(intact=False)     # walkie-range command
+        repeater = _radio_at(_room(8, 8, 5), base_station=True,
+                             antenna=_mast(True))
+        with patch.object(radio, "_all_powered_radios",
+                          return_value=[repeater]):
+            self.assertTrue(order_reaches(self._unit_at(40, 40),
+                                          console=console))

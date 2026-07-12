@@ -955,7 +955,7 @@ class DispatchConsole(Radio):
         try:
             from world.director.assignment import is_assigned
             from world.director.population import get_security_base
-            from world.radio import hears_emergency_band
+            from world.radio import hears_emergency_band, order_reaches
             base = get_security_base()
             if base is None:
                 return 0
@@ -965,7 +965,8 @@ class DispatchConsole(Radio):
                     db_attributes__db_key="role").distinct():
                 if (getattr(obj.db, "role", None) == "security"
                         and not is_assigned(obj)
-                        and hears_emergency_band(obj)):
+                        and hears_emergency_band(obj)
+                        and order_reaches(obj, console=self)):
                     try:
                         if not obj.is_dead():
                             n += 1
