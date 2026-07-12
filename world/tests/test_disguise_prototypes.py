@@ -489,3 +489,37 @@ class TestWornSdescShortRendersGrammatically(TestCase):
         """Modifier prefix must not flip the pluralia-tantum decision."""
         clause = format_clothing_feature("chrome mirrorshades")
         self.assertEqual(clause, "in chrome mirrorshades")
+
+
+class TestWardrobeExpansion(TestCase):
+    """The 2026-07-12 wardrobe batch: every piece has valid coverage
+    slots, a sane layer, and the clothing category."""
+
+    BATCH = ["CORPO_BLAZER", "DRESS_SHIRT", "DRESS_TROUSERS",
+             "PENCIL_SKIRT", "OXFORD_SHOES", "NECKTIE",
+             "MEDICAL_SCRUBS", "LAB_COAT", "SEALED_SLICKER",
+             "GROWERS_APRON", "RUBBER_WADERS", "SHOWER_SANDALS",
+             "HOUSE_ROBE", "HEAD_WRAP", "EVENING_SUIT",
+             "SILK_SLIP_DRESS", "LONG_SCARF", "WIDE_BRIM_HAT",
+             "THERMAL_LEGGINGS"]
+
+    def test_batch_is_wearable_and_well_formed(self):
+        from world import prototypes
+        from world.combat.constants import VALID_LONGDESC_LOCATIONS
+        for name in self.BATCH:
+            proto = getattr(prototypes, name)
+            attrs = dict((k, v) for k, v, *_ in
+                         [(a[0], a[1]) for a in proto["attrs"]])
+            self.assertEqual(attrs["category"], "clothing", name)
+            self.assertIn("worn_desc", attrs, name)
+            self.assertTrue(1 <= attrs["layer"] <= 4, name)
+            for slot in attrs["coverage"]:
+                self.assertIn(slot, VALID_LONGDESC_LOCATIONS,
+                              f"{name}: bad slot {slot!r}")
+            # style mods reference real slots too
+            for cfg in (attrs.get("style_configs") or {}).values():
+                for state in cfg.values():
+                    for mod in state.get("coverage_mod", []):
+                        self.assertIn(mod.lstrip("+-"),
+                                      VALID_LONGDESC_LOCATIONS,
+                                      f"{name}: bad mod {mod!r}")
