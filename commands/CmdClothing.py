@@ -734,6 +734,19 @@ class CmdDress(Command):
             char_refs={"actor": caller, "target": target},
             exclude=[caller, target],
         )
+        # LLM NPC perception (#954): being dressed is tactile and personal.
+        try:
+            from world.llm.observation import (
+                clothing_line, observe_directed_action, observe_event)
+            observe_event(caller.location,
+                          clothing_line(caller, target, item, dressing=True),
+                          exclude=(caller, target))
+            observe_directed_action(
+                caller, target,
+                f"{caller.get_display_name(target)} dresses you in "
+                f"{item.get_display_name(target)}.")
+        except Exception:  # noqa: BLE001 — perception never breaks the verb
+            pass
 
     def _dress_character(self, target, item, *, on_committed=None):
         """Move the item into ``target``'s inventory and call its
@@ -881,6 +894,19 @@ class CmdUndress(Command):
             char_refs={"actor": caller, "target": target},
             exclude=[caller, target],
         )
+        # LLM NPC perception (#954): being stripped is VERY personal.
+        try:
+            from world.llm.observation import (
+                clothing_line, observe_directed_action, observe_event)
+            observe_event(caller.location,
+                          clothing_line(caller, target, dressing=False),
+                          exclude=(caller, target))
+            observe_directed_action(
+                caller, target,
+                f"{caller.get_display_name(target)} undresses you, "
+                f"taking your clothing.")
+        except Exception:  # noqa: BLE001 — perception never breaks the verb
+            pass
 
     def _undress_character(self, target, item_phrase):
         """Strip worn items off ``target`` and return the removed
