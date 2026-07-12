@@ -214,6 +214,40 @@ def _all_powered_radios():
         if is_radio(o) and is_powered(o)]
 
 
+def order_reaches(unit: Any, console: Any = None) -> bool:
+    """Can a dispatch ORDER physically reach *unit* over the emergency
+    band right now? Orders ARE radio traffic (§5): the console transmits
+    at its mast-backed reach (wrecked mast = handheld range), one-hop
+    repeaters regenerate, and the unit's own ears extend the link
+    (reciprocity). Clear or fuzzy = an order you can act on; static is
+    existence-only hiss and gone is silence — neither moves a unit.
+
+    Fail-open doctrine matches the range layer: no authored console =
+    a pre-radio world (True); off-grid rooms never silence. A console
+    that exists but is switched OFF fails CLOSED — the physical gate
+    the spec promises ("only from being switched off or destroyed")."""
+    try:
+        if console is None:
+            from world.director.population import get_base_station
+            console = get_base_station()
+        if console is None:
+            return True                    # pre-radio world: no gate
+        if not is_powered(console):
+            return False                   # switched off = no orders
+        from world.spatial import get_xyz
+        room = _grid_room(console)
+        origin = get_xyz(room) if room is not None else None
+        if origin is None:
+            return True                    # off-grid console fails open
+        reach = _effective_tx_range(console, origin)
+        freq = frequency_of(console) or EMERGENCY_BAND
+        relays = _relay_points(freq, console, origin, reach)
+        fraction = _reception_fraction(origin, reach, relays, unit)
+        return fraction <= 1.0             # clear or fuzzy parses
+    except Exception:  # noqa: BLE001 — range physics never mute dispatch
+        return True
+
+
 def hears_emergency_band(char: Any) -> bool:
     """A working receiver on the dispatch band: the built-in comms organ
     (§2.1) or any powered carried radio tuned there. This is what makes

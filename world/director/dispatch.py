@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from world.radio import hears_emergency_band
+from world.radio import hears_emergency_band, order_reaches
 from world.spatial import path_length
 
 
@@ -60,6 +60,11 @@ def find_responders(event: WorldEvent) -> list:
     roles = ROLE_RESPONDS_TO.get(event.type)
     if not roles or event.location is None:
         return []
+    try:
+        from world.director.population import get_base_station
+        console = get_base_station()
+    except Exception:  # noqa: BLE001 — no population layer = no gate
+        console = None
     ranked = []
     for npc in _npcs_with_roles(roles):
         if npc.location is None or npc is event.source:
@@ -67,6 +72,11 @@ def find_responders(event: WorldEvent) -> list:
         # dispatch orders are radio traffic: a unit that can't hear the
         # band can't be raised — it stands at post, honestly unreachable
         if not hears_emergency_band(npc):
+            continue
+        # ...and the ORDER itself must land: a wrecked dispatch mast
+        # collapses command reach to walkie range — distant units stand
+        # at post, receivers intact, hearing nothing but the colony.
+        if not order_reaches(npc, console=console):
             continue
         steps = path_length(npc.location, event.location, traverser=npc)
         if steps is None:
