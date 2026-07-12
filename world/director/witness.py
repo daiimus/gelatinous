@@ -20,6 +20,8 @@ exactly the kind of loop this world wants.
 
 from __future__ import annotations
 
+import re
+
 from random import choice, randint, random
 from typing import Any
 
@@ -53,15 +55,50 @@ def witness_chance(location: Any) -> float:
     return min(0.95, 0.30 + 0.25 * float(level))
 
 
+#: Room type -> the roles plausibly standing there when it happens. The
+#: witness system spawns the NEIGHBORHOOD, not a generic bystander — a
+#: crime in the agridome is seen by a grower, in the market by a vendor.
+#: The role's ``reports`` posture (authored dormant in CIVILIAN_ROLES for
+#: exactly this integration) finally consumes: "fast" halves the report
+#: window, "never" is street code — they saw everything, they say nothing.
+WITNESS_ROLE_POOLS: dict[str, tuple[str, ...]] = {
+    "agridome": ("grower",),
+    "market": ("stall_vendor", "hawker", "scavver"),
+    "cube hotel": ("tenant",),
+    "stairwell": ("tenant",),
+    "sump": ("sump_tech",),
+    "shack": ("sump_tech", "scavver"),
+    "hospital": ("clinic_aide",),
+    "constabulary": ("clerk",),
+    "bar": ("miner", "salaryman", "addict"),
+    "nightclub": ("addict", "salaryman"),
+    "rooftop": ("tenant", "scavver"),
+}
+DEFAULT_WITNESS_ROLES: tuple[str, ...] = (
+    "miner", "scavver", "hawker", "salaryman", "clerk", "tenant", "addict")
+
+
+def witness_role_for(location: Any) -> str:
+    """The civilian role a witness at *location* wears, by room type."""
+    rtype = str(getattr(getattr(location, "db", None), "type", "")
+                or "").lower()
+    return choice(WITNESS_ROLE_POOLS.get(rtype, DEFAULT_WITNESS_ROLES))
+
+
 def spawn_witness(location: Any) -> Any | None:
     """Roll the crowd gate; on success materialize the witness NPC at
     *location*, visibly marked. Returns the witness or ``None``."""
     if location is None or random() >= witness_chance(location):
         return None
+    from world.director.civilians import CIVILIAN_ROLES, dress_from_role
+    role = witness_role_for(location)
+    spec = CIVILIAN_ROLES.get(role) or {}
+    noun = re.sub(r"^(an?|the)\s+", "",
+                  (spec.get("persona") or {}).get("name") or "bystander")
     try:
         witness = create_object(
             typeclass="typeclasses.characters.Character",
-            key=f"a {choice(_WITNESS_ADJECTIVES)} bystander",
+            key=f"a {choice(_WITNESS_ADJECTIVES)} {noun}",
             location=location,
             home=location,
         )
@@ -69,6 +106,12 @@ def spawn_witness(location: Any) -> Any | None:
         return None
     witness.height = choice(HEIGHTS)
     witness.build = choice(BUILDS)
+    # The neighborhood, caught looking: role dress + witness posture.
+    try:
+        dress_from_role(witness, spec)
+    except Exception:  # noqa: BLE001 — an undressed witness still testifies
+        pass
+    witness.db.report_posture = spec.get("reports")
     # A voice (like spawn_civilian rolls) — the witness's whole purpose is
     # being HEARD on the emergency band; without a descriptor every report
     # rendered as "an unfamiliar voice" (uniformly anonymous snitches).
@@ -146,6 +189,12 @@ def witness_report(witness: Any, event: Any) -> bool:
     whether the report went out."""
     from world.director.dispatch import raise_event
     reported = False
+    # Street code: a "never" posture saw everything and says nothing —
+    # they flee like anyone, but the force never hears it.
+    if getattr(getattr(witness, "db", None), "report_posture",
+               None) == "never":
+        flee_and_cower(witness)
+        return False
     walkie = _witness_walkie(witness)
     # The report needs BOTH a live witness AND a working radio (§3): the force
     # never learns if the witness is silenced OR the walkie is gone/broken.

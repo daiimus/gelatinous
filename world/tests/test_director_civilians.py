@@ -636,6 +636,9 @@ class TestWardrobeLayering(TestCase):
     def test_spawn_wears_inner_to_outer(self):
         import inspect
         from world.director import civilians as _c
-        source = inspect.getsource(_c.spawn_civilian)
+        source = inspect.getsource(_c.dress_from_role)
         self.assertIn('sorted(items, key=lambda i: getattr(i, "layer", 2))',
                       source)
+        # and the spawner actually routes through the shared dresser
+        self.assertIn("dress_from_role(npc, spec",
+                      inspect.getsource(_c.spawn_civilian))

@@ -414,6 +414,40 @@ def ambient_beat(npc: Any) -> str | None:
 # Spawning
 # --------------------------------------------------------------------------
 
+def dress_from_role(npc: Any, spec: dict, sex: str | None = None) -> None:
+    """Dress *npc* from a role spec, through the real ``wear`` command.
+
+    A role may define coherent "outfits" (one full look rolled per
+    spawn; optionally sex-keyed) and/or a "wardrobe" whose entries are a
+    prototype key OR a list of alternatives (pick one) — so a population
+    mixes instead of cloning. Garments spawn first, then wear
+    inner-to-outer (ascending layer): the clothing system refuses an
+    inner layer over an outer one, so a role listing its identity piece
+    first (cut, apron, harness) was silently stripping the tops worn
+    after it. Shared by the civilian spawner and the witness system."""
+    from evennia.prototypes.spawner import spawn as proto_spawn
+    outfits = spec.get("outfits")
+    if isinstance(outfits, dict):
+        outfits = outfits.get(sex) or next(iter(outfits.values()))
+    garments = list(choice(outfits)) if outfits else []
+    for entry in spec.get("wardrobe", []):
+        garments.append(choice(entry) if isinstance(entry, list) else entry)
+    items = []
+    for proto in garments:
+        try:
+            item = proto_spawn(proto)[0]
+            item.move_to(npc, quiet=True)
+            items.append(item)
+        except Exception:  # noqa: BLE001 — a missing garment isn't fatal
+            continue
+    for item in sorted(items, key=lambda i: getattr(i, "layer", 2)):
+        try:
+            npc.execute_cmd(f"wear {item.key}")
+            _randomize_styles(npc, item)
+        except Exception:  # noqa: BLE001
+            continue
+
+
 def spawn_civilian(role: str, anchor: Any) -> Any | None:
     """Materialize one *role* civilian anchored at *anchor*: full human
     identity + flavor, dressed from the role wardrobe (worn via the real
@@ -490,35 +524,9 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     npc.db.reaction = spec.get("reaction", "comply")
     npc.db.reports = spec.get("reports")
 
-    # Wardrobe — spawned into inventory, worn through the real command.
-    # A role may define coherent "outfits" (one full look rolled per spawn)
-    # and/or a "wardrobe" whose entries are a prototype key OR a list of
-    # alternatives (pick one) — so a population mixes instead of cloning.
-    outfits = spec.get("outfits")
-    if isinstance(outfits, dict):
-        # sex-keyed looks (ambiguous falls back to any pool)
-        outfits = outfits.get(sex) or next(iter(outfits.values()))
-    garments = list(choice(outfits)) if outfits else []
-    for entry in spec.get("wardrobe", []):
-        garments.append(choice(entry) if isinstance(entry, list) else entry)
-    # Spawn everything first, then wear inner-to-outer (ascending layer):
-    # the clothing system refuses an inner layer over an outer one, so a
-    # role listing its identity piece first (cut, apron, harness) was
-    # silently stripping the tops worn after it.
-    items = []
-    for proto in garments:
-        try:
-            item = proto_spawn(proto)[0]
-            item.move_to(npc, quiet=True)
-            items.append(item)
-        except Exception:  # noqa: BLE001 — a missing garment isn't fatal
-            continue
-    for item in sorted(items, key=lambda i: getattr(i, "layer", 2)):
-        try:
-            npc.execute_cmd(f"wear {item.key}")
-            _randomize_styles(npc, item)
-        except Exception:  # noqa: BLE001
-            continue
+    # Wardrobe — shared with the witness system (a witness is just the
+    # neighborhood, caught looking).
+    dress_from_role(npc, spec, sex=sex)
 
     # Stock (a hawker sells something real — and muggable) + a blade for
     # armed roles (carried, not wielded: they DRAW it when it comes to that).

@@ -92,5 +92,9 @@ def report_crime(crime_type: str, location: Any, perp: Any = None,
         source=perp,
         payload={"bolo": build_bolo(perp)},   # crime-time presentation
     )
-    delay(WITNESS_REPORT_DELAY, witness_report, witness, event)
+    window = WITNESS_REPORT_DELAY
+    if getattr(getattr(witness, "db", None), "report_posture",
+               None) == "fast":
+        window *= 0.5           # an eager snitch is harder to interdict
+    delay(window, witness_report, witness, event)
     return True
