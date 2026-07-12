@@ -41,8 +41,9 @@ class TestRoles(TestCase):
     def test_colony_roster_shape(self):
         self.assertEqual(
             sorted(CIVILIAN_ROLES),
-            ["addict", "ganger", "hawker", "miner", "salaryman", "scavver",
-             "synth_companion", "synth_company_man"])
+            ["addict", "clerk", "clinic_aide", "ganger", "grower", "hawker",
+             "miner", "salaryman", "scavver", "stall_vendor", "sump_tech",
+             "synth_companion", "synth_company_man", "tenant"])
         # teeth: at least two resist roles, and armed ones carry blades
         resisters = [r for r, s in CIVILIAN_ROLES.items()
                      if s["reaction"] == "resist"]
