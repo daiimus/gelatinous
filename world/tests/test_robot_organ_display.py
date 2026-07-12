@@ -37,9 +37,50 @@ class TestRobotOrganDisplay(TestCase):
         # from the robot's mechanical components).
         self.assertEqual(
             get_organ_display_name("brain", "synthetic_humanoid"),
-            "synthetic brain")
+            "wetcore")   # the wetware register (2026-07-12)
 
     def test_unmapped_organ_defensive_fallback(self):
         # Unknown organ on a robot falls back to the stripped key.
         self.assertEqual(
             get_organ_display_name("nonexistent_organ", "robot"), "nonexistent organ")
+
+
+class TestSynthWetwareRegister(TestCase):
+    """The wetware register (2026-07-12): the synth's soft core reads as
+    engineered tissue; bones, senses, and the form stay 'synthetic X';
+    humans are untouched."""
+
+    def test_soft_core_is_wetware(self):
+        from world.anatomy.organs import get_organ_display_name
+        s = "synthetic_humanoid"
+        self.assertEqual(get_organ_display_name("brain", s), "wetcore")
+        self.assertEqual(get_organ_display_name("heart", s), "vat-heart")
+        self.assertEqual(get_organ_display_name("left_lung", s),
+                         "left culture-lung")
+        self.assertEqual(get_organ_display_name("liver", s), "filter gland")
+        self.assertEqual(get_organ_display_name("right_kidney", s),
+                         "right flush gland")
+        self.assertEqual(get_organ_display_name("stomach", s), "culture gut")
+
+    def test_form_visible_organs_stay_synthetic_prefixed(self):
+        from world.anatomy.organs import get_organ_display_name
+        s = "synthetic_humanoid"
+        self.assertEqual(get_organ_display_name("left_eye", s),
+                         "synthetic left eye")
+        self.assertEqual(get_organ_display_name("jaw", s), "synthetic jaw")
+        self.assertEqual(get_organ_display_name("left_femur", s),
+                         "synthetic left femur")
+
+    def test_humans_untouched(self):
+        from world.anatomy.organs import get_organ_display_name
+        self.assertEqual(get_organ_display_name("brain", "human"), "brain")
+        self.assertEqual(get_organ_display_name("heart", "human"), "heart")
+
+    def test_nothing_industrial_leaked(self):
+        # the register guidance: engineered tissue, never machinery
+        from world.anatomy.species import _SYNTH_WETWARE
+        forbidden = ("pump", "processor", "unit", "module", "core ",
+                     "engine", "motor", "filter unit")
+        for noun in _SYNTH_WETWARE.values():
+            for bad in forbidden:
+                self.assertNotIn(bad, noun, noun)

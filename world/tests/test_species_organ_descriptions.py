@@ -64,20 +64,20 @@ class TestSynthOrganNames(TestCase):
     def test_synth_organ_display_names(self):
         self.assertEqual(
             get_organ_display_name("heart", "synthetic_humanoid"),
-            "synthetic heart")
+            "vat-heart")   # wetware register
         self.assertEqual(
             get_organ_display_name("left_eye", "synthetic_humanoid"),
             "synthetic left eye")
 
     def test_synth_severed_name_no_double_synth(self):
         name = get_species_organ_name("synthetic_humanoid", "heart", "fresh")
-        self.assertEqual(name, "synthetic heart")
+        self.assertEqual(name, "vat-heart")
         self.assertNotIn("synth synthetic", name)
 
     def test_synth_severed_decay_tiers(self):
         self.assertEqual(
             get_species_organ_name("synthetic_humanoid", "brain", "advanced"),
-            "inert synthetic brain")
+            "inert wetcore")
         self.assertEqual(
             get_species_organ_name("synthetic_humanoid", "brain", "skeletal"),
-            "desiccated synthetic brain")
+            "desiccated wetcore")
