@@ -132,3 +132,78 @@ class TestCombatWiring(TestCase):
         tap.assert_called_once()
         self.assertEqual(tap.call_args.kwargs.get("sound"),
                          "a body hits the floor nearby")
+
+
+class TestDirectedActionPerception(TestCase):
+    """#954 remainder: give/dress/undress reach LLM NPCs — buffered for
+    bystanders, felt personally (with a reaction) by the target."""
+
+    def _llm_target(self, npc_actor=False):
+        target = MagicMock()
+        target.db.llm_driven = True
+        target._is_npc_speaker.return_value = npc_actor
+        return target
+
+    def test_target_buffers_and_reacts(self):
+        from world.llm import observation as omod
+        target = self._llm_target()
+        actor = MagicMock()
+        with patch("typeclasses.llm_npc.llm_enabled", return_value=True), \
+             patch("evennia.utils.utils.delay") as mock_delay:
+            omod.observe_directed_action(actor, target,
+                                         "someone hands you a shiv.")
+        target._observe_action.assert_called_once_with(
+            actor, "someone hands you a shiv.")
+        self.assertEqual(mock_delay.call_args.args[1:],
+                         (target._try_llm_reply,
+                          "someone hands you a shiv.", actor, "action"))
+
+    def test_react_false_buffers_only(self):
+        from world.llm import observation as omod
+        target = self._llm_target()
+        with patch("evennia.utils.utils.delay") as mock_delay:
+            omod.observe_directed_action(MagicMock(), target,
+                                         "line", react=False)
+        target._observe_action.assert_called_once()
+        mock_delay.assert_not_called()
+
+    def test_npc_actor_never_triggers_reaction(self):
+        # the NPC<->NPC loop guard: buffer yes, reply no
+        from world.llm import observation as omod
+        target = self._llm_target(npc_actor=True)
+        with patch("typeclasses.llm_npc.llm_enabled", return_value=True), \
+             patch("evennia.utils.utils.delay") as mock_delay:
+            omod.observe_directed_action(MagicMock(), target, "line")
+        target._observe_action.assert_called_once()
+        mock_delay.assert_not_called()
+
+    def test_non_llm_target_is_a_no_op(self):
+        from world.llm import observation as omod
+        target = MagicMock()
+        target.db.llm_driven = None
+        omod.observe_directed_action(MagicMock(), target, "line")
+        target._observe_action.assert_not_called()
+
+    def test_transfer_line_renders_per_observer(self):
+        from world.llm.observation import transfer_line
+        giver, item, receiver, observer = (MagicMock() for _ in range(4))
+        giver.get_display_name.return_value = "a wiry man"
+        receiver.get_display_name.return_value = "a shaken tenant"
+        item.get_display_name.return_value = "a battered walkie"
+        line = transfer_line(giver, item, receiver)(observer)
+        self.assertEqual(
+            line, "a wiry man hands a shaken tenant a battered walkie.")
+        giver.get_display_name.assert_called_with(observer)
+
+    def test_clothing_lines(self):
+        from world.llm.observation import clothing_line
+        actor, target, item, observer = (MagicMock() for _ in range(4))
+        actor.get_display_name.return_value = "a clerk"
+        target.get_display_name.return_value = "a slumped figure"
+        item.get_display_name.return_value = "a house robe"
+        self.assertEqual(
+            clothing_line(actor, target, item, dressing=True)(observer),
+            "a clerk dresses a slumped figure in a house robe.")
+        self.assertEqual(
+            clothing_line(actor, target, dressing=False)(observer),
+            "a clerk strips the clothes off a slumped figure.")

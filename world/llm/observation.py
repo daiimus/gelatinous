@@ -115,3 +115,64 @@ def personal_attack_line(attacker, target, weapon_name, hit):
     verb = "hits you" if hit else "attacks you and misses"
     with_what = f" with {weapon_name}" if weapon_name else ""
     return f"{who} {verb}{with_what}!"
+
+
+def observe_directed_action(actor, target, personal, *, react=True):
+    """An action done TO an LLM NPC — dressed, stripped, handed an item.
+
+    Buffers the personal line and, when warranted, triggers the directed
+    ``action``-mode reaction: the same shape as a wordless pose aimed at
+    the NPC (llm_npc.at_msg_receive), because being handled IS a pose
+    aimed at you. No perception gate — clothing and item contact is
+    tactile; you feel it blind and deaf. Silence on every failure."""
+    try:
+        if getattr(getattr(target, "db", None), "llm_driven",
+                   None) is not True:
+            return
+        buffer = getattr(target, "_observe_action", None)
+        if callable(buffer):
+            buffer(actor, personal)
+        if not react:
+            return
+        from typeclasses.llm_npc import llm_enabled
+        if not llm_enabled():
+            return
+        is_npc = getattr(target, "_is_npc_speaker", None)
+        if callable(is_npc) and is_npc(actor):
+            return                     # the NPC↔NPC loop guard
+        reply = getattr(target, "_try_llm_reply", None)
+        if callable(reply):
+            from evennia.utils.utils import delay
+            delay(1.5, reply, personal, actor, "action")
+    except Exception:  # noqa: BLE001 — perception never breaks the verb
+        pass
+
+
+def transfer_line(giver, item, receiver):
+    """A hand-off, from a bystander's point of view."""
+    def render(observer):
+        try:
+            who = giver.get_display_name(observer)
+            whom = receiver.get_display_name(observer)
+            what = (item.get_display_name(observer)
+                    if hasattr(item, "get_display_name") else str(item))
+            return f"{who} hands {whom} {what}."
+        except Exception:  # noqa: BLE001
+            return None
+    return render
+
+
+def clothing_line(actor, target, item=None, dressing=True):
+    """Third-party dressing/stripping, from a bystander's point of view."""
+    def render(observer):
+        try:
+            who = actor.get_display_name(observer)
+            whom = target.get_display_name(observer)
+        except Exception:  # noqa: BLE001
+            return None
+        if dressing and item is not None:
+            what = (item.get_display_name(observer)
+                    if hasattr(item, "get_display_name") else str(item))
+            return f"{who} dresses {whom} in {what}."
+        return f"{who} strips the clothes off {whom}."
+    return render

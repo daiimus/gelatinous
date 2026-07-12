@@ -784,6 +784,21 @@ class CmdGive(Command):
         target.hands = target_snapshot
         item.move_to(target, quiet=True)
 
+        # LLM NPC perception (#954): bystanders buffer the hand-off; a
+        # receiving NPC feels it personally and may react in kind.
+        try:
+            from world.llm.observation import (
+                observe_directed_action, observe_event, transfer_line)
+            observe_event(caller.location,
+                          transfer_line(caller, item, target),
+                          exclude=(caller, target))
+            observe_directed_action(
+                caller, target,
+                f"{caller.get_display_name(target)} hands you "
+                f"{item.get_display_name(target)}.")
+        except Exception:  # noqa: BLE001 — perception never breaks giving
+            pass
+
         # Success messages
         free_hand_display = free_hand.replace("_", " ")
         item_name = item.get_display_name(caller)
