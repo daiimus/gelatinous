@@ -4029,3 +4029,386 @@ ROBOT_COMMS_MODULE_SPEC = {
                  "sits flush to the chassis, a stub antenna folded along the "
                  "skull line."),
 }
+
+
+# ---------------------------------------------------------------------------
+# WARDROBE EXPANSION (2026-07-12) — registers the catalog lacked: corpo,
+# medical, weather-sealed, agri/service, domestic, formal. Cut to dress the
+# NPC population the new districts imply (dome growers, market vendors,
+# tenants, office workers). Same conventions as the rest of the wardrobe:
+# layer 1 base / 2 garment / 3 over / 4 outer, style_configs where a
+# garment honestly has states.
+# ---------------------------------------------------------------------------
+
+CORPO_BLAZER = {
+    "prototype_key": "CORPO_BLAZER",
+    "key": "corporate blazer",
+    "aliases": ["blazer", "jacket"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A structured blazer in company-neutral slate, shoulders built to a silhouette some brand manual specified. The lapel carries a stitched loop where an affiliation pin clips — empty, which says something too.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A structured {color}slate|n blazer, corporate-cut, its pin loop conspicuously empty"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
+        ("layer", 3),
+        ("color", "slate"),
+        ("material", "wool blend"),
+        ("weight", 0.9),
+        ("style_configs", {
+            "closure": {
+                "buttoned": {"coverage_mod": [], "desc_mod": ""},
+                "open": {
+                    "coverage_mod": ["-chest", "-abdomen"],
+                    "desc_mod": "A structured {color}slate|n blazer worn open, corporate formality at the end of a long shift",
+                },
+            },
+        }),
+        ("style_properties", {"closure": "buttoned"}),
+    ],
+}
+
+DRESS_SHIRT = {
+    "prototype_key": "DRESS_SHIRT",
+    "key": "pressed dress shirt",
+    "aliases": ["shirt", "dress shirt"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A dress shirt in recycled-fiber white, pressed to creases you could file paper under. The collar is the kind that leaves a mark by end of shift.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A pressed {color}white|n dress shirt, collar sharp enough to leave a mark"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
+        ("layer", 1),
+        ("color", "white"),
+        ("material", "recycled fiber"),
+        ("weight", 0.3),
+        ("style_configs", {
+            "adjustable": {
+                "normal": {"coverage_mod": [], "desc_mod": ""},
+                "rolled": {
+                    "coverage_mod": ["-left_arm", "-right_arm"],
+                    "desc_mod": "A pressed {color}white|n dress shirt with the sleeves rolled — formality making concessions",
+                },
+            },
+        }),
+        ("style_properties", {"adjustable": "normal"}),
+    ],
+}
+
+DRESS_TROUSERS = {
+    "prototype_key": "DRESS_TROUSERS",
+    "key": "creased trousers",
+    "aliases": ["trousers", "slacks"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Office trousers with a crease that survived the commute, in a grey engineered to match every blazer the company ever issued.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Creased {color}grey|n office trousers holding their line against the colony"),
+        ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
+        ("layer", 2),
+        ("color", "grey"),
+        ("material", "wool blend"),
+        ("weight", 0.5),
+    ],
+}
+
+PENCIL_SKIRT = {
+    "prototype_key": "PENCIL_SKIRT",
+    "key": "pencil skirt",
+    "aliases": ["skirt"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A knee-length pencil skirt in charcoal, cut narrow and lined — office armor of the type that predates the colony and will outlast it.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A narrow {color}charcoal|n pencil skirt, knee-length and exact"),
+        ("coverage", ["groin", "left_thigh", "right_thigh"]),
+        ("layer", 2),
+        ("color", "charcoal"),
+        ("material", "wool blend"),
+        ("weight", 0.4),
+    ],
+}
+
+OXFORD_SHOES = {
+    "prototype_key": "OXFORD_SHOES",
+    "key": "polished oxfords",
+    "aliases": ["oxfords", "shoes"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Lace-up oxfords polished to a corporate shine that the street grating is actively working to undo.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Polished {color}black|n oxfords fighting a losing war with the grating"),
+        ("coverage", ["left_foot", "right_foot"]),
+        ("layer", 3),
+        ("color", "black"),
+        ("material", "leather"),
+        ("weight", 0.8),
+    ],
+}
+
+NECKTIE = {
+    "prototype_key": "NECKTIE",
+    "key": "corporate necktie",
+    "aliases": ["tie", "necktie"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A necktie in muted company stripes, knotted by muscle memory. On this colony it reads less as fashion than as allegiance.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A striped {color}company-blue|n necktie, knotted tight — allegiance worn at the throat"),
+        ("coverage", ["neck"]),
+        ("layer", 2),
+        ("color", "company-blue"),
+        ("material", "synthetic silk"),
+        ("weight", 0.1),
+        ("style_configs", {
+            "adjustable": {
+                "normal": {"coverage_mod": [], "desc_mod": ""},
+                "loosened": {
+                    "coverage_mod": [],
+                    "desc_mod": "A striped {color}company-blue|n necktie yanked loose from the collar, the day's honesty showing",
+                },
+            },
+        }),
+        ("style_properties", {"adjustable": "normal"}),
+    ],
+}
+
+MEDICAL_SCRUBS = {
+    "prototype_key": "MEDICAL_SCRUBS",
+    "key": "surgical scrubs",
+    "aliases": ["scrubs"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Two-piece scrubs in clinical teal, autoclave-faded, the breast pocket permanently sprung from carried instruments.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Autoclave-faded {color}teal|n scrubs, the breast pocket sprung from years of instruments"),
+        ("coverage", ["chest", "back", "abdomen", "groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
+        ("layer", 2),
+        ("color", "teal"),
+        ("material", "cotton blend"),
+        ("weight", 0.5),
+    ],
+}
+
+LAB_COAT = {
+    "prototype_key": "LAB_COAT",
+    "key": "white lab coat",
+    "aliases": ["lab coat", "coat"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A knee-length lab coat, white where it matters and stained honestly where it doesn't, a row of pens clipped to the breast pocket in descending order of function.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A {color}white|n lab coat, honestly stained, pens racked in the breast pocket"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
+        ("layer", 3),
+        ("color", "white"),
+        ("material", "poly-cotton"),
+        ("weight", 0.7),
+        ("style_configs", {
+            "closure": {
+                "buttoned": {"coverage_mod": [], "desc_mod": ""},
+                "open": {
+                    "coverage_mod": ["-chest", "-abdomen"],
+                    "desc_mod": "A {color}white|n lab coat worn open and moving like the tail end of a thought",
+                },
+            },
+        }),
+        ("style_properties", {"closure": "open"}),
+    ],
+}
+
+SEALED_SLICKER = {
+    "prototype_key": "SEALED_SLICKER",
+    "key": "tox-sealed slicker",
+    "aliases": ["slicker", "raincoat"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A hooded slicker in safety amber, seams heat-welded and cuffs gasketed — rated for tox rain, which on this colony is not a hypothetical. The hood's clear visor strip has gone the yellow of old resin.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A heat-welded {color}amber|n slicker, gasketed at the cuffs, built for rain that shouldn't touch skin"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
+        ("layer", 4),
+        ("color", "amber"),
+        ("material", "welded polymer"),
+        ("weight", 1.2),
+        ("style_configs", {
+            "adjustable": {
+                "hood_down": {"coverage_mod": [], "desc_mod": ""},
+                "hood_up": {
+                    "coverage_mod": ["+head"],
+                    "desc_mod": "A heat-welded {color}amber|n slicker with the hood up, face reduced to a yellowed visor strip",
+                },
+            },
+        }),
+        ("style_properties", {"adjustable": "hood_down"}),
+    ],
+}
+
+GROWERS_APRON = {
+    "prototype_key": "GROWERS_APRON",
+    "key": "grower's rubber apron",
+    "aliases": ["apron"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A heavy rubber apron stained the particular green-brown of nutrient work, its front pocket sprouting shears, ties, and a moisture probe. Smells like the inside of an agridome because it has never been anywhere else.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A nutrient-stained {color}green-brown|n rubber apron, tools sprouting from the front pocket"),
+        ("coverage", ["chest", "abdomen", "groin", "left_thigh", "right_thigh"]),
+        ("layer", 3),
+        ("color", "green-brown"),
+        ("material", "rubber"),
+        ("weight", 1.0),
+    ],
+}
+
+RUBBER_WADERS = {
+    "prototype_key": "RUBBER_WADERS",
+    "key": "rubber waders",
+    "aliases": ["waders", "boots"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Thigh-high rubber waders, patched at the left knee with something that used to be a different color. For standing in what the colony's floors collect.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Thigh-high {color}black|n rubber waders, patched, made for standing in what collects"),
+        ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin", "left_thigh", "right_thigh"]),
+        ("layer", 3),
+        ("color", "black"),
+        ("material", "rubber"),
+        ("weight", 1.6),
+    ],
+}
+
+SHOWER_SANDALS = {
+    "prototype_key": "SHOWER_SANDALS",
+    "key": "shower sandals",
+    "aliases": ["sandals", "slides"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Molded plastic slides in a faded orange, the tread long gone. The unofficial uniform of every cube-hotel corridor in the colony.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Faded {color}orange|n shower sandals slapping with every step"),
+        ("coverage", ["left_foot", "right_foot"]),
+        ("layer", 1),
+        ("color", "orange"),
+        ("material", "molded plastic"),
+        ("weight", 0.2),
+    ],
+}
+
+HOUSE_ROBE = {
+    "prototype_key": "HOUSE_ROBE",
+    "key": "quilted house robe",
+    "aliases": ["robe"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A quilted robe washed to an ambiguous mauve, belt tied in the permanent knot of someone who has stopped performing for the corridor.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A quilted {color}mauve|n house robe, belt in its permanent knot — off duty from everything"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
+        ("layer", 3),
+        ("color", "mauve"),
+        ("material", "quilted synthetic"),
+        ("weight", 0.8),
+    ],
+}
+
+HEAD_WRAP = {
+    "prototype_key": "HEAD_WRAP",
+    "key": "printed head wrap",
+    "aliases": ["wrap", "headwrap"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A meter of printed cloth wrapped and tucked with practiced architecture, its pattern faded from a market bolt that sold out years ago.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A printed {color}ochre|n head wrap tucked with practiced architecture"),
+        ("coverage", ["head"]),
+        ("layer", 2),
+        ("color", "ochre"),
+        ("material", "printed cotton"),
+        ("weight", 0.1),
+    ],
+}
+
+EVENING_SUIT = {
+    "prototype_key": "EVENING_SUIT",
+    "key": "midnight evening suit",
+    "aliases": ["suit", "evening suit"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "An evening suit in true midnight, cut close and unbranded — the kind of formality that costs more for what it doesn't say. Colony dust does not stick to it, which is its own small miracle.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A {color}midnight|n evening suit, close-cut and unbranded, wearing the room's light well"),
+        ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
+        ("layer", 2),
+        ("color", "midnight"),
+        ("material", "wool-silk"),
+        ("weight", 1.1),
+    ],
+}
+
+SILK_SLIP_DRESS = {
+    "prototype_key": "SILK_SLIP_DRESS",
+    "key": "silk slip dress",
+    "aliases": ["slip", "dress"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A bias-cut slip dress in real silk — or synthesis close enough to require touching, which is the point. It moves half a beat behind its wearer, like a rumor.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A bias-cut {color}oyster|n silk slip moving half a beat behind {them}"),
+        ("coverage", ["chest", "abdomen", "groin", "left_thigh", "right_thigh"]),
+        ("layer", 1),
+        ("color", "oyster"),
+        ("material", "silk"),
+        ("weight", 0.2),
+    ],
+}
+
+LONG_SCARF = {
+    "prototype_key": "LONG_SCARF",
+    "key": "long knit scarf",
+    "aliases": ["scarf"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Two meters of knit scarf in a rust that flatters nobody and warms everybody, wound twice and still trailing.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A {color}rust|n knit scarf wound twice at the throat and still trailing"),
+        ("coverage", ["neck"]),
+        ("layer", 3),
+        ("color", "rust"),
+        ("material", "knit synthetic"),
+        ("weight", 0.3),
+    ],
+}
+
+WIDE_BRIM_HAT = {
+    "prototype_key": "WIDE_BRIM_HAT",
+    "key": "wide-brimmed hat",
+    "aliases": ["hat"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A wide-brimmed hat in oiled canvas, shaped by weather into something between agriculture and myth. Keeps the processor glare off and opinions in.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A weather-shaped {color}oiled-tan|n wide-brimmed hat pulled low against the glare"),
+        ("coverage", ["head"]),
+        ("layer", 3),
+        ("color", "oiled-tan"),
+        ("material", "oiled canvas"),
+        ("weight", 0.4),
+    ],
+}
+
+THERMAL_LEGGINGS = {
+    "prototype_key": "THERMAL_LEGGINGS",
+    "key": "thermal leggings",
+    "aliases": ["leggings"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Ribbed thermal leggings in expedition black, the base layer of everyone who works where the colony's heating doesn't reach.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "Ribbed {color}black|n thermal leggings, the honest base layer of cold work"),
+        ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
+        ("layer", 1),
+        ("color", "black"),
+        ("material", "ribbed thermal"),
+        ("weight", 0.3),
+    ],
+}
