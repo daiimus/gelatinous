@@ -1121,6 +1121,23 @@ SPECIES_DEFINITIONS = {
 SYNTH_ORGAN_DURABILITY = 1.25  # synthetic tissue/frame takes more punishment
 
 
+#: The wetware register (user call 2026-07-12): a Synthetic Humanoid is
+#: engineered TISSUE, not machinery — organ-like nouns with akin
+#: functionality, never industrial ("cardiac pump" was rejected). Only
+#: the soft core diverges; bones, senses, and everything form-visible
+#: stay "synthetic <organ>" (the form is humanoid).
+_SYNTH_WETWARE = {
+    "brain": "wetcore",
+    "heart": "vat-heart",
+    "left_lung": "left culture-lung",
+    "right_lung": "right culture-lung",
+    "liver": "filter gland",
+    "left_kidney": "left flush gland",
+    "right_kidney": "right flush gland",
+    "stomach": "culture gut",
+}
+
+
 def _derive_synthetic_humanoid(base: dict) -> dict:
     synth = copy.deepcopy(base)
     synth["display_name"] = "synthetic humanoid"
@@ -1191,7 +1208,8 @@ def _derive_synthetic_humanoid(base: dict) -> dict:
     # organic name (which equals the stripped key) so it stays DRY.
     # Consumed by ``world.anatomy.organs.get_organ_display_name(name, species)``.
     synth["organ_display"] = {
-        organ: f"synthetic {organ.replace('_', ' ')}"
+        organ: _SYNTH_WETWARE.get(
+            organ, f"synthetic {organ.replace('_', ' ')}")
         for organ in synth["organs"]
     }
     return synth

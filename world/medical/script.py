@@ -344,14 +344,19 @@ class MedicalScript(DefaultScript):
                 room_template = get_bleeding_room_message(
                     bleeding_severity, species,
                 )
+                # the personal line bleeds YOUR colour (species-keyed:
+                # human crimson, synth cobalt, robot amber)
+                from world.anatomy import get_species_blood_color
+                blood = get_species_blood_color(species)
+                tint, cname = blood["code"], blood["name"]
                 if bleeding_severity <= 3:
-                    personal_parts.append("|rYou feel warm blood trickling from your wounds.|n")
+                    personal_parts.append(f"{tint}You feel warm blood trickling from your wounds.|n")
                 elif bleeding_severity <= 7:
-                    personal_parts.append("|rBlood flows freely from your wounds, leaving crimson trails.|n")
+                    personal_parts.append(f"{tint}Blood flows freely from your wounds, leaving {cname} trails.|n")
                 elif bleeding_severity <= 12:
-                    personal_parts.append("|rYou feel your life ebbing away as blood pours from your wounds.|n")
+                    personal_parts.append(f"{tint}You feel your life ebbing away as blood pours from your wounds.|n")
                 else:  # 13+
-                    personal_parts.append("|rYour vision dims as life-blood gushes from grievous wounds.|n")
+                    personal_parts.append(f"{tint}Your vision dims as life-blood gushes from grievous wounds.|n")
                 room_parts.append(room_template)
         
         # Add pain components if present (only for living characters)
