@@ -74,6 +74,22 @@ class TestBuildMessages(TestCase):
         self.assertNotIn("refer to yourself",
                          render_persona({"persona_seed": {"name": "N"}}).lower())
 
+    def test_carrying_grounds_against_invented_gear(self):
+        # Inventory awareness (#1230): a listed item + an anti-invention clause,
+        # so the model cites what it HAS instead of confabulating (an unarmed
+        # bartender invented an "M88 pistol" when asked what she carried).
+        seed = {"persona_seed": {"name": "Del"}}
+        has = render_persona({**seed, "carrying": ["PAM Reaper shotgun"]})
+        self.assertIn("PAM Reaper shotgun", has)
+        self.assertIn("don't invent", has.lower())
+        # Empty inventory renders EXPLICITLY (not silence — that's the vacuum
+        # the model fills): named absence + the same grounding.
+        empty = render_persona({**seed, "carrying": []})
+        self.assertIn("carrying nothing", empty.lower())
+        self.assertIn("don't invent", empty.lower())
+        # Key wholly absent (defensive fixture) -> no carrying line, no crash.
+        self.assertNotIn("carrying", render_persona(seed).lower())
+
     def test_memories_injected_before_turn(self):
         msgs = build_messages(_PERSONA, "a man", "remember me?", "directed",
                               memories=["he stiffed you on a tab last week",
