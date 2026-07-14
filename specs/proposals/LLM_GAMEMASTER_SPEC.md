@@ -7,7 +7,7 @@
 > identity, gated behind two switches, fail-safe to scripted behaviour, drink
 > mechanics untouched. **Phase 2** added per-NPC RAG memory (embeddings,
 > identity-gated retrieval, write-back) and a reusable LLM-NPC brain
-> (`LLMNpcMixin`) with archetypes (bartender, companion). **Phase 3 (partial):** a
+> (`LLMNpcMixin`) with archetypes (bartender, companion, doctor, colonist, security, merchant). **Phase 3 (partial):** a
 > small allow-listed action surface is live — `remember`/`feel`/`look` + archetype
 > tools (`prepare_drink`) — and **actuation runs through the REAL roleplay commands
 > players use, one channel per turn-field** (`execute_cmd`), so NPC output gets the
@@ -728,7 +728,7 @@ MLX, ChromaDB, or Evennia.
   cosine top-k, salience/prune), identity-gated retrieval and write-back scoped to
   the interlocutor's `apparent_uid` (rides `recognition_memory`). Plus the reusable
   brain `typeclasses/llm_npc.py` `LLMNpcMixin` (engagement loop + agentic tool
-  loop) and archetypes in `world/llm/prompt.py` (bartender, companion) with
+  loop) and archetypes in `world/llm/prompt.py` (bartender, companion, doctor, colonist, security, merchant — merchant grounds shopkeepers as the counter's owner, radio-tool-enabled for a shop set) with
   per-archetype tool scoping. **Identity & posing** (`NPC_MEMORY_AND_IDENTITY_SPEC`
   §8): names-as-claims, spontaneous nicknames via the real `remember` command,
   behaviour-driven valence (`feel`). *Deliverable met: the NPC remembers a prior
