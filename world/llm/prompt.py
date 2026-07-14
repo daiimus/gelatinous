@@ -550,7 +550,17 @@ def render_persona(persona: dict) -> str:
         lines.append("You are wearing nothing.")
     carrying = persona.get("carrying")
     if carrying:
-        lines.append("You are carrying: " + ", ".join(carrying) + ".")
+        lines.append("You are carrying: " + ", ".join(carrying)
+                     + ". That is everything you have on you — don't invent "
+                     "weapons, gear, or possessions you aren't carrying.")
+    elif carrying is not None:
+        # Empty inventory renders EXPLICITLY, not as silence: an unstated
+        # inventory is a vacuum the model fills (it invented an "M88 pistol"
+        # for an unarmed bartender when asked what she carried). Naming the
+        # absence grounds it (#1230).
+        lines.append("You are carrying nothing but the clothes you're wearing "
+                     "— don't invent weapons, gear, or possessions you don't "
+                     "have.")
     if persona.get("radio"):
         lines.append(f"You have {persona['radio']} — the 'radio' tool "
                      f"transmits over it; everyone on that band hears you.")
