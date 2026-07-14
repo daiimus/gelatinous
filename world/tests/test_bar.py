@@ -631,6 +631,9 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
             setattr(b, name, bound)
         # default: not alone (so ambient stays ambient); override per test
         b._is_alone_with = lambda speaker: False
+        # these routing tests use non-order speech; the deterministic order
+        # detector is exercised in its own test class, off here.
+        b._is_conversational_order = lambda s: False
         # real _resolve_second_person needs a concrete handle
         b._address_handle = lambda t: "a lean man"
         # The pose sub-helpers (conjugation, selfify, reflexive-gesture) each
@@ -961,3 +964,75 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         self.assertTrue(b._mentions_self("yo bartender"))
         self.assertTrue(b._mentions_self("nice catgirl ears"))
         self.assertFalse(b._mentions_self("this whole place is dead"))
+
+
+class TestConversationalOrderDetection(BaseEvenniaTest):
+    """Deterministic conversational-order detection (reliability lever): a clear
+    spoken order routes to the real serve path instead of the model's flaky
+    prepare_drink tool; a question or a casual drink mention does NOT."""
+
+    MENU = [{"name": "rotgut", "order_keywords": ("rotgut", "whiskey")},
+            {"name": "gin", "order_keywords": ("gin",)},
+            {"name": "beer", "order_keywords": ("beer",)}]
+
+    def _bartender(self):
+        b = MagicMock()
+        b._find_bar = lambda: None          # no bar obj → match against db.menu
+        b.db.menu = self.MENU
+        b._is_conversational_order = barmod.Bartender._is_conversational_order.__get__(
+            b, barmod.Bartender)
+        return b
+
+    def test_orders_detected(self):
+        b = self._bartender()
+        for s in ("pour me a rotgut", "whiskey, neat", "rotgut.", "gimme a beer",
+                  "another gin", "a beer", "one whiskey please", "i'll have a gin",
+                  "set me up with a gin"):
+            self.assertTrue(b._is_conversational_order(s), f"should be order: {s!r}")
+
+    def test_non_orders_ignored(self):
+        b = self._bartender()
+        for s in ("is it safe to talk in here?", "i need to forget today",
+                  "you always work alone?", "i had a whiskey earlier",
+                  "whiskey ruined me", "is the gin any good",
+                  "this beer belly's killing me", "nice place", ""):
+            self.assertFalse(b._is_conversational_order(s), f"not an order: {s!r}")
+
+
+class TestConversationalOrderRouting(BaseEvenniaTest):
+    """_handle_directed_speech routes a detected order to _fulfil_order ONLY when
+    it's plausibly aimed at this bartender (directed), never on ambient chatter."""
+
+    def _bartender(self, order=True, kind="directed"):
+        b = MagicMock()
+        b._is_gratitude = lambda s: False
+        b._is_conversational_order = lambda s: order
+        b._classify_speech = lambda s, spk: kind
+        b._handle_directed_speech = barmod.Bartender._handle_directed_speech.__get__(
+            b, barmod.Bartender)
+        return b
+
+    def test_directed_order_routes_to_serve(self):
+        b = self._bartender(order=True, kind="directed")
+        with patch.object(barmod, "delay") as d:
+            handled = b._handle_directed_speech("pour me a rotgut", MagicMock(),
+                                                {"addressed": False})
+        self.assertTrue(handled)
+        # delay(1.5, self._fulfil_order, speech, speaker) — arg[1] is the callback
+        self.assertEqual(d.call_args.args[1], b._fulfil_order)
+
+    def test_ambient_order_not_served(self):
+        # same order words, but overheard (not aimed at us) → falls through to LLM
+        b = self._bartender(order=True, kind="ambient")
+        with patch.object(barmod, "delay") as d:
+            handled = b._handle_directed_speech("pour me a rotgut", MagicMock(),
+                                                {"addressed": False})
+        self.assertFalse(handled)
+        d.assert_not_called()
+
+    def test_non_order_falls_through(self):
+        b = self._bartender(order=False, kind="directed")
+        with patch.object(barmod, "delay") as d:
+            handled = b._handle_directed_speech("rough night?", MagicMock(),
+                                                {"addressed": False})
+        self.assertFalse(handled)
