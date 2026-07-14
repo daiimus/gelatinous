@@ -468,7 +468,26 @@ class CmdGet(Command):
             caller.msg(f"You can't pick up {item.get_display_name(caller)}.")
             return
 
+        # Honour the get lock + at_pre_get — a bolted-down fixture (a mast,
+        # a dispatch console, a wired boombox) carries get:false() and MUST
+        # stay put. The custom command used to skip this, so every fixture
+        # was liftable.
+        if not self._can_be_taken(caller, item):
+            return
+
         self._give_item_to_character(caller, item)
+
+    def _can_be_taken(self, caller, item):
+        """True if *item* may be picked up: the ``get`` lock passes and
+        ``at_pre_get`` allows it. Fixtures (``get:false()``) are refused
+        with their ``get_err_msg`` (or a default)."""
+        if not item.access(caller, "get"):
+            caller.msg(item.db.get_err_msg
+                       or f"You can't pick up {item.get_display_name(caller)}.")
+            return False
+        if item.at_pre_get(caller) is False:
+            return False
+        return True
 
     def _get_from_container(self, caller, item_name, container_name):
         """Get an item from a container."""
@@ -535,7 +554,11 @@ class CmdGet(Command):
             if not isinstance(item, Item):
                 caller.msg(f"You can't take {item.get_display_name(caller)} from the {container.get_display_name(caller)}.")
                 return None
-                
+
+            # Same fixture guard as room-get (get lock + at_pre_get).
+            if not self._can_be_taken(caller, item):
+                return None
+
             return item
         
         caller.msg(f"You don't see a '{item_name}' in the {container.get_display_name(caller)}.")
