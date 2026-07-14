@@ -555,9 +555,12 @@ def render_persona(persona: dict) -> str:
                      "weapons, gear, or possessions you aren't carrying.")
     elif carrying is not None:
         # Empty inventory renders EXPLICITLY, not as silence: an unstated
-        # inventory is a vacuum the model fills (it invented an "M88 pistol"
-        # for an unarmed bartender when asked what she carried). Naming the
-        # absence grounds it (#1230).
+        # inventory is a vacuum the model fills (an unarmed bartender, asked
+        # what she carried, invented gear rather than admit she had none).
+        # Naming the absence grounds it (#1230). NB: a SEPARATE failure — the
+        # model confabulating LORE about a REAL item (calling the HDG M88 an
+        # "Italian" gun by a made-up "Capiche") — needs item-lore grounding,
+        # not this; out of scope here.
         lines.append("You are carrying nothing but the clothes you're wearing "
                      "— don't invent weapons, gear, or possessions you don't "
                      "have.")
