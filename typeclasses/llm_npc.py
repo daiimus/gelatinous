@@ -553,7 +553,7 @@ class LLMNpcMixin:
             extended = messages + [
                 {"role": "assistant",
                  "content": raw if isinstance(raw, str) else json.dumps(raw)},
-                {"role": "user", "content": f"[tool result · {tool}] {result}"},
+                {"role": "user", "content": f"TOOL RESULT ({tool}) — {result}"},
             ]
             self._agentic_round(extended, persona, patron, line, speaker_name,
                                 on_fail, rounds + 1, subject=subject)
@@ -717,12 +717,15 @@ class LLMNpcMixin:
         action = action.strip() if action else None
         thought = thought.strip() if thought else None
         if action:
-            # Deterministic pose backstop: the ACTION renders as "<name>
-            # <action>", so a first-person self-reference ("lowering my voice")
-            # renders broken ("Sable lowering my voice"). The charter + ChatML
-            # system role keep the model third-person almost always, but code —
-            # not the model — GUARANTEES it. Convert self-possessives/objects to
-            # the NPC's third-person pronoun; leave quoted speech alone.
+            # Deterministic pose backstops: the ACTION renders as "<name>
+            # <action>" with NO conjugation, so the model must write a
+            # third-person predicate. Code — not the model — GUARANTEES two
+            # things the charter can only ask for: (1) verb agreement — a
+            # base-form verb ("fill an empty pint") renders "Sable fill an
+            # empty pint"; conjugate the leading verb of each clause →
+            # "fills"; (2) first-person self-refs ("lowering my voice") →
+            # the NPC's pronoun. Small RP models (Rocinante) slip on both.
+            action = self._conjugate_action(action)
             action = self._selfify_action(action)
         if action and patron:
             action = self._resolve_second_person(action, patron)
@@ -739,6 +742,50 @@ class LLMNpcMixin:
             self.execute_cmd(f"say {speech}")
         if thought:
             self.execute_cmd(f"think {thought}")
+
+    #: Words that never START a pose clause as a verb (determiners,
+    #: pronouns, prepositions, conjunctions, common adverbs) — skip them
+    #: so "the glass", "her eyes", "slowly turns" aren't mis-conjugated.
+    _NOT_A_LEADING_VERB = frozenset((
+        "the a an this that these those her his their its my your our",
+        "one both all some no every each either neither",
+        "and then but so or nor as like with without into onto over under",
+        "at on in to for from before after through across around",
+        "still slowly slow quietly quiet just already almost barely",
+    ).__str__().split())
+
+    def _conjugate_action(self, action):
+        """Guarantee verb agreement in a pose. The action renders as
+        "<name> <action>" with no conjugation, so a base-form verb
+        ("fill an empty pint") renders wrong ("Sable fill ..."). Conjugate
+        the FIRST word of each clause (split on and/then/comma) to third-
+        person singular when it looks like a base verb — skipping words
+        already conjugated (-s), participles (-ing), past tense (-ed), and
+        non-verb clause-openers. Quoted speech is left alone. Small RP
+        models (Rocinante) write base-form pose verbs where a 24B wrote
+        '-s' forms; code fixes it either way."""
+        from world.grammar import conjugate_third_person
+
+        def _fix_clause(clause):
+            m = re.match(r"(\s*)([A-Za-z]+)(.*)$", clause, re.S)
+            if not m:
+                return clause
+            lead, word, rest = m.group(1), m.group(2), m.group(3)
+            lw = word.lower()
+            if (lw in self._NOT_A_LEADING_VERB
+                    or lw.endswith(("s", "ing", "ed"))):
+                return clause
+            return lead + conjugate_third_person(word) + rest
+
+        def _fix(seg):
+            # split on clause boundaries, KEEPING the delimiters
+            parts = re.split(r"(\s+and\s+|\s+then\s+|,\s+)", seg)
+            parts[0::2] = [_fix_clause(c) for c in parts[0::2]]
+            return "".join(parts)
+
+        chunks = action.split('"')
+        chunks[0::2] = [_fix(c) for c in chunks[0::2]]
+        return '"'.join(chunks)
 
     def _selfify_action(self, action):
         """Convert first-person SELF references in an action to the NPC's

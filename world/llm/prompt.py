@@ -133,7 +133,7 @@ def _tools_block(tools) -> str:
         if entry:
             lines.append(f'- "{name}": {entry["desc"]}')
     lines.append('- "none": no tool this turn.')
-    lines.append("After a context tool you get a [tool result]; then reply for real.")
+    lines.append("After a context tool you get a TOOL RESULT line; then reply for real.")
     if "style" in tools:
         lines.append('Your clothing only REALLY changes when you call "style" — '
                      "a pose alone doesn't remove, put on, or open anything. "
@@ -640,24 +640,30 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
 
     speaker = speaker or "someone"
     line = line or ""
-    who = f"[WHO — {relationship}]\n\n" if relationship else ""
+    # Context blocks are labelled but NOT [bracket]-wrapped: a small RP model
+    # copies an inline `[gloss]` shape straight into its dialogue (observed:
+    # a bartender said 'Lotta GANES [a nightrunner] beneath the ice' — it had
+    # learned from these blocks that characters wear bracketed descriptors).
+    # An UPPERCASE label + em-dash gives the same structural boundary without
+    # a token pattern the model will reproduce in prose.
+    who = f"WHO — {relationship}\n\n" if relationship else ""
     seen = ""
     if events:
-        seen = ("[RECENTLY — what you've just seen happen around you (it colours "
+        seen = ("RECENTLY — what you've just seen happen around you (it colours "
                 "how you feel, react if it warrants):\n"
-                + "\n".join(f"- {e}" for e in events if e) + "]\n\n")
+                + "\n".join(f"- {e}" for e in events if e) + "\n\n")
     mem = ""
     if memories:
-        mem = ("[MEMORY — what you recall (use it naturally, don't recite it):\n"
-               + "\n".join(f"- {m}" for m in memories if m) + "]\n\n")
+        mem = ("MEMORY — what you recall (use it naturally, don't recite it):\n"
+               + "\n".join(f"- {m}" for m in memories if m) + "\n\n")
     here = ""
     if present:
-        here = ("[PRESENT — others in the room with you right now; to act toward "
+        here = ("PRESENT — others in the room with you right now; to act toward "
                 "any of them, name them by the description shown here so the world "
                 "renders it right:\n"
-                + "\n".join(f"- {p}" for p in present if p) + "]\n\n")
+                + "\n".join(f"- {p}" for p in present if p) + "\n\n")
     mem = who + seen + here + mem
-    perc = f"[PERCEPTION — when you look at {speaker} you see: {perception}]\n\n" \
+    perc = f"PERCEPTION — when you look at {speaker} you see: {perception}\n\n" \
         if perception else ""
     if mode == "radio":
         # `speaker` is a VOICE handle — the far end is NOT in the room. The
