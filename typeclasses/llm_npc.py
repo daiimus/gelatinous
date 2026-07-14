@@ -716,6 +716,14 @@ class LLMNpcMixin:
         speech = speech.strip().strip('"').strip() if speech else None
         action = action.strip() if action else None
         thought = thought.strip() if thought else None
+        if action:
+            # Deterministic pose backstop: the ACTION renders as "<name>
+            # <action>", so a first-person self-reference ("lowering my voice")
+            # renders broken ("Sable lowering my voice"). The charter + ChatML
+            # system role keep the model third-person almost always, but code —
+            # not the model — GUARANTEES it. Convert self-possessives/objects to
+            # the NPC's third-person pronoun; leave quoted speech alone.
+            action = self._selfify_action(action)
         if action and patron:
             action = self._resolve_second_person(action, patron)
         if action:
@@ -731,6 +739,27 @@ class LLMNpcMixin:
             self.execute_cmd(f"say {speech}")
         if thought:
             self.execute_cmd(f"think {thought}")
+
+    def _selfify_action(self, action):
+        """Convert first-person SELF references in an action to the NPC's
+        third-person pronoun so the pose renders under the name-prepend
+        ("lowering my voice" -> "lowering her voice"). Only the possessive/
+        object/reflexive forms (my/mine/me/myself) are rewritten — always
+        unambiguously the NPC in its own action; a subject 'I' is left alone
+        (a well-formed predicate omits it, and 'I'->'she' risks a double
+        subject). Quoted speech woven in is skipped."""
+        from world.grammar import GENDER_MAP, transform_pronoun
+        gender = GENDER_MAP.get(getattr(self, "gender", "neutral"), "neutral")
+
+        def _rewrite(seg):
+            return re.sub(
+                r"\b(my|mine|me|myself)\b",
+                lambda m: transform_pronoun(m.group(0), "third", gender),
+                seg, flags=re.I)
+
+        chunks = action.split('"')
+        chunks[0::2] = [_rewrite(c) for c in chunks[0::2]]
+        return '"'.join(chunks)
 
     def _resolve_second_person(self, action, patron):
         """Resolve the model's second-person slips onto the patron's handle.
