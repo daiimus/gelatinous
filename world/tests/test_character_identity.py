@@ -769,3 +769,21 @@ class TestFlashCloneInheritance(TestCase):
         )
         result = somebody.get_display_name(clone)
         self.assertEqual(result, "a compact person")
+
+
+class TestWardrobePluralia(TestCase):
+    """The 2026-07-12 wardrobe's plural garments render bare — 'in
+    surgical scrubs', never 'in a surgical scrubs' (the Marta bug)."""
+
+    def test_new_garment_nouns_are_pluralia(self):
+        from world.grammar import with_article
+        for phrase in ("surgical scrubs", "polished oxfords",
+                       "rubber waders", "scuffed white clogs",
+                       "brass knuckles"):
+            self.assertEqual(with_article(phrase), phrase, phrase)
+
+    def test_singulars_keep_their_article(self):
+        from world.grammar import with_article
+        self.assertEqual(with_article("white lab coat"),
+                         "a white lab coat")
+        self.assertEqual(with_article("evening suit"), "an evening suit")
