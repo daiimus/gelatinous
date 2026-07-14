@@ -633,6 +633,14 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b._is_alone_with = lambda speaker: False
         # real _resolve_second_person needs a concrete handle
         b._address_handle = lambda t: "a lean man"
+        # The pose sub-helpers (conjugation, selfify, reflexive-gesture) each
+        # have their own test classes; here they pass through so the render
+        # assertions pin the ORCHESTRATION (weaving + command routing), not the
+        # grammar transforms. Without this they'd return MagicMocks (they read
+        # class-attr matrices off `self` that a bare mock doesn't carry).
+        b._conjugate_action = lambda a: a
+        b._selfify_action = lambda a: a
+        b._selfify_reflexive_gesture = lambda a: a
         # default: no long-term memories → _try_llm_reply skips the embed round-
         # trip and goes straight to generation (Phase 2; override per test)
         b._load_memories = lambda: []

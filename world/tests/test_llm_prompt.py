@@ -90,6 +90,27 @@ class TestBuildMessages(TestCase):
         # Key wholly absent (defensive fixture) -> no carrying line, no crash.
         self.assertNotIn("carrying", render_persona(seed).lower())
 
+    def test_hands_awareness_and_wield_tool_grant(self):
+        # Mr. Hands awareness: what's IN HAND now vs stashed, gated wield nudge.
+        drawn = render_persona({"persona_seed": {"archetype": "bartender", "name": "Del"},
+                                "wielding": ["PAM Reaper shotgun (in right hand)"],
+                                "hands_free": 1, "carrying": []})
+        self.assertIn("In your hands right now", drawn)
+        self.assertIn("other hand is free", drawn)
+        self.assertIn("'wield' tool", drawn)  # bartender HAS the tool
+        stashed = render_persona({"persona_seed": {"archetype": "bartender", "name": "Del"},
+                                  "wielding": [], "hands_free": 2,
+                                  "carrying": ["PAM Reaper shotgun"]})
+        self.assertIn("hands are empty", stashed.lower())
+        self.assertIn("stashed, not in hand", stashed.lower())
+        # A companion has NO wield tool — state is shown, but no wield nudge.
+        comp = render_persona({"persona_seed": {"archetype": "companion", "name": "V"},
+                               "wielding": [], "hands_free": 2, "carrying": []})
+        self.assertIn("hands are empty", comp.lower())
+        self.assertNotIn("wield", comp.lower())
+        self.assertIn("wield", tool_names({"persona_seed": {"archetype": "bartender"}}))
+        self.assertNotIn("wield", tool_names({"persona_seed": {"archetype": "companion"}}))
+
     def test_memories_injected_before_turn(self):
         msgs = build_messages(_PERSONA, "a man", "remember me?", "directed",
                               memories=["he stiffed you on a tab last week",
@@ -237,7 +258,7 @@ class TestToolScoping(TestCase):
     def test_bartender_grants_its_job_tools_plus_base(self):
         names = tool_names(_PERSONA)  # bartender archetype
         self.assertEqual(names, ["look", "remember", "feel",
-                                 "check_stock", "prepare_drink"])
+                                 "check_stock", "prepare_drink", "wield"])
 
     def test_schema_scoped_to_archetype(self):
         # the social archetype gets the base tools (look/remember/feel) but
@@ -317,8 +338,8 @@ class TestParseTurn(TestCase):
     def test_schema_tool_enum(self):
         self.assertEqual(TURN_SCHEMA["properties"]["tool"]["enum"],
                          ["none", "look", "remember", "feel", "style",
-                          "release", "radio", "check_stock", "prepare_drink",
-                          "diagnose", "treat", "install"])
+                          "release", "wield", "radio", "check_stock",
+                          "prepare_drink", "diagnose", "treat", "install"])
 
 
 class TestActionNormalization(TestCase):
@@ -443,7 +464,7 @@ class TestWardrobeCard(TestCase):
         text = render_persona({"wearing": ["mesh top (unzipped)", "slit skirt"],
                                "carrying": ["heeled boots"]})
         self.assertIn("mesh top (unzipped), slit skirt", text)
-        self.assertIn("carrying: heeled boots", text)
+        self.assertIn("carrying (stashed, not in hand): heeled boots", text)
 
     def test_stripped_reads_naked(self):
         # an empty (but present) wardrobe means undressed — the model must
@@ -472,7 +493,7 @@ class TestStyleAdoption(TestCase):
     def test_style_rule_absent_when_not_granted(self):
         msgs = build_messages({"persona_seed": {"archetype": "bartender"}},
                               "a man", "hi", "directed")
-        self.assertNotIn("REALLY changes", msgs[0]["content"])
+        self.assertNotIn("clothing only REALLY changes", msgs[0]["content"])
 
 
 class TestSurroundings(TestCase):
@@ -558,7 +579,7 @@ class TestMerchantArchetype(TestCase):
         self.assertIn("merchant", ARCHETYPES)
         # no fake buy/sell tool — transactions go through the shop command
         self.assertEqual(tool_names(self._merchant()),
-                         ["look", "remember", "feel", "release", "radio"])
+                         ["look", "remember", "feel", "release", "radio", "wield"])
 
     def test_duties_ground_ownership(self):
         msgs = build_messages(self._merchant(), "someone",

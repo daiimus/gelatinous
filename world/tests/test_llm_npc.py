@@ -675,3 +675,41 @@ class TestReflexiveGesture(TestCase):
         b = self._npc()
         out = b._selfify_reflexive_gesture('grins, "watch your head" and turns')
         self.assertEqual(out, 'grins, "watch your head" and turns')
+
+
+class TestWieldTool(TestCase):
+    """The wield action tool routes natural draw/holster phrasing onto the REAL
+    Mr. Hands commands (wield / unwield), so hand state and fiction agree."""
+
+    def _npc(self):
+        b = MagicMock()
+        b.location = "room"
+        _bind(b, "_handle_action_tool")
+        return b
+
+    def _wield(self, arg):
+        b = self._npc()
+        b._handle_action_tool("wield", arg, MagicMock())
+        return b.execute_cmd.call_args.args[0] if b.execute_cmd.called else None
+
+    def test_draw_family_routes_to_wield(self):
+        for arg, want in (("draw the shotgun", "wield shotgun"),
+                          ("the boomstick", "wield boomstick"),
+                          ("bring out my coach gun", "wield coach gun"),
+                          ("wield reaper in right", "wield reaper in right")):
+            self.assertEqual(self._wield(arg), want)
+
+    def test_holster_family_routes_to_unwield(self):
+        for arg, want in (("holster the pistol", "unwield pistol"),
+                          ("unwield shotgun", "unwield shotgun"),
+                          ("put the shotgun away", "unwield shotgun"),
+                          ("set the knife down", "unwield knife")):
+            self.assertEqual(self._wield(arg), want)
+
+    def test_empty_arg_no_command(self):
+        b = self._npc()
+        b._handle_action_tool("wield", "", MagicMock())
+        b.execute_cmd.assert_not_called()
+
+    def test_style_parenthetical_stripped(self):
+        self.assertEqual(self._wield("draw the shotgun (loaded)"), "wield shotgun")

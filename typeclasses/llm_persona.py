@@ -30,11 +30,14 @@ def _self_pronouns(npc) -> str:
 
 
 def _wardrobe(npc) -> tuple:
-    """(wearing, carrying): worn garments — with their live style state, so the
-    model knows what's zipped/rolled and what the `style` tool can act on — and
-    the loose inventory. This is the NPC's real self-knowledge of its own kit;
-    without it the model invents clothing it isn't wearing."""
-    wearing, carrying = [], []
+    """(wearing, carrying, wielding, hands_free): worn garments — with their
+    live style state, so the model knows what's zipped/rolled and what the
+    `style` tool can act on — the STASHED inventory, what's in the NPC's HANDS
+    right now (Mr. Hands: held-is-wielded), and how many grasping slots are free.
+    This is the NPC's real self-knowledge of its own kit; without it the model
+    invents clothing it isn't wearing or talks about a weapon as if it's already
+    drawn when it's stashed."""
+    wearing, carrying, wielding, hands_free = [], [], [], None
     try:
         worn = list(npc.get_worn_items() or [])
         for item in worn:
@@ -45,10 +48,23 @@ def _wardrobe(npc) -> tuple:
                 entry += f" ({', '.join(states)})"
             wearing.append(entry)
         worn_ids = {id(i) for i in worn}
-        carrying = [obj.key for obj in npc.contents if id(obj) not in worn_ids]
+        # Mr. Hands: `hands` is {container: item_or_None}. Held items are in
+        # hand (wielded), distinct from stashed carry; count the empty slots
+        # so the model knows if it has a free hand to draw INTO.
+        hands = npc.hands or {}
+        held_ids = set()
+        hands_free = 0
+        for container, item in hands.items():
+            if item:
+                wielding.append(f"{item.key} (in {str(container).replace('_', ' ')})")
+                held_ids.add(id(item))
+            else:
+                hands_free += 1
+        carrying = [obj.key for obj in npc.contents
+                    if id(obj) not in worn_ids and id(obj) not in held_ids]
     except Exception:  # noqa: BLE001 — never break persona-building over kit
         pass
-    return wearing, carrying
+    return wearing, carrying, wielding, hands_free
 
 
 def _room_desc(npc) -> str | None:
@@ -109,7 +125,7 @@ def build_persona(npc) -> dict:
         bar_menu = (bar.db.menu if bar else None) or npc.db.menu or []
         menu = [r.get("name") for r in bar_menu if r.get("name")] or None
 
-    wearing, carrying = _wardrobe(npc)
+    wearing, carrying, wielding, hands_free = _wardrobe(npc)
 
     # Radio state (RADIO_COMMS_SPEC §7.3): what the brain can key up with —
     # a worn/held powered walkie, or a built-in comms organ. None = no way
@@ -137,6 +153,8 @@ def build_persona(npc) -> dict:
         "sdesc": npc.get_sdesc(),
         "wearing": wearing,
         "carrying": carrying,
+        "wielding": wielding,
+        "hands_free": hands_free,
         "longdescs": longdescs,
         "skintone": getattr(npc.db, "skintone", None),
         "height": npc.height,
