@@ -368,7 +368,10 @@ ARCHETYPES = {
         "length": ("Tight and transactional — a line or two, appraising, and a "
                    "spare gesture behind the counter. You deal more than you "
                    "chat."),
-        "tools": ["release"],  # buying/pawning is player-driven; + BASE tools
+        # radio: a shop with a counter set can key up the civilian band and
+        # poke into chatter — only fires when there's a device to key (a
+        # merchant with no radio stays mute, xmit refusing, as a player would).
+        "tools": ["release", "radio"],  # buying/pawning is player-driven; + BASE tools
         "fewshot": [
             {"user": 'a stranger leans on the counter: "what kind of place is this?"',
              "assistant": {"speech": "The kind that buys what you can't keep and "
