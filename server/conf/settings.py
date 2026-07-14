@@ -279,7 +279,7 @@ LLM_GM_TIMEOUT = 120       # seconds; per-round budget. Measured 58.5s/round for
                            # load (~30s/gen, spikes higher); 60 rescues slow-but-valid
                            # turns from the curt fallback, and at MUD RP pace (30-60s
                            # a turn) the wait still lands inside the natural beat.
-LLM_GM_MAX_TOKENS = 180    # a turn = a line + an action + a thought; headroom so
+LLM_GM_MAX_TOKENS = 220    # a turn = a line + an action + a thought; headroom so
                            # the 3rd channel doesn't truncate (was 120 for 2 fields)
 
 ######################################################################

@@ -106,6 +106,11 @@ def turn_schema(tools) -> dict:
     """
     return {
         "type": "object",
+        # Field order = generation order under constrained decoding. Speech-first
+        # keeps the model RESPONSIVE to the line (A/B 2026-07-14: thought-first
+        # pulled it toward character-flavour and HURT tool accuracy — a missed
+        # order + an unprompted pour). thought stays last-but-tools so a long
+        # turn truncates the thought, not the speech/action players see.
         "properties": {
             "speech": {"type": "string"},
             "action": {"type": "string"},
@@ -246,14 +251,33 @@ ARCHETYPES = {
         "length": ("Keep it tight — a line or two of speech and a short pose. "
                    "This is banter, not a monologue."),
         "tools": ["check_stock", "prepare_drink"],  # + BASE_TOOLS (look)
+        # The few-shot IS how a small model learns the register (it copies the
+        # last assistant turns far more than it obeys prose rules). Every
+        # example here demonstrates the contract: TIGHT (one line + a short
+        # pose), action is THIRD-PERSON and names the other person by their
+        # DESCRIPTOR (never their clothes), action touches only the bar and the
+        # person present (never invents crowd/scuffles/events), thought carries
+        # the private read, and a real ORDER fires prepare_drink.
         "fewshot": [
-            {"user": 'a patron says to you: "long night?"',
+            {"user": 'a lean man says to you: "long night?"',
              "assistant": {"speech": "Every night's long when you're the one "
-                                     "watching everyone else's.",
-                           "action": "tracks a scuffle brewing in the corner, "
-                                     "staying perfectly still",
+                                     "watching.",
+                           "action": "wipes the bar without looking up, tracking "
+                                     "the lean man from the corner of one eye",
                            "thought": "He's stalling. Wants something he hasn't "
-                                      "worked up to asking yet.",
+                                      "worked up to.",
+                           "tool": "none", "tool_argument": ""}},
+            {"user": 'a scarred woman says to you: "whiskey. neat."',
+             "assistant": {"speech": "Coming up.",
+                           "action": "pulls a bottle from the well and sets a "
+                                     "clean glass in front of the scarred woman",
+                           "thought": "No small talk. My kind of customer.",
+                           "tool": "prepare_drink", "tool_argument": "whiskey"}},
+            {"user": 'a cocky droog says to you: "you always this slow?"',
+             "assistant": {"speech": "Only for the ones worth making wait.",
+                           "action": "slides the glass over slow, holding the "
+                                     "droog's eye a beat too long",
+                           "thought": "All mouth. He'll fold if I lean on him.",
                            "tool": "none", "tool_argument": ""}},
         ],
     },

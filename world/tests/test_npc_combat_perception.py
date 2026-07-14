@@ -207,3 +207,43 @@ class TestDirectedActionPerception(TestCase):
         self.assertEqual(
             clothing_line(actor, target, dressing=False)(observer),
             "a clerk strips the clothes off a slumped figure.")
+
+
+class TestPosePronounBackstop(TestCase):
+    """The deterministic pose backstop: first-person self-refs in the
+    action become the NPC's third-person pronoun (2026-07-14)."""
+
+    def _npc(self, gender="female"):
+        from typeclasses.llm_npc import LLMNpcMixin
+        npc = MagicMock()
+        npc.gender = gender
+        npc._selfify_action = LLMNpcMixin._selfify_action.__get__(npc)
+        return npc
+
+    def test_possessive_becomes_gendered(self):
+        npc = self._npc("female")
+        self.assertEqual(npc._selfify_action("lowers my voice, leaning in"),
+                         "lowers her voice, leaning in")
+
+    def test_male_and_neutral(self):
+        self.assertEqual(self._npc("male")._selfify_action("wipes my hands"),
+                         "wipes his hands")
+        self.assertEqual(self._npc("neutral")._selfify_action("cracks my knuckles"),
+                         "cracks their knuckles")
+
+    def test_object_and_reflexive(self):
+        npc = self._npc("female")
+        self.assertEqual(npc._selfify_action("pours me a shot"),
+                         "pours her a shot")
+        self.assertEqual(npc._selfify_action("steadies myself on the bar"),
+                         "steadies herself on the bar")
+
+    def test_quoted_speech_untouched(self):
+        npc = self._npc("female")
+        self.assertEqual(npc._selfify_action('grins, \"my treat\"'),
+                         'grins, \"my treat\"')
+
+    def test_clean_action_unchanged(self):
+        npc = self._npc("female")
+        self.assertEqual(npc._selfify_action("wipes the bar, eyeing the lean man"),
+                         "wipes the bar, eyeing the lean man")
