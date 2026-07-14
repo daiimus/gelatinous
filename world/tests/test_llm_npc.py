@@ -552,3 +552,70 @@ class TestRememberNameGuard(TestCase):
             b._remember_person(patron, "the negotiating ninja.")
         b.execute_cmd.assert_called_once_with(
             "remember a lean man as the negotiating ninja")
+
+
+class TestActionConjugation(TestCase):
+    """A small RP model writes base-form pose verbs ('fill an empty pint');
+    the action renders as '<name> <action>' with no conjugation, so the verb
+    must be agreed to third-person singular in code (#1224 follow-up)."""
+
+    def _npc(self):
+        b = MagicMock()
+        b._NOT_A_LEADING_VERB = llmnpc.LLMNpcMixin._NOT_A_LEADING_VERB
+        _bind(b, "_conjugate_action")
+        return b
+
+    def test_leading_base_verb_agreed(self):
+        self.assertEqual(self._npc()._conjugate_action("fill an empty pint"),
+                         "fills an empty pint")
+
+    def test_each_clause_verb_agreed(self):
+        b = self._npc()
+        self.assertEqual(
+            b._conjugate_action(
+                "dry a glass with a rag and decant a brassy pint alongside"),
+            "dries a glass with a rag and decants a brassy pint alongside")
+
+    def test_then_and_comma_clauses(self):
+        b = self._npc()
+        self.assertEqual(
+            b._conjugate_action("move the half-pint into place then polish it"),
+            "moves the half-pint into place then polishes it")
+
+    def test_already_conjugated_left_alone(self):
+        b = self._npc()
+        self.assertEqual(b._conjugate_action("wipes the bar, tracking the man"),
+                         "wipes the bar, tracking the man")
+
+    def test_quoted_speech_untouched(self):
+        b = self._npc()
+        out = b._conjugate_action('nods slow, "fill it yourself" and turns away')
+        self.assertEqual(out, 'nods slow, "fill it yourself" and turns away')
+
+    def test_non_verb_openers_skipped(self):
+        # a clause that opens on a determiner/adverb, not a verb
+        b = self._npc()
+        self.assertEqual(b._conjugate_action("slowly leans in"), "slowly leans in")
+
+
+class TestPromptNoBracketBlocks(TestCase):
+    """Context blocks must NOT be [bracket]-wrapped: a small RP model copies an
+    inline `[gloss]` shape into dialogue ('Lotta GANES [a nightrunner]…')."""
+
+    def test_context_blocks_have_no_enclosing_brackets(self):
+        import re as _re
+        from world.llm import prompt as P
+        persona = {"persona_seed": {"archetype": "bartender", "name": "Del",
+                                    "pronouns": "she/her", "description": "keeper",
+                                    "personality": "warm"}}
+        msgs = P.build_messages(
+            persona, "a lean man", "how's your day?", "directed",
+            perception="a lean man in a scuffed jacket",
+            present=["a wiry woman with a shaved head"],
+            events=["a droog knocked over a stool"],
+            memories=["the lean man tips well"])
+        blob = "\n".join(m["content"] for m in msgs)
+        self.assertEqual(_re.findall(r"\[[^\]]{1,40}\]", blob), [])
+        # the labels still anchor the blocks
+        for label in ("PRESENT", "PERCEPTION", "RECENTLY", "MEMORY"):
+            self.assertIn(label, blob)
