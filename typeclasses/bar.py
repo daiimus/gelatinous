@@ -342,6 +342,28 @@ ACK_EMOTES = (
 #: Minimum seconds between acknowledgements, so a chatty room doesn't spam them.
 ACK_COOLDOWN = 6.0
 
+#: Imperative cues that mark spoken words as a drink ORDER (vs a casual mention).
+#: A DETERMINISTIC conversational order — spoken to the bartender in open speech,
+#: not just the formal `to del, whiskey` form — routes to the real serve path so
+#: a real order never rides on the model's flaky prepare_drink tool roll.
+ORDER_CUES = (
+    "pour", "gimme", "give me", "get me", "make me", "fix me", "grab me",
+    "i'll have", "i'll take", "i will have", "lemme get", "let me get",
+    "let me have", "hit me with", "set me up", "line me up", "can i get",
+    "can i have", "i'd like", "i would like", "i want", "i need a", "another",
+)
+
+#: Throwaway words around a BARE order ("whiskey, neat") — strip these and the
+#: drink's own keywords; if nothing meaningful is left, the whole line WAS the
+#: order (so "whiskey ruined me" — remainder "ruined" — is correctly NOT one).
+ORDER_FILLER = frozenset((
+    "a", "an", "the", "one", "some", "of", "glass", "mug", "shot", "shots",
+    "pint", "double", "single", "neat", "straight", "up", "rocks", "on",
+    "cold", "chilled", "stiff", "tall", "please", "thanks", "cheers", "and",
+    "with", "ice", "make", "it", "me", "just", "yeah", "gimme", "another",
+    "round",
+))
+
 
 class Bartender(LLMNpcMixin, Character):
     """An NPC that takes drink orders by being spoken to (the `to` command).
@@ -390,7 +412,43 @@ class Bartender(LLMNpcMixin, Character):
         if kwargs.get("addressed"):
             delay(1.5, self._fulfil_order, speech, speaker)
             return True
+        # DETERMINISTIC conversational order (reliability lever): a clear spoken
+        # order goes to the real serve path instead of the model's flaky
+        # prepare_drink — but only when it's plausibly aimed at THIS bartender
+        # (engaged/alone/named), so an order overheard across the room doesn't
+        # get served. Anything ambiguous still flows to the LLM as the backstop.
+        if (self._is_conversational_order(speech)
+                and self._classify_speech(speech, speaker) == "directed"):
+            delay(1.5, self._fulfil_order, speech, speaker)
+            return True
         return False
+
+    def _is_conversational_order(self, speech):
+        """Deterministic drink-order detector. Conservative by design — a
+        question or a casual drink mention is NOT an order. It's an order only
+        when a servable drink resolves AND either an imperative cue is present
+        ("pour me a rotgut") OR the whole line is just that drink plus filler
+        ("whiskey, neat")."""
+        import re
+        low = " ".join((speech or "").lower().split())
+        if not low or "?" in low:
+            return False
+        bar = self._find_bar()
+        recipe, _off = (resolve_drink(low, bar) if bar
+                        else (match_recipe(low, self.db.menu or []), False))
+        if not recipe:
+            return False
+        if any(cue in low for cue in ORDER_CUES):
+            return True
+        # Bare order: strip the matched drink's keywords + its name + filler;
+        # an empty remainder means the line WAS the order and nothing else.
+        kws = set()
+        for kw in recipe.get("order_keywords", (recipe.get("name", ""),)):
+            kws.update(kw.lower().split())
+        kws.update(recipe.get("name", "").lower().split())
+        remainder = [w for w in re.findall(r"[a-z']+", low)
+                     if w not in kws and w not in ORDER_FILLER]
+        return not remainder
 
     def _name_aliases(self):
         return ["bartender", "barkeep", "barkeeper"]
