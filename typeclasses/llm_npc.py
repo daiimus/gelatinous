@@ -629,6 +629,50 @@ class LLMNpcMixin:
                 except Exception:  # noqa: BLE001 — resolution is best-effort
                     pass
                 self.execute_cmd(f"{verb} {garment}")
+        elif tool == "wield" and arg:
+            # Draw/holster/swap through the REAL Mr. Hands commands (wield /
+            # unwield), so the hand state and the fiction stay in agreement.
+            # The model writes natural register ("draw the shotgun", "put the
+            # pistol away"); normalise onto the two commands. wield searches
+            # the stash, unwield searches what's in hand — each does its own
+            # search, so a refusal (no free hand, not carried) reads exactly
+            # as it would for a player.
+            phrase = " ".join(str(arg).split())
+            low = phrase.lower()
+            cmd, item = "wield", phrase
+            # holster/stow family -> unwield; draw/ready family -> wield
+            unwield_leads = ("unwield ", "holster ", "stow ", "sheathe ",
+                             "sheath ", "put away ", "put down ", "lower ",
+                             "rack ", "set down ", "set aside ")
+            wield_leads = ("wield ", "draw ", "hold ", "raise ", "ready ",
+                           "pull ", "level ", "produce ", "grab ", "take up ",
+                           "bring up ", "bring out ", "pull out ")
+            for lead in unwield_leads:
+                if low.startswith(lead):
+                    cmd, item = "unwield", phrase[len(lead):]
+                    break
+            else:
+                for lead in wield_leads:
+                    if low.startswith(lead):
+                        cmd, item = "wield", phrase[len(lead):]
+                        break
+                else:
+                    # trailing "... away/down" (e.g. "put the shotgun away",
+                    # "set the knife down") = stow. Strip the trailing particle
+                    # AND the leading stow-verb the lead-list didn't catch, so
+                    # the middle (the item) is what reaches unwield.
+                    if re.search(r"\s(away|down)$", low):
+                        cmd = "unwield"
+                        item = re.sub(r"\s+(away|down)$", "", phrase, flags=re.I)
+                        item = re.sub(
+                            r"^(?:put|set|lay|tuck|stash|stick|slip|slide)\s+",
+                            "", item.strip(), flags=re.I)
+            # bare item: strip article/possessive lead + any style parenthetical
+            item = re.sub(r"^(?:my|his|her|their|its|the|a|an)\s+", "",
+                          item.strip(), flags=re.I)
+            item = re.sub(r"\s*\([^)]*\)\s*$", "", item).strip()
+            if item:
+                self.execute_cmd(f"{cmd} {item}")
         elif tool == "radio" and arg:
             # Key up for REAL through the transmit command (§7.3) — worn/held
             # walkie first; the command's own fallback covers a built-in comms

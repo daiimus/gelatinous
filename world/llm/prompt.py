@@ -55,6 +55,15 @@ TOOLS = {
                         "said your piece, or you'd simply rather move on; "
                         "your speech/action this turn are your goodbye "
                         "(argument: '')"},
+    "wield": {"kind": "action",
+              "desc": "draw a weapon or item from your stash into your hands, "
+                      "holster/put one away, or swap — for REAL (what you're "
+                      "carrying and what's already in your hands is in your "
+                      "card). Drawing or stowing HAPPENS through this tool; a "
+                      "pose alone doesn't move it. Pose the gesture AND call it "
+                      "the same turn. Argument: the verb and the item, e.g. "
+                      "'draw the shotgun', 'holster the pistol', 'put away the "
+                      "knife'"},
     "radio": {"kind": "action",
               "desc": "key up your radio and speak over the air — everyone "
                       "tuned to your band hears it, wherever they are, and "
@@ -139,6 +148,11 @@ def _tools_block(tools) -> str:
                      "a pose alone doesn't remove, put on, or open anything. "
                      "Whenever your action involves your own clothing, pose the "
                      "gesture AND call the tool in the same turn.")
+    if "wield" in tools:
+        lines.append('What\'s in your hands only REALLY changes when you call '
+                     '"wield" — a pose alone doesn\'t draw, holster, or swap '
+                     "anything. Whenever your action puts something in or out of "
+                     "your hands, pose the gesture AND call the tool that turn.")
     return "\n".join(lines)
 
 
@@ -250,7 +264,7 @@ ARCHETYPES = {
         ),
         "length": ("Keep it tight — a line or two of speech and a short pose. "
                    "This is banter, not a monologue."),
-        "tools": ["check_stock", "prepare_drink"],  # + BASE_TOOLS (look)
+        "tools": ["check_stock", "prepare_drink", "wield"],  # + BASE_TOOLS (look)
         # The few-shot IS how a small model learns the register (it copies the
         # last assistant turns far more than it obeys prose rules). Every
         # example here demonstrates the contract: TIGHT (one line + a short
@@ -395,7 +409,7 @@ ARCHETYPES = {
         # radio: a shop with a counter set can key up the civilian band and
         # poke into chatter — only fires when there's a device to key (a
         # merchant with no radio stays mute, xmit refusing, as a player would).
-        "tools": ["release", "radio"],  # buying/pawning is player-driven; + BASE tools
+        "tools": ["release", "radio", "wield"],  # buying/pawning is player-driven; + BASE tools
         "fewshot": [
             {"user": 'a stranger leans on the counter: "what kind of place is this?"',
              "assistant": {"speech": "The kind that buys what you can't keep and "
@@ -548,9 +562,31 @@ def render_persona(persona: dict) -> str:
                      + ", ".join(wearing) + ".")
     elif persona.get("wearing") is not None:
         lines.append("You are wearing nothing.")
+    # Hands (Mr. Hands): what's actually IN HAND right now, distinct from
+    # stashed carry — so the model doesn't talk about a weapon as if it's drawn
+    # when it's tucked away, and knows whether a hand is free to draw into. The
+    # "use the wield tool" nudge only shows if the archetype actually grants it.
+    has_wield = "wield" in tool_names(persona)
+    wield_nudge = (" To draw, holster, or swap what's in your hands, use the "
+                   "'wield' tool — a pose alone doesn't move it.") if has_wield else ""
+    wielding = persona.get("wielding")
+    if wielding:
+        line = "In your hands right now: " + ", ".join(wielding) + "."
+        free = persona.get("hands_free")
+        if free:
+            line += (" Your other hand is free." if free == 1
+                     else f" You have {free} free hands.")
+        lines.append(line + wield_nudge)
+    elif persona.get("hands_free"):
+        empty = "Your hands are empty."
+        if has_wield:
+            empty += (" To draw something you're carrying into your hands, use "
+                      "the 'wield' tool — narrating it in a pose alone doesn't "
+                      "actually draw it.")
+        lines.append(empty)
     carrying = persona.get("carrying")
     if carrying:
-        lines.append("You are carrying: " + ", ".join(carrying)
+        lines.append("You are carrying (stashed, not in hand): " + ", ".join(carrying)
                      + ". That is everything you have on you — don't invent "
                      "weapons, gear, or possessions you aren't carrying.")
     elif carrying is not None:
