@@ -526,3 +526,35 @@ class TestRememberNamingDiscipline(TestCase):
         desc = TOOLS["remember"]["desc"]
         self.assertIn("no punctuation", desc)
         self.assertIn("never a pronoun", desc)
+
+
+class TestMerchantArchetype(TestCase):
+    """The merchant archetype (2026-07-14): grounds a shopkeeper as the
+    OWNER of the counter — buying/pawning is player-driven, no fake tools."""
+
+    def _merchant(self):
+        return {"persona_seed": {"archetype": "merchant", "name": "Ezra",
+                                 "description": "the pawnbroker of Kaspar Pawn",
+                                 "personality": "dry, appraising"}}
+
+    def test_registered_and_scoped(self):
+        from world.llm.prompt import ARCHETYPES, tool_names
+        self.assertIn("merchant", ARCHETYPES)
+        # no fake buy/sell tool — transactions go through the shop command
+        self.assertEqual(tool_names(self._merchant()),
+                         ["look", "remember", "feel", "release"])
+
+    def test_duties_ground_ownership(self):
+        msgs = build_messages(self._merchant(), "someone",
+                              "what is this place?", "directed")
+        sys = msgs[0]["content"]
+        self.assertIn("OWN the counter", sys)
+        self.assertIn("never beg goods off a customer", sys)
+
+    def test_fewshot_is_valid_turn(self):
+        from world.llm.prompt import few_shot_messages
+        msgs = few_shot_messages(self._merchant())
+        asst = next(m["content"] for m in msgs if m["role"] == "assistant")
+        turn = json.loads(asst)
+        self.assertTrue(turn["speech"])
+        self.assertEqual(turn["tool"], "none")
