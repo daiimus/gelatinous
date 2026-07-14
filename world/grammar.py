@@ -303,6 +303,11 @@ _PLURALIA_TANTUM_NOUNS: frozenset[str] = frozenset({
     # paired-noun garments
     "boots", "shoes", "gloves", "socks", "sneakers", "sandals",
     "slippers", "heels", "loafers", "moccasins", "mittens",
+    "oxfords", "waders", "clogs", "cleats", "galoshes",
+    # garment sets / uniforms
+    "scrubs", "fatigues",
+    # paired weapons
+    "knuckles",
     # eyewear
     "glasses", "goggles", "spectacles", "binoculars",
     "sunglasses", "shades", "contacts", "mirrorshades",
