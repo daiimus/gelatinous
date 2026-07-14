@@ -271,7 +271,11 @@ CIVIC_LLM_TIMEOUT = 6   # bounds shutdown-wait on in-flight civic threads
 LLM_GM_URL = "http://host.docker.internal:8765/v1/chat/completions"
 LLM_GM_MODEL = ""          # backend-specific model id; blank lets local servers default
 LLM_GM_API_KEY = ""        # Bearer token for cloud backends; blank for local
-LLM_GM_TIMEOUT = 60        # seconds; per-round budget. The sidecar is always under
+LLM_GM_TIMEOUT = 120       # seconds; per-round budget. Measured 58.5s/round for a
+                          # trivial reply 2026-07-13 (box under load, ~3.5x the warm
+                          # 17s assumption) — 60s was bumping the cliff and turns were
+                          # ReadTimeout-failing; 120 lets slow-but-valid turns land
+                          # (user: '30s or more on flip is fine'). The sidecar is always under
                            # load (~30s/gen, spikes higher); 60 rescues slow-but-valid
                            # turns from the curt fallback, and at MUD RP pace (30-60s
                            # a turn) the wait still lands inside the natural beat.
