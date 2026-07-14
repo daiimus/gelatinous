@@ -619,3 +619,59 @@ class TestPromptNoBracketBlocks(TestCase):
         # the labels still anchor the blocks
         for label in ("PRESENT", "PERCEPTION", "RECENTLY", "MEMORY"):
             self.assertIn(label, blob)
+
+
+class TestReflexiveGesture(TestCase):
+    """The model writes a self-gesture in the second person ('cock your head')
+    because the prompt addresses IT as 'you'; that must resolve to the NPC's own
+    pronoun BEFORE _resolve_second_person claims the 'your' for the patron.
+    Ambiguous, genuinely patron-directed possessives must be left alone."""
+
+    def _npc(self, gender="male"):
+        b = MagicMock()
+        b.gender = gender
+        b._REFLEXIVE_GESTURE_VERBS = llmnpc.LLMNpcMixin._REFLEXIVE_GESTURE_VERBS
+        b._REFLEXIVE_GESTURE_PARTS = llmnpc.LLMNpcMixin._REFLEXIVE_GESTURE_PARTS
+        _bind(b, "_selfify_reflexive_gesture")
+        return b
+
+    def test_the_live_bug(self):
+        # "cocks your head" (already conjugated) -> the NPC's own head
+        out = self._npc()._selfify_reflexive_gesture(
+            "cocks your head, weathered face ticking")
+        self.assertEqual(out, "cocks his head, weathered face ticking")
+
+    def test_common_self_gestures(self):
+        b = self._npc()
+        cases = {
+            "rolls your shoulders": "rolls his shoulders",
+            "cracks your knuckles": "cracks his knuckles",
+            "shakes your head slow": "shakes his head slow",
+            "arches your brow": "arches his brow",          # -es sibilant form
+            "scratches your jaw": "scratches his jaw",       # -es sibilant form
+            "cock your damn head": "cock his damn head",     # base + adjective
+        }
+        for src, want in cases.items():
+            self.assertEqual(b._selfify_reflexive_gesture(src), want)
+
+    def test_gender_possessive(self):
+        self.assertEqual(
+            self._npc("female")._selfify_reflexive_gesture("cocks your head"),
+            "cocks her head")
+        self.assertEqual(
+            self._npc("nonbinary")._selfify_reflexive_gesture("cocks your head"),
+            "cocks their head")
+
+    def test_patron_directed_left_untouched(self):
+        # ambiguous verbs with real directed uses fall through to the
+        # second-person resolver — a bartender handling the PATRON's body
+        b = self._npc()
+        for src in ("tilts your chin up to meet his eyes",
+                    "cups your jaw", "lifts your head",
+                    "presses your head to the bar", "takes your hand"):
+            self.assertEqual(b._selfify_reflexive_gesture(src), src)
+
+    def test_quoted_speech_skipped(self):
+        b = self._npc()
+        out = b._selfify_reflexive_gesture('grins, "watch your head" and turns')
+        self.assertEqual(out, 'grins, "watch your head" and turns')

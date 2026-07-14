@@ -281,6 +281,9 @@ LLM_GM_TIMEOUT = 120       # seconds; per-round budget. Measured 58.5s/round for
                            # a turn) the wait still lands inside the natural beat.
 LLM_GM_MAX_TOKENS = 220    # a turn = a line + an action + a thought; headroom so
                            # the 3rd channel doesn't truncate (was 120 for 2 fields)
+LLM_GM_DECISION_LOG = False  # opt-in tuning log: raw model output beside the final
+                           # rendered text (server/logs/llm_decisions.log). Flip on
+                           # in secret_settings.py while dialing a model in.
 
 ######################################################################
 # Director (world simulation)
