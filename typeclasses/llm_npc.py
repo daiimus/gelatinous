@@ -559,8 +559,14 @@ class LLMNpcMixin:
                                 on_fail, rounds + 1, subject=subject)
             return
         # Terminal: render speech/action/thought, route any action tool, remember.
-        self._render_llm_reply(turn["speech"], turn["action"], turn["thought"],
-                               patron)
+        rendered = self._render_llm_reply(turn["speech"], turn["action"],
+                                          turn["thought"], patron)
+        # Opt-in tuning log: raw model decision beside the final rendered text,
+        # so the game-side transform (conjugation/selfify/second-person) is
+        # auditable — the sidecar log sees the prompt but not this step.
+        from world.llm.decision_log import decision_log_enabled, log_decision
+        if decision_log_enabled():
+            log_decision(self, speaker_name, line, turn, rendered)
         self._handle_action_tool(tool, arg, patron)
         self._remember_turn(patron, line, speaker_name, turn["speech"],
                             turn["action"], turn["thought"])
@@ -712,7 +718,7 @@ class LLMNpcMixin:
         ``execute_cmd('think <thought>')`` — perceived only by the actor and a
         mind-reader, so it never leaks onto the visible stage."""
         if not self.location:
-            return
+            return {}
         speech = speech.strip().strip('"').strip() if speech else None
         action = action.strip() if action else None
         thought = thought.strip() if thought else None
@@ -727,8 +733,10 @@ class LLMNpcMixin:
             # the NPC's pronoun. Small RP models (Rocinante) slip on both.
             action = self._conjugate_action(action)
             action = self._selfify_action(action)
+            action = self._selfify_reflexive_gesture(action)
         if action and patron:
             action = self._resolve_second_person(action, patron)
+        rendered = {"action": None, "speech": None, "thought": thought}
         if action:
             body = action
             if speech and '"' not in body:
@@ -737,11 +745,14 @@ class LLMNpcMixin:
                 # action already carries a quote, that one rides — don't double.
                 sep = "" if body[-1] in ",.!?…" else ","
                 body = f'{body}{sep} "{speech}"'
+            rendered["action"] = body
             self.execute_cmd(f"emote {body}")
         elif speech:
+            rendered["speech"] = speech
             self.execute_cmd(f"say {speech}")
         if thought:
             self.execute_cmd(f"think {thought}")
+        return rendered
 
     #: Words that never START a pose clause as a verb (determiners,
     #: pronouns, prepositions, conjunctions, common adverbs) — skip them
@@ -803,6 +814,44 @@ class LLMNpcMixin:
                 r"\b(my|mine|me|myself)\b",
                 lambda m: transform_pronoun(m.group(0), "third", gender),
                 seg, flags=re.I)
+
+        chunks = action.split('"')
+        chunks[0::2] = [_rewrite(c) for c in chunks[0::2]]
+        return '"'.join(chunks)
+
+    #: Self-gesture verbs + body parts where "<verb> your <part>" is the NPC
+    #: moving its OWN body, never handling the patron's. The model reaches for
+    #: "your" here because the prompt addresses IT as "you" (observed live:
+    #: "cock your head" → the second-person resolver mis-mapped it onto the
+    #: patron, so a bystander would read "cocks the patron's head"). DELIBERATELY
+    #: CONSERVATIVE: only verbs with no plausible directed reading. Ambiguous
+    #: ones (tilt/lower/raise/lift/cup/stroke/take/press) have real patron-
+    #: directed uses — a bartender tilting a patron's chin up — and are LEFT to
+    #: fall through to _resolve_second_person on purpose.
+    _REFLEXIVE_GESTURE_VERBS = ("cock", "crane", "crack", "cant", "bob", "nod",
+        "shake", "roll", "scratch", "jerk", "wag", "duck", "incline", "arch")
+    _REFLEXIVE_GESTURE_PARTS = ("head", "neck", "chin", "jaw", "brow", "brows",
+        "eyebrow", "eyebrows", "shoulder", "shoulders", "temple", "temples",
+        "eye", "eyes", "knuckle", "knuckles")
+
+    def _selfify_reflexive_gesture(self, action):
+        """Rewrite a reflexive self-gesture the model wrote in the second person
+        ("cock your head") to the NPC's own possessive ("cocks his head"), BEFORE
+        _resolve_second_person claims that "your" for the patron. Gated on a tight
+        verb+part matrix so genuinely patron-directed possessives (which the
+        resolver SHOULD map) are untouched. Quoted speech is skipped."""
+        from world.grammar import GENDER_MAP
+        gender = GENDER_MAP.get(getattr(self, "gender", "neutral"), "neutral")
+        poss = {"male": "his", "female": "her"}.get(gender, "their")
+        verbs = "|".join(self._REFLEXIVE_GESTURE_VERBS)
+        parts = "|".join(self._REFLEXIVE_GESTURE_PARTS)
+        # <verb>(s) [one optional adjective] your [one optional adjective] <part>
+        pat = re.compile(
+            rf"\b((?:{verbs})(?:es|s)?\s+(?:\w+\s+)?)your(\s+(?:\w+\s+)?(?:{parts})\b)",
+            re.I)
+
+        def _rewrite(seg):
+            return pat.sub(lambda m: m.group(1) + poss + m.group(2), seg)
 
         chunks = action.split('"')
         chunks[0::2] = [_rewrite(c) for c in chunks[0::2]]
