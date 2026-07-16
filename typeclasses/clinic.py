@@ -11,6 +11,8 @@ This is the brain + job hooks only; the persona's ``archetype`` ('doctor', in
 ``world/llm/prompt``) is the role. Opt in per-NPC via ``db.llm_driven``.
 """
 
+from evennia.utils import delay
+
 from typeclasses.characters import Character
 from typeclasses.furniture import AutoDoc
 from typeclasses.llm_npc import LLMNpcMixin
@@ -44,6 +46,24 @@ CLINIC_CYBERWARE = {
     "heart": ("CYBERNETIC_HEART", False),
     "tail": ("CYBERNETIC_TAIL", False),
 }
+
+#: Deterministic medical-request vocab (parity with the bartender's order parser,
+#: #1235): an EXPLICIT patient request for a procedure runs for real instead of
+#: riding the model's flaky treat/install roll. The sim-DRIVEN treatment a doctor
+#: decides from a diagnosis still flows to the LLM — that need is in the sim, not
+#: the words, so it can't be parsed away.
+CYBER_WORDS = ("arm", "eye", "ear", "kidney", "jaw", "heart", "tail")
+SUPPLY_WORDS = ("painkiller", "morphine", "bandage", "gauze", "dressing", "blood",
+                "transfusion", "stim", "stimpak", "splint", "pain")
+#: chrome qualifiers on a body part → an install request ("chrome arm", "cyber eye")
+CHROME_QUALIFIERS = ("cyber", "chrome", "bionic", "prosthetic", "mechanical")
+#: verbs that mark an install request even without a chrome word ("replace my arm")
+INSTALL_CUES = ("install", "fit me", "fit a", "put in", "wire me", "chrome me",
+                "replace my", "swap in", "swap out", "give me a new",
+                "i want a new", "hook me up with", "put a")
+#: verbs that mark a supply request ("gimme a painkiller", "something for the pain")
+TREAT_CUES = ("gimme", "give me", "i need", "i want", "hit me with", "hook me up",
+              "can i get", "shoot me", "get me", "i could use", "something for")
 
 
 class Doctor(LLMNpcMixin, Character):
@@ -80,6 +100,44 @@ class Doctor(LLMNpcMixin, Character):
 
     def _name_aliases(self):
         return ["doctor", "doc", "medic", "surgeon", "ripperdoc"]
+
+    # --- deterministic medical requests (reliability lever) --------------
+    def _handle_directed_speech(self, speech, speaker, kwargs):
+        """An EXPLICIT patient request for a procedure runs deterministically —
+        'put a chrome arm on me' / 'gimme a painkiller' go straight to the real
+        install/treat path instead of the model's flaky tool roll (parity with
+        the bartender's order parser). Gated on directedness so a complaint
+        overheard across the room isn't acted on. Diagnosis-DRIVEN treatment
+        still flows to the LLM (the need is in the sim, not the words)."""
+        req = self._parse_medical_request(speech)
+        if req and self._classify_speech(speech, speaker) == "directed":
+            kind, arg = req
+            patient = self._patient(speaker)
+            runner = self._install_cyber if kind == "install" else self._treat
+            delay(1.5, runner, patient, arg)
+            return True
+        return False
+
+    def _parse_medical_request(self, speech):
+        """('install', speech) | ('treat', speech) | None. Conservative — a
+        question or a bare symptom mention ('my arm hurts', 'my heart's racing')
+        is NOT a request: an install needs a cyberware part AND a chrome word or
+        install verb; a treat needs a supply word AND a request cue."""
+        import re
+        low = " ".join((speech or "").lower().split())
+        if not low or "?" in low:
+            return None
+        words = re.findall(r"[a-z]+", low)   # whole words, punctuation stripped
+        # INSTALL: a cyberware part (whole word) + a chrome qualifier or install verb
+        if any(w in words for w in CYBER_WORDS) and (
+                any(q in low for q in CHROME_QUALIFIERS)
+                or any(c in low for c in INSTALL_CUES)):
+            return ("install", speech)
+        # TREAT: a supply word + an explicit request cue
+        if (any(w in low for w in SUPPLY_WORDS)
+                and any(c in low for c in TREAT_CUES)):
+            return ("treat", speech)
+        return None
 
     # --- tool routing over the shared LLM brain --------------------------
     def _run_context_tool(self, tool, arg, patron):

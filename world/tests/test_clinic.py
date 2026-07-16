@@ -123,3 +123,82 @@ class TestDoctorInstall(BaseEvenniaTest):
         self.assertIn("organ_item_key", install["args"])
         self.assertTrue(install["args"]["location"])      # an anchor was resolved
         self.assertIsNotNone(chart_lib.get_chart(patient))  # saved on the patient
+
+
+class TestMedicalRequestParser(BaseEvenniaTest):
+    """Deterministic medical-request detection (reliability lever, parity with the
+    bartender's order parser): an EXPLICIT install/treat request runs for real; a
+    question or bare symptom mention does NOT."""
+
+    def _doctor(self):
+        d = MagicMock()
+        d._parse_medical_request = clinicmod.Doctor._parse_medical_request.__get__(
+            d, clinicmod.Doctor)
+        return d
+
+    def test_install_requests(self):
+        d = self._doctor()
+        for s in ("put a chrome arm on me. i got the creds.",
+                  "i want a cyber eye. left side.", "install a new kidney",
+                  "replace my heart", "give me a new arm",
+                  "right arm's dead weight. put a chrome one on."):
+            self.assertEqual((d._parse_medical_request(s) or (None,))[0],
+                             "install", f"install: {s!r}")
+
+    def test_treat_requests(self):
+        d = self._doctor()
+        for s in ("gimme a painkiller", "need something for the pain",
+                  "i need a stim", "hit me with the blood"):
+            self.assertEqual((d._parse_medical_request(s) or (None,))[0],
+                             "treat", f"treat: {s!r}")
+
+    def test_not_requests(self):
+        d = self._doctor()
+        for s in ("my arm hurts", "my heart's racing", "keep an eye out for trouble",
+                  "blood everywhere, help", "something's broke in here",
+                  "just patch me up doc", "can you fix my eye?",
+                  "i had a stim earlier", ""):
+            self.assertIsNone(d._parse_medical_request(s), f"not a request: {s!r}")
+
+
+class TestMedicalRequestRouting(BaseEvenniaTest):
+    """_handle_directed_speech routes an explicit request to the real install/
+    treat path — only when directed at this doctor, never on ambient chatter."""
+
+    def _doctor(self, req, kind="directed"):
+        d = MagicMock()
+        d._parse_medical_request = lambda s: req
+        d._classify_speech = lambda s, spk: kind
+        d._patient = lambda spk: "patient"
+        d._handle_directed_speech = clinicmod.Doctor._handle_directed_speech.__get__(
+            d, clinicmod.Doctor)
+        return d
+
+    def test_directed_install_routes(self):
+        d = self._doctor(("install", "put a chrome arm on me"))
+        with patch.object(clinicmod, "delay") as dl:
+            handled = d._handle_directed_speech("put a chrome arm on me",
+                                                MagicMock(), {})
+        self.assertTrue(handled)
+        self.assertEqual(dl.call_args.args[1], d._install_cyber)
+
+    def test_directed_treat_routes(self):
+        d = self._doctor(("treat", "gimme a painkiller"))
+        with patch.object(clinicmod, "delay") as dl:
+            handled = d._handle_directed_speech("gimme a painkiller", MagicMock(), {})
+        self.assertTrue(handled)
+        self.assertEqual(dl.call_args.args[1], d._treat)
+
+    def test_ambient_request_not_acted(self):
+        d = self._doctor(("install", "put a chrome arm on me"), kind="ambient")
+        with patch.object(clinicmod, "delay") as dl:
+            handled = d._handle_directed_speech("put a chrome arm on me",
+                                                MagicMock(), {})
+        self.assertFalse(handled)
+        dl.assert_not_called()
+
+    def test_non_request_falls_through(self):
+        d = self._doctor(None)
+        handled = d._handle_directed_speech("something's broke in here",
+                                            MagicMock(), {})
+        self.assertFalse(handled)
