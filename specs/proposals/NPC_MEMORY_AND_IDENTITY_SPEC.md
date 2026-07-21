@@ -1,14 +1,22 @@
 # NPC Memory & Identity Spec
 
-> **Status: 🚧 DESIGN IN PROGRESS — NOT FOR IMPLEMENTATION.** Captures the
-> decided design for how an LLM-driven NPC *remembers people*, building on the
-> shipped Phase 2 memory plumbing (`world/llm/memory.py`, the sidecar embedder,
-> `LLMNpcMixin` recall/write). It defines the model — memory hangs on the
-> **identity-signature spine**, names are **unverifiable claims**, and naming is
-> a **creative, trust-laden act** — plus the affordance roadmap (photos,
-> cyberbrains, gossip). Build the §8 "now" slice deliberately; everything past
-> it is roadmap. Ties into `IDENTITY_RECOGNITION_SPEC`, `TRUST_AND_CONSENT_SPEC`
-> ("SUPER IMPORTANT"), the forensics layer, and the cyberware system.
+> **Status: 🟡 §8 CORE SHIPPED & LIVE; affordance roadmap ahead (§6).** The full
+> "remember people" loop runs (§8 COMPLETE): episodic memory re-keyed on
+> `apparent_uid`, the `remember`/`feel` tools, per-identity `db.llm_dossiers`
+> (name-history + valence, GM-readable + LLM-surfaced), ambient action-awareness.
+> Built on the shipped Phase 2 memory plumbing (`world/llm/memory.py`, the sidecar
+> embedder, `LLMNpcMixin` recall/write). The decided model — memory hangs on the
+> **identity-signature spine**, names are **unverifiable claims**, naming is a
+> **creative, trust-laden act** — is realised; the affordance roadmap (§6: photos,
+> cyberbrains, NPC↔NPC gossip, lore namespace) is the forward part.
+> **OPERATIONAL NOTE (2026-07-16→20): shipped ≠ exercised.** The §8 plumbing was
+> live but DORMANT in play — the `remember`/`feel` tools fired ~zero because a 12B
+> won't invoke a tool it's only *told* about in the tool list. DEMONSTRATING them
+> in each archetype's few-shot (#1236/#1237) lit the layer up (bartender first,
+> then companion/merchant/security; companion spot-bench confirmed `remember` then
+> fired on the right cue). See the `LLM_GAMEMASTER_SPEC` tool-reliability note.
+> Ties into `IDENTITY_RECOGNITION_SPEC`, `TRUST_AND_CONSENT_SPEC` ("SUPER
+> IMPORTANT"), the forensics layer, and the cyberware system.
 
 ## 0 · Purpose
 
