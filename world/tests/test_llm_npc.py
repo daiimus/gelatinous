@@ -386,6 +386,14 @@ class TestRadioRepliesAir(TestCase):
         # correct for a device-snatched unit standing in a crowd)
         self.assertEqual(b._render_llm_reply.call_args.args[0], "hello?")
 
+    def test_broadcast_speech_airs_too(self):
+        b = self._turn("broadcast", {"speech": "It is night in the colony "
+                                               "and the band is quiet.",
+                                     "action": None, "thought": None,
+                                     "tool": "none", "tool_argument": ""})
+        b.execute_cmd.assert_any_call(
+            "xmit It is night in the colony and the band is quiet.")
+
     def test_radio_tool_carries_it_instead(self):
         b = self._turn("radio", {"speech": "flavour line",
                                  "action": None, "thought": None,

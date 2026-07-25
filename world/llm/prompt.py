@@ -966,6 +966,13 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
                 f"(Not addressed to you; the speaker is somewhere else. Key "
                 f"up — the radio tool — only if your character truly would; "
                 f"staying silent is normal.)")
+    elif mode == "broadcast":
+        turn = (f"{mem}STATION CLOCK — {line}\n\n"
+                f"Cut a short on-air segment in your own voice — a DJ "
+                f"break, not a reply. Use only what the hours and the "
+                f"band actually gave you (recent traffic, if any, appears "
+                f"above); when nothing did, make the quiet itself the "
+                f"segment. Never invent callers, events, or news.")
     elif mode == "ambient":
         turn = f'{mem}{perc}You overhear {speaker} say: "{line}"'
     elif mode == "arrival":
