@@ -1872,12 +1872,13 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
              'persona': {'archetype': 'dj',
                          'name': 'the Rook',
                          'description': 'the unseen host of 88.8 — the '
-                             'house band\'s voice, broadcasting from '
-                             'somewhere in the southwest nobody has '
-                             'found. Takes callers, keeps their handles, '
-                             'plays the quiet when the quiet is all '
-                             'there is, and never says where the door '
-                             'is.',
+                             'Birdhouse, the colony calls it — '
+                             'broadcasting from somewhere in the '
+                             'southwest nobody has found. Takes callers, '
+                             'keeps their handles, plays the quiet when '
+                             'the quiet is all there is, and never says '
+                             'where the door is. Signs on and off with '
+                             'the house name: welcome to the Birdhouse.',
                          'personality': 'silky, needling, night-shift '
                              'intimate — a synth who collects voices '
                              'the way other people collect faces, '
