@@ -70,15 +70,15 @@ class TestButcherYields(TestCase):
 
     def test_clean_fresh_rat_full_cuts(self):
         y = self._yields(_corpse(_rat_snapshot()))
-        self.assertEqual(y["rat tail"], 1)
-        self.assertEqual(y["rat chops"], 3)
-        self.assertEqual(y["rat haunch"], 2)
-        self.assertEqual(y["rat offal"], 1)
-        self.assertEqual(y["ground mystery meat"], 3)
+        self.assertEqual(y["rat_tail"], 1)
+        self.assertEqual(y["rat_chops"], 3)
+        self.assertEqual(y["rat_haunch"], 2)
+        self.assertEqual(y["rat_offal"], 1)
+        self.assertEqual(y["ground_mystery_meat"], 3)
 
     def test_severed_tail_no_tail(self):
         y = self._yields(_corpse(_rat_snapshot(), severed=["tail"]))
-        self.assertNotIn("rat tail", y)
+        self.assertNotIn("rat_tail", y)
 
     def test_shredded_trunk_no_chops(self):
         snap = _rat_snapshot(
@@ -87,24 +87,24 @@ class TestButcherYields(TestCase):
             stomach=_organ("abdomen", hp=0), left_kidney=_organ("abdomen", hp=0),
             right_kidney=_organ("abdomen", hp=0))
         y = self._yields(_corpse(snap))
-        self.assertNotIn("rat chops", y)
-        self.assertNotIn("rat offal", y)   # shredded organs are no delicacy
-        self.assertEqual(y["rat haunch"], 2)  # legs untouched
+        self.assertNotIn("rat_chops", y)
+        self.assertNotIn("rat_offal", y)   # shredded organs are no delicacy
+        self.assertEqual(y["rat_haunch"], 2)  # legs untouched
 
     def test_harvested_organs_no_offal(self):
         y = self._yields(_corpse(_rat_snapshot(),
                                  removed=["heart", "liver", "left_kidney"]))
-        self.assertNotIn("rat offal", y)
+        self.assertNotIn("rat_offal", y)
 
     def test_decay_scales_meat_mass(self):
         fresh = self._yields(_corpse(_rat_snapshot()), decay=0.0)
         stale = self._yields(_corpse(_rat_snapshot()), decay=0.5)
-        self.assertLess(stale["rat chops"], fresh["rat chops"])
-        self.assertGreaterEqual(stale["ground mystery meat"], 1)
+        self.assertLess(stale["rat_chops"], fresh["rat_chops"])
+        self.assertGreaterEqual(stale["ground_mystery_meat"], 1)
 
     def test_empty_snapshot_still_minces_something(self):
         y = self._yields(_corpse(None))
-        self.assertEqual(list(y), ["ground mystery meat"])
+        self.assertEqual(list(y), ["ground_mystery_meat"])
 
 
 class TestProcessCorpse(TestCase):
@@ -118,8 +118,8 @@ class TestProcessCorpse(TestCase):
         giver = MagicMock()
         giver.pk = 1
         giver.tokens = 0
-        with patch.object(butchmod, "create_object") as co:
-            co.return_value = MagicMock()
+        with patch.object(butchmod, "spawn") as sp:
+            sp.return_value = [MagicMock()]
             b._process_corpse(corpse, giver)
         return b, block, giver
 
@@ -160,6 +160,7 @@ class TestProcessCorpse(TestCase):
         self.assertEqual(block.db.register, 500 - 26)
         emote = b.execute_cmd.call_args.args[0]
         self.assertTrue(emote.startswith("emote breaks the carcass down"))
+        block.stock_cuts.assert_called_once()
         self.assertIn("counts 26 across the steel", emote)
 
     def test_payout_capped_by_till(self):
@@ -201,8 +202,57 @@ class TestRatAccepted(TestCase):
         for banned in ("human", "synthetic_humanoid", "robot"):
             self.assertNotIn(banned, ACCEPTED_BUTCHER_SPECIES)
 
-    def test_products_have_flavour(self):
+    def test_products_priced_with_margin(self):
+        # sell > buy on every product: the block's margin keeps the till solvent
         for key, spec in RAT_PRODUCTS.items():
-            self.assertTrue(spec["desc"]), key
-            self.assertTrue(spec["taste"]), key
-            self.assertGreater(spec["value"], 0)
+            self.assertGreater(spec["buy"], 0, key)
+            self.assertGreater(spec["sell"], spec["buy"], key)
+
+    def test_prototypes_exist_and_are_edible(self):
+        from evennia.prototypes.prototypes import search_prototype
+        for key in RAT_PRODUCTS:
+            protos = search_prototype(key)
+            self.assertTrue(protos, f"prototype missing: {key}")
+            proto = protos[0]
+            tags = [tuple(t[:2]) for t in proto.get("tags", [])]
+            self.assertIn(("eat", "delivery_method"), tags)
+
+
+class TestBlockShop(TestCase):
+    """The sell side: the block is a limited shop stocked by the grind, and
+    sales credit the till (closing the buy/sell economy loop). Uses real
+    Evennia objects for the purchase path."""
+
+    def test_stock_and_purchase_cycle(self):
+        from evennia.utils.test_resources import BaseEvenniaTest
+        # run inside an Evennia test body for object creation
+        class _T(BaseEvenniaTest):
+            def runTest(self):
+                from evennia import create_object
+                block = create_object("typeclasses.butcher.ButcherBlock",
+                                      key="test block", location=self.room1)
+                block.db.register = 100
+                block.stock_cuts({"rat_chops": 2, "rat_tail": 1})
+                self.assertEqual(block.db.item_inventory["rat_chops"], 2)
+                self.assertEqual(block.db.prototype_inventory["rat_chops"], 5)
+                buyer = self.char1
+                buyer.tokens = 50
+                ok, item = block.purchase_item(buyer, "rat_chops")
+                self.assertTrue(ok)
+                self.assertEqual(item.location, buyer)
+                self.assertEqual(buyer.tokens, 45)               # paid 5
+                self.assertEqual(block.db.register, 105)          # till credited
+                self.assertEqual(block.db.item_inventory["rat_chops"], 1)
+                # the spawned cut is edible, ingredient-grade
+                self.assertTrue(item.tags.has("eat", category="delivery_method"))
+                self.assertEqual(item.db.uses_left, 1)
+                # drain the stock: second buy ok, third refused
+                ok, _ = block.purchase_item(buyer, "rat_chops")
+                self.assertTrue(ok)
+                ok, msg = block.purchase_item(buyer, "rat_chops")
+                self.assertFalse(ok)
+        t = _T("runTest"); t.setUp()
+        try:
+            t.runTest()
+        finally:
+            t.tearDown()
