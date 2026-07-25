@@ -579,7 +579,8 @@ class TestMerchantArchetype(TestCase):
         self.assertIn("merchant", ARCHETYPES)
         # no fake buy/sell tool — transactions go through the shop command
         self.assertEqual(tool_names(self._merchant()),
-                         ["look", "remember", "feel", "release", "radio", "wield"])
+                         ["look", "remember", "feel", "release", "radio",
+                          "wield", "check_stock"])
 
     def test_duties_ground_ownership(self):
         msgs = build_messages(self._merchant(), "someone",

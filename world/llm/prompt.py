@@ -73,7 +73,7 @@ TOOLS = {
                       "speak (argument: exactly the words you say on the "
                       "air)"},
     "check_stock": {"kind": "context",
-                    "desc": "list exactly what the bar can serve right now "
+                    "desc": "list exactly what your bar or counter can serve or sell right now "
                             "(argument: '')"},
     "prepare_drink": {"kind": "action",
                       "desc": "pour a drink from the menu for the patron — the "
@@ -540,7 +540,7 @@ ARCHETYPES = {
         # radio: a shop with a counter set can key up the civilian band and
         # poke into chatter — only fires when there's a device to key (a
         # merchant with no radio stays mute, xmit refusing, as a player would).
-        "tools": ["release", "radio", "wield"],  # buying/pawning is player-driven; + BASE tools
+        "tools": ["release", "radio", "wield", "check_stock"],  # sales are deterministic; + BASE tools
         "fewshot": [
             {"user": 'a stranger leans on the counter: "what kind of place is this?"',
              "assistant": {"speech": "The kind that buys what you can't keep and "
@@ -798,6 +798,17 @@ def render_persona(persona: dict) -> str:
     elif cart_menu is not None:
         lines.append("Your cart is SOLD OUT — nothing on the board until "
                      "someone brings you a carcass. Don't invent stock.")
+    shop_menu = persona.get("shop_menu")
+    if shop_menu:
+        lines.append("On your shelf RIGHT NOW: " + ", ".join(shop_menu)
+                     + ". That is your COMPLETE stock — never invent goods "
+                     "you don't carry. Quote prices in TOKENS, exactly as "
+                     "listed — flat, no haggling. When someone orders, the "
+                     "counter serves them for real; never narrate a sale "
+                     "or a handover yourself.")
+    elif shop_menu is not None:
+        lines.append("Your shelf is EMPTY — sold out until the next "
+                     "delivery. Don't invent stock.")
     buys = persona.get("buys")
     if buys:
         lines.append("You buy ANIMAL carcasses only — " + ", ".join(buys)

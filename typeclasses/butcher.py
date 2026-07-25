@@ -113,20 +113,22 @@ class FoodCart(Seating, ShopContainer):
         self.db.is_infinite = False
 
     def purchase_item(self, buyer, prototype_key):
-        """Sales feed the till, and the dish lands ON THE BOARD — the bar's
-        physicality, not the shop system's teleport-to-inventory: the base
-        class moves the spawned item to the buyer; we set it on the cart
-        instead (``get <dish> from cart`` to take it), and the price lands in
-        ``db.register`` — the fund the butcher pays suppliers from."""
-        price = self.get_price(prototype_key)
+        """The dish lands ON THE BOARD — the bar's physicality: the base
+        class hands the item to the buyer (and credits the till, since the
+        base credits any register now); we re-place it on the cart instead
+        (``get <dish> from cart``), clearing any hand slot the base put it
+        in so no ghost grip survives."""
         success, result = super().purchase_item(buyer, prototype_key)
         if success:
             try:
                 result.move_to(self, quiet=True, move_hooks=False)
+                hands = dict(getattr(buyer, "hands", None) or {})
+                changed = {k: (None if v == result else v)
+                           for k, v in hands.items()}
+                if changed != hands:
+                    buyer.hands = changed
             except Exception:  # noqa: BLE001 — a failed re-place leaves it with the buyer
                 pass
-            if price:
-                self.db.register = int(self.db.register or 0) + int(price)
         return success, result
 
     def return_appearance(self, looker, **kwargs):

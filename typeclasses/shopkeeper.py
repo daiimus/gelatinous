@@ -7,6 +7,10 @@ and the merchant character integration.
 
 from evennia import DefaultObject
 from evennia.utils import logger
+from evennia.utils.utils import delay
+
+from typeclasses.characters import Character
+from typeclasses.llm_npc import LLMNpcMixin
 from evennia.utils.create import create_object
 from evennia.prototypes.spawner import spawn
 from world.shop.utils import get_prototype_value, format_currency, calculate_shop_price
@@ -161,14 +165,27 @@ class ShopContainer(DefaultObject):
                 return False, "The item couldn't be retrieved. Contact an admin."
             
             item = spawned[0]
-            # Move item to buyer's inventory
+            # Into the buyer's FREE HAND when one exists (Mr. Hands — a
+            # purchase is a handover, not a teleport); inventory fallback.
             item.move_to(buyer, quiet=True)
+            try:
+                hands = getattr(buyer, "hands", None) or {}
+                free = next((h for h, held in hands.items() if held is None),
+                            None)
+                if free:
+                    buyer.wield_item(item, free)
+            except Exception:  # noqa: BLE001 — hand placement is best-effort
+                pass
         except Exception as e:
             logger.log_err(f"ShopContainer: Error spawning '{prototype_key}': {e}")
             return False, "Something went wrong. Contact an admin."
         
         # Deduct tokens
         buyer.tokens -= price
+        # ...and credit the shop's till when it keeps one — sale proceeds
+        # must not vanish from the economy (the FoodCart lesson, promoted).
+        if self.db.register is not None:
+            self.db.register = int(self.db.register or 0) + int(price)
         
         # Update inventory for limited stock
         if not self.db.is_infinite:
@@ -278,3 +295,172 @@ class ShopContainer(DefaultObject):
         inventory_display = self.get_browse_display(looker)
         
         return f"{desc}\n\n{inventory_display}"
+
+
+
+class Shopkeeper(LLMNpcMixin, Character):
+    """An LLM-voiced shopkeeper whose SALES are deterministic code.
+
+    The bartender/butcher split, third verse: a spoken order ("a pack of
+    Noirs, please") resolves against the counter's REAL inventory and runs
+    the counter's own purchase path — stock, tokens, till — with the item
+    pressed into the buyer's hand; the model supplies voice and memory,
+    never prices. Non-orders fall through to conversation."""
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        if not self.height:
+            self.height = "average"
+        if not self.build:
+            self.build = "average"
+        self.db.llm_driven = False
+        self.db.is_npc = True
+        self.is_merchant = True   # the buy command's notify hook finds us
+
+    def _name_aliases(self):
+        return ["shopkeeper", "shopkeep", "merchant", "clerk"]
+
+    def _find_counter(self):
+        if not self.location:
+            return None
+        for obj in self.location.contents:
+            if isinstance(obj, ShopContainer):
+                return obj
+        return None
+
+    # --- deterministic spoken orders ---------------------------------
+    def _handle_directed_speech(self, speech, speaker, kwargs):
+        from typeclasses.bar import GRATITUDE_TRIGGERS
+        low = (speech or "").lower()
+        if any(t in low for t in GRATITUDE_TRIGGERS):
+            self._acknowledge()
+            return True
+        if kwargs.get("addressed"):
+            delay(1.5, self._fulfil_shop_order, speech, speaker)
+            return True
+        if (self._match_shop_order(speech) is not None
+                and self._classify_speech(speech, speaker) == "directed"):
+            delay(1.5, self._fulfil_shop_order, speech, speaker)
+            return True
+        return False
+
+    def _acknowledge(self):
+        from random import choice
+        from time import monotonic
+        now = monotonic()
+        if now - (self.ndb.last_ack or 0) < 6.0:
+            return
+        self.ndb.last_ack = now
+        delay(1.0, self.execute_cmd, "emote " + choice((
+            "tips two fingers off the counter in acknowledgement.",
+            "gives a small nod, already re-facing the stock.",
+            "waves it off with the practiced ease of a thousand thank-yous.",
+        )))
+
+    def _shelf(self):
+        """The counter's real sellable list: [(proto_key, display, words)]."""
+        import re
+        from evennia.prototypes.prototypes import search_prototype
+        counter = self._find_counter()
+        if not counter:
+            return []
+        entries = []
+        for proto_key in (counter.db.prototype_inventory or {}):
+            protos = search_prototype(proto_key)
+            if not protos:
+                continue
+            display = protos[0].get("key") or proto_key
+            words = set(re.findall(r"[a-z']+", display.lower()))
+            for alias in protos[0].get("aliases") or ():
+                words.update(re.findall(r"[a-z']+", str(alias).lower()))
+            entries.append((proto_key, display, words))
+        return entries
+
+    def _match_shop_order(self, speech):
+        """Resolve speech to a shelf item — conservative (an order cue or a
+        bare order; a cue-less question is conversation) with best-overlap
+        scoring. Returns the prototype key, or the string "ambiguous" when
+        two items tie (the keeper asks which)."""
+        import re
+        from typeclasses.bar import ORDER_CUES, ORDER_FILLER
+        low = " ".join((speech or "").lower().split())
+        if not low:
+            return None
+        words = re.findall(r"[a-z']+", low)
+        has_cue = any(cue in low for cue in ORDER_CUES)
+        if "?" in low and not has_cue:
+            return None
+        scored = []
+        for proto_key, display, item_words in self._shelf():
+            overlap = sum(1 for w in words
+                          if w in item_words or w.rstrip("s") in item_words)
+            if overlap:
+                scored.append((overlap, proto_key, item_words))
+        if not scored:
+            return None
+        scored.sort(reverse=True)
+        best = scored[0]
+        if len(scored) > 1 and scored[1][0] == best[0]:
+            return "ambiguous"
+        if has_cue:
+            return best[1]
+        remainder = [w for w in words
+                     if w not in best[2] and w.rstrip("s") not in best[2]
+                     and w not in ORDER_FILLER]
+        return best[1] if not remainder else None
+
+    def _fulfil_shop_order(self, order_text, patron):
+        from world.grammar import with_article
+        if not self.location or getattr(patron, "location", None) is not self.location:
+            return
+        counter = self._find_counter()
+        match = self._match_shop_order(order_text)
+        if match == "ambiguous":
+            self.execute_cmd("say You'll have to be more particular — the "
+                             "shelf carries more than one of those.")
+            return
+        if not match or counter is None:
+            if not self._try_llm_reply(order_text, patron, "directed",
+                                       on_fail=self._llm_fallback):
+                self.execute_cmd("say Shelf's all labeled. It says what "
+                                 "I sell.")
+            return
+        stock = counter.db.item_inventory or {}
+        if not counter.db.is_infinite and int(stock.get(match, 0) or 0) <= 0:
+            self.execute_cmd("say Out of that until the next delivery.")
+            return
+        price = int(counter.get_price(match) or 0)
+        have = int(getattr(patron, "tokens", 0) or 0)
+        if price and have < price:
+            self.execute_cmd(f"say That's {price}. Come back when you've "
+                             "got it.")
+            return
+        ok, item = counter.purchase_item(patron, match)
+        if not ok:
+            self.execute_cmd("say Counter says no. Take it up with the "
+                             "counter.")
+            return
+        handle = None
+        try:
+            handle = self._address_handle(patron)
+        except Exception:  # noqa: BLE001
+            pass
+        target = handle or "the customer"
+        self.execute_cmd(
+            f"emote plucks {with_article(item.key)} from the shelf, presses "
+            f"it into {target}'s hand, and sweeps {price} into the till."
+        )
+
+    def _run_context_tool(self, tool, arg, patron):
+        """``check_stock`` reads the real counter (the bar analogue)."""
+        if tool == "check_stock":
+            counter = self._find_counter()
+            if not counter:
+                return "no counter to check"
+            names = [display for _, display, _ in self._shelf()]
+            return ("On the shelf: " + ", ".join(names) + ".") if names \
+                else "The shelf is empty."
+        return super()._run_context_tool(tool, arg, patron)
+
+    def _llm_fallback(self):
+        self.execute_cmd("say Shelf's all labeled. It says what I sell.")

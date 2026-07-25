@@ -207,8 +207,17 @@ class CmdBuy(Command):
         # Check for merchant NPCs in the room
         for obj in buyer.location.contents:
             if getattr(obj, 'is_merchant', False):
-                # Found a merchant - send them a message
                 from world.shop.utils import format_currency
-                obj.msg(f"{buyer.get_display_name(obj)} purchases {item.get_display_name(obj)} for {format_currency(price)}.")
+                line = (f"{buyer.get_display_name(obj)} bought "
+                        f"{item.get_display_name(obj)} off the shelf for "
+                        f"{format_currency(price)}.")
+                # An LLM keeper OBSERVES the self-serve sale (rides the
+                # action buffer into their next turn); others get the
+                # plain message as before.
+                observe = getattr(obj, "_observe_action", None)
+                if callable(observe) and getattr(obj.db, "llm_driven", False):
+                    observe(buyer, line)
+                else:
+                    obj.msg(line)
                 break
 
