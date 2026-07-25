@@ -890,15 +890,27 @@ class CmdEat(ConsumptionCommand):
                 caller.msg(errors[0])
                 return
                 
-        # Execute eating
+        # Execute eating. Medical items keep the swallow/Effects flow; FOOD
+        # mirrors the drink pattern — ONE bite-aware actor line, then the
+        # taste/effects line from the dose applier (no "You consumed" tail).
+        is_medical = is_medical_item(item)
         if is_self:
-            caller.msg(f"You swallow {item.get_display_name(caller)}.")
-            msg_room_identity(
-                location=caller.location,
-                template=f"{{actor}} swallows {item.key}.",
-                char_refs={"actor": caller},
-                exclude=[caller],
-            )
+            if is_medical:
+                caller.msg(f"You swallow {item.get_display_name(caller)}.")
+                msg_room_identity(
+                    location=caller.location,
+                    template=f"{{actor}} swallows {item.key}.",
+                    char_refs={"actor": caller},
+                    exclude=[caller],
+                )
+            else:
+                # actor's own line is sent below, bite-aware — don't double up
+                msg_room_identity(
+                    location=caller.location,
+                    template=f"{{actor}} eats {with_article(item.key)}.",
+                    char_refs={"actor": caller},
+                    exclude=[caller],
+                )
         else:
             caller.msg(f"You help {target.get_display_name(caller)} swallow {item.get_display_name(caller)}.")
             target.msg(f"{caller.get_display_name(target)} helps you swallow {item.get_display_name(target)}.")
@@ -908,18 +920,24 @@ class CmdEat(ConsumptionCommand):
                 char_refs={"actor": caller, "target": target},
                 exclude=[caller, target],
             )
-            
+
         # Apply effects
-        if is_medical_item(item):
+        if is_medical:
             result_msg = self.execute_treatment(item, caller, target)
             caller.msg(f"Effects: {result_msg}")
             if not is_self:
                 target.msg(f"You feel the effects: {result_msg}")
             self._apply_substance_dose(item, target)
         else:
-            # Regular food item — pharmacology (if any) rides the
-            # delivery, then the generic consumable lifecycle.
-            caller.msg(f"You consumed {item.get_display_name(caller)}.")
+            # Regular food — one bite line (a bite, or the last mouthful),
+            # then pharmacology/taste, then the consumable lifecycle.
+            if is_self:
+                uses_left = item.db.uses_left
+                name = with_article(item.get_display_name(caller))
+                if uses_left is None or int(uses_left or 0) <= 1:
+                    caller.msg(f"You finish off {name}.")
+                else:
+                    caller.msg(f"You take a bite of {name}.")
             self._apply_substance_dose(item, target)
             self._consume(item)
 
