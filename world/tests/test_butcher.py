@@ -319,3 +319,32 @@ class TestCartSeating(TestCase):
         allows = butchmod.FoodCart.allows.__get__(cart, butchmod.FoodCart)
         self.assertTrue(allows("sitting"))
         self.assertFalse(allows("lying"))
+
+
+class TestButcherPersonaGrounding(TestCase):
+    """The butcher's card grounds her REAL trade: the cart's live board and
+    what she buys — without it the model invents stock ('sushi pork')."""
+
+    def test_board_rendered_with_anti_invention(self):
+        from world.llm.prompt import render_persona
+        card = render_persona({
+            "persona_seed": {"archetype": "butcher", "name": "Ottilie"},
+            "cart_menu": ["bowl of rat tail stew (12 tokens, 1 left)"],
+            "buys": ["rat"]})
+        self.assertIn("bowl of rat tail stew (12 tokens, 1 left)", card)
+        self.assertIn("never invent dishes", card)
+        self.assertIn("ANIMAL carcasses only — rat", card)
+        self.assertIn("ripper trade", card)
+
+    def test_sold_out_rendered_explicitly(self):
+        from world.llm.prompt import render_persona
+        card = render_persona({
+            "persona_seed": {"archetype": "butcher", "name": "Ottilie"},
+            "cart_menu": [], "buys": ["rat"]})
+        self.assertIn("SOLD OUT", card)
+
+    def test_absent_keys_no_cart_lines(self):
+        from world.llm.prompt import render_persona
+        card = render_persona({"persona_seed": {"archetype": "bartender",
+                                                "name": "Del"}})
+        self.assertNotIn("cart", card.lower())

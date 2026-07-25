@@ -780,6 +780,21 @@ def render_persona(persona: dict) -> str:
     if menu:
         lines.append("Your bar serves ONLY: " + ", ".join(menu) + " (no beer, no "
                      "off-list). The bar makes them, not you.")
+    cart_menu = persona.get("cart_menu")
+    if cart_menu:
+        lines.append("On your cart's board RIGHT NOW: " + ", ".join(cart_menu)
+                     + ". That is your COMPLETE stock — never invent dishes, "
+                     "meats, or stock you don't have. Prices are the board's, "
+                     "flat; customers buy off the cart themselves.")
+    elif cart_menu is not None:
+        lines.append("Your cart is SOLD OUT — nothing on the board until "
+                     "someone brings you a carcass. Don't invent stock.")
+    buys = persona.get("buys")
+    if buys:
+        lines.append("You buy ANIMAL carcasses only — " + ", ".join(buys)
+                     + ", these days — handed over at the cart and priced by "
+                     "what the body yields. People and machines you refuse: "
+                     "sapient bodies are ripper trade, chrome isn't food.")
     return "\n".join(lines)
 
 

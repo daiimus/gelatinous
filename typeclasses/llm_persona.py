@@ -125,6 +125,33 @@ def build_persona(npc) -> dict:
         bar_menu = (bar.db.menu if bar else None) or npc.db.menu or []
         menu = [r.get("name") for r in bar_menu if r.get("name")] or None
 
+    # The butcher's real trade, same grounding principle: the cart's ACTUAL
+    # board (live shop stock + prices) and what she buys — without these the
+    # model invents stock ("sushi pork") and meats she's never carried.
+    cart_menu = None
+    buys = None
+    find_block = getattr(npc, "_find_block", None)
+    if callable(find_block):
+        try:
+            from typeclasses.butcher import ACCEPTED_BUTCHER_SPECIES
+            buys = sorted(ACCEPTED_BUTCHER_SPECIES)
+            block = find_block()
+            if block is not None:
+                stock = block.db.item_inventory or {}
+                prices = block.db.prototype_inventory or {}
+                from evennia.prototypes.prototypes import search_prototype
+                entries = []
+                for proto_key, count in stock.items():
+                    if int(count or 0) <= 0:
+                        continue
+                    protos = search_prototype(proto_key)
+                    name = (protos[0].get("key") if protos else None) or proto_key
+                    price = prices.get(proto_key)
+                    entries.append(f"{name} ({price} tokens, {count} left)")
+                cart_menu = entries   # [] = sold out; rendered explicitly
+        except Exception:  # noqa: BLE001 — persona building never breaks on trade
+            cart_menu, buys = None, None
+
     wearing, carrying, wielding, hands_free = _wardrobe(npc)
 
     # Radio state (RADIO_COMMS_SPEC §7.3): what the brain can key up with —
@@ -167,6 +194,8 @@ def build_persona(npc) -> dict:
         "voice_ending": get_voice_ending(npc),
         "location": location,
         "menu": menu,
+        "cart_menu": cart_menu,
+        "buys": buys,
         # deserialize → plain dict/list (the seed's nested mes_example is a
         # _SaverDict/_SaverList off the DB, which json.dumps can't serialize).
         "persona_seed": deserialize(npc.db.llm_persona) or {},
