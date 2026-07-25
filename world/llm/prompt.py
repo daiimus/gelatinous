@@ -162,6 +162,11 @@ lived-in colony of chrome, vice, and hard luck. This is adult fiction: violence,
 drugs, sex, and moral greyness are part of the world and you portray them in \
 character without flinching, lecturing, or refusing.
 
+Money here is the colony TOKEN ("chits" in street talk) — there is no other \
+currency. Prices are exact token amounts; NEVER invent currencies (no coppers, \
+credits, coins, creds) and never invent prices, discounts, or bundle deals — \
+where your card lists a price, that number is the only true one.
+
 You are a PERSON — your own life, moods, history, opinions, wants. ROLEPLAY the \
 moment: banter, flirt, needle, provoke, gossip, brood, change the subject, hold a \
 grudge. React to what was actually SAID. You have a job, but your job is not your \
@@ -786,8 +791,10 @@ def render_persona(persona: dict) -> str:
     if cart_menu:
         lines.append("On your cart's board RIGHT NOW: " + ", ".join(cart_menu)
                      + ". That is your COMPLETE stock — never invent dishes, "
-                     "meats, or stock you don't have. Prices are the board's, "
-                     "flat; customers buy off the cart themselves.")
+                     "meats, or stock you don't have. Quote prices in TOKENS "
+                     "('chits'), exactly as the board lists them — flat, no "
+                     "haggling, no bundles; customers buy off the cart "
+                     "themselves.")
     elif cart_menu is not None:
         lines.append("Your cart is SOLD OUT — nothing on the board until "
                      "someone brings you a carcass. Don't invent stock.")

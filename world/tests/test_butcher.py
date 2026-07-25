@@ -335,6 +335,7 @@ class TestButcherPersonaGrounding(TestCase):
             "buys": ["rat"]})
         self.assertIn("bowl of rat tail stew (12 tokens, 1 left)", card)
         self.assertIn("never invent dishes", card)
+        self.assertIn("TOKENS", card)   # currency grounded — no invented coppers
         self.assertIn("ANIMAL carcasses only — rat", card)
         self.assertIn("ripper trade", card)
 
