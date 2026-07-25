@@ -13,7 +13,7 @@ First citizen: the RENTAL TERMINAL (housing guarantee, spec §2.5).
 
 from typeclasses.items import Item
 from world.rental import (
-    RELOCATION_WINDOW, assign_cube, is_free, residence_of)
+    RELOCATION_WINDOW, assign_cube, is_free, residence_of, unit_matches)
 
 
 class RentalTerminal(Item):
@@ -33,8 +33,12 @@ class RentalTerminal(Item):
     # -- press grammar ---------------------------------------------------
     def at_press(self, presser, arg=None):
         arg = (arg or "").strip().lower()
-        if arg in ("rent", "claim", "here", "confirm"):
-            self._press_rent(presser, confirm=(arg == "confirm"))
+        parts = arg.split(None, 1)
+        verb = parts[0] if parts else ""
+        unit = parts[1].strip() if len(parts) > 1 else None
+        if verb in ("rent", "claim", "here", "confirm"):
+            self._press_rent(presser, unit=unit,
+                             confirm=(verb == "confirm"))
             return True
         if not arg or arg in ("status", "info"):
             self._press_status(presser)
@@ -45,30 +49,45 @@ class RentalTerminal(Item):
         return [c for c in (self.db.cubes or [])
                 if c is not None and getattr(c, "pk", None)]
 
+    @staticmethod
+    def _unit_short(cube):
+        """The board name: "The Brackett Arms - Unit 3B" -> "3B"."""
+        tail = cube.key.split(" - ")[-1]
+        return tail[5:] if tail.lower().startswith("unit ") else tail
+
     def _press_status(self, presser):
         cubes = self._cubes()
-        vacancies = sum(1 for c in cubes if is_free(c))
+        free = [self._unit_short(c) for c in cubes if is_free(c)]
         current = residence_of(presser)
         home = (f"Registered residence: |w{current.key}|n."
                 if current else
                 "No registered residence — your housing credit is unspent.")
+        board = (" Vacant: " + ", ".join(free) + ".") if free else ""
         presser.msg(
             f"The screen wakes under your touch.\n{home}\n"
-            f"Vacant cubes here: {vacancies} of {len(cubes)}. "
-            f"|wpress rent on kiosk|n to register.")
+            f"Vacancies here: {len(free)} of {len(cubes)}.{board}\n"
+            f"|wpress rent on kiosk|n to register, or "
+            f"|wpress rent <unit> on kiosk|n to choose.")
 
-    def _press_rent(self, presser, confirm=False):
+    def _press_rent(self, presser, unit=None, confirm=False):
         current = residence_of(presser)
         cubes = self._cubes()
-        if current is not None and current not in cubes and not confirm:
+        # any claim that would change an existing registration wants an
+        # explicit confirm — cross-building, or naming a different unit
+        # on this very board (in-building moves are real relocations)
+        relocating = current is not None and not (
+            (unit and unit_matches(current, unit))
+            or (not unit and current in cubes))
+        if relocating and not confirm:
             hours = int(RELOCATION_WINDOW // 3600)
+            which = f" {unit}" if unit else ""
             presser.msg(
                 f"You're registered at {current.key}. Claiming here "
                 f"relocates you — the old door answers your sleeve for "
                 f"{hours} more hours, then seals. "
-                f"|wpress confirm on kiosk|n to proceed.")
+                f"|wpress confirm{which} on kiosk|n to proceed.")
             return
-        ok, msg = assign_cube(presser, self)
+        ok, msg = assign_cube(presser, self, unit=unit)
         presser.msg(msg)
         if ok and presser.location:
             presser.location.msg_contents(
