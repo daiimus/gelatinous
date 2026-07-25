@@ -12,7 +12,9 @@
 > dish sales refill the till (closed economy loop). Live: **Ottilie Krug #5222**
 > + cart #5221 at the Toe of Hammett's Boot (#5203); rats via `@spawnmob/rat`
 > (ambient sewer spawn still deferred). Her persona grounds the cart's LIVE board
-> + what she buys (anti-invention). Remaining from §5: ambient rat supply, rep-
+> + what she buys (anti-invention), and spoken DISH ORDERS serve deterministically
+> off the cart (the bartender's #1235 pattern: `_match_dish_order` via recipe
+> keywords → the cart's purchase path; LLM never serves or quotes prices). Remaining from §5: ambient rat supply, rep-
 > scaled rates, tier-3 provenance, the Ripper.
 
 ---

@@ -348,3 +348,78 @@ class TestButcherPersonaGrounding(TestCase):
         card = render_persona({"persona_seed": {"archetype": "bartender",
                                                 "name": "Del"}})
         self.assertNotIn("cart", card.lower())
+
+
+class TestDishOrderMatching(TestCase):
+    """Spoken orders resolve to real dishes via the recipe keywords —
+    conservative: cue or bare order; a cue-less question is conversation."""
+
+    def _match(self, speech):
+        b = MagicMock()
+        return butchmod.Butcher._match_dish_order.__get__(
+            b, butchmod.Butcher)(speech)
+
+    def test_orders_matched(self):
+        for speech, proto in (
+                ("let me get a skewer?", "mystery_skewer"),   # the live log line
+                ("gimme a skewer", "mystery_skewer"),
+                ("a bowl of stew, yeah?", None),              # bare + '?' = ask
+                ("stew.", "rat_tail_stew"),
+                ("can i get the breakfast?", "butchers_breakfast"),
+                ("i'll take the roast haunch", "roast_rat_haunch"),
+                ("grilled chops please", "grilled_rat_chops")):
+            self.assertEqual(self._match(speech), proto, speech)
+
+    def test_non_orders_ignored(self):
+        for speech in ("you got skewers?", "is the stew any good?",
+                       "the stew was incredible yesterday",
+                       "what kind of carcass' you buy?", "rough shift?", ""):
+            self.assertIsNone(self._match(speech), speech)
+
+
+class TestDishOrderFulfilment(TestCase):
+    """The serve is the cart's own purchase path: stock + tokens checked,
+    till credited, one emote — the model never serves."""
+
+    def _butcher(self, proto="mystery_skewer", stock=2, price=3, tokens=50,
+                 purchase_ok=True):
+        b = MagicMock()
+        b.location = "room"
+        cart = MagicMock()
+        cart.db.item_inventory = {proto: stock} if proto else {}
+        cart.get_price = lambda k: price
+        dish = MagicMock(); dish.key = "mystery skewer"
+        cart.purchase_item = MagicMock(return_value=(purchase_ok, dish))
+        b._find_block = lambda: cart
+        b._match_dish_order = lambda s: proto
+        patron = MagicMock(); patron.location = "room"; patron.tokens = tokens
+        b._fulfil_dish_order = butchmod.Butcher._fulfil_dish_order.__get__(
+            b, butchmod.Butcher)
+        return b, cart, patron
+
+    def test_serve_happy_path(self):
+        b, cart, patron = self._butcher()
+        b._fulfil_dish_order("gimme a skewer", patron)
+        cart.purchase_item.assert_called_once_with(patron, "mystery_skewer")
+        emote = b.execute_cmd.call_args.args[0]
+        self.assertIn("emote hands a mystery skewer across the board", emote)
+        self.assertIn("sweeps 3 into the till", emote)
+
+    def test_sold_out_refused(self):
+        b, cart, patron = self._butcher(stock=0)
+        b._fulfil_dish_order("gimme a skewer", patron)
+        cart.purchase_item.assert_not_called()
+        self.assertIn("out of that", b.execute_cmd.call_args.args[0])
+
+    def test_broke_patron_refused(self):
+        b, cart, patron = self._butcher(tokens=1)
+        b._fulfil_dish_order("gimme a skewer", patron)
+        cart.purchase_item.assert_not_called()
+        self.assertIn("That's 3", b.execute_cmd.call_args.args[0])
+
+    def test_non_order_falls_to_llm(self):
+        b, cart, patron = self._butcher(proto=None)
+        b._try_llm_reply = MagicMock(return_value=True)
+        b._fulfil_dish_order("what's good here?", patron)
+        b._try_llm_reply.assert_called_once()
+        cart.purchase_item.assert_not_called()
