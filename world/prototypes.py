@@ -409,6 +409,7 @@ PUMP_SHOTGUN = {
 
 # Break-action shotgun (existing message type)
 BREAK_SHOTGUN = {
+    "prototype_key": "break_shotgun",
     "prototype_parent": "RANGED_WEAPON_BASE",
     "key": "PAM Reaper shotgun", 
     "aliases": ["reaper", "double-barrel", "coach gun", "pam reaper", "break shotgun", "boomstick"],
@@ -1845,6 +1846,7 @@ ARMOR_WORKBENCH = {
 
 # IV Blood Bag - Emergency blood transfusion
 BLOOD_BAG = {
+    "prototype_key": "blood_bag",
     "key": "blood bag",
     "typeclass": "typeclasses.items.Item",
     "aliases": ["iv", "blood", "transfusion"],
@@ -2054,6 +2056,7 @@ MYSTERY_SKEWER = {
 }
 
 PAINKILLER = {
+    "prototype_key": "painkiller",
     "key": "painkiller",
     "typeclass": "typeclasses.items.Item",
     "aliases": ["syringe", "morphine", "pain meds"],

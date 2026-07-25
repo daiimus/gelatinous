@@ -1,6 +1,10 @@
 # NPC Posts & Reincarnation Spec
 
-> **Status:** 📋 PROPOSAL (2026-07-24) — design only, nothing built. Named NPCs
+> **Status:** 🟡 §P1 SHIPPED (2026-07-24) — blueprints live for the nine-strong
+> named roster (`world/npcs/blueprints.py`: Sable, Vesper, Sully, Nikolai,
+> Marta, Del, Ezra, Ottilie, Petra) with `build_npc`/`verify_blueprint` and a
+> full build-from-nothing round-trip test. Posts/watcher/policies (§P2/§P3)
+> not built. Originally: Named NPCs
 > (Ottilie, Del, Marta, Vesper…) currently die **permanently and
 > unreproducibly**: death → corpse → the character object is deleted (#1022),
 > dossiers and memories with it, and the NPC was hand-built in a shell session
@@ -170,6 +174,10 @@ Nobody needs a new metaphysics — only a premium they can or can't pay.
   the grudge is a delicious later.)
 - **PC-adjacent NPCs** (Companions with client books): does Helix re-sleeve
   restore client dossiers wholesale, or is a partial gap a story hook?
-- **Who registers posts:** builder command (`@post cart = butcher_ottilie,
-  successor, 3d`) vs. blueprint self-registration at spawn. (Lean: builder
-  command — posts are content decisions.)
+- ~~**Who registers posts**~~ **DECIDED (owner, 2026-07-24): data-driven, no
+  builder command.** The post binding, policy, and delay are FIELDS of the
+  blueprint; the watcher iterates the blueprint registry, and registration is
+  the deploy cycle. Owner's standing principle: builder tooling will
+  eventually be designed as an extensive, comprehensive suite — one deliberate
+  project. Until then, ad-hoc builder commands are tech debt (each one is a
+  future migration), so content-adjacent config stays in data.
