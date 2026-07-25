@@ -114,3 +114,29 @@ class TestMarketProfile(TestCase):
                           for msgs in tier.values() for m in msgs).lower()
         for banned in ("drone", "gutter", "sky", "bartender", "bar counter"):
             self.assertNotIn(banned, market)
+
+
+class TestShopProfile(TestCase):
+    """The shop pool: small storefront trade — no street crush, no bar."""
+
+    def test_shop_routes_shop(self):
+        from world.crowd.crowd_messages import crowd_profile_for_room_type
+        self.assertEqual(crowd_profile_for_room_type("shop"), "shop")
+        self.assertEqual(crowd_profile_for_room_type("corner store"), "shop")
+
+    def test_all_intensities_populated(self):
+        from world.crowd.crowd_messages import CROWD_MESSAGES
+        pool = CROWD_MESSAGES["shop"]
+        for intensity in ("sparse", "moderate", "heavy", "packed"):
+            self.assertIn(intensity, pool)
+            self.assertTrue(pool[intensity].get("visual"))
+            self.assertTrue(pool[intensity].get("auditory"))
+
+    def test_shop_pool_is_distinct(self):
+        from world.crowd.crowd_messages import CROWD_MESSAGES
+        shop = {m for tier in CROWD_MESSAGES["shop"].values()
+                for msgs in tier.values() for m in msgs}
+        for other in ("default", "interior", "market", "residential"):
+            other_msgs = {m for tier in CROWD_MESSAGES[other].values()
+                          for msgs in tier.values() for m in msgs}
+            self.assertFalse(shop & other_msgs)

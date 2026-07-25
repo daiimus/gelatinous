@@ -40,6 +40,32 @@ ITEM_ROLE_CATEGORY = "item_role"  # Lighter still uses item_role.
 #: ``is_smokable`` migrates that automatically on first access.
 SMOKE_DELIVERY = "smoke"
 
+#: Optional per-item smoke FORM (``db.smoke_form``: "cigarette" | "joint" |
+#: "cigar" | ...). Drives the noun in light/snuff/burnout messages and can
+#: select a form-specific drag bank — a cigar must never render as "your
+#: cigarette". Items without it fall back by substance (cannabis → joint).
+SMOKE_FORM_ATTR = "smoke_form"
+
+_SUBSTANCE_DEFAULT_FORM = {
+    "cannabis": "joint",
+}
+
+
+def get_smoke_noun(item) -> str:
+    """The word this smokable is called in messages."""
+    form = getattr(item.db, SMOKE_FORM_ATTR, None) if item is not None else None
+    if form:
+        return str(form)
+    substance = getattr(item.db, "substance", None) if item is not None else None
+    return _SUBSTANCE_DEFAULT_FORM.get(str(substance or ""), "cigarette")
+
+
+def _sub_noun(entry, noun):
+    """Substitute the {smoke} placeholder across a message tuple, leaving
+    the {actor} identity token for msg_room_identity to render."""
+    return tuple(part.replace("{smoke}", noun) for part in entry)
+
+
 #: Item-role tag for lighters.  Distinct axis from delivery method.
 LIGHTER_ROLE = "lighter"
 
@@ -252,6 +278,26 @@ SMOKE_MESSAGES: dict[str, list[tuple[str, str]]] = {
             "arranging themselves like things set down gently.",
         ),
     ],
+    "cigar": [
+        (
+            "You roll the cigar's smoke slow across your tongue and "
+            "let it go in a flat, unhurried sheet.",
+            "{actor} draws on a thick cigar and releases the smoke "
+            "in a flat, unhurried sheet that means to stay a while.",
+        ),
+        (
+            "You turn the cigar a quarter as it burns, keeping the "
+            "coal even — somebody taught you that once.",
+            "{actor} turns their cigar a quarter as it burns, "
+            "keeping the coal even with practiced patience.",
+        ),
+        (
+            "The cigar's ash holds a full inch before you tap it "
+            "loose. Quality control, of a kind.",
+            "{actor} taps a full inch of ash from their cigar and "
+            "looks quietly satisfied about it.",
+        ),
+    ],
     SUBSTANCE_TOBACCO_NOIR: [
         (
             "You drag on your cigarette, the smoke curling around "
@@ -407,66 +453,66 @@ SMOKE_MESSAGES: dict[str, list[tuple[str, str]]] = {
 LIGHT_SELF_MESSAGES: list[tuple[str, str]] = [
     (
         "You flick open your lighter, the flame catching the tip of "
-        "the cigarette. A soft glow blooms in the dark.",
+        "the {smoke}. A soft glow blooms in the dark.",
         "{actor} flicks open their lighter, the flame catching the "
-        "tip of the cigarette. A soft glow blooms in the dark.",
+        "tip of the {smoke}. A soft glow blooms in the dark.",
     ),
     (
-        "You strike a flame and bring it to the cigarette, the "
+        "You strike a flame and bring it to the {smoke}, the "
         "paper catching with a quiet hiss.",
-        "{actor} strikes a flame and brings it to their cigarette, "
+        "{actor} strikes a flame and brings it to their {smoke}, "
         "the paper catching with a quiet hiss.",
     ),
     (
-        "Your thumb works the lighter; the cigarette tip catches and "
+        "Your thumb works the lighter; the {smoke} tip catches and "
         "glows alive.",
-        "{actor}'s thumb works the lighter; the cigarette tip "
+        "{actor}'s thumb works the lighter; the {smoke} tip "
         "catches and glows alive.",
     ),
 ]
 
-#: Cross-character light (caller lights target's cigarette).  Uses
+#: Cross-character light (caller lights target's {smoke}).  Uses
 #: ``{target}`` placeholder in addition to ``{actor}``.
 LIGHT_OTHER_MESSAGES: list[tuple[str, str, str]] = [
     # (caller_self, target_self, room_template)
     (
-        "You lean in and light {target}'s cigarette, the flame "
+        "You lean in and light {target}'s {smoke}, the flame "
         "briefly painting their face.",
-        "{actor} leans in and lights your cigarette, the flame "
+        "{actor} leans in and lights your {smoke}, the flame "
         "briefly painting your face.",
-        "{actor} leans in and lights {target}'s cigarette, the "
+        "{actor} leans in and lights {target}'s {smoke}, the "
         "flame briefly painting their face.",
     ),
     (
-        "You cup the lighter and bring it to {target}'s cigarette; "
+        "You cup the lighter and bring it to {target}'s {smoke}; "
         "the tip catches.",
         "{actor} cups their lighter and brings it to your "
-        "cigarette; the tip catches.",
+        "{smoke}; the tip catches.",
         "{actor} cups their lighter and brings it to {target}'s "
-        "cigarette; the tip catches.",
+        "{smoke}; the tip catches.",
     ),
     (
         "Your lighter sparks; you offer the flame to {target}'s "
-        "cigarette and it takes.",
+        "{smoke} and it takes.",
         "{actor}'s lighter sparks; they offer the flame to your "
-        "cigarette and it takes.",
+        "{smoke} and it takes.",
         "{actor}'s lighter sparks; they offer the flame to "
-        "{target}'s cigarette and it takes.",
+        "{target}'s {smoke} and it takes.",
     ),
 ]
 
-#: Snuff flavor (caller extinguishes their own cigarette).
+#: Snuff flavor (caller extinguishes their own {smoke}).
 SNUFF_MESSAGES: list[tuple[str, str]] = [
     (
-        "You crush the cigarette out, the ember dying with a faint "
+        "You crush the {smoke} out, the ember dying with a faint "
         "hiss.",
-        "{actor} crushes their cigarette out, the ember dying with "
+        "{actor} crushes their {smoke} out, the ember dying with "
         "a faint hiss.",
     ),
     (
-        "You stub the cigarette against a hard surface; the smoke "
+        "You stub the {smoke} against a hard surface; the smoke "
         "thins to nothing.",
-        "{actor} stubs their cigarette against a hard surface; the "
+        "{actor} stubs their {smoke} against a hard surface; the "
         "smoke thins to nothing.",
     ),
     (
@@ -475,22 +521,22 @@ SNUFF_MESSAGES: list[tuple[str, str]] = [
     ),
 ]
 
-#: Burnout flavor — cigarette consumed and discarded.
+#: Burnout flavor — {smoke} consumed and discarded.
 BURNT_OUT_MESSAGES: list[tuple[str, str]] = [
     (
-        "You take the last drag, then flick the spent cigarette "
+        "You take the last drag, then flick the spent {smoke} "
         "away.",
         "{actor} takes the last drag, then flicks the spent "
-        "cigarette away.",
+        "{smoke} away.",
     ),
     (
-        "The cigarette burns down to the filter; you toss it.",
-        "{actor}'s cigarette burns down to the filter; they toss it.",
+        "The {smoke} burns down to the filter; you toss it.",
+        "{actor}'s {smoke} burns down to the filter; they toss it.",
     ),
     (
-        "A final pull, then the dead end of the cigarette tumbles "
+        "A final pull, then the dead end of the {smoke} tumbles "
         "from your fingers.",
-        "A final pull, then the dead end of {actor}'s cigarette "
+        "A final pull, then the dead end of {actor}'s {smoke} "
         "tumbles from their fingers.",
     ),
 ]
@@ -500,7 +546,7 @@ BURNT_OUT_MESSAGES: list[tuple[str, str]] = [
 # Pickers
 # ---------------------------------------------------------------------
 
-def pick_smoke_message(substance: str | None) -> tuple[str, str]:
+def pick_smoke_message(substance=None, form=None):
     """Return a random ``(self, room_template)`` for ``substance``.
 
     Honours legacy brand keys (``"neutral"`` / ``"noir"``) via the
@@ -508,26 +554,28 @@ def pick_smoke_message(substance: str | None) -> tuple[str, str]:
     pre-#456 still render flavor.  Unknown / missing substance
     falls back to :data:`SUBSTANCE_TOBACCO_NEUTRAL`.
     """
+    if form and form in SMOKE_MESSAGES:
+        return random.choice(SMOKE_MESSAGES[form])
     key = substance or SUBSTANCE_TOBACCO_NEUTRAL
     key = _LEGACY_BRAND_MAP.get(key, key)
     bank = SMOKE_MESSAGES.get(key) or SMOKE_MESSAGES[SUBSTANCE_TOBACCO_NEUTRAL]
     return random.choice(bank)
 
 
-def pick_light_self_message() -> tuple[str, str]:
-    return random.choice(LIGHT_SELF_MESSAGES)
+def pick_light_self_message(noun="cigarette") -> tuple[str, str]:
+    return _sub_noun(random.choice(LIGHT_SELF_MESSAGES), noun)
 
 
-def pick_light_other_message() -> tuple[str, str, str]:
-    return random.choice(LIGHT_OTHER_MESSAGES)
+def pick_light_other_message(noun="cigarette") -> tuple[str, str, str]:
+    return _sub_noun(random.choice(LIGHT_OTHER_MESSAGES), noun)
 
 
-def pick_snuff_message() -> tuple[str, str]:
-    return random.choice(SNUFF_MESSAGES)
+def pick_snuff_message(noun="cigarette") -> tuple[str, str]:
+    return _sub_noun(random.choice(SNUFF_MESSAGES), noun)
 
 
-def pick_burnt_out_message() -> tuple[str, str]:
-    return random.choice(BURNT_OUT_MESSAGES)
+def pick_burnt_out_message(noun="cigarette") -> tuple[str, str]:
+    return _sub_noun(random.choice(BURNT_OUT_MESSAGES), noun)
 
 
 # ---------------------------------------------------------------------

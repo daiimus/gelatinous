@@ -556,3 +556,47 @@ class TestDisposableLighterDepletes(TestCase):
         CmdLight._spend_lighter(caller, lighter)
         self.assertFalse(lighter.deleted)
         self.assertIsNone(getattr(lighter.db, "uses_left", None))
+
+
+class TestFormAwareMessaging(TestCase):
+    """Light/snuff/burnout messages name the smokable's FORM — a joint or
+    cigar must never render as 'your cigarette'."""
+
+    def _item(self, form=None, substance=None):
+        from unittest.mock import MagicMock
+        it = MagicMock()
+        it.db.smoke_form = form
+        it.db.substance = substance
+        return it
+
+    def test_noun_from_form_then_substance(self):
+        from world.smoke import get_smoke_noun
+        self.assertEqual(get_smoke_noun(self._item(form="cigar")), "cigar")
+        self.assertEqual(get_smoke_noun(self._item(substance="cannabis")),
+                         "joint")
+        self.assertEqual(get_smoke_noun(self._item(substance="opium")),
+                         "cigarette")
+        self.assertEqual(get_smoke_noun(None), "cigarette")
+
+    def test_banks_substitute_noun(self):
+        from world.smoke import (pick_light_self_message, pick_snuff_message,
+                                 pick_burnt_out_message,
+                                 pick_light_other_message)
+        for picker in (pick_light_self_message, pick_snuff_message,
+                       pick_burnt_out_message, pick_light_other_message):
+            entry = picker("joint")
+            joined = " ".join(entry)
+            self.assertNotIn("cigarette", joined)
+            self.assertNotIn("{smoke}", joined)
+            self.assertIn("joint", joined)
+
+    def test_cigar_drag_bank_selected_by_form(self):
+        from world.smoke import pick_smoke_message
+        for _ in range(6):
+            self_msg, room = pick_smoke_message("tobacco_noir", form="cigar")
+            self.assertIn("cigar", self_msg + room)
+
+    def test_substance_bank_fallback_unchanged(self):
+        from world.smoke import pick_smoke_message
+        self_msg, room = pick_smoke_message("cannabis")
+        self.assertTrue(self_msg)

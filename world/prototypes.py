@@ -2929,15 +2929,71 @@ PAIN_RELIEF_CIGARETTE = {
 # Substance pharmacology lives in world/substances/registry.py; these
 # items just carry the substance id + delivery tag (spec §1/§2).
 
-HAND_ROLLED_JOINT = {
-    "key": "hand-rolled joint",
+PRE_ROLLED_JOINT = {
+    "prototype_key": "pre_rolled_joint",
+    "key": "pre-rolled joint",
     "typeclass": "typeclasses.items.Item",
     "aliases": ["joint", "spliff"],
-    "desc": "A crooked hand-rolled joint, packed with sweet-smelling "
-            "resinous flower. The paper crackles when squeezed.",
+    "desc": "A factory-rolled joint, machine-perfect: crimped ends, a "
+            "pressed filter plug, and a seam so straight it looks printed. "
+            "Uniform as ammunition — nobody's hands were involved. (One "
+            "day the colony will roll its own; this is what came before.)",
     "tags": [("smoke", "delivery_method")],
     "attrs": [
         ("substance", "cannabis"),
+        ("smoke_form", "joint"),
+        ("uses_left", 4),
+        ("max_uses", 4),
+    ],
+}
+
+ROPE_CIGAR = {
+    "prototype_key": "rope_cigar",
+    "key": "rope cigar",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["cigar", "cheap cigar"],
+    "desc": "A short, dark cigar of the kind sold by the box to men who "
+            "have stopped tasting things: dense, crooked, and dependable. "
+            "Burns slow, bites hard, costs little.",
+    "tags": [("smoke", "delivery_method")],
+    "attrs": [
+        ("substance", "tobacco_neutral"),
+        ("smoke_form", "cigar"),
+        ("uses_left", 6),
+        ("max_uses", 6),
+    ],
+}
+
+MACHINE_ROLLED_CIGAR = {
+    "prototype_key": "machine_rolled_cigar",
+    "key": "machine-rolled corona",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["corona", "good cigar"],
+    "desc": "A machine-rolled corona in dark Noir leaf, its band a strip "
+            "of embossed foil pretending to a heritage the colony never "
+            "had. The draw is engineered; the ash holds an inch.",
+    "tags": [("smoke", "delivery_method")],
+    "attrs": [
+        ("substance", "tobacco_noir"),
+        ("smoke_form", "cigar"),
+        ("uses_left", 8),
+        ("max_uses", 8),
+    ],
+}
+
+CHEWING_TOBACCO_PLUG = {
+    "prototype_key": "chewing_tobacco_plug",
+    "key": "plug of chewing tobacco",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["plug", "chew", "chaw"],
+    "desc": "A pressed plug of cured leaf and molasses, dense as a hockey "
+            "puck and about as subtle. The working man's smoke-free vice — "
+            "no flame, no ash, no witnesses.",
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+    "attrs": [
+        ("drink_effects", {"tobacco_neutral": 1}),
+        ("drink_taste", "Bitter leaf-juice and molasses, strong enough to "
+                        "make the eyes water — spit or commit."),
         ("uses_left", 4),
         ("max_uses", 4),
     ],
