@@ -3031,6 +3031,63 @@ OPIUM_CIGARETTE = {
     ],
 }
 
+DOUBLESHIFT_LAGER = {
+    "prototype_key": "doubleshift_lager",
+    "key": "can of Doubleshift lager",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["lager", "beer", "can"],
+    "desc": "A ration-format can of Doubleshift, the lager brewed for the "
+            "hour when one shift ends and the next hasn't started. The "
+            "label shows two clock faces sharing a single hand.",
+    "tags": [("drink", "delivery_method")],
+    "attrs": [
+        ("drink_effects", {"alcohol": 1}),
+        ("drink_taste", "Thin, cold-adjacent, and honest about its job — "
+                        "it tastes like knocking off work."),
+        ("uses_left", 2),
+        ("max_uses", 2),
+    ],
+}
+
+PILGRIM_FORTIFIED = {
+    "prototype_key": "pilgrim_fortified",
+    "key": "bottle of Pilgrim fortified wine",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["pilgrim", "fortified wine", "wine"],
+    "desc": "A screw-top bottle of Pilgrim, the fortified wine of doorways "
+            "and long nights — sweet, heavy, and strong out of all "
+            "proportion to its price. The label's little walking figure "
+            "has been getting nowhere since the colony landed.",
+    "tags": [("drink", "delivery_method")],
+    "attrs": [
+        ("drink_effects", {"alcohol": 1}),
+        ("drink_taste", "Syrup-sweet with a burnt-raisin depth and a "
+                        "finish like a warm coat you can't take off."),
+        ("uses_left", 4),
+        ("max_uses", 4),
+    ],
+}
+
+OLD_MERIDIAN_WHISKEY = {
+    "prototype_key": "old_meridian_whiskey",
+    "key": "bottle of Old Meridian whiskey",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["old meridian", "whiskey", "import whiskey"],
+    "desc": "A sealed bottle of Old Meridian, Earth-import whiskey — or so "
+            "the freight stamps insist, and nobody who can afford one asks "
+            "twice. Amber as the mural in a good lobby, wax over the cork, "
+            "a brand old enough to predate the colony that drinks it.",
+    "tags": [("drink", "delivery_method")],
+    "attrs": [
+        ("drink_effects", {"alcohol": 2}),
+        ("drink_taste", "Oak, smoke, and genuine caramel warmth — the real "
+                        "thing, or the best counterfeit of it you will "
+                        "ever gratefully not question."),
+        ("uses_left", 6),
+        ("max_uses", 6),
+    ],
+}
+
 GUTTERVENOM_SYRINGE = {
     "key": "syringe of guttervenom",
     "typeclass": "typeclasses.items.Item",
