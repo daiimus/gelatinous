@@ -440,6 +440,14 @@ class Shopkeeper(LLMNpcMixin, Character):
             self.execute_cmd("say Counter says no. Take it up with the "
                              "counter.")
             return
+        self.serve_purchase(patron, item, price)
+
+    def serve_purchase(self, patron, item, price):
+        """The handover — the keeper physically presses the purchase into
+        the buyer's hand. Fired after a spoken order, and by the ``buy``
+        command whenever this keeper is minding the counter (a manned shop
+        is never self-service)."""
+        from world.grammar import with_article
         handle = None
         try:
             handle = self._address_handle(patron)
