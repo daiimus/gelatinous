@@ -152,6 +152,33 @@ def build_persona(npc) -> dict:
         except Exception:  # noqa: BLE001 — persona building never breaks on trade
             cart_menu, buys = None, None
 
+    # The shopkeeper's real shelf, same grounding principle as the cart:
+    # without it the keeper invents stock and prices.
+    shop_menu = None
+    find_counter = getattr(npc, "_find_counter", None)
+    if callable(find_counter):
+        try:
+            counter = find_counter()
+            if counter is not None:
+                from evennia.prototypes.prototypes import search_prototype
+                inv = counter.db.prototype_inventory or {}
+                stock = counter.db.item_inventory or {}
+                infinite = bool(counter.db.is_infinite)
+                entries = []
+                for proto_key, price in inv.items():
+                    protos = search_prototype(proto_key)
+                    name = (protos[0].get("key") if protos else None) or proto_key
+                    if infinite:
+                        entries.append(f"{name} ({price} tokens)")
+                    else:
+                        count = int(stock.get(proto_key, 0) or 0)
+                        if count > 0:
+                            entries.append(f"{name} ({price} tokens, "
+                                           f"{count} left)")
+                shop_menu = entries
+        except Exception:  # noqa: BLE001 — persona building never breaks on trade
+            shop_menu = None
+
     wearing, carrying, wielding, hands_free = _wardrobe(npc)
 
     # Radio state (RADIO_COMMS_SPEC §7.3): what the brain can key up with —
@@ -196,6 +223,7 @@ def build_persona(npc) -> dict:
         "menu": menu,
         "cart_menu": cart_menu,
         "buys": buys,
+        "shop_menu": shop_menu,
         # deserialize → plain dict/list (the seed's nested mes_example is a
         # _SaverDict/_SaverList off the DB, which json.dumps can't serialize).
         "persona_seed": deserialize(npc.db.llm_persona) or {},
