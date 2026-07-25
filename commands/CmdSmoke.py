@@ -31,6 +31,7 @@ from world.identity_utils import msg_room_identity
 from world.consumables import consume_use
 from world.substances import apply_substance
 from world.smoke import (
+    get_smoke_noun,
     find_held_lighter,
     find_held_smokable,
     get_substance,
@@ -152,7 +153,7 @@ class CmdLight(Command):
             return
 
         set_lit(cigarette, True)
-        self_msg, room_template = pick_light_self_message()
+        self_msg, room_template = pick_light_self_message(get_smoke_noun(cigarette))
         caller.msg(self_msg)
         if caller.location is not None:
             msg_room_identity(
@@ -185,7 +186,7 @@ class CmdLight(Command):
             return
 
         set_lit(cigarette, True)
-        caller_msg, target_msg, room_template = pick_light_other_message()
+        caller_msg, target_msg, room_template = pick_light_other_message(get_smoke_noun(cigarette))
         caller.msg(
             caller_msg.format(
                 target=target.get_display_name(caller),
@@ -275,7 +276,8 @@ class CmdSmoke(Command):
             return
 
         substance = get_substance(cigarette)
-        self_msg, room_template = pick_smoke_message(substance)
+        self_msg, room_template = pick_smoke_message(
+            substance, form=getattr(cigarette.db, 'smoke_form', None))
         caller.msg(self_msg)
         if caller.location is not None:
             msg_room_identity(
@@ -299,7 +301,7 @@ class CmdSmoke(Command):
         # the burnout broadcast on that transition.
         outcome = consume_use(cigarette)
         if outcome.get("destroyed"):
-            burnt_self, burnt_room = pick_burnt_out_message()
+            burnt_self, burnt_room = pick_burnt_out_message(get_smoke_noun(cigarette))
             caller.msg(burnt_self)
             if caller.location is not None:
                 msg_room_identity(
@@ -351,7 +353,7 @@ class CmdSnuff(Command):
             return
 
         set_lit(cigarette, False)
-        self_msg, room_template = pick_snuff_message()
+        self_msg, room_template = pick_snuff_message(get_smoke_noun(cigarette))
         caller.msg(self_msg)
         if caller.location is not None:
             msg_room_identity(

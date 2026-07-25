@@ -877,6 +877,93 @@ CROWD_MESSAGES['market'] = {
     },
 }
 
+# 'shop' — small enclosed storefronts (a smoke shop, a corner store, the
+# pawn counter): browsers and till-trade at intimate scale. Distinct from
+# 'market' (stall crowds), 'interior' (bar murmur), and 'default' (street).
+CROWD_MESSAGES['shop'] = {
+    'sparse': {
+        'visual': [
+            "the shop sits empty but for the stock, shelves keeping their own counsel",
+            "a lone browser drifts the shelves, picking things up mostly to put them down",
+            "someone stands too long over one item, arithmetic visible in their face",
+        ],
+        'auditory': [
+            "the door sits quiet long enough that the shop's own small sounds surface — a fan, a tick, a settling shelf",
+            "a single customer murmurs a question and gets a shorter answer",
+        ],
+        'olfactory': [
+            "with nobody in, the shop smells only of itself and its stock",
+        ],
+        'tactile': [
+            "the air in the empty shop sits still and close",
+        ],
+        'atmospheric': [
+            "an off-hours hush holds the shop, the stock outnumbering the customers",
+        ],
+    },
+    'moderate': {
+        'visual': [
+            "a steady trickle of customers works the shelves, most knowing what they came for",
+            "someone counts chits at the counter while the next in line pretends not to watch the total",
+            "a regular exchanges a nod with the counter and goes straight to their usual shelf",
+        ],
+        'auditory': [
+            "the door announces customers at comfortable intervals",
+            "chits click the glass; a price is spoken once and not argued",
+            "two customers trade shelf-side small talk in shop voices",
+        ],
+        'olfactory': [
+            "passing customers stir the stock's smell loose from the shelves",
+        ],
+        'tactile': [
+            "browsers edge past one another in the narrow aisle with practiced economy",
+        ],
+        'atmospheric': [
+            "the shop runs at its comfortable working rhythm — trade without hurry",
+        ],
+    },
+    'heavy': {
+        'visual': [
+            "the narrow floor is crowded, browsers queuing sideways between the shelves",
+            "the counter works a short line, hands and chits moving in steady rotation",
+        ],
+        'auditory': [
+            "the door barely settles between arrivals; the counter talk overlaps",
+            "somebody at the back calls a question over the heads of the queue",
+        ],
+        'olfactory': [
+            "packed bodies compete with the stock for the shop's air",
+        ],
+        'tactile': [
+            "elbows and shoulders negotiate the aisle, mostly politely",
+        ],
+        'atmospheric': [
+            "the shop is at capacity, trade brisk and the till warm",
+        ],
+    },
+    'packed': {
+        'visual': [
+            "the shop is jammed wall to wall, the queue folded back on itself between the shelves",
+            "the counter serves whoever's hand reaches it first",
+        ],
+        'auditory': [
+            "the room is one continuous transaction — orders, totals, and the door never quite closing",
+        ],
+        'olfactory': [
+            "there's no air in the little shop that hasn't queued for the counter itself",
+        ],
+        'tactile': [
+            "the crowd moves you whether you're in the queue or not",
+        ],
+        'atmospheric': [
+            "a run on the shop — whatever's driving it, the shelves are emptying visibly",
+        ],
+    },
+}
+
+#: Small enclosed storefronts — counter trade at intimate scale.
+SHOP_ROOM_TYPES = {'shop', 'corner store'}
+
 #: Covered/enclosed market galleries — stall commerce, not street crush.
 MARKET_ROOM_TYPES = {'market'}
 
@@ -896,10 +983,12 @@ INTERIOR_ROOM_TYPES = {
 
 def crowd_profile_for_room_type(room_type):
     """Map a ``room.type`` to a crowd profile
-    ('default'|'interior'|'market'|'nightclub'|'constabulary'|'residential')."""
+    ('default'|'interior'|'shop'|'market'|'nightclub'|'constabulary'|'residential')."""
     t = str(room_type or "").lower()
     if t == 'constabulary':
         return 'constabulary'
+    if t in SHOP_ROOM_TYPES:
+        return 'shop'
     if t in MARKET_ROOM_TYPES:
         return 'market'
     if t in NIGHTCLUB_ROOM_TYPES:
