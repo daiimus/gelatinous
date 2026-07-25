@@ -140,7 +140,11 @@ class LLMNpcMixin:
             return   # no brain to reach, or deaf (delivery sent no words)
         voice = self._radio_voice_handle(speaker)
         freq = kwargs.get("radio_frequency") or "the air"
-        overheard = f'Over the radio ({freq}), {voice} said: "{speech}"'
+        # No parenthetical gloss — small RP models copy the "(...)" shape
+        # straight into their dialogue (the Rook greeted a caller as
+        # "caller (Rook)" after learning it here).
+        band = f" on {freq}" if freq != "the air" else ""
+        overheard = f'Over the radio{band}, {voice} said: "{speech}"'
         if not llm_enabled() or self._is_npc_speaker(speaker):
             self._observe_action(speaker, overheard)
             return
