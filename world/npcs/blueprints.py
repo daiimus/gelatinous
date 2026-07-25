@@ -276,26 +276,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                'craft': 'shakes it hard over ice and strains '
                                         'it out',
                                'base_cocktail': 'Espresso Martini'}],
-                     'wardrobe': [{'key': 'AWE Whisperjack earpiece',
-                                   'aliases': ['earpiece', 'whisperjack',
-                                               'bud'],
-                                   'desc': 'An Ashford Wireless & Electric '
-                                           'Whisperjack: a flesh-toned '
-                                           'comms bud with a hairline boom '
-                                           'mic, the little etched magpie '
-                                           'worn almost smooth. A pinhole '
-                                           'light pulses when the band is '
-                                           'live.',
-                                   'worn_desc': 'A |cWhisperjack earpiece|n '
-                                                'sits tucked in {their} '
-                                                'ear, its pinhole light '
-                                                'pulsing with the band.',
-                                   'coverage': ['left_ear'],
-                                   'layer': 2,
-                                   'attrs': [('is_radio', True),
-                                             ('radio_on', True),
-                                             ('frequency', '88.8MHz')]},
-                                  {'key': 'black mesh halter',
+                     'wardrobe': [{'key': 'black mesh halter',
                                    'aliases': [],
                                    'desc': 'A scrap of a halter top: fine '
                                            'black mesh on a chrome '
@@ -1738,26 +1719,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                  'scenario': 'working her food cart at the '
                                              'Toe as the market drifts past'},
                      'llm_driven': True,
-                     'wardrobe': [{'key': 'AWE Whisperjack earpiece',
-                                   'aliases': ['earpiece', 'whisperjack',
-                                               'bud'],
-                                   'desc': 'An Ashford Wireless & Electric '
-                                           'Whisperjack: a flesh-toned '
-                                           'comms bud with a hairline boom '
-                                           'mic, the little etched magpie '
-                                           'worn almost smooth. A pinhole '
-                                           'light pulses when the band is '
-                                           'live.',
-                                   'worn_desc': 'A |cWhisperjack earpiece|n '
-                                                'sits tucked in {their} '
-                                                'ear, its pinhole light '
-                                                'pulsing with the band.',
-                                   'coverage': ['left_ear'],
-                                   'layer': 2,
-                                   'attrs': [('is_radio', True),
-                                             ('radio_on', True),
-                                             ('frequency', '88.8MHz')]},
-                                  {'key': 'chainmail apron',
+                     'wardrobe': [{'key': 'chainmail apron',
                                    'aliases': ['apron'],
                                    'desc': "A butcher's apron of fine steel "
                                            'rings, dulled with work and '
@@ -2018,26 +1980,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                          'Cinder & Leaf as the Arms '
                                          'settles around them'},
                          'llm_driven': True,
-                         'wardrobe': [{'key': 'AWE Whisperjack earpiece',
-                                   'aliases': ['earpiece', 'whisperjack',
-                                               'bud'],
-                                   'desc': 'An Ashford Wireless & Electric '
-                                           'Whisperjack: a flesh-toned '
-                                           'comms bud with a hairline boom '
-                                           'mic, the little etched magpie '
-                                           'worn almost smooth. A pinhole '
-                                           'light pulses when the band is '
-                                           'live.',
-                                   'worn_desc': 'A |cWhisperjack earpiece|n '
-                                                'sits tucked in {their} '
-                                                'ear, its pinhole light '
-                                                'pulsing with the band.',
-                                   'coverage': ['left_ear'],
-                                   'layer': 2,
-                                   'attrs': [('is_radio', True),
-                                             ('radio_on', True),
-                                             ('frequency', '88.8MHz')]},
-                                  {'key': 'collarless shirt',
+                         'wardrobe': [{'key': 'collarless shirt',
                                        'aliases': ['shirt'],
                                        'desc': 'A crisp collarless shirt '
                                                'in unbleached cotton, '

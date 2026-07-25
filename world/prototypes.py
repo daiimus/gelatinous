@@ -4353,6 +4353,30 @@ REPEATER_MAST = {
 }
 
 
+#: The band on a shelf: a fixed venue set. The GRILLE rule does the
+#: work — a powered radio fans its band to the whole room it sits in,
+#: so one of these behind a counter puts the Birdhouse in everyone's
+#: ears, keeper and patrons alike. Anyone can ``tune`` it (the mischief
+#: seam); it is bolted against walking off.
+AWE_SHELF_RADIO = {
+    "prototype_key": "AWE_SHELF_RADIO",
+    "typeclass": "typeclasses.items.Radio",
+    "key": "AWE Fireside-12 shelf radio",
+    "aliases": ["radio", "shelf radio", "fireside", "set"],
+    "desc": ("An AWE Fireside-12: a shoebox of scuffed bakelite and brass "
+             "grille-cloth, the etched magpie riding the corner of the "
+             "dial plate. The tuner's had one favourite spot long enough "
+             "to wear a pale arc in the dial."),
+    "locks": "get:false()",
+    "attrs": [
+        ("is_radio", True),
+        ("radio_on", True),
+        ("frequency", "88.8MHz"),
+        ("get_err_msg", "It is screwed down against exactly this idea."),
+    ],
+}
+
+
 #: The Sentinel's head-end: the base-station Radio the mast serves.
 #: Standard radio grammar only — ``toggle``/``tune``; its display renders
 #: dynamically (band when powered, dark when not).
