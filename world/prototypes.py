@@ -4325,30 +4325,54 @@ BASE_STATION = {
 }
 
 
-#: District radio infrastructure: a mast-top repeater. Mechanically a
-#: powered base station (world.radio one-hop relay) whose room's elevation
-#: sets its reach — site it HIGH. It speaks the standard radio grammar:
-#: ``toggle``/``tune`` work on it like any other set, which IS the
-#: tamper seam (a retuned mast still hums, and relays nothing).
+#: District radio infrastructure, TWO-OBJECT STANDARD (the Constabulary /
+#: QoC pattern): the MAST is pure structure — ``db.intact`` +
+#: ``db.breachable`` are the ``sabotage``/``repair`` seam — while the
+#: CABINET below is the actual base-station Radio, linked via
+#: ``cabinet.db.antenna = <mast>`` at spawn. Intact antenna = mast-tier
+#: reach (colony-wide relay); wrecked = the cabinet still hums at
+#: handheld range. Site the mast HIGH; the cabinet can live floors away
+#: (the Brackett's is in the basement — head-end fiction, standard verbs).
 REPEATER_MAST = {
     "prototype_key": "REPEATER_MAST",
-    "typeclass": "typeclasses.items.Radio",
+    "typeclass": "typeclasses.items.Item",
     "key": "AWE Sentinel-9 repeater mast",
     "aliases": ["mast", "repeater", "sentinel", "sentinel-9"],
     "desc": ("A lattice-steel repeater mast in Ashford Wireless & Electric "
              "grey, guyed to the deck at three points and crowned with a "
              "folded-dipole array that creaks when the wind changes its "
-             "mind. The equipment cabinet at its base hums patiently behind "
-             "a service door stencilled with the AWE magpie, and a conduit "
-             "as thick as a wrist dives straight down into the building's "
-             "bones."),
+             "mind. A service plate at its base carries the stencilled AWE "
+             "magpie, and a conduit as thick as a wrist dives straight "
+             "down into the building's bones."),
+    "locks": "get:false()",
+    "attrs": [
+        ("intact", True),
+        ("breachable", True),
+        ("get_err_msg", "It is guyed, bolted, and taller than your ambition."),
+    ],
+}
+
+
+#: The Sentinel's head-end: the base-station Radio the mast serves.
+#: Standard radio grammar only — ``toggle``/``tune``; its display renders
+#: dynamically (band when powered, dark when not).
+REPEATER_CABINET = {
+    "prototype_key": "REPEATER_CABINET",
+    "typeclass": "typeclasses.items.Radio",
+    "key": "AWE head-end cabinet",
+    "aliases": ["cabinet", "head-end", "headend"],
+    "desc": ("A steel equipment cabinet in Ashford Wireless & Electric "
+             "grey, bolted to the wall with its service door ajar on a "
+             "rack of patient, humming boards. A conduit as thick as a "
+             "wrist climbs from its crown into the riser and doesn't come "
+             "back down."),
     "locks": "get:false()",
     "attrs": [
         ("is_radio", True),
         ("radio_on", True),
         ("frequency", "911MHz"),
         ("is_base_station", True),
-        ("get_err_msg", "It is guyed, bolted, and taller than your ambition."),
+        ("get_err_msg", "It is conduit-fed and bolted to the wall."),
     ],
 }
 
