@@ -44,6 +44,35 @@ def _combat_at(room):
                                     exact=False))
 
 
+def snapshot_keeper_memory(npc):
+    """§P3, the death-side half: called from the death machinery JUST BEFORE
+    a dead NPC object is deleted. If the deceased kept a registered post,
+    their dossiers + episodic memory are copied onto the POST — the estate
+    the policy disposes of: ``resleave`` restores it (insurance covers the
+    self), ``successor`` never reads it (the empty book is the point; the
+    snapshot stays as GM-readable archaeology). Never raises — death must
+    not be blockable by bookkeeping."""
+    try:
+        from evennia.utils.dbserialize import deserialize
+        from world.npcs.blueprints import BLUEPRINTS
+        for key, bp in BLUEPRINTS.items():
+            post = (bp.get("post") or {})
+            if not post.get("fixture"):
+                continue
+            fixture = _resolve(post["fixture"])
+            if not fixture or fixture.db.post_keeper != npc:
+                continue
+            fixture.db.post_memory_snapshot = {
+                "keeper": npc.key,
+                "taken": time.time(),
+                "dossiers": deserialize(npc.db.llm_dossiers) or {},
+                "memories": deserialize(npc.db.llm_memories) or [],
+            }
+            return
+    except Exception:  # noqa: BLE001 — never block a death on bookkeeping
+        pass
+
+
 def maintain_posts(now=None):
     """One sweep over every blueprint-registered post. Never raises — the
     heartbeat guards it, but each post is also isolated so one broken post
@@ -90,6 +119,13 @@ def _sweep_post(blueprint_key, bp, post, now):
     from world.npcs.blueprints import build_npc, build_successor
     if post["policy"] == "resleave":
         npc = build_npc(blueprint_key, room)
+        # continuity of self is what the insurance pays for: the death-time
+        # snapshot comes back with them, then is consumed
+        snapshot = fixture.db.post_memory_snapshot
+        if snapshot:
+            npc.db.llm_dossiers = dict(snapshot.get("dossiers") or {})
+            npc.db.llm_memories = list(snapshot.get("memories") or [])
+            fixture.db.post_memory_snapshot = None
         arrival = post.get(
             "arrival_resleave",
             "{mob} is back at their post, moving like the absence never "

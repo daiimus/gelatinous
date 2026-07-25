@@ -831,6 +831,15 @@ class DeathProgressionScript(DefaultScript):
         # lost player character.
         if account is None:
             if character.db.is_npc is True:
+                # §P3 (NPC_POSTS_AND_REINCARNATION): if this NPC kept a
+                # registered post, snapshot their dossiers/memories onto it
+                # BEFORE the object (and everything on it) is deleted — the
+                # re-sleeve policy restores it; successors never read it.
+                try:
+                    from world.npcs.posts import snapshot_keeper_memory
+                    snapshot_keeper_memory(character)
+                except Exception:  # noqa: BLE001 — never block a death
+                    pass
                 splattercast = get_splattercast()
                 splattercast.msg(f"DEATH_NPC_CLEANUP: deleting dead NPC {getattr(character, 'key', '?')}")
                 character.delete()

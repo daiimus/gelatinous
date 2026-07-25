@@ -1,6 +1,11 @@
 # NPC Posts & Reincarnation Spec
 
-> **Status:** 🟡 §P1 + §P2 SHIPPED (2026-07-24). §P1: blueprints live for the
+> **Status:** ✅ §P1 + §P2 + §P3 SHIPPED (2026-07-24) — the full ladder.
+> §P3: `snapshot_keeper_memory` hooks the NPC death-deletion branch (dossiers
+> + episodic memory copied onto the POST before the object dies); re-sleeve
+> restores-and-consumes the snapshot, successors never open it (retained as
+> GM archaeology). Remaining: §5 'later' items only (succession rumors,
+> grudges, vacancy crime) + registering more post fixtures in blueprint data. §P1: blueprints live for the
 > nine-strong named roster (`world/npcs/blueprints.py`) with
 > `build_npc`/`build_successor`/`verify_blueprint`, all nine verified MATCH
 > against the live originals. §P2: the posts watcher (`world/npcs/posts.py`)
