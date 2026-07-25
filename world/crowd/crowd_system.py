@@ -24,6 +24,7 @@ class CrowdSystem:
             'laundromat': 0.2,
             'courier service': 0.3,
             'cube hotel': 0.1,
+            'tenement': 0.1,
             'hospital': 0.7,
             'constabulary': 0.3,
             'stairwell': 0.1,
