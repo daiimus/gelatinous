@@ -2966,10 +2966,10 @@ ROPE_CIGAR = {
 
 MACHINE_ROLLED_CIGAR = {
     "prototype_key": "machine_rolled_cigar",
-    "key": "Silverband corona",
+    "key": "Silverband corona cigar",
     "typeclass": "typeclasses.items.Item",
     "aliases": ["corona", "good cigar"],
-    "desc": "A Silverband corona in dark Noir leaf, named for its band — "
+    "desc": "A Silverband corona cigar in dark Noir leaf, named for its band — "
             "a strip of embossed foil pretending to a heritage the colony "
             "never had. The draw is engineered; the ash holds an inch.",
     "tags": [("smoke", "delivery_method")],
@@ -3016,12 +3016,13 @@ ROTGUT_BOTTLE = {
 }
 
 OPIUM_CIGARETTE = {
-    "key": "tar-black Slowboat opium cigarette",
+    "key": "Dead Slow opium cigarette",
     "typeclass": "typeclasses.items.Item",
-    "aliases": ["opium cigarette", "opium", "tar cigarette"],
-    "desc": "A Slowboat: thin paper rolled around tar-black resin, the "
-            "brand a tiny steamer stamped near the tip. Heavy, sweet, and "
-            "patient — it will wait as long as you can.",
+    "aliases": ["opium cigarette", "opium", "dead slow"],
+    "desc": "A Dead Slow: thin paper rolled around tar-black resin, the "
+            "brand mark an engine-order telegraph stamped near the tip, "
+            "its needle pointed at DEAD SLOW. Heavy, sweet, and patient — "
+            "it will wait as long as you can.",
     "tags": [("smoke", "delivery_method")],
     "attrs": [
         ("substance", "opium"),
