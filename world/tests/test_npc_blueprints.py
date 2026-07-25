@@ -65,6 +65,11 @@ class TestBuildRoundTrip(BaseEvenniaTest):
             diffs = verify_blueprint(key, npc)
             self.assertEqual(diffs, [], f"{key}: {diffs}")
             self.assertTrue(npc.db.llm_driven, key)
+            want_kw = BLUEPRINTS[key].get("identity", {}).get("sdesc_keyword")
+            if want_kw:
+                # the category-bug regression: the PROPERTY must see it
+                self.assertEqual(npc.sdesc_keyword, want_kw, key)
+                self.assertIn(want_kw, npc.get_sdesc(), key)
             npc.delete()
 
     def test_invalid_identity_refused_before_write(self):

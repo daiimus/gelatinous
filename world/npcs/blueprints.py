@@ -1930,7 +1930,8 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                                'embroidered with falling '
                                                'leaves smouldering orange '
                                                'at their edges',
-                                       'coverage': ['chest', 'back'],
+                                       'coverage': ['chest', 'back',
+                                                    'abdomen'],
                                        'layer': 2, 'color': 'black',
                                        'material': 'brocade',
                                        'weight': 0.4,
@@ -2096,7 +2097,9 @@ def build_npc(blueprint_key, location):
     if ident.get("skintone"):
         npc.db.skintone = ident["skintone"]
     if ident.get("sdesc_keyword"):
-        npc.attributes.add("sdesc_keyword", ident["sdesc_keyword"])
+        # AttributeProperty(category="identity") — a plain attributes.add
+        # lands in the wrong category and the property never sees it
+        npc.sdesc_keyword = ident["sdesc_keyword"]
 
     for stat, val in (bp.get("stats") or {}).items():
         setattr(npc, stat, val)
@@ -2174,7 +2177,7 @@ def build_successor(blueprint_key, location):
         npc.hair_style = choice(HAIR_STYLES)
     ident = bp.get("identity", {})
     if ident.get("sdesc_keyword"):
-        npc.attributes.add("sdesc_keyword", ident["sdesc_keyword"])
+        npc.sdesc_keyword = ident["sdesc_keyword"]
     for stat in ("grit", "resonance", "intellect", "motorics"):
         setattr(npc, stat, randint(1, 3))
     apply_random_flavor(npc)   # generic desc / longdescs / look_place
