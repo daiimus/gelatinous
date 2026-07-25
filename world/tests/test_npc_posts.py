@@ -125,3 +125,63 @@ class TestSuccessorBuild(BaseEvenniaTest):
                              "working the cook-pot behind the food cart.")
         finally:
             npc.delete()
+
+
+class TestMemoryAcrossDeath(TestCase):
+    """§P3: the death-side snapshot and the policy split — re-sleeve restores
+    the book, a successor never opens it."""
+
+    def _dying_keeper(self, is_keeper=True):
+        npc = MagicMock()
+        npc.key = "Ottilie Krug"
+        npc.db.llm_dossiers = {"uid1": {"names": ["the ratcatcher"]}}
+        npc.db.llm_memories = [{"text": "clean kills, always"}]
+        fixture = MagicMock()
+        fixture.db.post_keeper = npc if is_keeper else MagicMock()
+        fixture.db.post_memory_snapshot = None
+        return npc, fixture
+
+    def test_snapshot_taken_for_keeper(self):
+        npc, fixture = self._dying_keeper()
+        with patch.object(postsmod, "_resolve", return_value=fixture):
+            postsmod.snapshot_keeper_memory(npc)
+        snap = fixture.db.post_memory_snapshot
+        self.assertEqual(snap["keeper"], "Ottilie Krug")
+        self.assertEqual(snap["dossiers"], {"uid1": {"names": ["the ratcatcher"]}})
+        self.assertEqual(snap["memories"], [{"text": "clean kills, always"}])
+
+    def test_non_keeper_death_no_snapshot(self):
+        npc, fixture = self._dying_keeper(is_keeper=False)
+        with patch.object(postsmod, "_resolve", return_value=fixture):
+            postsmod.snapshot_keeper_memory(npc)
+        self.assertIsNone(fixture.db.post_memory_snapshot)
+
+    def _reincarnate(self, policy, snapshot):
+        f = _fixture(vacant_since=1000.0)
+        f.db.post_memory_snapshot = snapshot
+        post = dict(POST, policy=policy, delay_hours=1)
+        new_npc = MagicMock()
+        with patch.object(postsmod, "_resolve", return_value=f), \
+             patch.object(postsmod, "_combat_at", return_value=False), \
+             patch("world.npcs.blueprints.build_npc", return_value=new_npc), \
+             patch("world.npcs.blueprints.build_successor",
+                   return_value=new_npc), \
+             patch("world.identity_utils.msg_room_identity"):
+            postsmod._sweep_post("butcher_ottilie", {}, post,
+                                 now=1000.0 + 2 * 3600)
+        return f, new_npc
+
+    def test_resleave_restores_and_consumes_snapshot(self):
+        snap = {"keeper": "X", "dossiers": {"u": {"names": ["pal"]}},
+                "memories": [{"text": "m"}]}
+        f, npc = self._reincarnate("resleave", snap)
+        self.assertEqual(npc.db.llm_dossiers, {"u": {"names": ["pal"]}})
+        self.assertEqual(npc.db.llm_memories, [{"text": "m"}])
+        self.assertIsNone(f.db.post_memory_snapshot)
+
+    def test_successor_never_opens_the_book(self):
+        snap = {"keeper": "X", "dossiers": {"u": {"names": ["pal"]}},
+                "memories": [{"text": "m"}]}
+        f, npc = self._reincarnate("successor", snap)
+        # snapshot retained on the post (archaeology), never loaded
+        self.assertEqual(f.db.post_memory_snapshot, snap)
