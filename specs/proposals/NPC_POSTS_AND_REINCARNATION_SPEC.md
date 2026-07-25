@@ -1,10 +1,17 @@
 # NPC Posts & Reincarnation Spec
 
-> **Status:** 🟡 §P1 SHIPPED (2026-07-24) — blueprints live for the nine-strong
-> named roster (`world/npcs/blueprints.py`: Sable, Vesper, Sully, Nikolai,
-> Marta, Del, Ezra, Ottilie, Petra) with `build_npc`/`verify_blueprint` and a
-> full build-from-nothing round-trip test. Posts/watcher/policies (§P2/§P3)
-> not built. Originally: Named NPCs
+> **Status:** 🟡 §P1 + §P2 SHIPPED (2026-07-24). §P1: blueprints live for the
+> nine-strong named roster (`world/npcs/blueprints.py`) with
+> `build_npc`/`build_successor`/`verify_blueprint`, all nine verified MATCH
+> against the live originals. §P2: the posts watcher (`world/npcs/posts.py`)
+> rides the director heartbeat — vacancy stamping + shuttered fixture desc,
+> combat de-confliction, and policy reincarnation. **Owner-decided values:**
+> successor 24h / re-sleeve 8h; the till/stock are the POST's (successors
+> inherit); Del + Sully are INSTITUTIONS (re-sleeve) — the only forgettable
+> posts are Ottilie's cart and Ezra's counter. The cart is the live pilot
+> (fixture-bound, vacant desc, arrival line); other posts activate as their
+> fixtures get registered in blueprint data. §P3 (memory snapshot/restore at
+> death for re-sleeve) not built. Originally: Named NPCs
 > (Ottilie, Del, Marta, Vesper…) currently die **permanently and
 > unreproducibly**: death → corpse → the character object is deleted (#1022),
 > dossiers and memories with it, and the NPC was hand-built in a shell session

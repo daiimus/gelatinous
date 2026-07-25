@@ -248,6 +248,11 @@ class DirectorRoutineScript(DefaultScript):
             maintain_security_complement()
         except Exception:  # noqa: BLE001 — respawn must not stall the beats
             pass
+        try:
+            from world.npcs.posts import maintain_posts
+            maintain_posts()
+        except Exception:  # noqa: BLE001 — reincarnation must not stall the beats
+            pass
         # Tick telemetry (DB-backed → visible cross-process; surfaced by
         # @patrol/status as "last tick Ns ago").
         import time
