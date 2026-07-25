@@ -4327,9 +4327,9 @@ BASE_STATION = {
 
 #: District radio infrastructure: a mast-top repeater. Mechanically a
 #: powered base station (world.radio one-hop relay) whose room's elevation
-#: sets its reach — site it HIGH. Powered from a remote head-end breaker
-#: (RepeaterBreaker, db.linked_repeater), so killing the district's signal
-#: is a basement job, not a climb.
+#: sets its reach — site it HIGH. It speaks the standard radio grammar:
+#: ``toggle``/``tune`` work on it like any other set, which IS the
+#: tamper seam (a retuned mast still hums, and relays nothing).
 REPEATER_MAST = {
     "prototype_key": "REPEATER_MAST",
     "typeclass": "typeclasses.items.Radio",
@@ -4350,21 +4350,6 @@ REPEATER_MAST = {
         ("is_base_station", True),
         ("get_err_msg", "It is guyed, bolted, and taller than your ambition."),
     ],
-}
-
-
-#: The mast's power isolator — lives floors away from the mast it feeds.
-REPEATER_BREAKER = {
-    "prototype_key": "REPEATER_BREAKER",
-    "typeclass": "typeclasses.terminals.RepeaterBreaker",
-    "key": "head-end breaker cabinet",
-    "aliases": ["cabinet", "head-end", "isolator"],
-    "desc": ("A wall cabinet in Ashford Wireless & Electric grey, its "
-             "service tag gone brittle under the shop lamp. Inside, one "
-             "fist-sized breaker lever feeds a conduit that climbs into "
-             "the dark of the riser and doesn't come back. A yellowed "
-             "card behind plastic reads: SENTINEL HEAD-END — DO NOT "
-             "THROW UNDER LOAD."),
 }
 
 
