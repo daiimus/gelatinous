@@ -131,6 +131,43 @@ class TestPurchaseHandDelivery(BaseEvenniaTest):
         self.assertIsNone(counter.db.register)
 
 
+@override_settings(PROTOTYPE_MODULES=["world.prototypes"])
+class TestVacancyClosesShop(BaseEvenniaTest):
+    """A post-bound counter only sells while its keeper is minding it;
+    unbound counters vend freely (the vending-machine tier)."""
+
+    def _counter(self):
+        from evennia import create_object
+        counter = create_object("typeclasses.shopkeeper.ShopContainer",
+                                key="post counter", location=self.room1)
+        counter.db.is_infinite = True
+        counter.db.prototype_inventory = {"cigarette_pack_noir": 6}
+        return counter
+
+    def test_absent_keeper_closes_the_till(self):
+        from evennia import create_object
+        counter = self._counter()
+        keeper = create_object("typeclasses.characters.Character",
+                               key="keeper", location=self.room1)
+        counter.db.post_keeper = keeper
+        self.char1.tokens = 50
+
+        ok, _ = counter.purchase_item(self.char1, "cigarette_pack_noir")
+        self.assertTrue(ok)                       # keeper present: open
+
+        keeper.location = self.room2
+        ok, msg = counter.purchase_item(self.char1, "cigarette_pack_noir")
+        self.assertFalse(ok)                      # keeper gone: closed
+        self.assertIn("Nobody's minding the counter", msg)
+        self.assertEqual(self.char1.tokens, 44)   # only the open sale paid
+
+    def test_unbound_counter_vends_freely(self):
+        counter = self._counter()                 # post_keeper never set
+        self.char1.tokens = 20
+        ok, _ = counter.purchase_item(self.char1, "cigarette_pack_noir")
+        self.assertTrue(ok)
+
+
 class TestBuyRoutesThroughKeeper(TestCase):
     """The buy command: a keeper minding the counter serves the sale in
     person; unmanned counters stay self-service."""
