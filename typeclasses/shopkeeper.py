@@ -141,6 +141,17 @@ class ShopContainer(DefaultObject):
                 - (True, item_obj) on success
                 - (False, error_message) on failure
         """
+        # A counter bound to a post only sells while its keeper is minding
+        # it — a dead or absent shopkeeper closes the shop (the community
+        # feels the vacancy). Counters with no keeper binding vend freely:
+        # that IS the vending-machine tier.
+        keeper = self.db.post_keeper
+        if keeper is not None and not (
+                keeper.pk and keeper.location == self.location):
+            return False, (self.db.post_closed_msg
+                           or "Nobody's minding the counter. No coin changes "
+                              "hands here until somebody's back behind it.")
+
         # Check if item exists in shop
         if prototype_key not in self.db.prototype_inventory:
             return False, "That item isn't sold here."
