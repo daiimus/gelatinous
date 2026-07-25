@@ -76,3 +76,39 @@ class TestResidentialProfile(TestCase):
             other_msgs = {m for tier in CROWD_MESSAGES[other].values()
                           for msgs in tier.values() for m in msgs}
             self.assertFalse(residential & other_msgs)
+
+
+class TestMarketProfile(TestCase):
+    """The market pool: covered stall galleries draw commerce — barter,
+    hand-trucks, hanging stock — never open-air street crush (sky, drones,
+    gutters) or bar counters."""
+
+    def test_market_routes_market(self):
+        from world.crowd.crowd_messages import crowd_profile_for_room_type
+        self.assertEqual(crowd_profile_for_room_type("market"), "market")
+        self.assertEqual(crowd_profile_for_room_type("MARKET"), "market")
+
+    def test_all_intensities_populated(self):
+        from world.crowd.crowd_messages import CROWD_MESSAGES
+        pool = CROWD_MESSAGES["market"]
+        for intensity in ("sparse", "moderate", "heavy", "packed"):
+            self.assertIn(intensity, pool)
+            self.assertTrue(pool[intensity].get("visual"))
+            self.assertTrue(pool[intensity].get("auditory"))
+
+    def test_market_pool_is_distinct(self):
+        from world.crowd.crowd_messages import CROWD_MESSAGES
+        market = {m for tier in CROWD_MESSAGES["market"].values()
+                  for msgs in tier.values() for m in msgs}
+        for other in ("default", "interior", "nightclub", "residential"):
+            other_msgs = {m for tier in CROWD_MESSAGES[other].values()
+                          for msgs in tier.values() for m in msgs}
+            self.assertFalse(market & other_msgs)
+
+    def test_no_open_air_or_bar_leakage(self):
+        # enclosed market: no sky/drone/gutter imagery, no bar counters
+        from world.crowd.crowd_messages import CROWD_MESSAGES
+        market = " ".join(m for tier in CROWD_MESSAGES["market"].values()
+                          for msgs in tier.values() for m in msgs).lower()
+        for banned in ("drone", "gutter", "sky", "bartender", "bar counter"):
+            self.assertNotIn(banned, market)

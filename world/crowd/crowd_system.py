@@ -20,6 +20,7 @@ class CrowdSystem:
             'street': 0.0,
             'intersection': 1.0,
             'corner store': 0.5,
+            'market': 0.5,
             'laundromat': 0.2,
             'courier service': 0.3,
             'cube hotel': 0.1,
