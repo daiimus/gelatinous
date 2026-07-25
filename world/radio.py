@@ -236,7 +236,8 @@ def order_reaches(unit: Any, console: Any = None) -> bool:
             return False                   # switched off = no orders
         from world.spatial import get_xyz
         room = _grid_room(console)
-        origin = get_xyz(room) if room is not None else None
+        origin = _antenna_site(console) or (
+            get_xyz(room) if room is not None else None)
         if origin is None:
             return True                    # off-grid console fails open
         reach = _effective_tx_range(console, origin)
@@ -424,8 +425,12 @@ MUTTER_CLARITY_FLOOR = 0.2
 # --- Phase 2 range (RADIO_COMMS_SPEC, decided 2026-07-10) -----------------
 #: Handheld / comms-organ transmit reach, in city grid cells.
 RADIO_TX_RANGE = 12
-#: A base station riding an intact mast: colony-wide.
-MAST_TX_RANGE = 999
+#: A base station riding an intact mast. Dialed from 999 (flat,
+#: geography-free saturation) to 20 on 2026-07-25 (owner call): masts now
+#: have real coverage circles — fringes render through the letter-drop
+#: machinery, multiple masts genuinely union, and wrecking one opens an
+#: audible hole. Refine as the colony grows.
+MAST_TX_RANGE = 20
 #: Inside this fraction of reach the signal is crisp.
 RANGE_CLEAR_FRACTION = 0.7
 #: Between full reach and this fraction: a static wash, existence only.
@@ -454,6 +459,26 @@ def _grid_room(obj):
             return None
         node = getattr(node, "location", None)
     return None
+
+
+def _antenna_site(device):
+    """The grid cell of a base station's linked INTACT antenna — the
+    steel is the station's radio presence (position AND elevation); the
+    cabinet is guts and can live in a basement. None when there is no
+    intact linked antenna, or it's off-grid."""
+    try:
+        db = getattr(device, "db", None)
+        if getattr(db, "is_base_station", None) is not True:
+            return None
+        antenna = getattr(db, "antenna", None)
+        if antenna is None or getattr(
+                getattr(antenna, "db", None), "intact", None) is not True:
+            return None
+        room = _grid_room(antenna)
+        from world.spatial import get_xyz
+        return get_xyz(room) if room is not None else None
+    except Exception:  # noqa: BLE001 — unreadable steel reads as absent
+        return None
 
 
 def _effective_tx_range(device, origin_xyz):
@@ -509,8 +534,10 @@ def _relay_points(frequency, exclude_device, origin_xyz, origin_range):
             if antenna is not None and getattr(
                     getattr(antenna, "db", None), "intact", None) is not True:
                 continue
-            room = _grid_room(radio)
-            xyz = get_xyz(room) if room is not None else None
+            xyz = _antenna_site(radio)
+            if xyz is None:
+                room = _grid_room(radio)
+                xyz = get_xyz(room) if room is not None else None
             if xyz is None:
                 continue
             reach = _effective_tx_range(radio, xyz)
@@ -535,8 +562,10 @@ def _reception_fraction(origin_xyz, origin_range, relays, listener_obj):
     from world.spatial import get_xyz
     if origin_xyz is None:
         return 0.0
-    room = _grid_room(listener_obj)
-    xyz = get_xyz(room) if room is not None else None
+    xyz = _antenna_site(listener_obj)
+    if xyz is None:
+        room = _grid_room(listener_obj)
+        xyz = get_xyz(room) if room is not None else None
     if xyz is None:
         return 0.0
     rx_reach = _effective_tx_range(listener_obj, xyz)
@@ -663,6 +692,11 @@ def _deliver(speaker: Any, message: str, frequency: str,
         origin_xyz = get_xyz(origin_room) if origin_room is not None else None
     except Exception:  # noqa: BLE001
         origin_xyz = None
+    # a mast-linked transmitter speaks FROM its steel, wherever the
+    # cabinet (and its operator) actually sit
+    site = _antenna_site(exclude_device)
+    if site is not None:
+        origin_xyz = site
     origin_range = _effective_tx_range(exclude_device, origin_xyz)
     relays = _relay_points(frequency, exclude_device, origin_xyz,
                            origin_range)

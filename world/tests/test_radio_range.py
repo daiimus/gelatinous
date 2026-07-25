@@ -84,8 +84,8 @@ class TestReception(TestCase):
             _reception_fraction((0, 0, 0), 12, [], far), 2.0)
 
     def test_relay_saves_the_distant_listener(self):
-        far = _radio_at(_room(30, 0))
-        relay = ((10, 0, 0), MAST_TX_RANGE)   # heard the origin, colony reach
+        far = _radio_at(_room(11, 0))         # fringe of the direct link
+        relay = ((10, 0, 0), MAST_TX_RANGE)   # heard the origin, mast reach
         frac = _reception_fraction((0, 0, 0), 12, [relay], far)
         self.assertLess(frac, 0.1)            # crisp via the repeater
 
@@ -159,14 +159,14 @@ class TestDeliveryByRange(TestCase):
                          len("cover the back door before they run"))
         self.assertIn("-", heard)                       # letter-dropped
 
-    def test_repeater_carries_the_band_colony_wide(self):
+    def test_repeater_carries_the_band_across_town(self):
         origin = _room(0, 0)
         speaker = self._speaker_at(origin)
         dev = _radio_at(None, freq="911MHz"); dev.location = speaker
         console = _radio_at(_room(8, 0), base_station=True,
                             antenna=_mast(True), freq="911MHz")
         console.location.contents = []                  # empty dispatch room
-        far_r, far_holder = self._held_by_char_at(_room(30, 0),
+        far_r, far_holder = self._held_by_char_at(_room(20, 0),
                                                   freq="911MHz")
         with self._world([dev, console, far_r]), \
                 patch.object(radio, "_comms_bots_on", return_value=[]), \
@@ -207,8 +207,9 @@ class TestReciprocity(TestCase):
     def test_console_hears_the_distant_witness(self):
         console = _radio_at(_room(0, 0), base_station=True,
                             antenna=_mast(True))
-        frac = _reception_fraction((30, 0, 0), RADIO_TX_RANGE, [], console)
-        self.assertLess(frac, 0.1)                     # clear at the desk
+        # beyond the walkie's own 12 — only the mast's ears close the link
+        frac = _reception_fraction((13, 0, 0), RADIO_TX_RANGE, [], console)
+        self.assertLess(frac, 0.7)                     # clear at the desk
 
     def test_wrecked_mast_deafens_the_console_too(self):
         console = _radio_at(_room(0, 0), base_station=True,
@@ -223,7 +224,7 @@ class TestReciprocity(TestCase):
                             antenna=_mast(True), freq="911MHz")
         with patch.object(radio, "_all_powered_radios",
                           return_value=[console]):
-            relays = radio._relay_points("911MHz", None, (30, 0, 0),
+            relays = radio._relay_points("911MHz", None, (18, 0, 0),
                                          RADIO_TX_RANGE)
         self.assertEqual(len(relays), 1)               # heard the far call
 
@@ -244,11 +245,14 @@ class TestOrderReach(TestCase):
         c.db.radio_on = on
         return c
 
-    def test_intact_mast_commands_the_colony(self):
+    def test_intact_mast_commands_the_district(self):
         from world.radio import order_reaches
         with patch.object(radio, "_all_powered_radios", return_value=[]):
-            self.assertTrue(order_reaches(self._unit_at(200, 200),
+            self.assertTrue(order_reaches(self._unit_at(18, 18),
                                           console=self._console()))
+            # ...but not the far side of the crater (dialed to 20)
+            self.assertFalse(order_reaches(self._unit_at(200, 200),
+                                           console=self._console()))
 
     def test_wrecked_mast_collapses_to_walkie_range(self):
         from world.radio import order_reaches
@@ -287,6 +291,6 @@ class TestOrderReach(TestCase):
                              antenna=_mast(True))
         with patch.object(radio, "_all_powered_radios",
                           return_value=[repeater]):
-            self.assertTrue(order_reaches(self._unit_at(40, 40),
+            self.assertTrue(order_reaches(self._unit_at(30, 30),
                                           console=console))
 
