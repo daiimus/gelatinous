@@ -343,6 +343,60 @@ class TestStyleTool(TestCase):
         b.execute_cmd.assert_called_once_with("remove mesh top")
 
 
+class TestRadioRepliesAir(TestCase):
+    """A radio-mode turn answers ON THE AIR: reply speech keys the real
+    transmit device via xmit, never room-say (the Rook's sealed studio)."""
+
+    def _turn(self, mode, turn, has_device=True):
+        b = MagicMock()
+        _bind(b, "_on_turn")
+        _bind(b, "_transmit_words")
+        _bind(b, "_handle_action_tool")
+        device = MagicMock() if has_device else None
+        with patch.object(llmnpc, "parse_turn", return_value=dict(turn)), \
+                patch.object(llmnpc, "tool_names", return_value=[]), \
+                patch("world.radio.active_transmit_radio",
+                      return_value=device):
+            b._on_turn([], {}, MagicMock(), "hi", "a voice", lambda: None, 0,
+                       None, mode, "{}")
+        return b
+
+    def test_radio_speech_transmits(self):
+        b = self._turn("radio", {"speech": "You are on the air, caller.",
+                                 "action": None, "thought": None,
+                                 "tool": "none", "tool_argument": ""})
+        b.execute_cmd.assert_any_call("xmit You are on the air, caller.")
+        self.assertIsNone(b._render_llm_reply.call_args.args[0])  # no say
+
+    def test_room_speech_untouched(self):
+        b = self._turn("directed", {"speech": "hey", "action": None,
+                                    "thought": None, "tool": "none",
+                                    "tool_argument": ""})
+        self.assertEqual(b._render_llm_reply.call_args.args[0], "hey")
+        for call in b.execute_cmd.call_args_list:
+            self.assertFalse(str(call.args[0]).startswith("xmit"))
+
+    def test_no_device_stays_mute_not_say(self):
+        b = self._turn("radio", {"speech": "hello?", "action": None,
+                                 "thought": None, "tool": "none",
+                                 "tool_argument": ""}, has_device=False)
+        for call in b.execute_cmd.call_args_list:
+            self.assertFalse(str(call.args[0]).startswith("xmit"))
+        # speech falls back to the room render (harmless in a sealed room,
+        # correct for a device-snatched unit standing in a crowd)
+        self.assertEqual(b._render_llm_reply.call_args.args[0], "hello?")
+
+    def test_radio_tool_carries_it_instead(self):
+        b = self._turn("radio", {"speech": "flavour line",
+                                 "action": None, "thought": None,
+                                 "tool": "radio",
+                                 "tool_argument": "the real broadcast"})
+        b.execute_cmd.assert_any_call("xmit the real broadcast")
+        # speech stays room-side when the tool carried the transmission
+        self.assertEqual(b._render_llm_reply.call_args.args[0],
+                         "flavour line")
+
+
 class TestEchoGuard(TestCase):
     """A pose aimed at the NPC must never come straight back as its reply."""
 
@@ -352,7 +406,7 @@ class TestEchoGuard(TestCase):
         with patch.object(llmnpc, "parse_turn", return_value=dict(turn)), \
                 patch.object(llmnpc, "tool_names", return_value=[]):
             b._on_turn([], {}, MagicMock(), line, "a man", lambda: None, 0,
-                       None, "{}")
+                       None, "directed", "{}")
         return b._render_llm_reply.call_args.args
 
     def test_parroted_pose_dropped_before_render(self):

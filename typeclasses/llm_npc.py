@@ -280,7 +280,7 @@ class LLMNpcMixin:
                                       present=present)
             self._agentic_round(messages, persona, patron, line or "",
                                 speaker_name, on_fail, rounds=0,
-                                subject=subject)
+                                subject=subject, mode=mode)
 
         def _with_query_vec(vec):
             # reactor-side: score this NPC's memories against the line, inject.
@@ -525,7 +525,7 @@ class LLMNpcMixin:
     # --- the agentic tool loop (constrained turn → context tools → reply) ----
 
     def _agentic_round(self, messages, persona, patron, line, speaker_name,
-                       on_fail, rounds, subject=None):
+                       on_fail, rounds, subject=None, mode="directed"):
         """One constrained generation; the reactor-side callback either runs a
         context tool and loops, or renders the final reply + any action tool.
         ``subject`` is the memory-scoping identity for this turn (voice-scoped
@@ -533,13 +533,13 @@ class LLMNpcMixin:
         request_turn(
             messages,
             on_turn=partial(self._on_turn, messages, persona, patron, line,
-                            speaker_name, on_fail, rounds, subject),
+                            speaker_name, on_fail, rounds, subject, mode),
             on_fail=on_fail,
             schema=schema_for(persona),  # tool enum scoped to the archetype
         )
 
     def _on_turn(self, messages, persona, patron, line, speaker_name, on_fail,
-                 rounds, subject, raw):
+                 rounds, subject, mode, raw):
         turn = parse_turn(raw, persona, tool_names(persona))
         # Echo guard: a pose aimed at the NPC sometimes comes straight back
         # as its "own" action (or speech). Parroting reads broken — drop it.
@@ -556,11 +556,22 @@ class LLMNpcMixin:
                 {"role": "user", "content": f"TOOL RESULT ({tool}) — {result}"},
             ]
             self._agentic_round(extended, persona, patron, line, speaker_name,
-                                on_fail, rounds + 1, subject=subject)
+                                on_fail, rounds + 1, subject=subject,
+                                mode=mode)
             return
         # Terminal: render speech/action/thought, route any action tool, remember.
-        rendered = self._render_llm_reply(turn["speech"], turn["action"],
-                                          turn["thought"], patron)
+        # A radio turn answers ON THE AIR (§7.3): the reply speech keys the
+        # NPC's real transmit device via ``xmit`` — never room-say, which
+        # would address the walls (the Rook's sealed studio taught us this).
+        # When the model ALSO called the radio tool, that call carries the
+        # transmission and speech stays room-side flavour.
+        aired = False
+        if (mode in ("radio", "radio_ambient") and turn["speech"]
+                and tool != "radio"):
+            aired = self._transmit_words(turn["speech"])
+        rendered = self._render_llm_reply(
+            None if aired else turn["speech"], turn["action"],
+            turn["thought"], patron)
         # Opt-in tuning log: raw model decision beside the final rendered text,
         # so the game-side transform (conjugation/selfify/second-person) is
         # auditable — the sidecar log sees the prompt but not this step.
@@ -678,9 +689,7 @@ class LLMNpcMixin:
             # walkie first; the command's own fallback covers a built-in comms
             # organ. No device = the command refuses = the NPC stays mute,
             # exactly as it would for a player (§7.5).
-            words = " ".join(str(arg).split()).strip().strip('"').strip()
-            if words:
-                self.execute_cmd(f"xmit {words}")
+            self._transmit_words(arg)
         elif tool == "release":
             # The character has decided the exchange is over: drop the
             # conversation hold so the routine (patrol/drift) resumes on
@@ -688,6 +697,20 @@ class LLMNpcMixin:
             # speech/action channels of this same turn.
             self.ndb.llm_engaged_until = None
             self.ndb.llm_engaged_with = None
+
+    def _transmit_words(self, words):
+        """Key the NPC's real transmit device with *words* (the radio
+        tool's sanitation, shared). Returns True when a transmission was
+        attempted — the command itself refuses without a device (§7.5),
+        exactly as it would for a player."""
+        words = " ".join(str(words).split()).strip().strip('"').strip()
+        if not words:
+            return False
+        from world.radio import active_transmit_radio
+        if active_transmit_radio(self) is None:
+            return False          # no device: stay mute, don't say-leak
+        self.execute_cmd(f"xmit {words}")
+        return True
 
     def _remember_person(self, patron, name):
         """Privately name/nickname the interlocutor via the REAL ``remember``
