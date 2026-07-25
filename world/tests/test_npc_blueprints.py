@@ -43,9 +43,10 @@ class TestRegistryIntegrity(TestCase):
                           (None, "resleave", "successor"), key)
 
     def test_roster_complete(self):
-        self.assertEqual(len(BLUEPRINTS), 9)
+        self.assertEqual(len(BLUEPRINTS), 10)
         for expected in ("butcher_ottilie", "bartender_del", "doctor_marta",
-                         "companion_vesper", "dispatch_petra"):
+                         "companion_vesper", "dispatch_petra",
+                         "tobacconist_bellows"):
             self.assertIn(expected, BLUEPRINTS)
 
 
