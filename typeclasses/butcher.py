@@ -51,28 +51,36 @@ _RAT_TRUNK_ORGANS = ("heart", "left_lung", "right_lung", "liver", "stomach",
 _RAT_OFFAL_ORGANS = ("heart", "liver", "left_kidney", "right_kidney")
 
 
-class ButcherBlock(ShopContainer):
-    """The butcher's block — a fixed counter that is also her SHOP.
+class FoodCart(ShopContainer):
+    """The butcher's food cart — a parked scrap-built cart that is her SHOP.
 
     A ``ShopContainer`` in **limited-inventory** mode selling COOKED DISHES:
     the grind's cuts run through ``world.food`` recipes (``stock_cuts`` cooks
     them 1:1) and the menu is stew, chops, and skewers — never spawned from
-    thin air, so the gig economy stays real. ``buy stew from block`` works
+    thin air, so the gig economy stays real. ``buy stew from cart`` works
     like any shop, and the override below credits sale proceeds to
     ``db.register``, closing the till loop: payouts to hunters drain the
-    till, dish sales refill it. ``db.integrate`` folds it into the room."""
+    till, dish sales refill it.
+
+    A FIXTURE with wheels only in the fiction (``get:false``; the desc shows
+    them chocked) — if roaming vendors ever become a mechanic, the cart is
+    already the right object for it. ``db.integrate`` folds it into the room
+    via the short ``db.integration_desc`` line (the full desc stays on
+    ``look cart`` — the jukebox lesson)."""
 
     def at_object_creation(self):
         super().at_object_creation()
         self.db.is_infinite = False
-        self.db.shop_name = "the butcher's block"
-        self.db.container_type = "block"
+        self.db.shop_name = "the food cart"
+        self.db.container_type = "cart"
         self.db.register = 0
         self.db.owner = None
         self.db.integrate = True
+        self.db.integration_priority = 8
         self.db.purchase_msg_buyer = ("You count out {price}, and the butcher "
-                                      "hooks down {item} without ceremony.")
-        self.db.purchase_msg_room = ("{buyer} counts chits onto the block and "
+                                      "hands {item} across the cart without "
+                                      "ceremony.")
+        self.db.purchase_msg_room = ("{buyer} counts chits onto the cart and "
                                      "walks off with {item}.")
 
     def stock_cuts(self, counts):
@@ -123,10 +131,11 @@ class Butcher(LLMNpcMixin, Character):
         return ["butcher", "meatcutter", "grinder"]
 
     def _find_block(self):
+        """The cart she works from (name kept for the give-flow history)."""
         if not self.location:
             return None
         for obj in self.location.contents:
-            if isinstance(obj, ButcherBlock):
+            if isinstance(obj, FoodCart):
                 return obj
         return None
 
@@ -275,3 +284,8 @@ class Butcher(LLMNpcMixin, Character):
         if len(parts) > 1:
             return ", ".join(parts[:-1]) + ", and " + parts[-1]
         return parts[0] if parts else "nothing worth wrapping"
+
+
+#: Back-compat alias — live objects created before the cart redesign carry
+#: ``typeclasses.butcher.ButcherBlock`` as their stored typeclass path.
+ButcherBlock = FoodCart

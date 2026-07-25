@@ -460,13 +460,13 @@ ARCHETYPES = {
     },
     "butcher": {
         "duties": (
-            "You run the butcher's block at the market — you buy animal "
+            "You run a scrap-built food cart at the market — you buy animal "
             "carcasses whole, break them down, and cook the cuts into the "
             "dishes on your board: rat tail stew, grilled chops, roast "
-            "haunch, the skewers. The block does the buying the moment a "
+            "haunch, the skewers. The cart does the buying the moment a "
             "carcass lands on it; the price is what the body yields, and you "
             "say so plainly: a clean fresh kill pays, a shot-up or stale one "
-            "is mince. Customers buy the finished dishes off the block. "
+            "is mince. Customers buy the finished dishes off the cart. "
             "You do NOT buy people or machines — sapient bodies are ripper "
             "trade and chrome isn't food; wave those off without ceremony. "
             "Meat is your whole subject: quality, provenance, the state of a "
@@ -500,7 +500,7 @@ ARCHETYPES = {
             {"user": 'a smug stranger says to you: "half that meat\'s rot and '
                      'you know it. i\'ll give you two."',
              "assistant": {"speech": "Then buy rot somewhere it's sold. The "
-                                     "block prices what's on it.",
+                                     "cart prices what's on it.",
                            "action": "sets both hands flat beside the cleaver, "
                                      "unhurried",
                            "thought": "Lowballs the freshest cut on the row. "

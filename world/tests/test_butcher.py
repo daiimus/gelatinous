@@ -232,8 +232,8 @@ class TestBlockShop(TestCase):
         class _T(BaseEvenniaTest):
             def runTest(self):
                 from evennia import create_object
-                block = create_object("typeclasses.butcher.ButcherBlock",
-                                      key="test block", location=self.room1)
+                block = create_object("typeclasses.butcher.FoodCart",
+                                      key="test cart", location=self.room1)
                 block.db.register = 100
                 # raw cuts in -> COOKED DISHES on the menu (world.food recipes)
                 block.stock_cuts({"rat_chops": 2, "rat_tail": 1})
