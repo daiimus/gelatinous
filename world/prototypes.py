@@ -2931,10 +2931,10 @@ PAIN_RELIEF_CIGARETTE = {
 
 PRE_ROLLED_JOINT = {
     "prototype_key": "pre_rolled_joint",
-    "key": "pre-rolled joint",
+    "key": "Greenhaus pre-rolled joint",
     "typeclass": "typeclasses.items.Item",
     "aliases": ["joint", "spliff"],
-    "desc": "A factory-rolled joint, machine-perfect: crimped ends, a "
+    "desc": "A Greenhaus-brand factory joint, machine-perfect: crimped ends, a "
             "pressed filter plug, and a seam so straight it looks printed. "
             "Uniform as ammunition — nobody's hands were involved. (One "
             "day the colony will roll its own; this is what came before.)",
@@ -2949,10 +2949,10 @@ PRE_ROLLED_JOINT = {
 
 ROPE_CIGAR = {
     "prototype_key": "rope_cigar",
-    "key": "rope cigar",
+    "key": "Old Mule rope cigar",
     "typeclass": "typeclasses.items.Item",
     "aliases": ["cigar", "cheap cigar"],
-    "desc": "A short, dark cigar of the kind sold by the box to men who "
+    "desc": "An Old Mule — the short, dark cigar sold by the box to men who "
             "have stopped tasting things: dense, crooked, and dependable. "
             "Burns slow, bites hard, costs little.",
     "tags": [("smoke", "delivery_method")],
@@ -2966,12 +2966,12 @@ ROPE_CIGAR = {
 
 MACHINE_ROLLED_CIGAR = {
     "prototype_key": "machine_rolled_cigar",
-    "key": "machine-rolled corona",
+    "key": "Silverband corona",
     "typeclass": "typeclasses.items.Item",
     "aliases": ["corona", "good cigar"],
-    "desc": "A machine-rolled corona in dark Noir leaf, its band a strip "
-            "of embossed foil pretending to a heritage the colony never "
-            "had. The draw is engineered; the ash holds an inch.",
+    "desc": "A Silverband corona in dark Noir leaf, named for its band — "
+            "a strip of embossed foil pretending to a heritage the colony "
+            "never had. The draw is engineered; the ash holds an inch.",
     "tags": [("smoke", "delivery_method")],
     "attrs": [
         ("substance", "tobacco_noir"),
@@ -2983,10 +2983,10 @@ MACHINE_ROLLED_CIGAR = {
 
 CHEWING_TOBACCO_PLUG = {
     "prototype_key": "chewing_tobacco_plug",
-    "key": "plug of chewing tobacco",
+    "key": "plug of Anchor chewing tobacco",
     "typeclass": "typeclasses.items.Item",
     "aliases": ["plug", "chew", "chaw"],
-    "desc": "A pressed plug of cured leaf and molasses, dense as a hockey "
+    "desc": "An Anchor-brand plug of cured leaf and molasses, dense as a hockey "
             "puck and about as subtle. The working man's smoke-free vice — "
             "no flame, no ash, no witnesses.",
     "tags": [("eat", "delivery_method"), ("food", "item_type")],
@@ -3000,11 +3000,13 @@ CHEWING_TOBACCO_PLUG = {
 }
 
 ROTGUT_BOTTLE = {
-    "key": "bottle of rotgut",
+    "key": "bottle of Boiler Run rotgut",
     "typeclass": "typeclasses.items.Item",
     "aliases": ["rotgut", "bottle", "booze"],
-    "desc": "An unlabeled glass bottle of harsh colonial liquor. It "
-            "smells like fuel and bad decisions, in that order.",
+    "desc": "A squat bottle of Boiler Run, the colony's licensed rotgut — "
+            "the label is a woodcut of a bursting boiler, which is either "
+            "a warning or a promise. Smells like fuel and bad decisions, "
+            "in that order.",
     "tags": [("drink", "delivery_method")],
     "attrs": [
         ("substance", "alcohol"),
@@ -3014,11 +3016,12 @@ ROTGUT_BOTTLE = {
 }
 
 OPIUM_CIGARETTE = {
-    "key": "tar-black opium cigarette",
+    "key": "tar-black Slowboat opium cigarette",
     "typeclass": "typeclasses.items.Item",
     "aliases": ["opium cigarette", "opium", "tar cigarette"],
-    "desc": "A thin cigarette rolled around tar-black resin. Heavy, "
-            "sweet, and patient — it will wait as long as you can.",
+    "desc": "A Slowboat: thin paper rolled around tar-black resin, the "
+            "brand a tiny steamer stamped near the tip. Heavy, sweet, and "
+            "patient — it will wait as long as you can.",
     "tags": [("smoke", "delivery_method")],
     "attrs": [
         ("substance", "opium"),
@@ -3378,8 +3381,10 @@ CIGARETTE_BASE = {
 
 CIGARETTE_NEUTRAL = {
     "prototype_parent": "CIGARETTE_BASE",
-    "key": "cigarette",
-    "desc": "A standard filtered cigarette, mild tobacco wrapped in white paper.",
+    "key": "Longhaul cigarette",
+    "desc": "A Longhaul — the workman's filtered cigarette, mild tobacco in "
+            "white paper, the brand's little hauler logo printed at the "
+            "filter. Ubiquitous as grit.",
     "attrs": [
         ("substance", "tobacco_neutral"),
     ],
@@ -3416,7 +3421,7 @@ CIGARETTE_PACK_BASE = {
 
 CIGARETTE_PACK_NEUTRAL = {
     "prototype_parent": "CIGARETTE_PACK_BASE",
-    "key": "pack of cigarettes",
+    "key": "pack of Longhaul cigarettes",
     "desc": (
         "A cardboard pack of filtered cigarettes.  The brand "
         "lettering is generic block print, no logo, no flourish."
