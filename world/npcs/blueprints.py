@@ -347,7 +347,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                      'home_room': '#1968',
                      'post': {'fixture': None,
                               'policy': 'resleave',
-                              'delay_hours': 24}},
+                              'delay_hours': 8}},
  'companion_vesper': {'name': 'Vesper',
                       'typeclass': 'typeclasses.llm_npc.LLMNpc',
                       'identity': {'sex': 'female',
@@ -526,7 +526,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                       'home_room': '#1974',
                       'post': {'fixture': None,
                                'policy': 'resleave',
-                               'delay_hours': 24}},
+                               'delay_hours': 8}},
  'bartender_sully': {'name': 'Sully',
                      'typeclass': 'typeclasses.bar.Bartender',
                      'identity': {'sex': 'male',
@@ -829,8 +829,8 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                      'carried_prototypes': ['painkiller'],
                      'home_room': '#1867',
                      'post': {'fixture': None,
-                              'policy': None,
-                              'delay_hours': 72}},
+                              'policy': 'resleave',
+                              'delay_hours': 8}},
  'doctor_nikolai': {'name': 'Nikolai Kasparov',
                     'typeclass': 'typeclasses.clinic.Doctor',
                     'identity': {'sex': 'ambiguous',
@@ -1022,7 +1022,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                     'home_room': '#3137',
                     'post': {'fixture': None,
                              'policy': 'resleave',
-                             'delay_hours': 24}},
+                             'delay_hours': 8}},
  'doctor_marta': {'name': 'Marta Okoye',
                   'typeclass': 'typeclasses.clinic.Doctor',
                   'identity': {'sex': 'female',
@@ -1228,7 +1228,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                   'home_room': '#5130',
                   'post': {'fixture': None,
                            'policy': 'resleave',
-                           'delay_hours': 24}},
+                           'delay_hours': 8}},
  'bartender_del': {'name': 'Delphine Marchetti',
                    'typeclass': 'typeclasses.bar.Bartender',
                    'identity': {'sex': 'female',
@@ -1454,8 +1454,8 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                    'carried_prototypes': ['break_shotgun'],
                    'home_room': '#5147',
                    'post': {'fixture': None,
-                            'policy': None,
-                            'delay_hours': 72}},
+                            'policy': 'resleave',
+                            'delay_hours': 8}},
  'merchant_ezra': {'name': 'Ezra Vantomme',
                    'typeclass': 'typeclasses.llm_npc.LLMNpc',
                    'identity': {'sex': 'male',
@@ -1632,7 +1632,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                    'home_room': '#5157',
                    'post': {'fixture': None,
                             'policy': 'successor',
-                            'delay_hours': 72}},
+                            'delay_hours': 24}},
  'butcher_ottilie': {'name': 'Ottilie Krug',
                      'typeclass': 'typeclasses.butcher.Butcher',
                      'identity': {'sex': 'female',
@@ -1804,7 +1804,18 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                      'home_room': '#5203',
                      'post': {'fixture': '#5221',
                               'policy': 'successor',
-                              'delay_hours': 72}},
+                              'delay_hours': 24,
+                              'vacant_desc':
+                                  'The |chull-plate food cart|n stands cold '
+                                  'against the scar wall, burner ring dark, '
+                                  'a chain run through its wheels.',
+                              'successor_temp_place':
+                                  'working the cook-pot behind the food '
+                                  'cart.',
+                              'arrival_successor':
+                                  '{mob} runs the chain off the cart, fires '
+                                  'the burner ring, and takes up the '
+                                  'cleaver like it was always theirs.'}},
  'dispatch_petra': {'name': 'Petra',
                     'typeclass': 'typeclasses.llm_npc.LLMNpc',
                     'identity': {'sex': 'female',
@@ -1861,7 +1872,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                     'home_room': '#4963',
                     'post': {'fixture': None,
                              'policy': 'resleave',
-                             'delay_hours': 24}}}
+                             'delay_hours': 8}}}
 
 
 def build_npc(blueprint_key, location):
@@ -1942,6 +1953,77 @@ def build_npc(blueprint_key, location):
 
     npc.db.llm_persona = dict(bp.get("persona") or {})
     npc.db.llm_driven = bool(bp.get("llm_driven"))
+    return npc
+
+
+def build_successor(blueprint_key, location):
+    """Construct a SUCCESSOR for a post (spec §1.1 generator mode): a new
+    person — generated name/face/build from the colony pools, generic flavor
+    prose — wearing the same TRADE (archetype, kit, post) as the predecessor.
+    Dossiers start empty by design: the empty book is the consequence.
+    """
+    from random import choice, randint
+    from world.identity import HEIGHTS, BUILDS, HAIR_COLORS, HAIR_STYLES
+    from world.director.civilians import HUMAN_SKINTONES
+    from world.namebank import (
+        FIRST_NAMES_MALE, FIRST_NAMES_FEMALE, FIRST_NAMES_AMBIGUOUS,
+        LAST_NAMES,
+    )
+    from world.mob_flavor import apply_random_flavor
+
+    bp = BLUEPRINTS[blueprint_key]
+    post = bp.get("post") or {}
+
+    sex = choice(["male", "female"])
+    if randint(1, 10) <= 2:
+        sex = "ambiguous"
+    first = {"male": FIRST_NAMES_MALE, "female": FIRST_NAMES_FEMALE}.get(
+        sex, FIRST_NAMES_AMBIGUOUS)
+    name = f"{choice(first)} {choice(LAST_NAMES)}"
+
+    npc = create_object(bp["typeclass"], key=name, location=location,
+                        home=location)
+    npc.db.is_npc = True
+    npc.sex = sex
+    npc.height = choice(HEIGHTS)
+    npc.build = choice(BUILDS)
+    npc.db.skintone = choice(HUMAN_SKINTONES)
+    if randint(1, 5) > 1:
+        npc.hair_color = choice(HAIR_COLORS)
+        npc.hair_style = choice(HAIR_STYLES)
+    ident = bp.get("identity", {})
+    if ident.get("sdesc_keyword"):
+        npc.attributes.add("sdesc_keyword", ident["sdesc_keyword"])
+    for stat in ("grit", "resonance", "intellect", "motorics"):
+        setattr(npc, stat, randint(1, 3))
+    apply_random_flavor(npc)   # generic desc / longdescs / look_place
+
+    if post.get("successor_temp_place"):
+        npc.temp_place = post["successor_temp_place"]
+    if bp.get("menu"):
+        npc.db.menu = bp["menu"]
+
+    # the TRADE survives the person: same kit, same tools of the job
+    for gspec in sorted(bp.get("wardrobe", ()),
+                        key=lambda g: int(g.get("layer", 1) or 1)):
+        garment = create_object("typeclasses.items.Item", key=gspec["key"],
+                                aliases=gspec.get("aliases"), location=npc,
+                                home=npc)
+        for attr in ("desc", "worn_desc", "coverage", "layer", "color",
+                     "material", "weight", "category"):
+            if gspec.get(attr) is not None:
+                garment.attributes.add(attr, gspec[attr])
+        npc.wear_item(garment)
+    for proto in bp.get("carried_prototypes", ()):
+        for item in spawn(proto):
+            item.move_to(npc, quiet=True, move_hooks=False)
+
+    # same ROLE persona, new person: name swapped, person-prose kept only
+    # where it is role-anchored (the seeds were written that way)
+    persona = dict(bp.get("persona") or {})
+    persona["name"] = name
+    npc.db.llm_persona = persona
+    npc.db.llm_driven = True
     return npc
 
 
