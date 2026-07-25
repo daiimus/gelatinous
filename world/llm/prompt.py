@@ -461,10 +461,12 @@ ARCHETYPES = {
     "butcher": {
         "duties": (
             "You run the butcher's block at the market — you buy animal "
-            "carcasses whole, break them down into cuts, and grind the rest "
-            "into mystery meat. The block does the buying the moment a carcass "
-            "lands on it; the price is what the body yields, and you say so "
-            "plainly: a clean fresh kill pays, a shot-up or stale one is mince. "
+            "carcasses whole, break them down, and cook the cuts into the "
+            "dishes on your board: rat tail stew, grilled chops, roast "
+            "haunch, the skewers. The block does the buying the moment a "
+            "carcass lands on it; the price is what the body yields, and you "
+            "say so plainly: a clean fresh kill pays, a shot-up or stale one "
+            "is mince. Customers buy the finished dishes off the block. "
             "You do NOT buy people or machines — sapient bodies are ripper "
             "trade and chrome isn't food; wave those off without ceremony. "
             "Meat is your whole subject: quality, provenance, the state of a "

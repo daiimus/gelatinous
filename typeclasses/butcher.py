@@ -31,16 +31,15 @@ BUTCHER_DECAY_REFUSAL = 0.6
 #: buying until it's fed (finite till — the economy hook).
 BUTCHER_TILL_FLOOR = 5
 
-#: The rat butchery pricing (spec §3.4): per-product BUY value (what the
-#: block pays a supplier) and SELL price (what the shop charges — the margin
-#: is what keeps the till solvent). Prose/tags live on the prototypes
-#: (world/prototypes.py RAT_TAIL etc.); `name` is the display form.
+#: The rat butchery BUY values (spec §3.4): what the block pays a supplier
+#: per unit yielded. The SELL side is cooked — dish prices live in
+#: ``world.food.FOOD_RECIPES``; raw-cut prose/tags on the prototypes.
 RAT_PRODUCTS = {
-    "rat_tail":            {"name": "rat tail", "buy": 5, "sell": 8},
-    "rat_chops":           {"name": "rat chops", "buy": 3, "sell": 5},
-    "rat_haunch":          {"name": "rat haunch", "buy": 3, "sell": 5},
-    "rat_offal":           {"name": "rat offal", "buy": 3, "sell": 5},
-    "ground_mystery_meat": {"name": "ground mystery meat", "buy": 1, "sell": 2},
+    "rat_tail":            {"name": "rat tail", "buy": 5},
+    "rat_chops":           {"name": "rat chops", "buy": 3},
+    "rat_haunch":          {"name": "rat haunch", "buy": 3},
+    "rat_offal":           {"name": "rat offal", "buy": 3},
+    "ground_mystery_meat": {"name": "ground mystery meat", "buy": 1},
 }
 
 #: Trunk organs whose average condition gates the chops yield — a
@@ -55,12 +54,13 @@ _RAT_OFFAL_ORGANS = ("heart", "liver", "left_kidney", "right_kidney")
 class ButcherBlock(ShopContainer):
     """The butcher's block — a fixed counter that is also her SHOP.
 
-    A ``ShopContainer`` in **limited-inventory** mode: the stock is exactly
-    what the grind produced (``stock_cuts``), never spawned from thin air —
-    the gig economy stays real. ``buy rat chops from block`` works like any
-    shop, and the override below credits sale proceeds to ``db.register``,
-    closing the till loop: payouts to hunters drain the till, meat sales
-    refill it. ``db.integrate`` folds it into the room description."""
+    A ``ShopContainer`` in **limited-inventory** mode selling COOKED DISHES:
+    the grind's cuts run through ``world.food`` recipes (``stock_cuts`` cooks
+    them 1:1) and the menu is stew, chops, and skewers — never spawned from
+    thin air, so the gig economy stays real. ``buy stew from block`` works
+    like any shop, and the override below credits sale proceeds to
+    ``db.register``, closing the till loop: payouts to hunters drain the
+    till, dish sales refill it. ``db.integrate`` folds it into the room."""
 
     def at_object_creation(self):
         super().at_object_creation()
@@ -76,17 +76,22 @@ class ButcherBlock(ShopContainer):
                                      "walks off with {item}.")
 
     def stock_cuts(self, counts):
-        """Add ground produce to the shop: ``{prototype_key: count}``.
-
-        Registers each prototype at its sell price (idempotent) and
-        accumulates limited-mode quantities."""
+        """COOK the ground produce and stock the DISHES: raw ingredient counts
+        (``{catalog_id: count}``) run through ``world.food.cook_yields`` — the
+        cuts are consumed as recipe ingredients, and what the shop sells is the
+        cooked menu (rat tail stew, grilled chops…) at recipe prices. The raw
+        cuts stay real in ``FOOD_INGREDIENT_CATALOG`` for the future grocery /
+        player-kitchen layer; today the butcher IS the whole chain."""
+        from world.food import FOOD_RECIPES, cook_yields
+        dishes = cook_yields(counts)
         inventory = dict(self.db.prototype_inventory or {})
         stock = dict(self.db.item_inventory or {})
-        for proto_key, count in counts.items():
-            spec = RAT_PRODUCTS.get(proto_key)
-            if not spec or count <= 0:
+        for recipe_id, count in dishes.items():
+            recipe = FOOD_RECIPES.get(recipe_id)
+            if not recipe or count <= 0:
                 continue
-            inventory[proto_key] = spec["sell"]
+            proto_key = recipe["prototype"]
+            inventory[proto_key] = recipe["price"]
             stock[proto_key] = int(stock.get(proto_key, 0)) + int(count)
         self.db.prototype_inventory = inventory
         self.db.item_inventory = stock
@@ -182,7 +187,7 @@ class Butcher(LLMNpcMixin, Character):
                     if payout else "doesn't reach for the till")
         self.execute_cmd(
             f"emote breaks the carcass down with a few practiced strokes — "
-            f"{cuts_text} into the case — and {pay_text}."
+            f"{cuts_text} to the cook-pot — and {pay_text}."
         )
 
     def _butcher_yields(self, corpse, decay):
