@@ -57,6 +57,8 @@ class TestResidentialProfile(TestCase):
         from world.crowd.crowd_messages import crowd_profile_for_room_type
         self.assertEqual(crowd_profile_for_room_type("cube hotel"),
                          "residential")
+        self.assertEqual(crowd_profile_for_room_type("tenement"),
+                         "residential")
         self.assertEqual(crowd_profile_for_room_type("CUBE HOTEL"),
                          "residential")
 

@@ -884,6 +884,7 @@ NIGHTCLUB_ROOM_TYPES = {'nightclub', 'club'}
 
 RESIDENTIAL_ROOM_TYPES = {
     'cube hotel',
+    'tenement',      # the Brackett Arms and whatever housing follows
 }
 
 #: Enclosed bar/venue room types that draw on the 'interior' crowd pool rather
