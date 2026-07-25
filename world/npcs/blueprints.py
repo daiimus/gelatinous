@@ -1816,6 +1816,187 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                   '{mob} runs the chain off the cart, fires '
                                   'the burner ring, and takes up the '
                                   'cleaver like it was always theirs.'}},
+ 'tobacconist_bellows': {'name': 'Bellows',
+                         'typeclass': 'typeclasses.llm_npc.LLMNpc',
+                         'identity': {'sex': 'ambiguous',
+                                      'height': 'short',
+                                      'build': 'slight',
+                                      'skintone': 'jade',
+                                      'sdesc_keyword': 'tobacconist',
+                                      'hair_color': 'orange',
+                                      'hair_style': 'slicked',
+                                      'species': 'synthetic_humanoid'},
+                         'stats': {'grit': 1, 'resonance': 3,
+                                   'intellect': 3, 'motorics': 2},
+                         'desc': 'Slight, jade-skinned, and visibly '
+                                 'delighted to be here: a synthetic '
+                                 'humanoid with ember-orange hair slicked '
+                                 'back like a struck match, minding a '
+                                 'smoke shop with the enthusiasm of a '
+                                 'curator. Everything about them is neat, '
+                                 'quick, and faintly theatrical, as if '
+                                 'shopkeeping were a performance they '
+                                 'rehearsed and still love.',
+                         'longdesc': {
+                             'hair': 'Ember-orange hair slicked back hard, '
+                                     'a colour no scalp grows — chosen, '
+                                     'clearly, to match the sign outside.',
+                             'head': 'A face assembled to be pleasant that '
+                                     'somehow overshot into charming: '
+                                     'symmetrical, mobile, always a beat '
+                                     'from a smile.',
+                             'face': 'Fine seam-lines trace {their} '
+                                     'jawline like kintsugi — synthetic '
+                                     'joinery worn openly, almost '
+                                     'proudly.',
+                             'left_eye': '{Their} matte-copper {eyes} '
+                                         '{are} bright with unhurried '
+                                         'delight, cataloguing everything '
+                                         'and judging none of it.',
+                             'right_eye': '{Their} matte-copper {eyes} '
+                                          '{are} bright with unhurried '
+                                          'delight, cataloguing everything '
+                                          'and judging none of it.',
+                             'left_hand': '{Their} {hands} {are} quick and '
+                                          'precise as a card sharp\'s — '
+                                          'they wrap, tap, cut, and count '
+                                          'like small stage acts.',
+                             'right_hand': '{Their} {hands} {are} quick and '
+                                           'precise as a card sharp\'s — '
+                                           'they wrap, tap, cut, and count '
+                                           'like small stage acts.',
+                             'left_arm': 'Jade skin with faint geometric '
+                                         'seams at the joints, kept bare '
+                                         'below rolled sleeves — {they} '
+                                         '{have} nothing to hide and '
+                                         'seem{s} pleased about it.',
+                             'right_arm': 'Jade skin with faint geometric '
+                                          'seams at the joints, kept bare '
+                                          'below rolled sleeves — {they} '
+                                          '{have} nothing to hide and '
+                                          'seem{s} pleased about it.'},
+                         'look_place': 'behind the counter, beaming.',
+                         'temp_place': 'minding the counter with '
+                                       'unreasonable cheer.',
+                         'persona': {'archetype': 'merchant',
+                                     'name': 'Bellows',
+                                     'description': 'the tobacconist at '
+                                         'Cinder & Leaf, the smoke shop in '
+                                         'the Brackett Arms\' Braddock '
+                                         'corner — sells tobacco, blends, '
+                                         'rotgut, and top-shelf vices they '
+                                         'have never once been able to '
+                                         'feel.',
+                                     'personality': 'whimsical, delighted, '
+                                         'scholarly about vice — a synth '
+                                         'who studies human appetites like '
+                                         'a sommelier and describes every '
+                                         'effect secondhand (\'I\'m told '
+                                         'it\'s transcendent\'); '
+                                         'discretion absolute, cheer '
+                                         'unreasonable',
+                                     'scenario': 'minding the counter at '
+                                         'Cinder & Leaf as the Arms '
+                                         'settles around them'},
+                         'llm_driven': True,
+                         'wardrobe': [{'key': 'collarless shirt',
+                                       'aliases': ['shirt'],
+                                       'desc': 'A crisp collarless shirt '
+                                               'in unbleached cotton, '
+                                               'sleeves rolled past the '
+                                               'elbow with surgical '
+                                               'neatness.',
+                                       'worn_desc': 'A crisp collarless '
+                                               'shirt, sleeves rolled to '
+                                               'the elbow with surgical '
+                                               'neatness',
+                                       'coverage': ['chest', 'back',
+                                                    'abdomen'],
+                                       'layer': 1, 'color': 'grey',
+                                       'material': 'cotton',
+                                       'weight': 0.3,
+                                       'category': 'clothing'},
+                                      {'key': 'ember-stitched waistcoat',
+                                       'aliases': ['waistcoat', 'vest'],
+                                       'desc': 'A dark waistcoat '
+                                               'embroidered with falling '
+                                               'leaves that smoulder '
+                                               'orange at their edges — '
+                                               'the shop sign, made '
+                                               'wearable. The stitching '
+                                               'catches lamplight like '
+                                               'live coals.',
+                                       'worn_desc': 'A dark waistcoat '
+                                               'embroidered with falling '
+                                               'leaves smouldering orange '
+                                               'at their edges',
+                                       'coverage': ['chest', 'back'],
+                                       'layer': 2, 'color': 'black',
+                                       'material': 'brocade',
+                                       'weight': 0.4,
+                                       'category': 'clothing'},
+                                      {'key': 'striped sleeve garters',
+                                       'aliases': ['garters', 'sleeve '
+                                                   'garters'],
+                                       'desc': 'Elasticated sleeve garters '
+                                               'in ember-and-ash stripes, '
+                                               'worn above the elbow — '
+                                               'pure shopkeeper theatre, '
+                                               'and they know it.',
+                                       'worn_desc': 'Striped sleeve '
+                                               'garters in ember-and-ash, '
+                                               'pure shopkeeper theatre',
+                                       'coverage': ['left_arm',
+                                                    'right_arm'],
+                                       'layer': 2, 'color': 'orange',
+                                       'material': 'elastic',
+                                       'weight': 0.1,
+                                       'category': 'clothing'},
+                                      {'key': 'pinstripe trousers',
+                                       'aliases': ['trousers'],
+                                       'desc': 'Narrow pinstripe trousers '
+                                               'pressed to a blade edge, '
+                                               'a size too formal for the '
+                                               'district and entirely on '
+                                               'purpose.',
+                                       'worn_desc': 'Narrow pinstripe '
+                                               'trousers pressed to a '
+                                               'blade edge',
+                                       'coverage': ['groin', 'left_thigh',
+                                                    'right_thigh',
+                                                    'left_shin',
+                                                    'right_shin'],
+                                       'layer': 1, 'color': 'grey',
+                                       'material': 'wool',
+                                       'weight': 0.6,
+                                       'category': 'clothing'},
+                                      {'key': 'embroidered velvet slippers',
+                                       'aliases': ['slippers'],
+                                       'desc': 'House slippers in bottle-'
+                                               'green velvet, each '
+                                               'embroidered with a tiny '
+                                               'genie lamp trailing gold '
+                                               'smoke. Absurd. Immaculate. '
+                                               'Non-negotiable.',
+                                       'worn_desc': 'Bottle-green velvet '
+                                               'slippers embroidered with '
+                                               'tiny smoking genie lamps',
+                                       'coverage': ['left_foot',
+                                                    'right_foot'],
+                                       'layer': 1, 'color': 'green',
+                                       'material': 'velvet',
+                                       'weight': 0.2,
+                                       'category': 'clothing'}],
+                         'carried_prototypes': [],
+                         'home_room': None,
+                         'post': {'fixture': '#5484',
+                                  'policy': 'resleave',
+                                  'delay_hours': 8,
+                                  'arrival_resleave':
+                                      '{mob} steps back behind the counter '
+                                      'in a fresh-pressed body, beaming '
+                                      'like nothing so gauche as death '
+                                      'ever happened.'}},
  'dispatch_petra': {'name': 'Petra',
                     'typeclass': 'typeclasses.llm_npc.LLMNpc',
                     'identity': {'sex': 'female',
