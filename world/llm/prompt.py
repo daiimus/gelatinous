@@ -591,7 +591,7 @@ ARCHETYPES = {
         # real. Sales, doors, and the world stay somebody else's problem.
         "tools": ["release", "radio"],
         "fewshot": [
-            {"user": 'over the radio (88.8MHz), a low voice said: '
+            {"user": 'Over your radio you hear a low voice say: '
                      '"anybody out there?"',
              "assistant": {"speech": "Somebody is always out there, "
                                      "caller — that is the whole tragedy "
@@ -601,7 +601,7 @@ ARCHETYPES = {
                            "thought": "New voice, late shift, doesn't "
                                       "know the water yet. Keep them "
                                       "talking."}},
-            {"user": 'over the radio (88.8MHz), a rough voice said: '
+            {"user": 'Over your radio you hear a rough voice say: '
                      '"where do you broadcast from, rook?"',
              "assistant": {"speech": "From the inside of a rumor, "
                                      "caller. Ask a different question "
