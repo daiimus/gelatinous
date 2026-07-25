@@ -81,10 +81,9 @@ class FoodCart(Seating, ShopContainer):
         self.db.integrate = True
         self.db.integration_priority = 8
         self.db.purchase_msg_buyer = ("You count out {price}, and the butcher "
-                                      "hands {item} across the cart without "
-                                      "ceremony.")
-        self.db.purchase_msg_room = ("{buyer} counts chits onto the cart and "
-                                     "walks off with {item}.")
+                                      "sets {item} on the board.")
+        self.db.purchase_msg_room = ("{buyer} counts chits onto the cart, and "
+                                     "the butcher sets {item} on the board.")
         # Seating: the stools ARE the cart (BarCounter pattern) — `sit at
         # cart` takes one of these slots.
         self.db.postures = ("sitting",)
@@ -114,13 +113,32 @@ class FoodCart(Seating, ShopContainer):
         self.db.is_infinite = False
 
     def purchase_item(self, buyer, prototype_key):
-        """Sales feed the till: on a successful buy, the price lands in
+        """Sales feed the till, and the dish lands ON THE BOARD — the bar's
+        physicality, not the shop system's teleport-to-inventory: the base
+        class moves the spawned item to the buyer; we set it on the cart
+        instead (``get <dish> from cart`` to take it), and the price lands in
         ``db.register`` — the fund the butcher pays suppliers from."""
         price = self.get_price(prototype_key)
         success, result = super().purchase_item(buyer, prototype_key)
-        if success and price:
-            self.db.register = int(self.db.register or 0) + int(price)
+        if success:
+            try:
+                result.move_to(self, quiet=True, move_hooks=False)
+            except Exception:  # noqa: BLE001 — a failed re-place leaves it with the buyer
+                pass
+            if price:
+                self.db.register = int(self.db.register or 0) + int(price)
         return success, result
+
+    def return_appearance(self, looker, **kwargs):
+        """The menu board, plus whatever's physically resting on it — served
+        dishes sit on the cart until their buyer takes them."""
+        appearance = super().return_appearance(looker, **kwargs)
+        resting = [obj for obj in self.contents if not obj.destination]
+        if resting:
+            from world.grammar import with_article
+            names = ", ".join(with_article(o.key) for o in resting)
+            appearance += f"\nResting on the board: {names}."
+        return appearance
 
 
 class Butcher(LLMNpcMixin, Character):
@@ -241,8 +259,8 @@ class Butcher(LLMNpcMixin, Character):
             self.execute_cmd("say Cart says no. Take it up with the cart.")
             return
         self.execute_cmd(
-            f"emote hands {with_article(result.key)} across the board and "
-            f"sweeps {price} into the till."
+            f"emote sets {with_article(result.key)} on the board and sweeps "
+            f"{price} into the till."
         )
 
     def _llm_fallback(self):
