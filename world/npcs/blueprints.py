@@ -1884,6 +1884,8 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                          'look_place': 'behind the counter, beaming.',
                          'temp_place': 'minding the counter with '
                                        'unreasonable cheer.',
+                         'voice': {'voice_description': 'brassy',
+                                   'voice_ending': 'warble'},
                          'persona': {'archetype': 'merchant',
                                      'name': 'Bellows',
                                      'description': 'the tobacconist at '
