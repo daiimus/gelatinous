@@ -1962,6 +1962,97 @@ GROUND_MYSTERY_MEAT = {
     "tags": [("eat", "delivery_method"), ("food", "item_type")],
 }
 
+# --- cooked dishes (world/food.py FOOD_RECIPES; the butcher's block sells
+# these — the raw cuts above are the INGREDIENTS they consume) ---------------
+
+RAT_TAIL_STEW = {
+    "prototype_key": "rat_tail_stew",
+    "key": "bowl of rat tail stew",
+    "aliases": ["stew", "rat tail stew"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A dented tin bowl of dark, glossy stew, a whole rat tail coiled "
+            "through it like a question mark. The colony's honest comfort "
+            "food — nobody asks the rat's opinion.",
+    "attrs": [
+        ("drink_taste", "Rich, gelatinous, and deeply savoury — the tail gives "
+                        "up everything it has, slow and complete."),
+        ("drink_effects", {}),
+        ("uses_left", 2),
+        ("value", 12),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+GRILLED_RAT_CHOPS = {
+    "prototype_key": "grilled_rat_chops",
+    "key": "plate of grilled rat chops",
+    "aliases": ["grilled chops", "chops plate"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Grill-striped rat chops on a scoured steel plate, bones frenched "
+            "with more care than the venue strictly deserves.",
+    "attrs": [
+        ("drink_taste", "Char and clean lean meat with a mineral finish — the "
+                        "good cut, treated with respect."),
+        ("drink_effects", {}),
+        ("uses_left", 2),
+        ("value", 8),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+ROAST_RAT_HAUNCH = {
+    "prototype_key": "roast_rat_haunch",
+    "key": "roast rat haunch",
+    "aliases": ["roast", "roast haunch"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A whole rat hindquarter roasted to a lacquered brown, the skin "
+            "crisped and the little femur left as a handle.",
+    "attrs": [
+        ("drink_taste", "Dark and gamey under crackled skin — eats like a "
+                        "meal that used to be somebody's whole day of hunting."),
+        ("drink_effects", {}),
+        ("uses_left", 2),
+        ("value", 8),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+BUTCHERS_BREAKFAST = {
+    "prototype_key": "butchers_breakfast",
+    "key": "butcher's breakfast",
+    "aliases": ["breakfast", "offal fry"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A shallow pan of flash-fried rat offal — heart, liver, kidneys — "
+            "glistening in rendered fat with a fist of ration crackers on the "
+            "side. The trade's own meal.",
+    "attrs": [
+        ("drink_taste", "Iron and velvet, seared fast — the liver melts, the "
+                        "heart argues, the fat forgives everything."),
+        ("drink_effects", {}),
+        ("uses_left", 1),
+        ("value", 8),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+MYSTERY_SKEWER = {
+    "prototype_key": "mystery_skewer",
+    "key": "mystery skewer",
+    "aliases": ["skewer"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Cubes of seasoned mystery meat char-grilled on a filed-down "
+            "spoke. Street food in its purest colony form: hot, cheap, and "
+            "unexaminable.",
+    "attrs": [
+        ("drink_taste", "Salt, char, and fat — delicious precisely as long as "
+                        "you keep your curiosity holstered."),
+        ("drink_effects", {}),
+        ("uses_left", 1),
+        ("value", 3),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
 PAINKILLER = {
     "key": "painkiller",
     "typeclass": "typeclasses.items.Item",

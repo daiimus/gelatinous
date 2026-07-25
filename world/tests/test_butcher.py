@@ -202,11 +202,14 @@ class TestRatAccepted(TestCase):
         for banned in ("human", "synthetic_humanoid", "robot"):
             self.assertNotIn(banned, ACCEPTED_BUTCHER_SPECIES)
 
-    def test_products_priced_with_margin(self):
-        # sell > buy on every product: the block's margin keeps the till solvent
-        for key, spec in RAT_PRODUCTS.items():
-            self.assertGreater(spec["buy"], 0, key)
-            self.assertGreater(spec["sell"], spec["buy"], key)
+    def test_dishes_priced_with_margin(self):
+        # every dish sells above the buy cost of its ingredients — the
+        # cooked margin is what keeps the till solvent
+        from world.food import FOOD_RECIPES
+        for rid, recipe in FOOD_RECIPES.items():
+            cost = sum(RAT_PRODUCTS[i]["buy"] * q
+                       for i, q in recipe["ingredients"].items())
+            self.assertGreater(recipe["price"], cost, rid)
 
     def test_prototypes_exist_and_are_edible(self):
         from evennia.prototypes.prototypes import search_prototype
@@ -232,27 +235,69 @@ class TestBlockShop(TestCase):
                 block = create_object("typeclasses.butcher.ButcherBlock",
                                       key="test block", location=self.room1)
                 block.db.register = 100
+                # raw cuts in -> COOKED DISHES on the menu (world.food recipes)
                 block.stock_cuts({"rat_chops": 2, "rat_tail": 1})
-                self.assertEqual(block.db.item_inventory["rat_chops"], 2)
-                self.assertEqual(block.db.prototype_inventory["rat_chops"], 5)
+                self.assertEqual(block.db.item_inventory["grilled_rat_chops"], 2)
+                self.assertEqual(block.db.item_inventory["rat_tail_stew"], 1)
+                self.assertEqual(block.db.prototype_inventory["grilled_rat_chops"], 8)
+                self.assertEqual(block.db.prototype_inventory["rat_tail_stew"], 12)
+                self.assertNotIn("rat_chops", block.db.item_inventory)  # raw not sold
                 buyer = self.char1
                 buyer.tokens = 50
-                ok, item = block.purchase_item(buyer, "rat_chops")
+                ok, item = block.purchase_item(buyer, "grilled_rat_chops")
                 self.assertTrue(ok)
                 self.assertEqual(item.location, buyer)
-                self.assertEqual(buyer.tokens, 45)               # paid 5
-                self.assertEqual(block.db.register, 105)          # till credited
-                self.assertEqual(block.db.item_inventory["rat_chops"], 1)
+                self.assertEqual(buyer.tokens, 42)               # paid 8
+                self.assertEqual(block.db.register, 108)          # till credited
+                self.assertEqual(block.db.item_inventory["grilled_rat_chops"], 1)
                 # the spawned cut is edible, ingredient-grade
                 self.assertTrue(item.tags.has("eat", category="delivery_method"))
-                self.assertEqual(item.db.uses_left, 1)
+                self.assertEqual(item.db.uses_left, 2)   # a plated dish is two bites
                 # drain the stock: second buy ok, third refused
-                ok, _ = block.purchase_item(buyer, "rat_chops")
+                ok, _ = block.purchase_item(buyer, "grilled_rat_chops")
                 self.assertTrue(ok)
-                ok, msg = block.purchase_item(buyer, "rat_chops")
+                ok, msg = block.purchase_item(buyer, "grilled_rat_chops")
                 self.assertFalse(ok)
         t = _T("runTest"); t.setUp()
         try:
             t.runTest()
         finally:
             t.tearDown()
+
+
+class TestFoodLayer(TestCase):
+    """world/food.py: the ingredient catalog + recipes are coherent, and the
+    cook step maps cuts to dishes."""
+
+    def test_recipes_reference_real_ingredients(self):
+        from world.food import FOOD_INGREDIENT_CATALOG, FOOD_RECIPES
+        for rid, recipe in FOOD_RECIPES.items():
+            for ing in recipe["ingredients"]:
+                self.assertIn(ing, FOOD_INGREDIENT_CATALOG, f"{rid} -> {ing}")
+            self.assertGreater(recipe["price"], 0)
+
+    def test_dish_prototypes_exist_and_are_edible(self):
+        from evennia.prototypes.prototypes import search_prototype
+        from world.food import FOOD_RECIPES
+        for rid, recipe in FOOD_RECIPES.items():
+            protos = search_prototype(recipe["prototype"])
+            self.assertTrue(protos, f"dish prototype missing: {rid}")
+            tags = [tuple(t[:2]) for t in protos[0].get("tags", [])]
+            self.assertIn(("eat", "delivery_method"), tags)
+
+    def test_cook_yields_full_grind(self):
+        from world.food import cook_yields
+        dishes = cook_yields({"rat_tail": 1, "rat_chops": 3, "rat_haunch": 2,
+                              "rat_offal": 1, "ground_mystery_meat": 3})
+        self.assertEqual(dishes, {"rat_tail_stew": 1, "grilled_rat_chops": 3,
+                                  "roast_rat_haunch": 2, "butchers_breakfast": 1,
+                                  "mystery_skewer": 3})
+
+    def test_cook_yields_ignores_unknown(self):
+        from world.food import cook_yields
+        self.assertEqual(cook_yields({"mystery_gland": 4}), {})
+
+    def test_contributions_seam(self):
+        # empty today, but the summation seam works (spec §7 tier 3)
+        from world.food import dish_contributions
+        self.assertEqual(dish_contributions("rat_tail_stew"), {})
