@@ -4372,7 +4372,7 @@ AWE_SHELF_RADIO = {
         ("is_radio", True),
         ("radio_on", True),
         ("frequency", "88.8MHz"),
-        ("integration_priority", 7),   # after the venue's primary fixture
+        ("integration_priority", 9),   # after the venue's primary fixture
         ("get_err_msg", "It is screwed down against exactly this idea."),
     ],
 }
