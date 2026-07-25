@@ -758,6 +758,128 @@ CROWD_MESSAGES['residential'] = {
         },
 }
 
+# 'market' — covered/enclosed market galleries (stall rows under a roof or a
+# hull: Hammett's Boot and whatever markets come after). Distinct from the
+# open-air 'default' street crush (no sky, no drones overhead, no gutters) and
+# from 'interior' venues (no bar counters): this is COMMERCE — stalls, barter,
+# hand-trucks, hanging stock, vendors who know your face.
+CROWD_MESSAGES['market'] = {
+    'sparse': {
+        'visual': [
+            "most of the stalls are shuttered, tarps lashed down; a lone vendor rearranges stock that hasn't moved all shift",
+            "a sweeper works the empty stall row, pushing a slow drift of packing straw and dropped rinds",
+            "two vendors sit on crates between shuttered stalls, splitting something hot from a shared tin",
+            "a hand-truck stands abandoned mid-aisle, loaded and strapped, its owner nowhere",
+            "a kid ducks under a shuttered stall's counter and comes out the other side with practiced ease",
+            "a vendor counts the day's chits behind a half-closed shutter, lips moving",
+        ],
+        'auditory': [
+            "a shutter rattles down somewhere along the row, and the quiet after it is louder",
+            "one vendor's voice carries the length of the empty gallery, haggling with nobody worth the effort",
+            "chain hooks clink somewhere overhead as hanging stock settles",
+            "a tarp snaps taut as someone lashes a stall down for the shift",
+        ],
+        'olfactory': [
+            "cold grease and yesterday's produce hang where the food stalls were trading",
+            "tarp plastic and packing straw are most of what the empty aisle offers the nose",
+            "a thread of stove smoke says one stall at least is still working",
+        ],
+        'tactile': [
+            "with the stalls shuttered there's no press of bodies, and the aisle air sits cold",
+            "the rare passing shopper brushes by with room to spare",
+        ],
+        'atmospheric': [
+            "an off-hours stillness sits on the stall rows, half the cell-lamps dark to save charge",
+            "the market has the hollow feel of a stage after the play",
+        ],
+    },
+    'moderate': {
+        'visual': [
+            "a steady working trade moves stall to stall — shoppers with sacks, vendors making change without looking down",
+            "a vendor weighs something on a hand-scale, thumb nowhere near the pan, eyes on the customer the whole time",
+            "a hand-truck loaded past sense edges down the aisle, its pusher calling the corners",
+            "two shoppers bid quietly against each other over the same crate while the vendor looks on, patient as a house cat",
+            "a stall-holder hooks fresh stock onto the hanging rail, pricing it by eye as it goes up",
+            "somebody's kid runs change between stalls, quick and trusted",
+        ],
+        'auditory': [
+            "the gallery hums with barter — prices called, prices scoffed at, prices met somewhere in the middle",
+            "a hand-scale's chain rattles, a price is named, and somebody sucks their teeth at it",
+            "vendors call greetings along the row to faces they know",
+            "chits click across counters up and down the aisle in steady time",
+            "the squeal of a hand-truck's bad wheel tracks its slow progress down the row",
+        ],
+        'olfactory': [
+            "fried protein, spice, and hot stall-grease ride over the smell of bodies at work",
+            "someone's stall is stewing something long and dark, and half the aisle is hungry for it",
+            "produce, solder, and cheap incense trade places as the aisle air stirs",
+        ],
+        'tactile': [
+            "the working crowd keeps the aisle air warm, shoulders brushing at the choke points",
+            "sacks and elbows bump past in the steady stall-to-stall traffic",
+        ],
+        'atmospheric': [
+            "the market runs at its working rhythm, every stall lit and nobody hurrying",
+            "trade is steady enough that the vendors look easy and the prices don't move",
+        ],
+    },
+    'heavy': {
+        'visual': [
+            "the aisle is a slow press of bodies between the stalls, everyone edging past everyone with their goods held high",
+            "a vendor works three customers at once, taking chits with one hand and hooking stock down with the other",
+            "a stall's queue backs into the walking lane and the walking lane pushes through it anyway",
+            "somebody's cart has wedged at the choke point, and the crowd folds around it like water",
+            "hands go up along the row bidding for the last of something",
+        ],
+        'auditory': [
+            "shouted prices overlap down the gallery until the numbers stop meaning anything",
+            "the crowd noise packs the aisle wall to wall, barter on top of gossip on top of somebody's radio",
+            "a vendor bellows a last-lots call and the press around the stall doubles",
+            "an argument over short change flares two stalls down and the crowd talks over it",
+        ],
+        'olfactory': [
+            "hot grease, packed bodies, and crushed produce make the aisle air thick enough to chew",
+            "sweat and stall smoke crowd out every other smell in the press",
+        ],
+        'tactile': [
+            "the press of shoppers is constant — shoulders, sacks, and elbows, no apology owed or offered",
+            "the crowd's heat sits on the aisle, close and damp",
+        ],
+        'atmospheric': [
+            "peak trade has the market at a rolling boil, every stall shouting and every lane full",
+            "the stall rows churn at capacity, vendors' eyes bright with the count",
+        ],
+    },
+    'packed': {
+        'visual': [
+            "the aisle is a crush, shoppers wedged between the stalls in a mass that moves by inches",
+            "a vendor climbs onto their own counter to trade over the heads of the crush",
+            "cut-purses work the jam openly, and everyone holds their goods to their chest and pretends not to know",
+            "the crowd has stopped being people and become weather, and the stalls trade with whatever the current brings past",
+        ],
+        'auditory': [
+            "the noise is one solid thing, barter and shoving and someone's panicked livestock all pressed into a single roar",
+            "vendors scream prices over the crush and take whatever hand reaches them first",
+            "somewhere in the jam a scuffle starts, and the crowd's roar swallows it whole",
+        ],
+        'olfactory': [
+            "the crush smells of everything at once — sweat, grease, crushed goods, and the sharp note of somebody's fear",
+            "there's no air in the press that hasn't been through six other people first",
+        ],
+        'tactile': [
+            "the crush carries you — walking is a negotiation and standing still is a fight",
+            "bodies press from every side, and whatever's in your pockets is everyone's business",
+        ],
+        'atmospheric': [
+            "the market has crossed from trade into crush, and the smart vendors are already shuttering",
+            "the jam has its own slow current, and it decides where you go next",
+        ],
+    },
+}
+
+#: Covered/enclosed market galleries — stall commerce, not street crush.
+MARKET_ROOM_TYPES = {'market'}
+
 NIGHTCLUB_ROOM_TYPES = {'nightclub', 'club'}
 
 RESIDENTIAL_ROOM_TYPES = {
@@ -773,10 +895,12 @@ INTERIOR_ROOM_TYPES = {
 
 def crowd_profile_for_room_type(room_type):
     """Map a ``room.type`` to a crowd profile
-    ('default'|'interior'|'nightclub'|'constabulary'|'residential')."""
+    ('default'|'interior'|'market'|'nightclub'|'constabulary'|'residential')."""
     t = str(room_type or "").lower()
     if t == 'constabulary':
         return 'constabulary'
+    if t in MARKET_ROOM_TYPES:
+        return 'market'
     if t in NIGHTCLUB_ROOM_TYPES:
         return 'nightclub'
     if t in RESIDENTIAL_ROOM_TYPES:

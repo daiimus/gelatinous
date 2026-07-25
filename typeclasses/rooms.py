@@ -1075,11 +1075,11 @@ class IndoorRoom(Room):
     """
     An interior room (building, shop, warehouse, etc.).
     Indoor, moderate crowd levels.
-    
+
     Usage:
         @tunnel east = Warehouse:typeclasses.rooms.IndoorRoom
     """
-    
+
     def at_object_creation(self):
         """Set default attributes for indoor rooms."""
         super().at_object_creation()
@@ -1087,6 +1087,27 @@ class IndoorRoom(Room):
         self.db.outside = False
         self.db.is_sky_room = False
         self.db.type = "interior"
+
+
+class MarketRoom(Room):
+    """
+    A covered/enclosed market gallery — stall rows under a roof or a hull
+    (Hammett's Boot and whatever markets come after). Enclosed (no direct
+    weather; authored leaks/street-bleed live in the room descs), busy by
+    default, and drawing crowds from the 'market' pool: stalls, barter,
+    hand-trucks — commerce, not street crush or bar murmur.
+
+    Usage:
+        @tunnel east = Stall Row:typeclasses.rooms.MarketRoom
+    """
+
+    def at_object_creation(self):
+        """Set default attributes for market rooms."""
+        super().at_object_creation()
+        self.db.crowd_base_level = 3
+        self.db.outside = False
+        self.db.is_sky_room = False
+        self.db.type = "market"
 
 
 class BridgeRoom(Room):
