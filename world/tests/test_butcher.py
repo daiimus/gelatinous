@@ -246,7 +246,9 @@ class TestBlockShop(TestCase):
                 buyer.tokens = 50
                 ok, item = block.purchase_item(buyer, "grilled_rat_chops")
                 self.assertTrue(ok)
-                self.assertEqual(item.location, buyer)
+                # the dish lands ON THE BOARD (bar physicality), not in
+                # the buyer's inventory — `get <dish> from cart` takes it
+                self.assertEqual(item.location, block)
                 self.assertEqual(buyer.tokens, 42)               # paid 8
                 self.assertEqual(block.db.register, 108)          # till credited
                 self.assertEqual(block.db.item_inventory["grilled_rat_chops"], 1)
@@ -402,7 +404,7 @@ class TestDishOrderFulfilment(TestCase):
         b._fulfil_dish_order("gimme a skewer", patron)
         cart.purchase_item.assert_called_once_with(patron, "mystery_skewer")
         emote = b.execute_cmd.call_args.args[0]
-        self.assertIn("emote hands a mystery skewer across the board", emote)
+        self.assertIn("emote sets a mystery skewer on the board", emote)
         self.assertIn("sweeps 3 into the till", emote)
 
     def test_sold_out_refused(self):
