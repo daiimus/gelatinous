@@ -12,12 +12,12 @@ Human / synthetic / robot corpses are REFUSED — sapient bodies are the future
 Ripper's trade, and chrome isn't food.
 """
 
-from evennia import create_object
+from evennia.prototypes.spawner import spawn
 from evennia.utils.utils import delay
 
 from typeclasses.characters import Character
-from typeclasses.items import Item
 from typeclasses.llm_npc import LLMNpcMixin
+from typeclasses.shopkeeper import ShopContainer
 from world.grammar import with_article
 
 #: Species the block buys. Everything else is refused (see _refuse_species).
@@ -31,47 +31,16 @@ BUTCHER_DECAY_REFUSAL = 0.6
 #: buying until it's fed (finite till — the economy hook).
 BUTCHER_TILL_FLOOR = 5
 
-#: The rat butchery table (spec §3.4): per-product value and flavour. Yields
-#: are computed against the corpse's REAL condition in `_butcher_yields`.
+#: The rat butchery pricing (spec §3.4): per-product BUY value (what the
+#: block pays a supplier) and SELL price (what the shop charges — the margin
+#: is what keeps the till solvent). Prose/tags live on the prototypes
+#: (world/prototypes.py RAT_TAIL etc.); `name` is the display form.
 RAT_PRODUCTS = {
-    "rat tail": {
-        "value": 5, "aliases": ["tail"],
-        "desc": "A skinned rat tail, long as a forearm, coiled and tied off "
-                "with butcher's twine. The classic stew base of the colony's "
-                "cheaper kitchens.",
-        "taste": "Gelatinous and faintly sweet, all cartilage and slow-cooked "
-                 "promise — wasted eaten raw.",
-    },
-    "rat chops": {
-        "value": 3, "aliases": ["chops", "chop"],
-        "desc": "Center-cut rat chops, pale and lean, trimmed square on a "
-                "bone. The good cut — the one the stall signs mean when they "
-                "say MEAT in capitals.",
-        "taste": "Lean and springy with a mineral edge; it wants a grill and "
-                 "gets teeth instead.",
-    },
-    "rat haunch": {
-        "value": 3, "aliases": ["haunch"],
-        "desc": "A rat hindquarter, skinned and hock-tied — dense dark meat "
-                "around a stout little femur. Roast weight for one.",
-        "taste": "Dark, rich, and chewy, closer to game than anything the "
-                 "ration lines admit exists.",
-    },
-    "rat offal": {
-        "value": 3, "aliases": ["offal"],
-        "desc": "A twist of waxed paper holding the sound organs — heart, "
-                "liver, kidneys — glistening and neatly sorted. Delicacy or "
-                "dare, depending on the kitchen.",
-        "taste": "Iron and velvet; the liver coats the tongue and the heart "
-                 "pushes back.",
-    },
-    "ground mystery meat": {
-        "value": 1, "aliases": ["meat", "mystery meat"],
-        "desc": "A dense brick of pale ground meat in a printed wrapper that "
-                "says only MEAT. Whatever didn't make the cut, made this.",
-        "taste": "Salt, fat, and deliberate ambiguity. It is probably best "
-                 "not to chew thoughtfully.",
-    },
+    "rat_tail":            {"name": "rat tail", "buy": 5, "sell": 8},
+    "rat_chops":           {"name": "rat chops", "buy": 3, "sell": 5},
+    "rat_haunch":          {"name": "rat haunch", "buy": 3, "sell": 5},
+    "rat_offal":           {"name": "rat offal", "buy": 3, "sell": 5},
+    "ground_mystery_meat": {"name": "ground mystery meat", "buy": 1, "sell": 2},
 }
 
 #: Trunk organs whose average condition gates the chops yield — a
@@ -83,21 +52,54 @@ _RAT_TRUNK_ORGANS = ("heart", "left_lung", "right_lung", "liver", "stomach",
 _RAT_OFFAL_ORGANS = ("heart", "liver", "left_kidney", "right_kidney")
 
 
-class ButcherBlock(Item):
-    """The butcher's block — a fixed plate-steel counter holding the till.
+class ButcherBlock(ShopContainer):
+    """The butcher's block — a fixed counter that is also her SHOP.
 
-    Sibling of ``BarCounter``: an ``Item`` (so @integrate folds it into the
-    room description) but a fixture — ``get:false()`` keeps it planted. Cuts
-    land in its ``contents`` (the counter surface); ``db.register`` is the
-    finite till the payouts draw down (seed it; when it runs dry she stops
-    buying — the economy hook)."""
+    A ``ShopContainer`` in **limited-inventory** mode: the stock is exactly
+    what the grind produced (``stock_cuts``), never spawned from thin air —
+    the gig economy stays real. ``buy rat chops from block`` works like any
+    shop, and the override below credits sale proceeds to ``db.register``,
+    closing the till loop: payouts to hunters drain the till, meat sales
+    refill it. ``db.integrate`` folds it into the room description."""
 
     def at_object_creation(self):
         super().at_object_creation()
+        self.db.is_infinite = False
+        self.db.shop_name = "the butcher's block"
+        self.db.container_type = "block"
         self.db.register = 0
         self.db.owner = None
         self.db.integrate = True
-        self.locks.add("get:false()")
+        self.db.purchase_msg_buyer = ("You count out {price}, and the butcher "
+                                      "hooks down {item} without ceremony.")
+        self.db.purchase_msg_room = ("{buyer} counts chits onto the block and "
+                                     "walks off with {item}.")
+
+    def stock_cuts(self, counts):
+        """Add ground produce to the shop: ``{prototype_key: count}``.
+
+        Registers each prototype at its sell price (idempotent) and
+        accumulates limited-mode quantities."""
+        inventory = dict(self.db.prototype_inventory or {})
+        stock = dict(self.db.item_inventory or {})
+        for proto_key, count in counts.items():
+            spec = RAT_PRODUCTS.get(proto_key)
+            if not spec or count <= 0:
+                continue
+            inventory[proto_key] = spec["sell"]
+            stock[proto_key] = int(stock.get(proto_key, 0)) + int(count)
+        self.db.prototype_inventory = inventory
+        self.db.item_inventory = stock
+        self.db.is_infinite = False
+
+    def purchase_item(self, buyer, prototype_key):
+        """Sales feed the till: on a successful buy, the price lands in
+        ``db.register`` — the fund the butcher pays suppliers from."""
+        price = self.get_price(prototype_key)
+        success, result = super().purchase_item(buyer, prototype_key)
+        if success and price:
+            self.db.register = int(self.db.register or 0) + int(price)
+        return success, result
 
 
 class Butcher(LLMNpcMixin, Character):
@@ -157,23 +159,18 @@ class Butcher(LLMNpcMixin, Character):
             return
 
         yields = self._butcher_yields(corpse, decay)
-        payout = sum(RAT_PRODUCTS[key]["value"] * count for key, count in yields)
+        payout = sum(RAT_PRODUCTS[key]["buy"] * count for key, count in yields)
         if block:
             payout = min(payout, till)
             block.db.register = till - payout
-
-        surface = block if block else self.location
-        for key, count in yields:
-            spec = RAT_PRODUCTS[key]
-            for _ in range(count):
-                cut = create_object(Item, key=key, location=surface,
-                                    home=surface, aliases=spec["aliases"])
-                cut.db.desc = spec["desc"]
-                cut.db.drink_taste = spec["taste"]
-                cut.db.drink_effects = {}   # ingredient-grade slot (spec §7)
-                cut.db.uses_left = 1
-                cut.tags.add("eat", category="delivery_method")
-                cut.tags.add("food", category="item_type")
+            # the produce becomes SHOP STOCK — buyable, finite, real
+            block.stock_cuts(dict(yields))
+        else:
+            # blockless butcher: spawn the cuts loose where she stands
+            for key, count in yields:
+                for _ in range(count):
+                    for cut in spawn(key):
+                        cut.move_to(self.location, quiet=True, move_hooks=False)
 
         self._drop_from_hands(corpse)
         corpse.delete()
@@ -185,7 +182,7 @@ class Butcher(LLMNpcMixin, Character):
                     if payout else "doesn't reach for the till")
         self.execute_cmd(
             f"emote breaks the carcass down with a few practiced strokes — "
-            f"{cuts_text} onto the block — and {pay_text}."
+            f"{cuts_text} into the case — and {pay_text}."
         )
 
     def _butcher_yields(self, corpse, decay):
@@ -234,8 +231,8 @@ class Butcher(LLMNpcMixin, Character):
         meat = max(1, round(3 * freshness))
 
         return [(key, count) for key, count in (
-            ("rat tail", tail), ("rat chops", chops), ("rat haunch", haunch),
-            ("rat offal", offal), ("ground mystery meat", meat)) if count > 0]
+            ("rat_tail", tail), ("rat_chops", chops), ("rat_haunch", haunch),
+            ("rat_offal", offal), ("ground_mystery_meat", meat)) if count > 0]
 
     # --- refusals + rendering helpers ------------------------------------
     @staticmethod
@@ -266,8 +263,10 @@ class Butcher(LLMNpcMixin, Character):
 
     @staticmethod
     def _render_cuts(yields):
-        parts = [f"{count} {key}" if count > 1 else with_article(key)
-                 for key, count in yields]
+        parts = []
+        for key, count in yields:
+            name = RAT_PRODUCTS.get(key, {}).get("name", key)
+            parts.append(f"{count} {name}" if count > 1 else with_article(name))
         if len(parts) > 1:
             return ", ".join(parts[:-1]) + ", and " + parts[-1]
         return parts[0] if parts else "nothing worth wrapping"

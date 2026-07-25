@@ -1866,6 +1866,102 @@ BLOOD_BAG = {
 }
 
 # Injectable Painkiller - Multi-dose pain management
+# ============================================================================
+# BUTCHER CUTS (GIG_PROTOTYPE_BUTCHER_SPEC) — the Butcher's block stocks these
+# as limited shop inventory when a carcass is ground (typeclasses/butcher.py);
+# quantities are REAL (what suppliers brought), never infinite. Ingredient-
+# grade per spec §7: edible now (eat delivery + taste), empty contributions
+# slot for the future food-recipe layer.
+# ============================================================================
+
+RAT_TAIL = {
+    "prototype_key": "rat_tail",
+    "key": "rat tail",
+    "aliases": ["tail"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A skinned rat tail, long as a forearm, coiled and tied off with "
+            "butcher's twine. The classic stew base of the colony's cheaper "
+            "kitchens.",
+    "attrs": [
+        ("drink_taste", "Gelatinous and faintly sweet, all cartilage and "
+                        "slow-cooked promise — wasted eaten raw."),
+        ("drink_effects", {}),
+        ("uses_left", 1),
+        ("value", 8),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+RAT_CHOPS = {
+    "prototype_key": "rat_chops",
+    "key": "rat chops",
+    "aliases": ["chops", "chop"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Center-cut rat chops, pale and lean, trimmed square on a bone. "
+            "The good cut — the one the stall signs mean when they say MEAT "
+            "in capitals.",
+    "attrs": [
+        ("drink_taste", "Lean and springy with a mineral edge; it wants a "
+                        "grill and gets teeth instead."),
+        ("drink_effects", {}),
+        ("uses_left", 1),
+        ("value", 5),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+RAT_HAUNCH = {
+    "prototype_key": "rat_haunch",
+    "key": "rat haunch",
+    "aliases": ["haunch"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A rat hindquarter, skinned and hock-tied — dense dark meat "
+            "around a stout little femur. Roast weight for one.",
+    "attrs": [
+        ("drink_taste", "Dark, rich, and chewy, closer to game than anything "
+                        "the ration lines admit exists."),
+        ("drink_effects", {}),
+        ("uses_left", 1),
+        ("value", 5),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+RAT_OFFAL = {
+    "prototype_key": "rat_offal",
+    "key": "rat offal",
+    "aliases": ["offal"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A twist of waxed paper holding the sound organs — heart, liver, "
+            "kidneys — glistening and neatly sorted. Delicacy or dare, "
+            "depending on the kitchen.",
+    "attrs": [
+        ("drink_taste", "Iron and velvet; the liver coats the tongue and the "
+                        "heart pushes back."),
+        ("drink_effects", {}),
+        ("uses_left", 1),
+        ("value", 5),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+GROUND_MYSTERY_MEAT = {
+    "prototype_key": "ground_mystery_meat",
+    "key": "ground mystery meat",
+    "aliases": ["meat", "mystery meat"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A dense brick of pale ground meat in a printed wrapper that says "
+            "only MEAT. Whatever didn't make the cut, made this.",
+    "attrs": [
+        ("drink_taste", "Salt, fat, and deliberate ambiguity. It is probably "
+                        "best not to chew thoughtfully."),
+        ("drink_effects", {}),
+        ("uses_left", 1),
+        ("value", 2),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
 PAINKILLER = {
     "key": "painkiller",
     "typeclass": "typeclasses.items.Item",
