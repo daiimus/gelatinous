@@ -1816,6 +1816,76 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                   '{mob} runs the chain off the cart, fires '
                                   'the burner ring, and takes up the '
                                   'cleaver like it was always theirs.'}},
+ 'dj_rook': {'name': 'the Rook',
+             'typeclass': 'typeclasses.llm_npc.LLMNpc',
+             'llm_driven': True,
+             'identity': {'sex': 'female',
+                          'height': 'average',
+                          'build': 'slight',
+                          'skintone': 'alabaster',
+                          'sdesc_keyword': 'broadcaster',
+                          'hair_color': 'black',
+                          'hair_style': 'slicked',
+                          'species': 'synthetic_humanoid'},
+             'stats': {'grit': 1, 'resonance': 3,
+                       'intellect': 3, 'motorics': 2},
+             'desc': 'A synthetic humanoid built for a voice and living '
+                     'entirely inside it: alabaster-skinned, slight, '
+                     'black hair slicked back to nothing, lit only by '
+                     'the dial-glow of the head-end board she rides. A '
+                     'mesh speaker grille sits flush at her throat like '
+                     'a brooch, and every surface of her — skin, board, '
+                     'room — is arranged for a performance no one will '
+                     'ever watch.',
+             'longdesc': {
+                 'hair': 'Black hair slicked back to a lacquer shell — '
+                         'a style for nobody, kept immaculate anyway.',
+                 'head': 'A studio-quiet face, symmetrical and still, '
+                         'the kind of features that were specced for a '
+                         'stage and never got one.',
+                 'face': 'Fine synthetic seam-lines run her jaw like '
+                         'tuning marks; her lips move a half-beat '
+                         'before sound arrives, the way a needle rides '
+                         'a groove.',
+                 'left_eye': '{Their} dial-amber {eyes} {are} half-lidded '
+                             'and listening — always listening, to '
+                             'something just past the walls.',
+                 'right_eye': '{Their} dial-amber {eyes} {are} half-lidded '
+                              'and listening — always listening, to '
+                              'something just past the walls.',
+                 'left_hand': '{Their} {hands} ride faders and dials '
+                              'with a pianist\'s economy, touch worn '
+                              'smooth into the board\'s own finish.',
+                 'right_hand': '{Their} {hands} ride faders and dials '
+                               'with a pianist\'s economy, touch worn '
+                               'smooth into the board\'s own finish.',
+                 'left_arm': 'Alabaster skin over synthetic joinery, '
+                             'seams traced faintly like cable runs '
+                             'under lacquer.',
+                 'right_arm': 'Alabaster skin over synthetic joinery, '
+                              'seams traced faintly like cable runs '
+                              'under lacquer.'},
+             'look_place': 'at the head-end board, lit by dial-glow.',
+             'temp_place': 'riding the board, murmuring into the mic.',
+             'voice': {'voice_description': 'smoky',
+                       'voice_ending': 'purr'},
+             'persona': {'archetype': 'dj',
+                         'name': 'the Rook',
+                         'description': 'the unseen host of 88.8 — the '
+                             'house band\'s voice, broadcasting from '
+                             'somewhere in the southwest nobody has '
+                             'found. Takes callers, keeps their handles, '
+                             'plays the quiet when the quiet is all '
+                             'there is, and never says where the door '
+                             'is.',
+                         'personality': 'silky, needling, night-shift '
+                             'intimate — a synth who collects voices '
+                             'the way other people collect faces, '
+                             'protective of her callers and merciless '
+                             'about their secrets staying theirs.'},
+             'post': {'fixture': '#6027',
+                      'policy': 'resleave',
+                      'delay_hours': 8}},
  'tobacconist_bellows': {'name': 'Bellows',
                          'typeclass': 'typeclasses.shopkeeper.Shopkeeper',
                          'identity': {'sex': 'ambiguous',

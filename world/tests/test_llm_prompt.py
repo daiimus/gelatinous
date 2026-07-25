@@ -582,6 +582,12 @@ class TestMerchantArchetype(TestCase):
                          ["look", "remember", "feel", "release", "radio",
                           "wield", "check_stock"])
 
+    def test_dj_scoped_to_the_board(self):
+        from world.llm.prompt import tool_names
+        self.assertEqual(
+            tool_names({"persona_seed": {"archetype": "dj"}}),
+            ["look", "remember", "feel", "release", "radio"])
+
     def test_duties_ground_ownership(self):
         msgs = build_messages(self._merchant(), "someone",
                               "what is this place?", "directed")
