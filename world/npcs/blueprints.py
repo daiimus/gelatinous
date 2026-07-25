@@ -1831,12 +1831,14 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                          'desc': 'Slight, jade-skinned, and visibly '
                                  'delighted to be here: a synthetic '
                                  'humanoid with ember-orange hair slicked '
-                                 'back like a struck match, minding a '
-                                 'smoke shop with the enthusiasm of a '
-                                 'curator. Everything about them is neat, '
-                                 'quick, and faintly theatrical, as if '
-                                 'shopkeeping were a performance they '
-                                 'rehearsed and still love.',
+                                 'back like a struck match, running a '
+                                 'southside smoke shop with the flourish '
+                                 'of a gutter magician. Everything about '
+                                 'them is quick, theatrical, and visibly '
+                                 'repaired — brass fittings where chrome '
+                                 'was specced, solder where there should '
+                                 'be seams, a performance staged entirely '
+                                 'from salvage and staged well.',
                          'longdesc': {
                              'hair': 'Ember-orange hair slicked back hard, '
                                      'a colour no scalp grows — chosen, '
@@ -1865,16 +1867,20 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                            'precise as a card sharp\'s — '
                                            'they wrap, tap, cut, and count '
                                            'like small stage acts.',
-                             'left_arm': 'Jade skin with faint geometric '
-                                         'seams at the joints, kept bare '
-                                         'below rolled sleeves — {they} '
-                                         '{have} nothing to hide and '
-                                         'seem{s} pleased about it.',
-                             'right_arm': 'Jade skin with faint geometric '
-                                          'seams at the joints, kept bare '
-                                          'below rolled sleeves — {they} '
-                                          '{have} nothing to hide and '
-                                          'seem{s} pleased about it.'},
+                             'left_arm': 'Jade skin with geometric seams '
+                                         'at the joints — one forearm '
+                                         'panel is a mismatched salvage '
+                                         'green, riveted rather than '
+                                         'seamed, and {they} wear{s} it '
+                                         'the way other people wear a '
+                                         'good watch.',
+                             'right_arm': 'Jade skin with geometric seams '
+                                          'at the joints — one forearm '
+                                          'panel is a mismatched salvage '
+                                          'green, riveted rather than '
+                                          'seamed, and {they} wear{s} it '
+                                          'the way other people wear a '
+                                          'good watch.'},
                          'look_place': 'behind the counter, beaming.',
                          'temp_place': 'minding the counter with '
                                        'unreasonable cheer.',
@@ -1918,48 +1924,57 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                        'category': 'clothing'},
                                       {'key': 'ember-stitched waistcoat',
                                        'aliases': ['waistcoat', 'vest'],
-                                       'desc': 'A dark waistcoat '
-                                               'embroidered with falling '
-                                               'leaves that smoulder '
-                                               'orange at their edges — '
-                                               'the shop sign, made '
-                                               'wearable. The stitching '
-                                               'catches lamplight like '
-                                               'live coals.',
-                                       'worn_desc': 'A dark waistcoat '
-                                               'embroidered with falling '
-                                               'leaves smouldering orange '
-                                               'at their edges',
+                                       'desc': 'A waistcoat sewn from four '
+                                               'dead garments into one '
+                                               'good one, embroidered '
+                                               'with falling leaves that '
+                                               'smoulder orange at the '
+                                               'edges — most stitched, '
+                                               'two genuinely scorched. '
+                                               'The shop sign made '
+                                               'wearable, then made '
+                                               'honest.',
+                                       'worn_desc': 'A patchwork '
+                                               'waistcoat embroidered '
+                                               'with smouldering leaves, '
+                                               'two of them genuinely '
+                                               'scorched',
                                        'coverage': ['chest', 'back',
                                                     'abdomen'],
                                        'layer': 2, 'color': 'black',
-                                       'material': 'brocade',
+                                       'material': 'patchwork',
                                        'weight': 0.4,
                                        'category': 'clothing'},
-                                      {'key': 'striped sleeve garters',
-                                       'aliases': ['garters', 'sleeve '
-                                                   'garters'],
-                                       'desc': 'Elasticated sleeve garters '
-                                               'in ember-and-ash stripes, '
-                                               'worn above the elbow — '
-                                               'pure shopkeeper theatre, '
-                                               'and they know it.',
-                                       'worn_desc': 'Striped sleeve '
-                                               'garters in ember-and-ash, '
-                                               'pure shopkeeper theatre',
+                                      {'key': 'salvage sleeve garters',
+                                       'aliases': ['garters',
+                                                   'sleeve garters'],
+                                       'desc': 'Sleeve garters cut from '
+                                               'inner-tube rubber and '
+                                               'closed with polished '
+                                               'brass pipe-clips — '
+                                               'shopkeeper theatre built '
+                                               'from what the gutter '
+                                               'provided, worn with '
+                                               'complete conviction.',
+                                       'worn_desc': 'Inner-tube sleeve '
+                                               'garters closed with '
+                                               'polished brass '
+                                               'pipe-clips',
                                        'coverage': ['left_arm',
                                                     'right_arm'],
-                                       'layer': 2, 'color': 'orange',
-                                       'material': 'elastic',
+                                       'layer': 2, 'color': 'black',
+                                       'material': 'rubber',
                                        'weight': 0.1,
                                        'category': 'clothing'},
                                       {'key': 'pinstripe trousers',
                                        'aliases': ['trousers'],
                                        'desc': 'Narrow pinstripe trousers '
-                                               'pressed to a blade edge, '
-                                               'a size too formal for the '
-                                               'district and entirely on '
-                                               'purpose.',
+                                               'pressed to a blade edge — '
+                                               'the stripes gone shiny at '
+                                               'the knees, the hems '
+                                               'singed, the formality '
+                                               'entirely on purpose and '
+                                               'entirely secondhand.',
                                        'worn_desc': 'Narrow pinstripe '
                                                'trousers pressed to a '
                                                'blade edge',
@@ -1971,22 +1986,24 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                        'material': 'wool',
                                        'weight': 0.6,
                                        'category': 'clothing'},
-                                      {'key': 'embroidered velvet slippers',
-                                       'aliases': ['slippers'],
-                                       'desc': 'House slippers in bottle-'
-                                               'green velvet, each '
-                                               'embroidered with a tiny '
-                                               'genie lamp trailing gold '
-                                               'smoke. Absurd. Immaculate. '
-                                               'Non-negotiable.',
-                                       'worn_desc': 'Bottle-green velvet '
-                                               'slippers embroidered with '
-                                               'tiny smoking genie lamps',
+                                      {'key': 'brass-toed boots',
+                                       'aliases': ['boots'],
+                                       'desc': 'Scuffed black work boots '
+                                               'with brass toecaps '
+                                               'polished to parade shine '
+                                               '— the only part of the '
+                                               'outfit that gets daily '
+                                               'maintenance, because an '
+                                               'audience looks down when '
+                                               'you tap your foot.',
+                                       'worn_desc': 'Scuffed black boots, '
+                                               'brass toecaps polished '
+                                               'to parade shine',
                                        'coverage': ['left_foot',
                                                     'right_foot'],
-                                       'layer': 1, 'color': 'green',
-                                       'material': 'velvet',
-                                       'weight': 0.2,
+                                       'layer': 1, 'color': 'black',
+                                       'material': 'leather',
+                                       'weight': 0.8,
                                        'category': 'clothing'}],
                          'carried_prototypes': [],
                          'home_room': None,
