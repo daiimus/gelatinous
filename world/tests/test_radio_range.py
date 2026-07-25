@@ -289,3 +289,44 @@ class TestOrderReach(TestCase):
                           return_value=[repeater]):
             self.assertTrue(order_reaches(self._unit_at(40, 40),
                                           console=console))
+
+
+class TestRepeaterBreaker(TestCase):
+    """The head-end breaker: district infrastructure's power switch,
+    floors away from the mast it feeds."""
+
+    def _breaker(self, mast):
+        from typeclasses.terminals import RepeaterBreaker
+        b = MagicMock()
+        b.db = SimpleNamespace(pressable=True, linked_repeater=mast)
+        b.location = MagicMock()
+        b.at_press = RepeaterBreaker.at_press.__get__(b, RepeaterBreaker)
+        return b
+
+    def _mast_obj(self, on=True):
+        m = MagicMock()
+        m.pk = 1
+        m.db = SimpleNamespace(radio_on=on)
+        m.location = MagicMock()
+        return m
+
+    def test_press_toggles_power_both_ways(self):
+        mast = self._mast_obj(on=True)
+        breaker = self._breaker(mast)
+        self.assertTrue(breaker.at_press(MagicMock()))
+        self.assertFalse(mast.db.radio_on)         # thrown open: dead
+        self.assertTrue(breaker.at_press(MagicMock()))
+        self.assertTrue(mast.db.radio_on)          # closed again: live
+
+    def test_mast_room_hears_the_state_change(self):
+        mast = self._mast_obj(on=True)
+        breaker = self._breaker(mast)
+        breaker.at_press(MagicMock())
+        line = mast.location.msg_contents.call_args.args[0]
+        self.assertIn("spins down", line)
+
+    def test_unlinked_breaker_is_safe(self):
+        breaker = self._breaker(None)
+        presser = MagicMock()
+        self.assertTrue(breaker.at_press(presser))
+        self.assertIn("dead clack", presser.msg.call_args.args[0])
