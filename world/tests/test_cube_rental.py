@@ -124,6 +124,52 @@ class TestVacancy(TestCase):
         self.assertFalse(is_free(cube))
 
 
+class TestUnitChoice(TestCase):
+    """`press rent 3b` — claiming a NAMED unit off the board (Brackett
+    Arms; QoC's first-free stays the bare-press behavior)."""
+
+    def _tower(self):
+        a = _cube("The Brackett Arms - Unit 3A")
+        b = _cube("The Brackett Arms - Unit 3B")
+        return a, b, _terminal([a, b])
+
+    def test_named_unit_claimed(self):
+        tenant = _char()
+        a, b, terminal = self._tower()
+        ok, msg = assign_cube(tenant, terminal, unit="3b")
+        self.assertTrue(ok)
+        self.assertIs(tenant.db.residence, b)
+
+    def test_unknown_unit_refused(self):
+        ok, msg = assign_cube(_char(), self._tower()[2], unit="9z")
+        self.assertFalse(ok)
+        self.assertIn("no unit '9Z'", msg)
+
+    def test_taken_unit_refused(self):
+        a, b, terminal = self._tower()
+        assign_cube(_char("uid-first"), terminal, unit="3b")
+        ok, msg = assign_cube(_char("uid-late"), terminal, unit="3b")
+        self.assertFalse(ok)
+        self.assertIn("registered or in handover", msg)
+
+    def test_own_unit_refused(self):
+        tenant = _char()
+        a, b, terminal = self._tower()
+        assign_cube(tenant, terminal, unit="3b")
+        ok, msg = assign_cube(tenant, terminal, unit="3b")
+        self.assertFalse(ok)
+        self.assertIn("already", msg)
+
+    def test_in_building_move_relocates(self):
+        tenant = _char()
+        a, b, terminal = self._tower()
+        assign_cube(tenant, terminal, unit="3a")
+        ok, msg = assign_cube(tenant, terminal, unit="3b")
+        self.assertTrue(ok)
+        self.assertIs(tenant.db.residence, b)
+        self.assertIsNone(a.db.resident)               # old lease released
+
+
 class TestTerminalPressGrammar(TestCase):
     """The kiosk speaks press (user call): press rent on kiosk /
     press confirm on kiosk / bare press = status."""
@@ -138,6 +184,7 @@ class TestTerminalPressGrammar(TestCase):
         for name in ("at_press", "_press_rent", "_press_status", "_cubes"):
             setattr(t, name,
                     getattr(RentalTerminal, name).__get__(t, RentalTerminal))
+        t._unit_short = RentalTerminal._unit_short
         return t
 
     def test_press_rent_claims(self):
@@ -160,6 +207,38 @@ class TestTerminalPressGrammar(TestCase):
                       tenant.msg.call_args.args[0])
         self.assertTrue(new_terminal.at_press(tenant, "confirm"))
         self.assertIs(tenant.db.residence, new)
+
+    def test_press_rent_with_unit_routes_choice(self):
+        tenant = _char()
+        a = _cube("The Brackett Arms - Unit 3A")
+        b = _cube("The Brackett Arms - Unit 3B")
+        terminal = self._terminal_obj([a, b])
+        self.assertTrue(terminal.at_press(tenant, "rent 3b"))
+        self.assertIs(tenant.db.residence, b)
+
+    def test_in_building_move_wants_confirm(self):
+        tenant = _char()
+        a = _cube("The Brackett Arms - Unit 3A")
+        b = _cube("The Brackett Arms - Unit 3B")
+        terminal = self._terminal_obj([a, b])
+        terminal.at_press(tenant, "rent 3a")
+        self.assertTrue(terminal.at_press(tenant, "rent 3b"))
+        self.assertIs(tenant.db.residence, a)          # not yet moved
+        self.assertIn("press confirm 3b on kiosk",
+                      tenant.msg.call_args.args[0])
+        self.assertTrue(terminal.at_press(tenant, "confirm 3b"))
+        self.assertIs(tenant.db.residence, b)
+
+    def test_status_lists_vacant_board(self):
+        tenant = _char()
+        a = _cube("The Brackett Arms - Unit 3A")
+        b = _cube("The Brackett Arms - Unit 3B")
+        terminal = self._terminal_obj([a, b])
+        assign_cube(_char("uid-other"), terminal, unit="3a")
+        terminal.at_press(tenant, "status")
+        status = tenant.msg.call_args.args[0]
+        self.assertIn("1 of 2", status)
+        self.assertIn("Vacant: 3B.", status)
 
     def test_bare_press_reads_status(self):
         tenant = _char()

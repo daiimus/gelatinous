@@ -153,10 +153,21 @@ def residence_report(char):
     }
 
 
-def assign_cube(char, terminal):
+def unit_matches(cube, want):
+    """Does the name *want* denote this cube? Token match on the key, so
+    "3b" hits "The Brackett Arms - Unit 3B" and "r0-01" hits "R0-01"."""
+    want = (want or "").strip().lower()
+    if not want:
+        return False
+    tokens = [t.strip("().,").lower() for t in cube.key.split()]
+    return want in tokens
+
+
+def assign_cube(char, terminal, unit=None):
     """The terminal transaction. Returns ``(ok, message)``; relocation
     from an existing residence is handled here (old cube released with
-    the window, new cube claimed permanent)."""
+    the window, new cube claimed permanent). *unit* names a specific
+    cube on this terminal's board ("3b"); without it, first-free."""
     if sleeve_uid_of(char) is None:
         return False, ("The terminal's reader passes over you and finds "
                        "no sleeve signature to register.")
@@ -165,13 +176,26 @@ def assign_cube(char, terminal):
     if not cubes:
         return False, "The terminal blinks: NO UNITS CONFIGURED."
     current = residence_of(char)
-    if current in cubes:
-        return False, (f"The terminal blinks green: you are already "
-                       f"registered to {current.key}.")
-    free = [c for c in cubes if is_free(c)]
-    if not free:
-        return False, ("The terminal blinks |rred|n: NO VACANCY. Every "
-                       "cube is registered or in handover.")
+    if unit:
+        named = [c for c in cubes if unit_matches(c, unit)]
+        if not named:
+            return False, (f"The terminal blinks: no unit "
+                           f"'{unit.strip().upper()}' on this board.")
+        if current in named:
+            return False, (f"The terminal blinks green: you are already "
+                           f"registered to {current.key}.")
+        free = [c for c in named if is_free(c)]
+        if not free:
+            return False, (f"The terminal blinks |rred|n: {named[0].key} "
+                           f"is registered or in handover.")
+    else:
+        if current in cubes:
+            return False, (f"The terminal blinks green: you are already "
+                           f"registered to {current.key}.")
+        free = [c for c in cubes if is_free(c)]
+        if not free:
+            return False, ("The terminal blinks |rred|n: NO VACANCY. Every "
+                           "cube is registered or in handover.")
     cube = free[0]
     moved = ""
     if current is not None:
