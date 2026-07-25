@@ -4339,9 +4339,9 @@ REPEATER_MAST = {
              "grey, guyed to the deck at three points and crowned with a "
              "folded-dipole array that creaks when the wind changes its "
              "mind. The equipment cabinet at its base hums patiently behind "
-             "a service door stencilled with the AWE magpie; a band readout "
-             "burns steady at 911MHz, and a conduit as thick as a wrist "
-             "dives straight down into the building's bones."),
+             "a service door stencilled with the AWE magpie, and a conduit "
+             "as thick as a wrist dives straight down into the building's "
+             "bones."),
     "locks": "get:false()",
     "attrs": [
         ("is_radio", True),
