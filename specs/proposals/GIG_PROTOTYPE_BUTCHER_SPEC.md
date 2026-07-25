@@ -1,15 +1,19 @@
 # Gig Prototype — The Butcher
 
-> **Status:** 📋 PROPOSAL (2026-07-20) — design only, nothing built. The **first
-> gig**: a prototype fetch-quest that proves the loop the faction/favor/rep
-> capstone will hang off — *an NPC wants something → a player delivers it → the
-> NPC pays*. Deliberately minimal and self-contained. It builds **entirely on
-> shipped systems** (corpse/anatomy, the LLM NPC brain, tokens, `give`); the only
-> new code is the Butcher herself. Sibling gig — the **Ripper** (sapient organs,
-> black-market) — is a later doc; this one is **animal meat only**. Ties into
-> `LLM_GAMEMASTER_SPEC` (the NPC brain + the deterministic-transaction pattern),
-> `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC` (corpses/organs/substances), and
-> `NPC_MEMORY_AND_IDENTITY_SPEC` (she remembers her suppliers).
+> **Status:** ✅ SHIPPED & LIVE (built 2026-07-24; spec'd #1242/#1244; built
+> #1247/#1249/#1251/#1253/#1255). **As built, the design EVOLVED past this doc:**
+> the block became a **hull-plate FOOD CART** (`typeclasses/butcher.py FoodCart` —
+> ShopContainer + Seating: limited-inventory shop, till-crediting sales, 4 stool
+> slots, `sit at cart`); the sell side is **COOKED DISHES**, not raw cuts — the
+> grind's cuts are consumed as `world/food.py` catalog ingredients through
+> `FOOD_RECIPES` (rat tail stew 12₮ … mystery skewer 3₮), so the §7 tier-2
+> cook/menu layer shipped WITH the prototype. The buy side is exactly §3: give a
+> corpse → condition-gated butchery table → payout by yield from the finite till;
+> dish sales refill the till (closed economy loop). Live: **Ottilie Krug #5222**
+> + cart #5221 at the Toe of Hammett's Boot (#5203); rats via `@spawnmob/rat`
+> (ambient sewer spawn still deferred). Her persona grounds the cart's LIVE board
+> + what she buys (anti-invention). Remaining from §5: ambient rat supply, rep-
+> scaled rates, tier-3 provenance, the Ripper.
 
 ---
 
