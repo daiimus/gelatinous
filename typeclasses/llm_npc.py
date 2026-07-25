@@ -570,8 +570,8 @@ class LLMNpcMixin:
         # When the model ALSO called the radio tool, that call carries the
         # transmission and speech stays room-side flavour.
         aired = False
-        if (mode in ("radio", "radio_ambient") and turn["speech"]
-                and tool != "radio"):
+        if (mode in ("radio", "radio_ambient", "broadcast")
+                and turn["speech"] and tool != "radio"):
             aired = self._transmit_words(turn["speech"])
         rendered = self._render_llm_reply(
             None if aired else turn["speech"], turn["action"],
@@ -583,8 +583,9 @@ class LLMNpcMixin:
         if decision_log_enabled():
             log_decision(self, speaker_name, line, turn, rendered)
         self._handle_action_tool(tool, arg, patron)
-        self._remember_turn(patron, line, speaker_name, turn["speech"],
-                            turn["action"], turn["thought"])
+        if patron is not None:            # broadcasts have no caller
+            self._remember_turn(patron, line, speaker_name, turn["speech"],
+                                turn["action"], turn["thought"])
         # Long-term memory: persist what was learned (async, post-render).
         self._store_memory(patron, speaker_name, line, turn["speech"],
                            subject=subject)
@@ -702,6 +703,27 @@ class LLMNpcMixin:
             self.ndb.llm_engaged_until = None
             self.ndb.llm_engaged_with = None
 
+    def llm_broadcast(self, cue):
+        """An unprompted on-air segment (ambient broadcaster, DJ P2): the
+        director heartbeat hands us a station-clock *cue*; the reply airs
+        through the real transmit device like any radio turn. No caller —
+        no history, no dossier, no memory writes."""
+        if not self.db.llm_driven or not llm_enabled():
+            return False
+        from world.radio import active_transmit_radio
+        if active_transmit_radio(self) is None:
+            return False              # off the air is off the air
+        persona = build_persona(self)
+        events = self._drain_actions()     # whatever the band gave us
+        messages = build_messages(persona, "the station clock", cue,
+                                  "broadcast", None, None, memories=None,
+                                  relationship=None, events=events,
+                                  present=None)
+        self._agentic_round(messages, persona, None, cue,
+                            "the station clock", self._llm_silent,
+                            rounds=0, subject=None, mode="broadcast")
+        return True
+
     def _transmit_words(self, words):
         """Key the NPC's real transmit device with *words* (the radio
         tool's sanitation, shared). Returns True when a transmission was
@@ -721,6 +743,8 @@ class LLMNpcMixin:
         command (NPC_MEMORY_AND_IDENTITY_SPEC §4) — keyed on their apparent_uid
         in this NPC's recognition memory. Skips a no-op re-name so the LLM can't
         churn the same nickname every turn."""
+        if patron is None:
+            return
         name = " ".join(str(name).split())[:40].strip(" .,!?;:'\"")
         if not name or " as " in name.lower():
             return
