@@ -4325,6 +4325,49 @@ BASE_STATION = {
 }
 
 
+#: District radio infrastructure: a mast-top repeater. Mechanically a
+#: powered base station (world.radio one-hop relay) whose room's elevation
+#: sets its reach — site it HIGH. Powered from a remote head-end breaker
+#: (RepeaterBreaker, db.linked_repeater), so killing the district's signal
+#: is a basement job, not a climb.
+REPEATER_MAST = {
+    "prototype_key": "REPEATER_MAST",
+    "typeclass": "typeclasses.items.Radio",
+    "key": "AWE Sentinel-9 repeater mast",
+    "aliases": ["mast", "repeater", "sentinel", "sentinel-9"],
+    "desc": ("A lattice-steel repeater mast in Ashford Wireless & Electric "
+             "grey, guyed to the deck at three points and crowned with a "
+             "folded-dipole array that creaks when the wind changes its "
+             "mind. The equipment cabinet at its base hums patiently behind "
+             "a service door stencilled with the AWE magpie; a band readout "
+             "burns steady at 911MHz, and a conduit as thick as a wrist "
+             "dives straight down into the building's bones."),
+    "locks": "get:false()",
+    "attrs": [
+        ("is_radio", True),
+        ("radio_on", True),
+        ("frequency", "911MHz"),
+        ("is_base_station", True),
+        ("get_err_msg", "It is guyed, bolted, and taller than your ambition."),
+    ],
+}
+
+
+#: The mast's power isolator — lives floors away from the mast it feeds.
+REPEATER_BREAKER = {
+    "prototype_key": "REPEATER_BREAKER",
+    "typeclass": "typeclasses.terminals.RepeaterBreaker",
+    "key": "head-end breaker cabinet",
+    "aliases": ["cabinet", "head-end", "isolator"],
+    "desc": ("A wall cabinet in Ashford Wireless & Electric grey, its "
+             "service tag gone brittle under the shop lamp. Inside, one "
+             "fist-sized breaker lever feeds a conduit that climbs into "
+             "the dark of the riser and doesn't come back. A yellowed "
+             "card behind plastic reads: SENTINEL HEAD-END — DO NOT "
+             "THROW UNDER LOAD."),
+}
+
+
 #: The security unit's built-in transceiver (RADIO_COMMS_SPEC §2.1): a comms
 #: module seated in an ear/antenna, factory-fit like the riot gun. Carries
 #: the radio metadata the receiver reads (`radio_frequency`); intact + on-band
