@@ -63,6 +63,8 @@ class TestShopOrderFulfilment(TestCase):
         patron = MagicMock(); patron.location = "room"; patron.tokens = tokens
         b._fulfil_shop_order = shopmod.Shopkeeper._fulfil_shop_order.__get__(
             b, shopmod.Shopkeeper)
+        b.serve_purchase = shopmod.Shopkeeper.serve_purchase.__get__(
+            b, shopmod.Shopkeeper)
         return b, counter, patron
 
     def test_serve_hands_item_over(self):
@@ -127,6 +129,52 @@ class TestPurchaseHandDelivery(BaseEvenniaTest):
         ok, _ = counter.purchase_item(buyer, "cigarette_pack_noir")
         self.assertTrue(ok)
         self.assertIsNone(counter.db.register)
+
+
+class TestBuyRoutesThroughKeeper(TestCase):
+    """The buy command: a keeper minding the counter serves the sale in
+    person; unmanned counters stay self-service."""
+
+    def _cmd(self, room_contents):
+        from commands.shop import CmdBuy
+        cmd = CmdBuy()
+        buyer = MagicMock()
+        buyer.location.contents = room_contents
+        return cmd, buyer
+
+    def _keeper(self, counter, merchant=True):
+        keeper = MagicMock()
+        keeper.is_merchant = merchant
+        keeper._find_counter = lambda: counter
+        return keeper
+
+    def test_keeper_at_this_counter_found(self):
+        counter = MagicMock()
+        keeper = self._keeper(counter)
+        cmd, buyer = self._cmd([keeper, counter])
+        self.assertIs(cmd._find_keeper(buyer, counter), keeper)
+
+    def test_strangers_counter_not_served(self):
+        counter, other = MagicMock(), MagicMock()
+        keeper = self._keeper(other)          # minds a different fixture
+        cmd, buyer = self._cmd([keeper, counter])
+        self.assertIsNone(cmd._find_keeper(buyer, counter))
+
+    def test_non_merchant_ignored(self):
+        counter = MagicMock()
+        bystander = self._keeper(counter, merchant=False)
+        cmd, buyer = self._cmd([bystander, counter])
+        self.assertIsNone(cmd._find_keeper(buyer, counter))
+
+    def test_serve_purchase_emote(self):
+        b = MagicMock()
+        b._address_handle = lambda p: "the lean man"
+        item = MagicMock(); item.key = "syringe of guttervenom"
+        shopmod.Shopkeeper.serve_purchase.__get__(
+            b, shopmod.Shopkeeper)(MagicMock(), item, 15)
+        emote = b.execute_cmd.call_args.args[0]
+        self.assertIn("presses it into the lean man's hand", emote)
+        self.assertIn("sweeps 15 into the till", emote)
 
 
 class TestShelfGrounding(TestCase):

@@ -84,10 +84,19 @@ class CmdBuy(Command):
         # Get price for messaging
         price = container.get_price(prototype_key)
         from world.shop.utils import format_currency
-        
-        # Give item to buyer using proper hands integration
-        self._give_item_to_buyer(caller, item)
-        
+
+        # Hand placement happens inside purchase_item (or the shop's own
+        # override — bars/carts land items on the counter/board instead).
+
+        # A keeper minding THIS counter serves the sale in person — the
+        # self-service messages below are for unmanned shelves only.
+        keeper = self._find_keeper(caller, container)
+        if keeper:
+            caller.msg(f"You pay {format_currency(price)}.")
+            keeper.serve_purchase(caller, item, price)
+            self._notify_merchant(caller, item, price, container)
+            return
+
         # Get custom messages from shop or use defaults
         msg_buyer = container.db.purchase_msg_buyer or "You purchase {item} for {price}."
         msg_room = container.db.purchase_msg_room or "{buyer} purchases {item} from {shop}."
@@ -173,27 +182,22 @@ class CmdBuy(Command):
         
         return None
     
-    def _give_item_to_buyer(self, buyer, item):
-        """
-        Give purchased item to buyer, using wield if hands available.
-        
-        Args:
-            buyer: Character who bought the item
-            item: Item to give
-        """
-        # Item location is set to buyer in purchase_item.
-        # PR-H2: ``hands`` is now anatomy-derived with canonical keys
-        # ("left_hand" / "right_hand").  Walk the derived view and
-        # pick the first empty slot — handles severed-hand buyers
-        # automatically (their derived view won't include the
-        # severed slot, so we won't try to wield into thin air).
-        hands = buyer.hands
-        for hand_key, held in hands.items():
-            if held is None:
-                buyer.wield_item(item, hand=hand_key)
-                return
-        # All slots full — item stays in inventory.
-    
+    def _find_keeper(self, buyer, container):
+        """The shopkeeper minding this counter, if one is present — an
+        ``is_merchant`` character in the room whose own counter lookup
+        resolves to this container (so a keeper never serves a stranger's
+        shelf)."""
+        for obj in buyer.location.contents:
+            if not getattr(obj, "is_merchant", False):
+                continue
+            serve = getattr(obj, "serve_purchase", None)
+            find_counter = getattr(obj, "_find_counter", None)
+            if not (callable(serve) and callable(find_counter)):
+                continue
+            if find_counter() == container:
+                return obj
+        return None
+
     def _notify_merchant(self, buyer, item, price, container):
         """
         Send transaction message to merchant if present.
