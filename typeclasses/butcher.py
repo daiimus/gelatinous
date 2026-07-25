@@ -17,6 +17,7 @@ from evennia.utils.utils import delay
 
 from typeclasses.characters import Character
 from typeclasses.llm_npc import LLMNpcMixin
+from typeclasses.furniture import Seating
 from typeclasses.shopkeeper import ShopContainer
 from world.grammar import with_article
 
@@ -51,8 +52,10 @@ _RAT_TRUNK_ORGANS = ("heart", "left_lung", "right_lung", "liver", "stomach",
 _RAT_OFFAL_ORGANS = ("heart", "liver", "left_kidney", "right_kidney")
 
 
-class FoodCart(ShopContainer):
-    """The butcher's food cart — a parked scrap-built cart that is her SHOP.
+class FoodCart(Seating, ShopContainer):
+    """The butcher's food cart — a parked scrap-built cart that is her SHOP,
+    and its own SEATING (the BarCounter pattern: the plastic stools are part
+    of the cart, so ``sit at cart`` takes one of its slots).
 
     A ``ShopContainer`` in **limited-inventory** mode selling COOKED DISHES:
     the grind's cuts run through ``world.food`` recipes (``stock_cuts`` cooks
@@ -82,6 +85,11 @@ class FoodCart(ShopContainer):
                                       "ceremony.")
         self.db.purchase_msg_room = ("{buyer} counts chits onto the cart and "
                                      "walks off with {item}.")
+        # Seating: the stools ARE the cart (BarCounter pattern) — `sit at
+        # cart` takes one of these slots.
+        self.db.postures = ("sitting",)
+        self.db.capacity = 4
+        self.db.preposition = "at"
 
     def stock_cuts(self, counts):
         """COOK the ground produce and stock the DISHES: raw ingredient counts

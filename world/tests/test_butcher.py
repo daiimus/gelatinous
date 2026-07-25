@@ -301,3 +301,21 @@ class TestFoodLayer(TestCase):
         # empty today, but the summation seam works (spec §7 tier 3)
         from world.food import dish_contributions
         self.assertEqual(dish_contributions("rat_tail_stew"), {})
+
+
+class TestCartSeating(TestCase):
+    """The cart is its own seating (BarCounter pattern): `sit cart` resolves
+    because FoodCart carries the Seating mixin + posture config."""
+
+    def test_cart_is_seating_with_slots(self):
+        from typeclasses.furniture import Seating
+        self.assertTrue(issubclass(butchmod.FoodCart, Seating))
+
+    def test_seating_defaults(self):
+        from unittest.mock import MagicMock
+        cart = MagicMock()
+        cart.db.postures = ("sitting",)
+        cart.db.capacity = 4
+        allows = butchmod.FoodCart.allows.__get__(cart, butchmod.FoodCart)
+        self.assertTrue(allows("sitting"))
+        self.assertFalse(allows("lying"))
