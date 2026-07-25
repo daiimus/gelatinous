@@ -1537,6 +1537,8 @@ class TestCyberneticShotgunMessages(TestCase):
             "attacker_name": "A", "target_name": "B",
             "item_name": "gun", "item": "gun",
             "hit_location": "chest", "damage": 20, "phase": "x",
+            # runtime-supplied by messages/__init__ (species blood colour)
+            "blood": "red",
         }
         for phase, variants in MESSAGES.items():
             for variant in variants:

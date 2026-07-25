@@ -1112,7 +1112,9 @@ class TestMemoryCommand(TestCase):
         cmd.func()
 
         msg_text = caller.msg.call_args[0][0]
-        self.assertIn("don't remember anyone", msg_text)
+        # the command renders the MNEMONIC RECALL REPORT card now; the
+        # empty state is its "None on record." line
+        self.assertIn("None on record", msg_text)
 
     def test_memory_lists_named_entries(self):
         """memory lists each entry with a non-blank assigned_name."""
