@@ -138,6 +138,117 @@ class Butcher(LLMNpcMixin, Character):
     def _name_aliases(self):
         return ["butcher", "meatcutter", "grinder"]
 
+    # --- deterministic dish orders (the bartender pattern, #1235) --------
+    def _handle_directed_speech(self, speech, speaker, kwargs):
+        """A spoken dish order serves FOR REAL off the cart — the exact
+        bartender split: addressed lines and clear conversational orders go
+        to the deterministic serve (which falls back to the LLM for
+        non-orders); the model never invents prices or narrates a serve."""
+        if self._is_gratitude(speech):
+            self._acknowledge()
+            return True
+        if kwargs.get("addressed"):
+            delay(1.5, self._fulfil_dish_order, speech, speaker)
+            return True
+        if (self._match_dish_order(speech) is not None
+                and self._classify_speech(speech, speaker) == "directed"):
+            delay(1.5, self._fulfil_dish_order, speech, speaker)
+            return True
+        return False
+
+    @staticmethod
+    def _is_gratitude(content):
+        from typeclasses.bar import GRATITUDE_TRIGGERS
+        low = (content or "").lower()
+        return any(trigger in low for trigger in GRATITUDE_TRIGGERS)
+
+    def _acknowledge(self):
+        """A throttled non-verbal nod to thanks (the bartender's ack shape)."""
+        from time import monotonic
+        from random import choice
+        now = monotonic()
+        if now - (self.ndb.last_ack or 0) < 6.0:
+            return
+        self.ndb.last_ack = now
+        delay(1.0, self.execute_cmd, "emote " + choice((
+            "tips her cleaver a bare inch off the board in acknowledgement.",
+            "gives a single downward nod, already back at the cut.",
+            "grunts once, which from her is a toast.",
+        )))
+
+    def _match_dish_order(self, speech):
+        """Resolve spoken words to a dish the CART actually sells, using the
+        recipe system's keywords (world.food.FOOD_RECIPES) — conservative:
+        a clear order cue ("gimme/can i get/let me get…") OR a bare order
+        ("a skewer."); a question without a cue ("is the stew any good?")
+        is conversation, not an order. Returns the dish prototype key."""
+        import re
+        from typeclasses.bar import ORDER_CUES, ORDER_FILLER
+        from world.food import FOOD_RECIPES
+        low = " ".join((speech or "").lower().split())
+        if not low:
+            return None
+        words = re.findall(r"[a-z']+", low)
+        matched = None
+        matched_words = set()
+        for recipe_id, recipe in FOOD_RECIPES.items():
+            kws = set()
+            for kw in recipe.get("keywords") or ():
+                kws.update(kw.lower().split())
+            kws.update(recipe["name"].lower().split())
+            if any(w in kws for w in words):
+                matched = recipe["prototype"]
+                matched_words = kws
+                break
+        if not matched:
+            return None
+        has_cue = any(cue in low for cue in ORDER_CUES)
+        if "?" in low:
+            # a question is only an order when it carries a request cue
+            # ("can i get a skewer?"); "you got skewers?" is conversation
+            return matched if has_cue else None
+        if has_cue:
+            return matched
+        remainder = [w for w in words
+                     if w not in matched_words and w not in ORDER_FILLER]
+        return matched if not remainder else None
+
+    def _fulfil_dish_order(self, order_text, patron):
+        """Serve a spoken order off the cart for real: stock + tokens checked,
+        the dish spawned to the patron, the till credited — all through the
+        cart's own purchase path. Non-orders fall through to conversation."""
+        if not self.location or getattr(patron, "location", None) is not self.location:
+            return
+        cart = self._find_block()
+        proto = self._match_dish_order(order_text)
+        if not proto or cart is None:
+            if not self._try_llm_reply(order_text, patron, "directed",
+                                       on_fail=self._llm_fallback):
+                self.execute_cmd("say Board's behind me. It says what I sell.")
+            return
+        if int((cart.db.item_inventory or {}).get(proto, 0) or 0) <= 0:
+            self.execute_cmd("say Board's out of that. Bring me a rat and "
+                             "it won't be.")
+            return
+        price = int(cart.get_price(proto) or 0)
+        have = int(getattr(patron, "tokens", 0) or 0)
+        if price and have < price:
+            self.execute_cmd(f"say That's {price}. Come back when you've "
+                             "got it.")
+            return
+        ok, result = cart.purchase_item(patron, proto)
+        if not ok:
+            self.execute_cmd("say Cart says no. Take it up with the cart.")
+            return
+        self.execute_cmd(
+            f"emote hands {with_article(result.key)} across the board and "
+            f"sweeps {price} into the till."
+        )
+
+    def _llm_fallback(self):
+        """Sidecar down on an addressed non-order: the curt scripted line."""
+        self.execute_cmd("say Board's behind me. It says what I sell.")
+
     def _find_block(self):
         """The cart she works from (name kept for the give-flow history)."""
         if not self.location:
