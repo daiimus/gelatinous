@@ -907,7 +907,8 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b._hist_key = barmod.Bartender._hist_key
         b._reconstruct_reply = barmod.Bartender._reconstruct_reply
         for name in ("_on_turn", "_run_context_tool", "_render_llm_reply",
-                     "_handle_action_tool", "_remember_turn", "_recent_history"):
+                     "_handle_action_tool", "_remember_turn", "_recent_history",
+                     "_repeats_self"):
             setattr(b, name,
                     getattr(barmod.Bartender, name).__get__(b, barmod.Bartender))
         b.ndb.llm_history = {}

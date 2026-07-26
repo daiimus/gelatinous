@@ -343,6 +343,36 @@ class TestStyleTool(TestCase):
         b.execute_cmd.assert_called_once_with("remove mesh top")
 
 
+class TestAntiPhotocopy(TestCase):
+    """A reply that near-copies the NPC's own remembered answer drops —
+    retrieval hands small models their old quotes and they replay them."""
+
+    def _npc(self, mems):
+        b = MagicMock()
+        b.db.llm_memories = [{"text": t} for t in mems]
+        _bind(b, "_repeats_self")
+        return b
+
+    def test_own_rerun_dropped(self):
+        b = self._npc(['a voice said: "hi" — I answered: "Drinking is six '
+                       'blocks that way. We keep church and state separate '
+                       'here at Kaspar."'])
+        self.assertTrue(b._repeats_self(
+            "Drinking is six blocks that way. We keep church and state "
+            "separate here at Kaspar."))
+
+    def test_fresh_line_passes(self):
+        b = self._npc(['a voice said: "hi" — I answered: "Drinking is six '
+                       'blocks that way, friend."'])
+        self.assertFalse(b._repeats_self(
+            "Quiet night on Kaspar. The lamp is on and the case is "
+            "honest — come see me before curfew."))
+
+    def test_short_requotes_exempt(self):
+        b = self._npc(['x — I answered: "Fifteen tokens."'])
+        self.assertFalse(b._repeats_self("Fifteen tokens."))
+
+
 class TestRadioRepliesAir(TestCase):
     """A radio-mode turn answers ON THE AIR: reply speech keys the real
     transmit device via xmit, never room-say (the Rook's sealed studio)."""
@@ -352,6 +382,7 @@ class TestRadioRepliesAir(TestCase):
         _bind(b, "_on_turn")
         _bind(b, "_transmit_words")
         _bind(b, "_handle_action_tool")
+        _bind(b, "_repeats_self")
         device = MagicMock() if has_device else None
         with patch.object(llmnpc, "parse_turn", return_value=dict(turn)), \
                 patch.object(llmnpc, "tool_names", return_value=[]), \
@@ -411,6 +442,7 @@ class TestEchoGuard(TestCase):
     def _turn(self, turn, line):
         b = MagicMock()
         _bind(b, "_on_turn")
+        _bind(b, "_repeats_self")
         with patch.object(llmnpc, "parse_turn", return_value=dict(turn)), \
                 patch.object(llmnpc, "tool_names", return_value=[]):
             b._on_turn([], {}, MagicMock(), line, "a man", lambda: None, 0,

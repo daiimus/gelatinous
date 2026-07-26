@@ -550,6 +550,12 @@ class LLMNpcMixin:
         for field in ("action", "speech"):
             if turn[field] and is_echo(turn[field], line):
                 turn[field] = None
+        # Anti-photocopy: a reply that near-copies one of our OWN recent
+        # remembered answers is dropped — retrieval hands small models
+        # their old quotes and they replay them verbatim (Ezra's 'six
+        # blocks that way' era). Silence beats a rerun.
+        if turn["speech"] and self._repeats_self(turn["speech"]):
+            turn["speech"] = None
         tool, arg = turn["tool"], turn["tool_argument"]
         # Context tool: run the real read, feed the result back, loop.
         if tool in CONTEXT_TOOLS and rounds < LLM_MAX_TOOL_ROUNDS:
@@ -723,6 +729,26 @@ class LLMNpcMixin:
                             "the station clock", self._llm_silent,
                             rounds=0, subject=None, mode="broadcast")
         return True
+
+    def _repeats_self(self, speech):
+        """True when *speech* near-copies one of this NPC's own recent
+        remembered answers. Short lines are exempt — re-quoting a price
+        isn't a loop; re-running the whole sales pitch is."""
+        if not speech or len(str(speech)) < 40:
+            return False
+        try:
+            marker = ' — I answered: "'
+            for m in list(self.db.llm_memories or [])[-12:]:
+                text = str((m or {}).get("text", ""))
+                i = text.find(marker)
+                if i < 0:
+                    continue
+                own = text[i + len(marker):].strip().strip('"')
+                if own and is_echo(speech, own):
+                    return True
+        except Exception:  # noqa: BLE001 — the guard never blocks a reply
+            return False
+        return False
 
     def _transmit_words(self, words):
         """Key the NPC's real transmit device with *words* (the radio
