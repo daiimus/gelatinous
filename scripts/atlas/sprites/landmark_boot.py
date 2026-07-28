@@ -81,4 +81,11 @@ g.is_shadow_catcher = True
 
 rig.rig_camera_and_light(ortho=8.125, target=(2.5, 0, 0.4))
 rig.render("boot", res=1600)
+
+# self-calibration: the local origin under THIS camera
+rig.clear_scene()
+m = rig.make_material("mk", (1, 1, 1), 0.2, emit=(1, 1, 1))
+rig.box("marker", (0.04, 0.04, 0.04), (0, 0, 0), m)
+rig.rig_camera_and_light(ortho=8.125, target=(2.5, 0, 0.4))
+rig.render("calib_boot", res=1600)
 print("landmark boot rendered")
