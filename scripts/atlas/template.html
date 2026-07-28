@@ -17,8 +17,9 @@
   .sub{font-size:15px;color:var(--bone-dim);margin:0;max-width:66ch}
   .stage{position:relative;background:var(--plate);border:1px solid var(--line);border-radius:4px;margin-top:18px}
   canvas{display:block;width:100%;height:auto;cursor:crosshair}
-  .readout{position:absolute;left:12px;top:10px;font-family:var(--mono);font-size:12px;color:var(--cyan);
+  .readout{position:absolute;left:12px;top:10px;opacity:0;transition:opacity .12s;font-family:var(--mono);font-size:12px;color:var(--cyan);
     background:rgba(11,14,20,.72);padding:4px 8px;border:1px solid var(--line);border-radius:3px;pointer-events:none;min-height:15px}
+  .readout.on{opacity:1}
   .controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);
     font-family:var(--mono);font-size:12px;color:var(--bone-dim)}
   .controls label{display:flex;gap:7px;align-items:center;cursor:pointer;user-select:none}
@@ -396,11 +397,12 @@ cv.addEventListener('mousemove',ev=>{
     const dx=Math.abs(mx-sx)/(TW/2), dy=Math.abs(my-sy)/(TH/2);
     if (dx+dy<=1){hit=c;break;}
   }
+  readout.className = hit ? 'readout on' : 'readout';
   readout.innerHTML = hit
     ? `${hit.name} &nbsp;<span style="color:var(--bone-dim)">(${hit.x}, ${hit.y}, ${hit.z})</span>`
     : '&nbsp;';
 });
-cv.addEventListener('mouseleave',()=>readout.innerHTML='&nbsp;');
+cv.addEventListener('mouseleave',()=>{readout.className='readout';readout.innerHTML='&nbsp;';});
 for (const el of [ui.zcap,ui.air,ui.edge,ui.radio,ui.life])
   el.addEventListener('input',()=>{ui.zval.textContent=`z ≤ ${ui.zcap.value}`; draw();});
 
