@@ -11,7 +11,7 @@ import os
 import random
 import sys
 
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter
 
 RAW = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "raw")
@@ -20,7 +20,7 @@ OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(
 os.makedirs(OUT, exist_ok=True)
 
 FINAL = 128            # sprite edge, px
-COLORS = 40            # quantize band
+COLORS = 48            # quantize band (neon needs headroom)
 WARMTH = (1.06, 1.0, 0.88)   # channel pull toward sodium/rust
 
 
@@ -35,8 +35,23 @@ def grind(name, img):
         r.point(lambda v: min(255, int(v * WARMTH[0]))),
         g.point(lambda v: min(255, int(v * WARMTH[1]))),
         b.point(lambda v: min(255, int(v * WARMTH[2])))))
-    rgb = ImageEnhance.Color(rgb).enhance(0.9)    # sun-starved
-    rgb = ImageEnhance.Contrast(rgb).enhance(1.12)
+    rgb = ImageEnhance.Color(rgb).enhance(0.92)   # sun-starved
+    rgb = ImageEnhance.Contrast(rgb).enhance(1.14)
+
+    # the grade: teal shadows, amber highlights (the off-world split)
+    L = rgb.convert("L")
+    smask = L.point(lambda v: max(0, int((115 - v) * 0.35)) if v < 115 else 0)
+    zero = Image.new("L", rgb.size, 0)
+    rgb = ImageChops.add(rgb, Image.merge("RGB", (
+        zero, smask.point(lambda v: int(v * 0.5)), smask)))
+    hmask = L.point(lambda v: max(0, int((v - 155) * 0.30)) if v > 155 else 0)
+    rgb = ImageChops.add(rgb, Image.merge("RGB", (
+        hmask, hmask.point(lambda v: int(v * 0.6)), zero)))
+
+    # neon bloom: bright pixels bleed
+    bright = rgb.point(lambda v: v if v > 190 else 0)
+    rgb = ImageChops.screen(rgb, bright.filter(
+        ImageFilter.GaussianBlur(3)).point(lambda v: int(v * 0.6)))
 
     rgb = rgb.quantize(COLORS, dither=Image.FLOYDSTEINBERG).convert("RGB")
 
