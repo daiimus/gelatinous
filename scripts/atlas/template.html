@@ -87,6 +87,7 @@ const LEGEND_LABEL = {street:'street', alley:'alley', market:'market', hull:'hul
 function cls(c){
   if (c.flags.includes('sky')) return 'air';
   const t=(c.type||'').toLowerCase(), k=c.key||'';
+  if (k.toLowerCase().includes('alley')) return 'alley';
   if (t==='street'||t==='bridge') return 'street';
   if (t==='alley') return 'alley';
   if (t==='market') return 'market';
