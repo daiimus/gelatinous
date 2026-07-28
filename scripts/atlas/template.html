@@ -109,7 +109,18 @@ const EDGES = DATA.links.filter(l=>l.kind==='edge'||l.kind==='gap').map(l=>{
   return {n:`${a.name} — ${l.key}`, p};
 }).filter(Boolean);
 const MASTS = (DATA.masts||[]);
-const ZMAX = Math.max(...C.map(c=>c.z), 1);
+const LANDMARKS = (DATA.landmarks||[]);
+const COVERED = new Set();
+for (const lm of LANDMARKS)
+  for (const [x,y,z] of lm.covers) COVERED.add(`${x},${y},${z}`);
+for (const c of C)
+  if (COVERED.has(`${c.x},${c.y},${c.z}`)) c.hidden = true;
+for (const lm of LANDMARKS){
+  const s = Math.max(...lm.covers.map(([x,y])=>x+y));
+  C.push({x:lm.anchor[0], y:lm.anchor[1], z:lm.anchor[2],
+          s, landmark:lm, name:lm.name, t:'landmark'});
+}
+const ZMAX = Math.max(...C.map(c=>c.z||0), 1);
 
 // ---------- projection (anchor-true when the sprite library is present) --
 let TW=44, TH=22, ZH=17, SPR_SCALE=0;
@@ -128,7 +139,7 @@ for (const c of C){
 }
 const PAD=46, W=maxX-minX+PAD*2, H=maxY-minY+PAD*2;
 const OX=-minX+PAD, OY=-minY+PAD;
-C.sort((a,b)=>(a.x+a.y)-(b.x+b.y) || a.z-b.z || b.y-a.y);
+C.sort((a,b)=>((a.s??a.x+a.y)-(b.s??b.x+b.y)) || a.z-b.z || b.y-a.y);
 const STREETS=new Set(C.filter(c=>c.t==='street').map(c=>`${c.x},${c.y}`));
 
 const SPR_IMG={};
@@ -137,6 +148,11 @@ for (const [cls,uri] of Object.entries(DATA.sprites||{})){
   const im=new Image(); pending++;
   im.onload=()=>{if(--pending===0)draw();};
   im.src=uri; SPR_IMG[cls]=im;
+}
+for (const lm of LANDMARKS){
+  const im=new Image(); pending++;
+  im.onload=()=>{if(--pending===0)draw();};
+  im.src=lm.uri; lm.img=im;
 }
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const readout=document.getElementById('readout');
@@ -207,7 +223,18 @@ function detail(c,sx,sy){
   }
 }
 function drawCell(c){
+  if (c.hidden) return;                    // a landmark wears these cells
   const sx=isoX(c.x,c.y)+OX, sy=isoY(c.x,c.y,c.z)+OY;
+  if (c.landmark){
+    const lm=c.landmark, a=DATA.anchor;
+    if (!lm.img || !lm.img.complete || !SPR_SCALE) return;
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(lm.img,
+      sx - a.origin[0]*lm.ratio*SPR_SCALE,
+      sy - a.origin[1]*lm.ratio*SPR_SCALE,
+      lm.size*SPR_SCALE, lm.size*SPR_SCALE);
+    return;
+  }
   const spr=SPR_IMG[c.t];
   if (spr && spr.complete && SPR_SCALE){
     const a=DATA.anchor, d=a.size*SPR_SCALE;
@@ -274,7 +301,7 @@ cv.addEventListener('mousemove',ev=>{
   const mx=(ev.clientX-r.left)*(W/r.width), my=(ev.clientY-r.top)*(H/r.height);
   const zc=+ui.zcap.value; let hit=null;
   for (let i=C.length-1;i>=0;i--){
-    const c=C[i]; if (c.z>zc || (c.t==='air'&&!ui.air.checked)) continue;
+    const c=C[i]; if (c.landmark || c.z>zc || (c.t==='air'&&!ui.air.checked)) continue;
     const sx=isoX(c.x,c.y)+OX, sy=isoY(c.x,c.y,c.z)+OY-ZH;
     const dx=Math.abs(mx-sx)/(TW/2), dy=Math.abs(my-sy)/(TH/2);
     if (dx+dy<=1){hit=c;break;}

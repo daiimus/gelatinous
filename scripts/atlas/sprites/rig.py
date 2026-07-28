@@ -91,17 +91,17 @@ def cylinder(name, r, length, loc, mat, axis="X", seg=24, arc=math.pi):
     return obj
 
 
-def rig_camera_and_light():
+def rig_camera_and_light(ortho=2.6, target=(0, 0, 0.4)):
     cam_data = bpy.data.cameras.new("cam")
     cam_data.type = "ORTHO"
-    cam_data.ortho_scale = 2.6
+    cam_data.ortho_scale = ortho
     cam = bpy.data.objects.new("cam", cam_data)
     elev = math.atan(0.5)                       # 2:1 pixel isometric
     cam.rotation_euler = (math.pi / 2 - elev, 0, math.radians(45))
     d = 10
-    cam.location = (d * math.sin(math.radians(45)) * math.cos(elev),
-                    -d * math.cos(math.radians(45)) * math.cos(elev),
-                    d * math.sin(elev) + 0.4)
+    cam.location = (target[0] + d * math.sin(math.radians(45)) * math.cos(elev),
+                    target[1] - d * math.cos(math.radians(45)) * math.cos(elev),
+                    target[2] + d * math.sin(elev))
     bpy.context.collection.objects.link(cam)
     bpy.context.scene.camera = cam
 
@@ -127,14 +127,14 @@ def rig_camera_and_light():
     bpy.context.scene.world = world
 
 
-def render(name):
+def render(name, res=RES):
     sc = bpy.context.scene
     sc.render.engine = "CYCLES"
     sc.cycles.samples = 96
     sc.cycles.use_denoising = True
     sc.render.film_transparent = True
-    sc.render.resolution_x = RES
-    sc.render.resolution_y = RES
+    sc.render.resolution_x = res
+    sc.render.resolution_y = res
     sc.render.filepath = os.path.join(OUT, f"{name}.png")
     bpy.ops.render.render(write_still=True)
     print(f"rendered {name}")
@@ -230,10 +230,88 @@ def hull_cell():
     render("hull")
 
 
+def roof_cell():
+    clear_scene()
+    tar = make_material("tar", (0.10, 0.10, 0.10), 0.85, noise=0.4)
+    bone = make_material("parapet", (0.42, 0.40, 0.34), 0.9, noise=0.3)
+    tank = make_material("tank", (0.35, 0.33, 0.28), 0.6)
+    vent = make_material("vent", (0.22, 0.22, 0.20), 0.6)
+    box("slab", (1, 1, 0.10), (0, 0, 0.05), tar)
+    for loc, size in ((( 0, 0.47, 0.16), (1, 0.06, 0.12)),
+                      (( 0, -0.47, 0.16), (1, 0.06, 0.12)),
+                      ((0.47, 0, 0.16), (0.06, 0.88, 0.12)),
+                      ((-0.47, 0, 0.16), (0.06, 0.88, 0.12))):
+        box(f"par{loc}", size, loc, bone)
+    cylinder("tankd", 0.16, 0.30, (-0.18, 0.16, 0.24), tank,
+             seg=16, arc=math.pi * 2)
+    box("vent", (0.16, 0.16, 0.18), (0.24, -0.2, 0.19), vent)
+    box("duct", (0.30, 0.08, 0.08), (0.10, -0.2, 0.14), vent)
+    rig_camera_and_light()
+    render("roof")
+
+
+def shop_cell():
+    clear_scene()
+    wall = make_material("swall", (0.20, 0.17, 0.14), 0.85, noise=0.4)
+    awn = make_material("awn", (0.45, 0.28, 0.12), 0.8)
+    lit = make_material("slit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.6, 0.25))
+    neon = make_material("sneon", (0.2, 0.9, 0.9), 0.3, emit=(0.3, 0.95, 1.0))
+    dark = make_material("sdark", (0.04, 0.04, 0.05), 0.4)
+    box("block", (1, 1, 0.9), (0, 0, 0.45), wall)
+    box("front", (0.5, 0.03, 0.5), (-0.1, -0.512, 0.35), dark)   # window
+    box("glow", (0.42, 0.01, 0.42), (-0.1, -0.52, 0.35), lit)
+    box("door", (0.2, 0.03, 0.6), (0.32, -0.512, 0.3), dark)
+    box("awning", (0.75, 0.16, 0.03), (0.02, -0.56, 0.66), awn)
+    box("sign", (0.06, 0.05, 0.30), (-0.48, -0.53, 0.75), neon)
+    rig_camera_and_light()
+    render("shop")
+
+
+def hotel_cell():
+    clear_scene()
+    violet = make_material("violet", (0.20, 0.17, 0.28), 0.8, noise=0.35)
+    frame = make_material("hframe", (0.08, 0.08, 0.11), 0.7)
+    litw = make_material("hlit", (0.9, 0.62, 0.3), 0.4, emit=(1.0, 0.62, 0.3))
+    darkw = make_material("hdark", (0.03, 0.03, 0.05), 0.3)
+    box("block", (1, 1, 1), (0, 0, 0.5), violet)
+    k = 0
+    for face, side in (("s", -1), ("e", 1)):
+        for i in range(2):
+            for j in range(3):
+                k += 1
+                mat = litw if (k % 3 == 0) else darkw
+                if face == "s":
+                    box(f"c{face}{i}{j}", (0.20, 0.02, 0.16),
+                        (-0.22 + i * 0.44, -0.508, 0.25 + j * 0.28), frame)
+                    box(f"g{face}{i}{j}", (0.16, 0.015, 0.12),
+                        (-0.22 + i * 0.44, -0.515, 0.25 + j * 0.28), mat)
+                else:
+                    box(f"c{face}{i}{j}", (0.02, 0.20, 0.16),
+                        (0.508, -0.22 + i * 0.44, 0.25 + j * 0.28), frame)
+                    box(f"g{face}{i}{j}", (0.015, 0.16, 0.12),
+                        (0.515, -0.22 + i * 0.44, 0.25 + j * 0.28), mat)
+    rig_camera_and_light()
+    render("hotel")
+
+
+def generic_cell():
+    clear_scene()
+    m = make_material("gen", (0.17, 0.16, 0.19), 0.9, noise=0.4)
+    trim = make_material("gtrim", (0.10, 0.10, 0.12), 0.8)
+    box("block", (1, 1, 0.8), (0, 0, 0.4), m)
+    box("trim", (1.004, 1.004, 0.08), (0, 0, 0.76), trim)
+    rig_camera_and_light()
+    render("generic")
+
+
 def main():
     street_cell()
     tenement_cell()
     hull_cell()
+    roof_cell()
+    shop_cell()
+    hotel_cell()
+    generic_cell()
     print("rig complete")
 
 

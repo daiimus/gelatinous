@@ -27,10 +27,17 @@ if os.path.isdir(SPRITE_DIR):
             with open(os.path.join(SPRITE_DIR, fname), "rb") as f:
                 sprites[fname[:-4]] = ("data:image/png;base64,"
                                        + base64.b64encode(f.read()).decode())
-data["sprites"] = sprites
 anchor_path = "scripts/atlas/sprites/anchors.json"
 data["anchor"] = (json.load(open(anchor_path))
                   if os.path.exists(anchor_path) else None)
+
+# landmark heroes: one sprite spanning many cells, suppressing their tiles
+lm_path = "scripts/atlas/sprites/landmarks.json"
+landmarks = json.load(open(lm_path)) if os.path.exists(lm_path) else []
+for lm in landmarks:
+    lm["uri"] = sprites.pop(lm["sprite"], None)
+data["landmarks"] = [lm for lm in landmarks if lm.get("uri")]
+data["sprites"] = sprites
 
 # live radio coverage annotations — the masts speak from their steel
 masts = []
