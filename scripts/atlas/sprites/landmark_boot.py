@@ -43,7 +43,7 @@ for o in bpy.context.collection.objects:
         o.location = (0.15, 0, 0.91)
 # the hangar vault: one continuous barrel over the market street,
 # hooped like a quonset — the enclosure IS the architecture
-rig.cylinder("vault", 0.60, 4.6, (2.9, 0, 0), hull, arc=math.pi * 0.94)
+rig.cylinder("vault", 0.60, 5.0, (2.75, 0, 0), hull, arc=math.pi * 0.94)
 for i in range(10):                                # the hoops
     wx = 0.85 + i * 0.46
     rig.cylinder(f"hoop{i}", 0.635, 0.07, (wx, 0, 0), weld,
@@ -59,9 +59,10 @@ rig.cylinder("plate", 0.645, 0.9, (2.2, 0, 0), pale, arc=math.pi * 0.4)
 # toe cap: the hangar's blunt gable end
 rig.cylinder("toe", 0.57, 0.9, (5.0, 0, 0), hull, arc=math.pi * 0.95)
 rig.box("toecap", (0.10, 1.08, 0.54), (5.44, 0, 0.27), hull)
-# the seam: dark gap + interior glow between heel and shank
-rig.box("seam_dark", (0.22, 1.0, 0.62), (0.62, 0, 0.31), dark)
-rig.box("seam_glow", (0.06, 0.72, 0.40), (0.62, 0, 0.30), glow)
+# the junction: a heavy weld collar where drum meets vault — one
+# continuous piece of salvage, no holes in the hull
+rig.cylinder("collar", 0.655, 0.14, (0.42, 0, 0), weld,
+             arc=math.pi * 0.9)
 # the Throat: the market's north mouth — a branch arch off the vault,
 # open-ended, light spilling out, rim shorn ragged
 rig.cylinder("throat", 0.44, 1.0, (0, 0, 0), hull, arc=math.pi * 0.92)
