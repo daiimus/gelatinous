@@ -1,6 +1,14 @@
 # Colony Mapping — the export, the builder's volume, the player's chart
 
-> **Status:** 📋 PROPOSAL (2026-07-25) — design only, nothing built. The
+> **Status:** 📋 PROPOSAL (2026-07-25) — design only, nothing built.
+> **SCOPE REFOCUS (owner, same day): the v1 consumer is the OWNER alone.**
+> The player/builder audience split and everything serving it (vagueness
+> dial, visited-sets, GMCP) is deferred to §M3/M4 unchanged; v1 = §M1
+> export + §M2 renderer built as a beautiful standalone isometric atlas
+> (SimCity/Monument Valley register, not CAD), then a THIN superuser-gated
+> website view reusing the same renderer (§M2.5 — Evennia's web extension
+> surface is first-class, so the vanilla mandate holds; the renderer must
+> stay self-contained so the served page is a shim, not a commitment). The
 > colony has a true voxel substrate (`db.xyz`, the spatial layer shipped in
 > SPATIAL_COORDINATE_SYSTEM_SPEC) and a day of vertical building proved the
 > gap: every build this session began with a hand-written recon script
