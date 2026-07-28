@@ -10,6 +10,7 @@ SCALE = 128 / 512                     # raw -> final
 
 def centroid(name):
     img = Image.open(os.path.join(HERE, "raw", f"calib_{name}.png"))
+    img = img.transpose(Image.FLIP_LEFT_RIGHT)
     a = img.getchannel("A")
     w, h = a.size
     px = a.load()
@@ -24,10 +25,12 @@ def centroid(name):
 
 o = centroid("origin")
 ux = centroid("unitx")
+uy = centroid("unity")
 uz = centroid("unitz")
 anchors = {
     "origin": [round(o[0], 2), round(o[1], 2)],
     "xvec": [round(ux[0] - o[0], 3), round(ux[1] - o[1], 3)],
+    "yvec": [round(uy[0] - o[0], 3), round(uy[1] - o[1], 3)],
     "zvec": [round(uz[0] - o[0], 3), round(uz[1] - o[1], 3)],
     "size": 128,
 }

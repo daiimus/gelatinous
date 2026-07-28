@@ -118,10 +118,11 @@ def rig_camera_and_light(ortho=2.6, target=(0, 0, 0.4)):
     cam_data.ortho_scale = ortho
     cam = bpy.data.objects.new("cam", cam_data)
     elev = math.atan(0.5)                       # 2:1 pixel isometric
-    cam.rotation_euler = (math.pi / 2 - elev, 0, math.radians(45))
+    # viewer matches the atlas projection: +x right-down, +y LEFT-down
+    cam.rotation_euler = (math.pi / 2 - elev, 0, math.radians(135))
     d = 10
     cam.location = (target[0] + d * math.sin(math.radians(45)) * math.cos(elev),
-                    target[1] - d * math.cos(math.radians(45)) * math.cos(elev),
+                    target[1] + d * math.cos(math.radians(45)) * math.cos(elev),
                     target[2] + d * math.sin(elev))
     bpy.context.collection.objects.link(cam)
     bpy.context.scene.camera = cam
@@ -199,8 +200,8 @@ def tenement_cell():
     box("grime_band", (1.002, 1.002, 0.16), (0, 0, 0.08), grime)
     windows = [(-0.28, True), (0.0, False), (0.28, True)]
     for wx, litw in windows:                     # south face
-        box(f"wfs{wx}", (0.16, 0.02, 0.30), (wx, -0.505, 0.55), frame)
-        box(f"wgs{wx}", (0.12, 0.015, 0.24), (wx, -0.512, 0.55),
+        box(f"wfs{wx}", (0.16, 0.02, 0.30), (wx, 0.505, 0.55), frame)
+        box(f"wgs{wx}", (0.12, 0.015, 0.24), (wx, 0.512, 0.55),
             lit if litw else dark)
     for wy, litw in [(-0.28, False), (0.0, True), (0.28, False)]:  # east face
         box(f"wfe{wy}", (0.02, 0.16, 0.30), (0.505, wy, 0.55), frame)
@@ -208,17 +209,17 @@ def tenement_cell():
             lit if litw else dark)
     box("ac", (0.14, 0.10, 0.10), (0.56, 0.28, 0.72), duct)
     pipe = make_material("pipe", (0.22, 0.20, 0.18), 0.55)
-    box("conduit1", (0.03, 0.03, 1.0), (0.515, -0.12, 0.5), pipe)
-    box("conduit2", (0.03, 0.03, 1.0), (0.515, -0.20, 0.5), pipe)
-    box("conduit_elbow", (0.03, 0.14, 0.03), (0.515, -0.13, 0.94), pipe)
+    box("conduit1", (0.03, 0.03, 1.0), (0.515, 0.12, 0.5), pipe)
+    box("conduit2", (0.03, 0.03, 1.0), (0.515, 0.20, 0.5), pipe)
+    box("conduit_elbow", (0.03, 0.14, 0.03), (0.515, 0.13, 0.94), pipe)
     neon = make_material("neon", (0.2, 0.9, 0.9), 0.3,
                          emit=(0.25, 0.95, 1.0))
-    box("sign", (0.05, 0.30, 0.07), (-0.515, 0.05, 0.86), neon)
+    box("sign", (0.30, 0.05, 0.07), (0.05, 0.515, 0.86), neon)
     hazard_y = make_material("thazY", (0.7, 0.55, 0.1), 0.7)
     hazard_k = make_material("thazK", (0.05, 0.05, 0.05), 0.7)
     for i in range(4):                           # dock stripe at the base
-        box(f"tchev{i}", (0.02, 0.12, 0.05),
-            (-0.512, -0.30 + i * 0.125, 0.05),
+        box(f"tchev{i}", (0.12, 0.02, 0.05),
+            (-0.30 + i * 0.125, 0.512, 0.05),
             hazard_y if i % 2 == 0 else hazard_k)
     rig_camera_and_light()
     render("tenement")
@@ -276,11 +277,11 @@ def shop_cell():
     neon = make_material("sneon", (0.2, 0.9, 0.9), 0.3, emit=(0.3, 0.95, 1.0))
     dark = make_material("sdark", (0.04, 0.04, 0.05), 0.4)
     box("block", (1, 1, 0.9), (0, 0, 0.45), wall)
-    box("front", (0.5, 0.03, 0.5), (-0.1, -0.512, 0.35), dark)   # window
-    box("glow", (0.42, 0.01, 0.42), (-0.1, -0.52, 0.35), lit)
-    box("door", (0.2, 0.03, 0.6), (0.32, -0.512, 0.3), dark)
-    box("awning", (0.75, 0.16, 0.03), (0.02, -0.56, 0.66), awn)
-    box("sign", (0.06, 0.05, 0.30), (-0.48, -0.53, 0.75), neon)
+    box("front", (0.5, 0.03, 0.5), (-0.1, 0.512, 0.35), dark)   # window
+    box("glow", (0.42, 0.01, 0.42), (-0.1, 0.52, 0.35), lit)
+    box("door", (0.2, 0.03, 0.6), (0.32, 0.512, 0.3), dark)
+    box("awning", (0.75, 0.16, 0.03), (0.02, 0.56, 0.66), awn)
+    box("sign", (0.06, 0.05, 0.30), (-0.48, 0.53, 0.75), neon)
     rig_camera_and_light()
     render("shop")
 
@@ -300,9 +301,9 @@ def hotel_cell():
                 mat = litw if (k % 3 == 0) else darkw
                 if face == "s":
                     box(f"c{face}{i}{j}", (0.20, 0.02, 0.16),
-                        (-0.22 + i * 0.44, -0.508, 0.25 + j * 0.28), frame)
+                        (-0.22 + i * 0.44, 0.508, 0.25 + j * 0.28), frame)
                     box(f"g{face}{i}{j}", (0.16, 0.015, 0.12),
-                        (-0.22 + i * 0.44, -0.515, 0.25 + j * 0.28), mat)
+                        (-0.22 + i * 0.44, 0.515, 0.25 + j * 0.28), mat)
                 else:
                     box(f"c{face}{i}{j}", (0.02, 0.20, 0.16),
                         (0.508, -0.22 + i * 0.44, 0.25 + j * 0.28), frame)
@@ -567,8 +568,8 @@ def tenement_variant_1():
     rail = make_material("rail1", (0.20, 0.18, 0.16), 0.6)
     box("block", (1, 1, 1), (0, 0, 0.5), concrete)
     for wx, litw in [(-0.20, True), (0.22, False)]:      # south, two wide
-        box(f"wf{wx}", (0.24, 0.02, 0.34), (wx, -0.505, 0.52), frame)
-        box(f"wg{wx}", (0.20, 0.015, 0.28), (wx, -0.512, 0.52),
+        box(f"wf{wx}", (0.24, 0.02, 0.34), (wx, 0.505, 0.52), frame)
+        box(f"wg{wx}", (0.20, 0.015, 0.28), (wx, 0.512, 0.52),
             lit if litw else dark)
     box("balc", (0.34, 0.10, 0.03), (0.51, -0.20, 0.36), rail)
     box("balcr", (0.34, 0.02, 0.10), (0.51, -0.245, 0.43), rail)
@@ -577,10 +578,10 @@ def tenement_variant_1():
         box(f"wge{we}", (0.015, 0.16, 0.24), (0.512, we, 0.60),
             lit if litw else dark)
     line = make_material("lline", (0.35, 0.33, 0.30), 0.8)
-    box("laundry", (0.02, 0.44, 0.015), (-0.51, 0.0, 0.88), line)
+    box("laundry", (0.44, 0.02, 0.015), (0.0, 0.51, 0.88), line)
     for i in range(3):
         cm = make_material(f"cloth{i}", (0.25 + i * 0.1, 0.2, 0.15), 0.9)
-        box(f"cl{i}", (0.015, 0.07, 0.09), (-0.515, -0.14 + i * 0.14, 0.83), cm)
+        box(f"cl{i}", (0.07, 0.015, 0.09), (-0.14 + i * 0.14, 0.515, 0.83), cm)
     rig_camera_and_light()
     render("tenement_1")
 

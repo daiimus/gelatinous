@@ -39,8 +39,8 @@ for i in range(14):
     rig.box(f"railW{i}", (0.03, 0.52, 0.10), (-0.42, y, 0.32 + rise), rail)
     rig.box(f"railE{i}", (0.03, 0.52, 0.10), (0.42, y, 0.32 + rise), rail)
     if i % 3 == 1:
-        rig.box(f"post{i}", (0.03, 0.03, 0.30), (-0.40, y, 0.50 + rise), rail)
-        rig.box(f"lamph{i}", (0.05, 0.05, 0.05), (-0.40, y, 0.68 + rise), lamp)
+        rig.box(f"post{i}", (0.03, 0.03, 0.30), (0.40, y, 0.50 + rise), rail)
+        rig.box(f"lamph{i}", (0.05, 0.05, 0.05), (0.40, y, 0.68 + rise), lamp)
 
 # towers at 1/4 and 3/4 span
 for k, ty in enumerate((1.75, 5.25)):
