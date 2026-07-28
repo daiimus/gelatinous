@@ -17,8 +17,19 @@ import rig  # noqa: E402
 rig.clear_scene()
 
 frame = rig.make_material("aframe", (0.28, 0.28, 0.24), 0.6, noise=0.3)
-glass = rig.make_material("aglass", (0.34, 0.48, 0.34), 0.2,
-                          emit=(0.5, 0.72, 0.42))
+glass = rig.make_material("aglass", (0.30, 0.42, 0.32), 0.25)
+_nt = glass.node_tree
+_bsdf = _nt.nodes["Principled BSDF"]
+_wave = _nt.nodes.new("ShaderNodeTexWave")
+_wave.inputs["Scale"].default_value = 2.2          # crop rows under glass
+_ramp = _nt.nodes.new("ShaderNodeValToRGB")
+_ramp.color_ramp.elements[0].position = 0.45
+_ramp.color_ramp.elements[0].color = (0.10, 0.30, 0.16, 1)   # leaf dark
+_ramp.color_ramp.elements[1].position = 0.62
+_ramp.color_ramp.elements[1].color = (0.95, 0.30, 0.75, 1)   # grow-light
+_nt.links.new(_wave.outputs["Fac"], _ramp.inputs["Fac"])
+_nt.links.new(_ramp.outputs["Color"], _bsdf.inputs["Emission Color"])
+_bsdf.inputs["Emission Strength"].default_value = 2.2
 warm = rig.make_material("awarm", (0.9, 0.6, 0.3), 0.3,
                          emit=(0.95, 0.6, 0.3))
 base = rig.make_material("abase", (0.20, 0.19, 0.16), 0.85, noise=0.35)
@@ -71,13 +82,13 @@ def ring(name, cx, cy, rx, ry, z0, z1, mat, seg=28):
     return obj
 
 
-dome("shell", CX, CY, 1.9, 1.45, 0.85, glass)
-ring("foundation", CX, CY, 1.96, 1.51, 0.0, 0.14, base)
-ring("band", CX, CY, 1.63, 1.22, 0.40, 0.48, frame)
+dome("shell", CX, CY, 1.42, 0.95, 0.80, glass)
+ring("foundation", CX, CY, 1.49, 1.02, 0.0, 0.14, base)
+ring("band", CX, CY, 1.20, 0.78, 0.38, 0.46, frame)
 # one airlock: a squat stub with a single hatch, south base
-rig.box("airlock", (0.4, 0.3, 0.26), (CX, CY - 1.5, 0.13), base)
-rig.box("hatch", (0.16, 0.04, 0.16), (CX, CY - 1.66, 0.11), dark)
-rig.box("hatchglow", (0.20, 0.03, 0.035), (CX, CY - 1.665, 0.235), warm)
+rig.box("airlock", (0.38, 0.28, 0.24), (CX, CY - 1.02, 0.12), base)
+rig.box("hatch", (0.15, 0.04, 0.15), (CX, CY - 1.17, 0.10), dark)
+rig.box("hatchglow", (0.18, 0.03, 0.032), (CX, CY - 1.175, 0.22), warm)
 
 catcher = rig.make_material("agnd", (0.5, 0.5, 0.5), 1.0)
 g = rig.box("gplane", (6, 5, 0.01), (CX, CY, -0.005), catcher)
