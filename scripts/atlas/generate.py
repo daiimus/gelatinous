@@ -9,12 +9,28 @@ live mast coverage, injected into the approved renderer template. Copy
 it wherever you read documents; regenerate any time the world changes.
 """
 
+import base64
 import json
+import os
 import time
 
 from world.mapping import export_map
 
 data = export_map()
+
+# the sprite library: stamp wherever a class has art, box everywhere else
+SPRITE_DIR = "scripts/atlas/sprites/final"
+sprites = {}
+if os.path.isdir(SPRITE_DIR):
+    for fname in sorted(os.listdir(SPRITE_DIR)):
+        if fname.endswith(".png"):
+            with open(os.path.join(SPRITE_DIR, fname), "rb") as f:
+                sprites[fname[:-4]] = ("data:image/png;base64,"
+                                       + base64.b64encode(f.read()).decode())
+data["sprites"] = sprites
+anchor_path = "scripts/atlas/sprites/anchors.json"
+data["anchor"] = (json.load(open(anchor_path))
+                  if os.path.exists(anchor_path) else None)
 
 # live radio coverage annotations — the masts speak from their steel
 masts = []
@@ -46,5 +62,6 @@ out = template.replace("/*__DATA__*/null", json.dumps(data))
 with open("/tmp/atlas.html", "w") as f:
     f.write(out)
 print(f"atlas written: /tmp/atlas.html — {len(data['cells'])} cells, "
+      f"{len(sprites)} sprites, "
       f"{len(data['links'])} links, {len(masts)} masts, "
       f"edition {data['edition']}")

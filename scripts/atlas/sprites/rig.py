@@ -230,7 +230,12 @@ def hull_cell():
     render("hull")
 
 
-street_cell()
-tenement_cell()
-hull_cell()
-print("rig complete")
+def main():
+    street_cell()
+    tenement_cell()
+    hull_cell()
+    print("rig complete")
+
+
+if __name__ == "__main__":
+    main()
