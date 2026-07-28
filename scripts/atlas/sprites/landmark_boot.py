@@ -35,15 +35,24 @@ for o in bpy.context.collection.objects:
     if o.name == "heel":
         o.rotation_euler = (0, math.pi / 2, 0)
         o.location = (0.15, 0, 0.6)
-# shank camber along x
-rig.cylinder("shank", 0.62, 3.4, (2.3, 0, 0), hull, arc=math.pi * 0.92)
-rig.cylinder("plate", 0.635, 1.1, (2.0, 0, 0), pale, arc=math.pi * 0.5)
-for wx in (1.2, 2.0, 2.8, 3.6):
-    rig.cylinder(f"weld{wx}", 0.645, 0.06, (wx, 0, 0), weld,
-                 arc=math.pi * 0.88)
-# vamp/toe cap
-rig.cylinder("toe", 0.55, 1.6, (4.6, 0, 0), hull, arc=math.pi * 0.95)
-rig.box("toecap", (0.10, 1.05, 0.52), (5.42, 0, 0.26), hull)
+# the hangar vault: one continuous barrel over the market street,
+# hooped like a quonset — the enclosure IS the architecture
+rig.cylinder("vault", 0.60, 4.6, (2.9, 0, 0), hull, arc=math.pi * 0.94)
+for i in range(10):                                # the hoops
+    wx = 0.85 + i * 0.46
+    rig.cylinder(f"hoop{i}", 0.635, 0.07, (wx, 0, 0), weld,
+                 arc=math.pi * 0.9)
+for i in range(4):                                 # crown glazing: market
+    gx = 1.3 + i * 1.0                             # light through the skin
+    rig.cylinder(f"glaze{i}", 0.615, 0.30, (gx, 0, 0), glow,
+                 arc=math.pi * 0.16)
+    for o in bpy.context.collection.objects:
+        if o.name == f"glaze{i}":
+            o.rotation_euler = (math.radians(48), 0, 0)
+rig.cylinder("plate", 0.645, 0.9, (2.2, 0, 0), pale, arc=math.pi * 0.4)
+# toe cap: the hangar's blunt gable end
+rig.cylinder("toe", 0.57, 0.9, (5.0, 0, 0), hull, arc=math.pi * 0.95)
+rig.box("toecap", (0.10, 1.08, 0.54), (5.44, 0, 0.27), hull)
 # the seam: dark gap + interior glow between heel and shank
 rig.box("seam_dark", (0.22, 1.0, 0.62), (0.62, 0, 0.31), dark)
 rig.box("seam_glow", (0.06, 0.72, 0.40), (0.62, 0, 0.30), glow)
