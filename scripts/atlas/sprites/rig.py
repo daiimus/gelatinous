@@ -91,6 +91,27 @@ def cylinder(name, r, length, loc, mat, axis="X", seg=24, arc=math.pi):
     return obj
 
 
+def _rotate_scene_90():
+    """Spin built geometry a quarter turn about the world origin —
+    the E-W tile becomes the N-S tile under the same fixed camera."""
+    for o in list(bpy.context.collection.objects):
+        x, y, z = o.location
+        o.location = (-y, x, z)
+        o.rotation_euler.rotate_axis("Z", math.radians(90))
+
+
+def _oriented(base, build, variant=None):
+    """Render *build* as <base>_ew[_n] and <base>_ns[_n]."""
+    tail = f"_{variant}" if variant else ""
+    for suffix, rot in (("_ew", False), ("_ns", True)):
+        clear_scene()
+        build()
+        if rot:
+            _rotate_scene_90()
+        rig_camera_and_light()
+        render(f"{base}{suffix}{tail}")
+
+
 def rig_camera_and_light(ortho=2.6, target=(0, 0, 0.4)):
     cam_data = bpy.data.cameras.new("cam")
     cam_data.type = "ORTHO"
@@ -141,8 +162,7 @@ def render(name, res=RES):
 
 
 # ---------------------------------------------------------------- models
-def street_cell():
-    clear_scene()
+def _street_base():
     asphalt = make_material("asphalt", (0.075, 0.075, 0.095), 0.3,
                             noise=0.4, wet=True)
     curb = make_material("curb", (0.28, 0.26, 0.24), 0.9, noise=0.3)
@@ -164,8 +184,6 @@ def street_cell():
     stencil = make_material("stencil", (0.6, 0.58, 0.5), 0.9)
     box("arrow", (0.22, 0.06, 0.004), (-0.18, 0.16, 0.085), stencil)
     box("arrow2", (0.06, 0.14, 0.004), (-0.10, 0.13, 0.085), stencil)
-    rig_camera_and_light()
-    render("street")
 
 
 def tenement_cell():
@@ -304,9 +322,8 @@ def generic_cell():
     render("generic")
 
 
-def street_variant_1():
+def _street_patched():
     """Patched and stained — a street that has been repaired in anger."""
-    clear_scene()
     asphalt = make_material("asphalt1", (0.075, 0.075, 0.095), 0.3,
                             noise=0.4, wet=True)
     patch = make_material("patch", (0.12, 0.11, 0.12), 0.8, noise=0.3)
@@ -319,13 +336,10 @@ def street_variant_1():
     box("patch2", (0.22, 0.18, 0.004), (0.24, -0.14, 0.084), patch)
     cylinder("oilstain", 0.14, 0.006, (0.05, 0.22, 0.083), oil,
              seg=14, arc=math.pi * 2)
-    rig_camera_and_light()
-    render("street_1")
 
 
-def street_variant_2():
+def _street_cracked():
     """Cracked and littered — the colony's deferred maintenance."""
-    clear_scene()
     asphalt = make_material("asphalt2", (0.08, 0.078, 0.09), 0.45,
                             noise=0.5, wet=True)
     curb = make_material("curb2", (0.26, 0.24, 0.22), 0.9, noise=0.3)
@@ -342,13 +356,10 @@ def street_variant_2():
         rot=(0, 0, math.radians(60)))
     for i, (dx, dy) in enumerate([(0.3, 0.3), (-0.35, -0.3), (0.1, -0.35)]):
         box(f"junk{i}", (0.07, 0.05, 0.05), (dx, dy, 0.10), debris)
-    rig_camera_and_light()
-    render("street_2")
 
 
-def alley_cell():
+def _alley_base():
     """The gnarly cut-through: dumpster, cables, steam, standing water."""
-    clear_scene()
     ground = make_material("agnd", (0.06, 0.062, 0.07), 0.25,
                            noise=0.5, wet=True)
     grime = make_material("agrime", (0.09, 0.10, 0.08), 0.95, noise=0.5)
@@ -373,8 +384,6 @@ def alley_cell():
     for i in range(3):                       # sagging cable shadows overhead
         box(f"cab{i}", (1.05, 0.012, 0.012), (0, -0.1 + i * 0.16, 0.9 - i * 0.06),
             cable, rot=(0, 0, math.radians(-6 + i * 5)))
-    rig_camera_and_light()
-    render("alley")
 
 
 def _person(idx, loc, coat, r):
@@ -598,17 +607,37 @@ def roof_variant_1():
     render("roof_1")
 
 
+def _street_intersection():
+    """The crossing: orientation-free — corner nubs, no through-curbs."""
+    asphalt = make_material("asphalti", (0.075, 0.075, 0.095), 0.3,
+                            noise=0.4, wet=True)
+    curb = make_material("curbi", (0.28, 0.26, 0.24), 0.9, noise=0.3)
+    iron = make_material("ironi", (0.06, 0.06, 0.065), 0.6)
+    box("slab", (1, 1, 0.08), (0, 0, 0.04), asphalt)
+    for cx in (-0.44, 0.44):
+        for cy in (-0.44, 0.44):
+            box(f"nub{cx}{cy}", (0.12, 0.12, 0.13), (cx, cy, 0.065), curb)
+    cylinder("manhole", 0.09, 0.02, (0.10, -0.08, 0.085), iron,
+             seg=16, arc=math.pi * 2)
+
+
+def street_tiles():
+    _oriented("street", _street_base)
+    _oriented("street", _street_patched, 1)
+    _oriented("street", _street_cracked, 2)
+    clear_scene(); _street_intersection(); rig_camera_and_light()
+    render("street_ix")
+    _oriented("alley", _alley_base)
+
+
 def main():
-    street_cell()
+    street_tiles()
     tenement_cell()
     hull_cell()
     roof_cell()
     shop_cell()
     hotel_cell()
     generic_cell()
-    street_variant_1()
-    street_variant_2()
-    alley_cell()
     crowd_sprites()
     vehicle_sprites()
     prop_sprites()
