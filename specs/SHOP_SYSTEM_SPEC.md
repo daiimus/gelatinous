@@ -2100,3 +2100,23 @@ else:
 ---
 
 *This specification provides the foundation for a container-based shop system with template-driven merchants and clear paths for future expansion into dynamic marketplaces and player ownership.*
+
+
+## Addendum (2026-07-25) — the Shopkeeper era
+
+Shipped well past the Phase-1 vending machine (#1293–#1298):
+
+- **Shopkeeper typeclass** (LLM-voiced, transactions deterministic):
+  spoken orders resolve against the counter's real shelf and run
+  ``purchase_item``; the model supplies voice and memory, never prices.
+- **Hand delivery**: base ``ShopContainer.purchase_item`` lands the item
+  in the buyer's free hand; bars and the food cart keep their
+  counter/board overrides. Tills: ``db.register`` credits when wired.
+- **Keeper-served buy**: a manned counter is never self-service — the
+  ``buy`` command routes the handover through the keeper's serve emote.
+- **No keeper, no commerce**: a post-bound counter refuses sales while
+  its keeper is dead or absent; unbound counters vend freely, which IS
+  the vending-machine tier by construction.
+- **Shelf grounding**: the persona card carries the counter's complete
+  stock and token prices, with anti-invention and no-haggling clauses.
+- Sell/pawn (P3) explicitly rejected — "not ready for a pawn economy."

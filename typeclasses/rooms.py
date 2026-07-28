@@ -1130,11 +1130,11 @@ class BridgeRoom(Room):
 
 class SkyRoom(Room):
     """
-    An open sky area (rooftop, balcony, catwalk, etc.).
-    Outdoor, low crowd levels, elevated.
-    
-    Usage:
-        @tunnel up = Rooftop:typeclasses.rooms.SkyRoom
+    AERIAL TRANSIT ONLY — an "In the Air" cell of the jump/fall lattice.
+    Movement in and out is gated to the jump system (exits.at_traverse);
+    gravity delivers occupants downward. NEVER use for walkable rooftops
+    or balconies — those are plain Rooms with ``outside=True`` and
+    ``type="rooftop"`` (the QoC/Brackett pattern).
     """
     
     def at_object_creation(self):

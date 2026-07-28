@@ -651,3 +651,26 @@ Based on the philosophy of heroic action and tactical depth:
 13. **Jump syntax**: Uses direction-based syntax (`jump off north edge`, `jump across east edge`)
 14. **Proximity inheritance**: Hero inherits ALL proximity relationships from explosive
 15. **Framework focus**: Mechanics first, visibility/discovery enhancements in future look system
+
+
+## Addendum (2026-07-28) — the edge wiring contract
+
+Learned the hard way on the Brackett build; this is the full flight plan a
+jump edge needs, or jump.py silently takes a degraded fallback:
+
+- **Transit edge**: exit ``destination`` = the sky/transit room;
+  ``db.sky_room`` = that room's id; ``db.fall_room`` = the ground id;
+  ``db.fall_distance`` (stories); ``db.fall_damage`` (PER-STORY — total =
+  damage × distance); ``db.edge_difficulty`` (landing = Motorics vs
+  difficulty + 2×distance). Gravity then walks one-way ``down`` exits
+  until ``db.is_ground`` — set it on every landing.
+- **Direct edge** (no open column below, e.g. clearing an oversailing
+  plate): no ``sky_room`` — flat ``fall_damage``, always lands, no check.
+- **Gaps**: ``is_gap`` requires ``gap_destination`` (the far same-level
+  surface); omit ``is_gap`` when nothing faces the edge.
+- **Named edges**: ``find_edge_exit`` resolves arbitrary exit names —
+  "jump off breach edge" beats contorting a vertical drop into a cardinal.
+- **Tooling caution**: ``fill_air_cell`` links any adjacent non-sky room
+  as if it were a rooftop; as of this addendum it only auto-links
+  walkable OUTDOOR neighbors, and interiors are never linked (the B-line
+  window-edge incident). Always run the edge audit after an air build.

@@ -1,6 +1,6 @@
 # Verticality & Buildings Spec — floors, doors, and tenancy
 
-> **Status:** 📋 **PROPOSAL (2026-07-05) — design only, nothing built.** The
+> **Status:** 🚧 **PARTIALLY SHIPPED.** §2 doors + §2.5 housing guarantee LIVE (QoC 2026-07-11; the Brackett Arms' 54 leases + pick-your-unit kiosk 2026-07-25). **VERTICAL DOCTRINE (2026-07-25, owner-set):** open plates (roofs/decks) are STRIP rooms tiling their footprint; spine links are plain exits and every other applicable direction (incl. diagonals) is a wired EDGE; air cells are deliberate negative space (fall lanes, future flight); every air build ends with the edge audit ('edges accountable'). Built to it: the Brackett roof, the Boot hull-top + toe breach, ~50 air cells, the toe-end rooftop archipelago joined to the ancestral #190 pair. Climbing hooks = the named next mechanic (four shipped decisions defer to it). Original proposal below. The
 > arc that unlocks **radio Phase 2** (rooftop antennae, height-based range)
 > and, downstream, decking's verticality gate. Three layers, each
 > independently shippable, dependency-ordered: **§1 vertical construction**
