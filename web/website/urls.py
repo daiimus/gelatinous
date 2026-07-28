@@ -26,9 +26,13 @@ from web.website.views.discourse_logout import discourse_logout
 from web.website.views.logout_with_discourse import logout_with_discourse
 from web.website.views.discourse_session_sync import discourse_session_sync
 from web.website.views.header_only import header_only
+from web.website.views.atlas import atlas_view
 
 # Override default character creation, account registration, and other views
 urlpatterns = [
+    # the colony atlas — superuser survey instrument (§M2.5)
+    path("atlas/", atlas_view, name="atlas"),
+
     # robots.txt - served as plain text for search engine crawlers
     path("robots.txt", TemplateView.as_view(template_name="robots.txt", content_type="text/plain"), name="robots-txt"),
 
