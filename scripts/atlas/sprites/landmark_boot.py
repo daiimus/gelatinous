@@ -90,6 +90,36 @@ rig.box("stencil", (0.5, 0.03, 0.14),
         (1.55, 0.615 * math.cos(math.pi * 0.35),
          0.615 * math.sin(math.pi * 0.35)), stenc,
         rot=(math.pi * 0.35 - math.pi / 2, 0, 0))
+# --- market-hall language: the silhouette must not read as a pipe ---
+lit = rig.make_material("mlit", (0.9, 0.6, 0.3), 0.4,
+                        emit=(1.0, 0.62, 0.28), emit_strength=2.0)
+canvas_a = rig.make_material("canv_a", (0.42, 0.16, 0.13), 0.9, noise=0.3)
+canvas_b = rig.make_material("canv_b", (0.52, 0.44, 0.20), 0.9, noise=0.3)
+
+# clerestory: a raised lit ridge along the crown — the giveaway that this
+# is a hall people are inside of, not a length of conduit
+rig.box("clerestory", (4.3, 0.34, 0.20), (2.85, 0, 0.68), hull)
+for i in range(11):
+    rig.box(f"cwin{i}", (0.22, 0.36, 0.10), (0.95 + i * 0.40, 0, 0.70), lit)
+rig.box("ridge", (4.4, 0.42, 0.06), (2.85, 0, 0.80), weld)
+
+# ridge vents: three turbine cowls standing off the ridge
+for vx in (1.45, 2.85, 4.25):
+    rig.cylinder(f"vent{int(vx*100)}", 0.10, 0.14, (0, 0, 0), weld, seg=12,
+                 arc=math.pi * 2)
+    for o in bpy.context.collection.objects:
+        if o.name == f"vent{int(vx*100)}":
+            o.location = (vx, 0.0, 0.90)
+
+# stall awnings along the south flank — the market spilling out
+for i, ax in enumerate((1.15, 1.95, 2.75, 3.55, 4.35)):
+    mat = canvas_a if i % 2 == 0 else canvas_b
+    rig.box(f"awn{i}", (0.62, 0.44, 0.05), (ax, -0.74, 0.36), mat,
+            rot=(math.radians(16), 0, 0))
+    rig.box(f"awnpost{i}a", (0.04, 0.04, 0.30), (ax - 0.26, -0.92, 0.15), weld)
+    rig.box(f"awnpost{i}b", (0.04, 0.04, 0.30), (ax + 0.26, -0.92, 0.15), weld)
+    rig.box(f"stallglow{i}", (0.46, 0.06, 0.05), (ax, -0.70, 0.22), lit)
+
 # ground shadow catcher
 catcher = rig.make_material("ground", (0.5, 0.5, 0.5), 1.0)
 g = rig.box("gplane", (10, 6, 0.01), (2.5, 0, -0.005), catcher)

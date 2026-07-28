@@ -659,8 +659,8 @@ def cryo_cell():
     clear_scene()
     frame = make_material("cryof", (0.28, 0.30, 0.32), 0.4)
     glass = make_material("cryog", (0.10, 0.22, 0.26), 0.15,
-                          emit=(0.12, 0.30, 0.34))
-    frost = make_material("cryow", (0.55, 0.62, 0.65), 0.7, noise=0.3)
+                          emit=(0.12, 0.30, 0.34), emit_strength=1.4)
+    frost = make_material("cryow", (0.34, 0.39, 0.41), 0.7, noise=0.3)
     box("block", (1, 1, 1), (0, 0, 0.5), frame)
     for face, side in (("n", 1), ("e", 1)):
         for i in range(3):
