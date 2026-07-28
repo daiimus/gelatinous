@@ -23,7 +23,8 @@ class TestExportMap(BaseEvenniaTest):
 
     def _world(self):
         street = self._room("Test Street", (0, 0, 0), type="street",
-                            outside=True, is_ground=True)
+                            outside=True, is_ground=True,
+                            crowd_base_level=2)
         roof = self._room("Test Roof", (0, 1, 1), type="rooftop",
                           outside=True)
         sky = self._room("In the Air", (1, 0, 1), is_sky_room=True,
@@ -49,6 +50,7 @@ class TestExportMap(BaseEvenniaTest):
                       if c["key"] == "Test Street")
         self.assertEqual(street["xyz"], [0, 0, 0])
         self.assertEqual(sorted(street["flags"]), ["ground", "outside"])
+        self.assertEqual(street["crowd"], 2)
         air = next(c for c in data["cells"] if c["key"] == "In the Air")
         self.assertIn("sky", air["flags"])
 
