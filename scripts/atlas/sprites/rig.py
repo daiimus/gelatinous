@@ -631,6 +631,124 @@ def street_tiles():
     _oriented("alley", _alley_base)
 
 
+def constab_cell():
+    """The law: slab concrete, barred slits, floodlight, orange trim."""
+    clear_scene()
+    slab = make_material("cslab", (0.22, 0.21, 0.19), 0.9, noise=0.3)
+    bar = make_material("cbar", (0.10, 0.10, 0.11), 0.6)
+    orange = make_material("corange", (0.75, 0.35, 0.08), 0.7)
+    flood = make_material("cflood", (1.0, 0.95, 0.85), 0.4,
+                          emit=(1.0, 0.95, 0.8))
+    box("block", (1, 1, 0.95), (0, 0, 0.475), slab)
+    box("trim", (1.004, 1.004, 0.06), (0, 0, 0.90), orange)
+    for wy in (-0.25, 0.05, 0.35):               # barred slit windows, north
+        box(f"slit{wy}", (0.14, 0.02, 0.08), (wy, 0.508, 0.62), bar)
+        box(f"slitg{wy}", (0.10, 0.015, 0.05), (wy, 0.515, 0.62),
+            make_material(f"sg{wy}", (0.03, 0.04, 0.05), 0.3))
+    for we in (-0.20, 0.20):                     # east slits
+        box(f"esl{we}", (0.02, 0.14, 0.08), (0.508, we, 0.62), bar)
+    box("floodm", (0.05, 0.05, 0.16), (0.42, 0.42, 1.0), bar)
+    box("floodh", (0.09, 0.09, 0.06), (0.42, 0.42, 1.10), flood)
+    rig_camera_and_light()
+    render("constab")
+
+
+def cryo_cell():
+    """Thawn-Harrison: corporate frost — teal glass, chrome mullions."""
+    clear_scene()
+    frame = make_material("cryof", (0.28, 0.30, 0.32), 0.4)
+    glass = make_material("cryog", (0.10, 0.22, 0.26), 0.15,
+                          emit=(0.12, 0.30, 0.34))
+    frost = make_material("cryow", (0.55, 0.62, 0.65), 0.7, noise=0.3)
+    box("block", (1, 1, 1), (0, 0, 0.5), frame)
+    for face, side in (("n", 1), ("e", 1)):
+        for i in range(3):
+            if face == "n":
+                box(f"gn{i}", (0.26, 0.02, 0.78), (-0.30 + i * 0.30, 0.508, 0.52), glass)
+            else:
+                box(f"ge{i}", (0.02, 0.26, 0.78), (0.508, -0.30 + i * 0.30, 0.52), glass)
+    box("cap", (1.006, 1.006, 0.08), (0, 0, 0.99), frost)
+    rig_camera_and_light()
+    render("cryo")
+
+
+def lounge_cell():
+    """Helix Lounge: black-violet velvet box, big neon helix."""
+    clear_scene()
+    wall = make_material("lwall", (0.10, 0.07, 0.13), 0.75, noise=0.3)
+    neonp = make_material("lneonp", (0.85, 0.3, 0.8), 0.3,
+                          emit=(0.95, 0.35, 0.9))
+    neonc = make_material("lneonc", (0.2, 0.9, 0.9), 0.3,
+                          emit=(0.3, 0.95, 1.0))
+    dark = make_material("ldark", (0.03, 0.03, 0.04), 0.4)
+    box("block", (1, 1, 0.9), (0, 0, 0.45), wall)
+    box("door", (0.22, 0.03, 0.55), (-0.25, 0.512, 0.28), dark)
+    for i in range(4):                            # the helix: staggered strokes
+        box(f"nx{i}", (0.05, 0.04, 0.16),
+            (0.18 + (i % 2) * 0.14, 0.515, 0.30 + i * 0.15),
+            neonp if i % 2 == 0 else neonc)
+    box("marquee", (0.6, 0.05, 0.04), (0.0, 0.53, 0.78), neonc)
+    rig_camera_and_light()
+    render("lounge")
+
+
+def bar_cell():
+    """The colony bar: warm brick, hanging sign, window glow."""
+    clear_scene()
+    brick = make_material("bbrick", (0.24, 0.13, 0.09), 0.85, noise=0.4)
+    glow = make_material("bglow", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.6, 0.25))
+    dark = make_material("bdark", (0.04, 0.04, 0.05), 0.4)
+    signm = make_material("bsign", (0.5, 0.38, 0.15), 0.6)
+    box("block", (1, 1, 0.85), (0, 0, 0.425), brick)
+    box("win", (0.4, 0.03, 0.34), (-0.15, 0.512, 0.42), dark)
+    box("wing", (0.34, 0.015, 0.28), (-0.15, 0.52, 0.42), glow)
+    box("door", (0.2, 0.03, 0.58), (0.28, 0.512, 0.29), dark)
+    box("signarm", (0.03, 0.16, 0.03), (0.44, 0.55, 0.72), signm)
+    box("sign", (0.14, 0.03, 0.12), (0.44, 0.62, 0.62), glow)
+    rig_camera_and_light()
+    render("bar")
+
+
+def pad_cell():
+    """The Colonial Landing Pad: markings, blast scoring, beacons."""
+    clear_scene()
+    deck = make_material("pdeck", (0.16, 0.16, 0.17), 0.6, noise=0.35)
+    mark = make_material("pmark", (0.6, 0.55, 0.4), 0.8)
+    scorch = make_material("pscorch", (0.05, 0.05, 0.05), 0.9)
+    bcn = make_material("pbcn", (0.9, 0.4, 0.2), 0.4, emit=(1.0, 0.45, 0.2))
+    box("slab", (1, 1, 0.10), (0, 0, 0.05), deck)
+    cylinder("ring", 0.34, 0.01, (0, 0, 0), mark, seg=24, arc=math.pi * 2)
+    for o in bpy.context.collection.objects:
+        if o.name == "ring":
+            o.location = (0, 0, 0.105)
+    cylinder("score", 0.2, 0.008, (0.1, -0.1, 0), scorch,
+             seg=16, arc=math.pi * 2)
+    for o in bpy.context.collection.objects:
+        if o.name == "score":
+            o.location = (0.1, -0.1, 0.104)
+    for cx, cy in ((-0.44, -0.44), (0.44, -0.44), (-0.44, 0.44), (0.44, 0.44)):
+        box(f"b{cx}{cy}", (0.05, 0.05, 0.07), (cx, cy, 0.14), bcn)
+    rig_camera_and_light()
+    render("pad")
+
+
+def shuttered_cell():
+    """The Shuttered Storefront: boarded, chained, TO LET."""
+    clear_scene()
+    wall = make_material("shwall", (0.18, 0.16, 0.14), 0.9, noise=0.4)
+    board = make_material("shboard", (0.28, 0.20, 0.12), 0.95, noise=0.35)
+    chain = make_material("shchain", (0.10, 0.10, 0.11), 0.5)
+    paper = make_material("shpaper", (0.55, 0.52, 0.44), 0.9)
+    box("block", (1, 1, 0.85), (0, 0, 0.425), wall)
+    for i in range(3):                            # boards over the front
+        box(f"bd{i}", (0.5, 0.03, 0.10), (-0.05, 0.512, 0.25 + i * 0.16),
+            board, rot=(0, 0, math.radians(-4 + i * 4)))
+    box("chainbar", (0.4, 0.02, 0.03), (-0.05, 0.52, 0.52), chain)
+    box("tolet", (0.14, 0.015, 0.10), (0.32, 0.52, 0.60), paper)
+    rig_camera_and_light()
+    render("shuttered")
+
+
 def main():
     street_tiles()
     tenement_cell()
@@ -639,6 +757,12 @@ def main():
     shop_cell()
     hotel_cell()
     generic_cell()
+    constab_cell()
+    cryo_cell()
+    lounge_cell()
+    bar_cell()
+    pad_cell()
+    shuttered_cell()
     crowd_sprites()
     vehicle_sprites()
     prop_sprites()

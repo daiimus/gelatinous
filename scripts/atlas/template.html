@@ -78,18 +78,40 @@ const P = {
   roof:    ['#cdc6b4','#9a917f','#736b5c'],
   shop:    ['#c49048','#8f6730','#6b4c22'],
   hotel:   ['#7a6f96','#584f6e','#413a52'],
+  constab: ['#7d7a70','#5c5a52','#44423c'],
+  cryo:    ['#6f8a8f','#516569','#3b4a4d'],
+  lounge:  ['#4a3556','#362740','#271c2e'],
+  bar:     ['#8a5a42','#674231','#4c3124'],
+  pad:     ['#5e5e60','#464648','#343436'],
+  shuttered:['#635a4c','#494238','#353028'],
   machine: ['#8b8b84','#63635d','#494943'],
   generic: ['#6e6a72','#514e57','#3c3a41'],
 };
 const LEGEND_LABEL = {street:'street', alley:'alley', market:'market', hull:'hull-top',
   tenement:'residential', roof:'rooftop', shop:'commerce',
-  hotel:'cube hotel', machine:'machinery', generic:'other', air:'air lattice'};
+  hotel:'cube hotel', constab:'the law', cryo:'cryogenics',
+  lounge:'nightlife', bar:'bars', pad:'landing pad',
+  shuttered:'shuttered', machine:'machinery', generic:'other',
+  air:'air lattice'};
+const SKINS = [
+  ["The Brackett Arms", "tenement"],
+  ["Colonial Constabulary", "constab"],
+  ["Colonial Armory", "constab"],
+  ["Thawn-Harrison", "cryo"],
+  ["Helix Lounge", "lounge"],
+  ["The Last Shift", "bar"],
+  ["The Hub and Howl", "bar"],
+  ["Colonial Landing Pad", "pad"],
+  ["Shuttered Storefront", "shuttered"],
+];
 function cls(c){
   if (c.flags.includes('sky')) return 'air';
   const t=(c.type||'').toLowerCase(), k=c.key||'';
   if (k.toLowerCase().includes('alley')) return 'alley';
   if (/rooftop|- roof/i.test(k))
     return k.startsWith("Hammett's Boot")?'hull':'roof';
+  for (const [prefix, skin] of SKINS)
+    if (k.startsWith(prefix)) return skin;
   if (t==='street'||t==='bridge') return 'street';
   if (t==='alley') return 'alley';
   if (t==='market') return 'market';
