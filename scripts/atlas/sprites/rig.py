@@ -25,7 +25,7 @@ def clear_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
-def make_material(name, base, rough=0.8, emit=None, noise=0.0):
+def make_material(name, base, rough=0.8, emit=None, noise=0.0, wet=False):
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
@@ -35,6 +35,16 @@ def make_material(name, base, rough=0.8, emit=None, noise=0.0):
     if emit is not None:
         bsdf.inputs["Emission Color"].default_value = (*emit, 1.0)
         bsdf.inputs["Emission Strength"].default_value = 6.0
+    if wet:
+        tex = nt.nodes.new("ShaderNodeTexNoise")
+        tex.inputs["Scale"].default_value = 7.0
+        ramp = nt.nodes.new("ShaderNodeValToRGB")
+        ramp.color_ramp.elements[0].position = 0.42
+        ramp.color_ramp.elements[0].color = (0.05, 0.05, 0.05, 1)   # puddle
+        ramp.color_ramp.elements[1].position = 0.6
+        ramp.color_ramp.elements[1].color = (0.55, 0.55, 0.55, 1)   # damp
+        nt.links.new(tex.outputs["Fac"], ramp.inputs["Fac"])
+        nt.links.new(ramp.outputs["Color"], bsdf.inputs["Roughness"])
     if noise > 0:
         tex = nt.nodes.new("ShaderNodeTexNoise")
         tex.inputs["Scale"].default_value = 18.0
@@ -96,23 +106,23 @@ def rig_camera_and_light():
     bpy.context.scene.camera = cam
 
     sun_data = bpy.data.lights.new("sun", type="SUN")
-    sun_data.energy = 4.0
+    sun_data.energy = 3.2
     sun_data.angle = math.radians(2)            # hard shadow
-    sun_data.color = (1.0, 0.87, 0.7)           # the Fallout sun
+    sun_data.color = (1.0, 0.78, 0.55)          # sodium worklight
     sun = bpy.data.objects.new("sun", sun_data)
     sun.rotation_euler = (math.radians(55), 0, math.radians(160))
     bpy.context.collection.objects.link(sun)
 
     fill_data = bpy.data.lights.new("fill", type="SUN")
-    fill_data.energy = 0.5
-    fill_data.color = (0.55, 0.65, 0.8)         # cool bounce
+    fill_data.energy = 1.1
+    fill_data.color = (0.35, 0.75, 0.85)        # the teal rim
     fill = bpy.data.objects.new("fill", fill_data)
     fill.rotation_euler = (math.radians(70), 0, math.radians(-30))
     bpy.context.collection.objects.link(fill)
 
     world = bpy.data.worlds.new("w")
     world.use_nodes = True
-    world.node_tree.nodes["Background"].inputs[0].default_value = (0.02, 0.025, 0.035, 1)
+    world.node_tree.nodes["Background"].inputs[0].default_value = (0.015, 0.025, 0.04, 1)
     world.node_tree.nodes["Background"].inputs[1].default_value = 0.6
     bpy.context.scene.world = world
 
@@ -133,7 +143,8 @@ def render(name):
 # ---------------------------------------------------------------- models
 def street_cell():
     clear_scene()
-    asphalt = make_material("asphalt", (0.10, 0.095, 0.11), 0.95, noise=0.5)
+    asphalt = make_material("asphalt", (0.075, 0.075, 0.095), 0.3,
+                            noise=0.4, wet=True)
     curb = make_material("curb", (0.28, 0.26, 0.24), 0.9, noise=0.3)
     paint = make_material("paint", (0.55, 0.52, 0.42), 0.85)
     iron = make_material("iron", (0.06, 0.06, 0.065), 0.6)
@@ -145,13 +156,22 @@ def street_cell():
         make_material("crack", (0.05, 0.05, 0.055), 1.0))
     cylinder("manhole", 0.09, 0.02, (0.22, -0.18, 0.085), iron,
              seg=16, arc=math.pi * 2)
+    hazard_y = make_material("hazY", (0.75, 0.6, 0.1), 0.7)
+    hazard_k = make_material("hazK", (0.05, 0.05, 0.05), 0.7)
+    for i in range(6):                           # chevron strip on the curb
+        box(f"chev{i}", (0.16, 0.05, 0.02), (-0.42 + i * 0.168, 0.46, 0.135),
+            hazard_y if i % 2 == 0 else hazard_k)
+    stencil = make_material("stencil", (0.6, 0.58, 0.5), 0.9)
+    box("arrow", (0.22, 0.06, 0.004), (-0.18, 0.16, 0.085), stencil)
+    box("arrow2", (0.06, 0.14, 0.004), (-0.10, 0.13, 0.085), stencil)
     rig_camera_and_light()
     render("street")
 
 
 def tenement_cell():
     clear_scene()
-    concrete = make_material("concrete", (0.16, 0.20, 0.23), 0.9, noise=0.45)
+    concrete = make_material("concrete", (0.13, 0.165, 0.20), 0.85,
+                             noise=0.45)
     grime = make_material("grime", (0.09, 0.11, 0.13), 0.95, noise=0.3)
     frame = make_material("frame", (0.07, 0.08, 0.09), 0.8)
     lit = make_material("lit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28))
@@ -169,6 +189,19 @@ def tenement_cell():
         box(f"wge{wy}", (0.015, 0.12, 0.24), (0.512, wy, 0.55),
             lit if litw else dark)
     box("ac", (0.14, 0.10, 0.10), (0.56, 0.28, 0.72), duct)
+    pipe = make_material("pipe", (0.22, 0.20, 0.18), 0.55)
+    box("conduit1", (0.03, 0.03, 1.0), (0.515, -0.12, 0.5), pipe)
+    box("conduit2", (0.03, 0.03, 1.0), (0.515, -0.20, 0.5), pipe)
+    box("conduit_elbow", (0.03, 0.14, 0.03), (0.515, -0.13, 0.94), pipe)
+    neon = make_material("neon", (0.2, 0.9, 0.9), 0.3,
+                         emit=(0.25, 0.95, 1.0))
+    box("sign", (0.05, 0.30, 0.07), (-0.515, 0.05, 0.86), neon)
+    hazard_y = make_material("thazY", (0.7, 0.55, 0.1), 0.7)
+    hazard_k = make_material("thazK", (0.05, 0.05, 0.05), 0.7)
+    for i in range(4):                           # dock stripe at the base
+        box(f"tchev{i}", (0.02, 0.12, 0.05),
+            (-0.512, -0.30 + i * 0.125, 0.05),
+            hazard_y if i % 2 == 0 else hazard_k)
     rig_camera_and_light()
     render("tenement")
 
@@ -184,6 +217,11 @@ def hull_cell():
     for wx in (-0.34, 0.02, 0.38):               # weld bands across the camber
         cylinder(f"weld{wx}", 0.645, 0.05, (wx, 0, 0), weld,
                  arc=math.pi * 0.85)
+    stencil = make_material("hstencil", (0.55, 0.50, 0.40), 0.9)
+    box("marking", (0.20, 0.02, 0.10),
+        (-0.18, 0.585 * math.cos(math.pi * 0.35),
+         0.585 * math.sin(math.pi * 0.35)), stencil,
+        rot=(math.pi * 0.35 - math.pi / 2, 0, 0))
     for i in range(7):                           # rivet row along the crown
         a = math.pi * (0.18 + 0.09 * i)
         box(f"riv{i}", (0.035, 0.035, 0.035),

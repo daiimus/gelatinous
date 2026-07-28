@@ -136,7 +136,12 @@ Fallout 1/2 register**: the practical layer (grid truth, hover, z-slice,
 route/coverage overlays) is unchanged, but cells render as CUSTOM SPRITES
 — a per-type library plus signature multi-cell landmark sprites — with
 the procedural boxes as fallback so the library grows incrementally.
-Register: pre-rendered-3D grit — hard low key light, brown/rust/olive
+Register refined (owner 2026-07-28): **off-world colony —
+Alien / Blade Runner** — cassette-futurism industrial vocabulary (hazard
+chevrons, stencils, conduit runs, dock stripes, utilitarian signage) under
+a sodium-key/teal-rim lighting rig, wet-asphalt speculars, and a darkroom
+grade of teal shadows, amber highlights, and neon bloom. Base register
+underneath remains pre-rendered-3D grit — hard low key light, brown/rust/olive
 palette, sodium-lamp amber, posterize + ordered dither + grain post
 (Fallout's look WAS pre-rendered 3D; the vibe is materials and post, not
 projection — 2:1 iso stays). Cyan is reserved for DATA overlays only.
