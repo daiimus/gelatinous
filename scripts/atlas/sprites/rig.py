@@ -749,6 +749,27 @@ def shuttered_cell():
     render("shuttered")
 
 
+def medical_cell():
+    """The colony's medicine: clinical panels, red-cross ghost, lit
+    intake."""
+    clear_scene()
+    panel = make_material("mpanel", (0.42, 0.44, 0.43), 0.8, noise=0.25)
+    grime = make_material("mgrime", (0.22, 0.24, 0.23), 0.9, noise=0.4)
+    cross = make_material("mcross", (0.55, 0.16, 0.12), 0.85)
+    intake = make_material("mintake", (0.9, 0.95, 0.9), 0.4,
+                           emit=(0.85, 0.95, 0.85))
+    dark = make_material("mdark", (0.04, 0.05, 0.05), 0.4)
+    box("block", (1, 1, 0.9), (0, 0, 0.45), panel)
+    box("grimeband", (1.004, 1.004, 0.14), (0, 0, 0.07), grime)
+    box("crossV", (0.06, 0.02, 0.20), (0.22, 0.508, 0.62), cross)
+    box("crossH", (0.18, 0.02, 0.07), (0.22, 0.508, 0.62), cross)
+    box("intakedoor", (0.26, 0.03, 0.55), (-0.20, 0.512, 0.28), dark)
+    box("intakelight", (0.30, 0.02, 0.05), (-0.20, 0.52, 0.60), intake)
+    box("ewin", (0.02, 0.30, 0.22), (0.508, -0.05, 0.55), dark)
+    rig_camera_and_light()
+    render("medical")
+
+
 def main():
     street_tiles()
     tenement_cell()
@@ -763,6 +784,7 @@ def main():
     bar_cell()
     pad_cell()
     shuttered_cell()
+    medical_cell()
     crowd_sprites()
     vehicle_sprites()
     prop_sprites()

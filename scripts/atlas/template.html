@@ -84,13 +84,14 @@ const P = {
   bar:     ['#8a5a42','#674231','#4c3124'],
   pad:     ['#5e5e60','#464648','#343436'],
   shuttered:['#635a4c','#494238','#353028'],
+  medical: ['#9aa39e','#727a76','#555b58'],
   machine: ['#8b8b84','#63635d','#494943'],
   generic: ['#6e6a72','#514e57','#3c3a41'],
 };
 const LEGEND_LABEL = {street:'street', alley:'alley', market:'market', hull:'hull-top',
   tenement:'residential', roof:'rooftop', shop:'commerce',
   hotel:'cube hotel', constab:'the law', cryo:'cryogenics',
-  lounge:'nightlife', bar:'bars', pad:'landing pad',
+  lounge:'nightlife', bar:'bars', pad:'landing pad', medical:'medicine',
   shuttered:'shuttered', machine:'machinery', generic:'other',
   air:'air lattice'};
 const SKINS = [
@@ -117,7 +118,8 @@ function cls(c){
   if (t==='market') return 'market';
   if (t==='rooftop') return k.startsWith("Hammett's Boot")?'hull':'roof';
   if (t==='tenement'||t==='residential'||t==='apartment') return 'tenement';
-  if (['shop','corner store','laundromat','bar','clinic','nightclub'].includes(t)) return 'shop';
+  if (t==='hospital') return 'medical';
+  if (['shop','corner store','laundromat','bar','clinic','nightclub','antique shop'].includes(t)) return 'shop';
   if (k.startsWith('Queen of Cups')||/^R\d-\d\d$/.test(k)) return 'hotel';
   if (k.toLowerCase().includes('elevator')) return 'machine';
   if (t==='constabulary') return 'machine';
