@@ -81,4 +81,11 @@ g.is_shadow_catcher = True
 RES = 2000
 rig.rig_camera_and_light(ortho=2.6 * RES / 512, target=(0, 3.25, 0.9))
 rig.render("bridge", res=RES)
+
+# self-calibration: the local origin under THIS camera
+rig.clear_scene()
+m = rig.make_material("mk", (1, 1, 1), 0.2, emit=(1, 1, 1))
+rig.box("marker", (0.04, 0.04, 0.04), (0, 0, 0), m)
+rig.rig_camera_and_light(ortho=2.6 * RES / 512, target=(0, 3.25, 0.9))
+rig.render("calib_bridge", res=RES)
 print("landmark bridge rendered")

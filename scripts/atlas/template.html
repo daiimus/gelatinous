@@ -241,9 +241,9 @@ function drawCell(c){
     const lm=c.landmark, a=DATA.anchor;
     if (!lm.img || !lm.img.complete || !SPR_SCALE) return;
     ctx.imageSmoothingEnabled=false;
+    const o = lm.origin || [a.origin[0]*lm.ratio, a.origin[1]*lm.ratio];
     ctx.drawImage(lm.img,
-      sx - a.origin[0]*lm.ratio*SPR_SCALE,
-      sy - a.origin[1]*lm.ratio*SPR_SCALE,
+      sx - o[0]*SPR_SCALE, sy - o[1]*SPR_SCALE,
       lm.size*SPR_SCALE, lm.size*SPR_SCALE);
     return;
   }
