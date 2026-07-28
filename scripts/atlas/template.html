@@ -111,8 +111,14 @@ const EDGES = DATA.links.filter(l=>l.kind==='edge'||l.kind==='gap').map(l=>{
 const MASTS = (DATA.masts||[]);
 const ZMAX = Math.max(...C.map(c=>c.z), 1);
 
-// ---------- projection ----------
-const TW=44, TH=22, ZH=17;
+// ---------- projection (anchor-true when the sprite library is present) --
+let TW=44, TH=22, ZH=17, SPR_SCALE=0;
+if (DATA.anchor){
+  const a=DATA.anchor;
+  SPR_SCALE=(TW/2)/a.xvec[0];
+  TH=2*a.xvec[1]*SPR_SCALE;
+  ZH=Math.abs(a.zvec[1])*SPR_SCALE;
+}
 const isoX=(x,y)=>(x-y)*TW/2, isoY=(x,y,z)=>(x+y)*TH/2 - z*ZH;
 let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
 for (const c of C){
@@ -125,6 +131,13 @@ const OX=-minX+PAD, OY=-minY+PAD;
 C.sort((a,b)=>(a.x+a.y)-(b.x+b.y) || a.z-b.z || b.y-a.y);
 const STREETS=new Set(C.filter(c=>c.t==='street').map(c=>`${c.x},${c.y}`));
 
+const SPR_IMG={};
+let pending=0;
+for (const [cls,uri] of Object.entries(DATA.sprites||{})){
+  const im=new Image(); pending++;
+  im.onload=()=>{if(--pending===0)draw();};
+  im.src=uri; SPR_IMG[cls]=im;
+}
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const readout=document.getElementById('readout');
 const ui={zcap:document.getElementById('zcap'), zval:document.getElementById('zval'),
@@ -195,6 +208,14 @@ function detail(c,sx,sy){
 }
 function drawCell(c){
   const sx=isoX(c.x,c.y)+OX, sy=isoY(c.x,c.y,c.z)+OY;
+  const spr=SPR_IMG[c.t];
+  if (spr && spr.complete && SPR_SCALE){
+    const a=DATA.anchor, d=a.size*SPR_SCALE;
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(spr, sx-a.origin[0]*SPR_SCALE, sy-a.origin[1]*SPR_SCALE,
+                  d, d);
+    return;
+  }
   if (c.t==='air'){
     ctx.fillStyle='rgba(111,214,224,0.05)'; ctx.strokeStyle='rgba(111,214,224,0.2)'; ctx.lineWidth=.7;
     topPath(sx,sy-ZH); ctx.fill(); ctx.stroke(); return;
