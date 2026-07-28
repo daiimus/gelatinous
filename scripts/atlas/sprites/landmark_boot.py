@@ -63,26 +63,15 @@ rig.box("toecap", (0.10, 1.08, 0.54), (5.44, 0, 0.27), hull)
 # continuous piece of salvage, no holes in the hull
 rig.cylinder("collar", 0.655, 0.14, (0.42, 0, 0), weld,
              arc=math.pi * 0.9)
-# the Throat: the market's north mouth — a branch arch off the vault,
-# open-ended, light spilling out, rim shorn ragged
-rig.cylinder("throat", 0.44, 1.0, (0, 0, 0), hull, arc=math.pi * 0.92)
-for o in bpy.context.collection.objects:
-    if o.name == "throat":
-        o.rotation_euler = (0, 0, math.radians(90))
-        o.location = (0.30, 0.85, 0)
-for i, hy in enumerate((0.55, 0.95)):             # branch hoops
-    rig.cylinder(f"thoop{i}", 0.465, 0.06, (0, 0, 0), weld,
-                 arc=math.pi * 0.88)
-    for o in bpy.context.collection.objects:
-        if o.name == f"thoop{i}":
-            o.rotation_euler = (0, 0, math.radians(90))
-            o.location = (0.30, hy, 0)
-rig.box("throat_mouth", (0.72, 0.05, 0.42), (0.30, 1.33, 0.21), dark)
-rig.box("throat_glow", (0.46, 0.04, 0.26), (0.30, 1.32, 0.16), glow)
-for i, (dx, dz, rr) in enumerate(((-0.34, 0.36, 18), (0.30, 0.40, -14),
-                                  (0.02, 0.46, 8))):   # shorn rim shards
-    rig.box(f"shard{i}", (0.14, 0.05, 0.09), (0.30 + dx, 1.34, dz), hull,
-            rot=(0, math.radians(rr), 0))
+# the Throat: a flush entrance door in the north flank — no geometry
+# leaves the hull; the opening is surface language, like a real hangar
+rig.box("throat_door", (0.46, 0.05, 0.34), (0.45, 0.565, 0.17), dark,
+        rot=(math.radians(-16), 0, 0))
+rig.box("throat_lintel", (0.54, 0.05, 0.06), (0.45, 0.545, 0.37), weld,
+        rot=(math.radians(-16), 0, 0))
+rig.box("throat_glow", (0.34, 0.04, 0.10), (0.45, 0.585, 0.08), glow,
+        rot=(math.radians(-16), 0, 0))
+
 # the toe breach: rosette glow on the cap crown
 rig.cylinder("breach", 0.17, 0.05, (4.7, 0, 0), glow,
              seg=14, arc=math.pi * 2)
