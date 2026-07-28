@@ -147,7 +147,8 @@ for (const c of C){
 const PAD=46, W=maxX-minX+PAD*2, H=maxY-minY+PAD*2;
 const OX=-minX+PAD, OY=-minY+PAD;
 C.sort((a,b)=>((a.s??a.x+a.y)-(b.s??b.x+b.y)) || a.z-b.z || b.y-a.y);
-const STREETS=new Set(C.filter(c=>c.t==='street').map(c=>`${c.x},${c.y}`));
+const GROUND=new Set(C.filter(c=>c.t==='street'||c.t==='alley').map(c=>`${c.x},${c.y}`));
+const STREETS=GROUND;
 
 const SPR_IMG={}, VARIANTS={}, AMBIENT={};
 let pending=0;
@@ -246,7 +247,15 @@ function drawCell(c){
       lm.size*SPR_SCALE, lm.size*SPR_SCALE);
     return;
   }
-  const pool=VARIANTS[c.t];
+  let poolKey=c.t;
+  if (c.t==='street'||c.t==='alley'){
+    const ewn=GROUND.has(`${c.x+1},${c.y}`)||GROUND.has(`${c.x-1},${c.y}`);
+    const nsn=GROUND.has(`${c.x},${c.y+1}`)||GROUND.has(`${c.x},${c.y-1}`);
+    poolKey = c.t==='alley'
+      ? (nsn && !ewn ? 'alley_ns' : 'alley_ew')
+      : (ewn && nsn ? 'street_ix' : nsn ? 'street_ns' : 'street_ew');
+  }
+  const pool=VARIANTS[poolKey];
   if (pool && pool.length && SPR_SCALE){
     const r=rng(c);
     const spr=pool[Math.floor(r()*pool.length)];
