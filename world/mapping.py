@@ -59,6 +59,7 @@ def export_map():
             "xyz": list(xyz),
             "type": str(room.db.type or ""),
             "flags": _flags(room),
+            "crowd": int(room.db.crowd_base_level or 0),
         })
     cells.sort(key=lambda c: (c["xyz"], c["dbref"]))
 

@@ -304,6 +304,164 @@ def generic_cell():
     render("generic")
 
 
+def street_variant_1():
+    """Patched and stained — a street that has been repaired in anger."""
+    clear_scene()
+    asphalt = make_material("asphalt1", (0.075, 0.075, 0.095), 0.3,
+                            noise=0.4, wet=True)
+    patch = make_material("patch", (0.12, 0.11, 0.12), 0.8, noise=0.3)
+    curb = make_material("curb1", (0.28, 0.26, 0.24), 0.9, noise=0.3)
+    oil = make_material("oil", (0.03, 0.035, 0.05), 0.15)
+    box("slab", (1, 1, 0.08), (0, 0, 0.04), asphalt)
+    box("curb_n", (1, 0.09, 0.13), (0, 0.455, 0.065), curb)
+    box("curb_s", (1, 0.09, 0.13), (0, -0.455, 0.065), curb)
+    box("patch1", (0.34, 0.26, 0.004), (-0.16, 0.10, 0.084), patch)
+    box("patch2", (0.22, 0.18, 0.004), (0.24, -0.14, 0.084), patch)
+    cylinder("oilstain", 0.14, 0.006, (0.05, 0.22, 0.083), oil,
+             seg=14, arc=math.pi * 2)
+    box("barrier", (0.08, 0.30, 0.16), (0.40, 0.05, 0.16),
+        make_material("bar1", (0.55, 0.42, 0.10), 0.8))
+    rig_camera_and_light()
+    render("street_1")
+
+
+def street_variant_2():
+    """Cracked and littered — the colony's deferred maintenance."""
+    clear_scene()
+    asphalt = make_material("asphalt2", (0.08, 0.078, 0.09), 0.45,
+                            noise=0.5, wet=True)
+    curb = make_material("curb2", (0.26, 0.24, 0.22), 0.9, noise=0.3)
+    crackm = make_material("crack2", (0.04, 0.04, 0.05), 1.0)
+    debris = make_material("debris", (0.20, 0.16, 0.12), 0.95, noise=0.4)
+    box("slab", (1, 1, 0.08), (0, 0, 0.04), asphalt)
+    box("curb_n", (1, 0.09, 0.13), (0, 0.455, 0.065), curb)
+    box("curb_s", (1, 0.09, 0.13), (0, -0.455, 0.065), curb)
+    box("crackA", (0.5, 0.018, 0.004), (-0.1, 0.05, 0.084), crackm,
+        rot=(0, 0, math.radians(20)))
+    box("crackB", (0.34, 0.015, 0.004), (0.12, -0.08, 0.084), crackm,
+        rot=(0, 0, math.radians(-35)))
+    box("crackC", (0.2, 0.012, 0.004), (-0.3, -0.22, 0.084), crackm,
+        rot=(0, 0, math.radians(60)))
+    for i, (dx, dy) in enumerate([(0.3, 0.3), (-0.35, -0.3), (0.1, -0.35)]):
+        box(f"junk{i}", (0.07, 0.05, 0.05), (dx, dy, 0.10), debris)
+    rig_camera_and_light()
+    render("street_2")
+
+
+def alley_cell():
+    """The gnarly cut-through: dumpster, cables, steam, standing water."""
+    clear_scene()
+    ground = make_material("agnd", (0.06, 0.062, 0.07), 0.25,
+                           noise=0.5, wet=True)
+    grime = make_material("agrime", (0.09, 0.10, 0.08), 0.95, noise=0.5)
+    dump = make_material("dump", (0.14, 0.20, 0.16), 0.7, noise=0.3)
+    rust_lid = make_material("dlid", (0.30, 0.18, 0.10), 0.8)
+    trash = make_material("trash", (0.16, 0.14, 0.10), 0.95, noise=0.4)
+    cable = make_material("cable", (0.05, 0.05, 0.055), 0.6)
+    steam = make_material("steamv", (0.25, 0.25, 0.24), 0.6)
+    box("slab", (1, 1, 0.06), (0, 0, 0.03), ground)
+    box("gutter", (1, 0.12, 0.02), (0, -0.40, 0.05), grime)
+    box("dumpster", (0.42, 0.22, 0.26), (-0.22, 0.30, 0.19), dump)
+    box("dumplid", (0.44, 0.24, 0.03), (-0.22, 0.30, 0.335), rust_lid,
+        rot=(math.radians(-8), 0, 0))
+    for i, (dx, dy) in enumerate([(0.05, 0.32), (0.32, 0.18),
+                                  (0.25, -0.25)]):
+        box(f"bag{i}", (0.10, 0.09, 0.09), (dx, dy, 0.10), trash)
+    cylinder("steamvent", 0.07, 0.05, (0.38, -0.30, 0), steam,
+             seg=12, arc=math.pi * 2)
+    for o in bpy.context.collection.objects:
+        if o.name == "steamvent":
+            o.location = (0.38, -0.30, 0.065)
+    for i in range(3):                       # sagging cable shadows overhead
+        box(f"cab{i}", (1.05, 0.012, 0.012), (0, -0.1 + i * 0.16, 0.9 - i * 0.06),
+            cable, rot=(0, 0, math.radians(-6 + i * 5)))
+    rig_camera_and_light()
+    render("alley")
+
+
+def _person(idx, loc, coat, r):
+    torso = box(f"p{idx}t", (0.07, 0.055, 0.17), (loc[0], loc[1], 0.20), coat,
+                rot=(0, 0, r))
+    head = make_material(f"p{idx}h", (0.55, 0.44, 0.36), 0.8)
+    box(f"p{idx}hd", (0.045, 0.045, 0.05), (loc[0], loc[1], 0.32), head)
+    return torso
+
+
+def _crowd_scene(name, spots):
+    clear_scene()
+    coats = [(0.28, 0.16, 0.10), (0.12, 0.16, 0.18), (0.20, 0.19, 0.12),
+             (0.10, 0.10, 0.12)]
+    for i, (x, y, rot) in enumerate(spots):
+        coat = make_material(f"coat{name}{i}", coats[i % len(coats)],
+                             0.85, noise=0.25)
+        _person(f"{name}{i}", (x, y), coat, math.radians(rot))
+    catcher = make_material(f"gnd{name}", (0.5, 0.5, 0.5), 1.0)
+    g = box("gplane", (2, 2, 0.01), (0, 0, -0.005), catcher)
+    g.is_shadow_catcher = True
+    rig_camera_and_light()
+    render(name)
+
+
+def crowd_sprites():
+    _crowd_scene("crowd_0", [(-0.06, 0.02, 15), (0.08, -0.05, -30)])
+    _crowd_scene("crowd_1", [(-0.10, 0.06, 40), (0.04, 0.0, -10),
+                             (0.12, -0.10, 75)])
+    _crowd_scene("crowd_2", [(0.0, 0.0, 55)])
+
+
+def _hauler(rotz):
+    clear_scene()
+    body = make_material("hbody", (0.22, 0.16, 0.10), 0.6, noise=0.3)
+    cab = make_material("hcab", (0.16, 0.18, 0.16), 0.5)
+    glass = make_material("hglass", (0.05, 0.08, 0.10), 0.15)
+    tire = make_material("tire", (0.04, 0.04, 0.045), 0.9)
+    hazY = make_material("hhazY", (0.7, 0.55, 0.1), 0.7)
+    lamp = make_material("hlamp", (1.0, 0.75, 0.4), 0.4,
+                         emit=(1.0, 0.7, 0.35))
+    rz = math.radians(rotz)
+    def R(x, y):
+        c, s_ = math.cos(rz), math.sin(rz)
+        return (x * c - y * s_, x * s_ + y * c)
+    def rbox(n, size, loc, mat, extra_rz=0.0):
+        x, y = R(loc[0], loc[1])
+        sz = size if rotz == 0 else (size[1], size[0], size[2])             if abs(rotz) == 90 else size
+        box(n, sz, (x, y, loc[2]), mat, rot=(0, 0, rz + extra_rz))
+    rbox("bed", (0.55, 0.30, 0.18), (-0.10, 0, 0.20), body)
+    rbox("cab", (0.20, 0.28, 0.24), (0.28, 0, 0.23), cab)
+    rbox("glassf", (0.02, 0.24, 0.10), (0.385, 0, 0.28), glass)
+    rbox("stripe", (0.04, 0.30, 0.06), (-0.365, 0, 0.20), hazY)
+    rbox("lampL", (0.02, 0.05, 0.04), (0.385, 0.09, 0.16), lamp)
+    rbox("lampR", (0.02, 0.05, 0.04), (0.385, -0.09, 0.16), lamp)
+    for i, wx in enumerate((-0.28, 0.02, 0.28)):
+        for side in (-0.17, 0.17):
+            x, y = R(wx, side)
+            box(f"w{i}{side}", (0.10, 0.04, 0.10), (x, y, 0.06), tire,
+                rot=(0, 0, rz))
+    catcher = make_material("hgnd", (0.5, 0.5, 0.5), 1.0)
+    g = box("gplane", (2.4, 2.4, 0.01), (0, 0, -0.005), catcher)
+    g.is_shadow_catcher = True
+    rig_camera_and_light()
+
+
+def vehicle_sprites():
+    _hauler(0);  render("hauler_x")
+    _hauler(90); render("hauler_y")
+    # the cart: small utility rover, orientation-agnostic
+    clear_scene()
+    body = make_material("cbody", (0.18, 0.20, 0.14), 0.6, noise=0.3)
+    tire = make_material("ctire", (0.04, 0.04, 0.045), 0.9)
+    box("cbed", (0.30, 0.20, 0.14), (0, 0, 0.15), body)
+    box("cbar", (0.03, 0.18, 0.16), (0.14, 0, 0.30), body)
+    for wx in (-0.10, 0.10):
+        for wy in (-0.12, 0.12):
+            box(f"cw{wx}{wy}", (0.07, 0.03, 0.07), (wx, wy, 0.05), tire)
+    catcher = make_material("cgnd", (0.5, 0.5, 0.5), 1.0)
+    g = box("gplane", (2, 2, 0.01), (0, 0, -0.005), catcher)
+    g.is_shadow_catcher = True
+    rig_camera_and_light()
+    render("cart")
+
+
 def main():
     street_cell()
     tenement_cell()
@@ -312,6 +470,11 @@ def main():
     shop_cell()
     hotel_cell()
     generic_cell()
+    street_variant_1()
+    street_variant_2()
+    alley_cell()
+    crowd_sprites()
+    vehicle_sprites()
     print("rig complete")
 
 

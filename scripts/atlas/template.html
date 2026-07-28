@@ -50,6 +50,7 @@
     <label><input id="tAir" type="checkbox" checked> air lattice</label>
     <label><input id="tEdge" type="checkbox" checked> jump routes</label>
     <label><input id="tRadio" type="checkbox"> radio coverage</label>
+    <label><input id="tLife" type="checkbox" checked> street life</label>
   </div>
 </div>
 
@@ -57,7 +58,8 @@
 
 <p class="note"><b>Reading the plate:</b> solids are the built colony, colored by what a cell is;
 glass volumes are the air lattice — deliberate negative space where bodies fall and vehicles will
-fly. Neon arcs are wired jump edges, each ending in its landing dot. Radio rings draw each mast's
+fly. Street life (toggleable) scatters the colony's own crowd levels and traffic onto the ground
+plane, deterministic per edition. Neon arcs are wired jump edges, each ending in its landing dot. Radio rings draw each mast's
 crisp range solid and its full reach dashed. This document is generated, not drawn: rerun the
 atlas script and it is current again.</p>
 </div>
@@ -69,6 +71,7 @@ const DATA = /*__DATA__*/null;
 // ---------- palette & classification ----------
 const P = {
   street:  ['#4d4852','#3a363f','#2c2930'],
+  alley:   ['#3e3a38','#2e2b2a','#232120'],
   market:  ['#a65d3e','#7e422c','#5e301f'],
   hull:    ['#c8a184','#96725b','#6f5340'],
   tenement:['#5b7a88','#425964','#31434c'],
@@ -78,13 +81,14 @@ const P = {
   machine: ['#8b8b84','#63635d','#494943'],
   generic: ['#6e6a72','#514e57','#3c3a41'],
 };
-const LEGEND_LABEL = {street:'street', market:'market', hull:'hull-top',
+const LEGEND_LABEL = {street:'street', alley:'alley', market:'market', hull:'hull-top',
   tenement:'residential', roof:'rooftop', shop:'commerce',
   hotel:'cube hotel', machine:'machinery', generic:'other', air:'air lattice'};
 function cls(c){
   if (c.flags.includes('sky')) return 'air';
   const t=(c.type||'').toLowerCase(), k=c.key||'';
   if (t==='street'||t==='bridge') return 'street';
+  if (t==='alley') return 'alley';
   if (t==='market') return 'market';
   if (t==='rooftop') return k.startsWith("Hammett's Boot")?'hull':'roof';
   if (t==='tenement'||t==='residential'||t==='apartment') return 'tenement';
@@ -97,7 +101,7 @@ function cls(c){
 
 // ---------- data prep ----------
 const C = DATA.cells.map(c=>({x:c.xyz[0],y:c.xyz[1],z:c.xyz[2],
-  t:cls(c), name:c.key, dbref:c.dbref}));
+  t:cls(c), name:c.key, dbref:c.dbref, crowd:c.crowd||0}));
 const byRef = {}; for (const c of C) byRef[c.dbref]=c;
 const EDGES = DATA.links.filter(l=>l.kind==='edge'||l.kind==='gap').map(l=>{
   const a=byRef[l.from], b=byRef[l.to]; if(!a||!b) return null;
@@ -142,12 +146,16 @@ const OX=-minX+PAD, OY=-minY+PAD;
 C.sort((a,b)=>((a.s??a.x+a.y)-(b.s??b.x+b.y)) || a.z-b.z || b.y-a.y);
 const STREETS=new Set(C.filter(c=>c.t==='street').map(c=>`${c.x},${c.y}`));
 
-const SPR_IMG={};
+const SPR_IMG={}, VARIANTS={}, AMBIENT={};
 let pending=0;
-for (const [cls,uri] of Object.entries(DATA.sprites||{})){
-  const im=new Image(); pending++;
-  im.onload=()=>{if(--pending===0)draw();};
-  im.src=uri; SPR_IMG[cls]=im;
+function loadImg(uri){const im=new Image(); pending++;
+  im.onload=()=>{if(--pending===0)draw();}; im.src=uri; return im;}
+for (const [name,uri] of Object.entries(DATA.sprites||{})){
+  const im=loadImg(uri);
+  if (/^(crowd|hauler|cart)/.test(name)){ AMBIENT[name]=im; continue; }
+  const base=name.replace(/_\d+$/,'');
+  SPR_IMG[name]=im;
+  (VARIANTS[base]=VARIANTS[base]||[]).push(im);
 }
 for (const lm of LANDMARKS){
   const im=new Image(); pending++;
@@ -158,7 +166,7 @@ const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const readout=document.getElementById('readout');
 const ui={zcap:document.getElementById('zcap'), zval:document.getElementById('zval'),
   air:document.getElementById('tAir'), edge:document.getElementById('tEdge'),
-  radio:document.getElementById('tRadio')};
+  radio:document.getElementById('tRadio'), life:document.getElementById('tLife')};
 ui.zcap.max=ZMAX; ui.zcap.value=ZMAX; ui.zval.textContent=`z ≤ ${ZMAX}`;
 document.getElementById('edition').textContent = DATA.edition || '';
 const DPR=Math.min(window.devicePixelRatio||1,2);
@@ -235,13 +243,18 @@ function drawCell(c){
       lm.size*SPR_SCALE, lm.size*SPR_SCALE);
     return;
   }
-  const spr=SPR_IMG[c.t];
-  if (spr && spr.complete && SPR_SCALE){
-    const a=DATA.anchor, d=a.size*SPR_SCALE;
-    ctx.imageSmoothingEnabled=false;
-    ctx.drawImage(spr, sx-a.origin[0]*SPR_SCALE, sy-a.origin[1]*SPR_SCALE,
-                  d, d);
-    return;
+  const pool=VARIANTS[c.t];
+  if (pool && pool.length && SPR_SCALE){
+    const r=rng(c);
+    const spr=pool[Math.floor(r()*pool.length)];
+    if (spr.complete){
+      const a=DATA.anchor, d=a.size*SPR_SCALE;
+      ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(spr, sx-a.origin[0]*SPR_SCALE, sy-a.origin[1]*SPR_SCALE,
+                    d, d);
+      ambient(c, r);
+      return;
+    }
   }
   if (c.t==='air'){
     ctx.fillStyle='rgba(111,214,224,0.05)'; ctx.strokeStyle='rgba(111,214,224,0.2)'; ctx.lineWidth=.7;
@@ -256,6 +269,37 @@ function drawCell(c){
   ctx.strokeStyle='rgba(11,14,20,0.35)'; ctx.lineWidth=.6; ctx.stroke();
   detail(c,sx,sy);
 }
+function stamp(im, sx, sy, wx, wy){
+  // draw an ambient sprite anchored at a world offset within the cell
+  const a=DATA.anchor;
+  const px=sx + (wx-wy)*TW/2, py=sy + (wx+wy)*TH/2;
+  ctx.drawImage(im, px-a.origin[0]*SPR_SCALE, py-a.origin[1]*SPR_SCALE,
+                a.size*SPR_SCALE, a.size*SPR_SCALE);
+}
+function ambient(c, r){
+  if (!ui.life.checked || c.z!==0) return;
+  if (c.t!=='street' && c.t!=='alley') return;
+  const lvl=c.crowd||0;
+  if (c.t==='street' && r()<0.14){
+    const ew=STREETS.has(`${c.x+1},${c.y}`)||STREETS.has(`${c.x-1},${c.y}`);
+    const im=AMBIENT[ew?'hauler_x':'hauler_y'];
+    if (im&&im.complete) stamp(im, sx0(c), sy0(c), (r()-0.5)*0.3, (r()-0.5)*0.3);
+  }
+  if (c.t==='alley' && r()<0.18){
+    const im=AMBIENT['cart'];
+    if (im&&im.complete) stamp(im, sx0(c), sy0(c), (r()-0.5)*0.4, (r()-0.5)*0.4);
+  }
+  const chance=Math.min(0.16*lvl, 0.5);
+  if (lvl>0 && r()<chance){
+    const im=AMBIENT['crowd_'+Math.floor(r()*3)];
+    if (im&&im.complete) stamp(im, sx0(c), sy0(c), (r()-0.5)*0.5, (r()-0.5)*0.5);
+  }
+  if (lvl>=2 && r()<0.25){
+    const im=AMBIENT['crowd_'+Math.floor(r()*3)];
+    if (im&&im.complete) stamp(im, sx0(c), sy0(c), (r()-0.5)*0.6, (r()-0.5)*0.6);
+  }
+}
+const sx0=c=>isoX(c.x,c.y)+OX, sy0=c=>isoY(c.x,c.y,c.z)+OY;
 function drawRadio(){
   for (const m of MASTS){
     for (const [r,dash] of [[m.crisp,[]],[m.reach,[6,5]]]){
@@ -311,7 +355,7 @@ cv.addEventListener('mousemove',ev=>{
     : '&nbsp;';
 });
 cv.addEventListener('mouseleave',()=>readout.innerHTML='&nbsp;');
-for (const el of [ui.zcap,ui.air,ui.edge,ui.radio])
+for (const el of [ui.zcap,ui.air,ui.edge,ui.radio,ui.life])
   el.addEventListener('input',()=>{ui.zval.textContent=`z ≤ ${ui.zcap.value}`; draw();});
 
 // ---------- legend (only classes actually present) ----------
