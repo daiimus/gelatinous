@@ -25,7 +25,8 @@ def clear_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
-def make_material(name, base, rough=0.8, emit=None, noise=0.0, wet=False):
+def make_material(name, base, rough=0.8, emit=None, noise=0.0,
+                  wet=False, emit_strength=6.0):
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
@@ -34,7 +35,7 @@ def make_material(name, base, rough=0.8, emit=None, noise=0.0, wet=False):
     bsdf.inputs["Roughness"].default_value = rough
     if emit is not None:
         bsdf.inputs["Emission Color"].default_value = (*emit, 1.0)
-        bsdf.inputs["Emission Strength"].default_value = 6.0
+        bsdf.inputs["Emission Strength"].default_value = emit_strength
     if wet:
         tex = nt.nodes.new("ShaderNodeTexNoise")
         tex.inputs["Scale"].default_value = 7.0
@@ -166,12 +167,12 @@ def render(name, res=RES):
 def _street_base():
     asphalt = make_material("asphalt", (0.075, 0.075, 0.095), 0.3,
                             noise=0.4, wet=True)
-    curb = make_material("curb", (0.28, 0.26, 0.24), 0.9, noise=0.3)
+    curb = make_material("curb", (0.17, 0.16, 0.15), 0.9, noise=0.3)
     paint = make_material("paint", (0.55, 0.52, 0.42), 0.85)
     iron = make_material("iron", (0.06, 0.06, 0.065), 0.6)
     box("slab", (1, 1, 0.08), (0, 0, 0.04), asphalt)
-    box("curb_n", (1, 0.09, 0.13), (0, 0.455, 0.065), curb)
-    box("curb_s", (1, 0.09, 0.13), (0, -0.455, 0.065), curb)
+    box("curb_n", (1, 0.07, 0.055), (0, 0.465, 0.055), curb)
+    box("curb_s", (1, 0.07, 0.055), (0, -0.465, 0.055), curb)
     box("lane", (0.62, 0.045, 0.005), (0.02, 0.03, 0.085), paint)
     box("crack", (0.4, 0.015, 0.004), (-0.2, -0.2, 0.084),
         make_material("crack", (0.05, 0.05, 0.055), 1.0))
@@ -251,15 +252,15 @@ def hull_cell():
 
 def roof_cell():
     clear_scene()
-    tar = make_material("tar", (0.10, 0.10, 0.10), 0.85, noise=0.4)
-    bone = make_material("parapet", (0.42, 0.40, 0.34), 0.9, noise=0.3)
+    tar = make_material("tar", (0.14, 0.135, 0.13), 0.85, noise=0.4)
+    bone = make_material("parapet", (0.23, 0.22, 0.19), 0.9, noise=0.3)
     tank = make_material("tank", (0.35, 0.33, 0.28), 0.6)
     vent = make_material("vent", (0.22, 0.22, 0.20), 0.6)
     box("slab", (1, 1, 0.10), (0, 0, 0.05), tar)
-    for loc, size in ((( 0, 0.47, 0.16), (1, 0.06, 0.12)),
-                      (( 0, -0.47, 0.16), (1, 0.06, 0.12)),
-                      ((0.47, 0, 0.16), (0.06, 0.88, 0.12)),
-                      ((-0.47, 0, 0.16), (0.06, 0.88, 0.12))):
+    for loc, size in ((( 0, 0.47, 0.115), (1, 0.05, 0.07)),
+                      (( 0, -0.47, 0.115), (1, 0.05, 0.07)),
+                      ((0.47, 0, 0.115), (0.05, 0.88, 0.07)),
+                      ((-0.47, 0, 0.115), (0.05, 0.88, 0.07))):
         box(f"par{loc}", size, loc, bone)
     cylinder("tankd", 0.16, 0.30, (-0.18, 0.16, 0.24), tank,
              seg=16, arc=math.pi * 2)
@@ -328,11 +329,11 @@ def _street_patched():
     asphalt = make_material("asphalt1", (0.075, 0.075, 0.095), 0.3,
                             noise=0.4, wet=True)
     patch = make_material("patch", (0.12, 0.11, 0.12), 0.8, noise=0.3)
-    curb = make_material("curb1", (0.28, 0.26, 0.24), 0.9, noise=0.3)
+    curb = make_material("curb1", (0.17, 0.16, 0.15), 0.9, noise=0.3)
     oil = make_material("oil", (0.03, 0.035, 0.05), 0.15)
     box("slab", (1, 1, 0.08), (0, 0, 0.04), asphalt)
-    box("curb_n", (1, 0.09, 0.13), (0, 0.455, 0.065), curb)
-    box("curb_s", (1, 0.09, 0.13), (0, -0.455, 0.065), curb)
+    box("curb_n", (1, 0.07, 0.055), (0, 0.465, 0.055), curb)
+    box("curb_s", (1, 0.07, 0.055), (0, -0.465, 0.055), curb)
     box("patch1", (0.34, 0.26, 0.004), (-0.16, 0.10, 0.084), patch)
     box("patch2", (0.22, 0.18, 0.004), (0.24, -0.14, 0.084), patch)
     cylinder("oilstain", 0.14, 0.006, (0.05, 0.22, 0.083), oil,
@@ -343,12 +344,12 @@ def _street_cracked():
     """Cracked and littered — the colony's deferred maintenance."""
     asphalt = make_material("asphalt2", (0.08, 0.078, 0.09), 0.45,
                             noise=0.5, wet=True)
-    curb = make_material("curb2", (0.26, 0.24, 0.22), 0.9, noise=0.3)
+    curb = make_material("curb2", (0.16, 0.15, 0.14), 0.9, noise=0.3)
     crackm = make_material("crack2", (0.04, 0.04, 0.05), 1.0)
     debris = make_material("debris", (0.20, 0.16, 0.12), 0.95, noise=0.4)
     box("slab", (1, 1, 0.08), (0, 0, 0.04), asphalt)
-    box("curb_n", (1, 0.09, 0.13), (0, 0.455, 0.065), curb)
-    box("curb_s", (1, 0.09, 0.13), (0, -0.455, 0.065), curb)
+    box("curb_n", (1, 0.07, 0.055), (0, 0.465, 0.055), curb)
+    box("curb_s", (1, 0.07, 0.055), (0, -0.465, 0.055), curb)
     box("crackA", (0.5, 0.018, 0.004), (-0.1, 0.05, 0.084), crackm,
         rot=(0, 0, math.radians(20)))
     box("crackB", (0.34, 0.015, 0.004), (0.12, -0.08, 0.084), crackm,
@@ -589,16 +590,16 @@ def tenement_variant_1():
 def roof_variant_1():
     """Skylight and pipework instead of the tank."""
     clear_scene()
-    tar = make_material("tar1", (0.11, 0.10, 0.10), 0.85, noise=0.4)
-    bone = make_material("parapet1", (0.42, 0.40, 0.34), 0.9, noise=0.3)
+    tar = make_material("tar1", (0.14, 0.135, 0.13), 0.85, noise=0.4)
+    bone = make_material("parapet1", (0.23, 0.22, 0.19), 0.9, noise=0.3)
     glass = make_material("sky1", (0.20, 0.45, 0.50), 0.2,
-                          emit=(0.3, 0.6, 0.65))
+                          emit=(0.3, 0.6, 0.65), emit_strength=1.6)
     pipe = make_material("rpipe", (0.24, 0.22, 0.20), 0.55)
     box("slab", (1, 1, 0.10), (0, 0, 0.05), tar)
-    for loc, size in ((( 0, 0.47, 0.16), (1, 0.06, 0.12)),
-                      (( 0, -0.47, 0.16), (1, 0.06, 0.12)),
-                      ((0.47, 0, 0.16), (0.06, 0.88, 0.12)),
-                      ((-0.47, 0, 0.16), (0.06, 0.88, 0.12))):
+    for loc, size in ((( 0, 0.47, 0.115), (1, 0.05, 0.07)),
+                      (( 0, -0.47, 0.115), (1, 0.05, 0.07)),
+                      ((0.47, 0, 0.115), (0.05, 0.88, 0.07)),
+                      ((-0.47, 0, 0.115), (0.05, 0.88, 0.07))):
         box(f"par{loc}", size, loc, bone)
     box("skylight", (0.30, 0.24, 0.06), (-0.14, 0.10, 0.13), glass,
         rot=(0, math.radians(-8), 0))
@@ -612,12 +613,12 @@ def _street_intersection():
     """The crossing: orientation-free — corner nubs, no through-curbs."""
     asphalt = make_material("asphalti", (0.075, 0.075, 0.095), 0.3,
                             noise=0.4, wet=True)
-    curb = make_material("curbi", (0.28, 0.26, 0.24), 0.9, noise=0.3)
+    curb = make_material("curbi", (0.17, 0.16, 0.15), 0.9, noise=0.3)
     iron = make_material("ironi", (0.06, 0.06, 0.065), 0.6)
     box("slab", (1, 1, 0.08), (0, 0, 0.04), asphalt)
     for cx in (-0.44, 0.44):
         for cy in (-0.44, 0.44):
-            box(f"nub{cx}{cy}", (0.12, 0.12, 0.13), (cx, cy, 0.065), curb)
+            box(f"nub{cx}{cy}", (0.10, 0.10, 0.055), (cx, cy, 0.055), curb)
     cylinder("manhole", 0.09, 0.02, (0.10, -0.08, 0.085), iron,
              seg=16, arc=math.pi * 2)
 

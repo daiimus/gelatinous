@@ -17,19 +17,19 @@ import rig  # noqa: E402
 rig.clear_scene()
 
 frame = rig.make_material("aframe", (0.28, 0.28, 0.24), 0.6, noise=0.3)
-glass = rig.make_material("aglass", (0.30, 0.42, 0.32), 0.25)
+glass = rig.make_material("aglass", (0.18, 0.30, 0.20), 0.25)
 _nt = glass.node_tree
 _bsdf = _nt.nodes["Principled BSDF"]
 _wave = _nt.nodes.new("ShaderNodeTexWave")
 _wave.inputs["Scale"].default_value = 2.2          # crop rows under glass
 _ramp = _nt.nodes.new("ShaderNodeValToRGB")
 _ramp.color_ramp.elements[0].position = 0.45
-_ramp.color_ramp.elements[0].color = (0.10, 0.30, 0.16, 1)   # leaf dark
+_ramp.color_ramp.elements[0].color = (0.04, 0.16, 0.07, 1)   # leaf dark
 _ramp.color_ramp.elements[1].position = 0.62
-_ramp.color_ramp.elements[1].color = (0.95, 0.30, 0.75, 1)   # grow-light
+_ramp.color_ramp.elements[1].color = (0.90, 0.10, 0.72, 1)   # grow-light
 _nt.links.new(_wave.outputs["Fac"], _ramp.inputs["Fac"])
 _nt.links.new(_ramp.outputs["Color"], _bsdf.inputs["Emission Color"])
-_bsdf.inputs["Emission Strength"].default_value = 2.2
+_bsdf.inputs["Emission Strength"].default_value = 1.5
 warm = rig.make_material("awarm", (0.9, 0.6, 0.3), 0.3,
                          emit=(0.95, 0.6, 0.3))
 base = rig.make_material("abase", (0.20, 0.19, 0.16), 0.85, noise=0.35)
