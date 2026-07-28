@@ -319,8 +319,6 @@ def street_variant_1():
     box("patch2", (0.22, 0.18, 0.004), (0.24, -0.14, 0.084), patch)
     cylinder("oilstain", 0.14, 0.006, (0.05, 0.22, 0.083), oil,
              seg=14, arc=math.pi * 2)
-    box("barrier", (0.08, 0.30, 0.16), (0.40, 0.05, 0.16),
-        make_material("bar1", (0.55, 0.42, 0.10), 0.8))
     rig_camera_and_light()
     render("street_1")
 
@@ -462,6 +460,144 @@ def vehicle_sprites():
     render("cart")
 
 
+def _prop_scene(name, build):
+    clear_scene()
+    build()
+    catcher = make_material(f"pg{name}", (0.5, 0.5, 0.5), 1.0)
+    g = box("gplane", (2, 2, 0.01), (0, 0, -0.005), catcher)
+    g.is_shadow_catcher = True
+    rig_camera_and_light()
+    render(name)
+
+
+def prop_sprites():
+    hazY = lambda: make_material("pbY", (0.7, 0.55, 0.1), 0.8)
+    hazK = lambda: make_material("pbK", (0.05, 0.05, 0.05), 0.8)
+    def barrier(rot):
+        def build():
+            y, k = hazY(), hazK()
+            for i in range(3):
+                m = y if i % 2 == 0 else k
+                if rot == 0:               # blocks an E-W lane: runs N-S
+                    box(f"b{i}", (0.05, 0.14, 0.05), (0, -0.14 + i * 0.14, 0.22), m)
+                else:
+                    box(f"b{i}", (0.14, 0.05, 0.05), (-0.14 + i * 0.14, 0, 0.22), m)
+            if rot == 0:
+                box("legA", (0.03, 0.03, 0.2), (0, -0.16, 0.1), k)
+                box("legB", (0.03, 0.03, 0.2), (0, 0.16, 0.1), k)
+            else:
+                box("legA", (0.03, 0.03, 0.2), (-0.16, 0, 0.1), k)
+                box("legB", (0.03, 0.03, 0.2), (0.16, 0, 0.1), k)
+        return build
+    _prop_scene("barrier_x", barrier(0))
+    _prop_scene("barrier_y", barrier(90))
+
+    def crates():
+        m = make_material("crate", (0.24, 0.18, 0.11), 0.85, noise=0.3)
+        box("c1", (0.16, 0.16, 0.14), (0, 0.02, 0.07), m)
+        box("c2", (0.14, 0.14, 0.12), (0.14, -0.1, 0.06), m)
+        box("c3", (0.12, 0.12, 0.11), (0.04, -0.02, 0.20), m)
+    _prop_scene("crates", crates)
+
+    def barrels():
+        m = make_material("barrel", (0.16, 0.20, 0.22), 0.6, noise=0.3)
+        r = make_material("barrelr", (0.30, 0.16, 0.09), 0.75)
+        for i, (dx, dy, mm) in enumerate([(0, 0.04, m), (0.15, -0.08, r)]):
+            cylinder(f"bl{i}", 0.08, 0.03, (dx, dy, 0), mm,
+                     seg=12, arc=math.pi * 2)
+            for o in bpy.context.collection.objects:
+                if o.name == f"bl{i}":
+                    o.scale = (1, 1, 8)
+                    o.location = (dx, dy, 0.12)
+    _prop_scene("barrels", barrels)
+
+
+def _van(rotz):
+    def build():
+        body = make_material("vbody", (0.15, 0.19, 0.20), 0.55, noise=0.25)
+        glass = make_material("vglass", (0.05, 0.08, 0.10), 0.15)
+        tire = make_material("vtire", (0.04, 0.04, 0.045), 0.9)
+        rz = math.radians(rotz)
+        c, s_ = math.cos(rz), math.sin(rz)
+        R = lambda x, y: (x * c - y * s_, x * s_ + y * c)
+        def rbox(n, size, loc, mat):
+            x, y = R(loc[0], loc[1])
+            sz = (size[1], size[0], size[2]) if rotz == 90 else size
+            box(n, sz, (x, y, loc[2]), mat, rot=(0, 0, rz))
+        rbox("shell", (0.52, 0.24, 0.24), (0, 0, 0.20), body)
+        rbox("wind", (0.02, 0.20, 0.09), (0.265, 0, 0.26), glass)
+        for wx in (-0.16, 0.16):
+            for side in (-0.14, 0.14):
+                x, y = R(wx, side)
+                box(f"vw{wx}{side}", (0.09, 0.03, 0.09), (x, y, 0.05), tire)
+    return build
+
+
+def vehicle_variety():
+    _prop_scene("van_x", _van(0))
+    _prop_scene("van_y", _van(90))
+
+    def wreck():
+        body = make_material("wbody", (0.10, 0.09, 0.08), 0.95, noise=0.5)
+        char = make_material("wchar", (0.04, 0.035, 0.03), 1.0)
+        box("hulk", (0.48, 0.22, 0.14), (0, 0, 0.10), body,
+            rot=(0, math.radians(4), math.radians(20)))
+        box("cabin", (0.18, 0.20, 0.10), (0.10, 0.02, 0.20), char,
+            rot=(0, 0, math.radians(20)))
+    _prop_scene("wreck", wreck)
+
+
+def tenement_variant_1():
+    """Different rhythm: balcony slab, strung laundry, two-pane windows."""
+    clear_scene()
+    concrete = make_material("concrete1", (0.14, 0.17, 0.21), 0.85,
+                             noise=0.45)
+    frame = make_material("frame1", (0.07, 0.08, 0.09), 0.8)
+    lit = make_material("lit1", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28))
+    dark = make_material("dark1", (0.03, 0.035, 0.05), 0.3)
+    rail = make_material("rail1", (0.20, 0.18, 0.16), 0.6)
+    box("block", (1, 1, 1), (0, 0, 0.5), concrete)
+    for wx, litw in [(-0.20, True), (0.22, False)]:      # south, two wide
+        box(f"wf{wx}", (0.24, 0.02, 0.34), (wx, -0.505, 0.52), frame)
+        box(f"wg{wx}", (0.20, 0.015, 0.28), (wx, -0.512, 0.52),
+            lit if litw else dark)
+    box("balc", (0.34, 0.10, 0.03), (0.51, -0.20, 0.36), rail)
+    box("balcr", (0.34, 0.02, 0.10), (0.51, -0.245, 0.43), rail)
+    for we, litw in [(-0.24, False), (0.10, True)]:      # east
+        box(f"we{we}", (0.02, 0.20, 0.30), (0.505, we, 0.60), frame)
+        box(f"wge{we}", (0.015, 0.16, 0.24), (0.512, we, 0.60),
+            lit if litw else dark)
+    line = make_material("lline", (0.35, 0.33, 0.30), 0.8)
+    box("laundry", (0.02, 0.44, 0.015), (-0.51, 0.0, 0.88), line)
+    for i in range(3):
+        cm = make_material(f"cloth{i}", (0.25 + i * 0.1, 0.2, 0.15), 0.9)
+        box(f"cl{i}", (0.015, 0.07, 0.09), (-0.515, -0.14 + i * 0.14, 0.83), cm)
+    rig_camera_and_light()
+    render("tenement_1")
+
+
+def roof_variant_1():
+    """Skylight and pipework instead of the tank."""
+    clear_scene()
+    tar = make_material("tar1", (0.11, 0.10, 0.10), 0.85, noise=0.4)
+    bone = make_material("parapet1", (0.42, 0.40, 0.34), 0.9, noise=0.3)
+    glass = make_material("sky1", (0.20, 0.45, 0.50), 0.2,
+                          emit=(0.3, 0.6, 0.65))
+    pipe = make_material("rpipe", (0.24, 0.22, 0.20), 0.55)
+    box("slab", (1, 1, 0.10), (0, 0, 0.05), tar)
+    for loc, size in ((( 0, 0.47, 0.16), (1, 0.06, 0.12)),
+                      (( 0, -0.47, 0.16), (1, 0.06, 0.12)),
+                      ((0.47, 0, 0.16), (0.06, 0.88, 0.12)),
+                      ((-0.47, 0, 0.16), (0.06, 0.88, 0.12))):
+        box(f"par{loc}", size, loc, bone)
+    box("skylight", (0.30, 0.24, 0.06), (-0.14, 0.10, 0.13), glass,
+        rot=(0, math.radians(-8), 0))
+    box("pipe1", (0.50, 0.05, 0.05), (0.10, -0.24, 0.13), pipe)
+    box("pipe2", (0.05, 0.05, 0.22), (0.33, -0.24, 0.21), pipe)
+    rig_camera_and_light()
+    render("roof_1")
+
+
 def main():
     street_cell()
     tenement_cell()
@@ -475,6 +611,10 @@ def main():
     alley_cell()
     crowd_sprites()
     vehicle_sprites()
+    prop_sprites()
+    vehicle_variety()
+    tenement_variant_1()
+    roof_variant_1()
     print("rig complete")
 
 
