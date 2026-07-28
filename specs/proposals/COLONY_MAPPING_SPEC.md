@@ -129,6 +129,26 @@ streets and landmarks, smears for everything else.
   content; also the natural *hackable/stealable* map artifact when
   decking arrives.
 
+## 3.5 · Art direction (owner-set 2026-07-28): the stamp atlas
+
+The §M2 renderer's final form is an **Inkarnate-style stamp atlas in a
+Fallout 1/2 register**: the practical layer (grid truth, hover, z-slice,
+route/coverage overlays) is unchanged, but cells render as CUSTOM SPRITES
+— a per-type library plus signature multi-cell landmark sprites — with
+the procedural boxes as fallback so the library grows incrementally.
+Register: pre-rendered-3D grit — hard low key light, brown/rust/olive
+palette, sodium-lamp amber, posterize + ordered dither + grain post
+(Fallout's look WAS pre-rendered 3D; the vibe is materials and post, not
+projection — 2:1 iso stays). Cyan is reserved for DATA overlays only.
+Sprite sources, ranked: (1) pre-rendered pipeline — MagicaVoxel/Blender
+models at sub-cell detail, one fixed camera + light rig, automated post
+chain; regenerable, geometry-true, models shared with the §M4 portrait
+plates; (2) local img2img grime pass, ControlNet-locked so geometry
+cannot move (finishing, never source); (3) commissioned pixel art for
+hero sprites, eventually. **Pilot**: three sprites (street cell,
+tenement floor, Boot hull segment) through the full rig, stamped into
+the live style study beside procedural cells for an A/B.
+
 ## 4 · Downstream consumers (design constraints only, no build)
 
 - **Decking**: the export is the canonical "colony map file" the net
