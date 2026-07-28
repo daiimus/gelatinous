@@ -324,11 +324,16 @@ def fill_air_cell(cell, index):
         if _is_sky(neighbour):
             _exit(room, neighbour, direction)
             _exit(neighbour, room, _AIR_BACK[direction])
-        else:
-            # air reaches the roof plainly; the roof's way IN is a jump
+        elif (getattr(neighbour.db, "type", None) == "rooftop"
+                or neighbour.db.outside is True):
+            # air reaches a walkable OUTDOOR surface plainly; its way IN
+            # is a jump
             _exit(room, neighbour, direction)
             _exit(neighbour, room, _AIR_BACK[direction],
                   is_edge=True, is_gap=True)
+        # interiors get NO links: the helper cannot tell a rooftop from
+        # an apartment behind a wall, and it once gave six tenants
+        # jump-out-window edges (the B-line incident, 2026-07-25)
     return room, made
 
 
