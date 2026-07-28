@@ -29,12 +29,18 @@ stenc = rig.make_material("stenc", (0.55, 0.50, 0.40), 0.9)
 tread = rig.make_material("tread", (0.14, 0.11, 0.09), 0.95, noise=0.3)
 
 # heel: the shock cylinder, vertical
-rig.cylinder("heel", 0.46, 1.5, (0.15, 0, 0), hull,
+rig.cylinder("heel", 0.46, 0.9, (0.15, 0, 0), hull,
              seg=20, arc=math.pi * 2)
 for o in bpy.context.collection.objects:
     if o.name == "heel":
         o.rotation_euler = (0, math.pi / 2, 0)
-        o.location = (0.15, 0, 0.6)
+        o.location = (0.15, 0, 0.45)
+rig.cylinder("heelcap", 0.47, 0.06, (0.15, 0, 0), pale,
+             seg=20, arc=math.pi * 2)
+for o in bpy.context.collection.objects:
+    if o.name == "heelcap":
+        o.rotation_euler = (0, math.pi / 2, 0)
+        o.location = (0.15, 0, 0.91)
 # the hangar vault: one continuous barrel over the market street,
 # hooped like a quonset — the enclosure IS the architecture
 rig.cylinder("vault", 0.60, 4.6, (2.9, 0, 0), hull, arc=math.pi * 0.94)
@@ -80,8 +86,8 @@ for i in range(4):
             (3.9 + i * 0.4, -0.82, 0.21), tread)
 # stencil plate on the shank crown
 rig.box("stencil", (0.5, 0.03, 0.14),
-        (1.55, 0.598 * math.cos(math.pi * 0.35),
-         0.598 * math.sin(math.pi * 0.35) + 0.02), stenc,
+        (1.55, 0.615 * math.cos(math.pi * 0.35),
+         0.615 * math.sin(math.pi * 0.35)), stenc,
         rot=(math.pi * 0.35 - math.pi / 2, 0, 0))
 # ground shadow catcher
 catcher = rig.make_material("ground", (0.5, 0.5, 0.5), 1.0)
