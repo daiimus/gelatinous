@@ -27,8 +27,9 @@ WARMTH = (1.06, 1.0, 0.88)   # channel pull toward sodium/rust
 def grind(name, img):
     rng = random.Random(name)                     # deterministic grain
     img = img.convert("RGBA")
-    alpha = img.getchannel("A").resize((FINAL, FINAL), Image.LANCZOS)
-    rgb = img.convert("RGB").resize((FINAL, FINAL), Image.LANCZOS)
+    side = max(FINAL, img.width // 4)             # landmarks keep 4x rule
+    alpha = img.getchannel("A").resize((side, side), Image.LANCZOS)
+    rgb = img.convert("RGB").resize((side, side), Image.LANCZOS)
 
     r, g, b = rgb.split()                         # warm the plate
     rgb = Image.merge("RGB", (
@@ -56,8 +57,8 @@ def grind(name, img):
     rgb = rgb.quantize(COLORS, dither=Image.FLOYDSTEINBERG).convert("RGB")
 
     px = rgb.load()                               # grain
-    for _ in range(FINAL * FINAL // 6):
-        x, y = rng.randrange(FINAL), rng.randrange(FINAL)
+    for _ in range(side * side // 6):
+        x, y = rng.randrange(side), rng.randrange(side)
         n = rng.randint(-14, 10)
         pr, pg, pb = px[x, y]
         px[x, y] = (max(0, min(255, pr + n)), max(0, min(255, pg + n)),
@@ -65,10 +66,10 @@ def grind(name, img):
 
     out = Image.merge("RGBA", (*rgb.split(), alpha))
     out.save(os.path.join(OUT, f"{name}.png"))
-    print(f"ground {name}: {FINAL}px, {COLORS} colors")
+    print(f"ground {name}: {side}px, {COLORS} colors")
 
 
 for fname in sorted(os.listdir(RAW)):
-    if fname.endswith(".png"):
+    if fname.endswith(".png") and not fname.startswith("calib_"):
         grind(fname[:-4], Image.open(os.path.join(RAW, fname)))
 print("post complete")
