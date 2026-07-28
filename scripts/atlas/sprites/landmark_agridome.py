@@ -50,23 +50,34 @@ def dome(name, cx, cy, rx, ry, rz, mat, seg=20, rings=7):
 
 
 CX, CY = 1.0, 0.5
+
+
+def ring(name, cx, cy, rx, ry, z0, z1, mat, seg=28):
+    """A true horizontal band: two stacked ellipses, quad walls."""
+    verts, faces = [], []
+    for z in (z0, z1):
+        for i in range(seg):
+            th = 2 * math.pi * i / seg
+            verts.append((cx + rx * math.cos(th),
+                          cy + ry * math.sin(th), z))
+    for i in range(seg):
+        a, b = i, (i + 1) % seg
+        faces.append((a, b, seg + b, seg + a))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(mat)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
 dome("shell", CX, CY, 1.9, 1.45, 0.85, glass)
-# foundation ring + frame band (flat rings hugging the shell)
-ringm = dome("foundation", CX, CY, 1.98, 1.53, 0.10, base, rings=1)
-dome("band", CX, CY, 1.72, 1.30, 0.52, frame, rings=1)
-# meridian ribs: four thin arcs over the shell
-for th in (0.0, math.pi / 2, math.pi, 3 * math.pi / 2):
-    for j in range(6):
-        phi0 = (math.pi / 2) * j / 6
-        x = CX + 1.93 * math.cos(phi0) * math.cos(th)
-        y = CY + 1.48 * math.cos(phi0) * math.sin(th)
-        z = 0.87 * math.sin(phi0)
-        rig.box(f"rib{th}{j}", (0.07, 0.07, 0.10), (x, y, z), frame,
-                rot=(0, phi0, th))
-# one airlock stub, south base — a hatch, not a storefront
-rig.box("airlock", (0.4, 0.3, 0.28), (CX, CY - 1.5, 0.14), base)
-rig.box("hatch", (0.16, 0.04, 0.18), (CX, CY - 1.66, 0.12), dark)
-rig.box("hatchglow", (0.20, 0.03, 0.04), (CX, CY - 1.665, 0.25), warm)
+ring("foundation", CX, CY, 1.96, 1.51, 0.0, 0.14, base)
+ring("band", CX, CY, 1.63, 1.22, 0.40, 0.48, frame)
+# one airlock: a squat stub with a single hatch, south base
+rig.box("airlock", (0.4, 0.3, 0.26), (CX, CY - 1.5, 0.13), base)
+rig.box("hatch", (0.16, 0.04, 0.16), (CX, CY - 1.66, 0.11), dark)
+rig.box("hatchglow", (0.20, 0.03, 0.035), (CX, CY - 1.665, 0.235), warm)
 
 catcher = rig.make_material("agnd", (0.5, 0.5, 0.5), 1.0)
 g = rig.box("gplane", (6, 5, 0.01), (CX, CY, -0.005), catcher)
