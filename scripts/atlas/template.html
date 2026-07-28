@@ -88,6 +88,8 @@ function cls(c){
   if (c.flags.includes('sky')) return 'air';
   const t=(c.type||'').toLowerCase(), k=c.key||'';
   if (k.toLowerCase().includes('alley')) return 'alley';
+  if (/rooftop|- roof/i.test(k))
+    return k.startsWith("Hammett's Boot")?'hull':'roof';
   if (t==='street'||t==='bridge') return 'street';
   if (t==='alley') return 'alley';
   if (t==='market') return 'market';
@@ -153,7 +155,7 @@ function loadImg(uri){const im=new Image(); pending++;
   im.onload=()=>{if(--pending===0)draw();}; im.src=uri; return im;}
 for (const [name,uri] of Object.entries(DATA.sprites||{})){
   const im=loadImg(uri);
-  if (/^(crowd|hauler|cart)/.test(name)){ AMBIENT[name]=im; continue; }
+  if (/^(crowd|hauler|cart|van|wreck|barrier|crates|barrels)/.test(name)){ AMBIENT[name]=im; continue; }
   const base=name.replace(/_\d+$/,'');
   SPR_IMG[name]=im;
   (VARIANTS[base]=VARIANTS[base]||[]).push(im);
@@ -281,24 +283,34 @@ function ambient(c, r){
   if (!ui.life.checked || c.z!==0) return;
   if (c.t!=='street' && c.t!=='alley') return;
   const lvl=c.crowd||0;
-  if (c.t==='street' && r()<0.14){
-    const ew=STREETS.has(`${c.x+1},${c.y}`)||STREETS.has(`${c.x-1},${c.y}`);
-    const im=AMBIENT[ew?'hauler_x':'hauler_y'];
-    if (im&&im.complete) stamp(im, sx0(c), sy0(c), (r()-0.5)*0.3, (r()-0.5)*0.3);
+  const ew=STREETS.has(`${c.x+1},${c.y}`)||STREETS.has(`${c.x-1},${c.y}`);
+  // one element per cell, ever — seasoning, not stew
+  const roll=r();
+  const curb=(off)=> ew? [ (r()-0.5)*0.5, off ] : [ off, (r()-0.5)*0.5 ];
+  const lane=()=> ew? [ (r()-0.5)*0.4, (r()-0.3)*0.12 ]
+                    : [ (r()-0.3)*0.12, (r()-0.5)*0.4 ];
+  let im=null, at=null;
+  if (c.t==='alley'){
+    if (roll<0.12){ im=AMBIENT['cart']; at=lane(); }
+    else if (roll<0.20){ im=AMBIENT[r()<0.5?'crates':'barrels']; at=curb(0.28); }
+    else if (lvl>0 && roll<0.20+0.10*lvl){
+      im=AMBIENT['crowd_'+Math.floor(r()*3)]; at=curb(-0.26); }
+  } else {
+    if (roll<0.07){
+      const kind=r();
+      im=AMBIENT[kind<0.45?(ew?'hauler_x':'hauler_y')
+                :kind<0.85?(ew?'van_x':'van_y'):'wreck'];
+      at=lane();
+    } else if (roll<0.11){
+      im=AMBIENT[r()<0.4?(ew?'barrier_x':'barrier_y')
+                :r()<0.7?'crates':'barrels'];
+      at=curb(0.30);
+    } else if (lvl>0 && roll<0.11+Math.min(0.09*lvl,0.28)){
+      im=AMBIENT['crowd_'+Math.floor(r()*3)];
+      at=curb(r()<0.5?0.30:-0.30);
+    }
   }
-  if (c.t==='alley' && r()<0.18){
-    const im=AMBIENT['cart'];
-    if (im&&im.complete) stamp(im, sx0(c), sy0(c), (r()-0.5)*0.4, (r()-0.5)*0.4);
-  }
-  const chance=Math.min(0.16*lvl, 0.5);
-  if (lvl>0 && r()<chance){
-    const im=AMBIENT['crowd_'+Math.floor(r()*3)];
-    if (im&&im.complete) stamp(im, sx0(c), sy0(c), (r()-0.5)*0.5, (r()-0.5)*0.5);
-  }
-  if (lvl>=2 && r()<0.25){
-    const im=AMBIENT['crowd_'+Math.floor(r()*3)];
-    if (im&&im.complete) stamp(im, sx0(c), sy0(c), (r()-0.5)*0.6, (r()-0.5)*0.6);
-  }
+  if (im && im.complete && at) stamp(im, sx0(c), sy0(c), at[0], at[1]);
 }
 const sx0=c=>isoX(c.x,c.y)+OX, sy0=c=>isoY(c.x,c.y,c.z)+OY;
 function drawRadio(){
