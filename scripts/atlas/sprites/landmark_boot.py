@@ -28,19 +28,15 @@ glow = rig.make_material("glow", (1.0, 0.6, 0.25), 0.5,
 stenc = rig.make_material("stenc", (0.55, 0.50, 0.40), 0.9)
 tread = rig.make_material("tread", (0.14, 0.11, 0.09), 0.95, noise=0.3)
 
-# heel: the shock cylinder, vertical
-rig.cylinder("heel", 0.46, 0.9, (0.15, 0, 0), hull,
-             seg=20, arc=math.pi * 2)
-for o in bpy.context.collection.objects:
-    if o.name == "heel":
-        o.rotation_euler = (0, math.pi / 2, 0)
-        o.location = (0.15, 0, 0.45)
-rig.cylinder("heelcap", 0.47, 0.06, (0.15, 0, 0), pale,
-             seg=20, arc=math.pi * 2)
-for o in bpy.context.collection.objects:
-    if o.name == "heelcap":
-        o.rotation_euler = (0, math.pi / 2, 0)
-        o.location = (0.15, 0, 0.91)
+# the heel: a larger-radius vault section on the SAME axis — the
+# boot's thick end, not a separate object; steps down to the shank
+# at a heavy shoulder hoop
+rig.cylinder("heelvault", 0.74, 1.0, (0.30, 0, 0), hull,
+             arc=math.pi * 0.94)
+rig.box("heelgable", (0.10, 1.44, 0.70), (-0.16, 0, 0.35), hull)
+rig.cylinder("shoulder", 0.76, 0.10, (0.78, 0, 0), weld,
+             arc=math.pi * 0.9)
+
 # the hangar vault: one continuous barrel over the market street,
 # hooped like a quonset — the enclosure IS the architecture
 rig.cylinder("vault", 0.60, 5.0, (2.75, 0, 0), hull, arc=math.pi * 0.94)
