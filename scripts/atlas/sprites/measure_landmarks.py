@@ -9,6 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 lms = json.load(open(os.path.join(HERE, "landmarks.json")))
 for lm in lms:
     raw = Image.open(os.path.join(HERE, "raw", f"calib_{lm['sprite']}.png"))
+    raw = raw.transpose(Image.FLIP_LEFT_RIGHT)
     a = raw.getchannel("A")
     w, h = a.size
     px = a.load()

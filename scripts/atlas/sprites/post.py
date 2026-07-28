@@ -26,7 +26,10 @@ WARMTH = (1.06, 1.0, 0.88)   # channel pull toward sodium/rust
 
 def grind(name, img):
     rng = random.Random(name)                     # deterministic grain
-    img = img.convert("RGBA")
+    # the atlas projection is a MIRRORED isometric (no physical camera
+    # produces it) — the rig renders from the true NE viewer and the
+    # darkroom mirrors, which lands exactly on the atlas basis
+    img = img.convert("RGBA").transpose(Image.FLIP_LEFT_RIGHT)
     side = max(FINAL, img.width // 4)             # landmarks keep 4x rule
     alpha = img.getchannel("A").resize((side, side), Image.LANCZOS)
     rgb = img.convert("RGB").resize((side, side), Image.LANCZOS)

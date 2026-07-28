@@ -20,5 +20,6 @@ def marker(name, loc):
 
 marker("origin", (0, 0, 0))
 marker("unitx", (1, 0, 0))
+marker("unity", (0, 1, 0))
 marker("unitz", (0, 0, 1))
 print("calibration renders complete")
