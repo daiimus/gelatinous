@@ -114,11 +114,11 @@ for vx in (1.45, 2.85, 4.25):
 # stall awnings along the south flank — the market spilling out
 for i, ax in enumerate((1.15, 1.95, 2.75, 3.55, 4.35)):
     mat = canvas_a if i % 2 == 0 else canvas_b
-    rig.box(f"awn{i}", (0.62, 0.44, 0.05), (ax, -0.74, 0.36), mat,
-            rot=(math.radians(16), 0, 0))
-    rig.box(f"awnpost{i}a", (0.04, 0.04, 0.30), (ax - 0.26, -0.92, 0.15), weld)
-    rig.box(f"awnpost{i}b", (0.04, 0.04, 0.30), (ax + 0.26, -0.92, 0.15), weld)
-    rig.box(f"stallglow{i}", (0.46, 0.06, 0.05), (ax, -0.70, 0.22), lit)
+    rig.box(f"awn{i}", (0.62, 0.44, 0.05), (ax, 0.74, 0.36), mat,
+            rot=(math.radians(-16), 0, 0))
+    rig.box(f"awnpost{i}a", (0.04, 0.04, 0.30), (ax - 0.26, 0.92, 0.15), weld)
+    rig.box(f"awnpost{i}b", (0.04, 0.04, 0.30), (ax + 0.26, 0.92, 0.15), weld)
+    rig.box(f"stallglow{i}", (0.46, 0.06, 0.05), (ax, 0.70, 0.22), lit)
 
 # ground shadow catcher
 catcher = rig.make_material("ground", (0.5, 0.5, 0.5), 1.0)
