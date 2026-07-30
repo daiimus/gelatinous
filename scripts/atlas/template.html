@@ -37,10 +37,10 @@
   .zrow{display:flex;gap:10px;align-items:center;flex:1;min-width:220px}
   .zrow input[type=range]{flex:1;accent-color:var(--amber)}
   .zval{color:var(--amber);min-width:5ch;font-variant-numeric:tabular-nums}
-  .legend{display:flex;flex-wrap:wrap;gap:7px 13px;padding:10px 14px 2px;
-    font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--bone-dim)}
-  .chip{display:inline-flex;gap:6px;align-items:center}
-  .sw{width:9px;height:9px;border-radius:2px;display:inline-block;border:1px solid rgba(255,255,255,.15)}
+  .readout .kind{display:block;margin-top:2px;color:var(--amber);
+    letter-spacing:.14em;text-transform:uppercase;font-size:10px}
+  .staffonly{display:none}
+  .staffonly.on{display:inline}
   :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 </style>
 
@@ -62,12 +62,11 @@ making do, seen from above.</p>
 <div class="stage">
   <div class="readout" id="readout">&nbsp;</div>
   <canvas id="cv" aria-label="Isometric atlas of the colony"></canvas>
-  <div class="legend" id="legend"></div>
   <div class="controls">
     <div class="zrow"><span>z-slice</span><input id="zcap" type="range" min="0" max="8" value="8" step="1"><span class="zval" id="zval"></span></div>
-    <label><input id="tAir" type="checkbox" checked> air lattice</label>
-    <label><input id="tEdge" type="checkbox" checked> jump routes</label>
-    <label><input id="tRadio" type="checkbox"> radio coverage</label>
+    <span class="staffonly"><label><input id="tAir" type="checkbox"> air lattice</label></span>
+    <span class="staffonly"><label><input id="tEdge" type="checkbox"> jump routes</label></span>
+    <span class="staffonly"><label><input id="tRadio" type="checkbox"> radio coverage</label></span>
     <label><input id="tLife" type="checkbox" checked> street life</label>
   </div>
 </div>
@@ -101,7 +100,7 @@ const P = {
 };
 const LEGEND_LABEL = {street:'street', alley:'alley', market:'market', hull:'hull-top',
   tenement:'residential', roof:'rooftop', shop:'commerce',
-  hotel:'cube hotel', constab:'the law', cryo:'cryogenics',
+  landmark:'landmark', hotel:'cube hotel', constab:'the law', cryo:'cryogenics',
   lounge:'nightlife', bar:'bars', pad:'landing pad', medical:'medicine',
   shuttered:'shuttered', machine:'machinery', generic:'other',
   air:'air lattice'};
@@ -207,10 +206,12 @@ const ui={zcap:document.getElementById('zcap'), zval:document.getElementById('zv
   air:document.getElementById('tAir'), edge:document.getElementById('tEdge'),
   radio:document.getElementById('tRadio'), life:document.getElementById('tLife')};
 ui.zcap.max=ZMAX; ui.zcap.value=ZMAX; ui.zval.textContent=`z ≤ ${ZMAX}`;
+if (DATA.staff)
+  for (const el of document.querySelectorAll('.staffonly'))
+    el.className = 'staffonly on';
 document.getElementById('stamp').innerHTML =
-  `<b>${DATA.edition || ''}</b> &nbsp;·&nbsp; ${DATA.cells.length} cells `
-  + `&nbsp;·&nbsp; ${DATA.links.length} links`
-  + (MASTS.length ? ` &nbsp;·&nbsp; ${MASTS.length} masts` : '');
+  `${DATA.cells.length} rooms &nbsp;·&nbsp; ${DATA.links.length} ways`
+  + (DATA.staff && MASTS.length ? ` &nbsp;·&nbsp; ${MASTS.length} masts` : '');
 const DPR=Math.min(window.devicePixelRatio||1,2);
 cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
 cv.style.aspectRatio=`${W} / ${H}`;
@@ -412,18 +413,12 @@ cv.addEventListener('mousemove',ev=>{
   }
   readout.className = hit ? 'readout on' : 'readout';
   readout.innerHTML = hit
-    ? `${hit.name} &nbsp;<span style="color:var(--bone-dim)">(${hit.x}, ${hit.y}, ${hit.z})</span>`
+    ? `${hit.name} &nbsp;<span style="color:var(--bone-dim)">(${hit.x}, `
+      + `${hit.y}, ${hit.z})</span>`
+      + `<span class="kind">${LEGEND_LABEL[hit.t] || hit.t}</span>`
     : '&nbsp;';
 });
 cv.addEventListener('mouseleave',()=>{readout.className='readout';readout.innerHTML='&nbsp;';});
 for (const el of [ui.zcap,ui.air,ui.edge,ui.radio,ui.life])
   el.addEventListener('input',()=>{ui.zval.textContent=`z ≤ ${ui.zcap.value}`; draw();});
-
-// ---------- legend (only classes actually present) ----------
-const present=[...new Set(C.map(c=>c.t))];
-document.getElementById('legend').innerHTML =
-  Object.keys(LEGEND_LABEL).filter(t=>present.includes(t)).map(t=>{
-    const bg = t==='air' ? 'rgba(111,214,224,0.18)' : (P[t]||P.generic)[0];
-    return `<span class="chip"><span class="sw" style="background:${bg}"></span>${LEGEND_LABEL[t]}</span>`;
-  }).join('');
 </script>

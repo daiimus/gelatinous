@@ -8,7 +8,7 @@ Writes self-contained /tmp/atlas.html from the live DB. The website view
 
 from world.atlas import build_atlas_html
 
-html = build_atlas_html(".")
+html = build_atlas_html(".", staff=True)
 with open("/tmp/atlas.html", "w") as f:
     f.write(html)
 print(f"atlas written: /tmp/atlas.html ({len(html)} bytes)")
