@@ -1,265 +1,1114 @@
-/* ----------------------------------------------------------------
-   Domino's Gambit — the house style.
+/* 
+ * Gelatinous Custom CSS
+ * Terminal/Brutalist Corporate Aesthetic
+ * Inspired by Blade Runner and retro-futuristic terminals
+ */
 
-   Promoted from the Atlas (COLONY_MAPPING_SPEC §3.5 register): a night
-   plate in blue-biased ink, bone text, amber for emphasis, cyan
-   reserved for DATA. Three type roles — condensed display, serif body,
-   mono for figures. This IS Evennia's sanctioned hook — the stock
-   base template already loads website/css/custom.css after Bootstrap
-   and website.css, so no template override is needed.
-
-   NB: the webclient keeps its own tokens on purpose — game output
-   (ANSI/GMCP) is content, not chrome, and is not styled from here.
-   ---------------------------------------------------------------- */
+/* Import Inter from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --ink:      #0b0e14;   /* the plate */
-    --plate:    #11161f;   /* raised surfaces */
-    --plate-hi: #182030;   /* hover / active */
-    --line:     #232c3a;   /* rules and borders */
-    --bone:     #d8d3c4;   /* body text */
-    --bone-dim: #8f8d82;   /* captions, muted */
-    --amber:    #e0a86f;   /* emphasis, links, primary */
-    --amber-hi: #f0bd88;
-    --cyan:     #6fd6e0;   /* DATA only — never decoration */
-    --good:     #5fd38d;   /* semantic, shared with the client */
-    --warn:     #e6c547;
-    --bad:      #e85555;
-
-    --font-cond: 'Avenir Next Condensed', 'Helvetica Neue Condensed',
-                 'Arial Narrow', sans-serif;
-    --font-body: 'Iowan Old Style', Palatino, 'Palatino Linotype',
-                 Georgia, serif;
-    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas,
-                 'Liberation Mono', monospace;
+    /* Terminal Color Palette - Blade Runner Edition */
+    --terminal-bg-dark: #1a1a1a;         /* Softer black background */
+    --terminal-bg-medium: #2a2a2a;       /* Medium dark for cards */
+    --terminal-bg-light: #3a3a3a;        /* Light dark for inputs */
+    --terminal-green: #5fd38d;           /* Muted terminal green (jade) */
+    --terminal-green-dim: #4a9d6d;       /* Dimmed jade green */
+    --terminal-text: #e0e0e0;            /* Softer white text */
+    --terminal-text-muted: #999999;      /* Muted gray */
+    --terminal-yellow: #e6c547;          /* Softer warning yellow */
+    --terminal-red: #e85555;             /* Softer error red */
+    --terminal-border: #404040;          /* Visible but subtle borders */
+    --terminal-glow: rgba(95, 211, 141, 0.3); /* Softer green glow */
 }
 
-/* ---------- ground ---------- */
-html, body {
-    background: var(--ink);
-    color: var(--bone);
-    font-family: var(--font-body);
+/* ===== GLOBAL BASE ===== */
+* {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    letter-spacing: 0.01em;
 }
-body { font-size: 15.5px; line-height: 1.6; }
 
-/* ---------- type ---------- */
-h1, h2, h3, h4, h5, .h1, .h2, .h3 {
-    font-family: var(--font-cond);
-    font-weight: 600;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--bone);
+body {
+    background-color: var(--terminal-bg-dark) !important;
+    color: var(--terminal-text);
 }
-h1, .h1 { font-size: 30px; }
-h2, .h2 { font-size: 23px; }
-h3, .h3 { font-size: 19px; }
-.text-muted, small, .small { color: var(--bone-dim) !important; }
-code, pre, kbd, samp, .font-mono, .text-monospace {
-    font-family: var(--font-mono);
-    color: var(--cyan);
-}
-a { color: var(--amber); text-decoration: none; }
-a:hover, a:focus { color: var(--amber-hi); text-decoration: underline; }
-hr { border-color: var(--line); }
 
-/* ---------- navigation: seamless with the page ---------- */
+.main-content,
+.container {
+    background-color: transparent;
+}
+
+/* ===== NAVBAR ===== */
 .navbar {
-    background: transparent !important;
-    border-bottom: 0;
-    align-items: center;
-    padding: 16px 1rem 4px;
+    background-color: var(--terminal-bg-dark) !important;
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
 }
-.navbar-brand { display: flex; align-items: center; }
-.navbar-brand .media { align-items: center; }
-.navbar-brand-logo {
-    height: 34px !important;
-    width: 34px !important;
-    opacity: .85;
-    margin-left: 0 !important;
-}
-.navbar-brand .media-body {
-    font-family: var(--font-cond);
-    font-size: 20px;
-    letter-spacing: .18em;
-    line-height: 1.1;
-    text-transform: uppercase;
-}
-.navbar-brand small {
-    display: block;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: .12em;
-    text-transform: none;
-    color: var(--bone-dim);
-}
-.navbar-brand, .navbar .nav-link, .navbar .dropdown-toggle {
-    font-family: var(--font-mono);
-    font-size: 12.5px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--bone) !important;
-}
-.navbar-brand { color: var(--amber) !important; letter-spacing: .2em; }
-.navbar .nav-link:hover { color: var(--amber) !important; }
-.dropdown-menu {
-    background: var(--plate);
-    border: 1px solid var(--line);
-    border-radius: 3px;
-}
-.dropdown-item {
-    font-family: var(--font-mono);
-    font-size: 12.5px;
-    letter-spacing: .08em;
-    color: var(--bone);
-}
-.dropdown-item:hover, .dropdown-item:focus {
-    background: var(--plate-hi);
-    color: var(--amber);
-}
-.dropdown-divider { border-color: var(--line); }
 
-/* ---------- surfaces ---------- */
-.card, .list-group-item, .jumbotron, .modal-content, .well {
-    background: var(--plate);
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    color: var(--bone);
-}
-.card-header, .card-footer {
-    background: transparent;
-    border-color: var(--line);
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    letter-spacing: .14em;
+.navbar-brand,
+.navbar-nav .nav-link {
+    color: var(--terminal-text) !important;
     text-transform: uppercase;
-    color: var(--bone-dim);
+    letter-spacing: 0.1em;
 }
-.table { color: var(--bone); }
-.table td, .table th { border-color: var(--line); }
-.table thead th {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--bone-dim);
-    border-bottom: 1px solid var(--line);
-}
-.table-hover tbody tr:hover { background: var(--plate-hi); color: var(--bone); }
-.table td { font-variant-numeric: tabular-nums; }
 
-/* ---------- controls ---------- */
-.btn {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    border-radius: 3px;
+.navbar-nav .nav-link:hover {
+    color: var(--terminal-green) !important;
+    text-shadow: 0 0 8px var(--terminal-glow);
 }
-.btn-primary, .btn-success {
-    background: var(--amber);
-    border-color: var(--amber);
-    color: var(--ink);
+
+.navbar .dropdown-menu {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-border);
 }
-.btn-primary:hover, .btn-success:hover {
-    background: var(--amber-hi);
-    border-color: var(--amber-hi);
-    color: var(--ink);
+
+.navbar .dropdown-item {
+    color: var(--terminal-text);
 }
-.btn-secondary, .btn-outline-secondary {
-    background: transparent;
-    border-color: var(--line);
-    color: var(--bone);
+
+.navbar .dropdown-item:hover {
+    background-color: var(--terminal-bg-dark);
+    color: var(--terminal-green);
+    text-shadow: 0 0 8px var(--terminal-glow);
 }
-.btn-secondary:hover, .btn-outline-secondary:hover {
-    background: var(--plate-hi);
-    border-color: var(--amber);
-    color: var(--amber);
+
+.navbar .dropdown-divider {
+    border-color: var(--terminal-border);
 }
-.btn-danger { background: var(--bad); border-color: var(--bad); color: var(--ink); }
-.form-control, .custom-select, textarea, input[type="text"],
-input[type="password"], input[type="email"] {
-    background: var(--ink);
-    border: 1px solid var(--line);
-    color: var(--bone);
-    border-radius: 3px;
+
+/* ===== FOOTER ===== */
+.footer {
+    background-color: var(--terminal-bg-dark) !important;
+    border: none !important;
+    border-top: none !important;
+    box-shadow: none !important;
 }
-.form-control:focus {
-    background: var(--ink);
-    border-color: var(--amber);
+
+.footer .text-white {
+    color: var(--terminal-text) !important;
+}
+
+.footer a.text-white:hover {
+    color: var(--terminal-green) !important;
+    text-shadow: 0 0 8px var(--terminal-glow);
+}
+
+/* ===== CARDS ===== */
+.card {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-border);
     box-shadow: none;
-    color: var(--bone);
+    color: var(--terminal-text);
 }
-label, .col-form-label {
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    letter-spacing: .1em;
+
+.card-header {
+    background-color: var(--terminal-bg-dark);
+    border-bottom: 1px solid var(--terminal-border);
+    color: var(--terminal-text);
     text-transform: uppercase;
-    color: var(--bone-dim);
+    letter-spacing: 0.1em;
 }
-::placeholder { color: var(--bone-dim); opacity: .7; }
 
-/* ---------- state ---------- */
-.alert { border-radius: 3px; border-width: 1px; }
-.alert-success { background: var(--plate); border-color: var(--good); color: var(--bone); }
-.alert-warning { background: var(--plate); border-color: var(--warn); color: var(--bone); }
-.alert-danger  { background: var(--plate); border-color: var(--bad);  color: var(--bone); }
-.alert-info    { background: var(--plate); border-color: var(--cyan); color: var(--bone); }
-.badge-primary { background: var(--amber); color: var(--ink); }
-.badge-secondary { background: var(--line); color: var(--bone); }
+.card-title {
+    color: var(--terminal-text);
+}
 
-/* ---------- focus, always visible ---------- */
-:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.card-subtitle {
+    color: var(--terminal-text-muted);
+}
 
-/* ---------- footer: same page, quieter voice ----------
-   Evennia pins it (position:absolute; bottom:0; height:60px;
-   line-height:60px) and reserves body margin for it, so it behaves as a
-   band rather than a page ending. Put it back in the flow. */
-body { margin-bottom: 0 !important; }
-footer, .footer {
+.card-body {
+    color: var(--terminal-text);
+    background-color: var(--terminal-bg-medium);
+}
+
+/* Force all card content to be dark themed */
+.card .card-body,
+.card .card-body p,
+.card .card-body div,
+.card .card-body span,
+.card ul,
+.card ol,
+.card li,
+.card dl,
+.card dt,
+.card dd {
+    background-color: transparent !important;
+    color: var(--terminal-text) !important;
+}
+
+/* ===== LINKS ===== */
+a {
+    color: var(--terminal-green-dim);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--terminal-green);
+    text-decoration: none;
+    text-shadow: 0 0 8px var(--terminal-glow);
+}
+
+/* ===== BUTTONS ===== */
+.btn-primary {
+    background-color: var(--terminal-bg-light);
+    border: 1px solid var(--terminal-green-dim);
+    color: var(--terminal-green-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-green);
+    color: var(--terminal-green);
+    text-shadow: 0 0 8px var(--terminal-glow);
+    box-shadow: 0 0 12px var(--terminal-glow);
+}
+
+.btn-secondary {
+    background-color: var(--terminal-bg-light);
+    border: 1px solid var(--terminal-border);
+    color: var(--terminal-text);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-text-muted);
+    color: var(--terminal-text);
+}
+
+.btn-danger {
+    background-color: var(--terminal-bg-light);
+    border: 1px solid var(--terminal-red);
+    color: var(--terminal-red);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-red);
+    color: var(--terminal-red);
+    text-shadow: 0 0 8px rgba(232, 85, 85, 0.4);
+    box-shadow: 0 0 12px rgba(232, 85, 85, 0.4);
+}
+
+.btn-warning {
+    background-color: var(--terminal-bg-light);
+    border: 1px solid var(--terminal-yellow);
+    color: var(--terminal-yellow);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.btn-warning:hover,
+.btn-warning:focus {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-yellow);
+    color: var(--terminal-yellow);
+    text-shadow: 0 0 8px rgba(230, 197, 71, 0.4);
+    box-shadow: 0 0 12px rgba(230, 197, 71, 0.4);
+}
+
+/* ===== FORMS ===== */
+.form-control {
+    background-color: var(--terminal-bg-light);
+    border: 1px solid var(--terminal-border);
+    color: var(--terminal-text);
+}
+
+.form-control:focus {
+    background-color: var(--terminal-bg-medium);
+    border-color: var(--terminal-green);
+    box-shadow: 0 0 8px var(--terminal-glow);
+    color: var(--terminal-text);
+}
+
+.form-control::placeholder {
+    color: var(--terminal-text-muted);
+}
+
+label {
+    color: var(--terminal-text);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.9rem;
+}
+
+/* ===== ALERTS ===== */
+.alert-info {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-green-dim);
+    color: var(--terminal-text);
+}
+
+.alert-danger {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-red);
+    color: var(--terminal-red);
+}
+
+.alert-success {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-green);
+    color: var(--terminal-green);
+}
+
+.alert-warning {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-yellow);
+    color: var(--terminal-yellow);
+}
+
+/* ===== TABLES ===== */
+.table {
+    color: var(--terminal-text);
+}
+
+.table thead th {
+    border-bottom: 1px solid var(--terminal-border);
+    color: var(--terminal-text);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+}
+
+.table td,
+.table th {
+    border-top: 1px solid var(--terminal-border);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(95, 211, 141, 0.08);
+}
+
+.table-dark {
+    background-color: var(--terminal-bg-medium);
+}
+
+.table-dark td,
+.table-dark th {
+    border-color: var(--terminal-border);
+}
+
+/* ===== PAGINATION ===== */
+.pagination .page-link {
+    background-color: var(--terminal-bg-medium);
+    color: var(--terminal-text);
+    border-color: var(--terminal-border);
+}
+
+.pagination .page-link:hover {
+    color: var(--terminal-green);
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-green);
+    text-shadow: 0 0 8px var(--terminal-glow);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-green);
+    color: var(--terminal-green);
+}
+
+.pagination .page-item.disabled .page-link {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-border);
+    color: var(--terminal-text-muted);
+}
+
+/* ===== BREADCRUMBS ===== */
+.breadcrumb {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-border);
+}
+
+.breadcrumb-item a {
+    color: var(--terminal-green-dim);
+}
+
+.breadcrumb-item a:hover {
+    color: var(--terminal-green);
+    text-shadow: 0 0 8px var(--terminal-glow);
+}
+
+.breadcrumb-item.active {
+    color: var(--terminal-text-muted);
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    color: var(--terminal-text-muted);
+}
+
+/* ===== CODE BLOCKS ===== */
+code {
+    color: var(--terminal-green);
+    background-color: var(--terminal-bg-dark);
+    padding: 2px 4px;
+    border-radius: 0;
+    border: 1px solid var(--terminal-border);
+}
+
+pre {
+    background-color: var(--terminal-bg-dark);
+    border: 1px solid var(--terminal-border);
+    border-radius: 0;
+    padding: 10px;
+    color: var(--terminal-text);
+}
+
+/* ===== TEXT UTILITIES ===== */
+.text-muted {
+    color: var(--terminal-text-muted) !important;
+}
+
+.text-dark {
+    color: var(--terminal-text) !important;
+}
+
+.text-success {
+    color: var(--terminal-green) !important;
+}
+
+.text-warning {
+    color: var(--terminal-yellow) !important;
+}
+
+.text-danger {
+    color: var(--terminal-red) !important;
+}
+
+/* ===== HORIZONTAL RULES ===== */
+hr {
+    border-top: 1px solid var(--terminal-border);
+}
+
+/* ===== HEADINGS ===== */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--terminal-text);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* ===== TERMINAL-SPECIFIC EFFECTS ===== */
+
+/* Scanline effect (very subtle) */
+@keyframes scanline {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+/* Optional: Add scanline overlay to body - very subtle */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.05) 0px,
+        rgba(0, 0, 0, 0.05) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.15;
+}
+
+/* Terminal cursor effect for inputs */
+.form-control:focus::after {
+    content: "▋";
+    animation: cursor-blink 1s infinite;
+}
+
+@keyframes cursor-blink {
+    0%, 49% {
+        opacity: 1;
+    }
+    50%, 100% {
+        opacity: 0;
+    }
+}
+
+/* ===== RESPONSIVE ADJUSTMENTS ===== */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 0.9rem;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    h2 {
+        font-size: 1.3rem;
+    }
+}
+
+/* ===== TERMINAL LOADING EFFECT ===== */
+@keyframes terminal-flicker {
+    0% {
+        opacity: 0.95;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.95;
+    }
+}
+
+.card {
+    animation: terminal-flicker 0.2s ease-in-out;
+}
+
+/* ===== UTILITY CLASSES ===== */
+.terminal-prompt::before {
+    content: ">";
+    color: var(--terminal-green);
+    margin-right: 0.5em;
+}
+
+.terminal-command {
+    color: var(--terminal-green);
+}
+
+.terminal-output {
+    color: var(--terminal-text-muted);
+}
+
+.terminal-error {
+    color: var(--terminal-red);
+}
+
+.terminal-warning {
+    color: var(--terminal-yellow);
+}
+
+/* ===== SPECIAL ELEMENTS ===== */
+
+/* Green border cards (success/active states) */
+.border-success {
+    border-color: var(--terminal-green) !important;
+}
+
+/* Dark backgrounds */
+.bg-dark {
+    background-color: var(--terminal-bg-dark) !important;
+}
+
+/* Secondary borders */
+.border-secondary {
+    border-color: var(--terminal-border) !important;
+}
+
+/* ===== ACCESSIBILITY ===== */
+:focus {
+    outline: 1px solid var(--terminal-green);
+    outline-offset: 2px;
+}
+
+/* Remove default focus styles */
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 1px solid var(--terminal-green);
+    outline-offset: 2px;
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+    body {
+        background-color: white !important;
+        color: black !important;
+    }
+    
+    body::before {
+        display: none;
+    }
+    
+    .navbar,
+    .footer {
+        display: none;
+    }
+}
+
+
+body {
+    background-color: var(--terminal-bg-dark) !important;
+    color: var(--terminal-text);
+}
+
+.main-content,
+.container {
+    background-color: transparent;
+}
+
+/* ===== NAVBAR ===== */
+.navbar {
+    background-color: var(--terminal-bg-dark) !important;
+    border-bottom: 1px solid var(--terminal-border);
+}
+
+.navbar-brand,
+.navbar-nav .nav-link {
+    color: var(--terminal-text) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.navbar-nav .nav-link:hover {
+    color: var(--terminal-green) !important;
+    text-shadow: 0 0 5px var(--terminal-glow);
+}
+
+.navbar .dropdown-menu {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-border);
+}
+
+.navbar .dropdown-item {
+    color: var(--terminal-text);
+}
+
+.navbar .dropdown-item:hover {
+    background-color: var(--terminal-bg-dark);
+    color: var(--terminal-green);
+    text-shadow: 0 0 5px var(--terminal-glow);
+}
+
+.navbar .dropdown-divider {
+    border-color: var(--terminal-border);
+}
+
+/* ===== FOOTER ===== */
+.footer {
+    background-color: var(--terminal-bg-dark) !important;
+    border-top: 1px solid var(--terminal-border);
+}
+
+.footer .text-white {
+    color: var(--terminal-text) !important;
+}
+
+.footer a.text-white:hover {
+    color: var(--terminal-green) !important;
+    text-shadow: 0 0 5px var(--terminal-glow);
+}
+
+/* ===== CARDS ===== */
+.card {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-border);
+    box-shadow: none;
+    color: var(--terminal-text);
+}
+
+.card-header {
+    background-color: var(--terminal-bg-dark);
+    border-bottom: 1px solid var(--terminal-border);
+    color: var(--terminal-text);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.card-title {
+    color: var(--terminal-text);
+}
+
+.card-subtitle {
+    color: var(--terminal-text-muted);
+}
+
+.card-body {
+    color: var(--terminal-text);
+    background-color: var(--terminal-bg-medium);
+}
+
+/* Force all card content to be dark themed */
+.card .card-body,
+.card .card-body p,
+.card .card-body div,
+.card .card-body span,
+.card ul,
+.card ol,
+.card li,
+.card dl,
+.card dt,
+.card dd {
+    background-color: transparent !important;
+    color: var(--terminal-text) !important;
+}
+
+/* ===== LINKS ===== */
+a {
+    color: var(--terminal-green-dim);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--terminal-green);
+    text-decoration: none;
+    text-shadow: 0 0 5px var(--terminal-glow);
+}
+
+/* ===== BUTTONS ===== */
+.btn-primary {
+    background-color: var(--terminal-bg-light);
+    border: 1px solid var(--terminal-green-dim);
+    color: var(--terminal-green-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-green);
+    color: var(--terminal-green);
+    text-shadow: 0 0 5px var(--terminal-glow);
+    box-shadow: 0 0 10px var(--terminal-glow);
+}
+
+.btn-secondary {
+    background-color: var(--terminal-bg-light);
+    border: 1px solid var(--terminal-border);
+    color: var(--terminal-text);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-text-muted);
+    color: var(--terminal-text);
+}
+
+.btn-danger {
+    background-color: var(--terminal-bg-light);
+    border: 1px solid var(--terminal-red);
+    color: var(--terminal-red);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-red);
+    color: var(--terminal-red);
+    text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+.btn-warning {
+    background-color: var(--terminal-bg-light);
+    border: 1px solid var(--terminal-yellow);
+    color: var(--terminal-yellow);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.btn-warning:hover,
+.btn-warning:focus {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-yellow);
+    color: var(--terminal-yellow);
+    text-shadow: 0 0 5px rgba(255, 255, 0, 0.5);
+    box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
+}
+
+/* ===== FORMS ===== */
+.form-control {
+    background-color: var(--terminal-bg-light);
+    border: 1px solid var(--terminal-border);
+    color: var(--terminal-text);
+}
+
+.form-control:focus {
+    background-color: var(--terminal-bg-medium);
+    border-color: var(--terminal-green);
+    box-shadow: 0 0 5px var(--terminal-glow);
+    color: var(--terminal-text);
+}
+
+.form-control::placeholder {
+    color: var(--terminal-text-muted);
+}
+
+label {
+    color: var(--terminal-text);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.9rem;
+}
+
+/* ===== ALERTS ===== */
+.alert-info {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-green-dim);
+    color: var(--terminal-text);
+}
+
+.alert-danger {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-red);
+    color: var(--terminal-red);
+}
+
+.alert-success {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-green);
+    color: var(--terminal-green);
+}
+
+.alert-warning {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-yellow);
+    color: var(--terminal-yellow);
+}
+
+/* ===== TABLES ===== */
+.table {
+    color: var(--terminal-text);
+}
+
+.table thead th {
+    border-bottom: 1px solid var(--terminal-border);
+    color: var(--terminal-text);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+}
+
+.table td,
+.table th {
+    border-top: 1px solid var(--terminal-border);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 255, 0, 0.05);
+}
+
+.table-dark {
+    background-color: var(--terminal-bg-medium);
+}
+
+.table-dark td,
+.table-dark th {
+    border-color: var(--terminal-border);
+}
+
+/* ===== PAGINATION ===== */
+.pagination .page-link {
+    background-color: var(--terminal-bg-medium);
+    color: var(--terminal-text);
+    border-color: var(--terminal-border);
+}
+
+.pagination .page-link:hover {
+    color: var(--terminal-green);
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-green);
+    text-shadow: 0 0 5px var(--terminal-glow);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-green);
+    color: var(--terminal-green);
+}
+
+.pagination .page-item.disabled .page-link {
+    background-color: var(--terminal-bg-dark);
+    border-color: var(--terminal-border);
+    color: var(--terminal-text-muted);
+}
+
+/* ===== BREADCRUMBS ===== */
+.breadcrumb {
+    background-color: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-border);
+}
+
+.breadcrumb-item a {
+    color: var(--terminal-green-dim);
+}
+
+.breadcrumb-item a:hover {
+    color: var(--terminal-green);
+    text-shadow: 0 0 5px var(--terminal-glow);
+}
+
+.breadcrumb-item.active {
+    color: var(--terminal-text-muted);
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    color: var(--terminal-text-muted);
+}
+
+/* ===== CODE BLOCKS ===== */
+code {
+    color: var(--terminal-green);
+    background-color: var(--terminal-bg-dark);
+    padding: 2px 4px;
+    border-radius: 0;
+    border: 1px solid var(--terminal-border);
+}
+
+pre {
+    background-color: var(--terminal-bg-dark);
+    border: 1px solid var(--terminal-border);
+    border-radius: 0;
+    padding: 10px;
+    color: var(--terminal-text);
+}
+
+/* ===== TEXT UTILITIES ===== */
+.text-muted {
+    color: var(--terminal-text-muted) !important;
+}
+
+.text-dark {
+    color: var(--terminal-text) !important;
+}
+
+.text-success {
+    color: var(--terminal-green) !important;
+}
+
+.text-warning {
+    color: var(--terminal-yellow) !important;
+}
+
+.text-danger {
+    color: var(--terminal-red) !important;
+}
+
+/* ===== HORIZONTAL RULES ===== */
+hr {
+    border-top: 1px solid var(--terminal-border);
+}
+
+/* ===== HEADINGS ===== */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--terminal-text);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* ===== TERMINAL-SPECIFIC EFFECTS ===== */
+
+/* Scanline effect (subtle) */
+@keyframes scanline {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+/* Optional: Add scanline overlay to body */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.1) 0px,
+        rgba(0, 0, 0, 0.1) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.3;
+}
+
+/* Terminal cursor effect for inputs */
+.form-control:focus::after {
+    content: "▋";
+    animation: cursor-blink 1s infinite;
+}
+
+@keyframes cursor-blink {
+    0%, 49% {
+        opacity: 1;
+    }
+    50%, 100% {
+        opacity: 0;
+    }
+}
+
+/* ===== RESPONSIVE ADJUSTMENTS ===== */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 0.9rem;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    h2 {
+        font-size: 1.3rem;
+    }
+}
+
+/* ===== TERMINAL LOADING EFFECT ===== */
+@keyframes terminal-flicker {
+    0% {
+        opacity: 0.9;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.9;
+    }
+}
+
+.card {
+    animation: terminal-flicker 0.15s ease-in-out;
+}
+
+/* ===== UTILITY CLASSES ===== */
+.terminal-prompt::before {
+    content: ">";
+    color: var(--terminal-green);
+    margin-right: 0.5em;
+}
+
+.terminal-command {
+    color: var(--terminal-green);
+}
+
+.terminal-output {
+    color: var(--terminal-text-muted);
+}
+
+.terminal-error {
+    color: var(--terminal-red);
+}
+
+.terminal-warning {
+    color: var(--terminal-yellow);
+}
+
+/* ===== SPECIAL ELEMENTS ===== */
+
+/* Green border cards (success/active states) */
+.border-success {
+    border-color: var(--terminal-green) !important;
+}
+
+/* Dark backgrounds */
+.bg-dark {
+    background-color: var(--terminal-bg-dark) !important;
+}
+
+/* Secondary borders */
+.border-secondary {
+    border-color: var(--terminal-border) !important;
+}
+
+/* ===== ACCESSIBILITY ===== */
+:focus {
+    outline: 1px solid var(--terminal-green);
+    outline-offset: 2px;
+}
+
+/* Remove default focus styles */
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 1px solid var(--terminal-green);
+    outline-offset: 2px;
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+    body {
+        background-color: white !important;
+        color: black !important;
+    }
+    
+    body::before {
+        display: none;
+    }
+    
+    .navbar,
+    .footer {
+        display: none;
+    }
+}
+
+/* ================================================================
+   ADDITIONS (2026-07-29)
+
+   Everything above is the original terminal/brutalist theme, recovered
+   from git after it was overwritten — it already blended the navbar and
+   footer into the page, which was the whole ask. Only two things were
+   genuinely missing, both caused by new pages:
+   ================================================================ */
+
+/* 1. Evennia pins the footer (position:absolute; bottom:0; height:60px;
+      line-height:60px) and reserves body margin for it. That holds on a
+      short page and breaks on a tall one — the Atlas is very tall — so
+      the footer rejoins the normal flow. */
+body {
+    margin-bottom: 0 !important;
+}
+
+.footer {
     position: static !important;
     height: auto !important;
     line-height: 1.6 !important;
     width: auto !important;
-    padding: 30px 0 40px;
-    background: transparent !important;
-    border-top: 0;
-    color: var(--bone-dim);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: .08em;
-}
-footer a, .footer a { color: var(--bone-dim); }
-footer a:hover, .footer a:hover { color: var(--amber); }
-
-/* ---------- Bootstrap dark utilities, retuned ----------
-   Pages built with bg-dark / table-dark / border-secondary (Manage
-   Sleeves, character detail) inherit the house style instead of
-   Bootstrap's blue-grey. */
-.bg-dark { background: var(--plate) !important; }
-.bg-secondary { background: var(--plate-hi) !important; }
-.border-secondary { border-color: var(--line) !important; }
-.text-white, .text-light { color: var(--bone) !important; }
-.table-dark {
-    background: transparent;
-    color: var(--bone);
-    font-family: var(--font-mono);
-}
-.table-dark th, .table-dark td, .table-dark thead th {
-    border-color: var(--line) !important;
-    background: transparent;
-}
-.table-dark thead th { color: var(--bone-dim); }
-.table-dark tbody tr:hover { background: var(--plate-hi); }
-.card.bg-dark { border-color: var(--line) !important; }
-.card-title {
-    font-family: var(--font-cond);
-    letter-spacing: .12em;
-    color: var(--bone);
+    padding: 28px 0 34px;
 }
 
-/* Bootstrap's success-green reads as terminal phosphor; in the house
-   style the warm accent carries "live/attested" and green stays for
-   genuine state (connection, health). */
-.text-success { color: var(--amber) !important; }
-.border-success { border-color: var(--line) !important; }
-.card .card-header.bg-dark { background: var(--plate-hi) !important; }
+/* 2. The Atlas plate is a self-contained document embedded in the site
+      (see web/templates/website/atlas.html). The global `*` font rule
+      above would flatten its three type roles, so the plate re-asserts
+      them in its own stylesheet; here we only make sure the surrounding
+      chrome leaves its canvas alone. */
+.atlas-plate canvas {
+    letter-spacing: normal;
+}
