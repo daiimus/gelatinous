@@ -117,7 +117,7 @@ Respawn Sleeve
 <style>
 /* Flash clone warning box */
 .flash-clone-warning {
-  background-color: #2a2a2a;
+  background-color: var(--terminal-bg-medium);
   border-top: 2px solid #e6c547;
   border-bottom: 1px solid #404040;
 }
@@ -127,28 +127,28 @@ Respawn Sleeve
 }
 
 .sleeve-option {
-  border: 2px solid #404040;
-  background-color: #2a2a2a;
+  border: 2px solid var(--terminal-border);
+  background-color: var(--terminal-bg-medium);
   transition: all 0.2s ease;
   cursor: pointer;
 }
 
 .sleeve-option:hover {
-  border-color: #5fd38d;
-  background-color: #2a2a2a;
-  box-shadow: 0 0 8px rgba(95, 211, 141, 0.3);
+  border-color: var(--terminal-accent);
+  background-color: var(--terminal-bg-medium);
+  box-shadow: 0 0 8px var(--terminal-glow);
 }
 
 .sleeve-option input[type="radio"]:checked ~ label {
   font-weight: bold;
-  color: #5fd38d;
+  color: var(--terminal-accent);
 }
 
-/* Selected sleeve - jade green border with glow */
+/* Selected sleeve - accent border with glow */
 .sleeve-option:has(input[type="radio"]:checked) {
-  border-color: #5fd38d;
-  background-color: #2a2a2a;
-  box-shadow: 0 0 12px rgba(95, 211, 141, 0.4);
+  border-color: var(--terminal-accent);
+  background-color: var(--terminal-bg-medium);
+  box-shadow: 0 0 12px var(--terminal-glow);
 }
 
 /* Caution stripe border for flash clone */
@@ -161,13 +161,13 @@ Respawn Sleeve
     #1a1a1a 20px,
     #1a1a1a 40px
   ) 8;
-  background-color: #2a2a2a;
+  background-color: var(--terminal-bg-medium);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .flash-clone-option .card-body {
-  background-color: #2a2a2a;
+  background-color: var(--terminal-bg-medium);
   border: none;
   transition: all 0.2s ease;
 }
@@ -186,9 +186,9 @@ Respawn Sleeve
 
 /* Decant button styling */
 #decant-button {
-  background-color: #2a2a2a;
-  border: 2px solid #5fd38d;
-  color: #5fd38d;
+  background-color: var(--terminal-bg-medium);
+  border: 2px solid var(--terminal-accent);
+  color: var(--terminal-accent);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -197,7 +197,7 @@ Respawn Sleeve
 
 #decant-button:hover {
   background-color: rgba(95, 211, 141, 0.1);
-  box-shadow: 0 0 12px rgba(95, 211, 141, 0.4);
+  box-shadow: 0 0 12px var(--terminal-glow);
   text-shadow: 0 0 8px rgba(95, 211, 141, 0.6);
 }
 
