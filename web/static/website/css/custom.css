@@ -9,10 +9,12 @@
    variable woff2. Four voices from one superfamily, which is what
    Monaspace was built for:
 
-     Argon    humanist       -> prose, the reading voice (open apertures,
-                                built for continuous text)
-     Neon     neo-grotesque  -> data, labels, chrome, the interface voice
-                                (neutral, clean under letter-spacing)
+     Neon     neo-grotesque  -> prose AND interface, the dominant voice
+                                (neutral, clean under letter-spacing,
+                                holds up as body copy thanks to calt)
+     Argon    humanist       -> declared and held in reserve for
+                                long-form reading; unused faces are not
+                                downloaded, so it costs nothing to keep
      Xenon    slab serif     -> headings and brand, brutalist weight
      Radon    handwriting    -> human marks (the memorial wall)
 
@@ -72,10 +74,11 @@
 
     /* Type roles — swap a stack here, not in a hundred rules. If a
        Berkeley Mono licence ever lands, --font-data is the one line. */
-    --font-prose: 'Monaspace Argon', ui-monospace, 'SF Mono', Menlo, monospace;
+    --font-prose: 'Monaspace Neon', ui-monospace, 'SF Mono', Menlo, monospace;
+    --font-reading: 'Monaspace Argon', ui-monospace, 'SF Mono', Menlo, monospace;
     --font-display: 'Monaspace Xenon', ui-monospace, 'SF Mono', Menlo, monospace;
     --font-data: 'Monaspace Neon', ui-monospace, 'SF Mono', Menlo, monospace;
-    --font-hand: 'Monaspace Radon', 'Monaspace Argon', cursive;
+    --font-hand: 'Monaspace Radon', 'Monaspace Neon', cursive;
 }
 
 /* ===== GLOBAL BASE =====
@@ -1246,14 +1249,19 @@ em, i, cite, blockquote, .flavor {
       hierarchy can be built from weight instead of size — and "faded"
       can be expressed without relying on colour alone (which matters
       for anyone who can't distinguish our greys). */
-body { font-weight: 350; }
-h1, .card-title { font-weight: 650; }
-h2, h3 { font-weight: 600; }
-h4, h5, h6 { font-weight: 550; }
-.navbar-nav .nav-link, label, .col-form-label, .btn, thead th {
-    font-weight: 500;
+/* The Atlas runs one weight everywhere and 600 only on its title,
+   letting size, tracking and colour carry hierarchy. Mirrored here. */
+body { font-weight: 400; }
+h1, h2, h3, h4, h5, h6, .card-title { font-weight: 600; }
+.navbar-nav .nav-link, label, .col-form-label, .btn, thead th,
+.text-muted, small, .small {
+    font-weight: 400;
 }
-.text-muted, small, .small { font-weight: 300; }
+
+/* tracking does the work the weight used to — the Atlas's move */
+.navbar-nav .nav-link, .dropdown-item { letter-spacing: 0.14em; }
+label, .col-form-label, thead th, .btn { letter-spacing: 0.12em; }
+h1, h2, h3 { letter-spacing: 0.08em; }
 
 /* the dead are lighter than the living: archived sleeves recede on the
    weight axis, so the memorial wall reads as fading rather than merely
@@ -1273,3 +1281,27 @@ h4, h5, h6 { font-weight: 550; }
 .frac, .fraction { font-feature-settings: "frac" 1; }
 sup { font-feature-settings: "sups" 1; }
 sub { font-feature-settings: "subs" 1; }
+
+/* 6. CHARACTER VARIANTS — verified from the fonts:
+        cv01  alternate zero (slashed/dotted)
+        cv02  alternate one
+        cv30  raised asterisk
+        cv32  angled >= <=
+        ss01-ss10  code-ligature groups (off by default; ss03 = arrows)
+
+      A colony's pages are full of identifiers — dbrefs, sleeve UIDs,
+      coordinates, timestamps — where telling 0 from O matters more than
+      elegance. So the machine surfaces get the slashed zero, and true
+      arrows where a label points somewhere. Prose is left alone: code
+      ligatures stay off so nothing surprising happens mid-sentence. */
+table, .table, code, pre, kbd, samp, time,
+.badge, .stat, .stats, .dbref, .uid, .coords,
+input, textarea, select, .form-control {
+    font-feature-settings: "calt" 1, "cv01" 1, "ss03" 1;
+}
+
+/* the brand keeps its width axis; give it the alternate one as well so
+   the lockup reads as drawn rather than typed */
+.navbar-brand {
+    font-feature-settings: "calt" 1, "cv01" 1, "cv02" 1;
+}
