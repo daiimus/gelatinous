@@ -67,11 +67,12 @@ Uses iframe-specific menu that removes Forum link to prevent double headers.
          * protocol silently measures nothing.
          */
 
-        /* No scrollbars inside the frame. Height is driven by the parent,
-         * which resizes on the messages we post. */
+        /* `overflow: hidden` here clipped the open menu at the BODY box —
+         * 80px — no matter how tall the parent made the iframe. That was the
+         * second clipper, after the display:none rules above. */
         html, body {
             height: auto;
-            overflow: hidden;
+            overflow: visible;
         }
 
         /* The menu must escape the 80px body box while the parent catches
@@ -128,8 +129,28 @@ Uses iframe-specific menu that removes Forum link to prevent double headers.
         // Bootstrap fires these once the menu has been positioned, so the
         // measurement above is taken against final geometry rather than
         // mid-animation. Collapsing on close returns the header to 80px.
+        // Grow the BODY to contain the open menu, then report that height.
+        //
+        // Asking the parent to resize is not sufficient on its own: until the
+        // body itself is tall enough, the menu is clipped by its own document
+        // and scrollHeight still reads 80px. Growing the body fixes the
+        // clipping AND makes the measurement true, so the two sides agree.
+        function syncOpenMenu() {
+            const menus = document.querySelectorAll('.dropdown-menu.show');
+            if (menus.length) {
+                let needed = 0;
+                menus.forEach(function (menu) {
+                    needed = Math.max(needed, Math.ceil(menu.getBoundingClientRect().bottom));
+                });
+                document.body.style.minHeight = (needed + 8) + 'px';
+            } else {
+                document.body.style.minHeight = '';
+            }
+            updateHeight();
+        }
+
         $(document).on('shown.bs.dropdown hidden.bs.dropdown', function () {
-            requestAnimationFrame(updateHeight);
+            requestAnimationFrame(syncOpenMenu);
         });
 
         // Still watch for other dynamic content (login state, flash messages).
