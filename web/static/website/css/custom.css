@@ -1367,3 +1367,27 @@ p, .lore-voice, .card-body {
     border: none !important;
     box-shadow: none !important;
 }
+
+/* ================================================================
+   WIDTH
+
+   Bootstrap 4 caps `.container` at 1140px, which on a wide display
+   leaves most of the screen empty. Two different things were being
+   constrained by that one number, and they want opposite treatment:
+
+   - CONTAINERS (the card row, the Atlas stage) should use the display.
+     A map especially: more width is literally more colony visible.
+   - PROSE should not. At full width on a wide monitor the welcome copy
+     would set ~200 characters per line; the eye loses its place on the
+     return sweep somewhere past 90. The 72ch measure stays, and simply
+     centres inside the roomier container.
+   ================================================================ */
+.container, .container-sm, .container-md, .container-lg, .container-xl {
+    max-width: min(96vw, 2100px);
+}
+
+/* the plate uses whatever the container gives it */
+.atlas-plate {
+    max-width: 100%;
+}
+.atlas-plate .wrap { max-width: 100%; }
