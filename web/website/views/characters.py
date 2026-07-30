@@ -360,6 +360,56 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             return self.form_invalid(form)
 
 
+_ROMAN = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+
+
+def _roman_value(token):
+    """
+    Return the value of a Roman numeral, or None if it isn't one.
+
+    Strict on purpose: a sleeve legitimately named "Mick" or "DiDi" is made
+    only of Roman letters and would otherwise be read as a number. Requires
+    the token to be uppercase and to round-trip, so "XLIV" parses and "MIX"
+    (a real word, and not canonical Roman) does not.
+    """
+    if not token or not token.isupper() or any(c not in _ROMAN for c in token):
+        return None
+    total = prev = 0
+    for char in reversed(token):
+        value = _ROMAN[char]
+        total = total - value if value < prev else total + value
+        prev = max(prev, value)
+    return total if total and _to_roman(total) == token else None
+
+
+def _to_roman(number):
+    """Canonical Roman for round-tripping the parse above."""
+    pairs = ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"),
+             (90, "XC"), (50, "L"), (40, "XL"), (10, "X"), (9, "IX"),
+             (5, "V"), (4, "IV"), (1, "I"))
+    out = []
+    for value, glyph in pairs:
+        while number >= value:
+            out.append(glyph)
+            number -= value
+    return "".join(out)
+
+
+def _sleeve_sort_key(sleeve):
+    """
+    Sort sleeves by lineage, then by generation.
+
+    "Laszlo XLIV" -> ("laszlo", 44). A sleeve with no trailing numeral sorts
+    first within its lineage, since it is the un-numbered original.
+    """
+    key = (sleeve.key or "").strip()
+    base, _, last = key.rpartition(" ")
+    value = _roman_value(last) if base else None
+    if value is None:
+        return (key.lower(), 0)
+    return (base.lower(), value)
+
+
 class CharacterManageView(EvenniaCharacterManageView):
     """
     Manage Sleeves (DEATH_AND_SLEEVE_LIFECYCLE_SPEC §9 step 2).
@@ -378,7 +428,22 @@ class CharacterManageView(EvenniaCharacterManageView):
 
     Cause and location never appear here, and the internal corpse/sleeve
     dbrefs are never rendered.
+
+    Pagination is OFF. Evennia's base view sets `paginate_by = 10`, but this
+    template renders no pager, so a 33-sleeve account could only ever reach
+    its first ten and the header counted a page rather than a registry. A
+    sleeve list is short and belongs on one page.
+
+    Ordering is by name, then by ROMAN NUMERAL — not alphabetical, and not by
+    id. "Laszlo XLIV" must follow "Laszlo XL", and creation order does not
+    rescue us either: Laszlo V is #615 while Laszlo II is #617, so the early
+    sleeves were not made in numeral order.
     """
+
+    paginate_by = None
+
+    def get_queryset(self):
+        return sorted(super().get_queryset(), key=_sleeve_sort_key)
 
     def get_context_data(self, **kwargs):
         from datetime import datetime
