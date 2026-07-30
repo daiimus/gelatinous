@@ -21,11 +21,11 @@ Sleeve Details
           <!-- Stats Column (right) -->
           <div class="col-md-8">
             <!-- Psychophysical Evaluation Report -->
-            <div class="card bg-dark text-success border-success mb-3" style="font-size: 0.9rem;">
-              <div class="card-header bg-dark text-success border-success">
+            <div class="card bg-dark text-accent border-accent mb-3" style="font-size: 0.9rem;">
+              <div class="card-header bg-dark text-accent border-accent">
                 <strong>PSYCHOPHYSICAL EVALUATION REPORT</strong>
               </div>
-              <div class="card-body bg-dark text-success" style="padding: 1rem;">
+              <div class="card-body bg-dark text-accent" style="padding: 1rem;">
                 <div class="mb-2">
                   <strong>Subject:</strong> <span class="text-white">{{ object.db_key }}</span>
                 </div>
@@ -33,7 +33,7 @@ Sleeve Details
                   <strong>File Reference:</strong> <span class="text-white">GEL-MST/PR-{{ object.id }}</span>
                 </div>
                 
-                <hr class="border-success" />
+                <hr class="border-accent" />
                 
                 <div class="mt-3" style="display: table; width: 100%;">
                   <div style="display: table-row;">
@@ -70,7 +70,7 @@ Sleeve Details
                   </div>
                 </div>
                 
-                <hr class="border-success" />
+                <hr class="border-accent" />
                 
                 <div class="mt-3">
                   <strong>Notes:</strong>
@@ -88,7 +88,7 @@ Sleeve Details
                   {% if object.db.archived %}
                     <span class="text-warning">Archived</span>
                   {% else %}
-                    <span class="text-success">Active</span>
+                    <span class="text-accent">Active</span>
                   {% endif %}
                 </p>
                 <p class="mb-2"><strong>Decanted on:</strong> {{ object.db_date_created }}</p>

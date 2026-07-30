@@ -1,0 +1,19 @@
+{% comment %}
+Overrides Evennia's stock widget for one reason: upstream runs the name
+straight into the timestamp — `Drivel&mdash;50 minutes ago`. At Monaspace's
+tracking that reads as a single hyphenated word. Spaces around the dash.
+
+Kept structurally identical to upstream otherwise, so the card matches its
+neighbours (accounts / database stats) and picks up the same house styling.
+{% endcomment %}
+<div class="card">
+    <h4 class="card-header text-center">Recently Connected</h4>
+
+    <div class="card-body px-0 py-0">
+        <ul class="list-group">
+            {% for account in accounts_connected_recent %}
+            <li class="list-group-item">{{ account.username }} &mdash; <em>{{ account.last_login|timesince }} ago</em></li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>

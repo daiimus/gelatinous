@@ -1519,12 +1519,27 @@ h1 { font-size: var(--size-h1); }
     color: var(--terminal-text-muted);
 }
 
-/* status reads as state, not decoration: jade for living, amber-warn
-   for archived — and both in the machine voice at label scale */
+/* status reads as state, not decoration — in the machine voice at label
+   scale, whichever colour it carries */
+.plate-stage .text-accent,
 .plate-stage .text-success,
 .plate-stage .text-warning {
     font-family: var(--font-data);
     font-size: 10.5px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+}
+
+/* ── accent utilities ────────────────────────────────────────────────
+   Bootstrap's .text-success / .border-success carry MEANING here: jade
+   is reserved for state. The sleeve pages had been using them as plain
+   chrome — plate borders, rules, a report heading — which is what put
+   green on pages that have nothing to report. These give that chrome the
+   house accent and leave the semantic classes to mean what they say. */
+.text-accent {
+    color: var(--terminal-accent) !important;
+}
+
+.border-accent {
+    border-color: var(--terminal-accent) !important;
 }
