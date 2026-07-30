@@ -14,7 +14,14 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from django.conf import settings
 
 
-@cache_control(max_age=300, private=True)  # Cache for 5 minutes, private to prevent shared cache leaking auth state
+# NOT cached. This response is auth state: it names the logged-in account and
+# renders a different menu for anonymous visitors. A five-minute cache meant
+# the forum header could keep saying "Logged in as X" for five minutes after
+# logging out, and that template changes appeared not to ship — the iframe
+# kept serving the copy the browser already had.
+#
+# `private` alone was not enough: it stops shared caches, not the browser's.
+@cache_control(no_store=True, no_cache=True, must_revalidate=True, private=True)
 @xframe_options_exempt  # This view is embedded in a Discourse iframe; CSP frame-ancestors handles security
 def header_only(request):
     """
@@ -26,8 +33,8 @@ def header_only(request):
     The header detects it's in an iframe context and adjusts link behavior
     to prevent navigation issues.
 
-    Cache is set to 5 minutes to improve load performance while still
-    reflecting authentication state changes reasonably quickly.
+    Deliberately uncached — see the decorator. The response embeds auth
+    state, so a stale copy is both wrong and confusing.
 
     Optional: Only useful if you're embedding the header elsewhere (e.g., forum).
     """
