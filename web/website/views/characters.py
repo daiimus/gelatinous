@@ -362,36 +362,47 @@ class CharacterCreateView(EvenniaCharacterCreateView):
 
 class CharacterManageView(EvenniaCharacterManageView):
     """
-    Manage Sleeves + the memorial wall (DEATH_AND_SLEEVE_LIFECYCLE_SPEC §9
-    step 2).
+    Manage Sleeves (DEATH_AND_SLEEVE_LIFECYCLE_SPEC §9 step 2).
 
-    Adds the account's tombstones to the page context: who the sleeve was,
-    born, died — nothing else. This is the game's one sanctioned OOC surface
-    (a tribute to the player); cause and location never appear here, and the
-    internal dbref/corpse keys are deliberately stripped before rendering.
+    The tombstone date is folded INTO the sleeve listing rather than rendered
+    as a second table beneath it. The spec describes this surface as reading
+    "DeathRecord (tombstone: name, born, died) + archived sleeve" — one
+    surface, two sources — and asks that it stay minimal so it remains a
+    tribute rather than an information side-channel.
+
+    A separate memorial wall duplicated the listing exactly: every death
+    record pointed at a sleeve still present above it (32/32, 5/5 and 1/1
+    across the accounts holding records), so the page printed the same
+    sleeves twice. The only fact the wall carried that the listing did not
+    was the date of death, which is now a column.
+
+    Cause and location never appear here, and the internal corpse/sleeve
+    dbrefs are never rendered.
     """
 
     def get_context_data(self, **kwargs):
         from datetime import datetime
         context = super().get_context_data(**kwargs)
-        memorial = []
-        records = self.request.user.db.death_records or []
-        for rec in records:
+
+        # dbref -> date of death. Keyed by dbref rather than name so a
+        # renamed sleeve still matches its own tombstone.
+        died_by_dbref = {}
+        for rec in (self.request.user.db.death_records or []):
             try:
-                if not rec.get("name") and not rec.get("died"):
-                    continue  # a record with neither name nor date is noise
-                born = rec.get("born")
                 died = rec.get("died")
-                memorial.append({
-                    "name": rec.get("name") or "an unnamed sleeve",
-                    "born": datetime.fromtimestamp(born) if born else None,
-                    "died": datetime.fromtimestamp(died) if died else None,
-                })
+                ref = rec.get("sleeve_dbref")
+                if not died or not ref:
+                    continue
+                died_by_dbref[str(ref)] = datetime.fromtimestamp(died)
             except (TypeError, ValueError, OSError, OverflowError):
-                continue  # one malformed record never breaks the wall
-        memorial.sort(key=lambda r: (r["died"] is None,
-                                     r["died"] or datetime.min))
-        context["memorial"] = memorial
+                continue  # one malformed record never breaks the page
+
+        # Annotate for rendering only — transient, never persisted.
+        # NB: archived does NOT imply dead — a living sleeve can be shelved —
+        # so this is legitimately None and the template must tolerate it.
+        for sleeve in context.get("object_list") or []:
+            sleeve.died_on = died_by_dbref.get(str(getattr(sleeve, "dbref", "")))
+
         return context
 
 

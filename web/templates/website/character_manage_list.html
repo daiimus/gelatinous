@@ -21,11 +21,8 @@ Manage Sleeves
 
 <header class="plate-head">
   <h1>Sleeve Inventory</h1>
-  <div class="plate-place">
-    {{ account }} <span>·</span> Sleeve Registry
-  </div>
   <div class="plate-stamp">
-    {{ object_list|length }} on record{% if memorial %} &nbsp;·&nbsp; {{ memorial|length }} remembered{% endif %}
+    {{ object_list|length }} on record
   </div>
 </header>
 
@@ -43,9 +40,10 @@ Manage Sleeves
     <table class="table table-dark table-sm">
       <thead>
         <tr>
-          <th style="width: 40%;">Designation</th>
-          <th style="width: 30%;">Decanted</th>
-          <th style="width: 20%;">Status</th>
+          <th style="width: 32%;">Designation</th>
+          <th style="width: 22%;">Decanted</th>
+          <th style="width: 22%;">Died</th>
+          <th style="width: 14%;">Status</th>
           <th style="width: 10%;"></th>
         </tr>
       </thead>
@@ -59,6 +57,9 @@ Manage Sleeves
           </td>
           <td class="text-muted">
             {{ object.db_date_created|date:"Y-m-d H:i" }}
+          </td>
+          <td class="text-muted">
+            {% if object.died_on %}{{ object.died_on|date:"Y-m-d H:i" }}{% else %}&mdash;{% endif %}
           </td>
           <td>
             {% if object.db.archived %}
@@ -84,29 +85,6 @@ Manage Sleeves
   </div>
   {% endif %}
 
-  {% if memorial %}
-  <h2>Memorial Wall</h2>
-  <div class="table-responsive">
-    <table class="table table-dark table-sm memorial-wall">
-      <thead>
-        <tr>
-          <th style="width: 40%;">Designation</th>
-          <th style="width: 30%;">Born</th>
-          <th style="width: 30%;">Died</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for stone in memorial %}
-        <tr>
-          <td>{{ stone.name }}</td>
-          <td>{% if stone.born %}{{ stone.born|date:"Y-m-d" }}{% else %}&mdash;{% endif %}</td>
-          <td>{% if stone.died %}{{ stone.died|date:"Y-m-d" }}{% else %}&mdash;{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
 
 </div>
 {% endblock %}
