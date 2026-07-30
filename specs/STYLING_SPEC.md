@@ -179,7 +179,7 @@ Type is assigned **by role**, not globally:
 | reading | Argon | longer reading passages |
 | display | Xenon | headings, plate heads |
 | data | Neon | figures, labels, status chips |
-| hand | Radon | the memorial wall — the one handwritten note |
+| hand | Radon | reserved for human marks; its one user (the memorial wall) was folded into the sleeve listing |
 
 Because these are variable fonts, `@font-face` declares the axes
 (`font-weight: 200 800`, `font-stretch: 100% 125%`, `font-style: oblique 0deg

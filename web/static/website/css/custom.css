@@ -16,7 +16,9 @@
                                 long-form reading; unused faces are not
                                 downloaded, so it costs nothing to keep
      Xenon    slab serif     -> headings and brand, brutalist weight
-     Radon    handwriting    -> human marks (the memorial wall)
+     Radon    handwriting    -> human marks (reserved; the memorial wall
+                                     that used it was folded into the
+                                     sleeve listing, see #1452)
 
    Krypton (mechanical, Eurostile/DIN lineage) was tried for data and
    dropped: its flat squarish terminals read almost blackletter in
@@ -1214,14 +1216,6 @@ body {
     letter-spacing: normal;
 }
 
-/* The memorial wall is the one place a person wrote something down, so
-   it gets the handwriting cut. Radon is a mono, so the columns still
-   line up — it just stops sounding like a machine. */
-.memorial-heading,
-.memorial-wall, .memorial-wall td, .memorial-wall .sleeve-epitaph {
-    font-family: var(--font-hand);
-    letter-spacing: 0;
-}
 
 /* ================================================================
    MONASPACE CAPABILITIES
@@ -1285,12 +1279,6 @@ h1, h2, h3, h4, h5, h6, .card-title { font-weight: 600; }
 label, .col-form-label, thead th, .btn { letter-spacing: 0.12em; }
 h1, h2, h3 { letter-spacing: 0.08em; }
 
-/* the dead are lighter than the living: archived sleeves recede on the
-   weight axis, so the memorial wall reads as fading rather than merely
-   grey */
-.memorial-wall td, .memorial-wall th {
-    font-weight: 250;
-}
 
 /* 4. WIDTH AXIS on the brand — 118 of 125 gives the lockup a little
       monumentality without a second typeface. */

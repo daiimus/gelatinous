@@ -258,6 +258,18 @@ in-game question with an in-game (and gameable) answer. The corpse does **not**
 depend on the DeathRecord; they meet only at `corpse_ref`, which is allowed to go
 null.
 
+> **IMPLEMENTATION NOTE (2026-07-30):** the memorial is **one surface**, not
+> two. It was briefly built as a separate "Memorial Wall" table beneath the
+> sleeve listing, which duplicated it exactly — every death record pointed at a
+> sleeve still listed above it (32/32, 5/5, 1/1 across the accounts holding
+> records), so the page printed the same sleeves twice. The only fact the wall
+> carried that the listing lacked was the **date of death**, which is now a
+> `Died` column on the sleeve row. This matches the table above ("DeathRecord
+> + archived sleeve") and the "keep it minimal" instruction below.
+>
+> Note **archived does not imply dead** — a living sleeve can be shelved from
+> the web — so the column is legitimately empty for some archived rows.
+
 > **On the OOC exception:** the game's flow is relentlessly in-character —
 > perceived identities, obscured sources, IC records. The sleeve memorial is a
 > **rare sanctioned break** from that: an out-of-character tribute to the person
