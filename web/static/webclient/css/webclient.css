@@ -13,6 +13,16 @@
     --bg-dark: #1a1a1a;
     --bg-medium: #2a2a2a;
     --bg-light: #3a3a3a;
+    /* Amber is the house accent — it marks the control you are using.
+       Same value as the site's --terminal-accent so the client and the
+       website agree. */
+    --amber: #e0a86f;
+    --amber-dim: #b8834f;
+    --amber-glow: rgba(224, 168, 111, 0.3);
+
+    /* Green stays STATE, never decoration: connected, and success
+       messages. It is paired with --yellow (connecting / warning) and
+       --red (disconnected / error), so it has to keep reading as "good". */
     --green: #5fd38d;
     --green-dim: #4a9d6d;
     --text: #e0e0e0;
@@ -242,11 +252,12 @@ html, body {
     font-size: max(var(--font-size), 16px);
     line-height: var(--line-height);
     outline: none;
-    transition: border-color 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 #input-field:focus {
-    border-color: var(--green-dim);
+    border-color: var(--amber-dim);
+    box-shadow: 0 0 0 1px var(--amber-glow);
 }
 
 #input-field::placeholder {
@@ -260,7 +271,7 @@ html, body {
     height: 36px;
     margin-left: 6px;
     background: transparent;
-    color: var(--green-dim);
+    color: var(--amber-dim);
     border: 1px solid var(--border);
     border-radius: 3px;
     font-family: var(--font-mono);
@@ -276,8 +287,8 @@ html, body {
 
 #send-btn:hover,
 #send-btn:active {
-    color: var(--green);
-    border-color: var(--green-dim);
+    color: var(--amber);
+    border-color: var(--amber-dim);
 }
 
 /* ----------------------------------------------------------------
