@@ -24,12 +24,12 @@ Manage Sleeves
   <div class="col">
     <div class="card bg-dark border-secondary">
       <div class="card-body">
-        <h1 class="card-title text-uppercase" style="font-family: 'Courier New', monospace; letter-spacing: 0.1em;">Sleeve Inventory</h1>
+        <h1 class="card-title text-uppercase" style="letter-spacing: 0.1em;">Sleeve Inventory</h1>
         <hr class="border-secondary" />
 
         {% if object_list %}
         <div class="table-responsive">
-          <table class="table table-dark table-sm" style="font-family: 'Courier New', monospace;">
+          <table class="table table-dark table-sm">
             <thead class="border-secondary">
               <tr class="text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.05em;">
                 <th class="border-secondary" style="width: 40%;">Designation</th>
@@ -69,11 +69,11 @@ Manage Sleeves
           </table>
         </div>
         
-        <div class="mt-3 text-muted" style="font-family: 'Courier New', monospace; font-size: 0.85rem;">
+        <div class="mt-3 text-muted" style="font-size: 0.85rem;">
           {{ object_list|length }} sleeve(s) on record
         </div>
         {% else %}
-        <div class="alert alert-dark border-secondary" style="font-family: 'Courier New', monospace;">
+        <div class="alert alert-dark border-secondary">
           <p class="mb-0">NO SLEEVES ON RECORD</p>
           <p class="mb-0 mt-2">
             <a href="{% url 'character-create' %}" class="text-warning">[INITIATE DECANTING PROCESS]</a>
@@ -83,9 +83,9 @@ Manage Sleeves
 
         {% if memorial %}
         <hr class="border-secondary mt-4" />
-        <h2 class="text-uppercase text-muted" style="font-family: 'Courier New', monospace; letter-spacing: 0.1em; font-size: 1rem;">Memorial Wall</h2>
+        <h2 class="text-uppercase text-muted memorial-heading" style="letter-spacing: 0.1em; font-size: 1rem;">Memorial Wall</h2>
         <div class="table-responsive">
-          <table class="table table-dark table-sm" style="font-family: 'Courier New', monospace;">
+          <table class="table table-dark table-sm memorial-wall">
             <thead class="border-secondary">
               <tr class="text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.05em;">
                 <th class="border-secondary" style="width: 40%;">Designation</th>
@@ -108,7 +108,7 @@ Manage Sleeves
             </tbody>
           </table>
         </div>
-        <div class="text-muted" style="font-family: 'Courier New', monospace; font-size: 0.75rem;">
+        <div class="text-muted" style="font-size: 0.75rem;">
           {{ memorial|length }} sleeve(s) remembered
         </div>
         {% endif %}

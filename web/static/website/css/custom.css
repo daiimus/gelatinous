@@ -4,8 +4,43 @@
  * Inspired by Blade Runner and retro-futuristic terminals
  */
 
-/* Import Inter from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* ===== TYPEFACES =====
+   Monaspace (GitHub, SIL OFL — see fonts/LICENSE.txt), self-hosted as
+   variable woff2. Four voices from one superfamily, which is what
+   Monaspace was built for:
+
+     Neon     neo-grotesque  -> prose and UI, the readable voice
+     Xenon    slab serif     -> headings, brutalist weight
+     Krypton  mechanical     -> data, labels, chrome, the machine voice
+     Radon    handwriting    -> human marks (the memorial wall)
+
+   Replaces the Google Fonts @import (an import inside CSS blocks: the
+   browser had to fetch and parse this file before it even discovered
+   the font) and the third-party dependency with it. */
+@font-face {
+    font-family: 'Monaspace Neon';
+    src: url('../fonts/MonaspaceNeonVar.woff2') format('woff2-variations');
+    font-weight: 200 800;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Monaspace Xenon';
+    src: url('../fonts/MonaspaceXenonVar.woff2') format('woff2-variations');
+    font-weight: 200 800;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Monaspace Krypton';
+    src: url('../fonts/MonaspaceKryptonVar.woff2') format('woff2-variations');
+    font-weight: 200 800;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Monaspace Radon';
+    src: url('../fonts/MonaspaceRadonVar.woff2') format('woff2-variations');
+    font-weight: 200 800;
+    font-display: swap;
+}
 
 :root {
     /* Terminal Color Palette - Blade Runner Edition */
@@ -20,12 +55,43 @@
     --terminal-red: #e85555;             /* Softer error red */
     --terminal-border: #404040;          /* Visible but subtle borders */
     --terminal-glow: rgba(95, 211, 141, 0.3); /* Softer green glow */
+
+    /* Type roles — swap a stack here, not in a hundred rules. If a
+       Berkeley Mono licence ever lands, --font-data is the one line. */
+    --font-prose: 'Monaspace Neon', ui-monospace, 'SF Mono', Menlo, monospace;
+    --font-display: 'Monaspace Xenon', ui-monospace, 'SF Mono', Menlo, monospace;
+    --font-data: 'Monaspace Krypton', ui-monospace, 'SF Mono', Menlo, monospace;
+    --font-hand: 'Monaspace Radon', 'Monaspace Neon', cursive;
 }
 
-/* ===== GLOBAL BASE ===== */
-* {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+/* ===== GLOBAL BASE =====
+   Was `* { font-family: Inter !important }`, which also overrode the
+   eight inline `font-family: 'Courier New'` declarations in the sleeve
+   templates — those terminal touches never rendered. Roles now, so the
+   machine voice reaches the data it was meant for. */
+body {
+    font-family: var(--font-prose);
     letter-spacing: 0.01em;
+}
+
+/* headings and chrome: slab weight */
+h1, h2, h3, h4, h5, h6,
+.card-title, .navbar-brand {
+    font-family: var(--font-display);
+}
+
+/* the machine voice: data, labels, controls, code */
+.navbar-nav .nav-link, .dropdown-item,
+table, .table, code, pre, kbd, samp,
+label, .col-form-label, .btn, .badge,
+.footer, small, .small, .text-muted,
+input, textarea, select, .form-control {
+    font-family: var(--font-data);
+}
+
+/* tabular figures wherever numbers line up */
+table, .table, time, .stat, .stats {
+    font-variant-numeric: tabular-nums;
 }
 
 body {
@@ -1105,10 +1171,19 @@ body {
 }
 
 /* 2. The Atlas plate is a self-contained document embedded in the site
-      (see web/templates/website/atlas.html). The global `*` font rule
-      above would flatten its three type roles, so the plate re-asserts
-      them in its own stylesheet; here we only make sure the surrounding
-      chrome leaves its canvas alone. */
+      (see web/templates/website/atlas.html). It carries its own three
+      type roles and re-asserts them inside `.atlas-plate`; with the
+      global `*` rule retired they no longer need to fight, but the
+      scoping stays so the plate remains portable as a standalone file. */
 .atlas-plate canvas {
     letter-spacing: normal;
+}
+
+/* The memorial wall is the one place a person wrote something down, so
+   it gets the handwriting cut. Radon is a mono, so the columns still
+   line up — it just stops sounding like a machine. */
+.memorial-heading,
+.memorial-wall, .memorial-wall td, .memorial-wall .sleeve-epitaph {
+    font-family: var(--font-hand);
+    letter-spacing: 0;
 }
