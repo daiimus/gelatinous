@@ -1543,3 +1543,194 @@ h1 { font-size: var(--size-h1); }
 .border-accent {
     border-color: var(--terminal-accent) !important;
 }
+
+/* ====================================================================
+   THE SHARED COLUMN  (2026-07-30)
+   --------------------------------------------------------------------
+   The homepage used to run two measures on one axis: a centred ~85ch
+   text column inside a shell up to 2100px wide, with the widget row
+   filling that shell. Both were centred, neither shared an edge, and
+   the result read as floating rather than composed.
+
+   Everything now resolves to ONE column. `.container` is that column,
+   so Evennia's navbar (which uses it in base.html — never forked) and
+   page content share their left and right edges for free. Prose is
+   limited by MEASURE instead of by centring, so it keeps a readable
+   line length while still starting on the shared left edge.
+
+   Change --page-col to retune every surface at once.
+   ==================================================================== */
+:root {
+    --page-col: min(92vw, 1140px);
+    --measure: 72ch;
+
+    --s1: 8px;  --s2: 16px; --s3: 24px;
+    --s4: 40px; --s5: 64px; --s6: 96px;
+}
+
+.container, .container-sm, .container-md, .container-lg, .container-xl {
+    max-width: var(--page-col);
+}
+
+/* The Atlas is a map — it wants width, not measure. It breaks out of the
+   column back to the old shell size. Negative margin rather than a
+   transform, which would blur the plate's hairlines. */
+.atlas-plate {
+    width: min(96vw, 2100px);
+    margin-left: calc((100% - min(96vw, 2100px)) / 2);
+}
+
+/* --------------------------------------------------------------------
+   Homepage
+   -------------------------------------------------------------------- */
+.eyebrow {
+    font-family: var(--font-data);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--terminal-text-muted);
+}
+.eyebrow.accent { color: var(--terminal-accent); }
+
+.hero { padding-block: var(--s6) var(--s5); }
+
+/* Sentence case, and big — this is the thesis, not chrome. Overrides the
+   global uppercase heading rule deliberately. */
+.hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(30px, 4.6vw, 54px);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    text-transform: none;
+    text-wrap: balance;
+    max-width: 22ch;
+    color: var(--terminal-text);
+    margin: var(--s3) 0;
+}
+
+.hero .deck {
+    max-width: var(--measure);
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--terminal-text);
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    margin-top: var(--s4);
+    flex-wrap: wrap;
+}
+
+/* One primary action. Everything beside it is visibly quieter. */
+.btn-play {
+    display: inline-block;
+    padding: 11px 26px;
+    font-family: var(--font-data);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    background: var(--terminal-accent);
+    border: 1px solid var(--terminal-accent);
+    color: var(--terminal-bg-dark);
+    transition: background .18s ease, border-color .18s ease;
+}
+.btn-play:hover,
+.btn-play:focus {
+    background: var(--terminal-text);
+    border-color: var(--terminal-text);
+    color: var(--terminal-bg-dark);
+    text-decoration: none;
+}
+
+.btn-quiet {
+    font-family: var(--font-data);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--terminal-text-muted);
+    border-bottom: 1px solid var(--terminal-border);
+    padding-bottom: 2px;
+}
+.btn-quiet:hover,
+.btn-quiet:focus {
+    color: var(--terminal-accent);
+    border-color: var(--terminal-accent-dim);
+    text-decoration: none;
+}
+
+.lore {
+    border-top: 1px solid var(--terminal-border);
+    padding-block: var(--s5);
+}
+.lore p {
+    max-width: var(--measure);
+    color: var(--terminal-text-muted);
+}
+.lore p + p { margin-top: var(--s3); }
+.lore strong { color: var(--terminal-text); font-weight: 500; }
+
+/* Owns the pre-alpha state rather than hedging it as a small link. */
+.status-note {
+    border-left: 2px solid var(--terminal-accent-dim);
+    padding: var(--s2) 0 var(--s2) var(--s3);
+    max-width: var(--measure);
+    margin-bottom: var(--s5);
+}
+.status-note p {
+    color: var(--terminal-text-muted);
+    font-size: 14.5px;
+    margin-bottom: 0;
+}
+.status-note .eyebrow { display: block; margin-bottom: var(--s1); }
+
+/* The figures: one quiet band instead of three cards competing with the
+   pitch. Only "connected now" is jade, because it is the only STATE. */
+.status-band {
+    border-top: 1px solid var(--terminal-border);
+    border-bottom: 1px solid var(--terminal-border);
+    padding-block: var(--s3);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--s3) var(--s4);
+}
+.status-band .figure .n {
+    font-family: var(--font-data);
+    font-size: 21px;
+    font-variant-numeric: tabular-nums;
+    color: var(--terminal-text);
+    line-height: 1.2;
+}
+.status-band .figure .n .live { color: var(--terminal-success); }
+.status-band .figure .l {
+    font-family: var(--font-data);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--terminal-text-muted);
+    margin-top: 2px;
+}
+
+.recent {
+    padding-block: var(--s3) var(--s6);
+    font-size: 13px;
+    color: var(--terminal-text-muted);
+}
+.recent .eyebrow { display: block; margin-bottom: var(--s2); }
+.recent ul {
+    list-style: none;
+    padding-left: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s1) var(--s4);
+    margin-bottom: 0;
+}
+.recent .who { color: var(--terminal-text); }
+.recent .when { font-style: italic; }
+
+@media (max-width: 600px) {
+    .hero { padding-block: var(--s5) var(--s4); }
+    .actions { gap: var(--s2); }
+}

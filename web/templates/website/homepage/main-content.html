@@ -1,24 +1,59 @@
-<p>
-    Welcome to Gelatinous Monster, an <a href="https://github.com/daiimus/gelatinous" target="_blank">in-development</a> 
-    online text-based multiplayer game set in an offworld colony where death is more inconvenience than ending. 
-    You're a freelancer. Digitally immortal, physically disposable. Operating on the fringe and traversing in-between disposable "sleeves" 
-    (bodies, for the uninitiated). You chase contracts, financial security, and whatever else passes for meaning 
-    in a place where resurrection is just another service industry.
-</p>
+{% comment %}
+The homepage pitch. Structure carries the hierarchy: thesis, deck, action,
+lore, honest statement of state.
 
-<hr/>
+"Digitally immortal, physically disposable" used to be the third sentence of
+a paragraph. It is the strongest line on the page and the clearest statement
+of what the game is, so it leads.
+{% endcomment %}
 
-<p class="lore-voice">
-    You are the gelatinous monster. Not the sleeve - that's just meat and water, a seventy-percent solution 
-    of saline and bad decisions wrapped in skin. The real horror is you: the ghost in the machine, 
-    the pattern that persists, the signal refusing to degrade. You pour yourself into these bodies like 
-    consciousness is just another bodily fluid, and when they fail - you simply 
-    find another vessel. Another sleeve. Another temporary arrangement of atoms pretending coherence.
-</p>
+<section class="hero">
+  <p class="eyebrow accent">Domino&rsquo;s Gambit &middot; Off-world colony</p>
 
-<p class="lore-voice">
-    The colony doesn't care what you are. It barely cares that you are. Out here past the edge of 
-    polite civilization, identity is as fluid as the water that comprises most of your stolen biology. 
-    Take contracts. Make enemies. Die spectacularly. The sleeve can be replaced. The question is: 
-    can you?
-</p>
+  <h1>Digitally immortal, physically disposable.</h1>
+
+  <p class="deck">
+    A text-based multiplayer game set in an off-world colony where death is
+    more inconvenience than ending. You&rsquo;re a freelancer. You chase
+    contracts, financial security, and whatever else passes for meaning in a
+    place where resurrection is just another service industry.
+  </p>
+
+  <div class="actions">
+    <a class="btn-play" href="/webclient/">Play online</a>
+    <a class="btn-quiet" href="{% url 'character-create' %}">Make a sleeve</a>
+    <a class="btn-quiet" href="{% url 'atlas' %}">Read the atlas</a>
+  </div>
+</section>
+
+<section class="lore">
+  <p>
+    You are the gelatinous monster. Not the sleeve &mdash; that&rsquo;s just meat and
+    water, a seventy-percent solution of saline and bad decisions wrapped in
+    skin. <strong>The real horror is you:</strong> the ghost in the machine, the
+    pattern that persists, the signal refusing to degrade. You pour yourself
+    into these bodies like consciousness is just another bodily fluid, and when
+    they fail &mdash; you simply find another vessel. Another sleeve. Another
+    temporary arrangement of atoms pretending coherence.
+  </p>
+  <p>
+    The colony doesn&rsquo;t care what you are. It barely cares that you are. Out
+    here past the edge of polite civilization, identity is as fluid as the water
+    that comprises most of your stolen biology. Take contracts. Make enemies.
+    Die spectacularly. The sleeve can be replaced.
+    <strong>The question is: can you?</strong>
+  </p>
+</section>
+
+<div class="status-note">
+  <span class="eyebrow accent">Pre-alpha</span>
+  <p>
+    This is in development and it is not finished. Things break, systems change
+    without warning, and sleeves occasionally die for reasons that aren&rsquo;t your
+    fault. If you want a polished game, come back later. If you want to watch one
+    get built &mdash; and say what it should become &mdash;
+    <a href="https://forum.gel.monster/" target="_blank" rel="noopener">the forum is here</a>
+    and
+    <a href="https://github.com/daiimus/gelatinous" target="_blank" rel="noopener">the source is public</a>.
+  </p>
+</div>

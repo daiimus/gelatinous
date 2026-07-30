@@ -1,19 +1,23 @@
 {% comment %}
-Overrides Evennia's stock widget for one reason: upstream runs the name
-straight into the timestamp — `Drivel&mdash;50 minutes ago`. At Monaspace's
-tracking that reads as a single hyphenated word. Spaces around the dash.
+Overrides Evennia's stock widget twice over:
 
-Kept structurally identical to upstream otherwise, so the card matches its
-neighbours (accounts / database stats) and picks up the same house styling.
+1. Upstream runs the name into the timestamp — `Drivel&mdash;50 minutes ago`.
+   At Monaspace's tracking that reads as one hyphenated word, so the dash gets
+   spaces around it.
+2. It is no longer a card. It sits under the figures band as a quiet inline
+   list, because who logged in recently is context for regulars, not a headline
+   for a first-time reader.
 {% endcomment %}
-<div class="card">
-    <h4 class="card-header text-center">Recently Connected</h4>
-
-    <div class="card-body px-0 py-0">
-        <ul class="list-group">
-            {% for account in accounts_connected_recent %}
-            <li class="list-group-item">{{ account.username }} &mdash; <em>{{ account.last_login|timesince }} ago</em></li>
-            {% endfor %}
-        </ul>
-    </div>
-</div>
+<section class="recent">
+  <span class="eyebrow">Recently connected</span>
+  <ul>
+    {% for account in accounts_connected_recent %}
+    <li>
+      <span class="who">{{ account.username }}</span> &mdash;
+      <span class="when">{{ account.last_login|timesince }} ago</span>
+    </li>
+    {% empty %}
+    <li class="when">Nobody yet.</li>
+    {% endfor %}
+  </ul>
+</section>
