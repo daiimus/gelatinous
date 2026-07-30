@@ -11,13 +11,20 @@
   html{background:var(--ink)}
   body{margin:0;background:var(--ink);color:var(--bone);font-family:var(--serif)}
   .wrap{max-width:1180px;margin:0 auto;padding:20px 20px 40px}
-  header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
+  header{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;
     border-bottom:1px solid var(--line);padding-bottom:10px}
-  h1{font-family:var(--cond);font-weight:600;font-size:24px;letter-spacing:.06em;
-    text-transform:uppercase;margin:0;color:var(--bone)}
+  .title{display:flex;flex-direction:column;gap:2px}
+  h1{font-family:var(--cond);font-weight:600;font-size:34px;letter-spacing:.14em;
+    text-transform:uppercase;margin:0;color:var(--bone);line-height:1}
+  .place{font-family:var(--mono);font-size:11px;letter-spacing:.20em;
+    text-transform:uppercase;color:var(--amber)}
+  .place span{color:var(--bone-dim);padding:0 2px}
   .stamp{font-family:var(--mono);font-size:11px;letter-spacing:.10em;
     color:var(--bone-dim);margin-left:auto;text-align:right}
   .stamp b{color:var(--amber);font-weight:400}
+  .lore{margin:12px 0 0;max-width:62ch;font-size:14.5px;line-height:1.6;
+    color:var(--bone-dim)}
+  .lore em{color:var(--bone);font-style:normal}
   .stage{position:relative;background:var(--plate);border:1px solid var(--line);border-radius:4px;margin-top:14px}
   canvas{display:block;width:100%;height:auto;cursor:crosshair}
   .readout{position:absolute;left:12px;top:10px;opacity:0;transition:opacity .12s;font-family:var(--mono);font-size:12px;color:var(--cyan);
@@ -39,9 +46,18 @@
 
 <div class="wrap">
 <header>
-  <h1>Colony Atlas</h1>
+  <div class="title">
+    <h1>Atlas</h1>
+    <div class="place">Domino's Gambit <span>·</span> Off-World Colony</div>
+  </div>
   <div class="stamp" id="stamp"></div>
 </header>
+<p class="lore">Sixty-one years ago a terraforming mission set down in
+this crater to make a waypoint of it: processor stacks, a gate anchor,
+and a manifest that assumed resupply. The work came up crooked. Then the
+system gateway went — a light nobody has explained, and not one ship
+since — and a staging post became a home. What follows is six decades of
+making do, seen from above.</p>
 
 <div class="stage">
   <div class="readout" id="readout">&nbsp;</div>
