@@ -1734,3 +1734,42 @@ h1 { font-size: var(--size-h1); }
     .hero { padding-block: var(--s5) var(--s4); }
     .actions { gap: var(--s2); }
 }
+
+/* ====================================================================
+   BRAND MARK — the GM orbit  (2026-07-30)
+   --------------------------------------------------------------------
+   Inlined in _menu.html / _menu_iframe.html rather than loaded as an
+   image, so it carries NO colour of its own: every stroke and fill
+   reads a theme token. Change --terminal-accent and the mark follows.
+   Inlining also means no extra request and no fork of base.html.
+
+   The monogram is set in the display face, so the mark is built from
+   the same type system as the headings.
+   ==================================================================== */
+.brand-mark {
+    flex-shrink: 0;
+    margin: 0 14px;
+    overflow: visible;
+}
+.brand-mark .ring  { stroke: var(--terminal-accent); }
+.brand-mark .node  { fill: var(--terminal-accent); }
+.brand-mark .knock { fill: var(--terminal-bg-dark); }
+.brand-mark .mono {
+    fill: var(--terminal-text);
+    font-family: var(--font-display);
+    text-anchor: middle;
+    dominant-baseline: central;
+    letter-spacing: 1px;
+}
+
+/* the mark answers when the wordmark is hovered — one gesture, not two */
+.navbar-brand:hover .brand-mark .ring,
+.navbar-brand:focus .brand-mark .ring { stroke: var(--terminal-text); }
+.navbar-brand:hover .brand-mark .node,
+.navbar-brand:focus .brand-mark .node { fill: var(--terminal-text); }
+.brand-mark .ring,
+.brand-mark .node { transition: stroke .18s ease, fill .18s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+    .brand-mark .ring, .brand-mark .node { transition: none; }
+}
