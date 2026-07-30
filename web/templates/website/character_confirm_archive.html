@@ -10,25 +10,25 @@ Archive Sleeve
 <style>
   /* Caution tape styling for archive confirmation */
   .caution-card {
-    background-color: var(--terminal-bg-medium, #2a2a2a);
+    background-color: var(--terminal-bg-medium, var(--terminal-bg-medium));
     border: none !important;
     padding: 8px;
     background-image: repeating-linear-gradient(
       45deg,
       #e6c547 0px,
       #e6c547 20px,
-      #1a1a1a 20px,
-      #1a1a1a 40px
+      var(--terminal-bg-dark) 20px,
+      var(--terminal-bg-dark) 40px
     );
   }
   
   .caution-card-inner {
-    background-color: var(--terminal-bg-medium, #2a2a2a);
+    background-color: var(--terminal-bg-medium, var(--terminal-bg-medium));
     padding: 2rem;
   }
   
   .archive-danger-btn {
-    background-color: var(--terminal-bg-light, #3a3a3a);
+    background-color: var(--terminal-bg-light, var(--terminal-bg-light));
     border: 2px solid var(--terminal-yellow, #e6c547);
     color: var(--terminal-yellow, #e6c547);
     text-transform: uppercase;
@@ -37,7 +37,7 @@ Archive Sleeve
   }
   
   .archive-danger-btn:hover {
-    background-color: var(--terminal-bg-dark, #1a1a1a);
+    background-color: var(--terminal-bg-dark, var(--terminal-bg-dark));
     border-color: var(--terminal-red, #e85555);
     color: var(--terminal-red, #e85555);
     text-shadow: 0 0 8px rgba(232, 85, 85, 0.6);
