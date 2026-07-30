@@ -77,20 +77,47 @@ Uses iframe-specific menu that removes Forum link to prevent double headers.
         // Target origin is restricted to the configured Discourse URL
         // to prevent leaking auth state to arbitrary embedding domains.
         const TARGET_ORIGIN = '{{ discourse_url|default:"" }}';
+
+        // Measure what the parent must be tall enough to show.
+        //
+        // body.scrollHeight ALONE IS NOT ENOUGH, and this is why the account
+        // dropdown never worked inside the forum header: a Bootstrap dropdown
+        // is absolutely positioned, so it contributes nothing to scrollHeight.
+        // The observer below fired on open, measured the same 80px, posted
+        // 80px, and the menu stayed clipped by the iframe.
+        //
+        // So: take the lowest edge of any OPEN dropdown as well. The element
+        // has layout even while the iframe visually clips it, which is what
+        // makes this measurable at all.
+        function measuredHeight() {
+            let height = document.body.scrollHeight;
+            document.querySelectorAll('.dropdown-menu.show').forEach(function (menu) {
+                const bottom = Math.ceil(menu.getBoundingClientRect().bottom);
+                height = Math.max(height, bottom + 8);  // 8px breathing room
+            });
+            return height;
+        }
+
         function updateHeight() {
             if (!TARGET_ORIGIN) return;  // Don't post if no origin configured
-            const height = document.body.scrollHeight;
             window.parent.postMessage({
                 type: 'gel-header-height',
-                height: height
+                height: measuredHeight()
             }, TARGET_ORIGIN);
         }
-        
+
         // Send height on load and when window resizes
         window.addEventListener('load', updateHeight);
         window.addEventListener('resize', updateHeight);
-        
-        // Monitor for dynamic content changes (dropdown opens, etc.)
+
+        // Bootstrap fires these once the menu has been positioned, so the
+        // measurement above is taken against final geometry rather than
+        // mid-animation. Collapsing on close returns the header to 80px.
+        $(document).on('shown.bs.dropdown hidden.bs.dropdown', function () {
+            requestAnimationFrame(updateHeight);
+        });
+
+        // Still watch for other dynamic content (login state, flash messages).
         const observer = new MutationObserver(updateHeight);
         observer.observe(document.body, {
             childList: true,

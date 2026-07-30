@@ -56,14 +56,34 @@ Removes the Forum link to prevent navigation loops and double headers.
 
       {% block navbar_user %}
       {% if account %}
-      <li class="nav-item">
-        <span class="nav-link">Logged in as {{ account.username }} <span style="opacity: 0;">▼</span></span>
-      </li>
-      <li>
-        <form method="post" action="{% url 'logout' %}" target="_top" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="nav-link btn btn-link">Log Out</button>
-        </form>
+      {% comment %}
+        A real dropdown, matching the main site. This works inside the iframe
+        only because header_only.html now measures the OPEN menu's bottom edge
+        and asks the Discourse component to grow the iframe to fit — a
+        dropdown is absolutely positioned, so body.scrollHeight never saw it
+        and the menu was silently clipped at 80px.
+
+        Every link needs target="_top": without it, navigation loads the
+        destination INSIDE the 80px header frame.
+      {% endcomment %}
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#"
+           id="user_options_iframe" aria-expanded="false" aria-haspopup="true">
+          Logged in as {{ account.username }} <span class="caret"></span>
+        </a>
+        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="user_options_iframe">
+          {% if not account.at_character_limit %}
+          <a class="dropdown-item" href="{% url 'character-create' %}" target="_top">Decant Sleeve</a>
+          {% endif %}
+          <a class="dropdown-item" href="{% url 'character-manage' %}" target="_top">Manage Sleeves</a>
+          <a class="dropdown-item" href="{% url 'atlas' %}" target="_top">Colony Atlas</a>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="{% url 'password_change' %}" target="_top">Change Password</a>
+          <form method="post" action="{% url 'logout' %}" target="_top" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="dropdown-item">Log Out</button>
+          </form>
+        </div>
       </li>
       {% else %}
       <li>
