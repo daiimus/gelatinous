@@ -8,9 +8,11 @@
     --serif:'Iowan Old Style',Palatino,'Palatino Linotype',Georgia,serif;
     --cond:'Avenir Next Condensed','Helvetica Neue Condensed','Arial Narrow',sans-serif;
   }
+  /* __STANDALONE_ONLY__ */
   html{background:var(--ink)}
   body{margin:0;background:var(--ink);color:var(--bone);font-family:var(--serif)}
-  .wrap{max-width:1180px;margin:0 auto;padding:20px 20px 40px}
+  /* __END_STANDALONE__ */
+  .wrap{max-width:1180px;margin:0 auto;padding:4px 0 24px}
   header{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;
     border-bottom:1px solid var(--line);padding-bottom:10px}
   .title{display:flex;flex-direction:column;gap:2px}
