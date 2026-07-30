@@ -1787,6 +1787,35 @@ h1 { font-size: var(--size-h1); }
 
 .plate-stage .table .col-sleeve { width: auto; }
 
+/* Shrink-to-fit columns sit flush against each other, which welded the two
+   timestamps into one run of digits ("04:10 2025-10-14"). Space them, and
+   let the table itself shrink to its content and centre, rather than
+   stretching to the full column and stranding the names in a void. */
+.plate-stage .table {
+    width: auto;
+    min-width: min(100%, 44rem);
+    margin-inline: auto;
+}
+.plate-stage .table th,
+.plate-stage .table td {
+    padding-left: 1.15rem;
+    padding-right: 1.15rem;
+}
+.plate-stage .table th:first-child,
+.plate-stage .table td:first-child {
+    padding-left: 0;
+}
+.plate-stage .table th:last-child,
+.plate-stage .table td:last-child {
+    padding-right: 0;
+}
+
+/* Names are prose, not data — keep them left even though the page centres. */
+.plate-stage .table .col-sleeve { text-align: left; }
+
+/* The status word is a label, not a figure; give it room from the dates. */
+.plate-stage .table .col-status { padding-left: 1.6rem; }
+
 /* Bootstrap ships .sr-only, but it arrives from a CDN. Defined locally so a
    visually-hidden label never becomes a visible one if that request fails. */
 .sr-only {
