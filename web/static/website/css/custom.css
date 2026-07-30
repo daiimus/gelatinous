@@ -1254,13 +1254,19 @@ em, i, cite, blockquote, .flavor {
     font-variation-settings: "slnt" -11;
 }
 
-/* the colony's own voice: slanted slab, a shade lighter than prose, so
-   in-fiction passages read as spoken rather than documented */
+/* The colony's own voice. This was slanted Xenon at weight 320 — slab,
+   slanted and thin, three display treatments stacked on running text,
+   which is exactly why the homepage read harder than the Atlas. The
+   Atlas's lore is the model: upright Neon at normal weight, muted. The
+   voice now differs by TONE and a marginal rule rather than by
+   deforming the letterforms. */
 .lore-voice {
-    font-family: var(--font-display);
-    font-variation-settings: "slnt" -11;
-    font-weight: 320;
+    font-family: var(--font-prose);
+    font-variation-settings: normal;
+    font-weight: 400;
     color: var(--terminal-text-muted);
+    border-left: 1px solid var(--terminal-border);
+    padding-left: 1.15em;
 }
 
 /* 3. WEIGHT AS MEANING, not just emphasis. The axis is continuous, so
@@ -1351,10 +1357,10 @@ p, .lore-voice, .card-body {
     line-height: 1.75;
 }
 
-/* the in-fiction voice sits slightly smaller, so the colony's aside
-   reads as an aside */
+/* full size: an aside earns its distinction from tone, not from being
+   harder to see */
 .lore-voice {
-    font-size: 0.96em;
+    font-size: var(--size-body);
 }
 
 /* ================================================================
