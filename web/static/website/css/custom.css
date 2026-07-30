@@ -1351,3 +1351,19 @@ p, .lore-voice, .card-body {
 .lore-voice {
     font-size: 0.96em;
 }
+
+/* ================================================================
+   THE BODY IS THE PAGE
+
+   Evennia wraps the welcome copy in `.card.text-center`. Everything
+   else on the site earned its panel — the stat cards hold data, the
+   Atlas's stage holds a map — but the page's own prose is not a widget,
+   so it drops the plate, the rule and the shadow and sits directly on
+   the ground, like the masthead and footer already do.
+   ================================================================ */
+.card.text-center {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
