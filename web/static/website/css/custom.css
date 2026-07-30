@@ -66,8 +66,31 @@ hr { border-color: var(--line); }
 .navbar {
     background: transparent !important;
     border-bottom: 0;
-    padding-top: 14px;
-    padding-bottom: 6px;
+    align-items: center;
+    padding: 16px 1rem 4px;
+}
+.navbar-brand { display: flex; align-items: center; }
+.navbar-brand .media { align-items: center; }
+.navbar-brand-logo {
+    height: 34px !important;
+    width: 34px !important;
+    opacity: .85;
+    margin-left: 0 !important;
+}
+.navbar-brand .media-body {
+    font-family: var(--font-cond);
+    font-size: 20px;
+    letter-spacing: .18em;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+.navbar-brand small {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: none;
+    color: var(--bone-dim);
 }
 .navbar-brand, .navbar .nav-link, .navbar .dropdown-toggle {
     font-family: var(--font-mono);
@@ -187,8 +210,17 @@ label, .col-form-label {
 /* ---------- focus, always visible ---------- */
 :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
-/* ---------- footer: same page, quieter voice ---------- */
+/* ---------- footer: same page, quieter voice ----------
+   Evennia pins it (position:absolute; bottom:0; height:60px;
+   line-height:60px) and reserves body margin for it, so it behaves as a
+   band rather than a page ending. Put it back in the flow. */
+body { margin-bottom: 0 !important; }
 footer, .footer {
+    position: static !important;
+    height: auto !important;
+    line-height: 1.6 !important;
+    width: auto !important;
+    padding: 30px 0 40px;
     background: transparent !important;
     border-top: 0;
     color: var(--bone-dim);
