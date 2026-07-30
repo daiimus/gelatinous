@@ -8,113 +8,105 @@ Manage Sleeves
 
 {% load addclass %}
 <style>
-  /* Terminal aesthetic hover effects - Blade Runner edition */
   .sleeve-name-link:hover {
     color: var(--terminal-accent) !important;
     text-shadow: 0 0 8px var(--terminal-glow);
   }
-  
+
   .archive-link:hover {
-    color: #e85555 !important;
+    color: var(--terminal-red) !important;
     text-shadow: 0 0 8px rgba(232, 85, 85, 0.4);
   }
 </style>
 
-<div class="row">
-  <div class="col">
-    <div class="card bg-dark border-secondary">
-      <div class="card-body">
-        <h1 class="card-title text-uppercase" style="letter-spacing: 0.1em;">Sleeve Inventory</h1>
-        <hr class="border-secondary" />
-
-        {% if object_list %}
-        <div class="table-responsive">
-          <table class="table table-dark table-sm">
-            <thead class="border-secondary">
-              <tr class="text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.05em;">
-                <th class="border-secondary" style="width: 40%;">Designation</th>
-                <th class="border-secondary" style="width: 30%;">Decanted</th>
-                <th class="border-secondary" style="width: 20%;">Status</th>
-                <th class="border-secondary" style="width: 10%;"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for object in object_list %}
-              <tr class="border-secondary">
-                <td class="border-secondary">
-                  <a href="{{ object.web_get_detail_url }}" class="text-white sleeve-name-link" style="text-decoration: none;">
-                    {{ object }}
-                  </a>
-                </td>
-                <td class="border-secondary text-muted">
-                  {{ object.db_date_created|date:"Y-m-d H:i" }}
-                </td>
-                <td class="border-secondary">
-                  {% if object.db.archived %}
-                    <span class="text-warning">ARCHIVED</span>
-                  {% else %}
-                    <span class="text-success">ACTIVE</span>
-                  {% endif %}
-                </td>
-                <td class="border-secondary">
-                  {% if not object.db.archived %}
-                    <a href="{{ object.web_get_delete_url }}" class="text-warning archive-link" style="font-size: 0.85rem; text-decoration: none;">
-                      [ARCHIVE]
-                    </a>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        
-        <div class="mt-3 text-muted" style="font-size: 0.85rem;">
-          {{ object_list|length }} sleeve(s) on record
-        </div>
-        {% else %}
-        <div class="alert alert-dark border-secondary">
-          <p class="mb-0">NO SLEEVES ON RECORD</p>
-          <p class="mb-0 mt-2">
-            <a href="{% url 'character-create' %}" class="text-warning">[INITIATE DECANTING PROCESS]</a>
-          </p>
-        </div>
-        {% endif %}
-
-        {% if memorial %}
-        <hr class="border-secondary mt-4" />
-        <h2 class="text-uppercase text-muted memorial-heading" style="letter-spacing: 0.1em; font-size: 1rem;">Memorial Wall</h2>
-        <div class="table-responsive">
-          <table class="table table-dark table-sm memorial-wall">
-            <thead class="border-secondary">
-              <tr class="text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.05em;">
-                <th class="border-secondary" style="width: 40%;">Designation</th>
-                <th class="border-secondary" style="width: 30%;">Born</th>
-                <th class="border-secondary" style="width: 30%;">Died</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for stone in memorial %}
-              <tr class="border-secondary" style="font-size: 0.85rem;">
-                <td class="border-secondary text-white" style="width: 40%;">{{ stone.name }}</td>
-                <td class="border-secondary text-muted" style="width: 30%;">
-                  {% if stone.born %}{{ stone.born|date:"Y-m-d" }}{% else %}&mdash;{% endif %}
-                </td>
-                <td class="border-secondary text-muted" style="width: 30%;">
-                  {% if stone.died %}{{ stone.died|date:"Y-m-d" }}{% else %}&mdash;{% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        <div class="text-muted" style="font-size: 0.75rem;">
-          {{ memorial|length }} sleeve(s) remembered
-        </div>
-        {% endif %}
-
-      </div>
-    </div>
+<header class="plate-head">
+  <h1>Sleeve Inventory</h1>
+  <div class="plate-place">
+    {{ account }} <span>·</span> Sleeve Registry
   </div>
+  <div class="plate-stamp">
+    {{ object_list|length }} on record{% if memorial %} &nbsp;·&nbsp; {{ memorial|length }} remembered{% endif %}
+  </div>
+</header>
+
+<p class="plate-lore">
+  Every body you have worn, on file. The registry does not care which one
+  you are using — only that the pattern persisted long enough to be
+  recorded. Archive a sleeve and it stops being yours; it does not stop
+  having been you.
+</p>
+
+<div class="plate-stage">
+
+  {% if object_list %}
+  <div class="table-responsive">
+    <table class="table table-dark table-sm">
+      <thead>
+        <tr>
+          <th style="width: 40%;">Designation</th>
+          <th style="width: 30%;">Decanted</th>
+          <th style="width: 20%;">Status</th>
+          <th style="width: 10%;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for object in object_list %}
+        <tr>
+          <td>
+            <a href="{{ object.web_get_detail_url }}" class="sleeve-name-link">
+              {{ object }}
+            </a>
+          </td>
+          <td class="text-muted">
+            {{ object.db_date_created|date:"Y-m-d H:i" }}
+          </td>
+          <td>
+            {% if object.db.archived %}
+              <span class="text-warning">Archived</span>
+            {% else %}
+              <span class="text-success">Active</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not object.db.archived %}
+              <a href="{{ object.web_get_delete_url }}" class="archive-link">Archive</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="plate-empty">
+    <p>No sleeves on record.</p>
+    <p><a href="{% url 'character-create' %}">Initiate decanting</a></p>
+  </div>
+  {% endif %}
+
+  {% if memorial %}
+  <h2>Memorial Wall</h2>
+  <div class="table-responsive">
+    <table class="table table-dark table-sm memorial-wall">
+      <thead>
+        <tr>
+          <th style="width: 40%;">Designation</th>
+          <th style="width: 30%;">Born</th>
+          <th style="width: 30%;">Died</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for stone in memorial %}
+        <tr>
+          <td>{{ stone.name }}</td>
+          <td>{% if stone.born %}{{ stone.born|date:"Y-m-d" }}{% else %}&mdash;{% endif %}</td>
+          <td>{% if stone.died %}{{ stone.died|date:"Y-m-d" }}{% else %}&mdash;{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}

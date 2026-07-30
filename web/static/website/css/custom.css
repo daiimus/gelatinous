@@ -1402,3 +1402,125 @@ p, .lore-voice, .card-body {
    these tokens with standalone fallbacks). */
 body { font-size: var(--size-body); }
 h1 { font-size: var(--size-h1); }
+
+/* ================================================================
+   THE PLATE PATTERN
+
+   Promoted out of the Atlas so any page can be a survey plate: a
+   centred masthead (title, designation, stamp, rule), an optional
+   in-fiction caption at the shared measure, then the content in a
+   raised panel. Same tokens, same scale — the Atlas remains the
+   reference implementation, these are the house classes.
+   ================================================================ */
+.plate-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    border-bottom: 1px solid var(--terminal-border);
+    padding-bottom: 12px;
+}
+
+.plate-head h1 {
+    font-family: var(--font-display);
+    font-size: var(--size-h1);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--terminal-text);
+    margin: 0;
+    line-height: 1;
+}
+
+.plate-place {
+    font-family: var(--font-data);
+    font-size: 11px;
+    letter-spacing: 0.20em;
+    text-transform: uppercase;
+    color: var(--terminal-accent);
+}
+.plate-place span { color: var(--terminal-text-muted); padding: 0 2px; }
+
+.plate-stamp {
+    font-family: var(--font-data);
+    font-size: 11px;
+    letter-spacing: 0.10em;
+    color: var(--terminal-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.plate-lore {
+    max-width: 85ch;
+    margin: 14px auto 0;
+    font-size: var(--size-body);
+    line-height: 1.7;
+    text-align: center;
+    color: var(--terminal-text-muted);
+}
+
+.plate-stage {
+    margin-top: 18px;
+    background: var(--terminal-bg-medium);
+    border: 1px solid var(--terminal-border);
+    border-radius: 4px;
+    padding: 4px 16px 12px;
+}
+
+/* section headings inside a plate sit quietly, like the Atlas's
+   control strip rather than a second masthead */
+.plate-stage h2 {
+    font-family: var(--font-data);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--terminal-text-muted);
+    margin: 22px 0 8px;
+}
+
+/* the empty state speaks plainly rather than shouting in brackets */
+.plate-empty {
+    padding: 26px 4px;
+    text-align: center;
+    color: var(--terminal-text-muted);
+    font-size: var(--size-body);
+}
+.plate-empty p { margin: 0 0 6px; }
+.plate-empty p:last-child { margin: 0; }
+
+/* tables inside a plate: no boxed cells, just rules — the Atlas's
+   control-strip restraint applied to data */
+.plate-stage .table th {
+    border-top: 0;
+    border-bottom: 1px solid var(--terminal-border);
+    font-family: var(--font-data);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--terminal-text-muted);
+    padding-top: 14px;
+}
+.plate-stage .table td {
+    border-top: 1px solid var(--terminal-border);
+    vertical-align: middle;
+}
+.plate-stage .table tbody tr:hover { background: var(--terminal-bg-light); }
+.plate-stage .table a { text-decoration: none; }
+.plate-stage .table .sleeve-name-link { color: var(--terminal-text); }
+.plate-stage .table .archive-link {
+    font-family: var(--font-data);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--terminal-text-muted);
+}
+
+/* status reads as state, not decoration: jade for living, amber-warn
+   for archived — and both in the machine voice at label scale */
+.plate-stage .text-success,
+.plate-stage .text-warning {
+    font-family: var(--font-data);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
