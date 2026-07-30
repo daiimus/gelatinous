@@ -1,5 +1,12 @@
 /* ================================================================
-   Domino's Gambit — forum theme
+   Domino's Gambit — forum theme COMPONENT
+
+   Installed as a COMPONENT, deliberately. The forum's existing theme
+   owns the header integration (the JavaScript that iframes
+   /header-only/ from gel.monster — see specs/DISCOURSE_INTEGRATION.md).
+   Shipping this as a standalone theme replaced that theme and took the
+   header with it. As a component it layers on top and leaves the
+   header alone.
 
    Mirrors the site's house style (web/static/website/css/custom.css):
    ink ground, bone text, amber accent, jade reserved for genuine state,
