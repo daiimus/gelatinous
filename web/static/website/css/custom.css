@@ -1330,7 +1330,7 @@ input, textarea, select, .form-control {
    figure typographers land on for comfortable reading.
    ================================================================ */
 .card.text-center > .card-body {
-    max-width: 72ch;
+    max-width: 85ch;
     margin-left: auto;
     margin-right: auto;
 }
@@ -1379,8 +1379,9 @@ p, .lore-voice, .card-body {
      A map especially: more width is literally more colony visible.
    - PROSE should not. At full width on a wide monitor the welcome copy
      would set ~200 characters per line; the eye loses its place on the
-     return sweep somewhere past 90. The 72ch measure stays, and simply
-     centres inside the roomier container.
+     return sweep somewhere past 90. The measure stays at 85ch (owner's
+     call — the upper end of the readable band), centred inside the
+     roomier container.
    ================================================================ */
 .container, .container-sm, .container-md, .container-lg, .container-xl {
     max-width: min(96vw, 2100px);
