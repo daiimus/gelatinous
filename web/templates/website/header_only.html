@@ -48,21 +48,36 @@ Uses iframe-specific menu that removes Forum link to prevent double headers.
             border-radius: 0;
         }
         
-        /* Disable dropdowns in iframe - they render outside bounds */
-        .dropdown-menu {
-            display: none !important;
-        }
-        
-        /* Make dropdown toggle act as regular link */
-        .dropdown-toggle::after {
-            display: none !important;
-        }
-        
-        /* Prevent any scrolling */
+        /* Dropdowns used to be hard-disabled here:
+         *
+         *     .dropdown-menu        { display: none !important; }
+         *     .dropdown-toggle::after { display: none !important; }
+         *
+         * with the note "they render outside bounds" — true at the time,
+         * because the iframe is 80px tall and clips anything below it.
+         *
+         * That is handled now: header_only.html measures an open menu's
+         * bottom edge and asks the Discourse component to grow the iframe
+         * (see the postMessage block below). The rules are gone rather than
+         * commented out in CSS, because `display: none !important` also
+         * stops the menu from having the layout the measurement depends on.
+         *
+         * If dropdowns ever need disabling again, remove the markup in
+         * _menu_iframe.html — do not re-add these rules, or the height
+         * protocol silently measures nothing.
+         */
+
+        /* No scrollbars inside the frame. Height is driven by the parent,
+         * which resizes on the messages we post. */
         html, body {
             height: auto;
             overflow: hidden;
         }
+
+        /* The menu must escape the 80px body box while the parent catches
+         * up, otherwise it is clipped for a frame and measures short. */
+        .navbar { overflow: visible; }
+        .dropdown-menu { z-index: 2000; }
     </style>
 </head>
 <body>
