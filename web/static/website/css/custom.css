@@ -1,0 +1,195 @@
+/* ----------------------------------------------------------------
+   Domino's Gambit — the house style.
+
+   Promoted from the Atlas (COLONY_MAPPING_SPEC §3.5 register): a night
+   plate in blue-biased ink, bone text, amber for emphasis, cyan
+   reserved for DATA. Three type roles — condensed display, serif body,
+   mono for figures. This IS Evennia's sanctioned hook — the stock
+   base template already loads website/css/custom.css after Bootstrap
+   and website.css, so no template override is needed.
+
+   NB: the webclient keeps its own tokens on purpose — game output
+   (ANSI/GMCP) is content, not chrome, and is not styled from here.
+   ---------------------------------------------------------------- */
+
+:root {
+    --ink:      #0b0e14;   /* the plate */
+    --plate:    #11161f;   /* raised surfaces */
+    --plate-hi: #182030;   /* hover / active */
+    --line:     #232c3a;   /* rules and borders */
+    --bone:     #d8d3c4;   /* body text */
+    --bone-dim: #8f8d82;   /* captions, muted */
+    --amber:    #e0a86f;   /* emphasis, links, primary */
+    --amber-hi: #f0bd88;
+    --cyan:     #6fd6e0;   /* DATA only — never decoration */
+    --good:     #5fd38d;   /* semantic, shared with the client */
+    --warn:     #e6c547;
+    --bad:      #e85555;
+
+    --font-cond: 'Avenir Next Condensed', 'Helvetica Neue Condensed',
+                 'Arial Narrow', sans-serif;
+    --font-body: 'Iowan Old Style', Palatino, 'Palatino Linotype',
+                 Georgia, serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas,
+                 'Liberation Mono', monospace;
+}
+
+/* ---------- ground ---------- */
+html, body {
+    background: var(--ink);
+    color: var(--bone);
+    font-family: var(--font-body);
+}
+body { font-size: 15.5px; line-height: 1.6; }
+
+/* ---------- type ---------- */
+h1, h2, h3, h4, h5, .h1, .h2, .h3 {
+    font-family: var(--font-cond);
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--bone);
+}
+h1, .h1 { font-size: 30px; }
+h2, .h2 { font-size: 23px; }
+h3, .h3 { font-size: 19px; }
+.text-muted, small, .small { color: var(--bone-dim) !important; }
+code, pre, kbd, samp, .font-mono, .text-monospace {
+    font-family: var(--font-mono);
+    color: var(--cyan);
+}
+a { color: var(--amber); text-decoration: none; }
+a:hover, a:focus { color: var(--amber-hi); text-decoration: underline; }
+hr { border-color: var(--line); }
+
+/* ---------- navigation ---------- */
+.navbar {
+    background: var(--plate) !important;
+    border-bottom: 1px solid var(--line);
+}
+.navbar-brand, .navbar .nav-link, .navbar .dropdown-toggle {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--bone) !important;
+}
+.navbar-brand { color: var(--amber) !important; letter-spacing: .2em; }
+.navbar .nav-link:hover { color: var(--amber) !important; }
+.dropdown-menu {
+    background: var(--plate);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+}
+.dropdown-item {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    letter-spacing: .08em;
+    color: var(--bone);
+}
+.dropdown-item:hover, .dropdown-item:focus {
+    background: var(--plate-hi);
+    color: var(--amber);
+}
+.dropdown-divider { border-color: var(--line); }
+
+/* ---------- surfaces ---------- */
+.card, .list-group-item, .jumbotron, .modal-content, .well {
+    background: var(--plate);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--bone);
+}
+.card-header, .card-footer {
+    background: transparent;
+    border-color: var(--line);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--bone-dim);
+}
+.table { color: var(--bone); }
+.table td, .table th { border-color: var(--line); }
+.table thead th {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--bone-dim);
+    border-bottom: 1px solid var(--line);
+}
+.table-hover tbody tr:hover { background: var(--plate-hi); color: var(--bone); }
+.table td { font-variant-numeric: tabular-nums; }
+
+/* ---------- controls ---------- */
+.btn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    border-radius: 3px;
+}
+.btn-primary, .btn-success {
+    background: var(--amber);
+    border-color: var(--amber);
+    color: var(--ink);
+}
+.btn-primary:hover, .btn-success:hover {
+    background: var(--amber-hi);
+    border-color: var(--amber-hi);
+    color: var(--ink);
+}
+.btn-secondary, .btn-outline-secondary {
+    background: transparent;
+    border-color: var(--line);
+    color: var(--bone);
+}
+.btn-secondary:hover, .btn-outline-secondary:hover {
+    background: var(--plate-hi);
+    border-color: var(--amber);
+    color: var(--amber);
+}
+.btn-danger { background: var(--bad); border-color: var(--bad); color: var(--ink); }
+.form-control, .custom-select, textarea, input[type="text"],
+input[type="password"], input[type="email"] {
+    background: var(--ink);
+    border: 1px solid var(--line);
+    color: var(--bone);
+    border-radius: 3px;
+}
+.form-control:focus {
+    background: var(--ink);
+    border-color: var(--amber);
+    box-shadow: none;
+    color: var(--bone);
+}
+label, .col-form-label {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--bone-dim);
+}
+::placeholder { color: var(--bone-dim); opacity: .7; }
+
+/* ---------- state ---------- */
+.alert { border-radius: 3px; border-width: 1px; }
+.alert-success { background: var(--plate); border-color: var(--good); color: var(--bone); }
+.alert-warning { background: var(--plate); border-color: var(--warn); color: var(--bone); }
+.alert-danger  { background: var(--plate); border-color: var(--bad);  color: var(--bone); }
+.alert-info    { background: var(--plate); border-color: var(--cyan); color: var(--bone); }
+.badge-primary { background: var(--amber); color: var(--ink); }
+.badge-secondary { background: var(--line); color: var(--bone); }
+
+/* ---------- focus, always visible ---------- */
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* ---------- footer ---------- */
+footer, .footer {
+    border-top: 1px solid var(--line);
+    color: var(--bone-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+}
