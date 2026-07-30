@@ -62,10 +62,12 @@ a { color: var(--amber); text-decoration: none; }
 a:hover, a:focus { color: var(--amber-hi); text-decoration: underline; }
 hr { border-color: var(--line); }
 
-/* ---------- navigation ---------- */
+/* ---------- navigation: seamless with the page ---------- */
 .navbar {
-    background: var(--plate) !important;
-    border-bottom: 1px solid var(--line);
+    background: transparent !important;
+    border-bottom: 0;
+    padding-top: 14px;
+    padding-bottom: 6px;
 }
 .navbar-brand, .navbar .nav-link, .navbar .dropdown-toggle {
     font-family: var(--font-mono);
@@ -185,11 +187,14 @@ label, .col-form-label {
 /* ---------- focus, always visible ---------- */
 :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
-/* ---------- footer ---------- */
+/* ---------- footer: same page, quieter voice ---------- */
 footer, .footer {
-    border-top: 1px solid var(--line);
+    background: transparent !important;
+    border-top: 0;
     color: var(--bone-dim);
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: .08em;
 }
+footer a, .footer a { color: var(--bone-dim); }
+footer a:hover, .footer a:hover { color: var(--amber); }
