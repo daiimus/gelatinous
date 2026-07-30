@@ -264,7 +264,9 @@ null.
 > sleeve still listed above it (32/32, 5/5, 1/1 across the accounts holding
 > records), so the page printed the same sleeves twice. The only fact the wall
 > carried that the listing lacked was the **date of death**, which is now a
-> `Died` column on the sleeve row. This matches the table above ("DeathRecord
+> `Retired` column on the sleeve row — "retired" because archiving covers both
+> a dead sleeve and a living one shelved from the web, and only the former
+> stamps a date. This matches the table above ("DeathRecord
 > + archived sleeve") and the "keep it minimal" instruction below.
 >
 > Note **archived does not imply dead** — a living sleeve can be shelved from

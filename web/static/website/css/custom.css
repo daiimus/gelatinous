@@ -1761,3 +1761,42 @@ h1 { font-size: var(--size-h1); }
 @media (prefers-reduced-motion: reduce) {
     .brand-mark .ring, .brand-mark .node { transition: none; }
 }
+
+/* --------------------------------------------------------------------
+   Sleeve registry columns
+   --------------------------------------------------------------------
+   Percentage widths stretched the fixed-format columns across the full
+   table, so a timestamp's header sat nowhere near the timestamp under
+   it. These columns hold KNOWN formats — a 16-character date, one of two
+   status words, one link — so they shrink to their content and the name
+   column absorbs the slack. `width: 1%` + `nowrap` is the standard way
+   to say "take exactly what you need" in a full-width table.
+   -------------------------------------------------------------------- */
+.plate-stage .table .col-date,
+.plate-stage .table .col-status,
+.plate-stage .table .col-action {
+    width: 1%;
+    white-space: nowrap;
+}
+
+/* Monaspace is monospaced, but state this anyway: these are figures in
+   columns and must stay in register if the face is ever swapped. */
+.plate-stage .table .col-date {
+    font-variant-numeric: tabular-nums;
+}
+
+.plate-stage .table .col-sleeve { width: auto; }
+
+/* Bootstrap ships .sr-only, but it arrives from a CDN. Defined locally so a
+   visually-hidden label never becomes a visible one if that request fails. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
