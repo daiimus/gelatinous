@@ -7,17 +7,28 @@ headings).
 
 ## Installing
 
-Discourse installs themes as a zip or from a git repository. This
-directory is the theme root.
+This is a **theme component**, not a standalone theme — that matters.
+The forum's existing theme owns the header integration (the JavaScript
+that iframes `/header-only/` from gel.monster, documented in
+`specs/DISCOURSE_INTEGRATION.md`). A standalone theme *replaces* that
+one and the forum loses its header; a component layers on top of it.
 
 1. Zip the contents of this directory (not the directory itself):
    `cd web/discourse-theme && zip -r ../../dominos-gambit-theme.zip .`
 2. In Discourse: **Admin → Customize → Themes → Install → From your
    device**, and upload the zip.
-3. Set it as the default theme, and select the **Domino's Gambit**
-   colour scheme (it arrives with the theme).
+3. It appears under **Components**. Open your existing default theme and
+   add it under *Included components*.
+4. Select the **Domino's Gambit** colour scheme on the parent theme.
 
-Re-uploading a newer zip updates the theme in place.
+Re-uploading a newer zip updates the component in place, and the parent
+theme keeps its header either way.
+
+### If the header has already disappeared
+
+Installing a standalone theme does not delete the old one. Go to
+**Admin → Customize → Themes**, select the previous theme, and **Set as
+default** — the header comes back. Then add this component to it.
 
 ## How it is organised
 

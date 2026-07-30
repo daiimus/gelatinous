@@ -2,7 +2,7 @@
   "name": "Domino's Gambit",
   "about_url": "https://gel.monster/",
   "license_url": "https://github.com/daiimus/gelatinous",
-  "component": false,
+  "component": true,
   "assets": {
     "monaspace-neon": "assets/MonaspaceNeonVar.woff2",
     "monaspace-xenon": "assets/MonaspaceXenonVar.woff2"
