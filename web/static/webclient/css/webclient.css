@@ -10,9 +10,12 @@
    Custom properties
    ---------------------------------------------------------------- */
 :root {
-    --bg-dark: #1a1a1a;
-    --bg-medium: #2a2a2a;
-    --bg-light: #3a3a3a;
+    /* Ground, plate, raised — mirrored from the site's --terminal-bg-*.
+       The client used to sit on neutral greys, which read cooler and
+       greyer than every other surface. These are the Atlas values. */
+    --bg-dark: #0b0e14;      /* ink — the ground */
+    --bg-medium: #11161f;    /* plate — the input bar */
+    --bg-light: #182030;     /* plate-hi — the input field itself */
     /* Amber is the house accent — it marks the control you are using.
        Same value as the site's --terminal-accent so the client and the
        website agree. */
@@ -25,11 +28,14 @@
        --red (disconnected / error), so it has to keep reading as "good". */
     --green: #5fd38d;
     --green-dim: #4a9d6d;
-    --text: #e0e0e0;
-    --text-muted: #999999;
+    /* Bone, not white — matches the site's --terminal-text. This is only
+       the DEFAULT colour for unstyled output; ANSI-coloured game text is
+       inline-styled by ansi_up and is unaffected by anything here. */
+    --text: #d8d3c4;         /* bone */
+    --text-muted: #8f8d82;   /* bone-dim */
     --yellow: #e6c547;
     --red: #e85555;
-    --border: #404040;
+    --border: #232c3a;       /* cool rule, matching --terminal-border */
     --glow: rgba(95, 211, 141, 0.3);
 
     --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -262,7 +268,9 @@ html, body {
 
 #input-field::placeholder {
     color: var(--text-muted);
-    opacity: 0.6;
+    /* 0.6 left "Enter command..." at ~2.6:1 against the darker ground.
+       0.8 lifts it to ~3.3:1 — still clearly a hint, actually legible. */
+    opacity: 0.8;
 }
 
 #send-btn {
