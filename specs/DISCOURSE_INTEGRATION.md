@@ -397,6 +397,80 @@ export default apiInitializer("1.8.0", (api) => {
 
 ---
 
+## The header height contract
+
+The header is an iframe, and an iframe **clips its own content**. Anything the
+header needs to draw below its own height — an account dropdown, a flash
+message — is invisible unless the parent is told to grow. That contract spans
+both sides, and every piece of it is load-bearing.
+
+**Site side** (`web/templates/website/header_only.html`):
+
+```js
+window.parent.postMessage({ type: 'gel-header-height', height: measuredHeight() },
+                          TARGET_ORIGIN);
+```
+
+**Forum side** (the theme component's `theme-initializer.gjs`) listens, checks
+the origin, and sets **both** the iframe and its container:
+
+```js
+if (event.origin !== 'https://gel.monster') return;
+iframe.style.height = newHeight;
+container.style.height = newHeight;
+```
+
+### Four things that must all be true
+
+1. **Measure the open menu, not the document.** `document.body.scrollHeight`
+   is not enough: a Bootstrap dropdown is absolutely positioned and never
+   touches it. Take the lowest edge of any `.dropdown-menu.show` via
+   `getBoundingClientRect()`. The element has layout even while the iframe
+   visually clips it, which is what makes it measurable at all.
+2. **Grow the body too.** Asking the parent to resize does not stop the
+   *document* clipping the menu at its own 80px box, and until the body is
+   tall enough the reported height stays wrong. On open, the body takes a
+   `min-height` containing the menu; cleared on close.
+3. **Do not disable dropdowns in CSS.** An earlier attempt shipped
+   `.dropdown-menu { display: none !important }` with the note "they render
+   outside bounds". That was true then, but `display: none` also denies the
+   menu the layout the measurement depends on — with it, the protocol
+   silently measures nothing. **If dropdowns ever need removing, remove the
+   markup, not the layout.**
+4. **Every link needs `target="_top"`.** Without it, navigation loads the
+   destination *inside* the 80px header frame.
+
+### The header must never be cached
+
+`/header-only/` is auth state — it names the logged-in account and renders a
+different menu for anonymous visitors. It was previously
+`Cache-Control: max-age=300, private`, which meant the forum header could keep
+saying "Logged in as X" for five minutes after logout, and made template
+changes appear not to ship. `private` stops shared caches, not the browser's.
+It is now `no_store, no_cache, must_revalidate, private`.
+
+## Forum branding is not inherited
+
+Discourse serves its own icons and does **not** pick anything up from the
+game site. Four settings decide how the forum appears in a tab, a bookmark, a
+phone home screen and a shared link:
+
+| setting | used for |
+|---------|----------|
+| `favicon` | browser tab |
+| `logo_small` | collapsed header |
+| `large_icon` | PWA / manifest |
+| `apple_touch_icon` | iOS home screen |
+
+All four were empty, so the forum showed Discourse's stock icon while the
+game site showed the brand mark. They are uploads, not URLs — set them in
+**Admin → Settings → Branding**, or create an `Upload` and assign it.
+
+> Uploading via `rails runner` fails with `EPERM` if the file was placed with
+> `docker cp`: `image_optim` rewrites the image **in place** and the copied
+> file is not owned by the `discourse` user. `chown discourse:discourse` it
+> first.
+
 ## Testing
 
 ### Test SSO Login

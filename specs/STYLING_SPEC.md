@@ -298,6 +298,17 @@ The standalone SVG uses the same tokens with **literal fallbacks**
 (`var(--terminal-accent, #e0a86f)`), so it renders correctly outside a page —
 verified by rendering it in isolation, not assumed.
 
+**The plate is a disc, not a tile.** Anywhere the mark needs a ground behind
+it (the standalone SVG, the favicon raster) that ground is a circle at the
+ring radius, with transparent corners. A full-bleed `<rect>` renders the mark
+as a dark square in a browser tab and against any non-ink surface. When
+re-exporting the raster, confirm the alpha channel survived (`sips -g
+hasAlpha`) — a flattened render silently re-bakes the square and looks
+identical in a file listing.
+
+The inline navbar mark has no background element at all, which is why it can
+look right on the site while an exported icon looks like a tile.
+
 ### The favicon is named `evennia_logo.png` on purpose
 
 `base.html` hardcodes `rel="icon"` to `website/images/evennia_logo.png`. Rather
