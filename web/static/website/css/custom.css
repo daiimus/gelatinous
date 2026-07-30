@@ -1257,16 +1257,14 @@ em, i, cite, blockquote, .flavor {
 /* The colony's own voice. This was slanted Xenon at weight 320 — slab,
    slanted and thin, three display treatments stacked on running text,
    which is exactly why the homepage read harder than the Atlas. The
-   Atlas's lore is the model: upright Neon at normal weight, muted. The
-   voice now differs by TONE and a marginal rule rather than by
-   deforming the letterforms. */
+   Atlas's lore is the model: upright Neon at normal weight, muted —
+   tone alone marks the voice. No slant, no rule, no indent; the
+   paragraphs sit flush with the prose above them. */
 .lore-voice {
     font-family: var(--font-prose);
     font-variation-settings: normal;
     font-weight: 400;
     color: var(--terminal-text-muted);
-    border-left: 1px solid var(--terminal-border);
-    padding-left: 1.15em;
 }
 
 /* 3. WEIGHT AS MEANING, not just emphasis. The axis is continuous, so
