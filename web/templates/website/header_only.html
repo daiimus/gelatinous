@@ -11,20 +11,19 @@ Uses iframe-specific menu that removes Forum link to prevent double headers.
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gelatinous Monster Header</title>
     
-    <!-- Critical CSS - renders dark background immediately before external CSS loads -->
+    <!-- Critical CSS - renders the ink ground immediately, before external CSS
+         loads. MUST be a literal: --terminal-bg-dark is defined in custom.css,
+         which has not arrived yet, and an undefined custom property makes the
+         whole declaration invalid — which is exactly the flash this prevents.
+         Keep in sync with --terminal-bg-dark. -->
     <style>
         html, body {
-            background-color: var(--terminal-bg-dark) !important;
+            background-color: #0b0e14 !important;
             margin: 0;
             padding: 0;
         }
     </style>
-    
-    <!-- Google Fonts - Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">
     

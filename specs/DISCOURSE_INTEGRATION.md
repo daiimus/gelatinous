@@ -131,28 +131,47 @@ enable local logins = false          # Force SSO only
 ### 3.2 Set Color Values
 
 Use these values (matching the live site palette in `STYLING_SPEC.md` /
-`custom.css` — the muted jade-green "Blade Runner" scheme, **not** the
-old blue accent):
+`custom.css` — the Atlas register: ink ground, bone text, amber accent):
 
 ```
-Primary (text):           #e0e0e0
-Secondary (background):   #1a1a1a
-Tertiary (accent):        #5fd38d   (muted jade green)
-Quaternary (borders):     #404040
-Header Background:        #1a1a1a
-Header Primary:           #e0e0e0
-Highlight (selected):     #4a9d6d   (dimmed jade)
+Primary (text):           #d8d3c4   (bone)
+Primary-medium:           #a9a49a
+Primary-low-mid:          #6b6f78
+Secondary (background):   #0b0e14   (ink)
+Tertiary (accent):        #e0a86f   (amber)
+Quaternary:               #6fd6e0   (cyan — data)
+Header Background:        #0b0e14
+Header Primary:           #d8d3c4
+Highlight:                #e0a86f
+Selected:                 #11161f
+Hover:                    #182030
 Danger (errors):          #e85555
-Success (confirmations):  #5fd38d
-Love (likes):             #e6c547
+Success (confirmations):  #5fd38d   (jade — STATE only)
+Love (likes):             #e0a86f
 ```
+
+If the scheme you are replacing had a `tertiary-med-or-tertiary` override, set
+it too — otherwise the old accent bleeds through in a handful of places.
 
 ### 3.3 Apply to Theme
 
 1. Go to **Admin** → **Customize** → **Themes**
 2. Select your default theme
-3. Under **Colors**, select "Gelatinous Dark"
+3. Under **Colors**, select your scheme
 4. **Save**
+
+> **⚠ There are TWO colour-scheme slots, and both matter.** A theme has
+> `color_scheme_id` (light) and `dark_color_scheme_id` (dark). Discourse serves
+> the dark one to anyone whose OS is in dark mode. Setting only the light slot
+> looks *exactly* like the change never applied — the old palette keeps showing,
+> accent and all.
+>
+> This palette is already dark, so put it in **both** slots unless you have
+> built a genuine light variant.
+>
+> **Colour schemes do not travel with theme components.** Installing a component
+> that declares `color_schemes` in `about.json` does not create the scheme —
+> build it by hand as above, or via the API, and select it on the parent theme.
 
 ---
 
@@ -226,7 +245,7 @@ body {
   width: 100%;
   height: 80px; /* Fixed height prevents reflow */
   z-index: 1031;
-  background-color: #1a1a1a;
+  background-color: #0b0e14; /* ink — match --terminal-bg-dark */
   /* Optimize rendering */
   will-change: contents;
   contain: layout style;
@@ -257,7 +276,7 @@ body {
 
 /* Simplified loading state - no jitter */
 #gel-django-header-container.loading {
-  background-color: #1a1a1a;
+  background-color: #0b0e14; /* ink — match --terminal-bg-dark */
 }
 
 /* Mobile responsive - keep same height as desktop */
@@ -504,11 +523,33 @@ When you update Django header CSS:
 
 ### Discourse Updates
 
+> **⚠ If the admin panel says an upgrade is required, that means REBUILD the
+> container — not press the upgrade button.**
+>
+> Discourse splits updates in two tiers. The admin UI upgrade (`docker_manager`)
+> handles the **app tier**: it runs `bundle install`, `pnpm install`, migrations
+> and `assets:precompile`. It cannot touch the **image tier** — Ruby itself,
+> Node, Postgres, system libraries — because those are baked into
+> `discourse/base`.
+>
+> `docker_manager` compares the running Ruby and base image against what core
+> expects and flags `upgrade_required` when either is behind. **It only warns.**
+> It will still let you press upgrade, and the git pull happens *before*
+> `bundle install` can fail — so a version-skewed site ends up on code it cannot
+> run, with no rollback. Symptoms: every page 500s with errors like
+> `undefined method 'generate_import_map'` or a missing JS package.
+>
+> Recovery, if it happens: the pulled source is only in the container's writable
+> layer, so `git reset --hard <previous-commit>` inside the container plus
+> `docker restart` restores service. Note `sv restart unicorn` is **not**
+> sufficient — it restarts the runit wrapper but can leave the old unicorn
+> master alive serving stale code from memory.
+
 After major Discourse upgrades, test:
 - SSO login flow
 - Header display
 - Theme component functionality
-- Color scheme application
+- Color scheme application — **check dark mode too**, see below
 
 ### Keeping Bootstrap Versions Synced
 

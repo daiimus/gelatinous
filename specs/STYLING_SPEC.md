@@ -2,11 +2,11 @@
 
 ## Overview
 
-Gelatinous uses a custom **terminal/brutalist** web theme — a Blade Runner /
-retro-futuristic corporate-terminal aesthetic layered on top of Bootstrap 4.6.
-The look is built from a small set of CSS custom properties (a dark palette with
-a muted jade-green accent), the **Inter** typeface, uppercase chrome, and subtle
-CRT-style effects (scanlines, flicker, glow).
+Gelatinous uses a custom **terminal/brutalist** web theme layered on top of
+Bootstrap 4.6. Since 2026-07-29 the house style is the **Atlas register**: an
+ink ground, bone text, and a single amber accent, set in the **Monaspace**
+family. The look is built from a small set of CSS custom properties plus
+subtle CRT-style effects (scanlines, flicker, glow).
 
 All styling lives in a single file, `web/static/website/css/custom.css`, which
 overrides Bootstrap and Evennia defaults.
@@ -16,12 +16,29 @@ overrides Bootstrap and Evennia defaults.
 > should be updated to match.
 
 **Design philosophy:**
-- Terminal/brutalist aesthetic with a softened, modern sans-serif (Inter).
-- Dark, low-glare backgrounds (`#1a1a1a`) rather than pure black.
-- Muted jade-green (`#5fd38d`) accent for links, focus, and interactive states.
+- Terminal/brutalist aesthetic, set entirely in Monaspace — the typeface does
+  the terminal work, so the chrome doesn't have to shout.
+- Dark, low-glare ground (`#0b0e14`, Atlas ink) rather than pure black.
+- **Amber (`#e0a86f`) is the accent** — links, focus, emphasis, the control
+  you're using. One accent, used sparingly.
 - Subtle glow / scanline / flicker effects for atmosphere, kept understated.
 - Uppercase navigation, headings, labels, and buttons for a corporate-terminal feel.
 - Minimal decoration, high information density.
+
+### The colour rule (applies to every surface)
+
+**Jade is STATE. Amber is ACCENT. Cyan is DATA.**
+
+Jade `#5fd38d` used to be the accent, and was demoted deliberately. It now
+means one thing — *good* — and it sits in a set with `--terminal-yellow`
+(warning / connecting) and `--terminal-red` (error / disconnected). Spending
+it on decoration dilutes a signal, so plate borders, rules, focus rings, and
+headings take amber instead.
+
+Cyan `#6fd6e0` is reserved for machine-readable data in the Atlas and in-game
+readouts. It is never decoration and never inherited into site chrome.
+
+This rule holds across all four surfaces: website, Atlas, forum, and webclient.
 
 ## File Location & Version Control
 
@@ -76,72 +93,105 @@ stubborn).
   <link rel="stylesheet" href="{% static 'website/css/custom.css' %}">
   ```
 
-  `header_only.html` also inlines a critical-CSS block setting the `#1a1a1a`
-  background immediately (before external CSS loads) and preconnects/loads Inter
-  from Google Fonts, so the embedded navbar matches the main site with no flash.
+  `header_only.html` also inlines a critical-CSS block painting the ink ground
+  immediately, before external CSS loads, so the embedded navbar matches the
+  main site with no flash. **That block must use the literal `#0b0e14`, not
+  `var(--terminal-bg-dark)`** — the token is defined in `custom.css`, which has
+  not loaded yet, and an undefined custom property invalidates the whole
+  declaration. It shipped broken for exactly that reason; keep the literal in
+  sync with the token by hand.
+
+  It no longer loads Google Fonts. Monaspace is self-hosted and same-origin
+  with the iframe, so the header picks it up from `custom.css` directly.
 
 Bootstrap is pinned to **4.6** (CDN in `header_only.html`; Evennia ships 4.6 for
 the main site).
 
 ## Color Palette
 
-Defined as CSS custom properties on `:root` ("Blade Runner Edition"):
+Defined as CSS custom properties on `:root` (the Atlas register):
 
 ```css
 :root {
-    --terminal-bg-dark: #1a1a1a;          /* Softer black — body, navbar, footer, card headers */
-    --terminal-bg-medium: #2a2a2a;        /* Cards, dropdowns, alerts */
-    --terminal-bg-light: #3a3a3a;         /* Form inputs, buttons */
-    --terminal-green: #5fd38d;             /* Muted jade green — hovers, focus, active */
-    --terminal-green-dim: #4a9d6d;         /* Dimmed jade — links, resting state */
-    --terminal-text: #e0e0e0;             /* Softer white — primary text */
-    --terminal-text-muted: #999999;       /* Muted gray — secondary/disabled */
-    --terminal-yellow: #e6c547;            /* Softer warning yellow */
-    --terminal-red: #e85555;               /* Softer error red */
-    --terminal-border: #404040;            /* Visible but subtle borders */
-    --terminal-glow: rgba(95, 211, 141, 0.3); /* Softer jade glow */
+    --terminal-bg-dark: #0b0e14;         /* Atlas ink — the ground */
+    --terminal-bg-medium: #11161f;       /* Atlas plate — cards, raised */
+    --terminal-bg-light: #182030;        /* Atlas plate-hi — inputs, hover */
+    --terminal-accent: #e0a86f;          /* Atlas amber — the highlight */
+    --terminal-accent-dim: #b8834f;      /* Dimmed amber */
+    --terminal-text: #d8d3c4;            /* Atlas bone — creamy, not white */
+    --terminal-text-muted: #8f8d82;      /* Atlas bone-dim */
+    --terminal-success: #5fd38d;         /* jade — STATE only */
+    --terminal-success-dim: #4a9d6d;
+    --terminal-yellow: #e6c547;          /* Softer warning yellow */
+    --terminal-red: #e85555;             /* Softer error red */
+    --terminal-border: #232c3a;          /* Atlas line — cool rule */
+    --terminal-glow: rgba(224, 168, 111, 0.30);   /* amber glow */
+    --terminal-success-glow: rgba(95, 211, 141, 0.3);
 }
 ```
 
 | Variable | Value | Usage |
 |----------|-------|-------|
-| `--terminal-bg-dark` | `#1a1a1a` | Body, navbar, footer, card headers |
-| `--terminal-bg-medium` | `#2a2a2a` | Cards, dropdowns, alerts, list groups |
-| `--terminal-bg-light` | `#3a3a3a` | Form inputs, buttons |
-| `--terminal-green` | `#5fd38d` | Hover/focus/active accents, glow |
-| `--terminal-green-dim` | `#4a9d6d` | Links and buttons at rest |
-| `--terminal-text` | `#e0e0e0` | Primary text |
-| `--terminal-text-muted` | `#999999` | Secondary/disabled text |
-| `--terminal-yellow` | `#e6c547` | Warnings |
+| `--terminal-bg-dark` | `#0b0e14` | Body, navbar, footer, card headers |
+| `--terminal-bg-medium` | `#11161f` | Cards, dropdowns, alerts, list groups |
+| `--terminal-bg-light` | `#182030` | Form inputs, hover |
+| `--terminal-accent` | `#e0a86f` | Links, focus, emphasis, plate chrome |
+| `--terminal-accent-dim` | `#b8834f` | Accent at rest |
+| `--terminal-text` | `#d8d3c4` | Primary text |
+| `--terminal-text-muted` | `#8f8d82` | Secondary/disabled text |
+| `--terminal-success` | `#5fd38d` | **State only:** healthy / active / success |
+| `--terminal-yellow` | `#e6c547` | Warnings, archived |
 | `--terminal-red` | `#e85555` | Errors / destructive actions |
-| `--terminal-border` | `#404040` | Borders, separators |
-| `--terminal-glow` | `rgba(95,211,141,0.3)` | Glow on hover/focus |
+| `--terminal-border` | `#232c3a` | Borders, separators |
+| `--terminal-glow` | `rgba(224,168,111,0.30)` | Glow on hover/focus |
 
-The palette is deliberately *softened* relative to a classic CRT: no pure black,
-no pure `#00ff00`, no pure white — everything is muted toward the Blade Runner
-mood.
+> **`--terminal-green` no longer exists.** It was renamed `--terminal-success`
+> when jade was demoted to state. Anything still referencing the old name is a
+> bug, not a fallback — there is no `--terminal-green` in the file.
+
+The palette is deliberately *softened*: no pure black, no pure white, no pure
+`#00ff00`. Ink is blue-black rather than neutral grey, and text is bone rather
+than white, which is what makes the surfaces read warm instead of clinical.
 
 ## Typography
 
 ### Font Stack
 
-All elements use **Inter** (loaded via Google Fonts `@import` in `custom.css`,
-and preconnected/linked in `header_only.html`), falling back to the system
-sans-serif stack:
+The site is set in **Monaspace**, self-hosted as variable `woff2` files from
+`web/static/website/fonts/` via four `@font-face` blocks. Nothing is loaded
+from Google Fonts.
+
+Type is assigned **by role**, not globally:
 
 ```css
-* {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-    letter-spacing: 0.01em;
-}
+--font-prose:   'Monaspace Neon',  ui-monospace, 'SF Mono', Menlo, monospace;
+--font-reading: 'Monaspace Argon', ui-monospace, 'SF Mono', Menlo, monospace;
+--font-display: 'Monaspace Xenon', ui-monospace, 'SF Mono', Menlo, monospace;
+--font-data:    'Monaspace Neon',  ui-monospace, 'SF Mono', Menlo, monospace;
+--font-hand:    'Monaspace Radon', 'Monaspace Neon', cursive;
+--size-body: 15.5px;
+--size-h1: 32px;
 ```
 
-`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');`
+| Role | Face | Used for |
+|------|------|----------|
+| prose | Neon | body copy, lore |
+| reading | Argon | longer reading passages |
+| display | Xenon | headings, plate heads |
+| data | Neon | figures, labels, status chips |
+| hand | Radon | the memorial wall — the one handwritten note |
 
-**Rationale:** Inter is a humanist sans-serif that keeps the brutalist/terminal
-chrome (uppercase nav, headings, labels) legible and modern rather than literally
-monospaced. The slight `letter-spacing` reinforces the terminal feel without
-hurting readability.
+Because these are variable fonts, `@font-face` declares the axes
+(`font-weight: 200 800`, `font-stretch: 100% 125%`, `font-style: oblique 0deg
+11deg`) and `font-synthesis: none` prevents the browser faking what it can
+already interpolate. Feature settings are `"calt" 1, "liga" 1, "cv01" 1` —
+texture healing, standard ligatures, and the slashed zero. Code ligatures
+(`ss01`–`ss10`) stay **off**.
+
+> **The old `* { font-family: 'Inter' … !important }` rule is gone.** It was a
+> global override that also captured the Atlas plate and made two-thirds of the
+> homepage lore unreadable at the wrong weight and slant. Type is assigned per
+> role now; do not reintroduce a global `!important` font rule.
 
 ### Uppercase Chrome
 
@@ -162,22 +212,28 @@ h1, h2, h3, h4, h5, h6 {
 `custom.css` themes the full Bootstrap 4.6 component set against the palette.
 Highlights:
 
-- **Navbar / footer:** `--terminal-bg-dark`, borderless, no shadow; links uppercase
-  with jade glow (`text-shadow`) on hover. Dropdowns use `--terminal-bg-medium`.
+- **Navbar / footer:** transparent, borderless, no shadow — they blend
+  seamlessly into the body ground rather than banding against it. Links
+  uppercase with an amber glow (`text-shadow`) on hover. Dropdowns use
+  `--terminal-bg-medium`. The footer is unpinned from Evennia's
+  `position: absolute` so tall pages (the Atlas) place it correctly.
 - **Cards:** `--terminal-bg-medium` body, `--terminal-bg-dark` header (uppercase);
   all nested content forced to the dark theme. Brief `terminal-flicker` animation
   on load.
-- **Links:** `--terminal-green-dim` at rest → `--terminal-green` + glow on hover.
+- **Links:** `--terminal-accent-dim` at rest → `--terminal-accent` + glow on hover.
 - **Buttons** (`primary`, `secondary`, `danger`, `warning`): dark fill, colored
   1px border + matching text, uppercase; on hover/focus the border/text brighten
   and gain a `box-shadow` glow in the relevant hue.
-- **Forms:** dark inputs; on focus the border turns jade with a glow, plus a
+- **Forms:** dark inputs; on focus the border turns amber with a glow, plus a
   blinking terminal cursor (`▋`) via `::after`.
-- **Alerts:** dark fill with a colored border/text per state (info=green-dim,
-  success=green, warning=yellow, danger=red).
+- **Alerts:** dark fill with a coloured border/text per state (success=jade,
+  warning=yellow, danger=red) — these are state, so they keep their hues.
 - **Tables / pagination / breadcrumbs / code blocks / list groups / badges:** all
-  re-skinned to the palette; tables use a faint jade row-hover
-  (`rgba(95,211,141,0.08)`).
+  re-skinned to the palette; tables hover on `--terminal-bg-light`.
+- **Plates:** the `.plate-head` / `.plate-place` / `.plate-stamp` / `.plate-lore`
+  / `.plate-stage` / `.plate-empty` set is the house page pattern, shared by the
+  Atlas and the sleeve pages — a centred head, a caption at measure, and a stage
+  holding the content.
 - **Evennia help/channel overrides:** a dedicated block re-skins `.thead-light`,
   `.list-group-item`, `.badge-light`, `.alert-secondary`, etc., so Evennia's
   default web help and channel pages match.
@@ -198,8 +254,9 @@ mimic a CRT refresh.
 ### Glow
 
 Hover/focus states on links, buttons, nav items, and inputs add
-`text-shadow`/`box-shadow` using `--terminal-glow` (jade). Danger/warning variants
-use red/yellow-tinted glows.
+`text-shadow`/`box-shadow` using `--terminal-glow` (amber). Danger/warning
+variants use red/yellow-tinted glows; `--terminal-success-glow` remains jade
+for state indicators.
 
 ### Cursor
 
@@ -211,12 +268,21 @@ keyframe.
 Custom terminal helpers beyond Bootstrap:
 
 ```css
-.terminal-prompt::before { content: ">"; color: var(--terminal-green); }
-.terminal-command { color: var(--terminal-green); }
+.terminal-prompt::before { content: ">"; color: var(--terminal-accent); }
+.terminal-command { color: var(--terminal-accent); }
 .terminal-output  { color: var(--terminal-text-muted); }
 .terminal-error   { color: var(--terminal-red); }
 .terminal-warning { color: var(--terminal-yellow); }
+
+/* Chrome that wants the accent, WITHOUT borrowing a semantic class.
+   Added because the sleeve pages were dressing plates in .text-success /
+   .border-success, which put green on pages with nothing to report. */
+.text-accent   { color: var(--terminal-accent) !important; }
+.border-accent { border-color: var(--terminal-accent) !important; }
 ```
+
+**Use `.text-accent` / `.border-accent` for decoration.** Reach for
+`.text-success` only when the element genuinely reports a healthy state.
 
 ## Responsive Design
 
@@ -226,30 +292,50 @@ adds card spacing. Broader responsive layout/screen-size behavior is covered by
 
 ## Accessibility
 
-- **Focus indicators:** every interactive element gets a `1px solid` jade outline
-  with `2px` offset.
-- **Contrast:** text is `#e0e0e0` on `#1a1a1a` (~13:1, exceeds WCAG AAA for body
-  text). Jade `#5fd38d`, yellow `#e6c547`, and red `#e85555` accents are tuned to
-  remain legible on the dark backgrounds while staying muted.
+- **Focus indicators:** every interactive element gets a `1px solid` amber
+  outline with `2px` offset.
+- **Contrast (measured, not estimated):** bone `#d8d3c4` on ink `#0b0e14` is
+  **12.9:1**, comfortably past WCAG AAA for body text. Muted bone on ink is
+  **5.8:1**; amber-dim on plate is **5.5:1**. Jade, yellow, and red are tuned to
+  stay legible on the dark ground while remaining muted.
+- **Measure:** prose is capped at `85ch` with `1.75` line-height. The Atlas and
+  the homepage share that measure so the two read identically.
 - **Print styles:** `@media print` swaps to black-on-white and hides scanlines,
   navbar, and footer.
 
 ## Discourse Integration
 
 The forum embeds the game navbar via `header_only.html`, which loads the same
-`custom.css`, so the iframe header matches the main site automatically. To make
-the surrounding Discourse theme match, mirror the palette variables
-(`--terminal-bg-dark`, `--terminal-green`, etc.) and the Inter font in a Discourse
-custom theme. See `DISCOURSE_INTEGRATION.md` / `FORUM_INTEGRATION_GUIDE.md`.
+`custom.css`, so the iframe header matches the main site automatically.
+
+The surrounding forum is themed by a **Discourse theme component** —
+"Domino's Gambit", built from `web/discourse-theme/` — plus a matching colour
+scheme. Two things about it are load-bearing:
+
+- **It must be a component (`"component": true`), never a standalone theme.**
+  The header iframe is injected by JavaScript living in a *different*
+  component. Installing a standalone theme and setting it default replaces the
+  parent theme and takes the header with it. This is documented in
+  `DISCOURSE_INTEGRATION.md` Step 4 — and was still got wrong once.
+- **Colour schemes do not travel with components.** The palette has to be
+  created separately and selected on the parent theme, in **both** the light
+  and dark slots (`color_scheme_id` *and* `dark_color_scheme_id`). Setting only
+  the light slot leaves dark-mode viewers on the old palette, which looks
+  exactly like the change never applied.
+
+Fonts ship as theme uploads inside the component, so the forum does not depend
+on gel.monster being reachable for its typography. See
+`DISCOURSE_INTEGRATION.md` / `FORUM_INTEGRATION_GUIDE.md`.
 
 ## Editing & Deploying Styling
 
-Because `custom.css` is untracked and lives only in the live checkout, the normal
-issue → branch → PR → reset deploy flow does **not** apply to it. To change
-styling:
+`custom.css` is **tracked**, so styling ships through the normal
+issue → branch → PR → squash-merge → live reset cycle like any other change.
+The one extra step is `collectstatic`, because static assets are hashed:
 
-1. Edit `<LIVE_DIR>/web/static/website/css/custom.css` directly (back it up first).
-2. Run `collectstatic` in the container to gather it into the served static dir:
+1. Edit `web/static/website/css/custom.css` in the **dev repo** and ship it
+   through the deploy cycle.
+2. Run `collectstatic` in the container so the change gets a new hashed URL:
    ```bash
    docker exec <CONTAINER> evennia collectstatic --noinput --settings settings.py
    ```
@@ -259,11 +345,10 @@ styling:
    ```
 4. Hard-refresh the browser (cache-bust) to confirm.
 
-> **Tech-debt note for maintainers:** keeping the only copy of `custom.css` as an
-> untracked deployment file is fragile — it is invisible to code review and lost
-> on a fresh clone. A future cleanup should either track it under a non-ignored
-> path (e.g. a source dir that `collectstatic` consumes) or commit it to the repo
-> and let the deploy carry it. Until then, edit it in place and back it up.
+> **Resolved 2026-07-29.** The tech debt described above — the only copy of
+> `custom.css` living as an untracked deployment file — is what destroyed the
+> theme. It is now tracked via narrow `.gitignore` exceptions and carried by
+> the deploy. Do not reverse this.
 
 ## Customization Guide
 
@@ -271,11 +356,16 @@ Recolor by editing the `:root` variables — every component references them:
 
 ```css
 :root {
-    --terminal-green: #5fd38d;     /* accent */
-    --terminal-bg-dark: #1a1a1a;   /* background */
-    --terminal-glow: rgba(95, 211, 141, 0.3);
+    --terminal-accent: #e0a86f;    /* accent */
+    --terminal-bg-dark: #0b0e14;   /* ground */
+    --terminal-glow: rgba(224, 168, 111, 0.30);
 }
 ```
+
+Changing the accent means changing it in **four** places, or the surfaces drift
+apart: `custom.css`, `scripts/atlas/template.html` (which inherits the tokens
+with standalone fallbacks), `web/static/webclient/css/webclient.css`, and the
+Discourse colour scheme.
 
 Adjust glow by changing the `--terminal-glow` alpha and the `text-shadow`/
 `box-shadow` blur radii. Disable scanlines by removing the `body::before` block.
@@ -321,3 +411,50 @@ Cloudflare's edge TTL expired — the file kept one URL forever, and the edge
 served a stale copy through several rounds of "I don't see a difference".
 Hashed filenames give every change a new URL. **After changing any static
 asset: `evennia collectstatic --noinput`, then reload.**
+
+## Addendum (2026-07-30) — the last two surfaces
+
+The house style now covers **all four surfaces**: website, Atlas, forum, and
+webclient. This addendum records the two that landed last, plus the rule that
+finally made the palette coherent.
+
+**The webclient joined the palette** (`web/static/webclient/css/webclient.css`,
+#1434 / #1436). It had been on its own neutral greys (`#1a1a1a` / `#e0e0e0` /
+`#404040`), which is why it read cooler and greyer than every other page. Six
+tokens now mirror the site's — ink, plate, plate-hi, bone, bone-dim, cool rule
+— and the command bar's focus ring and send button moved from jade to amber.
+Every colour in that file resolves through `:root`, so the tokens do the whole
+shell.
+
+> **The webclient is safe to restyle.** `webclient.css` styles **chrome only**.
+> Game output colour comes from `ansi_up` with `use_classes = false` (see
+> `web/static/webclient/js/gel.js`) — i.e. inline styles straight off the
+> xterm-256 table. No stylesheet change can affect ANSI or GMCP output. This
+> was verified before touching it, and remains the reason the client can be
+> themed without risking the game.
+
+**What stayed jade, deliberately:** `#connection-state .state-dot.connected`
+and `.sys-msg.success`. Both sit in a green/yellow/red triad
+(connected/connecting/disconnected, success/warning/error). Recolouring them
+would have broken a signal to fix a decoration.
+
+**Contrast was measured, not eyeballed:** output text 12.9:1, input text
+10.9:1, muted status 5.8:1, amber send button 5.5:1. The input placeholder was
+the one weak spot at 2.6:1 (it had been 2.4:1), so its opacity went from `0.6`
+to `0.8`, giving 3.6:1 — still clearly a hint, now legible.
+
+**The sleeve pages stopped borrowing semantic classes** (#1432). The
+Psychophysical Evaluation Report plate was dressed in `.text-success` /
+`.border-success` — border, header, both `<hr>` rules — plus the Active label.
+`.text-accent` / `.border-accent` exist now for chrome that just wants the
+accent. If a class says *success*, the element should be reporting success.
+
+**Evennia's `recently-connected-widget.html` is overridden locally**, purely to
+put spaces around the em dash (`Drivel — 50 minutes ago`, not
+`Drivel—50 minutes ago`, which at Monaspace's tracking reads as one word). It
+is otherwise structurally identical to upstream. Overriding the template is the
+sanctioned route; do not patch Evennia in place.
+
+**The forum's theme is a component, and its palette needs both slots** — see
+the Discourse Integration section above. Both facts cost an outage's worth of
+confusion to learn.
