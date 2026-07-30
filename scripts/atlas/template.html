@@ -5,12 +5,19 @@
   .atlas-plate .place,.atlas-plate .stamp,.atlas-plate .controls,
   .atlas-plate .readout,.atlas-plate .zval{font-family:var(--mono) !important}
   :root{
-    --ink:#0b0e14; --plate:#11161f; --line:#232c3a;
-    --bone:#d8d3c4; --bone-dim:#8f8d82;
-    --cyan:#6fd6e0; --amber:#e0a86f;
-    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
-    --serif:'Iowan Old Style',Palatino,'Palatino Linotype',Georgia,serif;
-    --cond:'Avenir Next Condensed','Helvetica Neue Condensed','Arial Narrow',sans-serif;
+    /* Embedded in the site, these resolve to the house tokens so the
+       Atlas and the homepage cannot disagree on colour, face or scale.
+       Opened as a standalone file the fallbacks take over. */
+    --ink:var(--terminal-bg-dark,#0b0e14);
+    --plate:var(--terminal-bg-medium,#11161f);
+    --line:var(--terminal-border,#232c3a);
+    --bone:var(--terminal-text,#d8d3c4);
+    --bone-dim:var(--terminal-text-muted,#8f8d82);
+    --amber:var(--terminal-accent,#e0a86f);
+    --cyan:#6fd6e0;                      /* DATA only, never inherited */
+    --mono:var(--font-data,ui-monospace,'SF Mono',Menlo,Consolas,monospace);
+    --serif:var(--font-prose,'Iowan Old Style',Palatino,Georgia,serif);
+    --cond:var(--font-display,'Avenir Next Condensed','Arial Narrow',sans-serif);
   }
   /* __STANDALONE_ONLY__ */
   html{background:var(--ink)}
@@ -20,7 +27,7 @@
   header{display:flex;flex-direction:column;align-items:center;gap:6px;
     border-bottom:1px solid var(--line);padding-bottom:12px;text-align:center}
   .title{display:flex;flex-direction:column;gap:3px;align-items:center}
-  h1{font-family:var(--cond);font-weight:600;font-size:34px;letter-spacing:.14em;
+  h1{font-family:var(--cond);font-weight:600;font-size:var(--size-h1,32px);letter-spacing:.14em;
     text-transform:uppercase;margin:0;color:var(--bone);line-height:1}
   .place{font-family:var(--mono);font-size:11px;letter-spacing:.20em;
     text-transform:uppercase;color:var(--amber)}
@@ -28,7 +35,7 @@
   .stamp{font-family:var(--mono);font-size:11px;letter-spacing:.10em;
     color:var(--bone-dim);text-align:center}
   .stamp b{color:var(--amber);font-weight:400}
-  .lore{margin:14px auto 0;max-width:85ch;font-size:14.5px;line-height:1.7;
+  .lore{margin:14px auto 0;max-width:85ch;font-size:var(--size-body,15.5px);line-height:1.7;
     color:var(--bone-dim);text-align:center}
   .lore em{color:var(--bone);font-style:normal}
   .stage{position:relative;background:var(--plate);border:1px solid var(--line);border-radius:4px;margin-top:14px}

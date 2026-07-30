@@ -92,6 +92,11 @@
     --font-display: 'Monaspace Xenon', ui-monospace, 'SF Mono', Menlo, monospace;
     --font-data: 'Monaspace Neon', ui-monospace, 'SF Mono', Menlo, monospace;
     --font-hand: 'Monaspace Radon', 'Monaspace Neon', cursive;
+
+    /* shared sizes — the Atlas reads these too, so the two pages
+       cannot drift apart on scale */
+    --size-body: 15.5px;
+    --size-h1: 32px;
 }
 
 /* ===== GLOBAL BASE =====
@@ -1392,3 +1397,8 @@ p, .lore-voice, .card-body {
     max-width: 100%;
 }
 .atlas-plate .wrap { max-width: 100%; }
+
+/* One scale for both surfaces (see the Atlas's own :root, which reads
+   these tokens with standalone fallbacks). */
+body { font-size: var(--size-body); }
+h1 { font-size: var(--size-h1); }
