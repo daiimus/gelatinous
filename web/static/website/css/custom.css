@@ -9,10 +9,16 @@
    variable woff2. Four voices from one superfamily, which is what
    Monaspace was built for:
 
-     Neon     neo-grotesque  -> prose and UI, the readable voice
-     Xenon    slab serif     -> headings, brutalist weight
-     Krypton  mechanical     -> data, labels, chrome, the machine voice
+     Argon    humanist       -> prose, the reading voice (open apertures,
+                                built for continuous text)
+     Neon     neo-grotesque  -> data, labels, chrome, the interface voice
+                                (neutral, clean under letter-spacing)
+     Xenon    slab serif     -> headings and brand, brutalist weight
      Radon    handwriting    -> human marks (the memorial wall)
+
+   Krypton (mechanical, Eurostile/DIN lineage) was tried for data and
+   dropped: its flat squarish terminals read almost blackletter in
+   uppercase chrome.
 
    Replaces the Google Fonts @import (an import inside CSS blocks: the
    browser had to fetch and parse this file before it even discovered
@@ -30,8 +36,8 @@
     font-display: swap;
 }
 @font-face {
-    font-family: 'Monaspace Krypton';
-    src: url('../fonts/MonaspaceKryptonVar.woff2') format('woff2-variations');
+    font-family: 'Monaspace Argon';
+    src: url('../fonts/MonaspaceArgonVar.woff2') format('woff2-variations');
     font-weight: 200 800;
     font-display: swap;
 }
@@ -58,10 +64,10 @@
 
     /* Type roles — swap a stack here, not in a hundred rules. If a
        Berkeley Mono licence ever lands, --font-data is the one line. */
-    --font-prose: 'Monaspace Neon', ui-monospace, 'SF Mono', Menlo, monospace;
+    --font-prose: 'Monaspace Argon', ui-monospace, 'SF Mono', Menlo, monospace;
     --font-display: 'Monaspace Xenon', ui-monospace, 'SF Mono', Menlo, monospace;
-    --font-data: 'Monaspace Krypton', ui-monospace, 'SF Mono', Menlo, monospace;
-    --font-hand: 'Monaspace Radon', 'Monaspace Neon', cursive;
+    --font-data: 'Monaspace Neon', ui-monospace, 'SF Mono', Menlo, monospace;
+    --font-hand: 'Monaspace Radon', 'Monaspace Argon', cursive;
 }
 
 /* ===== GLOBAL BASE =====
