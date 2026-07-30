@@ -1218,7 +1218,7 @@ body {
       lends the space between neighbours so dense text stops looking
       ragged. This is why a mono holds up as body copy at all. */
 body, input, textarea, select, button {
-    font-feature-settings: "calt" 1, "liga" 1;
+    font-feature-settings: "calt" 1, "liga" 1, "cv01" 1;
     font-variant-ligatures: contextual;
 }
 
@@ -1304,4 +1304,37 @@ input, textarea, select, .form-control {
    the lockup reads as drawn rather than typed */
 .navbar-brand {
     font-feature-settings: "calt" 1, "cv01" 1, "cv02" 1;
+}
+
+/* ================================================================
+   PROSE MEASURE
+
+   Evennia's homepage wraps the welcome copy in `.card.text-center`,
+   which at full width sets ~95 characters per line and centres them.
+   Centred ragged-both-sides text is hard work in any face and harder in
+   a monospace, where every character is the same width and the eye has
+   no rhythm to grab. Left-align, and hold the measure near 70ch — the
+   figure typographers land on for comfortable reading.
+   ================================================================ */
+.card.text-center > .card-body {
+    max-width: 72ch;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.card.text-center > .card-body > p,
+.card.text-center > .card-body > .lore-voice {
+    text-align: left;
+}
+
+/* monospace needs more leading than a proportional face: the uniform
+   widths make lines optically tighter than they measure */
+p, .lore-voice, .card-body {
+    line-height: 1.75;
+}
+
+/* the in-fiction voice sits slightly smaller, so the colony's aside
+   reads as an aside */
+.lore-voice {
+    font-size: 0.96em;
 }
