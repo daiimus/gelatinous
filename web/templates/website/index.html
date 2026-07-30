@@ -1,0 +1,58 @@
+{% extends "website/base.html" %}
+
+{% comment %}
+Overrides Evennia's homepage layout.
+
+Upstream stacks a centred card for the pitch and then three equal-weight
+widget cards. That gave the page three different alignments — a narrow
+centred text column inside a much wider shell, with full-width cards below
+— so nothing shared an edge and the page read as floating.
+
+This version puts everything on the single `.container` column: masthead,
+hero, lore, status, figures, footer. The prose is limited by MEASURE
+(max-width in ch) rather than by centring, so it keeps its readable line
+length while still starting on the shared left edge.
+
+The three widget cards are replaced by one quiet band of figures. They are
+for us and the regulars, not for a first-time reader, so they no longer
+compete with the pitch. `num_others` ("1116 other objects") is deliberately
+dropped — it is a builder's metric and means nothing to a visitor.
+{% endcomment %}
+
+{% block titleblock %}Home{% endblock %}
+
+{% block header_ext %}
+{% endblock %}
+
+{% block content %}
+
+{% include "website/homepage/main-content.html" %}
+
+<div class="status-band">
+  <div class="figure">
+    <div class="n">{% if num_accounts_connected %}<span class="live">{{ num_accounts_connected }}</span>{% else %}0{% endif %}</div>
+    <div class="l">Connected now</div>
+  </div>
+  <div class="figure">
+    <div class="n">{{ num_accounts_registered }}</div>
+    <div class="l">Accounts</div>
+  </div>
+  <div class="figure">
+    <div class="n">{{ num_characters }}</div>
+    <div class="l">Sleeves</div>
+  </div>
+  <div class="figure">
+    <div class="n">{{ num_rooms }}</div>
+    <div class="l">Rooms</div>
+  </div>
+  <div class="figure">
+    <div class="n">{{ num_accounts_connected_recent }}</div>
+    <div class="l">Active this week</div>
+  </div>
+</div>
+
+{% include "website/homepage/recently-connected-widget.html" %}
+
+{% include "website/homepage/evennia-widget.html" %}
+
+{% endblock %}
