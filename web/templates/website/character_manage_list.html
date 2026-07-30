@@ -40,11 +40,11 @@ Manage Sleeves
     <table class="table table-dark table-sm">
       <thead>
         <tr>
-          <th style="width: 32%;">Designation</th>
-          <th style="width: 22%;">Decanted</th>
-          <th style="width: 22%;">Died</th>
-          <th style="width: 14%;">Status</th>
-          <th style="width: 10%;"></th>
+          <th class="col-sleeve">Sleeve</th>
+          <th class="col-date">Decanted</th>
+          <th class="col-date">Retired</th>
+          <th class="col-status">Status</th>
+          <th class="col-action"><span class="sr-only">Actions</span></th>
         </tr>
       </thead>
       <tbody>
@@ -55,20 +55,20 @@ Manage Sleeves
               {{ object }}
             </a>
           </td>
-          <td class="text-muted">
+          <td class="col-date text-muted">
             {{ object.db_date_created|date:"Y-m-d H:i" }}
           </td>
-          <td class="text-muted">
+          <td class="col-date text-muted">
             {% if object.died_on %}{{ object.died_on|date:"Y-m-d H:i" }}{% else %}&mdash;{% endif %}
           </td>
-          <td>
+          <td class="col-status">
             {% if object.db.archived %}
               <span class="text-warning">Archived</span>
             {% else %}
               <span class="text-accent">Active</span>
             {% endif %}
           </td>
-          <td>
+          <td class="col-action">
             {% if not object.db.archived %}
               <a href="{{ object.web_get_delete_url }}" class="archive-link">Archive</a>
             {% endif %}

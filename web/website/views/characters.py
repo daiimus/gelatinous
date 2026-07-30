@@ -424,7 +424,12 @@ class CharacterManageView(EvenniaCharacterManageView):
     record pointed at a sleeve still present above it (32/32, 5/5 and 1/1
     across the accounts holding records), so the page printed the same
     sleeves twice. The only fact the wall carried that the listing did not
-    was the date of death, which is now a column.
+    was the date of death, which is now the RETIRED column.
+
+    "Retired" rather than "Died" on purpose: archiving covers both a sleeve
+    that died and a living one shelved from the web, and retirement is the
+    word that spans both. Only death currently stamps a date, so a shelved
+    living sleeve shows an em dash.
 
     Cause and location never appear here, and the internal corpse/sleeve
     dbrefs are never rendered.
