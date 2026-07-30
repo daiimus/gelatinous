@@ -211,7 +211,7 @@ if (DATA.staff)
     el.className = 'staffonly on';
 document.getElementById('stamp').innerHTML =
   `${DATA.cells.length} rooms &nbsp;·&nbsp; ${DATA.links.length} ways`
-  + (DATA.staff && MASTS.length ? ` &nbsp;·&nbsp; ${MASTS.length} masts` : '');
+  + (DATA.staff && MASTS.length ? ` &nbsp;·&nbsp; ${MASTS.length} relays` : '');
 const DPR=Math.min(window.devicePixelRatio||1,2);
 cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
 cv.style.aspectRatio=`${W} / ${H}`;
