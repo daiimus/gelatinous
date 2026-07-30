@@ -17,9 +17,14 @@ of what the game is, so it leads.
     place where resurrection is just another service industry.
   </p>
 
-  {# One action, deliberately. Secondary routes (sleeve creation, the atlas)
-     live in the nav; they'll come back here if and when help, lore and the
-     atlas merge into one destination worth pointing at. #}
+  {% comment %}
+    One action, deliberately. Secondary routes (sleeve creation, the atlas)
+    live in the nav; they'll come back here if and when help, lore and the
+    atlas merge into one destination worth pointing at.
+
+    NB: {# #} is SINGLE-LINE ONLY in Django. A multi-line one renders as
+    visible text on the page, which is exactly what happened here.
+  {% endcomment %}
   <div class="actions">
     <a class="btn-play" href="/webclient/">Play online</a>
   </div>
