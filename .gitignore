@@ -9,6 +9,12 @@ server/.static/
 # Ignore collected/third-party static files but track our webclient source
 web/static/*
 !web/static/webclient/
+# ...and the website theme we author (Evennia's sanctioned custom.css hook)
+!web/static/website/
+web/static/website/*
+!web/static/website/css/
+web/static/website/css/*
+!web/static/website/css/custom.css
 world/__pycache__/
 typeclasses/__pycache__/
 commands/__pycache__/
