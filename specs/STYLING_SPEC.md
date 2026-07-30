@@ -207,6 +207,118 @@ h1, h2, h3, h4, h5, h6 {
 }
 ```
 
+## Layout & Measure
+
+**One column, everywhere.** `.container` *is* that column, which is what makes
+Evennia's navbar (defined in `base.html`, which we never fork) share its left
+and right edges with page content for free.
+
+```css
+:root {
+    --page-col: min(92vw, 1140px);   /* the shared column */
+    --measure: 72ch;                 /* readable line length */
+    --s1: 8px;  --s2: 16px; --s3: 24px;
+    --s4: 40px; --s5: 64px; --s6: 96px;
+}
+```
+
+**Prose is bounded by MEASURE, not by centring.** This is the distinction that
+matters. The homepage previously centred an ~85ch text column inside a shell up
+to 2100px wide and then filled that shell with a widget row — two centred
+objects of different widths, sharing no edge, which reads as floating rather
+than composed. Text now starts on the shared left edge and simply *stops* at
+`--measure`.
+
+Use the spacing scale (`--s1`…`--s6`) rather than ad-hoc margins.
+
+**The Atlas opts out**, because a map wants width, not measure:
+
+```css
+.atlas-plate {
+    width: min(96vw, 2100px);
+    margin-left: calc((100% - min(96vw, 2100px)) / 2);
+}
+```
+
+A negative margin rather than a `transform`, which would soften the plate's
+hairlines.
+
+> **Retuning:** `--page-col` moves every surface at once. Note it currently
+> narrows table-heavy pages (Manage Sleeves) relative to the wider shell they
+> had before; widen the token or give those pages the Atlas break-out treatment
+> if that proves too tight.
+
+### Homepage structure
+
+Hierarchy carries the argument: **thesis → deck → one action → lore → honest
+statement of state → figures**. The classes are `.hero`, `.deck`, `.actions`
+with `.btn-play` (exactly one primary) and `.btn-quiet` (secondary),
+`.status-note` (the pre-alpha statement), `.status-band` with `.figure`, and
+`.recent`.
+
+Two rules worth keeping:
+
+- **One primary action.** Previously the page had none — "play" was the eighth
+  item in the nav — so a reader who finished the lore had nowhere to go.
+- **Figures are not features.** Accounts / sleeves / rooms are context for
+  regulars, not a headline for a first-time reader, so they sit in one quiet
+  band rather than three cards competing with the pitch. Only "connected now"
+  is jade, because it is the only figure that is STATE.
+
+## Brand Mark
+
+The **GM orbit mark**: a bounding circle, one inclined orbit (−20°), a dashed
+inner track, a broken polar axis, and two bodies on their paths, with a **GM**
+monogram in a knockout disc at the centre so the orbit passes *behind* the
+letters instead of through them.
+
+**It carries no colour of its own.** The mark is inlined into
+`_menu.html` and `_menu_iframe.html` (both ours — no `base.html` fork), and
+every stroke and fill reads a theme token:
+
+```css
+.brand-mark .ring  { stroke: var(--terminal-accent); }
+.brand-mark .node  { fill:   var(--terminal-accent); }
+.brand-mark .knock { fill:   var(--terminal-bg-dark); }
+.brand-mark .mono  { fill:   var(--terminal-text); font-family: var(--font-display); }
+```
+
+Change `--terminal-accent` and the mark follows. The monogram is set in the
+display face, so the logo is built from the same type system as the headings.
+Inlining also costs no HTTP request.
+
+**Two cuts, deliberately.** The detailed mark turns to mud below ~60px:
+
+| cut | where | what changes |
+|-----|-------|--------------|
+| full | `web/static/website/images/gm-orbit.svg`, forum, social | all five elements, hairline strokes |
+| compact | navbar, favicon | dashes and axis dropped, strokes thickened, monogram enlarged |
+
+The standalone SVG uses the same tokens with **literal fallbacks**
+(`var(--terminal-accent, #e0a86f)`), so it renders correctly outside a page —
+verified by rendering it in isolation, not assumed.
+
+### The favicon is named `evennia_logo.png` on purpose
+
+`base.html` hardcodes `rel="icon"` to `website/images/evennia_logo.png`. Rather
+than fork it, our static dir **shadows** that path — `STATICFILES_DIRS` is
+searched before the package (confirmed with
+`finders.find('website/images/evennia_logo.png', all=True)`), so our file wins
+and the favicon changes on both the site and the webclient with no template
+edit. Do not "tidy" the filename; the link target is not ours to change.
+
+> **⚠ `evennia_logo.png` and `favicon.ico` were untracked live-only files** —
+> no repo copy, no history, invisible to review, gone on a clean checkout. The
+> same fragility that destroyed `custom.css`. Both are committed now, and the
+> original cube is preserved as `legacy-cube-logo.png` / `legacy-favicon.ico`
+> rather than overwritten.
+>
+> Adding anything to `web/static/website/images/` needs a narrow `.gitignore`
+> exception (the directory is ignored by default, like `css/` and `fonts/`).
+> **Verify with `git add --dry-run`** — `git check-ignore -v` prints the
+> matching rule even when that rule is a *negation*, which is easy to misread
+> as "still ignored".
+
 ## Component Styling
 
 `custom.css` themes the full Bootstrap 4.6 component set against the palette.
@@ -367,6 +479,11 @@ apart: `custom.css`, `scripts/atlas/template.html` (which inherits the tokens
 with standalone fallbacks), `web/static/webclient/css/webclient.css`, and the
 Discourse colour scheme.
 
+The **brand mark follows automatically** wherever it is inlined, since it reads
+the tokens — but `web/static/website/images/gm-orbit.svg` carries literal
+fallbacks for standalone use, and `evennia_logo.png` is a raster export. Both
+need re-rendering by hand if the accent moves.
+
 Adjust glow by changing the `--terminal-glow` alpha and the `text-shadow`/
 `box-shadow` blur radii. Disable scanlines by removing the `body::before` block.
 
@@ -458,3 +575,18 @@ sanctioned route; do not patch Evennia in place.
 **The forum's theme is a component, and its palette needs both slots** — see
 the Discourse Integration section above. Both facts cost an outage's worth of
 confusion to learn.
+
+**The homepage was restructured and the brand mark landed** (#1440, #1442,
+#1446, #1448). Both are documented in *Layout & Measure* and *Brand Mark*
+above rather than here, because they are current behaviour rather than
+history. Two lessons from doing it, though:
+
+**`{# … #}` is single-line only in Django.** A three-line one rendered as body
+copy on the live homepage. Multi-line comments need `{% comment %}` /
+`{% endcomment %}`. Swept the whole template tree afterwards; that was the only
+instance.
+
+**Evennia's `recently-connected-widget.html` is overridden**, not patched
+upstream — for the spaced em dash and to render the list as a flat strip rather
+than a card. `index.html` is overridden for the same reason: the widget layout
+is where the two-measure problem lived.
