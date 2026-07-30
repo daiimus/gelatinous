@@ -1800,3 +1800,39 @@ h1 { font-size: var(--size-h1); }
     white-space: nowrap;
     border: 0;
 }
+
+/* ====================================================================
+   CENTRED COMPOSITION, LEFT-ALIGNED PROSE  (2026-07-30)
+   --------------------------------------------------------------------
+   The page reads as centred — column, headline, deck, action, figures —
+   but multi-line paragraphs keep a left edge.
+
+   This is the display-vs-running-text rule, not a preference. Centring
+   short display type costs nothing: the eye never has to find the start
+   of a new line. Centring a six-line paragraph breaks the return sweep,
+   because every line begins at a different horizontal position. WCAG
+   1.4.8 only forbids JUSTIFIED text, so centred prose is a readability
+   problem rather than a formal failure — which is why books, newspapers
+   and docs all centre headlines and left-align body copy.
+
+   The Atlas works centred for the same reason: its lore is short enough
+   to be display type.
+   ==================================================================== */
+.hero { text-align: center; }
+.hero h1 { margin-inline: auto; }
+.hero .deck { margin-inline: auto; }
+.actions { justify-content: center; }
+
+/* Running text: block centred on the page, words left-aligned. */
+.lore p {
+    margin-inline: auto;
+    text-align: left;
+}
+
+/* Keeps its accent rule and left-aligned text, but sits centred. */
+.status-note { margin-inline: auto; }
+
+/* Figures and the recent list are single-line items — display tier. */
+.status-band { text-align: center; }
+.recent { text-align: center; }
+.recent ul { justify-content: center; }
