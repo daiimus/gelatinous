@@ -82,12 +82,6 @@ folder and edit it to add/remove links to the menu.
           </form>
         </div>
       </li>
-      <li>
-        <form method="post" action="{% url 'logout' %}" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="nav-link btn btn-link">Log Out</button>
-        </form>
-      </li>
       {% else %}
       <li>
         <a class="nav-link" href="{% url 'login' %}?next={{ request.path }}">Log In</a>
