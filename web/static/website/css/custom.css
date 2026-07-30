@@ -63,14 +63,23 @@
     --terminal-bg-dark: #1a1a1a;         /* Softer black background */
     --terminal-bg-medium: #2a2a2a;       /* Medium dark for cards */
     --terminal-bg-light: #3a3a3a;        /* Light dark for inputs */
-    --terminal-green: #5fd38d;           /* Muted terminal green (jade) */
-    --terminal-green-dim: #4a9d6d;       /* Dimmed jade green */
-    --terminal-text: #e0e0e0;            /* Softer white text */
-    --terminal-text-muted: #999999;      /* Muted gray */
+    /* Palette aligned to the Atlas (2026-07-29): its calm comes from
+       bone-cream text and an amber accent rather than white-on-black
+       with a jade highlight. */
+    --terminal-accent: #e0a86f;          /* Atlas amber — the highlight */
+    --terminal-accent-dim: #b8834f;      /* Dimmed amber */
+    --terminal-text: #d8d3c4;            /* Atlas bone — creamy, not white */
+    --terminal-text-muted: #8f8d82;      /* Atlas bone-dim */
+
+    /* jade is no longer the accent; it stays for genuine STATE
+       (success, connected, healthy) so meaning is not overloaded */
+    --terminal-success: #5fd38d;
+    --terminal-success-dim: #4a9d6d;
     --terminal-yellow: #e6c547;          /* Softer warning yellow */
     --terminal-red: #e85555;             /* Softer error red */
     --terminal-border: #404040;          /* Visible but subtle borders */
-    --terminal-glow: rgba(95, 211, 141, 0.3); /* Softer green glow */
+    --terminal-glow: rgba(224, 168, 111, 0.30); /* amber glow */
+    --terminal-success-glow: rgba(95, 211, 141, 0.3);
 
     /* Type roles — swap a stack here, not in a hundred rules. If a
        Berkeley Mono licence ever lands, --font-data is the one line. */
@@ -137,7 +146,7 @@ body {
 }
 
 .navbar-nav .nav-link:hover {
-    color: var(--terminal-green) !important;
+    color: var(--terminal-accent) !important;
     text-shadow: 0 0 8px var(--terminal-glow);
 }
 
@@ -152,7 +161,7 @@ body {
 
 .navbar .dropdown-item:hover {
     background-color: var(--terminal-bg-dark);
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     text-shadow: 0 0 8px var(--terminal-glow);
 }
 
@@ -173,7 +182,7 @@ body {
 }
 
 .footer a.text-white:hover {
-    color: var(--terminal-green) !important;
+    color: var(--terminal-accent) !important;
     text-shadow: 0 0 8px var(--terminal-glow);
 }
 
@@ -223,12 +232,12 @@ body {
 
 /* ===== LINKS ===== */
 a {
-    color: var(--terminal-green-dim);
+    color: var(--terminal-accent-dim);
     text-decoration: none;
 }
 
 a:hover {
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     text-decoration: none;
     text-shadow: 0 0 8px var(--terminal-glow);
 }
@@ -236,8 +245,8 @@ a:hover {
 /* ===== BUTTONS ===== */
 .btn-primary {
     background-color: var(--terminal-bg-light);
-    border: 1px solid var(--terminal-green-dim);
-    color: var(--terminal-green-dim);
+    border: 1px solid var(--terminal-accent-dim);
+    color: var(--terminal-accent-dim);
     text-transform: uppercase;
     letter-spacing: 0.1em;
 }
@@ -245,8 +254,8 @@ a:hover {
 .btn-primary:hover,
 .btn-primary:focus {
     background-color: var(--terminal-bg-dark);
-    border-color: var(--terminal-green);
-    color: var(--terminal-green);
+    border-color: var(--terminal-accent);
+    color: var(--terminal-accent);
     text-shadow: 0 0 8px var(--terminal-glow);
     box-shadow: 0 0 12px var(--terminal-glow);
 }
@@ -309,7 +318,7 @@ a:hover {
 
 .form-control:focus {
     background-color: var(--terminal-bg-medium);
-    border-color: var(--terminal-green);
+    border-color: var(--terminal-accent);
     box-shadow: 0 0 8px var(--terminal-glow);
     color: var(--terminal-text);
 }
@@ -329,7 +338,7 @@ label {
 /* ===== ALERTS ===== */
 .alert-info {
     background-color: var(--terminal-bg-medium);
-    border: 1px solid var(--terminal-green-dim);
+    border: 1px solid var(--terminal-accent-dim);
     color: var(--terminal-text);
 }
 
@@ -341,8 +350,8 @@ label {
 
 .alert-success {
     background-color: var(--terminal-bg-medium);
-    border: 1px solid var(--terminal-green);
-    color: var(--terminal-green);
+    border: 1px solid var(--terminal-success);
+    color: var(--terminal-success);
 }
 
 .alert-warning {
@@ -391,16 +400,16 @@ label {
 }
 
 .pagination .page-link:hover {
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     background-color: var(--terminal-bg-dark);
-    border-color: var(--terminal-green);
+    border-color: var(--terminal-accent);
     text-shadow: 0 0 8px var(--terminal-glow);
 }
 
 .pagination .page-item.active .page-link {
     background-color: var(--terminal-bg-dark);
-    border-color: var(--terminal-green);
-    color: var(--terminal-green);
+    border-color: var(--terminal-accent);
+    color: var(--terminal-accent);
 }
 
 .pagination .page-item.disabled .page-link {
@@ -416,11 +425,11 @@ label {
 }
 
 .breadcrumb-item a {
-    color: var(--terminal-green-dim);
+    color: var(--terminal-accent-dim);
 }
 
 .breadcrumb-item a:hover {
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     text-shadow: 0 0 8px var(--terminal-glow);
 }
 
@@ -434,7 +443,7 @@ label {
 
 /* ===== CODE BLOCKS ===== */
 code {
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     background-color: var(--terminal-bg-dark);
     padding: 2px 4px;
     border-radius: 0;
@@ -459,7 +468,7 @@ pre {
 }
 
 .text-success {
-    color: var(--terminal-green) !important;
+    color: var(--terminal-success) !important;
 }
 
 .text-warning {
@@ -568,12 +577,12 @@ body::before {
 /* ===== UTILITY CLASSES ===== */
 .terminal-prompt::before {
     content: ">";
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     margin-right: 0.5em;
 }
 
 .terminal-command {
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
 }
 
 .terminal-output {
@@ -592,7 +601,7 @@ body::before {
 
 /* Green border cards (success/active states) */
 .border-success {
-    border-color: var(--terminal-green) !important;
+    border-color: var(--terminal-success) !important;
 }
 
 /* Dark backgrounds */
@@ -607,7 +616,7 @@ body::before {
 
 /* ===== ACCESSIBILITY ===== */
 :focus {
-    outline: 1px solid var(--terminal-green);
+    outline: 1px solid var(--terminal-accent);
     outline-offset: 2px;
 }
 
@@ -617,7 +626,7 @@ a:focus,
 input:focus,
 select:focus,
 textarea:focus {
-    outline: 1px solid var(--terminal-green);
+    outline: 1px solid var(--terminal-accent);
     outline-offset: 2px;
 }
 
@@ -663,7 +672,7 @@ body {
 }
 
 .navbar-nav .nav-link:hover {
-    color: var(--terminal-green) !important;
+    color: var(--terminal-accent) !important;
     text-shadow: 0 0 5px var(--terminal-glow);
 }
 
@@ -678,7 +687,7 @@ body {
 
 .navbar .dropdown-item:hover {
     background-color: var(--terminal-bg-dark);
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     text-shadow: 0 0 5px var(--terminal-glow);
 }
 
@@ -697,7 +706,7 @@ body {
 }
 
 .footer a.text-white:hover {
-    color: var(--terminal-green) !important;
+    color: var(--terminal-accent) !important;
     text-shadow: 0 0 5px var(--terminal-glow);
 }
 
@@ -747,12 +756,12 @@ body {
 
 /* ===== LINKS ===== */
 a {
-    color: var(--terminal-green-dim);
+    color: var(--terminal-accent-dim);
     text-decoration: none;
 }
 
 a:hover {
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     text-decoration: none;
     text-shadow: 0 0 5px var(--terminal-glow);
 }
@@ -760,8 +769,8 @@ a:hover {
 /* ===== BUTTONS ===== */
 .btn-primary {
     background-color: var(--terminal-bg-light);
-    border: 1px solid var(--terminal-green-dim);
-    color: var(--terminal-green-dim);
+    border: 1px solid var(--terminal-accent-dim);
+    color: var(--terminal-accent-dim);
     text-transform: uppercase;
     letter-spacing: 0.1em;
 }
@@ -769,8 +778,8 @@ a:hover {
 .btn-primary:hover,
 .btn-primary:focus {
     background-color: var(--terminal-bg-dark);
-    border-color: var(--terminal-green);
-    color: var(--terminal-green);
+    border-color: var(--terminal-accent);
+    color: var(--terminal-accent);
     text-shadow: 0 0 5px var(--terminal-glow);
     box-shadow: 0 0 10px var(--terminal-glow);
 }
@@ -833,7 +842,7 @@ a:hover {
 
 .form-control:focus {
     background-color: var(--terminal-bg-medium);
-    border-color: var(--terminal-green);
+    border-color: var(--terminal-accent);
     box-shadow: 0 0 5px var(--terminal-glow);
     color: var(--terminal-text);
 }
@@ -853,7 +862,7 @@ label {
 /* ===== ALERTS ===== */
 .alert-info {
     background-color: var(--terminal-bg-medium);
-    border: 1px solid var(--terminal-green-dim);
+    border: 1px solid var(--terminal-accent-dim);
     color: var(--terminal-text);
 }
 
@@ -865,8 +874,8 @@ label {
 
 .alert-success {
     background-color: var(--terminal-bg-medium);
-    border: 1px solid var(--terminal-green);
-    color: var(--terminal-green);
+    border: 1px solid var(--terminal-success);
+    color: var(--terminal-success);
 }
 
 .alert-warning {
@@ -915,16 +924,16 @@ label {
 }
 
 .pagination .page-link:hover {
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     background-color: var(--terminal-bg-dark);
-    border-color: var(--terminal-green);
+    border-color: var(--terminal-accent);
     text-shadow: 0 0 5px var(--terminal-glow);
 }
 
 .pagination .page-item.active .page-link {
     background-color: var(--terminal-bg-dark);
-    border-color: var(--terminal-green);
-    color: var(--terminal-green);
+    border-color: var(--terminal-accent);
+    color: var(--terminal-accent);
 }
 
 .pagination .page-item.disabled .page-link {
@@ -940,11 +949,11 @@ label {
 }
 
 .breadcrumb-item a {
-    color: var(--terminal-green-dim);
+    color: var(--terminal-accent-dim);
 }
 
 .breadcrumb-item a:hover {
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     text-shadow: 0 0 5px var(--terminal-glow);
 }
 
@@ -958,7 +967,7 @@ label {
 
 /* ===== CODE BLOCKS ===== */
 code {
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     background-color: var(--terminal-bg-dark);
     padding: 2px 4px;
     border-radius: 0;
@@ -983,7 +992,7 @@ pre {
 }
 
 .text-success {
-    color: var(--terminal-green) !important;
+    color: var(--terminal-success) !important;
 }
 
 .text-warning {
@@ -1092,12 +1101,12 @@ body::before {
 /* ===== UTILITY CLASSES ===== */
 .terminal-prompt::before {
     content: ">";
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
     margin-right: 0.5em;
 }
 
 .terminal-command {
-    color: var(--terminal-green);
+    color: var(--terminal-accent);
 }
 
 .terminal-output {
@@ -1116,7 +1125,7 @@ body::before {
 
 /* Green border cards (success/active states) */
 .border-success {
-    border-color: var(--terminal-green) !important;
+    border-color: var(--terminal-success) !important;
 }
 
 /* Dark backgrounds */
@@ -1131,7 +1140,7 @@ body::before {
 
 /* ===== ACCESSIBILITY ===== */
 :focus {
-    outline: 1px solid var(--terminal-green);
+    outline: 1px solid var(--terminal-accent);
     outline-offset: 2px;
 }
 
@@ -1141,7 +1150,7 @@ a:focus,
 input:focus,
 select:focus,
 textarea:focus {
-    outline: 1px solid var(--terminal-green);
+    outline: 1px solid var(--terminal-accent);
     outline-offset: 2px;
 }
 
