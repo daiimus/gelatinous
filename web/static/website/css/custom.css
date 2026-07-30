@@ -198,3 +198,36 @@ footer, .footer {
 }
 footer a, .footer a { color: var(--bone-dim); }
 footer a:hover, .footer a:hover { color: var(--amber); }
+
+/* ---------- Bootstrap dark utilities, retuned ----------
+   Pages built with bg-dark / table-dark / border-secondary (Manage
+   Sleeves, character detail) inherit the house style instead of
+   Bootstrap's blue-grey. */
+.bg-dark { background: var(--plate) !important; }
+.bg-secondary { background: var(--plate-hi) !important; }
+.border-secondary { border-color: var(--line) !important; }
+.text-white, .text-light { color: var(--bone) !important; }
+.table-dark {
+    background: transparent;
+    color: var(--bone);
+    font-family: var(--font-mono);
+}
+.table-dark th, .table-dark td, .table-dark thead th {
+    border-color: var(--line) !important;
+    background: transparent;
+}
+.table-dark thead th { color: var(--bone-dim); }
+.table-dark tbody tr:hover { background: var(--plate-hi); }
+.card.bg-dark { border-color: var(--line) !important; }
+.card-title {
+    font-family: var(--font-cond);
+    letter-spacing: .12em;
+    color: var(--bone);
+}
+
+/* Bootstrap's success-green reads as terminal phosphor; in the house
+   style the warm accent carries "live/attested" and green stays for
+   genuine state (connection, health). */
+.text-success { color: var(--amber) !important; }
+.border-success { border-color: var(--line) !important; }
+.card .card-header.bg-dark { background: var(--plate-hi) !important; }

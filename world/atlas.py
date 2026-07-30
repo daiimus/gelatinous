@@ -7,11 +7,12 @@ the shell and the Django process find the template and sprite library.
 import base64
 import json
 import os
+import re
 
 from world.mapping import export_map
 
 
-def build_atlas_html(game_dir=".", staff=False):
+def build_atlas_html(game_dir=".", staff=False, fragment=False):
     data = export_map()
 
     sprite_dir = os.path.join(game_dir, "scripts/atlas/sprites/final")
@@ -61,4 +62,12 @@ def build_atlas_html(game_dir=".", staff=False):
 
     template = open(os.path.join(game_dir,
                                  "scripts/atlas/template.html")).read()
-    return template.replace("/*__DATA__*/null", json.dumps(data))
+    html = template.replace("/*__DATA__*/null", json.dumps(data))
+    if fragment:
+        # served inside the site's own page: the shell owns <title> and
+        # the page background, and Evennia's sticky footer needs the
+        # body margin the standalone rules would clear
+        html = re.sub(r"/\* __STANDALONE_ONLY__ \*/.*?/\* __END_STANDALONE__ \*/",
+                      "", html, flags=re.S)
+        html = re.sub(r"<title>.*?</title>\s*", "", html, flags=re.S)
+    return html
