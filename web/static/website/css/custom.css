@@ -27,24 +27,32 @@
     font-family: 'Monaspace Neon';
     src: url('../fonts/MonaspaceNeonVar.woff2') format('woff2-variations');
     font-weight: 200 800;
+    font-stretch: 100% 125%;
+    font-style: oblique 0deg 11deg;
     font-display: swap;
 }
 @font-face {
     font-family: 'Monaspace Xenon';
     src: url('../fonts/MonaspaceXenonVar.woff2') format('woff2-variations');
     font-weight: 200 800;
+    font-stretch: 100% 125%;
+    font-style: oblique 0deg 11deg;
     font-display: swap;
 }
 @font-face {
     font-family: 'Monaspace Argon';
     src: url('../fonts/MonaspaceArgonVar.woff2') format('woff2-variations');
     font-weight: 200 800;
+    font-stretch: 100% 125%;
+    font-style: oblique 0deg 11deg;
     font-display: swap;
 }
 @font-face {
     font-family: 'Monaspace Radon';
     src: url('../fonts/MonaspaceRadonVar.woff2') format('woff2-variations');
     font-weight: 200 800;
+    font-stretch: 100% 125%;
+    font-style: oblique 0deg 11deg;
     font-display: swap;
 }
 
@@ -1193,3 +1201,75 @@ body {
     font-family: var(--font-hand);
     letter-spacing: 0;
 }
+
+/* ================================================================
+   MONASPACE CAPABILITIES
+
+   Verified from the shipped woff2s: axes are wght 200-800,
+   wdth 100-125, slnt -11..0; features include calt (texture healing),
+   liga, ss01-ss10, cv01-cv62, frac, sups/subs, case.
+   ================================================================ */
+
+/* 1. TEXTURE HEALING — Monaspace's signature. Monospace normally leaves
+      airy gaps around narrow glyphs (i, l, t) and cramps wide ones; calt
+      lends the space between neighbours so dense text stops looking
+      ragged. This is why a mono holds up as body copy at all. */
+body, input, textarea, select, button {
+    font-feature-settings: "calt" 1, "liga" 1;
+    font-variant-ligatures: contextual;
+}
+
+/* No synthesis: these faces carry real weight and slant axes, so let
+   the design do the work instead of the browser smearing glyphs. */
+html {
+    font-synthesis: none;
+}
+
+/* 2. TRUE ITALICS via the slant axis, not a faked oblique. Reserved for
+      the in-fiction voice — the homepage's second-person passages read as
+      the colony talking to you rather than the interface. */
+em, i, cite, blockquote, .flavor {
+    font-style: normal;
+    font-variation-settings: "slnt" -11;
+}
+
+/* the colony's own voice: slanted slab, a shade lighter than prose, so
+   in-fiction passages read as spoken rather than documented */
+.lore-voice {
+    font-family: var(--font-display);
+    font-variation-settings: "slnt" -11;
+    font-weight: 320;
+    color: var(--terminal-text-muted);
+}
+
+/* 3. WEIGHT AS MEANING, not just emphasis. The axis is continuous, so
+      hierarchy can be built from weight instead of size — and "faded"
+      can be expressed without relying on colour alone (which matters
+      for anyone who can't distinguish our greys). */
+body { font-weight: 350; }
+h1, .card-title { font-weight: 650; }
+h2, h3 { font-weight: 600; }
+h4, h5, h6 { font-weight: 550; }
+.navbar-nav .nav-link, label, .col-form-label, .btn, thead th {
+    font-weight: 500;
+}
+.text-muted, small, .small { font-weight: 300; }
+
+/* the dead are lighter than the living: archived sleeves recede on the
+   weight axis, so the memorial wall reads as fading rather than merely
+   grey */
+.memorial-wall td, .memorial-wall th {
+    font-weight: 250;
+}
+
+/* 4. WIDTH AXIS on the brand — 118 of 125 gives the lockup a little
+      monumentality without a second typeface. */
+.navbar-brand {
+    font-variation-settings: "wdth" 118;
+    font-weight: 600;
+}
+
+/* 5. Numeric niceties the faces already carry. */
+.frac, .fraction { font-feature-settings: "frac" 1; }
+sup { font-feature-settings: "sups" 1; }
+sub { font-feature-settings: "subs" 1; }
