@@ -10,42 +10,43 @@
   }
   html{background:var(--ink)}
   body{margin:0;background:var(--ink);color:var(--bone);font-family:var(--serif)}
-  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
-  header{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:6px}
-  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--amber);text-transform:uppercase}
-  h1{font-family:var(--cond);font-weight:600;font-size:clamp(28px,4.5vw,44px);letter-spacing:.02em;margin:.15em 0 .1em;text-wrap:balance}
-  .sub{font-size:15px;color:var(--bone-dim);margin:0;max-width:66ch}
-  .stage{position:relative;background:var(--plate);border:1px solid var(--line);border-radius:4px;margin-top:18px}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 20px 40px}
+  header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding-bottom:10px}
+  h1{font-family:var(--cond);font-weight:600;font-size:24px;letter-spacing:.06em;
+    text-transform:uppercase;margin:0;color:var(--bone)}
+  .stamp{font-family:var(--mono);font-size:11px;letter-spacing:.10em;
+    color:var(--bone-dim);margin-left:auto;text-align:right}
+  .stamp b{color:var(--amber);font-weight:400}
+  .stage{position:relative;background:var(--plate);border:1px solid var(--line);border-radius:4px;margin-top:14px}
   canvas{display:block;width:100%;height:auto;cursor:crosshair}
   .readout{position:absolute;left:12px;top:10px;opacity:0;transition:opacity .12s;font-family:var(--mono);font-size:12px;color:var(--cyan);
     background:rgba(11,14,20,.72);padding:4px 8px;border:1px solid var(--line);border-radius:3px;pointer-events:none;min-height:15px}
   .readout.on{opacity:1}
-  .controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);
+  .controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;padding:10px 14px;
     font-family:var(--mono);font-size:12px;color:var(--bone-dim)}
   .controls label{display:flex;gap:7px;align-items:center;cursor:pointer;user-select:none}
   .controls input[type=checkbox]{accent-color:var(--cyan)}
   .zrow{display:flex;gap:10px;align-items:center;flex:1;min-width:220px}
   .zrow input[type=range]{flex:1;accent-color:var(--amber)}
   .zval{color:var(--amber);min-width:5ch;font-variant-numeric:tabular-nums}
-  .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;font-family:var(--mono);font-size:11.5px;color:var(--bone-dim)}
+  .legend{display:flex;flex-wrap:wrap;gap:7px 13px;padding:10px 14px 2px;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--bone-dim)}
   .chip{display:inline-flex;gap:6px;align-items:center}
-  .sw{width:11px;height:11px;border-radius:2px;display:inline-block;border:1px solid rgba(255,255,255,.15)}
-  .note{margin-top:22px;font-size:15px;line-height:1.62;color:var(--bone-dim);max-width:70ch}
-  .note b{color:var(--bone);font-weight:600}
+  .sw{width:9px;height:9px;border-radius:2px;display:inline-block;border:1px solid rgba(255,255,255,.15)}
   :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 </style>
 
 <div class="wrap">
 <header>
-  <div class="eyebrow">Gelatinous Colony &middot; Atlas — edition <span id="edition"></span></div>
-  <h1>The Colony, Entire</h1>
-  <p class="sub">Every coordinate-seeded room, drawn from the live database by the §M1 export.
-  Hover anything; slice by level; toggle the lattice, the routes, the bands.</p>
+  <h1>Colony Atlas</h1>
+  <div class="stamp" id="stamp"></div>
 </header>
 
 <div class="stage">
   <div class="readout" id="readout">&nbsp;</div>
   <canvas id="cv" aria-label="Isometric atlas of the colony"></canvas>
+  <div class="legend" id="legend"></div>
   <div class="controls">
     <div class="zrow"><span>z-slice</span><input id="zcap" type="range" min="0" max="8" value="8" step="1"><span class="zval" id="zval"></span></div>
     <label><input id="tAir" type="checkbox" checked> air lattice</label>
@@ -55,14 +56,7 @@
   </div>
 </div>
 
-<div class="legend" id="legend"></div>
 
-<p class="note"><b>Reading the plate:</b> solids are the built colony, colored by what a cell is;
-glass volumes are the air lattice — deliberate negative space where bodies fall and vehicles will
-fly. Street life (toggleable) scatters the colony's own crowd levels and traffic onto the ground
-plane, deterministic per edition. Neon arcs are wired jump edges, each ending in its landing dot. Radio rings draw each mast's
-crisp range solid and its full reach dashed. This document is generated, not drawn: rerun the
-atlas script and it is current again.</p>
 </div>
 
 <script>
@@ -197,7 +191,10 @@ const ui={zcap:document.getElementById('zcap'), zval:document.getElementById('zv
   air:document.getElementById('tAir'), edge:document.getElementById('tEdge'),
   radio:document.getElementById('tRadio'), life:document.getElementById('tLife')};
 ui.zcap.max=ZMAX; ui.zcap.value=ZMAX; ui.zval.textContent=`z ≤ ${ZMAX}`;
-document.getElementById('edition').textContent = DATA.edition || '';
+document.getElementById('stamp').innerHTML =
+  `<b>${DATA.edition || ''}</b> &nbsp;·&nbsp; ${DATA.cells.length} cells `
+  + `&nbsp;·&nbsp; ${DATA.links.length} links`
+  + (MASTS.length ? ` &nbsp;·&nbsp; ${MASTS.length} masts` : '');
 const DPR=Math.min(window.devicePixelRatio||1,2);
 cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
 cv.style.aspectRatio=`${W} / ${H}`;
