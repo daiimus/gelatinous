@@ -34,3 +34,5 @@ room_desc_snapshot_*.json
 # npc_console reactive-session state (local test artifact)
 *.rp_state.json
 .rp_state.json
+# the forum theme's bundled fonts are source, not build output
+!web/discourse-theme/**

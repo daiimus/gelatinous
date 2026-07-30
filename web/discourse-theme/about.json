@@ -1,0 +1,28 @@
+{
+  "name": "Domino's Gambit",
+  "about_url": "https://gel.monster/",
+  "license_url": "https://github.com/daiimus/gelatinous",
+  "component": false,
+  "assets": {
+    "monaspace-neon": "assets/MonaspaceNeonVar.woff2",
+    "monaspace-xenon": "assets/MonaspaceXenonVar.woff2"
+  },
+  "color_schemes": {
+    "Domino's Gambit": {
+      "primary": "d8d3c4",
+      "primary-medium": "a9a49a",
+      "primary-low-mid": "6b6f78",
+      "secondary": "0b0e14",
+      "tertiary": "e0a86f",
+      "quaternary": "6fd6e0",
+      "header_background": "0b0e14",
+      "header_primary": "d8d3c4",
+      "highlight": "e0a86f",
+      "selected": "11161f",
+      "hover": "182030",
+      "danger": "e85555",
+      "success": "5fd38d",
+      "love": "e0a86f"
+    }
+  }
+}

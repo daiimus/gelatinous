@@ -1,0 +1,152 @@
+/* ================================================================
+   Domino's Gambit — forum theme
+
+   Mirrors the site's house style (web/static/website/css/custom.css):
+   ink ground, bone text, amber accent, jade reserved for genuine state,
+   and the Monaspace superfamily — Neon for prose and interface, Xenon
+   for headings.
+
+   Fonts ship as THEME ASSETS rather than links to gel.monster: a
+   cross-origin webfont needs CORS headers, and bundling avoids the
+   problem entirely.
+
+   The palette itself lives in about.json's colour scheme, so Discourse
+   derives its own tints and shades from it correctly. This file handles
+   type and the details a colour scheme cannot reach.
+   ================================================================ */
+
+@font-face {
+    font-family: "Monaspace Neon";
+    src: asset-url("monaspace-neon") format("woff2-variations");
+    font-weight: 200 800;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Monaspace Xenon";
+    src: asset-url("monaspace-xenon") format("woff2-variations");
+    font-weight: 200 800;
+    font-display: swap;
+}
+
+:root {
+    --font-family: "Monaspace Neon", ui-monospace, "SF Mono", Menlo,
+        Consolas, monospace;
+    --heading-font-family: "Monaspace Xenon", ui-monospace, "SF Mono",
+        Menlo, monospace;
+
+    /* the house accent, for the places Discourse's scheme does not reach */
+    --gg-accent: #e0a86f;
+    --gg-bone: #d8d3c4;
+    --gg-bone-dim: #8f8d82;
+    --gg-line: #232c3a;
+}
+
+/* texture healing and the slashed zero — the same house characteristics
+   the site carries, so identifiers read the same in both places */
+html,
+body,
+input,
+textarea,
+button,
+select {
+    font-feature-settings: "calt" 1, "liga" 1, "cv01" 1;
+}
+
+/* headings: slab, tracked, uppercase — the site's display voice */
+h1, h2, h3, h4, h5, h6,
+.title, .topic-title {
+    font-family: var(--heading-font-family);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+}
+
+/* the header sits on the page rather than banding across it, matching
+   the site's masthead */
+.d-header {
+    background: var(--secondary);
+    border-bottom: 1px solid var(--gg-line);
+    box-shadow: none;
+}
+
+.d-header .title h1,
+.d-header .title a {
+    font-family: var(--heading-font-family);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+/* chrome in the machine voice at label scale, as on the site */
+.nav-pills > li > a,
+.btn,
+.badge-category__name,
+.topic-list th,
+.category-list th,
+.time,
+.relative-date,
+.post-info,
+.topic-map__stats,
+.names .username {
+    font-family: var(--font-family);
+    letter-spacing: 0.08em;
+}
+
+.nav-pills > li > a,
+.btn {
+    text-transform: uppercase;
+    font-size: 0.82rem;
+}
+
+/* rules, not boxes — the restraint the site's tables use */
+.topic-list td,
+.topic-list th,
+.category-list td,
+.category-list th {
+    border-color: var(--gg-line);
+}
+
+/* running text gets a measure and leading. A forum post at full width
+   on a wide display sets far past the readable band, and monospace
+   reads optically tighter than it measures. */
+.cooked,
+.d-editor-preview {
+    font-size: 15.5px;
+    line-height: 1.75;
+}
+
+.cooked > p,
+.cooked > ul,
+.cooked > ol,
+.cooked > blockquote {
+    max-width: 85ch;
+}
+
+/* quotes read as another voice by tone and rule, not by slanting the
+   letterforms (the lesson the homepage taught us) */
+.cooked blockquote {
+    color: var(--gg-bone-dim);
+    border-left: 1px solid var(--gg-line);
+    background: transparent;
+}
+
+/* code keeps the same face as everything else — it already is one */
+.cooked pre code,
+.cooked code {
+    font-family: var(--font-family);
+    font-feature-settings: "calt" 1, "cv01" 1, "ss03" 1;
+}
+
+/* links carry the accent, and only underline on approach */
+.cooked a,
+.topic-list .title {
+    text-decoration: none;
+}
+.cooked a:hover {
+    text-decoration: underline;
+}
+
+/* focus stays visible in the data colour, as on the site */
+:focus-visible {
+    outline: 2px solid var(--quaternary);
+    outline-offset: 2px;
+}
