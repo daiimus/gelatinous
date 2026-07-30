@@ -7,12 +7,11 @@ the shell and the Django process find the template and sprite library.
 import base64
 import json
 import os
-import time
 
 from world.mapping import export_map
 
 
-def build_atlas_html(game_dir="."):
+def build_atlas_html(game_dir=".", staff=False):
     data = export_map()
 
     sprite_dir = os.path.join(game_dir, "scripts/atlas/sprites/final")
@@ -58,7 +57,7 @@ def build_atlas_html(game_dir="."):
     except Exception:  # noqa: BLE001 — coverage is annotation, not truth
         pass
     data["masts"] = sorted(masts, key=lambda m: m["name"])
-    data["edition"] = time.strftime("%Y-%m-%d %H:%M")
+    data["staff"] = bool(staff)
 
     template = open(os.path.join(game_dir,
                                  "scripts/atlas/template.html")).read()
