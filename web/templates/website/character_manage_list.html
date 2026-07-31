@@ -4,6 +4,12 @@
 Manage Sleeves
 {% endblock %}
 
+{% block header_ext %}
+{# iOS data detectors turn date-like digit runs into tappable phone links.
+   The dates are already formatted to avoid it; this makes it explicit. #}
+<meta name="format-detection" content="telephone=no">
+{% endblock %}
+
 {% block content %}
 
 {% load addclass %}

@@ -119,7 +119,15 @@ class TestStamps(EvenniaTest):
     def test_format_stamp_renders_in_colony_time_and_tst(self):
         moment = datetime(2026, 7, 30, 12, 0, tzinfo=timezone.utc).timestamp()
         # 12:00 UTC -> 04:00 colony, year +1200
-        self.assertEqual(gametime.format_stamp(moment), "3226-07-30 04:00")
+        self.assertEqual(gametime.format_stamp(moment), "Jul 30, 3226 4:00 AM")
+
+    def test_format_avoids_a_bare_digit_run(self):
+        """iOS reads 3225-11-12 21:43 as a phone number. A month name does not."""
+        import re
+        shown = gametime.format_stamp(
+            datetime(2025, 11, 13, 5, 43, tzinfo=timezone.utc).timestamp())
+        self.assertIsNone(re.match(r"^\d{4}-\d{2}-\d{2}", shown))
+        self.assertIn("Nov", shown)
 
     def test_format_stamp_tolerates_unstamped(self):
         self.assertEqual(gametime.format_stamp(None), "unrecorded")
@@ -173,7 +181,7 @@ class TestSleeveDatesRenderInColonyTime(EvenniaTest):
         stored = datetime(2025, 11, 13, 5, 43, tzinfo=timezone.utc).timestamp()
         shown = gametime.format_stamp(stored)
         # -> colony local (UTC-8) is the previous evening, year +1200
-        self.assertEqual(shown, "3225-11-12 21:43")
+        self.assertEqual(shown, "Nov 12, 3225 9:43 PM")
 
     def test_stored_value_is_untouched_by_display(self):
         stored = datetime(2025, 11, 13, 5, 43, tzinfo=timezone.utc).timestamp()
