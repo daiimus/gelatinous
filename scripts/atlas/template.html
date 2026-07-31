@@ -198,6 +198,10 @@ const OX=-minX+PAD, OY=-minY+PAD;
 C.sort((a,b)=>((a.s??a.x+a.y)-(b.s??b.x+b.y)) || a.z-b.z || b.y-a.y);
 const GROUND=new Set(C.filter(c=>c.t==='street'||c.t==='alley').map(c=>`${c.x},${c.y}`));
 const STREETS=GROUND;
+// What KIND of place each ground cell is, so street dressing can answer to
+// its neighbours: stalls near the market, bollards near the law, planters
+// where people actually live.
+const TYPE_AT=new Map(C.filter(c=>c.z===0).map(c=>[`${c.x},${c.y}`,c.t]));
 
 const SPR_IMG={}, VARIANTS={}, AMBIENT={};
 let pending=0;
@@ -205,7 +209,7 @@ function loadImg(uri){const im=new Image(); pending++;
   im.onload=()=>{if(--pending===0)draw();}; im.src=uri; return im;}
 for (const [name,uri] of Object.entries(DATA.sprites||{})){
   const im=loadImg(uri);
-  if (/^(crowd|hauler|cart|van|wreck|barrier|crates|barrels)/.test(name)){ AMBIENT[name]=im; continue; }
+  if (/^(crowd|hauler|cart|van|wreck|barrier|crates|barrels|cargo_pod|pallets|spool|scrap|water_tank|genset|junction|lamp|kiosk|stall|planter|dumpster|bollards|scooter|bowser)/.test(name)){ AMBIENT[name]=im; continue; }
   const base=name.replace(/_\d+$/,'');
   SPR_IMG[name]=im;
   (VARIANTS[base]=VARIANTS[base]||[]).push(im);
@@ -362,28 +366,63 @@ function ambient(c, r){
   const curb=(off)=> ew? [ (r()-0.5)*0.5, off ] : [ off, (r()-0.5)*0.5 ];
   const lane=()=> ew? [ (r()-0.5)*0.4, (r()-0.3)*0.12 ]
                     : [ (r()-0.3)*0.12, (r()-0.5)*0.4 ];
+  // ── what is this cell NEXT to? ────────────────────────────────────
+  const near=new Set();
+  for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+    const t=TYPE_AT.get(`${c.x+dx},${c.y+dy}`); if (t) near.add(t);
+  }
+  const has=(...ts)=>ts.some(t=>near.has(t));
+
+  // ── vocabulary ────────────────────────────────────────────────────
+  // Sprites with a long axis take _x / _y; the rest are square-on.
+  const ORIENTED=new Set(['stall','barrier','scooter','bowser','hauler','van']);
+  const put=n=>AMBIENT[ORIENTED.has(n)?(n+(ew?'_x':'_y')):n];
+  const pick=list=>list[Math.floor(r()*list.length)];
+
+  const FREIGHT=['cargo_pod','pallets','spool','crates','barrels'];
+  const UTILITY=['water_tank','genset','junction','lamp'];
+  const GRIME  =['dumpster','scrap'];
+  const CIVIC  =['bollards','barrier'];
+  const COMMERCE=['stall','kiosk'];
+  const GREEN  =['planter'];
+
+  // Context decides the deck; the street still gets a bit of everything so
+  // no district reads as a themed set.
+  let deck=[...FREIGHT,...UTILITY,...GRIME];
+  if (has('market','shop','corner store','antique shop','laundromat'))
+    deck=[...COMMERCE,...COMMERCE,...FREIGHT,...GRIME];
+  if (has('tenement','cube hotel','courtyard'))
+    deck=[...GRIME,...GREEN,...UTILITY,...FREIGHT];
+  if (has('agridome')) deck=[...GREEN,...GREEN,...UTILITY,...FREIGHT];
+  if (has('constabulary','armory')) deck=[...CIVIC,...CIVIC,...UTILITY];
+  if (has('hospital')) deck=[...UTILITY,...CIVIC,...GRIME];
+
+  const VEHICLES=['hauler','van','bowser','scooter','wreck','cart'];
+
+  // ── place: at most one object, plus a crowd where it is busy ──────
+  // The old rule was strictly one element per cell, which left even a
+  // packed street showing a single thing. An object AND people is still
+  // seasoning; it is a crowd standing next to a parked van.
   let im=null, at=null;
   if (c.t==='alley'){
-    if (roll<0.12){ im=AMBIENT['cart']; at=lane(); }
-    else if (roll<0.20){ im=AMBIENT[r()<0.5?'crates':'barrels']; at=curb(0.28); }
-    else if (lvl>0 && roll<0.20+0.10*lvl){
-      im=AMBIENT['crowd_'+Math.floor(r()*3)]; at=curb(-0.26); }
+    if (roll<0.16){ im=AMBIENT['cart']; at=lane(); }
+    else if (roll<0.34){ im=put(pick([...GRIME,...FREIGHT])); at=curb(0.28); }
   } else {
-    if (roll<0.07){
-      const kind=r();
-      im=AMBIENT[kind<0.45?(ew?'hauler_x':'hauler_y')
-                :kind<0.85?(ew?'van_x':'van_y'):'wreck'];
-      at=lane();
-    } else if (roll<0.11){
-      im=AMBIENT[r()<0.4?(ew?'barrier_x':'barrier_y')
-                :r()<0.7?'crates':'barrels'];
-      at=curb(0.30);
-    } else if (lvl>0 && roll<0.11+Math.min(0.09*lvl,0.28)){
-      im=AMBIENT['crowd_'+Math.floor(r()*3)];
-      at=curb(r()<0.5?0.30:-0.30);
-    }
+    if (roll<0.11){ im=put(pick(VEHICLES)); at=lane(); }
+    else if (roll<0.30){ im=put(pick(deck)); at=curb(r()<0.5?0.30:-0.30); }
   }
   if (im && im.complete && at) stamp(im, sx0(c), sy0(c), at[0], at[1]);
+
+  // people, on the far kerb from whatever was just placed
+  if (lvl>0){
+    const pRoll=r();
+    const chance=(c.t==='alley'?0.10:0.16)+Math.min(0.10*lvl,0.30);
+    if (pRoll<chance){
+      const crowd=AMBIENT['crowd_'+Math.floor(r()*6)];
+      const side=at ? -Math.sign(at[1]||at[0]||1)*0.30 : (r()<0.5?0.30:-0.30);
+      if (crowd && crowd.complete) stamp(crowd, sx0(c), sy0(c), ...curb(side));
+    }
+  }
 }
 const sx0=c=>isoX(c.x,c.y)+OX, sy0=c=>isoY(c.x,c.y,c.z)+OY;
 function drawRadio(){
