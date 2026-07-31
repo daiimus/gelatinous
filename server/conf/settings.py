@@ -325,3 +325,11 @@ STORAGES = {
         "BACKEND": "web.utils.staticfiles.ForgivingManifestStaticFilesStorage",
     },
 }
+
+# ---------------------------------------------------------------------------
+# Time
+# ---------------------------------------------------------------------------
+# The colony runs 1:1 with real time (TIME_SYSTEM_SPEC). Evennia ships 2.0,
+# which would have run the world at double speed the moment anything started
+# using its gametime helpers. The canonical clock is world/gametime.py.
+TIME_FACTOR = 1.0

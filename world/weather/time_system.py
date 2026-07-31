@@ -60,10 +60,12 @@ class TimeSystem:
         Returns:
             int: Current hour in 24-hour format
         """
-        # For now, use real-world time
-        # Future: implement accelerated game time
-        current_time = time.localtime()
-        return current_time.tm_hour
+        # Delegates to the colony clock. This used to call time.localtime(),
+        # which is the CONTAINER's clock — UTC — so "night" ran eight hours
+        # away from the colony's own night, and weather, director broadcasts
+        # and the admin readout all inherited the error.
+        from world.gametime import colony_hour
+        return colony_hour()
         
     def get_current_time_period(self):
         """
