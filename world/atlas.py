@@ -62,7 +62,18 @@ def build_atlas_html(game_dir=".", staff=False, fragment=False):
 
     template = open(os.path.join(game_dir,
                                  "scripts/atlas/template.html")).read()
-    html = template.replace("/*__DATA__*/null", json.dumps(data))
+    # json.dumps does NOT escape "</script>", so a string containing it would
+    # close the script element and everything after it would parse as markup.
+    # Escaping "<" (plus the two line separators JS treats as newlines) is the
+    # standard hardening — \u003c is a valid escape inside a JS string, and
+    # "<" only ever occurs inside string values in JSON.
+    payload = (
+        json.dumps(data)
+        .replace("<", "\\u003c")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
+    html = template.replace("/*__DATA__*/null", payload)
     if fragment:
         # served inside the site's own page: the shell owns <title> and
         # the page background, and Evennia's sticky footer needs the
