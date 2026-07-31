@@ -346,7 +346,17 @@ function ambient(c, r){
   if (!ui.life.checked || c.z!==0) return;
   if (c.t!=='street' && c.t!=='alley') return;
   const lvl=c.crowd||0;
-  const ew=STREETS.has(`${c.x+1},${c.y}`)||STREETS.has(`${c.x-1},${c.y}`);
+  // Orientation MUST agree with the tile drawn underneath, or vehicles sit
+  // broadside across the road. This mirrors the poolKey logic above: asking
+  // only "is there an east/west neighbour?" reported true on a north-south
+  // street at every corner and T-junction, and parked a hauler across it.
+  const ewn=STREETS.has(`${c.x+1},${c.y}`)||STREETS.has(`${c.x-1},${c.y}`);
+  const nsn=STREETS.has(`${c.x},${c.y+1}`)||STREETS.has(`${c.x},${c.y-1}`);
+  const coin=r()<0.5;              // drawn unconditionally to keep the
+                                   // seeded stream aligned across cells
+  const ew = c.t==='alley' ? !(nsn && !ewn)   // matches alley_ns / alley_ew
+           : (ewn && nsn)  ? coin             // a true crossroads reads either way
+           : !nsn;                            // matches street_ns / street_ew
   // one element per cell, ever — seasoning, not stew
   const roll=r();
   const curb=(off)=> ew? [ (r()-0.5)*0.5, off ] : [ off, (r()-0.5)*0.5 ];

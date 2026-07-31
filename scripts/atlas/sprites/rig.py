@@ -432,9 +432,15 @@ def _hauler(rotz):
         c, s_ = math.cos(rz), math.sin(rz)
         return (x * c - y * s_, x * s_ + y * c)
     def rbox(n, size, loc, mat, extra_rz=0.0):
+        # Rotate the LOCATION and the box, and leave the size alone.
+        #
+        # This used to swap size[0]/size[1] at 90 degrees AND apply the
+        # rotation, which cancel: a 0.55x0.30 bed became 0.30x0.55 and then
+        # rotated back to 0.55 along X. The parts still moved a quarter turn
+        # though, so hauler_y came out with its cab beside the bed instead of
+        # at the end of it — a truck that does not line up with anything.
         x, y = R(loc[0], loc[1])
-        sz = size if rotz == 0 else (size[1], size[0], size[2])             if abs(rotz) == 90 else size
-        box(n, sz, (x, y, loc[2]), mat, rot=(0, 0, rz + extra_rz))
+        box(n, size, (x, y, loc[2]), mat, rot=(0, 0, rz + extra_rz))
     rbox("bed", (0.55, 0.30, 0.18), (-0.10, 0, 0.20), body)
     rbox("cab", (0.20, 0.28, 0.24), (0.28, 0, 0.23), cab)
     rbox("glassf", (0.02, 0.24, 0.10), (0.385, 0, 0.28), glass)
@@ -532,15 +538,19 @@ def _van(rotz):
         c, s_ = math.cos(rz), math.sin(rz)
         R = lambda x, y: (x * c - y * s_, x * s_ + y * c)
         def rbox(n, size, loc, mat):
+            # Same fix as the hauler: rotate the location and the box, never
+            # the size. Swapping the dimensions AND rotating cancels out, so
+            # van_y kept an X-aligned shell while its parts moved a quarter
+            # turn — the windscreen ended up on the long side.
             x, y = R(loc[0], loc[1])
-            sz = (size[1], size[0], size[2]) if rotz == 90 else size
-            box(n, sz, (x, y, loc[2]), mat, rot=(0, 0, rz))
+            box(n, size, (x, y, loc[2]), mat, rot=(0, 0, rz))
         rbox("shell", (0.52, 0.24, 0.24), (0, 0, 0.20), body)
         rbox("wind", (0.02, 0.20, 0.09), (0.265, 0, 0.26), glass)
         for wx in (-0.16, 0.16):
             for side in (-0.14, 0.14):
                 x, y = R(wx, side)
-                box(f"vw{wx}{side}", (0.09, 0.03, 0.09), (x, y, 0.05), tire)
+                box(f"vw{wx}{side}", (0.09, 0.03, 0.09), (x, y, 0.05), tire,
+                    rot=(0, 0, rz))
     return build
 
 
