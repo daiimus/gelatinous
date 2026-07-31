@@ -1865,3 +1865,17 @@ h1 { font-size: var(--size-h1); }
 .status-band { text-align: center; }
 .recent { text-align: center; }
 .recent ul { justify-content: center; }
+
+/* Bootstrap's .media is `align-items: flex-start`, which pins the brand mark
+   to the TOP of the two-line brand text instead of centring it against the
+   pair — the mark sat level with "GELATINOUS MONSTER" while the slogan hung
+   below it, throwing the whole lockup out of alignment with the nav.
+   The navbar itself already centres its children; this fixes the inside. */
+.navbar-brand .media {
+    align-items: center;
+}
+
+/* Keep the two lines tight so the block has a believable optical centre. */
+.navbar-brand .media-body {
+    line-height: 1.25;
+}
