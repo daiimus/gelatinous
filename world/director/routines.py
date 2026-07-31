@@ -246,6 +246,12 @@ class DirectorRoutineScript(DefaultScript):
         try:
             from world.director.population import maintain_security_complement
             maintain_security_complement()
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            # Civilians drain over time; top the pool up one per beat.
+            from world.director.population import maintain_civilian_population
+            maintain_civilian_population()
         except Exception:  # noqa: BLE001 — respawn must not stall the beats
             pass
         try:

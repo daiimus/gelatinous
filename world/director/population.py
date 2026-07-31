@@ -380,3 +380,82 @@ def maintain_security_complement() -> Any | None:
     except Exception:  # noqa: BLE001
         pass
     return unit
+
+
+# ---------------------------------------------------------------------------
+# Civilian population
+# ---------------------------------------------------------------------------
+# Secbots have had a respawn loop since the security slice shipped; civilians
+# never did. They were spawned by hand (`@civilians/populate`) and every one
+# that died stayed dead, so the streets drained monotonically and the only
+# cure was a builder remembering to top them up.
+#
+# This is the same shape as maintain_security_complement: ONE per heartbeat,
+# so a massacre is made good over minutes rather than instantly, and the
+# colony never appears to teleport a crowd into a room someone is standing in.
+
+#: Ceiling on the ambient civilian population. Not a target to rush to — the
+#: loop trickles toward it. Override in settings as CIVILIAN_POOL_MAX.
+CIVILIAN_POOL_DEFAULT = 40
+
+
+def civilian_pool_max() -> int:
+    """The ceiling, from settings if set, else :data:`CIVILIAN_POOL_DEFAULT`."""
+    from django.conf import settings
+    try:
+        return max(0, int(getattr(settings, "CIVILIAN_POOL_MAX",
+                                  CIVILIAN_POOL_DEFAULT)))
+    except (TypeError, ValueError):
+        return CIVILIAN_POOL_DEFAULT
+
+
+def living_civilians() -> list:
+    """Every civilian currently on the grid."""
+    from evennia.utils.search import search_tag
+    return [npc for npc in search_tag("civilian", category="director") if npc]
+
+
+def _spawnable_rooms() -> list:
+    """
+    Where a civilian may appear.
+
+    Two rules, both about not being seen to pop into existence:
+    somewhere with a reason to have people (`crowd_base_level > 0`), and
+    nowhere a player is standing.
+    """
+    from world.spatial.coordinates import all_coordinate_rooms
+    rooms = []
+    for room in all_coordinate_rooms():
+        if "Room" not in getattr(room, "typeclass_path", ""):
+            continue
+        if getattr(room.db, "is_sky_room", False):
+            continue
+        if not (getattr(room, "crowd_base_level", 0) or 0):
+            continue
+        if any(getattr(o, "has_account", False) for o in room.contents):
+            continue
+        rooms.append(room)
+    return rooms
+
+
+def maintain_civilian_population():
+    """
+    One heartbeat of the civilian respawn loop.
+
+    Spawns at most ONE civilian, and only while the living population is
+    under :func:`civilian_pool_max`. Returns the new civilian or ``None``.
+    """
+    from random import choice
+
+    ceiling = civilian_pool_max()
+    if ceiling <= 0:
+        return None
+    if len(living_civilians()) >= ceiling:
+        return None
+
+    rooms = _spawnable_rooms()
+    if not rooms:
+        return None
+
+    from world.director.civilians import CIVILIAN_ROLES, spawn_civilian
+    return spawn_civilian(choice(sorted(CIVILIAN_ROLES)), choice(rooms))
