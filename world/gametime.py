@@ -125,13 +125,25 @@ def since(stamped, now=None):
 
 
 def format_stamp(stamped, with_time=True):
-    """Render a stored stamp in colony local time, TST calendar."""
+    """
+    Render a stored stamp in colony local time, TST calendar.
+
+    US style with a spelled month — "Nov 12, 3225 9:43 PM". The month name
+    is load-bearing, not decoration: iOS data detectors read a bare
+    ``3225-11-12 21:43`` as a phone number and turn it into a tappable link.
+    An alphabetic month breaks that heuristic.
+    """
     if stamped is None:
         return "unrecorded"
     moment = _shift_year(
         datetime.fromtimestamp(stamped, timezone.utc).astimezone(COLONY_TZ)
     )
-    return moment.strftime("%Y-%m-%d %H:%M" if with_time else "%Y-%m-%d")
+    date_part = moment.strftime("%b %d, %Y")
+    if not with_time:
+        return date_part
+    # %I is zero-padded and there is no portable %-I, so strip it by hand.
+    clock = moment.strftime("%I:%M %p").lstrip("0")
+    return f"{date_part} {clock}"
 
 
 def format_now():
