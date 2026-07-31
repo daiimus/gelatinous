@@ -333,3 +333,8 @@ STORAGES = {
 # which would have run the world at double speed the moment anything started
 # using its gametime helpers. The canonical clock is world/gametime.py.
 TIME_FACTOR = 1.0
+
+# Ceiling on the ambient civilian population maintained by the director
+# heartbeat (world/director/population.py). The loop trickles ONE civilian
+# per beat toward this number and never exceeds it. 0 disables respawning.
+CIVILIAN_POOL_MAX = 40

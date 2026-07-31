@@ -54,6 +54,26 @@ class CrowdSystem:
             'flashstorm': -2.5,
         }
     
+    # How the hour thins or swells a street.
+    #
+    # This is not only flavour: crowd level feeds witness chance
+    # (world/director/witness.py) and the stealth concealment bonus
+    # (world/stealth.py), so the hour now changes whether a crime is seen
+    # and whether a body can disappear into a crowd. Deep night is the
+    # quietest and the most exposed — fewer eyes, but nowhere to stand.
+    #
+    # Shaped like a shift colony rather than an office one: two shift
+    # changes carry the peaks, and the small hours are genuinely empty.
+    time_modifiers = {
+        0: -2.0, 1: -2.2, 2: -2.2, 3: -2.0, 4: -1.6,   # the small hours
+        5: -1.0, 6: -0.3,                               # first movement
+        7: 0.6, 8: 0.7, 9: 0.4,                         # morning shift change
+        10: 0.0, 11: 0.1, 12: 0.3, 13: 0.1,             # working day
+        14: 0.0, 15: 0.0, 16: 0.2,
+        17: 0.7, 18: 0.8, 19: 0.5,                      # evening shift change
+        20: 0.2, 21: 0.0, 22: -0.6, 23: -1.3,           # winding down
+    }
+
     def calculate_crowd_level(self, room):
         """
         Calculate total crowd level for a room based on multiple factors.
@@ -90,6 +110,14 @@ class CrowdSystem:
             # Weather system not available, no modifier
             pass
         
+        # Add the hour. The colony clock is the canonical source; a broken
+        # clock must not empty the streets, so a failure here is a no-op.
+        try:
+            from world.gametime import colony_hour
+            total_level += self.time_modifiers.get(colony_hour(), 0.0)
+        except Exception:  # noqa: BLE001
+            pass
+
         # Ensure minimum of 0
         final_level = max(0, int(round(total_level)))
         
