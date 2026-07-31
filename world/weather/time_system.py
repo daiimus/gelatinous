@@ -5,7 +5,6 @@ Manages game time and provides current time period for weather system.
 Designed to be easily expandable for calendar systems and time-based events.
 """
 
-import time
 
 
 # Time periods for weather variation (12 granular periods)
