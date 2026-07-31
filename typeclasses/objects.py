@@ -25,6 +25,29 @@ class ObjectParent:
 
     """
     
+    def get_display_desc(self, looker, **kwargs):
+        """
+        Render the description, resolving colony-clock tokens.
+
+        A description may carry ``{time}``, ``{time12}``, ``{date}``,
+        ``{cy}``, ``{hour}``, ``{period}`` — see ``world/gametime.py``. This
+        is how the hour is legible in play: you read a watch or a wall clock,
+        not a command. Without a timepiece a character genuinely does not
+        know what time it is, which is correct for this colony.
+
+        Objects may carry ``clock_skew`` (minutes fast/slow) or
+        ``clock_stopped`` (a POSIX stamp it died at), so two timepieces in
+        one room can disagree.
+
+        Descriptions without tokens are returned untouched.
+        """
+        desc = super().get_display_desc(looker, **kwargs)
+        try:
+            from world.gametime import render_time_tokens
+            return render_time_tokens(desc, self)
+        except Exception:  # noqa: BLE001 — a clock fault never hides an item
+            return desc
+
     # Ordinal word mapping for natural language search
     ORDINAL_WORDS = {
         'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5,

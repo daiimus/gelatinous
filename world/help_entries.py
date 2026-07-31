@@ -65,6 +65,36 @@ HELP_ENTRY_DICTS = [
                 others see -> A long scar runs down her cheek.
                 you see    -> A long scar runs down your cheek.
 
+            ## time
+
+            Time tokens read the colony clock. They belong on |wtimepieces|n —
+            a worn chrono, a platform clock, an integrated display — and that
+            is deliberate: there is no command that tells you the hour. A
+            character carrying nothing does not know what time it is.
+
+                |w{time}|n      - 24-hour   (19:32)
+                |w{time12}|n    - 12-hour   (7:32 PM)
+                |w{date}|n      - date      (Jul 30, 3226)
+                |w{datetime}|n  - both
+                |w{cy}|n        - colony year (CY 61)
+                |w{hour}|n      - hour alone (19)
+                |w{period}|n    - vague     (the small hours, morning, evening)
+
+            Use |w{period}|n for anything that does not deserve a number — a
+            sun-line, a sky, a device too cheap to be precise.
+
+            Example:
+
+                A scratched field chrono, its face reading {time}.
+
+                you see -> A scratched field chrono, its face reading 19:32.
+
+            Two attributes let timepieces disagree, which is the point of
+            owning more than one:
+
+                |wclock_skew|n     minutes fast (+) or slow (-)
+                |wclock_stopped|n  a timestamp it died at, and shows forever
+
             ## number
 
             Number-flexible tokens let a single description read naturally
