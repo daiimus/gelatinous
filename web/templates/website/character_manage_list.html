@@ -54,10 +54,10 @@ Manage Sleeves
             </a>
           </td>
           <td class="col-date text-muted">
-            {{ object.db_date_created|date:"Y-m-d H:i" }}
+            {{ object.decanted_display }}
           </td>
           <td class="col-date text-muted">
-            {% if object.died_on %}{{ object.died_on|date:"Y-m-d H:i" }}{% else %}&mdash;{% endif %}
+            {% if object.retired_display %}{{ object.retired_display }}{% else %}&mdash;{% endif %}
           </td>
           <td class="col-status">
             {% if object.db.archived %}

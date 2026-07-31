@@ -761,7 +761,10 @@ class CmdWeather(Command):
             current_weather = weather_system.get_current_weather()
             intensity = weather_system.get_weather_intensity()
             time_period = get_current_time_period()
-            real_time = time.strftime("%H:%M:%S")
+            # Colony time, not the container's UTC — this readout exists to
+            # explain what the weather system thinks the hour is.
+            from world.gametime import colony_now
+            real_time = colony_now().strftime("%H:%M:%S")
             weather_key = f"{current_weather}_{time_period}"
             
             self.caller.msg("|WWeather System Status:|n")
