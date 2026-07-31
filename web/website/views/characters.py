@@ -470,8 +470,22 @@ class CharacterManageView(EvenniaCharacterManageView):
         # Annotate for rendering only — transient, never persisted.
         # NB: archived does NOT imply dead — a living sleeve can be shelved —
         # so this is legitimately None and the template must tolerate it.
+        #
+        # Dates render in COLONY time (TST, fixed UTC-8), not the stored real
+        # UTC. The stored values stay real POSIX/UTC on purpose: durations are
+        # subtraction, and a calendar offset must never leak into stored data.
+        from world.gametime import format_stamp
+
         for sleeve in context.get("object_list") or []:
-            sleeve.died_on = died_by_dbref.get(str(getattr(sleeve, "dbref", "")))
+            died = died_by_dbref.get(str(getattr(sleeve, "dbref", "")))
+            sleeve.died_on = died
+            sleeve.retired_display = (
+                format_stamp(died.timestamp()) if died else None
+            )
+            created = getattr(sleeve, "db_date_created", None)
+            sleeve.decanted_display = (
+                format_stamp(created.timestamp()) if created else None
+            )
 
         return context
 
@@ -604,6 +618,14 @@ class OwnerOnlyCharacterDetailView(EvenniaCharacterDetailView):
         # Import the descriptor function
         from commands.CmdCharacter import get_stat_descriptor
         
+        # Decanting date in colony time (TST) rather than raw stored UTC.
+        from world.gametime import format_stamp
+
+        created = getattr(character, "db_date_created", None)
+        context["decanted_display"] = (
+            format_stamp(created.timestamp()) if created else "unrecorded"
+        )
+
         # Get stat descriptors (AttributeProperty with autocreate=True, always exist)
         grit = character.grit
         resonance = character.resonance

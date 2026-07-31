@@ -157,3 +157,32 @@ class TestWoundTimestamp(EvenniaTest):
         organ.take_damage(5, injury_type="cut")
         self.assertIsNotNone(organ.wound_timestamp)
         self.assertAlmostEqual(organ.wound_timestamp, gametime.stamp(), delta=5)
+
+
+class TestSleeveDatesRenderInColonyTime(EvenniaTest):
+    """
+    The stored values stay real; only the display shifts.
+
+    This is the whole shape of the fix: no migration touched the records,
+    because shifting stored timestamps +1200 years would break every
+    duration in the game.
+    """
+
+    def test_format_stamp_shifts_a_real_stored_time(self):
+        # A real sleeve record: 2025-11-13 05:43 UTC as stored.
+        stored = datetime(2025, 11, 13, 5, 43, tzinfo=timezone.utc).timestamp()
+        shown = gametime.format_stamp(stored)
+        # -> colony local (UTC-8) is the previous evening, year +1200
+        self.assertEqual(shown, "3225-11-12 21:43")
+
+    def test_stored_value_is_untouched_by_display(self):
+        stored = datetime(2025, 11, 13, 5, 43, tzinfo=timezone.utc).timestamp()
+        before = stored
+        gametime.format_stamp(stored)
+        self.assertEqual(stored, before)
+
+    def test_durations_still_work_on_stored_values(self):
+        """The reason we did not migrate: elapsed time must stay sane."""
+        born = datetime(2025, 11, 13, 5, 43, tzinfo=timezone.utc).timestamp()
+        died = datetime(2025, 11, 13, 5, 45, tzinfo=timezone.utc).timestamp()
+        self.assertEqual(gametime.since(born, now=died), 120.0)
