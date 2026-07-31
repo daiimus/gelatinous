@@ -39,7 +39,10 @@ def _cue():
     except Exception:  # noqa: BLE001 — a broken clock still runs a station
         pass
     if not period:
-        hour = time.localtime().tm_hour
+        # Fallback path — still the COLONY hour, not the container's UTC.
+        # This is the seam the weather system reads from too.
+        from world.gametime import colony_hour
+        hour = colony_hour()
         period = ("the small hours" if hour < 5 else
                   "morning" if hour < 12 else
                   "afternoon" if hour < 18 else "night")

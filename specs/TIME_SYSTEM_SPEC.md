@@ -1,6 +1,8 @@
 # Time System Specification
 
-> **Status:** 📋 Proposal — not implemented (tracking #301). The TST real-time clock is the future-clock seam the cadence system already references; current TIME_FACTOR is unchanged.
+> **Status:** ✅ **IMPLEMENTED 2026-07-30** (#301). Canonical clock is
+> `world/gametime.py`; `TIME_FACTOR` is now 1.0. Weather, director broadcasts
+> and the admin readout all read the colony hour from it.
 
 ## Overview
 
@@ -11,7 +13,48 @@ The Gelatinous Monster universe operates on Terran Standard Time (TST) - Earth's
 ### Base Configuration
 - **Time Factor**: 1.0 (real-time synchronization)
 - **Base Standard**: UTC/Terran Standard Time
-- **Implementation**: Evennia's native gametime system with real-world alignment
+- **Implementation**: `world/gametime.py` — the single source of truth.
+  Nothing else may call `time.localtime()`; the container runs UTC and the
+  colony does not.
+
+### The three decisions
+
+| | | why |
+|---|---|---|
+| **1:1 with real time** | no acceleration | an hour is an hour; `TIME_FACTOR = 1.0` (Evennia ships 2.0) |
+| **Fixed UTC−8, no DST** | colony local time | matches the owner's winter clock; a stranded colony has no reason to shift clocks twice a year, and no authority left to tell it to |
+| **Year = real + 1200** | today is **3226 TST** | see below |
+
+**Why 1200 and not a rounder 1000.** The Gregorian calendar repeats on a
+**400-year cycle**, so only multiples of 400 preserve the day of the week.
++1000 keeps the month and day but shifts every weekday — which breaks the
+moment anything is scheduled (a Friday night at the bar that is not Friday for
+the people playing). 1200 keeps month, day **and** weekday, so a real date and
+its TST date are the same day in every sense.
+
+It also makes leap years line up: leap rules depend on the year mod 4, 100 and
+400, so a 400-aligned offset cannot change whether a year is leap. Feb 29
+always has a Feb 29 to land on.
+
+**The offset must stay a multiple of 400.** The constant carries that warning,
+and `test_weekday_alignment_depends_on_the_offset` pins the fact.
+
+### Two reckonings
+
+- **TST** — Terran Standard Time, the network's calendar. Institutional: gate
+  manifests, salvaged paperwork, anything official.
+- **CY** — Colony Year, zero at **3165 TST** (planetfall). Currently **CY 61**.
+  What people actually say.
+
+Anything the colony wrote itself tends to be CY; anything from before or
+outside is TST. Free texture — use the split.
+
+### Timestamps
+
+`gametime.stamp()` returns **real POSIX seconds**, deliberately unshifted and
+unlocalised, so durations stay subtraction and nothing depends on a calendar
+offset. Shift on the way out with `format_stamp()`. `wound_timestamp` in
+`world/medical/core.py` uses this.
 
 ### Justification Framework
 

@@ -273,7 +273,10 @@ class Organ:
         if old_hp == self.max_hp:  # First damage to this organ
             self.injury_type = injury_type
             self.wound_stage = 'fresh'
-            # TODO: Set wound_timestamp when time system is implemented
+            # Real POSIX seconds, not colony time — wound age is a duration,
+            # and durations should not depend on a calendar offset.
+            from world.gametime import stamp
+            self.wound_timestamp = stamp()
         elif not hasattr(self, 'injury_type') or self.injury_type == "generic":
             # Update injury type if this is more specific than previous
             self.injury_type = injury_type
