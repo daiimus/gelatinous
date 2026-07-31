@@ -150,3 +150,91 @@ def format_now():
     """The current colony time, both reckonings, for display."""
     moment = colony_now()
     return f"{moment.strftime('%Y-%m-%d %H:%M')} TST  (CY {colony_year()})"
+
+
+# -- authored time tokens -----------------------------------------------
+#
+# Time is legible IN-WORLD, through objects, not through a command. A
+# character with no watch does not know the hour — which is the correct
+# answer for a colony where a working timepiece is a possession.
+#
+# Author a description with braces, the way {their} already works:
+#
+#     A scratched chrono, its face reading {time}.
+#     The platform clock stands at {time12}, {date}.
+#
+# Two object attributes make timepieces disagree with each other, which is
+# the point of having more than one:
+#
+#     db.clock_skew     minutes fast (+) or slow (-). Cheap chrome drifts.
+#     db.clock_stopped  a POSIX stamp; the thing died at that moment and
+#                       shows it forever.
+
+import re as _re
+
+#: Tokens an author may write. Case-sensitive, matching {their}/{Their}.
+TIME_TOKENS = ("time", "time12", "date", "datetime", "cy", "hour", "period")
+
+_TOKEN_RE = _re.compile(r"\{(" + "|".join(TIME_TOKENS) + r")\}")
+
+
+def _period_name(hour):
+    """A vague reading, for devices that do not give you a number."""
+    if hour < 5:
+        return "the small hours"
+    if hour < 8:
+        return "early morning"
+    if hour < 12:
+        return "morning"
+    if hour < 14:
+        return "midday"
+    if hour < 18:
+        return "afternoon"
+    if hour < 21:
+        return "evening"
+    return "night"
+
+
+def render_time_tokens(text, obj=None):
+    """
+    Replace ``{time}``-style tokens in *text* with the colony clock.
+
+    *obj* is the thing being read, and may carry ``clock_skew`` or
+    ``clock_stopped`` so two watches in the same room can disagree.
+    Returns *text* unchanged when it holds no tokens, so this is safe to
+    run over every description.
+    """
+    if not text or "{" not in text:
+        return text
+    if not _TOKEN_RE.search(text):
+        return text
+
+    moment = None
+    skew = 0
+    if obj is not None:
+        try:
+            stopped = obj.attributes.get("clock_stopped", None)
+            if stopped:
+                moment = _shift_year(
+                    datetime.fromtimestamp(float(stopped), timezone.utc)
+                    .astimezone(COLONY_TZ))
+            skew = int(obj.attributes.get("clock_skew", 0) or 0)
+        except Exception:  # noqa: BLE001 — a broken prop must still render
+            moment, skew = None, 0
+
+    if moment is None:
+        moment = colony_now()
+    if skew:
+        moment = moment + timedelta(minutes=skew)
+
+    values = {
+        "time": moment.strftime("%H:%M"),
+        "time12": moment.strftime("%I:%M %p").lstrip("0"),
+        "date": moment.strftime("%b %d, %Y"),
+        "datetime": f"{moment.strftime('%b %d, %Y')} "
+                    f"{moment.strftime('%I:%M %p').lstrip('0')}",
+        "cy": f"CY {moment.year - FOUNDING_YEAR_TST}",
+        "hour": moment.strftime("%H"),
+        "period": _period_name(moment.hour),
+    }
+    return _TOKEN_RE.sub(lambda m: values[m.group(1)], text)
