@@ -90,6 +90,8 @@ making do, seen from above.</p>
 <script>
 'use strict';
 const DATA = /*__DATA__*/null;
+const esc = s => String(s).replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // ---------- palette & classification ----------
 const P = {
@@ -425,10 +427,13 @@ cv.addEventListener('mousemove',ev=>{
     if (dx+dy<=1){hit=c;break;}
   }
   readout.className = hit ? 'readout on' : 'readout';
+  // Room names are game data, written into HTML — escape them. Currently
+  // only builders can name a room, so this is hardening rather than a hole,
+  // but the sink is one keystroke away from being player-reachable.
   readout.innerHTML = hit
-    ? `${hit.name} &nbsp;<span style="color:var(--bone-dim)">(${hit.x}, `
+    ? `${esc(hit.name)} &nbsp;<span style="color:var(--bone-dim)">(${hit.x}, `
       + `${hit.y}, ${hit.z})</span>`
-      + `<span class="kind">${LEGEND_LABEL[hit.t] || hit.t}</span>`
+      + `<span class="kind">${esc(LEGEND_LABEL[hit.t] || hit.t)}</span>`
     : '&nbsp;';
 });
 cv.addEventListener('mouseleave',()=>{readout.className='readout';readout.innerHTML='&nbsp;';});
