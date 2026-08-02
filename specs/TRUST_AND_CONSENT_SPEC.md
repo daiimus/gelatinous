@@ -1,5 +1,7 @@
 # Trust & Consent Spec
 
+> **Status:** ✅ **SHIPPED & LIVE** — verified against code 2026-08-02: `world/consent.py:173` `has_trust`, `commands/CmdTrust.py:60/157` registered at `default_cmdsets.py:183-184`, tests in `world/tests/test_consent.py`.
+
 > **Status: ✅ SHIPPED IN FULL (2026-07-03, Phases 1–3).** The gate
 > (`world/consent.py`: `can_contest` / `is_restrained` / `check_consent`),
 > the grant store, the `trust`/`distrust` commands (§4), and the Phase-1

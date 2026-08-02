@@ -1,5 +1,7 @@
 # NPC Memory & Identity Spec
 
+> **Status:** ✅ **SHIPPED & LIVE** — verified against code 2026-08-02: `world/llm/memory.py` (embedding records, cosine similarity, salience decay), tests in `world/tests/test_llm_memory.py`.
+
 > **Status: 🟡 §8 CORE SHIPPED & LIVE; affordance roadmap ahead (§6).** The full
 > "remember people" loop runs (§8 COMPLETE): episodic memory re-keyed on
 > `apparent_uid`, the `remember`/`feel` tools, per-identity `db.llm_dossiers`

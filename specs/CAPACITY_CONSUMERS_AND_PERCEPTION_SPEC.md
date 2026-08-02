@@ -1,5 +1,7 @@
 # Capacity Consumers & Perception Spec
 
+> **Status:** ✅ **SHIPPED & LIVE** — verified against code 2026-08-02: `world/perception.py:179` `can_perceive`, capacity consumed throughout `world/medical/`, tests in `test_capacity_chrome.py` and `test_combat_capacity_sight.py`.
+
 > **Status: ✅ MOSTLY SHIPPED & LIVE** (as of 2026-06-20). What began as a
 > design proposal is now built: the performance capacities consume across
 > combat (sight/manipulation/moving), voice & identity (talking/hearing),
