@@ -1,5 +1,7 @@
 # Website Styling Specification
 
+> **Status:** ✅ **SHIPPED & LIVE** — the Atlas register across all four surfaces (site, Atlas, forum, webclient). Verified 2026-08-02; `custom.css` is the source of truth and this document describes it.
+
 ## Overview
 
 Gelatinous uses a custom **terminal/brutalist** web theme layered on top of

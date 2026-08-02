@@ -1,5 +1,10 @@
 # Remote Detonator System Specification
 
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - **No test coverage** for the detonator path (scan / detonate / clear). Grenade fuse tests do not cover it.
+
 ## Status: ✅ IMPLEMENTED
 
 *Shipped. `RemoteDetonator` lives in `typeclasses/items.py`; the detonator

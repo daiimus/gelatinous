@@ -1,5 +1,10 @@
 # Cloudflare Turnstile Integration Guide
 
+> **Status:** ✅ **SHIPPED** — code shipped, but **inactive unless keys are configured**. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` are empty strings in committed settings, and empty keys **skip verification** (`views/accounts.py:62-63`). The integration exists; that is not evidence CAPTCHA is live.
+
 ## Overview
 
 Cloudflare Turnstile has been integrated into the Gelatinous Monster account registration system. Turnstile is a privacy-friendly, free CAPTCHA alternative that provides bot protection without the privacy concerns of traditional CAPTCHAs.

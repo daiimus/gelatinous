@@ -1,5 +1,11 @@
 # Jump Command Implementation Specification
 
+> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - The header claimed "IMPLEMENTATION COMPLETE ✅". Phase 3 (elevated-position combat bonuses, enhanced aim from edges) has **no code**.
+> - No dedicated jump test module exists — only incidental coverage in `test_drop_to_room.py` and `test_build_tools.py`.
+
 **Status: IMPLEMENTATION COMPLETE** ✅  
 **Location:** `commands/combat/jump.py` - CmdJump class  
 **Integration:** Added to combat cmdset, ready for live testing

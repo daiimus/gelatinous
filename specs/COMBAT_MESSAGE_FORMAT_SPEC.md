@@ -1,4 +1,13 @@
 # Combat Message Format Specification
+
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - "Required Phases: initiate, hit, miss, kill" — **33 weapon files have no `initiate` phase** (knife, katana, machete, staff, sledgehammer, whip, chainsaw…).
+> - The colour scheme documented here is not what ships: `__init__.py:175-185` colours only hit/kill/miss, `initiate` gets none, and miss uses `|W` not `|w`.
+> - The third-person contract has moved on. `observer_msg` with `{attacker_name}`/`{target_name}` is now a **legacy fallback**; the shipped path is the identity-aware `observer_template` + `observer_char_refs` (`__init__.py:222-243`).
+> - `{damage}` is listed as a standard placeholder; 2 of 101 message files use it.
+
 **Version 1.0 - Message Refactoring Guidelines**
 
 ## Overview

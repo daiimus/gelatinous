@@ -1,5 +1,11 @@
 # Wrest Command Implementation Specification
 
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - "Related logic in `commands/combat/special_actions.py`" — there is none; the command is self-contained in `CmdInventory.py:838`.
+> - Code is ahead of spec: `CmdInventory.py:922` blocks wresting integrated cyberware. No dedicated test module.
+
 ## Overview
 The `wrest` command enables **non-combat item snatching** from other characters' hands. It serves as the non-combat counterpart to the `disarm` command, allowing quick opportunistic grabbing of objects without entering combat mechanics.
 

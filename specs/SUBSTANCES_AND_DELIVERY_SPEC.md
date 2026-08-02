@@ -1,5 +1,10 @@
 # Substances and Delivery Spec
 
+> **Status:** 🚧 **PARTIAL** — §§1-4 shipped; §5 roll-your-own remains open. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - The §4 delivery table lists `snort` → `CmdSnort`. **No such command or delivery tag exists.** The table is prefaced "existing or planned" but carries no planned marker.
+
 **Status**: descriptive of the three-layer model and how
 current code maps onto it.  Substance registry + effect →
 condition pipeline are scoped for a future PR, not implemented

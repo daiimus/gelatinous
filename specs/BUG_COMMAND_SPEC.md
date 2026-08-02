@@ -1,5 +1,7 @@
 # Bug Command Specification
 
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
+
 ## Overview
 
 The `@bug` command allows players and staff to submit bug reports directly to the GitHub repository as issues. This integrates in-game feedback with the development workflow while maintaining appropriate privacy boundaries.

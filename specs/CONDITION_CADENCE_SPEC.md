@@ -1,5 +1,10 @@
 # Condition Cadence Spec — Elapsed-Time Rates
 
+> **Status:** ✅ **SHIPPED** — Phases 1-2 shipped; Phase 3 parked by design. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - The previous banner called Phases 1-2 "the near-term lift". Both landed; `CONDITION_INTERVALS` is gone from the code entirely.
+
 **Status:** approved design, implementation phased (issue #501).
 Phase 1–2 are the near-term lift; Phase 3 is parked until content
 needs it.  The discussion that settled every decision below happened

@@ -1,15 +1,11 @@
 # Bars & Recipes Spec
 
-> **Status: ✅ v1 SHIPPED & LIVE** (drafted 2026-06-20; v1 built & deployed
-> 2026-06-21/22 at the Hub & Howl). All 14 locked decisions (§1.1) are
-> implemented, plus several pieces beyond the original v1 line (cocktail
-> recognition, prep methods, bottomless house stock, chug/devour). Remaining
-> work is the deferred seams (§11): supplier-NPC ingredient economy, the
-> register/`manage`/`clear`/`deposit` owner tooling, faction ownership, and the
-> general crafting-station framework. See **§0.1 · Implementation status** for
-> the shipped/deferred breakdown. Builds directly on the consumption pipeline
-> (`SUBSTANCES_AND_DELIVERY_SPEC.md`, `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`) —
-> recipes produce ordinary consumables, no new effect engine.
+> **Status:** 🚧 **PARTIAL** — v1 engine, menu and bartender shipped; §9 owner tooling not built. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - §9 lists `load <ingredients> into <bar>` as a shipped v1 verb. **No `load` command exists** — bottomless house stock (`derive_bar_stock`) replaced it.
+> - §9 lists `clear <bar>`; the shipped verb is `clean` (alias `wipe`).
+> - `db.register` is initialised but nothing reads or credits it — the till is a stub.
 
 ## 0.1 · Implementation status (2026-06-22)
 

@@ -1,5 +1,10 @@
 # Modular Armor System Specification
 
+> **Status:** 🚧 **PARTIAL** — armour stacking, plate carriers, tactical targeting and commands shipped; **weight/encumbrance not built**. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - The **Weight and Encumbrance System** section describes load thresholds, −1/−2/−3 movement penalties and `get_total_weight(character)`. **None of it exists.** Weight is a per-item attribute summed for display only (`typeclasses/items.py:56`, `:537-541`).
+
 ## Overview
 
 The Modular Armor System provides a comprehensive tactical combat experience with realistic armor mechanics, weight management, modular equipment, and intelligent targeting systems. This system integrates with the existing G.R.I.M. combat system and clothing layers to create depth and strategic choice in combat encounters.

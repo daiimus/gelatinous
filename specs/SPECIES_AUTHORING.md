@@ -1,5 +1,7 @@
 # Species Authoring Guide
 
+> **Status:** ✅ **SHIPPED** — guide verified against code 2026-08-02.
+
 How to add a new species to Gelatinous so combat, severance, medical, longdesc rendering, decay naming, and corpse / severed-part prose all behave correctly without renderer code changes.
 
 This guide is the species-onboarding playbook produced as Phase 5 of issue #356. Phases 1–4 lifted previously-global humanoid constants into the species registry. The rat (`SPECIES_DEFINITIONS["rat"]`) is the reference non-human implementation.

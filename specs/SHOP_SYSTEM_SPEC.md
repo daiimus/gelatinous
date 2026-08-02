@@ -1,17 +1,6 @@
 # SHOP SYSTEM SPECIFICATION
 
-> **📋 SPECIFICATION STATUS:**
-> 
-> This document has been updated to reflect the **actual Phase 1 implementation** (completed December 2024).
-> 
-> - **Sections marked "ACTUAL IMPLEMENTATION"**: Production code, tested and working
-> - **Sections marked "NOT IMPLEMENTED"**: Original spec ideas that were simplified or deferred
-> 
-> The actual implementation is **simpler and more direct** than the original specification:
-> - ✅ Container-based shops (not room-based)
-> - ✅ Regular prototypes for merchants (no MerchantTemplate system)
-> - ✅ AttributeProperty currency (no CurrencyMixin)
-> - ✅ Direct attribute inspection for dynamic names (no complex template system)
+> **Status:** 🚧 **PARTIAL** — Phase 1 shipped; Phases 2-3 not built, as stated. Verified 2026-08-02.
 
 ## Overview
 

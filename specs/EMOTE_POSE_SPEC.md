@@ -1,5 +1,10 @@
 # Emote, Pose & Communication System Specification
 
+> **Status:** ✅ **SHIPPED** — all five phases. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - Spec is behind code: `CmdTo` (directed speech, `CmdCommunication.py:71`) ships and is undocumented here.
+
 ## Overview
 
 This specification defines the emote, pose, and communication command system for Gelatinous. It covers:

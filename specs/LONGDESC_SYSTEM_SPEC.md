@@ -1,5 +1,7 @@
 # Long Description System Specification
 
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
+
 ## Implementation Status: COMPLETED ✅
 
 **Implementation Complete**: All core components implemented and tested.  

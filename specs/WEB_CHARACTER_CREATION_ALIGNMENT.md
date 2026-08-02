@@ -1,5 +1,10 @@
 # Web Character Creation Alignment Spec
 
+> **Status:** ✅ **SHIPPED** — all five phases including respawn. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - The Phase 5 testing checklist is entirely unchecked, contradicting both this document's header and the code. The checklist is stale; the header is right.
+
 ## Overview
 
 This document defines how the web-based character creation should align with the telnet-based character creation system in `commands/charcreate.py`.

@@ -1,5 +1,11 @@
 # Webclient Screen Size Detection Specification
 
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02. Issue #304 was stale and is closed.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - The file paths here are wrong: the spec says the plugin lives at `web/static/webclient/js/plugins/screensize.js`. **That path does not exist** — this repo replaced Evennia's GoldenLayout client with a bespoke one and the logic is in `js/gel.js:455-501`.
+> - "Phase 3: GoldenLayout Integration" is moot — there is no GoldenLayout in this webclient.
+
 ## Document Information
 
 **Version:** 1.0  
