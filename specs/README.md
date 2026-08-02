@@ -34,6 +34,7 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 | `AUGMENT_ABILITIES_SPEC.md` | Toggleable cyberware; the chassis+module standard; reattachment; chrome severance |
 | `SPECIES_AUTHORING.md` | How to add a species so combat/severance/medical/longdesc behave without renderer changes |
 | `SUBSTANCES_AND_DELIVERY_SPEC.md` | Item → substance → delivery model; registry, tolerance/addiction |
+| `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` | What body capacity actually gates: sight, movement, manipulation, and the chrome that restores them |
 
 ## Identity, Communication & Appearance
 
@@ -44,6 +45,8 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 | `LONGDESC_SYSTEM_SPEC.md` | Per-location body descriptions; pair-collapse; chrome rendering |
 | `GRAMMAR_ENGINE_SPEC.md` | Pronoun/conjugation/article engine (`{they}`/`{their}` tokens) |
 | `DEATH_CURTAIN_SPEC.md` | Narrative death animation + death-progression timer |
+| `TRUST_AND_CONSENT_SPEC.md` | Trust/distrust gating for intimate actions — clothing, medical, frisk, follow/escort |
+| `NPC_MEMORY_AND_IDENTITY_SPEC.md` | RAG memory for LLM NPCs: embedding records, similarity retrieval, salience decay |
 
 ## Items, Equipment & World
 
@@ -53,6 +56,8 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 | `MODULAR_ARMOR_SYSTEM_SPEC.md` | Armor stacking, plate carriers, tactical targeting |
 | `SHOP_SYSTEM_SPEC.md` | Container-based shops, pricing, inventory (Phase 2 deferred — #302) |
 | `GRAFFITI_SYSTEM_SPEC.md` | Spray-paint / solvent environmental writing |
+| `NPC_POSTS_AND_REINCARNATION_SPEC.md` | Named NPCs as reconstructible blueprints: posts, watcher, successor, resleeving |
+| `GIG_PROTOTYPE_BUTCHER_SPEC.md` | The first gig: corpse → condition-gated cuts → cooked dishes, with a closed till loop |
 
 ## Commands
 
@@ -65,6 +70,7 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 | `BUG_COMMAND_SPEC.md` | In-game bug reporting |
 | `REMOTE_DETONATOR_SPEC.md` | Remote explosive detonation |
 | `STICKY_GRENADE_SPEC.md` | Sticky grenade mechanics |
+| `CHANNELED_ACTIONS_SPEC.md` | Multi-turn actions that can be interrupted — the channel/interrupt contract |
 
 ## Patterns, Web & UI
 
