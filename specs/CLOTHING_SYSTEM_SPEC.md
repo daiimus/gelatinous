@@ -1,5 +1,10 @@
 # Clothing System Specification
 
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - "Phase 3: Advanced Features 📋 PENDING — layer conflict detection and resolution" is **stale**; it is fully implemented in `clothing_mixin.wear_item`. Staff targeting ships as `CmdDress`/`CmdUndress`.
+
 ## Implementation Status: CORE COMPLETE ✅
 
 **Design Phase**: Comprehensive specification completed with dynamic styling system  

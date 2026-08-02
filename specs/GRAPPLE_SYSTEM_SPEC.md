@@ -1,5 +1,10 @@
 # G.R.I.M. Grappling System Specification
 
+> **Status:** ✅ **SHIPPED** — Phase 1 complete; Phases 2-3 remain future work. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - **"Grenade Bodyshield System ⚠️ MISSING IMPLEMENTATION" is wrong — it is built.** `world/combat/explosives.py:36` `check_grenade_human_shield` + `:103`, called from four sites. The shipped version is deterministic (grappler ×0.0, victim ×2.0), not the probabilistic formula proposed here.
+
 ## Overview
 
 The G.R.I.M. Grappling System is a comprehensive close-combat mechanism that emphasizes **restraint over violence** while providing tactical depth for complex combat scenarios. It integrates seamlessly with the proximity system, movement mechanics, and yielding philosophy to create dynamic, roleplay-focused grappling encounters.

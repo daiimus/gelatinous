@@ -1,5 +1,7 @@
 # Throw Command Implementation Specification
 
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02; 59 tests as claimed.
+
 ## 🚀 **IMPLEMENTATION STATUS - COMPLETE**
 
 **Status**: ✅ **PRODUCTION READY** - All components implemented and tested

@@ -1,5 +1,11 @@
 # Graffiti System Specification
 
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - "**Unlimited entries** (no arbitrary cap)" — false. Capped at **7** with FIFO eviction (`typeclasses/objects.py:309`, `:367-369`).
+> - "Known Limitations: no message persistence across server restarts" — false. Entries live in a persistent Attribute and survive restarts.
+
 ## Overview
 Unified graffiti system providing player-driven street expression through spray paint and graffiti cleaning mechanics. Features resource-managed tagging with finite aerosol supplies, color selection, Mr. Hands integration, and enhanced atmospheric messaging with delayed effects.
 

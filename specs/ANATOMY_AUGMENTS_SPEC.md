@@ -1,5 +1,10 @@
 # Anatomy Augments Spec — Per-Character Anatomy
 
+> **Status:** ✅ **SHIPPED** — Phases 1-2 and post-Phase-2 standards shipped; Phase 3 parked. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - The previous banner read "approved design, implementation phased", which §5 of this same document already contradicted.
+
 **Status:** approved design, implementation phased.  The discussion
 that settled every decision below happened 2026-06-11.  First
 consumer: the cybernetic tail.

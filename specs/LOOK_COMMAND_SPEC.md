@@ -1,5 +1,13 @@
 # Enhanced Look Command System Specification
 
+> **Status:** 🚧 **PARTIAL** — features 1-12 shipped; **§13 Ambient Message System not built**. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - The header's "Implementation Status: COMPLETED ✅" contradicted its own "12/13 Features Complete". 12/13 is correct.
+> - **§Sensory Focus Commands (`listen`, `smell`, `feel`) do not exist.** The five-sense room layers are real and perception-gated; there is no player-facing focus verb.
+> - §13 Ambient Message System is confirmed unbuilt — no ticker or interval script emits atmospheric messages; the pools are pulled at `look` time only.
+> - Crowd-aware directional look **is** built (`typeclasses/exits.py:662`), contrary to earlier notes.
+
 ## Overview
 
 The enhanced look command system assembles rich, dynamic environmental descriptions through component-based sensory integration. The system builds upon the existing `return_appearance` method, combining sensory categories with modular description components that automatically assemble into cohesive room narratives.

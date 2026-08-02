@@ -1,5 +1,7 @@
 # Grammar Engine Specification
 
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02; 131 tests.
+
 ## Overview
 
 The Grammar Engine (`world/grammar.py`) is a standalone utility module providing

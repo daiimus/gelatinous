@@ -1,5 +1,11 @@
 # Death Curtain Animation System
 
+> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - "Observer Support: different messages for dying character vs. room observers" — **false**. Animation frames go only to the dying character (`curtain_of_death.py:255-262`); observers get one message at completion.
+> - Config values drifted: spec says `frame_delay = 0.015`, `delay_multiplier = 1.01`, four colours, `DEATH_PROGRESSION_DURATION = 360`. Code ships `0.05`, `1.02`, **two** colours, and **90**.
+
 ## Overview
 
 The `curtain_of_death.py` module provides an elegant "dripping blood" death animation for characters in the Evennia MUD. This system creates a sophisticated visual effect by centering a death message in a "sea" of characters and progressively removing characters to create a dripping effect.

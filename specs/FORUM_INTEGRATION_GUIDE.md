@@ -1,4 +1,7 @@
 # Forum Integration Guide
+
+> **Status:** ✅ **SHIPPED & LIVE** — companion guide to `DISCOURSE_INTEGRATION.md`. Verified 2026-08-02.
+
 ## Optional Discourse Forum Setup for Gelatinous
 
 This guide covers the optional integration between your Evennia game and a Discourse forum. **This is completely optional** - the game works perfectly fine without it.

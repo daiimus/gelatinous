@@ -1,5 +1,10 @@
 # Augment Abilities Spec — Toggled Cyberware
 
+> **Status:** ✅ **SHIPPED** — Phases 1, 2 **and 3** shipped. Verified 2026-08-02.
+>
+> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
+> - The previous banner said "implementation phased" and §5 frames Phases 2-3 as pending. All three have shipping code and tests — natural weapons (`NAILZ`, jawz) and the weapon-resolution precedence are live.
+
 **Status:** approved design, implementation phased.  Settled in
 discussion 2026-06-12.  Builds on `ANATOMY_AUGMENTS_SPEC.md` (the
 substrate: the body is the truth).  First consumer: the shotgun

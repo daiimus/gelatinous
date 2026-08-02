@@ -1,4 +1,7 @@
 # Discourse Forum Integration
+
+> **Status:** ✅ **SHIPPED & LIVE** — SSO, the header iframe, the theme component and the colour scheme are all in production on forum.gel.monster. Verified 2026-08-02.
+
 ## Complete Setup Guide for Gelatinous
 
 This document provides everything you need to integrate a Discourse forum with your Evennia game.
