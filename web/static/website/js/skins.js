@@ -39,6 +39,20 @@
     else ROOT.setAttribute("data-skin", skin);
   }
 
+  function notifyForum(skin) {
+    // On the forum this script runs inside the header iframe, which is a
+    // different origin from the page around it. The cookie alone would only
+    // take effect on the next load, so tell the theme component directly and
+    // let it repaint immediately. Silent no-op everywhere else.
+    if (window.parent === window) return;
+    try {
+      window.parent.postMessage(
+        { type: "gel-skin", skin: skin }, "https://forum.gel.monster");
+    } catch (e) {
+      // Cross-origin refusal is not worth breaking the click over.
+    }
+  }
+
   apply(readCookie() || SKINS[0]);
 
   function cycle(ev) {
@@ -48,6 +62,7 @@
     var next = SKINS[(SKINS.indexOf(current) + 1 + SKINS.length) % SKINS.length];
     writeCookie(next);
     apply(next);
+    notifyForum(next);
   }
 
   function wire() {
