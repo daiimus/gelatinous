@@ -4,7 +4,7 @@
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The header's "Implementation Status: COMPLETED ✅" contradicted its own "12/13 Features Complete". 12/13 is correct.
-> - **§Sensory Focus Commands (`listen`, `smell`, `feel`) do not exist.** The five-sense room layers are real and perception-gated; there is no player-facing focus verb.
+> - **§Sensory Focus Commands (`listen`, `smell`, `feel`) do not exist and will not be built** (owner decision, 2026-08-03): `look` is the time-tested MUD verb and already surfaces every sense layer the room carries, perception-gated. Separate per-sense verbs would be syntax for its own sake. The section is retained as history, not as a plan.
 > - §13 Ambient Message System is confirmed unbuilt — no ticker or interval script emits atmospheric messages; the pools are pulled at `look` time only.
 > - Crowd-aware directional look **is** built (`typeclasses/exits.py:662`), contrary to earlier notes.
 
