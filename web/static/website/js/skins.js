@@ -1,0 +1,66 @@
+/*
+ * Skins — an Easter egg, cycled by clicking the brand mark.
+ *
+ * The choice rides in a cookie scoped to `.gel.monster` rather than
+ * localStorage, because localStorage is per-origin and the forum is a
+ * different origin. One cookie, four surfaces: site, atlas, webclient, and
+ * the Discourse theme component that reads it on load.
+ *
+ * WHAT A SKIN MAY TOUCH: chrome only. On the webclient the game's own output
+ * is inline-styled by ansi_up straight off the xterm-256 table, and it stays
+ * that way — a room title is the same cyan here, in Mudlet, and over raw
+ * telnet. The protocol is the source of truth for game text; skins dress the
+ * room around it. Every skin is therefore DARK, so the fixed ANSI palette
+ * stays legible on all of them.
+ */
+(function () {
+  "use strict";
+
+  var SKINS = ["atlas", "terminal", "stray"];
+  var COOKIE = "gel_skin";
+  var ROOT = document.documentElement;
+
+  function readCookie() {
+    var hit = document.cookie.match(/(?:^|;\s*)gel_skin=([^;]+)/);
+    return hit ? decodeURIComponent(hit[1]) : null;
+  }
+
+  function writeCookie(skin) {
+    // Domain-scoped so forum.gel.monster sees it too. A year, because an
+    // Easter egg that forgets itself is just a flicker.
+    var domain = location.hostname.endsWith("gel.monster") ? "; domain=.gel.monster" : "";
+    document.cookie = "gel_skin=" + encodeURIComponent(skin) +
+      "; path=/; max-age=31536000; samesite=lax" + domain;
+  }
+
+  function apply(skin) {
+    if (SKINS.indexOf(skin) === -1) skin = SKINS[0];
+    if (skin === SKINS[0]) ROOT.removeAttribute("data-skin");
+    else ROOT.setAttribute("data-skin", skin);
+  }
+
+  apply(readCookie() || SKINS[0]);
+
+  function cycle(ev) {
+    // The mark sits inside the brand link; cycling must not navigate home.
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    var current = readCookie() || SKINS[0];
+    var next = SKINS[(SKINS.indexOf(current) + 1 + SKINS.length) % SKINS.length];
+    writeCookie(next);
+    apply(next);
+  }
+
+  function wire() {
+    var marks = document.querySelectorAll(".brand-mark");
+    for (var i = 0; i < marks.length; i++) {
+      marks[i].style.cursor = "pointer";
+      marks[i].addEventListener("click", cycle);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", wire);
+  } else {
+    wire();
+  }
+})();

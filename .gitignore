@@ -19,6 +19,8 @@ web/static/website/css/*
 !web/static/website/fonts/**
 !web/static/website/images/
 !web/static/website/images/**
+!web/static/website/js/
+!web/static/website/js/**
 world/__pycache__/
 typeclasses/__pycache__/
 commands/__pycache__/
