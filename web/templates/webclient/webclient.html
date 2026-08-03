@@ -35,6 +35,10 @@
     <span id="reconnect-detail" class="reconnect-detail"></span>
 </div>
 
+<!-- Skins: reads the same .gel.monster cookie as the site and applies
+     data-skin. CHROME ONLY — gel.js keeps ansi_up on inline styles so the
+     protocol still owns game colour. -->
+<script src="{% static 'website/js/skins.js' %}"></script>
 <script src="{% static 'webclient/js/gel.js' %}"></script>
 
 {% endblock %}

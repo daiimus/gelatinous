@@ -1879,3 +1879,87 @@ h1 { font-size: var(--size-h1); }
 .navbar-brand .media-body {
     line-height: 1.25;
 }
+
+/* ====================================================================
+   SKINS  (2026-08-03)
+   --------------------------------------------------------------------
+   An Easter egg: click the brand mark to cycle. The choice rides in a
+   cookie on `.gel.monster` so the site, the Atlas, the webclient and the
+   forum all agree (see web/static/website/js/skins.js).
+
+   A skin overrides TOKENS ONLY. Nothing here restyles a component,
+   because no component carries a colour of its own — that is the whole
+   reason this is cheap.
+
+   EVERY SKIN IS DARK, and that is a hard rule rather than taste: the
+   webclient renders game output as inline styles straight off the
+   xterm-256 table (the protocol owns game colour, not CSS), so the
+   fixed ANSI palette has to stay legible against whatever ground a skin
+   picks. A light skin would put cyan room titles on cream.
+
+   Related: a ground must not collide with a colour the palette USES.
+   Dark is necessary, not sufficient — a navy ground eats |b blue text,
+   a maroon one swallows |r red.
+   ==================================================================== */
+
+/* ── terminal ─────────────────────────────────────────────────────────
+   The original identity, kept as a period piece: jade on neutral grey,
+   from before the Atlas register. Accent and success are the same green
+   here, which is exactly how it was — and exactly why it was replaced. */
+[data-skin="terminal"] {
+    --terminal-bg-dark: #1a1a1a;
+    --terminal-bg-medium: #2a2a2a;
+    --terminal-bg-light: #3a3a3a;
+    --terminal-accent: #5fd38d;
+    --terminal-accent-dim: #4a9d6d;
+    --terminal-text: #e0e0e0;
+    --terminal-text-muted: #999999;
+    --terminal-border: #404040;
+    --terminal-glow: rgba(95, 211, 141, 0.30);
+}
+
+/* ── stray ────────────────────────────────────────────────────────────
+   Somebody got at the logo. Neon pink over a violet-black ground, and
+   the brand mark wears sprayed-on ears and whiskers (see .tag below).
+   The ground moves off blue-black toward neutral violet so the pink has
+   somewhere to sit without fighting it. */
+[data-skin="stray"] {
+    --terminal-bg-dark: #0d0a12;
+    --terminal-bg-medium: #16111c;
+    --terminal-bg-light: #201828;
+    --terminal-accent: #ff3d9a;
+    --terminal-accent-dim: #c42d76;
+    --terminal-text: #e6dde4;
+    --terminal-text-muted: #8d8393;
+    --terminal-border: #2c2136;
+    --terminal-glow: rgba(255, 61, 154, 0.32);
+}
+
+/* ── the tag ──────────────────────────────────────────────────────────
+   Hidden on every skin but `stray`. Drawn OVER the mark rather than
+   composed into it — round caps, uneven angles, a drip and a little
+   overspray, so it reads as applied by hand rather than designed in. */
+.brand-mark .tag { display: none; }
+
+[data-skin="stray"] .brand-mark .tag {
+    display: block;
+    fill: none;
+    stroke: var(--terminal-accent);
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.92;
+}
+[data-skin="stray"] .brand-mark .tag .spatter {
+    fill: var(--terminal-accent);
+    stroke: none;
+    opacity: 0.75;
+}
+[data-skin="stray"] .brand-mark .tag .drip {
+    stroke-width: 1.6;
+    opacity: 0.7;
+}
+
+/* The mark is a control now; say so on hover without shouting about it. */
+.brand-mark { transition: filter .18s ease; }
+.navbar-brand .brand-mark:hover { filter: brightness(1.25); }

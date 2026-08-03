@@ -345,3 +345,44 @@ html, body {
 .sys-echo {
     color: var(--yellow);
 }
+
+/* ====================================================================
+   SKINS — CHROME ONLY  (2026-08-03)
+   --------------------------------------------------------------------
+   THE PROTOCOL OWNS GAME COLOUR. ansi_up runs with `use_classes = false`
+   (see js/gel.js), so every coloured character the game sends is styled
+   inline from the xterm-256 table and NO stylesheet — including this one
+   — can reach it. A room title is the same cyan here, in Mudlet, and
+   over raw telnet. That is deliberate and must stay true.
+
+   A skin therefore dresses the room around the text: ground, input bar,
+   field, borders, muted status. Not one character of game output.
+
+   Consequence: every skin is DARK. The ANSI palette is fixed, so the
+   ground has to keep it legible — and must not collide with a colour the
+   palette uses (a navy ground eats |b, a maroon one swallows |r).
+   ==================================================================== */
+
+[data-skin="terminal"] {
+    --bg-dark: #1a1a1a;
+    --bg-medium: #2a2a2a;
+    --bg-light: #3a3a3a;
+    --amber: #5fd38d;              /* the old identity: jade, not amber */
+    --amber-dim: #4a9d6d;
+    --amber-glow: rgba(95, 211, 141, 0.3);
+    --text: #e0e0e0;
+    --text-muted: #999999;
+    --border: #404040;
+}
+
+[data-skin="stray"] {
+    --bg-dark: #0d0a12;
+    --bg-medium: #16111c;
+    --bg-light: #201828;
+    --amber: #ff3d9a;              /* neon pink; chrome only, never game text */
+    --amber-dim: #c42d76;
+    --amber-glow: rgba(255, 61, 154, 0.32);
+    --text: #e6dde4;
+    --text-muted: #8d8393;
+    --border: #2c2136;
+}
