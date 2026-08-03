@@ -21,8 +21,35 @@ one and the forum loses its header; a component layers on top of it.
    add it under *Included components*.
 4. Select the **Domino's Gambit** colour scheme on the parent theme.
 
-Re-uploading a newer zip updates the component in place, and the parent
-theme keeps its header either way.
+### Updating it later
+
+**A zip install always creates a NEW component — it does not update the
+existing one in place.** Uploading a newer zip leaves you with two
+components of the same name, one attached to the parent theme and one
+`Unused`, distinguishable only by that column.
+
+To update:
+
+1. Upload the new zip. Note which entry says `Unused` — that is the new
+   one.
+2. Rename the *old* one (the one marked `Used on Foundation`) so the two
+   can be told apart.
+3. On the parent theme, **add the new component first, then remove the
+   old one.** Doing it in that order matters: removing the last component
+   silently strips the forum's typography with no warning, and the
+   palette keeps looking correct because the parent theme points at the
+   colour scheme directly.
+4. Verify the forum, then delete the renamed old component.
+
+Deleting a component never deletes a colour scheme — the palettes are
+standalone records (`theme_id` null) and survive independently.
+
+Installing **from a git repository** instead would give proper in-place
+updates via *Check for updates*, which is Discourse's real upgrade path.
+The obstacle is that its importer expects `about.json` at the repository
+root, and this lives in a subdirectory of the game monorepo, so it would
+need its own repository or a dedicated branch. Worth doing if component
+changes become frequent.
 
 ### If the header has already disappeared
 
