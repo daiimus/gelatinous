@@ -5,7 +5,7 @@ Uses iframe-specific menu that removes Forum link to prevent double headers.
 {% endcomment %}
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"{% if skin %} data-skin="{{ skin }}"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,10 +15,15 @@ Uses iframe-specific menu that removes Forum link to prevent double headers.
          loads. MUST be a literal: --terminal-bg-dark is defined in custom.css,
          which has not arrived yet, and an undefined custom property makes the
          whole declaration invalid — which is exactly the flash this prevents.
-         Keep in sync with --terminal-bg-dark. -->
+
+         The literal is chosen server-side from the skin cookie (SKIN_INK in
+         views/header_only.py). Hardcoding the default ink here meant that on
+         any other skin the header painted the wrong ground until skins.js
+         ran, which read as a colour seam against the already-skinned forum
+         body. Keep SKIN_INK in sync with --terminal-bg-dark per skin. -->
     <style>
         html, body {
-            background-color: #0b0e14 !important;
+            background-color: {{ skin_ink }} !important;
             margin: 0;
             padding: 0;
         }
