@@ -202,6 +202,77 @@ class CmdBarClear(Command):
         )
 
 
+class CmdBarTill(Command):
+    """
+    Take the day's earnings out of the bar.
+
+    Usage:
+        till <bar>
+        till <bar> = <amount>
+
+    Counts what the register holds, and hands it over. With an amount, takes
+    only that much and leaves the rest. For the owner and their staff.
+
+    Money went INTO the register on every sale and had no way back out — the
+    bar accumulated a number nobody could spend. The butcher's block already
+    closed this loop (payouts drain its till); this is the same door on the
+    other side of the counter.
+    """
+
+    key = "till"
+    locks = "cmd:all()"
+    help_category = "Bar"
+
+    def func(self):
+        from world.identity_utils import msg_room_identity
+
+        bar = self.obj
+        caller = self.caller
+
+        owner = bar.db.owner
+        staff = bar.db.staff or []
+        if owner is not None and caller != owner and caller not in staff:
+            caller.msg("That's not your register.")
+            return
+
+        held = int(bar.db.register or 0)
+        if held <= 0:
+            caller.msg("The register's empty.")
+            return
+
+        # NB: this is evennia.commands.command.Command, not MuxCommand — there
+        # is no self.rhs. Parse the "= <amount>" half by hand.
+        take = held
+        amount = ""
+        if "=" in (self.args or ""):
+            amount = self.args.split("=", 1)[1].strip()
+        if amount:
+            try:
+                take = int(amount)
+            except (TypeError, ValueError):
+                caller.msg("Take how much?")
+                return
+            if take <= 0:
+                caller.msg("Take how much?")
+                return
+            take = min(take, held)
+
+        bar.db.register = held - take
+        caller.tokens = int(getattr(caller, "tokens", 0) or 0) + take
+
+        left = bar.db.register
+        caller.msg(
+            f"You count {take} out of the register"
+            + (f", leaving {left}." if left else " and leave it empty.")
+        )
+        msg_room_identity(
+            location=caller.location,
+            template="{actor} counts the register out and pockets the take.",
+            char_refs={"actor": caller},
+            exclude=[caller],
+        )
+
+
 class BarCmdSet(CmdSet):
     key = "bar_cmdset"
 
@@ -210,6 +281,7 @@ class BarCmdSet(CmdSet):
         self.add(CmdBarUse())
         self.add(CmdBarPrepare())
         self.add(CmdBarClear())
+        self.add(CmdBarTill())
 
 
 # ---------------------------------------------------------------------------

@@ -5,7 +5,7 @@
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - §9 lists `load <ingredients> into <bar>` as a shipped v1 verb. **No `load` command exists** — bottomless house stock (`derive_bar_stock`) replaced it.
 > - §9 lists `clear <bar>`; the shipped verb is `clean` (alias `wipe`).
-> - `db.register` is initialised but nothing reads or credits it — the till is a stub.
+> - ~~`db.register` is a stub~~ — **wrong**: it *is* credited on every sale (`typeclasses/bar.py:496`). The real gap was that nothing drained it, so bar income accumulated with no way out. Closed 2026-08-03 by `till <bar>` (owner/staff only), mirroring the butcher's block, which was already a closed loop.
 
 ## 0.1 · Implementation status (2026-06-22)
 

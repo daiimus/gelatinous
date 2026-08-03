@@ -1,9 +1,9 @@
 # Cloudflare Turnstile Integration Guide
 
-> **Status:** ✅ **SHIPPED** — code shipped, but **inactive unless keys are configured**. Verified 2026-08-02.
+> **Status:** ✅ **SHIPPED & LIVE** — verified 2026-08-03: the widget renders on the live registration page and both keys resolve non-empty at runtime.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
-> - `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` are empty strings in committed settings, and empty keys **skip verification** (`views/accounts.py:62-63`). The integration exists; that is not evidence CAPTCHA is live.
+> - An earlier audit called this inactive because `settings.py` holds empty strings. **That was wrong.** The real keys live in `server/conf/secret_settings.py`, which is gitignored — reading the committed repo says nothing about what the deployment is running. Empty keys *would* skip verification (`views/accounts.py:62-63`), so the check is worth keeping in mind, but it does not apply here.
 
 ## Overview
 
