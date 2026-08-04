@@ -1224,6 +1224,26 @@ class Character(
 
         return f"{name} ({with_article(sdesc)})"
 
+    def at_post_puppet(self, **kwargs):
+        """Look at the room and announce our waking, without the meta lines.
+
+        Overrides Evennia's default, which sends "You become <name>." to
+        the player and "<name> has entered the game." to the room. The
+        chargen/respawn flows narrate the decant themselves, and bystanders
+        see a sleeve waking rather than an out-of-character login notice.
+        """
+        self.msg((self.at_look(self.location), {"type": "look"}), options=None)
+
+        if self.location:
+            from world.identity_utils import msg_room_identity
+
+            msg_room_identity(
+                self.location,
+                "{actor} stirs as consciousness returns.",
+                {"actor": self},
+                exclude=[self],
+            )
+
     def announce_move_from(
         self, destination, msg=None, mapping=None, **kwargs
     ):
