@@ -61,23 +61,28 @@ folder and edit it to add/remove links to the menu.
              skin's CSS swaps them in for the ringed world. Both are
              original drawings in the referenced style, not reproductions —
              and the badge's ring text is the site's own line. -->
-        <g class="alt alt-laughing">
+        <g class="alt alt-laughing" transform="rotate(-8 50 50)">
+          <!-- the badge grammar: text band between two rings, the cap's brim
+               a capsule bar bisecting the disc and escaping past the ring,
+               crown arc above, laughing eyes and a smile bowl below. Drawn
+               fresh; the ring speaks the site's own sentence. -->
           <circle cx="50" cy="50" r="48" fill="none" stroke-width="1.8"/>
+          <circle cx="50" cy="50" r="36" fill="none" stroke-width="1.6"/>
           <defs>
-            <path id="lm-ring-m" d="M 50,91 A 41,41 0 1 1 50.01,91 Z"/>
+            <path id="lm-ring-m" d="M 50,92 A 42,42 0 1 1 50.01,92 Z"/>
           </defs>
-          <text class="ringtext" font-size="5.9" letter-spacing="0.35">
-            <textPath href="#lm-ring-m" xlink:href="#lm-ring-m">A TEMPORARY ARRANGEMENT OF ATOMS PRETENDING COHERENCE &#183;</textPath>
+          <text class="ringtext" font-size="6.7" font-weight="700" letter-spacing="0.3">
+            <textPath href="#lm-ring-m" xlink:href="#lm-ring-m">A TEMPORARY ARRANGEMENT OF ATOMS PRETENDING COHERENCE</textPath>
           </text>
-          <g fill="none" stroke-width="2.4" stroke-linecap="round">
-            <!-- the face fills the interior: big head, low cap, wide grin -->
-            <circle cx="50" cy="54" r="28"/>
-            <path d="M 24,46 A 28,28 0 0 1 76,46 L 79,36 L 27,36 Z" class="cap"/>
-            <path d="M 27,36 L 15,39" class="cap"/>
-            <path d="M 38,54 L 46,54"/>
-            <circle cx="61" cy="54" r="2" class="dotfill"/>
-            <path d="M 34,64 Q 50,78 66,64"/>
+          <g class="cap">
+            <path d="M 17,46 A 34,34 0 0 1 83,46" fill="none" stroke-width="7"/>
+            <rect x="15" y="45" width="82" height="13" rx="6.5"/>
           </g>
+          <g class="facefill" stroke="none">
+            <path d="M 30,63 A 7.5,7.5 0 0 1 45,63 L 42,63 A 4.5,4.5 0 0 0 33,63 Z"/>
+            <path d="M 55,63 A 7.5,7.5 0 0 1 70,63 L 67,63 A 4.5,4.5 0 0 0 58,63 Z"/>
+          </g>
+          <path class="smile" d="M 27,64 A 26,26 0 0 0 73,64" fill="none" stroke-width="6.5" stroke-linecap="round"/>
         </g>
         <g class="alt alt-ed" transform="rotate(-7 50 50)">
           <g fill="none" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
