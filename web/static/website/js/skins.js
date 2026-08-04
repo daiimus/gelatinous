@@ -35,8 +35,17 @@
 
   function apply(skin) {
     if (SKINS.indexOf(skin) === -1) skin = SKINS[0];
-    if (skin === SKINS[0]) ROOT.removeAttribute("data-skin");
-    else ROOT.setAttribute("data-skin", skin);
+    // Mutate ONLY on change. setAttribute with an unchanged value still
+    // fires MutationObservers, and the header's observer re-broadcasts the
+    // skin on every data-skin mutation — an unconditional write here turned
+    // push -> apply -> observe -> report -> push into an infinite message
+    // loop between the forum and its own header (caught by the harness as
+    // megabytes of identical pushes in seconds).
+    if (skin === SKINS[0]) {
+      if (ROOT.hasAttribute("data-skin")) ROOT.removeAttribute("data-skin");
+    } else if (ROOT.getAttribute("data-skin") !== skin) {
+      ROOT.setAttribute("data-skin", skin);
+    }
   }
 
   function notifyForum(skin) {
