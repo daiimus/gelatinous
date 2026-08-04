@@ -1,0 +1,38 @@
+# Gelatinous Monster — stray (somebody got at the logo; neon pink, violet-black)
+# A valid Ghostty terminal theme; `# gel:` lines are the game's extensions.
+# The sprayed-on cat ears are handwritten CSS, not data — see custom.css.
+palette = 0=#16111c
+palette = 1=#e85555
+palette = 2=#5fd38d
+palette = 3=#e6c547
+palette = 4=#7a71c9
+palette = 5=#ff3d9a
+palette = 6=#6fd6e0
+palette = 7=#e6dde4
+palette = 8=#6b6470
+palette = 9=#ef7b7b
+palette = 10=#7fe3a5
+palette = 11=#f0d576
+palette = 12=#9a90e0
+palette = 13=#ff6ab3
+palette = 14=#93e2ea
+palette = 15=#f5eef4
+background = #0d0a12
+foreground = #e6dde4
+cursor-color = #ff3d9a
+selection-background = #201828
+selection-foreground = #e6dde4
+
+# gel: slug = stray
+# gel: order = 2
+# gel: palette-name = Stray
+# gel: palette-id = 23
+# gel: accent = #ff3d9a
+# gel: accent-dim = #c42d76
+# gel: bg-medium = #16111c
+# gel: bg-light = #201828
+# gel: text-muted = #8d8393
+# gel: border = #2c2136
+# gel: glow-alpha = 0.32
+# gel: quaternary = #6fd6e0
+# gel: primary-low-mid = #6b6470

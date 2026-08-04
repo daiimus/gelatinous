@@ -1,0 +1,38 @@
+# Gelatinous Monster — atlas (the house skin: ink, bone, amber)
+# A valid Ghostty terminal theme; drop into your terminal and it just works.
+# Lines beginning `# gel:` are the game's skin-system extensions.
+palette = 0=#11161f
+palette = 1=#e85555
+palette = 2=#5fd38d
+palette = 3=#e6c547
+palette = 4=#7195c9
+palette = 5=#b48ead
+palette = 6=#6fd6e0
+palette = 7=#d8d3c4
+palette = 8=#6b6f78
+palette = 9=#ef7b7b
+palette = 10=#7fe3a5
+palette = 11=#f0d576
+palette = 12=#8fb3e6
+palette = 13=#caa3d6
+palette = 14=#93e2ea
+palette = 15=#f2efe6
+background = #0b0e14
+foreground = #d8d3c4
+cursor-color = #e0a86f
+selection-background = #182030
+selection-foreground = #d8d3c4
+
+# gel: slug = atlas
+# gel: order = 0
+# gel: palette-name = Domino's Gambit
+# gel: palette-id = 21
+# gel: accent = #e0a86f
+# gel: accent-dim = #b8834f
+# gel: bg-medium = #11161f
+# gel: bg-light = #182030
+# gel: text-muted = #8f8d82
+# gel: border = #232c3a
+# gel: glow-alpha = 0.30
+# gel: quaternary = #6fd6e0
+# gel: primary-low-mid = #6b6f78

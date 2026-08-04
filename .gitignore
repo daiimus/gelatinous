@@ -13,6 +13,7 @@ web/static/*
 !web/static/website/
 web/static/website/*
 !web/static/website/css/
+!web/static/website/skins/
 web/static/website/css/*
 !web/static/website/css/custom.css
 !web/static/website/fonts/

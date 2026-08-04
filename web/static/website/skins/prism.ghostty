@@ -1,0 +1,48 @@
+# Gelatinous Monster — prism (a readable rainbow, and the Monaspace showcase)
+# A valid Ghostty terminal theme; `# gel:` lines are the game's extensions.
+# One lead accent (violet) keeps "what's clickable" unambiguous; the
+# spectrum lives on non-semantic zones via the --prism-* tokens, consumed
+# by handwritten flourish CSS. Static — a rainbow you can read.
+# Type is the show: display set in Radon's handwriting, data in Xenon slab.
+palette = 0=#17171e
+palette = 1=#ff5f6e
+palette = 2=#4fd66f
+palette = 3=#ffd75f
+palette = 4=#5f9fff
+palette = 5=#c46fff
+palette = 6=#4fd6d0
+palette = 7=#dcdce4
+palette = 8=#8f8f9c
+palette = 9=#ff8b96
+palette = 10=#7fe39a
+palette = 11=#ffe38b
+palette = 12=#8bb9ff
+palette = 13=#d69bff
+palette = 14=#8be3de
+palette = 15=#f2f2f7
+background = #101014
+foreground = #dcdce4
+cursor-color = #9d7bff
+selection-background = #20202a
+selection-foreground = #dcdce4
+
+# gel: slug = prism
+# gel: order = 4
+# gel: palette-name = Prism
+# gel: palette-id = 25
+# gel: accent = #9d7bff
+# gel: accent-dim = #7a5fd0
+# gel: bg-medium = #17171e
+# gel: bg-light = #20202a
+# gel: text-muted = #8f8f9c
+# gel: border = #2a2a38
+# gel: glow-alpha = 0.32
+# gel: quaternary = #4fd6d0
+# gel: primary-low-mid = #74747f
+# gel: font-display = radon
+# gel: font-data = xenon
+# gel: css-prism-r = #ff5f6e
+# gel: css-prism-g = #4fd66f
+# gel: css-prism-y = #ffd75f
+# gel: css-prism-b = #5f9fff
+# gel: css-prism-c = #4fd6d0
