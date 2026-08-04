@@ -59,14 +59,31 @@ Removes the Forum link to prevent navigation loops and double headers.
              skin's CSS swaps them in for the ringed world. Both are
              original drawings in the referenced style, not reproductions —
              and the badge's ring text is the site's own line. -->
-        <g class="alt alt-laughing">
-          <!-- Owner-supplied artwork, rendered as-is from the repo asset;
-               the CSS filter lifts the navy line-work to white for the dark
-               ground. The drawn homage this replaces lives in git history
-               (#1551-#1553) if it is ever wanted back. -->
-          <image href="{% static 'website/images/laughing-man.png' %}"
-                 x="-3" y="1" width="106" height="98"
-                 preserveAspectRatio="xMidYMid meet"/>
+        <g class="alt alt-laughing" transform="rotate(-8 50 50)">
+          <!-- Original drawing in the badge grammar, proportioned against
+               the reference but authored fresh: text band, inner disc with
+               its cap button, crown arc, the brim-bar escaping right,
+               laughing comma eyes, the mouth a filled crescent. The ring
+               speaks the site's own sentence, not the famous one. -->
+          <circle cx="50" cy="50" r="48" fill="none" stroke-width="1.8"/>
+          <circle cx="50" cy="50" r="36" fill="none" stroke-width="1.6"/>
+          <rect class="capbtn" x="46.5" y="11.5" width="7" height="4.5" rx="1"/>
+          <defs>
+            <path id="lm-ring-if" d="M 50,92 A 42,42 0 1 1 50.01,92 Z"/>
+          </defs>
+          <text class="ringtext" font-size="6.7" font-weight="700" letter-spacing="0.3">
+            <textPath href="#lm-ring-if" xlink:href="#lm-ring-if">A TEMPORARY ARRANGEMENT OF ATOMS PRETENDING COHERENCE</textPath>
+          </text>
+          <g class="cap">
+            <path d="M 17,47 A 34,34 0 0 1 83,47" fill="none" stroke-width="6.5"/>
+            <rect x="15" y="45" width="89" height="13" rx="6.5"/>
+          </g>
+          <g class="eyes" fill="none" stroke-linecap="round">
+            <path d="M 32,66 A 6,6 0 0 1 43,66" stroke-width="5.2"/>
+            <path d="M 57,66 A 6,6 0 0 1 68,66" stroke-width="5.2"/>
+          </g>
+          <path class="mouth" stroke="none"
+                d="M 29,71 A 44,44 0 0 0 71,71 A 23,23 0 0 1 29,71 Z"/>
         </g>
           <g class="smile" fill="none" stroke-linecap="round">
             <path d="M 33,66 A 5,5 0 0 1 43,66" stroke-width="4.6"/>

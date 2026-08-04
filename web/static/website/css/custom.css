@@ -2012,11 +2012,18 @@ h1 { font-size: var(--size-h1); }
 [data-skin="laughing"] .brand-mark .alt-laughing { display: block; }
 [data-skin="ed"] .brand-mark .alt-ed { display: block; }
 
-/* the badge is owner-supplied navy artwork; brightness(0) invert(1)
-   lifts any solid-colour image to pure white for the dark ground */
-[data-skin="laughing"] .brand-mark .alt-laughing image {
-    filter: brightness(0) invert(1);
+/* the badge: white rings, eyes and mouth; blue cap, button and ring text */
+[data-skin="laughing"] .brand-mark .alt-laughing { stroke: var(--terminal-text); }
+[data-skin="laughing"] .brand-mark .alt-laughing .ringtext {
+    fill: var(--terminal-accent);
+    stroke: none;
+    font-family: var(--font-prose);
 }
+[data-skin="laughing"] .brand-mark .alt-laughing .cap { stroke: var(--terminal-accent); fill: var(--terminal-accent); }
+[data-skin="laughing"] .brand-mark .alt-laughing .cap rect { stroke: none; }
+[data-skin="laughing"] .brand-mark .alt-laughing .capbtn { fill: var(--terminal-accent); stroke: none; }
+[data-skin="laughing"] .brand-mark .alt-laughing .eyes { stroke: var(--terminal-text); }
+[data-skin="laughing"] .brand-mark .alt-laughing .mouth { fill: var(--terminal-text); }
 
 /* the doodle: crayon strokes in cream, teeth line in yellow */
 [data-skin="ed"] .brand-mark .alt-ed { stroke: var(--terminal-text); }
