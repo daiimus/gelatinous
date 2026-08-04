@@ -112,19 +112,25 @@ export default apiInitializer("1.8.0", (api) => {
         return;
       }
 
-      // Preload before swapping, or the page renders unstyled for a beat
-      // while the new sheet is fetched.
+      // Swap by inserting a real stylesheet and waiting for ITS load, not a
+      // rel=preload probe: Safari does not reliably fire load/error on
+      // preload links, and awaiting one hung this function forever — the
+      // fetch succeeded, the swap never ran, and every retry piled into the
+      // same silent hang (observed live: thirty fetches, zero swaps). A real
+      // stylesheet's load event is dependable everywhere, and the timeout
+      // guarantees convergence even if no event ever fires — the cost is a
+      // one-frame flash in a case that otherwise never converges at all.
+      const next = document.createElement("link");
+      next.rel = "stylesheet";
+      next.className = "light-scheme";
+      next.dataset.schemeId = id;
       await new Promise((resolve) => {
-        const pre = document.createElement("link");
-        pre.rel = "preload";
-        pre.as = "style";
-        pre.href = new_href;
-        pre.onload = pre.onerror = resolve;
-        document.head.appendChild(pre);
+        next.onload = next.onerror = resolve;
+        setTimeout(resolve, 3000);
+        next.href = new_href;
+        link.insertAdjacentElement("afterend", next);
       });
-
-      link.href = new_href;
-      link.dataset.schemeId = id;
+      link.remove();
       applied = id;
     } catch (e) {
       // The cookie is already set, so a reload lands on the right palette —
