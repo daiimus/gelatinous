@@ -44,6 +44,12 @@ $BL --background --python scripts/atlas/sprites/calibrate.py       # axis marker
 - **Naming**: `<class>_<orientation>_<variant>.png` — orientation before
   variant (`street_ew_1`). Any `_<n>` suffix joins that class's variant
   pool, picked per cell by seeded hash.
+- **The px/unit invariant**: every render — class sprite or hero —
+  keeps `ortho = 2.6 * RES / 512`. The template stamps landmarks at
+  `size * SPR_SCALE` (the base rig's pixels-per-world-unit), so a hero
+  that needs a wider frame buys it with RESOLUTION, never by widening
+  the ortho base; changing the base renders the art at the wrong scale
+  on the map.
 - **Landmarks self-calibrate**: each hero script renders its own origin
   marker under its own camera; `measure_landmarks.py` writes the
   measured origin into `landmarks.json`. Never derive a hero's origin
