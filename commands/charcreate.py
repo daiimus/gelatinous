@@ -16,6 +16,8 @@ import random
 import time
 import re
 
+from world import gametime
+
 from world.identity import (
     HEIGHTS,
     BUILDS,
@@ -734,12 +736,11 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
 ║  CONSCIOUSNESS TRANSFER COMPLETE                               ║
 ╚════════════════════════════════════════════════════════════════╝|n
 
-|wThe envelope unseals around an unfamiliar body. Yellow print
-slides past your face:|n
+|wThe envelope unseals around an unfamiliar body. Yellow print slides past your face:|n
 
 |y    THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE
     CONTENTS: {char.key.upper()}
-    DECANTED: {time.strftime('%d %b %Y').upper()}
+    DECANTED: {gametime.colony_now().strftime('%d %b %Y').upper()}
     BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n
 
 |wThe memories feel... borrowed. But they're yours now.|n
@@ -801,26 +802,19 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
         # Death count-specific flavor
         if death_count == 2:
             flavor = (
-                "|wThis is your first death. The sensation of resleeving is\n"
-                "disorienting. Your old body's final moments echo in your mind\n"
-                "like static on a dead channel.|n"
+                "|wThis is your first death. The sensation of resleeving is disorienting. Your old body's final moments echo in your mind like static on a dead channel.|n"
             )
         elif death_count < 5:
             flavor = (
-                "|wThe memories of your previous body fade like analog videotape\n"
-                "degradation. You know you've done this before, but each time\n"
-                "feels like the first.|n"
+                "|wThe memories of your previous body fade like analog videotape degradation. You know you've done this before, but each time feels like the first.|n"
             )
         elif death_count < 10:
             flavor = (
-                "|wYou've died enough times to know: this never gets easier.\n"
-                "But at least you're still you. Mostly.|n"
+                "|wYou've died enough times to know: this never gets easier. But at least you're still you. Mostly.|n"
             )
         else:
             flavor = (
-                "|rHow many times have you done this? The memories blur together\n"
-                "like overexposed film. Are you still the person who first\n"
-                "stepped into this world?|n"
+                "|rHow many times have you done this? The memories blur together like overexposed film. Are you still the person who first stepped into this world?|n"
             )
         
         caller.msg(f"""__________________________________________________________________
@@ -829,12 +823,11 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
 ║  FLASH CLONE PROTOCOL COMPLETE                                 ║
 ╚════════════════════════════════════════════════════════════════╝|n
 
-|wThe envelope unseals around a body you already know by heart.
-Yellow print slides past your face:|n
+|wThe envelope unseals around a body you already know by heart. Yellow print slides past your face:|n
 
 |y    THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE
     CONTENTS: {char.key.upper()}
-    DECANTED: {time.strftime('%d %b %Y').upper()}
+    DECANTED: {gametime.colony_now().strftime('%d %b %Y').upper()}
     PRIOR TERMINATION: {(old_char.db.death_cause or 'UNKNOWN').upper()}
     DEATH COUNT: {death_count}
     BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n
@@ -879,7 +872,7 @@ def first_char_welcome(caller, raw_string, **kwargs):
 
 |wConsciousness upload in progress.|n
 
-|wCarrier: LOCKED. Year: {time.strftime("%Y")}. The broadcast never ends.|n
+|wCarrier: LOCKED. Year: {gametime.tst_now().year}. The broadcast never ends.|n
 |wMemory integrity: PARTIAL. Identity reconstruction required.|n
 
 Press |w<Enter>|n to begin reconstruction.
@@ -1516,18 +1509,14 @@ def first_char_finalize(caller, raw_string, **kwargs):
 ║  CONSCIOUSNESS UPLOAD COMPLETE                                 ║
 ╚════════════════════════════════════════════════════════════════╝|n
 
-|wPressure equalizes with a hiss. Nutrigel drains in slow pulses,
-and the envelope's seam parts tooth by tooth along its zipper.
-Yellow print slides past your face:|n
+|wPressure equalizes with a hiss. Nutrigel drains in slow pulses, and the envelope's seam parts tooth by tooth along its zipper. Yellow print slides past your face:|n
 
 |y    THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE
     CONTENTS: {char.key.upper()}
-    DECANTED: {time.strftime('%d %b %Y').upper()}
+    DECANTED: {gametime.colony_now().strftime('%d %b %Y').upper()}
     BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n
 
-|wGloved hands peel the breather from your face. Your first breath
-in this body tastes of refrigerant and copper. Overhead, a console
-ticks through your vitals and finds nothing to flag.
+|wGloved hands peel the breather from your face. Your first breath in this body tastes of refrigerant and copper. Overhead, a console ticks through your vitals and finds nothing to flag.
 
 The static clears. You open your eyes.|n
 __________________________________________________________________
