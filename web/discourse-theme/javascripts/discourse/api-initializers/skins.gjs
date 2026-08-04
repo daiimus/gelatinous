@@ -133,11 +133,27 @@ export default apiInitializer("1.8.0", (api) => {
       link.remove();
       applied = id;
     } catch (e) {
-      // The cookie is already set, so a reload lands on the right palette —
-      // but say so. A silent catch here hid a misdiagnosed seam for hours;
-      // if this path is ever hit again, the evidence belongs in the console.
-      console.warn("[gel-skin] stylesheet swap failed; will retry on next navigation", e);
+      // Observed live: Cloudflare can CHALLENGE the swap fetch — the page
+      // navigation passed, but an in-page fetch from a session without
+      // challenge clearance gets a 403 HTML page, which then fails JSON
+      // parsing. No amount of client-side retrying beats the edge, and each
+      // retry piled into the same wall. But the cookie was already written
+      // before the fetch, so a full load renders the right palette
+      // server-side with no fetch involved — the same fallback core's
+      // Horizon theme uses. Guarded per palette so a still-failing reload
+      // cannot loop.
+      console.warn("[gel-skin] stylesheet swap failed; falling back to a reload", e);
       applied = null;
+      try {
+        const key = "gel-skin-reloaded-" + id;
+        if (!sessionStorage.getItem(key)) {
+          sessionStorage.setItem(key, "1");
+          window.location.reload();
+        }
+      } catch (storageErr) {
+        // No sessionStorage (private-mode quirks): swallow — the next
+        // navigation still lands on the right palette via the cookie.
+      }
     }
   }
 
