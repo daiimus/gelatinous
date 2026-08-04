@@ -495,13 +495,17 @@ def _charcreate_exit_callback(caller, menu):
         # They completed creation - just close menu, don't disconnect
         return
     
-    # No active characters - they exited without completing
-    # Disconnect them so they restart character creation on reconnect
-    sessions = caller.sessions.all()
-    if not sessions:
-        # Already disconnected (e.g. connection dropped during menu)
-        return
-    sessions[0].sessionhandler.disconnect(sessions[0], reason="|ySleeve decantation incomplete. Please reconnect to try again.|n")
+    # No active characters - the menu was abandoned. Disconnect the session
+    # that was RUNNING this menu so it restarts creation on reconnect — but
+    # only if that session is still alive. When a connection drops mid-menu,
+    # the stale menu is closed by EvMenu.__init__ at the NEXT login; kicking
+    # the account's current (fresh) session there would boot every reconnect
+    # in an endless "decantation incomplete" loop until a server reload.
+    menu_session = getattr(menu, "_session", None)
+    if menu_session and menu_session in caller.sessions.all():
+        menu_session.sessionhandler.disconnect(
+            menu_session,
+            reason="|ySleeve decantation incomplete. Please reconnect to try again.|n")
 
 
 def start_character_creation(account, is_respawn=False, old_character=None):
