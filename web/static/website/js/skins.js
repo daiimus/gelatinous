@@ -17,7 +17,7 @@
   "use strict";
 
 // GENERATED SKINS (build_skins.py) BEGIN
-  var SKINS = ["atlas", "terminal", "stray", "dub", "prism"];
+  var SKINS = ["atlas", "terminal", "stray", "dub", "prism", "laughing", "ed"];
 // GENERATED SKINS (build_skins.py) END
   var COOKIE = "gel_skin";
   var ROOT = document.documentElement;
@@ -48,6 +48,45 @@
     } else if (ROOT.getAttribute("data-skin") !== skin) {
       ROOT.setAttribute("data-skin", skin);
     }
+    applyEd(skin);
+  }
+
+
+  // ── ed's typography ──────────────────────────────────────────────
+  // The Monaspace superfamily is built to mix — ed's skin takes that
+  // literally: every word of every heading gets its own face. Plain-text
+  // headings only (markup inside stays untouched), originals kept so any
+  // other skin restores them exactly.
+  function edify() {
+    var heads = document.querySelectorAll("h1, h2, h3");
+    for (var i = 0; i < heads.length; i++) {
+      var el = heads[i];
+      if (el.dataset.gelEdified) continue;
+      if (el.innerHTML !== el.textContent) continue;  // markup: leave it be
+      var words = el.textContent.split(/(\s+)/);
+      var out = "", w = 0;
+      for (var j = 0; j < words.length; j++) {
+        if (/^\s+$/.test(words[j]) || words[j] === "") { out += words[j]; continue; }
+        out += '<span class="ed-w' + (w % 4) + '">' + words[j].replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</span>";
+        w++;
+      }
+      el.dataset.gelOrig = el.innerHTML;
+      el.dataset.gelEdified = "1";
+      el.innerHTML = out;
+    }
+  }
+
+  function unedify() {
+    var done = document.querySelectorAll("[data-gel-edified]");
+    for (var i = 0; i < done.length; i++) {
+      done[i].innerHTML = done[i].dataset.gelOrig;
+      delete done[i].dataset.gelEdified;
+      delete done[i].dataset.gelOrig;
+    }
+  }
+
+  function applyEd(skin) {
+    if (skin === "ed") edify(); else unedify();
   }
 
   function notifyForum(skin) {
@@ -148,8 +187,12 @@
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", wire);
+    document.addEventListener("DOMContentLoaded", function () {
+      wire();
+      applyEd(readCookie() || SKINS[0]);
+    });
   } else {
     wire();
+    applyEd(readCookie() || SKINS[0]);
   }
 })();

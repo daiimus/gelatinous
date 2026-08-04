@@ -1962,6 +1962,28 @@ h1 { font-size: var(--size-h1); }
     --prism-b: #5f9fff;
     --prism-c: #4fd6d0;
 }
+[data-skin="laughing"] {
+    --terminal-bg-dark: #0a1018;
+    --terminal-bg-medium: #101a26;
+    --terminal-bg-light: #182636;
+    --terminal-accent: #56a8e8;
+    --terminal-accent-dim: #3d7fb5;
+    --terminal-text: #e6eef7;
+    --terminal-text-muted: #8b98a8;
+    --terminal-border: #24384c;
+    --terminal-glow: rgba(86, 168, 232, 0.30);
+}
+[data-skin="ed"] {
+    --terminal-bg-dark: #171008;
+    --terminal-bg-medium: #221809;
+    --terminal-bg-light: #2f2210;
+    --terminal-accent: #ff8c3a;
+    --terminal-accent-dim: #cc6a24;
+    --terminal-text: #f2e7d4;
+    --terminal-text-muted: #a89478;
+    --terminal-border: #3d2c14;
+    --terminal-glow: rgba(255, 140, 58, 0.32);
+}
 /* GENERATED SKINS (build_skins.py) END */
 
 /* ── the tag ──────────────────────────────────────────────────────────
@@ -1969,6 +1991,56 @@ h1 { font-size: var(--size-h1); }
    composed into it — round caps, uneven angles, a drip and a little
    overspray, so it reads as applied by hand rather than designed in. */
 .brand-mark .tag { display: none; }
+
+/* ── alt marks (laughing, ed) ─────────────────────────────────────────
+   Full mark overrides: the homage skins hide the ringed world and show
+   their own drawing. Both are original SVGs styled entirely from skin
+   tokens, so they follow any future palette change for free. */
+.brand-mark .alt { display: none; }
+[data-skin="laughing"] .brand-mark .ring,
+[data-skin="laughing"] .brand-mark .rim,
+[data-skin="laughing"] .brand-mark .body,
+[data-skin="laughing"] .brand-mark .knock,
+[data-skin="laughing"] .brand-mark .knock-stroke,
+[data-skin="laughing"] .brand-mark .node,
+[data-skin="ed"] .brand-mark .ring,
+[data-skin="ed"] .brand-mark .rim,
+[data-skin="ed"] .brand-mark .body,
+[data-skin="ed"] .brand-mark .knock,
+[data-skin="ed"] .brand-mark .knock-stroke,
+[data-skin="ed"] .brand-mark .node { display: none; }
+[data-skin="laughing"] .brand-mark .alt-laughing { display: block; }
+[data-skin="ed"] .brand-mark .alt-ed { display: block; }
+
+/* the badge: white line-work, blue ring text, blue cap */
+[data-skin="laughing"] .brand-mark .alt-laughing { stroke: var(--terminal-text); }
+[data-skin="laughing"] .brand-mark .alt-laughing .ringtext {
+    fill: var(--terminal-accent);
+    stroke: none;
+    font-family: var(--font-prose);
+}
+[data-skin="laughing"] .brand-mark .alt-laughing .cap { stroke: var(--terminal-accent); }
+[data-skin="laughing"] .brand-mark .alt-laughing .dotfill { fill: var(--terminal-text); stroke: none; }
+
+/* the doodle: crayon strokes in cream, teeth line in yellow */
+[data-skin="ed"] .brand-mark .alt-ed { stroke: var(--terminal-text); }
+[data-skin="ed"] .brand-mark .alt-ed .dotfill { fill: var(--terminal-text); stroke: none; }
+[data-skin="ed"] .brand-mark .alt-ed .teeth { stroke: var(--quaternary, #ffd23f); stroke: var(--terminal-glow); stroke: #ffd23f; }
+
+/* ed's typography: the superfamily mixed the way its makers intended.
+   Nav items cycle faces AND crayon colours; heading words get faces from
+   the edify() word-wrapper in skins.js. Volume matches the legacy
+   !important war, same as every skin flourish. */
+[data-skin="ed"] .navbar-nav li:nth-child(4n+1) .nav-link { font-family: var(--font-prose); color: var(--terminal-accent) !important; }
+[data-skin="ed"] .navbar-nav li:nth-child(4n+2) .nav-link { font-family: var(--font-display); color: #ffd23f !important; }
+[data-skin="ed"] .navbar-nav li:nth-child(4n+3) .nav-link { font-family: var(--font-hand); color: var(--terminal-text) !important; }
+[data-skin="ed"] .navbar-nav li:nth-child(4n+4) .nav-link { font-family: var(--font-reading); color: #5fd0c0 !important; }
+[data-skin="ed"] .navbar-nav .nav-link:hover,
+[data-skin="ed"] .navbar-nav .nav-link:focus { color: var(--terminal-text) !important; }
+[data-skin="ed"] .ed-w0 { font-family: var(--font-prose); }
+[data-skin="ed"] .ed-w1 { font-family: var(--font-display); }
+[data-skin="ed"] .ed-w2 { font-family: var(--font-hand); }
+[data-skin="ed"] .ed-w3 { font-family: var(--font-reading); }
 
 /* ── dub ──────────────────────────────────────────────────────────────
    The tricolor is COMPOSITION, not state. Gold stays the interactive

@@ -34,6 +34,8 @@ SKIN_INK = {
     "stray": "#0d0a12",
     "dub": "#0e120c",
     "prism": "#101014",
+    "laughing": "#0a1018",
+    "ed": "#171008",
 }
 # GENERATED SKINS (build_skins.py) END
 DEFAULT_SKIN = "atlas"

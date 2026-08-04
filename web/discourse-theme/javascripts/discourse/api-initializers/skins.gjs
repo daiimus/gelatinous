@@ -40,6 +40,8 @@ const PALETTES = {
   stray: "Stray",
   dub: "Dub",
   prism: "Prism",
+  laughing: "Laughing",
+  ed: "Ed",
 };
 // GENERATED SKINS (build_skins.py) END
 

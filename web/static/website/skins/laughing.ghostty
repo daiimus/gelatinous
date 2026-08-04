@@ -1,0 +1,39 @@
+# Gelatinous Monster — laughing (a hacker-badge homage; white and blue, still dark)
+# A valid Ghostty terminal theme; `# gel:` lines are the game's extensions.
+# The mark override lives in the menu templates as an original SVG badge —
+# circling text (the site's own atoms line), a winking grin, a jaunty cap.
+palette = 0=#101a26
+palette = 1=#e06060
+palette = 2=#5fd38d
+palette = 3=#e6c547
+palette = 4=#56a8e8
+palette = 5=#9b7fd0
+palette = 6=#7fd0e8
+palette = 7=#e6eef7
+palette = 8=#5c6a7a
+palette = 9=#ef8686
+palette = 10=#7fe3a5
+palette = 11=#f0d576
+palette = 12=#82c0f0
+palette = 13=#b8a0e6
+palette = 14=#a5e0f0
+palette = 15=#f5f9fd
+background = #0a1018
+foreground = #e6eef7
+cursor-color = #56a8e8
+selection-background = #182636
+selection-foreground = #e6eef7
+
+# gel: slug = laughing
+# gel: order = 5
+# gel: palette-name = Laughing
+# gel: palette-id = 26
+# gel: accent = #56a8e8
+# gel: accent-dim = #3d7fb5
+# gel: bg-medium = #101a26
+# gel: bg-light = #182636
+# gel: text-muted = #8b98a8
+# gel: border = #24384c
+# gel: glow-alpha = 0.30
+# gel: quaternary = #7fd0e8
+# gel: primary-low-mid = #66727f
