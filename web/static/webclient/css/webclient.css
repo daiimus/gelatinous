@@ -363,26 +363,49 @@ html, body {
    palette uses (a navy ground eats |b, a maroon one swallows |r).
    ==================================================================== */
 
+/* GENERATED SKINS (build_skins.py) BEGIN */
 [data-skin="terminal"] {
     --bg-dark: #1a1a1a;
     --bg-medium: #2a2a2a;
     --bg-light: #3a3a3a;
-    --amber: #5fd38d;              /* the old identity: jade, not amber */
+    --amber: #5fd38d;
     --amber-dim: #4a9d6d;
-    --amber-glow: rgba(95, 211, 141, 0.3);
+    --amber-glow: rgba(95, 211, 141, 0.30);
     --text: #e0e0e0;
     --text-muted: #999999;
     --border: #404040;
 }
-
 [data-skin="stray"] {
     --bg-dark: #0d0a12;
     --bg-medium: #16111c;
     --bg-light: #201828;
-    --amber: #ff3d9a;              /* neon pink; chrome only, never game text */
+    --amber: #ff3d9a;
     --amber-dim: #c42d76;
     --amber-glow: rgba(255, 61, 154, 0.32);
     --text: #e6dde4;
     --text-muted: #8d8393;
     --border: #2c2136;
 }
+[data-skin="dub"] {
+    --bg-dark: #0e120c;
+    --bg-medium: #151b12;
+    --bg-light: #1e2818;
+    --amber: #f0c34e;
+    --amber-dim: #c29a34;
+    --amber-glow: rgba(240, 195, 78, 0.30);
+    --text: #e8e0c8;
+    --text-muted: #979274;
+    --border: #2a3324;
+}
+[data-skin="prism"] {
+    --bg-dark: #101014;
+    --bg-medium: #17171e;
+    --bg-light: #20202a;
+    --amber: #9d7bff;
+    --amber-dim: #7a5fd0;
+    --amber-glow: rgba(157, 123, 255, 0.32);
+    --text: #dcdce4;
+    --text-muted: #8f8f9c;
+    --border: #2a2a38;
+}
+/* GENERATED SKINS (build_skins.py) END */

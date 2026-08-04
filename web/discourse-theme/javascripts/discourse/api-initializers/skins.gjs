@@ -33,11 +33,15 @@ import {
 } from "discourse/lib/color-scheme-picker";
 
 /** Skin slug (owned by the site) → palette name (owned by about.json). */
+// GENERATED SKINS (build_skins.py) BEGIN
 const PALETTES = {
   atlas: "Domino's Gambit",
   terminal: "Terminal",
   stray: "Stray",
+  dub: "Dub",
+  prism: "Prism",
 };
+// GENERATED SKINS (build_skins.py) END
 
 const SITE_ORIGIN = "https://gel.monster";
 

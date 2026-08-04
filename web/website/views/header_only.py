@@ -27,11 +27,15 @@ from django.conf import settings
 # LITERALS here for the same reason the critical CSS block in the template
 # uses literals: custom.css has not arrived at first paint, and an undefined
 # custom property invalidates the whole declaration. Keep the two in sync.
+# GENERATED SKINS (build_skins.py) BEGIN
 SKIN_INK = {
     "atlas": "#0b0e14",
     "terminal": "#1a1a1a",
     "stray": "#0d0a12",
+    "dub": "#0e120c",
+    "prism": "#101014",
 }
+# GENERATED SKINS (build_skins.py) END
 DEFAULT_SKIN = "atlas"
 
 

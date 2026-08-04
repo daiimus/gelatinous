@@ -16,7 +16,9 @@
 (function () {
   "use strict";
 
-  var SKINS = ["atlas", "terminal", "stray"];
+// GENERATED SKINS (build_skins.py) BEGIN
+  var SKINS = ["atlas", "terminal", "stray", "dub", "prism"];
+// GENERATED SKINS (build_skins.py) END
   var COOKIE = "gel_skin";
   var ROOT = document.documentElement;
 

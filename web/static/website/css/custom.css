@@ -1910,6 +1910,7 @@ h1 { font-size: var(--size-h1); }
    The original identity, kept as a period piece: jade on neutral grey,
    from before the Atlas register. Accent and success are the same green
    here, which is exactly how it was — and exactly why it was replaced. */
+/* GENERATED SKINS (build_skins.py) BEGIN */
 [data-skin="terminal"] {
     --terminal-bg-dark: #1a1a1a;
     --terminal-bg-medium: #2a2a2a;
@@ -1921,12 +1922,6 @@ h1 { font-size: var(--size-h1); }
     --terminal-border: #404040;
     --terminal-glow: rgba(95, 211, 141, 0.30);
 }
-
-/* ── stray ────────────────────────────────────────────────────────────
-   Somebody got at the logo. Neon pink over a violet-black ground, and
-   the brand mark wears sprayed-on ears and whiskers (see .tag below).
-   The ground moves off blue-black toward neutral violet so the pink has
-   somewhere to sit without fighting it. */
 [data-skin="stray"] {
     --terminal-bg-dark: #0d0a12;
     --terminal-bg-medium: #16111c;
@@ -1938,12 +1933,63 @@ h1 { font-size: var(--size-h1); }
     --terminal-border: #2c2136;
     --terminal-glow: rgba(255, 61, 154, 0.32);
 }
+[data-skin="dub"] {
+    --terminal-bg-dark: #0e120c;
+    --terminal-bg-medium: #151b12;
+    --terminal-bg-light: #1e2818;
+    --terminal-accent: #f0c34e;
+    --terminal-accent-dim: #c29a34;
+    --terminal-text: #e8e0c8;
+    --terminal-text-muted: #979274;
+    --terminal-border: #2a3324;
+    --terminal-glow: rgba(240, 195, 78, 0.30);
+}
+[data-skin="prism"] {
+    --terminal-bg-dark: #101014;
+    --terminal-bg-medium: #17171e;
+    --terminal-bg-light: #20202a;
+    --terminal-accent: #9d7bff;
+    --terminal-accent-dim: #7a5fd0;
+    --terminal-text: #dcdce4;
+    --terminal-text-muted: #8f8f9c;
+    --terminal-border: #2a2a38;
+    --terminal-glow: rgba(157, 123, 255, 0.32);
+    --font-display: 'Monaspace Radon', ui-monospace, 'SF Mono', Menlo, monospace;
+    --font-data: 'Monaspace Xenon', ui-monospace, 'SF Mono', Menlo, monospace;
+    --prism-r: #ff5f6e;
+    --prism-g: #4fd66f;
+    --prism-y: #ffd75f;
+    --prism-b: #5f9fff;
+    --prism-c: #4fd6d0;
+}
+/* GENERATED SKINS (build_skins.py) END */
 
 /* ── the tag ──────────────────────────────────────────────────────────
    Hidden on every skin but `stray`. Drawn OVER the mark rather than
    composed into it — round caps, uneven angles, a drip and a little
    overspray, so it reads as applied by hand rather than designed in. */
 .brand-mark .tag { display: none; }
+
+/* ── prism ────────────────────────────────────────────────────────────
+   Handwritten like stray's ears: the manifest carries data, this carries
+   the fun. Each nav link takes one hue — every one still high-contrast on
+   the ink, because a rainbow you can't read is just noise — and the
+   navbar's bottom rule becomes the spectrum itself. Interactive lead
+   stays violet everywhere else, so "what's clickable" never blurs. */
+[data-skin="prism"] .navbar-nav li:nth-child(6n+1) .nav-link { color: var(--prism-r); }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+2) .nav-link { color: var(--prism-y); }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+3) .nav-link { color: var(--prism-g); }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+4) .nav-link { color: var(--prism-c); }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+5) .nav-link { color: var(--prism-b); }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+6) .nav-link { color: var(--terminal-accent); }
+[data-skin="prism"] .navbar-nav .nav-link:hover,
+[data-skin="prism"] .navbar-nav .nav-link:focus { color: var(--terminal-text); }
+[data-skin="prism"] .navbar {
+    border-bottom: 2px solid;
+    border-image: linear-gradient(90deg,
+        var(--prism-r), var(--prism-y), var(--prism-g),
+        var(--prism-c), var(--prism-b), var(--terminal-accent)) 1;
+}
 
 [data-skin="stray"] .brand-mark .tag {
     display: block;
