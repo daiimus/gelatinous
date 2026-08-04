@@ -617,6 +617,11 @@ class DeathProgressionScript(DefaultScript):
         # Transfer medical/death data if available
         if hasattr(character, 'medical_state') and character.medical_state:
             corpse.db.death_cause = character.get_death_cause()
+            # Mirror onto the character: the respawn flow reads
+            # old_char.db.death_cause for the sleeve envelope's
+            # PRIOR TERMINATION line, and this is the last point the
+            # live medical state is guaranteed readable.
+            character.db.death_cause = corpse.db.death_cause
             corpse.db.medical_conditions = character.medical_state.get_condition_summary()
             corpse.db.blood_type = character.db.blood_type if character.db.blood_type is not None else 'unknown'
 
@@ -885,7 +890,13 @@ class DeathProgressionScript(DefaultScript):
         
         # Archive the dead character (also handles any lingering sessions)
         character.archive_character(reason="death")
-        character.db.death_cause = character.db.death_cause if character.db.death_cause is not None else 'unknown'
+        if character.db.death_cause is None:
+            # Corpse construction usually records the cause; fall back to
+            # reading the medical state directly before giving up.
+            try:
+                character.db.death_cause = character.get_death_cause() or 'unknown'
+            except Exception:
+                character.db.death_cause = 'unknown'
 
     def _initiate_new_character_creation(self, account, old_character, session):
         """Start the character creation process for the account after death."""

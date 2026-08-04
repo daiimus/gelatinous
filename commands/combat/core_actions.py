@@ -27,6 +27,7 @@ from world.combat.constants import (
 from commands._identity_targeting import resolve_character_target
 from world.combat.handler import get_or_create_combat
 from world.combat.messages import get_combat_message
+from world.medical.utils import select_hit_location
 from world.combat.proximity import establish_proximity
 from world.combat.utils import (
     initialize_proximity_ndb, get_wielded_weapon, get_numeric_stat,
@@ -361,7 +362,9 @@ class CmdAttack(Command):
             splattercast.msg(f"{DEBUG_PREFIX_ATTACK}: Aiming direction attack by {caller.key} towards {aiming_direction} into {target_room.key}.")
 
             # --- ADDITIONAL AIMING DIRECTION LOGIC ---
-            initiate_msg_obj = get_combat_message(weapon_type_for_msg, "initiate", attacker=caller, target=target, item=weapon_obj)
+            initiate_msg_obj = get_combat_message(
+                weapon_type_for_msg, "initiate", attacker=caller, target=target, item=weapon_obj,
+                hit_location=select_hit_location(target, 0, caller))
             
             std_attacker_initiate = ""
             std_victim_initiate = ""
@@ -424,7 +427,9 @@ class CmdAttack(Command):
             
         else:
             # Standard local attack initiation message (use get_combat_message)
-            initiate_msg_obj = get_combat_message(weapon_type_for_msg, "initiate", attacker=caller, target=target, item=weapon_obj)
+            initiate_msg_obj = get_combat_message(
+                weapon_type_for_msg, "initiate", attacker=caller, target=target, item=weapon_obj,
+                hit_location=select_hit_location(target, 0, caller))
             
             attacker_msg = ""
             victim_msg = ""
@@ -480,7 +485,9 @@ class CmdAttack(Command):
                     target_weapon_type = target_weapon.db.weapon_type
                 
                 # Get target's initiate message (defensive reaction)
-                target_initiate_msg_obj = get_combat_message(target_weapon_type, "initiate", attacker=target, target=caller, item=target_weapon)
+                target_initiate_msg_obj = get_combat_message(
+                    target_weapon_type, "initiate", attacker=target, target=caller, item=target_weapon,
+                    hit_location=select_hit_location(caller, 0, target))
                 
                 target_attacker_msg = ""
                 target_victim_msg = ""
