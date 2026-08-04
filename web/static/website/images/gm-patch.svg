@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"
+     role="img" aria-label="Gelatinous Monster">
+  <title>Gelatinous Monster</title>
+  <circle class="plate" cx="50" cy="50" r="49.0" fill="var(--terminal-bg-dark, #0b0e14)"/>
+  <circle class="rim" cx="50" cy="50" r="49.0" fill="none" stroke="var(--terminal-accent, #e0a86f)"
+          stroke-width="1.1" stroke-opacity="0.9"/>
+  <g class="ring" fill="none" stroke="var(--terminal-accent, #e0a86f)" stroke-width="2.0" stroke-linecap="round">
+    <path d="M 90.41,35.29 A 43.0,43.0 0 0 1 84.79,75.27"/>
+    <path d="M 15.21,75.27 A 43.0,43.0 0 0 1 9.59,35.29"/>
+  </g>
+  <g>
+    <text class="word" transform="translate(50,50) rotate(-55.800) translate(0,-43.0)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">G</text>
+    <text class="word" transform="translate(50,50) rotate(-43.400) translate(0,-43.0)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">E</text>
+    <text class="word" transform="translate(50,50) rotate(-31.000) translate(0,-43.0)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">L</text>
+    <text class="word" transform="translate(50,50) rotate(-18.600) translate(0,-43.0)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">A</text>
+    <text class="word" transform="translate(50,50) rotate(-6.200) translate(0,-43.0)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">T</text>
+    <text class="word" transform="translate(50,50) rotate(6.200) translate(0,-43.0)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">I</text>
+    <text class="word" transform="translate(50,50) rotate(18.600) translate(0,-43.0)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">N</text>
+    <text class="word" transform="translate(50,50) rotate(31.000) translate(0,-43.0)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">O</text>
+    <text class="word" transform="translate(50,50) rotate(43.400) translate(0,-43.0)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">U</text>
+    <text class="word" transform="translate(50,50) rotate(55.800) translate(0,-43.0)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">S</text>
+    <text class="word" transform="translate(50,50) rotate(223.200) translate(0,-43.0) rotate(180)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">M</text>
+    <text class="word" transform="translate(50,50) rotate(208.800) translate(0,-43.0) rotate(180)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">O</text>
+    <text class="word" transform="translate(50,50) rotate(194.400) translate(0,-43.0) rotate(180)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">N</text>
+    <text class="word" transform="translate(50,50) rotate(180.000) translate(0,-43.0) rotate(180)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">S</text>
+    <text class="word" transform="translate(50,50) rotate(165.600) translate(0,-43.0) rotate(180)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">T</text>
+    <text class="word" transform="translate(50,50) rotate(151.200) translate(0,-43.0) rotate(180)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">E</text>
+    <text class="word" transform="translate(50,50) rotate(136.800) translate(0,-43.0) rotate(180)" text-anchor="middle" font-family="Monaspace Xenon Var, ui-monospace, monospace" font-size="7.9" font-weight="600" fill="var(--terminal-text, #d8d3c4)" dy="0.34em">R</text>
+  </g>
+  <g transform="translate(50,50)">
+    <defs><clipPath id="gm-near"><rect x="-36" y="0" width="72" height="36"/></clipPath></defs>
+    <g transform="rotate(-22)">
+      <ellipse class="ring" rx="26" ry="7.6" fill="none" stroke="var(--terminal-accent, #e0a86f)"
+               stroke-width="1.5" stroke-opacity="0.34"/>
+    </g>
+    <circle class="body" r="12" fill="var(--terminal-text, #d8d3c4)"/>
+    <g transform="rotate(-22)" clip-path="url(#gm-near)">
+      <ellipse class="knock" rx="26" ry="7.6" fill="none" stroke="var(--terminal-bg-dark, #0b0e14)" stroke-width="4.0"/>
+      <ellipse class="ring" rx="26" ry="7.6" fill="none" stroke="var(--terminal-accent, #e0a86f)" stroke-width="2.3"/>
+    </g>
+    <circle class="knock" cx="24.5" cy="-6.2" r="4.4" fill="var(--terminal-bg-dark, #0b0e14)"/>
+    <circle class="node" cx="24.5" cy="-6.2" r="3.0" fill="var(--terminal-accent, #e0a86f)"/>
+  </g>
+</svg>
