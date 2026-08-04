@@ -126,7 +126,15 @@ Uses iframe-specific menu that removes Forum link to prevent double headers.
             if (!TARGET_ORIGIN) return;  // Don't post if no origin configured
             window.parent.postMessage({
                 type: 'gel-header-height',
-                height: measuredHeight()
+                height: measuredHeight(),
+                // The skin rides along. In Safari private mode this iframe's
+                // cookie jar is PARTITIONED from the page around us — a skin
+                // clicked here is written to a jar the forum can never read,
+                // and the click's own gel-skin message can race Ember boot
+                // and be lost. Height messages repeat (load, resize, every
+                // DOM mutation), so carrying the skin on them gives the forum
+                // an unlosable way to learn what this header is wearing.
+                skin: document.documentElement.getAttribute('data-skin') || 'atlas'
             }, TARGET_ORIGIN);
         }
 
