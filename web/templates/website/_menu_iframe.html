@@ -55,6 +55,37 @@ Removes the Forum link to prevent navigation loops and double headers.
           <circle class="spatter" cx="87" cy="-3" r="1.2"/>
           <circle class="spatter" cx="8" cy="70" r="1.1"/>
         </g>
+        <!-- Alternate marks, one per homage skin. Hidden by default; the
+             skin's CSS swaps them in for the ringed world. Both are
+             original drawings in the referenced style, not reproductions —
+             and the badge's ring text is the site's own line. -->
+        <g class="alt alt-laughing">
+          <circle cx="50" cy="50" r="46" fill="none" stroke-width="1.6"/>
+          <defs>
+            <path id="lm-ring-if" d="M 50,89 A 39,39 0 1 1 50.01,89 Z"/>
+          </defs>
+          <text class="ringtext" font-size="6.2" letter-spacing="0.6">
+            <textPath href="#lm-ring-if" xlink:href="#lm-ring-if">A TEMPORARY ARRANGEMENT OF ATOMS PRETENDING COHERENCE &#183;</textPath>
+          </text>
+          <g fill="none" stroke-width="2.2" stroke-linecap="round">
+            <circle cx="50" cy="52" r="20"/>
+            <path d="M 32,44 A 20,20 0 0 1 68,44 L 70,38 L 30,38 Z" class="cap"/>
+            <path d="M 30,38 L 22,40"/>
+            <path d="M 42,52 L 48,52"/>
+            <circle cx="59" cy="52" r="1.6" class="dotfill"/>
+            <path d="M 38,60 Q 50,70 62,60"/>
+          </g>
+        </g>
+        <g class="alt alt-ed" transform="rotate(-7 50 50)">
+          <g fill="none" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="50" cy="50" r="42"/>
+            <circle cx="38" cy="38" r="2.4" class="dotfill"/>
+            <circle cx="63" cy="36" r="2.4" class="dotfill"/>
+            <path d="M 22,52 Q 50,88 79,50 Q 66,72 50,73 Q 33,72 22,52 Z"/>
+            <path d="M 26,56 L 33,60 L 38,65 L 45,68 L 52,69 L 60,66 L 67,61 L 73,55"
+                  stroke-width="2.4" class="teeth"/>
+          </g>
+        </g>
       </svg>
       <div class="media-body">
         {{ game_name }}<br />

@@ -1,0 +1,40 @@
+# Gelatinous Monster — ed (crayon warmth and a doodled grin; goofy, still dark)
+# A valid Ghostty terminal theme; `# gel:` lines are the game's extensions.
+# The mark override is an original doodle smiley; the typography is the
+# Monaspace showcase — nav items and heading words each take a different
+# face, the way the superfamily was built to mix.
+palette = 0=#221809
+palette = 1=#f25c3d
+palette = 2=#7fc95f
+palette = 3=#ffd23f
+palette = 4=#5f9fd6
+palette = 5=#d67fd0
+palette = 6=#5fd0c0
+palette = 7=#f2e7d4
+palette = 8=#8a7a5f
+palette = 9=#ff8b70
+palette = 10=#a3e07f
+palette = 11=#ffe382
+palette = 12=#8bc0ea
+palette = 13=#eaa3e0
+palette = 14=#8be0d4
+palette = 15=#fbf5e8
+background = #171008
+foreground = #f2e7d4
+cursor-color = #ff8c3a
+selection-background = #2f2210
+selection-foreground = #f2e7d4
+
+# gel: slug = ed
+# gel: order = 6
+# gel: palette-name = Ed
+# gel: palette-id = 27
+# gel: accent = #ff8c3a
+# gel: accent-dim = #cc6a24
+# gel: bg-medium = #221809
+# gel: bg-light = #2f2210
+# gel: text-muted = #a89478
+# gel: border = #3d2c14
+# gel: glow-alpha = 0.32
+# gel: quaternary = #ffd23f
+# gel: primary-low-mid = #7d7057
