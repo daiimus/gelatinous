@@ -20,6 +20,7 @@ of the screen is done by the unlogged-in "look" command.
 
 """
 
+import time
 from django.conf import settings
 from evennia import utils
 
@@ -44,7 +45,7 @@ def connection_screen():
 [ Color bars desaturated. ]
 [ Anomalous resonance detected at 7.8Hz. ] 
 
-YEAR: 198|u█|n (ENDLESS BROADCAST)
+YEAR: {time.strftime("%Y")} (ENDLESS BROADCAST)
 LOCATION: PARTS UNKNOWN
  
 >> Streets: Flowing.
