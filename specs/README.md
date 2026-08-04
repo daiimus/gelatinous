@@ -76,6 +76,7 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 
 | Spec | Description |
 |------|-------------|
+| `NEW_PLAYER_EXPERIENCE_SPEC.md` | Connection → chargen → decant flow and the locked messaging conventions (frame, terminal wrap, TST dates, informing-not-telling, puppet lifecycle) |
 | `EVMENU_PATTERNS_SPEC.md` | EvMenu text-input / multi-source-picker patterns |
 | `STYLING_SPEC.md` | Web client / terminal-brutalist styling |
 | `WEBCLIENT_SCREEN_SIZE_DETECTION_SPEC.md` | Responsive client layout / screen-width detection |

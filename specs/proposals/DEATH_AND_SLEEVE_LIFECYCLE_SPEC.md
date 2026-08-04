@@ -157,6 +157,18 @@ PC-only:
 decants a new sleeve: **3 random templates** or a **flash clone** (inherits stats,
 appearance, sex from the archived sleeve). `death_count` sets the numeral.
 
+> **Addendum (2026-08-04, #1572–#1591):** the decant presentation was
+> rebuilt — finalize paths now move the sleeve to the spawn room
+> *before* puppeting (no Limbo leak), the respawn/flash finale is a
+> framed narrative block whose sleeve-envelope label carries the
+> record (`CONTENTS` name+numeral, `DECANTED` TST date, and for flash
+> clones `PRIOR TERMINATION` + `DEATH COUNT`), and `death_cause` is
+> now mirrored onto the **character** at corpse construction (#1582 —
+> previously only the corpse got it, so respawn always read UNKNOWN).
+> Bystanders see the decant as a tech scene; logout reads as the
+> sleeve going vacant. Conventions:
+> [`../NEW_PLAYER_EXPERIENCE_SPEC.md`](../NEW_PLAYER_EXPERIENCE_SPEC.md).
+
 **Archived sleeves are permanent, reviewable records — BY DESIGN.** They live on
 in Limbo; `accounts.py` counts only *non-archived* characters against
 `MAX_NR_CHARACTERS`, and the website surfaces past sleeves ("Decant Sleeve /
