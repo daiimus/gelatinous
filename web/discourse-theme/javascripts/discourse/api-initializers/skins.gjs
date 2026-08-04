@@ -42,6 +42,16 @@ const PALETTES = {
 const SITE_ORIGIN = "https://gel.monster";
 
 function currentSkin() {
+  // Test hook: Safari private mode can deny script cookie access that the
+  // HTTP layer was granted, and no harness can produce that state on
+  // demand — this flag can. Inert unless deliberately set.
+  try {
+    if (localStorage.getItem("gel-skin-test-blind")) {
+      return null;
+    }
+  } catch (e) {
+    // storage unavailable: fall through to the real read
+  }
   const hit = document.cookie.match(/(?:^|;\s*)gel_skin=([^;]+)/);
   return hit ? decodeURIComponent(hit[1]) : null;
 }
@@ -83,6 +93,18 @@ export default apiInitializer("1.8.0", (api) => {
   // the one the header writes. This is what lets a reloaded header be re-armed
   // even when no cookie can be read at all.
   let wearing = null;
+  // THE SEED: the server may have rendered a non-default palette from a
+  // cookie the script cannot read (Safari private mode). The body knows
+  // what it is wearing — data-scheme-id — it just never told itself.
+  // Without this, `wearing` stays null, the header's honest "atlas" report
+  // is (correctly) never adopted, and nothing ever pushes the real skin
+  // down: the header stays default forever against a skinned body.
+  for (const skin in PALETTES) {
+    if (skin !== "atlas" && paletteId(skin) === applied) {
+      wearing = skin;
+      break;
+    }
+  }
 
   async function applySkin(skin) {
     if (skin in PALETTES) {
@@ -157,6 +179,10 @@ export default apiInitializer("1.8.0", (api) => {
     }
   }
 
+  // Read-only state handle so a harness can see in: this saga's lesson is
+  // that inference dies where instrumentation lives.
+  window.__gelSkinState = () => ({ wearing, applied, ours: currentSkin() });
+
   applySkin(currentSkin());
 
   // Ask the header what it is wearing. We boot after the iframe's tiny
@@ -192,14 +218,18 @@ export default apiInitializer("1.8.0", (api) => {
     // user's intent: adopt it.
     if (event.data?.type === "gel-header-height") {
       const ours = currentSkin();
-      if (ours in PALETTES) {
-        pushToHeader(ours);
-      } else if (wearing) {
-        // Cookie unreadable but we know what we're wearing (adopted via
-        // messages earlier): re-arm the header — it may have reloaded into
-        // an empty partitioned jar and fallen back to the default.
-        pushToHeader(wearing);
-      } else if (event.data.skin in PALETTES && event.data.skin !== "atlas") {
+      // What we would tell the header: our own cookie when readable, else
+      // what the body is wearing (message-adopted or seeded from the
+      // server render).
+      const toPush = ours in PALETTES ? ours : wearing;
+      if (toPush && event.data.skin !== toPush) {
+        // Push ONLY when the header reports something different. An
+        // unconditional push here closed a loop: push -> the header
+        // applies -> its data-skin observer fires -> it reports height
+        // again -> push. The inequality is what breaks the cycle, and it
+        // still re-arms a header that reloaded into the default.
+        pushToHeader(toPush);
+      } else if (!toPush && event.data.skin in PALETTES && event.data.skin !== "atlas") {
         // We know nothing; the header's report is the only record of the
         // user's intent. The atlas exclusion keeps a default-stamped header
         // from ever overriding anything — atlas is what both sides wear
