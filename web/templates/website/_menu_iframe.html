@@ -59,23 +59,15 @@ Removes the Forum link to prevent navigation loops and double headers.
              skin's CSS swaps them in for the ringed world. Both are
              original drawings in the referenced style, not reproductions —
              and the badge's ring text is the site's own line. -->
-        <g class="alt alt-laughing" transform="rotate(-8 50 50)">
-          <!-- the badge grammar: text band between two rings, the cap's brim
-               a capsule bar bisecting the disc and escaping past the ring,
-               crown arc above, laughing eyes and a smile bowl below. Drawn
-               fresh; the ring speaks the site's own sentence. -->
-          <circle cx="50" cy="50" r="48" fill="none" stroke-width="1.8"/>
-          <circle cx="50" cy="50" r="36" fill="none" stroke-width="1.6"/>
-          <defs>
-            <path id="lm-ring-if" d="M 50,92 A 42,42 0 1 1 50.01,92 Z"/>
-          </defs>
-          <text class="ringtext" font-size="6.7" font-weight="700" letter-spacing="0.3">
-            <textPath href="#lm-ring-if" xlink:href="#lm-ring-if">A TEMPORARY ARRANGEMENT OF ATOMS PRETENDING COHERENCE</textPath>
-          </text>
-          <g class="cap">
-            <path d="M 17,46 A 34,34 0 0 1 83,46" fill="none" stroke-width="7"/>
-            <rect x="15" y="45" width="89" height="13" rx="6.5"/>
-          </g>
+        <g class="alt alt-laughing">
+          <!-- Owner-supplied artwork, rendered as-is from the repo asset;
+               the CSS filter lifts the navy line-work to white for the dark
+               ground. The drawn homage this replaces lives in git history
+               (#1551-#1553) if it is ever wanted back. -->
+          <image href="{% static 'website/images/laughing-man.png' %}"
+                 x="-3" y="1" width="106" height="98"
+                 preserveAspectRatio="xMidYMid meet"/>
+        </g>
           <g class="smile" fill="none" stroke-linecap="round">
             <path d="M 33,66 A 5,5 0 0 1 43,66" stroke-width="4.6"/>
             <path d="M 57,66 A 5,5 0 0 1 67,66" stroke-width="4.6"/>
