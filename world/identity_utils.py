@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import re
+
 from world.grammar import capitalize_first
 
 if TYPE_CHECKING:
@@ -88,6 +90,15 @@ def msg_room_identity(
         if pos != -1 and pos < first_pos:
             first_pos = pos
             first_placeholder = placeholder
+
+    # Only capitalize when the placeholder actually sits at a sentence
+    # start. A template like "... techs peel {actor} out of the gel"
+    # must render "an average man", not "An average man". Colour codes
+    # before the placeholder don't count as prose.
+    if first_placeholder is not None:
+        prefix = re.sub(r"\|\[?\w{1,3}", "", template[:first_pos]).strip()
+        if prefix and prefix[-1] not in ".!?":
+            first_placeholder = None
 
     for observer in location.contents:
         if observer in exclude_set:
