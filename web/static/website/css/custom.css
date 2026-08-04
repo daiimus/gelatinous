@@ -2025,7 +2025,7 @@ h1 { font-size: var(--size-h1); }
 /* the doodle: crayon strokes in cream, teeth line in yellow */
 [data-skin="ed"] .brand-mark .alt-ed { stroke: var(--terminal-text); }
 [data-skin="ed"] .brand-mark .alt-ed .dotfill { fill: var(--terminal-text); stroke: none; }
-[data-skin="ed"] .brand-mark .alt-ed .teeth { stroke: var(--quaternary, #ffd23f); stroke: var(--terminal-glow); stroke: #ffd23f; }
+[data-skin="ed"] .brand-mark .alt-ed .tongue { stroke: var(--terminal-accent); }
 
 /* ed's typography: the superfamily mixed the way its makers intended.
    Nav items cycle faces AND crayon colours; heading words get faces from
