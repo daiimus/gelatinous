@@ -733,9 +733,10 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
         caller.msg("|g╚════════════════════════════════════════════════════════════════╝|n")
         caller.msg("")
         caller.msg(f"|wWelcome back, |c{char.key}|w.|n")
-        caller.msg(f"|wClone Generation:|n |w1|n")
         caller.msg("")
-        caller.msg("|yYou open your eyes in an unfamiliar body.|n")
+        caller.msg("|wThe envelope unseals around an unfamiliar body. The same yellow|n")
+        caller.msg("|wprint slides past your face: DO NOT CONSUME NUTRIGEL.|n")
+        caller.msg("")
         caller.msg("|yThe memories feel... borrowed. But they're yours now.|n")
         caller.msg("")
 
@@ -1478,13 +1479,24 @@ def first_char_finalize(caller, raw_string, **kwargs):
         if spawn_location and spawn_location != char.location:
             char.move_to(spawn_location, quiet=True)
 
-        # Welcome banner before the puppet-look, so the spawn room
-        # description lands as the payoff of "you open your eyes".
+        # Decant narrative before the puppet-look, so the spawn room
+        # description lands as the payoff of "you open your eyes". The
+        # character's name (numeral and all) is revealed diegetically as
+        # the sleeve envelope's CONTENTS line.
         caller.msg("|g╔════════════════════════════════════════════════════════════════╗")
         caller.msg("|g║  CONSCIOUSNESS UPLOAD COMPLETE                                 ║")
         caller.msg("|g╚════════════════════════════════════════════════════════════════╝|n")
         caller.msg("")
-        caller.msg(f"|wWelcome to Gelatinous Monster, |c{char.key}|w.|n")
+        caller.msg("|wPressure equalizes with a hiss. Nutrigel drains in slow pulses,|n")
+        caller.msg("|wand the envelope's seam parts tooth by tooth along its zipper.|n")
+        caller.msg("|wYellow print slides past your face:|n")
+        caller.msg("")
+        caller.msg("|y    THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE|n")
+        caller.msg(f"|y    CONTENTS: {char.key.upper()}|n")
+        caller.msg("|y    BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n")
+        caller.msg("")
+        caller.msg("|wGloved hands peel the breather from your face. Your first breath|n")
+        caller.msg("|win this body tastes of refrigerant and copper.|n")
         caller.msg("")
         caller.msg("|wThe static clears. You open your eyes.|n")
         caller.msg("|wThe year is 198█. The broadcast continues.|n")
