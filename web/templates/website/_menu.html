@@ -68,10 +68,6 @@ folder and edit it to add/remove links to the menu.
                centred on the crown, and a mask blanks whichever letters the
                escaping brim crosses, exactly as the source does. -->
           <defs>
-            <filter id="lm-ink-m" color-interpolation-filters="sRGB">
-              <feColorMatrix type="matrix"
-                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 2.7 0 0"/>
-            </filter>
             <clipPath id="lm-clip-m">
               <circle cx="50" cy="50" r="36.8"/>
               <rect x="50" y="39.5" width="59.5" height="21" rx="10.5"/>
@@ -84,9 +80,12 @@ folder and edit it to add/remove links to the menu.
           </defs>
           <g clip-path="url(#lm-clip-m)">
             <rect class="paper" x="-6" y="-6" width="122" height="112"/>
+            <!-- The ink treatment (alpha = min(1, 2.7·blue)) is baked into the
+                 PNG offline: WebKit rasterizes SVG filter regions at viewBox
+                 resolution, which pixelated the face at any display size. -->
             <image href="{% static 'website/images/laughing-face.png' %}"
                    x="-0.61" y="-0.67" width="112.32" height="101.36"
-                   preserveAspectRatio="xMinYMin meet" filter="url(#lm-ink-m)"/>
+                   preserveAspectRatio="xMinYMin meet"/>
           </g>
           <circle cx="50" cy="50" r="48" fill="none" stroke-width="1.8"/>
           <circle cx="50" cy="50" r="36" fill="none" stroke-width="1.6"/>
