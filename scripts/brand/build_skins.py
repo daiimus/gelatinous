@@ -300,7 +300,7 @@ def emit_seed_rb(skins):
             "highlight": s.accent.lstrip("#"),
             "danger": "e85555",
             "success": "5fd38d",
-            "love": s.accent.lstrip("#"),
+            "love": s.token("love", s.accent).lstrip("#"),
             "selected": s.bg_medium.lstrip("#"),
             "hover": s.bg_light.lstrip("#"),
             "primary-medium": s.text_muted.lstrip("#"),
@@ -333,6 +333,11 @@ SCHEMES.each do |name, colors|
   end
   scheme.user_selectable = true
   scheme.save!
+  # mutated CHILD rows do not autosave with the parent — persisting the
+  # scheme alone silently drops colour updates (creation works, update
+  # no-ops; found when Dub's hearts stayed gold)
+  scheme.color_scheme_colors.each(&:save!)
+  scheme.touch
   puts "#{{name}} => #{{scheme.id}}"
 end
 """
