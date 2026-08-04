@@ -10,7 +10,7 @@ SCHEMES = {
   "Domino's Gambit" => { "primary" => "d8d3c4", "secondary" => "0b0e14", "tertiary" => "e0a86f", "quaternary" => "6fd6e0", "header_background" => "0b0e14", "header_primary" => "d8d3c4", "highlight" => "e0a86f", "danger" => "e85555", "success" => "5fd38d", "love" => "e0a86f", "selected" => "11161f", "hover" => "182030", "primary-medium" => "8f8d82", "primary-low-mid" => "6b6f78" },
   "Terminal" => { "primary" => "e0e0e0", "secondary" => "1a1a1a", "tertiary" => "5fd38d", "quaternary" => "4a9d6d", "header_background" => "1a1a1a", "header_primary" => "e0e0e0", "highlight" => "5fd38d", "danger" => "e85555", "success" => "5fd38d", "love" => "5fd38d", "selected" => "2a2a2a", "hover" => "3a3a3a", "primary-medium" => "999999", "primary-low-mid" => "6b6f78" },
   "Stray" => { "primary" => "e6dde4", "secondary" => "0d0a12", "tertiary" => "ff3d9a", "quaternary" => "6fd6e0", "header_background" => "0d0a12", "header_primary" => "e6dde4", "highlight" => "ff3d9a", "danger" => "e85555", "success" => "5fd38d", "love" => "ff3d9a", "selected" => "16111c", "hover" => "201828", "primary-medium" => "8d8393", "primary-low-mid" => "6b6470" },
-  "Dub" => { "primary" => "e8e0c8", "secondary" => "0e120c", "tertiary" => "f0c34e", "quaternary" => "3fae6a", "header_background" => "0e120c", "header_primary" => "e8e0c8", "highlight" => "f0c34e", "danger" => "e85555", "success" => "5fd38d", "love" => "f0c34e", "selected" => "151b12", "hover" => "1e2818", "primary-medium" => "979274", "primary-low-mid" => "6f7563" },
+  "Dub" => { "primary" => "e8e0c8", "secondary" => "0e120c", "tertiary" => "f0c34e", "quaternary" => "3fae6a", "header_background" => "0e120c", "header_primary" => "e8e0c8", "highlight" => "f0c34e", "danger" => "e85555", "success" => "5fd38d", "love" => "e0433f", "selected" => "151b12", "hover" => "1e2818", "primary-medium" => "979274", "primary-low-mid" => "6f7563" },
   "Prism" => { "primary" => "dcdce4", "secondary" => "101014", "tertiary" => "9d7bff", "quaternary" => "4fd6d0", "header_background" => "101014", "header_primary" => "dcdce4", "highlight" => "9d7bff", "danger" => "e85555", "success" => "5fd38d", "love" => "9d7bff", "selected" => "17171e", "hover" => "20202a", "primary-medium" => "8f8f9c", "primary-low-mid" => "74747f" },
 }
 
@@ -26,5 +26,10 @@ SCHEMES.each do |name, colors|
   end
   scheme.user_selectable = true
   scheme.save!
+  # mutated CHILD rows do not autosave with the parent — persisting the
+  # scheme alone silently drops colour updates (creation works, update
+  # no-ops; found when Dub's hearts stayed gold)
+  scheme.color_scheme_colors.each(&:save!)
+  scheme.touch
   puts "#{name} => #{scheme.id}"
 end
