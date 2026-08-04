@@ -1258,6 +1258,28 @@ class Character(
                 exclude=[self],
             )
 
+    def at_post_unpuppet(self, account=None, session=None, **kwargs):
+        """Stow the sleeve off-grid, announcing it in-fiction.
+
+        Replicates Evennia's default (store prelogout_location, pull the
+        body from the grid once no sessions remain) but replaces the
+        "<name> has left the game." broadcast with an identity-aware,
+        properly-cased line to match the decant/stir messaging.
+        """
+        if not self.sessions.count():
+            if self.location:
+                from world.identity_utils import msg_room_identity
+
+                msg_room_identity(
+                    self.location,
+                    "{actor} goes still, eyes emptying to static; the "
+                    "vacant sleeve is quietly gone.",
+                    {"actor": self},
+                    exclude=[self],
+                )
+                self.db.prelogout_location = self.location
+                self.location = None
+
     def announce_move_from(
         self, destination, msg=None, mapping=None, **kwargs
     ):
