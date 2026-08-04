@@ -1956,8 +1956,6 @@ h1 { font-size: var(--size-h1); }
     --terminal-text-muted: #8f8f9c;
     --terminal-border: #2a2a38;
     --terminal-glow: rgba(157, 123, 255, 0.32);
-    --font-display: 'Monaspace Radon', ui-monospace, 'SF Mono', Menlo, monospace;
-    --font-data: 'Monaspace Xenon', ui-monospace, 'SF Mono', Menlo, monospace;
     --prism-r: #ff5f6e;
     --prism-g: #4fd66f;
     --prism-y: #ffd75f;
