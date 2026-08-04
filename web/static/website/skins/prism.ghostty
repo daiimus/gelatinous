@@ -3,7 +3,6 @@
 # One lead accent (violet) keeps "what's clickable" unambiguous; the
 # spectrum lives on non-semantic zones via the --prism-* tokens, consumed
 # by handwritten flourish CSS. Static — a rainbow you can read.
-# Type is the show: display set in Radon's handwriting, data in Xenon slab.
 palette = 0=#17171e
 palette = 1=#ff5f6e
 palette = 2=#4fd66f
@@ -39,8 +38,6 @@ selection-foreground = #dcdce4
 # gel: glow-alpha = 0.32
 # gel: quaternary = #4fd6d0
 # gel: primary-low-mid = #74747f
-# gel: font-display = radon
-# gel: font-data = xenon
 # gel: css-prism-r = #ff5f6e
 # gel: css-prism-g = #4fd66f
 # gel: css-prism-y = #ffd75f
