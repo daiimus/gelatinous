@@ -133,12 +133,12 @@ g = rig.box("gplane", (6, 6, 0.01), (0, -1.0, -0.005), catcher)
 g.is_shadow_catcher = True
 
 RES = 1600
-rig.rig_camera_and_light(ortho=3.4 * RES / 512, target=(0.0, -1.0, 0.5))
+rig.rig_camera_and_light(ortho=2.6 * RES / 512, target=(0.0, -1.0, 0.5))
 rig.render("brackett_roof", res=RES)
 
 rig.clear_scene()
 m = rig.make_material("mk", (1, 1, 1), 0.2, emit=(1, 1, 1))
 rig.box("marker", (0.04, 0.04, 0.04), (0, 0, 0), m)
-rig.rig_camera_and_light(ortho=3.4 * RES / 512, target=(0.0, -1.0, 0.5))
+rig.rig_camera_and_light(ortho=2.6 * RES / 512, target=(0.0, -1.0, 0.5))
 rig.render("calib_brackett_roof", res=RES)
 print("landmark brackett roof v2 rendered")
