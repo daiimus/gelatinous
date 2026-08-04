@@ -728,17 +728,23 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
 
         # Welcome banner before the puppet-look, so the spawn room
         # description lands as the payoff of "you open your eyes".
-        caller.msg("|g╔════════════════════════════════════════════════════════════════╗")
-        caller.msg("|g║  CONSCIOUSNESS TRANSFER COMPLETE                               ║")
-        caller.msg("|g╚════════════════════════════════════════════════════════════════╝|n")
-        caller.msg("")
-        caller.msg(f"|wWelcome back, |c{char.key}|w.|n")
-        caller.msg("")
-        caller.msg("|wThe envelope unseals around an unfamiliar body. The same yellow|n")
-        caller.msg("|wprint slides past your face: DO NOT CONSUME NUTRIGEL.|n")
-        caller.msg("")
-        caller.msg("|yThe memories feel... borrowed. But they're yours now.|n")
-        caller.msg("")
+        caller.msg(f"""__________________________________________________________________
+
+|g╔════════════════════════════════════════════════════════════════╗
+║  CONSCIOUSNESS TRANSFER COMPLETE                               ║
+╚════════════════════════════════════════════════════════════════╝|n
+
+|wThe envelope unseals around an unfamiliar body. Yellow print
+slides past your face:|n
+
+|y    THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE
+    CONTENTS: {char.key.upper()}
+    DECANTED: {time.strftime('%d %b %Y').upper()}
+    BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n
+
+|wThe memories feel... borrowed. But they're yours now.|n
+__________________________________________________________________
+""")
 
         # Puppet the character (announces the name, then looks at the room)
         caller.puppet_object(sessions[0], char)
@@ -786,35 +792,56 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
         if spawn_location and spawn_location != char.location:
             char.move_to(spawn_location, quiet=True)
 
-        # Welcome banner before the puppet-look, so the spawn room
-        # description lands as the payoff of waking in the new body.
+        # Framed decant block before the puppet-look; the envelope label
+        # carries the vitals of the fiction (name, date, prior termination,
+        # death count) so the prose can stay sensory.
         # Use AttributeProperty to access the correct categorized attribute
         death_count = char.death_count
-        caller.msg("|r╔════════════════════════════════════════════════════════════════╗")
-        caller.msg("|r║  FLASH CLONE PROTOCOL COMPLETE                                 ║")
-        caller.msg("|r╚════════════════════════════════════════════════════════════════╝|n")
-        caller.msg("")
-        caller.msg(f"|wWelcome back, |c{char.key}|w.|n")
-        caller.msg(f"|wDeath Count:|n |w{death_count}|n")
-        caller.msg("")
         
         # Death count-specific flavor
         if death_count == 2:
-            caller.msg("|wThis is your first death. The sensation of resleeving is disorienting.|n")
-            caller.msg("|wYour old body's final moments echo in your mind like static on a dead channel.|n")
+            flavor = (
+                "|wThis is your first death. The sensation of resleeving is\n"
+                "disorienting. Your old body's final moments echo in your mind\n"
+                "like static on a dead channel.|n"
+            )
         elif death_count < 5:
-            caller.msg("|wThe memories of your previous body fade like analog videotape degradation.|n")
-            caller.msg("|wYou know you've done this before, but each time feels like the first.|n")
+            flavor = (
+                "|wThe memories of your previous body fade like analog videotape\n"
+                "degradation. You know you've done this before, but each time\n"
+                "feels like the first.|n"
+            )
         elif death_count < 10:
-            caller.msg("|wYou've died enough times to know: this never gets easier.|n")
-            caller.msg("|wBut at least you're still you. Mostly.|n")
+            flavor = (
+                "|wYou've died enough times to know: this never gets easier.\n"
+                "But at least you're still you. Mostly.|n"
+            )
         else:
-            caller.msg("|rHow many times have you done this? The memories blur together like overexposed film.|n")
-            caller.msg("|rAre you still the person who first stepped into this world?|n")
+            flavor = (
+                "|rHow many times have you done this? The memories blur together\n"
+                "like overexposed film. Are you still the person who first\n"
+                "stepped into this world?|n"
+            )
         
-        caller.msg("")
-        caller.msg(f"|wPrevious cause of death:|n |r{old_char.db.death_cause or 'Unknown'}|n")
-        caller.msg("")
+        caller.msg(f"""__________________________________________________________________
+
+|r╔════════════════════════════════════════════════════════════════╗
+║  FLASH CLONE PROTOCOL COMPLETE                                 ║
+╚════════════════════════════════════════════════════════════════╝|n
+
+|wThe envelope unseals around a body you already know by heart.
+Yellow print slides past your face:|n
+
+|y    THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE
+    CONTENTS: {char.key.upper()}
+    DECANTED: {time.strftime('%d %b %Y').upper()}
+    PRIOR TERMINATION: {(old_char.db.death_cause or 'UNKNOWN').upper()}
+    DEATH COUNT: {death_count}
+    BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n
+
+{flavor}
+__________________________________________________________________
+""")
 
         # Puppet the character (announces the name, then looks at the room)
         caller.puppet_object(sessions[0], char)
@@ -844,18 +871,18 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
 def first_char_welcome(caller, raw_string, **kwargs):
     """First character creation entry point."""
     
-    text = """
+    text = f"""
 |b╔════════════════════════════════════════════════════════════════╗
 ║  WELCOME TO THE GELATINOUS MONSTER                             ║
 ║  CHARACTER INITIALIZATION PROTOCOL                             ║
 ╚════════════════════════════════════════════════════════════════╝|n
 
-|wBeginning consciousness upload sequence...|n
+|wConsciousness upload in progress.|n
 
-|wThe year is 198█. The broadcast never ends.|n
-|wYour memories are... incomplete. But you're here now.|n
+|wCarrier: LOCKED. Year: {time.strftime("%Y")}. The broadcast never ends.|n
+|wMemory integrity: PARTIAL. Identity reconstruction required.|n
 
-Press |w<Enter>|n to begin character creation.
+Press |w<Enter>|n to begin reconstruction.
 """
     
     options = (
@@ -1483,25 +1510,28 @@ def first_char_finalize(caller, raw_string, **kwargs):
         # description lands as the payoff of "you open your eyes". The
         # character's name (numeral and all) is revealed diegetically as
         # the sleeve envelope's CONTENTS line.
-        caller.msg("|g╔════════════════════════════════════════════════════════════════╗")
-        caller.msg("|g║  CONSCIOUSNESS UPLOAD COMPLETE                                 ║")
-        caller.msg("|g╚════════════════════════════════════════════════════════════════╝|n")
-        caller.msg("")
-        caller.msg("|wPressure equalizes with a hiss. Nutrigel drains in slow pulses,|n")
-        caller.msg("|wand the envelope's seam parts tooth by tooth along its zipper.|n")
-        caller.msg("|wYellow print slides past your face:|n")
-        caller.msg("")
-        caller.msg("|y    THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE|n")
-        caller.msg(f"|y    CONTENTS: {char.key.upper()}|n")
-        caller.msg("|y    BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n")
-        caller.msg("")
-        caller.msg("|wGloved hands peel the breather from your face. Your first breath|n")
-        caller.msg("|win this body tastes of refrigerant and copper.|n")
-        caller.msg("")
-        caller.msg("|wThe static clears. You open your eyes.|n")
-        caller.msg("|wThe year is 198█. The broadcast continues.|n")
-        caller.msg("|wYou are here. You are real. You are... something.|n")
-        caller.msg("")
+        caller.msg(f"""__________________________________________________________________
+
+|g╔════════════════════════════════════════════════════════════════╗
+║  CONSCIOUSNESS UPLOAD COMPLETE                                 ║
+╚════════════════════════════════════════════════════════════════╝|n
+
+|wPressure equalizes with a hiss. Nutrigel drains in slow pulses,
+and the envelope's seam parts tooth by tooth along its zipper.
+Yellow print slides past your face:|n
+
+|y    THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE
+    CONTENTS: {char.key.upper()}
+    DECANTED: {time.strftime('%d %b %Y').upper()}
+    BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n
+
+|wGloved hands peel the breather from your face. Your first breath
+in this body tastes of refrigerant and copper. Overhead, a console
+ticks through your vitals and finds nothing to flag.
+
+The static clears. You open your eyes.|n
+__________________________________________________________________
+""")
 
         # Puppet the character (announces the name, then looks at the room)
         caller.puppet_object(caller.sessions.all()[0], char)
