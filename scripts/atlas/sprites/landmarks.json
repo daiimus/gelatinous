@@ -211,7 +211,7 @@
   ]
  },
  {
-  "name": "The Brackett Arms — rooftop",
+  "name": "The Brackett Arms \u2014 rooftop",
   "sprite": "brackett_roof",
   "anchor": [
    -10,
@@ -263,8 +263,8 @@
    ]
   ],
   "origin": [
-   151.6,
-   200.04
+   165.07,
+   237.46
   ]
  }
 ]
