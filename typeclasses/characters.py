@@ -1237,9 +1237,23 @@ class Character(
         if self.location:
             from world.identity_utils import msg_room_identity
 
+            if self.attributes.get("decant_announce_pending"):
+                # One-shot, set at character creation: the first puppet is
+                # the decant itself, so bystanders get the whole scene.
+                self.attributes.remove("decant_announce_pending")
+                template = (
+                    "A pair of Thawn-Harrison techs crack open a decanting "
+                    "pod, unzip the sleeve envelope inside tooth by tooth, "
+                    "and peel {actor} out of the nutrigel. One strips the "
+                    "breather free and logs the decant at a console; they "
+                    "move on without a word."
+                )
+            else:
+                template = "{actor} stirs as consciousness returns."
+
             msg_room_identity(
                 self.location,
-                "{actor} stirs as consciousness returns.",
+                template,
                 {"actor": self},
                 exclude=[self],
             )

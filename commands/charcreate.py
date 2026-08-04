@@ -323,6 +323,11 @@ def create_character_from_template(account, template, sex="ambiguous"):
     # death_count starts at 1 via AttributeProperty in Character class
     char.unarchive_character()   # attribute + sleeve-tag index in sync
     
+    # One-shot: the first puppet plays the decant scene to the room
+    # (at_post_puppet consumes this). Covers web-created characters too,
+    # whose first puppet happens at first login.
+    char.db.decant_announce_pending = True
+    
     return char
 
 
@@ -429,6 +434,7 @@ def create_flash_clone(account, old_character):
         # Create new stack ID if old char didn't have one
         import uuid
         char.db.stack_id = str(uuid.uuid4())
+    char.db.decant_announce_pending = True
     
     # Reset state
     char.unarchive_character()   # attribute + sleeve-tag index in sync
@@ -1488,6 +1494,7 @@ def first_char_finalize(caller, raw_string, **kwargs):
         # Generate unique Stack ID
         import uuid
         char.db.stack_id = str(uuid.uuid4())
+        char.db.decant_announce_pending = True
         char.db.original_creation = time.time()
         char.db.current_sleeve_birth = time.time()
         
