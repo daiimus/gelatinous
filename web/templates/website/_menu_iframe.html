@@ -60,30 +60,33 @@ Removes the Forum link to prevent navigation loops and double headers.
              original drawings in the referenced style, not reproductions —
              and the badge's ring text is the site's own line. -->
         <g class="alt alt-laughing" transform="rotate(-2 50 50)">
-          <!-- Composite: the owner's own text-cleared artwork, clipped to
-               the face disc and the brim corridor so the erased band never
-               renders; the site's sentence circles it in our own type. The
-               file is served exactly as supplied — the crop is presentation,
-               not editing. -->
+          <!-- Composite: the owner's text-cleared artwork over a paper-white
+               disc — navy on paper, as the original prints — clipped to the
+               disc and brim corridor. The site's sentence circles it,
+               centred on the crown, and a mask blanks whichever letters the
+               escaping brim crosses, exactly as the source does. -->
           <defs>
-            <filter id="lm-white-if">
-              <feColorMatrix type="matrix"
-                values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"/>
-            </filter>
             <clipPath id="lm-clip-if">
               <circle cx="50" cy="50" r="36.8"/>
               <rect x="50" y="39.5" width="63" height="21" rx="7"/>
             </clipPath>
+            <mask id="lm-tmask-if" maskUnits="userSpaceOnUse">
+              <rect x="-10" y="-10" width="130" height="120" fill="white"/>
+              <rect x="50" y="37" width="64" height="26" rx="8" fill="black"/>
+            </mask>
             <path id="lm-ring-if" d="M 50,92 A 42,42 0 1 1 50.01,92 Z"/>
           </defs>
-          <image href="{% static 'website/images/laughing-face.png' %}"
-                 x="-0.61" y="-0.67" width="112.32" height="101.36"
-                 preserveAspectRatio="xMinYMin meet"
-                 clip-path="url(#lm-clip-if)" filter="url(#lm-white-if)"/>
+          <g clip-path="url(#lm-clip-if)">
+            <rect class="paper" x="-6" y="-6" width="122" height="112"/>
+            <image href="{% static 'website/images/laughing-face.png' %}"
+                   x="-0.61" y="-0.67" width="112.32" height="101.36"
+                   preserveAspectRatio="xMinYMin meet"/>
+          </g>
           <circle cx="50" cy="50" r="48" fill="none" stroke-width="1.8"/>
           <circle cx="50" cy="50" r="36" fill="none" stroke-width="1.6"/>
-          <text class="ringtext" font-size="6.7" font-weight="700" letter-spacing="0.3">
-            <textPath href="#lm-ring-if" xlink:href="#lm-ring-if">A TEMPORARY ARRANGEMENT OF ATOMS PRETENDING COHERENCE</textPath>
+          <text class="ringtext" font-size="6.7" font-weight="700" letter-spacing="0.3"
+                text-anchor="middle" mask="url(#lm-tmask-if)">
+            <textPath href="#lm-ring-if" xlink:href="#lm-ring-if" startOffset="50%">A TEMPORARY ARRANGEMENT OF ATOMS PRETENDING COHERENCE</textPath>
           </text>
         </g>
           <g class="eyes" fill="none" stroke-linecap="round">

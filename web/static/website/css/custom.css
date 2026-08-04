@@ -2012,9 +2012,10 @@ h1 { font-size: var(--size-h1); }
 [data-skin="laughing"] .brand-mark .alt-laughing { display: block; }
 [data-skin="ed"] .brand-mark .alt-ed { display: block; }
 
-/* the badge: the owner's artwork lifted to white by filter; our rings
-   white, our ring sentence accent blue */
+/* the badge: the owner's artwork navy-on-paper as the original prints;
+   our rings white, our ring sentence accent blue */
 [data-skin="laughing"] .brand-mark .alt-laughing { stroke: var(--terminal-text); }
+[data-skin="laughing"] .brand-mark .alt-laughing .paper { fill: var(--terminal-text); stroke: none; }
 [data-skin="laughing"] .brand-mark .alt-laughing .ringtext {
     fill: var(--terminal-accent);
     stroke: none;
