@@ -42,11 +42,26 @@
     --heading-font-family: "Monaspace Xenon", ui-monospace, "SF Mono",
         Menlo, monospace;
 
-    /* the house accent, for the places Discourse's scheme does not reach */
-    --gg-accent: #e0a86f;
-    --gg-bone: #d8d3c4;
-    --gg-bone-dim: #8f8d82;
-    --gg-line: #232c3a;
+    /* House names for the palette, DERIVED rather than literal.
+     *
+     * These used to be hardcoded Domino's Gambit hex. That was invisible
+     * while there was only one palette, and became a bug the moment the skin
+     * easter egg could swap it: Discourse repainted everything from the new
+     * palette while these stayed amber-and-blue-grey. The most visible
+     * symptom was --gg-line on .d-header's border-bottom, which drew a fixed
+     * blue-grey rule directly under the site header — a seam between the
+     * header and the forum body that appeared on every skin except the
+     * default, and looked like a theme-sync failure rather than a stray
+     * border.
+     *
+     * Discourse compiles --primary/--secondary/--tertiary and their derived
+     * shades from whichever palette is active, so mapping onto them makes the
+     * component follow the skin for free, with nothing to keep in sync.
+     */
+    --gg-accent: var(--tertiary);
+    --gg-bone: var(--primary);
+    --gg-bone-dim: var(--primary-medium);
+    --gg-line: var(--primary-low);
 }
 
 /* texture healing and the slashed zero — the same house characteristics
