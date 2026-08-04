@@ -53,7 +53,27 @@
     }
   }
 
-  apply(readCookie() || SKINS[0]);
+  // Apply only when the cookie is actually READABLE. Safari private mode can
+  // deny a cross-origin iframe document.cookie access that the HTTP request
+  // itself was granted — the header arrives server-stamped with the right
+  // data-skin, and `apply(readCookie() || default)` was then REVERTING it to
+  // the default on the strength of a cookie this document simply cannot see.
+  // No cookie read → leave the server's stamp alone; on bare site pages there
+  // is no stamp and no cookie, which is the default anyway.
+  var initial = readCookie();
+  if (initial) apply(initial);
+
+  // And accept the skin FROM the forum page around us. The forum is top-level
+  // and first-party, so its cookie read always works; when the component
+  // applies a skin it pushes it down here, which keeps the header correct
+  // even when this document's own cookie and storage access are dead.
+  window.addEventListener("message", function (ev) {
+    if (ev.origin !== "https://forum.gel.monster") return;
+    var d = ev.data;
+    if (d && d.type === "gel-skin" && SKINS.indexOf(d.skin) !== -1) {
+      apply(d.skin);
+    }
+  });
 
   function cycle(ev) {
     // The mark sits inside the brand link; cycling must not navigate home.

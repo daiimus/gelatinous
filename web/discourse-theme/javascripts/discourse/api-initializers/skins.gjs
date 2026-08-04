@@ -68,7 +68,20 @@ export default apiInitializer("1.8.0", (api) => {
     return schemes.find((s) => s.name === name)?.id ?? null;
   }
 
+  function pushToHeader(skin) {
+    // The header iframe cannot always read the cookie itself: Safari private
+    // mode denies a cross-origin iframe document.cookie access that this
+    // top-level, first-party page is granted. We know the skin; tell it.
+    // Runs on every application, INCLUDING the already-applied no-op path,
+    // because the header can disagree even when the body already matches.
+    const frame = document.getElementById("gel-django-header-iframe");
+    frame?.contentWindow?.postMessage({ type: "gel-skin", skin }, SITE_ORIGIN);
+  }
+
   async function applySkin(skin) {
+    if (skin in PALETTES) {
+      pushToHeader(skin);
+    }
     const id = paletteId(skin);
     // An unknown skin, or a palette that has been deleted, leaves the forum
     // wearing whatever it already had. Failing to the default is correct: a
@@ -126,6 +139,16 @@ export default apiInitializer("1.8.0", (api) => {
     }
     if (event.data?.type === "gel-skin") {
       applySkin(event.data.skin);
+    }
+    // The header posts its height when it loads — which is also the moment
+    // its own message listener provably exists. Answering with the current
+    // skin closes the race where a push fired before the iframe was ready,
+    // and re-arms a header that reloaded for any reason.
+    if (event.data?.type === "gel-header-height") {
+      const skin = currentSkin();
+      if (skin in PALETTES) {
+        pushToHeader(skin);
+      }
     }
   });
 
