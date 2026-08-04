@@ -59,9 +59,9 @@ def device(flat):
       <ellipse class="ring" rx="26" ry="7.6" fill="none" stroke="{accent}"
                stroke-width="1.5" stroke-opacity="0.34"/>
     </g>
-    <circle class="body" r="12" fill="{body}"/>
+    <circle class="body" r="14" fill="{body}"/>
     <g transform="rotate({CANT})" clip-path="url(#gm-near)">
-      <ellipse class="knock" rx="26" ry="7.6" fill="none" stroke="{ink}" stroke-width="4.0"/>
+      <ellipse class="knock" rx="26" ry="7.6" fill="none" stroke="{ink}" stroke-width="4.4"/>
       <ellipse class="ring" rx="26" ry="7.6" fill="none" stroke="{accent}" stroke-width="2.3"/>
     </g>
     <circle class="knock" cx="24.5" cy="-6.2" r="4.4" fill="{ink}"/>
