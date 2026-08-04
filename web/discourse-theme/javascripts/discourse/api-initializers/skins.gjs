@@ -78,8 +78,15 @@ export default apiInitializer("1.8.0", (api) => {
     frame?.contentWindow?.postMessage({ type: "gel-skin", skin }, SITE_ORIGIN);
   }
 
+  // The skin the body is wearing, BY NAME, independent of the cookie — which
+  // in Safari private mode may be unreadable or live in a different jar than
+  // the one the header writes. This is what lets a reloaded header be re-armed
+  // even when no cookie can be read at all.
+  let wearing = null;
+
   async function applySkin(skin) {
     if (skin in PALETTES) {
+      wearing = skin;
       pushToHeader(skin);
     }
     const id = paletteId(skin);
@@ -140,14 +147,33 @@ export default apiInitializer("1.8.0", (api) => {
     if (event.data?.type === "gel-skin") {
       applySkin(event.data.skin);
     }
-    // The header posts its height when it loads — which is also the moment
-    // its own message listener provably exists. Answering with the current
-    // skin closes the race where a push fired before the iframe was ready,
-    // and re-arms a header that reloaded for any reason.
+    // The header posts its height on load, on resize, and on every DOM
+    // mutation — a frequent, unlosable signal, and it now carries the skin
+    // the header is actually wearing. Two jars may be in play: in Safari
+    // private mode the iframe's cookie jar is PARTITIONED from ours, so a
+    // skin clicked in the header lands in a jar we can never read, and the
+    // click's own gel-skin message can race Ember boot and be lost.
+    //
+    // Arbitration: our own cookie wins when we can read one (normal mode,
+    // where both jars are the same and the server rendered from it) — answer
+    // by pushing it down, which also re-arms a header that reloaded. When
+    // our jar says nothing, the header's report is the only record of the
+    // user's intent: adopt it.
     if (event.data?.type === "gel-header-height") {
-      const skin = currentSkin();
-      if (skin in PALETTES) {
-        pushToHeader(skin);
+      const ours = currentSkin();
+      if (ours in PALETTES) {
+        pushToHeader(ours);
+      } else if (wearing) {
+        // Cookie unreadable but we know what we're wearing (adopted via
+        // messages earlier): re-arm the header — it may have reloaded into
+        // an empty partitioned jar and fallen back to the default.
+        pushToHeader(wearing);
+      } else if (event.data.skin in PALETTES && event.data.skin !== "atlas") {
+        // We know nothing; the header's report is the only record of the
+        // user's intent. The atlas exclusion keeps a default-stamped header
+        // from ever overriding anything — atlas is what both sides wear
+        // when nobody has chosen, so adopting it is never necessary.
+        applySkin(event.data.skin);
       }
     }
   });
