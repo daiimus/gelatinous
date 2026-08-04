@@ -395,7 +395,7 @@ html, body {
     --amber-glow: rgba(240, 195, 78, 0.30);
     --text: #e8e0c8;
     --text-muted: #979274;
-    --border: #2a3324;
+    --border: #33471f;
 }
 [data-skin="prism"] {
     --bg-dark: #101014;
@@ -407,5 +407,27 @@ html, body {
     --text: #dcdce4;
     --text-muted: #8f8f9c;
     --border: #2a2a38;
+}
+[data-skin="laughing"] {
+    --bg-dark: #0a1018;
+    --bg-medium: #101a26;
+    --bg-light: #182636;
+    --amber: #56a8e8;
+    --amber-dim: #3d7fb5;
+    --amber-glow: rgba(86, 168, 232, 0.30);
+    --text: #e6eef7;
+    --text-muted: #8b98a8;
+    --border: #24384c;
+}
+[data-skin="ed"] {
+    --bg-dark: #171008;
+    --bg-medium: #221809;
+    --bg-light: #2f2210;
+    --amber: #ff8c3a;
+    --amber-dim: #cc6a24;
+    --amber-glow: rgba(255, 140, 58, 0.32);
+    --text: #f2e7d4;
+    --text-muted: #a89478;
+    --border: #3d2c14;
 }
 /* GENERATED SKINS (build_skins.py) END */
