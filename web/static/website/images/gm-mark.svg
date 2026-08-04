@@ -10,9 +10,9 @@
       <ellipse class="ring" rx="26" ry="7.6" fill="none" stroke="var(--terminal-accent, #e0a86f)"
                stroke-width="1.5" stroke-opacity="0.34"/>
     </g>
-    <circle class="body" r="12" fill="var(--terminal-text, #d8d3c4)"/>
+    <circle class="body" r="14" fill="var(--terminal-text, #d8d3c4)"/>
     <g transform="rotate(-22)" clip-path="url(#gm-near)">
-      <ellipse class="knock" rx="26" ry="7.6" fill="none" stroke="var(--terminal-bg-dark, #0b0e14)" stroke-width="4.0"/>
+      <ellipse class="knock" rx="26" ry="7.6" fill="none" stroke="var(--terminal-bg-dark, #0b0e14)" stroke-width="4.4"/>
       <ellipse class="ring" rx="26" ry="7.6" fill="none" stroke="var(--terminal-accent, #e0a86f)" stroke-width="2.3"/>
     </g>
     <circle class="knock" cx="24.5" cy="-6.2" r="4.4" fill="var(--terminal-bg-dark, #0b0e14)"/>
