@@ -107,7 +107,11 @@ export default apiInitializer("1.8.0", (api) => {
       link.dataset.schemeId = id;
       applied = id;
     } catch (e) {
-      // The cookie is already set, so a reload lands on the right palette.
+      // The cookie is already set, so a reload lands on the right palette —
+      // but say so. A silent catch here hid a misdiagnosed seam for hours;
+      // if this path is ever hit again, the evidence belongs in the console.
+      console.warn("[gel-skin] stylesheet swap failed; will retry on next navigation", e);
+      applied = null;
     }
   }
 
@@ -124,4 +128,14 @@ export default apiInitializer("1.8.0", (api) => {
       applySkin(event.data.skin);
     }
   });
+
+  // Belt and braces for the mid-load toggle. In principle the two paths above
+  // cover every ordering — a toggle before boot is caught by the initial
+  // cookie read, one after boot by the listener — and a timing sweep (50ms to
+  // 2.5s) confirms it in Chromium. But a stuck palette was still observed
+  // once in Safari and could not be reproduced in the harness, so: re-read
+  // the cookie on every SPA navigation. If nothing was missed this is a
+  // cheap no-op (applySkin bails when the id already matches); if anything
+  // ever is, it converges one navigation later instead of never.
+  api.onPageChange(() => applySkin(currentSkin()));
 });
