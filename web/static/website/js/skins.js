@@ -63,7 +63,44 @@
     writeCookie(next);
     apply(next);
     notifyForum(next);
+    broadcast(next);
   }
+
+  // ── cross-tab sync ─────────────────────────────────────────────────
+  // A click only repaints the document it happens in, plus (via
+  // notifyForum) the forum page around the header iframe. What nothing
+  // covered: OTHER tabs. Toggling on the site homepage while a forum tab
+  // sat open left that tab's header iframe wearing the old skin forever —
+  // the iframe reads the cookie once at load, survives every SPA
+  // navigation, and cookies fire no events. The forum BODY converges (the
+  // component re-reads the cookie), so the header alone stayed stale:
+  // a persistent seam that only appeared with two tabs in play.
+  //
+  // localStorage closes it. Every gel.monster document — site tabs AND
+  // header iframes inside forum tabs — is the same origin, and a storage
+  // write fires an event in all of them except the writer. Each follower
+  // repaints, and a header iframe passes the change on to the forum page
+  // around it through the postMessage channel that already exists.
+  var SYNC_KEY = "gel_skin_sync";
+
+  function broadcast(skin) {
+    try {
+      // Date.now suffix: the event only fires when the VALUE changes, and
+      // toggling away and back again must still notify.
+      localStorage.setItem(SYNC_KEY, skin + ":" + Date.now());
+    } catch (e) {
+      // Storage can be unavailable (private mode quotas); the cookie is
+      // still written, so followers correct on their next load instead.
+    }
+  }
+
+  window.addEventListener("storage", function (ev) {
+    if (ev.key !== SYNC_KEY || !ev.newValue) return;
+    var skin = ev.newValue.split(":")[0];
+    if (SKINS.indexOf(skin) === -1) return;
+    apply(skin);
+    notifyForum(skin);
+  });
 
   function wire() {
     var marks = document.querySelectorAll(".brand-mark");
