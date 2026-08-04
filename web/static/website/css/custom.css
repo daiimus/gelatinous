@@ -1978,17 +1978,24 @@ h1 { font-size: var(--size-h1); }
    structure: the nav cycles the tricolor, and the navbar's rule is the
    flag itself. All three hues are bright enough on the near-black ground
    to stay readable, which is what makes this a skin and not a poster. */
-[data-skin="dub"] .navbar-nav li:nth-child(3n+1) .nav-link { color: var(--dub-r); }
-[data-skin="dub"] .navbar-nav li:nth-child(3n+2) .nav-link { color: var(--terminal-accent); }
-[data-skin="dub"] .navbar-nav li:nth-child(3n+3) .nav-link { color: var(--dub-g); }
+[data-skin="dub"] .navbar-nav li:nth-child(3n+1) .nav-link { color: var(--dub-r) !important; }
+[data-skin="dub"] .navbar-nav li:nth-child(3n+2) .nav-link { color: var(--terminal-accent) !important; }
+[data-skin="dub"] .navbar-nav li:nth-child(3n+3) .nav-link { color: var(--dub-g) !important; }
 [data-skin="dub"] .navbar-nav .nav-link:hover,
-[data-skin="dub"] .navbar-nav .nav-link:focus { color: var(--terminal-text); }
-[data-skin="dub"] .navbar {
-    border-bottom: 2px solid;
-    border-image: linear-gradient(90deg,
-        var(--dub-r), var(--dub-r) 33%,
-        var(--terminal-accent) 33%, var(--terminal-accent) 66%,
-        var(--dub-g) 66%, var(--dub-g)) 1;
+[data-skin="dub"] .navbar-nav .nav-link:focus { color: var(--terminal-text) !important; }
+/* The flag rides a ::after ribbon: the legacy .navbar rules kill borders
+   with !important (their Bootstrap war), so no border-image can survive
+   there — a positioned pseudo-element is outside that fight entirely. */
+[data-skin="dub"] .navbar { position: relative; }
+[data-skin="dub"] .navbar::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+        var(--dub-r), var(--dub-r) 33.3%,
+        var(--terminal-accent) 33.3%, var(--terminal-accent) 66.6%,
+        var(--dub-g) 66.6%, var(--dub-g));
 }
 
 /* ── prism ────────────────────────────────────────────────────────────
@@ -1997,19 +2004,23 @@ h1 { font-size: var(--size-h1); }
    the ink, because a rainbow you can't read is just noise — and the
    navbar's bottom rule becomes the spectrum itself. Interactive lead
    stays violet everywhere else, so "what's clickable" never blurs. */
-[data-skin="prism"] .navbar-nav li:nth-child(6n+1) .nav-link { color: var(--prism-r); }
-[data-skin="prism"] .navbar-nav li:nth-child(6n+2) .nav-link { color: var(--prism-y); }
-[data-skin="prism"] .navbar-nav li:nth-child(6n+3) .nav-link { color: var(--prism-g); }
-[data-skin="prism"] .navbar-nav li:nth-child(6n+4) .nav-link { color: var(--prism-c); }
-[data-skin="prism"] .navbar-nav li:nth-child(6n+5) .nav-link { color: var(--prism-b); }
-[data-skin="prism"] .navbar-nav li:nth-child(6n+6) .nav-link { color: var(--terminal-accent); }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+1) .nav-link { color: var(--prism-r) !important; }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+2) .nav-link { color: var(--prism-y) !important; }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+3) .nav-link { color: var(--prism-g) !important; }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+4) .nav-link { color: var(--prism-c) !important; }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+5) .nav-link { color: var(--prism-b) !important; }
+[data-skin="prism"] .navbar-nav li:nth-child(6n+6) .nav-link { color: var(--terminal-accent) !important; }
 [data-skin="prism"] .navbar-nav .nav-link:hover,
-[data-skin="prism"] .navbar-nav .nav-link:focus { color: var(--terminal-text); }
-[data-skin="prism"] .navbar {
-    border-bottom: 2px solid;
-    border-image: linear-gradient(90deg,
+[data-skin="prism"] .navbar-nav .nav-link:focus { color: var(--terminal-text) !important; }
+[data-skin="prism"] .navbar { position: relative; }
+[data-skin="prism"] .navbar::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
         var(--prism-r), var(--prism-y), var(--prism-g),
-        var(--prism-c), var(--prism-b), var(--terminal-accent)) 1;
+        var(--prism-c), var(--prism-b), var(--terminal-accent));
 }
 /* The statement: every h1 wears the whole spectrum, set in Radon's
    handwriting (--font-display under this skin). Large display text keeps
