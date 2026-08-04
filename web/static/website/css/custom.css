@@ -2012,15 +2012,17 @@ h1 { font-size: var(--size-h1); }
 [data-skin="laughing"] .brand-mark .alt-laughing { display: block; }
 [data-skin="ed"] .brand-mark .alt-ed { display: block; }
 
-/* the badge: white line-work, blue ring text, blue cap */
+/* the badge: white rings and smile, blue cap and ring text */
 [data-skin="laughing"] .brand-mark .alt-laughing { stroke: var(--terminal-text); }
 [data-skin="laughing"] .brand-mark .alt-laughing .ringtext {
     fill: var(--terminal-accent);
     stroke: none;
     font-family: var(--font-prose);
 }
-[data-skin="laughing"] .brand-mark .alt-laughing .cap { stroke: var(--terminal-accent); }
-[data-skin="laughing"] .brand-mark .alt-laughing .dotfill { fill: var(--terminal-text); stroke: none; }
+[data-skin="laughing"] .brand-mark .alt-laughing .cap { stroke: var(--terminal-accent); fill: var(--terminal-accent); }
+[data-skin="laughing"] .brand-mark .alt-laughing .cap rect { stroke: none; }
+[data-skin="laughing"] .brand-mark .alt-laughing .facefill { fill: var(--terminal-text); }
+[data-skin="laughing"] .brand-mark .alt-laughing .smile { stroke: var(--terminal-text); }
 
 /* the doodle: crayon strokes in cream, teeth line in yellow */
 [data-skin="ed"] .brand-mark .alt-ed { stroke: var(--terminal-text); }
