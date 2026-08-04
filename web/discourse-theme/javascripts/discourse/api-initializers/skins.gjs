@@ -137,6 +137,15 @@ export default apiInitializer("1.8.0", (api) => {
 
   applySkin(currentSkin());
 
+  // Ask the header what it is wearing. We boot after the iframe's tiny
+  // document, so its listener exists and the reply cannot be lost — this is
+  // what recovers a skin clicked before Ember was listening, whose gel-skin
+  // message died against an unregistered listener. If the iframe is not in
+  // the DOM yet (we booted first), its load-time height message carries the
+  // skin instead: both orderings are covered without retries.
+  document.getElementById("gel-django-header-iframe")
+    ?.contentWindow?.postMessage({ type: "gel-skin-query" }, SITE_ORIGIN);
+
   // The brand mark lives in an iframe served by gel.monster, so a click on it
   // happens cross-origin and cannot reach us any other way. This rides the
   // same postMessage channel the header already uses to report its height.
