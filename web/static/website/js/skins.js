@@ -73,6 +73,12 @@
     if (d && d.type === "gel-skin" && SKINS.indexOf(d.skin) !== -1) {
       apply(d.skin);
     }
+    // The forum asks what we are wearing when IT boots — it boots after us,
+    // so this reply cannot race a listener that does not exist yet. This is
+    // what recovers a click made before Ember was listening.
+    if (d && d.type === "gel-skin-query") {
+      notifyForum(ROOT.getAttribute("data-skin") || SKINS[0]);
+    }
   });
 
   function cycle(ev) {

@@ -176,6 +176,15 @@ Uses iframe-specific menu that removes Forum link to prevent double headers.
             subtree: true,
             attributes: true
         });
+
+        // A skin change lands as data-skin on <html> — OUTSIDE body, so the
+        // observer above never fires for it and the skin-carrying height
+        // message was only ever sent pre-click. Watch it explicitly, so every
+        // skin change re-broadcasts what this header is wearing.
+        new MutationObserver(updateHeight).observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-skin']
+        });
     </script>
 </body>
 </html>
