@@ -714,24 +714,29 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
         if not sessions:
             char.msg("|rError: No active session. Please reconnect.|n")
             return "respawn_welcome"
-        caller.puppet_object(sessions[0], char)
-        
-        # Teleport from Limbo staging area to spawn location
+        # Teleport out of the Limbo staging area BEFORE puppeting: the
+        # puppet hook auto-looks at the character's current room, and the
+        # player must never see staging (or its archived sleeves). With no
+        # session attached yet, the move renders to no one.
         spawn_location = get_spawn_location()
         if spawn_location and spawn_location != char.location:
             char.move_to(spawn_location, quiet=True)
-        
-        # Send welcome message
-        char.msg("|g╔════════════════════════════════════════════════════════════════╗")
-        char.msg("|g║  CONSCIOUSNESS TRANSFER COMPLETE                               ║")
-        char.msg("|g╚════════════════════════════════════════════════════════════════╝|n")
-        char.msg("")
-        char.msg(f"|wWelcome back, |c{char.key}|w.|n")
-        char.msg(f"|wClone Generation:|n |w1|n")
-        char.msg("")
-        char.msg("|yYou open your eyes in an unfamiliar body.|n")
-        char.msg("|yThe memories feel... borrowed. But they're yours now.|n")
-        char.msg("")
+
+        # Welcome banner before the puppet-look, so the spawn room
+        # description lands as the payoff of "you open your eyes".
+        caller.msg("|g╔════════════════════════════════════════════════════════════════╗")
+        caller.msg("|g║  CONSCIOUSNESS TRANSFER COMPLETE                               ║")
+        caller.msg("|g╚════════════════════════════════════════════════════════════════╝|n")
+        caller.msg("")
+        caller.msg(f"|wWelcome back, |c{char.key}|w.|n")
+        caller.msg(f"|wClone Generation:|n |w1|n")
+        caller.msg("")
+        caller.msg("|yYou open your eyes in an unfamiliar body.|n")
+        caller.msg("|yThe memories feel... borrowed. But they're yours now.|n")
+        caller.msg("")
+
+        # Puppet the character (announces the name, then looks at the room)
+        caller.puppet_object(sessions[0], char)
         
         # Clear last_character after successful respawn (matches web path behavior)
         caller.db.last_character = None
@@ -768,41 +773,46 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
         if not sessions:
             char.msg("|rError: No active session. Please reconnect.|n")
             return "respawn_welcome"
-        caller.puppet_object(sessions[0], char)
-        
-        # Teleport from Limbo staging area to spawn location
+        # Teleport out of the Limbo staging area BEFORE puppeting: the
+        # puppet hook auto-looks at the character's current room, and the
+        # player must never see staging (or its archived sleeves). With no
+        # session attached yet, the move renders to no one.
         spawn_location = get_spawn_location()
         if spawn_location and spawn_location != char.location:
             char.move_to(spawn_location, quiet=True)
-        
-        # Send welcome message
+
+        # Welcome banner before the puppet-look, so the spawn room
+        # description lands as the payoff of waking in the new body.
         # Use AttributeProperty to access the correct categorized attribute
         death_count = char.death_count
-        char.msg("|r╔════════════════════════════════════════════════════════════════╗")
-        char.msg("|r║  FLASH CLONE PROTOCOL COMPLETE                                 ║")
-        char.msg("|r╚════════════════════════════════════════════════════════════════╝|n")
-        char.msg("")
-        char.msg(f"|wWelcome back, |c{char.key}|w.|n")
-        char.msg(f"|wDeath Count:|n |w{death_count}|n")
-        char.msg("")
+        caller.msg("|r╔════════════════════════════════════════════════════════════════╗")
+        caller.msg("|r║  FLASH CLONE PROTOCOL COMPLETE                                 ║")
+        caller.msg("|r╚════════════════════════════════════════════════════════════════╝|n")
+        caller.msg("")
+        caller.msg(f"|wWelcome back, |c{char.key}|w.|n")
+        caller.msg(f"|wDeath Count:|n |w{death_count}|n")
+        caller.msg("")
         
         # Death count-specific flavor
         if death_count == 2:
-            char.msg("|wThis is your first death. The sensation of resleeving is disorienting.|n")
-            char.msg("|wYour old body's final moments echo in your mind like static on a dead channel.|n")
+            caller.msg("|wThis is your first death. The sensation of resleeving is disorienting.|n")
+            caller.msg("|wYour old body's final moments echo in your mind like static on a dead channel.|n")
         elif death_count < 5:
-            char.msg("|wThe memories of your previous body fade like analog videotape degradation.|n")
-            char.msg("|wYou know you've done this before, but each time feels like the first.|n")
+            caller.msg("|wThe memories of your previous body fade like analog videotape degradation.|n")
+            caller.msg("|wYou know you've done this before, but each time feels like the first.|n")
         elif death_count < 10:
-            char.msg("|wYou've died enough times to know: this never gets easier.|n")
-            char.msg("|wBut at least you're still you. Mostly.|n")
+            caller.msg("|wYou've died enough times to know: this never gets easier.|n")
+            caller.msg("|wBut at least you're still you. Mostly.|n")
         else:
-            char.msg("|rHow many times have you done this? The memories blur together like overexposed film.|n")
-            char.msg("|rAre you still the person who first stepped into this world?|n")
+            caller.msg("|rHow many times have you done this? The memories blur together like overexposed film.|n")
+            caller.msg("|rAre you still the person who first stepped into this world?|n")
         
-        char.msg("")
-        char.msg(f"|wPrevious cause of death:|n |r{old_char.db.death_cause or 'Unknown'}|n")
-        char.msg("")
+        caller.msg("")
+        caller.msg(f"|wPrevious cause of death:|n |r{old_char.db.death_cause or 'Unknown'}|n")
+        caller.msg("")
+
+        # Puppet the character (announces the name, then looks at the room)
+        caller.puppet_object(sessions[0], char)
         
         # Clear last_character after successful respawn (matches web path behavior)
         caller.db.last_character = None
@@ -1456,26 +1466,31 @@ def first_char_finalize(caller, raw_string, **kwargs):
         char.db.original_creation = time.time()
         char.db.current_sleeve_birth = time.time()
         
-        # Puppet the character
-        caller.puppet_object(caller.sessions.all()[0], char)
-        
-        # Teleport from Limbo staging area to spawn location
+        # Teleport out of the Limbo staging area BEFORE puppeting: the
+        # puppet hook auto-looks at the character's current room, and the
+        # player must never see staging (or its archived sleeves). With no
+        # session attached yet, the move renders to no one.
         spawn_location = get_spawn_location()
         if spawn_location and spawn_location != char.location:
             char.move_to(spawn_location, quiet=True)
-        
-        # Send welcome message
-        char.msg("|g╔════════════════════════════════════════════════════════════════╗")
-        char.msg("|g║  CONSCIOUSNESS UPLOAD COMPLETE                                 ║")
-        char.msg("|g╚════════════════════════════════════════════════════════════════╝|n")
+
+        # Welcome banner before the puppet-look, so the spawn room
+        # description lands as the payoff of "you open your eyes".
+        caller.msg("|g╔════════════════════════════════════════════════════════════════╗")
+        caller.msg("|g║  CONSCIOUSNESS UPLOAD COMPLETE                                 ║")
+        caller.msg("|g╚════════════════════════════════════════════════════════════════╝|n")
+        caller.msg("")
+        caller.msg(f"|wWelcome to Gelatinous Monster, |c{char.key}|w.|n")
+        caller.msg("")
+        caller.msg("|wThe static clears. You open your eyes.|n")
+        caller.msg("|wThe year is 198█. The broadcast continues.|n")
+        caller.msg("|wYou are here. You are real. You are... something.|n")
+        caller.msg("")
+
+        # Puppet the character (announces the name, then looks at the room)
+        caller.puppet_object(caller.sessions.all()[0], char)
+
         char.msg("")
-        char.msg(f"|wWelcome to Gelatinous Monster, |c{char.key}|w.|n")
-        char.msg("")
-        char.msg("|wThe static clears. You open your eyes.|n")
-        char.msg("|wThe year is 198█. The broadcast continues.|n")
-        char.msg("|wYou are here. You are real. You are... something.|n")
-        char.msg("")
-        char.msg("|yType |wlook|y to examine your surroundings.|n")
         char.msg("|yType |whelp|y for a list of commands.|n")
         char.msg("")
         
