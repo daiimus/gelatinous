@@ -419,6 +419,21 @@ class ClothingMixin:
         if not self.worn_items:
             return []
 
+        # Heal dangling references: deleting an object while it is worn
+        # leaves entries that deserialize to None (or to a deleted object
+        # whose pk is gone). Prune them here so every consumer sees live
+        # items and the stored dict repairs itself on first read.
+        for loc, items in list(self.worn_items.items()):
+            live = [itm for itm in items if itm and itm.pk]
+            if len(live) != len(items):
+                if live:
+                    self.worn_items[loc] = live
+                else:
+                    del self.worn_items[loc]
+
+        if not self.worn_items:
+            return []
+
         if location:
             return self.worn_items.get(location, [])
 
