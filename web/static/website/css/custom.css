@@ -1739,16 +1739,20 @@ h1 { font-size: var(--size-h1); }
     margin: 0 14px;
     overflow: visible;
 }
+.brand-mark .plate { fill: var(--terminal-bg-dark); }
+.brand-mark .rim   { stroke: var(--terminal-accent); }
 .brand-mark .ring  { stroke: var(--terminal-accent); }
 .brand-mark .node  { fill: var(--terminal-accent); }
 .brand-mark .knock { fill: var(--terminal-bg-dark); }
-.brand-mark .mono {
-    fill: var(--terminal-text);
-    font-family: var(--font-display);
-    text-anchor: middle;
-    dominant-baseline: central;
-    letter-spacing: 1px;
-}
+
+/* The body stays BONE on every skin rather than taking the accent. It is what
+   keeps the planet legible against its own ring — if both took the accent
+   they would merge, and at small sizes the mark would collapse into a blob. */
+.brand-mark .body  { fill: var(--terminal-text); }
+
+/* The ink underlay that separates the near arc from the lit body. It is a
+   stroke, not a fill, which is why it cannot share the .knock rule. */
+.brand-mark .knock-stroke { stroke: var(--terminal-bg-dark); }
 
 /* the mark answers when the wordmark is hovered — one gesture, not two */
 .navbar-brand:hover .brand-mark .ring,

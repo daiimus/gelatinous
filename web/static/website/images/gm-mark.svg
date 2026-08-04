@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"
+     role="img" aria-label="Gelatinous Monster">
+  <title>Gelatinous Monster</title>
+  <circle class="plate" cx="50" cy="50" r="49.0" fill="var(--terminal-bg-dark, #0b0e14)"/>
+  <circle class="rim" cx="50" cy="50" r="49.0" fill="none" stroke="var(--terminal-accent, #e0a86f)"
+          stroke-width="1.1" stroke-opacity="0.9"/>
+  <g transform="translate(50,50)">
+    <defs><clipPath id="gm-near"><rect x="-36" y="0" width="72" height="36"/></clipPath></defs>
+    <g transform="rotate(-22)">
+      <ellipse class="ring" rx="26" ry="7.6" fill="none" stroke="var(--terminal-accent, #e0a86f)"
+               stroke-width="1.5" stroke-opacity="0.34"/>
+    </g>
+    <circle class="body" r="12" fill="var(--terminal-text, #d8d3c4)"/>
+    <g transform="rotate(-22)" clip-path="url(#gm-near)">
+      <ellipse class="knock" rx="26" ry="7.6" fill="none" stroke="var(--terminal-bg-dark, #0b0e14)" stroke-width="4.0"/>
+      <ellipse class="ring" rx="26" ry="7.6" fill="none" stroke="var(--terminal-accent, #e0a86f)" stroke-width="2.3"/>
+    </g>
+    <circle class="knock" cx="24.5" cy="-6.2" r="4.4" fill="var(--terminal-bg-dark, #0b0e14)"/>
+    <circle class="node" cx="24.5" cy="-6.2" r="3.0" fill="var(--terminal-accent, #e0a86f)"/>
+  </g>
+</svg>
