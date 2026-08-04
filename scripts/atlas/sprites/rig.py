@@ -602,8 +602,8 @@ def roof_variant_1():
     clear_scene()
     tar = make_material("tar1", (0.14, 0.135, 0.13), 0.85, noise=0.4)
     bone = make_material("parapet1", (0.23, 0.22, 0.19), 0.9, noise=0.3)
-    glass = make_material("sky1", (0.20, 0.45, 0.50), 0.2,
-                          emit=(0.3, 0.6, 0.65), emit_strength=1.6)
+    glass = make_material("sky1", (0.14, 0.30, 0.34), 0.2,
+                          emit=(0.22, 0.42, 0.46), emit_strength=0.5)
     pipe = make_material("rpipe", (0.24, 0.22, 0.20), 0.55)
     box("slab", (1, 1, 0.10), (0, 0, 0.05), tar)
     for loc, size in ((( 0, 0.47, 0.115), (1, 0.05, 0.07)),
@@ -617,6 +617,56 @@ def roof_variant_1():
     box("pipe2", (0.05, 0.05, 0.22), (0.33, -0.24, 0.21), pipe)
     rig_camera_and_light()
     render("roof_1")
+
+
+def roof_variant_2():
+    """The HVAC cluster: condenser pair, fan cowl, duct run."""
+    clear_scene()
+    tar = make_material("tar2", (0.14, 0.135, 0.13), 0.85, noise=0.4)
+    bone = make_material("parapet2", (0.23, 0.22, 0.19), 0.9, noise=0.3)
+    unit = make_material("hvac", (0.30, 0.30, 0.28), 0.55, noise=0.2)
+    grill = make_material("grill", (0.10, 0.11, 0.11), 0.5)
+    duct = make_material("duct2", (0.26, 0.25, 0.22), 0.6)
+    box("slab", (1, 1, 0.10), (0, 0, 0.05), tar)
+    for loc, size in ((( 0, 0.47, 0.115), (1, 0.05, 0.07)),
+                      (( 0, -0.47, 0.115), (1, 0.05, 0.07)),
+                      ((0.47, 0, 0.115), (0.05, 0.88, 0.07)),
+                      ((-0.47, 0, 0.115), (0.05, 0.88, 0.07))):
+        box(f"par{loc}", size, loc, bone)
+    box("unit_a", (0.30, 0.24, 0.24), (-0.16, 0.14, 0.22), unit)
+    box("grill_a", (0.02, 0.20, 0.18), (-0.005, 0.14, 0.22), grill)
+    box("unit_b", (0.26, 0.22, 0.20), (0.20, 0.16, 0.20), unit)
+    cylinder("cowl", 0.13, 0.10, (0, 0, 0), grill, seg=16, arc=math.pi * 2)
+    for o in bpy.context.collection.objects:
+        if o.name == "cowl":
+            o.rotation_euler = (0, math.radians(90), 0)
+            o.location = (0.06, -0.24, 0.155)
+    box("duct_r", (0.44, 0.09, 0.09), (-0.12, -0.24, 0.145), duct)
+    box("duct_d", (0.09, 0.09, 0.10), (-0.32, -0.24, 0.10), duct)
+    rig_camera_and_light()
+    render("roof_2")
+
+
+def roof_variant_3():
+    """The sealed roof: bare blistered field, capped stack, no service."""
+    clear_scene()
+    tar = make_material("tar3", (0.135, 0.13, 0.125), 0.85, noise=0.5)
+    bone = make_material("parapet3", (0.22, 0.21, 0.18), 0.9, noise=0.3)
+    patch = make_material("patch", (0.10, 0.10, 0.10), 0.9)
+    stack = make_material("stack3", (0.24, 0.22, 0.20), 0.6, noise=0.2)
+    box("slab", (1, 1, 0.10), (0, 0, 0.05), tar)
+    for loc, size in ((( 0, 0.47, 0.115), (1, 0.05, 0.07)),
+                      (( 0, -0.47, 0.115), (1, 0.05, 0.07)),
+                      ((0.47, 0, 0.115), (0.05, 0.88, 0.07)),
+                      ((-0.47, 0, 0.115), (0.05, 0.88, 0.07))):
+        box(f"par{loc}", size, loc, bone)
+    box("patch_a", (0.30, 0.22, 0.004), (-0.14, 0.16, 0.102), patch)
+    box("patch_b", (0.18, 0.26, 0.004), (0.22, -0.18, 0.102), patch)
+    box("patch_c", (0.14, 0.12, 0.004), (0.10, 0.30, 0.102), patch)
+    box("stack", (0.10, 0.10, 0.16), (0.30, 0.28, 0.18), stack)
+    box("stackcap", (0.14, 0.14, 0.03), (0.30, 0.28, 0.27), stack)
+    rig_camera_and_light()
+    render("roof_3")
 
 
 def _street_intersection():
@@ -802,6 +852,8 @@ def main():
     vehicle_variety()
     tenement_variant_1()
     roof_variant_1()
+    roof_variant_2()
+    roof_variant_3()
     print("rig complete")
 
 
