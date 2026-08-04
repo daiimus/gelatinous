@@ -2015,9 +2015,6 @@ h1 { font-size: var(--size-h1); }
 /* the badge: the owner's artwork lifted to white by filter; our rings
    white, our ring sentence accent blue */
 [data-skin="laughing"] .brand-mark .alt-laughing { stroke: var(--terminal-text); }
-[data-skin="laughing"] .brand-mark .alt-laughing image {
-    filter: brightness(0) invert(1);
-}
 [data-skin="laughing"] .brand-mark .alt-laughing .ringtext {
     fill: var(--terminal-accent);
     stroke: none;
