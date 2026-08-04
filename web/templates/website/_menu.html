@@ -68,13 +68,17 @@ folder and edit it to add/remove links to the menu.
                centred on the crown, and a mask blanks whichever letters the
                escaping brim crosses, exactly as the source does. -->
           <defs>
+            <filter id="lm-ink-m" color-interpolation-filters="sRGB">
+              <feColorMatrix type="matrix"
+                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 2.7 0 0"/>
+            </filter>
             <clipPath id="lm-clip-m">
               <circle cx="50" cy="50" r="36.8"/>
-              <rect x="50" y="39.5" width="63" height="21" rx="7"/>
+              <rect x="50" y="39.5" width="59.5" height="21" rx="10.5"/>
             </clipPath>
             <mask id="lm-tmask-m" maskUnits="userSpaceOnUse">
               <rect x="-10" y="-10" width="130" height="120" fill="white"/>
-              <rect x="50" y="37" width="64" height="26" rx="8" fill="black"/>
+              <rect x="50" y="37" width="61" height="26" rx="8" fill="black"/>
             </mask>
             <path id="lm-ring-m" d="M 50,92 A 42,42 0 1 1 50.01,92 Z"/>
           </defs>
@@ -82,11 +86,11 @@ folder and edit it to add/remove links to the menu.
             <rect class="paper" x="-6" y="-6" width="122" height="112"/>
             <image href="{% static 'website/images/laughing-face.png' %}"
                    x="-0.61" y="-0.67" width="112.32" height="101.36"
-                   preserveAspectRatio="xMinYMin meet"/>
+                   preserveAspectRatio="xMinYMin meet" filter="url(#lm-ink-m)"/>
           </g>
           <circle cx="50" cy="50" r="48" fill="none" stroke-width="1.8"/>
           <circle cx="50" cy="50" r="36" fill="none" stroke-width="1.6"/>
-          <text class="ringtext" font-size="6.7" font-weight="700" letter-spacing="0.3"
+          <text class="ringtext" font-size="6.0" font-weight="700" letter-spacing="0.45"
                 text-anchor="middle" mask="url(#lm-tmask-m)">
             <textPath href="#lm-ring-m" xlink:href="#lm-ring-m" startOffset="50%">A TEMPORARY ARRANGEMENT OF ATOMS PRETENDING COHERENCE</textPath>
           </text>
