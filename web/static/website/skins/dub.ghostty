@@ -1,0 +1,39 @@
+# Gelatinous Monster — dub (gold leads; green and red keep the state seats)
+# A valid Ghostty terminal theme; `# gel:` lines are the game's extensions.
+# The tribute reads through use, not decoration: gold is the accent, green
+# means success, red means danger — the slots that already mean something.
+palette = 0=#151b12
+palette = 1=#e85555
+palette = 2=#3fae6a
+palette = 3=#f0c34e
+palette = 4=#5f81a5
+palette = 5=#a06fb5
+palette = 6=#52b3a4
+palette = 7=#e8e0c8
+palette = 8=#6f7563
+palette = 9=#ef7b7b
+palette = 10=#5fd38d
+palette = 11=#f7d76e
+palette = 12=#7fa3c9
+palette = 13=#c395d6
+palette = 14=#7fd0c2
+palette = 15=#f5efdc
+background = #0e120c
+foreground = #e8e0c8
+cursor-color = #f0c34e
+selection-background = #1e2818
+selection-foreground = #e8e0c8
+
+# gel: slug = dub
+# gel: order = 3
+# gel: palette-name = Dub
+# gel: palette-id = 24
+# gel: accent = #f0c34e
+# gel: accent-dim = #c29a34
+# gel: bg-medium = #151b12
+# gel: bg-light = #1e2818
+# gel: text-muted = #979274
+# gel: border = #2a3324
+# gel: glow-alpha = 0.30
+# gel: quaternary = #3fae6a
+# gel: primary-low-mid = #6f7563

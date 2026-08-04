@@ -1,0 +1,37 @@
+# Gelatinous Monster — terminal (the old identity: jade on neutral grey)
+# A valid Ghostty terminal theme; `# gel:` lines are the game's extensions.
+palette = 0=#2a2a2a
+palette = 1=#e85555
+palette = 2=#5fd38d
+palette = 3=#e6c547
+palette = 4=#6a9fb5
+palette = 5=#b48ead
+palette = 6=#75b5aa
+palette = 7=#e0e0e0
+palette = 8=#666666
+palette = 9=#ef7b7b
+palette = 10=#7fe3a5
+palette = 11=#f0d576
+palette = 12=#8ab7cc
+palette = 13=#c9a6c9
+palette = 14=#93cfc4
+palette = 15=#f5f5f5
+background = #1a1a1a
+foreground = #e0e0e0
+cursor-color = #5fd38d
+selection-background = #3a3a3a
+selection-foreground = #e0e0e0
+
+# gel: slug = terminal
+# gel: order = 1
+# gel: palette-name = Terminal
+# gel: palette-id = 22
+# gel: accent = #5fd38d
+# gel: accent-dim = #4a9d6d
+# gel: bg-medium = #2a2a2a
+# gel: bg-light = #3a3a3a
+# gel: text-muted = #999999
+# gel: border = #404040
+# gel: glow-alpha = 0.30
+# gel: quaternary = #4a9d6d
+# gel: primary-low-mid = #6b6f78
