@@ -13,8 +13,8 @@ Work items (from the wiring audit, 2026-08-05):
   B. Queen of Cups Lobby Roof: edges only (doctrine-complete: N/NE/NW
      onto Pessoa) — the
      stairway stays unconnected BY DESIGN; the roof is a prize.
-  C. Roof Shipbreaker Alley (the south grid's one unroofed building):
-     two strip rooms at z1, a hatch up from the yard, parapet edges.
+  C. WITHDRAWN — Shipbreaker Alley is an open-air yard (outside=True);
+     roofing it violated weather truth. new_roof() now refuses such.
   D. The colony's first furniture: a water tower platform above the
      Kaspar Urgent Care rooftop (F2 — ladder up, vantage, +1).
 """
@@ -98,6 +98,11 @@ def new_roof(key, x, y, z):
     r = ObjectDB.objects.filter(db_key=key).first()
     if r:
         return r, 0
+    below = room_at(x, y, z - 1)
+    assert below is not None, f"no room under proposed roof {key}"
+    assert not below.attributes.get("outside"), (
+        f"REFUSING roof over OUTSIDE room {below.key} — open sky below "
+        "means no roof above (weather truth; learned at Shipbreaker)")
     r = create_object(ROOM_TC, key=key)
     r.db.xyz = (x, y, z)
     r.db.type = "rooftop"
@@ -134,18 +139,13 @@ made_exits += link(t6a, sww, "east")
 lobby_roof = by_key("Queen of Cups - Lobby Roof")
 made_exits += wire_edges(lobby_roof, edge_attrs)
 
-# -- C. Shipbreaker Alley rooftop --------------------------------------
-# footprint x5..6 (x6 = the eastern column; game east = +x), y-17..-19;
-# two strip rooms tile it, anchored (5,-17) west and (6,-18) east
-sb_ground = room_at(5, -17, 0)
-assert sb_ground and "Shipbreaker" in sb_ground.key, "Shipbreaker yard not at (5,-17)"
-west_strip, n1 = new_roof("Shipbreaker Alley - Rooftop (West)", 5, -17, 1)
-east_strip, n2 = new_roof("Shipbreaker Alley - Rooftop (East)", 6, -18, 1)
-made_rooms += n1 + n2
-made_exits += link(sb_ground, west_strip, "up")           # yard hatch
-made_exits += link(west_strip, east_strip, "southeast")   # strip join
-made_exits += wire_edges(west_strip, edge_attrs)
-made_exits += wire_edges(east_strip, edge_attrs)
+# -- C. (WITHDRAWN) Shipbreaker Alley "rooftop" -------------------------
+# The audit called it an unroofed building because its type is
+# "market" — but the NAME says Alley and every cell is outside=True:
+# it is an open-air shipbreaking yard with sky overhead. A rooftop
+# above an outside room is a weather-truth contradiction. Demolished
+# 2026-08-05 (owner review). If the yard ever earns vertical texture,
+# it will be crane gantries — its own thing, not a rooftop.
 
 # -- D. the first water tower ------------------------------------------
 kaspar_n = by_key("Kaspar Urgent Care - Rooftop (North)")
