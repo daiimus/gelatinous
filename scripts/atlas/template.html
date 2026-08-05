@@ -460,10 +460,12 @@ function drawCell(c){
   detail(c,sx,sy);
 }
 function stamp(im, sx, sy, wx, wy){
-  // draw an ambient sprite anchored at a world offset within the cell
+  // draw an ambient sprite anchored at a world offset within the cell.
+  // The offset is a VECTOR: rotate it in place — rotXY rotates about
+  // the map centroid and would fling sub-cell offsets across the map.
   const a=DATA.anchor;
-  [wx,wy]=rotXY(wx,wy);
-  const px=sx + (wx-wy)*TW/2, py=sy + (wx+wy)*TH/2;
+  const rwx=wx*COS-wy*SIN, rwy=wx*SIN+wy*COS;
+  const px=sx + (rwx-rwy)*TW/2, py=sy + (rwx+rwy)*TH/2;
   ctx.drawImage(im, px-a.origin[0]*SPR_SCALE, py-a.origin[1]*SPR_SCALE,
                 a.size*SPR_SCALE, a.size*SPR_SCALE);
 }
