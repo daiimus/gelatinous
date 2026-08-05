@@ -518,14 +518,17 @@ Bootstrap stays at 4.6 (or the overrides are reviewed against the new version);
 ## Addendum (2026-07-29) — the Atlas, and cache-busting
 
 **The Atlas is a second visual world, on purpose.** `scripts/atlas/` renders
-the colony map as a self-contained document in its own register (night plate
-`#0b0e14`, bone text, amber emphasis, cyan reserved for data, condensed /
-serif / mono type roles). It is embedded into the site at `/atlas/` through
-`web/templates/website/atlas.html` in *fragment* mode, so the site's header
-and footer carry through. Because this theme sets a global
-`* { font-family: 'Inter' … !important }`, the plate re-asserts its own type
-roles inside `.atlas-plate` with `!important` — that scoping is deliberate,
-not a leak.
+the colony map in its own register (night plate `#0b0e14`, bone text, amber
+emphasis, cyan reserved for data, condensed / serif / mono type roles).
+Since 2026-08-04 the served atlas at `/atlas/` is the *live render* — the
+self-contained three.js viewer (`template3d.html`), a full standalone page
+outside the site chrome; it carries the register natively and inherits
+nothing. The earlier sprite plate survives only as the builder's generated
+staff instrument (`scripts/atlas/generate.py`), never served, so the
+fragment-embedding notes below are historical. (When it was embedded, the
+site's global `* { font-family: 'Inter' … !important }` forced the plate to
+re-assert its type roles inside `.atlas-plate` — that scoping remains in
+the generated file, deliberate, not a leak.)
 
 **Two structural additions live at the bottom of `custom.css`:**
 
