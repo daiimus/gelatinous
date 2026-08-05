@@ -3862,6 +3862,79 @@ UTILITY_HARNESS = {
     ],
 }
 
+# -- timepieces ---------------------------------------------------------
+#
+# Time is legible in-world, through objects (world/gametime.py): a desc
+# may carry {time}/{date}/{period} tokens, and per-object clock_skew /
+# clock_stopped attributes let two watches in the same room disagree —
+# which is the point of owning one. The stopped watch renders only
+# {time}, deliberately: the moment it died stays off the record.
+
+LONGHAUL_CHRONO = {
+    "prototype_key": "LONGHAUL_CHRONO",
+    "key": "crew chrono",
+    "aliases": ["chrono", "watch", "wristwatch"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A Longhaul-brand crew chrono on a scarred rubber strap, the "
+            "little hauler logo stamped under twelve. Shift-proof, "
+            "drop-proof, and honest: the face reads {time}, {date}. "
+            "Issued by the gross once; kept working ever since.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A {color}gunmetal|n Longhaul crew chrono on a scarred rubber strap around the left wrist"),
+        ("coverage", ["left_hand"]),
+        ("layer", 1),
+        ("color", "gunmetal"),
+        ("material", "alloy"),
+        ("weight", 0.1),
+    ],
+}
+
+GILT_WRISTWATCH = {
+    "prototype_key": "GILT_WRISTWATCH",
+    "key": "gilt wristwatch",
+    "aliases": ["wristwatch", "watch", "gilt watch"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A gilt dress watch from some off-world house nobody can "
+            "pronounce anymore, plating gone thin at the lugs. The face "
+            "reads {time} with total confidence. It is running slow, and "
+            "has made its owners fashionably late for two generations.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A thin-plated {color}gilt|n dress watch on the left wrist, worn to brass at the edges"),
+        ("coverage", ["left_hand"]),
+        ("layer", 1),
+        ("clock_skew", -9),
+        ("color", "gilt"),
+        ("material", "brass"),
+        ("weight", 0.1),
+    ],
+}
+
+STOPPED_WATCH = {
+    "prototype_key": "STOPPED_WATCH",
+    "key": "stopped watch",
+    "aliases": ["watch", "wristwatch", "dead watch"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "An old mechanical watch, glass crazed into a spiderweb, case "
+            "worn smooth as a river stone. It stopped at {time} of some "
+            "morning nobody left alive remembers, and it has been exactly "
+            "that time ever since. The crown turns freely and does "
+            "nothing.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "An old {color}steel|n watch with a crazed crystal on the left wrist, long stopped"),
+        ("coverage", ["left_hand"]),
+        ("layer", 1),
+        # 1970-01-02 12:17 UTC -> 04:17 colony local; only {time} renders,
+        # so the date it died stays unwritten
+        ("clock_stopped", 130620),
+        ("color", "steel"),
+        ("material", "steel"),
+        ("weight", 0.1),
+    ],
+}
+
 GANG_CUT = {
     "prototype_key": "GANG_CUT",
     "key": "sleeveless cut",
