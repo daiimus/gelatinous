@@ -3875,13 +3875,16 @@ LONGHAUL_CHRONO = {
     "key": "crew chrono",
     "aliases": ["chrono", "watch", "wristwatch"],
     "typeclass": "typeclasses.items.Item",
-    "desc": "A Longhaul crew chrono, matte case on a scarred rubber "
-            "strap, the hauler's logo stamped small under the twelve. "
-            "The face reads {time} — {date}. Shift gear: it either works "
-            "or it's scrap, and this one works.",
+    "desc": "A Longhaul crew chrono: matte alloy case, a ridged bezel "
+            "cut deep enough to turn with gloves on, lume dots that "
+            "still drink the light after all these years. The face reads "
+            "{time} — {date} — and it has never once been caught lying. "
+            "The line issues them by the crate and collects them off the "
+            "dead; one worn this smooth means somebody, somewhere, "
+            "expects you.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A matte {color}gunmetal|n crew chrono strapped to the left wrist"),
+        ("worn_desc", "A matte {color}gunmetal|n crew chrono riding the left wrist, its lume dots holding a faint green charge"),
         ("coverage", ["left_hand"]),
         ("layer", 1),
         ("color", "gunmetal"),
@@ -3895,12 +3898,16 @@ GILT_WRISTWATCH = {
     "key": "gilt wristwatch",
     "aliases": ["wristwatch", "watch", "gilt watch"],
     "typeclass": "typeclasses.items.Item",
-    "desc": "A gilt dress watch off some liner that never came back, "
-            "plating rubbed to brass at the lugs. The face reads {time} "
-            "and means it. Nobody has ever told it that it runs slow.",
+    "desc": "A dress watch in gilt gone warm brass at the lugs, dial the "
+            "color of old cream, indices like little knife-points. Some "
+            "liner's arcade sold it a very long way from here, and the "
+            "liner never came back for it. The face reads {time} with "
+            "the serene confidence of an heirloom. It runs slow. It has "
+            "always run slow. Everyone who ever wore it decided to "
+            "forgive that.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A {color}gilt|n dress watch gone brassy at the edges, on the left wrist"),
+        ("worn_desc", "A {color}gilt|n dress watch on the left wrist, cream dial and knife-point indices, gone warm brass at the edges"),
         ("coverage", ["left_hand"]),
         ("layer", 1),
         ("clock_skew", -9),
@@ -3915,13 +3922,16 @@ STOPPED_WATCH = {
     "key": "stopped watch",
     "aliases": ["watch", "wristwatch", "dead watch"],
     "typeclass": "typeclasses.items.Item",
-    "desc": "A mechanical watch older than the colony, crystal crazed to "
-            "frost, case rubbed smooth. It reads {time}. It has read "
-            "{time} for as long as anyone can say, and the crown turns "
-            "without catching on anything at all.",
+    "desc": "A mechanical watch older than the colony, case rubbed "
+            "smooth as sea glass, crystal crazed to frost. Under the "
+            "frost the hands stand at {time}, where they have stood "
+            "since a morning nobody left alive can name. The crown turns "
+            "without catching on anything. People wear it anyway: a "
+            "watch that tells the hour something happened, forever, "
+            "instead of the hour it is.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "An old {color}steel|n watch with a frosted crystal, stopped, on the left wrist"),
+        ("worn_desc", "An old {color}steel|n watch on the left wrist, crystal frosted with cracks, its hands standing perfectly still"),
         ("coverage", ["left_hand"]),
         ("layer", 1),
         # 1970-01-02 12:17 UTC -> 04:17 colony local; only {time} renders,
