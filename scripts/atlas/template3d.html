@@ -3,8 +3,8 @@
 <style>
   .atlas-plate{font-family:var(--serif) !important}
   .atlas-plate h1{font-family:var(--cond) !important}
-  .atlas-plate .place,.atlas-plate .stamp,.atlas-plate .controls,
-  .atlas-plate .readout,.atlas-plate .zval,
+  .atlas-plate .place,.atlas-plate .stamp,.atlas-plate .readout,
+  .atlas-plate .compass text,.atlas-plate .tapenum,
   .atlas-plate .here .who{font-family:var(--mono) !important}
   :root{
     /* Embedded in the site, these resolve to the house tokens so the
@@ -55,31 +55,46 @@
   @media (prefers-reduced-motion: reduce){.here .pip::after{animation:none}}
   #view canvas{position:absolute;inset:0;display:block;cursor:grab;touch-action:none;border-radius:3px 3px 0 0}
   canvas.dragging{cursor:grabbing}
-  .readout{position:absolute;left:12px;top:10px;opacity:0;transition:opacity .12s;font-family:var(--mono);font-size:12px;color:var(--cyan);
+  .readout{position:absolute;left:12px;bottom:12px;opacity:0;transition:opacity .12s;font-family:var(--mono);font-size:12px;color:var(--cyan);
     background:rgba(11,14,20,.72);padding:4px 8px;border:1px solid var(--line);border-radius:3px;pointer-events:none;min-height:15px;z-index:3}
   .readout.on{opacity:1}
   .readout .kind{display:block;margin-top:2px;color:var(--amber);
     letter-spacing:.14em;text-transform:uppercase;font-size:10px}
-  .compass{position:absolute;right:10px;top:10px;z-index:3;line-height:0;cursor:pointer;
-    background:rgba(11,14,20,.72);border:1px solid var(--line);border-radius:50%;
-    padding:3px;touch-action:manipulation}
-  .compass:active{background:var(--line)}
+  .compass{position:absolute;right:12px;top:12px;z-index:3;line-height:0;cursor:pointer;
+    background:rgba(11,14,20,.55);
+    border:1px solid var(--line);border-radius:50%;padding:4px;touch-action:manipulation}
   .compass svg{display:block}
   .compass .ring{stroke:var(--line);fill:none}
-  .compass .tick{stroke:var(--bone-dim);stroke-width:1.5}
+  .compass .tick{stroke:var(--line)}
+  .compass .tick.maj{stroke:var(--bone-dim)}
   .compass .ndl{fill:var(--amber)}
   .compass .tail{fill:var(--bone-dim)}
-  .compass text{fill:var(--amber);font-family:var(--mono);font-size:9px}
-  .controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;padding:10px 14px;
-    font-family:var(--mono);font-size:12px;color:var(--bone-dim);border-top:1px solid var(--line)}
-  .zrow{display:flex;gap:10px;align-items:center;flex:1;min-width:220px}
-  .zrow input[type=range]{flex:1;accent-color:var(--amber)}
-  .zval{color:var(--amber);min-width:5ch;font-variant-numeric:tabular-nums}
-  .vrow{display:flex;gap:8px;align-items:center}
-  .vrow button{font-family:var(--mono);font-size:15px;line-height:1;color:var(--cyan);
-    background:rgba(11,14,20,.72);border:1px solid var(--line);border-radius:3px;
-    padding:5px 10px;cursor:pointer;touch-action:manipulation}
-  .vrow button:active{background:var(--line)}
+  .compass text{fill:var(--amber);font-family:var(--mono);font-size:12px}
+  #ztape{position:absolute;right:12px;bottom:14px;z-index:3;
+    width:44px;height:min(300px,34vh);touch-action:none;
+    background:linear-gradient(rgba(11,14,20,.15),rgba(11,14,20,.6) 18%,
+      rgba(11,14,20,.6) 82%,rgba(11,14,20,.15));
+    border:1px solid var(--line);border-radius:8px;cursor:ns-resize}
+  .tapein{position:absolute;left:0;right:0;top:12px;bottom:12px}
+  .tapetick{position:absolute;left:5px;width:9px;height:1px;background:var(--line);
+    transform:translateY(50%)}
+  .tapenum{position:absolute;right:7px;transform:translateY(50%);font-family:var(--mono);
+    font-size:10px;color:var(--bone);font-variant-numeric:tabular-nums;line-height:1}
+  .tapenum.off{opacity:.35}
+  .tapenum.at{color:var(--amber)}
+  #tapecur{position:absolute;left:3px;right:3px;height:2px;background:var(--amber);
+    box-shadow:0 0 7px rgba(224,168,111,.8);transform:translateY(50%);border-radius:1px}
+  .sky{position:absolute;left:16px;top:16px;z-index:3;width:58px;height:58px;
+    border-radius:50%;border:none;padding:0;cursor:pointer;touch-action:manipulation;
+    background:
+      radial-gradient(circle at 63% 60%, rgba(96,93,86,.5) 0 7%, transparent 8%),
+      radial-gradient(circle at 42% 68%, rgba(96,93,86,.45) 0 5%, transparent 6%),
+      radial-gradient(circle at 56% 30%, rgba(96,93,86,.4) 0 4%, transparent 5%),
+      radial-gradient(circle at 38% 34%, #d6d1c4 0%, #a49f94 48%, #6b6862 100%);
+    box-shadow:0 0 20px rgba(214,209,196,.28), inset -12px -9px 20px rgba(11,14,20,.6);
+    transition:background .6s ease, box-shadow .6s ease}
+  .sky.day{background:radial-gradient(circle at 44% 40%, #fff8e2 0%, #f6da8c 52%, #e0a86f 100%);
+    box-shadow:0 0 36px rgba(242,212,142,.7), 0 0 90px rgba(240,200,120,.35)}
   :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 </style>
 
@@ -101,25 +116,22 @@ making do, seen from above.</p>
 <div class="stage">
   <div id="view">
     <div class="readout" id="readout">&nbsp;</div>
-    <button class="compass" id="compass" type="button" title="reset view" aria-label="reset view">
-      <svg viewBox="0 0 40 40" width="38" height="38" aria-hidden="true">
-        <circle class="ring" cx="20" cy="20" r="17"/>
-        <line class="tick" x1="20" y1="3" x2="20" y2="7"/>
-        <line class="tick" x1="20" y1="33" x2="20" y2="37"/>
-        <line class="tick" x1="3" y1="20" x2="7" y2="20"/>
-        <line class="tick" x1="33" y1="20" x2="37" y2="20"/>
+    <button id="skyBtn" class="sky" type="button" title="day / night" aria-label="toggle day or night"></button>
+    <div class="compass" id="compass" title="reset view" role="group" aria-label="compass">
+      <svg viewBox="0 0 100 100" width="92" height="92">
+        <circle class="ring" cx="50" cy="50" r="46"/>
+        <g id="cticks"></g>
         <g id="needle">
-          <polygon class="ndl" points="20,15 16.5,22 23.5,22"/>
-          <polygon class="tail" points="16.5,22 23.5,22 20,33"/>
-          <text id="nlab" x="20" y="13" text-anchor="middle">N</text>
+          <polygon class="ndl" points="50,27 45,52 55,52"/>
+          <polygon class="tail" points="45,52 55,52 50,73"/>
         </g>
+        <text id="nlab" x="50" y="18" text-anchor="middle">N</text>
       </svg>
-    </button>
-  </div>
-  <div class="controls">
-    <div class="zrow"><span>z-slice</span><input id="zcap" type="range" min="0" max="8" value="8" step="1"><span class="zval" id="zval"></span></div>
-    <span class="vrow"><button id="rotL" type="button" aria-label="rotate view left">&#10226;</button><button id="rotR" type="button" aria-label="rotate view right">&#10227;</button></span>
-    <span class="vrow"><button id="skyBtn" type="button" title="day / night" aria-label="toggle day or night">&#9789;</button></span>
+    </div>
+    <div id="ztape" role="slider" aria-label="z-slice"
+         aria-valuemin="0" aria-valuemax="8" aria-valuenow="8">
+      <div class="tapein" id="tapein"><div id="tapecur"></div></div>
+    </div>
   </div>
 </div>
 </div>
@@ -194,8 +206,8 @@ document.getElementById('stamp').innerHTML=
   `<b>${DATA.cells.length}</b> rooms &nbsp;·&nbsp; <b>${(DATA.links||[]).length}</b> ways`;
 
 const ZMAX=Math.max(...CELLS.map(c=>c.z),1);
-const zcapEl=document.getElementById('zcap');
-zcapEl.max=ZMAX+1; zcapEl.value=ZMAX+1;
+const ZSTOPS=ZMAX+1;
+let ZCAP=ZSTOPS;                      // show everything up to z = ZCAP-1
 const clipPlane=new THREE.Plane(new THREE.Vector3(0,0,-1), ZMAX+1.6);
 
 // lighting is BAKED into the vertex colors by the exporter's Cycles
@@ -406,15 +418,31 @@ function aimCamera(){
   placeHere();
 }
 const NEEDLE=document.getElementById('needle');
+const SVGNS='http://www.w3.org/2000/svg';
+{ // the bezel: fine ticks every 15 degrees, majors on the quarters
+  const g=document.getElementById('cticks');
+  for (let a=0;a<360;a+=15){
+    const maj=a%90===0, t=document.createElementNS(SVGNS,'line');
+    const rad=a*Math.PI/180, s=Math.sin(rad), c=Math.cos(rad);
+    const r0=maj?40.5:43;
+    t.setAttribute('x1',50+r0*s); t.setAttribute('y1',50-r0*c);
+    t.setAttribute('x2',50+46*s); t.setAttribute('y2',50-46*c);
+    t.setAttribute('class',maj?'tick maj':'tick');
+    g.appendChild(t);
+  }
+}
 const NLAB=document.getElementById('nlab');
 function syncCompass(){
   // the needle tracks where world north actually points on screen;
-  // the letter rides the dial but stays upright
+  // the letter floats upright just past the tip
   const px=Math.cos(AZ), py=-Math.sin(AZ)*Math.sin(ELEV);
+  const n=Math.hypot(px,py)||1, nx=px/n, ny=py/n;
   const deg=Math.atan2(px, py)*180/Math.PI;
-  NEEDLE.setAttribute('transform', `rotate(${deg.toFixed(1)} 20 20)`);
-  NLAB.setAttribute('transform', `rotate(${(-deg).toFixed(1)} 20 10)`);
+  NEEDLE.setAttribute('transform', `rotate(${deg.toFixed(1)} 50 50)`);
+  NLAB.setAttribute('x',(50+34*nx).toFixed(1));
+  NLAB.setAttribute('y',(50-34*ny+4).toFixed(1));
 }
+document.getElementById('compass').addEventListener('click',goHome);
 function resize(){
   const w=view.clientWidth||1, h=view.clientHeight||1;
   renderer.setSize(w, h);
@@ -601,8 +629,6 @@ function spinBy(d){
     if (t<1) requestAnimationFrame(step);
   })(performance.now());
 }
-document.getElementById('rotL').addEventListener('click',()=>spinBy(-Math.PI/2));
-document.getElementById('rotR').addEventListener('click',()=>spinBy(Math.PI/2));
 document.getElementById('compass').addEventListener('click',goHome);
 addEventListener('keydown',ev=>{
   if (ev.target && /INPUT|TEXTAREA|SELECT|BUTTON/.test(ev.target.tagName)) return;
@@ -634,7 +660,7 @@ function inspectAt(clientX, clientY){
     const cells=h.object.userData.cells;
     if (!cells) continue;
     cell = h.instanceId!=null ? cells[h.instanceId] : cells[0];
-    if (cell && cell.z<=+zcapEl.value-1+0.5) break;
+    if (cell && cell.z<=ZCAP-0.5) break;
     cell=null;
   }
   readout.className = cell ? 'readout on' : 'readout';
@@ -647,16 +673,49 @@ function esc(s){return String(s).replace(/[&<>"']/g,
   ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 cv.addEventListener('mouseleave',()=>{if(!pointers.size){readout.className='readout';readout.innerHTML='&nbsp;';}});
 
-// ── z-slice: a real clipping plane ─────────────────────────────────
-const zval=document.getElementById('zval');
+// ── z-slice: an altitude tape driving a real clipping plane ────────
+const tape=document.getElementById('ztape');
+const tapein=document.getElementById('tapein');
+const tapecur=document.getElementById('tapecur');
+tape.setAttribute('aria-valuemax', ZSTOPS);
+const tapeNums=[];
+for (let v=0; v<=ZSTOPS; v++){
+  const t=document.createElement('div');
+  t.className='tapetick';
+  t.style.bottom=(v/ZSTOPS*100)+'%';
+  tapein.appendChild(t);
+  if (v>=1){
+    const n=document.createElement('div');
+    n.className='tapenum'; n.textContent=v-1; n.dataset.v=v;
+    n.style.bottom=(v/ZSTOPS*100)+'%';
+    tapein.appendChild(n); tapeNums.push(n);
+  }
+}
 function syncZ(){
-  const v=+zcapEl.value;
-  zval.textContent=`z ≤ ${v-1<0?0:v-1}`;
-  clipPlane.constant=v+0.6;
+  clipPlane.constant=ZCAP+0.6;
+  tapecur.style.bottom=(ZCAP/ZSTOPS*100)+'%';
+  for (const n of tapeNums){
+    n.classList.toggle('off', +n.dataset.v>ZCAP);
+    n.classList.toggle('at', +n.dataset.v===ZCAP);
+  }
+  tape.setAttribute('aria-valuenow', ZCAP);
   placeHere();
   invalidate();
 }
-zcapEl.addEventListener('input',syncZ);
+function tapePick(ev){
+  const r=tapein.getBoundingClientRect();
+  const frac=1-(ev.clientY-r.top)/r.height;
+  const v=Math.max(0, Math.min(ZSTOPS, Math.round(frac*ZSTOPS)));
+  if (v!==ZCAP){ ZCAP=v; syncZ(); }
+}
+tape.addEventListener('pointerdown',ev=>{
+  ev.preventDefault(); tape.setPointerCapture(ev.pointerId); tapePick(ev);
+});
+tape.addEventListener('pointermove',ev=>{
+  if (tape.hasPointerCapture && tape.hasPointerCapture(ev.pointerId)) tapePick(ev);
+});
+for (const t of ['touchstart','touchmove'])
+  tape.addEventListener(t, ev=>ev.preventDefault(), {passive:false});
 
 // ── you are here: the account's characters, as pulsing beacons ─────
 // DOM markers so the pulse animates in CSS while the render loop
@@ -674,7 +733,7 @@ function placeHere(){
   if (!hereMarks.length) return;
   const w=view.clientWidth, hh=view.clientHeight;
   for (const m of hereMarks){
-    if (m.z > +zcapEl.value-1+0.5){ m.el.style.display='none'; continue; }
+    if (m.z > ZCAP-0.5){ m.el.style.display='none'; continue; }
     hereV3.set(m.x, m.y, m.z+0.55).project(camera);
     if (Math.abs(hereV3.x)>1.15 || Math.abs(hereV3.y)>1.15){
       m.el.style.display='none'; continue;
@@ -691,7 +750,7 @@ let dayTarget=0;
 const skyBtn=document.getElementById('skyBtn');
 skyBtn.addEventListener('click',()=>{
   dayTarget=dayTarget<0.5?1:0;
-  skyBtn.innerHTML=dayTarget<0.5?'&#9789;':'&#9788;';
+  skyBtn.classList.toggle('day', dayTarget>=0.5);
   const from=bakedMat.uniforms.uDay.value, t0=performance.now();
   (function step(now){
     const t=Math.min(1,(now-t0)/600);
