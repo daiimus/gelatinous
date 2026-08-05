@@ -52,6 +52,7 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 
 | Spec | Description |
 |------|-------------|
+| `BUILDING_PLAYBOOK.md` | 🧭 Living doctrine for building the city: the six criteria every build answers, settled grid/vertical/door/room law, the session ritual, and the ledger of the remaining city |
 | `CLOTHING_SYSTEM_SPEC.md` | Clothing, coverage-based visibility, layering, dynamic styling |
 | `MODULAR_ARMOR_SYSTEM_SPEC.md` | Armor stacking, plate carriers, tactical targeting |
 | `SHOP_SYSTEM_SPEC.md` | Container-based shops, pricing, inventory (Phase 2 deferred — #302) |
