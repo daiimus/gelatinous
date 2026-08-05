@@ -95,11 +95,11 @@ def build_atlas_html(game_dir=".", staff=False, fragment=False):
     return html
 
 
-def build_atlas3d_html(game_dir="."):
-    """The live-render atlas (phase one): three.js + exported models.
-
-    A full standalone page — the 3D stage owns the viewport, so it does
-    not embed in the site chrome the way the 2D plate does.
+def build_atlas3d_html(game_dir=".", fragment=False):
+    """The live-render atlas: three.js + exported models, wearing the
+    same plate chrome as the sprite atlas did. In *fragment* mode it
+    embeds in the site's own page (header and footer carry through),
+    exactly the way the 2D plate was served.
     """
     data = export_map()
 
@@ -120,4 +120,11 @@ def build_atlas3d_html(game_dir="."):
     html = html.replace("/*__THREE__*/", three_src)
     html = html.replace("/*__DATA__*/null", json.dumps(data, separators=(",", ":")))
     html = html.replace("/*__MODELS__*/null", models_src)
+    if fragment:
+        # served inside the site's own page: the shell owns <title>,
+        # the charset, and the page background
+        html = re.sub(r"/\* __STANDALONE_ONLY__ \*/.*?/\* __END_STANDALONE__ \*/",
+                      "", html, flags=re.S)
+        html = re.sub(r"<meta charset[^>]*>\s*", "", html)
+        html = re.sub(r"<title>.*?</title>\s*", "", html, flags=re.S)
     return html
