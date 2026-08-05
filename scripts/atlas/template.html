@@ -225,6 +225,17 @@ function rotXY(x,y){
 }
 const isoX=(x,y)=>{const r=rotXY(x,y); return (r[0]-r[1])*TW/2;},
       isoY=(x,y,z)=>{const r=rotXY(x,y); return (r[0]+r[1])*TH/2 - z*ZH;};
+// full inverses, for gesture anchoring: content px <-> world (z=0)
+function unprojectWorld(px,py){
+  const X=(px-OX)/(TW/2), Y=(py-OY)/(TH/2);
+  const rx=(X+Y)/2, ry=(Y-X)/2;
+  const dx=rx-CTR[0], dy=ry-CTR[1];
+  return [CTR[0]+dx*COS+dy*SIN, CTR[1]-dx*SIN+dy*COS];   // R(-a)
+}
+function projectWorld(wx,wy){
+  const r=rotXY(wx,wy);
+  return [(r[0]-r[1])*TW/2+OX, (r[0]+r[1])*TH/2+OY];
+}
 const PAD=46;
 let W=0, H=0, minXA=1e9, minYA=1e9;
 for (let k=0;k<4;k++){
@@ -252,20 +263,31 @@ sortC();
 
 // the spin: animate VANG to a target, resorting and redrawing per frame
 let spinRaf=0;
-function spinTo(target, ms=420){
+function spinTo(target, ms=420, holdPx=null){
+  // holdPx: bitmap-space point to keep fixed through the spin (a
+  // released gesture's midpoint); defaults to the visible center so
+  // button spins rotate in place instead of drifting off-screen.
   cancelAnimationFrame(spinRaf);
   const from=VANG;
   let delta=target-from;
   while (delta>Math.PI) delta-=2*Math.PI;    // shortest way round
   while (delta<-Math.PI) delta+=2*Math.PI;
+  if (!holdPx){
+    const rr=cv.getBoundingClientRect();
+    holdPx=[(rr.width/2)*(W/rr.width), (rr.height/2)*(H/rr.height)];
+  }
+  const anchor=unprojectWorld(holdPx[0]/VS-VX, holdPx[1]/VS-VY);
   const t0=performance.now();
   function step(now){
     const t=Math.min(1,(now-t0)/ms);
     const e=t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;   // easeInOutCubic
-    setAngle(from+delta*e);
+    setAngle(t<1 ? from+delta*e
+                 : ((target%(2*Math.PI))+2*Math.PI)%(2*Math.PI));
+    const [nx,ny]=projectWorld(anchor[0],anchor[1]);
+    VX=holdPx[0]/VS-nx; VY=holdPx[1]/VS-ny;
     sortC(); draw();
     if (t<1) spinRaf=requestAnimationFrame(step);
-    else { setAngle(((target%(2*Math.PI))+2*Math.PI)%(2*Math.PI)); sortC(); draw(); syncViewLabel(); }
+    else syncViewLabel();
   }
   spinRaf=requestAnimationFrame(step);
 }
@@ -636,18 +658,25 @@ cv.addEventListener('pointermove',ev=>{
     const d=Math.hypot(a.x-b.x,a.y-b.y);
     const ang=Math.atan2(b.y-a.y,b.x-a.x);
     if (pinchDist>0 && d>0){
+      // Best-practice invariant: the WORLD point under the gesture
+      // midpoint stays under the gesture midpoint through any mix of
+      // zoom and twist. Grab the anchor, apply the gesture, re-solve
+      // the view so the anchor lands back under the fingers.
       const cxc=(a.x+b.x)/2, cyc=(a.y+b.y)/2;
-      const [mx,my]=toMap(cxc,cyc);
-      VS*=d/pinchDist; clampView();
-      const rr=cv.getBoundingClientRect();
-      const px=(cxc-rr.left)*(W/rr.width), py=(cyc-rr.top)*(H/rr.height);
-      VX=px/VS-mx; VY=py/VS-my;         // anchor the pinch midpoint
-      clampView();
-      let dAng=ang-pinchAng;            // the live spin: twist drives VANG
+      const [cmx,cmy]=toMap(cxc,cyc);
+      const anchor=unprojectWorld(cmx,cmy);
+      let dAng=ang-pinchAng;
       while (dAng>Math.PI) dAng-=2*Math.PI;
       while (dAng<-Math.PI) dAng+=2*Math.PI;
       cancelAnimationFrame(spinRaf);
-      setAngle(VANG+dAng); sortC(); syncViewLabel();
+      VS*=d/pinchDist;
+      VS=Math.min(6, Math.max(0.4, VS));
+      setAngle(VANG+dAng);
+      const [nx,ny]=projectWorld(anchor[0],anchor[1]);
+      const rr=cv.getBoundingClientRect();
+      const bx=(cxc-rr.left)*(W/rr.width), by=(cyc-rr.top)*(H/rr.height);
+      VX=bx/VS-nx; VY=by/VS-ny;
+      clampView(); sortC(); syncViewLabel();
       redraw();
     }
     pinchDist=d; pinchAng=ang; dragTravel+=99;   // a pinch is never a tap
@@ -660,7 +689,9 @@ function endPointer(ev){
   if (pointers.size<2) pinchDist=0;
   if (wasPinch){
     const q=Math.round(VANG/(Math.PI/2));   // snap to the nearest quarter
-    spinTo(q*Math.PI/2, 260);
+    const rr=cv.getBoundingClientRect();
+    spinTo(q*Math.PI/2, 260,
+           [(ev.clientX-rr.left)*(W/rr.width), (ev.clientY-rr.top)*(H/rr.height)]);
   }
   if (pointers.size===0){
     cv.classList.remove('dragging');
