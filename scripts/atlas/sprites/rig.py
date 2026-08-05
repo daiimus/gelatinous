@@ -101,6 +101,18 @@ def _rotate_scene_90():
         o.rotation_euler.rotate_axis("Z", math.radians(90))
 
 
+def _rotate_meshes_90():
+    """Quarter-turn the MODEL only — camera and lights stay world-fixed.
+    Rendering after each turn yields the next compass view (v1..v3):
+    the sun stays put, so far faces sit in honest shadow."""
+    for o in list(bpy.context.collection.objects):
+        if o.type in ("CAMERA", "LIGHT"):
+            continue
+        x, y, z = o.location
+        o.location = (-y, x, z)
+        o.rotation_euler.rotate_axis("Z", math.radians(90))
+
+
 def _oriented(base, build, variant=None):
     """Render *build* as <base>_ew[_n] and <base>_ns[_n]."""
     tail = f"_{variant}" if variant else ""
@@ -161,6 +173,19 @@ def render(name, res=RES):
     sc.render.filepath = os.path.join(OUT, f"{name}.png")
     bpy.ops.render.render(write_still=True)
     print(f"rendered {name}")
+    # The other three compass views: rotate the model under the fixed
+    # camera and shoot again. Calibration markers sit on the rotation
+    # axis, so their views would be identical — skip them.
+    if name.startswith("calib_") or os.environ.get("RIG_VIEWS") == "0":
+        return
+    for k in (1, 2, 3):
+        _rotate_meshes_90()
+        vdir = os.path.join(OUT, f"v{k}")
+        os.makedirs(vdir, exist_ok=True)
+        sc.render.filepath = os.path.join(vdir, f"{name}.png")
+        bpy.ops.render.render(write_still=True)
+    _rotate_meshes_90()          # fourth turn: back where we started
+    print(f"rendered {name} v1-v3")
 
 
 # ---------------------------------------------------------------- models

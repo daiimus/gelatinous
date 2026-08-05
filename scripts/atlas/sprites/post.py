@@ -75,4 +75,17 @@ def grind(name, img):
 for fname in sorted(os.listdir(RAW)):
     if fname.endswith(".png") and not fname.startswith("calib_"):
         grind(fname[:-4], Image.open(os.path.join(RAW, fname)))
+
+# the other compass views: raw/v1..v3 -> final/v1..v3, same grind
+_out_base = OUT
+for k in (1, 2, 3):
+    vraw = os.path.join(RAW, f"v{k}")
+    if not os.path.isdir(vraw):
+        continue
+    OUT = os.path.join(_out_base, f"v{k}")
+    os.makedirs(OUT, exist_ok=True)
+    for fname in sorted(os.listdir(vraw)):
+        if fname.endswith(".png") and not fname.startswith("calib_"):
+            grind(f"{fname[:-4]}", Image.open(os.path.join(vraw, fname)))
+OUT = _out_base
 print("post complete")
