@@ -323,12 +323,40 @@ for (const [model, spots] of propPlacements){
 }
 
 // ── the camera: free-angle orthographic isometric ──────────────────
-let cx=0, cy=0;                       // world center of interest
-{ let sx=0, sy=0, n=0;
-  for (const c of CELLS){ sx+=c.x; sy+=c.y; n++; }
-  cx=sx/n; cy=sy/n; }
-let AZ=Math.PI/4*3, ZOOM=1;           // azimuth; NE view to match the 2D atlas
+// home = the city's bounding box, framed to fill the stage
+let bx0=1e9,bx1=-1e9,by0=1e9,by1=-1e9,bz1=1;
+for (const c of CELLS){
+  if (c.t==='air') continue;
+  if (c.x<bx0)bx0=c.x; if (c.x>bx1)bx1=c.x;
+  if (c.y<by0)by0=c.y; if (c.y>by1)by1=c.y;
+  if (c.z>bz1)bz1=c.z;
+}
+const HOME_AZ=Math.PI/4*3;            // NE view to match the 2D atlas
 const ELEV=Math.atan(0.5);
+let cx=(bx0+bx1)/2, cy=(by0+by1)/2;   // world center of interest
+let AZ=HOME_AZ, ZOOM=1;
+function fitZoom(az){
+  // the zoom that fills the stage with the city at azimuth `az`:
+  // project the bounding box onto the screen axes, size to the extents
+  const ca=Math.cos(az), sa=Math.sin(az), ce=Math.cos(ELEV), se=Math.sin(ELEV);
+  const d=[-ca*ce,-sa*ce,-se], r=[-sa,ca,0];
+  const u=[r[1]*d[2]-r[2]*d[1], r[2]*d[0]-r[0]*d[2], r[0]*d[1]-r[1]*d[0]];
+  let ex=0, ey=0;
+  for (const x of [bx0-0.6-cx, bx1+0.6-cx])
+    for (const y of [by0-0.6-cy, by1+0.6-cy])
+      for (const z of [-0.5, bz1+0.8]){
+        ex=Math.max(ex, Math.abs(x*r[0]+y*r[1]));
+        ey=Math.max(ey, Math.abs(x*u[0]+y*u[1]+z*u[2]));
+      }
+  const aspect=(view.clientWidth||1)/(view.clientHeight||1);
+  const half=Math.max(ey, ex/aspect)*1.06;
+  return Math.min(8, Math.max(0.35, 26/half));
+}
+function goHome(){
+  cx=(bx0+bx1)/2; cy=(by0+by1)/2;
+  ZOOM=fitZoom(HOME_AZ);
+  spinBy(((HOME_AZ-AZ)%(2*Math.PI)));
+}
 const camera=new THREE.OrthographicCamera(-1,1,1,-1,-200,400);
 camera.up.set(0,0,1);
 function aimCamera(){
@@ -539,8 +567,7 @@ function spinBy(d){
 }
 document.getElementById('rotL').addEventListener('click',()=>spinBy(-Math.PI/2));
 document.getElementById('rotR').addEventListener('click',()=>spinBy(Math.PI/2));
-VLAB.addEventListener('click',()=>{ZOOM=1;
-  spinBy(((Math.PI/4*3-AZ)%(2*Math.PI)));});
+VLAB.addEventListener('click',goHome);
 addEventListener('keydown',ev=>{
   if (ev.target && /INPUT|TEXTAREA|SELECT|BUTTON/.test(ev.target.tagName)) return;
   const pan=6/ZOOM;
@@ -553,7 +580,7 @@ addEventListener('keydown',ev=>{
     case '-': case '_': ZOOM=Math.max(0.35,ZOOM/1.25); break;
     case '[': spinBy(-Math.PI/2); return;
     case ']': spinBy(Math.PI/2); return;
-    case '0': ZOOM=1; spinBy(((Math.PI/4*3-AZ)%(2*Math.PI))); return;
+    case '0': goHome(); return;
     default: return;
   }
   ev.preventDefault(); aimCamera(); invalidate();
@@ -613,5 +640,5 @@ skyBtn.addEventListener('click',()=>{
     if (t<1) requestAnimationFrame(step);
   })(performance.now());
 });
-syncZ(); resize(); tick();
+syncZ(); resize(); ZOOM=fitZoom(AZ); aimCamera(); tick();
 </script>
