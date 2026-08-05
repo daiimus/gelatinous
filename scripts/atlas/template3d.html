@@ -112,77 +112,28 @@ const zcapEl=document.getElementById('zcap');
 zcapEl.max=ZMAX+1; zcapEl.value=ZMAX+1;
 const clipPlane=new THREE.Plane(new THREE.Vector3(0,0,-1), ZMAX+1.6);
 
-// sun + fill, matching the rig's grade — with real cast shadows
-renderer.shadowMap.enabled=true;
-renderer.shadowMap.type=THREE.PCFShadowMap;
-scene.add(new THREE.AmbientLight(0x2a3140, 1.6));
-const sun=new THREE.DirectionalLight(0xffc78c, 3.0);
-sun.castShadow=true;
-sun.shadow.mapSize.set(2048,2048);
-scene.add(sun); scene.add(sun.target);
-const fill=new THREE.DirectionalLight(0x59bfd9, 0.9);
-fill.position.set(-4,3,5); scene.add(fill);
+// lighting is BAKED into the vertex colors by the exporter's Cycles
+// pass — the same sun, fill, and world the sprites were shot under
 
-// merged geometry per (model, material) → instanced per placement set
-const matCache=new Map();
-function materialOf(m){
-  const key=JSON.stringify(m);
-  if (matCache.has(key)) return matCache.get(key);
-  const mat=new THREE.MeshLambertMaterial({
-    color:new THREE.Color(...m.c),
-    clippingPlanes:[clipPlane], clipShadows:true,
-  });
-  if (m.e){
-    mat.emissive=new THREE.Color(...m.e);
-    mat.emissiveIntensity=Math.min(2.2, (m.es||1)*0.9);
-  }
-  // the rig's surface noise, reborn: object-space value noise so every
-  // instance wears the same weathering its sprite did
-  mat.onBeforeCompile=sh=>{
-    sh.vertexShader=sh.vertexShader
-      .replace('#include <common>','#include <common>\nvarying vec3 vOp;')
-      .replace('#include <begin_vertex>','#include <begin_vertex>\nvOp=position;');
-    sh.fragmentShader=sh.fragmentShader
-      .replace('#include <common>',`#include <common>
-varying vec3 vOp;
-float ahash(vec3 p){p=fract(p*0.3183+vec3(0.1,0.2,0.3));p*=17.0;
-  return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
-float anoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
-  return mix(mix(mix(ahash(i),ahash(i+vec3(1,0,0)),f.x),
-                 mix(ahash(i+vec3(0,1,0)),ahash(i+vec3(1,1,0)),f.x),f.y),
-             mix(mix(ahash(i+vec3(0,0,1)),ahash(i+vec3(1,0,1)),f.x),
-                 mix(ahash(i+vec3(0,1,1)),ahash(i+vec3(1,1,1)),f.x),f.y),f.z);}`)
-      .replace('#include <color_fragment>',`#include <color_fragment>
-  diffuseColor.rgb*=(0.86+0.28*anoise(vOp*14.0));`);
-  };
-  matCache.set(key, mat);
-  return mat;
-}
-function geometriesOf(model){
-  // group the model's objects by material, merge triangles per group
-  const groups=new Map();
-  for (const o of MODELS[model]||[]){
-    const key=JSON.stringify(o.m);
-    if (!groups.has(key)) groups.set(key, {m:o.m, pos:[]});
-    const g=groups.get(key), v=o.v, f=o.f;
-    for (let i=0;i<f.length;i++){
-      const vi=f[i]*3;
-      g.pos.push(v[vi], v[vi+1], v[vi+2]);
-    }
-  }
-  const out=[];
-  for (const g of groups.values()){
-    const geo=new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(g.pos,3));
-    geo.computeVertexNormals();
-    out.push({geo, mat:materialOf(g.m)});
-  }
-  return out;
-}
+// baked models: Cycles' verdict rides in the vertex colors — no live
+// lights needed; the grade shader is the darkroom over the raw render
+const bakedMat=new THREE.MeshBasicMaterial({
+  vertexColors:true, clippingPlanes:[clipPlane],
+});
 const geoCache=new Map();
 function partsOf(model){
-  if (!geoCache.has(model)) geoCache.set(model, geometriesOf(model));
-  return geoCache.get(model);
+  if (geoCache.has(model)) return geoCache.get(model);
+  const m=MODELS[model];
+  if (!m || !m.v || !m.v.length){ geoCache.set(model, []); return []; }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(m.v,3));
+  const cols=new Float32Array(m.c.length);
+  for (let i=0;i<m.c.length;i++) cols[i]=m.c[i]/255;
+  geo.setAttribute('color', new THREE.BufferAttribute(cols,3));
+  geo.setIndex(m.f);
+  const parts=[{geo, mat:bakedMat}];
+  geoCache.set(model, parts);
+  return parts;
 }
 
 // place cells: instanced per model part; landmarks placed once
@@ -201,7 +152,6 @@ for (const [model, cells] of placements){
   for (const part of partsOf(model)){
     const inst=new THREE.InstancedMesh(part.geo, part.mat, cells.length);
     cells.forEach((c,i)=>{ m4.makeTranslation(c.x, c.y, c.z); inst.setMatrixAt(i, m4); });
-    inst.castShadow=true; inst.receiveShadow=true;
     inst.userData.cells=cells;
     scene.add(inst); drawn.push(inst);
   }
@@ -213,7 +163,6 @@ for (const lm of (DATA.landmarks||[])){
   for (const part of partsOf(model)){
     const mesh=new THREE.Mesh(part.geo, part.mat);
     mesh.position.set(ax, ay, az);
-    mesh.castShadow=true; mesh.receiveShadow=true;
     mesh.userData.cells=[{x:ax,y:ay,z:az,t:'landmark',name:lm.name}];
     scene.add(mesh); drawn.push(mesh);
   }
@@ -285,7 +234,6 @@ for (const [model, spots] of propPlacements){
   for (const part of partsOf(model)){
     const inst=new THREE.InstancedMesh(part.geo, part.mat, spots.length);
     spots.forEach(([x,y],i)=>{ m4.makeTranslation(x, y, 0); inst.setMatrixAt(i, m4); });
-    inst.castShadow=true; inst.receiveShadow=true;
     scene.add(inst);
   }
 }
@@ -299,23 +247,7 @@ let AZ=Math.PI/4*3, ZOOM=1;           // azimuth; NE view to match the 2D atlas
 const ELEV=Math.atan(0.5);
 const camera=new THREE.OrthographicCamera(-1,1,1,-1,-200,400);
 camera.up.set(0,0,1);
-let sunAimed=false;
-function aimSun(){
-  if (sunAimed) return;
-  sunAimed=true;
-  let minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;
-  for (const c of CELLS){minx=Math.min(minx,c.x);maxx=Math.max(maxx,c.x);
-    miny=Math.min(miny,c.y);maxy=Math.max(maxy,c.y);}
-  const mx=(minx+maxx)/2, my=(miny+maxy)/2;
-  const span=Math.max(maxx-minx,maxy-miny)*0.75+8;
-  sun.position.set(mx+30,my-40,60);
-  sun.target.position.set(mx,my,0);
-  const sc=sun.shadow.camera;
-  sc.left=-span; sc.right=span; sc.top=span; sc.bottom=-span;
-  sc.near=1; sc.far=200; sc.updateProjectionMatrix();
-}
 function aimCamera(){
-  aimSun();
   const d=120;
   camera.position.set(
     cx + d*Math.cos(AZ)*Math.cos(ELEV),
@@ -364,7 +296,7 @@ const postMat=new THREE.ShaderMaterial({
     float grain(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
     void main(){
       vec3 c=texture2D(tDiffuse,vUv).rgb;
-      c*=1.45;                                        // exposure
+      c*=1.18;                                        // exposure
       c*=vec3(1.06,1.00,0.90);                        // the warm pull
       float l=dot(c,vec3(0.299,0.587,0.114));
       c=mix(vec3(l),c,0.94);                          // sun-starved
