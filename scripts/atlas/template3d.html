@@ -4,7 +4,8 @@
   .atlas-plate{font-family:var(--serif) !important}
   .atlas-plate h1{font-family:var(--cond) !important}
   .atlas-plate .place,.atlas-plate .stamp,.atlas-plate .controls,
-  .atlas-plate .readout,.atlas-plate .zval,.atlas-plate .tag{font-family:var(--mono) !important}
+  .atlas-plate .readout,.atlas-plate .zval,.atlas-plate .tag,
+  .atlas-plate .here .who{font-family:var(--mono) !important}
   :root{
     /* Embedded in the site, these resolve to the house tokens so the
        Atlas and the homepage cannot disagree on colour, face or scale.
@@ -40,7 +41,18 @@
     color:var(--bone-dim);text-align:center}
   .lore em{color:var(--bone);font-style:normal}
   .stage{position:relative;background:var(--plate);border:1px solid var(--line);border-radius:4px;margin-top:14px}
-  #view{position:relative;height:min(72vh,860px);min-height:420px}
+  #view{position:relative;height:min(72vh,860px);min-height:420px;overflow:hidden}
+  .here{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;
+    align-items:center;gap:3px;pointer-events:none;z-index:2}
+  .here .who{font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--amber);background:rgba(11,14,20,.72);
+    padding:2px 6px;border:1px solid var(--line);border-radius:3px;white-space:nowrap}
+  .here .pip{position:relative;width:9px;height:9px;border-radius:50%;
+    background:var(--amber);box-shadow:0 0 10px 2px rgba(224,168,111,.85)}
+  .here .pip::after{content:'';position:absolute;inset:-7px;border-radius:50%;
+    border:1.5px solid var(--amber);animation:herepulse 2.2s ease-out infinite}
+  @keyframes herepulse{0%{transform:scale(.4);opacity:1}100%{transform:scale(1.8);opacity:0}}
+  @media (prefers-reduced-motion: reduce){.here .pip::after{animation:none}}
   #view canvas{position:absolute;inset:0;display:block;cursor:grab;touch-action:none;border-radius:3px 3px 0 0}
   canvas.dragging{cursor:grabbing}
   .readout{position:absolute;left:12px;top:10px;opacity:0;transition:opacity .12s;font-family:var(--mono);font-size:12px;color:var(--cyan);
@@ -373,6 +385,7 @@ function aimCamera(){
   camera.updateProjectionMatrix();
   // the sun rides the world, not the camera: honest shadow sides
   syncLabel();
+  placeHere();
 }
 const VLAB=document.getElementById('vlab');
 function syncLabel(){
@@ -617,9 +630,37 @@ function syncZ(){
   const v=+zcapEl.value;
   zval.textContent=`z ≤ ${v-1<0?0:v-1}`;
   clipPlane.constant=v+0.6;
+  placeHere();
   invalidate();
 }
 zcapEl.addEventListener('input',syncZ);
+
+// ── you are here: the account's characters, as pulsing beacons ─────
+// DOM markers so the pulse animates in CSS while the render loop
+// stays on-demand; repositioned whenever the camera or slice moves
+const hereMarks=[];
+for (const h of (DATA.here||[])){
+  const el=document.createElement('div');
+  el.className='here';
+  el.innerHTML='<span class="who">'+esc(h.name)+'</span><span class="pip"></span>';
+  view.appendChild(el);
+  hereMarks.push({el, x:h.xyz[0], y:h.xyz[1], z:h.xyz[2]});
+}
+const hereV3=new THREE.Vector3();
+function placeHere(){
+  if (!hereMarks.length) return;
+  const w=view.clientWidth, hh=view.clientHeight;
+  for (const m of hereMarks){
+    if (m.z > +zcapEl.value-1+0.5){ m.el.style.display='none'; continue; }
+    hereV3.set(m.x, m.y, m.z+0.55).project(camera);
+    if (Math.abs(hereV3.x)>1.15 || Math.abs(hereV3.y)>1.15){
+      m.el.style.display='none'; continue;
+    }
+    m.el.style.display='';
+    m.el.style.left=((hereV3.x+1)/2*w)+'px';
+    m.el.style.top=((1-hereV3.y)/2*hh)+'px';
+  }
+}
 
 // ── day / night: crossfade the baked skies ─────────────────────────
 const NIGHT_BG=new THREE.Color(0x0b0e14), DAY_BG=new THREE.Color(0x5d6875);

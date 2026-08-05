@@ -95,13 +95,27 @@ def build_atlas_html(game_dir=".", staff=False, fragment=False):
     return html
 
 
-def build_atlas3d_html(game_dir=".", fragment=False):
+def build_atlas3d_html(game_dir=".", fragment=False, account=None):
     """The live-render atlas: three.js + exported models, wearing the
     same plate chrome as the sprite atlas did. In *fragment* mode it
     embeds in the site's own page (header and footer carry through),
-    exactly the way the 2D plate was served.
+    exactly the way the 2D plate was served. When *account* is given,
+    its characters' positions ride along as 'you are here' beacons.
     """
     data = export_map()
+
+    here = []
+    if account is not None:
+        try:
+            from world.spatial import get_xyz
+            for char in (account.characters or []):
+                loc = getattr(char, "location", None)
+                xyz = get_xyz(loc) if loc is not None else None
+                if xyz is not None:
+                    here.append({"name": char.key, "xyz": list(xyz)})
+        except Exception:  # noqa: BLE001 — the beacon is annotation, not truth
+            pass
+    data["here"] = here
 
     lm_path = os.path.join(game_dir, "scripts/atlas/sprites/landmarks.json")
     landmarks = json.load(open(lm_path)) if os.path.exists(lm_path) else []
