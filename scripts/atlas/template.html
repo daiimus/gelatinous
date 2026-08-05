@@ -39,7 +39,8 @@
     color:var(--bone-dim);text-align:center}
   .lore em{color:var(--bone);font-style:normal}
   .stage{position:relative;background:var(--plate);border:1px solid var(--line);border-radius:4px;margin-top:14px}
-  canvas{display:block;width:100%;height:auto;cursor:crosshair}
+  canvas{display:block;width:100%;height:auto;cursor:grab;touch-action:none}
+  canvas.dragging{cursor:grabbing}
   .readout{position:absolute;left:12px;top:10px;opacity:0;transition:opacity .12s;font-family:var(--mono);font-size:12px;color:var(--cyan);
     background:rgba(11,14,20,.72);padding:4px 8px;border:1px solid var(--line);border-radius:3px;pointer-events:none;min-height:15px}
   .readout.on{opacity:1}
@@ -240,6 +241,7 @@ document.getElementById('stamp').innerHTML =
 const DPR=Math.min(window.devicePixelRatio||1,2);
 cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
 cv.style.aspectRatio=`${W} / ${H}`;
+let VS=1, VX=0, VY=0;                    // the view: scale + pan (map px)
 
 // ---------- painting ----------
 function topPath(sx,sy){ctx.beginPath();ctx.moveTo(sx,sy-TH/2);ctx.lineTo(sx+TW/2,sy);
@@ -459,6 +461,7 @@ function drawEdges(zc){
 function draw(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,W,H);
+  ctx.setTransform(DPR*VS,0,0,DPR*VS,DPR*VS*VX,DPR*VS*VY);
   const zc=+ui.zcap.value;
   if (ui.radio.checked) drawRadio();
   for (const c of C){
@@ -470,10 +473,30 @@ function draw(){
 }
 draw();
 
-// ---------- hover ----------
-cv.addEventListener('mousemove',ev=>{
+// ---------- the view: pan / zoom / inspect ----------
+// One Pointer Events path serves mouse and touch: drag pans, wheel and
+// pinch zoom (anchored under the cursor / between the fingers), a tap
+// that never travelled reads as an inspect. Double-tap or double-click
+// resets. The map-space math: screen = VS * (map + [VX,VY]).
+function toMap(clientX, clientY){
   const r=cv.getBoundingClientRect();
-  const mx=(ev.clientX-r.left)*(W/r.width), my=(ev.clientY-r.top)*(H/r.height);
+  const px=(clientX-r.left)*(W/r.width), py=(clientY-r.top)*(H/r.height);
+  return [px/VS - VX, py/VS - VY];
+}
+function clampView(){
+  VS=Math.min(6, Math.max(0.4, VS));
+  const mx=W*0.9, my=H*0.9;              // keep some map on screen
+  VX=Math.min(mx/VS, Math.max(-mx, VX));
+  VY=Math.min(my/VS, Math.max(-my, VY));
+}
+let rafPending=false;
+function redraw(){
+  if (rafPending) return;
+  rafPending=true;
+  requestAnimationFrame(()=>{rafPending=false; draw();});
+}
+function inspectAt(clientX, clientY){
+  const [mx,my]=toMap(clientX, clientY);
   const zc=+ui.zcap.value; let hit=null;
   for (let i=C.length-1;i>=0;i--){
     const c=C[i]; if (c.landmark || c.z>zc || (c.t==='air'&&!ui.air.checked)) continue;
@@ -490,8 +513,70 @@ cv.addEventListener('mousemove',ev=>{
       + `${hit.y}, ${hit.z})</span>`
       + `<span class="kind">${esc(LEGEND_LABEL[hit.t] || hit.t)}</span>`
     : '&nbsp;';
+  return hit;
+}
+
+const pointers=new Map();               // pointerId -> {x, y}
+let pinchDist=0, dragTravel=0;
+cv.addEventListener('pointerdown',ev=>{
+  cv.setPointerCapture(ev.pointerId);
+  pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+  dragTravel=0;
+  if (pointers.size===2){
+    const [a,b]=[...pointers.values()];
+    pinchDist=Math.hypot(a.x-b.x,a.y-b.y);
+  }
+  cv.classList.add('dragging');
 });
-cv.addEventListener('mouseleave',()=>{readout.className='readout';readout.innerHTML='&nbsp;';});
+cv.addEventListener('pointermove',ev=>{
+  if (!pointers.has(ev.pointerId)){
+    if (ev.pointerType==='mouse') inspectAt(ev.clientX,ev.clientY);   // plain hover
+    return;
+  }
+  const prev=pointers.get(ev.pointerId);
+  pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+  const r=cv.getBoundingClientRect(), k=(W/r.width)/VS;
+  if (pointers.size===1){
+    VX+=(ev.clientX-prev.x)*k; VY+=(ev.clientY-prev.y)*k;
+    dragTravel+=Math.hypot(ev.clientX-prev.x, ev.clientY-prev.y);
+    clampView(); redraw();
+  } else if (pointers.size===2){
+    const [a,b]=[...pointers.values()];
+    const d=Math.hypot(a.x-b.x,a.y-b.y);
+    if (pinchDist>0 && d>0){
+      const cxc=(a.x+b.x)/2, cyc=(a.y+b.y)/2;
+      const [mx,my]=toMap(cxc,cyc);
+      VS*=d/pinchDist; clampView();
+      const rr=cv.getBoundingClientRect();
+      const px=(cxc-rr.left)*(W/rr.width), py=(cyc-rr.top)*(H/rr.height);
+      VX=px/VS-mx; VY=py/VS-my;         // anchor the pinch midpoint
+      clampView(); redraw();
+    }
+    pinchDist=d; dragTravel+=99;        // a pinch is never a tap
+  }
+});
+function endPointer(ev){
+  if (!pointers.has(ev.pointerId)) return;
+  pointers.delete(ev.pointerId);
+  if (pointers.size<2) pinchDist=0;
+  if (pointers.size===0){
+    cv.classList.remove('dragging');
+    if (dragTravel<6) inspectAt(ev.clientX,ev.clientY);   // a tap: inspect
+  }
+}
+cv.addEventListener('pointerup',endPointer);
+cv.addEventListener('pointercancel',endPointer);
+cv.addEventListener('wheel',ev=>{
+  ev.preventDefault();
+  const [mx,my]=toMap(ev.clientX,ev.clientY);
+  VS*=Math.exp(-ev.deltaY*0.0016); clampView();
+  const r=cv.getBoundingClientRect();
+  const px=(ev.clientX-r.left)*(W/r.width), py=(ev.clientY-r.top)*(H/r.height);
+  VX=px/VS-mx; VY=py/VS-my;             // zoom about the cursor
+  clampView(); redraw();
+},{passive:false});
+cv.addEventListener('dblclick',()=>{VS=1;VX=0;VY=0;redraw();});
+cv.addEventListener('mouseleave',()=>{if(!pointers.size){readout.className='readout';readout.innerHTML='&nbsp;';}});
 for (const el of [ui.zcap,ui.air,ui.edge,ui.radio,ui.life])
   el.addEventListener('input',()=>{ui.zval.textContent=`z ≤ ${ui.zcap.value}`; draw();});
 </script>
