@@ -10,7 +10,8 @@ sees the new rooms.
 
 Work items (from the wiring audit, 2026-08-05):
   A. Wire the Brackett z6 gap: Unit 6A Terrace <-> South Wing Roof West.
-  B. Queen of Cups Lobby Roof: edges only (north to Pessoa) — the
+  B. Queen of Cups Lobby Roof: edges only (doctrine-complete: N/NE/NW
+     onto Pessoa) — the
      stairway stays unconnected BY DESIGN; the roof is a prize.
   C. Roof Shipbreaker Alley (the south grid's one unroofed building):
      two strip rooms at z1, a hatch up from the yard, parapet edges.
@@ -66,16 +67,31 @@ def link(a, b, direction, one_way=False):
     return made
 
 
-def edge_down(roof, direction, street, exemplar_attrs):
-    """A parapet edge: jumpable drop from a roof to the street below."""
-    if has_exit(roof, direction):
-        return 0
-    ex = create_object(EXIT_TC, key=direction, aliases=AL.get(direction),
-                       location=roof, destination=street)
-    for k, v in exemplar_attrs.items():
-        ex.attributes.add(k, v)
-    ex.db.fall_room = street.id   # dbref int, per convention (export int()s it)
-    return 1
+DIRS8 = {"north": (0, 1), "south": (0, -1), "east": (1, 0), "west": (-1, 0),
+         "northeast": (1, 1), "northwest": (-1, 1),
+         "southeast": (1, -1), "southwest": (-1, -1)}
+
+
+def wire_edges(roof, exemplar_attrs):
+    """Doctrine-complete parapet pass: EVERY direction, diagonals
+    included, that faces a street at ground level gets an edge exit.
+    (Learned 2026-08-05: a single hand-picked edge misses the law.)"""
+    x, y, z = roof.attributes.get("xyz")
+    made = 0
+    for name, (dx, dy) in DIRS8.items():
+        if has_exit(roof, name):
+            continue
+        n = room_at(x + dx, y + dy, 0)
+        if not n or (n.attributes.get("type") or "") not in (
+                "street", "alley", "bridge"):
+            continue
+        ex = create_object(EXIT_TC, key=name, aliases=AL.get(name),
+                           location=roof, destination=n)
+        for k, v in exemplar_attrs.items():
+            ex.attributes.add(k, v)
+        ex.db.fall_room = n.id   # dbref int, per convention
+        made += 1
+    return made
 
 
 def new_roof(key, x, y, z):
@@ -116,17 +132,11 @@ made_exits += link(t6a, sww, "east")
 # prize — you get there some other way, some other era. But its rims
 # are real: edges only. One street borders it (Pessoa, north).
 lobby_roof = by_key("Queen of Cups - Lobby Roof")
-pessoa = room_at(-2, -12, 0)
-if pessoa:
-    made_exits += edge_down(lobby_roof, "north", pessoa, edge_attrs)
+made_exits += wire_edges(lobby_roof, edge_attrs)
 
 # -- C. Shipbreaker Alley rooftop --------------------------------------
 # footprint x5..6 (x6 = the eastern column; game east = +x), y-17..-19;
 # two strip rooms tile it, anchored (5,-17) west and (6,-18) east
-def is_street_room(r):
-    return r is not None and (r.attributes.get("type") or "") in (
-        "street", "bridge", "alley")
-
 sb_ground = room_at(5, -17, 0)
 assert sb_ground and "Shipbreaker" in sb_ground.key, "Shipbreaker yard not at (5,-17)"
 west_strip, n1 = new_roof("Shipbreaker Alley - Rooftop (West)", 5, -17, 1)
@@ -134,12 +144,8 @@ east_strip, n2 = new_roof("Shipbreaker Alley - Rooftop (East)", 6, -18, 1)
 made_rooms += n1 + n2
 made_exits += link(sb_ground, west_strip, "up")           # yard hatch
 made_exits += link(west_strip, east_strip, "southeast")   # strip join
-w_lot = room_at(4, -17, 0)
-if is_street_room(w_lot):
-    made_exits += edge_down(west_strip, "west", w_lot, edge_attrs)
-e_street = room_at(7, -18, 0)
-if is_street_room(e_street):
-    made_exits += edge_down(east_strip, "east", e_street, edge_attrs)
+made_exits += wire_edges(west_strip, edge_attrs)
+made_exits += wire_edges(east_strip, edge_attrs)
 
 # -- D. the first water tower ------------------------------------------
 kaspar_n = by_key("Kaspar Urgent Care - Rooftop (North)")
