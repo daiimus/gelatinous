@@ -1,6 +1,7 @@
 from evennia import DefaultObject, AttributeProperty
 from world.combat.constants import DEFAULT_CLOTHING_LAYER
 from .identity_bearer import IdentityBearerMixin
+from .objects import ObjectParent
 
 # ANSI Color definitions for clothing descriptions
 COLOR_DEFINITIONS = {
@@ -24,13 +25,17 @@ COLOR_DEFINITIONS = {
     "bright_white": "|W", # Bright White
 }
 
-class Item(DefaultObject):
+class Item(ObjectParent, DefaultObject):
     """
     A general-purpose item. In Gelatinous Monster, all items are
     potential weapons. This typeclass ensures that all objects have
     basic combat-relevant properties.
-    
+
     Items become wearable clothing by setting coverage and worn_desc attributes.
+
+    ObjectParent brings the shared surface every other typeclass already
+    has — colony-clock token rendering in descs ({time} on a watch face)
+    and ordinal search — which items had been the only class to miss.
     """
     
     # ===================================================================
