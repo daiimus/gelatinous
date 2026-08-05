@@ -137,8 +137,11 @@ function cls(c){
   // type=rooftop is authoritative (the lid standard sets it); the name
   // regex only rescues legacy cells. Checked BEFORE the skins so a
   // building prefix can never dress a roof as another storey.
-  if (t==='rooftop' || /rooftop|- roof/i.test(k))
+  if (t==='rooftop' || t==='balcony' || t==='terrace' || /rooftop|- roof/i.test(k))
     return k.startsWith("Hammett's Boot")?'hull':'roof';
+  // open ground and machinery outrank building skins too
+  if (/courtyard/i.test(k)) return 'street';
+  if (k.toLowerCase().includes('elevator')) return 'machine';
   for (const [prefix, skin] of SKINS)
     if (k.startsWith(prefix)) return skin;
   if (t==='street'||t==='bridge') return 'street';
