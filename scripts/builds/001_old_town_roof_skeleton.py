@@ -10,8 +10,7 @@ sees the new rooms.
 
 Work items (from the wiring audit, 2026-08-05):
   A. Wire the Brackett z6 gap: Unit 6A Terrace <-> South Wing Roof West.
-  B. Fix the orphan: Queen of Cups - Lobby Roof (no exits at all) —
-     hatch to First Level, edge down to Pessoa.
+  B. WITHDRAWN — Queen of Cups Lobby Roof is sealed BY DESIGN.
   C. Roof Shipbreaker Alley (the south grid's one unroofed building):
      two strip rooms at z1, a hatch up from the yard, parapet edges.
   D. The colony's first furniture: a water tower platform above the
@@ -111,13 +110,10 @@ t6a = by_key("The Brackett Arms - Unit 6A Terrace")
 sww = by_key("The Brackett Arms - South Wing Roof West")
 made_exits += link(t6a, sww, "east")
 
-# -- B. the Queen of Cups orphan ---------------------------------------
-lobby_roof = by_key("Queen of Cups - Lobby Roof")
-first_level = by_key("Queen of Cups - First Level")
-made_exits += link(first_level, lobby_roof, "north")      # the roof hatch
-pessoa = room_at(-2, -12, 0)
-assert pessoa, "no street at (-2,-12)"
-made_exits += edge_down(lobby_roof, "north", pessoa, edge_attrs)
+# -- B. (WITHDRAWN) the Queen of Cups "orphan" --------------------------
+# The Lobby Roof is exitless ON PURPOSE (owner, 2026-08-05): it is not
+# supposed to be reachable from the stairway. Leave it sealed — it is a
+# prize roof for a future traversal era, not a defect. Do not wire it.
 
 # -- C. Shipbreaker Alley rooftop --------------------------------------
 # footprint x5..6 (x6 = the eastern column; game east = +x), y-17..-19;
