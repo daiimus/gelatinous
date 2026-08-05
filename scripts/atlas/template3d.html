@@ -84,17 +84,16 @@
   .tapenum.at{color:var(--amber)}
   #tapecur{position:absolute;left:3px;right:3px;height:2px;background:var(--amber);
     box-shadow:0 0 7px rgba(224,168,111,.8);transform:translateY(50%);border-radius:1px}
-  .sky{position:absolute;left:16px;top:16px;z-index:3;width:58px;height:58px;
-    border-radius:50%;border:none;padding:0;cursor:pointer;touch-action:manipulation;
-    background:
-      radial-gradient(circle at 63% 60%, rgba(96,93,86,.5) 0 7%, transparent 8%),
-      radial-gradient(circle at 42% 68%, rgba(96,93,86,.45) 0 5%, transparent 6%),
-      radial-gradient(circle at 56% 30%, rgba(96,93,86,.4) 0 4%, transparent 5%),
-      radial-gradient(circle at 38% 34%, #d6d1c4 0%, #a49f94 48%, #6b6862 100%);
-    box-shadow:0 0 20px rgba(214,209,196,.28), inset -12px -9px 20px rgba(11,14,20,.6);
-    transition:background .6s ease, box-shadow .6s ease}
-  .sky.day{background:radial-gradient(circle at 44% 40%, #fff8e2 0%, #f6da8c 52%, #e0a86f 100%);
-    box-shadow:0 0 36px rgba(242,212,142,.7), 0 0 90px rgba(240,200,120,.35)}
+  .sky{position:absolute;left:14px;top:14px;z-index:3;width:48px;height:48px;
+    border-radius:50%;border:1px solid var(--line);padding:0;cursor:pointer;
+    background:rgba(11,14,20,.55);touch-action:manipulation;
+    display:flex;align-items:center;justify-content:center}
+  .sky:active{background:var(--line)}
+  .sky svg{display:block;fill:none;stroke-width:1.6;stroke-linecap:round}
+  .sky .g-moon{stroke:var(--bone);transition:opacity .5s}
+  .sky .g-sun{stroke:var(--amber);transition:opacity .5s;opacity:0}
+  .sky.day .g-moon{opacity:0}
+  .sky.day .g-sun{opacity:1}
   :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 </style>
 
@@ -116,7 +115,17 @@ making do, seen from above.</p>
 <div class="stage">
   <div id="view">
     <div class="readout" id="readout">&nbsp;</div>
-    <button id="skyBtn" class="sky" type="button" title="day / night" aria-label="toggle day or night"></button>
+    <button id="skyBtn" class="sky" type="button" title="day / night" aria-label="toggle day or night">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <g class="g-moon"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></g>
+        <g class="g-sun"><circle cx="12" cy="12" r="4"/>
+          <line x1="12" y1="1.5" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.5"/>
+          <line x1="1.5" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.5" y2="12"/>
+          <line x1="4.6" y1="4.6" x2="6.4" y2="6.4"/><line x1="17.6" y1="17.6" x2="19.4" y2="19.4"/>
+          <line x1="4.6" y1="19.4" x2="6.4" y2="17.6"/><line x1="17.6" y1="6.4" x2="19.4" y2="4.6"/>
+        </g>
+      </svg>
+    </button>
     <div class="compass" id="compass" title="reset view" role="group" aria-label="compass">
       <svg viewBox="0 0 100 100" width="92" height="92">
         <circle class="ring" cx="50" cy="50" r="46"/>
