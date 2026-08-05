@@ -56,7 +56,8 @@
     background:rgba(11,14,20,.72);border:1px solid var(--line);border-radius:3px;
     padding:5px 10px;cursor:pointer;touch-action:manipulation}
   .vrow button:active{background:var(--line)}
-  .vlab{color:var(--cyan);min-width:2.5ch;text-align:center}
+  .vlab{color:var(--cyan);min-width:2.5ch;text-align:center;background:none;
+    border:none;font-family:var(--mono);font-size:12px;cursor:pointer;padding:5px 2px}
   .readout .kind{display:block;margin-top:2px;color:var(--amber);
     letter-spacing:.14em;text-transform:uppercase;font-size:10px}
   .staffonly{display:none}
@@ -84,7 +85,7 @@ making do, seen from above.</p>
   <canvas id="cv" aria-label="Isometric atlas of the colony"></canvas>
   <div class="controls">
     <div class="zrow"><span>z-slice</span><input id="zcap" type="range" min="0" max="8" value="8" step="1"><span class="zval" id="zval"></span></div>
-    <span class="vrow"><button id="rotL" type="button" aria-label="rotate view left">&#10226;</button><span class="vlab" id="vlab">NE</span><button id="rotR" type="button" aria-label="rotate view right">&#10227;</button></span>
+    <span class="vrow"><button id="rotL" type="button" aria-label="rotate view left">&#10226;</button><button class="vlab" id="vlab" type="button" title="reset view" aria-label="reset view to northeast">NE</button><button id="rotR" type="button" aria-label="rotate view right">&#10227;</button></span>
     <span class="staffonly"><label><input id="tAir" type="checkbox"> air lattice</label></span>
     <span class="staffonly"><label><input id="tEdge" type="checkbox"> jump routes</label></span>
     <span class="staffonly"><label><input id="tRadio" type="checkbox"> radio coverage</label></span>
@@ -628,78 +629,151 @@ function inspectAt(clientX, clientY){
   return hit;
 }
 
-const pointers=new Map();               // pointerId -> {x, y}
-let pinchDist=0, pinchAng=0, dragTravel=0;
+const pointers=new Map();               // pointerId -> live position
+let gesture=null, dragTravel=0;
+
+// Baseline-relative gestures (the canonical pattern): snapshot the
+// gesture at its start, derive the WHOLE transform from current-vs-
+// baseline on every move. Two fingers report alternately, so
+// incremental math jitters; baseline math cannot.
+function rebaseline(){
+  const pts=[...pointers.values()];
+  if (pts.length===1){
+    gesture={type:'pan', bx:pts[0].x, by:pts[0].y, VX0:VX, VY0:VY};
+  } else if (pts.length>=2){
+    const [a,b]=pts;
+    const r=cv.getBoundingClientRect();
+    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    const [cmx,cmy]=toMap(mx,my);
+    gesture={type:'pinch',
+      d0:Math.hypot(a.x-b.x,a.y-b.y)||1,
+      a0:Math.atan2(b.y-a.y,b.x-a.x),
+      VS0:VS, VANG0:VANG,
+      anchor:unprojectWorld(cmx,cmy)};
+  } else gesture=null;
+}
+
 cv.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();                  // no synthetic mouse/click echo
   cv.setPointerCapture(ev.pointerId);
   pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
-  dragTravel=0;
-  if (pointers.size===2){
-    const [a,b]=[...pointers.values()];
-    pinchDist=Math.hypot(a.x-b.x,a.y-b.y);
-    pinchAng=Math.atan2(b.y-a.y,b.x-a.x);
-  }
+  cancelAnimationFrame(spinRaf);        // fingers outrank animations
+  if (pointers.size===1) dragTravel=0;
+  rebaseline();
   cv.classList.add('dragging');
 });
+
 cv.addEventListener('pointermove',ev=>{
   if (!pointers.has(ev.pointerId)){
-    if (ev.pointerType==='mouse') inspectAt(ev.clientX,ev.clientY);   // plain hover
+    if (ev.pointerType==='mouse' && pointers.size===0)
+      inspectAt(ev.clientX,ev.clientY);          // plain hover
     return;
   }
-  const prev=pointers.get(ev.pointerId);
-  pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
-  const r=cv.getBoundingClientRect(), k=(W/r.width)/VS;
-  if (pointers.size===1){
-    VX+=(ev.clientX-prev.x)*k; VY+=(ev.clientY-prev.y)*k;
-    dragTravel+=Math.hypot(ev.clientX-prev.x, ev.clientY-prev.y);
-    clampView(); redraw();
-  } else if (pointers.size===2){
+  const p=pointers.get(ev.pointerId);
+  dragTravel+=Math.hypot(ev.clientX-p.x, ev.clientY-p.y);
+  p.x=ev.clientX; p.y=ev.clientY;
+  if (!gesture) return;
+  const r=cv.getBoundingClientRect(), kx=W/r.width, ky=H/r.height;
+  if (gesture.type==='pan' && pointers.size===1){
+    const [q]=pointers.values();
+    if (ev.shiftKey && ev.pointerType==='mouse'){
+      // the desktop rotate: Shift+drag twists about the grab point
+      if (!gesture.rot){
+        const [cmx,cmy]=toMap(gesture.bx,gesture.by);
+        gesture.rot={VANG0:VANG, anchor:unprojectWorld(cmx,cmy),
+                     bpx:(gesture.bx-r.left)*kx, bpy:(gesture.by-r.top)*ky};
+        cancelAnimationFrame(spinRaf);
+      }
+      setAngle(gesture.rot.VANG0+(q.x-gesture.bx)*0.006);
+      const n=projectWorld(gesture.rot.anchor[0],gesture.rot.anchor[1]);
+      VX=gesture.rot.bpx/VS-n[0]; VY=gesture.rot.bpy/VS-n[1];
+      clampView(); sortC(); syncViewLabel(); redraw();
+    } else {
+      if (gesture.rot){                 // shift released: snap and rebase
+        gesture.rot=null;
+        const qq=Math.round(VANG/(Math.PI/2));
+        spinTo(qq*Math.PI/2, 260);
+        rebaseline();
+        return;
+      }
+      VX=gesture.VX0+(q.x-gesture.bx)*kx/VS;
+      VY=gesture.VY0+(q.y-gesture.by)*ky/VS;
+      clampView(); redraw();
+    }
+  } else if (gesture.type==='pinch' && pointers.size>=2 && !nativeGesture){
     const [a,b]=[...pointers.values()];
     const d=Math.hypot(a.x-b.x,a.y-b.y);
     const ang=Math.atan2(b.y-a.y,b.x-a.x);
-    if (pinchDist>0 && d>0){
-      // Best-practice invariant: the WORLD point under the gesture
-      // midpoint stays under the gesture midpoint through any mix of
-      // zoom and twist. Grab the anchor, apply the gesture, re-solve
-      // the view so the anchor lands back under the fingers.
-      const cxc=(a.x+b.x)/2, cyc=(a.y+b.y)/2;
-      const [cmx,cmy]=toMap(cxc,cyc);
-      const anchor=unprojectWorld(cmx,cmy);
-      let dAng=ang-pinchAng;
-      while (dAng>Math.PI) dAng-=2*Math.PI;
-      while (dAng<-Math.PI) dAng+=2*Math.PI;
-      cancelAnimationFrame(spinRaf);
-      VS*=d/pinchDist;
-      VS=Math.min(6, Math.max(0.4, VS));
-      setAngle(VANG+dAng);
-      const [nx,ny]=projectWorld(anchor[0],anchor[1]);
-      const rr=cv.getBoundingClientRect();
-      const bx=(cxc-rr.left)*(W/rr.width), by=(cyc-rr.top)*(H/rr.height);
-      VX=bx/VS-nx; VY=by/VS-ny;
-      clampView(); sortC(); syncViewLabel();
-      redraw();
-    }
-    pinchDist=d; pinchAng=ang; dragTravel+=99;   // a pinch is never a tap
+    let dA=ang-gesture.a0;
+    while (dA>Math.PI) dA-=2*Math.PI;
+    while (dA<-Math.PI) dA+=2*Math.PI;
+    VS=Math.min(6, Math.max(0.4, gesture.VS0*(d/gesture.d0)));
+    setAngle(gesture.VANG0+dA);
+    const bx=((a.x+b.x)/2-r.left)*kx, by=((a.y+b.y)/2-r.top)*ky;
+    const n=projectWorld(gesture.anchor[0],gesture.anchor[1]);
+    VX=bx/VS-n[0]; VY=by/VS-n[1];
+    clampView(); sortC(); syncViewLabel(); redraw();
   }
 });
+
 function endPointer(ev){
   if (!pointers.has(ev.pointerId)) return;
-  const wasPinch = pointers.size===2;
   pointers.delete(ev.pointerId);
-  if (pointers.size<2) pinchDist=0;
-  if (wasPinch){
-    const q=Math.round(VANG/(Math.PI/2));   // snap to the nearest quarter
-    const rr=cv.getBoundingClientRect();
-    spinTo(q*Math.PI/2, 260,
-           [(ev.clientX-rr.left)*(W/rr.width), (ev.clientY-rr.top)*(H/rr.height)]);
-  }
+  const wasPinch=gesture && gesture.type==='pinch' && !nativeGesture;
+  rebaseline();                          // surviving finger pans cleanly
   if (pointers.size===0){
     cv.classList.remove('dragging');
-    if (dragTravel<6) inspectAt(ev.clientX,ev.clientY);   // a tap: inspect
+    if (gesture===null && dragTravel>=6 && Math.abs(((VANG%(Math.PI/2))+Math.PI/2)%(Math.PI/2))>1e-6){
+      const qq=Math.round(VANG/(Math.PI/2));   // off-quarter (shift-drag): settle
+      spinTo(qq*Math.PI/2, 260);
+    }
+    if (wasPinch){
+      const q=Math.round(VANG/(Math.PI/2));   // settle on a compass point
+      const r=cv.getBoundingClientRect();
+      spinTo(q*Math.PI/2, 260,
+             [(ev.clientX-r.left)*(W/r.width), (ev.clientY-r.top)*(H/r.height)]);
+    } else if (dragTravel<6){
+      inspectAt(ev.clientX,ev.clientY);       // a tap: inspect
+    }
   }
 }
 cv.addEventListener('pointerup',endPointer);
 cv.addEventListener('pointercancel',endPointer);
+
+// ── WebKit's native gesture channel (iPad Safari): accumulated
+// scale+rotation per event, hardware-tuned — the platform's own best
+// practice for two-finger pinch and twist. When it fires we own the
+// gesture and the pointer-pinch path stands down.
+let nativeGesture=null;
+if ('GestureEvent' in window){
+  cv.addEventListener('gesturestart',ev=>{
+    ev.preventDefault();
+    cancelAnimationFrame(spinRaf);
+    const [cmx,cmy]=toMap(ev.clientX,ev.clientY);
+    nativeGesture={VS0:VS, VANG0:VANG, anchor:unprojectWorld(cmx,cmy)};
+    gesture=null;                      // pointer path stands down
+  },{passive:false});
+  cv.addEventListener('gesturechange',ev=>{
+    ev.preventDefault();
+    if (!nativeGesture) return;
+    VS=Math.min(6, Math.max(0.4, nativeGesture.VS0*ev.scale));
+    setAngle(nativeGesture.VANG0 + ev.rotation*Math.PI/180);
+    const r=cv.getBoundingClientRect();
+    const bx=(ev.clientX-r.left)*(W/r.width), by=(ev.clientY-r.top)*(H/r.height);
+    const n=projectWorld(nativeGesture.anchor[0],nativeGesture.anchor[1]);
+    VX=bx/VS-n[0]; VY=by/VS-n[1];
+    clampView(); sortC(); syncViewLabel(); redraw();
+  },{passive:false});
+  cv.addEventListener('gestureend',ev=>{
+    ev.preventDefault();
+    if (!nativeGesture) return;
+    nativeGesture=null;
+    const q=Math.round(VANG/(Math.PI/2));
+    const r=cv.getBoundingClientRect();
+    spinTo(q*Math.PI/2, 260,
+           [(ev.clientX-r.left)*(W/r.width), (ev.clientY-r.top)*(H/r.height)]);
+  },{passive:false});
+}
 cv.addEventListener('wheel',ev=>{
   ev.preventDefault();
   const [mx,my]=toMap(ev.clientX,ev.clientY);
@@ -709,7 +783,17 @@ cv.addEventListener('wheel',ev=>{
   VX=px/VS-mx; VY=py/VS-my;             // zoom about the cursor
   clampView(); redraw();
 },{passive:false});
-cv.addEventListener('dblclick',()=>{VS=1;VX=0;VY=0;spinTo(0);});
+cv.addEventListener('dblclick',ev=>{
+  ev.preventDefault();                  // the maps standard: step zoom in
+  const [cmx,cmy]=toMap(ev.clientX,ev.clientY);
+  const anchor=unprojectWorld(cmx,cmy);
+  VS=Math.min(6, VS*1.5);
+  const r=cv.getBoundingClientRect();
+  const bx=(ev.clientX-r.left)*(W/r.width), by=(ev.clientY-r.top)*(H/r.height);
+  const n=projectWorld(anchor[0],anchor[1]);
+  VX=bx/VS-n[0]; VY=by/VS-n[1];
+  clampView(); redraw();
+});
 cv.addEventListener('mouseleave',()=>{if(!pointers.size){readout.className='readout';readout.innerHTML='&nbsp;';}});
 for (const el of [ui.zcap,ui.air,ui.edge,ui.radio,ui.life])
   el.addEventListener('input',()=>{ui.zval.textContent=`z ≤ ${ui.zcap.value}`; draw();});
@@ -718,4 +802,25 @@ function setView(k){
 }
 document.getElementById('rotL').addEventListener('click',()=>setView(VIEW-1));
 document.getElementById('rotR').addEventListener('click',()=>setView(VIEW+1));
+document.getElementById('vlab').addEventListener('click',()=>{
+  VS=1; VX=0; VY=0; spinTo(0);           // the compass resets the view
+});
+// keyboard, the PC standard: arrows pan, +/- zoom, [ ] rotate, 0 resets
+window.addEventListener('keydown',ev=>{
+  if (ev.target && /INPUT|TEXTAREA|SELECT|BUTTON/.test(ev.target.tagName)) return;
+  const pan=90/VS;
+  switch(ev.key){
+    case 'ArrowLeft':  VX+=pan; break;
+    case 'ArrowRight': VX-=pan; break;
+    case 'ArrowUp':    VY+=pan; break;
+    case 'ArrowDown':  VY-=pan; break;
+    case '+': case '=': VS=Math.min(6,VS*1.25); break;
+    case '-': case '_': VS=Math.max(0.4,VS/1.25); break;
+    case '[': setView(VIEW-1); return;
+    case ']': setView(VIEW+1); return;
+    case '0': VS=1; VX=0; VY=0; spinTo(0); return;
+    default: return;
+  }
+  ev.preventDefault(); clampView(); redraw();
+});
 </script>
