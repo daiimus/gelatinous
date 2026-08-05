@@ -698,10 +698,8 @@ cv.addEventListener('pointermove',ev=>{
       VX=gesture.rot.bpx/VS-n[0]; VY=gesture.rot.bpy/VS-n[1];
       clampView(); syncViewLabel(); redraw();
     } else {
-      if (gesture.rot){                 // shift released: snap and rebase
+      if (gesture.rot){                 // shift released mid-drag: rebase
         gesture.rot=null;
-        const qq=Math.round(VANG/(Math.PI/2));
-        spinTo(qq*Math.PI/2, 260);
         rebaseline();
         return;
       }
@@ -728,16 +726,16 @@ cv.addEventListener('pointermove',ev=>{
 function endPointer(ev){
   if (!pointers.has(ev.pointerId)) return;
   pointers.delete(ev.pointerId);
-  const wasPinch=gesture && gesture.type==='pinch' && !nativeGesture;
   rebaseline();                          // surviving finger pans cleanly
   if (pointers.size===0){
     cv.classList.remove('dragging');
-    if (gesture===null && dragTravel>=6 && Math.abs(((VANG%(Math.PI/2))+Math.PI/2)%(Math.PI/2))>1e-6){
-      const qq=Math.round(VANG/(Math.PI/2));   // off-quarter (shift-drag): settle
-      spinTo(qq*Math.PI/2, 260);
-    }
-    if (wasPinch){
-      const q=Math.round(VANG/(Math.PI/2));   // settle on a compass point
+    nativeGesture=null;                  // never leave the channel armed
+    // ONE settling rule, whatever mix of events Safari delivered:
+    // no fingers down and off a compass point -> glide to the nearest.
+    // (Fingers lift one at a time, so a twist always ends its life as
+    // a brief pan - conditional snaps stranded the map mid-angle.)
+    const q=Math.round(VANG/(Math.PI/2));
+    if (Math.abs(VANG-q*(Math.PI/2))>1e-4){
       const r=cv.getBoundingClientRect();
       spinTo(q*Math.PI/2, 260,
              [(ev.clientX-r.left)*(W/r.width), (ev.clientY-r.top)*(H/r.height)]);
