@@ -41,6 +41,9 @@ for i in range(14):
     if i % 3 == 1:
         rig.box(f"post{i}", (0.03, 0.03, 0.30), (0.40, y, 0.50 + rise), rail)
         rig.box(f"lamph{i}", (0.05, 0.05, 0.05), (0.40, y, 0.68 + rise), lamp)
+    if i % 3 == 2:                                  # staggered west run
+        rig.box(f"postW{i}", (0.03, 0.03, 0.30), (-0.40, y, 0.50 + rise), rail)
+        rig.box(f"lamphW{i}", (0.05, 0.05, 0.05), (-0.40, y, 0.68 + rise), lamp)
 
 # towers at 1/4 and 3/4 span
 for k, ty in enumerate((1.75, 5.25)):
@@ -73,6 +76,11 @@ for x in (-0.40, 0.40):
         cz = 2.18 - 1.05 * math.sin(math.pi * t)
         rig.box(f"hang{x}{hy}", (0.025, 0.025, max(0.05, cz - 0.36)),
                 (x, hy, (cz + 0.36) / 2), cable)
+    for i in range(1, 8):                           # the necklace: amber
+        t = i / 8                                   # beads riding the sag
+        y = 1.75 + 3.5 * t
+        cz = 2.18 - 1.05 * math.sin(math.pi * t)
+        rig.box(f"bead{x}{i}", (0.035, 0.035, 0.035), (x, y, cz - 0.05), lamp)
 
 # approach ramps: the deck rides above street grade, so each end steps
 # down onto its street - the art overhangs the street cell the way an
