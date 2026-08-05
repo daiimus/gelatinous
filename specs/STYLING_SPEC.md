@@ -524,7 +524,7 @@ serif / mono type roles). It is embedded into the site at `/atlas/` through
 `web/templates/website/atlas.html` in *fragment* mode, so the site's header
 and footer carry through. Since 2026-08-04 the picture inside the plate is
 the *live render* (`template3d.html`, three.js) rather than the painted
-sprite canvas — the plate chrome (title row, place line, stamp, lore, staged
+sprite canvas — the plate chrome (title row, place line, lore, staged
 frame, house-token `:root` mapping) is unchanged; only the stage went 3D.
 The sprite plate survives as the builder's generated staff instrument
 (`scripts/atlas/generate.py`). Because this theme sets a global
