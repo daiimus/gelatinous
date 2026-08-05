@@ -226,10 +226,13 @@ owner verdict — argue with them.
   basin, vertical farm structures, rooftop green spaces — the
   solarpunk thread (§1.5). Each is a build; together they are the
   colony's metabolism on display.
-- **Climbing-hooks content**: the named next mechanic; four shipped
-  decisions already defer to it. The rooftop archipelago, the Boot
-  hull, and Thawn's tower faces are the obvious first ascents. Content
-  and mechanic should land together.
+- **Climbing-hooks content**: the mechanic is now **doctrine-ruled**
+  (see `PARKOUR_TEMPLATE_LIBRARY.md` §0: both directions, any edge,
+  gear-length tiers, deployed lines thread room descs and can be cut,
+  failure burns stamina not falls) but not yet built. The rooftop
+  archipelago, the Boot hull, and Thawn's tower faces are the obvious
+  first ascents; every build from today pre-wires the seams per the
+  template library.
 - **The tower you run up**: decking is explicitly gated on verticality's
   texture — "the corp tower you run up." Thawn-Harrison is the standing
   corp presence and its courtyard/cathedral register is already art;
