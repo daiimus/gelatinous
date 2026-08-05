@@ -16,14 +16,22 @@ def build_atlas_html(game_dir=".", staff=False, fragment=False):
     data = export_map()
 
     sprite_dir = os.path.join(game_dir, "scripts/atlas/sprites/final")
-    sprites = {}
-    if os.path.isdir(sprite_dir):
-        for fname in sorted(os.listdir(sprite_dir)):
-            if fname.endswith(".png"):
-                with open(os.path.join(sprite_dir, fname), "rb") as f:
-                    sprites[fname[:-4]] = (
-                        "data:image/png;base64,"
-                        + base64.b64encode(f.read()).decode())
+
+    def _load_sprite_dir(d):
+        out = {}
+        if os.path.isdir(d):
+            for fname in sorted(os.listdir(d)):
+                if fname.endswith(".png"):
+                    with open(os.path.join(d, fname), "rb") as f:
+                        out[fname[:-4]] = (
+                            "data:image/png;base64,"
+                            + base64.b64encode(f.read()).decode())
+        return out
+
+    sprites = _load_sprite_dir(sprite_dir)
+    # the other compass views (rotation): final/v1..v3, same names
+    sprite_views = {str(k): _load_sprite_dir(os.path.join(sprite_dir, f"v{k}"))
+                    for k in (1, 2, 3)}
 
     anchor_path = os.path.join(game_dir, "scripts/atlas/sprites/anchors.json")
     data["anchor"] = (json.load(open(anchor_path))
@@ -33,8 +41,11 @@ def build_atlas_html(game_dir=".", staff=False, fragment=False):
     landmarks = json.load(open(lm_path)) if os.path.exists(lm_path) else []
     for lm in landmarks:
         lm["uri"] = sprites.pop(lm["sprite"], None)
+        lm["uri_views"] = {k: v.pop(lm["sprite"], None)
+                           for k, v in sprite_views.items()}
     data["landmarks"] = [lm for lm in landmarks if lm.get("uri")]
     data["sprites"] = sprites
+    data["sprites_views"] = sprite_views
 
     masts = []
     try:

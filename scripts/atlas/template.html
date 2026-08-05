@@ -51,6 +51,12 @@
   .zrow{display:flex;gap:10px;align-items:center;flex:1;min-width:220px}
   .zrow input[type=range]{flex:1;accent-color:var(--amber)}
   .zval{color:var(--amber);min-width:5ch;font-variant-numeric:tabular-nums}
+  .vrow{display:flex;gap:8px;align-items:center}
+  .vrow button{font-family:var(--mono);font-size:15px;line-height:1;color:var(--cyan);
+    background:rgba(11,14,20,.72);border:1px solid var(--line);border-radius:3px;
+    padding:5px 10px;cursor:pointer;touch-action:manipulation}
+  .vrow button:active{background:var(--line)}
+  .vlab{color:var(--cyan);min-width:2.5ch;text-align:center}
   .readout .kind{display:block;margin-top:2px;color:var(--amber);
     letter-spacing:.14em;text-transform:uppercase;font-size:10px}
   .staffonly{display:none}
@@ -78,6 +84,7 @@ making do, seen from above.</p>
   <canvas id="cv" aria-label="Isometric atlas of the colony"></canvas>
   <div class="controls">
     <div class="zrow"><span>z-slice</span><input id="zcap" type="range" min="0" max="8" value="8" step="1"><span class="zval" id="zval"></span></div>
+    <span class="vrow"><button id="rotL" type="button" aria-label="rotate view left">&#10226;</button><span class="vlab" id="vlab">NE</span><button id="rotR" type="button" aria-label="rotate view right">&#10227;</button></span>
     <span class="staffonly"><label><input id="tAir" type="checkbox"> air lattice</label></span>
     <span class="staffonly"><label><input id="tEdge" type="checkbox"> jump routes</label></span>
     <span class="staffonly"><label><input id="tRadio" type="checkbox"> radio coverage</label></span>
@@ -193,16 +200,40 @@ if (DATA.anchor){
   TH=2*a.xvec[1]*SPR_SCALE;
   ZH=Math.abs(a.zvec[1])*SPR_SCALE;
 }
-const isoX=(x,y)=>(x-y)*TW/2, isoY=(x,y,z)=>(x+y)*TH/2 - z*ZH;
-let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
-for (const c of C){
-  const sx=isoX(c.x,c.y), sy=isoY(c.x,c.y,c.z);
-  minX=Math.min(minX,sx-TW/2); maxX=Math.max(maxX,sx+TW/2);
-  minY=Math.min(minY,sy-TH/2-ZH); maxY=Math.max(maxY,sy+TH/2);
+// Four compass views: the sprites are photographs of 3D models, so
+// rotation is discrete quarter-turns. rotXY spins world coords to the
+// current view; the per-view sprite sets carry the matching art.
+let VIEW=0;
+const VLABELS=['NE','SE','SW','NW'];
+function rotXY(x,y){
+  return VIEW===0?[x,y] : VIEW===1?[-y,x] : VIEW===2?[-x,-y] : [y,-x];
 }
-const PAD=46, W=maxX-minX+PAD*2, H=maxY-minY+PAD*2;
-const OX=-minX+PAD, OY=-minY+PAD;
-C.sort((a,b)=>((a.s??a.x+a.y)-(b.s??b.x+b.y)) || a.z-b.z || b.y-a.y);
+const isoX=(x,y)=>{const r=rotXY(x,y); return (r[0]-r[1])*TW/2;},
+      isoY=(x,y,z)=>{const r=rotXY(x,y); return (r[0]+r[1])*TH/2 - z*ZH;};
+const PAD=46, OXS=[], OYS=[];
+let W=0, H=0;
+for (let k=0;k<4;k++){
+  VIEW=k;
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  for (const c of C){
+    const sx=isoX(c.x,c.y), sy=isoY(c.x,c.y,c.z);
+    minX=Math.min(minX,sx-TW/2); maxX=Math.max(maxX,sx+TW/2);
+    minY=Math.min(minY,sy-TH/2-ZH); maxY=Math.max(maxY,sy+TH/2);
+  }
+  OXS[k]=-minX+PAD; OYS[k]=-minY+PAD;
+  W=Math.max(W,maxX-minX+PAD*2); H=Math.max(H,maxY-minY+PAD*2);
+}
+VIEW=0;
+let OX=OXS[0], OY=OYS[0];
+function sortC(){
+  const d=(x,y)=>{const r=rotXY(x,y); return r[0]+r[1];};
+  const ry=(x,y)=>rotXY(x,y)[1];
+  for (const c of C)
+    if (c.landmark) c.s=Math.max(...c.landmark.covers.map(([x,y])=>d(x,y)));
+  C.sort((a,b)=>((a.s??d(a.x,a.y))-(b.s??d(b.x,b.y))) || a.z-b.z
+                 || ry(b.x,b.y)-ry(a.x,a.y));
+}
+sortC();
 const GROUND=new Set(C.filter(c=>c.t==='street'||c.t==='alley').map(c=>`${c.x},${c.y}`));
 const STREETS=GROUND;
 // What KIND of place each ground cell is, so street dressing can answer to
@@ -210,21 +241,38 @@ const STREETS=GROUND;
 // where people actually live.
 const TYPE_AT=new Map(C.filter(c=>c.z===0).map(c=>[`${c.x},${c.y}`,c.t]));
 
-const SPR_IMG={}, VARIANTS={}, AMBIENT={};
+const AMBIENT_RE=/^(crowd|hauler|cart|van|wreck|barrier|crates|barrels|cargo_pod|pallets|spool|scrap|water_tank|genset|junction|lamp|kiosk|stall|planter|dumpster|bollards|scooter|bowser)/;
+const VARIANTS_V=[{},{},{},{}], AMBIENT_V=[{},{},{},{}], SPR_IMG={};
 let pending=0;
 function loadImg(uri){const im=new Image(); pending++;
   im.onload=()=>{if(--pending===0)draw();}; im.src=uri; return im;}
-for (const [name,uri] of Object.entries(DATA.sprites||{})){
-  const im=loadImg(uri);
-  if (/^(crowd|hauler|cart|van|wreck|barrier|crates|barrels|cargo_pod|pallets|spool|scrap|water_tank|genset|junction|lamp|kiosk|stall|planter|dumpster|bollards|scooter|bowser)/.test(name)){ AMBIENT[name]=im; continue; }
-  const base=name.replace(/_\d+$/,'');
-  SPR_IMG[name]=im;
-  (VARIANTS[base]=VARIANTS[base]||[]).push(im);
+function loadSet(entries, k){
+  for (const [name,uri] of Object.entries(entries||{})){
+    const im=loadImg(uri);
+    if (AMBIENT_RE.test(name)){ AMBIENT_V[k][name]=im; continue; }
+    const base=name.replace(/_\d+$/,'');
+    if (k===0) SPR_IMG[name]=im;
+    (VARIANTS_V[k][base]=VARIANTS_V[k][base]||[]).push(im);
+  }
+}
+loadSet(DATA.sprites, 0);
+for (const k of [1,2,3]) loadSet((DATA.sprites_views||{})[String(k)], k);
+function poolFor(key){
+  const p=VARIANTS_V[VIEW][key];
+  return (p&&p.length)?p:VARIANTS_V[0][key];
+}
+function ambientImg(name){
+  return AMBIENT_V[VIEW][name]||AMBIENT_V[0][name];
 }
 for (const lm of LANDMARKS){
   const im=new Image(); pending++;
   im.onload=()=>{if(--pending===0)draw();};
   im.src=lm.uri; lm.img=im;
+  lm.imgs=[im];
+  for (const k of [1,2,3]){
+    const u=(lm.uri_views||{})[String(k)];
+    lm.imgs[k]=u?loadImg(u):im;
+  }
 }
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const readout=document.getElementById('readout');
@@ -305,10 +353,11 @@ function drawCell(c){
   const sx=isoX(c.x,c.y)+OX, sy=isoY(c.x,c.y,c.z)+OY;
   if (c.landmark){
     const lm=c.landmark, a=DATA.anchor;
-    if (!lm.img || !lm.img.complete || !SPR_SCALE) return;
+    const limg=(lm.imgs&&lm.imgs[VIEW])||lm.img;
+    if (!limg || !limg.complete || !SPR_SCALE) return;
     ctx.imageSmoothingEnabled=false;
     const o = lm.origin || [a.origin[0]*lm.ratio, a.origin[1]*lm.ratio];
-    ctx.drawImage(lm.img,
+    ctx.drawImage(limg,
       sx - o[0]*SPR_SCALE, sy - o[1]*SPR_SCALE,
       lm.size*SPR_SCALE, lm.size*SPR_SCALE);
     return;
@@ -321,7 +370,7 @@ function drawCell(c){
       ? (nsn && !ewn ? 'alley_ns' : 'alley_ew')
       : (ewn && nsn ? 'street_ix' : nsn ? 'street_ns' : 'street_ew');
   }
-  const pool=VARIANTS[poolKey];
+  const pool=poolFor(poolKey);
   if (pool && pool.length && SPR_SCALE){
     const r=rng(c);
     const spr=pool[Math.floor(r()*pool.length)];
@@ -350,6 +399,7 @@ function drawCell(c){
 function stamp(im, sx, sy, wx, wy){
   // draw an ambient sprite anchored at a world offset within the cell
   const a=DATA.anchor;
+  [wx,wy]=rotXY(wx,wy);
   const px=sx + (wx-wy)*TW/2, py=sy + (wx+wy)*TH/2;
   ctx.drawImage(im, px-a.origin[0]*SPR_SCALE, py-a.origin[1]*SPR_SCALE,
                 a.size*SPR_SCALE, a.size*SPR_SCALE);
@@ -384,7 +434,7 @@ function ambient(c, r){
   // ── vocabulary ────────────────────────────────────────────────────
   // Sprites with a long axis take _x / _y; the rest are square-on.
   const ORIENTED=new Set(['stall','barrier','scooter','bowser','hauler','van']);
-  const put=n=>AMBIENT[ORIENTED.has(n)?(n+(ew?'_x':'_y')):n];
+  const put=n=>ambientImg(ORIENTED.has(n)?(n+(ew?'_x':'_y')):n);
   const pick=list=>list[Math.floor(r()*list.length)];
 
   const FREIGHT=['cargo_pod','pallets','spool','crates','barrels'];
@@ -413,7 +463,7 @@ function ambient(c, r){
   // seasoning; it is a crowd standing next to a parked van.
   let im=null, at=null;
   if (c.t==='alley'){
-    if (roll<0.16){ im=AMBIENT['cart']; at=lane(); }
+    if (roll<0.16){ im=ambientImg('cart'); at=lane(); }
     else if (roll<0.34){ im=put(pick([...GRIME,...FREIGHT])); at=curb(0.28); }
   } else {
     if (roll<0.11){ im=put(pick(VEHICLES)); at=lane(); }
@@ -426,7 +476,7 @@ function ambient(c, r){
     const pRoll=r();
     const chance=(c.t==='alley'?0.10:0.16)+Math.min(0.10*lvl,0.30);
     if (pRoll<chance){
-      const crowd=AMBIENT['crowd_'+Math.floor(r()*6)];
+      const crowd=ambientImg('crowd_'+Math.floor(r()*6));
       const side=at ? -Math.sign(at[1]||at[0]||1)*0.30 : (r()<0.5?0.30:-0.30);
       if (crowd && crowd.complete) stamp(crowd, sx0(c), sy0(c), ...curb(side));
     }
@@ -579,4 +629,13 @@ cv.addEventListener('dblclick',()=>{VS=1;VX=0;VY=0;redraw();});
 cv.addEventListener('mouseleave',()=>{if(!pointers.size){readout.className='readout';readout.innerHTML='&nbsp;';}});
 for (const el of [ui.zcap,ui.air,ui.edge,ui.radio,ui.life])
   el.addEventListener('input',()=>{ui.zval.textContent=`z ≤ ${ui.zcap.value}`; draw();});
+function setView(k){
+  VIEW=((k%4)+4)%4;
+  OX=OXS[VIEW]; OY=OYS[VIEW];
+  sortC();
+  document.getElementById('vlab').textContent=VLABELS[VIEW];
+  draw();
+}
+document.getElementById('rotL').addEventListener('click',()=>setView(VIEW-1));
+document.getElementById('rotR').addEventListener('click',()=>setView(VIEW+1));
 </script>
