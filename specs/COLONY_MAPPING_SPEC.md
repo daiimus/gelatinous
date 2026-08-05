@@ -1,6 +1,15 @@
 # Colony Mapping — the export, the builder's volume, the player's chart
 
-> **Status:** 📋 PROPOSAL (2026-07-25) — design only, nothing built.
+> **Status:** ✅ SHIPPED through §M2.5 — and past it (2026-08-04).
+> §M1 export, the sprite atlas, and the website view went live 2026-07-28;
+> the *served* atlas has since evolved into a **live 3D render** and is
+> player-facing — see **§7 · The atlas as shipped**, which supersedes the
+> §M2.5 details below where they differ. The sprite plate survives as the
+> builder's generated instrument. §M3 (player chart: vague-not-false,
+> visited sets, GMCP) and §M4 (paper maps, decking exposure, planner)
+> remain 📋 deferred with their design unchanged.
+>
+> *Original proposal framing follows.*
 > **SCOPE REFOCUS (owner, same day): the v1 consumer is the OWNER alone.**
 > The player/builder audience split and everything serving it (vagueness
 > dial, visited-sets, GMCP) is deferred to §M3/M4 unchanged; v1 = §M1
@@ -187,3 +196,39 @@ the live style study beside procedural cells for an A/B.
    emission per the vagueness dial. Mudlet draws the rest.
 4. **§M4 — later.** Paper map items; decking exposure; interactive
    planner. Each is a new consumer of §M1, none reopens it.
+
+## 7 · The atlas as shipped (2026-08-04) — the live render
+
+"One export, many renderers" held; the renderers just outgrew the plan.
+Two consumers exist today, both fed by `export_map()`:
+
+- **The served atlas** (`/atlas/`, login-only, linked in the account
+  dropdown) is a **live 3D render**, embedded in the site page in the
+  same plate chrome the sprite atlas wore (`web/templates/website/
+  atlas.html` fragment mode; STYLING_SPEC addendum). The stage is a
+  three.js orthographic free camera over models captured from the *same
+  Blender rig* that shot the sprites: `scripts/atlas/sprites/
+  export_models.py` monkeypatches `rig.render`, joins and subdivides
+  each scene, and **bakes the full Cycles verdict into vertex colors** —
+  twice, once under the rig's night lights and once under a day sky —
+  shipped as parallel color attributes that the viewer crossfades. No
+  live lights; a post shader carries the darkroom grade at 60fps.
+- **Cockpit HUD**: a compass dial (needle tracks the true screen
+  direction of north; tap = home reset, which re-centers and fits the
+  city flush to the stage from per-cell projection), a translucent
+  altitude tape driving the z-slice clipping plane, and a sky-instrument
+  toggle (crescent/sun glyph). Rotation is gestural (twist, shift-drag,
+  bracket keys). Hover/tap raycasts to the room readout.
+- **'You are here'**: `player_positions(account)` rides the logged-in
+  account's character positions into the page and a 5-second poll of
+  `?feed=here` (same allowlisted path; query strings pass the edge)
+  keeps the pulsing beacons honest while you play. Characters without a
+  place in the world simply don't report.
+- **The builder instrument** is still the §M2/§3.5 sprite plate:
+  `scripts/atlas/generate.py` (staff=True) writes the standalone file,
+  and the staff overlays — air lattice, jump routes, radio coverage —
+  live only there. It is never served.
+- **Pipeline discipline**: `models.json` is baked art. Any change to a
+  rig model or hero script requires re-running `export_models.py`
+  alongside the sprite grind, or the live render serves stale geometry.
+  three.js is vendored (r147 UMD, pinned — the last non-ESM build).

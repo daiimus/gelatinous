@@ -79,6 +79,7 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 | `NEW_PLAYER_EXPERIENCE_SPEC.md` | Connection → chargen → decant flow and the locked messaging conventions (frame, terminal wrap, TST dates, informing-not-telling, puppet lifecycle) |
 | `EVMENU_PATTERNS_SPEC.md` | EvMenu text-input / multi-source-picker patterns |
 | `STYLING_SPEC.md` | Web client / terminal-brutalist styling |
+| `COLONY_MAPPING_SPEC.md` | The colony atlas: canonical map export + the live 3D render at `/atlas/` (Cycles-baked vertices, day/night, HUD, 'you are here') + the builder's sprite plate; §M3 player chart deferred inline |
 | `WEBCLIENT_SCREEN_SIZE_DETECTION_SPEC.md` | Responsive client layout / screen-width detection |
 | `WEB_CHARACTER_CREATION_ALIGNMENT.md` | Web/game character-creation parity |
 | `WEB_RESPAWN_CHARACTER_CREATION_SPEC.md` | Web respawn flow |

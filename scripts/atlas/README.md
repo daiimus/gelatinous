@@ -1,18 +1,44 @@
 # The Atlas
 
 The colony draws itself. `world/mapping.py` exports the coordinate
-substrate; everything here renders it.
+substrate; everything here renders it. Two renderers share that truth:
 
-## Running it
+- **The live render** (`template3d.html` + `sprites/models.json` +
+  `vendor/three.min.js`) is what `gel.monster/atlas` serves to any
+  logged-in account (`world/atlas.py:build_atlas3d_html`, embedded in
+  the site page by `web/website/views/atlas.py`). Free camera, day and
+  night baked in, the cockpit HUD, live 'you are here' beacons.
+- **The sprite plate** (`template.html` + `sprites/final/`) is the
+  builder's staff instrument — air lattice, jump routes, radio
+  coverage live only here. Generated file, never served.
+
+## The builder's plate
 
 ```
-# regenerate the map from the live database (inside the game container)
+# regenerate from the live database (inside the game container)
 evennia shell < scripts/atlas/generate.py     # writes /tmp/atlas.html
 ```
 
-The same builder serves `gel.monster/atlas` live to superusers
-(`web/website/views/atlas.py`), so the served page is never stale. The
-file version is for reading offline.
+## The live-render bake
+
+```
+blender --background --python scripts/atlas/sprites/export_models.py
+```
+
+Monkeypatches `rig.render` so every sprite scene — classes and heroes —
+is captured instead of photographed: joined, subdivided toward bake
+resolution, and COMBINED-baked in Cycles into POINT-domain vertex
+colors **twice** (the rig's night lights, then a day sky), written to
+`sprites/models.json` as parallel `c`/`d` color arrays. The viewer
+crossfades them; it runs no lights of its own.
+
+- **models.json is baked art.** Any model or hero change requires this
+  rerun alongside the sprite grind, or the live render serves stale
+  geometry (the 2D and 3D atlases are baked independently — keep them
+  in step when models change).
+- **Denoiser OFF for vertex bakes** (it needs pixels; vertices aren't).
+- three.js is **vendored and pinned** (r147 UMD — the last build that
+  works as a plain script tag; do not "upgrade" it casually).
 
 ## The sprite pipeline
 
