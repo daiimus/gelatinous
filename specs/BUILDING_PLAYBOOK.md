@@ -97,10 +97,14 @@ grown upward, or a new name) is an **owner call, pending**.
 the crater face** — unorthodox structures, slope-and-terrace geometry
 (the sloped-exit tags exist for exactly this), the make-do register at
 its extreme, terraces as commons. And the **Atmospheric Processor
-dominates the colony**: footprint from Volta & Riveter's Way across to
-the Spillane and deep toward the southern fringe — **reserved; nothing
-else builds in that span**. Industrial-sacred register; plausibly the
-one silhouette that reaches the rim.
+dominates the colony** from the plot the street grid was drawn
+around: bounded by **Maxwell (north), Pessoa (south), the Spillane
+(west), and Riveter's Way (east)** — a 7×7 block, empty since
+seeding, **reserved** — with the **main gate at Volta & Riveter's**.
+One street off the channel's south bank, so the water cycle is
+physically tight: ice below, works in the block, basin across
+Maxwell. Industrial-sacred register; plausibly the one silhouette
+that reaches the rim.
 
 **Below.** The down-Z layer is real: **ice mines** under the colony
 feed the terraformer, and the underground (mines, service galleries,
