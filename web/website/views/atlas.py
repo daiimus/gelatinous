@@ -15,6 +15,6 @@ from world.atlas import build_atlas3d_html
 @login_required
 def atlas_view(request):
     game_dir = getattr(settings, "GAME_DIR", ".")
-    plate = build_atlas3d_html(game_dir, fragment=True)
+    plate = build_atlas3d_html(game_dir, fragment=True, account=request.user)
     return render(request, "website/atlas.html",
                   {"atlas": mark_safe(plate), "page_title": "Atlas"})
