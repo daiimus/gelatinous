@@ -23,7 +23,9 @@ from evennia.objects.models import ObjectDB
 EXIT_TC = "typeclasses.exits.Exit"
 ROOM_TC = "typeclasses.rooms.Room"
 
-# GRID COMPASS (mirrored iso): north = +y, EAST = -x.
+# GRID COMPASS (game space): north = +y, EAST = +x.
+# (The atlas RENDER is horizontally mirrored — screen-east is -x there.
+#  Exits always use game space. Verified against South Wing Roof East.)
 OPP = {"north": "south", "south": "north", "east": "west", "west": "east",
        "up": "down", "down": "up",
        "northeast": "southwest", "southwest": "northeast",
@@ -72,7 +74,7 @@ def edge_down(roof, direction, street, exemplar_attrs):
                        location=roof, destination=street)
     for k, v in exemplar_attrs.items():
         ex.attributes.add(k, v)
-    ex.db.fall_room = street
+    ex.db.fall_room = street.id   # dbref int, per convention (export int()s it)
     return 1
 
 
@@ -104,10 +106,10 @@ for e in kaspar_roof.exits:
 assert edge_attrs.get("is_edge"), "no edge exemplar found on Kaspar rooftop"
 
 # -- A. Brackett z6 join ------------------------------------------------
-# terrace (-11,-20,6) -> roof (-10,-20,6): x+1 is WEST on this compass
+# terrace (-11,-20,6) -> roof (-10,-20,6): x+1 is EAST (game compass)
 t6a = by_key("The Brackett Arms - Unit 6A Terrace")
 sww = by_key("The Brackett Arms - South Wing Roof West")
-made_exits += link(t6a, sww, "west")
+made_exits += link(t6a, sww, "east")
 
 # -- B. the Queen of Cups orphan ---------------------------------------
 lobby_roof = by_key("Queen of Cups - Lobby Roof")
@@ -118,25 +120,25 @@ assert pessoa, "no street at (-2,-12)"
 made_exits += edge_down(lobby_roof, "north", pessoa, edge_attrs)
 
 # -- C. Shipbreaker Alley rooftop --------------------------------------
-# footprint x5..6 (x5 = the EASTERN column on this compass), y-17..-19;
-# two strip rooms tile it, anchored (5,-17) east and (6,-18) west
+# footprint x5..6 (x6 = the eastern column; game east = +x), y-17..-19;
+# two strip rooms tile it, anchored (5,-17) west and (6,-18) east
 def is_street_room(r):
     return r is not None and (r.attributes.get("type") or "") in (
         "street", "bridge", "alley")
 
 sb_ground = room_at(5, -17, 0)
 assert sb_ground and "Shipbreaker" in sb_ground.key, "Shipbreaker yard not at (5,-17)"
-east_strip, n1 = new_roof("Shipbreaker Alley - Rooftop (East)", 5, -17, 1)
-west_strip, n2 = new_roof("Shipbreaker Alley - Rooftop (West)", 6, -18, 1)
+west_strip, n1 = new_roof("Shipbreaker Alley - Rooftop (West)", 5, -17, 1)
+east_strip, n2 = new_roof("Shipbreaker Alley - Rooftop (East)", 6, -18, 1)
 made_rooms += n1 + n2
-made_exits += link(sb_ground, east_strip, "up")           # yard hatch
-made_exits += link(east_strip, west_strip, "southwest")   # strip join
-riveters = room_at(4, -17, 0)
-if is_street_room(riveters):
-    made_exits += edge_down(east_strip, "east", riveters, edge_attrs)
-w_street = room_at(7, -18, 0)
-if is_street_room(w_street):
-    made_exits += edge_down(west_strip, "west", w_street, edge_attrs)
+made_exits += link(sb_ground, west_strip, "up")           # yard hatch
+made_exits += link(west_strip, east_strip, "southeast")   # strip join
+w_lot = room_at(4, -17, 0)
+if is_street_room(w_lot):
+    made_exits += edge_down(west_strip, "west", w_lot, edge_attrs)
+e_street = room_at(7, -18, 0)
+if is_street_room(e_street):
+    made_exits += edge_down(east_strip, "east", e_street, edge_attrs)
 
 # -- D. the first water tower ------------------------------------------
 kaspar_n = by_key("Kaspar Urgent Care - Rooftop (North)")

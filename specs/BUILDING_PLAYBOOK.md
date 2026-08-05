@@ -99,7 +99,7 @@ the crater face** — unorthodox structures, slope-and-terrace geometry
 its extreme, terraces as commons. And the **Atmospheric Processor
 dominates the colony** from the plot the street grid was drawn
 around: bounded by **Maxwell (north), Pessoa (south), the Spillane
-(west), and Riveter's Way (east)** — a 7×7 block, empty since
+(east), and Riveter's Way (west)** — a 7×7 block, empty since
 seeding, **reserved** — with the **main gate at Volta & Riveter's**.
 One street off the channel's south bank, so the water cycle is
 physically tight: ice below, works in the block, basin across
