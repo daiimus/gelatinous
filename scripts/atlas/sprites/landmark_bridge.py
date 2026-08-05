@@ -74,6 +74,17 @@ for x in (-0.40, 0.40):
         rig.box(f"hang{x}{hy}", (0.025, 0.025, max(0.05, cz - 0.36)),
                 (x, hy, (cz + 0.36) / 2), cable)
 
+# approach ramps: the deck rides above street grade, so each end steps
+# down onto its street - the art overhangs the street cell the way an
+# awning does, and the seam reads as a landing instead of a ledge
+for end_y, direction in ((-0.26, -1), (6.76, 1)):
+    for step, (dz, depth) in enumerate(((0.17, 0.24), (0.11, 0.22))):
+        yy = end_y + direction * (0.12 + step * 0.23)
+        rig.box(f"ramp{direction}{step}", (0.86, depth, 0.05),
+                (0, yy, dz), deckm)
+    rig.box(f"rampedge{direction}", (0.86, 0.05, 0.03),
+            (0, end_y + direction * 0.58, 0.065), rail)
+
 # The deck pieces run local y 0..6.5 with their own half-width, which
 # left the art a quarter-cell north of the seven cells it spans - the
 # rotated views showed the naked seam at the south street. Recenter.
