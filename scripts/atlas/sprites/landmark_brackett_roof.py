@@ -38,27 +38,26 @@ patch = rig.make_material("bpatch", (0.10, 0.10, 0.10), 0.9)
 # --- the deck: an L of eight cells; (1, 0) is the tower's true notch --
 CELLS = [(-1, 0), (-1, -1), (-1, -2),      # west column (new roofs)
          (0, 0), (0, -1), (0, -2),        # center column (the originals)
-         (1, -1), (1, -2)]                # east pair (headhouse, southeast)
+         (1, 0),                           # shaft top: the headhouse plinth
+         (1, -1), (1, -2)]                # east pair
 for cx, cy in CELLS:
     mat = tar_w if cx == -1 else tar
     rig.box(f"deck{cx}{cy}", (1.0, 1.0, 0.10), (cx, cy, 0.05), mat)
 
 # parapet ring tracing the L (outer rim + the notch's two inner walls)
 PAR = [((-1.465, -1.0), (0.07, 3.0)),       # west rim
-       ((1.465, -1.5), (0.07, 2.0)),        # east rim (short leg)
-       ((-0.5, 0.465), (2.0, 0.07)),        # north rim (west+center)
-       ((0.0, -2.465), (3.0, 0.07)),        # south rim (full width)
-       ((0.535, 0.0), (0.07, 1.0)),         # notch west wall
-       ((1.0, -0.535), (1.0, 0.07))]        # notch south wall
+       ((1.465, -1.0), (0.07, 3.0)),        # east rim (full)
+       ((0.0, 0.465), (3.0, 0.07)),         # north rim (full width)
+       ((0.0, -2.465), (3.0, 0.07))]        # south rim (full width)
 for i, ((px, py), (sx, sy)) in enumerate(PAR):
     rig.box(f"par{i}", (sx, sy, 0.20), (px, py, 0.15), para)
 
 # --- the elevator headhouse on East Roof (local 1,-1) ----------------
-rig.box("head", (0.66, 0.72, 0.52), (1.0, -1.0, 0.36), house)
-rig.box("headcap", (0.72, 0.78, 0.05), (1.0, -1.0, 0.64), steel)
-rig.box("headdoor", (0.26, 0.03, 0.34), (0.86, -1.37, 0.27),
+rig.box("head", (0.66, 0.72, 0.52), (1.0, 0.0, 0.36), house)
+rig.box("headcap", (0.72, 0.78, 0.05), (1.0, 0.0, 0.64), steel)
+rig.box("headdoor", (0.26, 0.03, 0.34), (0.86, -0.37, 0.27),
         rig.make_material("bdoor", (0.04, 0.05, 0.06), 0.4))
-rig.box("headlamp", (0.10, 0.04, 0.04), (0.86, -1.38, 0.50), lamp)
+rig.box("headlamp", (0.10, 0.04, 0.04), (0.86, -0.38, 0.50), lamp)
 
 # --- the Sentinel: lattice mast keeps its post on North Roof ---------
 MX, MY = -0.16, 0.10
