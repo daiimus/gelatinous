@@ -166,6 +166,19 @@ never canon. NPC-run factions remain the only factions.
   build time — `memory`'s dossier depends on them.
 - B&E is a PvE mechanic: player-rented rooms are not burglary targets.
 
+**The exit graph** (owner-set 2026-08-05): coordinates are truth,
+exits are permission. Every room has a grid address, but the exit
+graph stays deliberately **sparser than the lattice** — staggered
+exits, places a little boxed in, never a door in every direction.
+Enclosure is the point: it makes streets legible, gives quarters
+mood, and turns wayfinding into exploration ("herding drunk cats so
+they aren't dizzy" — the herding is invisible because the coordinates
+stay honest). Corollary: the stingy ground graph is what makes the
+roof city valuable — the roofs sell the diagonals the streets
+withhold. Scope: this governs the STREET fabric; on plates the
+vertical doctrine still wires every rim as an edge, because edges are
+jumps priced in risk, not corridor exits.
+
 **The room itself** (practice, 246 rooms deep):
 - **Five-senses descriptions** are the register — a room ships with its
   sense layers, not "desc now, senses later."
