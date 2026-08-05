@@ -3,7 +3,7 @@
 <style>
   .atlas-plate{font-family:var(--serif) !important}
   .atlas-plate h1{font-family:var(--cond) !important}
-  .atlas-plate .place,.atlas-plate .stamp,.atlas-plate .readout,
+  .atlas-plate .place,.atlas-plate .readout,
   .atlas-plate .compass text,.atlas-plate .tapenum,
   .atlas-plate .here .who{font-family:var(--mono) !important}
   :root{
@@ -34,9 +34,6 @@
   .place{font-family:var(--mono);font-size:11px;letter-spacing:.20em;
     text-transform:uppercase;color:var(--amber)}
   .place span{color:var(--bone-dim);padding:0 2px}
-  .stamp{font-family:var(--mono);font-size:11px;letter-spacing:.10em;
-    color:var(--bone-dim);text-align:center}
-  .stamp b{color:var(--amber);font-weight:400}
   .plate-lore{margin:14px auto 0;max-width:85ch;font-size:var(--size-body,15.5px);line-height:1.7;
     color:var(--bone-dim);text-align:center}
   .plate-lore em{color:var(--bone);font-style:normal}
@@ -103,7 +100,6 @@
     <h1>Atlas</h1>
     <div class="place">Domino's Gambit <span>·</span> Off-World Colony</div>
   </div>
-  <div class="stamp" id="stamp"></div>
 </header>
 <p class="plate-lore">A lifetime ago a terraforming mission set down in
 this crater to make a waypoint of it: processor stacks, a gate anchor,
@@ -211,8 +207,6 @@ const view=document.getElementById('view');
 view.prepend(renderer.domElement);
 const cv=renderer.domElement;
 const readout=document.getElementById('readout');
-document.getElementById('stamp').innerHTML=
-  `<b>${DATA.cells.length}</b> rooms &nbsp;·&nbsp; <b>${(DATA.links||[]).length}</b> ways`;
 
 const ZMAX=Math.max(...CELLS.map(c=>c.z),1);
 const ZSTOPS=ZMAX+1;
