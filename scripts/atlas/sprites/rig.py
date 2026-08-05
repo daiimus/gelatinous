@@ -101,15 +101,21 @@ def _rotate_scene_90():
         o.rotation_euler.rotate_axis("Z", math.radians(90))
 
 
-def _rotate_meshes_90():
+def _rotate_meshes_90(pivot=(0.0, 0.0)):
     """Quarter-turn the MODEL only — camera and lights stay world-fixed.
     Rendering after each turn yields the next compass view (v1..v3):
-    the sun stays put, so far faces sit in honest shadow."""
+    the sun stays put, so far faces sit in honest shadow.
+
+    Rotation is about *pivot* (the camera target's xy) — long heroes
+    whose content is offset from the local origin would otherwise swing
+    out of the fixed frame. The calibration marker rides along, which
+    is why hero origins are measured PER VIEW."""
+    px, py = pivot
     for o in list(bpy.context.collection.objects):
         if o.type in ("CAMERA", "LIGHT"):
             continue
         x, y, z = o.location
-        o.location = (-y, x, z)
+        o.location = (px - (y - py), py + (x - px), z)
         o.rotation_euler.rotate_axis("Z", math.radians(90))
 
 
@@ -125,7 +131,12 @@ def _oriented(base, build, variant=None):
         render(f"{base}{suffix}{tail}")
 
 
+LAST_TARGET = (0.0, 0.0)
+
+
 def rig_camera_and_light(ortho=2.6, target=(0, 0, 0.4)):
+    global LAST_TARGET
+    LAST_TARGET = (target[0], target[1])
     cam_data = bpy.data.cameras.new("cam")
     cam_data.type = "ORTHO"
     cam_data.ortho_scale = ortho
@@ -173,18 +184,18 @@ def render(name, res=RES):
     sc.render.filepath = os.path.join(OUT, f"{name}.png")
     bpy.ops.render.render(write_still=True)
     print(f"rendered {name}")
-    # The other three compass views: rotate the model under the fixed
-    # camera and shoot again. Calibration markers sit on the rotation
-    # axis, so their views would be identical — skip them.
-    if name.startswith("calib_") or os.environ.get("RIG_VIEWS") == "0":
+    # The other three compass views: rotate the model about the camera
+    # target under the fixed camera and shoot again. Calibration markers
+    # ride the rotation, so hero origins are measured per view.
+    if os.environ.get("RIG_VIEWS") == "0":
         return
     for k in (1, 2, 3):
-        _rotate_meshes_90()
+        _rotate_meshes_90(LAST_TARGET)
         vdir = os.path.join(OUT, f"v{k}")
         os.makedirs(vdir, exist_ok=True)
         sc.render.filepath = os.path.join(vdir, f"{name}.png")
         bpy.ops.render.render(write_still=True)
-    _rotate_meshes_90()          # fourth turn: back where we started
+    _rotate_meshes_90(LAST_TARGET)   # fourth turn: back where we started
     print(f"rendered {name} v1-v3")
 
 
@@ -238,6 +249,18 @@ def tenement_cell():
     box("conduit1", (0.03, 0.03, 1.0), (0.515, 0.12, 0.5), pipe)
     box("conduit2", (0.03, 0.03, 1.0), (0.515, 0.20, 0.5), pipe)
     box("conduit_elbow", (0.03, 0.14, 0.03), (0.515, 0.13, 0.94), pipe)
+    # the far faces: same bones, sparser life — these show when the
+    # atlas rotates, and emission is the only light on the shadow side
+    for wx, litw in [(-0.28, False), (0.0, True), (0.28, False)]:
+        box(f"wfn{wx}", (0.16, 0.02, 0.30), (wx, -0.505, 0.55), frame)
+        box(f"wgn{wx}", (0.12, 0.015, 0.24), (wx, -0.512, 0.55),
+            lit if litw else dark)
+    for wy, litw in [(-0.28, True), (0.28, False)]:
+        box(f"wfw{wy}", (0.02, 0.16, 0.30), (-0.505, wy, 0.55), frame)
+        box(f"wgw{wy}", (0.015, 0.12, 0.24), (-0.512, wy, 0.55),
+            lit if litw else dark)
+    box("ac_w", (0.14, 0.10, 0.10), (-0.56, -0.20, 0.45), duct)
+    box("downpipe", (0.03, 0.03, 1.0), (-0.515, 0.30, 0.5), pipe)
     neon = make_material("neon", (0.2, 0.9, 0.9), 0.3,
                          emit=(0.25, 0.95, 1.0))
     box("sign", (0.30, 0.05, 0.07), (0.05, 0.515, 0.86), neon)
@@ -320,21 +343,24 @@ def hotel_cell():
     darkw = make_material("hdark", (0.03, 0.03, 0.05), 0.3)
     box("block", (1, 1, 1), (0, 0, 0.5), violet)
     k = 0
-    for face, side in (("s", -1), ("e", 1)):
+    for face, sign in (("s", 1), ("n", -1)):
         for i in range(2):
             for j in range(3):
                 k += 1
                 mat = litw if (k % 3 == 0) else darkw
-                if face == "s":
-                    box(f"c{face}{i}{j}", (0.20, 0.02, 0.16),
-                        (-0.22 + i * 0.44, 0.508, 0.25 + j * 0.28), frame)
-                    box(f"g{face}{i}{j}", (0.16, 0.015, 0.12),
-                        (-0.22 + i * 0.44, 0.515, 0.25 + j * 0.28), mat)
-                else:
-                    box(f"c{face}{i}{j}", (0.02, 0.20, 0.16),
-                        (0.508, -0.22 + i * 0.44, 0.25 + j * 0.28), frame)
-                    box(f"g{face}{i}{j}", (0.015, 0.16, 0.12),
-                        (0.515, -0.22 + i * 0.44, 0.25 + j * 0.28), mat)
+                box(f"c{face}{i}{j}", (0.20, 0.02, 0.16),
+                    (-0.22 + i * 0.44, sign * 0.508, 0.25 + j * 0.28), frame)
+                box(f"g{face}{i}{j}", (0.16, 0.015, 0.12),
+                    (-0.22 + i * 0.44, sign * 0.515, 0.25 + j * 0.28), mat)
+    for face, sign in (("e", 1), ("w", -1)):
+        for i in range(2):
+            for j in range(3):
+                k += 1
+                mat = litw if (k % 3 == 0) else darkw
+                box(f"c{face}{i}{j}", (0.02, 0.20, 0.16),
+                    (sign * 0.508, -0.22 + i * 0.44, 0.25 + j * 0.28), frame)
+                box(f"g{face}{i}{j}", (0.015, 0.16, 0.12),
+                    (sign * 0.515, -0.22 + i * 0.44, 0.25 + j * 0.28), mat)
     rig_camera_and_light()
     render("hotel")
 
@@ -618,6 +644,17 @@ def tenement_variant_1():
     for i in range(3):
         cm = make_material(f"cloth{i}", (0.25 + i * 0.1, 0.2, 0.15), 0.9)
         box(f"cl{i}", (0.07, 0.015, 0.09), (-0.14 + i * 0.14, 0.515, 0.83), cm)
+    # the far faces
+    for wx, litw in [(-0.20, False), (0.22, True)]:
+        box(f"wfn{wx}", (0.24, 0.02, 0.34), (wx, -0.505, 0.52), frame)
+        box(f"wgn{wx}", (0.20, 0.015, 0.28), (wx, -0.512, 0.52),
+            lit if litw else dark)
+    for we, litw in [(-0.10, True), (0.24, False)]:
+        box(f"wew{we}", (0.02, 0.20, 0.30), (-0.505, we, 0.60), frame)
+        box(f"wgew{we}", (0.015, 0.16, 0.24), (-0.512, we, 0.60),
+            lit if litw else dark)
+    box("balc_w", (0.34, 0.10, 0.03), (-0.51, 0.16, 0.62), rail)
+    box("balcr_w", (0.34, 0.02, 0.10), (-0.51, 0.205, 0.69), rail)
     rig_camera_and_light()
     render("tenement_1")
 

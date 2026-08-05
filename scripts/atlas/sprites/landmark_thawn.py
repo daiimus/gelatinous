@@ -50,9 +50,22 @@ for i in range(3):                       # east face
     ry = -0.30 + i * 0.30
     rig.box(f"ribE{i}", (0.07, 0.10, H * 0.94), (1.52, ry, 0.12 + H * 0.47), rib)
 
+# far faces wear the same rhythm — a cathedral has no back
+for i in range(7):
+    rx = -0.85 + i * 0.45
+    rig.box(f"ribS{i}", (0.10, 0.07, H * 0.94), (rx, -0.50, 0.12 + H * 0.47), rib)
+for i in range(3):
+    ry = -0.30 + i * 0.30
+    rig.box(f"ribW{i}", (0.07, 0.10, H * 0.94), (-0.52, ry, 0.12 + H * 0.47), rib)
+
 # --- the clerestory: cold band riding high between the ribs ----------
 rig.box("clereN", (1.95, 0.03, 0.12), (0.5, 0.505, 0.12 + H - 0.22), frost)
 rig.box("clereE", (0.03, 0.90, 0.12), (1.525, 0, 0.12 + H - 0.22), frost)
+rig.box("clereS", (1.95, 0.03, 0.12), (0.5, -0.505, 0.12 + H - 0.22), frost)
+rig.box("clereW", (0.03, 0.90, 0.12), (-0.525, 0, 0.12 + H - 0.22), frost)
+for i in range(6):
+    sx2 = -0.62 + i * 0.45
+    rig.box(f"slitS{i}", (0.05, 0.03, 0.42), (sx2, -0.505, 0.55), coldslit)
 # narrow slit windows low on the north face, one per bay
 for i in range(6):
     sx = -0.62 + i * 0.45

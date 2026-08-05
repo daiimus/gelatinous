@@ -356,7 +356,8 @@ function drawCell(c){
     const limg=(lm.imgs&&lm.imgs[VIEW])||lm.img;
     if (!limg || !limg.complete || !SPR_SCALE) return;
     ctx.imageSmoothingEnabled=false;
-    const o = lm.origin || [a.origin[0]*lm.ratio, a.origin[1]*lm.ratio];
+    const o = (lm.origins&&lm.origins[VIEW]) || lm.origin
+             || [a.origin[0]*lm.ratio, a.origin[1]*lm.ratio];
     ctx.drawImage(limg,
       sx - o[0]*SPR_SCALE, sy - o[1]*SPR_SCALE,
       lm.size*SPR_SCALE, lm.size*SPR_SCALE);
