@@ -1,0 +1,421 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Atlas — Live</title>
+<style>
+  :root{--ink:#0b0e14;--plate:#0d1119;--line:#232a36;--bone:#d8d2c4;--bone-dim:#8f8a7d;
+    --amber:#e0a86f;--cyan:#6fd6e0;--mono:'Monaspace Neon',ui-monospace,monospace}
+  *{margin:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--ink);color:var(--bone);font-family:var(--mono);overflow:hidden}
+  #stage{position:fixed;inset:0}
+  canvas{display:block;cursor:grab;touch-action:none}
+  canvas.dragging{cursor:grabbing}
+  .readout{position:absolute;left:12px;top:10px;opacity:0;transition:opacity .12s;
+    font-size:12px;color:var(--cyan);background:rgba(11,14,20,.72);padding:4px 8px;
+    border:1px solid var(--line);border-radius:3px;pointer-events:none;min-height:15px;z-index:3}
+  .readout.on{opacity:1}
+  .readout .kind{display:block;margin-top:2px;color:var(--amber);
+    letter-spacing:.14em;text-transform:uppercase;font-size:10px}
+  .controls{position:absolute;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;gap:14px;
+    align-items:center;padding:10px 14px;font-size:12px;color:var(--bone-dim);
+    background:rgba(11,14,20,.78);border-top:1px solid var(--line);z-index:3}
+  .zrow{display:flex;gap:10px;align-items:center;flex:1;min-width:200px}
+  .zrow input[type=range]{flex:1;accent-color:var(--amber)}
+  .zval{color:var(--amber);min-width:5ch;font-variant-numeric:tabular-nums}
+  .vrow{display:flex;gap:8px;align-items:center}
+  .vrow button{font-family:var(--mono);font-size:15px;line-height:1;color:var(--cyan);
+    background:rgba(11,14,20,.72);border:1px solid var(--line);border-radius:3px;
+    padding:5px 10px;cursor:pointer;touch-action:manipulation}
+  .vrow button:active{background:var(--line)}
+  .vlab{color:var(--cyan);min-width:3.5ch;text-align:center;background:none;border:none;
+    font-family:var(--mono);font-size:12px;cursor:pointer;padding:5px 2px}
+  .tag{position:absolute;right:12px;top:10px;font-size:10px;letter-spacing:.14em;
+    color:var(--bone-dim);text-transform:uppercase;z-index:3}
+</style>
+<div id="stage">
+  <div class="readout" id="readout">&nbsp;</div>
+  <div class="tag">live render — phase one</div>
+  <div class="controls">
+    <div class="zrow"><span>z-slice</span><input id="zcap" type="range" min="0" max="8" value="8" step="1"><span class="zval" id="zval"></span></div>
+    <span class="vrow"><button id="rotL" type="button" aria-label="rotate left">&#10226;</button><button class="vlab" id="vlab" type="button" title="reset view">NE</button><button id="rotR" type="button" aria-label="rotate right">&#10227;</button></span>
+  </div>
+</div>
+<script>/*__THREE__*/</script>
+<script>
+const DATA = /*__DATA__*/null;
+const MODELS = /*__MODELS__*/null;
+
+// ── class resolution: mirrors the 2D atlas ─────────────────────────
+const SKINS = [["The Brackett Arms","tenement"],["Colonial Constabulary","constab"],
+  ["Colonial Armory","constab"],["Thawn-Harrison","cryo"],["Helix Lounge","lounge"],
+  ["The Last Shift","bar"],["The Hub and Howl","bar"],["Colonial Landing Pad","pad"],
+  ["Shuttered Storefront","shuttered"]];
+function cls(c){
+  if ((c.flags||[]).includes('sky')) return 'air';
+  const t=(c.type||'').toLowerCase(), k=c.key||'';
+  if (k.toLowerCase().includes('alley')) return 'alley';
+  if (t==='rooftop'||t==='terrace'||/rooftop|- roof/i.test(k))
+    return k.startsWith("Hammett's Boot")?'hull':'roof';
+  if (/courtyard/i.test(k)) return 'street';
+  if (k.toLowerCase().includes('elevator')) return 'machine';
+  for (const [p,s] of SKINS) if (k.startsWith(p)) return s;
+  if (t==='street'||t==='bridge') return 'street';
+  if (t==='alley') return 'alley';
+  if (t==='market') return 'market';
+  if (t==='tenement'||t==='residential'||t==='apartment') return 'tenement';
+  if (t==='hospital') return 'medical';
+  if (['shop','corner store','laundromat','bar','clinic','nightclub','antique shop'].includes(t)) return 'shop';
+  if (k.startsWith('Queen of Cups')||/^R\d-\d\d$/.test(k)) return 'hotel';
+  if (t==='constabulary') return 'machine';
+  return 'generic';
+}
+const LEGEND={street:'street',alley:'alley',market:'market',hull:'hull-top',
+  tenement:'residential',roof:'rooftop',shop:'commerce',hotel:'cube hotel',
+  constab:'the law',cryo:'cryogenics',lounge:'nightlife',bar:'bars',pad:'landing pad',
+  medical:'medicine',shuttered:'shuttered',machine:'machinery',generic:'other',air:'air'};
+
+// which model a class uses (streets pick orientation by neighbours)
+const GROUND=new Set(), CELLS=[];
+for (const c of DATA.cells){
+  const t=cls(c);
+  const cell={x:c.xyz[0],y:c.xyz[1],z:c.xyz[2],t,name:c.key,dbref:c.dbref};
+  CELLS.push(cell);
+  if (t==='street'||t==='alley') GROUND.add(`${cell.x},${cell.y}`);
+}
+const COVERED=new Set();
+for (const lm of (DATA.landmarks||[]))
+  for (const [x,y,z] of lm.covers) COVERED.add(`${x},${y},${z}`);
+function modelFor(c){
+  if (c.t==='air') return null;
+  if (c.t==='street'||c.t==='alley'){
+    const ewn=GROUND.has(`${c.x+1},${c.y}`)||GROUND.has(`${c.x-1},${c.y}`);
+    const nsn=GROUND.has(`${c.x},${c.y+1}`)||GROUND.has(`${c.x},${c.y-1}`);
+    if (c.t==='alley') return (nsn&&!ewn)?'alley_ns':'alley_ew';
+    return (ewn&&nsn)?'street_ix': nsn?'street_ns':'street_ew';
+  }
+  if (MODELS[c.t]) return c.t;
+  return 'generic';
+}
+
+// ── three scene ────────────────────────────────────────────────────
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0b0e14);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.localClippingEnabled=true;
+document.getElementById('stage').prepend(renderer.domElement);
+const cv=renderer.domElement;
+const readout=document.getElementById('readout');
+
+const ZMAX=Math.max(...CELLS.map(c=>c.z),1);
+const zcapEl=document.getElementById('zcap');
+zcapEl.max=ZMAX+1; zcapEl.value=ZMAX+1;
+const clipPlane=new THREE.Plane(new THREE.Vector3(0,0,-1), ZMAX+1.6);
+
+// sun + fill, matching the rig's grade
+scene.add(new THREE.AmbientLight(0x2a3140, 1.1));
+const sun=new THREE.DirectionalLight(0xffc78c, 2.4);
+sun.position.set(3,-4,6); scene.add(sun);
+const fill=new THREE.DirectionalLight(0x59bfd9, 0.7);
+fill.position.set(-4,3,5); scene.add(fill);
+
+// merged geometry per (model, material) → instanced per placement set
+const matCache=new Map();
+function materialOf(m){
+  const key=JSON.stringify(m);
+  if (matCache.has(key)) return matCache.get(key);
+  const mat=new THREE.MeshLambertMaterial({
+    color:new THREE.Color(...m.c),
+    clippingPlanes:[clipPlane], clipShadows:true,
+  });
+  if (m.e){
+    mat.emissive=new THREE.Color(...m.e);
+    mat.emissiveIntensity=Math.min(1.6, (m.es||1)*0.55);
+  }
+  matCache.set(key, mat);
+  return mat;
+}
+function geometriesOf(model){
+  // group the model's objects by material, merge triangles per group
+  const groups=new Map();
+  for (const o of MODELS[model]||[]){
+    const key=JSON.stringify(o.m);
+    if (!groups.has(key)) groups.set(key, {m:o.m, pos:[]});
+    const g=groups.get(key), v=o.v, f=o.f;
+    for (let i=0;i<f.length;i++){
+      const vi=f[i]*3;
+      g.pos.push(v[vi], v[vi+1], v[vi+2]);
+    }
+  }
+  const out=[];
+  for (const g of groups.values()){
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(g.pos,3));
+    geo.computeVertexNormals();
+    out.push({geo, mat:materialOf(g.m)});
+  }
+  return out;
+}
+const geoCache=new Map();
+function partsOf(model){
+  if (!geoCache.has(model)) geoCache.set(model, geometriesOf(model));
+  return geoCache.get(model);
+}
+
+// place cells: instanced per model part; landmarks placed once
+const placements=new Map();          // model -> [cells]
+const drawn=[];                      // for raycast: {mesh, cells}
+for (const c of CELLS){
+  if (c.t==='air') continue;
+  if (COVERED.has(`${c.x},${c.y},${c.z}`)) continue;
+  const model=modelFor(c);
+  if (!model) continue;
+  if (!placements.has(model)) placements.set(model, []);
+  placements.get(model).push(c);
+}
+const m4=new THREE.Matrix4();
+for (const [model, cells] of placements){
+  for (const part of partsOf(model)){
+    const inst=new THREE.InstancedMesh(part.geo, part.mat, cells.length);
+    cells.forEach((c,i)=>{ m4.makeTranslation(c.x, c.y, c.z); inst.setMatrixAt(i, m4); });
+    inst.userData.cells=cells;
+    scene.add(inst); drawn.push(inst);
+  }
+}
+for (const lm of (DATA.landmarks||[])){
+  const model=lm.sprite;
+  if (!MODELS[model]) continue;
+  const [ax,ay,az]=lm.anchor;
+  for (const part of partsOf(model)){
+    const mesh=new THREE.Mesh(part.geo, part.mat);
+    mesh.position.set(ax, ay, az);
+    mesh.userData.cells=[{x:ax,y:ay,z:az,t:'landmark',name:lm.name}];
+    scene.add(mesh); drawn.push(mesh);
+  }
+}
+
+// ── the camera: free-angle orthographic isometric ──────────────────
+let cx=0, cy=0;                       // world center of interest
+{ let sx=0, sy=0, n=0;
+  for (const c of CELLS){ sx+=c.x; sy+=c.y; n++; }
+  cx=sx/n; cy=sy/n; }
+let AZ=Math.PI/4*3, ZOOM=1;           // azimuth; NE view to match the 2D atlas
+const ELEV=Math.atan(0.5);
+const camera=new THREE.OrthographicCamera(-1,1,1,-1,-200,400);
+camera.up.set(0,0,1);
+function aimCamera(){
+  const d=120;
+  camera.position.set(
+    cx + d*Math.cos(AZ)*Math.cos(ELEV),
+    cy + d*Math.sin(AZ)*Math.cos(ELEV),
+    d*Math.sin(ELEV));
+  camera.lookAt(cx, cy, 0);
+  const aspect=innerWidth/innerHeight;
+  const half=26/ZOOM;
+  camera.left=-half*aspect; camera.right=half*aspect;
+  camera.top=half; camera.bottom=-half;
+  camera.updateProjectionMatrix();
+  // the sun rides the world, not the camera: honest shadow sides
+  syncLabel();
+}
+const VLAB=document.getElementById('vlab');
+function syncLabel(){
+  const q=((Math.round((AZ-Math.PI/4*3)/(Math.PI/2))%4)+4)%4;
+  VLAB.textContent=['NE','SE','SW','NW'][q];
+}
+function resize(){
+  renderer.setSize(innerWidth, innerHeight);
+  aimCamera();
+}
+addEventListener('resize', resize);
+
+// ── render loop: draw on demand ────────────────────────────────────
+let needsDraw=true;
+function invalidate(){ needsDraw=true; }
+function tick(){
+  requestAnimationFrame(tick);
+  if (!needsDraw) return;
+  needsDraw=false;
+  renderer.render(scene, camera);
+}
+
+// ── controls: our gesture vocabulary drives the camera ─────────────
+const raycaster=new THREE.Raycaster();
+const groundPlane=new THREE.Plane(new THREE.Vector3(0,0,1), 0);
+function worldAt(clientX, clientY){
+  const r=cv.getBoundingClientRect();
+  const ndc=new THREE.Vector2(((clientX-r.left)/r.width)*2-1,
+                              -((clientY-r.top)/r.height)*2+1);
+  raycaster.setFromCamera(ndc, camera);
+  const hit=new THREE.Vector3();
+  raycaster.ray.intersectPlane(groundPlane, hit);
+  return hit;
+}
+function holdUnder(clientX, clientY, anchor){
+  // shift the center of interest so `anchor` sits back under the pointer
+  const now=worldAt(clientX, clientY);
+  cx+=anchor.x-now.x; cy+=anchor.y-now.y;
+  aimCamera(); invalidate();
+}
+const pointers=new Map();
+let gesture=null, dragTravel=0, lastTap=null;
+for (const t of ['touchstart','touchmove'])
+  cv.addEventListener(t, ev=>ev.preventDefault(), {passive:false});
+function rebaseline(){
+  const pts=[...pointers.values()];
+  if (pts.length===1){
+    gesture={type:'pan', anchor:worldAt(pts[0].x, pts[0].y)};
+  } else if (pts.length>=2){
+    const [a,b]=pts;
+    gesture={type:'pinch',
+      d0:Math.hypot(a.x-b.x,a.y-b.y)||1,
+      a0:Math.atan2(b.y-a.y,b.x-a.x),
+      Z0:ZOOM, AZ0:AZ,
+      anchor:worldAt((a.x+b.x)/2,(a.y+b.y)/2)};
+  } else gesture=null;
+}
+cv.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();
+  cv.setPointerCapture(ev.pointerId);
+  pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+  if (pointers.size===1) dragTravel=0;
+  rebaseline();
+  cv.classList.add('dragging');
+});
+cv.addEventListener('pointermove',ev=>{
+  if (!pointers.has(ev.pointerId)){
+    if (ev.pointerType==='mouse' && pointers.size===0) inspectAt(ev.clientX,ev.clientY);
+    return;
+  }
+  const p=pointers.get(ev.pointerId);
+  dragTravel+=Math.hypot(ev.clientX-p.x, ev.clientY-p.y);
+  p.x=ev.clientX; p.y=ev.clientY;
+  if (!gesture) return;
+  if (gesture.type==='pan' && pointers.size===1){
+    if (ev.shiftKey && ev.pointerType==='mouse'){
+      AZ+=(ev.movementX||0)*0.006; aimCamera(); invalidate();
+    } else holdUnder(p.x, p.y, gesture.anchor);
+  } else if (gesture.type==='pinch' && pointers.size>=2 && !nativeGesture){
+    const [a,b]=[...pointers.values()];
+    const d=Math.hypot(a.x-b.x,a.y-b.y), ang=Math.atan2(b.y-a.y,b.x-a.x);
+    let dA=ang-gesture.a0;
+    while (dA>Math.PI) dA-=2*Math.PI;
+    while (dA<-Math.PI) dA+=2*Math.PI;
+    ZOOM=Math.min(8, Math.max(0.35, gesture.Z0*(d/gesture.d0)));
+    AZ=gesture.AZ0+dA;                     // free rotation: no snapping
+    aimCamera();
+    holdUnder((a.x+b.x)/2,(a.y+b.y)/2, gesture.anchor);
+  }
+});
+function endPointer(ev){
+  if (!pointers.has(ev.pointerId)) return;
+  pointers.delete(ev.pointerId);
+  rebaseline();
+  if (pointers.size===0){
+    cv.classList.remove('dragging');
+    if (dragTravel<6){
+      const now=performance.now();
+      if (lastTap && now-lastTap.t<320 &&
+          Math.hypot(ev.clientX-lastTap.x, ev.clientY-lastTap.y)<32){
+        lastTap=null;
+        const anchor=worldAt(ev.clientX,ev.clientY);
+        ZOOM=Math.min(8, ZOOM*1.5); aimCamera();
+        holdUnder(ev.clientX,ev.clientY,anchor);
+      } else {
+        lastTap={t:now,x:ev.clientX,y:ev.clientY};
+        inspectAt(ev.clientX,ev.clientY);
+      }
+    }
+  }
+}
+cv.addEventListener('pointerup',endPointer);
+cv.addEventListener('pointercancel',endPointer);
+let nativeGesture=null;
+if ('GestureEvent' in window){
+  cv.addEventListener('gesturestart',ev=>{ev.preventDefault();
+    nativeGesture={Z0:ZOOM, AZ0:AZ, anchor:worldAt(ev.clientX,ev.clientY)};
+    gesture=null;
+  },{passive:false});
+  cv.addEventListener('gesturechange',ev=>{ev.preventDefault();
+    if (!nativeGesture) return;
+    ZOOM=Math.min(8, Math.max(0.35, nativeGesture.Z0*ev.scale));
+    AZ=nativeGesture.AZ0 + ev.rotation*Math.PI/180;
+    aimCamera();
+    holdUnder(ev.clientX,ev.clientY,nativeGesture.anchor);
+  },{passive:false});
+  cv.addEventListener('gestureend',ev=>{ev.preventDefault(); nativeGesture=null;},{passive:false});
+}
+cv.addEventListener('wheel',ev=>{
+  ev.preventDefault();
+  const anchor=worldAt(ev.clientX,ev.clientY);
+  ZOOM=Math.min(8, Math.max(0.35, ZOOM*Math.exp(-ev.deltaY*0.0016)));
+  aimCamera();
+  holdUnder(ev.clientX,ev.clientY,anchor);
+},{passive:false});
+function spinBy(d){
+  const from=AZ, t0=performance.now();
+  (function step(now){
+    const t=Math.min(1,(now-t0)/420);
+    const e=t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+    AZ=from+d*e; aimCamera(); invalidate();
+    if (t<1) requestAnimationFrame(step);
+  })(performance.now());
+}
+document.getElementById('rotL').addEventListener('click',()=>spinBy(-Math.PI/2));
+document.getElementById('rotR').addEventListener('click',()=>spinBy(Math.PI/2));
+VLAB.addEventListener('click',()=>{ZOOM=1;
+  spinBy(((Math.PI/4*3-AZ)%(2*Math.PI)));});
+addEventListener('keydown',ev=>{
+  if (ev.target && /INPUT|TEXTAREA|SELECT|BUTTON/.test(ev.target.tagName)) return;
+  const pan=6/ZOOM;
+  switch(ev.key){
+    case 'ArrowLeft': cx-=pan*Math.cos(AZ-Math.PI/2); cy-=pan*Math.sin(AZ-Math.PI/2); break;
+    case 'ArrowRight': cx+=pan*Math.cos(AZ-Math.PI/2); cy+=pan*Math.sin(AZ-Math.PI/2); break;
+    case 'ArrowUp': cx-=pan*Math.cos(AZ); cy-=pan*Math.sin(AZ); break;
+    case 'ArrowDown': cx+=pan*Math.cos(AZ); cy+=pan*Math.sin(AZ); break;
+    case '+': case '=': ZOOM=Math.min(8,ZOOM*1.25); break;
+    case '-': case '_': ZOOM=Math.max(0.35,ZOOM/1.25); break;
+    case '[': spinBy(-Math.PI/2); return;
+    case ']': spinBy(Math.PI/2); return;
+    case '0': ZOOM=1; spinBy(((Math.PI/4*3-AZ)%(2*Math.PI))); return;
+    default: return;
+  }
+  ev.preventDefault(); aimCamera(); invalidate();
+});
+
+// ── inspect: raycast to the nearest cell ───────────────────────────
+function inspectAt(clientX, clientY){
+  const r=cv.getBoundingClientRect();
+  const ndc=new THREE.Vector2(((clientX-r.left)/r.width)*2-1,
+                              -((clientY-r.top)/r.height)*2+1);
+  raycaster.setFromCamera(ndc, camera);
+  const hits=raycaster.intersectObjects(drawn, false);
+  let cell=null;
+  for (const h of hits){
+    const cells=h.object.userData.cells;
+    if (!cells) continue;
+    cell = h.instanceId!=null ? cells[h.instanceId] : cells[0];
+    if (cell && cell.z<=+zcapEl.value-1+0.5) break;
+    cell=null;
+  }
+  readout.className = cell ? 'readout on' : 'readout';
+  readout.innerHTML = cell
+    ? `${esc(cell.name)} &nbsp;<span style="color:var(--bone-dim)">(${cell.x}, ${cell.y}, ${cell.z})</span>`
+      + `<span class="kind">${esc(LEGEND[cell.t]||cell.t)}</span>`
+    : '&nbsp;';
+}
+function esc(s){return String(s).replace(/[&<>"']/g,
+  ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+cv.addEventListener('mouseleave',()=>{if(!pointers.size){readout.className='readout';readout.innerHTML='&nbsp;';}});
+
+// ── z-slice: a real clipping plane ─────────────────────────────────
+const zval=document.getElementById('zval');
+function syncZ(){
+  const v=+zcapEl.value;
+  zval.textContent=`z ≤ ${v-1<0?0:v-1}`;
+  clipPlane.constant=v+0.6;
+  invalidate();
+}
+zcapEl.addEventListener('input',syncZ);
+syncZ(); resize(); tick();
+</script>

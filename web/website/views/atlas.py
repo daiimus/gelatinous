@@ -8,12 +8,18 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.utils.safestring import mark_safe
 
-from world.atlas import build_atlas_html
+from django.http import HttpResponse
+
+from world.atlas import build_atlas3d_html, build_atlas_html
 
 
 @login_required
 def atlas_view(request):
     game_dir = getattr(settings, "GAME_DIR", ".")
+    if request.GET.get("mode") == "3d":
+        # the live-render atlas rides the SAME path (the edge allowlist
+        # admits exact paths only; query strings pass freely)
+        return HttpResponse(build_atlas3d_html(game_dir))
     staff = bool(request.user.is_superuser or request.user.is_staff)
     plate = build_atlas_html(game_dir, staff=staff, fragment=True)
     return render(request, "website/atlas.html",

@@ -93,3 +93,31 @@ def build_atlas_html(game_dir=".", staff=False, fragment=False):
                       "", html, flags=re.S)
         html = re.sub(r"<title>.*?</title>\s*", "", html, flags=re.S)
     return html
+
+
+def build_atlas3d_html(game_dir="."):
+    """The live-render atlas (phase one): three.js + exported models.
+
+    A full standalone page — the 3D stage owns the viewport, so it does
+    not embed in the site chrome the way the 2D plate does.
+    """
+    data = export_map()
+
+    lm_path = os.path.join(game_dir, "scripts/atlas/sprites/landmarks.json")
+    landmarks = json.load(open(lm_path)) if os.path.exists(lm_path) else []
+    data["landmarks"] = [
+        {"name": lm["name"], "sprite": lm["sprite"],
+         "anchor": lm["anchor"], "covers": lm["covers"]}
+        for lm in landmarks
+    ]
+
+    three_path = os.path.join(game_dir, "scripts/atlas/vendor/three.min.js")
+    models_path = os.path.join(game_dir, "scripts/atlas/sprites/models.json")
+    tpl_path = os.path.join(game_dir, "scripts/atlas/template3d.html")
+    three_src = open(three_path).read()
+    models_src = open(models_path).read()
+    html = open(tpl_path).read()
+    html = html.replace("/*__THREE__*/", three_src)
+    html = html.replace("/*__DATA__*/null", json.dumps(data, separators=(",", ":")))
+    html = html.replace("/*__MODELS__*/null", models_src)
+    return html
