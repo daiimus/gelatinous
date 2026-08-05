@@ -48,6 +48,87 @@ it answers.
    the sprite scene, the grind, and the `export_models.py` rebake — art
    budget is part of the build estimate, not an afterthought.
 
+## 1.5 · The City Section (owner-set, 2026-08-05)
+
+The architecture of the whole, called out as core requirements. Builds
+argue with §4; they do not argue with this section.
+
+**The bowl.** The colony sits in a crater roughly **twenty stories**
+deep. The skyline lives inside that envelope: the tallest building
+tops out around **sixteen to eighteen** (the height that "feels tall"),
+just under the rim. Today's tallest builds reach ~8 — the city has
+used less than half its vertical budget. The crater wall is the city's
+outermost facade and the honest end of every map.
+
+**The organism.** The colony's purpose is **terraforming; everything
+else is an offshoot of it.** The water cycle is the city's skeleton:
+**ice mining below** feeds the terraformer; the **central channel** —
+the gap the Central Span crosses — works as a large-scale **aquaponics
+basin**; the basin feeds **vertical agricultural farms**; cultivation
+climbs to **green spaces on the rooftops**. The Atmospheric Processor
+makes the air. Every industry, gig, and trade in the colony should
+trace to this cycle in at most two steps. Register note: this adds a
+**solarpunk thread to the spacepunk/cyberpunk base** — grow-lights,
+vine-run conduit, algae glass, planted roofs; growth forcing its way
+through the grime is the proof the colony is alive.
+
+**The plan: corridors, not zones.** The city organizes the way cities
+organically form — along the routes work travels. **Industrial
+corridors**: the freight run from the Landing Pad toward the
+Processor's skirt; power down Volta; fab-labor along Riveter's Way.
+**Cultural corridors**: each quarter's life concentrates on a main
+street — venues cluster on the spine unless there is a reason to hide.
+Even distribution is the enemy of role-play; convergence is engineered
+at city scale first.
+
+**Northside: the megablocks.** Corporate megablocks/arcologies cluster
+north — the high end of the gradient and the corporate vocabulary's
+home. They **eat the streets** (street-tunnels: covered street rooms,
+no sky, sodium all day) and stitch to each other with **skyways**
+(Minneapolis-style enclosed bridges: parkour rungs, weather-free
+fabric, and funnels where paths must cross). Interiors obey
+**vast-implied, brief-actual**: scale lives in sightlines, not room
+count — one atrium gallery with the park ten stories down beats a
+hundred corridor rooms. A room exists only if players can meet in it
+or it is a rung on a route. The 16–18-story anchor's identity (Thawn
+grown upward, or a new name) is an **owner call, pending**.
+
+**Southside: the wall and the Processor.** The fringes build **into
+the crater face** — unorthodox structures, slope-and-terrace geometry
+(the sloped-exit tags exist for exactly this), the make-do register at
+its extreme, terraces as commons. And the **Atmospheric Processor
+dominates the colony**: footprint from Volta & Riveter's Way across to
+the Spillane and deep toward the southern fringe — **reserved; nothing
+else builds in that span**. Industrial-sacred register; plausibly the
+one silhouette that reaches the rim.
+
+**Below.** The down-Z layer is real: **ice mines** under the colony
+feed the terraformer, and the underground (mines, service galleries,
+the sewer the Ripper wants) is a build layer with its own routes, not
+a basement afterthought.
+
+**Traversal.** Street-to-precipice is a guaranteed, solvable journey:
+**parkour as the common verb, rappelling/climbing as punctuation.**
+Two or three **named ascent corridors** carry the guarantee — the
+northern architecture climb (roofs and skyways through the
+megablocks), the southern geology climb (wall-dwelling terraces), and
+the Processor's industrial spiral. The stepping-stone height rule
+binds **only along ascent corridors**; elsewhere a build takes
+whatever height serves it. The **rim stays empty** — the reward for
+twenty stories is wind and the whole colony below — except **one
+terminus structure** (a beacon, a dead gantry) marking the top of the
+route.
+
+**Culture: vague by design.** No cemented cultures, no named factions
+of players. The divides live in the **day-to-day texture** — street
+preachers, tradesmen, an accent, an heirloom — drawn from three
+ambient forces available to any build: descent from the mission's
+org chart (crew, terraformers, corporate, labor, liner passengers who
+were never supposed to stay), the Light (faiths of the stranding),
+and the sleeve divide (eternalists vs. single-lifers, a line that runs
+through families, not districts). Texture, never territory; flavor,
+never canon. NPC-run factions remain the only factions.
+
 ## 2 · Settled doctrine (the law, with sources)
 
 **The grid** (`SPATIAL_COORDINATE_SYSTEM_SPEC`, live):
@@ -136,10 +217,15 @@ owner verdict — argue with them.
   decking/chrome-economy pre-wiring.
 
 **Named in doctrine, undesigned:**
-- **The sewer layer**: named as the Brackett basement's future link and
-  the Ripper's disposal path; also decking texture ("the map IS a
-  file") and a B&E underworld. Criteria question 3 answered literally —
-  the city's Z goes *down* as well as up.
+- **The underground**: the ice mines feeding the terraformer (§1.5),
+  plus the service galleries and the sewer the Ripper wants (Brackett
+  basement link, paid disposal, B&E underworld, decking texture). One
+  down-Z layer, several customers — design it as a layer, not as
+  disconnected basements.
+- **The water cycle made visible**: the central channel as aquaponics
+  basin, vertical farm structures, rooftop green spaces — the
+  solarpunk thread (§1.5). Each is a build; together they are the
+  colony's metabolism on display.
 - **Climbing-hooks content**: the named next mechanic; four shipped
   decisions already defer to it. The rooftop archipelago, the Boot
   hull, and Thawn's tower faces are the obvious first ascents. Content
