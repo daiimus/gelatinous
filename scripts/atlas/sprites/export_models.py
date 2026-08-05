@@ -84,9 +84,6 @@ def capture(name, res=None):
     bm.to_mesh(obj.data)
     bm.free()
 
-    obj.data.color_attributes.new(name="bake", type="BYTE_COLOR",
-                                  domain="POINT")
-
     sc = bpy.context.scene
     sc.render.engine = "CYCLES"
     sc.cycles.samples = 48
@@ -95,20 +92,66 @@ def capture(name, res=None):
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
+
+    def _clear_lights():
+        for o in list(bpy.context.collection.objects):
+            if o.type == "LIGHT":
+                bpy.data.objects.remove(o)
+
+    def _day_lights():
+        """A second sky: high white sun, blue fill, bright world."""
+        import math as _m
+        sun_data = bpy.data.lights.new("dsun", type="SUN")
+        sun_data.energy = 4.5
+        sun_data.angle = _m.radians(4)
+        sun_data.color = (1.0, 0.96, 0.88)
+        sun = bpy.data.objects.new("dsun", sun_data)
+        sun.rotation_euler = (_m.radians(38), 0, _m.radians(150))
+        bpy.context.collection.objects.link(sun)
+        fill_data = bpy.data.lights.new("dfill", type="SUN")
+        fill_data.energy = 1.6
+        fill_data.color = (0.62, 0.74, 0.9)
+        fill = bpy.data.objects.new("dfill", fill_data)
+        fill.rotation_euler = (_m.radians(65), 0, _m.radians(-40))
+        bpy.context.collection.objects.link(fill)
+        world = bpy.data.worlds.new("dw")
+        world.use_nodes = True
+        world.node_tree.nodes["Background"].inputs[0].default_value = (0.35, 0.42, 0.52, 1)
+        world.node_tree.nodes["Background"].inputs[1].default_value = 1.1
+        sc.world = world
+
+    # night: the rig's own lights are already in the scene
+    obj.data.color_attributes.new(name="night", type="BYTE_COLOR",
+                                  domain="POINT")
+    obj.data.color_attributes.active_color = obj.data.color_attributes["night"]
+    bpy.ops.object.bake(type="COMBINED")
+
+    # day: same city, second sky
+    _clear_lights()
+    _day_lights()
+    obj.data.color_attributes.new(name="day", type="BYTE_COLOR",
+                                  domain="POINT")
+    obj.data.color_attributes.active_color = obj.data.color_attributes["day"]
     bpy.ops.object.bake(type="COMBINED")
 
     mesh = obj.data
-    col = mesh.color_attributes["bake"].data
+    col = mesh.color_attributes["night"].data
+    dcol = mesh.color_attributes["day"].data
     verts = []
     for v in mesh.vertices:
         verts.extend((round(v.co.x, 3), round(v.co.y, 3), round(v.co.z, 3)))
     # per-POINT colors: average loop-domain if needed (POINT domain is 1:1)
     colors = []
+    dcolors = []
     for i in range(len(mesh.vertices)):
         c = col[i].color
         colors.extend((min(255, int(c[0] * 255)),
                        min(255, int(c[1] * 255)),
                        min(255, int(c[2] * 255))))
+        c2 = dcol[i].color
+        dcolors.extend((min(255, int(c2[0] * 255)),
+                        min(255, int(c2[1] * 255)),
+                        min(255, int(c2[2] * 255))))
     faces = []
     face_mats = []
     for poly in mesh.polygons:
@@ -124,7 +167,8 @@ def capture(name, res=None):
         ecol, estr = emiss.get(nm, (None, 0))
         if ecol:
             etris.append(ti)
-    MODELS[name] = {"v": verts, "c": colors, "f": faces, "e": etris}
+    MODELS[name] = {"v": verts, "c": colors, "d": dcolors,
+                    "f": faces, "e": etris}
     print(f"baked {name}: {len(verts)//3} verts, {len(faces)//3} tris,"
           f" {len(etris)} emissive tris")
 

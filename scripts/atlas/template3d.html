@@ -38,6 +38,7 @@
   <div class="controls">
     <div class="zrow"><span>z-slice</span><input id="zcap" type="range" min="0" max="8" value="8" step="1"><span class="zval" id="zval"></span></div>
     <span class="vrow"><button id="rotL" type="button" aria-label="rotate left">&#10226;</button><button class="vlab" id="vlab" type="button" title="reset view">NE</button><button id="rotR" type="button" aria-label="rotate right">&#10227;</button></span>
+    <span class="vrow"><button id="skyBtn" type="button" title="day / night" aria-label="toggle day or night">&#9789;</button></span>
   </div>
 </div>
 <script>/*__THREE__*/</script>
@@ -117,8 +118,33 @@ const clipPlane=new THREE.Plane(new THREE.Vector3(0,0,-1), ZMAX+1.6);
 
 // baked models: Cycles' verdict rides in the vertex colors — no live
 // lights needed; the grade shader is the darkroom over the raw render
-const bakedMat=new THREE.MeshBasicMaterial({
-  vertexColors:true, clippingPlanes:[clipPlane],
+const bakedMat=new THREE.ShaderMaterial({
+  uniforms:{uDay:{value:0}},
+  clipping:true, clippingPlanes:[clipPlane],
+  vertexShader:`
+    uniform float uDay;
+    attribute vec3 colorN; attribute vec3 colorDay;
+    varying vec3 vC;
+    #include <common>
+    #include <clipping_planes_pars_vertex>
+    void main(){
+      vC=mix(colorN, colorDay, uDay);
+      vec4 mvPosition=modelViewMatrix*
+        #ifdef USE_INSTANCING
+          instanceMatrix*
+        #endif
+        vec4(position,1.0);
+      gl_Position=projectionMatrix*mvPosition;
+      #include <clipping_planes_vertex>
+    }`,
+  fragmentShader:`
+    varying vec3 vC;
+    #include <common>
+    #include <clipping_planes_pars_fragment>
+    void main(){
+      #include <clipping_planes_fragment>
+      gl_FragColor=vec4(vC,1.0);
+    }`,
 });
 const geoCache=new Map();
 function partsOf(model){
@@ -127,9 +153,13 @@ function partsOf(model){
   if (!m || !m.v || !m.v.length){ geoCache.set(model, []); return []; }
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(m.v,3));
-  const cols=new Float32Array(m.c.length);
-  for (let i=0;i<m.c.length;i++) cols[i]=m.c[i]/255;
-  geo.setAttribute('color', new THREE.BufferAttribute(cols,3));
+  const n=new Float32Array(m.c.length);
+  for (let i=0;i<m.c.length;i++) n[i]=m.c[i]/255;
+  geo.setAttribute('colorN', new THREE.BufferAttribute(n,3));
+  const dsrc=m.d&&m.d.length===m.c.length?m.d:m.c;
+  const d=new Float32Array(dsrc.length);
+  for (let i=0;i<dsrc.length;i++) d[i]=dsrc[i]/255;
+  geo.setAttribute('colorDay', new THREE.BufferAttribute(d,3));
   geo.setIndex(m.f);
   const parts=[{geo, mat:bakedMat}];
   geoCache.set(model, parts);
@@ -282,11 +312,13 @@ const rt=new THREE.WebGLRenderTarget(2,2);
 const postScene=new THREE.Scene();
 const postCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
 const postMat=new THREE.ShaderMaterial({
-  uniforms:{tDiffuse:{value:rt.texture}, res:{value:new THREE.Vector2(2,2)}},
+  uniforms:{tDiffuse:{value:rt.texture}, res:{value:new THREE.Vector2(2,2)},
+            uDay:{value:0}},
   vertexShader:`varying vec2 vUv;
     void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
   fragmentShader:`
-    uniform sampler2D tDiffuse; uniform vec2 res; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform vec2 res; uniform float uDay;
+    varying vec2 vUv;
     float bayer(vec2 p){
       int x=int(mod(p.x,4.0)), y=int(mod(p.y,4.0));
       int m[16]; m[0]=0;m[1]=8;m[2]=2;m[3]=10;m[4]=12;m[5]=4;m[6]=14;m[7]=6;
@@ -296,13 +328,13 @@ const postMat=new THREE.ShaderMaterial({
     float grain(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
     void main(){
       vec3 c=texture2D(tDiffuse,vUv).rgb;
-      c*=1.18;                                        // exposure
+      c*=mix(1.18, 1.02, uDay);                       // exposure
       c*=vec3(1.06,1.00,0.90);                        // the warm pull
       float l=dot(c,vec3(0.299,0.587,0.114));
       c=mix(vec3(l),c,0.94);                          // sun-starved
       c=(c-0.5)*1.10+0.5;                             // contrast
       float pit=smoothstep(0.02,0.18,l);              // true black stays ink
-      float sh=max(0.0,(0.45-l))*0.22*pit;            // teal shadows
+      float sh=max(0.0,(0.45-l))*0.22*pit*(1.0-0.8*uDay);  // teal shadows
       c+=vec3(0.0,sh*0.5,sh);
       float hi=max(0.0,(l-0.55))*0.30;                // amber highlights
       c+=vec3(hi,hi*0.6,0.0);
@@ -505,5 +537,25 @@ function syncZ(){
   invalidate();
 }
 zcapEl.addEventListener('input',syncZ);
+
+// ── day / night: crossfade the baked skies ─────────────────────────
+const NIGHT_BG=new THREE.Color(0x0b0e14), DAY_BG=new THREE.Color(0x5d6875);
+let dayTarget=0;
+const skyBtn=document.getElementById('skyBtn');
+skyBtn.addEventListener('click',()=>{
+  dayTarget=dayTarget<0.5?1:0;
+  skyBtn.innerHTML=dayTarget<0.5?'&#9789;':'&#9788;';
+  const from=bakedMat.uniforms.uDay.value, t0=performance.now();
+  (function step(now){
+    const t=Math.min(1,(now-t0)/600);
+    const e=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    const v=from+(dayTarget-from)*e;
+    bakedMat.uniforms.uDay.value=v;
+    postMat.uniforms.uDay.value=v;
+    scene.background.copy(NIGHT_BG).lerp(DAY_BG, v);
+    invalidate();
+    if (t<1) requestAnimationFrame(step);
+  })(performance.now());
+});
 syncZ(); resize(); tick();
 </script>
