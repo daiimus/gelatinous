@@ -728,20 +728,55 @@ for (const t of ['touchstart','touchmove'])
 
 // ── you are here: the account's characters, as pulsing beacons ─────
 // DOM markers so the pulse animates in CSS while the render loop
-// stays on-demand; repositioned whenever the camera or slice moves
-const hereMarks=[];
-for (const h of (DATA.here||[])){
-  const el=document.createElement('div');
-  el.className='here';
-  el.innerHTML='<span class="who">'+esc(h.name)+'</span><span class="pip"></span>';
-  view.appendChild(el);
-  hereMarks.push({el, x:h.xyz[0], y:h.xyz[1], z:h.xyz[2]});
+// stays on-demand; repositioned whenever the camera or slice moves.
+// A slow poll on this same path keeps them honest while you play.
+const hereMarks=new Map();            // name -> marker
+function setHereMarks(list){
+  const seen=new Set();
+  for (const h of (list||[])){
+    seen.add(h.name);
+    const m=hereMarks.get(h.name);
+    if (!m){
+      const el=document.createElement('div');
+      el.className='here';
+      el.innerHTML='<span class="who">'+esc(h.name)+'</span><span class="pip"></span>';
+      view.appendChild(el);
+      hereMarks.set(h.name, {el, x:h.xyz[0], y:h.xyz[1], z:h.xyz[2]});
+    } else if (m.x!==h.xyz[0]||m.y!==h.xyz[1]||m.z!==h.xyz[2]){
+      tweenMark(m, h.xyz);
+    }
+  }
+  for (const [name,m] of hereMarks)
+    if (!seen.has(name)){ m.el.remove(); hereMarks.delete(name); }
+  placeHere();
 }
+function tweenMark(m, xyz){
+  const fx=m.x, fy=m.y, fz=m.z, t0=performance.now();
+  (function step(now){
+    const t=Math.min(1,(now-t0)/700);
+    const e=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    m.x=fx+(xyz[0]-fx)*e; m.y=fy+(xyz[1]-fy)*e; m.z=fz+(xyz[2]-fz)*e;
+    placeHere();
+    if (t<1) requestAnimationFrame(step);
+  })(performance.now());
+}
+let hereFails=0;
+const hereTimer=setInterval(async ()=>{
+  if (document.hidden) return;
+  try{
+    const r=await fetch('?feed=here',{headers:{'Accept':'application/json'}});
+    if (!r.ok) throw new Error(r.status);
+    setHereMarks((await r.json()).here);
+    hereFails=0;
+  }catch(e){                     // standalone file or auth lapse: give up
+    if (++hereFails>=3) clearInterval(hereTimer);
+  }
+}, 5000);
 const hereV3=new THREE.Vector3();
 function placeHere(){
-  if (!hereMarks.length) return;
+  if (!hereMarks.size) return;
   const w=view.clientWidth, hh=view.clientHeight;
-  for (const m of hereMarks){
+  for (const m of hereMarks.values()){
     if (m.z > ZCAP-0.5){ m.el.style.display='none'; continue; }
     hereV3.set(m.x, m.y, m.z+0.55).project(camera);
     if (Math.abs(hereV3.x)>1.15 || Math.abs(hereV3.y)>1.15){
@@ -772,6 +807,7 @@ skyBtn.addEventListener('click',()=>{
     if (t<1) requestAnimationFrame(step);
   })(performance.now());
 });
+setHereMarks(DATA.here);
 syncZ(); resize();
 { const f=frameCity(AZ); cx=f.cx; cy=f.cy; ZOOM=f.zoom; }
 aimCamera(); tick();
