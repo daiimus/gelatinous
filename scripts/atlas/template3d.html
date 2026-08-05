@@ -34,7 +34,7 @@
 </style>
 <div id="stage">
   <div class="readout" id="readout">&nbsp;</div>
-  <div class="tag">live render — phase one</div>
+  <div class="tag">live render</div>
   <div class="controls">
     <div class="zrow"><span>z-slice</span><input id="zcap" type="range" min="0" max="8" value="8" step="1"><span class="zval" id="zval"></span></div>
     <span class="vrow"><button id="rotL" type="button" aria-label="rotate left">&#10226;</button><button class="vlab" id="vlab" type="button" title="reset view">NE</button><button id="rotR" type="button" aria-label="rotate right">&#10227;</button></span>
@@ -112,11 +112,15 @@ const zcapEl=document.getElementById('zcap');
 zcapEl.max=ZMAX+1; zcapEl.value=ZMAX+1;
 const clipPlane=new THREE.Plane(new THREE.Vector3(0,0,-1), ZMAX+1.6);
 
-// sun + fill, matching the rig's grade
-scene.add(new THREE.AmbientLight(0x2a3140, 1.1));
-const sun=new THREE.DirectionalLight(0xffc78c, 2.4);
-sun.position.set(3,-4,6); scene.add(sun);
-const fill=new THREE.DirectionalLight(0x59bfd9, 0.7);
+// sun + fill, matching the rig's grade — with real cast shadows
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFShadowMap;
+scene.add(new THREE.AmbientLight(0x2a3140, 1.6));
+const sun=new THREE.DirectionalLight(0xffc78c, 3.0);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+scene.add(sun); scene.add(sun.target);
+const fill=new THREE.DirectionalLight(0x59bfd9, 0.9);
 fill.position.set(-4,3,5); scene.add(fill);
 
 // merged geometry per (model, material) → instanced per placement set
@@ -130,8 +134,27 @@ function materialOf(m){
   });
   if (m.e){
     mat.emissive=new THREE.Color(...m.e);
-    mat.emissiveIntensity=Math.min(1.6, (m.es||1)*0.55);
+    mat.emissiveIntensity=Math.min(2.2, (m.es||1)*0.9);
   }
+  // the rig's surface noise, reborn: object-space value noise so every
+  // instance wears the same weathering its sprite did
+  mat.onBeforeCompile=sh=>{
+    sh.vertexShader=sh.vertexShader
+      .replace('#include <common>','#include <common>\nvarying vec3 vOp;')
+      .replace('#include <begin_vertex>','#include <begin_vertex>\nvOp=position;');
+    sh.fragmentShader=sh.fragmentShader
+      .replace('#include <common>',`#include <common>
+varying vec3 vOp;
+float ahash(vec3 p){p=fract(p*0.3183+vec3(0.1,0.2,0.3));p*=17.0;
+  return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float anoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+  return mix(mix(mix(ahash(i),ahash(i+vec3(1,0,0)),f.x),
+                 mix(ahash(i+vec3(0,1,0)),ahash(i+vec3(1,1,0)),f.x),f.y),
+             mix(mix(ahash(i+vec3(0,0,1)),ahash(i+vec3(1,0,1)),f.x),
+                 mix(ahash(i+vec3(0,1,1)),ahash(i+vec3(1,1,1)),f.x),f.y),f.z);}`)
+      .replace('#include <color_fragment>',`#include <color_fragment>
+  diffuseColor.rgb*=(0.86+0.28*anoise(vOp*14.0));`);
+  };
   matCache.set(key, mat);
   return mat;
 }
@@ -178,6 +201,7 @@ for (const [model, cells] of placements){
   for (const part of partsOf(model)){
     const inst=new THREE.InstancedMesh(part.geo, part.mat, cells.length);
     cells.forEach((c,i)=>{ m4.makeTranslation(c.x, c.y, c.z); inst.setMatrixAt(i, m4); });
+    inst.castShadow=true; inst.receiveShadow=true;
     inst.userData.cells=cells;
     scene.add(inst); drawn.push(inst);
   }
@@ -189,8 +213,80 @@ for (const lm of (DATA.landmarks||[])){
   for (const part of partsOf(model)){
     const mesh=new THREE.Mesh(part.geo, part.mat);
     mesh.position.set(ax, ay, az);
+    mesh.castShadow=true; mesh.receiveShadow=true;
     mesh.userData.cells=[{x:ax,y:ay,z:az,t:'landmark',name:lm.name}];
     scene.add(mesh); drawn.push(mesh);
+  }
+}
+
+// ── street life: the same seeded seasoning the sprite atlas placed ──
+const TYPE_AT=new Map(CELLS.filter(c=>c.z===0).map(c=>[`${c.x},${c.y}`,c.t]));
+function rng(c){let h=(c.x*73856093)^(c.y*19349663)^(c.z*83492791);
+  return ()=>{h=Math.imul(h^h>>>15,2246822519);h=Math.imul(h^h>>>13,3266489917);
+    return ((h^=h>>>16)>>>0)/4294967296;};}
+const propPlacements=new Map();
+function placeProp(model, x, y){
+  if (!MODELS[model]) return;
+  if (!propPlacements.has(model)) propPlacements.set(model, []);
+  propPlacements.get(model).push([x,y]);
+}
+const crowdOf=(c)=> (DATA.cells.find(d=>d.dbref===c.dbref)||{}).crowd||0;
+for (const c of CELLS){
+  if (c.z!==0 || (c.t!=='street'&&c.t!=='alley')) continue;
+  const r=rng(c);
+  const ewn=GROUND.has(`${c.x+1},${c.y}`)||GROUND.has(`${c.x-1},${c.y}`);
+  const nsn=GROUND.has(`${c.x},${c.y+1}`)||GROUND.has(`${c.x},${c.y-1}`);
+  const coin=r()<0.5;
+  const ew = c.t==='alley' ? !(nsn && !ewn) : (ewn&&nsn) ? coin : !nsn;
+  const roll=r();
+  const curb=(off)=> ew? [ (r()-0.5)*0.5, off ] : [ off, (r()-0.5)*0.5 ];
+  const lane=()=> ew? [ (r()-0.5)*0.4, (r()-0.3)*0.12 ]
+                    : [ (r()-0.3)*0.12, (r()-0.5)*0.4 ];
+  const near=new Set();
+  for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+    const t=TYPE_AT.get(`${c.x+dx},${c.y+dy}`); if (t) near.add(t);
+  }
+  const has=(...ts)=>ts.some(t=>near.has(t));
+  const ORIENTED=new Set(['stall','barrier','scooter','bowser','hauler','van']);
+  const nm=n=>ORIENTED.has(n)?(n+(ew?'_x':'_y')):n;
+  const pick=list=>list[Math.floor(r()*list.length)];
+  const FREIGHT=['cargo_pod','pallets','spool','crates','barrels'];
+  const UTILITY=['water_tank','genset','junction','lamp'];
+  const GRIME=['dumpster','scrap'], CIVIC=['bollards','barrier'];
+  const COMMERCE=['stall','kiosk'], GREEN=['planter'];
+  let deck=[...FREIGHT,...UTILITY,...GRIME];
+  if (has('market','shop')) deck=[...COMMERCE,...COMMERCE,...FREIGHT,...GRIME];
+  if (has('tenement','hotel')) deck=[...GRIME,...GREEN,...UTILITY,...FREIGHT];
+  if (has('constab')) deck=[...CIVIC,...CIVIC,...UTILITY];
+  if (has('medical')) deck=[...UTILITY,...CIVIC,...GRIME];
+  const VEHICLES=['hauler','van','bowser','scooter','wreck','cart'];
+  let name=null, at=null;
+  if (c.t==='alley'){
+    if (roll<0.16){ name='cart'; at=lane(); }
+    else if (roll<0.34){ name=nm(pick([...GRIME,...FREIGHT])); at=curb(0.28); }
+  } else {
+    if (roll<0.11){ name=nm(pick(VEHICLES)); at=lane(); }
+    else if (roll<0.30){ name=nm(pick(deck)); at=curb(r()<0.5?0.30:-0.30); }
+  }
+  if (name && at) placeProp(name, c.x+at[0], c.y+at[1]);
+  const lvl=crowdOf(c);
+  if (lvl>0){
+    const pRoll=r();
+    const chance=(c.t==='alley'?0.10:0.16)+Math.min(0.10*lvl,0.30);
+    if (pRoll<chance){
+      const which='crowd_'+Math.floor(r()*3);
+      const side=(r()<0.5?0.30:-0.30);
+      const [ox,oy]=curb(side);
+      placeProp(which, c.x+ox, c.y+oy);
+    }
+  }
+}
+for (const [model, spots] of propPlacements){
+  for (const part of partsOf(model)){
+    const inst=new THREE.InstancedMesh(part.geo, part.mat, spots.length);
+    spots.forEach(([x,y],i)=>{ m4.makeTranslation(x, y, 0); inst.setMatrixAt(i, m4); });
+    inst.castShadow=true; inst.receiveShadow=true;
+    scene.add(inst);
   }
 }
 
@@ -203,7 +299,23 @@ let AZ=Math.PI/4*3, ZOOM=1;           // azimuth; NE view to match the 2D atlas
 const ELEV=Math.atan(0.5);
 const camera=new THREE.OrthographicCamera(-1,1,1,-1,-200,400);
 camera.up.set(0,0,1);
+let sunAimed=false;
+function aimSun(){
+  if (sunAimed) return;
+  sunAimed=true;
+  let minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;
+  for (const c of CELLS){minx=Math.min(minx,c.x);maxx=Math.max(maxx,c.x);
+    miny=Math.min(miny,c.y);maxy=Math.max(maxy,c.y);}
+  const mx=(minx+maxx)/2, my=(miny+maxy)/2;
+  const span=Math.max(maxx-minx,maxy-miny)*0.75+8;
+  sun.position.set(mx+30,my-40,60);
+  sun.target.position.set(mx,my,0);
+  const sc=sun.shadow.camera;
+  sc.left=-span; sc.right=span; sc.top=span; sc.bottom=-span;
+  sc.near=1; sc.far=200; sc.updateProjectionMatrix();
+}
 function aimCamera(){
+  aimSun();
   const d=120;
   camera.position.set(
     cx + d*Math.cos(AZ)*Math.cos(ELEV),
@@ -225,18 +337,62 @@ function syncLabel(){
 }
 function resize(){
   renderer.setSize(innerWidth, innerHeight);
-  aimCamera();
+  const pr=Math.min(devicePixelRatio,2);
+  rt.setSize(innerWidth*pr, innerHeight*pr);
+  postMat.uniforms.res.value.set(innerWidth*pr, innerHeight*pr);
+  aimCamera(); invalidate();
 }
 addEventListener('resize', resize);
 
-// ── render loop: draw on demand ────────────────────────────────────
+// ── the darkroom, as a shader: warm pull, split-tone, ordered
+// dither posterization, grain — the sprite grade, at 60fps ─────────
+const rt=new THREE.WebGLRenderTarget(2,2);
+const postScene=new THREE.Scene();
+const postCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+const postMat=new THREE.ShaderMaterial({
+  uniforms:{tDiffuse:{value:rt.texture}, res:{value:new THREE.Vector2(2,2)}},
+  vertexShader:`varying vec2 vUv;
+    void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
+  fragmentShader:`
+    uniform sampler2D tDiffuse; uniform vec2 res; varying vec2 vUv;
+    float bayer(vec2 p){
+      int x=int(mod(p.x,4.0)), y=int(mod(p.y,4.0));
+      int m[16]; m[0]=0;m[1]=8;m[2]=2;m[3]=10;m[4]=12;m[5]=4;m[6]=14;m[7]=6;
+      m[8]=3;m[9]=11;m[10]=1;m[11]=9;m[12]=15;m[13]=7;m[14]=13;m[15]=5;
+      return float(m[y*4+x])/16.0;
+    }
+    float grain(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+    void main(){
+      vec3 c=texture2D(tDiffuse,vUv).rgb;
+      c*=1.45;                                        // exposure
+      c*=vec3(1.06,1.00,0.90);                        // the warm pull
+      float l=dot(c,vec3(0.299,0.587,0.114));
+      c=mix(vec3(l),c,0.94);                          // sun-starved
+      c=(c-0.5)*1.10+0.5;                             // contrast
+      float pit=smoothstep(0.02,0.18,l);              // true black stays ink
+      float sh=max(0.0,(0.45-l))*0.22*pit;            // teal shadows
+      c+=vec3(0.0,sh*0.5,sh);
+      float hi=max(0.0,(l-0.55))*0.30;                // amber highlights
+      c+=vec3(hi,hi*0.6,0.0);
+      float d=(bayer(vUv*res)-0.5)/16.0;              // ordered dither
+      c=floor((c+d)*16.0+0.5)/16.0;                   // posterize
+      c+=(grain(vUv*res)-0.5)*0.03;                   // the grain
+      gl_FragColor=vec4(clamp(c,0.0,1.0),1.0);
+    }`,
+  depthTest:false, depthWrite:false,
+});
+postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2), postMat));
+
 let needsDraw=true;
 function invalidate(){ needsDraw=true; }
 function tick(){
   requestAnimationFrame(tick);
   if (!needsDraw) return;
   needsDraw=false;
+  renderer.setRenderTarget(rt);
   renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  renderer.render(postScene, postCam);
 }
 
 // ── controls: our gesture vocabulary drives the camera ─────────────
