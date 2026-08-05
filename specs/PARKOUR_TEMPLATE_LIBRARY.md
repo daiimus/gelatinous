@@ -79,6 +79,58 @@ and hooks buy *shortcuts, safety, and rescue* — never the only path.
    a gift or a trap; cutting one is a statement. Build vantages that
    overlook popular anchor edges.
 
+## 1.5 · The Roofscape — the second city (owner vision, 2026-08-05)
+
+The streets are the first city: public, watched, routed by the grid.
+**The roofs are the second city**: trespass, direct, diagonal — a
+shadow circulation network that begins one story up (the Laundromat
+Rooftop datum, z1) and climbs, eventually, all the way to the high
+mesh. Crossing the colony without touching the ground is not a stunt;
+it is **a milestone in itself** — the player's graduation from the
+first city to the second. Everything in this section serves that.
+
+**The mesh, not the ladder.** The roof city is not one plane and not
+a stairway — it is a **terraced mesh** of small planes at staggered
+heights, stitched by furniture. The law of the mesh:
+
+- Adjacent roofs within **±1 story** are native fabric: walk the
+  join, or jump the gap (span-1, an air cell over the street or
+  alley, the fall waiting below — the archipelago pattern exactly).
+- Steps of **2–3 stories** are bridged by **furniture** (§2.5), never
+  by accident: a water-tower ladder, a fire escape, a shed roof.
+- Steps **greater than 3** are district boundaries — valves and
+  ascent cores (T2/T4); the mesh deliberately breaks there.
+- **Edges are preserved at every height.** A roof keeps its full edge
+  wiring in all directions at its own level, whatever its neighbors
+  do. A taller neighbor doesn't erase the edge — it makes it a wall
+  face (hook country). A lower one makes it a drop (one-way, or
+  two-way once furniture arrives). No height change ever silently
+  deletes a direction.
+
+**Street width is a design tool.** One cell wide = the roof city can
+cross it (span-1 law). Two wide = a wall at roof level. Widen streets
+exactly where the second city *should* break; keep alleys one wide
+always — **the back alley is the roof city's driveway**, the seam
+where fire escapes hang and drainpipes climb.
+
+**The 4X seam: exploration is the progression.** The roof city is
+discovered, not given. The atlas stays vague about it (the player
+tier never draws routes); **vantage reveals** — climb the water
+tower and the quarter's roofscape lays itself out below you; **routes
+are knowledge** — "the way across Kaspar without touching ground" is
+a thing a character knows, teaches, sells, or dies keeping. The
+milestone ladder every quarter should support:
+
+1. **The First Step** — street to any roof, by any furniture.
+2. **The Street Cross** — the first air-cell crossing (built: the
+   Laundromat → Market Rooftop line over Braddock).
+3. **The Block Run** — around one block, no ground.
+4. **The Quarter Run** — a named end-to-end (Braddock to the channel
+   bank, say) that the quarter's whole mesh exists to make possible.
+5. **The High Line** — first sustained z8+ mesh (the megablock
+   gallery/skyway tier).
+6. **The Precipice** — the rim, by any corridor. The 4X endgame.
+
 ## 2 · The templates
 
 Each: intent → shape → wiring → hook seam → social note. Heights are
@@ -159,6 +211,64 @@ magnet). The spiral is the corridor where exposure discipline (§1.3)
 peaks: the top turns earn the colony's hardest honest jumps. **Hook
 seam**: the spiral's platforms are the rim-rated line's proving
 ground.
+
+## 2.5 · The furniture — little nuances that move you
+
+The mesh's connective tissue is furniture, not architecture: cheap,
+authored, desc-integrated, each one a small verb. Every piece does
+one of four jobs — **on-ramp** (ground/interior → roof), **step**
+(roof → roof ±1..2), **crossing** (over a gap), or **apron** (under
+one). A build's parkour budget is measured in furniture, and one or
+two pieces per building is plenty.
+
+- **F1 · The fire escape** — the workhorse on-ramp. Hangs in the back
+  alley; **windows open onto it** from the interior floors it passes;
+  it rides plainly up to the roof and down to the alley (drop-ladder
+  at the bottom). Three networks meet on it: street city (the alley),
+  roof city (the top), and the *interior* (every window) — which
+  makes it an escape route, a burglar's front door, and the B&E
+  seam's cheapest expression. Just up/down exits; no mechanics.
+- **F2 · The water tower** — the step-stone crown. Ladder up a leg,
+  tank-top platform +1..+2 above its roof with its own edge set: it
+  takes a roof HIGHER without a new building, bridges to the taller
+  neighbor the roof itself couldn't reach, and doubles as vantage
+  (4X reveal) and hook anchor. The register's favorite silhouette.
+- **F3 · The roof hatch / stair head** — the interior on-ramp; the
+  free route. Locked or not is a social decision per building.
+- **F4 · The shed step** — machine room, HVAC block, stair head, any
+  +1 box ON a roof. Splits one roof into two legible levels, each
+  with its own edges; the micro-step that lets a z3 plane reach its
+  z4 neighbor. The mesh's smallest and most-used rung.
+- **F5 · The drainpipe / conduit run** — the grubby on-ramp: alley to
+  roof, +2 at most, Motorics-checked where the fire escape is free.
+  Where the escape is the front door of the second city, the pipe is
+  its window.
+- **F6 · The awning / canopy** — apron under a learning gap (T3 at
+  furniture scale) and a step: awning → sill → parapet takes a low
+  roof from the street with no ironwork at all.
+- **F7 · The plank & line** — resident-made crossings: a scaffold
+  plank over an alley, boards lashed between parapets. The make-do
+  register building its own skyways; narrow, sometimes rated (a roll
+  to cross fast), always cuttable — the poor man's deployed line.
+- **F8 · The billboard / mast** — +2 vantage and anchor; the sign you
+  climb behind, the antenna you shinny. Reveal and rappel points.
+
+**Composition checklist for every new ground build** (this is the
+honing — answered at design time, like the playbook's six):
+
+1. **Roof datum**: what height is the roof plate, and is it within
+   ±1 of an adjacent roof (native mesh) or furniture-bridged (F2/F4)
+   to one? A roof that joins no mesh is an island — say why.
+2. **On-ramp**: at least one of F1/F3/F5/F6 — how does the second
+   city get ON this building, and does a window meet the escape?
+3. **The back**: which face is the alley face, and what hangs there?
+4. **Steps**: if a neighbor differs by 2–3, which furniture bridges
+   it? If by more, is that break intentional (valve / boundary)?
+5. **Edges**: full wiring at the roof's own height, every direction,
+   including toward taller walls (future hook country).
+6. **The reveal**: from this roof, what does a player *see* — the
+   next rung, the quarter, or a secret? Every roof answers with at
+   least a sightline; the good ones answer with a route.
 
 ## 3 · Composing a corridor
 
