@@ -200,31 +200,46 @@ if (DATA.anchor){
   TH=2*a.xvec[1]*SPR_SCALE;
   ZH=Math.abs(a.zvec[1])*SPR_SCALE;
 }
-// Four compass views: the sprites are photographs of 3D models, so
-// rotation is discrete quarter-turns. rotXY spins world coords to the
-// current view; the per-view sprite sets carry the matching art.
-let VIEW=0;
+// Rotation is CONTINUOUS in geometry and discrete in art: cell
+// positions rotate by any angle about the map's centroid (pure math),
+// while the sprite libraries exist at the four compass quarters — the
+// nearest quarter's art rides the moving positions, so a spin reads
+// live and the art clicks true at each snap point.
 const VLABELS=['NE','SE','SW','NW'];
+let VANG=0;                                  // radians, continuous
+let VIEW=0;                                  // nearest quarter for art
+let COS=1, SIN=0;
+const CTR=(()=>{                             // world centroid
+  let sx=0, sy=0;
+  for (const c of C){ sx+=c.x; sy+=c.y; }
+  return [sx/C.length, sy/C.length];
+})();
+function setAngle(a){
+  VANG=a;
+  COS=Math.cos(a); SIN=Math.sin(a);
+  VIEW=((Math.round(a/(Math.PI/2))%4)+4)%4;
+}
 function rotXY(x,y){
-  return VIEW===0?[x,y] : VIEW===1?[-y,x] : VIEW===2?[-x,-y] : [y,-x];
+  const dx=x-CTR[0], dy=y-CTR[1];
+  return [CTR[0]+dx*COS-dy*SIN, CTR[1]+dx*SIN+dy*COS];
 }
 const isoX=(x,y)=>{const r=rotXY(x,y); return (r[0]-r[1])*TW/2;},
       isoY=(x,y,z)=>{const r=rotXY(x,y); return (r[0]+r[1])*TH/2 - z*ZH;};
-const PAD=46, OXS=[], OYS=[];
-let W=0, H=0;
+const PAD=46;
+let W=0, H=0, minXA=1e9, minYA=1e9;
 for (let k=0;k<4;k++){
-  VIEW=k;
+  setAngle(k*Math.PI/2);
   let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
   for (const c of C){
     const sx=isoX(c.x,c.y), sy=isoY(c.x,c.y,c.z);
     minX=Math.min(minX,sx-TW/2); maxX=Math.max(maxX,sx+TW/2);
     minY=Math.min(minY,sy-TH/2-ZH); maxY=Math.max(maxY,sy+TH/2);
   }
-  OXS[k]=-minX+PAD; OYS[k]=-minY+PAD;
+  minXA=Math.min(minXA,minX); minYA=Math.min(minYA,minY);
   W=Math.max(W,maxX-minX+PAD*2); H=Math.max(H,maxY-minY+PAD*2);
 }
-VIEW=0;
-let OX=OXS[0], OY=OYS[0];
+setAngle(0);
+const OX=-minXA+PAD, OY=-minYA+PAD;
 function sortC(){
   const d=(x,y)=>{const r=rotXY(x,y); return r[0]+r[1];};
   const ry=(x,y)=>rotXY(x,y)[1];
@@ -234,6 +249,30 @@ function sortC(){
                  || ry(b.x,b.y)-ry(a.x,a.y));
 }
 sortC();
+
+// the spin: animate VANG to a target, resorting and redrawing per frame
+let spinRaf=0;
+function spinTo(target, ms=420){
+  cancelAnimationFrame(spinRaf);
+  const from=VANG;
+  let delta=target-from;
+  while (delta>Math.PI) delta-=2*Math.PI;    // shortest way round
+  while (delta<-Math.PI) delta+=2*Math.PI;
+  const t0=performance.now();
+  function step(now){
+    const t=Math.min(1,(now-t0)/ms);
+    const e=t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;   // easeInOutCubic
+    setAngle(from+delta*e);
+    sortC(); draw();
+    if (t<1) spinRaf=requestAnimationFrame(step);
+    else { setAngle(((target%(2*Math.PI))+2*Math.PI)%(2*Math.PI)); sortC(); draw(); syncViewLabel(); }
+  }
+  spinRaf=requestAnimationFrame(step);
+}
+function syncViewLabel(){
+  const el=document.getElementById('vlab');
+  if (el) el.textContent=VLABELS[VIEW];
+}
 const GROUND=new Set(C.filter(c=>c.t==='street'||c.t==='alley').map(c=>`${c.x},${c.y}`));
 const STREETS=GROUND;
 // What KIND of place each ground cell is, so street dressing can answer to
@@ -568,7 +607,7 @@ function inspectAt(clientX, clientY){
 }
 
 const pointers=new Map();               // pointerId -> {x, y}
-let pinchDist=0, dragTravel=0;
+let pinchDist=0, pinchAng=0, dragTravel=0;
 cv.addEventListener('pointerdown',ev=>{
   cv.setPointerCapture(ev.pointerId);
   pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
@@ -576,6 +615,7 @@ cv.addEventListener('pointerdown',ev=>{
   if (pointers.size===2){
     const [a,b]=[...pointers.values()];
     pinchDist=Math.hypot(a.x-b.x,a.y-b.y);
+    pinchAng=Math.atan2(b.y-a.y,b.x-a.x);
   }
   cv.classList.add('dragging');
 });
@@ -594,6 +634,7 @@ cv.addEventListener('pointermove',ev=>{
   } else if (pointers.size===2){
     const [a,b]=[...pointers.values()];
     const d=Math.hypot(a.x-b.x,a.y-b.y);
+    const ang=Math.atan2(b.y-a.y,b.x-a.x);
     if (pinchDist>0 && d>0){
       const cxc=(a.x+b.x)/2, cyc=(a.y+b.y)/2;
       const [mx,my]=toMap(cxc,cyc);
@@ -601,15 +642,26 @@ cv.addEventListener('pointermove',ev=>{
       const rr=cv.getBoundingClientRect();
       const px=(cxc-rr.left)*(W/rr.width), py=(cyc-rr.top)*(H/rr.height);
       VX=px/VS-mx; VY=py/VS-my;         // anchor the pinch midpoint
-      clampView(); redraw();
+      clampView();
+      let dAng=ang-pinchAng;            // the live spin: twist drives VANG
+      while (dAng>Math.PI) dAng-=2*Math.PI;
+      while (dAng<-Math.PI) dAng+=2*Math.PI;
+      cancelAnimationFrame(spinRaf);
+      setAngle(VANG+dAng); sortC(); syncViewLabel();
+      redraw();
     }
-    pinchDist=d; dragTravel+=99;        // a pinch is never a tap
+    pinchDist=d; pinchAng=ang; dragTravel+=99;   // a pinch is never a tap
   }
 });
 function endPointer(ev){
   if (!pointers.has(ev.pointerId)) return;
+  const wasPinch = pointers.size===2;
   pointers.delete(ev.pointerId);
   if (pointers.size<2) pinchDist=0;
+  if (wasPinch){
+    const q=Math.round(VANG/(Math.PI/2));   // snap to the nearest quarter
+    spinTo(q*Math.PI/2, 260);
+  }
   if (pointers.size===0){
     cv.classList.remove('dragging');
     if (dragTravel<6) inspectAt(ev.clientX,ev.clientY);   // a tap: inspect
@@ -626,16 +678,12 @@ cv.addEventListener('wheel',ev=>{
   VX=px/VS-mx; VY=py/VS-my;             // zoom about the cursor
   clampView(); redraw();
 },{passive:false});
-cv.addEventListener('dblclick',()=>{VS=1;VX=0;VY=0;redraw();});
+cv.addEventListener('dblclick',()=>{VS=1;VX=0;VY=0;spinTo(0);});
 cv.addEventListener('mouseleave',()=>{if(!pointers.size){readout.className='readout';readout.innerHTML='&nbsp;';}});
 for (const el of [ui.zcap,ui.air,ui.edge,ui.radio,ui.life])
   el.addEventListener('input',()=>{ui.zval.textContent=`z ≤ ${ui.zcap.value}`; draw();});
 function setView(k){
-  VIEW=((k%4)+4)%4;
-  OX=OXS[VIEW]; OY=OYS[VIEW];
-  sortC();
-  document.getElementById('vlab').textContent=VLABELS[VIEW];
-  draw();
+  spinTo((((k%4)+4)%4)*Math.PI/2);
 }
 document.getElementById('rotL').addEventListener('click',()=>setView(VIEW-1));
 document.getElementById('rotR').addEventListener('click',()=>setView(VIEW+1));
