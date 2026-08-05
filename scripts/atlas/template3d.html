@@ -4,7 +4,7 @@
   .atlas-plate{font-family:var(--serif) !important}
   .atlas-plate h1{font-family:var(--cond) !important}
   .atlas-plate .place,.atlas-plate .stamp,.atlas-plate .controls,
-  .atlas-plate .readout,.atlas-plate .zval,.atlas-plate .tag,
+  .atlas-plate .readout,.atlas-plate .zval,
   .atlas-plate .here .who{font-family:var(--mono) !important}
   :root{
     /* Embedded in the site, these resolve to the house tokens so the
@@ -60,8 +60,16 @@
   .readout.on{opacity:1}
   .readout .kind{display:block;margin-top:2px;color:var(--amber);
     letter-spacing:.14em;text-transform:uppercase;font-size:10px}
-  .tag{position:absolute;right:12px;top:10px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
-    color:var(--bone-dim);text-transform:uppercase;z-index:3;pointer-events:none}
+  .compass{position:absolute;right:10px;top:10px;z-index:3;line-height:0;cursor:pointer;
+    background:rgba(11,14,20,.72);border:1px solid var(--line);border-radius:50%;
+    padding:3px;touch-action:manipulation}
+  .compass:active{background:var(--line)}
+  .compass svg{display:block}
+  .compass .ring{stroke:var(--line);fill:none}
+  .compass .tick{stroke:var(--bone-dim);stroke-width:1.5}
+  .compass .ndl{fill:var(--amber)}
+  .compass .tail{fill:var(--bone-dim)}
+  .compass text{fill:var(--amber);font-family:var(--mono);font-size:9px}
   .controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;padding:10px 14px;
     font-family:var(--mono);font-size:12px;color:var(--bone-dim);border-top:1px solid var(--line)}
   .zrow{display:flex;gap:10px;align-items:center;flex:1;min-width:220px}
@@ -72,8 +80,6 @@
     background:rgba(11,14,20,.72);border:1px solid var(--line);border-radius:3px;
     padding:5px 10px;cursor:pointer;touch-action:manipulation}
   .vrow button:active{background:var(--line)}
-  .vlab{color:var(--cyan);min-width:3.5ch;text-align:center;background:none;border:none;
-    font-family:var(--mono);font-size:12px;cursor:pointer;padding:5px 2px}
   :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 </style>
 
@@ -95,11 +101,24 @@ making do, seen from above.</p>
 <div class="stage">
   <div id="view">
     <div class="readout" id="readout">&nbsp;</div>
-    <div class="tag">live render</div>
+    <button class="compass" id="compass" type="button" title="reset view" aria-label="reset view">
+      <svg viewBox="0 0 40 40" width="38" height="38" aria-hidden="true">
+        <circle class="ring" cx="20" cy="20" r="17"/>
+        <line class="tick" x1="20" y1="3" x2="20" y2="7"/>
+        <line class="tick" x1="20" y1="33" x2="20" y2="37"/>
+        <line class="tick" x1="3" y1="20" x2="7" y2="20"/>
+        <line class="tick" x1="33" y1="20" x2="37" y2="20"/>
+        <g id="needle">
+          <polygon class="ndl" points="20,15 16.5,22 23.5,22"/>
+          <polygon class="tail" points="16.5,22 23.5,22 20,33"/>
+          <text id="nlab" x="20" y="13" text-anchor="middle">N</text>
+        </g>
+      </svg>
+    </button>
   </div>
   <div class="controls">
     <div class="zrow"><span>z-slice</span><input id="zcap" type="range" min="0" max="8" value="8" step="1"><span class="zval" id="zval"></span></div>
-    <span class="vrow"><button id="rotL" type="button" aria-label="rotate view left">&#10226;</button><button class="vlab" id="vlab" type="button" title="reset view" aria-label="reset view to northeast">NE</button><button id="rotR" type="button" aria-label="rotate view right">&#10227;</button></span>
+    <span class="vrow"><button id="rotL" type="button" aria-label="rotate view left">&#10226;</button><button id="rotR" type="button" aria-label="rotate view right">&#10227;</button></span>
     <span class="vrow"><button id="skyBtn" type="button" title="day / night" aria-label="toggle day or night">&#9789;</button></span>
   </div>
 </div>
@@ -383,13 +402,18 @@ function aimCamera(){
   camera.top=half; camera.bottom=-half;
   camera.updateProjectionMatrix();
   // the sun rides the world, not the camera: honest shadow sides
-  syncLabel();
+  syncCompass();
   placeHere();
 }
-const VLAB=document.getElementById('vlab');
-function syncLabel(){
-  const q=((Math.round((AZ-Math.PI/4*3)/(Math.PI/2))%4)+4)%4;
-  VLAB.textContent=['NE','SE','SW','NW'][q];
+const NEEDLE=document.getElementById('needle');
+const NLAB=document.getElementById('nlab');
+function syncCompass(){
+  // the needle tracks where world north actually points on screen;
+  // the letter rides the dial but stays upright
+  const px=Math.cos(AZ), py=-Math.sin(AZ)*Math.sin(ELEV);
+  const deg=Math.atan2(px, py)*180/Math.PI;
+  NEEDLE.setAttribute('transform', `rotate(${deg.toFixed(1)} 20 20)`);
+  NLAB.setAttribute('transform', `rotate(${(-deg).toFixed(1)} 20 10)`);
 }
 function resize(){
   const w=view.clientWidth||1, h=view.clientHeight||1;
@@ -579,7 +603,7 @@ function spinBy(d){
 }
 document.getElementById('rotL').addEventListener('click',()=>spinBy(-Math.PI/2));
 document.getElementById('rotR').addEventListener('click',()=>spinBy(Math.PI/2));
-VLAB.addEventListener('click',goHome);
+document.getElementById('compass').addEventListener('click',goHome);
 addEventListener('keydown',ev=>{
   if (ev.target && /INPUT|TEXTAREA|SELECT|BUTTON/.test(ev.target.tagName)) return;
   const pan=6/ZOOM;
