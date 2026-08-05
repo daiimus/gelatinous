@@ -74,18 +74,24 @@ for x in (-0.40, 0.40):
         rig.box(f"hang{x}{hy}", (0.025, 0.025, max(0.05, cz - 0.36)),
                 (x, hy, (cz + 0.36) / 2), cable)
 
+# The deck pieces run local y 0..6.5 with their own half-width, which
+# left the art a quarter-cell north of the seven cells it spans - the
+# rotated views showed the naked seam at the south street. Recenter.
+for _o in bpy.context.collection.objects:
+    _o.location = (_o.location.x, _o.location.y - 0.25, _o.location.z)
+
 catcher = rig.make_material("bgnd", (0.5, 0.5, 0.5), 1.0)
-g = rig.box("gplane", (6, 12, 0.01), (0, 3.25, -0.005), catcher)
+g = rig.box("gplane", (6, 12, 0.01), (0, 3.0, -0.005), catcher)
 g.is_shadow_catcher = True
 
 RES = 2000
-rig.rig_camera_and_light(ortho=2.6 * RES / 512, target=(0, 3.25, 0.9))
+rig.rig_camera_and_light(ortho=2.6 * RES / 512, target=(0, 3.0, 0.9))
 rig.render("bridge", res=RES)
 
 # self-calibration: the local origin under THIS camera
 rig.clear_scene()
 m = rig.make_material("mk", (1, 1, 1), 0.2, emit=(1, 1, 1))
 rig.box("marker", (0.04, 0.04, 0.04), (0, 0, 0), m)
-rig.rig_camera_and_light(ortho=2.6 * RES / 512, target=(0, 3.25, 0.9))
+rig.rig_camera_and_light(ortho=2.6 * RES / 512, target=(0, 3.0, 0.9))
 rig.render("calib_bridge", res=RES)
 print("landmark bridge rendered")
