@@ -131,6 +131,42 @@ milestone ladder every quarter should support:
    gallery/skyway tier).
 6. **The Precipice** — the rim, by any corridor. The 4X endgame.
 
+## 1.6 · The difficulty rings (owner-set, 2026-08-05)
+
+Difficulty is geography: two rings per side of the channel, inner and
+outer, with the south gentler than the north at every radius.
+
+- **EASY — the south inners** (Old Town, the banks, the works, the
+  fringe streets). The learning fabric: 1:1 roof streets, equal
+  crossings, aprons under everything, furniture bidirectional, fail
+  cost capped low. Where the First Step, Street Cross, and Block Run
+  milestones live. **Exception: the Terraformer** — a HARD island in
+  the easy ring; the monument plays by its own rules.
+- **MEDIUM — the north inners** (bank → podium → high band → spires).
+  The same grammar at real exposure, and the first sanctioned
+  **toll drops**: across-and-one-down, a bite of damage, no backtrack
+  — you pay HP for the shortcut and detour back by furniture. Grapple
+  starts earning its price here as convenience, not requirement.
+- **HARD — the south crater wall** (the Wall Run, the terraces). The
+  inhabited wall: one-way drops routine, 2-3-story steps everywhere
+  (furniture mandatory), the grapple as the *backtrack* tool, honest
+  exposure above the aprons' reach. Gear-gated in practice, never in
+  principle — the cut stair remains the free route.
+- **ULTRA — the north crater wall.** The bare wall: no dwellings, no
+  resident kindness, no furniture. Long grapple tiers, multi-story
+  commitment drops, rim approaches for the 16-20 arena — **paraglider
+  country**. The hardest honest traversal in the colony, and it looks
+  down on everything.
+
+**The gear ladder maps onto the rings**: bare hands (easy) → short
+line (medium) → long line (hard) → **the paraglider** (ultra) — a new
+gear class entering the kernel: glide descent with lateral reach, the
+escape from pockets that one-way drops create. Its numbers (glide
+ratio, launch requirements) are an owner call for when the kit builds;
+until then, high builds reserve **launch points** (a parapet with a
+wind note) the way roofs reserve anchor edges — seams now, straps
+later.
+
 ## 2 · The templates
 
 Each: intent → shape → wiring → hook seam → social note. Heights are
