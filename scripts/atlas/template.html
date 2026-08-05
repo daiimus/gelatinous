@@ -286,7 +286,7 @@ function spinTo(target, ms=420, holdPx=null){
                  : ((target%(2*Math.PI))+2*Math.PI)%(2*Math.PI));
     const [nx,ny]=projectWorld(anchor[0],anchor[1]);
     VX=holdPx[0]/VS-nx; VY=holdPx[1]/VS-ny;
-    sortC(); draw();
+    draw();
     if (t<1) spinRaf=requestAnimationFrame(step);
     else syncViewLabel();
   }
@@ -571,7 +571,9 @@ function drawEdges(zc){
   }
   ctx.shadowBlur=0;
 }
+let sortedAt=null;
 function draw(){
+  if (sortedAt!==VANG){ sortC(); sortedAt=VANG; }
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,W,H);
   ctx.setTransform(DPR*VS,0,0,DPR*VS,DPR*VS*VX,DPR*VS*VY);
@@ -630,7 +632,14 @@ function inspectAt(clientX, clientY){
 }
 
 const pointers=new Map();               // pointerId -> live position
-let gesture=null, dragTravel=0;
+let gesture=null, dragTravel=0, lastTap=null;
+
+// iPadOS can claim two-finger moves for page zoom despite
+// touch-action:none on a canvas, firing pointercancel mid-twist and
+// reducing the live spin to view-toggling. Non-passive touch
+// preventDefault is the signal Safari always honors.
+for (const t of ['touchstart','touchmove'])
+  cv.addEventListener(t, ev=>ev.preventDefault(), {passive:false});
 
 // Baseline-relative gestures (the canonical pattern): snapshot the
 // gesture at its start, derive the WHOLE transform from current-vs-
@@ -687,7 +696,7 @@ cv.addEventListener('pointermove',ev=>{
       setAngle(gesture.rot.VANG0+(q.x-gesture.bx)*0.006);
       const n=projectWorld(gesture.rot.anchor[0],gesture.rot.anchor[1]);
       VX=gesture.rot.bpx/VS-n[0]; VY=gesture.rot.bpy/VS-n[1];
-      clampView(); sortC(); syncViewLabel(); redraw();
+      clampView(); syncViewLabel(); redraw();
     } else {
       if (gesture.rot){                 // shift released: snap and rebase
         gesture.rot=null;
@@ -712,7 +721,7 @@ cv.addEventListener('pointermove',ev=>{
     const bx=((a.x+b.x)/2-r.left)*kx, by=((a.y+b.y)/2-r.top)*ky;
     const n=projectWorld(gesture.anchor[0],gesture.anchor[1]);
     VX=bx/VS-n[0]; VY=by/VS-n[1];
-    clampView(); sortC(); syncViewLabel(); redraw();
+    clampView(); syncViewLabel(); redraw();
   }
 });
 
@@ -733,7 +742,22 @@ function endPointer(ev){
       spinTo(q*Math.PI/2, 260,
              [(ev.clientX-r.left)*(W/r.width), (ev.clientY-r.top)*(H/r.height)]);
     } else if (dragTravel<6){
-      inspectAt(ev.clientX,ev.clientY);       // a tap: inspect
+      const now=performance.now();
+      if (lastTap && now-lastTap.t<320 &&
+          Math.hypot(ev.clientX-lastTap.x, ev.clientY-lastTap.y)<32){
+        lastTap=null;                          // double-tap: step zoom
+        const [cmx,cmy]=toMap(ev.clientX,ev.clientY);
+        const anchor=unprojectWorld(cmx,cmy);
+        VS=Math.min(6, VS*1.5);
+        const r2=cv.getBoundingClientRect();
+        const bx=(ev.clientX-r2.left)*(W/r2.width), by=(ev.clientY-r2.top)*(H/r2.height);
+        const n=projectWorld(anchor[0],anchor[1]);
+        VX=bx/VS-n[0]; VY=by/VS-n[1];
+        clampView(); redraw();
+      } else {
+        lastTap={t:now, x:ev.clientX, y:ev.clientY};
+        inspectAt(ev.clientX,ev.clientY);      // a tap: inspect
+      }
     }
   }
 }
@@ -762,7 +786,7 @@ if ('GestureEvent' in window){
     const bx=(ev.clientX-r.left)*(W/r.width), by=(ev.clientY-r.top)*(H/r.height);
     const n=projectWorld(nativeGesture.anchor[0],nativeGesture.anchor[1]);
     VX=bx/VS-n[0]; VY=by/VS-n[1];
-    clampView(); sortC(); syncViewLabel(); redraw();
+    clampView(); syncViewLabel(); redraw();
   },{passive:false});
   cv.addEventListener('gestureend',ev=>{
     ev.preventDefault();
