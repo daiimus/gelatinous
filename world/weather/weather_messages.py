@@ -1094,3 +1094,44 @@ def _build_weather_messages():
 WEATHER_MESSAGES = {
     'default': _build_weather_messages(),
 }
+
+# ---------------------------------------------------------------------------
+# Per-ROOM-TYPE ambience pools. These MIX INTO the weather draw for rooms
+# whose ``type`` has an entry here, so a room's character seeps into the
+# ambience alongside the weather truth. Any room type may join the registry;
+# lines are DRAFT prose, owner-editable, same register as the weather pools.
+ROOM_TYPE_POOLS = {
+    'fire escape': {
+        # the street's crowd-activity line reads wrong from one story up;
+        # suppress it and let the height-distanced lines below carry it
+        '_suppress_street_activity': True,
+        'visual': [
+            "heads and cart-tops pass below, foreshortened",
+            "rust streaks bleed down the brickwork under the landing",
+            "the ground shows through the grated floor, a long way down",
+            "the rail wears a hand-polish decades of grips have left",
+            "flaking paint maps continents across the iron",
+        ],
+        'auditory': [
+            "the whole escape hums faintly when the wind leans on it",
+            "bolts tick and settle somewhere in the brick",
+            "the grating rings softly underfoot with every shift",
+        ],
+        'olfactory': [
+            "rust and old paint give off a dry metal smell",
+            "cooking grease drifts thin from a cracked window",
+            "the brick at your back breathes out the day's dust",
+        ],
+        'tactile': [
+            "the grating flexes underfoot, spring and complaint",
+            "the rail comes away gritty with scale under the hand",
+            "an updraft threads through the open floor",
+        ],
+        'atmospheric': [
+            "the street's noise arrives one story removed, thinned by height",
+            "the landing feels borrowed - a place to pass through, not stay",
+            "pigeon wire and mismatched bolts say someone maintains this, barely",
+            "the wall radiates the building's held warmth into the open air",
+        ],
+    },
+}
