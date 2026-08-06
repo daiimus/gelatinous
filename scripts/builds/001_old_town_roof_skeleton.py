@@ -15,8 +15,8 @@ Work items (from the wiring audit, 2026-08-05):
      stairway stays unconnected BY DESIGN; the roof is a prize.
   C. WITHDRAWN — Shipbreaker Alley is an open-air yard (outside=True);
      roofing it violated weather truth. new_roof() now refuses such.
-  D. The colony's first furniture: a water tower platform above the
-     Kaspar Urgent Care rooftop (F2 — ladder up, vantage, +1).
+  D. DEMOLISHED — the water tower bridged nothing (uniform z1 fabric);
+     furniture is demand-driven. See the section comment.
 """
 from evennia import create_object
 from evennia.objects.models import ObjectDB
@@ -149,11 +149,12 @@ made_exits += wire_edges(lobby_roof, edge_attrs)
 # 2026-08-05 (owner review). If the yard ever earns vertical texture,
 # it will be crane gantries — its own thing, not a rooftop.
 
-# -- D. the first water tower ------------------------------------------
-kaspar_n = by_key("Kaspar Urgent Care - Rooftop (North)")
-tower, n3 = new_roof("Kaspar Urgent Care - Water Tower", -2, -17, 2)
-made_rooms += n3
-made_exits += link(kaspar_n, tower, "up")                 # the leg ladder
+# -- D. (DEMOLISHED) the first water tower ------------------------------
+# Verticality for its own sake (owner verdict, 2026-08-05): every
+# destination it reached was cheaper from the roof below — the old
+# town's fabric is uniformly z1, so a +1 crown had nothing to bridge.
+# LAW: furniture placement is demand-driven; raise a tower where the
+# mesh actually steps, never where the exemplar is convenient.
 
 print(f"BUILD 001 complete: {made_rooms} rooms, {made_exits} exits.")
 print("Rooms are SKELETON ONLY — no descriptions yet, by design.")
