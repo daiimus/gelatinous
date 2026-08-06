@@ -106,6 +106,8 @@ Z6 = {
     (-9, -20):  ("South Wing Roof East", f"{B} - Unit 6B (Store Room)"),
 }
 for pos, (old_suffix, new_key) in Z6.items():
+    if ObjectDB.objects.filter(db_key=new_key).first():
+        continue                       # re-run safe: already converted
     r = by_key(f"{B} - {old_suffix}")
     strip_surface(r)
     r.key = new_key
