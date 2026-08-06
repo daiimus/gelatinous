@@ -114,17 +114,21 @@ if not has_exit(landings[3], "drop"):
     made_exits += 1
 
 # East Roof's edge now falls one story onto the bolt-on landing
+# (the z7 roofs use the older style: a plain walk into the air cell,
+# with the air column's own down-chain doing the falling — which the
+# repointing above already lands on the bolt-on. Make it explicit.)
 east_roof = by_key("The Brackett Arms - East Roof")
 edge_fixed = False
 for ex in east_roof.exits:
     dest = ex.destination
-    if ex.attributes.get("is_edge") and dest and \
-            dest.attributes.get("xyz") == (COL_X, COL_Y, 7):
+    if dest and dest.attributes.get("xyz") == (COL_X, COL_Y, 7):
+        ex.db.is_edge = True
+        ex.db.edge_difficulty = 8
         ex.db.fall_room = landings[6].id
         ex.db.fall_distance = 1
         ex.db.fall_damage = 5
         edge_fixed = True
-assert edge_fixed, "East Roof edge into the column not found — inspect by hand"
+assert edge_fixed, "East Roof exit into the column not found — inspect by hand"
 
 print(f"BUILD 003 complete: {made_rooms} landings, {made_exits} exits, "
       f"{repointed} exits repointed onto the iron, roof edge softened.")
