@@ -348,8 +348,8 @@ def loggia_cell():
     clear_scene()
     bone = make_material("lbone", (0.48, 0.41, 0.32), 0.85, noise=0.3)
     frame = make_material("lframe", (0.18, 0.17, 0.16), 0.6)
-    glass = make_material("lglass", (0.55, 0.48, 0.30), 0.35,
-                          emit=(0.95, 0.78, 0.45), emit_strength=2.5)
+    glass = make_material("lglass", (0.42, 0.40, 0.22), 0.25,
+                          emit=(0.92, 0.80, 0.42), emit_strength=4.0)
     green = make_material("lgreen", (0.22, 0.36, 0.18), 0.8, noise=0.3)
     # these cells sit EMBEDDED in a tower flank — only whichever side
     # face the wall exposes is ever seen. So the motif is the facade:
@@ -363,10 +363,12 @@ def loggia_cell():
             (0, 0.505, 0.90, 0.03), (0, -0.505, 0.90, 0.03),
             (0.505, 0, 0.03, 0.90), (-0.505, 0, 0.03, 0.90))):
         box(f"lg{i}", (sx, sy, 0.40), (gx, gy, 0.51), glass)
-    # mullions splitting each pane — greenhouse rhythm, not a window
+    # mullions splitting each pane — greenhouse rhythm, not a window;
+    # they must PIERCE the glass plane (glass outer face sits at 0.52)
+    # or the band bakes to a flat unbroken stripe
     for i, mx in enumerate((-0.24, 0.0, 0.24)):
-        box(f"lmn{i}", (0.045, 1.02, 0.42), (mx, 0, 0.51), frame)
-        box(f"lme{i}", (1.02, 0.045, 0.42), (0, mx, 0.51), frame)
+        box(f"lmn{i}", (0.05, 1.07, 0.42), (mx, 0, 0.51), frame)
+        box(f"lme{i}", (1.07, 0.05, 0.42), (0, mx, 0.51), frame)
     # planter boxes riding the sill on the south and east faces
     for i, (px, py) in enumerate(((-0.26, -0.46), (0.18, -0.46),
                                   (0.46, -0.22), (0.46, 0.22))):
