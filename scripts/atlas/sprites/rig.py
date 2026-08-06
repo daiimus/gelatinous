@@ -341,6 +341,37 @@ def fire_escape_cell():
     render("fire_escape")
 
 
+def loggia_cell():
+    """The terrace-suite motif: old terrace bones in masonry, glazing
+    above, and a lit skylight grid on the crown — a warm glasshouse
+    glint among the tar roofs, for the perceptive to notice."""
+    clear_scene()
+    bone = make_material("lbone", (0.48, 0.41, 0.32), 0.85, noise=0.3)
+    frame = make_material("lframe", (0.18, 0.17, 0.16), 0.6)
+    glass = make_material("lglass", (0.55, 0.48, 0.30), 0.35,
+                          emit=(0.95, 0.78, 0.45), emit_strength=2.5)
+    green = make_material("lgreen", (0.22, 0.36, 0.18), 0.8, noise=0.3)
+    # the old parapet, storey base
+    box("lbase", (1, 1, 0.34), (0, 0, 0.17), bone)
+    # corner posts and the glazing band on the visible faces
+    for i, (px, py) in enumerate(((0.47, 0.47), (0.47, -0.47),
+                                  (-0.47, 0.47), (-0.47, -0.47))):
+        box(f"lpost{i}", (0.06, 0.06, 0.52), (px, py, 0.60), frame)
+    box("lgn", (0.86, 0.04, 0.44), (0, 0.465, 0.60), glass)
+    box("lge", (0.04, 0.86, 0.44), (0.465, 0, 0.60), glass)
+    box("lmn", (0.86, 0.055, 0.05), (0, 0.468, 0.60), frame)
+    box("lme", (0.055, 0.86, 0.05), (0.468, 0, 0.60), frame)
+    # the crown: framed skylight grid, lit from within
+    box("lroof", (1, 1, 0.06), (0, 0, 0.89), frame)
+    for i, gx in enumerate((-0.30, 0.02, 0.34)):
+        box(f"lsky{i}", (0.24, 0.80, 0.03), (gx, 0, 0.93), glass)
+    # planters on the parapet lip
+    for i, px in enumerate((-0.28, 0.10)):
+        box(f"lplant{i}", (0.18, 0.10, 0.10), (px, 0.42, 0.39), green)
+    rig_camera_and_light()
+    render("loggia")
+
+
 def shop_cell():
     clear_scene()
     wall = make_material("swall", (0.20, 0.17, 0.14), 0.85, noise=0.4)
@@ -922,6 +953,7 @@ def main():
     hull_cell()
     roof_cell()
     fire_escape_cell()
+    loggia_cell()
     shop_cell()
     hotel_cell()
     generic_cell()
