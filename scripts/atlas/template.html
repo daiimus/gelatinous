@@ -146,6 +146,7 @@ function cls(c){
   // type=rooftop is authoritative (the lid standard sets it); the name
   // regex only rescues legacy cells. Checked BEFORE the skins so a
   // building prefix can never dress a roof as another storey.
+  if (t==='fire escape') return 'roof';
   if (t==='rooftop' || t==='terrace' || /rooftop|- roof/i.test(k))
     return k.startsWith("Hammett's Boot")?'hull':'roof';
   // open ground and machinery outrank building skins too
