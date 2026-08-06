@@ -9,7 +9,7 @@ then `evennia reload` (foreground) so the running server's idmapper
 sees the new rooms.
 
 Work items (from the wiring audit, 2026-08-05):
-  A. Wire the Brackett z6 gap: Unit 6A Terrace <-> South Wing Roof West.
+  A. WITHDRAWN — the terrace/roof separation is the unit's security.
   B. Queen of Cups Lobby Roof: edges only (doctrine-complete: N/NE/NW
      onto Pessoa) — the
      stairway stays unconnected BY DESIGN; the roof is a prize.
@@ -126,11 +126,13 @@ for e in kaspar_roof.exits:
         break
 assert edge_attrs.get("is_edge"), "no edge exemplar found on Kaspar rooftop"
 
-# -- A. Brackett z6 join ------------------------------------------------
-# terrace (-11,-20,6) -> roof (-10,-20,6): x+1 is EAST (game compass)
-t6a = by_key("The Brackett Arms - Unit 6A Terrace")
-sww = by_key("The Brackett Arms - South Wing Roof West")
-made_exits += link(t6a, sww, "east")
+# -- A. (WITHDRAWN) the Brackett z6 "join" ------------------------------
+# Unit 6A Terrace is the tenant's PRIVATE balcony — it opens into their
+# bedroom. Joining it to the public roof plate bypasses the unit's
+# biometric door (roof -> terrace -> bedroom). The separation the audit
+# flagged as a gap WAS the security design. Withdrawn 2026-08-05
+# (owner review). Pattern for the future: private terraces are not roof
+# fabric; unit security perimeter includes the balcony.
 
 # -- B. the Queen of Cups Lobby Roof ------------------------------------
 # NO stairway access, ON PURPOSE (owner, 2026-08-05): the roof is a
