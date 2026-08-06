@@ -497,6 +497,11 @@ class Exit(DefaultExit):
         street_context = self._analyze_street_context()
         if street_context:
             return street_context
+
+        # Fire-escape destinations get their own message set
+        fire_escape_context = self._analyze_fire_escape_context()
+        if fire_escape_context:
+            return fire_escape_context
             
         # Generate directional atmospheric defaults (with weather integration)
         directional_desc = self._get_directional_atmospheric(looker)
@@ -506,6 +511,35 @@ class Exit(DefaultExit):
         # Fallback atmospheric description
         return "The passage stretches into shadows and uncertainty."
         
+    #: Exit-look messages for fire-escape destinations, keyed by exit key.
+    #: DRAFT prose — owner-editable; the mechanism is the point.
+    FIRE_ESCAPE_MESSAGES = {
+        "window": "Through the window: grated iron and a drop, the fire "
+                  "escape clinging to the wall outside.",
+        "up": "The ladder climbs to the next landing, rust flaking off "
+              "every rung.",
+        "down": "The ladder descends to the landing below, its bolts "
+                "groaning in the brick.",
+        "drop": "The counterweighted ladder hangs above open air — one "
+                "way down, no way back.",
+    }
+    FIRE_ESCAPE_DEFAULT = ("Iron landings cling to the wall, promising a "
+                           "rattling descent.")
+
+    def _analyze_fire_escape_context(self):
+        """
+        Fire-escape destinations get their own message list (the street
+        pattern, applied to the colony's ironmongery). Triggers when the
+        destination room's ``type`` is ``fire escape``.
+        """
+        destination = self.destination
+        if not destination:
+            return ""
+        if getattr(destination, 'type', None) != 'fire escape':
+            return ""
+        return self.FIRE_ESCAPE_MESSAGES.get(self.key.lower(),
+                                             self.FIRE_ESCAPE_DEFAULT)
+
     def _analyze_street_context(self):
         """
         Analyze destination room type and exit count for street-specific descriptions.

@@ -71,7 +71,7 @@ for z in (3, 4, 5, 6):
         f"expected air cell at ({COL_X},{COL_Y},{z})"
     landing = create_object(ROOM_TC, key=name)
     landing.db.xyz = (COL_X, COL_Y, z)
-    landing.db.type = "rooftop"
+    landing.db.type = "fire escape"
     landing.db.outside = True
     landing.db.is_ground = True
     landing.db.is_sky_room = False
