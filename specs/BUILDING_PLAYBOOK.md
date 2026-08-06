@@ -285,6 +285,24 @@ owner verdict — argue with them.
   whether the run-up tower IS Thawn or a new build is an **owner
   call**.
 
+**Owner-blessed designs awaiting their mechanics (2026-08-05):**
+- **The Brackett fire escape, powered** (rough draft buildable NOW;
+  full version later): the caged west-face escape over Bhavani whose
+  counterweighted bottom ladder is up out of reach — egress always,
+  ingress only when someone times your entry with their exit, lowers
+  the ladder for you, or beats the **control panel/crank at the
+  lowest landing** that lowers the ladder and creates the exit — a
+  prime hacking surface, with a manual crank/press fallback. Blocked
+  on: dynamic exit manipulation (not ready).
+- **The Shipbreaker mobile gantry**: not a fixed catwalk — a crane
+  that **rotates and re-aims its arm**, a movable bridge to multiple
+  locales, hackable like the ladder-crank. The yard's industry and a
+  traversal instrument in one. Blocked on: the same exit-manipulation
+  system; build nothing fixed in the yard meanwhile.
+- Both are one future system wearing two clothes: **powered,
+  hackable furniture that edits the exit graph at runtime**. When
+  decking/hacking design begins, start here.
+
 **Candidates (unsettled — owner verdict wanted):**
 - **A true market hall**: stalls exist as street props; a roofed market
   venue would host hawker posts, gig-board density, and fence/pawn
