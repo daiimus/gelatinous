@@ -214,6 +214,18 @@ for n in (7, 8, 9, 10, 11):
     made_exits += mk_exit(floors[n][(-10, -18)], landing, "window")
     prev_landing = landing
 
+# ---- 5. the elevator serves through 11 (owner ruling) ----------------
+car = ObjectDB.objects.filter(db_key=f"{B} Elevator Car").first()
+if car:
+    stops = list(car.db.floors or [])
+    have = {lbl for _, lbl in stops}
+    for n in (8, 9, 10, 11):
+        land = by_key(f"{B} - Floor {n} Landing")
+        if str(n) not in have:
+            stops.append((land, str(n)))
+        made_exits += mk_exit(land, car, "elevator", ["in"])
+    car.db.floors = stops
+
 print(f"BUILD 005A: {made_rooms} new rooms, {conv_rooms} converted, "
       f"{made_exits} exits made, {killed_exits} removed, {repointed} repointed.")
 print("Converted rooms have CLEARED descs (prose follows the walk).")
