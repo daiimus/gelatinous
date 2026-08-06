@@ -351,23 +351,26 @@ def loggia_cell():
     glass = make_material("lglass", (0.55, 0.48, 0.30), 0.35,
                           emit=(0.95, 0.78, 0.45), emit_strength=2.5)
     green = make_material("lgreen", (0.22, 0.36, 0.18), 0.8, noise=0.3)
-    # the old parapet, storey base
-    box("lbase", (1, 1, 0.34), (0, 0, 0.17), bone)
-    # corner posts and the glazing band on the visible faces
-    for i, (px, py) in enumerate(((0.47, 0.47), (0.47, -0.47),
-                                  (-0.47, 0.47), (-0.47, -0.47))):
-        box(f"lpost{i}", (0.06, 0.06, 0.52), (px, py, 0.60), frame)
-    box("lgn", (0.86, 0.04, 0.44), (0, 0.465, 0.60), glass)
-    box("lge", (0.04, 0.86, 0.44), (0.465, 0, 0.60), glass)
-    box("lmn", (0.86, 0.055, 0.05), (0, 0.468, 0.60), frame)
-    box("lme", (0.055, 0.86, 0.05), (0.468, 0, 0.60), frame)
-    # the crown: framed skylight grid, lit from within
-    box("lroof", (1, 1, 0.06), (0, 0, 0.89), frame)
-    for i, gx in enumerate((-0.30, 0.02, 0.34)):
-        box(f"lsky{i}", (0.24, 0.80, 0.03), (gx, 0, 0.93), glass)
-    # planters on the parapet lip
-    for i, px in enumerate((-0.28, 0.10)):
-        box(f"lplant{i}", (0.18, 0.10, 0.10), (px, 0.42, 0.39), green)
+    # these cells sit EMBEDDED in a tower flank — only whichever side
+    # face the wall exposes is ever seen. So the motif is the facade:
+    # masonry sill and lintel with a lit glazing band on ALL four
+    # faces, proud of the wall plane so the glass catches from any
+    # angle. No crown detail — the storey above buries it.
+    box("lbase", (1, 1, 0.30), (0, 0, 0.15), bone)
+    box("llint", (1, 1, 0.18), (0, 0, 0.81), bone)
+    box("lcore", (0.88, 0.88, 0.42), (0, 0, 0.51), frame)
+    for i, (gx, gy, sx, sy) in enumerate((
+            (0, 0.505, 0.90, 0.03), (0, -0.505, 0.90, 0.03),
+            (0.505, 0, 0.03, 0.90), (-0.505, 0, 0.03, 0.90))):
+        box(f"lg{i}", (sx, sy, 0.40), (gx, gy, 0.51), glass)
+    # mullions splitting each pane — greenhouse rhythm, not a window
+    for i, mx in enumerate((-0.24, 0.0, 0.24)):
+        box(f"lmn{i}", (0.045, 1.02, 0.42), (mx, 0, 0.51), frame)
+        box(f"lme{i}", (1.02, 0.045, 0.42), (0, mx, 0.51), frame)
+    # planter boxes riding the sill on the south and east faces
+    for i, (px, py) in enumerate(((-0.26, -0.46), (0.18, -0.46),
+                                  (0.46, -0.22), (0.46, 0.22))):
+        box(f"lplant{i}", (0.16, 0.16, 0.10), (px, py, 0.35), green)
     rig_camera_and_light()
     render("loggia")
 
