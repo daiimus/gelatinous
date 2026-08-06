@@ -52,6 +52,23 @@ class WeatherSystem:
         if not weather_messages:
             return ""
 
+        # Mix in the room-type ambience pool, if this room's type has one —
+        # the location's character interleaves with the weather truth.
+        from .weather_messages import ROOM_TYPE_POOLS
+        room_type = (getattr(room, 'type', None) or "")
+        type_pool = ROOM_TYPE_POOLS.get(str(room_type).lower())
+        if type_pool:
+            base = dict(weather_messages)
+            if type_pool.get('_suppress_street_activity') and base.get('atmospheric'):
+                # the diurnal street-activity line is atmospheric[0] by
+                # construction; a type that suppresses it speaks for itself
+                base['atmospheric'] = base['atmospheric'][1:] or base['atmospheric']
+            weather_messages = {
+                sense: list(base.get(sense, [])) + list(type_pool.get(sense, []))
+                for sense in (set(base) | set(type_pool))
+                if not sense.startswith('_')
+            }
+
         # Pick one line each from DISTINCT perceivable senses, so the lines we
         # show never echo each other (a visual + a smell, not two near-identical
         # visuals). Senses gate per CAPACITY_CONSUMERS spec §5: sight -> visual,
