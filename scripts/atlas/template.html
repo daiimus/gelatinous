@@ -122,7 +122,7 @@ const P = {
   machine: ['#8b8b84','#63635d','#494943'],
   generic: ['#6e6a72','#514e57','#3c3a41'],
 };
-const LEGEND_LABEL = {street:'street', alley:'alley', market:'market', hull:'hull-top',
+const LEGEND_LABEL = {street:'street', alley:'alley', market:'market', hull:'hull-top',fire_escape:'fire escape',
   tenement:'residential', roof:'rooftop', shop:'commerce',
   landmark:'landmark', hotel:'cube hotel', constab:'the law', cryo:'cryogenics',
   lounge:'nightlife', bar:'bars', pad:'landing pad', medical:'medicine',
@@ -146,7 +146,7 @@ function cls(c){
   // type=rooftop is authoritative (the lid standard sets it); the name
   // regex only rescues legacy cells. Checked BEFORE the skins so a
   // building prefix can never dress a roof as another storey.
-  if (t==='fire escape') return 'roof';
+  if (t==='fire escape') return 'fire_escape';
   if (t==='rooftop' || t==='terrace' || /rooftop|- roof/i.test(k))
     return k.startsWith("Hammett's Boot")?'hull':'roof';
   // open ground and machinery outrank building skins too
