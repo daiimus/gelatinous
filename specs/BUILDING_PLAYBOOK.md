@@ -189,10 +189,39 @@ jumps priced in risk, not corridor exits.
   a hole in the hull means weather comes through it.
 - Props are **seasoned, not stewed** — and branded.
 
+## 2.5 · Build 001's laws (learned under review, 2026-08-05)
+
+The first Head Builder arc was reviewed room by room; every verdict is
+now law:
+
+1. **Audits find anomalies; the owner classifies them.** A sealed
+   room may be a prize, an unwired gap may be a security perimeter,
+   an "unroofed building" may be open sky. Audit findings reach the
+   owner as *classified questions* (anomaly → my reading → proposed
+   action) — never as work orders.
+2. **No roof above an `outside` room, ever.** Open sky below is
+   weather truth; the builder refuses it mechanically now.
+3. **A unit's security perimeter includes its balcony.** Private
+   terraces are not roof fabric; nothing public joins them.
+4. **Furniture is demand-driven.** A tower, escape, or plank exists
+   because the mesh steps there or the fiction demands it — never
+   because the exemplar is convenient. Verticality for its own sake
+   gets demolished.
+5. **Tools serve; they don't steer.** The coordinate instruments,
+   airspace finders, and reachability analyzers are for *verification*
+   (edge audits, contradiction checks, no-gear proofs) and city-scale
+   zoning. They do not generate build tasks. Design intent does.
+
 ## 3 · The session ritual
 
 The shape of a build session, in order. Steps compress for small builds;
 none are skipped silently.
+
+0. **The intent brief** — before any geometry: three to five lines on
+   *what this place is, who uses it, why it exists, what it enables.*
+   Architecture follows the brief; parkour affordances arise from the
+   building's own logic (a fire escape exists for fire; the on-ramp
+   is a consequence). A build with no brief is the water tower.
 
 1. **Recon** — the live atlas plus `@building`/`@room` over the site.
    Agree the footprint and column on the grid before any digging.
