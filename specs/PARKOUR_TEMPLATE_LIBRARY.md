@@ -103,9 +103,13 @@ first city to the second. Everything in this section serves that.
 a stairway — it is a **terraced mesh** of small planes at staggered
 heights, stitched by furniture. The law of the mesh:
 
-- Adjacent roofs within **±1 story** are native fabric: walk the
-  join, or jump the gap (span-1, an air cell over the street or
-  alley, the fall waiting below — the archipelago pattern exactly).
+- Adjacent roofs within **±1 story** are native fabric where they
+  TOUCH: walk the join, clamber the step. **Across a street or
+  alley, a crossing exists ONLY between EQUAL roofs** (owner law,
+  Roof Plan v3): 1:1, bi-directional, no damage — span-1 through an
+  air cell with the fall waiting below, the archipelago pattern
+  exactly. Unequal faces across a street are not a crossing; where
+  connectivity needs one, equalize the buildings.
 - Steps of **2–3 stories** are bridged by **furniture** (§2.5), never
   by accident: a water-tower ladder, a fire escape, a shed roof.
 - Steps **greater than 3** are district boundaries — valves and
