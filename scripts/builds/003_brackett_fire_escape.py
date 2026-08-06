@@ -8,8 +8,9 @@ The design (owner, 2026-08-05):
     told to fend for themselves, bolted on their own landing.
   - A window on each floor — purposefully vague — leads OUT to its
     landing (one-way; climbing in is a future hidden-exit mechanic).
-    Floors 3-5 exit from the east units; the 6th exits from the FLOOR
-    HALLWAY, because the bolt-on is communal (narrative placement).
+    Every floor exits from its COMMUNAL landing/hall — the window at
+    the end of the landing (owner ruling: private-unit windows are
+    invisible inside locked rentals). Key "window", no aliases.
   - The iron itself works both ways, z3 through z6.
   - The bottom is a one-way drop onto Hammett's Boot - Shin Plate.
   - East Roof's edge into the column now falls ONE story onto the
@@ -45,19 +46,14 @@ def has_exit(room, name):
     return any(e.key == name for e in room.exits)
 
 
-def window_alias(host):
-    """The owner's '(w) NOT WEST' rule: alias w only where unambiguous."""
-    for e in host.exits:
-        if e.key == "west" or "w" in (e.aliases.all() or []):
-            return ["win"]
-    return ["w"]
-
-
 shin = by_key("Hammett's Boot - Shin Plate")
+# windows are COMMUNAL on every floor (owner ruling after live test:
+# unit-hosted windows are invisible inside locked rentals): each
+# floor's landing/hall gets the window, key "window", NO aliases.
 hosts = {
-    3: by_key("The Brackett Arms - Unit 3B"),
-    4: by_key("The Brackett Arms - Unit 4B"),
-    5: by_key("The Brackett Arms - Unit 5B"),
+    3: by_key("The Brackett Arms - Floor 3 Landing"),
+    4: by_key("The Brackett Arms - Floor 4 Landing"),
+    5: by_key("The Brackett Arms - Floor 5 Landing"),
     6: by_key("The Brackett Arms - Floor 6 Hall"),
 }
 FLOOR = {3: "Third", 4: "Fourth", 5: "Fifth", 6: "Sixth"}
@@ -92,7 +88,7 @@ for z in (3, 4, 5, 6):
 # the windows: one-way out, purposefully vague
 for z, host in hosts.items():
     if not has_exit(host, "window"):
-        create_object(EXIT_TC, key="window", aliases=window_alias(host),
+        create_object(EXIT_TC, key="window",
                       location=host, destination=landings[z])
         made_exits += 1
 
