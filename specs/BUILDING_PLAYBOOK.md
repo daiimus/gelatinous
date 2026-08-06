@@ -325,6 +325,42 @@ owner verdict — argue with them.
   exit behavior. The fire escape's current exits are the plain-verb
   rough drafts of all three.
 
+**Captured from the architecture sessions (2026-08-06 sweep —
+solid ideas that lived only in conversation until now):**
+- **The Dark Alley building** — the colony's ONE true alley (a
+  dead-end cell off Maxwell at (-8,-5)) is surrounded by empty lots:
+  it was carved ahead of its block. Build a modest 2-3 story rooming
+  house/workshop beside it whose back door and escape face the alley
+  — the alley-backed F1 in its correct fiction, and the proposed
+  proving build for the corrected process.
+- **The alley-carving law**: the city has an alley deficit (one true
+  alley colony-wide) while the roofscape needs alleys as its
+  driveways — new ground blocks carve their back alleys as part of
+  the block.
+- **The heel-void nook** at (-9,-18,0): the one roomless ground cell
+  in the Brackett block, boxed between the Boot's heel and the
+  tenement's east wall. A genuinely hidden space for when the block
+  wants a secret (Ripper-adjacent, perhaps).
+- **The east bridge**: the Spillane dead-ends at the channel's south
+  bank — continue it across as the city's second crossing (freight
+  loop pad↔works; convergence and siege value both).
+- **The Wall Run as designed** (elevations reviewed 2026-08-05):
+  Brackett + new exterior iron as trailhead → terraces at z7 / z10
+  (cut stair) / z9 finger / z13 (**the cliff bar — prize**) / z12
+  valve-landing / z16 / z18 → the ONE rim terminus at z20, with the
+  Braddock cut-stair as the free route. ~20 rooms; the hard-ring
+  exemplar; buildable almost entirely against existing mass.
+- **The Central Channel design sheet** (owner-deferred, "later", but
+  the analysis was blessed as interesting): quays are Tolliver/
+  Maxwell as-built; raft lanes + clear barge fairway at z-1; racks
+  and desc-only bank galleries at z-2; exactly FOUR underwater rooms
+  carry the layer (Span Roots x2, Intake Vault west, East Grate);
+  **water is the city's soft-fail** (falls ending in the basin land
+  safe — the parkour nursery); diving = gear-tiered like hooks.
+- **Hidden exits** as a general mechanic (owner-named): the
+  prerequisite for exciting covert on-ramps; rides the same future
+  arc as the crank panels and auto-closing windows.
+
 **Candidates (unsettled — owner verdict wanted):**
 - **A true market hall**: stalls exist as street props; a roofed market
   venue would host hawker posts, gig-board density, and fence/pawn
