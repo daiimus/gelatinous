@@ -154,7 +154,7 @@ function cls(c){
   if ((c.flags||[]).includes('sky')) return 'air';
   const t=(c.type||'').toLowerCase(), k=c.key||'';
   if (k.toLowerCase().includes('alley')) return 'alley';
-  if (t==='fire escape') return 'roof';
+  if (t==='fire escape') return 'fire_escape';
   if (t==='rooftop'||t==='terrace'||/rooftop|- roof/i.test(k))
     return k.startsWith("Hammett's Boot")?'hull':'roof';
   if (/courtyard/i.test(k)) return 'street';
@@ -170,7 +170,7 @@ function cls(c){
   if (t==='constabulary') return 'machine';
   return 'generic';
 }
-const LEGEND={street:'street',alley:'alley',market:'market',hull:'hull-top',
+const LEGEND={street:'street',alley:'alley',market:'market',hull:'hull-top',fire_escape:'fire escape',
   tenement:'residential',roof:'rooftop',shop:'commerce',hotel:'cube hotel',
   constab:'the law',cryo:'cryogenics',lounge:'nightlife',bar:'bars',pad:'landing pad',
   medical:'medicine',shuttered:'shuttered',machine:'machinery',generic:'other',air:'air'};

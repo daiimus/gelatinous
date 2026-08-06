@@ -318,6 +318,29 @@ def roof_cell():
     render("roof")
 
 
+def fire_escape_cell():
+    """Iron clinging to an implied wall: grated landing, north rail,
+    and the downward ladder off the east edge — it drops BELOW the
+    deck so stacked landings read as one continuous ladder column."""
+    clear_scene()
+    iron = make_material("firon", (0.16, 0.15, 0.15), 0.55, noise=0.35)
+    rust = make_material("frust", (0.30, 0.19, 0.13), 0.7, noise=0.45)
+    # grated landing: two slats with a seam read as grate at map scale
+    box("plat1", (0.92, 0.22, 0.045), (0, -0.13, 0.10), iron)
+    box("plat2", (0.92, 0.22, 0.045), (0, 0.12, 0.10), iron)
+    # railing on the visible north edge
+    for i, x in enumerate((-0.42, 0.0, 0.42)):
+        box(f"fpost{i}", (0.035, 0.035, 0.30), (x, 0.24, 0.27), rust)
+    box("frail", (0.92, 0.035, 0.04), (0, 0.24, 0.43), rust)
+    # the downward ladder, hung off the east edge, dropping below deck
+    for j, sy in enumerate((0.10, -0.10)):
+        box(f"fstr{j}", (0.035, 0.035, 0.62), (0.47, sy, -0.19), rust)
+    for i in range(4):
+        box(f"frung{i}", (0.035, 0.24, 0.03), (0.47, 0, -0.42 + i * 0.15), iron)
+    rig_camera_and_light()
+    render("fire_escape")
+
+
 def shop_cell():
     clear_scene()
     wall = make_material("swall", (0.20, 0.17, 0.14), 0.85, noise=0.4)
@@ -898,6 +921,7 @@ def main():
     tenement_cell()
     hull_cell()
     roof_cell()
+    fire_escape_cell()
     shop_cell()
     hotel_cell()
     generic_cell()
