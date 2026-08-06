@@ -21,6 +21,16 @@ a number reopens the templates.
 - **Falls**: gravity walks sky cells to ground at **5 damage/story**.
   Risk therefore scales with height automatically — the same gap is a
   scraped knee at z2 and a death sentence at z14.
+- **Field facts (learned building the Brackett escape, 2026-08-06):**
+  an edge exit into air REQUIRES `sky_room` (int dbref) or the jump
+  silently degrades to a plain walk — the full edge-to-air attr set is
+  is_edge / edge_difficulty / sky_room / fall_room / fall_distance /
+  fall_damage. WALKING into a sky room never triggers falling (no
+  gravity-on-entry hook exists; the fall lives in the `jump` flow
+  only). A server reload during the fall delay orphans the jumper in
+  the sky room. Fire-escape rooms are `type: "fire escape"` — their
+  own exit-message list (exits.py) and ambience category
+  (ROOM_TYPE_POOLS) exist; new room types join both registries.
 - **Edges**: any edge is a valid hook anchor. **No authored anchor
   points** — exploration is encouraged, not fenced; the *building
   design* does the fencing, never the mechanic.
@@ -257,13 +267,16 @@ one of four jobs — **on-ramp** (ground/interior → roof), **step**
 one). A build's parkour budget is measured in furniture, and one or
 two pieces per building is plenty.
 
-- **F1 · The fire escape** — the workhorse on-ramp. Hangs in the back
-  alley; **windows open onto it** from the interior floors it passes;
-  it rides plainly up to the roof and down to the alley (drop-ladder
-  at the bottom). Three networks meet on it: street city (the alley),
-  roof city (the top), and the *interior* (every window) — which
-  makes it an escape route, a burglar's front door, and the B&E
-  seam's cheapest expression. Just up/down exits; no mechanics.
+- **F1 · The fire escape** — the workhorse on-ramp, and now a BUILT
+  exemplar: **the Brackett fire escape** (landings (-8,-18) z3-z6).
+  Its as-built laws: windows are **communal** — they open from each
+  floor's landing/hall, never from private units (a unit's security
+  perimeter includes everything of its own); exit key `window`, no
+  aliases; the iron works both ways; the bottom is a **one-way drop**
+  (ascent from below waits for the crank/grapple era); it can end on
+  a ROOF or HULL rather than the ground, feeding the second city
+  directly. Egress always; ingress is the future hidden-exit
+  mechanic. Copy the exemplar, not this paragraph.
 - **F2 · The water tower** — the step-stone crown. Ladder up a leg,
   tank-top platform +1..+2 above its roof with its own edge set: it
   takes a roof HIGHER without a new building, bridges to the taller

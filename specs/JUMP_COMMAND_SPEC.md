@@ -4,6 +4,15 @@
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The header claimed "IMPLEMENTATION COMPLETE ✅". Phase 3 (elevated-position combat bonuses, enhanced aim from edges) has **no code**.
+> **FIELD NOTES (2026-08-06, from building the Brackett fire escape):**
+> (1) An edge exit whose destination is air MUST carry `sky_room` (int
+> dbref) — without it the "graceful degradation" fallback turns the jump
+> into a plain walk with no fall and no landing roll. (2) Walking into a
+> sky room never triggers falling; the entire fall experience lives in
+> this command's flow. (3) The landing runs on a delayed callback
+> (0.5s/story): a server reload during that window orphans the jumper in
+> the sky room — do not reload while players are airborne; hardening
+> item: resolve airborne characters at server start.
 > - No dedicated jump test module exists — only incidental coverage in `test_drop_to_room.py` and `test_build_tools.py`.
 
 **Status: IMPLEMENTATION COMPLETE** ✅  

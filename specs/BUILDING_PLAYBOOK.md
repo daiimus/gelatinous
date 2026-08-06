@@ -212,6 +212,20 @@ now law:
    (edge audits, contradiction checks, no-gear proofs) and city-scale
    zoning. They do not generate build tasks. Design intent does.
 
+## 2.6 · Build 003's laws (the fire escape, 2026-08-06)
+
+6. **Narrative picks the room.** Communal fixtures wire from communal
+   spaces (every escape window opens from a landing or hall, not a
+   tenant's parlor) — adjacency serves the story, never the reverse.
+7. **Read the mechanism before wiring against it.** Copying an
+   exemplar's attributes is not understanding it: the escape's roof
+   edge shipped without `sky_room` and silently degraded to a walk.
+   Before touching jump/fall/door machinery, read its code path.
+8. **Walk it as a player before handing it over.** Mechanism-level
+   tests pass things only a player's experience catches (findable
+   windows, message registers, ambience). The builder walks the build
+   through real command flow before the owner ever sees a dbref list.
+
 ## 3 · The session ritual
 
 The shape of a build session, in order. Steps compress for small builds;
@@ -240,6 +254,9 @@ none are skipped silently.
 9. **The atlas gate** — verify on the live render; if the build
    introduced a new class or landmark, do the art: rig scene → sprite
    grind → `export_models.py` rebake, in the same arc, not "later."
+9.5. **The player walk** — traverse the build end to end through real
+   command flow (looks, exits, jumps, messages) as a player would,
+   and fix what jars BEFORE delivering the dbref inventory.
 10. **Ship** — the deploy cycle, and if a build taught doctrine, the
     playbook and the source spec get the lesson in the same PR.
 
