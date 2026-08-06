@@ -124,7 +124,8 @@ for ex in east_roof.exits:
     if dest and dest.attributes.get("xyz") == (COL_X, COL_Y, 7):
         ex.db.is_edge = True
         ex.db.edge_difficulty = 8
-        ex.db.fall_room = landings[6].id
+        ex.db.sky_room = dest.id      # REQUIRED: without it the jump
+        ex.db.fall_room = landings[6].id   # degrades to a plain walk
         ex.db.fall_distance = 1
         ex.db.fall_damage = 5
         edge_fixed = True
