@@ -346,8 +346,10 @@ def loggia_cell():
     above, and a lit skylight grid on the crown — a warm glasshouse
     glint among the tar roofs, for the perceptive to notice."""
     clear_scene()
-    bone = make_material("lbone", (0.48, 0.41, 0.32), 0.85, noise=0.3)
-    frame = make_material("lframe", (0.18, 0.17, 0.16), 0.6)
+    # sill/lintel wear the tower's own concrete (owner: colour matches,
+    # the glass band is the whole tell — a subtle distinction)
+    bone = make_material("lbone", (0.13, 0.165, 0.20), 0.85, noise=0.45)
+    frame = make_material("lframe", (0.07, 0.08, 0.09), 0.8)
     glass = make_material("lglass", (0.42, 0.40, 0.22), 0.25,
                           emit=(0.92, 0.80, 0.42), emit_strength=4.0)
     green = make_material("lgreen", (0.22, 0.36, 0.18), 0.8, noise=0.3)
