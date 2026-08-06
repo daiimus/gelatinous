@@ -302,6 +302,11 @@ owner verdict — argue with them.
 - Both are one future system wearing two clothes: **powered,
   hackable furniture that edits the exit graph at runtime**. When
   decking/hacking design begins, start here.
+- **Exit-type refinements (owner go, 2026-08-06)** ride the same
+  arc: drop ladders (one-way until worked), auto-closing windows
+  (egress that shuts behind you), and decking elements surfaced as
+  exit behavior. The fire escape's current exits are the plain-verb
+  rough drafts of all three.
 
 **Candidates (unsettled — owner verdict wanted):**
 - **A true market hall**: stalls exist as street props; a roofed market
