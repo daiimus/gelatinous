@@ -341,6 +341,32 @@ def fire_escape_cell():
     render("fire_escape")
 
 
+def machine_cell():
+    """The service riser: elevator shafts and machinery bays. Blank
+    concrete in the tenement palette with a louver stack and conduit —
+    a windowless strip that reads as intentional service core, not
+    missing geometry (stacked full-height in the Brackett flank)."""
+    clear_scene()
+    concrete = make_material("mrcon", (0.13, 0.165, 0.20), 0.85, noise=0.45)
+    louver = make_material("mrlouv", (0.09, 0.10, 0.11), 0.6)
+    conduit = make_material("mrcond", (0.24, 0.20, 0.15), 0.5)
+    lamp = make_material("mrlamp", (0.9, 0.65, 0.3), 0.4,
+                         emit=(1.0, 0.62, 0.28), emit_strength=1.6)
+    box("block", (1, 1, 1), (0, 0, 0.5), concrete)
+    # louver stack on each face — slatted vents, no glass
+    for face, (lx, ly, sx, sy) in enumerate((
+            (0, 0.504, 0.34, 0.02), (0, -0.504, 0.34, 0.02),
+            (0.504, 0, 0.02, 0.34), (-0.504, 0, 0.02, 0.34))):
+        for i in range(3):
+            box(f"lv{face}_{i}", (sx, sy, 0.06), (lx, ly, 0.30 + i * 0.16),
+                louver)
+    # cable conduit climbing one corner, service lamp above the vents
+    box("conduit", (0.05, 0.05, 1.0), (0.42, 0.42, 0.5), conduit)
+    box("lamp", (0.10, 0.02, 0.05), (-0.28, 0.508, 0.78), lamp)
+    rig_camera_and_light()
+    render("machine")
+
+
 def loggia_cell():
     """The terrace-suite motif: old terrace bones in masonry, glazing
     above, and a lit skylight grid on the crown — a warm glasshouse
@@ -960,6 +986,7 @@ def main():
     hull_cell()
     roof_cell()
     fire_escape_cell()
+    machine_cell()
     loggia_cell()
     shop_cell()
     hotel_cell()
