@@ -152,6 +152,9 @@ const SKINS = [["The Brackett Arms","tenement"],["Colonial Constabulary","consta
   ["Shuttered Storefront","shuttered"]];
 function cls(c){
   if ((c.flags||[]).includes('sky')) return 'air';
+  // atlas_skin: a cosmetic override — dresses the cell's map look
+  // without touching the gameplay type (the seam-band mechanism)
+  if (c.skin && MODELS[c.skin]) return c.skin;
   const t=(c.type||'').toLowerCase(), k=c.key||'';
   if (k.toLowerCase().includes('alley')) return 'alley';
   if (t==='fire escape') return 'fire_escape';

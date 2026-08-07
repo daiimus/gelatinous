@@ -58,6 +58,7 @@ def export_map():
             "key": room.key,
             "xyz": list(xyz),
             "type": str(room.db.type or ""),
+            "skin": str(room.db.atlas_skin or ""),
             "flags": _flags(room),
             "crowd": int(room.db.crowd_base_level or 0),
         })

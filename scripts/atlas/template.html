@@ -142,6 +142,8 @@ const SKINS = [
 ];
 function cls(c){
   if (c.flags.includes('sky')) return 'air';
+  // atlas_skin: cosmetic override, mirrors the 3D atlas
+  if (c.skin && FILL[c.skin]) return c.skin;
   const t=(c.type||'').toLowerCase(), k=c.key||'';
   if (k.toLowerCase().includes('alley')) return 'alley';
   // type=rooftop is authoritative (the lid standard sets it); the name
