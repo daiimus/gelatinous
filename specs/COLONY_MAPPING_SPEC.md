@@ -228,6 +228,14 @@ Two consumers exist today, both fed by `export_map()`:
   `scripts/atlas/generate.py` (staff=True) writes the standalone file,
   and the staff overlays — air lattice, jump routes, radio coverage —
   live only there. It is never served.
+- **Cosmetic skins (2026-08-07)**: `db.atlas_skin = "<class>"` on a
+  room overrides its atlas class in both renderers WITHOUT touching the
+  gameplay `type` (which drives crowd routing, exit phrasing, ambience).
+  The export ships it as `skin`; `cls()` honors it first, guarded on the
+  class existing in the model/fill library. First use: the Brackett
+  seam band — the whole sixth storey wears the `loggia` glass band as a
+  ring at the old-pour/rebuild seam line (Build 008), map charm marking
+  a structural truth after the floor standardized as housing.
 - **Pipeline discipline**: `models.json` is baked art. Any change to a
   rig model or hero script requires re-running `export_models.py`
   alongside the sprite grind, or the live render serves stale geometry.
