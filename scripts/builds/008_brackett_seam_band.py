@@ -17,6 +17,8 @@ B = "The Brackett Arms"
 stamped = 0
 for r in ObjectDB.objects.filter(db_key__contains=B):
     xyz = r.attributes.get("xyz")
+    if "Elevator Car" in r.key:
+        continue                  # the car carries an xyz; no skin rides it
     if (xyz and xyz[2] == 6 and -11 <= xyz[0] <= -9
             and -20 <= xyz[1] <= -16 and r.destination is None):
         r.db.atlas_skin = "loggia"
