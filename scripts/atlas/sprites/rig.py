@@ -341,30 +341,52 @@ def fire_escape_cell():
     render("fire_escape")
 
 
+def _garden_lawn():
+    """Full-cell green groundcover — the shared base every garden tile
+    stands on, so adjacent cells mesh edge-to-edge into one parklet."""
+    grass = make_material("ggrass", (0.27, 0.44, 0.21), 0.85, noise=0.32)
+    box("lawn", (1.0, 1.0, 0.10), (0, 0, 0.05), grass)
+
+
 def garden_cell():
-    """A planted rooftop: raised beds of greenery on a tar deck and a
-    water butt for the aquaponics tie-in — the colony's roof-farming
-    habit, read green from the map."""
+    """The open green tile: lawn and a few low tufts, nothing centered."""
     clear_scene()
-    grass = make_material("ggrass", (0.26, 0.42, 0.20), 0.85, noise=0.4)
-    soil = make_material("gsoil", (0.17, 0.12, 0.08), 0.9, noise=0.4)
-    crop = make_material("gcrop", (0.34, 0.55, 0.24), 0.7, noise=0.4)
-    edge = make_material("gedge", (0.32, 0.28, 0.22), 0.7)
-    water = make_material("gwater", (0.22, 0.34, 0.38), 0.25, wet=True)
-    box("lawn", (1, 1, 0.10), (0, 0, 0.05), grass)   # mostly open green
-    # one long raised bed along the north edge
-    box("bedframe", (0.86, 0.26, 0.16), (0, 0.30, 0.16), edge)
-    box("bedsoil", (0.80, 0.20, 0.06), (0, 0.30, 0.24), soil)
-    for j, bx in enumerate((-0.28, -0.02, 0.26)):
-        box(f"crop{j}", (0.17, 0.17, 0.22), (bx, 0.30, 0.33), crop)
-    # one smaller bed, and a water butt
-    box("bed2frame", (0.34, 0.30, 0.16), (-0.28, -0.22, 0.16), edge)
-    box("bed2soil", (0.28, 0.24, 0.06), (-0.28, -0.22, 0.24), soil)
-    box("crop2", (0.19, 0.19, 0.24), (-0.28, -0.22, 0.34), crop)
-    cylinder("butt", 0.12, 0.30, (0.34, -0.30, 0.25), water,
-             seg=14, arc=math.pi * 2)
+    _garden_lawn()
+    tuft = make_material("gtuft", (0.34, 0.55, 0.24), 0.7, noise=0.4)
+    for i, (tx, ty) in enumerate(((-0.28, 0.20), (0.24, -0.26), (0.30, 0.30))):
+        box(f"tuft{i}", (0.13, 0.13, 0.11), (tx, ty, 0.15), tuft)
     rig_camera_and_light()
     render("garden")
+
+
+def garden_bed_cell():
+    """A planted tile: one low bed of crops along a single edge."""
+    clear_scene()
+    _garden_lawn()
+    soil = make_material("g2soil", (0.17, 0.12, 0.08), 0.9, noise=0.4)
+    crop = make_material("g2crop", (0.34, 0.55, 0.24), 0.7, noise=0.4)
+    edge = make_material("g2edge", (0.32, 0.28, 0.22), 0.7)
+    box("bframe", (0.90, 0.24, 0.13), (0, 0.33, 0.13), edge)
+    box("bsoil", (0.84, 0.18, 0.05), (0, 0.33, 0.19), soil)
+    for i, bx in enumerate((-0.30, -0.02, 0.26)):
+        box(f"crop{i}", (0.16, 0.16, 0.18), (bx, 0.33, 0.26), crop)
+    rig_camera_and_light()
+    render("garden_2")
+
+
+def garden_bench_cell():
+    """A sitting tile: a bench and a shrub on the green."""
+    clear_scene()
+    _garden_lawn()
+    wood = make_material("g3wood", (0.30, 0.22, 0.14), 0.7)
+    shrub = make_material("g3shrub", (0.28, 0.47, 0.20), 0.7, noise=0.4)
+    box("seat", (0.46, 0.13, 0.04), (-0.13, -0.06, 0.18), wood)
+    box("back", (0.46, 0.04, 0.14), (-0.13, -0.12, 0.24), wood)
+    for i, lx in enumerate((-0.32, 0.04)):
+        box(f"leg{i}", (0.04, 0.11, 0.14), (lx, -0.06, 0.10), wood)
+    box("shrub", (0.24, 0.24, 0.28), (0.29, 0.27, 0.19), shrub)
+    rig_camera_and_light()
+    render("garden_3")
 
 
 def machine_cell():
@@ -1014,6 +1036,8 @@ def main():
     fire_escape_cell()
     machine_cell()
     garden_cell()
+    garden_bed_cell()
+    garden_bench_cell()
     loggia_cell()
     shop_cell()
     hotel_cell()
