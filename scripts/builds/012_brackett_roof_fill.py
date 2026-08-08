@@ -23,10 +23,11 @@ B = "The Brackett Arms"
 made_rooms = made_exits = 0
 
 
-def room_at(key, xyz, skin="garden"):
+def room_at(key, xyz=None, skin="garden"):
     global made_rooms
     r = ObjectDB.objects.filter(db_key=key).first()
     if r is None:
+        assert xyz is not None, f"new room {key} needs xyz"
         r = create_object(ROOM_TC, key=key)
         r.db.xyz = xyz
         made_rooms += 1
@@ -83,9 +84,9 @@ wire(roof)
 
 # ---- 2. north communal shelf -> full strip ---------------------------
 north = {
-    (-11, -16): room_at(f"{B} - Roof Garden (North)"),
-    (-10, -16): room_at(f"{B} - Roof Garden (North Walk)"),
-    (-9, -16): room_at(f"{B} - Roof Garden (North Corner)"),
+    (-11, -16): room_at(f"{B} - Roof Garden (North)", (-11, -16, 12)),
+    (-10, -16): room_at(f"{B} - Roof Garden (North Walk)", (-10, -16, 12)),
+    (-9, -16): room_at(f"{B} - Roof Garden (North Corner)", (-9, -16, 12)),
 }
 for pos, extra in (((-10, -16), "the middle of the north garden walk, "
                     "beds and green either hand"),
@@ -100,9 +101,9 @@ wire(north)
 
 # ---- 3. south derelict shelf -> full strip (still sealed) ------------
 south = {
-    (-11, -20): room_at(f"{B} - Roof Garden (South, Derelict)"),
-    (-10, -20): room_at(f"{B} - Roof Garden (South, Derelict Walk)"),
-    (-9, -20): room_at(f"{B} - Roof Garden (South, Derelict Corner)"),
+    (-11, -20): room_at(f"{B} - Roof Garden (South, Derelict)", (-11, -20, 12)),
+    (-10, -20): room_at(f"{B} - Roof Garden (South, Derelict Walk)", (-10, -20, 12)),
+    (-9, -20): room_at(f"{B} - Roof Garden (South, Derelict Corner)", (-9, -20, 12)),
 }
 for pos, extra in (((-10, -20), "the middle of the ruin, beds burst and "
                     "the trellis down"),
