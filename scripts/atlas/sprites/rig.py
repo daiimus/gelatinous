@@ -503,9 +503,10 @@ def catwalk_cell():
     render("catwalk")
 
 
-def _xenon(ch, loc, size, mat):
-    """One Monaspace Xenon glyph, extruded, facing +y (the home-visible
-    face), baked to mesh so it glows in the atlas."""
+def _xenon(ch, loc, size, mat, rot=(1.5708, 0, 3.1416)):
+    """One Monaspace Xenon glyph, extruded, baked to mesh so it glows in
+    the atlas. Default rot faces +y (the home-visible face); pass
+    (1.5708, 0, 0) for a copy that reads correctly from the -y side."""
     bpy.ops.object.text_add(location=loc)
     t = bpy.context.active_object
     t.data.body = ch
@@ -514,7 +515,7 @@ def _xenon(ch, loc, size, mat):
     t.data.extrude = 0.02
     t.data.align_x = "CENTER"
     t.data.align_y = "CENTER"
-    t.rotation_euler = (1.5708, 0, 3.1416)
+    t.rotation_euler = rot
     t.data.materials.append(mat)
     bpy.ops.object.convert(target="MESH")
 
@@ -616,11 +617,14 @@ def _air_marquee(name, glyphs):
     rail = make_material("amrail", (0.11, 0.14, 0.13), 0.55)
     holo = make_material("amholo", (0.4, 1.0, 0.55), 0.1,
                          emit=(0.45, 1.0, 0.6), emit_strength=8.0)
-    box("pane", (0.40, 0.03, 1.0), (0, 0.42, 0.5), pane)          # faint sign pane, +y
-    box("railL", (0.03, 0.05, 1.0), (-0.21, 0.42, 0.5), rail)     # side emitter rails,
-    box("railR", (0.03, 0.05, 1.0), (0.21, 0.42, 0.5), rail)      # continuous when stacked
-    for ch, z in glyphs:
-        _xenon(ch, (0, 0.46, z), 0.28, holo)                      # letters float in front
+    # centred under the catwalk (x=-0.24, y=0) so the banner hangs flush
+    # off it instead of floating out in front
+    box("pane", (0.40, 0.03, 1.0), (-0.24, 0, 0.5), pane)          # faint sign pane
+    box("railL", (0.03, 0.05, 1.0), (-0.44, 0, 0.5), rail)         # side emitter rails,
+    box("railR", (0.03, 0.05, 1.0), (-0.04, 0, 0.5), rail)         # continuous when stacked
+    for ch, z in glyphs:                                           # letters on BOTH faces
+        _xenon(ch, (-0.24, 0.03, z), 0.28, holo)                  # front (+y)
+        _xenon(ch, (-0.24, -0.03, z), 0.28, holo, (1.5708, 0, 0)) # back (-y), unmirrored
     rig_camera_and_light()
     render(name)
 
