@@ -28,11 +28,9 @@ air = at((-5, -15, 12))              # (Halcyon End) -> becomes the gap/air
 hal = at((-6, -15, 12))              # Halcyon Sun Deck (Fore)
 assert ant and air and hal, "missing crossing rooms"
 
-# fall room: the ground under the gap column
-fall = next((r for r in ObjectDB.objects.filter(db_attributes__db_key="xyz")
-             if r.db.xyz and r.db.xyz[0] == -5 and r.db.xyz[1] == -15
-             and r.db.xyz[2] == 0 and r.destination is None), None) \
-    or at((-4, -15, 0))
+# fall room: Kaspar Street below/beside the gap column (no cell at
+# (-5,-15,0); the street runs one row south)
+fall = at((-5, -16, 0)) or at((-4, -16, 0)) or at((-6, -16, 0))
 assert fall, "no ground fall room under the gap"
 
 # ---- the one fallen-antenna room -------------------------------------
