@@ -341,6 +341,30 @@ def fire_escape_cell():
     render("fire_escape")
 
 
+def garden_cell():
+    """A planted rooftop: raised beds of greenery on a tar deck and a
+    water butt for the aquaponics tie-in — the colony's roof-farming
+    habit, read green from the map."""
+    clear_scene()
+    tar = make_material("gtar", (0.14, 0.135, 0.13), 0.85, noise=0.4)
+    soil = make_material("gsoil", (0.17, 0.12, 0.08), 0.9, noise=0.4)
+    leafa = make_material("gleafa", (0.24, 0.42, 0.17), 0.75, noise=0.4)
+    leafb = make_material("gleafb", (0.33, 0.53, 0.22), 0.7, noise=0.45)
+    edge = make_material("gedge", (0.30, 0.27, 0.22), 0.7)
+    water = make_material("gwater", (0.22, 0.34, 0.38), 0.25, wet=True)
+    box("slab", (1, 1, 0.10), (0, 0, 0.05), tar)
+    for i, by in enumerate((-0.30, 0.02, 0.34)):     # raised beds, E-W
+        box(f"bedframe{i}", (0.86, 0.22, 0.12), (0, by, 0.14), edge)
+        box(f"bedsoil{i}", (0.80, 0.16, 0.06), (0, by, 0.20), soil)
+        for j, bx in enumerate((-0.30, -0.10, 0.12, 0.32)):
+            leaf = leafa if (i + j) % 2 else leafb
+            box(f"tuft{i}_{j}", (0.11, 0.11, 0.15), (bx, by, 0.27), leaf)
+    cylinder("butt", 0.12, 0.30, (0.36, -0.36, 0.25), water,
+             seg=14, arc=math.pi * 2)
+    rig_camera_and_light()
+    render("garden")
+
+
 def machine_cell():
     """The service riser: elevator shafts and machinery bays. Blank
     concrete in the tenement palette with a louver stack and conduit —
@@ -987,6 +1011,7 @@ def main():
     roof_cell()
     fire_escape_cell()
     machine_cell()
+    garden_cell()
     loggia_cell()
     shop_cell()
     hotel_cell()
