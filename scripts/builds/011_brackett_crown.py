@@ -145,21 +145,29 @@ south.db.sense_descs = {
                    "its back on, waiting for whoever can reach it."}
 # NO exits by design (owner: air/climb only, future)
 
-# the untuned repeater: a dormant node, a future decking prize
-if not any(o.key for o in south.contents if "repeater" in o.key.lower()):
-    try:
-        made = spawn(P.REPEATER_MAST)
-        rep = made[0]
+# the untuned repeater: a dormant node, a future decking prize.
+# NB: rename off the prototype key — it ships as "AWE Sentinel-9
+# repeater mast", which would collide with the real Sentinel the
+# basement cabinet resolves its antenna by NAME.
+rep = next((o for o in south.contents if o.destination is None and
+            ("repeater" in o.key.lower() or "sentinel" in o.key.lower())),
+           None)
+try:
+    if rep is None:
+        rep = spawn(P.REPEATER_MAST)[0]
         rep.move_to(south, quiet=True, move_hooks=False)
-        rep.db.frequency = "000.0MHz"
-        rep.db.is_base_station = False
-        rep.db.integrate = True
-        rep.db.integration_desc = (
-            "A squat |cderelict repeater|n hunches among the dead beds, "
-            "power light amber, |ctuned to nothing|n — it hums a dead "
-            "carrier and relays not one word.")
-    except Exception as exc:  # noqa: BLE001
-        print("REPEATER spawn failed:", exc)
+    rep.key = "derelict repeater"
+    rep.db.frequency = "000.0MHz"
+    rep.db.is_base_station = False
+    rep.db.desc = ("A squat lattice repeater, guyed to the dead beds and "
+                   "gone to rust — power light amber, tuned to nothing.")
+    rep.db.integrate = True
+    rep.db.integration_desc = (
+        "A squat |cderelict repeater|n hunches among the dead beds, "
+        "power light amber, |ctuned to nothing|n — it hums a dead "
+        "carrier and relays not one word.")
+except Exception as exc:  # noqa: BLE001
+    print("REPEATER setup failed:", exc)
 
 # ---- 4. the roof deck becomes the communal farm ----------------------
 by_key(f"{B} - Roof Deck").db.atlas_skin = "garden"
