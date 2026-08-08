@@ -484,6 +484,34 @@ def fallen_tower_cell():
     render("fallen_tower")
 
 
+def billboard_cell():
+    """The dead terraform board: a truss-mounted panel over the street
+    still projecting a green-world hologram that never came true, a
+    maintenance catwalk at its foot (the walkable perch)."""
+    clear_scene()
+    frame = make_material("bbframe", (0.20, 0.19, 0.18), 0.6, noise=0.25)
+    house = make_material("bbhouse", (0.11, 0.12, 0.11), 0.7)
+    holo = make_material("bbholo", (0.35, 0.95, 0.5), 0.1,
+                         emit=(0.4, 1.0, 0.55), emit_strength=7.0)
+    grate = make_material("bbgrate", (0.15, 0.14, 0.14), 0.55, noise=0.35)
+    # walkable catwalk grating on the near side, with a rail
+    box("catwalk", (0.94, 0.30, 0.05), (0, -0.22, 0.10), grate)
+    for i, rx in enumerate((-0.42, 0.42)):
+        box(f"rpost{i}", (0.04, 0.04, 0.18), (rx, -0.36, 0.19), frame)
+    box("rail", (0.94, 0.04, 0.03), (0, -0.36, 0.28), frame)
+    # the billboard housing, mounted on posts on the far side
+    for i, px in enumerate((-0.36, 0.36)):
+        box(f"post{i}", (0.07, 0.07, 0.74), (px, 0.30, 0.47), frame)
+    box("board", (0.82, 0.11, 0.54), (0, 0.30, 0.64), house)
+    # the holographic globe projecting forward off the panel
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.26,
+                                           location=(0, -0.34, 0.70))
+    globe = bpy.context.active_object
+    globe.data.materials.append(holo)
+    rig_camera_and_light()
+    render("billboard")
+
+
 def mast_base_cell():
     """The antenna's foot in the green park: lawn (so it meshes with
     the parklet), a concrete pad, and the lattice mast rising to meet
@@ -1132,6 +1160,7 @@ def main():
     mast_base_cell()
     fallen_span_cell()
     fallen_tower_cell()
+    billboard_cell()
     loggia_cell()
     shop_cell()
     hotel_cell()
