@@ -151,10 +151,12 @@ const SKINS = [["The Brackett Arms","tenement"],["Colonial Constabulary","consta
   ["The Last Shift","bar"],["The Hub and Howl","bar"],["Colonial Landing Pad","pad"],
   ["Shuttered Storefront","shuttered"]];
 function cls(c){
-  if ((c.flags||[]).includes('sky')) return 'air';
   // atlas_skin: a cosmetic override — dresses the cell's map look
-  // without touching the gameplay type (the seam-band mechanism)
+  // without touching the gameplay type (the seam-band mechanism). It
+  // wins even over the sky flag, so a fall-lattice air cell can carry a
+  // hanging holo-banner and still be mechanically airspace.
   if (c.skin && MODELS[c.skin]) return c.skin;
+  if ((c.flags||[]).includes('sky')) return 'air';
   const t=(c.type||'').toLowerCase(), k=c.key||'';
   if (k.toLowerCase().includes('alley')) return 'alley';
   if (t==='fire escape') return 'fire_escape';
@@ -174,7 +176,7 @@ function cls(c){
   if (t==='constabulary') return 'machine';
   return 'generic';
 }
-const LEGEND={street:'street',alley:'alley',market:'market',hull:'hull-top',fire_escape:'fire escape',loggia:'loggia',garden:'roof garden',mast_base:'antenna base',mast:'antenna mast',fallen_tower:'fallen antenna',fallen_span:'antenna span',billboard:'holo-billboard',catwalk:'catwalk',marquee:'holo-marquee',garden_cap:'roof cap',marquee_br:'marquee',marquee_ac:'marquee',marquee_ke:'marquee',marquee_tt:'marquee',marquee_ar:'marquee',marquee_ms:'marquee',marquee_1:'marquee',marquee_2:'marquee',marquee_3:'marquee',marquee_4:'marquee',marquee_5:'marquee',marquee_6:'marquee',garden_path:'garden path',
+const LEGEND={street:'street',alley:'alley',market:'market',hull:'hull-top',fire_escape:'fire escape',loggia:'loggia',garden:'roof garden',mast_base:'antenna base',mast:'antenna mast',fallen_tower:'fallen antenna',fallen_span:'antenna span',billboard:'holo-billboard',catwalk:'catwalk',marquee:'holo-marquee',garden_cap:'roof cap',marquee_br:'marquee',marquee_ac:'marquee',marquee_ke:'marquee',marquee_tt:'marquee',marquee_ar:'marquee',marquee_ms:'marquee',marquee_1:'marquee',marquee_2:'marquee',marquee_3:'marquee',marquee_4:'marquee',marquee_5:'marquee',marquee_6:'marquee',air_marquee_1:'marquee',air_marquee_2:'marquee',air_marquee_3:'marquee',air_marquee_4:'marquee',air_marquee_5:'marquee',air_marquee_6:'marquee',garden_path:'garden path',
   tenement:'residential',roof:'rooftop',shop:'commerce',hotel:'cube hotel',
   constab:'the law',cryo:'cryogenics',lounge:'nightlife',bar:'bars',pad:'landing pad',
   medical:'medicine',shuttered:'shuttered',machine:'machinery',generic:'other',air:'air'};

@@ -132,6 +132,12 @@ const P = {
   marquee_4:   ['#2e4a3a','#22372b','#182820'],
   marquee_5:   ['#2e4a3a','#22372b','#182820'],
   marquee_6:   ['#2e4a3a','#22372b','#182820'],
+  air_marquee_1: ['#2e4a3a','#22372b','#182820'],
+  air_marquee_2: ['#2e4a3a','#22372b','#182820'],
+  air_marquee_3: ['#2e4a3a','#22372b','#182820'],
+  air_marquee_4: ['#2e4a3a','#22372b','#182820'],
+  air_marquee_5: ['#2e4a3a','#22372b','#182820'],
+  air_marquee_6: ['#2e4a3a','#22372b','#182820'],
   garden_path: ['#6f8f4a','#52703a','#3c5330'],
   shop:    ['#c49048','#8f6730','#6b4c22'],
   hotel:   ['#7a6f96','#584f6e','#413a52'],
@@ -145,7 +151,7 @@ const P = {
   machine: ['#8b8b84','#63635d','#494943'],
   generic: ['#6e6a72','#514e57','#3c3a41'],
 };
-const LEGEND_LABEL = {street:'street', alley:'alley', market:'market', hull:'hull-top',fire_escape:'fire escape',loggia:'loggia',garden:'roof garden',mast_base:'antenna base',mast:'antenna mast',fallen_tower:'fallen antenna',fallen_span:'antenna span',billboard:'holo-billboard',catwalk:'catwalk',marquee:'holo-marquee',garden_cap:'roof cap',marquee_br:'marquee',marquee_ac:'marquee',marquee_ke:'marquee',marquee_tt:'marquee',marquee_ar:'marquee',marquee_ms:'marquee',marquee_1:'marquee',marquee_2:'marquee',marquee_3:'marquee',marquee_4:'marquee',marquee_5:'marquee',marquee_6:'marquee',garden_path:'garden path',
+const LEGEND_LABEL = {street:'street', alley:'alley', market:'market', hull:'hull-top',fire_escape:'fire escape',loggia:'loggia',garden:'roof garden',mast_base:'antenna base',mast:'antenna mast',fallen_tower:'fallen antenna',fallen_span:'antenna span',billboard:'holo-billboard',catwalk:'catwalk',marquee:'holo-marquee',garden_cap:'roof cap',marquee_br:'marquee',marquee_ac:'marquee',marquee_ke:'marquee',marquee_tt:'marquee',marquee_ar:'marquee',marquee_ms:'marquee',marquee_1:'marquee',marquee_2:'marquee',marquee_3:'marquee',marquee_4:'marquee',marquee_5:'marquee',marquee_6:'marquee',air_marquee_1:'marquee',air_marquee_2:'marquee',air_marquee_3:'marquee',air_marquee_4:'marquee',air_marquee_5:'marquee',air_marquee_6:'marquee',garden_path:'garden path',
   tenement:'residential', roof:'rooftop', shop:'commerce',
   landmark:'landmark', hotel:'cube hotel', constab:'the law', cryo:'cryogenics',
   lounge:'nightlife', bar:'bars', pad:'landing pad', medical:'medicine',
@@ -163,9 +169,10 @@ const SKINS = [
   ["Shuttered Storefront", "shuttered"],
 ];
 function cls(c){
-  if (c.flags.includes('sky')) return 'air';
-  // atlas_skin: cosmetic override, mirrors the 3D atlas
+  // atlas_skin: cosmetic override, mirrors the 3D atlas; wins over the
+  // sky flag so a fall-lattice air cell can carry a hanging holo-banner.
   if (c.skin && FILL[c.skin]) return c.skin;
+  if (c.flags.includes('sky')) return 'air';
   const t=(c.type||'').toLowerCase(), k=c.key||'';
   if (k.toLowerCase().includes('alley')) return 'alley';
   // type=rooftop is authoritative (the lid standard sets it); the name
