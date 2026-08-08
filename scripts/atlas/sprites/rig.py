@@ -18,6 +18,8 @@ import bpy
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw")
 os.makedirs(OUT, exist_ok=True)
 RES = 512          # 4x supersample; post downsamples
+FONT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                    "MonaspaceXenon.ttf")   # brand/heading flavour, for signage
 
 
 # ---------------------------------------------------------------- helpers
@@ -490,13 +492,85 @@ def catwalk_cell():
     clear_scene()
     grate = make_material("cwgrate", (0.15, 0.14, 0.14), 0.55, noise=0.35)
     steel = make_material("cwsteel", (0.21, 0.20, 0.19), 0.6, noise=0.2)
-    box("deck", (0.60, 0.48, 0.06), (0, 0, 0.10), grate)   # short platform
-    for ey in (-0.22, 0.22):                               # rails, long edges
-        box(f"rail{ey}", (0.60, 0.03, 0.03), (0, ey, 0.28), steel)
-        for px in (-0.26, 0.26):
-            box(f"post{ey}{px}", (0.03, 0.03, 0.20), (px, ey, 0.19), steel)
+    box("deck", (0.30, 0.24, 0.06), (0, 0, 0.10), grate)   # subtle little perch
+    for ey in (-0.10, 0.10):                               # rails, long edges
+        box(f"rail{ey}", (0.30, 0.03, 0.03), (0, ey, 0.26), steel)
+        for px in (-0.12, 0.12):
+            box(f"post{ey}{px}", (0.03, 0.03, 0.18), (px, ey, 0.18), steel)
     rig_camera_and_light()
     render("catwalk")
+
+
+def _xenon(ch, loc, size, mat):
+    """One Monaspace Xenon glyph, extruded, facing +y (the home-visible
+    face), baked to mesh so it glows in the atlas."""
+    bpy.ops.object.text_add(location=loc)
+    t = bpy.context.active_object
+    t.data.body = ch
+    t.data.font = bpy.data.fonts.load(FONT)
+    t.data.size = size
+    t.data.extrude = 0.02
+    t.data.align_x = "CENTER"
+    t.data.align_y = "CENTER"
+    t.rotation_euler = (1.5708, 0, 3.1416)
+    t.data.materials.append(mat)
+    bpy.ops.object.convert(target="MESH")
+
+
+def _marquee_base():
+    """Tenement wall + windows (so it matches the building) with a dark
+    central sign strip up the +y face for the lettering."""
+    concrete = make_material("mqcon", (0.13, 0.165, 0.20), 0.85, noise=0.45)
+    grime = make_material("mqgr", (0.09, 0.11, 0.13), 0.95, noise=0.3)
+    wf = make_material("mqwf", (0.07, 0.08, 0.09), 0.8)
+    lit = make_material("mqlit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28))
+    dark = make_material("mqdk", (0.03, 0.035, 0.05), 0.3)
+    panel = make_material("mqpanel", (0.07, 0.09, 0.08), 0.7)
+    box("block", (1, 1, 1), (0, 0, 0.5), concrete)
+    box("grime", (1.002, 1.002, 0.16), (0, 0, 0.08), grime)
+    for wx, w in [(-0.34, True), (0.34, False)]:               # +y side windows
+        box(f"wfy{wx}", (0.15, 0.02, 0.30), (wx, 0.505, 0.55), wf)
+        box(f"wgy{wx}", (0.11, 0.015, 0.24), (wx, 0.512, 0.55), lit if w else dark)
+    for wy, w in [(-0.28, False), (0.0, True), (0.28, False)]:  # +x face windows
+        box(f"wfx{wy}", (0.02, 0.16, 0.30), (0.505, wy, 0.55), wf)
+        box(f"wgx{wy}", (0.015, 0.12, 0.24), (0.512, wy, 0.55), lit if w else dark)
+    box("sign", (0.34, 0.03, 1.02), (0, 0.505, 0.5), panel)    # central sign strip
+
+
+def _marquee_letters(name, top, bot):
+    clear_scene()
+    _marquee_base()
+    holo = make_material("mqholo", (0.4, 1.0, 0.55), 0.1,
+                         emit=(0.45, 1.0, 0.6), emit_strength=8.0)
+    _xenon(top, (0, 0.53, 0.70), 0.30, holo)
+    _xenon(bot, (0, 0.53, 0.30), 0.30, holo)
+    rig_camera_and_light()
+    render(name)
+
+
+def garden_cap_cell():
+    """The comprehensive cap where the crossing meets the roof: a slice
+    of roof garden, the marquee topping out, and a stub of catwalk — one
+    unit instead of three abutting tiles."""
+    clear_scene()
+    grass = make_material("gclawn", (0.27, 0.44, 0.21), 0.85, noise=0.35)
+    soil = make_material("gcsoil", (0.17, 0.12, 0.08), 0.9, noise=0.4)
+    crop = make_material("gccrop", (0.34, 0.55, 0.24), 0.7, noise=0.4)
+    steel = make_material("gcsteel", (0.21, 0.20, 0.19), 0.6)
+    grate = make_material("gcgrate", (0.15, 0.14, 0.14), 0.55, noise=0.35)
+    holo = make_material("gcholo", (0.4, 1.0, 0.55), 0.1,
+                         emit=(0.45, 1.0, 0.6), emit_strength=7.0)
+    box("lawn", (1, 1, 0.10), (0, 0, 0.05), grass)
+    box("bed", (0.5, 0.24, 0.09), (-0.18, -0.2, 0.14), soil)    # a garden bed
+    for i, bx in enumerate((-0.34, -0.12, 0.10)):
+        box(f"crop{i}", (0.12, 0.12, 0.15), (bx, -0.2, 0.21), crop)
+    box("mcap", (0.34, 0.05, 0.6), (0, 0.5, 0.28), holo)        # marquee topping out (+y)
+    box("cw", (0.22, 0.52, 0.05), (0.42, 0, 0.12), grate)       # catwalk stub (+x)
+    for py in (-0.22, 0.22):
+        box(f"cwp{py}", (0.03, 0.03, 0.16), (0.50, py, 0.18), steel)
+    box("cwr", (0.03, 0.52, 0.03), (0.50, 0, 0.26), steel)
+    rig_camera_and_light()
+    render("garden_cap")
 
 
 def marquee_cell():
@@ -1213,9 +1287,12 @@ def main():
     mast_base_cell()
     fallen_span_cell()
     fallen_tower_cell()
-    billboard_cell()
     catwalk_cell()
-    marquee_cell()
+    garden_cap_cell()
+    for nm, a, b in (("marquee_br", "B", "R"), ("marquee_ac", "A", "C"),
+                     ("marquee_ke", "K", "E"), ("marquee_tt", "T", "T"),
+                     ("marquee_ar", "A", "R"), ("marquee_ms", "M", "S")):
+        _marquee_letters(nm, a, b)
     loggia_cell()
     shop_cell()
     hotel_cell()
