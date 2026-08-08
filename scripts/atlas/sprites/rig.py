@@ -530,13 +530,62 @@ def _marquee_base():
     panel = make_material("mqpanel", (0.07, 0.09, 0.08), 0.7)
     box("block", (1, 1, 1), (0, 0, 0.5), concrete)
     box("grime", (1.002, 1.002, 0.16), (0, 0, 0.08), grime)
-    for wx, w in [(-0.34, True), (0.34, False)]:               # +y side windows
+    for wx, w in [(-0.34, True), (0.34, True)]:                # +y side windows, lit
         box(f"wfy{wx}", (0.15, 0.02, 0.30), (wx, 0.505, 0.55), wf)
         box(f"wgy{wx}", (0.11, 0.015, 0.24), (wx, 0.512, 0.55), lit if w else dark)
-    for wy, w in [(-0.28, False), (0.0, True), (0.28, False)]:  # +x face windows
+    for wy, w in [(-0.28, True), (0.0, True), (0.28, True)]:    # +x face windows, lit
         box(f"wfx{wy}", (0.02, 0.16, 0.30), (0.505, wy, 0.55), wf)
         box(f"wgx{wy}", (0.015, 0.12, 0.24), (0.512, wy, 0.55), lit if w else dark)
     box("sign", (0.34, 0.03, 1.02), (0, 0.505, 0.5), panel)    # central sign strip
+
+
+def _loggia_base():
+    """The 6th-storey glass band (matches Units 6E/6F next door)."""
+    bone = make_material("l6bone", (0.13, 0.165, 0.20), 0.85, noise=0.45)
+    frame = make_material("l6frame", (0.07, 0.08, 0.09), 0.8)
+    glass = make_material("l6glass", (0.42, 0.40, 0.22), 0.25,
+                          emit=(0.92, 0.80, 0.42), emit_strength=4.0)
+    box("lbase", (1, 1, 0.30), (0, 0, 0.15), bone)
+    box("llint", (1, 1, 0.18), (0, 0, 0.81), bone)
+    box("lcore", (0.88, 0.88, 0.42), (0, 0, 0.51), frame)
+    for i, (gx, gy, sx, sy) in enumerate((
+            (0, 0.505, 0.90, 0.03), (0, -0.505, 0.90, 0.03),
+            (0.505, 0, 0.03, 0.90), (-0.505, 0, 0.03, 0.90))):
+        box(f"lg{i}", (sx, sy, 0.40), (gx, gy, 0.51), glass)
+
+
+def _marquee_loggia(name, glyphs):
+    """The 6th-floor marquee tile: the loggia glass band with the green
+    sign strip and its glyphs riding the band."""
+    clear_scene()
+    _loggia_base()
+    panel = make_material("m6panel", (0.07, 0.09, 0.08), 0.7)
+    holo = make_material("m6holo", (0.4, 1.0, 0.55), 0.1,
+                         emit=(0.45, 1.0, 0.6), emit_strength=8.0)
+    box("sign", (0.30, 0.03, 0.7), (0, 0.52, 0.45), panel)
+    for ch, z in glyphs:
+        _xenon(ch, (0, 0.55, z), 0.26, holo)
+    rig_camera_and_light()
+    render(name)
+
+
+def garden_path_cell():
+    """The roof-garden landing where the crossing meets the building: a
+    grated service path and a pipe threading through the greenery, tying
+    the catwalk (east) to the roof and the marquee below (west)."""
+    clear_scene()
+    _garden_lawn()
+    grate = make_material("gpgrate", (0.15, 0.14, 0.14), 0.55, noise=0.35)
+    pipe = make_material("gppipe", (0.31, 0.29, 0.23), 0.5, noise=0.2)
+    crop = make_material("gpcrop", (0.34, 0.55, 0.24), 0.7, noise=0.4)
+    box("path", (1.0, 0.30, 0.04), (0, 0.06, 0.11), grate)     # grated path, E-W
+    box("pipe", (1.02, 0.09, 0.09), (0, -0.22, 0.16), pipe)    # pipe alongside
+    for i, (bx, by) in enumerate(((-0.10, -0.22),)):           # pipe saddle
+        box(f"sad{i}", (0.06, 0.14, 0.10), (bx, by, 0.12), pipe)
+    for i, (tx, ty) in enumerate(((-0.34, 0.34), (0.32, 0.36), (0.36, -0.36))):
+        box(f"crop{i}", (0.12, 0.12, 0.15), (tx, ty, 0.16), crop)
+    rig_camera_and_light()
+    render("garden_path")
 
 
 def _marquee_glyphs(name, glyphs):
@@ -1293,15 +1342,16 @@ def main():
     fallen_span_cell()
     fallen_tower_cell()
     catwalk_cell()
+    garden_path_cell()
     # BRACKETT ARMS as a continuous vertical run, even spacing (~0.45),
     # a wide word gap between the T and the A; z11 (top) down to z6.
     for nm, g in (("marquee_1", [("B", 0.85), ("R", 0.40)]),
                   ("marquee_2", [("A", 0.95), ("C", 0.50), ("K", 0.05)]),
                   ("marquee_3", [("E", 0.60), ("T", 0.15)]),
                   ("marquee_4", [("T", 0.70)]),
-                  ("marquee_5", [("A", 0.50), ("R", 0.05)]),
-                  ("marquee_6", [("M", 0.60), ("S", 0.15)])):
+                  ("marquee_5", [("A", 0.50), ("R", 0.05)])):
         _marquee_glyphs(nm, g)
+    _marquee_loggia("marquee_6", [("M", 0.60), ("S", 0.20)])   # 6th-floor band
     loggia_cell()
     shop_cell()
     hotel_cell()
