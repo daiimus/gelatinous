@@ -494,18 +494,21 @@ def billboard_cell():
     holo = make_material("bbholo", (0.35, 0.95, 0.5), 0.1,
                          emit=(0.4, 1.0, 0.55), emit_strength=7.0)
     grate = make_material("bbgrate", (0.15, 0.14, 0.14), 0.55, noise=0.35)
-    # walkable catwalk grating on the near side, with a rail
-    box("catwalk", (0.94, 0.30, 0.05), (0, -0.22, 0.10), grate)
-    for i, rx in enumerate((-0.42, 0.42)):
-        box(f"rpost{i}", (0.04, 0.04, 0.18), (rx, -0.36, 0.19), frame)
-    box("rail", (0.94, 0.04, 0.03), (0, -0.36, 0.28), frame)
-    # the billboard housing, mounted on posts on the far side
-    for i, px in enumerate((-0.36, 0.36)):
-        box(f"post{i}", (0.07, 0.07, 0.74), (px, 0.30, 0.47), frame)
-    box("board", (0.82, 0.11, 0.54), (0, 0.30, 0.64), house)
-    # the holographic globe projecting forward off the panel
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.26,
-                                           location=(0, -0.34, 0.70))
+    # the whole rig hangs off the WEST edge (-x), bolted to the building
+    # flank in the neighbouring cell, and cantilevers east over the gap.
+    box("plate", (0.06, 0.86, 0.92), (-0.5, 0, 0.5), frame)     # flush mount
+    for i, by in enumerate((-0.30, 0.30)):                      # arms east
+        box(f"arm{i}", (0.62, 0.07, 0.07), (-0.16, by, 0.66), frame)
+        box(f"stay{i}", (0.5, 0.06, 0.06), (-0.22, by, 0.16), frame)  # under-brace
+    # walk-through catwalk spanning the cell, under the sign
+    box("catwalk", (0.92, 0.5, 0.05), (0.04, 0, 0.10), grate)
+    for i, ry in enumerate((-0.30, 0.30)):
+        box(f"rail{i}", (0.92, 0.03, 0.15), (0.04, ry, 0.19), frame)
+    # the sign panel hung from the arms, up high, facing out over the drop
+    box("board", (0.09, 0.68, 0.46), (0.10, 0, 0.68), house)
+    # the holographic globe projecting east off the panel, out over the gap
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.25,
+                                           location=(0.40, 0, 0.70))
     globe = bpy.context.active_object
     globe.data.materials.append(holo)
     rig_camera_and_light()
