@@ -490,15 +490,15 @@ def catwalk_cell():
     """A bare maintenance catwalk — grated floor and a railing, nothing
     else. Just the perch; the sign lives on the building now."""
     clear_scene()
-    grate = make_material("cwgrate", (0.15, 0.14, 0.14), 0.55, noise=0.35)
+    grate = make_material("cwgrate", (0.20, 0.26, 0.19), 0.6, noise=0.4)   # match the garden path
     steel = make_material("cwsteel", (0.21, 0.20, 0.19), 0.6, noise=0.2)
-    # subtle perch, its deck flush with the roof surface (top ~0.10) and
-    # pushed toward the garden (-x) so the two read as continuous decking
-    box("deck", (0.38, 0.30, 0.05), (-0.18, 0, 0.075), grate)
-    for ey in (-0.13, 0.13):                               # rails, long edges
-        box(f"rail{ey}", (0.38, 0.03, 0.03), (-0.18, ey, 0.22), steel)
-        for px in (-0.34, -0.02):
-            box(f"post{ey}{px}", (0.03, 0.03, 0.14), (px, ey, 0.15), steel)
+    # deck reaches the west (garden) edge at the same height/grating as
+    # the path, so the two read as one continuous run
+    box("deck", (0.52, 0.28, 0.04), (-0.24, 0, 0.11), grate)
+    for ey in (-0.12, 0.12):                               # rails, long edges
+        box(f"rail{ey}", (0.52, 0.03, 0.03), (-0.24, ey, 0.24), steel)
+        for px in (-0.46, -0.04):
+            box(f"post{ey}{px}", (0.03, 0.03, 0.13), (px, ey, 0.17), steel)
     rig_camera_and_light()
     render("catwalk")
 
@@ -575,14 +575,16 @@ def garden_path_cell():
     the catwalk (east) to the roof and the marquee below (west)."""
     clear_scene()
     _garden_lawn()
-    grate = make_material("gpgrate", (0.15, 0.14, 0.14), 0.55, noise=0.35)
+    grate = make_material("gpgrate", (0.20, 0.26, 0.19), 0.6, noise=0.4)   # mossy, blends in
     pipe = make_material("gppipe", (0.31, 0.29, 0.23), 0.5, noise=0.2)
     crop = make_material("gpcrop", (0.34, 0.55, 0.24), 0.7, noise=0.4)
-    box("path", (1.0, 0.30, 0.04), (0, 0.06, 0.11), grate)     # grated path, E-W
-    box("pipe", (1.02, 0.09, 0.09), (0, -0.22, 0.16), pipe)    # pipe alongside
-    for i, (bx, by) in enumerate(((-0.10, -0.22),)):           # pipe saddle
-        box(f"sad{i}", (0.06, 0.14, 0.10), (bx, by, 0.12), pipe)
-    for i, (tx, ty) in enumerate(((-0.34, 0.34), (0.32, 0.36), (0.36, -0.36))):
+    moss = make_material("gpmoss", (0.30, 0.48, 0.22), 0.75, noise=0.4)
+    box("path", (1.0, 0.28, 0.04), (0, 0, 0.11), grate)        # grated path, E-W, roof height
+    box("pipe", (1.02, 0.09, 0.09), (0, -0.26, 0.16), pipe)    # pipe alongside
+    box("sad", (0.06, 0.13, 0.10), (-0.10, -0.26, 0.12), pipe)
+    for i, (mx, my) in enumerate(((-0.34, 0.07), (0.26, -0.09), (0.06, 0.10))):
+        box(f"moss{i}", (0.11, 0.09, 0.05), (mx, my, 0.14), moss)   # greenery creeps onto it
+    for i, (tx, ty) in enumerate(((-0.36, 0.36), (0.32, 0.38), (0.38, -0.38))):
         box(f"crop{i}", (0.12, 0.12, 0.15), (tx, ty, 0.16), crop)
     rig_camera_and_light()
     render("garden_path")
