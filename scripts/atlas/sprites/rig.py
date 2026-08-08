@@ -492,11 +492,13 @@ def catwalk_cell():
     clear_scene()
     grate = make_material("cwgrate", (0.15, 0.14, 0.14), 0.55, noise=0.35)
     steel = make_material("cwsteel", (0.21, 0.20, 0.19), 0.6, noise=0.2)
-    box("deck", (0.30, 0.24, 0.06), (0, 0, 0.10), grate)   # subtle little perch
-    for ey in (-0.10, 0.10):                               # rails, long edges
-        box(f"rail{ey}", (0.30, 0.03, 0.03), (0, ey, 0.26), steel)
-        for px in (-0.12, 0.12):
-            box(f"post{ey}{px}", (0.03, 0.03, 0.18), (px, ey, 0.18), steel)
+    # subtle perch, its deck flush with the roof surface (top ~0.10) and
+    # pushed toward the garden (-x) so the two read as continuous decking
+    box("deck", (0.38, 0.30, 0.05), (-0.18, 0, 0.075), grate)
+    for ey in (-0.13, 0.13):                               # rails, long edges
+        box(f"rail{ey}", (0.38, 0.03, 0.03), (-0.18, ey, 0.22), steel)
+        for px in (-0.34, -0.02):
+            box(f"post{ey}{px}", (0.03, 0.03, 0.14), (px, ey, 0.15), steel)
     rig_camera_and_light()
     render("catwalk")
 
@@ -537,13 +539,16 @@ def _marquee_base():
     box("sign", (0.34, 0.03, 1.02), (0, 0.505, 0.5), panel)    # central sign strip
 
 
-def _marquee_letters(name, top, bot):
+def _marquee_glyphs(name, glyphs):
+    """One marquee tile carrying whatever glyphs of the continuous
+    vertical name fall in its z-band (list of (char, local_z)); even
+    letter spacing across tiles, a wide gap for the word break."""
     clear_scene()
     _marquee_base()
     holo = make_material("mqholo", (0.4, 1.0, 0.55), 0.1,
                          emit=(0.45, 1.0, 0.6), emit_strength=8.0)
-    _xenon(top, (0, 0.53, 0.70), 0.30, holo)
-    _xenon(bot, (0, 0.53, 0.30), 0.30, holo)
+    for ch, z in glyphs:
+        _xenon(ch, (0, 0.53, z), 0.28, holo)
     rig_camera_and_light()
     render(name)
 
@@ -1288,11 +1293,15 @@ def main():
     fallen_span_cell()
     fallen_tower_cell()
     catwalk_cell()
-    garden_cap_cell()
-    for nm, a, b in (("marquee_br", "B", "R"), ("marquee_ac", "A", "C"),
-                     ("marquee_ke", "K", "E"), ("marquee_tt", "T", "T"),
-                     ("marquee_ar", "A", "R"), ("marquee_ms", "M", "S")):
-        _marquee_letters(nm, a, b)
+    # BRACKETT ARMS as a continuous vertical run, even spacing (~0.45),
+    # a wide word gap between the T and the A; z11 (top) down to z6.
+    for nm, g in (("marquee_1", [("B", 0.85), ("R", 0.40)]),
+                  ("marquee_2", [("A", 0.95), ("C", 0.50), ("K", 0.05)]),
+                  ("marquee_3", [("E", 0.60), ("T", 0.15)]),
+                  ("marquee_4", [("T", 0.70)]),
+                  ("marquee_5", [("A", 0.50), ("R", 0.05)]),
+                  ("marquee_6", [("M", 0.60), ("S", 0.15)])):
+        _marquee_glyphs(nm, g)
     loggia_cell()
     shop_cell()
     hotel_cell()
