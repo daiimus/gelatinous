@@ -415,6 +415,53 @@ def machine_cell():
     render("machine")
 
 
+def mast_segment_cell():
+    """A repeating lattice-mast segment: four legs run the full cell
+    height plus X-bracing, so stacked cells read as one continuous
+    antenna climbing the sky."""
+    clear_scene()
+    steel = make_material("msteel", (0.21, 0.20, 0.19), 0.6, noise=0.2)
+    rust = make_material("mrust", (0.31, 0.20, 0.13), 0.7, noise=0.4)
+    R = 0.15
+    for i, (lx, ly) in enumerate(((R, R), (R, -R), (-R, R), (-R, -R))):
+        box(f"leg{i}", (0.05, 0.05, 1.0), (lx, ly, 0.5), steel)
+    for i, zc in enumerate((0.06, 0.5, 0.94)):           # horizontal ties
+        box(f"tieN{i}", (2 * R, 0.04, 0.04), (0, R, zc), steel)
+        box(f"tieS{i}", (2 * R, 0.04, 0.04), (0, -R, zc), steel)
+        box(f"tieE{i}", (0.04, 2 * R, 0.04), (R, 0, zc), steel)
+        box(f"tieW{i}", (0.04, 2 * R, 0.04), (-R, 0, zc), steel)
+    th = math.atan(2 * R / 1.0)                          # X-braces, lit faces
+    box("bX1", (0.035, 0.035, 1.02), (R, 0, 0.5), steel, rot=(th, 0, 0))
+    box("bX2", (0.035, 0.035, 1.02), (R, 0, 0.5), steel, rot=(-th, 0, 0))
+    box("bY1", (0.035, 0.035, 1.02), (0, R, 0.5), steel, rot=(0, th, 0))
+    box("bY2", (0.035, 0.035, 1.02), (0, R, 0.5), steel, rot=(0, -th, 0))
+    for i in range(5):                                   # climb ladder
+        box(f"rung{i}", (0.04, 0.26, 0.025), (-R, 0, 0.12 + i * 0.2), rust)
+    rig_camera_and_light()
+    render("mast")
+
+
+def mast_base_cell():
+    """The antenna's foot in the green park: lawn (so it meshes with
+    the parklet), a concrete pad, and the lattice mast rising to meet
+    the segments above, guyed off to anchors on the grass."""
+    clear_scene()
+    _garden_lawn()
+    concrete = make_material("mbpad", (0.33, 0.32, 0.30), 0.7, noise=0.2)
+    steel = make_material("mbsteel", (0.21, 0.20, 0.19), 0.6, noise=0.2)
+    box("pad", (0.52, 0.52, 0.09), (0, 0, 0.13), concrete)
+    R = 0.15
+    for i, (lx, ly) in enumerate(((R, R), (R, -R), (-R, R), (-R, -R))):
+        box(f"leg{i}", (0.06, 0.06, 0.82), (lx, ly, 0.55), steel)
+    box("tieN", (2 * R, 0.04, 0.04), (0, R, 0.90), steel)
+    box("tieE", (0.04, 2 * R, 0.04), (R, 0, 0.90), steel)
+    for i, (gx, gy) in enumerate(((0.42, 0.42), (0.42, -0.42),
+                                  (-0.42, 0.42), (-0.42, -0.42))):
+        box(f"anchor{i}", (0.06, 0.06, 0.14), (gx, gy, 0.16), steel)
+    rig_camera_and_light()
+    render("mast_base")
+
+
 def loggia_cell():
     """The terrace-suite motif: old terrace bones in masonry, glazing
     above, and a lit skylight grid on the crown — a warm glasshouse
@@ -1038,6 +1085,8 @@ def main():
     garden_cell()
     garden_bed_cell()
     garden_bench_cell()
+    mast_segment_cell()
+    mast_base_cell()
     loggia_cell()
     shop_cell()
     hotel_cell()
