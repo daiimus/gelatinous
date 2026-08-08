@@ -441,6 +441,49 @@ def mast_segment_cell():
     render("mast")
 
 
+def _fallen_lattice(cx, length):
+    """A horizontal lattice tube lying along x (the fallen mast), with a
+    rust-plank walkway on top. Shared by the base and span tiles so they
+    read as one continuous toppled tower across cells."""
+    steel = make_material("flsteel", (0.22, 0.21, 0.20), 0.6, noise=0.2)
+    rust = make_material("flrust", (0.32, 0.20, 0.13), 0.7, noise=0.4)
+    R, base = 0.13, 0.16
+    for i, (ry, rz) in enumerate(((R, base), (-R, base),
+                                  (R, base + 2 * R), (-R, base + 2 * R))):
+        box(f"rail{i}", (length, 0.05, 0.05), (cx, ry, rz), steel)
+    n = max(2, int(length / 0.24))
+    for i in range(n + 1):
+        rx = cx - length / 2 + i * length / n
+        box(f"rt{i}", (0.045, 2 * R + 0.06, 0.045), (rx, 0, base + 2 * R), steel)
+        box(f"rb{i}", (0.045, 2 * R + 0.06, 0.045), (rx, 0, base), steel)
+        box(f"rl{i}", (0.045, 0.045, 2 * R + 0.06), (rx, R, base + R), steel)
+        box(f"rr{i}", (0.045, 0.045, 2 * R + 0.06), (rx, -R, base + R), steel)
+    box("plank", (length, 0.22, 0.03), (cx, 0, base + 2 * R + 0.05), rust)
+
+
+def fallen_span_cell():
+    """A section of the toppled antenna spanning the gap — the lattice
+    over the void, nothing under it but the drop."""
+    clear_scene()
+    _fallen_lattice(0.0, 1.06)
+    rig_camera_and_light()
+    render("fallen_span")
+
+
+def fallen_tower_cell():
+    """Where the mast toppled: a roof deck, the snapped stump, and the
+    fallen lattice rooted here and running off toward the gap."""
+    clear_scene()
+    tar = make_material("fttar", (0.14, 0.135, 0.13), 0.85, noise=0.4)
+    steel = make_material("ftsteel", (0.22, 0.21, 0.20), 0.6, noise=0.2)
+    box("slab", (1, 1, 0.10), (0, 0, 0.05), tar)
+    box("pad", (0.34, 0.34, 0.06), (0.30, 0, 0.13), steel)      # base pad
+    box("stump", (0.10, 0.30, 0.20), (0.42, 0, 0.20), steel)    # snapped root
+    _fallen_lattice(-0.12, 0.86)                                # lies off west
+    rig_camera_and_light()
+    render("fallen_tower")
+
+
 def mast_base_cell():
     """The antenna's foot in the green park: lawn (so it meshes with
     the parklet), a concrete pad, and the lattice mast rising to meet
@@ -1087,6 +1130,8 @@ def main():
     garden_bench_cell()
     mast_segment_cell()
     mast_base_cell()
+    fallen_span_cell()
+    fallen_tower_cell()
     loggia_cell()
     shop_cell()
     hotel_cell()
