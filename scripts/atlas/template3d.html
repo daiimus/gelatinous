@@ -198,6 +198,10 @@ function modelFor(c){
     if (c.t==='alley') return (nsn&&!ewn)?'alley_ns':'alley_ew';
     return (ewn&&nsn)?'street_ix': nsn?'street_ns':'street_ew';
   }
+  if (c.t==='garden'){          // distribute variants so tiles mesh as a parklet
+    const v=Math.abs(c.x*7+c.y*13)%3;
+    return v?('garden_'+(v+1)):'garden';
+  }
   if (MODELS[c.t]) return c.t;
   return 'generic';
 }
