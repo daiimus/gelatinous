@@ -604,6 +604,27 @@ def _marquee_glyphs(name, glyphs):
     render(name)
 
 
+def _air_marquee(name, glyphs):
+    """A floating holo-banner tile hung in the canyon below the catwalk —
+    no building block behind it, just a faint green sign pane between two
+    slim emitter rails (continuous when the tiles stack) and the bright
+    lettering projected in front. Reuses the flank's glyph z-bands so the
+    name reads identically, only now it hangs in open air."""
+    clear_scene()
+    pane = make_material("ampane", (0.06, 0.11, 0.08), 0.25,
+                         emit=(0.10, 0.34, 0.18), emit_strength=1.6)   # dim green glass
+    rail = make_material("amrail", (0.11, 0.14, 0.13), 0.55)
+    holo = make_material("amholo", (0.4, 1.0, 0.55), 0.1,
+                         emit=(0.45, 1.0, 0.6), emit_strength=8.0)
+    box("pane", (0.40, 0.03, 1.0), (0, 0.42, 0.5), pane)          # faint sign pane, +y
+    box("railL", (0.03, 0.05, 1.0), (-0.21, 0.42, 0.5), rail)     # side emitter rails,
+    box("railR", (0.03, 0.05, 1.0), (0.21, 0.42, 0.5), rail)      # continuous when stacked
+    for ch, z in glyphs:
+        _xenon(ch, (0, 0.46, z), 0.28, holo)                      # letters float in front
+    rig_camera_and_light()
+    render(name)
+
+
 def garden_cap_cell():
     """The comprehensive cap where the crossing meets the roof: a slice
     of roof garden, the marquee topping out, and a stub of catwalk — one
@@ -1354,6 +1375,15 @@ def main():
                   ("marquee_5", [("A", 0.50), ("R", 0.05)])):
         _marquee_glyphs(nm, g)
     _marquee_loggia("marquee_6", [("M", 0.60), ("S", 0.20)])   # 6th-floor band
+    # the same name as a free-floating holo-banner in the canyon (below
+    # the catwalk); identical z-bands so the lettering lines up, z11->z6.
+    for nm, g in (("air_marquee_1", [("B", 0.85), ("R", 0.40)]),
+                  ("air_marquee_2", [("A", 0.95), ("C", 0.50), ("K", 0.05)]),
+                  ("air_marquee_3", [("E", 0.60), ("T", 0.15)]),
+                  ("air_marquee_4", [("T", 0.70)]),
+                  ("air_marquee_5", [("A", 0.50), ("R", 0.05)]),
+                  ("air_marquee_6", [("M", 0.60), ("S", 0.20)])):
+        _air_marquee(nm, g)
     loggia_cell()
     shop_cell()
     hotel_cell()
