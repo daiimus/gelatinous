@@ -490,13 +490,11 @@ def catwalk_cell():
     clear_scene()
     grate = make_material("cwgrate", (0.15, 0.14, 0.14), 0.55, noise=0.35)
     steel = make_material("cwsteel", (0.21, 0.20, 0.19), 0.6, noise=0.2)
-    box("deck", (0.94, 0.94, 0.06), (0, 0, 0.10), grate)
-    for ex, ey, sx, sy in ((0, 0.46, 0.94, 0.04), (0, -0.46, 0.94, 0.04),
-                           (0.46, 0, 0.04, 0.94)):        # rails: 3 outer edges
-        box(f"rail{ex}{ey}", (sx, sy, 0.03), (ex, ey, 0.30), steel)
-        for p in (-0.4, 0.4):
-            px, py = (p, ey) if sx > sy else (ex, p)
-            box(f"post{ex}{ey}{p}", (0.04, 0.04, 0.22), (px, py, 0.20), steel)
+    box("deck", (0.60, 0.48, 0.06), (0, 0, 0.10), grate)   # short platform
+    for ey in (-0.22, 0.22):                               # rails, long edges
+        box(f"rail{ey}", (0.60, 0.03, 0.03), (0, ey, 0.28), steel)
+        for px in (-0.26, 0.26):
+            box(f"post{ey}{px}", (0.03, 0.03, 0.20), (px, ey, 0.19), steel)
     rig_camera_and_light()
     render("catwalk")
 
@@ -506,16 +504,32 @@ def marquee_cell():
     the tenement wall plus a full-height green sign channel on the east
     face, sized to stack seamlessly into one long running sign."""
     clear_scene()
-    wall = make_material("mqwall", (0.13, 0.165, 0.20), 0.85, noise=0.45)
-    frame = make_material("mqframe", (0.10, 0.11, 0.11), 0.7)
+    # matches the tenement (concrete + grime + lit/unlit windows) so it
+    # reads as the same building, with the marquee as an add-on
+    concrete = make_material("mqcon", (0.13, 0.165, 0.20), 0.85, noise=0.45)
+    grime = make_material("mqgrime", (0.09, 0.11, 0.13), 0.95, noise=0.3)
+    wframe = make_material("mqwf", (0.07, 0.08, 0.09), 0.8)
+    lit = make_material("mqlit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28))
+    dark = make_material("mqdk", (0.03, 0.035, 0.05), 0.3)
     holo = make_material("mqholo", (0.35, 0.95, 0.5), 0.1,
                          emit=(0.4, 1.0, 0.55), emit_strength=6.0)
-    box("wall", (1, 1, 1), (0, 0, 0.5), wall)
-    # a vertical blade sign on the building's exterior NE corner, full
-    # height so stacked cells make one continuous running marquee; set on
-    # the corner so it reads from both the street and the gap sides
-    box("chan", (0.20, 0.20, 1.02), (0.46, 0.46, 0.5), frame)
-    box("sign", (0.13, 0.13, 1.03), (0.54, 0.54, 0.5), holo)
+    hframe = make_material("mqhf", (0.10, 0.11, 0.11), 0.7)
+    box("block", (1, 1, 1), (0, 0, 0.5), concrete)
+    box("grime", (1.002, 1.002, 0.16), (0, 0, 0.08), grime)
+    for wx, w in [(-0.28, True), (0.0, False), (0.28, True)]:   # +y face
+        box(f"wfy{wx}", (0.16, 0.02, 0.30), (wx, 0.505, 0.55), wframe)
+        box(f"wgy{wx}", (0.12, 0.015, 0.24), (wx, 0.512, 0.55),
+            lit if w else dark)
+    for wy, w in [(-0.28, False), (0.0, True), (0.28, False)]:  # +x face
+        box(f"wfx{wy}", (0.02, 0.16, 0.30), (0.505, wy, 0.55), wframe)
+        box(f"wgx{wy}", (0.015, 0.12, 0.24), (0.512, wy, 0.55),
+            lit if w else dark)
+    # the marquee: a WIDE green blade wrapping the NE corner, full height,
+    # so stacked cells make one continuous running sign
+    box("mchx", (0.06, 0.6, 1.03), (0.512, 0.18, 0.5), hframe)  # +x panel
+    box("msgx", (0.03, 0.5, 1.04), (0.55, 0.18, 0.5), holo)
+    box("mchy", (0.6, 0.06, 1.03), (0.18, 0.512, 0.5), hframe)  # +y panel
+    box("msgy", (0.5, 0.03, 1.04), (0.18, 0.55, 0.5), holo)
     rig_camera_and_light()
     render("marquee")
 
