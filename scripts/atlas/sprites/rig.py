@@ -484,6 +484,42 @@ def fallen_tower_cell():
     render("fallen_tower")
 
 
+def catwalk_cell():
+    """A bare maintenance catwalk — grated floor and a railing, nothing
+    else. Just the perch; the sign lives on the building now."""
+    clear_scene()
+    grate = make_material("cwgrate", (0.15, 0.14, 0.14), 0.55, noise=0.35)
+    steel = make_material("cwsteel", (0.21, 0.20, 0.19), 0.6, noise=0.2)
+    box("deck", (0.94, 0.94, 0.06), (0, 0, 0.10), grate)
+    for ex, ey, sx, sy in ((0, 0.46, 0.94, 0.04), (0, -0.46, 0.94, 0.04),
+                           (0.46, 0, 0.04, 0.94)):        # rails: 3 outer edges
+        box(f"rail{ex}{ey}", (sx, sy, 0.03), (ex, ey, 0.30), steel)
+        for p in (-0.4, 0.4):
+            px, py = (p, ey) if sx > sy else (ex, p)
+            box(f"post{ex}{ey}{p}", (0.04, 0.04, 0.22), (px, py, 0.20), steel)
+    rig_camera_and_light()
+    render("catwalk")
+
+
+def marquee_cell():
+    """A segment of the holo-marquee running down the Brackett's flank:
+    the tenement wall plus a full-height green sign channel on the east
+    face, sized to stack seamlessly into one long running sign."""
+    clear_scene()
+    wall = make_material("mqwall", (0.13, 0.165, 0.20), 0.85, noise=0.45)
+    frame = make_material("mqframe", (0.10, 0.11, 0.11), 0.7)
+    holo = make_material("mqholo", (0.35, 0.95, 0.5), 0.1,
+                         emit=(0.4, 1.0, 0.55), emit_strength=6.0)
+    box("wall", (1, 1, 1), (0, 0, 0.5), wall)
+    # a vertical blade sign on the building's exterior NE corner, full
+    # height so stacked cells make one continuous running marquee; set on
+    # the corner so it reads from both the street and the gap sides
+    box("chan", (0.20, 0.20, 1.02), (0.46, 0.46, 0.5), frame)
+    box("sign", (0.13, 0.13, 1.03), (0.54, 0.54, 0.5), holo)
+    rig_camera_and_light()
+    render("marquee")
+
+
 def billboard_cell():
     """The dead terraform board: a truss-mounted panel over the street
     still projecting a green-world hologram that never came true, a
@@ -1164,6 +1200,8 @@ def main():
     fallen_span_cell()
     fallen_tower_cell()
     billboard_cell()
+    catwalk_cell()
+    marquee_cell()
     loggia_cell()
     shop_cell()
     hotel_cell()
