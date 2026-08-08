@@ -71,7 +71,7 @@ VIEW = {
 }
 roof = {}
 for pos, suffix in ROOF.items():
-    roof[pos] = room_at(f"{B} - {suffix}")
+    roof[pos] = room_at(f"{B} - {suffix}", (pos[0], pos[1], 16))
 for pos, where in VIEW.items():
     r = roof[pos]
     if not r.db.desc:
