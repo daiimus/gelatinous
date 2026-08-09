@@ -320,6 +320,144 @@ def roof_cell():
     render("roof")
 
 
+def _disc(name, r, loc, mat, seg=16):
+    """A flat n-gon disc facing ±y (both windings, so it reads from
+    either side) — the porthole primitive."""
+    verts = [(loc[0] + r * math.cos(2 * math.pi * i / seg), loc[1],
+              loc[2] + r * math.sin(2 * math.pi * i / seg))
+             for i in range(seg)]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], [tuple(range(seg)),
+                                 tuple(reversed(range(seg)))])
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(mat)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
+def _disc_x(name, r, loc, mat, seg=16):
+    """The same disc facing ±x (for the east/west hull faces)."""
+    verts = [(loc[0], loc[1] + r * math.cos(2 * math.pi * i / seg),
+              loc[2] + r * math.sin(2 * math.pi * i / seg))
+             for i in range(seg)]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], [tuple(range(seg)),
+                                 tuple(reversed(range(seg)))])
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(mat)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
+def _liner_base():
+    """One prefab module of the Halcyon's hull — a Slowboat liner grown
+    into a walk-up. Painted-steel plate (bone livery), corner frame
+    posts and top/bottom flanges so each storey reads as a bolted-on
+    component, a teal boot-stripe band, and PORTHOLES where a tenement
+    would have windows. Returns the shared materials for variants."""
+    plate = make_material("lnplate", (0.40, 0.41, 0.37), 0.6, noise=0.35)
+    teal = make_material("lnteal", (0.10, 0.30, 0.32), 0.55, noise=0.25)
+    steel = make_material("lnsteel", (0.14, 0.15, 0.15), 0.6, noise=0.2)
+    ring = make_material("lnring", (0.35, 0.28, 0.16), 0.5)
+    lit = make_material("lnlit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28))
+    dark = make_material("lndark", (0.03, 0.035, 0.05), 0.3)
+    grime = make_material("lngrime", (0.16, 0.17, 0.16), 0.9, noise=0.3)
+    box("module", (1, 1, 1), (0, 0, 0.5), plate)
+    box("band", (1.008, 1.008, 0.14), (0, 0, 0.22), teal)      # boot stripe
+    box("grime", (1.004, 1.004, 0.10), (0, 0, 0.05), grime)
+    box("flange_t", (1.01, 1.01, 0.06), (0, 0, 0.97), steel)   # module seams
+    box("flange_b", (1.01, 1.01, 0.05), (0, 0, 0.025), steel)
+    for cx, cy in ((0.48, 0.48), (0.48, -0.48), (-0.48, 0.48), (-0.48, -0.48)):
+        box(f"post{cx}{cy}", (0.06, 0.06, 1.0), (cx, cy, 0.5), steel)
+    for i in range(5):                                         # flange bolts
+        box(f"bolt{i}", (0.04, 0.02, 0.04), (-0.32 + i * 0.16, 0.508, 0.97), ring)
+    # portholes, the tenement window rhythm gone round
+    def ports_y(y_ring, y_glass, pattern):
+        for (wx, litw) in pattern:
+            _disc(f"pr{y_ring}{wx}", 0.085, (wx, y_ring, 0.60), ring)
+            _disc(f"pg{y_ring}{wx}", 0.060, (wx, y_glass, 0.60),
+                  lit if litw else dark)
+    def ports_x(x_ring, x_glass, pattern):
+        for (wy, litw) in pattern:
+            _disc_x(f"pr{x_ring}{wy}", 0.085, (x_ring, wy, 0.60), ring)
+            _disc_x(f"pg{x_ring}{wy}", 0.060, (x_glass, wy, 0.60),
+                    lit if litw else dark)
+    ports_y(0.505, 0.512, [(-0.28, True), (0.0, False), (0.28, True)])    # +y
+    ports_y(-0.505, -0.512, [(-0.28, False), (0.0, True), (0.28, False)])  # -y
+    ports_x(0.505, 0.512, [(-0.28, False), (0.0, True), (0.28, False)])   # +x
+    ports_x(-0.505, -0.512, [(-0.24, True), (0.24, False)])               # -x
+    return plate, teal
+
+
+def liner_cell():
+    clear_scene()
+    _liner_base()
+    rig_camera_and_light()
+    render("liner")
+
+
+def _liner_reg(name, text):
+    """A hull module carrying part of the registry — SBL-0117 stenciled
+    big across two adjacent modules on the home-visible face, the way a
+    hull wears its number."""
+    clear_scene()
+    _liner_base()
+    stencil = make_material("lnreg", (0.55, 0.52, 0.44), 0.8,
+                            emit=(0.60, 0.57, 0.48), emit_strength=1.2)
+    _xenon(text, (0, 0.512, 0.36), 0.26, stencil)
+    rig_camera_and_light()
+    render(name)
+
+
+def _liner_deck_base():
+    """The sun deck: teal-painted steel, plating strips, a low bulwark
+    lip, deck furniture sparse enough to jump across."""
+    slab = make_material("ldslab", (0.16, 0.28, 0.27), 0.7, noise=0.3)
+    bone = make_material("ldbone", (0.44, 0.44, 0.38), 0.7, noise=0.25)
+    vent = make_material("ldvent", (0.22, 0.24, 0.22), 0.6)
+    box("deck", (1, 1, 0.10), (0, 0, 0.05), slab)
+    for i in range(3):                                     # plating strips
+        box(f"strip{i}", (1.0, 0.02, 0.012), (0, -0.30 + i * 0.30, 0.105), bone)
+    for loc, size in (((0, 0.47, 0.13), (1, 0.05, 0.06)),   # bulwark lip
+                      ((0, -0.47, 0.13), (1, 0.05, 0.06)),
+                      ((0.47, 0, 0.13), (0.05, 0.88, 0.06)),
+                      ((-0.47, 0, 0.13), (0.05, 0.88, 0.06))):
+        box(f"bul{loc}", size, loc, bone)
+    box("vent", (0.14, 0.14, 0.12), (0.30, 0.30, 0.16), vent)
+
+
+def liner_deck_cell():
+    clear_scene()
+    _liner_deck_base()
+    rig_camera_and_light()
+    render("liner_deck")
+
+
+def _liner_deck_stencil(name, text):
+    """A deck tile with painted lettering lying flat — HALCYON DAYS
+    across the sun deck. Mirrored in x and rotated 45° so it reads
+    left-to-right along the atlas's (horizontally mirrored) screen
+    axis at the home view."""
+    clear_scene()
+    _liner_deck_base()
+    paint = make_material("ldpaint", (0.60, 0.58, 0.50), 0.8,
+                          emit=(0.62, 0.60, 0.52), emit_strength=0.8)
+    bpy.ops.object.text_add(location=(0, 0, 0.115))
+    t = bpy.context.active_object
+    t.data.body = text
+    t.data.font = bpy.data.fonts.load(FONT)
+    t.data.size = 0.26
+    t.data.extrude = 0.01
+    t.data.align_x = "CENTER"
+    t.data.align_y = "CENTER"
+    t.rotation_euler = (0, 0, 0.7854)
+    t.scale = (-1, 1, 1)
+    t.data.materials.append(paint)
+    bpy.ops.object.convert(target="MESH")
+    rig_camera_and_light()
+    render(name)
+
+
 def fire_escape_cell():
     """Iron clinging to an implied wall: grated landing, north rail,
     and the downward ladder off the east edge — it drops BELOW the
@@ -1403,6 +1541,13 @@ def main():
                  [0.98, 0.75, 0.275])
     _air_marquee("air_marquee_6", [("M", 0.60), ("S", 0.20)],
                  [0.98, 0.40], finial=True)
+    # the Halcyon's own identity: prefab liner hull modules + sun deck
+    liner_cell()
+    _liner_reg("liner_reg_a", "SBL-")
+    _liner_reg("liner_reg_b", "0117")
+    liner_deck_cell()
+    _liner_deck_stencil("liner_deck_halcyon", "HALCYON")
+    _liner_deck_stencil("liner_deck_days", "DAYS")
     loggia_cell()
     shop_cell()
     hotel_cell()
