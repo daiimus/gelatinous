@@ -986,6 +986,153 @@ def hotel_cell():
     render("hotel")
 
 
+def _crane_lattice(z0=0.0, h=1.0, lit=False):
+    """A Boiler-Run tower-crane mast segment — four yellow legs, ties and
+    X-braces, a climb ladder up the west face. Stacks continuously into
+    one tower. Returns (steel, yellow) for callers to keep building."""
+    steel = make_material("crsteel", (0.21, 0.20, 0.19), 0.6, noise=0.2)
+    yellow = make_material("cryellow", (0.60, 0.50, 0.10), 0.6, noise=0.3)
+    rust = make_material("crrust", (0.31, 0.20, 0.13), 0.7, noise=0.4)
+    R = 0.16
+    cz = z0 + h / 2
+    for i, (lx, ly) in enumerate(((R, R), (R, -R), (-R, R), (-R, -R))):
+        box(f"leg{i}", (0.06, 0.06, h), (lx, ly, cz), yellow)
+    for zc in (z0 + 0.06, cz, z0 + h - 0.06):            # horizontal ties
+        for tag, sz, loc in (("N", (2 * R, 0.04, 0.04), (0, R, zc)),
+                             ("S", (2 * R, 0.04, 0.04), (0, -R, zc)),
+                             ("E", (0.04, 2 * R, 0.04), (R, 0, zc)),
+                             ("W", (0.04, 2 * R, 0.04), (-R, 0, zc))):
+            box(f"tie{tag}{zc:.2f}", sz, loc, steel)
+    th = math.atan(2 * R / h)                            # X-braces on lit faces
+    box("bX1", (0.035, 0.035, h + 0.02), (R, 0, cz), steel, rot=(th, 0, 0))
+    box("bX2", (0.035, 0.035, h + 0.02), (R, 0, cz), steel, rot=(-th, 0, 0))
+    box("bY1", (0.035, 0.035, h + 0.02), (0, R, cz), steel, rot=(0, th, 0))
+    box("bY2", (0.035, 0.035, h + 0.02), (0, R, cz), steel, rot=(0, -th, 0))
+    rungs = max(2, int(h / 0.2))
+    for i in range(rungs):                               # ladder, west face
+        box(f"rung{i}", (0.04, 0.26, 0.025), (-R, 0, z0 + 0.12 + i * 0.2), rust)
+    return steel, yellow
+
+
+def crane_mast_cell():
+    clear_scene()
+    _crane_lattice()
+    rig_camera_and_light()
+    render("crane_mast")
+
+
+def crane_cab_cell():
+    """The operator's cab topping the mast, with the jib reaching north
+    over the lot and a stubby counter-jib with its weight to the south."""
+    clear_scene()
+    steel, yellow = _crane_lattice(z0=0.0, h=0.55)         # tower stub
+    glass = make_material("ccglass", (0.9, 0.72, 0.35), 0.3,
+                          emit=(1.0, 0.72, 0.30), emit_strength=3.0)
+    cab = make_material("cccab", (0.60, 0.50, 0.10), 0.6, noise=0.3)
+    dark = make_material("ccdark", (0.10, 0.10, 0.11), 0.7)
+    # the cab box
+    box("cab", (0.34, 0.34, 0.30), (0, 0, 0.68), cab)
+    box("winN", (0.26, 0.02, 0.16), (0, 0.175, 0.70), glass)   # window over the lot
+    box("winW", (0.02, 0.26, 0.16), (-0.175, 0, 0.70), glass)  # window west
+    # the jib: a lattice boom reaching north (+y) over the container
+    for rail_z in (0.86, 0.98):
+        box(f"jibT{rail_z}", (0.06, 0.62, 0.03), (0, 0.34, rail_z), yellow)
+    for i in range(6):
+        jy = 0.10 + i * 0.11
+        box(f"jibd{i}", (0.04, 0.04, 0.13), (0, jy, 0.92), steel, rot=(0.6, 0, 0))
+    box("hook", (0.03, 0.03, 0.12), (0, 0.60, 0.80), dark)     # cable + hook, tip
+    box("cabletip", (0.012, 0.012, 0.30), (0, 0.60, 0.66), dark)
+    # counter-jib + counterweight, short to the south
+    box("cjib", (0.06, 0.26, 0.03), (0, -0.22, 0.90), yellow)
+    box("cweight", (0.16, 0.12, 0.16), (0, -0.30, 0.84), steel)
+    rig_camera_and_light()
+    render("crane_cab")
+
+
+def crane_container_cell():
+    """The Longhaul container slung on the cable — a corrugated box with
+    a lift frame and cable up top, doors chained open on the west end.
+    Renders wherever the car currently hangs (the room really moves)."""
+    clear_scene()
+    body = make_material("cnbody", (0.30, 0.36, 0.30), 0.7, noise=0.3)   # weathered green
+    rib = make_material("cnrib", (0.22, 0.27, 0.22), 0.75, noise=0.2)
+    steel = make_material("cnsteel", (0.21, 0.20, 0.19), 0.6)
+    teal = make_material("cnteal", (0.10, 0.30, 0.32), 0.55)
+    dark = make_material("cndark", (0.06, 0.07, 0.07), 0.6)
+    box("box", (0.72, 0.42, 0.34), (0, 0, 0.34), body)
+    for i in range(7):                                    # corrugation ribs
+        rx = -0.30 + i * 0.10
+        box(f"rib{i}", (0.02, 0.44, 0.34), (rx, 0, 0.34), rib)
+    box("band", (0.73, 0.43, 0.05), (0, 0, 0.20), teal)   # boot stripe
+    box("doorW", (0.03, 0.40, 0.32), (-0.36, 0, 0.34), dark)   # open doors, west
+    for cx in (-0.34, 0.34):                              # corner castings
+        for cy in (-0.20, 0.20):
+            box(f"cc{cx}{cy}", (0.05, 0.05, 0.05), (cx, cy, 0.52), steel)
+    # lift frame + cable up to the (implied) jib
+    box("frameL", (0.03, 0.03, 0.14), (-0.30, 0, 0.58), steel, rot=(0, 0.5, 0))
+    box("frameR", (0.03, 0.03, 0.14), (0.30, 0, 0.58), steel, rot=(0, -0.5, 0))
+    box("cable", (0.015, 0.015, 0.45), (0, 0, 0.82), dark)
+    rig_camera_and_light()
+    render("crane_container")
+
+
+def crane_lot_cell():
+    """The fenced street edge of the dig — plywood hoarding, torn permits,
+    a mud yard behind."""
+    clear_scene()
+    mud = make_material("ltmud", (0.16, 0.13, 0.10), 0.9, noise=0.4)
+    ply = make_material("ltply", (0.45, 0.33, 0.16), 0.8, noise=0.35)
+    post = make_material("ltpost", (0.20, 0.16, 0.11), 0.7)
+    hazard_y = make_material("lthazY", (0.62, 0.50, 0.10), 0.7)
+    box("yard", (1, 1, 0.06), (0, 0, 0.03), mud)
+    for wy, sy in ((0.47, 0.06), (-0.47, 0.06)):          # hoarding N/S
+        box(f"fenceNS{wy}", (1.0, sy, 0.42), (0, wy, 0.24), ply)
+    box("fenceE", (0.06, 1.0, 0.42), (0.47, 0, 0.24), ply)
+    for i in range(5):                                    # posts
+        box(f"post{i}", (0.05, 0.05, 0.46), (-0.4 + i * 0.2, 0.47, 0.23), post)
+    box("permit", (0.16, 0.02, 0.12), (0.05, 0.505, 0.30), hazard_y)
+    rig_camera_and_light()
+    render("crane_lot")
+
+
+def crane_base_cell():
+    """The yard directly under the crane — the concrete pad the mast is
+    bolted to, pallets, a dead generator."""
+    clear_scene()
+    mud = make_material("cbmud", (0.16, 0.13, 0.10), 0.9, noise=0.4)
+    pad = make_material("cbpad", (0.32, 0.31, 0.30), 0.8, noise=0.25)
+    yellow = make_material("cbyellow", (0.60, 0.50, 0.10), 0.6, noise=0.3)
+    steel = make_material("cbsteel", (0.21, 0.20, 0.19), 0.6)
+    box("yard", (1, 1, 0.06), (0, 0, 0.03), mud)
+    box("pad", (0.5, 0.5, 0.08), (0, 0, 0.08), pad)         # the crane foot pad
+    for lx, ly in ((0.16, 0.16), (0.16, -0.16), (-0.16, 0.16), (-0.16, -0.16)):
+        box(f"foot{lx}{ly}", (0.07, 0.07, 0.16), (lx, ly, 0.16), yellow)
+    box("gen", (0.20, 0.14, 0.12), (0.32, -0.30, 0.12), steel)   # generator
+    for i in range(3):                                     # block pallets
+        box(f"pal{i}", (0.16, 0.16, 0.08), (-0.34, -0.30 + i * 0.02, 0.08 + i * 0.03), pad)
+    rig_camera_and_light()
+    render("crane_base")
+
+
+def crane_dig_cell():
+    """The poured foundation under the cable — wet concrete and a forest
+    of upright rebar. The pit you land in if a jump comes up short."""
+    clear_scene()
+    mud = make_material("cdmud", (0.15, 0.12, 0.09), 0.9, noise=0.45)
+    conc = make_material("cdconc", (0.28, 0.27, 0.26), 0.85, noise=0.3)
+    rebar = make_material("cdrebar", (0.34, 0.22, 0.14), 0.6, noise=0.4)
+    water = make_material("cdwater", (0.10, 0.12, 0.13), 0.2, wet=True)
+    box("pit", (1, 1, 0.05), (0, 0, 0.025), mud)
+    box("pour", (0.7, 0.7, 0.05), (0, 0, 0.05), conc)
+    box("puddle", (0.4, 0.3, 0.012), (0.1, 0.1, 0.075), water)
+    for i in range(16):                                    # rebar forest
+        gx = -0.3 + (i % 4) * 0.2
+        gy = -0.3 + (i // 4) * 0.2
+        box(f"reb{i}", (0.02, 0.02, 0.22), (gx, gy, 0.16), rebar)
+    rig_camera_and_light()
+    render("crane_dig")
+
+
 def generic_cell():
     clear_scene()
     m = make_material("gen", (0.17, 0.16, 0.19), 0.9, noise=0.4)
@@ -1561,6 +1708,13 @@ def main():
     liner_deck_cell()
     _liner_deck_stencil("liner_deck_halcyon", "HALCYON")
     _liner_deck_stencil("liner_deck_days", "DAYS")
+    # the Marlowe Lot: Boiler Run tower crane + fenced dig
+    crane_mast_cell()
+    crane_cab_cell()
+    crane_container_cell()
+    crane_lot_cell()
+    crane_base_cell()
+    crane_dig_cell()
     loggia_cell()
     shop_cell()
     hotel_cell()
