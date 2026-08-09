@@ -1248,7 +1248,8 @@ class CraneContainer(Room):
     MAX_Z = 16               # 17th floor — top of travel
     QOC_Z = 12               # Queen of Cups rack-roof level (safe crossing)
     UC_ROOF = (-2, -17, 1)   # Urgent Care roof (North) — the 2nd-floor dock
-    SKY = (0, -17, 12)       # transit air for the leap
+    SKY = (-1, -16, 13)      # transit air: north over Kaspar Street, at the
+                             # Queen's roofline — the apex of the actual leap
     FALL = (-1, -17, 0)      # the rebar pit under the cable
 
     def at_object_creation(self):
