@@ -605,26 +605,35 @@ def _marquee_glyphs(name, glyphs):
     render(name)
 
 
-def _air_marquee(name, glyphs):
-    """A floating holo-banner tile hung in the canyon below the catwalk —
-    no building block behind it, just a faint green sign pane between two
-    slim emitter rails (continuous when the tiles stack) and the bright
-    lettering projected in front. Reuses the flank's glyph z-bands so the
-    name reads identically, only now it hangs in open air."""
+def _air_marquee(name, glyphs, ribs, crown=False, finial=False):
+    """A salvaged theater blade sign hung in the canyon below the
+    catwalk — a solid art-deco fin, oxblood body wrapped in gold banding
+    ribs, the letters projected in green holo on BOTH broad faces (back
+    copy unmirrored). Tiles stack into one continuous blade; the top
+    tile wears the crown, the bottom one the finial end-cap. Same glyph
+    z-bands as the flank run so the name reads identically."""
     clear_scene()
-    pane = make_material("ampane", (0.06, 0.11, 0.08), 0.25,
-                         emit=(0.10, 0.34, 0.18), emit_strength=1.6)   # dim green glass
-    rail = make_material("amrail", (0.11, 0.14, 0.13), 0.55)
+    body = make_material("ambody", (0.24, 0.09, 0.08), 0.75, noise=0.25)   # oxblood
+    trim = make_material("amtrim", (0.62, 0.48, 0.28), 0.5,
+                         emit=(0.85, 0.66, 0.35), emit_strength=1.2)       # gold banding
     holo = make_material("amholo", (0.4, 1.0, 0.55), 0.1,
                          emit=(0.45, 1.0, 0.6), emit_strength=8.0)
-    # centred under the catwalk (x=-0.24, y=0) so the banner hangs flush
-    # off it instead of floating out in front
-    box("pane", (0.40, 0.03, 1.0), (-0.24, 0, 0.5), pane)          # faint sign pane
-    box("railL", (0.03, 0.05, 1.0), (-0.44, 0, 0.5), rail)         # side emitter rails,
-    box("railR", (0.03, 0.05, 1.0), (-0.04, 0, 0.5), rail)         # continuous when stacked
-    for ch, z in glyphs:                                           # letters on BOTH faces
-        _xenon(ch, (-0.24, 0.03, z), 0.28, holo)                  # front (+y)
-        _xenon(ch, (-0.24, -0.03, z), 0.28, holo, (1.5708, 0, 0)) # back (-y), unmirrored
+    # the fin: centred under the catwalk deck (x=-0.24, y=0), full tile
+    # height so stacked tiles read as one blade
+    bz, bh = (0.55, 0.90) if finial else (0.5, 1.0)
+    box("blade", (0.36, 0.12, bh), (-0.24, 0, bz), body)
+    for i, rz in enumerate(ribs):                          # banding wraps the fin
+        box(f"rib{i}", (0.38, 0.13, 0.02), (-0.24, 0, rz), trim)
+    if crown:                                              # deco shoulders at the top
+        box("crownband", (0.40, 0.14, 0.05), (-0.24, 0, 0.975), trim)
+        box("scrollL", (0.06, 0.13, 0.10), (-0.45, 0, 0.93), body)
+        box("scrollR", (0.06, 0.13, 0.10), (-0.03, 0, 0.93), body)
+    if finial:                                             # the blade ends, capped
+        box("endcap", (0.38, 0.13, 0.04), (-0.24, 0, 0.10), trim)
+        box("tip", (0.20, 0.12, 0.06), (-0.24, 0, 0.05), body)
+    for ch, z in glyphs:                                   # letters on BOTH faces
+        _xenon(ch, (-0.24, 0.065, z), 0.28, holo)                   # front (+y)
+        _xenon(ch, (-0.24, -0.065, z), 0.28, holo, (1.5708, 0, 0))  # back (-y), unmirrored
     rig_camera_and_light()
     render(name)
 
@@ -1379,15 +1388,21 @@ def main():
                   ("marquee_5", [("A", 0.50), ("R", 0.05)])):
         _marquee_glyphs(nm, g)
     _marquee_loggia("marquee_6", [("M", 0.60), ("S", 0.20)])   # 6th-floor band
-    # the same name as a free-floating holo-banner in the canyon (below
-    # the catwalk); identical z-bands so the lettering lines up, z11->z6.
-    for nm, g in (("air_marquee_1", [("B", 0.85), ("R", 0.40)]),
-                  ("air_marquee_2", [("A", 0.95), ("C", 0.50), ("K", 0.05)]),
-                  ("air_marquee_3", [("E", 0.60), ("T", 0.15)]),
-                  ("air_marquee_4", [("T", 0.70)]),
-                  ("air_marquee_5", [("A", 0.50), ("R", 0.05)]),
-                  ("air_marquee_6", [("M", 0.60), ("S", 0.20)])):
-        _air_marquee(nm, g)
+    # the same name as a deco blade sign hanging in the canyon (below
+    # the catwalk); identical z-bands so the lettering lines up, z11->z6;
+    # ribs = the gold banding, placed between the letters per tile.
+    _air_marquee("air_marquee_1", [("B", 0.85), ("R", 0.40)],
+                 [0.625, 0.175, 0.02], crown=True)
+    _air_marquee("air_marquee_2", [("A", 0.95), ("C", 0.50), ("K", 0.05)],
+                 [0.725, 0.275])
+    _air_marquee("air_marquee_3", [("E", 0.60), ("T", 0.15)],
+                 [0.98, 0.375])
+    _air_marquee("air_marquee_4", [("T", 0.70)],
+                 [0.98, 0.45, 0.20])              # word-gap tile, banded
+    _air_marquee("air_marquee_5", [("A", 0.50), ("R", 0.05)],
+                 [0.98, 0.75, 0.275])
+    _air_marquee("air_marquee_6", [("M", 0.60), ("S", 0.20)],
+                 [0.98, 0.40], finial=True)
     loggia_cell()
     shop_cell()
     hotel_cell()
