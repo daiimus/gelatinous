@@ -1660,6 +1660,71 @@ def hull_mass_cell():
     render("hull_mass")
 
 
+# ---------------------------------------------- Hammett's Boot: copper vault
+# The derelict re-clad as ONE hooped copper hull that reads as a boot: a
+# verdigris barrel vault over the market (the foot), rising into the ankle at
+# the heel and a star-peaked spur at the toe. Copper streaked through the
+# patina to hint at the vague, grander origin.
+def _boot_copper():
+    return (make_material("bcpat", (0.26, 0.44, 0.38), 0.5, noise=0.45),   # verdigris
+            make_material("bccop", (0.54, 0.34, 0.18), 0.45, noise=0.35),  # bright copper
+            make_material("bclit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28)))
+
+
+def _boot_ribs(r, base, mat):
+    for wx in (-0.35, 0.0, 0.35):                       # hoop ribs across the vault
+        cylinder(f"rib{wx}", r + 0.02, 0.05, (wx, 0, base), mat, arc=math.pi)
+
+
+def boot_arch_cell():
+    """A segment of the foot: a copper wall of lit market windows under a
+    verdigris barrel vault that hoops up — stacked along the sole they read
+    as one continuous arched hull."""
+    clear_scene()
+    pat, cop, lit = _boot_copper()
+    box("wall", (0.94, 0.94, 0.50), (0, 0, 0.25), pat)
+    box("grime", (0.95, 0.95, 0.12), (0, 0, 0.06), cop)
+    for wx in (-0.30, 0.0, 0.30):                       # lit market windows, +y face
+        box(f"winY{wx}", (0.12, 0.02, 0.18), (wx, 0.47, 0.30), lit)
+    for wy in (-0.30, 0.0, 0.30):                       # and the -x face
+        box(f"winX{wy}", (0.02, 0.12, 0.18), (-0.47, wy, 0.30), lit)
+    cylinder("vault", 0.50, 0.94, (0, 0, 0.50), pat, arc=math.pi)   # the copper hoop
+    _boot_ribs(0.50, 0.50, cop)
+    rig_camera_and_light()
+    render("boot_arch")
+
+
+def boot_flank_cell():
+    """The hull curving down at the boot's edges — a lower copper vault, no
+    windows, so the sides fall away from the foot to the ground."""
+    clear_scene()
+    pat, cop, _ = _boot_copper()
+    box("wall", (0.94, 0.94, 0.32), (0, 0, 0.16), pat)
+    box("grime", (0.95, 0.95, 0.10), (0, 0, 0.05), cop)
+    cylinder("vault", 0.42, 0.94, (0, 0, 0.32), pat, arc=math.pi)
+    _boot_ribs(0.42, 0.32, cop)
+    rig_camera_and_light()
+    render("boot_flank")
+
+
+def boot_spur_cell():
+    """The toe's spur — a faceted copper star-peak roof over a copper drum,
+    a finial at the point. The flourish that earns the boot its silhouette."""
+    clear_scene()
+    pat, cop, lit = _boot_copper()
+    box("drum", (0.66, 0.66, 0.46), (0, 0, 0.23), pat)
+    for wy in (-0.18, 0.18):                            # a couple of lit slits
+        box(f"slit{wy}", (0.02, 0.10, 0.16), (-0.34, wy, 0.28), lit)
+    # a faceted (star-like) peaked roof: shrinking hex drums to a point
+    for i, (rr, zz) in enumerate(((0.44, 0.50), (0.32, 0.66),
+                                  (0.20, 0.80), (0.09, 0.92))):
+        cylinder(f"peak{i}", rr, 0.14, (0, 0, zz), cop if i % 2 else pat,
+                 arc=math.pi * 2, seg=6)
+    box("finial", (0.05, 0.05, 0.20), (0, 0, 1.00), cop)   # the spike
+    rig_camera_and_light()
+    render("boot_spur")
+
+
 def generic_cell():
     clear_scene()
     m = make_material("gen", (0.17, 0.16, 0.19), 0.9, noise=0.4)
@@ -2257,7 +2322,8 @@ def main():
     # The Kettle — worker bathhouse, onsen bones
     kettle_entrance_cell(); kettle_boiler_cell(); kettle_changing_cell()
     kettle_plunge_cell(); kettle_hall_cell(); kettle_mural_cell()
-    sealed_hull_cell(); hull_mass_cell()  # Hammett's Boot: welded-shut hull sections
+    sealed_hull_cell(); hull_mass_cell()
+    boot_arch_cell(); boot_flank_cell(); boot_spur_cell()  # Hammett copper vault
     crane_lot_cell()
     crane_base_cell()
     crane_dig_cell()
