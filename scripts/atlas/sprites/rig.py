@@ -1598,6 +1598,32 @@ def kettle_mural_cell():                        # the mural wall of the hall
     rig_camera_and_light(); render("kettle_mural")
 
 
+def sealed_hull_cell():
+    """A welded-shut section of Hammett's Boot's hull — the same camber and
+    rivets as the walkable hull-top, but a cross-welded hatch on the crown
+    and no deck: the parts of the derelict you simply can't get onto. Caps
+    the gaps in the boot's upper surface so it reads as one sealed hull."""
+    clear_scene()
+    hullm = make_material("shull", (0.33, 0.21, 0.14), 0.82, noise=0.6)
+    weld = make_material("sweld", (0.17, 0.12, 0.10), 0.9)
+    rust = make_material("srust", (0.30, 0.19, 0.12), 0.7, noise=0.5)
+    plate = make_material("splate", (0.26, 0.20, 0.16), 0.85, noise=0.3)
+    cylinder("camber", 0.62, 1.0, (0, 0, 0), hullm, arc=math.pi * 0.9)
+    box("hatch", (0.46, 0.50, 0.05), (0, 0, 0.60), plate)      # welded-shut hatch
+    box("weldX1", (0.50, 0.045, 0.03), (0, 0, 0.63), rust, rot=(0, 0, 0.6))
+    box("weldX2", (0.50, 0.045, 0.03), (0, 0, 0.63), rust, rot=(0, 0, -0.6))
+    box("barA", (0.50, 0.04, 0.03), (0, 0.14, 0.63), weld)     # cross-bars over it
+    box("barB", (0.50, 0.04, 0.03), (0, -0.14, 0.63), weld)
+    for wx in (-0.34, 0.02, 0.38):                             # weld bands
+        cylinder(f"weld{wx}", 0.645, 0.05, (wx, 0, 0), weld, arc=math.pi * 0.85)
+    for i in range(7):                                         # rivet row
+        a = math.pi * (0.18 + 0.09 * i)
+        box(f"riv{i}", (0.035, 0.035, 0.035),
+            (-0.42 + i * 0.14, 0.6 * math.cos(a), 0.6 * math.sin(a)), rust)
+    rig_camera_and_light()
+    render("sealed_hull")
+
+
 def generic_cell():
     clear_scene()
     m = make_material("gen", (0.17, 0.16, 0.19), 0.9, noise=0.4)
@@ -2195,6 +2221,7 @@ def main():
     # The Kettle — worker bathhouse, onsen bones
     kettle_entrance_cell(); kettle_boiler_cell(); kettle_changing_cell()
     kettle_plunge_cell(); kettle_hall_cell(); kettle_mural_cell()
+    sealed_hull_cell()          # Hammett's Boot: welded-shut hull sections
     crane_lot_cell()
     crane_base_cell()
     crane_dig_cell()
