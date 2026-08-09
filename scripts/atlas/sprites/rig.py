@@ -1676,60 +1676,59 @@ def _boot_ribs(r, base, mat):
         cylinder(f"rib{wx}", r + 0.02, 0.05, (wx, 0, base), mat, arc=math.pi)
 
 
-#: Hammett's Boot: one unified structure. The body is the SAME hull as the
-#: rooftop the owner likes (hull_cell's material) so they read as one piece;
-#: cells are OVER-full-width (1.06) so they overlap with no seams, uniform
-#: height, market windows where the market shows through. Simple on purpose.
-def _boot_body(top, windows=False):
+#: Hammett's Boot renders like any other building: every cell a FULL unit
+#: cube in the rooftop's hull material, tiling seamlessly, and BOTH levels
+#: skinned so the z1 cells are the second storey of one solid mass. Windows
+#: on the market floor; blank hull above.
+def _boot_cube(windows):
     hullm = make_material("bbhull", (0.42, 0.26, 0.17), 0.75, noise=0.55)
     weld = make_material("bbweld", (0.20, 0.13, 0.10), 0.9)
     rivet = make_material("bbrivet", (0.30, 0.20, 0.14), 0.6)
     pale = make_material("bbpale", (0.55, 0.44, 0.33), 0.8, noise=0.3)
     lit = make_material("bblit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28))
-    box("wall", (1.06, 1.0, top), (0, 0, top / 2), hullm)        # solid hull wall, overlaps E-W
-    box("base", (1.08, 1.02, 0.14), (0, 0, 0.07), weld)          # grimy waterline
-    box("cap", (1.07, 1.01, 0.06), (0, 0, top), pale)            # pale cap == the roof's deck
-    box("rim", (1.08, 1.02, 0.04), (0, 0, top - 0.03), hullm)
-    for wz in (top * 0.40, top * 0.72):                          # horizontal hull weld bands
-        box(f"bY{wz:.2f}", (1.07, 0.03, 0.03), (0, 0.5, wz), weld)
-        box(f"bX{wz:.2f}", (0.03, 1.07, 0.03), (-0.5, 0, wz), weld)
-    for t in (-0.35, -0.12, 0.12, 0.35):                         # rivet rows
-        box(f"rY{t}", (0.03, 0.03, 0.03), (t, 0.51, top * 0.55), rivet)
-        box(f"rX{t}", (0.03, 0.03, 0.03), (-0.51, t, top * 0.55), rivet)
+    box("block", (1, 1, 1), (0, 0, 0.5), hullm)                # FULL unit cube — tiles flush
+    box("grime", (1.004, 1.004, 0.16), (0, 0, 0.08), weld)     # grimy base band
+    box("cap", (1.006, 1.006, 0.06), (0, 0, 0.98), pale)       # pale cap == the hull deck
+    for wz in (0.36, 0.70):                                    # horizontal hull weld bands
+        box(f"bY{wz}", (1.006, 0.03, 0.03), (0, 0.5, wz), weld)
+        box(f"bX{wz}", (0.03, 1.006, 0.03), (-0.5, 0, wz), weld)
+    for t in (-0.34, -0.11, 0.12, 0.35):                       # rivet rows on the seen faces
+        box(f"rY{t}", (0.03, 0.03, 0.03), (t, 0.51, 0.52), rivet)
+        box(f"rX{t}", (0.03, 0.03, 0.03), (-0.51, t, 0.52), rivet)
     if windows:
-        for t in (-0.28, 0.0, 0.28):
-            box(f"wY{t}", (0.13, 0.02, 0.20), (t, 0.51, top * 0.40), lit)
-            box(f"wX{t}", (0.02, 0.13, 0.20), (-0.51, t, top * 0.40), lit)
-    return hullm, weld, rivet, pale
+        for t in (-0.30, 0.0, 0.30):
+            box(f"wY{t}", (0.14, 0.02, 0.26), (t, 0.51, 0.50), lit)
+            box(f"wX{t}", (0.02, 0.14, 0.26), (-0.51, t, 0.50), lit)
+    return pale, rivet
 
 
 def boot_arch_cell():
-    """The Boot's body along the market — one solid hull wall (the rooftop's
-    own material), full width so it fuses with its neighbours, lit windows."""
+    """A market-floor cell of the Boot — a full hull cube with lit windows,
+    tiling flush with its neighbours into one solid building."""
     clear_scene()
-    _boot_body(0.95, windows=True)
+    _boot_cube(windows=True)
     rig_camera_and_light()
     render("boot_arch")
 
 
 def boot_flank_cell():
-    """The Boot's body at the blank ends — the same solid hull wall, no
-    windows, so the whole footprint reads as one mass."""
+    """A blank hull cell — the same full cube, no windows (the ends and the
+    upper storey)."""
     clear_scene()
-    _boot_body(0.95, windows=False)
+    _boot_cube(windows=False)
     rig_camera_and_light()
     render("boot_flank")
 
 
 def boot_spur_cell():
-    """The toe's spur — the same body, carried up into a small riveted cap and
-    finial: one modest flourish that doesn't break the unified read."""
+    """The toe's spur — the same full hull cube carrying a small copper cap
+    and finial, the one modest flourish."""
     clear_scene()
-    _, _, rivet, pale = _boot_body(0.95, windows=True)
+    pale, _ = _boot_cube(windows=True)
     cop = make_material("bscop", (0.55, 0.34, 0.18), 0.5, noise=0.3)
-    box("nub", (0.44, 0.44, 0.14), (0, 0, 1.0), cop)
-    box("nubcap", (0.30, 0.30, 0.06), (0, 0, 1.10), pale)
-    box("finial", (0.06, 0.06, 0.16), (0, 0, 1.20), cop)
+    box("nub", (0.5, 0.5, 0.16), (0, 0, 1.04), cop)
+    box("nubcap", (0.34, 0.34, 0.06), (0, 0, 1.15), pale)
+    box("finial", (0.06, 0.06, 0.18), (0, 0, 1.26), cop)
     rig_camera_and_light()
     render("boot_spur")
 
