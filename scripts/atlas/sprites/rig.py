@@ -1508,6 +1508,96 @@ def _hdeck(name, sides, text=None):
     rig_camera_and_light(); render(name)
 
 
+# -------------------------------------------------- The Kettle (bathhouse)
+# A low worker bathhouse wearing onsen bones. Plaster walls on OUTER edges
+# only + a consistent dark-tile roof, so the six cells read as one squat
+# building under the towers; features (noren door, steaming chimney, the
+# raised roof-lantern over the bath hall) keep the cells from tiling.
+def _bath_mats():
+    return {
+        "tile": make_material("bktile", (0.16, 0.19, 0.24), 0.6, noise=0.3),
+        "wall": make_material("bkwall", (0.42, 0.40, 0.35), 0.8, noise=0.3),
+        "timber": make_material("bktimber", (0.24, 0.16, 0.11), 0.7, noise=0.3),
+        "steam": make_material("bksteam", (0.80, 0.85, 0.90), 0.2,
+                               emit=(0.70, 0.75, 0.82), emit_strength=1.5),
+        "brick": make_material("bkbrick", (0.34, 0.20, 0.15), 0.7, noise=0.4),
+        "indigo": make_material("bkindigo", (0.14, 0.18, 0.34), 0.6, noise=0.2),
+        "warm": make_material("bkwarm", (0.9, 0.7, 0.4), 0.4,
+                              emit=(1.0, 0.7, 0.35), emit_strength=2.0),
+        "faded": make_material("bkfaded", (0.40, 0.34, 0.30), 0.8),
+    }
+
+
+def _kettle_shell(sides, m, eave=0.60):
+    edge = {"N": (0, 0.5, "x"), "S": (0, -0.5, "x"),
+            "E": (0.5, 0, "y"), "W": (-0.5, 0, "y")}
+    for s in sides:
+        cx, cy, ax = edge[s]
+        wsz = (1.0, 0.06, eave) if ax == "x" else (0.06, 1.0, eave)
+        box(f"wall{s}", wsz, (cx, cy, eave / 2), m["wall"])
+    box("roof", (1.03, 1.03, 0.06), (0, 0, eave + 0.03), m["tile"])
+    box("ridge", (1.03, 0.16, 0.06), (0, 0, eave + 0.09), m["tile"])
+    for ey in (0.5, -0.5):
+        box(f"eave{ey}", (1.05, 0.05, 0.03), (0, ey, eave - 0.01), m["timber"])
+
+
+def kettle_entrance_cell():                    # noren door on the Pessoa face
+    clear_scene(); m = _bath_mats()
+    _kettle_shell("SE", m)
+    box("recess", (0.30, 0.06, 0.42), (-0.12, -0.5, 0.21), m["warm"])   # lit doorway
+    for nx in (-0.20, -0.04):                                           # noren panels
+        box(f"noren{nx}", (0.12, 0.02, 0.20), (nx, -0.52, 0.34), m["indigo"])
+    box("sign", (0.34, 0.03, 0.10), (-0.12, -0.53, 0.50), m["faded"])   # faded board
+    box("peak", (0.08, 0.02, 0.06), (-0.12, -0.55, 0.52), m["timber"])  # a worn mountain glyph
+    rig_camera_and_light(); render("kettle_entrance")
+
+
+def kettle_boiler_cell():                      # the heat exchanger's chimney
+    clear_scene(); m = _bath_mats()
+    _kettle_shell("SW", m)
+    box("stack", (0.16, 0.16, 0.55), (0.24, 0.24, 0.88), m["brick"])    # chimney
+    box("cap", (0.20, 0.20, 0.05), (0.24, 0.24, 1.16), m["timber"])
+    box("plume", (0.14, 0.14, 0.28), (0.24, 0.24, 1.34), m["steam"])    # steam
+    box("plume2", (0.20, 0.20, 0.16), (0.24, 0.20, 1.52), m["steam"])
+    rig_camera_and_light(); render("kettle_boiler")
+
+
+def kettle_changing_cell():                    # a modest roof vent
+    clear_scene(); m = _bath_mats()
+    _kettle_shell("E", m)
+    box("vent", (0.20, 0.20, 0.10), (-0.10, 0.10, 0.72), m["timber"])
+    box("vsteam", (0.10, 0.10, 0.14), (-0.10, 0.10, 0.84), m["steam"])
+    rig_camera_and_light(); render("kettle_changing")
+
+
+def kettle_plunge_cell():                      # cold side, a small vent
+    clear_scene(); m = _bath_mats()
+    _kettle_shell("W", m)
+    box("vent", (0.18, 0.18, 0.08), (0.12, -0.08, 0.70), m["timber"])
+    rig_camera_and_light(); render("kettle_plunge")
+
+
+def _kettle_lantern(m):                         # the raised roof-lantern (yagura)
+    box("yagbase", (0.46, 0.46, 0.16), (0, 0, 0.74), m["timber"])
+    box("yagroof", (0.54, 0.54, 0.05), (0, 0, 0.85), m["tile"])
+    box("yagsteam", (0.30, 0.30, 0.22), (0, 0, 0.98), m["steam"])
+
+
+def kettle_hall_cell():                         # the great bath, steaming
+    clear_scene(); m = _bath_mats()
+    _kettle_shell("NE", m)
+    _kettle_lantern(m)
+    rig_camera_and_light(); render("kettle_hall")
+
+
+def kettle_mural_cell():                        # the mural wall of the hall
+    clear_scene(); m = _bath_mats()
+    _kettle_shell("NW", m)
+    _kettle_lantern(m)
+    box("skylight", (0.16, 0.16, 0.03), (0.14, 0.14, 0.65), m["warm"])
+    rig_camera_and_light(); render("kettle_mural")
+
+
 def generic_cell():
     clear_scene()
     m = make_material("gen", (0.17, 0.16, 0.19), 0.9, noise=0.4)
@@ -2102,6 +2192,9 @@ def main():
     _hdeck("hdeck_se", "SE")
     _hdeck("hdeck_nw", "NW")
     _hdeck("hdeck_ne", "NE", text="HALCYON")
+    # The Kettle — worker bathhouse, onsen bones
+    kettle_entrance_cell(); kettle_boiler_cell(); kettle_changing_cell()
+    kettle_plunge_cell(); kettle_hall_cell(); kettle_mural_cell()
     crane_lot_cell()
     crane_base_cell()
     crane_dig_cell()
