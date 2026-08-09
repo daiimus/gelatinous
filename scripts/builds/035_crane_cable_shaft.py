@@ -19,16 +19,19 @@ SKY_TC = "typeclasses.rooms.SkyRoom"
 COL = (-1, -17)
 
 
-def at(xyz):
-    return next((r for r in ObjectDB.objects.filter(db_attributes__db_key="xyz")
-                 if r.destination is None and get_xyz(r) == xyz), None)
+def sky_at(xyz):
+    """An existing SHAFT SkyRoom at xyz — NOT the container (the two are
+    meant to coexist at the car's current level), so a run while the car
+    is parked mid-shaft still fills every cell."""
+    return next((r for r in ObjectDB.objects.filter(db_typeclass_path=SKY_TC)
+                 if get_xyz(r) == xyz), None)
 
 
 made = 0
 # z2..z16: the shaft the container rides (z1 is the dock — the car lives
 # there when parked, so no separate air cell needed).
 for z in range(2, 17):
-    if at((COL[0], COL[1], z)) is not None:
+    if sky_at((COL[0], COL[1], z)) is not None:
         continue
     r = create_object(SKY_TC, key="In the Air")
     r.db.xyz = (COL[0], COL[1], z)
