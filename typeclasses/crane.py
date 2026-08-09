@@ -34,6 +34,16 @@ class CraneOperator(LLMNpc):
         "seventeen": 17,
     }
 
+    #: A transmission only counts as a crane order if it ADDRESSES the crane
+    #: — so ordinary band chatter that happens to contain "up" or "second"
+    #: never drives the hoist (the same discipline dispatch uses: name the
+    #: unit or it doesn't answer).
+    _ADDRESS = ("operator", "ossie", "trelane", "crane", "container",
+                "hoist", "boiler run", "the box", "the car", "the can")
+
+    def _addresses_crane(self, low):
+        return any(a in low for a in self._ADDRESS)
+
     # -- finding the car -------------------------------------------------
     def _find_car(self):
         from evennia.objects.models import ObjectDB
@@ -65,12 +75,21 @@ class CraneOperator(LLMNpc):
             if re.search(rf"\b{word}\b", low):
                 return n
 
-        # relative nudges (only when clearly a movement word, not chatter)
-        cur_floor = (car.db.level or 1) + 1
-        if re.search(r"\b(up|raise|higher|lift)\b", low):
-            return cur_floor + 1
-        if re.search(r"\b(down|lower|drop)\b", low):
-            return cur_floor - 1
+        # relative nudges — only a direction word with an EXPLICIT count
+        # ("up one", "down two", "up a floor"); a bare "up" is chatter, not
+        # an order, so "nice weather up there" moves nothing.
+        rel = re.search(
+            r"\b(up|raise|lift|higher|down|lower|drop)\b\s+(?:by\s+)?"
+            r"(a floor|a level|one|two|three|\d+)", low)
+        if rel:
+            token = rel.group(2)
+            step = {"a floor": 1, "a level": 1, "one": 1,
+                    "two": 2, "three": 3}.get(token)
+            if step is None:
+                step = int(token)
+            cur_floor = (car.db.level or 1) + 1
+            sign = 1 if rel.group(1) in ("up", "raise", "lift", "higher") else -1
+            return cur_floor + sign * step
         return None
 
     # -- radio ear: crane order first, persona second --------------------
@@ -78,7 +97,8 @@ class CraneOperator(LLMNpc):
         from world.radio import same_band
 
         if (speech and not self._is_npc_speaker(speaker)
-                and same_band(kwargs.get("radio_frequency"), self.CRANE_BAND)):
+                and same_band(kwargs.get("radio_frequency"), self.CRANE_BAND)
+                and self._addresses_crane(speech.lower())):
             car = self._find_car()
             if car is not None:
                 floor = self._parse_floor(speech, car)
