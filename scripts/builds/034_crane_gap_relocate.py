@@ -25,7 +25,8 @@ NEW = (-1, -16, 13)
 sky = at((0, -17, 12)) or at(NEW)
 assert sky is not None, "crane gap sky room not found"
 set_xyz(sky, *NEW)
-sky.key = "Crane Gap (over Kaspar Street)"
+sky.key = "In the Air"          # the standard sky-room name; the leap's
+                               # specifics live in the desc, not the key
 sky.db.desc = (
     "Open air north of the crane, level with the Queen of Cups' rack roof "
     "— the half-second the leap from the container lives in, out over "
@@ -41,5 +42,5 @@ car = ObjectDB.objects.filter(
 if car is not None:
     car.move_to_level(car.db.level or 1, announce=False)
 
-print(f"BUILD 034: crane gap #{sky.id} -> {get_xyz(sky)} {sky.key!r}; "
+print(f"BUILD 034: sky #{sky.id} -> {get_xyz(sky)} {sky.key!r}; "
       f"car level={car.db.level if car else '?'} SKY={type(car).SKY if car else '?'}")
