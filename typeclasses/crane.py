@@ -62,6 +62,44 @@ class CraneOperator(LLMNpc):
         return ObjectDB.objects.filter(
             db_typeclass_path="typeclasses.rooms.CraneContainer").first()
 
+    # -- typo tolerance --------------------------------------------------
+    @staticmethod
+    def _lev(a, b):
+        """Levenshtein distance, capped — we only care about <= 2."""
+        if a == b:
+            return 0
+        if abs(len(a) - len(b)) > 2:
+            return 9
+        prev = list(range(len(b) + 1))
+        for i, ca in enumerate(a, 1):
+            cur = [i]
+            for j, cb in enumerate(b, 1):
+                cur.append(min(prev[j] + 1, cur[-1] + 1,
+                               prev[j - 1] + (ca != cb)))
+            prev = cur
+        return prev[-1]
+
+    def _fuzzy_number(self, low, max_dist):
+        """The floor a misspelled number word points at, within max_dist —
+        only longish tokens against longish number words (so short function
+        words like 'for' can't masquerade as 'four'), and only when one
+        number wins outright (ambiguous typo -> None, ask instead)."""
+        best_n, best_d, ambiguous = None, max_dist + 1, False
+        for tok in re.findall(r"[a-z]+", low):
+            if len(tok) < 5:
+                continue
+            for word, n in self._NUMBER_WORDS.items():
+                if len(word) < 6:
+                    continue
+                d = self._lev(tok, word)
+                if d < best_d:
+                    best_n, best_d, ambiguous = n, d, False
+                elif d == best_d and n != best_n:
+                    ambiguous = True
+        if best_n is not None and best_d <= max_dist and not ambiguous:
+            return best_n
+        return None
+
     # -- reading the order -----------------------------------------------
     def _parse_floor(self, speech, car):
         """Pull a target floor (2..17) out of a transmission, or None if it
@@ -86,6 +124,11 @@ class CraneOperator(LLMNpc):
         for word, n in self._NUMBER_WORDS.items():
             if re.search(rf"\b{word}\b", low):
                 return n
+        # or a spelled-out number with a single-letter typo (the teens get
+        # botched constantly: forteen, fourten, thirten, fiften, sixten)
+        fuzzy = self._fuzzy_number(low, 1)
+        if fuzzy is not None:
+            return fuzzy
 
         # relative nudges — only a direction word with an EXPLICIT count
         # ("up one", "down two", "up a floor"); a bare "up" is chatter, not
@@ -119,8 +162,12 @@ class CraneOperator(LLMNpc):
                     self._run_crane(floor, speaker, car)
                     return
                 # addressed, clearly wants the crane moved, but no floor we
-                # could read — answer rather than sit there mute
-                if any(w in low for w in self._INTENT):
+                # could read — answer rather than sit there mute. Fires on a
+                # move word OR anything number-ish (a digit, or a token close
+                # to a number word), so a bad-enough typo still gets a reply.
+                number_ish = (bool(re.search(r"\d", low))
+                              or self._fuzzy_number(low, 2) is not None)
+                if number_ish or any(w in low for w in self._INTENT):
                     self._reply("Say again — which floor? Anywhere from the "
                                 "2nd to the 17th.")
                     return
