@@ -28,11 +28,23 @@ class CraneOperator(LLMNpc):
     QOC_FLOOR = 13          # level with the Queen of Cups rack roof
 
     _NUMBER_WORDS = {
+        # cardinals
         "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7,
         "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
         "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16,
         "seventeen": 17,
+        # ordinals — how people actually name a floor
+        "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6,
+        "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10, "eleventh": 11,
+        "twelfth": 12, "thirteenth": 13, "fourteenth": 14, "fifteenth": 15,
+        "sixteenth": 16, "seventeenth": 17,
     }
+
+    #: Words that mark a transmission as a crane ORDER (vs a plain hail),
+    #: so an addressed call the parser can't pin down gets a "say again"
+    #: instead of silence.
+    _INTENT = ("floor", "deck", "take", "bring", "send", "raise", "lower",
+               "move", "drop", "hoist", "level", "up", "down", "top", "dock")
 
     #: A transmission only counts as a crane order if it ADDRESSES the crane
     #: — so ordinary band chatter that happens to contain "up" or "second"
@@ -66,8 +78,8 @@ class CraneOperator(LLMNpc):
         if "queen" in low or "crossing" in low or "the level" in low:
             return self.QOC_FLOOR
 
-        # an explicit floor number: digits 2..17
-        m = re.search(r"\b(1[0-7]|[2-9])\b", low)
+        # an explicit floor number: digits 2..17, bare or ordinal ("12th")
+        m = re.search(r"\b(1[0-7]|[2-9])(?:st|nd|rd|th)?\b", low)
         if m:
             return int(m.group(1))
         # or a spelled-out number
@@ -101,9 +113,16 @@ class CraneOperator(LLMNpc):
                 and self._addresses_crane(speech.lower())):
             car = self._find_car()
             if car is not None:
+                low = speech.lower()
                 floor = self._parse_floor(speech, car)
                 if floor is not None:
                     self._run_crane(floor, speaker, car)
+                    return
+                # addressed, clearly wants the crane moved, but no floor we
+                # could read — answer rather than sit there mute
+                if any(w in low for w in self._INTENT):
+                    self._reply("Say again — which floor? Anywhere from the "
+                                "2nd to the 17th.")
                     return
         # not a crane order — let the LLM brain handle it (if enabled)
         super()._hear_radio(speech, speaker, kwargs)
