@@ -1199,6 +1199,177 @@ def crane_dig_cell():
     render("crane_dig")
 
 
+# ---------------------------------------------------------------- The Midden
+# One bespoke sprite per yard cell — no shared tiles, so the yard never
+# reads as a repeated pattern. Each cell = dirt ground + its own distinct
+# scrap, plus chain-link on its outer edges (or the Halcyon's hull on the
+# east cells, which borrow the liner's steel for a wall).
+def _scrap_mats():
+    return {
+        "dirt": make_material("scdirt", (0.17, 0.14, 0.11), 0.9, noise=0.4),
+        "rust": make_material("scrust", (0.34, 0.20, 0.13), 0.7, noise=0.5),
+        "steel": make_material("scsteel", (0.30, 0.31, 0.32), 0.5, noise=0.4),
+        "drum": make_material("scdrum", (0.30, 0.34, 0.22), 0.6, noise=0.3),
+        "tyre": make_material("sctyre", (0.09, 0.09, 0.10), 0.85),
+        "paint": make_material("scpaint", (0.36, 0.22, 0.24), 0.6, noise=0.4),
+        "brass": make_material("scbrass", (0.45, 0.38, 0.18), 0.5),
+        "teal": make_material("scteal", (0.10, 0.30, 0.32), 0.55, noise=0.25),
+        "bone": make_material("scbone", (0.44, 0.44, 0.38), 0.7, noise=0.25),
+    }
+
+
+def _chainlink(sides, m):
+    """Chain-link on the named outer edges — posts, a top rail, a grey mesh
+    panel — so the yard's outer cells ring it as one fence."""
+    mesh = make_material("clmesh", (0.26, 0.27, 0.28), 0.5, noise=0.6)
+    edge = {"N": (0, 0.47, "x"), "S": (0, -0.47, "x"),
+            "E": (0.47, 0, "y"), "W": (-0.47, 0, "y")}
+    for s in sides:
+        cx, cy, ax = edge[s]
+        if ax == "x":
+            box(f"clm{s}", (1.0, 0.02, 0.40), (0, cy, 0.22), mesh)
+            box(f"clr{s}", (1.0, 0.03, 0.03), (0, cy, 0.42), m["steel"])
+            for t in (-0.42, -0.14, 0.14, 0.42):
+                box(f"clp{s}{t}", (0.04, 0.04, 0.46), (t, cy, 0.23), m["steel"])
+        else:
+            box(f"clm{s}", (0.02, 1.0, 0.40), (cx, 0, 0.22), mesh)
+            box(f"clr{s}", (0.03, 1.0, 0.03), (cx, 0, 0.42), m["steel"])
+            for t in (-0.42, -0.14, 0.14, 0.42):
+                box(f"clp{s}{t}", (0.04, 0.04, 0.46), (cx, t, 0.23), m["steel"])
+
+
+def _hull_wall(m):
+    """The east wall of the yard's Halcyon-side cells: the liner's painted
+    steel doubling as a fence, teal boot-stripe and all."""
+    box("hull", (0.08, 1.0, 0.90), (0.50, 0, 0.45), m["bone"])
+    box("hband", (0.09, 1.02, 0.14), (0.50, 0, 0.22), m["teal"])
+
+
+def _dirt(m):
+    box("ground", (1, 1, 0.05), (0, 0, 0.025), m["dirt"])
+
+
+def scrap_nw_cell():                          # appliance stack in the corner
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    box("fridge", (0.20, 0.16, 0.34), (0.12, 0.08, 0.19), m["steel"])
+    box("stove", (0.18, 0.18, 0.22), (-0.04, -0.08, 0.13), m["paint"])
+    box("plate", (0.30, 0.03, 0.28), (0.22, 0.22, 0.18), m["rust"], rot=(0, 0, 0.35))
+    box("junk", (0.14, 0.14, 0.10), (-0.22, 0.16, 0.07), m["rust"])
+    _chainlink("NW", m); rig_camera_and_light(); render("scrap_nw")
+
+
+def scrap_n1_cell():                          # tarp + drying junk on the fence
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    box("tarp", (0.5, 0.02, 0.26), (0, 0.44, 0.30), m["drum"])
+    box("heap", (0.24, 0.22, 0.14), (-0.10, -0.06, 0.10), m["rust"])
+    box("bucket", (0.10, 0.10, 0.12), (0.18, 0.12, 0.08), m["steel"])
+    for i in range(3):
+        box(f"tyre{i}", (0.16, 0.16, 0.05), (0.26, -0.22, 0.03 + i * 0.055), m["tyre"])
+    _chainlink("N", m); rig_camera_and_light(); render("scrap_n1")
+
+
+def scrap_n2_cell():                          # the oldest pile: a sunken car
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    moss = make_material("scmoss", (0.24, 0.32, 0.18), 0.8, noise=0.5)
+    box("body", (0.52, 0.26, 0.16), (0, -0.04, 0.10), m["rust"])
+    box("cab", (0.24, 0.24, 0.12), (0.08, -0.04, 0.20), m["rust"])
+    box("moss", (0.54, 0.28, 0.02), (0, -0.04, 0.19), moss)
+    box("wheel", (0.04, 0.14, 0.12), (-0.24, 0.12, 0.07), m["tyre"])
+    _chainlink("N", m); rig_camera_and_light(); render("scrap_n2")
+
+
+def scrap_ne_cell():                          # shredded drift + a bathtub of bolts
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    box("drift", (0.42, 0.42, 0.09), (-0.08, -0.10, 0.06), m["steel"])
+    for i, (sx, sy) in enumerate(((-0.20, -0.04), (0.02, -0.20), (-0.12, -0.24))):
+        box(f"jag{i}", (0.08, 0.06, 0.14), (sx, sy, 0.10), m["rust"], rot=(0, 0.3, 0))
+    box("tub", (0.20, 0.14, 0.12), (-0.24, 0.22, 0.08), m["bone"])
+    box("bolts", (0.16, 0.10, 0.05), (-0.24, 0.22, 0.15), m["brass"])
+    _chainlink("NE", m); rig_camera_and_light(); render("scrap_ne")
+
+
+def scrap_w_cell():                           # a windbreak of stacked doors
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    for i, c in enumerate((m["paint"], m["steel"], m["drum"], m["rust"])):
+        box(f"door{i}", (0.06, 0.30, 0.40), (-0.30 + i * 0.06, -0.14 + i * 0.10, 0.22), c)
+    box("crate", (0.16, 0.16, 0.14), (0.22, -0.12, 0.10), m["rust"])
+    _chainlink("W", m); rig_camera_and_light(); render("scrap_w")
+
+
+def scrap_heap_cell():                         # THE HEAP — the yard's mountain
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    box("base", (0.72, 0.72, 0.24), (0, 0, 0.14), m["rust"])
+    box("mid", (0.50, 0.50, 0.22), (0.06, -0.04, 0.32), m["steel"])
+    box("top", (0.30, 0.30, 0.18), (-0.06, 0.08, 0.48), m["rust"])
+    box("spar", (0.6, 0.04, 0.04), (0.10, 0.10, 0.42), m["steel"], rot=(0, 0.5, 0.4))
+    box("drum", (0.12, 0.12, 0.20), (-0.30, -0.28, 0.12), m["drum"])
+    rig_camera_and_light(); render("scrap_heap")
+
+
+def scrap_mid_cell():                          # open ground, a cart, a car door
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    box("cart", (0.16, 0.22, 0.12), (0.14, 0.10, 0.10), m["steel"])
+    box("cartleg", (0.02, 0.22, 0.02), (0.22, 0.10, 0.02), m["steel"])
+    box("door", (0.04, 0.24, 0.22), (-0.20, -0.06, 0.13), m["paint"], rot=(0, 0.25, 0))
+    box("heapA", (0.18, 0.18, 0.12), (0.30, -0.28, 0.09), m["rust"])
+    box("heapB", (0.16, 0.16, 0.10), (-0.30, 0.30, 0.08), m["rust"])
+    rig_camera_and_light(); render("scrap_mid")
+
+
+def scrap_hull_cell():                          # salvage leaning on the Halcyon
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    _hull_wall(m)
+    box("lean1", (0.10, 0.04, 0.44), (0.40, -0.12, 0.24), m["rust"], rot=(0.35, 0, 0))
+    box("lean2", (0.10, 0.04, 0.40), (0.38, 0.16, 0.22), m["steel"], rot=(0.38, 0, 0))
+    cylinder("spool", 0.12, 0.20, (-0.10, -0.06, 0.12), m["steel"], arc=math.pi * 2, seg=14)
+    box("heap", (0.20, 0.20, 0.14), (-0.24, 0.20, 0.10), m["rust"])
+    rig_camera_and_light(); render("scrap_hull")
+
+
+def scrap_sw_cell():                            # engine-block cairn, greased black
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    blk = make_material("scblk", (0.10, 0.10, 0.11), 0.4, noise=0.3)
+    box("e1", (0.18, 0.16, 0.14), (0.08, 0.06, 0.09), blk)
+    box("e2", (0.16, 0.14, 0.12), (0.12, -0.04, 0.20), blk)
+    box("e3", (0.14, 0.12, 0.10), (0.04, 0.10, 0.28), blk)
+    box("drum", (0.12, 0.12, 0.18), (-0.22, 0.24, 0.11), m["drum"])
+    _chainlink("SW", m); rig_camera_and_light(); render("scrap_sw")
+
+
+def scrap_gate_cell():                          # the rolled-back gate + the sign
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    mesh = make_material("gmesh", (0.26, 0.27, 0.28), 0.5, noise=0.6)
+    board = make_material("gboard", (0.50, 0.42, 0.20), 0.7, noise=0.3)
+    for px in (-0.30, 0.30):                    # gate posts flanking the S opening
+        box(f"gp{px}", (0.06, 0.06, 0.55), (px, -0.47, 0.27), m["steel"])
+    box("gate", (0.30, 0.03, 0.42), (-0.16, -0.44, 0.23), mesh)   # rolled aside (open)
+    box("grail", (0.34, 0.04, 0.03), (-0.14, -0.44, 0.42), m["steel"])
+    box("sign", (0.22, 0.02, 0.14), (0.24, -0.46, 0.34), board)   # the board on the fence
+    box("heap", (0.16, 0.16, 0.12), (0.26, 0.22, 0.09), m["rust"])
+    rig_camera_and_light(); render("scrap_gate")
+
+
+def scrap_weigh_cell():                         # the weighbridge + a crooked scale
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    box("plate", (0.5, 0.34, 0.03), (0, -0.04, 0.035), m["steel"])
+    box("scalepost", (0.05, 0.05, 0.42), (0.28, 0.22, 0.23), m["steel"])
+    box("dial", (0.14, 0.05, 0.14), (0.28, 0.25, 0.42), m["bone"])
+    box("heap", (0.16, 0.16, 0.12), (-0.28, 0.22, 0.09), m["rust"])
+    _chainlink("S", m); rig_camera_and_light(); render("scrap_weigh")
+
+
+def scrap_se_cell():                            # crushed-cube tower + the dog-run
+    clear_scene(); m = _scrap_mats(); _dirt(m)
+    _hull_wall(m)
+    cube = make_material("sccube", (0.30, 0.30, 0.26), 0.6, noise=0.3)
+    for i in range(4):
+        box(f"cube{i}", (0.24, 0.24, 0.06), (-0.08, 0.16, 0.05 + i * 0.065), cube)
+    box("stake", (0.03, 0.03, 0.16), (-0.30, -0.18, 0.08), m["steel"])
+    box("dish", (0.08, 0.08, 0.03), (-0.14, -0.24, 0.03), m["bone"])
+    box("kennel", (0.16, 0.14, 0.12), (-0.30, -0.30, 0.08), m["rust"])
+    _chainlink("S", m); rig_camera_and_light(); render("scrap_se")
+
+
 def generic_cell():
     clear_scene()
     m = make_material("gen", (0.17, 0.16, 0.19), 0.9, noise=0.4)
@@ -1781,6 +1952,10 @@ def main():
     crane_jibtip_cell()
     crane_container_cell()
     crane_chain_cell()
+    # The Midden — one bespoke sprite per cell, no repeats
+    scrap_nw_cell(); scrap_n1_cell(); scrap_n2_cell(); scrap_ne_cell()
+    scrap_w_cell(); scrap_heap_cell(); scrap_mid_cell(); scrap_hull_cell()
+    scrap_sw_cell(); scrap_gate_cell(); scrap_weigh_cell(); scrap_se_cell()
     crane_lot_cell()
     crane_base_cell()
     crane_dig_cell()
