@@ -641,10 +641,11 @@ def catwalk_cell():
     render("catwalk")
 
 
-def _xenon(ch, loc, size, mat, rot=(1.5708, 0, 3.1416)):
+def _xenon(ch, loc, size, mat, rot=(1.5708, 0, 3.1416), wide=1.0):
     """One Monaspace Xenon glyph, extruded, baked to mesh so it glows in
     the atlas. Default rot faces +y (the home-visible face); pass
-    (1.5708, 0, 0) for a copy that reads correctly from the -y side."""
+    (1.5708, 0, 0) for a copy that reads correctly from the -y side.
+    `wide` stretches the glyph along its reading axis for legibility."""
     bpy.ops.object.text_add(location=loc)
     t = bpy.context.active_object
     t.data.body = ch
@@ -654,6 +655,7 @@ def _xenon(ch, loc, size, mat, rot=(1.5708, 0, 3.1416)):
     t.data.align_x = "CENTER"
     t.data.align_y = "CENTER"
     t.rotation_euler = rot
+    t.scale = (wide, 1, 1)
     t.data.materials.append(mat)
     bpy.ops.object.convert(target="MESH")
 
@@ -752,26 +754,37 @@ def _air_marquee(name, glyphs, ribs, crown=False, finial=False):
     z-bands as the flank run so the name reads identically."""
     clear_scene()
     body = make_material("ambody", (0.24, 0.09, 0.08), 0.75, noise=0.25)   # oxblood
+    chan = make_material("amchan", (0.03, 0.05, 0.04), 0.9)     # dark sign channel
     trim = make_material("amtrim", (0.62, 0.48, 0.28), 0.5,
                          emit=(0.85, 0.66, 0.35), emit_strength=1.2)       # gold banding
+    tube = make_material("amtube", (0.5, 0.35, 0.15), 0.4,
+                         emit=(1.0, 0.7, 0.35), emit_strength=4.0)         # edge neon
     holo = make_material("amholo", (0.4, 1.0, 0.55), 0.1,
                          emit=(0.45, 1.0, 0.6), emit_strength=8.0)
     # the fin: centred under the catwalk deck (x=-0.24, y=0), full tile
     # height so stacked tiles read as one blade
     bz, bh = (0.55, 0.90) if finial else (0.5, 1.0)
     box("blade", (0.36, 0.12, bh), (-0.24, 0, bz), body)
+    # dark channel behind the letters: soaks up the baked letter-glow
+    # (no more stray flares on the oxblood) and lifts the contrast
+    box("chanF", (0.30, 0.005, bh), (-0.24, 0.0625, bz), chan)
+    box("chanB", (0.30, 0.005, bh), (-0.24, -0.0625, bz), chan)
+    # the flare, made deliberate: a neon tube up the blade's +x edge
+    # (screen-LEFT at the home view), clear of the letter column
+    box("edgetube", (0.03, 0.14, bh), (-0.065, 0, bz), tube)
     for i, rz in enumerate(ribs):                          # banding wraps the fin
-        box(f"rib{i}", (0.38, 0.13, 0.02), (-0.24, 0, rz), trim)
+        box(f"rib{i}", (0.38, 0.15, 0.02), (-0.24, 0, rz), trim)
     if crown:                                              # deco shoulders at the top
-        box("crownband", (0.40, 0.14, 0.05), (-0.24, 0, 0.975), trim)
+        box("crownband", (0.40, 0.16, 0.05), (-0.24, 0, 0.975), trim)
         box("scrollL", (0.06, 0.13, 0.10), (-0.45, 0, 0.93), body)
         box("scrollR", (0.06, 0.13, 0.10), (-0.03, 0, 0.93), body)
     if finial:                                             # the blade ends, capped
-        box("endcap", (0.38, 0.13, 0.04), (-0.24, 0, 0.10), trim)
+        box("endcap", (0.38, 0.15, 0.04), (-0.24, 0, 0.10), trim)
         box("tip", (0.20, 0.12, 0.06), (-0.24, 0, 0.05), body)
     for ch, z in glyphs:                                   # letters on BOTH faces
-        _xenon(ch, (-0.24, 0.065, z), 0.28, holo)                   # front (+y)
-        _xenon(ch, (-0.24, -0.065, z), 0.28, holo, (1.5708, 0, 0))  # back (-y), unmirrored
+        _xenon(ch, (-0.24, 0.070, z), 0.31, holo, wide=1.25)        # front (+y)
+        _xenon(ch, (-0.24, -0.070, z), 0.31, holo, (1.5708, 0, 0),
+               wide=1.25)                                           # back (-y), unmirrored
     rig_camera_and_light()
     render(name)
 
