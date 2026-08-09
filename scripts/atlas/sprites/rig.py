@@ -1034,19 +1034,54 @@ def crane_cab_cell():
     box("cab", (0.34, 0.34, 0.30), (0, 0, 0.68), cab)
     box("winN", (0.26, 0.02, 0.16), (0, 0.175, 0.70), glass)   # window over the lot
     box("winW", (0.02, 0.26, 0.16), (-0.175, 0, 0.70), glass)  # window west
-    # the jib: a lattice boom reaching north (+y) over the container
+    # the jib ROOT: the boom leaves the cab reaching north (+y) to the
+    # cell edge, where the jib-arm cell picks it up (the hook now lives
+    # out at the tip, two cells north over the container)
     for rail_z in (0.86, 0.98):
         box(f"jibT{rail_z}", (0.06, 0.62, 0.03), (0, 0.34, rail_z), yellow)
     for i in range(6):
         jy = 0.10 + i * 0.11
         box(f"jibd{i}", (0.04, 0.04, 0.13), (0, jy, 0.92), steel, rot=(0.6, 0, 0))
-    box("hook", (0.03, 0.03, 0.12), (0, 0.60, 0.80), dark)     # cable + hook, tip
-    box("cabletip", (0.012, 0.012, 0.30), (0, 0.60, 0.66), dark)
     # counter-jib + counterweight, short to the south
     box("cjib", (0.06, 0.26, 0.03), (0, -0.22, 0.90), yellow)
     box("cweight", (0.16, 0.12, 0.16), (0, -0.30, 0.84), steel)
     rig_camera_and_light()
     render("crane_cab")
+
+
+def crane_jib_cell():
+    """A run of the crane's jib — the horizontal boom cantilevering north
+    over the lot. Two yellow chords along the N-S axis with a steel web
+    and a maintenance walkway, so cab, arm and tip read as one boom."""
+    clear_scene()
+    steel = make_material("cjsteel", (0.21, 0.20, 0.19), 0.6, noise=0.2)
+    yellow = make_material("cjyellow", (0.60, 0.50, 0.10), 0.6, noise=0.3)
+    for cz in (0.86, 0.98):                               # chords, full cell N-S
+        box(f"chord{cz}", (0.06, 1.02, 0.04), (0, 0, cz), yellow)
+    for i in range(7):                                    # web between the chords
+        yy = -0.5 + i * (1.0 / 6)
+        box(f"web{i}", (0.04, 0.04, 0.12), (0, yy, 0.92), steel)
+    box("walk", (0.05, 1.02, 0.02), (0, 0, 1.005), steel)  # top walkway
+    rig_camera_and_light()
+    render("crane_jib")
+
+
+def crane_jibtip_cell():
+    """The jib's outer end, right over the container: the boom tips in
+    from the south to a sheave block, and the hoist cable drops from the
+    trolley straight down the shaft to the hanging box."""
+    clear_scene()
+    steel = make_material("jtsteel", (0.21, 0.20, 0.19), 0.6, noise=0.2)
+    yellow = make_material("jtyellow", (0.60, 0.50, 0.10), 0.6, noise=0.3)
+    dark = make_material("jtdark", (0.08, 0.08, 0.09), 0.5)
+    for cz in (0.86, 0.98):                               # boom in from the south
+        box(f"chord{cz}", (0.06, 0.55, 0.04), (0, -0.25, cz), yellow)
+    box("sheave", (0.12, 0.14, 0.16), (0, 0, 0.90), steel)     # end sheave block
+    box("trolley", (0.10, 0.10, 0.06), (0, 0, 0.82), dark)
+    box("cable", (0.02, 0.02, 0.80), (0, 0, 0.42), dark)       # cable down the shaft
+    box("hook", (0.05, 0.05, 0.06), (0, 0, 0.04), dark)
+    rig_camera_and_light()
+    render("crane_jibtip")
 
 
 def crane_container_cell():
@@ -1110,20 +1145,20 @@ def crane_lot_cell():
 
 
 def crane_base_cell():
-    """The yard directly under the crane — the concrete pad the mast is
-    bolted to, pallets, a dead generator."""
+    """The crane's foot: the concrete pad the mast is bolted to, with the
+    lattice legs rising the FULL cell so the ground reads continuous with
+    the mast above (no floating gap) — plus a dead generator and pallets
+    of block in the mud."""
     clear_scene()
     mud = make_material("cbmud", (0.16, 0.13, 0.10), 0.9, noise=0.4)
     pad = make_material("cbpad", (0.32, 0.31, 0.30), 0.8, noise=0.25)
-    yellow = make_material("cbyellow", (0.60, 0.50, 0.10), 0.6, noise=0.3)
-    steel = make_material("cbsteel", (0.21, 0.20, 0.19), 0.6)
     box("yard", (1, 1, 0.06), (0, 0, 0.03), mud)
-    box("pad", (0.5, 0.5, 0.08), (0, 0, 0.08), pad)         # the crane foot pad
-    for lx, ly in ((0.16, 0.16), (0.16, -0.16), (-0.16, 0.16), (-0.16, -0.16)):
-        box(f"foot{lx}{ly}", (0.07, 0.07, 0.16), (lx, ly, 0.16), yellow)
-    box("gen", (0.20, 0.14, 0.12), (0.32, -0.30, 0.12), steel)   # generator
+    box("pad", (0.5, 0.5, 0.16), (0, 0, 0.09), pad)         # the crane foot pad
+    steel, yellow = _crane_lattice(z0=0.16, h=0.84)        # legs rise off the pad
+    box("gen", (0.20, 0.14, 0.12), (0.34, -0.32, 0.13), steel)   # generator
     for i in range(3):                                     # block pallets
-        box(f"pal{i}", (0.16, 0.16, 0.08), (-0.34, -0.30 + i * 0.02, 0.08 + i * 0.03), pad)
+        box(f"pal{i}", (0.16, 0.16, 0.08),
+            (-0.36, -0.32 + i * 0.02, 0.10 + i * 0.05), pad)
     rig_camera_and_light()
     render("crane_base")
 
@@ -1725,6 +1760,8 @@ def main():
     # the Marlowe Lot: Boiler Run tower crane + fenced dig
     crane_mast_cell()
     crane_cab_cell()
+    crane_jib_cell()
+    crane_jibtip_cell()
     crane_container_cell()
     crane_chain_cell()
     crane_lot_cell()
