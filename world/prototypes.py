@@ -4879,3 +4879,80 @@ THERMAL_LEGGINGS = {
         ("weight", 0.3),
     ],
 }
+
+
+# --- Pessoa Street: Auntie Lin's noodle cart wares (build 048) -------------
+# Handmade worker food — the branding rule's handmade exception. Eaten/drunk
+# through the consumption system (same shape as the butcher's dishes).
+
+PESSOA_NOODLES = {
+    "prototype_key": "pessoa_noodles",
+    "key": "a bowl of hand-pulled noodles",
+    "aliases": ["noodles", "bowl of noodles", "noodle"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A steel bowl of hand-pulled wheat noodles in a dark, oily broth, "
+            "scattered with scallion ash and a slick of chili oil. The broth "
+            "has been going so long nobody remembers starting it.",
+    "attrs": [
+        ("drink_taste", "Deep, salty, faintly scorched — the broth of a "
+                        "thousand shifts, and it sticks to your ribs like one."),
+        ("drink_effects", {}),
+        ("uses_left", 3),
+        ("value", 6),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+PESSOA_BUN = {
+    "prototype_key": "pessoa_bun",
+    "key": "a steamed bun",
+    "aliases": ["bun", "steamed bun", "pork bun"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A pale, pleated bun the size of a fist, steam-soft and heavy in "
+            "the hand, its underside stuck to a square of waxed paper. "
+            "Whatever's inside is dark, sweet, and generously salted.",
+    "attrs": [
+        ("drink_taste", "Cloud-soft dough over a hot, savoury-sweet filling — "
+                        "a whole meal you can eat one-handed on the walk."),
+        ("drink_effects", {}),
+        ("uses_left", 2),
+        ("value", 4),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+PESSOA_SKEWER = {
+    "prototype_key": "pessoa_skewer",
+    "key": "a charred skewer",
+    "aliases": ["skewer", "stick"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Cubes of something dark grilled onto a splintered bamboo stick, "
+            "brushed with the same chili oil as everything on the cart and "
+            "dusted with a rust-coloured spice.",
+    "attrs": [
+        ("drink_taste", "Char, fat, and a spice that builds — gone in four "
+                        "bites and worth every one."),
+        ("drink_effects", {}),
+        ("uses_left", 1),
+        ("value", 3),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+
+PESSOA_TEA = {
+    "prototype_key": "pessoa_tea",
+    "key": "a cup of smoked tea",
+    "aliases": ["tea", "cup of tea", "cha"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A dented enamel cup of tea steeped so dark and smoke-cured it "
+            "could pass for broth, cut with a spoonful of condensed something "
+            "gone to the bottom.",
+    "attrs": [
+        ("drink_taste", "Smoke, tannin, and a cloying sweetness — scalding "
+                        "enough to remind you you're alive on a cold shift."),
+        ("drink_effects", {}),
+        ("uses_left", 3),
+        ("value", 2),
+    ],
+    "tags": [("drink", "delivery_method"), ("drink", "item_type")],
+}
