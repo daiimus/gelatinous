@@ -1076,6 +1076,20 @@ def crane_container_cell():
     render("crane_container")
 
 
+def crane_chain_cell():
+    """A hanging length of the crane's hoist cable — a thin greased line
+    with periodic chain links, centred and full-height so stacked cells
+    read as one continuous cable from the jib down to the container."""
+    clear_scene()
+    cable = make_material("chcable", (0.09, 0.09, 0.10), 0.45)
+    link = make_material("chlink", (0.17, 0.16, 0.14), 0.55, noise=0.25)
+    box("cable", (0.025, 0.025, 1.0), (0, 0, 0.5), cable)
+    for i in range(5):                                    # chain links down the run
+        box(f"lk{i}", (0.06, 0.05, 0.05), (0, 0, 0.1 + i * 0.2), link)
+    rig_camera_and_light()
+    render("crane_chain")
+
+
 def crane_lot_cell():
     """The fenced street edge of the dig — plywood hoarding, torn permits,
     a mud yard behind."""
@@ -1712,6 +1726,7 @@ def main():
     crane_mast_cell()
     crane_cab_cell()
     crane_container_cell()
+    crane_chain_cell()
     crane_lot_cell()
     crane_base_cell()
     crane_dig_cell()

@@ -1352,6 +1352,8 @@ class CraneContainer(Room):
                 f"circles. {aim[0].upper() + aim[1:]}. Straight down the "
                 f"cable is the dig.")
 
+        self._skin_column(z)
+
         if announce and z != old:
             verb = "rises" if z > old else "descends"
             self.msg_contents(
@@ -1359,3 +1361,17 @@ class CraneContainer(Room):
                 f"city sliding past the open doors, and settles at the "
                 f"{z + 1}th floor.")
         return z
+
+    def _skin_column(self, z):
+        """Dress the container's shaft on the atlas: hoist cable in the
+        cells ABOVE the car (between it and the jib), open air at and
+        below it (the drop). Re-run on every move, so the chain follows
+        the car. Targets only the shaft's SkyRooms — never the car."""
+        from evennia.objects.models import ObjectDB
+        from world.spatial import get_xyz
+        for r in ObjectDB.objects.filter(
+                db_typeclass_path="typeclasses.rooms.SkyRoom"):
+            xyz = get_xyz(r)
+            if (xyz and xyz[0] == self.COL[0] and xyz[1] == self.COL[1]
+                    and self.MIN_Z <= xyz[2] <= self.MAX_Z):
+                r.db.atlas_skin = "crane_chain" if xyz[2] > z else None
