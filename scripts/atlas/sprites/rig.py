@@ -1624,6 +1624,30 @@ def sealed_hull_cell():
     render("sealed_hull")
 
 
+def hull_mass_cell():
+    """A solid, full-height section of the derelict Boot's hull — its rusted,
+    riveted OUTSIDE, welded shut, rounded on top. Fills the dead cells around
+    the market so the boot reads as one solid hull instead of a lit strip
+    ringed by black holes."""
+    clear_scene()
+    hullm = make_material("hmhull", (0.34, 0.22, 0.15), 0.82, noise=0.6)
+    weld = make_material("hmweld", (0.17, 0.12, 0.10), 0.9)
+    rust = make_material("hmrust", (0.30, 0.19, 0.12), 0.7, noise=0.5)
+    box("mass", (0.9, 0.9, 0.60), (0, 0, 0.30), hullm)         # solid body
+    cylinder("crown", 0.40, 0.92, (0, 0, 0.60), hullm, arc=math.pi)   # hull curve on top
+    box("grime", (0.904, 0.904, 0.14), (0, 0, 0.07), rust)     # grimy waterline
+    for wz in (0.22, 0.46):                                    # weld seams around
+        box(f"seamN{wz}", (0.92, 0.04, 0.03), (0, 0.45, wz), weld)
+        box(f"seamS{wz}", (0.92, 0.04, 0.03), (0, -0.45, wz), weld)
+        box(f"seamE{wz}", (0.04, 0.92, 0.03), (0.45, 0, wz), weld)
+        box(f"seamW{wz}", (0.04, 0.92, 0.03), (-0.45, 0, wz), weld)
+    for i, (rx, ry) in enumerate(((0.30, 0.46), (-0.10, 0.46),
+                                  (0.46, 0.20), (0.46, -0.20))):
+        box(f"riv{i}", (0.04, 0.04, 0.04), (rx, ry, 0.42), rust)
+    rig_camera_and_light()
+    render("hull_mass")
+
+
 def generic_cell():
     clear_scene()
     m = make_material("gen", (0.17, 0.16, 0.19), 0.9, noise=0.4)
@@ -2221,7 +2245,7 @@ def main():
     # The Kettle — worker bathhouse, onsen bones
     kettle_entrance_cell(); kettle_boiler_cell(); kettle_changing_cell()
     kettle_plunge_cell(); kettle_hall_cell(); kettle_mural_cell()
-    sealed_hull_cell()          # Hammett's Boot: welded-shut hull sections
+    sealed_hull_cell(); hull_mass_cell()  # Hammett's Boot: welded-shut hull sections
     crane_lot_cell()
     crane_base_cell()
     crane_dig_cell()
