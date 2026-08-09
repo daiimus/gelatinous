@@ -1676,51 +1676,67 @@ def _boot_ribs(r, base, mat):
         cylinder(f"rib{wx}", r + 0.02, 0.05, (wx, 0, base), mat, arc=math.pi)
 
 
+#: Uniform cladding: every Boot cell is the SAME copper hull at the SAME
+#: height, flat parapet top, vertical copper strakes — so they tile flush and
+#: the footprint (not per-cell curves) carries the boot shape.
+_BOOT_H = 0.88
+
+
+def _boot_clad(pat, cop):
+    box("wall", (0.99, 0.99, _BOOT_H), (0, 0, _BOOT_H / 2), pat)
+    box("grime", (1.0, 1.0, 0.14), (0, 0, 0.07), cop)              # waterline
+    box("cap", (0.93, 0.93, 0.06), (0, 0, _BOOT_H), cop)           # copper roof cap
+    box("rim", (1.0, 1.0, 0.05), (0, 0, _BOOT_H - 0.03), pat)      # parapet rim
+    for t in (-0.36, -0.12, 0.12, 0.36):                          # vertical strakes
+        box(f"strY{t}", (0.03, 0.02, _BOOT_H - 0.14), (t, 0.50, _BOOT_H / 2), cop)
+        box(f"strX{t}", (0.02, 0.03, _BOOT_H - 0.14), (-0.50, t, _BOOT_H / 2), cop)
+
+
 def boot_arch_cell():
-    """A segment of the foot: a copper wall of lit market windows under a
-    verdigris barrel vault that hoops up — stacked along the sole they read
-    as one continuous arched hull."""
+    """A market bay of the copper Boot — full-height verdigris hull, copper
+    strakes and a flat parapet, lit market windows. Tiles flush with its
+    neighbours so the footprint reads as one cohesive copper hull."""
     clear_scene()
     pat, cop, lit = _boot_copper()
-    box("wall", (0.94, 0.94, 0.50), (0, 0, 0.25), pat)
-    box("grime", (0.95, 0.95, 0.12), (0, 0, 0.06), cop)
-    for wx in (-0.30, 0.0, 0.30):                       # lit market windows, +y face
-        box(f"winY{wx}", (0.12, 0.02, 0.18), (wx, 0.47, 0.30), lit)
-    for wy in (-0.30, 0.0, 0.30):                       # and the -x face
-        box(f"winX{wy}", (0.02, 0.12, 0.18), (-0.47, wy, 0.30), lit)
-    cylinder("vault", 0.50, 0.94, (0, 0, 0.50), pat, arc=math.pi)   # the copper hoop
-    _boot_ribs(0.50, 0.50, cop)
+    _boot_clad(pat, cop)
+    for t in (-0.28, 0.0, 0.28):                                   # lit windows
+        box(f"winY{t}", (0.13, 0.02, 0.22), (t, 0.505, 0.42), lit)
+        box(f"winX{t}", (0.02, 0.13, 0.22), (-0.505, t, 0.42), lit)
     rig_camera_and_light()
     render("boot_arch")
 
 
 def boot_flank_cell():
-    """The hull curving down at the boot's edges — a lower copper vault, no
-    windows, so the sides fall away from the foot to the ground."""
+    """A blank copper-hull section at the Boot's edges — same cladding and
+    height as the bays but no windows, so the sides read as solid hull and
+    line up flush."""
     clear_scene()
     pat, cop, _ = _boot_copper()
-    box("wall", (0.94, 0.94, 0.32), (0, 0, 0.16), pat)
-    box("grime", (0.95, 0.95, 0.10), (0, 0, 0.05), cop)
-    cylinder("vault", 0.42, 0.94, (0, 0, 0.32), pat, arc=math.pi)
-    _boot_ribs(0.42, 0.32, cop)
+    _boot_clad(pat, cop)
+    for i in range(4):                                            # rivet rows
+        for j in range(3):
+            box(f"riv{i}{j}", (0.03, 0.03, 0.03),
+                (-0.30 + i * 0.20, 0.505, 0.22 + j * 0.22), cop)
     rig_camera_and_light()
     render("boot_flank")
 
 
 def boot_spur_cell():
-    """The toe's spur — a faceted copper star-peak roof over a copper drum,
-    a finial at the point. The flourish that earns the boot its silhouette."""
+    """The toe's spur — the copper hull carried up into a faceted star-peak
+    roof with a finial. The one flourish (a single cell, so it needn't tile)
+    that earns the boot its silhouette."""
     clear_scene()
     pat, cop, lit = _boot_copper()
-    box("drum", (0.66, 0.66, 0.46), (0, 0, 0.23), pat)
-    for wy in (-0.18, 0.18):                            # a couple of lit slits
-        box(f"slit{wy}", (0.02, 0.10, 0.16), (-0.34, wy, 0.28), lit)
-    # a faceted (star-like) peaked roof: shrinking hex drums to a point
-    for i, (rr, zz) in enumerate(((0.44, 0.50), (0.32, 0.66),
-                                  (0.20, 0.80), (0.09, 0.92))):
-        cylinder(f"peak{i}", rr, 0.14, (0, 0, zz), cop if i % 2 else pat,
+    box("drum", (0.9, 0.9, 0.62), (0, 0, 0.31), pat)
+    box("grime", (0.92, 0.92, 0.12), (0, 0, 0.06), cop)
+    for t in (-0.2, 0.2):
+        box(f"slitY{t}", (0.10, 0.02, 0.18), (t, 0.46, 0.36), lit)
+        box(f"slitX{t}", (0.02, 0.10, 0.18), (-0.46, t, 0.36), lit)
+    for i, (rr, zz) in enumerate(((0.48, 0.62), (0.36, 0.80),
+                                  (0.24, 0.96), (0.11, 1.10))):
+        cylinder(f"peak{i}", rr, 0.16, (0, 0, zz), cop if i % 2 else pat,
                  arc=math.pi * 2, seg=6)
-    box("finial", (0.05, 0.05, 0.20), (0, 0, 1.00), cop)   # the spike
+    box("finial", (0.05, 0.05, 0.22), (0, 0, 1.18), cop)
     rig_camera_and_light()
     render("boot_spur")
 
