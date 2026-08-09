@@ -1220,3 +1220,141 @@ class CorridorRoom(Room):
         self.db.outside = False
         self.db.is_sky_room = False
         self.db.type = "corridor"
+
+
+class CraneContainer(Room):
+    """The Boiler Run crane's container car — an elevator that is also an
+    edge. It rides the mast column at ``COL`` between the 2nd and 17th
+    floors (``MIN_Z``..``MAX_Z``); the operator sets its level and it
+    carries whoever is standing in it, because it *is* the room they're
+    standing in. Its exits rewire with height:
+
+    * At the **2nd floor** (``MIN_Z``) it docks level with the Kaspar
+      Urgent Care roof — a plain walk-off ``west`` (the boarding point).
+    * **Anywhere else** it offers a jump edge ``north`` toward the Queen
+      of Cups rack roof. That roof sits at ``QOC_Z``; the leap is easy
+      when the car is level with it and gets harder — and the fall
+      longer — the further off level the car is parked. Miss and you go
+      down the cable into the dig.
+    * When it's exactly level (``QOC_Z``) the Queen's roof gets a
+      matching ``south`` edge back onto the car.
+
+    All movement runs through :meth:`move_to_level`, which is the single
+    seam the operator NPC (and, later, a cab lever) drives.
+    """
+
+    COL = (-1, -17)          # (x, y) column the car rides
+    MIN_Z = 1                # 2nd floor  — dock / boarding
+    MAX_Z = 16               # 17th floor — top of travel
+    QOC_Z = 12               # Queen of Cups rack-roof level (safe crossing)
+    UC_ROOF = (-2, -17, 1)   # Urgent Care roof (North) — the 2nd-floor dock
+    SKY = (0, -17, 12)       # transit air for the leap
+    FALL = (-1, -17, 0)      # the rebar pit under the cable
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        self.db.outside = True
+        self.db.is_sky_room = False
+        self.db.type = "rooftop"
+        self.db.level = self.MIN_Z
+
+    # -- helpers ---------------------------------------------------------
+    def _room_at(self, xyz):
+        from evennia.objects.models import ObjectDB
+        from world.spatial import get_xyz
+        for r in ObjectDB.objects.filter(db_attributes__db_key="xyz"):
+            if r.destination is None and get_xyz(r) == tuple(xyz):
+                return r
+        return None
+
+    def _mk(self, loc, dest, key, aliases=None, **attrs):
+        """Create an exit and record it so the next move can tear it down."""
+        from evennia import create_object
+        if loc is None or dest is None:
+            return None
+        e = create_object("typeclasses.exits.Exit", key=key,
+                          aliases=aliases or [], location=loc, destination=dest)
+        for k, v in attrs.items():
+            setattr(e.db, k, v)
+        self.db.crane_exits = (self.db.crane_exits or []) + [e.id]
+        return e
+
+    def _teardown(self):
+        """Delete every exit this car last wired (its own + the reverse
+        ones leading into it)."""
+        from evennia.objects.models import ObjectDB
+        for eid in (self.db.crane_exits or []):
+            ex = ObjectDB.objects.filter(id=eid).first()
+            if ex is not None:
+                ex.delete()
+        self.db.crane_exits = []
+
+    # -- the one seam ----------------------------------------------------
+    def move_to_level(self, z, announce=True):
+        """Send the car to floor ``z`` (a z-coordinate, ``MIN_Z``..
+        ``MAX_Z``), carrying its occupants, and rewire its exits for the
+        new height. Returns the clamped level."""
+        from world.spatial import set_xyz
+
+        z = max(self.MIN_Z, min(self.MAX_Z, int(z)))
+        old = self.db.level or self.MIN_Z
+        self._teardown()
+        set_xyz(self, self.COL[0], self.COL[1], z)
+        self.db.level = z
+
+        sky = self._room_at(self.SKY)
+        fall = self._room_at(self.FALL)
+
+        if z == self.MIN_Z:
+            # dock: a plain walk-off west onto the Urgent Care roof
+            uc = self._room_at(self.UC_ROOF)
+            self._mk(self, uc, "west", ["w"])
+            self._mk(uc, self, "east", ["e"])
+            self.db.desc = (
+                "A battered Longhaul shipping container slung level on the "
+                "crane's cable, doors chained open. Right now it's docked "
+                "at the 2nd floor, its open end level with the Kaspar "
+                "Urgent Care roof to the west — step across.")
+        else:
+            qoc = self._room_at((-1, -16, 12))       # QoC Rack Roof Southeast
+            off = abs(z - self.QOC_Z)
+            diff = 8 + 2 * off                       # level=8, +2 / storey off
+            self._mk(self, sky, "north", ["n"],
+                     is_edge=True, is_gap=True,
+                     edge_difficulty=diff, gap_difficulty=diff,
+                     gap_width="medium", fall_distance=z, fall_damage=6,
+                     sky_room=(sky.id if sky else None),
+                     fall_room=(fall.id if fall else None),
+                     gap_destination=(qoc.id if qoc else None))
+            if z == self.QOC_Z and qoc is not None:
+                # level: the Queen's roof gets a way back onto the car
+                self._mk(qoc, self, "south", ["s"],
+                         is_edge=True, is_gap=True,
+                         edge_difficulty=8, gap_difficulty=8,
+                         gap_width="medium", fall_distance=z, fall_damage=6,
+                         sky_room=(sky.id if sky else None),
+                         fall_room=(fall.id if fall else None),
+                         gap_destination=self.id)
+            floor = z + 1
+            if z == self.QOC_Z:
+                aim = ("its open end level with the Queen of Cups' rack roof "
+                       "to the north — a short, clean step across")
+            elif z > self.QOC_Z:
+                aim = ("the Queen of Cups' rack roof sits a few storeys "
+                       "below to the north; the jump down is a gamble")
+            else:
+                aim = ("the Queen of Cups' rack roof is up and to the north, "
+                       "out of easy reach; leaping for it is a bad idea")
+            self.db.desc = (
+                f"A battered Longhaul shipping container slung on the crane's "
+                f"cable at the {floor}th floor, wind pushing it in slow "
+                f"circles. {aim[0].upper() + aim[1:]}. Straight down the "
+                f"cable is the dig.")
+
+        if announce and z != old:
+            verb = "rises" if z > old else "descends"
+            self.msg_contents(
+                f"The container {verb} with a groan of cable and motor, the "
+                f"city sliding past the open doors, and settles at the "
+                f"{z + 1}th floor.")
+        return z
