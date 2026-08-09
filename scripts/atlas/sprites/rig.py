@@ -1598,52 +1598,62 @@ def kettle_mural_cell():                        # the mural wall of the hall
     rig_camera_and_light(); render("kettle_mural")
 
 
-def sealed_hull_cell():
-    """A welded-shut section of Hammett's Boot's hull — the same camber and
-    rivets as the walkable hull-top, but a cross-welded hatch on the crown
-    and no deck: the parts of the derelict you simply can't get onto. Caps
-    the gaps in the boot's upper surface so it reads as one sealed hull."""
-    clear_scene()
-    hullm = make_material("shull", (0.33, 0.21, 0.14), 0.82, noise=0.6)
-    weld = make_material("sweld", (0.17, 0.12, 0.10), 0.9)
-    rust = make_material("srust", (0.30, 0.19, 0.12), 0.7, noise=0.5)
-    plate = make_material("splate", (0.26, 0.20, 0.16), 0.85, noise=0.3)
-    cylinder("camber", 0.62, 1.0, (0, 0, 0), hullm, arc=math.pi * 0.9)
-    box("hatch", (0.46, 0.50, 0.05), (0, 0, 0.60), plate)      # welded-shut hatch
-    box("weldX1", (0.50, 0.045, 0.03), (0, 0, 0.63), rust, rot=(0, 0, 0.6))
-    box("weldX2", (0.50, 0.045, 0.03), (0, 0, 0.63), rust, rot=(0, 0, -0.6))
-    box("barA", (0.50, 0.04, 0.03), (0, 0.14, 0.63), weld)     # cross-bars over it
-    box("barB", (0.50, 0.04, 0.03), (0, -0.14, 0.63), weld)
-    for wx in (-0.34, 0.02, 0.38):                             # weld bands
-        cylinder(f"weld{wx}", 0.645, 0.05, (wx, 0, 0), weld, arc=math.pi * 0.85)
-    for i in range(7):                                         # rivet row
+#: The Boot's hull, matched to hull_cell — SAME material, camber and rivets,
+#: so sealed sections read as one continuous derelict with the walkable
+#: decks, only welded shut (a dark crown where the deck's pale plate would be).
+def _boot_hull_mats():
+    return (make_material("bhhull", (0.42, 0.26, 0.17), 0.75, noise=0.55),
+            make_material("bhweld", (0.20, 0.13, 0.10), 0.9),
+            make_material("bhrivet", (0.30, 0.20, 0.14), 0.6))
+
+
+def _boot_hull_crown(weld, rivet, base=0.0, r=0.635):
+    """The welded-shut crown treatment (in place of hull_cell's pale deck):
+    a dark sealed plate, a longitudinal weld, banded welds, a faded stencil,
+    a rivet row — all riding a camber whose crest sits at ``base + r``."""
+    seal = make_material(f"bhseal{base}", (0.30, 0.21, 0.15), 0.85, noise=0.35)
+    sten = make_material(f"bhsten{base}", (0.40, 0.34, 0.28), 0.9)
+    cylinder("plate", r, r * 0.66, (0, 0, base), seal, arc=math.pi * 0.6)
+    box("seamL", (2 * r - 0.1, 0.035, 0.02), (0, 0, base + r), weld)
+    for wx in (-0.34, 0.02, 0.38):
+        cylinder(f"weld{wx}", r + 0.01, 0.05, (wx, 0, base), weld,
+                 arc=math.pi * 0.85)
+    box("mark", (0.18, 0.02, 0.09),
+        (-0.18, (r - 0.05) * math.cos(math.pi * 0.35),
+         base + (r - 0.05) * math.sin(math.pi * 0.35)),
+        sten, rot=(math.pi * 0.35 - math.pi / 2, 0, 0))
+    for i in range(7):
         a = math.pi * (0.18 + 0.09 * i)
         box(f"riv{i}", (0.035, 0.035, 0.035),
-            (-0.42 + i * 0.14, 0.6 * math.cos(a), 0.6 * math.sin(a)), rust)
+            (-0.42 + i * 0.14, (r - 0.02) * math.cos(a),
+             base + (r - 0.02) * math.sin(a)), rivet)
+
+
+def sealed_hull_cell():
+    """A welded-shut hull-TOP cap between the walkable decks — hull_cell's
+    own 0.62 camber and material, sealed, so it flows straight into them."""
+    clear_scene()
+    hullm, weld, rivet = _boot_hull_mats()
+    cylinder("camber", 0.62, 1.0, (0, 0, 0), hullm, arc=math.pi * 0.9)
+    _boot_hull_crown(weld, rivet, base=0.0, r=0.635)
     rig_camera_and_light()
     render("sealed_hull")
 
 
 def hull_mass_cell():
-    """A solid, full-height section of the derelict Boot's hull — its rusted,
-    riveted OUTSIDE, welded shut, rounded on top. Fills the dead cells around
-    the market so the boot reads as one solid hull instead of a lit strip
-    ringed by black holes."""
+    """The Boot's hull rising to enclose the market at street level — the
+    SAME hull as the decks (material, camber, rivets), raised on a straight
+    flank so it meets the market's height, and welded shut."""
     clear_scene()
-    hullm = make_material("hmhull", (0.34, 0.22, 0.15), 0.82, noise=0.6)
-    weld = make_material("hmweld", (0.17, 0.12, 0.10), 0.9)
-    rust = make_material("hmrust", (0.30, 0.19, 0.12), 0.7, noise=0.5)
-    box("mass", (0.9, 0.9, 0.60), (0, 0, 0.30), hullm)         # solid body
-    cylinder("crown", 0.40, 0.92, (0, 0, 0.60), hullm, arc=math.pi)   # hull curve on top
-    box("grime", (0.904, 0.904, 0.14), (0, 0, 0.07), rust)     # grimy waterline
-    for wz in (0.22, 0.46):                                    # weld seams around
-        box(f"seamN{wz}", (0.92, 0.04, 0.03), (0, 0.45, wz), weld)
-        box(f"seamS{wz}", (0.92, 0.04, 0.03), (0, -0.45, wz), weld)
-        box(f"seamE{wz}", (0.04, 0.92, 0.03), (0.45, 0, wz), weld)
-        box(f"seamW{wz}", (0.04, 0.92, 0.03), (-0.45, 0, wz), weld)
-    for i, (rx, ry) in enumerate(((0.30, 0.46), (-0.10, 0.46),
-                                  (0.46, 0.20), (0.46, -0.20))):
-        box(f"riv{i}", (0.04, 0.04, 0.04), (rx, ry, 0.42), rust)
+    hullm, weld, rivet = _boot_hull_mats()
+    grime = make_material("hmgrime", (0.26, 0.17, 0.12), 0.85, noise=0.4)
+    box("flank", (0.86, 0.86, 0.42), (0, 0, 0.21), hullm)      # straight lower hull flank
+    box("waterline", (0.90, 0.90, 0.10), (0, 0, 0.05), grime)  # grimy base
+    cylinder("camber", 0.55, 0.9, (0, 0, 0.42), hullm, arc=math.pi * 0.9)
+    _boot_hull_crown(weld, rivet, base=0.42, r=0.56)
+    for i, (rx, ry) in enumerate(((0.30, 0.44), (-0.05, 0.44),
+                                  (0.44, 0.20), (0.44, -0.20))):
+        box(f"rivf{i}", (0.04, 0.04, 0.04), (rx, ry, 0.28), rivet)
     rig_camera_and_light()
     render("hull_mass")
 
