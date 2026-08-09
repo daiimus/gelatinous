@@ -1676,35 +1676,28 @@ def _boot_ribs(r, base, mat):
         cylinder(f"rib{wx}", r + 0.02, 0.05, (wx, 0, base), mat, arc=math.pi)
 
 
-#: Hammett's Boot renders like any other building: every cell a FULL unit
-#: cube in the rooftop's hull material, tiling seamlessly, and BOTH levels
-#: skinned so the z1 cells are the second storey of one solid mass. Windows
-#: on the market floor; blank hull above.
+#: Hammett's Boot tiles like a tenement: a plain full hull cube, windows on
+#: the SIDES only, and a uniform top with NO cap or per-cell framing — so the
+#: cell edges vanish and the cells fuse into one building (the seams the owner
+#: saw were a high-contrast cap outlining every square).
 def _boot_cube(windows):
     hullm = make_material("bbhull", (0.42, 0.26, 0.17), 0.75, noise=0.55)
-    weld = make_material("bbweld", (0.20, 0.13, 0.10), 0.9)
-    rivet = make_material("bbrivet", (0.30, 0.20, 0.14), 0.6)
-    pale = make_material("bbpale", (0.55, 0.44, 0.33), 0.8, noise=0.3)
+    grime = make_material("bbgrime", (0.22, 0.15, 0.11), 0.9, noise=0.35)
+    frame = make_material("bbframe", (0.10, 0.09, 0.08), 0.8)
     lit = make_material("bblit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28))
-    box("block", (1, 1, 1), (0, 0, 0.5), hullm)                # FULL unit cube — tiles flush
-    box("grime", (1.004, 1.004, 0.16), (0, 0, 0.08), weld)     # grimy base band
-    box("cap", (1.006, 1.006, 0.06), (0, 0, 0.98), pale)       # pale cap == the hull deck
-    for wz in (0.36, 0.70):                                    # horizontal hull weld bands
-        box(f"bY{wz}", (1.006, 0.03, 0.03), (0, 0.5, wz), weld)
-        box(f"bX{wz}", (0.03, 1.006, 0.03), (-0.5, 0, wz), weld)
-    for t in (-0.34, -0.11, 0.12, 0.35):                       # rivet rows on the seen faces
-        box(f"rY{t}", (0.03, 0.03, 0.03), (t, 0.51, 0.52), rivet)
-        box(f"rX{t}", (0.03, 0.03, 0.03), (-0.51, t, 0.52), rivet)
+    box("block", (1, 1, 1), (0, 0, 0.5), hullm)            # plain full cube; uniform top
+    box("grime", (1.006, 1.006, 0.16), (0, 0, 0.08), grime)  # base band only
     if windows:
         for t in (-0.30, 0.0, 0.30):
-            box(f"wY{t}", (0.14, 0.02, 0.26), (t, 0.51, 0.50), lit)
-            box(f"wX{t}", (0.02, 0.14, 0.26), (-0.51, t, 0.50), lit)
-    return pale, rivet
+            box(f"fY{t}", (0.16, 0.02, 0.30), (t, 0.505, 0.52), frame)
+            box(f"gY{t}", (0.12, 0.015, 0.24), (t, 0.512, 0.52), lit)
+            box(f"fX{t}", (0.02, 0.16, 0.30), (-0.505, t, 0.52), frame)
+            box(f"gX{t}", (0.015, 0.12, 0.24), (-0.512, t, 0.52), lit)
 
 
 def boot_arch_cell():
-    """A market-floor cell of the Boot — a full hull cube with lit windows,
-    tiling flush with its neighbours into one solid building."""
+    """A market-floor cell of the Boot — a plain hull cube with side windows;
+    tiles flush like a tenement into one building."""
     clear_scene()
     _boot_cube(windows=True)
     rig_camera_and_light()
@@ -1712,8 +1705,7 @@ def boot_arch_cell():
 
 
 def boot_flank_cell():
-    """A blank hull cell — the same full cube, no windows (the ends and the
-    upper storey)."""
+    """A blank hull cube — the ends and the upper storey, no windows."""
     clear_scene()
     _boot_cube(windows=False)
     rig_camera_and_light()
@@ -1721,14 +1713,13 @@ def boot_flank_cell():
 
 
 def boot_spur_cell():
-    """The toe's spur — the same full hull cube carrying a small copper cap
-    and finial, the one modest flourish."""
+    """The toe's spur — a plain hull cube with one small finial mast, the only
+    thing that rises above the uniform roofline."""
     clear_scene()
-    pale, _ = _boot_cube(windows=True)
+    _boot_cube(windows=True)
     cop = make_material("bscop", (0.55, 0.34, 0.18), 0.5, noise=0.3)
-    box("nub", (0.5, 0.5, 0.16), (0, 0, 1.04), cop)
-    box("nubcap", (0.34, 0.34, 0.06), (0, 0, 1.15), pale)
-    box("finial", (0.06, 0.06, 0.18), (0, 0, 1.26), cop)
+    box("mast", (0.06, 0.06, 0.28), (0.0, 0.0, 1.10), cop)
+    box("vane", (0.22, 0.03, 0.06), (0.0, 0.0, 1.20), cop)
     rig_camera_and_light()
     render("boot_spur")
 
