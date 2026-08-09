@@ -1676,67 +1676,86 @@ def _boot_ribs(r, base, mat):
         cylinder(f"rib{wx}", r + 0.02, 0.05, (wx, 0, base), mat, arc=math.pi)
 
 
-#: Uniform cladding: every Boot cell is the SAME copper hull at the SAME
-#: height, flat parapet top, vertical copper strakes — so they tile flush and
-#: the footprint (not per-cell curves) carries the boot shape.
-_BOOT_H = 0.88
+#: Hammett's Boot is the remnant of a giant mech leg / ship landing gear —
+#: heavy DERELICT MACHINERY, boot-shaped. Faceted armour (angled plates, not
+#: flat boxes), hydraulic struts, a copper facade over steel bones. The
+#: pitched armour ridges run E-W so cells interconnect along the leg.
+def _mech_mats():
+    return (make_material("mkarm", (0.30, 0.45, 0.40), 0.5, noise=0.4),   # verdigris armour
+            make_material("mkcop", (0.55, 0.34, 0.18), 0.45, noise=0.35), # copper edges
+            make_material("mksteel", (0.20, 0.21, 0.22), 0.5, noise=0.3), # steel bones
+            make_material("mkhyd", (0.09, 0.09, 0.10), 0.35),             # oiled hydraulics
+            make_material("mklit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28)))
 
 
-def _boot_clad(pat, cop):
-    box("wall", (0.99, 0.99, _BOOT_H), (0, 0, _BOOT_H / 2), pat)
-    box("grime", (1.0, 1.0, 0.14), (0, 0, 0.07), cop)              # waterline
-    box("cap", (0.93, 0.93, 0.06), (0, 0, _BOOT_H), cop)           # copper roof cap
-    box("rim", (1.0, 1.0, 0.05), (0, 0, _BOOT_H - 0.03), pat)      # parapet rim
-    for t in (-0.36, -0.12, 0.12, 0.36):                          # vertical strakes
-        box(f"strY{t}", (0.03, 0.02, _BOOT_H - 0.14), (t, 0.50, _BOOT_H / 2), cop)
-        box(f"strX{t}", (0.02, 0.03, _BOOT_H - 0.14), (-0.50, t, _BOOT_H / 2), cop)
+def _mech_gable(arm, cop, base, peak):
+    """A pitched (faceted) armour ridge running E-W — two tilted plates to a
+    copper ridge cap. Cells share the ridge line, so they read as one angled
+    machined surface, not stacked boxes."""
+    th = math.atan((peak - base) / 0.5)
+    box("facN", (1.0, 0.56, 0.05), (0, 0.25, (base + peak) / 2), arm,
+        rot=(-th, 0, 0))
+    box("facS", (1.0, 0.56, 0.05), (0, -0.25, (base + peak) / 2), arm,
+        rot=(th, 0, 0))
+    box("ridge", (1.02, 0.09, 0.06), (0, 0, peak), cop)
+
+
+def _mech_strut(steel, hyd, x):
+    box("cyl", (0.11, 0.11, 0.44), (x, 0.0, 0.22), hyd)        # hydraulic cylinder
+    box("rod", (0.05, 0.05, 0.34), (x, 0.0, 0.55), steel)      # extended piston rod
+    box("clevis", (0.13, 0.06, 0.06), (x, 0.0, 0.74), steel)
 
 
 def boot_arch_cell():
-    """A market bay of the copper Boot — full-height verdigris hull, copper
-    strakes and a flat parapet, lit market windows. Tiles flush with its
-    neighbours so the footprint reads as one cohesive copper hull."""
+    """An armour segment of the mech leg — verdigris plating over steel, a
+    pitched faceted ridge, a hydraulic strut down one side, lit crew slits."""
     clear_scene()
-    pat, cop, lit = _boot_copper()
-    _boot_clad(pat, cop)
-    for t in (-0.28, 0.0, 0.28):                                   # lit windows
-        box(f"winY{t}", (0.13, 0.02, 0.22), (t, 0.505, 0.42), lit)
-        box(f"winX{t}", (0.02, 0.13, 0.22), (-0.505, t, 0.42), lit)
+    arm, cop, steel, hyd, lit = _mech_mats()
+    box("body", (0.98, 0.98, 0.46), (0, 0, 0.23), arm)
+    box("skirt", (1.0, 1.0, 0.10), (0, 0, 0.05), steel)
+    _mech_gable(arm, cop, 0.46, 0.72)
+    _mech_strut(steel, hyd, -0.44)
+    for t in (-0.32, -0.06, 0.20):                            # armour bolts on the seam
+        box(f"bolt{t}", (0.05, 0.05, 0.05), (t, 0.50, 0.34), cop)
+    for t in (-0.26, 0.06, 0.30):                             # lit slits (the market within)
+        box(f"win{t}", (0.11, 0.02, 0.14), (t, 0.505, 0.26), lit)
     rig_camera_and_light()
     render("boot_arch")
 
 
 def boot_flank_cell():
-    """A blank copper-hull section at the Boot's edges — same cladding and
-    height as the bays but no windows, so the sides read as solid hull and
-    line up flush."""
+    """Lower armour where the leg's plating falls away — steel bones under a
+    shorter faceted skirt, exposed hydraulics, no windows."""
     clear_scene()
-    pat, cop, _ = _boot_copper()
-    _boot_clad(pat, cop)
-    for i in range(4):                                            # rivet rows
-        for j in range(3):
-            box(f"riv{i}{j}", (0.03, 0.03, 0.03),
-                (-0.30 + i * 0.20, 0.505, 0.22 + j * 0.22), cop)
+    arm, cop, steel, hyd, _ = _mech_mats()
+    box("body", (0.98, 0.98, 0.30), (0, 0, 0.15), arm)
+    box("skirt", (1.0, 1.0, 0.10), (0, 0, 0.05), steel)
+    _mech_gable(arm, cop, 0.30, 0.48)
+    _mech_strut(steel, hyd, -0.42)
+    box("brace", (0.5, 0.05, 0.05), (0.0, 0.44, 0.30), steel, rot=(0, 0.5, 0))
+    for t in (-0.30, 0.0, 0.30):                              # bolts
+        box(f"bolt{t}", (0.05, 0.05, 0.05), (t, 0.50, 0.22), cop)
     rig_camera_and_light()
     render("boot_flank")
 
 
 def boot_spur_cell():
-    """The toe's spur — the copper hull carried up into a faceted star-peak
-    roof with a finial. The one flourish (a single cell, so it needn't tile)
-    that earns the boot its silhouette."""
+    """The ankle joint at the toe — a radial actuator hub: a copper boss with
+    hydraulic arms radiating like a star, the leg's blown pivot."""
     clear_scene()
-    pat, cop, lit = _boot_copper()
-    box("drum", (0.9, 0.9, 0.62), (0, 0, 0.31), pat)
-    box("grime", (0.92, 0.92, 0.12), (0, 0, 0.06), cop)
-    for t in (-0.2, 0.2):
-        box(f"slitY{t}", (0.10, 0.02, 0.18), (t, 0.46, 0.36), lit)
-        box(f"slitX{t}", (0.02, 0.10, 0.18), (-0.46, t, 0.36), lit)
-    for i, (rr, zz) in enumerate(((0.48, 0.62), (0.36, 0.80),
-                                  (0.24, 0.96), (0.11, 1.10))):
-        cylinder(f"peak{i}", rr, 0.16, (0, 0, zz), cop if i % 2 else pat,
-                 arc=math.pi * 2, seg=6)
-    box("finial", (0.05, 0.05, 0.22), (0, 0, 1.18), cop)
+    arm, cop, steel, hyd, lit = _mech_mats()
+    box("mount", (0.7, 0.7, 0.40), (0, 0, 0.20), steel)
+    box("skirt", (0.9, 0.9, 0.10), (0, 0, 0.05), arm)
+    box("boss", (0.30, 0.30, 0.34), (0, 0, 0.52), cop)        # the joint hub
+    for k in range(6):                                        # radial actuator arms (star)
+        a = k * math.pi / 3.0
+        box(f"arm{k}", (0.44, 0.07, 0.07),
+            (0.24 * math.cos(a), 0.24 * math.sin(a), 0.50), steel, rot=(0, 0, a))
+        box(f"tip{k}", (0.08, 0.08, 0.08),
+            (0.44 * math.cos(a), 0.44 * math.sin(a), 0.50), hyd)
+    box("pin", (0.08, 0.08, 0.24), (0, 0, 0.74), cop)         # the pivot pin
+    for wy in (-0.18, 0.18):
+        box(f"slit{wy}", (0.02, 0.09, 0.14), (-0.36, wy, 0.30), lit)
     rig_camera_and_light()
     render("boot_spur")
 
