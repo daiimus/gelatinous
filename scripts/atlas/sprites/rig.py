@@ -1125,21 +1125,36 @@ def crane_chain_cell():
     render("crane_chain")
 
 
+def _hoarding(sides, permit=False):
+    """Plywood hoarding on the named lot edges (a subset of 'NSEW'). The
+    three ground cells each fence only their OUTER edges, so together they
+    ring the whole dig as one continuous perimeter — interior edges left
+    open, no way in. N/S run E-W along the +/-y edge; E/W run N-S along
+    the +/-x edge."""
+    ply = make_material("hoardply", (0.45, 0.33, 0.16), 0.8, noise=0.35)
+    post = make_material("hoardpost", (0.20, 0.16, 0.11), 0.7)
+    haz = make_material("hoardhaz", (0.62, 0.50, 0.10), 0.7)
+    edge = {"N": ((1.0, 0.06, 0.42), (0, 0.47, 0.24), "y"),
+            "S": ((1.0, 0.06, 0.42), (0, -0.47, 0.24), "y"),
+            "E": ((0.06, 1.0, 0.42), (0.47, 0, 0.24), "x"),
+            "W": ((0.06, 1.0, 0.42), (-0.47, 0, 0.24), "x")}
+    for s in sides:
+        size, loc, axis = edge[s]
+        box(f"hoard{s}", size, loc, ply)
+        for t in (-0.42, 0.0, 0.42):                      # posts along the run
+            p = (t, loc[1], 0.23) if axis == "y" else (loc[0], t, 0.23)
+            box(f"post{s}{t}", (0.05, 0.05, 0.46), p, post)
+    if permit and "E" in sides:                           # a permit taped streetside
+        box("permit", (0.02, 0.16, 0.12), (0.505, 0.05, 0.30), haz)
+
+
 def crane_lot_cell():
-    """The fenced street edge of the dig — plywood hoarding, torn permits,
-    a mud yard behind."""
+    """The open yard under the jib — churned mud, boxed in on its street
+    (east/west) faces by the lot's plywood hoarding."""
     clear_scene()
     mud = make_material("ltmud", (0.16, 0.13, 0.10), 0.9, noise=0.4)
-    ply = make_material("ltply", (0.45, 0.33, 0.16), 0.8, noise=0.35)
-    post = make_material("ltpost", (0.20, 0.16, 0.11), 0.7)
-    hazard_y = make_material("lthazY", (0.62, 0.50, 0.10), 0.7)
     box("yard", (1, 1, 0.06), (0, 0, 0.03), mud)
-    for wy, sy in ((0.47, 0.06), (-0.47, 0.06)):          # hoarding N/S
-        box(f"fenceNS{wy}", (1.0, sy, 0.42), (0, wy, 0.24), ply)
-    box("fenceE", (0.06, 1.0, 0.42), (0.47, 0, 0.24), ply)
-    for i in range(5):                                    # posts
-        box(f"post{i}", (0.05, 0.05, 0.46), (-0.4 + i * 0.2, 0.47, 0.23), post)
-    box("permit", (0.16, 0.02, 0.12), (0.05, 0.505, 0.30), hazard_y)
+    _hoarding("EW", permit=True)                          # middle cell: side walls only
     rig_camera_and_light()
     render("crane_lot")
 
@@ -1155,10 +1170,11 @@ def crane_base_cell():
     box("yard", (1, 1, 0.06), (0, 0, 0.03), mud)
     box("pad", (0.5, 0.5, 0.16), (0, 0, 0.09), pad)         # the crane foot pad
     steel, yellow = _crane_lattice(z0=0.16, h=0.84)        # legs rise off the pad
-    box("gen", (0.20, 0.14, 0.12), (0.34, -0.32, 0.13), steel)   # generator
+    box("gen", (0.20, 0.14, 0.12), (0.34, -0.20, 0.13), steel)   # generator
     for i in range(3):                                     # block pallets
         box(f"pal{i}", (0.16, 0.16, 0.08),
-            (-0.36, -0.32 + i * 0.02, 0.10 + i * 0.05), pad)
+            (-0.34, -0.20 + i * 0.02, 0.10 + i * 0.05), pad)
+    _hoarding("SEW")                                       # south cap + side walls
     rig_camera_and_light()
     render("crane_base")
 
@@ -1175,9 +1191,10 @@ def crane_dig_cell():
     box("pour", (0.7, 0.7, 0.05), (0, 0, 0.05), conc)
     box("puddle", (0.4, 0.3, 0.012), (0.1, 0.1, 0.075), water)
     for i in range(16):                                    # rebar forest
-        gx = -0.3 + (i % 4) * 0.2
-        gy = -0.3 + (i // 4) * 0.2
+        gx = -0.24 + (i % 4) * 0.16
+        gy = -0.24 + (i // 4) * 0.16
         box(f"reb{i}", (0.02, 0.02, 0.22), (gx, gy, 0.16), rebar)
+    _hoarding("NEW")                                       # north cap + side walls
     rig_camera_and_light()
     render("crane_dig")
 
