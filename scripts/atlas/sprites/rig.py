@@ -1370,6 +1370,144 @@ def scrap_se_cell():                            # crushed-cube tower + the dog-r
     _chainlink("S", m); rig_camera_and_light(); render("scrap_se")
 
 
+# ------------------------------------------------- Queen of Cups rack roof
+# One bespoke sprite per cell (the NW keeps its fallen mast). Parapet only
+# on OUTER edges, so the rack reads as one roof, not a grid of tiles.
+def _rack_mats():
+    return {
+        "tar": make_material("rktar", (0.14, 0.135, 0.13), 0.85, noise=0.4),
+        "bone": make_material("rkbone", (0.25, 0.24, 0.21), 0.9, noise=0.3),
+        "steel": make_material("rksteel", (0.34, 0.35, 0.36), 0.5, noise=0.3),
+        "vent": make_material("rkvent", (0.22, 0.22, 0.20), 0.6),
+        "pipe": make_material("rkpipe", (0.28, 0.34, 0.26), 0.5, noise=0.3),
+        "warm": make_material("rkwarm", (0.9, 0.6, 0.3), 0.4,
+                              emit=(1.0, 0.62, 0.30), emit_strength=2.4),
+    }
+
+
+def _parapet(sides, m):
+    edge = {"N": (0, 0.47, "x"), "S": (0, -0.47, "x"),
+            "E": (0.47, 0, "y"), "W": (-0.47, 0, "y")}
+    for s in sides:
+        cx, cy, ax = edge[s]
+        sz = (1.0, 0.06, 0.11) if ax == "x" else (0.06, 1.0, 0.11)
+        box(f"par{s}", sz, (cx, cy, 0.12), m["bone"])
+
+
+def rack_sw_cell():                            # a bank of condensers
+    clear_scene(); m = _rack_mats()
+    box("deck", (1, 1, 0.10), (0, 0, 0.05), m["tar"])
+    for i, (cx, cy) in enumerate(((0.10, 0.12), (0.30, 0.12), (0.10, -0.14))):
+        box(f"cond{i}", (0.16, 0.16, 0.18), (cx, cy, 0.19), m["steel"])
+        box(f"grl{i}", (0.12, 0.12, 0.02), (cx, cy, 0.29), m["warm"])
+    _parapet("SW", m); rig_camera_and_light(); render("rack_sw")
+
+
+def rack_s_cell():                             # condensate lines + roof vents
+    clear_scene(); m = _rack_mats()
+    box("deck", (1, 1, 0.10), (0, 0, 0.05), m["tar"])
+    box("pipe1", (0.9, 0.05, 0.05), (0, 0.12, 0.15), m["pipe"])
+    box("pipe2", (0.9, 0.05, 0.05), (0, 0.00, 0.13), m["pipe"])
+    box("dive", (0.05, 0.05, 0.14), (0.22, 0.12, 0.10), m["pipe"])
+    for cx in (-0.28, 0.28):
+        cylinder(f"vent{cx}", 0.08, 0.14, (cx, -0.22, 0.16), m["vent"],
+                 arc=math.pi * 2, seg=12)
+        box(f"cap{cx}", (0.18, 0.18, 0.03), (cx, -0.22, 0.25), m["vent"])
+    _parapet("S", m); rig_camera_and_light(); render("rack_s")
+
+
+def rack_n_cell():                             # the hub: HVAC, aerial, laundry
+    clear_scene(); m = _rack_mats()
+    box("deck", (1, 1, 0.10), (0, 0, 0.05), m["tar"])
+    box("hvac", (0.30, 0.24, 0.20), (-0.10, 0.06, 0.15), m["steel"])
+    box("hvac2", (0.18, 0.18, 0.16), (0.22, -0.10, 0.13), m["vent"])
+    box("mast", (0.03, 0.03, 0.50), (0.30, 0.24, 0.30), m["steel"])
+    box("xarm", (0.22, 0.02, 0.02), (0.30, 0.24, 0.48), m["steel"])
+    box("line", (0.6, 0.01, 0.01), (-0.05, -0.24, 0.34), m["steel"])
+    for i, lx in enumerate((-0.20, 0.00, 0.16)):
+        box(f"cloth{i}", (0.06, 0.02, 0.10), (lx, -0.24, 0.28), m["bone"])
+    rig_camera_and_light(); render("rack_n")
+
+
+def rack_se_cell():                            # the crane-jump corner
+    clear_scene(); m = _rack_mats()
+    worn = make_material("rkworn", (0.60, 0.62, 0.60), 0.35)
+    box("deck", (1, 1, 0.10), (0, 0, 0.05), m["tar"])
+    _parapet("E", m)                           # solid on the east, open to the jump
+    box("rail", (0.7, 0.03, 0.03), (0, -0.44, 0.22), worn)      # worn grab-rail, S
+    for px in (-0.28, 0.28):
+        box(f"post{px}", (0.04, 0.04, 0.20), (px, -0.44, 0.14), m["steel"])
+    box("coil", (0.12, 0.12, 0.06), (0.18, -0.18, 0.08), m["pipe"])
+    rig_camera_and_light(); render("rack_se")
+
+
+def rack_ne_cell():                            # the quiet milk-crate corner
+    clear_scene(); m = _rack_mats()
+    crate = make_material("rkcrate", (0.20, 0.30, 0.50), 0.6)
+    wood = make_material("rkwood", (0.40, 0.30, 0.18), 0.8, noise=0.4)
+    box("deck", (1, 1, 0.10), (0, 0, 0.05), m["tar"])
+    _parapet("NE", m)
+    box("crate", (0.14, 0.14, 0.14), (0.06, 0.06, 0.12), crate)
+    box("pallet", (0.34, 0.04, 0.28), (0.02, 0.40, 0.21), wood)
+    box("bottle", (0.04, 0.04, 0.10), (-0.14, 0.02, 0.10), m["pipe"])
+    rig_camera_and_light(); render("rack_ne")
+
+
+def rack_crown_cell():                         # the crown: stair hatch + sign
+    clear_scene(); m = _rack_mats()
+    brand = make_material("rkbrand", (0.72, 0.56, 0.22), 0.4,
+                          emit=(0.8, 0.6, 0.25), emit_strength=1.6)
+    box("deck", (1, 1, 0.10), (0, 0, 0.05), m["tar"])
+    _parapet("NEW", m)                         # open south, toward the rack
+    box("hatch", (0.28, 0.28, 0.16), (0, -0.02, 0.13), m["steel"])
+    box("lid", (0.30, 0.22, 0.03), (0, 0.10, 0.24), m["steel"], rot=(0.4, 0, 0))
+    box("plate", (0.34, 0.03, 0.12), (0, 0.46, 0.30), brand)   # brand plate
+    rig_camera_and_light(); render("rack_crown")
+
+
+# ----------------------------------------------------- Halcyon sun deck
+# One consistent teal plating in every cell, with a ship's railing only on
+# the OUTER perimeter edges, so the 2x2 reads as one deck, not four tiles.
+def _deck_rail(sides, bone, steel):
+    edge = {"N": (0, 0.47, "x"), "S": (0, -0.47, "x"),
+            "E": (0.47, 0, "y"), "W": (-0.47, 0, "y")}
+    for s in sides:
+        cx, cy, ax = edge[s]
+        lip = (1.0, 0.05, 0.05) if ax == "x" else (0.05, 1.0, 0.05)
+        rail = (1.0, 0.02, 0.02) if ax == "x" else (0.02, 1.0, 0.02)
+        box(f"lip{s}", lip, (cx, cy, 0.10), bone)
+        box(f"rail{s}", rail, (cx, cy, 0.26), steel)
+        for t in (-0.36, -0.12, 0.12, 0.36):
+            p = (t, cy, 0.18) if ax == "x" else (cx, t, 0.18)
+            box(f"stanch{s}{t}", (0.02, 0.02, 0.18), p, steel)
+
+
+def _hdeck(name, sides, text=None):
+    clear_scene()
+    slab = make_material("hdslab", (0.16, 0.28, 0.27), 0.7, noise=0.3)
+    bone = make_material("hdbone", (0.44, 0.44, 0.38), 0.7, noise=0.25)
+    steel = make_material("hdsteel", (0.30, 0.31, 0.30), 0.55, noise=0.2)
+    box("deck", (1, 1, 0.10), (0, 0, 0.05), slab)
+    for i in range(3):                         # plating strips, consistent E-W
+        box(f"strip{i}", (1.0, 0.02, 0.012), (0, -0.30 + i * 0.30, 0.105), bone)
+    _deck_rail(sides, bone, steel)
+    if text:
+        paint = make_material("hdpaint", (0.60, 0.58, 0.50), 0.8,
+                              emit=(0.62, 0.60, 0.52), emit_strength=0.8)
+        bpy.ops.object.text_add(location=(0, 0, 0.115))
+        t = bpy.context.active_object
+        t.data.body = text
+        t.data.font = bpy.data.fonts.load(FONT)
+        t.data.size = 0.24
+        t.data.extrude = 0.01
+        t.data.align_x = "CENTER"; t.data.align_y = "CENTER"
+        t.rotation_euler = (0, 0, 0.7854)
+        t.scale = (-1, 1, 1)
+        t.data.materials.append(paint)
+        bpy.ops.object.convert(target="MESH")
+    rig_camera_and_light(); render(name)
+
+
 def generic_cell():
     clear_scene()
     m = make_material("gen", (0.17, 0.16, 0.19), 0.9, noise=0.4)
@@ -1956,6 +2094,14 @@ def main():
     scrap_nw_cell(); scrap_n1_cell(); scrap_n2_cell(); scrap_ne_cell()
     scrap_w_cell(); scrap_heap_cell(); scrap_mid_cell(); scrap_hull_cell()
     scrap_sw_cell(); scrap_gate_cell(); scrap_weigh_cell(); scrap_se_cell()
+    # Queen of Cups rack roof — bespoke per cell (NW keeps fallen_tower)
+    rack_sw_cell(); rack_s_cell(); rack_n_cell()
+    rack_se_cell(); rack_ne_cell(); rack_crown_cell()
+    # Halcyon sun deck — one consistent deck, railing on the outer perimeter
+    _hdeck("hdeck_sw", "SW", text="DAYS")
+    _hdeck("hdeck_se", "SE")
+    _hdeck("hdeck_nw", "NW")
+    _hdeck("hdeck_ne", "NE", text="HALCYON")
     crane_lot_cell()
     crane_base_cell()
     crane_dig_cell()
