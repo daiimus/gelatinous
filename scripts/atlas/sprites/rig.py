@@ -1676,96 +1676,60 @@ def _boot_ribs(r, base, mat):
         cylinder(f"rib{wx}", r + 0.02, 0.05, (wx, 0, base), mat, arc=math.pi)
 
 
-#: Hammett's Boot is the remnant of a giant mech leg / ship landing gear —
-#: heavy DERELICT MACHINERY, boot-shaped. Faceted armour (angled plates, not
-#: flat boxes), hydraulic struts, a copper facade over steel bones. The
-#: pitched armour ridges run E-W so cells interconnect along the leg.
-def _mech_mats():
-    return (make_material("mkarm", (0.30, 0.45, 0.40), 0.5, noise=0.4),   # verdigris armour
-            make_material("mkcop", (0.55, 0.34, 0.18), 0.45, noise=0.35), # copper edges
-            make_material("mksteel", (0.20, 0.21, 0.22), 0.5, noise=0.3), # steel bones
-            make_material("mkhyd", (0.09, 0.09, 0.10), 0.35),             # oiled hydraulics
-            make_material("mklit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28)))
-
-
-def _mech_gable(arm, cop, base, peak):
-    """A pitched (faceted) armour ridge running E-W — two tilted plates to a
-    copper ridge cap. Cells share the ridge line, so they read as one angled
-    machined surface, not stacked boxes."""
-    th = math.atan((peak - base) / 0.5)
-    box("facN", (1.0, 0.56, 0.05), (0, 0.25, (base + peak) / 2), arm,
-        rot=(-th, 0, 0))
-    box("facS", (1.0, 0.56, 0.05), (0, -0.25, (base + peak) / 2), arm,
-        rot=(th, 0, 0))
-    box("ridge", (1.02, 0.09, 0.06), (0, 0, peak), cop)
-
-
-def _mech_strut(steel, hyd, x):
-    box("cyl", (0.11, 0.11, 0.44), (x, 0.0, 0.22), hyd)        # hydraulic cylinder
-    box("rod", (0.05, 0.05, 0.34), (x, 0.0, 0.55), steel)      # extended piston rod
-    box("clevis", (0.13, 0.06, 0.06), (x, 0.0, 0.74), steel)
-
-
-#: To read as ONE solid core, cells must fuse: OVER-full width (1.06) so
-#: neighbours overlap with no seam, a single continuous flat deck + copper
-#: spine at a uniform height (no per-cell peaks), machinery detail (hydraulics,
-#: bolts) hung on the sides where it can't fragment the top.
-def _mech_core(arm, cop, steel, top):
-    box("core", (1.06, 1.0, top), (0, 0, top / 2), arm)           # solid armour, overlaps E-W
-    box("skirt", (1.08, 1.04, 0.12), (0, 0, 0.06), steel)         # steel base, overlaps
-    box("deck", (1.06, 0.9, 0.05), (0, 0, top), arm)              # continuous flat deck
-    box("bevN", (1.06, 0.16, 0.05), (0, 0.42, top - 0.03), cop, rot=(-0.6, 0, 0))
-    box("bevS", (1.06, 0.16, 0.05), (0, -0.42, top - 0.03), cop, rot=(0.6, 0, 0))
-    box("spine", (1.08, 0.12, 0.07), (0, 0, top + 0.03), cop)     # continuous copper spine
+#: Hammett's Boot: one unified structure. The body is the SAME hull as the
+#: rooftop the owner likes (hull_cell's material) so they read as one piece;
+#: cells are OVER-full-width (1.06) so they overlap with no seams, uniform
+#: height, market windows where the market shows through. Simple on purpose.
+def _boot_body(top, windows=False):
+    hullm = make_material("bbhull", (0.42, 0.26, 0.17), 0.75, noise=0.55)
+    weld = make_material("bbweld", (0.20, 0.13, 0.10), 0.9)
+    rivet = make_material("bbrivet", (0.30, 0.20, 0.14), 0.6)
+    pale = make_material("bbpale", (0.55, 0.44, 0.33), 0.8, noise=0.3)
+    lit = make_material("bblit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28))
+    box("wall", (1.06, 1.0, top), (0, 0, top / 2), hullm)        # solid hull wall, overlaps E-W
+    box("base", (1.08, 1.02, 0.14), (0, 0, 0.07), weld)          # grimy waterline
+    box("cap", (1.07, 1.01, 0.06), (0, 0, top), pale)            # pale cap == the roof's deck
+    box("rim", (1.08, 1.02, 0.04), (0, 0, top - 0.03), hullm)
+    for wz in (top * 0.40, top * 0.72):                          # horizontal hull weld bands
+        box(f"bY{wz:.2f}", (1.07, 0.03, 0.03), (0, 0.5, wz), weld)
+        box(f"bX{wz:.2f}", (0.03, 1.07, 0.03), (-0.5, 0, wz), weld)
+    for t in (-0.35, -0.12, 0.12, 0.35):                         # rivet rows
+        box(f"rY{t}", (0.03, 0.03, 0.03), (t, 0.51, top * 0.55), rivet)
+        box(f"rX{t}", (0.03, 0.03, 0.03), (-0.51, t, top * 0.55), rivet)
+    if windows:
+        for t in (-0.28, 0.0, 0.28):
+            box(f"wY{t}", (0.13, 0.02, 0.20), (t, 0.51, top * 0.40), lit)
+            box(f"wX{t}", (0.02, 0.13, 0.20), (-0.51, t, top * 0.40), lit)
+    return hullm, weld, rivet, pale
 
 
 def boot_arch_cell():
-    """A stretch of the mech leg's core — one solid overlapping armour bar
-    with a continuous machined deck and copper spine, a hydraulic actuator on
-    the flank, lit crew slits where the market lives inside."""
+    """The Boot's body along the market — one solid hull wall (the rooftop's
+    own material), full width so it fuses with its neighbours, lit windows."""
     clear_scene()
-    arm, cop, steel, hyd, lit = _mech_mats()
-    _mech_core(arm, cop, steel, 0.60)
-    _mech_strut(steel, hyd, -0.48)
-    for t in (-0.30, -0.02, 0.26):                                # armour bolts
-        box(f"bolt{t}", (0.05, 0.05, 0.05), (t, 0.51, 0.42), cop)
-    for t in (-0.28, 0.0, 0.28):                                  # lit market slits
-        box(f"win{t}", (0.12, 0.02, 0.16), (t, 0.51, 0.28), lit)
+    _boot_body(0.95, windows=True)
     rig_camera_and_light()
     render("boot_arch")
 
 
 def boot_flank_cell():
-    """The leg's core stepped lower at the edges — same solid overlapping bar,
-    shorter, its exposed hydraulics and bracing, no windows."""
+    """The Boot's body at the blank ends — the same solid hull wall, no
+    windows, so the whole footprint reads as one mass."""
     clear_scene()
-    arm, cop, steel, hyd, _ = _mech_mats()
-    _mech_core(arm, cop, steel, 0.40)
-    _mech_strut(steel, hyd, -0.48)
-    box("brace", (0.5, 0.05, 0.05), (0.0, 0.46, 0.30), steel, rot=(0, 0.5, 0))
-    for t in (-0.30, 0.0, 0.30):
-        box(f"bolt{t}", (0.05, 0.05, 0.05), (t, 0.51, 0.28), cop)
+    _boot_body(0.95, windows=False)
     rig_camera_and_light()
     render("boot_flank")
 
 
 def boot_spur_cell():
-    """The blown ankle joint at the toe — the solid core carrying a radial
-    actuator hub: a copper boss with hydraulic arms radiating like a star."""
+    """The toe's spur — the same body, carried up into a small riveted cap and
+    finial: one modest flourish that doesn't break the unified read."""
     clear_scene()
-    arm, cop, steel, hyd, lit = _mech_mats()
-    box("core", (1.02, 1.0, 0.46), (0, 0, 0.23), arm)             # solid base, connects to the leg
-    box("skirt", (1.04, 1.04, 0.12), (0, 0, 0.06), steel)
-    box("boss", (0.32, 0.32, 0.34), (0, 0, 0.56), cop)            # the joint hub
-    for k in range(6):                                            # radial actuator arms (star)
-        a = k * math.pi / 3.0
-        box(f"arm{k}", (0.46, 0.07, 0.07),
-            (0.26 * math.cos(a), 0.26 * math.sin(a), 0.54), steel, rot=(0, 0, a))
-        box(f"tip{k}", (0.08, 0.08, 0.08),
-            (0.46 * math.cos(a), 0.46 * math.sin(a), 0.54), hyd)
-    box("pin", (0.08, 0.08, 0.24), (0, 0, 0.78), cop)             # the pivot pin
-    for wy in (-0.18, 0.18):
-        box(f"slit{wy}", (0.02, 0.09, 0.14), (-0.51, wy, 0.30), lit)
+    _, _, rivet, pale = _boot_body(0.95, windows=True)
+    cop = make_material("bscop", (0.55, 0.34, 0.18), 0.5, noise=0.3)
+    box("nub", (0.44, 0.44, 0.14), (0, 0, 1.0), cop)
+    box("nubcap", (0.30, 0.30, 0.06), (0, 0, 1.10), pale)
+    box("finial", (0.06, 0.06, 0.16), (0, 0, 1.20), cop)
     rig_camera_and_light()
     render("boot_spur")
 
