@@ -148,7 +148,7 @@ exits += mk_exit(uc_roof_n, container, "east", ["e"])
 # ---- 5. transit + fall rooms for the future jump edge ----------------
 # The half-second of the leap toward the Queen of Cups, and the pit you
 # hit if you miss. Placed now so Phase 2 only has to wire the exit.
-sky, new = ensure((0, -17, 12), "Crane Gap (over the Lot)", tc=SKY_TC,
+sky, new = ensure((0, -17, 12), "In the Air", tc=SKY_TC,
     type="sky", outside=True, is_ground=False, is_sky_room=True,
     desc=("Open air over the construction lot, high as the Queen of Cups' "
           "rack roof. The container swings somewhere below or beside you; "
