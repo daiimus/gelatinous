@@ -1706,56 +1706,66 @@ def _mech_strut(steel, hyd, x):
     box("clevis", (0.13, 0.06, 0.06), (x, 0.0, 0.74), steel)
 
 
+#: To read as ONE solid core, cells must fuse: OVER-full width (1.06) so
+#: neighbours overlap with no seam, a single continuous flat deck + copper
+#: spine at a uniform height (no per-cell peaks), machinery detail (hydraulics,
+#: bolts) hung on the sides where it can't fragment the top.
+def _mech_core(arm, cop, steel, top):
+    box("core", (1.06, 1.0, top), (0, 0, top / 2), arm)           # solid armour, overlaps E-W
+    box("skirt", (1.08, 1.04, 0.12), (0, 0, 0.06), steel)         # steel base, overlaps
+    box("deck", (1.06, 0.9, 0.05), (0, 0, top), arm)              # continuous flat deck
+    box("bevN", (1.06, 0.16, 0.05), (0, 0.42, top - 0.03), cop, rot=(-0.6, 0, 0))
+    box("bevS", (1.06, 0.16, 0.05), (0, -0.42, top - 0.03), cop, rot=(0.6, 0, 0))
+    box("spine", (1.08, 0.12, 0.07), (0, 0, top + 0.03), cop)     # continuous copper spine
+
+
 def boot_arch_cell():
-    """An armour segment of the mech leg — verdigris plating over steel, a
-    pitched faceted ridge, a hydraulic strut down one side, lit crew slits."""
+    """A stretch of the mech leg's core — one solid overlapping armour bar
+    with a continuous machined deck and copper spine, a hydraulic actuator on
+    the flank, lit crew slits where the market lives inside."""
     clear_scene()
     arm, cop, steel, hyd, lit = _mech_mats()
-    box("body", (0.98, 0.98, 0.46), (0, 0, 0.23), arm)
-    box("skirt", (1.0, 1.0, 0.10), (0, 0, 0.05), steel)
-    _mech_gable(arm, cop, 0.46, 0.72)
-    _mech_strut(steel, hyd, -0.44)
-    for t in (-0.32, -0.06, 0.20):                            # armour bolts on the seam
-        box(f"bolt{t}", (0.05, 0.05, 0.05), (t, 0.50, 0.34), cop)
-    for t in (-0.26, 0.06, 0.30):                             # lit slits (the market within)
-        box(f"win{t}", (0.11, 0.02, 0.14), (t, 0.505, 0.26), lit)
+    _mech_core(arm, cop, steel, 0.60)
+    _mech_strut(steel, hyd, -0.48)
+    for t in (-0.30, -0.02, 0.26):                                # armour bolts
+        box(f"bolt{t}", (0.05, 0.05, 0.05), (t, 0.51, 0.42), cop)
+    for t in (-0.28, 0.0, 0.28):                                  # lit market slits
+        box(f"win{t}", (0.12, 0.02, 0.16), (t, 0.51, 0.28), lit)
     rig_camera_and_light()
     render("boot_arch")
 
 
 def boot_flank_cell():
-    """Lower armour where the leg's plating falls away — steel bones under a
-    shorter faceted skirt, exposed hydraulics, no windows."""
+    """The leg's core stepped lower at the edges — same solid overlapping bar,
+    shorter, its exposed hydraulics and bracing, no windows."""
     clear_scene()
     arm, cop, steel, hyd, _ = _mech_mats()
-    box("body", (0.98, 0.98, 0.30), (0, 0, 0.15), arm)
-    box("skirt", (1.0, 1.0, 0.10), (0, 0, 0.05), steel)
-    _mech_gable(arm, cop, 0.30, 0.48)
-    _mech_strut(steel, hyd, -0.42)
-    box("brace", (0.5, 0.05, 0.05), (0.0, 0.44, 0.30), steel, rot=(0, 0.5, 0))
-    for t in (-0.30, 0.0, 0.30):                              # bolts
-        box(f"bolt{t}", (0.05, 0.05, 0.05), (t, 0.50, 0.22), cop)
+    _mech_core(arm, cop, steel, 0.40)
+    _mech_strut(steel, hyd, -0.48)
+    box("brace", (0.5, 0.05, 0.05), (0.0, 0.46, 0.30), steel, rot=(0, 0.5, 0))
+    for t in (-0.30, 0.0, 0.30):
+        box(f"bolt{t}", (0.05, 0.05, 0.05), (t, 0.51, 0.28), cop)
     rig_camera_and_light()
     render("boot_flank")
 
 
 def boot_spur_cell():
-    """The ankle joint at the toe — a radial actuator hub: a copper boss with
-    hydraulic arms radiating like a star, the leg's blown pivot."""
+    """The blown ankle joint at the toe — the solid core carrying a radial
+    actuator hub: a copper boss with hydraulic arms radiating like a star."""
     clear_scene()
     arm, cop, steel, hyd, lit = _mech_mats()
-    box("mount", (0.7, 0.7, 0.40), (0, 0, 0.20), steel)
-    box("skirt", (0.9, 0.9, 0.10), (0, 0, 0.05), arm)
-    box("boss", (0.30, 0.30, 0.34), (0, 0, 0.52), cop)        # the joint hub
-    for k in range(6):                                        # radial actuator arms (star)
+    box("core", (1.02, 1.0, 0.46), (0, 0, 0.23), arm)             # solid base, connects to the leg
+    box("skirt", (1.04, 1.04, 0.12), (0, 0, 0.06), steel)
+    box("boss", (0.32, 0.32, 0.34), (0, 0, 0.56), cop)            # the joint hub
+    for k in range(6):                                            # radial actuator arms (star)
         a = k * math.pi / 3.0
-        box(f"arm{k}", (0.44, 0.07, 0.07),
-            (0.24 * math.cos(a), 0.24 * math.sin(a), 0.50), steel, rot=(0, 0, a))
+        box(f"arm{k}", (0.46, 0.07, 0.07),
+            (0.26 * math.cos(a), 0.26 * math.sin(a), 0.54), steel, rot=(0, 0, a))
         box(f"tip{k}", (0.08, 0.08, 0.08),
-            (0.44 * math.cos(a), 0.44 * math.sin(a), 0.50), hyd)
-    box("pin", (0.08, 0.08, 0.24), (0, 0, 0.74), cop)         # the pivot pin
+            (0.46 * math.cos(a), 0.46 * math.sin(a), 0.54), hyd)
+    box("pin", (0.08, 0.08, 0.24), (0, 0, 0.78), cop)             # the pivot pin
     for wy in (-0.18, 0.18):
-        box(f"slit{wy}", (0.02, 0.09, 0.14), (-0.36, wy, 0.30), lit)
+        box(f"slit{wy}", (0.02, 0.09, 0.14), (-0.51, wy, 0.30), lit)
     rig_camera_and_light()
     render("boot_spur")
 
