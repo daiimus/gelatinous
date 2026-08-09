@@ -1641,19 +1641,21 @@ def sealed_hull_cell():
 
 
 def hull_mass_cell():
-    """The Boot's hull rising to enclose the market at street level — the
-    SAME hull as the decks (material, camber, rivets), raised on a straight
-    flank so it meets the market's height, and welded shut."""
+    """The dead ground around the market, decked over — a low, flat,
+    welded-shut hull plate in the Boot's own material: no hump, no wall to
+    occlude the market, just closed riveted steel that says 'not here'."""
     clear_scene()
     hullm, weld, rivet = _boot_hull_mats()
-    grime = make_material("hmgrime", (0.26, 0.17, 0.12), 0.85, noise=0.4)
-    box("flank", (0.86, 0.86, 0.42), (0, 0, 0.21), hullm)      # straight lower hull flank
-    box("waterline", (0.90, 0.90, 0.10), (0, 0, 0.05), grime)  # grimy base
-    cylinder("camber", 0.55, 0.9, (0, 0, 0.42), hullm, arc=math.pi * 0.9)
-    _boot_hull_crown(weld, rivet, base=0.42, r=0.56)
-    for i, (rx, ry) in enumerate(((0.30, 0.44), (-0.05, 0.44),
-                                  (0.44, 0.20), (0.44, -0.20))):
-        box(f"rivf{i}", (0.04, 0.04, 0.04), (rx, ry, 0.28), rivet)
+    dark = make_material("hmdark", (0.24, 0.16, 0.11), 0.85, noise=0.4)
+    box("plate", (0.98, 0.98, 0.14), (0, 0, 0.07), hullm)      # flat hull plate
+    box("edge", (1.0, 1.0, 0.05), (0, 0, 0.02), dark)          # grimy shadow edge
+    box("weldX1", (1.02, 0.06, 0.035), (0, 0, 0.15), weld, rot=(0, 0, 0.6))
+    box("weldX2", (1.02, 0.06, 0.035), (0, 0, 0.15), weld, rot=(0, 0, -0.6))
+    for sx, sy in ((0.44, 0.44), (-0.44, 0.44), (0.44, -0.44), (-0.44, -0.44)):
+        box(f"bolt{sx}{sy}", (0.06, 0.06, 0.05), (sx, sy, 0.15), rivet)
+    for rx in (-0.28, 0.0, 0.28):
+        for ry in (-0.28, 0.0, 0.28):
+            box(f"riv{rx}{ry}", (0.03, 0.03, 0.03), (rx, ry, 0.15), rivet)
     rig_camera_and_light()
     render("hull_mass")
 
