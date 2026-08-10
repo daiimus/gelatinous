@@ -443,10 +443,18 @@ scheme. Two things about it are load-bearing:
   parent theme and takes the header with it. This is documented in
   `DISCOURSE_INTEGRATION.md` Step 4 — and was still got wrong once.
 - **Colour schemes do not travel with components.** The palette has to be
-  created separately and selected on the parent theme, in **both** the light
-  and dark slots (`color_scheme_id` *and* `dark_color_scheme_id`). Setting only
-  the light slot leaves dark-mode viewers on the old palette, which looks
-  exactly like the change never applied.
+  created separately and selected on the parent theme's **light slot**
+  (`color_scheme_id`) — and the **dark slot (`dark_color_scheme_id`) must stay
+  EMPTY**. Every palette we ship is dark-styled, so a single `media=all`
+  stylesheet serves all viewers — which is exactly what the skins component
+  (`web/discourse-theme/…/skins.gjs`) is built against. Filling the dark slot
+  makes Discourse emit a second `(prefers-color-scheme: dark)` stylesheet the
+  moment any skin cookie is present, and that dark link resurrects the default
+  palette for dark-OS viewers: every skin toggle silently refuses to apply on
+  full loads (looked exactly like "signed-in users can't change themes",
+  2026-08-19). If the dark slot ever points at an OLD palette instead, dark
+  viewers stay on stale colours — the original 2026-08-02 bug. Empty is the
+  only correct value.
 
 Fonts ship as theme uploads inside the component, so the forum does not depend
 on gel.monster being reachable for its typography. See
@@ -590,9 +598,10 @@ put spaces around the em dash (`Drivel — 50 minutes ago`, not
 is otherwise structurally identical to upstream. Overriding the template is the
 sanctioned route; do not patch Evennia in place.
 
-**The forum's theme is a component, and its palette needs both slots** — see
-the Discourse Integration section above. Both facts cost an outage's worth of
-confusion to learn.
+**The forum's theme is a component; its palette lives in the light slot only,
+dark slot EMPTY** — see the Discourse Integration section above. Both facts
+cost an outage's worth of confusion to learn (and the "both slots" advice this
+paragraph used to give broke skin switching for a fortnight).
 
 **The homepage was restructured and the brand mark landed** (#1440, #1442,
 #1446, #1448). Both are documented in *Layout & Measure* and *Brand Mark*
