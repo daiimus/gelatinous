@@ -38,8 +38,6 @@ beacon = rig.make_material("wtbeacon", (0.9, 0.15, 0.1), 0.4,
                            emit=(1.0, 0.12, 0.08), emit_strength=4.0)
 lamp = rig.make_material("wtlamp", (1.0, 0.62, 0.28), 0.4,
                          emit=(1.0, 0.62, 0.28), emit_strength=2.5)
-gauge = rig.make_material("wtgauge", (0.2, 0.5, 0.3), 0.4,
-                          emit=(0.25, 0.6, 0.35), emit_strength=0.9)
 wet = rig.make_material("wtwet", (0.10, 0.13, 0.14), 0.2, wet=True)
 
 # 1 — four splayed legs, ground to the tank belly (z2.3), cross-braced
@@ -60,9 +58,14 @@ rig.box("braceY", (0.84, 0.07, 0.07), (0, 0, 1.55), rust, rot=(0, 0, math.radian
 # stay inside the one-cell bounds (side * √2/2 ≤ 0.5).
 rig.box("tankA", (0.88, 0.88, 1.70), (0, 0, 3.15), steel)
 rig.box("tankB", (0.62, 0.62, 1.70), (0, 0, 3.15), steel, rot=(0, 0, math.radians(45)))
-rig.box("tankbtm", (0.92, 0.92, 0.10), (0, 0, 2.32), seam)       # belly plate
-rig.box("lid", (0.96, 0.96, 0.10), (0, 0, 4.02), steel)          # wide lid
-rig.box("lidcap", (0.56, 0.56, 0.10), (0, 0, 4.10), rust)        # crown step
+# belly plate and lid follow the SAME octagon as the drum (axis + 45°
+# pair) so the roof lines up with the body instead of overhanging it
+rig.box("tankbtmA", (0.92, 0.92, 0.10), (0, 0, 2.32), seam)
+rig.box("tankbtmB", (0.65, 0.65, 0.10), (0, 0, 2.32), seam, rot=(0, 0, math.radians(45)))
+rig.box("lidA", (0.94, 0.94, 0.10), (0, 0, 4.02), steel)
+rig.box("lidB", (0.66, 0.66, 0.10), (0, 0, 4.02), steel, rot=(0, 0, math.radians(45)))
+rig.box("lidcapA", (0.56, 0.56, 0.10), (0, 0, 4.10), rust)
+rig.box("lidcapB", (0.40, 0.40, 0.10), (0, 0, 4.10), rust, rot=(0, 0, math.radians(45)))
 rig.box("bandA", (0.90, 0.90, 0.42), (0, 0, 3.30), band)         # Greenhaus band
 rig.box("bandB", (0.635, 0.635, 0.42), (0, 0, 3.30), band, rot=(0, 0, math.radians(45)))
 for k in range(3):                                               # hoop seams
@@ -112,7 +115,6 @@ for k in range(10):
     a = 2 * math.pi * k / 10
     rig.box(f"bulb{k}", (0.055, 0.055, 0.055),
             (0.46 * math.cos(a), 0.46 * math.sin(a), 2.66), lamp)
-rig.box("gaugestrip", (0.06, 0.025, 1.3), (0.20, -0.465, 3.10), gauge)
 
 # ground shadow catcher
 catcher = rig.make_material("wtgnd", (0.5, 0.5, 0.5), 1.0)
