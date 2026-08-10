@@ -28,16 +28,19 @@ rig.clear_scene()
 
 steel = rig.make_material("wtsteel", (0.14, 0.16, 0.17), 0.8, noise=0.35)
 rust = rig.make_material("wtrust", (0.17, 0.11, 0.08), 0.9, noise=0.45)
-band = rig.make_material("wtband", (0.14, 0.26, 0.17), 0.75, noise=0.25)  # Greenhaus green
+# Greenhaus green, softly floodlit — the big band surface is what makes
+# the tank exist at night (small bulbs alone leave it a silhouette)
+band = rig.make_material("wtband", (0.14, 0.26, 0.17), 0.75, noise=0.25,
+                         emit=(0.35, 0.62, 0.40), emit_strength=1.3)
 seam = rig.make_material("wtseam", (0.06, 0.07, 0.08), 0.9)
 paint = rig.make_material("wtpaint", (0.55, 0.62, 0.50), 0.8,
-                          emit=(0.55, 0.62, 0.50), emit_strength=0.6)
+                          emit=(0.65, 0.95, 0.60), emit_strength=2.4)  # lit brand
 beacon = rig.make_material("wtbeacon", (0.9, 0.15, 0.1), 0.4,
                            emit=(1.0, 0.12, 0.08), emit_strength=4.0)
 lamp = rig.make_material("wtlamp", (1.0, 0.62, 0.28), 0.4,
                          emit=(1.0, 0.62, 0.28), emit_strength=2.5)
-gauge = rig.make_material("wtgauge", (0.3, 0.9, 0.5), 0.4,
-                          emit=(0.3, 0.95, 0.5), emit_strength=2.0)
+gauge = rig.make_material("wtgauge", (0.2, 0.5, 0.3), 0.4,
+                          emit=(0.25, 0.6, 0.35), emit_strength=0.9)
 wet = rig.make_material("wtwet", (0.10, 0.13, 0.14), 0.2, wet=True)
 
 # 1 — four splayed legs, ground to the tank belly (z2.3), cross-braced
@@ -95,10 +98,27 @@ rig.box("standpipe", (0.09, 0.09, 2.3), (0, 0, 1.16), seam)
 rig.box("overflow", (0.05, 0.05, 2.2), (0.36, -0.36, 1.25), rust)
 rig.box("puddle", (0.38, 0.34, 0.02), (0.28, -0.30, 0.01), wet)
 
-# 5 — the night read: beacon, work lamp, level gauge
-rig.box("beacon", (0.10, 0.10, 0.10), (0, 0, 4.20), beacon)
-rig.box("worklamp", (0.16, 0.16, 0.05), (0, 0.30, 2.28), lamp)   # under-belly
-rig.box("gaugestrip", (0.045, 0.02, 1.3), (0.20, -0.462, 3.10), gauge)
+# 5 — the night read: beacon, work lamps, bulb string, level gauge.
+# The tank is dark steel; without its own light it bakes to a black
+# silhouette (live-verified) — so FLOODLIGHT the tank itself: cornice
+# strips under the lid wash light DOWN the drum, catwalk uplights wash
+# it UP. The Cycles bake turns those into gradients on the steel.
+rig.box("beacon", (0.12, 0.12, 0.12), (0, 0, 4.21), beacon)
+rig.box("worklamp", (0.20, 0.20, 0.06), (0, 0.30, 2.28), lamp)   # under-belly
+rig.box("worklamp2", (0.20, 0.20, 0.06), (0.28, -0.14, 2.28), lamp)
+for sx, sy in ((1, 0), (-1, 0), (0, 1), (0, -1)):                # cornice floods
+    rig.box(f"flood{sx}{sy}", (0.62 if sy else 0.05, 0.62 if sx else 0.05, 0.05),
+            (sx * 0.44, sy * 0.44, 3.94), lamp)
+for k in range(4):                                               # catwalk uplights
+    a = math.pi / 4 + 2 * math.pi * k / 4
+    rig.box(f"uplight{k}", (0.10, 0.10, 0.04),
+            (0.40 * math.cos(a), 0.40 * math.sin(a), 2.46), lamp)
+# a string of warm bulbs around the catwalk rail — the classic ring
+for k in range(10):
+    a = 2 * math.pi * k / 10
+    rig.box(f"bulb{k}", (0.055, 0.055, 0.055),
+            (0.46 * math.cos(a), 0.46 * math.sin(a), 2.66), lamp)
+rig.box("gaugestrip", (0.06, 0.025, 1.3), (0.20, -0.465, 3.10), gauge)
 
 # ground shadow catcher
 catcher = rig.make_material("wtgnd", (0.5, 0.5, 0.5), 1.0)
