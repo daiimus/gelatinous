@@ -103,6 +103,18 @@ rig.box("toeupcap", (0.12, 2.2, 0.72), (5.08, 0, 1.72), hullN, rot=(0, math.radi
 for j, vx in enumerate((4.25, 4.75)):                          # cowls on the toe crown
     v = rig.cylinder(f"vent{j}", 0.09, 0.14, (0, 0, 0), seam, seg=12, arc=math.pi * 2)
     v.location = (vx, 0.2, 1.44)
+# the BREACH — the one drop-in: you drop from the Instep deck (z1) down into
+# the Toe market (z0). A dark hatch cut into the toe deck with the market
+# glowing up through it, ringed by a raised coaming. (Room data has exactly
+# one DOWN exit: Instep 'breach' -> Toe, at world -3,-18.)
+_bx, _by = 4.6, 0.0
+rig.box("breach_shaft", (0.52, 0.62, 0.60), (_bx, _by, 1.06), dark)   # dark opening/shaft
+rig.box("breach_glow", (0.42, 0.54, 0.05), (_bx, _by, 1.02), glow)    # market light rising
+rig.box("breach_glow2", (0.30, 0.42, 0.05), (_bx, _by, 0.80), glow)   # deeper in the shaft
+rig.box("breach_coamN", (0.62, 0.06, 0.12), (_bx, _by + 0.33, 1.40), seam)
+rig.box("breach_coamS", (0.62, 0.06, 0.12), (_bx, _by - 0.33, 1.40), seam)
+rig.box("breach_coamE", (0.06, 0.72, 0.12), (_bx + 0.29, _by, 1.40), seam)
+rig.box("breach_coamW", (0.06, 0.72, 0.12), (_bx - 0.29, _by, 1.40), seam)
 
 # ── SPURS: mech landing-gear struts gripping the ground ────────────────
 def spur(tag, xyz, ang_z, ang_p, length=1.0):
