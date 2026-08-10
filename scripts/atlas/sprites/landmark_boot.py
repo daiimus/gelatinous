@@ -113,11 +113,16 @@ window("et2", (5.57, -0.95, 0.6), "E", w=0.28, h=0.34, on=False)
 # the throat: a lit entrance flush in the north face at the heel end
 rig.box("throatframe", (0.5, 0.05, 0.56), (0.0, 1.505, 0.30), seam)
 rig.box("throat", (0.34, 0.04, 0.40), (0.0, 1.515, 0.26), glow)
-# far faces — sparse windows for the rotated atlas views
-for i, x in enumerate((-0.6, 0.6, 1.8, 3.0, 4.2)):            # south flank
-    window(f"sb{i}", (x, -1.505, 0.40), "S", on=(i % 2 == 0))
-for i, y in enumerate((-0.7, 0.0, 0.7)):                      # west heel face
-    window(f"wb{i}", (-1.305, y, 0.55), "W", on=(i == 1))
+# south flank — the market's back wall. The live atlas has a FREE camera,
+# so south is a visible face too: light it like the north, not sparse.
+for i, x in enumerate((-1.05, -0.15, 0.72, 1.6, 2.48, 3.36, 4.24, 5.05)):
+    window(f"sb{i}", (x, -1.505, 0.40), "S", on=(i not in (3, 6)))
+for i, x in enumerate((0.6, 1.35, 2.1, 2.85, 3.6, 4.35)):    # south clerestory
+    window(f"sc{i}", (x, -0.985, 1.20), "S", w=0.34, h=0.20, on=(i != 2))
+rig.box("throatframeS", (0.5, 0.05, 0.56), (0.5, -1.505, 0.30), seam)
+rig.box("throatS", (0.34, 0.04, 0.40), (0.5, -1.515, 0.26), glow)   # south door
+for i, y in enumerate((-0.7, 0.0, 0.7)):                     # west heel face
+    window(f"wb{i}", (-1.305, y, 0.55), "W", on=(i != 2))
 
 # ── the market spilling out: lit stalls on the north curb (visible) ────
 for i, ax in enumerate((1.4, 2.4, 3.4, 4.4)):
