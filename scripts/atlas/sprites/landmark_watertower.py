@@ -26,8 +26,8 @@ import rig  # noqa: E402
 
 rig.clear_scene()
 
-steel = rig.make_material("wtsteel", (0.14, 0.16, 0.17), 0.8, noise=0.35)
-rust = rig.make_material("wtrust", (0.17, 0.11, 0.08), 0.9, noise=0.45)
+steel = rig.make_material("wtsteel", (0.50, 0.54, 0.49), 0.8, noise=0.30)  # pale weathered paint
+rust = rig.make_material("wtrust", (0.30, 0.19, 0.12), 0.9, noise=0.45)
 # Greenhaus green, softly floodlit — the big band surface is what makes
 # the tank exist at night (small bulbs alone leave it a silhouette)
 band = rig.make_material("wtband", (0.14, 0.26, 0.17), 0.75, noise=0.25,
