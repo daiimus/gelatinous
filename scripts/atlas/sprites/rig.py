@@ -2325,6 +2325,7 @@ def main():
     kettle_plunge_cell(); kettle_hall_cell(); kettle_mural_cell()
     sealed_hull_cell(); hull_mass_cell()
     boot_arch_cell(); boot_flank_cell(); boot_spur_cell()  # Hammett copper vault
+    farm_tier_cell(); farm_core_cell(); greenlot_cell()  # Greenhaus Verticals
     crane_lot_cell()
     crane_base_cell()
     crane_dig_cell()
@@ -2348,6 +2349,87 @@ def main():
     roof_variant_2()
     roof_variant_3()
     print("rig complete")
+
+
+
+
+# ── Greenhaus Verticals (§build 055): farm tiers, stair core, lawn ────
+def farm_tier_cell():
+    """One vegetation-platform storey: dark frame, recessed grow-glass
+    bands glowing grow-lamp magenta, vine spill, parapet posts. Tiles
+    vertically like the tenement; matte body + emissive accents only."""
+    clear_scene()
+    frame = make_material("vfframe", (0.16, 0.19, 0.18), 0.85, noise=0.35)
+    dark = make_material("vfdark", (0.05, 0.06, 0.06), 0.4)
+    grow = make_material("vfgrow", (0.85, 0.30, 0.75), 0.4,
+                         emit=(0.95, 0.32, 0.80))
+    leaf = make_material("vfleaf", (0.18, 0.30, 0.16), 0.9, noise=0.4)
+    rail = make_material("vfrail", (0.07, 0.08, 0.09), 0.8)
+    box("slab", (1, 1, 1), (0, 0, 0.5), frame)
+    for zc in (0.30, 0.66):                      # two grow bands per storey
+        for sy in (1, -1):                       # north / south faces
+            box(f"bfY{zc}{sy}", (0.84, 0.02, 0.20), (0, sy * 0.505, zc), dark)
+            box(f"bgY{zc}{sy}", (0.78, 0.015, 0.13), (0, sy * 0.512, zc), grow)
+            box(f"lfY{zc}{sy}", (0.70, 0.06, 0.05),
+                (0, sy * 0.52, zc - 0.13), leaf)
+        for sx in (1, -1):                       # east / west faces
+            box(f"bfX{zc}{sx}", (0.02, 0.84, 0.20), (sx * 0.505, 0, zc), dark)
+            box(f"bgX{zc}{sx}", (0.015, 0.78, 0.13), (sx * 0.512, 0, zc), grow)
+            box(f"lfX{zc}{sx}", (0.06, 0.70, 0.05),
+                (sx * 0.52, 0, zc - 0.13), leaf)
+    for px, py in ((0.46, 0.46), (0.46, -0.46), (-0.46, 0.46),
+                   (-0.46, -0.46)):
+        box(f"post{px}{py}", (0.05, 0.05, 0.10), (px, py, 1.03), rail)
+    rig_camera_and_light()
+    render("farm_tier")
+
+
+def farm_core_cell():
+    """The stair core storey: blank concrete throat, one cool service
+    strip per face, louver seams. Reads as the tower's spine."""
+    clear_scene()
+    conc = make_material("vcconc", (0.15, 0.17, 0.17), 0.85, noise=0.35)
+    seam = make_material("vcseam", (0.06, 0.07, 0.08), 0.9)
+    strip = make_material("vcstrip", (0.45, 0.85, 0.55), 0.4,
+                          emit=(0.45, 0.9, 0.55), emit_strength=2.0)
+    box("slab", (1, 1, 1), (0, 0, 0.5), conc)
+    for sy in (1, -1):
+        box(f"stY{sy}", (0.06, 0.02, 0.72), (0.18, sy * 0.507, 0.5), strip)
+    for sx in (1, -1):
+        box(f"stX{sx}", (0.02, 0.06, 0.72), (sx * 0.507, 0.18, 0.5), strip)
+    for zc in (0.22, 0.55, 0.88):
+        box(f"lv{zc}", (1.004, 1.004, 0.03), (0, 0, zc), seam)
+    rig_camera_and_light()
+    render("farm_core")
+
+
+def greenlot_cell():
+    """The fenced Greenhaus lawn: striped turf, planter rows, perimeter
+    fence with no gate. Ground cell for the drone yard."""
+    clear_scene()
+    turf = make_material("glturf", (0.20, 0.32, 0.18), 0.95, noise=0.35)
+    stripe = make_material("glstripe", (0.24, 0.37, 0.21), 0.95, noise=0.2)
+    soil = make_material("glsoil", (0.16, 0.12, 0.09), 0.95, noise=0.4)
+    leaf = make_material("glleaf", (0.22, 0.36, 0.18), 0.9, noise=0.45)
+    fence = make_material("glfence", (0.10, 0.11, 0.12), 0.7)
+    box("turf", (1, 1, 0.06), (0, 0, 0.03), turf)
+    for i in range(3):                            # mowing stripes
+        box(f"stripe{i}", (0.16, 1.0, 0.005), (-0.32 + i * 0.32, 0, 0.062),
+            stripe)
+    for py in (-0.22, 0.22):                      # planter rows
+        box(f"soil{py}", (0.7, 0.14, 0.08), (0, py, 0.08), soil)
+        box(f"leaf{py}", (0.66, 0.10, 0.06), (0, py, 0.14), leaf)
+    for sy in (1, -1):                            # perimeter fence
+        box(f"fY{sy}", (0.98, 0.03, 0.03), (0, sy * 0.475, 0.24), fence)
+        box(f"fYm{sy}", (0.98, 0.02, 0.14), (0, sy * 0.475, 0.12), fence)
+    for sx in (1, -1):
+        box(f"fX{sx}", (0.03, 0.98, 0.03), (sx * 0.475, 0, 0.24), fence)
+        box(f"fXm{sx}", (0.02, 0.98, 0.14), (sx * 0.475, 0, 0.12), fence)
+    for px, py in ((0.475, 0.475), (0.475, -0.475), (-0.475, 0.475),
+                   (-0.475, -0.475)):
+        box(f"fp{px}{py}", (0.05, 0.05, 0.30), (px, py, 0.15), fence)
+    rig_camera_and_light()
+    render("greenlot")
 
 
 if __name__ == "__main__":
