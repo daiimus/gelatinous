@@ -185,7 +185,8 @@ exec("\n".join(main_lines), vars(rig))  # noqa: S102 - our own source
 
 # ── the heroes ────────────────────────────────────────────────────────
 for hero in ("landmark_boot", "landmark_bridge", "landmark_agridome",
-             "landmark_brackett_roof", "landmark_thawn"):
+             "landmark_brackett_roof", "landmark_thawn",
+             "landmark_watertower"):
     spec = importlib.util.spec_from_file_location(
         hero, os.path.join(HERE, f"{hero}.py"))
     mod = importlib.util.module_from_spec(spec)
