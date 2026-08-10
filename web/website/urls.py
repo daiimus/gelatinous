@@ -30,7 +30,7 @@ from web.website.views.atlas import atlas_view
 
 # Override default character creation, account registration, and other views
 urlpatterns = [
-    # the colony atlas — superuser survey instrument (§M2.5)
+    # the colony atlas — public shop window (§M2.5); staff plate stays offline
     path("atlas/", atlas_view, name="atlas"),
 
     # robots.txt - served as plain text for search engine crawlers
