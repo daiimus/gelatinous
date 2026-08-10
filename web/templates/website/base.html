@@ -9,7 +9,10 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <link rel="icon" type="image/x-icon" href="{% static "website/images/evennia_logo.png" %}" />
+    {# type must match the actual file (PNG) — the stock x-icon/PNG MIME
+       mismatch gives WebKit licence to ignore the declaration and keep its
+       stored icon forever (observed: devices never fetched this URL). #}
+    <link rel="icon" type="image/png" sizes="256x256" href="{% static "website/images/evennia_logo.png" %}" />
     {# iOS ignores rel=icon and keeps a stored touch icon forever unless the
        page DECLARES a touch-icon URL it hasn't seen — the declaration is the
        only reliable trigger to make it refetch (live-verified via edge logs:
