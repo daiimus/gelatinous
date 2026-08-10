@@ -1681,9 +1681,11 @@ def _boot_ribs(r, base, mat):
 #: cell edges vanish and the cells fuse into one building (the seams the owner
 #: saw were a high-contrast cap outlining every square).
 def _boot_cube(windows):
-    hullm = make_material("bbhull", (0.42, 0.26, 0.17), 0.75, noise=0.55)
-    grime = make_material("bbgrime", (0.22, 0.15, 0.11), 0.9, noise=0.35)
-    frame = make_material("bbframe", (0.10, 0.09, 0.08), 0.8)
+    # the tenement's own DARK palette — a bright/warm albedo blew out to
+    # orange loaves under the key light; dark reads as crisp solid mass
+    hullm = make_material("bbhull", (0.14, 0.17, 0.17), 0.82, noise=0.35)
+    grime = make_material("bbgrime", (0.09, 0.11, 0.12), 0.9, noise=0.3)
+    frame = make_material("bbframe", (0.07, 0.08, 0.09), 0.8)
     lit = make_material("bblit", (0.9, 0.6, 0.3), 0.4, emit=(1.0, 0.62, 0.28))
     box("block", (1, 1, 1), (0, 0, 0.5), hullm)            # plain full cube; uniform top
     box("grime", (1.006, 1.006, 0.16), (0, 0, 0.08), grime)  # base band only
