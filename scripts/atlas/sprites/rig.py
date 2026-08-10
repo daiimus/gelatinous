@@ -2326,6 +2326,7 @@ def main():
     sealed_hull_cell(); hull_mass_cell()
     boot_arch_cell(); boot_flank_cell(); boot_spur_cell()  # Hammett copper vault
     farm_tier_cell(); farm_core_cell(); greenlot_cell()  # Greenhaus Verticals
+    cistern_solo_cell(); cistern_walk_cell(); cistern_top_cell()  # the connectors
     crane_lot_cell()
     crane_base_cell()
     crane_dig_cell()
@@ -2430,6 +2431,99 @@ def greenlot_cell():
         box(f"fp{px}{py}", (0.05, 0.05, 0.30), (px, py, 0.15), fence)
     rig_camera_and_light()
     render("greenlot")
+
+
+
+
+# ── Greenhaus Cisterns No. 1 & 2 (§build 056): parkour water towers ───
+def _cistern_mats():
+    steel = make_material("cisteel", (0.42, 0.45, 0.42), 0.85, noise=0.30)
+    band = make_material("ciband", (0.20, 0.34, 0.22), 0.8, noise=0.25)
+    rust = make_material("cirust", (0.30, 0.19, 0.12), 0.9, noise=0.45)
+    seam = make_material("ciseam", (0.06, 0.07, 0.08), 0.9)
+    lamp = make_material("cilamp", (1.0, 0.62, 0.28), 0.4,
+                         emit=(1.0, 0.62, 0.28), emit_strength=2.5)
+    gauge = make_material("cigauge", (0.2, 0.5, 0.3), 0.4,
+                          emit=(0.25, 0.6, 0.35), emit_strength=0.9)
+    return steel, band, rust, seam, lamp, gauge
+
+
+def _cistern_drum(z0, z1, steel, band, seam, banded=True):
+    """Chamfered-octagon drum (boxes only — cylinders cull invisible)."""
+    h = z1 - z0
+    box("drumA", (0.76, 0.76, h), (0, 0, z0 + h / 2), steel)
+    box("drumB", (0.54, 0.54, h), (0, 0, z0 + h / 2), steel,
+        rot=(0, 0, math.radians(45)))
+    if banded:
+        box("bandA", (0.78, 0.78, 0.16), (0, 0, z0 + h * 0.55), band)
+        box("bandB", (0.55, 0.55, 0.16), (0, 0, z0 + h * 0.55), band,
+            rot=(0, 0, math.radians(45)))
+    box("hoop", (0.77, 0.77, 0.04), (0, 0, z0 + h * 0.22), seam)
+
+
+def _cistern_legs(rust, seam, top):
+    for sx, sy in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
+        box(f"leg{sx}{sy}", (0.09, 0.09, 0.95 + top),
+            (sx * 0.34, sy * 0.34, (top - 0.95) / 2), rust)
+    box("braceA", (0.72, 0.06, 0.06), (0, 0, -0.45), rust,
+        rot=(0, 0, math.radians(45)))
+    box("braceB", (0.72, 0.06, 0.06), (0, 0, -0.20), rust,
+        rot=(0, 0, math.radians(-45)))
+
+
+def cistern_solo_cell():
+    """No. 1 entire in one cell: legs from the alley below, squat drum,
+    railed lid deck. The room floor is the lid."""
+    clear_scene()
+    steel, band, rust, seam, lamp, gauge = _cistern_mats()
+    _cistern_legs(rust, seam, top=0.0)
+    _cistern_drum(0.0, 0.34, steel, band, seam)
+    box("lidA", (0.80, 0.80, 0.05), (0, 0, 0.37), seam)
+    for sy in (1, -1):
+        box(f"railY{sy}", (0.80, 0.03, 0.03), (0, sy * 0.39, 0.52), rust)
+    for sx in (1, -1):
+        box(f"railX{sx}", (0.03, 0.80, 0.03), (sx * 0.39, 0, 0.52), rust)
+    box("lamp1", (0.10, 0.10, 0.05), (0.30, 0.30, 0.42), lamp)
+    box("ladder", (0.04, 0.04, 0.95), (-0.42, -0.42, -0.45), rust)
+    rig_camera_and_light()
+    render("cistern_solo")
+
+
+def cistern_walk_cell():
+    """No. 2's lower storey: legs, drum midsection, mesh catwalk ring."""
+    clear_scene()
+    steel, band, rust, seam, lamp, gauge = _cistern_mats()
+    _cistern_legs(rust, seam, top=0.15)
+    _cistern_drum(0.15, 1.0, steel, band, seam)
+    box("walk", (0.98, 0.98, 0.04), (0, 0, 0.13), seam)
+    for sy in (1, -1):
+        box(f"wrY{sy}", (0.98, 0.025, 0.025), (0, sy * 0.48, 0.30), rust)
+    for sx in (1, -1):
+        box(f"wrX{sx}", (0.025, 0.98, 0.025), (sx * 0.48, 0, 0.30), rust)
+    box("feedpipe", (0.30, 0.10, 0.10), (0.42, 0.18, 0.35), seam)
+    box("wlamp", (0.10, 0.10, 0.05), (-0.34, 0.34, 0.20), lamp)
+    box("wladder", (0.04, 0.04, 1.0), (-0.42, -0.42, -0.45), rust)
+    rig_camera_and_light()
+    render("cistern_walk")
+
+
+def cistern_top_cell():
+    """No. 2's lid storey: upper drum, gauge strip, railed deck."""
+    clear_scene()
+    steel, band, rust, seam, lamp, gauge = _cistern_mats()
+    _cistern_drum(0.0, 0.30, steel, band, seam)
+    box("lidA", (0.80, 0.80, 0.05), (0, 0, 0.33), seam)
+    box("gstrip", (0.05, 0.02, 0.26), (0.20, -0.395, 0.15), gauge)
+    for sy in (1, -1):
+        box(f"trY{sy}", (0.80, 0.03, 0.03), (0, sy * 0.39, 0.48), rust)
+    for sx in (1, -1):
+        box(f"trX{sx}", (0.03, 0.80, 0.03), (sx * 0.39, 0, 0.48), rust)
+    box("tlamp", (0.10, 0.10, 0.05), (0.30, -0.30, 0.38), lamp)
+    box("beacon", (0.09, 0.09, 0.09),
+        (0, 0, 0.42), make_material("cibeak", (0.9, 0.15, 0.1), 0.4,
+                                    emit=(1.0, 0.12, 0.08), emit_strength=4.0))
+    rig_camera_and_light()
+    render("cistern_top")
 
 
 if __name__ == "__main__":
