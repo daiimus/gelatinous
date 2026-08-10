@@ -65,10 +65,12 @@ def window(tag, loc, face, w=0.30, h=0.30, on=True):
         rig.box(f"wg{tag}", (0.015, w * 0.8, h * 0.8), (x + ox, y, z), pane)
 
 
-# 1 — the solid foot: one honest slab across the whole 3-deep footprint
-rig.box("base", (7.2, 3.0, 0.64), (2.0, 0, 0.32), hull)        # X[-1.6..5.6]
-rig.box("grimeband", (7.21, 3.01, 0.14), (2.0, 0, 0.07), grime)
-rig.box("basecap", (6.9, 2.7, 0.08), (2.05, 0, 0.64), hullN)
+# 1 — the solid foot: one honest slab, kept INSIDE the footprint bounds
+#     (local X[-1.5..5.5] = cells -9..-3, Y[±1.5] = rows -17..-19) so no
+#     geometry pokes into a neighbour's cell sprite
+rig.box("base", (6.9, 2.94, 0.64), (2.0, 0, 0.32), hull)       # X[-1.45..5.45]
+rig.box("grimeband", (6.91, 2.95, 0.14), (2.0, 0, 0.07), grime)
+rig.box("basecap", (6.7, 2.66, 0.08), (2.0, 0, 0.64), hullN)
 
 # ── the BOOT PROFILE (west→east: heel · instep · toe) ──────────────────
 # 2 — HEEL & ANKLE (west): thick raised back + a sheared mech-leg stub
@@ -76,14 +78,15 @@ rig.box("heel", (1.9, 2.9, 1.32), (-0.35, 0, 1.28), hull)      # z0.62..1.94
 rig.box("heelcap", (1.7, 2.6, 0.10), (-0.35, 0, 1.94), hullN)
 rig.box("counter", (0.14, 2.9, 1.5), (0.62, 0, 1.20), seam)    # heel↔instep step
 # the ankle: a thick leg stub standing near-vertical on the heel (a slight
-# lean, kept over the heel cell so it doesn't crowd the Brackett tower west)
-rig.box("ankle", (1.05, 1.7, 1.5), (-0.25, 0, 2.5), hull, rot=(0, math.radians(7), 0))
-rig.box("ankleband", (1.10, 1.75, 0.10), (-0.22, 0, 2.28), seam,
-        rot=(0, math.radians(7), 0))
-rig.box("shear1", (0.7, 1.3, 0.30), (-0.42, 0.28, 3.12), hull,
-        rot=(math.radians(12), math.radians(18), 0))
-rig.box("shear2", (0.55, 1.0, 0.26), (-0.28, -0.42, 3.06), hull,
-        rot=(math.radians(-14), math.radians(15), 0))
+# lean, kept over the heel cell so it doesn't crowd the Brackett tower west);
+# height trimmed so it doesn't tangle with the taller neighbours behind it
+rig.box("ankle", (1.0, 1.6, 1.3), (-0.2, 0, 2.25), hull, rot=(0, math.radians(6), 0))
+rig.box("ankleband", (1.05, 1.65, 0.10), (-0.18, 0, 2.05), seam,
+        rot=(0, math.radians(6), 0))
+rig.box("shear1", (0.62, 1.2, 0.28), (-0.34, 0.26, 2.78), hull,
+        rot=(math.radians(12), math.radians(16), 0))
+rig.box("shear2", (0.5, 0.95, 0.24), (-0.22, -0.40, 2.72), hull,
+        rot=(math.radians(-14), math.radians(13), 0))
 
 # 3 — INSTEP / ARCH (middle): the crown DIPS low here — the boot's arch
 rig.box("instep", (2.9, 2.0, 0.42), (2.05, 0, 0.83), hull)     # z0.62..1.04
@@ -91,12 +94,13 @@ rig.box("insteptop", (2.7, 1.7, 0.06), (2.05, 0, 1.04), hullN)
 for i in range(4):                                             # rib seams
     rig.box(f"irib{i}", (0.05, 2.02, 0.44), (1.05 + i * 0.6, 0, 0.83), seam)
 
-# 4 — TOE (east): a rounded toe box that curls UP at the tip
-rig.box("toe", (1.6, 2.7, 1.02), (4.85, 0, 0.85), hull)        # X[4.05..5.65], z0.62..1.36
-rig.box("toecap", (1.4, 2.4, 0.08), (4.85, 0, 1.36), hullN)
-rig.box("toeup", (0.55, 2.5, 0.72), (5.5, 0, 1.42), hull, rot=(0, math.radians(-34), 0))
-rig.box("toeupcap", (0.12, 2.3, 0.72), (5.74, 0, 1.60), hullN, rot=(0, math.radians(-34), 0))
-for j, vx in enumerate((4.35, 4.9)):                           # cowls on the toe crown
+# 4 — TOE (east): a rounded toe box that curls UP at the tip. Kept inside
+#     the toe cell — the upturn rises rather than reaching east past X5.45
+rig.box("toe", (1.45, 2.6, 1.02), (4.7, 0, 0.85), hull)        # X[3.98..5.42], z0.62..1.36
+rig.box("toecap", (1.25, 2.3, 0.08), (4.7, 0, 1.36), hullN)
+rig.box("toeup", (0.5, 2.4, 0.75), (4.95, 0, 1.5), hull, rot=(0, math.radians(-54), 0))
+rig.box("toeupcap", (0.12, 2.2, 0.72), (5.08, 0, 1.72), hullN, rot=(0, math.radians(-54), 0))
+for j, vx in enumerate((4.25, 4.75)):                          # cowls on the toe crown
     v = rig.cylinder(f"vent{j}", 0.09, 0.14, (0, 0, 0), seam, seg=12, arc=math.pi * 2)
     v.location = (vx, 0.2, 1.44)
 
@@ -111,21 +115,21 @@ def spur(tag, xyz, ang_z, ang_p, length=1.0):
 
 spur("rn", (-1.05, 0.85, 0.55), math.radians(38), math.radians(40), 0.8)   # heel rear, N
 spur("rs", (-1.05, -0.85, 0.55), math.radians(-38), math.radians(40), 0.8)  # heel rear, S
-spur("tn", (5.35, 1.05, 0.50), math.radians(150), math.radians(44), 0.8)  # toe claw, N
-spur("ts", (5.35, -1.05, 0.50), math.radians(-150), math.radians(44), 0.8)  # toe claw, S
+spur("tn", (4.95, 1.05, 0.50), math.radians(150), math.radians(44), 0.7)  # toe claw, N
+spur("ts", (4.95, -1.05, 0.50), math.radians(-150), math.radians(44), 0.7)  # toe claw, S
 # the ROWEL: a spiked spur wheel at the heel's rear point (the classic spur)
-rw = rig.cylinder("rowel", 0.22, 0.09, (0, 0, 0), seam, seg=16, arc=math.pi * 2)
-rw.location = (-1.4, 0, 0.70); rw.rotation_euler = (0, math.radians(90), 0)
+rw = rig.cylinder("rowel", 0.16, 0.09, (0, 0, 0), seam, seg=16, arc=math.pi * 2)
+rw.location = (-1.3, 0, 0.70); rw.rotation_euler = (0, math.radians(90), 0)
 for k in range(8):
     a = 2 * math.pi * k / 8
-    rig.box(f"rowsp{k}", (0.06, 0.06, 0.18),
-            (-1.4, 0.30 * math.cos(a), 0.70 + 0.30 * math.sin(a)), seam, rot=(a, 0, 0))
+    rig.box(f"rowsp{k}", (0.05, 0.05, 0.14),
+            (-1.3, 0.22 * math.cos(a), 0.70 + 0.22 * math.sin(a)), seam, rot=(a, 0, 0))
 
 # ── the night read: warm windows glowing from within, every face ───────
-# base flank windows, both long sides (the market wall)
-for i, x in enumerate((-1.05, -0.15, 0.72, 1.6, 2.48, 3.36, 4.24, 5.05)):
-    window(f"nb{i}", (x, 1.505, 0.40), "N", on=(i not in (2, 6)))
-    window(f"sb{i}", (x, -1.505, 0.40), "S", on=(i not in (3, 5)))
+# base flank windows, both long sides (the market wall), flush on the face
+for i, x in enumerate((-1.0, -0.1, 0.72, 1.6, 2.48, 3.36, 4.24, 5.0)):
+    window(f"nb{i}", (x, 1.47, 0.40), "N", on=(i not in (2, 6)))
+    window(f"sb{i}", (x, -1.47, 0.40), "S", on=(i not in (3, 5)))
 # heel upper ports (the ankle/counter reads lit at night)
 for i, x in enumerate((-0.9, -0.35, 0.2)):
     window(f"hn{i}", (x, 1.455, 1.30), "N", w=0.26, h=0.30, on=(i != 1))
@@ -133,34 +137,34 @@ for i, x in enumerate((-0.9, -0.35, 0.2)):
 window("an", (-0.5, 0.86, 2.35), "N", w=0.24, h=0.26, on=True)   # ankle port
 window("as", (-0.5, -0.86, 2.35), "S", w=0.24, h=0.26, on=False)
 # toe clerestory (on the toe box, above the instep dip)
-for i, x in enumerate((4.3, 4.75, 5.2)):
-    window(f"tcn{i}", (x, 1.36, 1.12), "N", w=0.28, h=0.20, on=(i != 1))
-    window(f"tcs{i}", (x, -1.36, 1.12), "S", w=0.28, h=0.20, on=(i != 2))
-# east toe face — the MARKET MOUTH: a tall bright arch + flankers
-rig.box("mouthframe", (0.10, 1.5, 1.0), (5.62, 0, 0.55), seam)
-rig.box("mouth", (0.05, 1.2, 0.82), (5.645, 0, 0.52), glow)
-window("et1", (5.64, 0.95, 0.6), "E", w=0.28, h=0.34, on=True)
-window("et2", (5.64, -0.95, 0.6), "E", w=0.28, h=0.34, on=False)
+for i, x in enumerate((4.2, 4.6, 5.0)):
+    window(f"tcn{i}", (x, 1.29, 1.12), "N", w=0.28, h=0.20, on=(i != 1))
+    window(f"tcs{i}", (x, -1.29, 1.12), "S", w=0.28, h=0.20, on=(i != 2))
+# east toe face — the MARKET MOUTH: a tall bright arch + flankers (on X5.42)
+rig.box("mouthframe", (0.10, 1.5, 1.0), (5.40, 0, 0.55), seam)
+rig.box("mouth", (0.05, 1.2, 0.82), (5.425, 0, 0.52), glow)
+window("et1", (5.42, 0.9, 0.6), "E", w=0.28, h=0.34, on=True)
+window("et2", (5.42, -0.9, 0.6), "E", w=0.28, h=0.34, on=False)
 # throat doors, north and south, at the heel end
-rig.box("throatframe", (0.5, 0.05, 0.56), (0.0, 1.505, 0.30), seam)
-rig.box("throat", (0.34, 0.04, 0.40), (0.0, 1.515, 0.26), glow)
-rig.box("throatframeS", (0.5, 0.05, 0.56), (0.5, -1.505, 0.30), seam)
-rig.box("throatS", (0.34, 0.04, 0.40), (0.5, -1.515, 0.26), glow)
+rig.box("throatframe", (0.5, 0.05, 0.56), (0.0, 1.47, 0.30), seam)
+rig.box("throat", (0.34, 0.04, 0.40), (0.0, 1.48, 0.26), glow)
+rig.box("throatframeS", (0.5, 0.05, 0.56), (0.5, -1.47, 0.30), seam)
+rig.box("throatS", (0.34, 0.04, 0.40), (0.5, -1.48, 0.26), glow)
 # west heel face — a couple of lit ports for the rotated view
 for i, y in enumerate((-0.7, 0.0, 0.7)):
     window(f"wb{i}", (-1.305, y, 0.55), "W", on=(i != 2))
 
-# ── the market spilling out: lit stalls on the north curb ──────────────
+# ── the market: little canopies flush on the north wall (no overhang past
+#    the curb — kept inside the footprint so they don't hit the next row) ──
 for i, ax in enumerate((1.4, 2.4, 3.4)):
     mat = canvas_a if i % 2 == 0 else canvas_b
-    rig.box(f"awn{i}", (0.72, 0.5, 0.05), (ax, 1.74, 0.54), mat,
-            rot=(math.radians(18), 0, 0))
-    rig.box(f"awnglow{i}", (0.52, 0.06, 0.06), (ax, 1.58, 0.26), lit)
-    rig.box(f"awnpostL{i}", (0.04, 0.04, 0.5), (ax - 0.30, 1.96, 0.25), seam)
-    rig.box(f"awnpostR{i}", (0.04, 0.04, 0.5), (ax + 0.30, 1.96, 0.25), seam)
+    rig.box(f"awn{i}", (0.72, 0.30, 0.05), (ax, 1.31, 0.56), mat,
+            rot=(math.radians(24), 0, 0))
+    rig.box(f"awnglow{i}", (0.52, 0.04, 0.06), (ax, 1.46, 0.30), lit)
+    rig.box(f"awnpost{i}", (0.04, 0.04, 0.34), (ax, 1.45, 0.20), seam)
 
 # a stencil plate on the north base flank (brand / hull number)
-rig.box("stencil", (0.9, 0.03, 0.16), (2.0, 1.515, 0.56), stenc)
+rig.box("stencil", (0.9, 0.03, 0.16), (2.0, 1.48, 0.56), stenc)
 
 # ground shadow catcher
 catcher = rig.make_material("ground", (0.5, 0.5, 0.5), 1.0)
