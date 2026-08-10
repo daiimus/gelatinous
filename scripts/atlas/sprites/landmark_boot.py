@@ -2,12 +2,25 @@
 
     blender --background --python scripts/atlas/sprites/landmark_boot.py
 
-One model for the whole fallen leg — heel shock cylinder, shank camber,
-toe cap, Throat and Spur lobes, Lug treads — with the interior glowing
-through the open seam and the toe breach, on a shadow-catcher ground.
-Local origin = the Heel cell's base center; the registry maps it onto
-world anchor (-8,-18,0). Rendered at 1600px (same px/unit as the cell
-rig: ortho scales with resolution), ground to 400px by the darkroom.
+ONE model for the whole fallen derelict — the remnants of a ship's
+landing gear / a giant mech leg, boot-shaped where it came to rest. It
+is a single solid dark hull (no per-cell tiles), spanning the entire
+footprint: a raised heel counter at the west, the long armoured sole,
+the blunt toe box at the east. The market lives INSIDE it — the glow
+shows only at the mouth (the toe's east arch), the throat door, and the
+clerestory windows along the north crown. Everything else is matte
+riveted plate.
+
+The footprint it must cover (world cells, anchor = Heel at -8,-18,0):
+    y-17:      -8 -7 -6 -5          -3          (north flank + spur)
+    y-18: -9   -8 -7 -6 -5 -4 -3                (the sole / market spine)
+    y-19:      -8 -7 -6 -5 -4 -3                (south flank + lug)
+Local origin = the Heel cell's base center; +X runs east toward the
+toe, +Y north, one unit per cell. Rendered at 1600px (same px/unit as
+the base rig), ground to 400px by the darkroom.
+
+Visible faces are NORTH and EAST (the projection): all glow and detail
+live there; south/west carry only structural mass.
 """
 import math
 import os
@@ -19,110 +32,86 @@ import rig  # noqa: E402
 
 rig.clear_scene()
 
-hull = rig.make_material("hull", (0.40, 0.25, 0.16), 0.75, noise=0.55)
-pale = rig.make_material("pale", (0.60, 0.48, 0.36), 0.8, noise=0.35)
-weld = rig.make_material("weld", (0.18, 0.12, 0.09), 0.9)
-dark = rig.make_material("dark", (0.02, 0.02, 0.025), 0.9)
-glow = rig.make_material("glow", (1.0, 0.6, 0.25), 0.5,
-                         emit=(1.0, 0.55, 0.22))
-stenc = rig.make_material("stenc", (0.55, 0.50, 0.40), 0.9)
-tread = rig.make_material("tread", (0.14, 0.11, 0.09), 0.95, noise=0.3)
-
-# the heel: a larger-radius vault section on the SAME axis — the
-# boot's thick end, not a separate object; steps down to the shank
-# at a heavy shoulder hoop
-rig.cylinder("heelvault", 0.74, 1.0, (0.30, 0, 0), hull,
-             arc=math.pi * 0.94)
-rig.box("heelgable", (0.10, 1.44, 0.70), (-0.16, 0, 0.35), hull)
-rig.cylinder("shoulder", 0.76, 0.10, (0.78, 0, 0), weld,
-             arc=math.pi * 0.9)
-
-# the hangar vault: one continuous barrel over the market street,
-# hooped like a quonset — the enclosure IS the architecture
-rig.cylinder("vault", 0.60, 5.0, (2.75, 0, 0), hull, arc=math.pi * 0.94)
-for i in range(10):                                # the hoops
-    wx = 0.85 + i * 0.46
-    rig.cylinder(f"hoop{i}", 0.635, 0.07, (wx, 0, 0), weld,
-                 arc=math.pi * 0.9)
-for i in range(4):                                 # crown glazing: market
-    gx = 1.3 + i * 1.0                             # light through the skin
-    rig.cylinder(f"glaze{i}", 0.615, 0.30, (gx, 0, 0), glow,
-                 arc=math.pi * 0.16)
-    for o in bpy.context.collection.objects:
-        if o.name == f"glaze{i}":
-            o.rotation_euler = (math.radians(48), 0, 0)
-rig.cylinder("plate", 0.645, 0.9, (2.2, 0, 0), pale, arc=math.pi * 0.4)
-# toe cap: the hangar's blunt gable end
-rig.cylinder("toe", 0.57, 0.9, (5.0, 0, 0), hull, arc=math.pi * 0.95)
-rig.box("toecap", (0.10, 1.08, 0.54), (5.44, 0, 0.27), hull)
-# the junction: a heavy weld collar where drum meets vault — one
-# continuous piece of salvage, no holes in the hull
-rig.cylinder("collar", 0.655, 0.14, (0.42, 0, 0), weld,
-             arc=math.pi * 0.9)
-# the Throat: a flush entrance door in the north flank — no geometry
-# leaves the hull; the opening is surface language, like a real hangar
-rig.box("throat_door", (0.46, 0.05, 0.34), (0.45, 0.565, 0.17), dark,
-        rot=(math.radians(-16), 0, 0))
-rig.box("throat_lintel", (0.54, 0.05, 0.06), (0.45, 0.545, 0.37), weld,
-        rot=(math.radians(-16), 0, 0))
-rig.box("throat_glow", (0.34, 0.04, 0.10), (0.45, 0.585, 0.08), glow,
-        rot=(math.radians(-16), 0, 0))
-
-# the toe breach: rosette glow on the cap crown
-rig.cylinder("breach", 0.17, 0.05, (4.7, 0, 0), glow,
-             seg=14, arc=math.pi * 2)
-for o in bpy.context.collection.objects:
-    if o.name == "breach":
-        o.location = (4.7, 0, 0.545)
-rig.cylinder("breach_rim", 0.21, 0.06, (4.7, 0, 0), weld,
-             seg=14, arc=math.pi * 2)
-for o in bpy.context.collection.objects:
-    if o.name == "breach_rim":
-        o.location = (4.7, 0, 0.535)
-# spur horn (northeast) and lug treads (south row)
-rig.box("spur", (0.75, 0.16, 0.16), (5.0, 0.85, 0.45), hull,
-        rot=(0, math.radians(-18), math.radians(35)))
-for i in range(4):
-    rig.box(f"lug{i}", (0.26, 0.34, 0.42),
-            (3.9 + i * 0.4, -0.82, 0.21), tread)
-# stencil plate on the shank crown
-rig.box("stencil", (0.5, 0.03, 0.14),
-        (1.55, 0.615 * math.cos(math.pi * 0.35),
-         0.615 * math.sin(math.pi * 0.35)), stenc,
-        rot=(math.pi * 0.35 - math.pi / 2, 0, 0))
-# --- market-hall language: the silhouette must not read as a pipe ---
-lit = rig.make_material("mlit", (0.9, 0.6, 0.3), 0.4,
+# --- palette: dark heavy machinery, warm light only where the market is ---
+plate = rig.make_material("plate", (0.11, 0.12, 0.13), 0.85, noise=0.35)
+plateN = rig.make_material("plateN", (0.15, 0.16, 0.17), 0.80, noise=0.30)
+seam = rig.make_material("seam", (0.055, 0.06, 0.07), 0.90)
+tread = rig.make_material("tread", (0.09, 0.10, 0.11), 0.95, noise=0.30)
+glow = rig.make_material("glow", (1.0, 0.58, 0.24), 0.5,
+                         emit=(1.0, 0.55, 0.22), emit_strength=2.6)
+lit = rig.make_material("lit", (0.9, 0.6, 0.3), 0.4,
                         emit=(1.0, 0.62, 0.28), emit_strength=2.0)
-canvas_a = rig.make_material("canv_a", (0.42, 0.16, 0.13), 0.9, noise=0.3)
-canvas_b = rig.make_material("canv_b", (0.52, 0.44, 0.20), 0.9, noise=0.3)
+canvas_a = rig.make_material("canv_a", (0.30, 0.14, 0.12), 0.9, noise=0.3)
+canvas_b = rig.make_material("canv_b", (0.34, 0.30, 0.16), 0.9, noise=0.3)
+stenc = rig.make_material("stenc", (0.5, 0.46, 0.40), 0.9)
 
-# clerestory: a raised lit ridge along the crown — the giveaway that this
-# is a hall people are inside of, not a length of conduit
-rig.box("clerestory", (4.3, 0.34, 0.20), (2.85, 0, 0.68), hull)
-for i in range(11):
-    rig.box(f"cwin{i}", (0.22, 0.36, 0.10), (0.95 + i * 0.40, 0, 0.70), lit)
-rig.box("ridge", (4.4, 0.42, 0.06), (2.85, 0, 0.80), weld)
+# 1 — the solid foot: one honest slab covering the whole 3-deep footprint
+rig.box("base", (7.2, 3.0, 0.62), (2.0, 0, 0.31), plate)      # X[-1.6..5.6], Y±1.5
+rig.box("basebev", (6.9, 2.7, 0.12), (2.05, 0, 0.66), plateN)  # inset top rim
+# north-face weld stringers + rivet columns (the visible flank reads as plate)
+rig.box("seamN1", (7.0, 0.04, 0.05), (2.0, 1.505, 0.22), seam)
+rig.box("seamN2", (7.0, 0.04, 0.05), (2.0, 1.505, 0.48), seam)
+for i in range(-1, 6):
+    rig.box(f"rivN{i}", (0.05, 0.04, 0.52), (i + 0.0, 1.508, 0.33), seam)
 
-# ridge vents: three turbine cowls standing off the ridge
-for vx in (1.45, 2.85, 4.25):
-    rig.cylinder(f"vent{int(vx*100)}", 0.10, 0.14, (0, 0, 0), weld, seg=12,
-                 arc=math.pi * 2)
-    for o in bpy.context.collection.objects:
-        if o.name == f"vent{int(vx*100)}":
-            o.location = (vx, 0.0, 0.90)
+# 2 — the heel counter: a taller mass at the west, the boot's thick end
+rig.box("heel", (1.5, 2.9, 0.52), (-0.55, 0, 0.86), plate)     # X[-1.3..0.2]
+rig.box("heeltop", (1.3, 2.7, 0.12), (-0.55, 0, 1.14), plateN)
+rig.box("heelshoulder", (0.08, 2.9, 0.66), (0.22, 0, 0.55), seam)  # vertical weld
 
-# stall awnings along the south flank — the market spilling out
-for i, ax in enumerate((1.15, 1.95, 2.75, 3.55, 4.35)):
+# 3 — the spine vault: a hooped hull camber over the market street,
+#     giving the derelict its curved back (one continuous barrel)
+rig.cylinder("vault", 0.90, 5.2, (2.7, 0, 0.62), plate, arc=math.pi * 0.92)
+for i in range(8):                                            # rib hoops
+    rig.cylinder(f"hoop{i}", 0.92, 0.06, (0.55 + i * 0.66, 0, 0.62), seam,
+                 arc=math.pi * 0.9)
+
+# 4 — the clerestory: a lit ridge along the NORTH crown — the giveaway
+#     that this hull is a hall people are inside of, not a dead pipe
+rig.box("clere", (4.7, 0.30, 0.34), (2.7, 0.55, 1.24), plate)
+for i in range(9):
+    rig.box(f"cwin{i}", (0.34, 0.05, 0.16), (0.75 + i * 0.5, 0.71, 1.24), lit)
+rig.box("clereridge", (4.8, 0.40, 0.06), (2.7, 0.52, 1.43), seam)
+# two turbine cowls standing off the ridge — salvage machinery
+for j, vx in enumerate((1.7, 3.9)):
+    v = rig.cylinder(f"vent{j}", 0.10, 0.16, (0, 0, 0), seam, seg=12,
+                     arc=math.pi * 2)
+    v.location = (vx, 0.1, 1.52)
+
+# 5 — the toe box: a blunt raised end covering Spur / Toe / Lug (x-3),
+#     and the MARKET MOUTH — a warm arch on the visible EAST face
+rig.box("toe", (1.1, 3.0, 1.16), (5.0, 0, 0.58), plate)        # X[4.45..5.55]
+rig.box("toetop", (1.0, 2.7, 0.12), (5.0, 0, 1.20), plateN)
+rig.box("mouth", (0.05, 1.7, 0.86), (5.565, 0, 0.50), glow)    # east glowing bay
+rig.box("mouthlintel", (0.12, 2.0, 0.12), (5.565, 0, 0.98), seam)
+rig.box("mouthjambL", (0.12, 0.12, 0.92), (5.565, 0.94, 0.50), seam)
+rig.box("mouthjambR", (0.12, 0.12, 0.92), (5.565, -0.94, 0.50), seam)
+# the spur horn: an angled lug off the toe's north-top corner (x-3,y-17)
+rig.box("spur", (0.72, 0.18, 0.18), (5.0, 1.18, 1.22), plate,
+        rot=(0, math.radians(-20), math.radians(30)))
+# lug treads sunk into the south toe (structural mass, south = unseen)
+for i in range(3):
+    rig.box(f"lug{i}", (0.24, 0.30, 0.40), (4.7 + i * 0.32, -1.2, 0.20), tread)
+
+# 6 — the throat: a lit entrance flush in the NORTH face at the heel end
+rig.box("throat", (0.5, 0.06, 0.5), (0.0, 1.505, 0.30), seam)
+rig.box("throatglow", (0.34, 0.05, 0.34), (0.0, 1.515, 0.26), glow)
+
+# 7 — stall awnings: the market spilling onto the north curb (visible face)
+for i, ax in enumerate((1.4, 2.4, 3.4, 4.4)):
     mat = canvas_a if i % 2 == 0 else canvas_b
-    rig.box(f"awn{i}", (0.62, 0.44, 0.05), (ax, 0.74, 0.36), mat,
-            rot=(math.radians(-16), 0, 0))
-    rig.box(f"awnpost{i}a", (0.04, 0.04, 0.30), (ax - 0.26, 0.92, 0.15), weld)
-    rig.box(f"awnpost{i}b", (0.04, 0.04, 0.30), (ax + 0.26, 0.92, 0.15), weld)
-    rig.box(f"stallglow{i}", (0.46, 0.06, 0.05), (ax, 0.70, 0.22), lit)
+    rig.box(f"awn{i}", (0.72, 0.5, 0.05), (ax, 1.74, 0.52), mat,
+            rot=(math.radians(18), 0, 0))
+    rig.box(f"awnglow{i}", (0.5, 0.06, 0.05), (ax, 1.60, 0.30), lit)
+    rig.box(f"awnpostL{i}", (0.04, 0.04, 0.5), (ax - 0.30, 1.96, 0.25), seam)
+    rig.box(f"awnpostR{i}", (0.04, 0.04, 0.5), (ax + 0.30, 1.96, 0.25), seam)
+
+# 8 — a stencil plate on the north base flank (brand/hull number)
+rig.box("stencil", (0.9, 0.03, 0.16), (2.0, 1.515, 0.50), stenc)
 
 # ground shadow catcher
 catcher = rig.make_material("ground", (0.5, 0.5, 0.5), 1.0)
-g = rig.box("gplane", (10, 6, 0.01), (2.5, 0, -0.005), catcher)
+g = rig.box("gplane", (11, 7, 0.01), (2.5, 0, -0.005), catcher)
 g.is_shadow_catcher = True
 
 rig.rig_camera_and_light(ortho=8.125, target=(2.5, 0, 0.4))
