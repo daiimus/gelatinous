@@ -14,9 +14,19 @@ Search the Django documentation for "URL dispatcher" for more help.
 """
 
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 # default evennia patterns
 from evennia.web.urls import urlpatterns as evennia_default_urlpatterns
+
+# iOS/iPadOS probe these ROOT paths on their own whenever a page doesn't
+# declare an apple-touch-icon link (ours mostly don't — Evennia's base.html
+# isn't forked). Without these routes the probes 404 (and the Cloudflare
+# path allowlist blocked them outright), so Apple devices improvised their
+# tab/home-screen icons. Same redirect pattern Evennia uses for favicon.ico.
+_TOUCH_ICON = RedirectView.as_view(
+    url="/static/website/images/apple-touch-icon.png", permanent=False
+)
 
 # add patterns
 urlpatterns = [
@@ -26,8 +36,13 @@ urlpatterns = [
     path("webclient/", include("web.webclient.urls")),
     # web admin
     path("admin/", include("web.admin.urls")),
-    # add any extra urls here:
-    # path("mypath/", include("path.to.my.urls.file")),
+    # apple-touch-icon probe targets (see note above)
+    path("apple-touch-icon.png", _TOUCH_ICON),
+    path("apple-touch-icon-precomposed.png", _TOUCH_ICON),
+    path("apple-touch-icon-120x120.png", _TOUCH_ICON),
+    path("apple-touch-icon-120x120-precomposed.png", _TOUCH_ICON),
+    path("apple-touch-icon-152x152.png", _TOUCH_ICON),
+    path("apple-touch-icon-180x180.png", _TOUCH_ICON),
 ]
 
 # 'urlpatterns' must be named such for Django to find it.

@@ -44,3 +44,4 @@ room_desc_snapshot_*.json
 
 # local venv for the atlas sprite pipeline (see scripts/atlas/README.md)
 scripts/atlas/.venv/
+.venv/
