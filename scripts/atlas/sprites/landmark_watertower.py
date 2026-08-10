@@ -26,16 +26,14 @@ import rig  # noqa: E402
 
 rig.clear_scene()
 
-steel = rig.make_material("wtsteel", (0.50, 0.54, 0.49), 0.8, noise=0.30,
-                          emit=(0.38, 0.41, 0.42), emit_strength=0.22)  # faint cool wash — visible, not a lantern
+steel = rig.make_material("wtsteel", (0.42, 0.45, 0.42), 0.85, noise=0.30)  # matte weathered paint — colour, not light
 rust = rig.make_material("wtrust", (0.30, 0.19, 0.12), 0.9, noise=0.45)
 # Greenhaus green, softly floodlit — the big band surface is what makes
 # the tank exist at night (small bulbs alone leave it a silhouette)
-band = rig.make_material("wtband", (0.14, 0.26, 0.17), 0.75, noise=0.25,
-                         emit=(0.35, 0.62, 0.40), emit_strength=1.3)
+band = rig.make_material("wtband", (0.20, 0.34, 0.22), 0.8, noise=0.25)
 seam = rig.make_material("wtseam", (0.06, 0.07, 0.08), 0.9)
 paint = rig.make_material("wtpaint", (0.55, 0.62, 0.50), 0.8,
-                          emit=(0.65, 0.95, 0.60), emit_strength=2.4)  # lit brand
+                          emit=(0.62, 0.85, 0.58), emit_strength=1.2)  # lit brand
 beacon = rig.make_material("wtbeacon", (0.9, 0.15, 0.1), 0.4,
                            emit=(1.0, 0.12, 0.08), emit_strength=4.0)
 lamp = rig.make_material("wtlamp", (1.0, 0.62, 0.28), 0.4,
@@ -99,21 +97,12 @@ rig.box("standpipe", (0.09, 0.09, 2.3), (0, 0, 1.16), seam)
 rig.box("overflow", (0.05, 0.05, 2.2), (0.36, -0.36, 1.25), rust)
 rig.box("puddle", (0.38, 0.34, 0.02), (0.28, -0.30, 0.01), wet)
 
-# 5 — the night read: beacon, work lamps, bulb string, level gauge.
-# The tank is dark steel; without its own light it bakes to a black
-# silhouette (live-verified) — so FLOODLIGHT the tank itself: cornice
-# strips under the lid wash light DOWN the drum, catwalk uplights wash
-# it UP. The Cycles bake turns those into gradients on the steel.
+# 5 — the night read, the same way every other building does it: a plain
+# matte body, small emissive ACCENTS only (the viewer draws emissive tris
+# additively — a glowing body reads transparent, so the body never glows).
 rig.box("beacon", (0.12, 0.12, 0.12), (0, 0, 4.21), beacon)
 rig.box("worklamp", (0.20, 0.20, 0.06), (0, 0.30, 2.28), lamp)   # under-belly
 rig.box("worklamp2", (0.20, 0.20, 0.06), (0.28, -0.14, 2.28), lamp)
-for sx, sy in ((1, 0), (-1, 0), (0, 1), (0, -1)):                # cornice floods
-    rig.box(f"flood{sx}{sy}", (0.62 if sy else 0.05, 0.62 if sx else 0.05, 0.05),
-            (sx * 0.44, sy * 0.44, 3.94), lamp)
-for k in range(4):                                               # catwalk uplights
-    a = math.pi / 4 + 2 * math.pi * k / 4
-    rig.box(f"uplight{k}", (0.10, 0.10, 0.04),
-            (0.40 * math.cos(a), 0.40 * math.sin(a), 2.46), lamp)
 # a string of warm bulbs around the catwalk rail — the classic ring
 for k in range(10):
     a = 2 * math.pi * k / 10
