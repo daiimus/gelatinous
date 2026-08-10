@@ -42,6 +42,10 @@ INSTALLED_APPS = INSTALLED_APPS + ["world"]  # type: ignore[name-defined]
 # Prepend Django's SecurityMiddleware (must be near top of chain) and
 # append XFrameOptionsMiddleware + our custom CSP middleware.
 MIDDLEWARE = [
+    # top of stack = last word on the response: strips the session cookie
+    # SharedLoginMiddleware mints on every request from the root icon
+    # paths, or Cloudflare refuses to edge-cache them (see the module)
+    "web.utils.icon_middleware.CookieFreeIconMiddleware",
     "django.middleware.security.SecurityMiddleware",
 ] + MIDDLEWARE + [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
