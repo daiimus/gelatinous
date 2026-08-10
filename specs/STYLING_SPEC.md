@@ -311,6 +311,29 @@ identical in a file listing.
 The inline navbar mark has no background element at all, which is why it can
 look right on the site while an exported icon looks like a tile.
 
+### Apple touch icons (iOS/iPadOS) span three systems
+
+iOS ignores `rel="icon"` for home-screen/bookmark/share icons and probes
+**root paths** (`/apple-touch-icon.png`, `-precomposed`, sized variants)
+whenever a page declares no `apple-touch-icon` link — and Apple **flattens
+transparency onto black**, so the disc-with-transparent-corners cuts become
+mismatched black tiles. The working setup (2026-08-20):
+
+- `web/static/website/images/apple-touch-icon.png` — 180×180, **fully
+  opaque**: Atlas-ink full-bleed ground with the mark composited on it.
+- `web/urls.py` routes the whole root probe family to it (same RedirectView
+  pattern Evennia uses for `/favicon.ico`); the webclient template also
+  declares it explicitly.
+- **Cloudflare**: the zone's path-allowlist firewall rule must include
+  `starts_with(http.request.uri.path, "/apple-touch-icon")` (it sits right
+  after the `/favicon.ico` clause). Before this, iOS probes were BLOCKED at
+  the edge and Apple devices improvised icons — the "favicon is all over the
+  place" bug. Anything added at a root path needs an allowlist clause or it
+  does not exist outside the LAN.
+- **Discourse**: `apple_touch_icon` site setting carries the same opaque
+  icon (uploaded via rails `UploadCreator`; the tab `favicon` stays the
+  plain disc mark).
+
 ### The favicon is named `evennia_logo.png` on purpose
 
 `base.html` hardcodes `rel="icon"` to `website/images/evennia_logo.png`. Rather
