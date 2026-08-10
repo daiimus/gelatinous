@@ -52,23 +52,27 @@ rig.box("braceY", (0.84, 0.07, 0.07), (0, 0, 1.55), rust, rot=(0, 0, math.radian
 
 # 2 — the tank: a fat closed drum (full-arc cylinder stood upright + lid,
 #     so nothing is see-through from above), riveted, green brand band
-tank = rig.cylinder("tank", 0.45, 1.7, (0, 0, 0), steel, seg=20, arc=math.pi * 2)
-tank.location = (0, 0, 3.15)
-tank.rotation_euler = (0, math.radians(90), 0)
-rig.box("tankbtm", (0.66, 0.66, 0.10), (0, 0, 2.32), seam)      # belly plate
-rig.box("lid", (0.80, 0.80, 0.10), (0, 0, 4.02), steel)          # wide lid
-rig.box("lidcap", (0.5, 0.5, 0.10), (0, 0, 4.10), rust)          # crown step
-gb = rig.cylinder("brandband", 0.465, 0.42, (0, 0, 0), band, seg=20, arc=math.pi * 2)
-gb.location = (0, 0, 3.30)
-gb.rotation_euler = (0, math.radians(90), 0)
+# the drum is BOXES, not rig.cylinder: the cylinder helper's faces wind
+# inward and the live viewer culls back-faces, so a cylinder tube renders
+# INVISIBLE (see-through barrel, live-verified). Boxes are what every
+# building that reads correctly is made of. Chamfered-octagon drum: an
+# axis box + a 45°-rotated box; the rotated one is sized so its corners
+# stay inside the one-cell bounds (side * √2/2 ≤ 0.5).
+rig.box("tankA", (0.88, 0.88, 1.70), (0, 0, 3.15), steel)
+rig.box("tankB", (0.62, 0.62, 1.70), (0, 0, 3.15), steel, rot=(0, 0, math.radians(45)))
+rig.box("tankbtm", (0.92, 0.92, 0.10), (0, 0, 2.32), seam)       # belly plate
+rig.box("lid", (0.96, 0.96, 0.10), (0, 0, 4.02), steel)          # wide lid
+rig.box("lidcap", (0.56, 0.56, 0.10), (0, 0, 4.10), rust)        # crown step
+rig.box("bandA", (0.90, 0.90, 0.42), (0, 0, 3.30), band)         # Greenhaus band
+rig.box("bandB", (0.635, 0.635, 0.42), (0, 0, 3.30), band, rot=(0, 0, math.radians(45)))
 for k in range(3):                                               # hoop seams
-    h = rig.cylinder(f"hoop{k}", 0.462, 0.05, (0, 0, 0), seam, seg=20, arc=math.pi * 2)
-    h.location = (0, 0, 2.55 + k * 0.62)
-    h.rotation_euler = (0, math.radians(90), 0)
+    rig.box(f"hoopA{k}", (0.91, 0.91, 0.05), (0, 0, 2.55 + k * 0.62), seam)
+    rig.box(f"hoopB{k}", (0.64, 0.64, 0.05), (0, 0, 2.55 + k * 0.62), seam,
+            rot=(0, 0, math.radians(45)))
 
 # the brand, painted on the band, facing the street (west) and readable
 # at the home view (mirrored render): same trick as the liner decks
-bpy.ops.object.text_add(location=(0.0, -0.475, 3.30))
+bpy.ops.object.text_add(location=(0.0, -0.462, 3.30))
 t = bpy.context.active_object
 t.data.body = "GREENHAUS"
 t.data.font = bpy.data.fonts.load(rig.FONT)
