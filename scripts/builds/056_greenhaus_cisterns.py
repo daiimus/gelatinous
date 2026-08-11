@@ -29,15 +29,30 @@ EXIT_TC = "typeclasses.exits.Exit"
 
 C1_TOP = (5, -19, 1)
 
-DESC = ("The lid of Greenhaus Cistern No. 1 — the sole survivor of the "
-        "numbered set on this block, a squat riveted drum on splayed legs "
-        "over the corner off Braddock. The deck plate is dished with age "
-        "and slick where the fill valve weeps; the numeral is repainted "
-        "annually by someone who clearly hates ladders. A service hatch "
-        "sits off-centre in the plate, its wheel stiff with verdigris. "
-        "The ladder drops among the avionics stalls at the alley's south "
-        "end. East and northeast, across the lane's air, the Fungary's "
-        "first-level rails wait for the committed.")
+DESC = ("A slatted service deck braced between Cistern No. 1's legs, a "
+        "storey off the corner lot — the tank's riveted belly hangs close "
+        "overhead, and the ladder cage runs on up through a cut in the "
+        "plate. The deck's outer rail is worn bright in two places, "
+        "exactly where you'd vault it: east and northeast, across the "
+        "lane's air, the Fungary's first-level rails wait for the "
+        "committed. The stall ladder drops away below.")
+
+CAGE_DESC = (
+    "The rung cage up Cistern No. 1's flank, level with the tank's "
+    "waist — the Greenhaus band curves away on both sides, older and "
+    "greener than its siblings', the numeral's fresh paint the only "
+    "bright thing on it. The catwalk ring's bulb string buzzes at knee "
+    "height. Below, the leg platform's deck; above, the lid's rail "
+    "against the sky.")
+
+TOP_DESC = (
+    "The lid of Greenhaus Cistern No. 1 — a riveted deck behind a rail, "
+    "the red air-hazard beacon ticking overhead, the deck plate dished "
+    "with age and slick where the fill valve weeps. A service hatch "
+    "sits off-centre, its wheel stiff with verdigris. From up here the "
+    "runt finally has the view it always deserved: the Fungary's "
+    "grow-bands burning to the east, Braddock's crawl below, and its "
+    "tall twin standing sentinel far off on the Spillane.")
 
 INTERIOR_DESC = (
     "Inside the runt. No. 1's drum is shallow and old — the hatch-light "
@@ -75,10 +90,10 @@ def link(loc, dest, key, alias, edge=None):
 made = exits = 0
 c1 = at(C1_TOP)
 if c1 is None:
-    c1 = create_object(ROOM_TC, key="Greenhaus Cistern No. 1 - Tank Top")
+    c1 = create_object(ROOM_TC, key="Greenhaus Cistern No. 1 - Leg Platform")
     c1.db.xyz = C1_TOP
     made += 1
-c1.key = "Greenhaus Cistern No. 1 - Tank Top"
+c1.key = "Greenhaus Cistern No. 1 - Leg Platform"
 c1.db.desc = DESC
 c1.db.type = "cistern"
 c1.db.atlas_skin = "cistern_solo"
@@ -125,6 +140,30 @@ for room, key, far, sky in ((c1, "east", plat_s1, air),
             e.db.gap_destination = far.id
             e.db.sky_room = sky.id
 
+# the column above the platform: ladder cage (z2) and tank top (z3);
+# no atlas skins — the full-stature cistern_solo sprite on the z1 cell
+# draws the whole tank
+cage = at((5, -19, 2))
+if cage is None:
+    cage = create_object(ROOM_TC, key="Greenhaus Cistern No. 1 - Ladder Cage")
+    cage.db.xyz = (5, -19, 2)
+    made += 1
+cage.db.desc = CAGE_DESC
+cage.db.type = "cistern"
+cage.db.outside = True
+top = at((5, -19, 3))
+if top is None:
+    top = create_object(ROOM_TC, key="Greenhaus Cistern No. 1 - Tank Top")
+    top.db.xyz = (5, -19, 3)
+    made += 1
+top.db.desc = TOP_DESC
+top.db.type = "cistern"
+top.db.outside = True
+exits += link(c1, cage, "up", "u")
+exits += link(cage, c1, "down", "d")
+exits += link(cage, top, "up", "u")
+exits += link(top, cage, "down", "d")
+
 # the belly (every cistern gets one: the future pump's socket)
 inside = by_key("Greenhaus Cistern No. 1 - Inside the Tank")
 if inside is None:
@@ -134,8 +173,8 @@ if inside is None:
 inside.db.desc = INTERIOR_DESC
 inside.db.type = "interior"
 inside.db.outside = False
-exits += link(c1, inside, "in", "hatch")
-exits += link(inside, c1, "out", "o")
+exits += link(top, inside, "in", "hatch")
+exits += link(inside, top, "out", "o")
 
 print(f"BUILD 056: Cistern No. 1 — {made} rooms, {exits} exits. "
       f"Route: Braddock ladder -> C1 -> east over the alley -> South Platform L1.")
