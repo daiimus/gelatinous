@@ -25,9 +25,9 @@ from world.spatial import get_xyz
 ROOM_TC = "typeclasses.rooms.Room"
 EXIT_TC = "typeclasses.exits.Exit"
 ALIAS = {"north": ["n"], "south": ["s"], "east": ["e"], "west": ["w"],
-         "up": ["u"], "down": ["d"]}
+         "up": ["u"], "down": ["d"], "northeast": ["ne"], "southwest": ["sw"]}
 
-C1_TOP = (5, -18, 1)
+C1_TOP = (5, -19, 1)   # over the block corner SOUTH of the alley (057 fix)
 C2_WALK = (6, -18, 1)
 C2_TOP = (6, -18, 2)
 
@@ -106,9 +106,9 @@ core2 = by_key("The Fungary - Stair Core (Level 2)")
 # the ladder up No. 1 from the alley (public climb, both ways)
 exits += link(alley, rooms[C1_TOP], "up")
 exits += link(rooms[C1_TOP], alley, "down")
-# the diagonal: No.1 top <-> No.2 catwalk (same-z gap over the alley bend)
-exits += link(rooms[C1_TOP], rooms[C2_WALK], "east", edge=7, gap=7)
-exits += link(rooms[C2_WALK], rooms[C1_TOP], "west", edge=7, gap=7)
+# the diagonal: No.1 top <-> No.2 catwalk (a TRUE diagonal, ne/sw)
+exits += link(rooms[C1_TOP], rooms[C2_WALK], "northeast", edge=7, gap=7)
+exits += link(rooms[C2_WALK], rooms[C1_TOP], "southwest", edge=7, gap=7)
 # No. 2's own ladder, catwalk to lid
 exits += link(rooms[C2_WALK], rooms[C2_TOP], "up")
 exits += link(rooms[C2_TOP], rooms[C2_WALK], "down")
