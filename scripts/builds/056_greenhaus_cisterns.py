@@ -33,10 +33,20 @@ DESC = ("The lid of Greenhaus Cistern No. 1 — the sole survivor of the "
         "numbered set on this block, a squat riveted drum on splayed legs "
         "over the corner off Braddock. The deck plate is dished with age "
         "and slick where the fill valve weeps; the numeral is repainted "
-        "annually by someone who clearly hates ladders. The ladder drops "
-        "among the avionics stalls at the alley's south end. East and "
-        "northeast, across the lane's air, the Fungary's first-level "
-        "rails wait for the committed.")
+        "annually by someone who clearly hates ladders. A service hatch "
+        "sits off-centre in the plate, its wheel stiff with verdigris. "
+        "The ladder drops among the avionics stalls at the alley's south "
+        "end. East and northeast, across the lane's air, the Fungary's "
+        "first-level rails wait for the committed.")
+
+INTERIOR_DESC = (
+    "Inside the runt. No. 1's drum is shallow and old — the hatch-light "
+    "lands on maybe a hand's depth of standing water over a sediment the "
+    "colour of tea, ring-marked up the walls where better years stood "
+    "deeper. In the centre squats the pump housing, a cold iron toad of "
+    "a machine, its breaker box shut, its gauge needle asleep on the pin. "
+    "GH-1 is stencilled on the casing beside an inspection tally that "
+    "stopped years ago. The rivets tick as the day's heat leaves.")
 
 
 def at(xyz):
@@ -114,6 +124,18 @@ for room, key, far, sky in ((c1, "east", plat_s1, air),
         if e.key == key and e.db.is_gap:
             e.db.gap_destination = far.id
             e.db.sky_room = sky.id
+
+# the belly (every cistern gets one: the future pump's socket)
+inside = by_key("Greenhaus Cistern No. 1 - Inside the Tank")
+if inside is None:
+    inside = create_object(ROOM_TC,
+                           key="Greenhaus Cistern No. 1 - Inside the Tank")
+    made += 1
+inside.db.desc = INTERIOR_DESC
+inside.db.type = "interior"
+inside.db.outside = False
+exits += link(c1, inside, "in", "hatch")
+exits += link(inside, c1, "out", "o")
 
 print(f"BUILD 056: Cistern No. 1 — {made} rooms, {exits} exits. "
       f"Route: Braddock ladder -> C1 -> east over the alley -> South Platform L1.")
