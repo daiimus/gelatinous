@@ -28,7 +28,7 @@ EXIT_TC = "typeclasses.exits.Exit"
 ALIAS = {"north": ["n"], "south": ["s"], "east": ["e"], "west": ["w"],
          "up": ["u"], "down": ["d"], "northeast": ["ne"], "southwest": ["sw"]}
 
-C1_TOP = (5, -19, 1)   # over the block corner SOUTH of the alley (057 fix)
+C1_TOP = (4, -19, 1)   # off Braddock; one straight diagonal to C2 (059 fix)
 C2_WALK = (6, -17, 1)  # over the block corner NORTH of the alley (058 fix)
 C2_TOP = (6, -17, 2)
 
@@ -101,23 +101,23 @@ for xyz, (key, skin) in SPEC.items():
     r.db.outside = True
     rooms[xyz] = r
 
-alley = at((5, -18, 0))
+braddock = at((4, -20, 0))
 core2 = by_key("The Fungary - Stair Core (Level 2)")
 
-# the ladder up No. 1 from the alley (public climb, both ways)
-exits += link(alley, rooms[C1_TOP], "up")
-exits += link(rooms[C1_TOP], alley, "down")
+# the ladder up No. 1 from Braddock (public climb, both ways)
+exits += link(braddock, rooms[C1_TOP], "up")
+exits += link(rooms[C1_TOP], braddock, "down")
 # the crossing: both lids edge into the air over the alley dogleg
-air = at((6, -18, 1))
+air = at((5, -18, 1))
 if air is None:
     air = create_object("typeclasses.rooms.SkyRoom", key="In the Air")
-    air.db.xyz = (6, -18, 1)
+    air.db.xyz = (5, -18, 1)
     air.db.type = "sky"
     air.db.is_sky_room = True
     air.db.outside = True
     made += 1
 exits += link(rooms[C1_TOP], air, "northeast", edge=7, gap=7)
-exits += link(rooms[C2_WALK], air, "south", edge=7, gap=7)
+exits += link(rooms[C2_WALK], air, "southwest", edge=7, gap=7)
 # No. 2's own ladder, catwalk to lid
 exits += link(rooms[C2_WALK], rooms[C2_TOP], "up")
 exits += link(rooms[C2_TOP], rooms[C2_WALK], "down")
