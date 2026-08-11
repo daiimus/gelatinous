@@ -4921,7 +4921,7 @@ PESSOA_BUN = {
     "tags": [("eat", "delivery_method"), ("food", "item_type")],
 }
 
-PESSOA_SKEWER = {
+SNAIL_SKEWER = {
     "prototype_key": "snail_skewer",
     "key": "a grilled snail skewer",
     "aliases": ["snails", "snail skewer", "escargot"],
@@ -4937,8 +4937,9 @@ PESSOA_SKEWER = {
         ("value", 3),
     ],
     "tags": [("eat", "delivery_method"), ("food", "item_type")],
-},
-{
+}
+
+SNAIL_JAR = {
     "prototype_key": "snail_jar",
     "key": "a jar of pickled snails",
     "aliases": ["jar", "pickled snails"],
@@ -4954,8 +4955,9 @@ PESSOA_SKEWER = {
         ("value", 5),
     ],
     "tags": [("eat", "delivery_method"), ("food", "item_type")],
-},
-{
+}
+
+PESSOA_SKEWER = {
     "prototype_key": "pessoa_skewer",
     "key": "a charred skewer",
     "aliases": ["skewer", "stick"],
