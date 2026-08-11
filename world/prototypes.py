@@ -4922,6 +4922,40 @@ PESSOA_BUN = {
 }
 
 PESSOA_SKEWER = {
+    "prototype_key": "snail_skewer",
+    "key": "a grilled snail skewer",
+    "aliases": ["snails", "snail skewer", "escargot"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Six fat snails off the Escallier boards, grilled in their own "
+            "butter-fat with crushed garlic-weed and a squeeze of something "
+            "sour, threaded on a wire skewer with the shells still hissing.",
+    "attrs": [
+        ("drink_taste", "Rich, dark, and faintly of the good kind of damp — "
+                        "the colony's humblest luxury, six bites long."),
+        ("drink_effects", {}),
+        ("uses_left", 1),
+        ("value", 3),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+},
+{
+    "prototype_key": "snail_jar",
+    "key": "a jar of pickled snails",
+    "aliases": ["jar", "pickled snails"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A stout glass jar of shelled snails in cloudy brine, peppercorns "
+            "and a coil of dried chili drifting among them. The lid is "
+            "stamped by hand: ESCARGOT FOR ALL.",
+    "attrs": [
+        ("drink_taste", "Sharp brine, then the meat — dense, cold, and "
+                        "somehow honest. Keeps for a shift year."),
+        ("drink_effects", {}),
+        ("uses_left", 4),
+        ("value", 5),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+},
+{
     "prototype_key": "pessoa_skewer",
     "key": "a charred skewer",
     "aliases": ["skewer", "stick"],
