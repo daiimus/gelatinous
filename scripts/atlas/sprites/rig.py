@@ -2472,18 +2472,37 @@ def _cistern_legs(rust, seam, top):
 
 
 def cistern_solo_cell():
-    """No. 1 entire in one cell: legs from the alley below, squat drum,
-    railed lid deck. The room floor is the lid."""
+    """No. 1 entire in one cell: legs from the alley below, a FAT squat
+    drum (the runt is short, not slight), cosmetic waist catwalk, railed
+    lid with a visible service hatch. The room floor is the lid."""
     clear_scene()
     steel, band, rust, seam, lamp, gauge = _cistern_mats()
     _cistern_legs(rust, seam, top=0.0)
-    _cistern_drum(0.0, 0.34, steel, band, seam)
-    box("lidA", (0.80, 0.80, 0.05), (0, 0, 0.37), seam)
+    # the drum, beefed: wider and a touch taller than the old sculpt
+    h = 0.44
+    box("drumA", (0.86, 0.86, h), (0, 0, h / 2), steel)
+    box("drumB", (0.61, 0.61, h), (0, 0, h / 2), steel,
+        rot=(0, 0, math.radians(45)))
+    box("bandA", (0.88, 0.88, 0.15), (0, 0, h * 0.55), band)
+    box("bandB", (0.625, 0.625, 0.15), (0, 0, h * 0.55), band,
+        rot=(0, 0, math.radians(45)))
+    box("hoop", (0.87, 0.87, 0.04), (0, 0, h * 0.18), seam)
+    # cosmetic waist catwalk ring at the drum base
+    box("walkring", (0.98, 0.98, 0.035), (0, 0, 0.06), seam)
     for sy in (1, -1):
-        box(f"railY{sy}", (0.80, 0.03, 0.03), (0, sy * 0.39, 0.52), rust)
+        box(f"wrY{sy}", (0.98, 0.025, 0.02), (0, sy * 0.48, 0.20), rust)
     for sx in (1, -1):
-        box(f"railX{sx}", (0.03, 0.80, 0.03), (sx * 0.39, 0, 0.52), rust)
-    box("lamp1", (0.10, 0.10, 0.05), (0.30, 0.30, 0.42), lamp)
+        box(f"wrX{sx}", (0.025, 0.98, 0.02), (sx * 0.48, 0, 0.20), rust)
+    # lid, rails, and the service hatch with its wheel
+    box("lidA", (0.90, 0.90, 0.05), (0, 0, h + 0.03), seam)
+    box("hatch", (0.24, 0.24, 0.07), (0.12, -0.10, h + 0.09), steel)
+    box("wheelA", (0.20, 0.035, 0.03), (0.12, -0.10, h + 0.15), rust)
+    box("wheelB", (0.035, 0.20, 0.03), (0.12, -0.10, h + 0.15), rust)
+    for sy in (1, -1):
+        box(f"railY{sy}", (0.88, 0.03, 0.03), (0, sy * 0.44, h + 0.20), rust)
+    for sx in (1, -1):
+        box(f"railX{sx}", (0.03, 0.88, 0.03), (sx * 0.44, 0, h + 0.20), rust)
+    box("lamp1", (0.10, 0.10, 0.05), (0.34, 0.34, h + 0.08), lamp)
     box("ladder", (0.04, 0.04, 0.95), (-0.42, -0.42, -0.45), rust)
     rig_camera_and_light()
     render("cistern_solo")
