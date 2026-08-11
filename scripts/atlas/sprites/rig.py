@@ -2472,40 +2472,63 @@ def _cistern_legs(rust, seam, top):
 
 
 def cistern_solo_cell():
-    """No. 1 entire in one cell: legs from the alley below, a FAT squat
-    drum (the runt is short, not slight), cosmetic waist catwalk, railed
-    lid with a visible service hatch. The room floor is the lid."""
+    """No. 1 entire in one cell, at CISTERN No. 3's full stature (owner
+    call): the cell sits at z1, so geometry runs local -1 (the ground)
+    up to ~+2.3 — legs to a high belly, big banded drum, waist catwalk,
+    railed lid with hatch and beacon. Mirrors the watertower landmark's
+    silhouette; the room mechanics (lid at z1) are unchanged."""
     clear_scene()
     steel, band, rust, seam, lamp, gauge = _cistern_mats()
-    _cistern_legs(rust, seam, top=0.0)
-    # the drum, beefed: wider and a touch taller than the old sculpt
-    h = 0.44
-    box("drumA", (0.86, 0.86, h), (0, 0, h / 2), steel)
-    box("drumB", (0.61, 0.61, h), (0, 0, h / 2), steel,
+    beacon = make_material("cibeak1", (0.9, 0.15, 0.1), 0.4,
+                           emit=(1.0, 0.12, 0.08), emit_strength=4.0)
+    # legs: ground (local -1.0) to the belly (local 1.3)
+    for sx, sy in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
+        box(f"leg{sx}{sy}", (0.09, 0.09, 2.3), (sx * 0.34, sy * 0.34, 0.15),
+            rust)
+        box(f"foot{sx}{sy}", (0.16, 0.16, 0.08), (sx * 0.40, sy * 0.40,
+                                                  -0.96), seam)
+    box("braceA", (0.72, 0.06, 0.06), (0, 0, -0.45), rust,
         rot=(0, 0, math.radians(45)))
-    box("bandA", (0.88, 0.88, 0.15), (0, 0, h * 0.55), band)
-    box("bandB", (0.625, 0.625, 0.15), (0, 0, h * 0.55), band,
+    box("braceB", (0.72, 0.06, 0.06), (0, 0, 0.35), rust,
+        rot=(0, 0, math.radians(-45)))
+    box("standpipe", (0.08, 0.08, 2.3), (0, 0, 0.15), seam)
+    # waist catwalk ring at the drum base
+    box("walkring", (0.98, 0.98, 0.035), (0, 0, 1.28), seam)
+    for sy in (1, -1):
+        box(f"wrY{sy}", (0.98, 0.025, 0.02), (0, sy * 0.48, 1.44), rust)
+    for sx in (1, -1):
+        box(f"wrX{sx}", (0.025, 0.98, 0.02), (sx * 0.48, 0, 1.44), rust)
+    for k in range(8):                              # catwalk bulb string
+        a = 2 * math.pi * k / 8
+        box(f"bulb{k}", (0.05, 0.05, 0.05),
+            (0.46 * math.cos(a), 0.46 * math.sin(a), 1.40), lamp)
+    # the drum: local 1.3 .. 3.0 (world z2.3-4.0, No. 3's tank band)
+    h = 1.7
+    box("drumA", (0.86, 0.86, h), (0, 0, 1.3 + h / 2), steel)
+    box("drumB", (0.61, 0.61, h), (0, 0, 1.3 + h / 2), steel,
         rot=(0, 0, math.radians(45)))
-    box("hoop", (0.87, 0.87, 0.04), (0, 0, h * 0.18), seam)
-    # cosmetic waist catwalk ring at the drum base
-    box("walkring", (0.98, 0.98, 0.035), (0, 0, 0.06), seam)
+    box("bandA", (0.88, 0.88, 0.30), (0, 0, 2.25), band)
+    box("bandB", (0.625, 0.625, 0.30), (0, 0, 2.25), band,
+        rot=(0, 0, math.radians(45)))
+    box("hoop1", (0.87, 0.87, 0.04), (0, 0, 1.62), seam)
+    box("hoop2", (0.87, 0.87, 0.04), (0, 0, 2.72), seam)
+    box("gstrip", (0.05, 0.02, 0.9), (0.20, -0.445, 2.20), gauge)
+    # lid, hatch + wheel, rails, lamp, beacon
+    box("lidA", (0.90, 0.90, 0.06), (0, 0, 3.04), seam)
+    box("hatch", (0.24, 0.24, 0.07), (0.12, -0.10, 3.10), steel)
+    box("wheelA", (0.20, 0.035, 0.03), (0.12, -0.10, 3.16), rust)
+    box("wheelB", (0.035, 0.20, 0.03), (0.12, -0.10, 3.16), rust)
     for sy in (1, -1):
-        box(f"wrY{sy}", (0.98, 0.025, 0.02), (0, sy * 0.48, 0.20), rust)
+        box(f"railY{sy}", (0.88, 0.03, 0.03), (0, sy * 0.44, 3.22), rust)
     for sx in (1, -1):
-        box(f"wrX{sx}", (0.025, 0.98, 0.02), (sx * 0.48, 0, 0.20), rust)
-    # lid, rails, and the service hatch with its wheel
-    box("lidA", (0.90, 0.90, 0.05), (0, 0, h + 0.03), seam)
-    box("hatch", (0.24, 0.24, 0.07), (0.12, -0.10, h + 0.09), steel)
-    box("wheelA", (0.20, 0.035, 0.03), (0.12, -0.10, h + 0.15), rust)
-    box("wheelB", (0.035, 0.20, 0.03), (0.12, -0.10, h + 0.15), rust)
-    for sy in (1, -1):
-        box(f"railY{sy}", (0.88, 0.03, 0.03), (0, sy * 0.44, h + 0.20), rust)
-    for sx in (1, -1):
-        box(f"railX{sx}", (0.03, 0.88, 0.03), (sx * 0.44, 0, h + 0.20), rust)
-    box("lamp1", (0.10, 0.10, 0.05), (0.34, 0.34, h + 0.08), lamp)
-    box("ladder", (0.04, 0.04, 0.95), (-0.42, -0.42, -0.45), rust)
-    rig_camera_and_light()
-    render("cistern_solo")
+        box(f"railX{sx}", (0.03, 0.88, 0.03), (sx * 0.44, 0, 3.22), rust)
+    box("lamp1", (0.10, 0.10, 0.05), (0.34, 0.34, 3.10), lamp)
+    box("beacon", (0.10, 0.10, 0.10), (0, 0, 3.30), beacon)
+    box("ladder", (0.04, 0.04, 4.0), (-0.44, -0.44, 1.0), rust)
+    # px/unit invariant: ortho 5.2 = 2.6 * 1024/512 — the taller frame is
+    # bought with resolution, never by widening the base
+    rig_camera_and_light(ortho=5.2, target=(0, 0, 1.2))
+    render("cistern_solo", res=1024)
 
 
 def cistern_walk_cell():
