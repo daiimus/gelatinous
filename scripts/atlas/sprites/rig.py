@@ -2472,61 +2472,78 @@ def _cistern_legs(rust, seam, top):
 
 
 def cistern_solo_cell():
-    """No. 1 entire in one cell, at CISTERN No. 3's full stature (owner
-    call): the cell sits at z1, so geometry runs local -1 (the ground)
-    up to ~+2.3 — legs to a high belly, big banded drum, waist catwalk,
-    railed lid with hatch and beacon. Mirrors the watertower landmark's
-    silhouette; the room mechanics (lid at z1) are unchanged."""
+    """Cistern No. 1 — a faithful one-cell port of the No. 3 landmark
+    (landmark_watertower.py geometry, z-offset -1 from this z1 anchor):
+    splayed legs, waist catwalk with bulbs, the broad lettered
+    Greenhaus band, octagon lid pair, beacon. No gauge stripe (owner
+    removed it from No. 3), no floating rail hoop. Twins by decree."""
     clear_scene()
     steel, band, rust, seam, lamp, gauge = _cistern_mats()
+    paint = make_material("cipaint1", (0.55, 0.62, 0.50), 0.8,
+                          emit=(0.62, 0.85, 0.58), emit_strength=1.2)
     beacon = make_material("cibeak1", (0.9, 0.15, 0.1), 0.4,
                            emit=(1.0, 0.12, 0.08), emit_strength=4.0)
-    # legs: ground (local -1.0) to the belly (local 1.3)
-    for sx, sy in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
-        box(f"leg{sx}{sy}", (0.09, 0.09, 2.3), (sx * 0.34, sy * 0.34, 0.15),
-            rust)
-        box(f"foot{sx}{sy}", (0.16, 0.16, 0.08), (sx * 0.40, sy * 0.40,
-                                                  -0.96), seam)
-    box("braceA", (0.72, 0.06, 0.06), (0, 0, -0.45), rust,
+    # legs, feet, braces, standpipe (landmark z minus 1)
+    for i, (sx, sy) in enumerate(((1, 1), (1, -1), (-1, 1), (-1, -1))):
+        box(f"leg{i}", (0.10, 0.10, 2.45), (sx * 0.30, sy * 0.30, 0.18),
+            rust, rot=(math.radians(-7 * sy), math.radians(7 * sx), 0))
+        box(f"foot{i}", (0.16, 0.16, 0.08), (sx * 0.40, sy * 0.40, -0.96),
+            seam)
+    box("braceX", (0.84, 0.07, 0.07), (0, 0, -0.05), rust,
         rot=(0, 0, math.radians(45)))
-    box("braceB", (0.72, 0.06, 0.06), (0, 0, 0.35), rust,
+    box("braceY", (0.84, 0.07, 0.07), (0, 0, 0.55), rust,
         rot=(0, 0, math.radians(-45)))
-    box("standpipe", (0.08, 0.08, 2.3), (0, 0, 0.15), seam)
-    # waist catwalk ring at the drum base
-    box("walkring", (0.98, 0.98, 0.035), (0, 0, 1.28), seam)
-    for sy in (1, -1):
-        box(f"wrY{sy}", (0.98, 0.025, 0.02), (0, sy * 0.48, 1.44), rust)
-    for sx in (1, -1):
-        box(f"wrX{sx}", (0.025, 0.98, 0.02), (sx * 0.48, 0, 1.44), rust)
-    for k in range(8):                              # catwalk bulb string
-        a = 2 * math.pi * k / 8
-        box(f"bulb{k}", (0.05, 0.05, 0.05),
-            (0.46 * math.cos(a), 0.46 * math.sin(a), 1.40), lamp)
-    # the drum: local 1.3 .. 3.0 (world z2.3-4.0, No. 3's tank band)
-    h = 1.7
-    box("drumA", (0.86, 0.86, h), (0, 0, 1.3 + h / 2), steel)
-    box("drumB", (0.61, 0.61, h), (0, 0, 1.3 + h / 2), steel,
+    box("standpipe", (0.09, 0.09, 2.3), (0, 0, 0.16), seam)
+    # waist catwalk, rails, bulb string, worklamps
+    box("catwalk", (0.98, 0.98, 0.04), (0, 0, 1.42), seam)
+    for sx, sy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        box(f"rail{sx}{sy}", (0.98 if sy else 0.03, 0.98 if sx else 0.03,
+                              0.03), (sx * 0.475, sy * 0.475, 1.62), rust)
+    for k in range(10):
+        a = 2 * math.pi * k / 10
+        box(f"bulb{k}", (0.055, 0.055, 0.055),
+            (0.46 * math.cos(a), 0.46 * math.sin(a), 1.66), lamp)
+    box("worklamp", (0.20, 0.20, 0.06), (0, 0.30, 1.28), lamp)
+    box("worklamp2", (0.20, 0.20, 0.06), (0.28, -0.14, 1.28), lamp)
+    # the drum: octagon pair, belly plate, broad lettered band, hoops
+    box("tankA", (0.88, 0.88, 1.70), (0, 0, 2.15), steel)
+    box("tankB", (0.62, 0.62, 1.70), (0, 0, 2.15), steel,
         rot=(0, 0, math.radians(45)))
-    box("bandA", (0.88, 0.88, 0.30), (0, 0, 2.25), band)
-    box("bandB", (0.625, 0.625, 0.30), (0, 0, 2.25), band,
+    box("tankbtmA", (0.92, 0.92, 0.10), (0, 0, 1.32), seam)
+    box("tankbtmB", (0.65, 0.65, 0.10), (0, 0, 1.32), seam,
         rot=(0, 0, math.radians(45)))
-    box("hoop1", (0.87, 0.87, 0.04), (0, 0, 1.62), seam)
-    box("hoop2", (0.87, 0.87, 0.04), (0, 0, 2.72), seam)
-    box("gstrip", (0.05, 0.02, 0.9), (0.20, -0.445, 2.20), gauge)
-    # lid, hatch + wheel, rails, lamp, beacon
-    box("lidA", (0.90, 0.90, 0.06), (0, 0, 3.04), seam)
-    box("hatch", (0.24, 0.24, 0.07), (0.12, -0.10, 3.10), steel)
-    box("wheelA", (0.20, 0.035, 0.03), (0.12, -0.10, 3.16), rust)
-    box("wheelB", (0.035, 0.20, 0.03), (0.12, -0.10, 3.16), rust)
-    for sy in (1, -1):
-        box(f"railY{sy}", (0.88, 0.03, 0.03), (0, sy * 0.44, 3.22), rust)
-    for sx in (1, -1):
-        box(f"railX{sx}", (0.03, 0.88, 0.03), (sx * 0.44, 0, 3.22), rust)
-    box("lamp1", (0.10, 0.10, 0.05), (0.34, 0.34, 3.10), lamp)
-    box("beacon", (0.10, 0.10, 0.10), (0, 0, 3.30), beacon)
-    box("ladder", (0.04, 0.04, 4.0), (-0.44, -0.44, 1.0), rust)
-    # px/unit invariant: ortho 5.2 = 2.6 * 1024/512 — the taller frame is
-    # bought with resolution, never by widening the base
+    box("bandA", (0.90, 0.90, 0.42), (0, 0, 2.30), band)
+    box("bandB", (0.635, 0.635, 0.42), (0, 0, 2.30), band,
+        rot=(0, 0, math.radians(45)))
+    for k in range(3):
+        box(f"hoopA{k}", (0.91, 0.91, 0.05), (0, 0, 1.55 + k * 0.62), seam)
+        box(f"hoopB{k}", (0.64, 0.64, 0.05), (0, 0, 1.55 + k * 0.62), seam,
+            rot=(0, 0, math.radians(45)))
+    bpy.ops.object.text_add(location=(0.0, -0.462, 2.30))
+    t = bpy.context.active_object
+    t.data.body = "GREENHAUS"
+    t.data.font = bpy.data.fonts.load(FONT)
+    t.data.size = 0.17
+    t.data.extrude = 0.008
+    t.data.align_x = "CENTER"
+    t.data.align_y = "CENTER"
+    t.rotation_euler = (math.radians(90), 0, math.radians(180))
+    t.scale = (-1, 1, 1)
+    t.data.materials.append(paint)
+    bpy.ops.object.convert(target="MESH")
+    # octagon lid pair, crown step, beacon; the north-leg ladder
+    box("lidA", (0.94, 0.94, 0.10), (0, 0, 3.02), steel)
+    box("lidB", (0.66, 0.66, 0.10), (0, 0, 3.02), steel,
+        rot=(0, 0, math.radians(45)))
+    box("lidcapA", (0.56, 0.56, 0.10), (0, 0, 3.10), rust)
+    box("lidcapB", (0.40, 0.40, 0.10), (0, 0, 3.10), rust,
+        rot=(0, 0, math.radians(45)))
+    box("beacon", (0.12, 0.12, 0.12), (0, 0, 3.21), beacon)
+    box("ladderL", (0.03, 0.03, 4.3), (0.10, 0.47, 1.15), rust)
+    box("ladderR", (0.03, 0.03, 4.3), (-0.10, 0.47, 1.15), rust)
+    for k in range(9):
+        box(f"rung{k}", (0.20, 0.03, 0.03), (0, 0.47, -0.75 + k * 0.45), rust)
+    # px/unit invariant: ortho 5.2 = 2.6 * 1024/512
     rig_camera_and_light(ortho=5.2, target=(0, 0, 1.2))
     render("cistern_solo", res=1024)
 
