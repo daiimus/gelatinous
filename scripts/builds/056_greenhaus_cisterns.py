@@ -8,10 +8,11 @@ INTENT (playbook §0): the Verticals' water supply, and the western
 approach that turns the farm towers from an island into a line. Two
 riveted Greenhaus cisterns stand over Shipbreaker Alley's diagonal —
 No. 1 squat at (5,-18), No. 2 taller at (6,-18) — feeding the Fungary's
-riser. The parkour diagonal: alley ladder → No. 1 tank top (z1) → gap
-east → No. 2 service catwalk (z1) → ladder → No. 2 tank top (z2) → gap
-east through the riser hatch into the Fungary Stair Core (Level 2).
-Every jump is same-level and cardinal; every climb is a ladder.
+riser. The parkour diagonal: alley ladder → No. 1 tank top (5,-19,1) →
+ne edge into the air over the alley's dogleg (6,-18,1) ← south edge
+from No. 2's catwalk (6,-17,1) → ladder → No. 2 lid (6,-17,2) → east
+edge onto the Fungary North Platform (Level 2). Structures keep off
+walkable cells; only air crosses the lane (the Kaspar-connector idiom).
 (Greenhaus Cistern No. 3 already stands at (13,-15) as a landmark —
 this completes the numbered set.)
 
@@ -28,8 +29,8 @@ ALIAS = {"north": ["n"], "south": ["s"], "east": ["e"], "west": ["w"],
          "up": ["u"], "down": ["d"], "northeast": ["ne"], "southwest": ["sw"]}
 
 C1_TOP = (5, -19, 1)   # over the block corner SOUTH of the alley (057 fix)
-C2_WALK = (6, -18, 1)
-C2_TOP = (6, -18, 2)
+C2_WALK = (6, -17, 1)  # over the block corner NORTH of the alley (058 fix)
+C2_TOP = (6, -17, 2)
 
 DESCS = {
     C1_TOP: ("The lid of Greenhaus Cistern No. 1 — the runt of the numbered "
@@ -106,15 +107,24 @@ core2 = by_key("The Fungary - Stair Core (Level 2)")
 # the ladder up No. 1 from the alley (public climb, both ways)
 exits += link(alley, rooms[C1_TOP], "up")
 exits += link(rooms[C1_TOP], alley, "down")
-# the diagonal: No.1 top <-> No.2 catwalk (a TRUE diagonal, ne/sw)
-exits += link(rooms[C1_TOP], rooms[C2_WALK], "northeast", edge=7, gap=7)
-exits += link(rooms[C2_WALK], rooms[C1_TOP], "southwest", edge=7, gap=7)
+# the crossing: both lids edge into the air over the alley dogleg
+air = at((6, -18, 1))
+if air is None:
+    air = create_object("typeclasses.rooms.SkyRoom", key="In the Air")
+    air.db.xyz = (6, -18, 1)
+    air.db.type = "sky"
+    air.db.is_sky_room = True
+    air.db.outside = True
+    made += 1
+exits += link(rooms[C1_TOP], air, "northeast", edge=7, gap=7)
+exits += link(rooms[C2_WALK], air, "south", edge=7, gap=7)
 # No. 2's own ladder, catwalk to lid
 exits += link(rooms[C2_WALK], rooms[C2_TOP], "up")
 exits += link(rooms[C2_TOP], rooms[C2_WALK], "down")
-# the riser hatch: No.2 lid <-> Fungary Stair Core (Level 2)
-exits += link(rooms[C2_TOP], core2, "east", edge=8, gap=8)
-exits += link(core2, rooms[C2_TOP], "west", edge=8, gap=8)
+# entry: No. 2 lid <-> the Fungary North Platform (Level 2)
+plat2 = by_key("The Fungary - North Platform (Level 2)")
+exits += link(rooms[C2_TOP], plat2, "east", edge=8, gap=8)
+exits += link(plat2, rooms[C2_TOP], "west", edge=8, gap=8)
 
 print(f"BUILD 056: Greenhaus Cisterns No. 1 & 2 — {made} rooms, "
       f"{exits} exits. Route: Shipbreaker ladder → C1 → C2 → Fungary core L2.")
