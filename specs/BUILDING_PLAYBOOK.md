@@ -189,6 +189,22 @@ jumps priced in risk, not corridor exits.
   a hole in the hull means weather comes through it.
 - Props are **seasoned, not stewed** — and branded.
 
+**The vertical city** (Greenhaus arc, builds 055–065, 2026-08-24/25):
+- **Structures never stand over walkable cells**; only air crosses a
+  street. Landmarks on tall legs with the lane dead-ending beneath are
+  the sanctioned exception.
+- **Crossings are straight lines** — collinear perch → air → perch,
+  verified by query, because a jump's momentum does not turn corners.
+- **A gap exit is three attributes**: `destination` (the air, for
+  jump-off), `gap_destination` (the far perch, where jump-across
+  lands), `sky_room` (the transit air). One-part wiring strands
+  jumpers; build 060 is the cautionary tale.
+- **Demolitions evacuate occupants first**, and every vertical build
+  closes with the audits run as queries: overlap, gap wiring,
+  collinearity, and the edge audit.
+- Every cistern gets a belly with a **pump socket** — rooms wait for
+  systems, not the reverse.
+
 ## 2.5 · Build 001's laws (learned under review, 2026-08-05)
 
 The first Head Builder arc was reviewed room by room; every verdict is
@@ -261,6 +277,18 @@ none are skipped silently.
     playbook and the source spec get the lesson in the same PR.
 
 ## 4 · The remaining city — the ledger
+
+> **ACTIVE PROGRAM (owner-set, 2026-08-25): the SOUTHSIDE.** The
+> Braddock–Kaspar–Pessoa band and its Spillane frontier: Greenhaus
+> Verticals + cisterns SHIPPED; next up the owner's Constabulary 3×3
+> complex with holding facility (owner's own vision — feeds the future
+> mines), the Rendering Works on west Pessoa (approved in principle;
+> digester underworks ramp = a sealed future sewer mouth), the Heat
+> Works on Spillane's scorched west wall (x11, y-9..-11), and Pessoa
+> infill (Boiler Run works, House of Selves, laundry, shift-bunks,
+> brewery). The Ripper stays parked until the Southside stands. The
+> UNDERWORKS remains deliberately unspecced — it will be inspired by
+> what gets built above it.
 
 What the city still owes us, ranked by how much is already decided.
 **Spec'd** items have documents; **named** items exist as owner calls in

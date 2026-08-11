@@ -7,7 +7,16 @@
 > §M2.5 details below where they differ. The sprite plate survives as the
 > builder's generated instrument. §M3 (player chart: vague-not-false,
 > visited sets, GMCP) and §M4 (paper maps, decking exposure, planner)
-> remain 📋 deferred with their design unchanged.
+> remain 📋 deferred with their design unchanged — with one premise
+> UPDATE (2026-08-25): the served atlas is now **PUBLIC** (owner call —
+> the colony's shop window; no login, edge-cached for cookie-less
+> visitors, the plate cached server-side 120s). §M3's threat model was
+> written for a staff-only atlas; full room-name/coordinate exposure is
+> now an accepted cost, so the player chart's job shifts from secrecy to
+> *in-fiction texture* (vague-not-false remains the design). When §M3
+> lands it should also speak the MUD mapping standards — GMCP
+> Room/Map packages toward Mudlet et al. (owner: "a while off", noted
+> so the deferral is a decision, not an omission).
 >
 > *Original proposal framing follows.*
 > **SCOPE REFOCUS (owner, same day): the v1 consumer is the OWNER alone.**
