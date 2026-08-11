@@ -277,7 +277,16 @@ for xyz in AIR:
     r.db.desc = AIR_DESC
     R[xyz] = r
 
-# platform/roof edges into the air columns
+# platform/roof edges into the air columns. Gap exits need THREE parts
+# (canon: the Halcyon crossing): destination=air (jump-off descents),
+# gap_destination=the far perch (where jump-across LANDS), sky_room=the
+# air (transit). Destination-only wiring strands jumpers in the air.
+def _wire_gap(loc, key, far, air):
+    for e in loc.exits:
+        if e.key == key and e.db.is_gap:
+            e.db.gap_destination = far.id
+            e.db.sky_room = air.id
+
 for x in TOWERS:
     for z in range(1, 11):
         d = diff(z)
@@ -285,9 +294,13 @@ for x in TOWERS:
             if x in (7, 9):                      # eastward into a gap
                 exits += link(R[(x, y, z)], R[(x + 1, y, z)], "east",
                               edge=d, gap=d)
+                _wire_gap(R[(x, y, z)], "east", R[(x + 2, y, z)],
+                          R[(x + 1, y, z)])
             if x in (9, 11):                     # westward into a gap
                 exits += link(R[(x, y, z)], R[(x - 1, y, z)], "west",
                               edge=d, gap=d)
+                _wire_gap(R[(x, y, z)], "west", R[(x - 2, y, z)],
+                          R[(x - 1, y, z)])
 
 # ── the lawns ──────────────────────────────────────────────────────────
 LAWN = {(8, -17, 0): "Greenhaus Grounds - West Lawn (North)",
@@ -311,21 +324,15 @@ for gx in (8, 10):
         exits += link(R[(gx + 1, y, 0)], R[(gx, y, 0)], "west")
 
 # ── the way in: over the cop shop ──────────────────────────────────────
-conn = at((8, -16, 2))
-if conn is None:
-    conn = create_object(SKY_TC, key="In the Air")
-    conn.db.xyz = (8, -16, 2)
-    made += 1
-conn.key = "In the Air"
-conn.db.type = "sky"
-conn.db.is_sky_room = True
-conn.db.outside = True
-conn.db.desc = CONNECTOR_DESC
+# entry: a pure DESCENT from the cop roof over the fence, landing by
+# gravity on the West Lawn — destination is the farm's own airspace
+# (build 060 lesson: a straight south line from the roof has no same-z
+# perch, so this cannot be a gap crossing).
 constab = next((r for r in ObjectDB.objects.filter(
     db_key="Colonial Constabulary Rooftop (South)")
     if r.destination is None), None)
 if constab is not None:
-    exits += link(constab, conn, "south", edge=10, gap=10)
+    exits += link(constab, R[(8, -17, 2)], "south", edge=10)
 
 print(f"BUILD 055: Greenhaus Verticals — {made} rooms touched, "
       f"{exits} exits created. Entry: Constabulary roof, south edge.")

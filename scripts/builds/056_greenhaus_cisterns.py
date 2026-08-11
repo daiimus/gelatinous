@@ -118,6 +118,13 @@ if air is None:
     made += 1
 exits += link(rooms[C1_TOP], air, "northeast", edge=7, gap=7)
 exits += link(rooms[C2_WALK], air, "southwest", edge=7, gap=7)
+# gap exits land at the FAR PERCH; the air is transit only (build 060)
+for room, key, far in ((rooms[C1_TOP], "northeast", rooms[C2_WALK]),
+                       (rooms[C2_WALK], "southwest", rooms[C1_TOP])):
+    for e in room.exits:
+        if e.key == key and e.db.is_gap:
+            e.db.gap_destination = far.id
+            e.db.sky_room = air.id
 # No. 2's own ladder, catwalk to lid
 exits += link(rooms[C2_WALK], rooms[C2_TOP], "up")
 exits += link(rooms[C2_TOP], rooms[C2_WALK], "down")
