@@ -8,9 +8,10 @@ FINAL FORM (after 057-061 iterations, owner-settled): ONE cistern — the
 squat No. 1 at (5,-19,1) over the corner off Braddock — with a straight
 east crossing at z1 into the farm:
 
-    Braddock (5,-20) --ladder--> C1 lid (5,-19,1)
-      --east gap--> In the Air over Shipbreaker (6,-19,1)
-      --lands--> The Fungary - South Platform (Level 1)
+    Shipbreaker's avionics stalls (6,-19,0) --ladder--> C1 lid (5,-19,1)
+      --east gap--> air (6,-19,1) --> South Platform (Level 1)
+      --ne gap-->   air (6,-18,1) --> North Platform (Level 1)
+    (the stall ladder is slated to become HIDDEN later)
 
 Cistern No. 2 was built and then retired the same day (its numeral
 returns elsewhere later); No. 3 stands as a landmark at (13,-15). Gap
@@ -32,9 +33,10 @@ DESC = ("The lid of Greenhaus Cistern No. 1 — the sole survivor of the "
         "numbered set on this block, a squat riveted drum on splayed legs "
         "over the corner off Braddock. The deck plate is dished with age "
         "and slick where the fill valve weeps; the numeral is repainted "
-        "annually by someone who clearly hates ladders. The ladder rides "
-        "the south leg down to the avenue. East, across the alley's air, "
-        "the Fungary's first-level platform rail waits for the committed.")
+        "annually by someone who clearly hates ladders. The ladder drops "
+        "among the avionics stalls at the alley's south end. East and "
+        "northeast, across the lane's air, the Fungary's first-level "
+        "rails wait for the committed.")
 
 
 def at(xyz):
@@ -84,17 +86,34 @@ air.db.desc = ("Open air over Shipbreaker Alley, on the straight line "
                "between Cistern No. 1's lid and the Fungary's first-level "
                "rail. The lane's awnings sag below.")
 
-braddock = at((5, -20, 0))
+stalls = at((6, -19, 0))          # Shipbreaker's avionics-stall south end
 plat_s1 = by_key("The Fungary - South Platform (Level 1)")
-exits += link(braddock, c1, "up", "u")
-exits += link(c1, braddock, "down", "d")
+plat_n1 = by_key("The Fungary - North Platform (Level 1)")
+air_ne = at((6, -18, 1))
+if air_ne is None:
+    air_ne = create_object(SKY_TC, key="In the Air")
+    air_ne.db.xyz = (6, -18, 1)
+    made += 1
+air_ne.db.type = "sky"
+air_ne.db.is_sky_room = True
+air_ne.db.outside = True
+air_ne.db.desc = ("Open air over Shipbreaker Alley's bend, on the long "
+                  "diagonal between Cistern No. 1's lid and the Fungary's "
+                  "north rail. The avionics tarps ripple below.")
+exits += link(stalls, c1, "up", "u")
+exits += link(c1, stalls, "down", "d")
 exits += link(c1, air, "east", "e", edge=7)
 exits += link(plat_s1, air, "west", "w", edge=7)
-for room, key, far in ((c1, "east", plat_s1), (plat_s1, "west", c1)):
+exits += link(c1, air_ne, "northeast", "ne", edge=7)
+exits += link(plat_n1, air_ne, "southwest", "sw", edge=7)
+for room, key, far, sky in ((c1, "east", plat_s1, air),
+                            (plat_s1, "west", c1, air),
+                            (c1, "northeast", plat_n1, air_ne),
+                            (plat_n1, "southwest", c1, air_ne)):
     for e in room.exits:
         if e.key == key and e.db.is_gap:
             e.db.gap_destination = far.id
-            e.db.sky_room = air.id
+            e.db.sky_room = sky.id
 
 print(f"BUILD 056: Cistern No. 1 — {made} rooms, {exits} exits. "
       f"Route: Braddock ladder -> C1 -> east over the alley -> South Platform L1.")
