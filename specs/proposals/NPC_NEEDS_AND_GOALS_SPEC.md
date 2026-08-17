@@ -125,6 +125,24 @@ emissions become visible. This is the favor/rep progression loop
 soul-state that gigs surface is the seed of the world-state
 intelligence capstone.
 
+## 3.8 · The identity spine — perception, grudges, and the resleeve dodge
+
+Souls perceive through the shipped identity stack
+([`IDENTITY_RECOGNITION_SPEC`](../IDENTITY_RECOGNITION_SPEC.md) +
+[`NPC_MEMORY_AND_IDENTITY_SPEC`](../NPC_MEMORY_AND_IDENTITY_SPEC.md)):
+a witnessed crime is committed by *an apparent identity* (sdesc or a
+name the soul chose to assign), never by ground truth — reports, gig
+targets, and grudges all carry `apparent_uid` handles. Dossier valence
+IS disposition-toward-a-person: it modifies utility (fear raises
+flee-weight near your mugger; earned favor discounts prices and opens
+solicitations), and P3 thoughts write into the same episodic store the
+voice already recalls from. NPC↔NPC gossip (memory spec §6) is how
+soul-state propagates socially. And because recognition is
+sleeve-based, a criminal who resleeves walks past his victims
+unrecognized — grudges cling to the abandoned body. Consequence
+evasion by resleeving is an emergent mechanic from day one; the
+identity spec's cyberbrain/digital-ID seam is its designed counter.
+
 ## 4 · Advertisements — the world tells souls what it offers
 
 Venues and objects already exist; they gain a declaration:
