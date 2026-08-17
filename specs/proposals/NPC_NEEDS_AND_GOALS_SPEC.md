@@ -105,6 +105,26 @@ report → dispatch → corpse lifecycle → succession. Every link is an
 NPC perceiving state and running its own tree; no scripts, no
 omniscience.
 
+## 3.7 · Gigs are outsourced goals (the organic feed)
+
+The gig system stops being authored content and becomes an EMISSION of
+the soul layer: when a soul's goal stays unsatisfiable past a
+threshold — its plan faults repeatedly, or no action in its own
+library/disposition can close it — and it holds cash or favor to
+spend, it **externalizes the goal as a gig**: a posting with the goal's
+target state and a bounty derived from its utility pressure. Posts and
+factions emit the same way (a vacant post gigs for a temp; a watcher
+gigs for an investigation). One murder throws off a whole braid of
+work — cover the shift, find out why Bob never showed, walk me home
+after dark — none of it written by anyone. Players and OTHER SOULS
+are both eligible takers (the two-party handshake again), completing a
+gig pays cash AND favor with the emitting soul (who remembers, via the
+NPC memory system), and the hiring hall / gig boards are simply where
+emissions become visible. This is the favor/rep progression loop
+(growth direction) fed by the simulation itself, and the aggregate of
+soul-state that gigs surface is the seed of the world-state
+intelligence capstone.
+
 ## 4 · Advertisements — the world tells souls what it offers
 
 Venues and objects already exist; they gain a declaration:
@@ -192,6 +212,10 @@ LOD, and current goal — the colony's dance card.
 4. **Succession & society** — "claim vacant post" as a goal makes
    posts/reincarnation §P2 emergent; faction duties; crime/witness
    goals unify with the dispatch chain.
+5. **Gig emission** — the §3.7 externalization: fault/pressure
+   thresholds, bounty derivation, board surfacing, favor payout into
+   NPC memory. The Butcher/Ripper hand-built gigs become the FLOOR of
+   a system that generates its own.
 
 ## 10 · Open questions (owner)
 
