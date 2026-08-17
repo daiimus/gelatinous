@@ -9,8 +9,10 @@
 > routines, the time system, and the real economy (tills, food, rentals,
 > posts). Design lineage is the published games literature: RimWorld's
 > need meters + priority think-tree + jobs, The Sims' object
-> advertisements, with F.E.A.R.-style GOAP planning-search considered
-> and **rejected** as overkill (§2). No LLM anywhere in the decision
+> advertisements, with a HYBRID of RimWorld-style
+> goal arbitration and F.E.A.R.-style shallow planning (§2, revised
+> 2026-08-17 after owner direction — the planner earns its keep the
+> moment NPCs prey on and serve EACH OTHER). No LLM anywhere in the decision
 > path — the two-brain split (deterministic will, LLM voice) is law.
 
 ## 1 · Intent
@@ -24,22 +26,33 @@ walks home to an actual cube, a shopkeeper closes up at night and the
 street changes character. The city already contains every sink and
 source a need system requires; this spec adds the motor.
 
-## 2 · Architecture decision: utility tree, not planner search
+## 2 · Architecture: hybrid — the tree arbitrates, the planner satisfies
 
-Two published architectures were considered:
+(v2, owner-directed.) Two published architectures, each kept for the
+half it is best at:
 
-| | GOAP (F.E.A.R.) | Needs + think tree (RimWorld/Sims) |
-|---|---|---|
-| Behavior source | backward-chained plan search over action preconditions | priority bands + utility pick, first eligible wins |
-| Legibility | plans opaque mid-chain | every choice explainable in one line |
-| Cost | search per replan | O(bands) per tick |
-| Failure mode | plan invalidation cascades | just re-pick next tick |
+- **Goal arbitration = the priority tree** (RimWorld's lesson): bands
+  (§5) decide WHAT matters now — legible, cheap, one-line explainable.
+- **Goal satisfaction = a shallow GOAP planner** (F.E.A.R.'s lesson):
+  given the winning goal, backward-chain 2–4 steps over an **action
+  library** with preconditions and effects, against the soul's
+  *perceived* world state. This is what makes `obtain_cash` resolvable
+  as *work a shift* OR *beg* OR *mug the man carrying tokens in a
+  private room* — the same goal, different chains, discovered rather
+  than authored. No mugging schedules exist; muggings emerge.
 
-**Decision: the tree.** A MUD's action space is thin (walk, buy, eat,
-sleep, work, talk, flee); planning search buys nothing over ranked
-selection, and the tree's legibility is worth more than the plan's
-elegance — debuggability is a feature (§8). We keep GOAP's *vocabulary*
-where useful (goals, utility, satisfied-skipping) without its search.
+**The action library** is the design surface: each action declares
+preconditions (world + self), effects, a cost, and a **disposition
+gate** — personality knobs (lawfulness, boldness, desperation
+threshold) decide which actions exist in a given soul's library at
+all. Law-abiding Bob simply has no `mug` action; Ruze does, but its
+cost stays prohibitive until hunger and empty pockets discount it.
+Desperation as a utility modifier produces the colony's texture for
+free: the broke eat worse, then some of them turn predator.
+
+Plan depth is capped (≤4); plan invalidation just re-plans next tick
+(cheap at this depth). The `@soul` readout shows the chain and why
+each link bound — legibility survives the hybrid.
 
 ## 3 · Needs
 
@@ -56,6 +69,41 @@ Per-soul decaying meters, 0.0–1.0, ticked by the LOD clock (§7):
 `cash` is a **resource, not a meter** — earned at posts (wage tick),
 spent at tills. Broke NPCs skip paid satisfiers (the poor eat worse:
 emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
+
+## 3.5 · Souls advertise too — NPC↔NPC interaction
+
+Everything §4 says about venues applies to **souls themselves**: an
+on-post bartender advertises thirst/social satisfaction; a doctor
+advertises treatment; a companion advertises company; and — to the
+right disposition — a soul visibly carrying cash in a quiet room is
+an advertisement of another kind. Soul-to-soul jobs are a **two-party
+handshake**: the initiator's plan proposes an interaction (buy, chat,
+solicit, threaten); the TARGET's own tree accepts, refuses, resists,
+or flees based on its state and disposition. Commerce, harassment,
+predation, and service solicitation are one mechanism with different
+action libraries and consent semantics — and every one of them runs
+through real verbs, so the witness/dispatch/heat chain treats NPC-on-
+NPC crime exactly like player crime. Players can stumble into,
+interrupt, or profit from any of it.
+
+## 3.6 · Posts, shifts, and consequence continuity
+
+The **post** (from the reincarnation spec) is the continuity spine:
+a persistent object with SHIFT SLOTS (day/night), independent of any
+occupant. Souls hold assignments; `duty` drives the commute. When a
+shift-holder dies en route (see the worked example below), nothing
+announces it — the post is simply unstaffed, patron jobs FAULT at the
+counter, and the truth propagates only through perception: the next
+shift arrives and finds the corpse, the absence, or the looted till,
+then reacts per its own tree (report on the real 911 band / grieve /
+loot / flee). Vacancy detection (the §P2 watcher) eventually
+advertises the empty post; some resident's `claim_vacant_post` goal
+answers. The bar heals, changed. **Worked example (acceptance test):
+Bob's bad night** — commute → mugged by a desperate resident via real
+grapple/rob verbs → unstaffed bar faults → night shift discovers →
+report → dispatch → corpse lifecycle → succession. Every link is an
+NPC perceiving state and running its own tree; no scripts, no
+omniscience.
 
 ## 4 · Advertisements — the world tells souls what it offers
 
@@ -152,8 +200,10 @@ LOD, and current goal — the colony's dance card.
 2. NPC cash: real tokens through real tills (fully closed economy), or
    notional wallets that only *gate* behavior? (Real is braver;
    notional is safer for v1.)
-3. Population: how many generic ensouled colonists walk the city in
-   Phase 1 — a handful of named-ish "residents," or none until named
-   NPCs land?
+3. Population: the living-world vision needs **residents** — a few
+   dozen persistent light souls with names, homes, jobs, and
+   dispositions (so their deaths MATTER and their crimes have faces) —
+   distinct from the ephemeral crowd. How many, and how authored
+   (hand-named vs generated-with-curation)?
 4. Sleep visibility: do souls physically occupy their cubes overnight
    (findable, robbable — delicious and dangerous)?
