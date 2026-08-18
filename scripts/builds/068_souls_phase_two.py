@@ -85,6 +85,7 @@ if kettle_hall:
     ads = dict(kettle_hall.db.advertises or {})
     ads["social"] = 0.6
     kettle_hall.db.advertises = ads
+    kettle_hall.tags.add("advertiser", category="souls")
     OUT.append(f"ad: {kettle_hall.key}: social=0.6")
 
 # ---- 2. Auntie Lin: ensouled, cart bound to her --------------------

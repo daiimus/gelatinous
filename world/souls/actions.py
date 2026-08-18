@@ -12,19 +12,37 @@ to a soul's library at all (spec §2 — lawful souls simply have no
 with the residents' faction/standing work (owner verdict #2).
 """
 
+import time as _time
+
 from world.spatial import get_xyz
 
 PLAN_DEPTH = 4
+AD_CACHE_TTL = 60.0            # advertiser registry changes ~never
+
+_ad_cache = {"at": 0.0, "objs": []}
+_edible_memo = {}              # proto_key -> bool (prototypes are static)
+
+
+def _advertiser_objs():
+    """All advertising objects, by indexed tag, cached in-process.
+    Build scripts tag advertisers (`advertiser`/souls) when they set
+    `db.advertises` — the attribute-key join this replaces is uncached
+    and unindexed (hardening spec law #3)."""
+    from evennia.utils.search import search_tag
+
+    now = _time.time()
+    if now - _ad_cache["at"] > AD_CACHE_TTL:
+        _ad_cache["objs"] = [o for o in search_tag(
+            "advertiser", category="souls") if o and o.pk]
+        _ad_cache["at"] = now
+    return _ad_cache["objs"]
 
 
 def _advertisers(soul, need, radius=30):
-    """Grid-scan for venues/objects advertising this need, scored by
-    advertised value over distance. Returns [(score, obj), ...]."""
-    from evennia.objects.models import ObjectDB
-
+    """Advertisers for this need, scored value/(1+distance)."""
     origin = get_xyz(soul.location) if soul.location else None
     found = []
-    for obj in ObjectDB.objects.filter(db_attributes__db_key="advertises"):
+    for obj in _advertiser_objs():
         ad = obj.db.advertises or {}
         value = ad.get(need)
         if not value:
@@ -43,20 +61,25 @@ def _advertisers(soul, need, radius=30):
     return found
 
 
+def _is_edible_proto(proto_key):
+    """Memoized: prototypes are static registry entries."""
+    if proto_key not in _edible_memo:
+        from evennia.prototypes.prototypes import search_prototype
+        hits = search_prototype(proto_key)
+        tags = (hits[0].get("tags") or []) if hits else []
+        _edible_memo[proto_key] = any(
+            len(t) >= 2 and t[0] == "eat" and t[1] == "delivery_method"
+            for t in tags if isinstance(t, (tuple, list)))
+    return _edible_memo[proto_key]
+
+
 def _edible_wares(counter):
     """[(proto_key, price)] for wares that can actually be EATEN — a
     counter advertising hunger can still stock drinks (Lin's tea), and
     the planner must not send a hungry soul home with a cup of tea."""
-    from evennia.prototypes.prototypes import search_prototype
-
-    wares = []
-    for proto_key, price in (counter.db.prototype_inventory or {}).items():
-        hits = search_prototype(proto_key)
-        tags = (hits[0].get("tags") or []) if hits else []
-        if any(len(t) >= 2 and t[0] == "eat" and t[1] == "delivery_method"
-               for t in tags if isinstance(t, (tuple, list))):
-            wares.append((proto_key, price))
-    return wares
+    return [(proto_key, price)
+            for proto_key, price in (counter.db.prototype_inventory or {}).items()
+            if _is_edible_proto(proto_key)]
 
 
 def plan_for(soul, goal_need):

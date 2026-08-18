@@ -8,7 +8,6 @@ re-arbitrates next think. No teleports, no db pokes.
 
 import time
 
-from evennia.utils.search import search_object
 from world.director.travel import is_travelling, stop_travel, travel_to
 from world.souls import needs as needs_mod
 
@@ -24,8 +23,11 @@ def fault(soul, msg):
 
 
 def _obj(dbid):
-    hits = search_object(f"#{dbid}")
-    return hits[0] if hits else None
+    """Indexed PK fetch — the full search stack costs 200x as much
+    (262us vs 1.3us measured, hardening spec §1.5)."""
+    from evennia.objects.models import ObjectDB
+    obj = ObjectDB.objects.get_id(dbid)
+    return obj if obj and obj.pk else None
 
 
 def step_job(soul):
