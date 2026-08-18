@@ -42,6 +42,46 @@ def at_server_start():
         from evennia.utils import logger
         logger.log_trace("Grenade fuse sweep failed.")
 
+    # Combat re-link sweep: handler entries survive a reload in db, but
+    # ALL ndb state dies with the process — handler refs, melee
+    # proximity, aim. Without this, any melee fight that crosses a
+    # reload wedges forever: both sides immortal behind an empty
+    # proximity set while the ticker burns rounds, and the command
+    # layer thinks nobody is fighting.
+    try:
+        from evennia.scripts.models import ScriptDB
+
+        from world.combat.constants import (COMBAT_SCRIPT_KEY, DB_CHAR,
+                                            NDB_COMBAT_HANDLER)
+        from world.combat.proximity import establish_proximity
+        relinked = fights = 0
+        for handler in ScriptDB.objects.filter(db_key=COMBAT_SCRIPT_KEY,
+                                               db_is_active=True):
+            chars = [e.get(DB_CHAR) for e in (handler.db.combatants or [])]
+            chars = [c for c in chars if c and c.pk]
+            if not chars:
+                continue
+            fights += 1
+            for char in chars:
+                setattr(char.ndb, NDB_COMBAT_HANDLER, handler)
+                relinked += 1
+            # rebuild melee proximity for mutually-engaged pairs (grapples
+            # set mutual targets, so they re-establish here too)
+            for i, one in enumerate(chars):
+                for two in chars[i + 1:]:
+                    try:
+                        if handler._are_characters_in_mutual_combat(one, two):
+                            establish_proximity(one, two)
+                    except Exception:  # noqa: BLE001 — a bad pair skips
+                        continue
+        if relinked:
+            from evennia.utils import logger
+            logger.log_info(f"Combat re-link sweep: {relinked} combatants "
+                            f"re-linked across {fights} live fights.")
+    except Exception:  # noqa: BLE001 — a broken sweep must not stop the boot
+        from evennia.utils import logger
+        logger.log_trace("Combat re-link sweep failed.")
+
 
 def at_server_stop():
     """

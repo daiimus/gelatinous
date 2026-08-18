@@ -147,11 +147,24 @@ def _release_aim(npc: Any) -> None:
 
 
 def _in_combat(char: Any) -> bool:
-    """Is *char* currently in an active combat handler?"""
+    """Is *char* currently in an active combat handler?
+
+    Liveness-checked: a stale ndb ref (handler deleted, char no longer
+    in its entries) would otherwise read as in-combat FOREVER — wedging
+    the soul engine and patrols out of the character's life. A stale
+    ref is cleared on detection."""
     try:
         from world.combat.constants import NDB_COMBAT_HANDLER
-        return getattr(getattr(char, "ndb", None), NDB_COMBAT_HANDLER,
-                       None) is not None
+        handler = getattr(getattr(char, "ndb", None), NDB_COMBAT_HANDLER,
+                          None)
+        if handler is None:
+            return False
+        from world.combat.utils import validate_character_handler_reference
+        valid, _handler, _err = validate_character_handler_reference(char)
+        if not valid:
+            setattr(char.ndb, NDB_COMBAT_HANDLER, None)
+            return False
+        return True
     except Exception:  # noqa: BLE001
         return False
 

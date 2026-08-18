@@ -668,7 +668,22 @@ def remove_combatant(handler, char):
     
     # Clean up the character's state
     cleanup_combatant_state(char, entry, handler)
-    
+
+    # Reciprocal aim cleanup: an opponent still aiming at the removed
+    # character keeps a ref to a soon-deleted object (dead NPCs are
+    # deleted) — mirror the target_dbref cleanup below for the aim pair.
+    from .constants import NDB_AIMED_AT_BY, NDB_AIMING_AT
+    for other_entry in combatants:
+        other_char = other_entry.get(DB_CHAR)
+        if not other_char or other_char == char:
+            continue
+        if getattr(other_char.ndb, NDB_AIMING_AT, None) == char:
+            setattr(other_char.ndb, NDB_AIMING_AT, None)
+            splattercast.msg(f"RMV_COMB: Cleared {other_char.key}'s stale "
+                             f"aim at removed {char.key}")
+        if getattr(other_char.ndb, NDB_AIMED_AT_BY, None) == char:
+            setattr(other_char.ndb, NDB_AIMED_AT_BY, None)
+
     # Remove references to this character from other combatants and attempt auto-retargeting
     for other_entry in combatants:
         if other_entry.get(DB_TARGET_DBREF) == get_character_dbref(char):
@@ -1054,6 +1069,27 @@ def validate_character_handler_reference(char):
         
     except Exception as e:
         return False, None, f"Handler validation error: {e}"
+
+
+def find_character_handler(char):
+    """The character's live combat handler, reload-proof: prefer the ndb
+    ref when it validates, else scan active handler scripts' DB entries —
+    ndb dies on every reload while the entries are the durable truth."""
+    valid, handler, _err = validate_character_handler_reference(char)
+    if valid:
+        return handler
+    from evennia.scripts.models import ScriptDB
+
+    from .constants import COMBAT_SCRIPT_KEY
+    for script in ScriptDB.objects.filter(db_key=COMBAT_SCRIPT_KEY,
+                                          db_is_active=True):
+        try:
+            if any(e.get(DB_CHAR) == char
+                   for e in (script.db.combatants or [])):
+                return script
+        except Exception:  # noqa: BLE001 — a broken handler is not a match
+            continue
+    return None
 
 
 def get_character_dbref(char):
