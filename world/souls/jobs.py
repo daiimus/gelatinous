@@ -147,6 +147,28 @@ def step_job(soul):
             return False
         return True
 
+    if do == "claim":
+        from world.souls import posts as posts_mod
+        post = _obj(step["post"])
+        if post is None:
+            fault(soul, "the post vanished before the claim")
+            return False
+        room = post.location if post.location is not None else post
+        if soul.location != room:
+            fault(soul, "not at the post to claim it")
+            return False
+        if post.db.post_keeper is not None and \
+                post.db.post_keeper.pk and \
+                post.db.post_keeper != soul and \
+                post.db.post_keeper.location == room:
+            fault(soul, "someone already holds this post")
+            return False
+        posts_mod.do_claim(soul, post)
+        soul.execute_cmd("pose steps in behind the post, taking stock "
+                         "of the work left undone.")
+        soul.db.soul_job = None
+        return False
+
     if do == "work":
         post = soul.db.soul_post
         if post and soul.location != post:

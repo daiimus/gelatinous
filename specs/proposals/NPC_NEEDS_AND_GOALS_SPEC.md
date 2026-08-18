@@ -364,3 +364,43 @@ systems never fight over one body.
 **Companions are excluded** from ensoulment for now: Vesper's agentic
 tool loop is its own driver, and the handshake between that loop and
 a soul belongs to the §3.5 soul↔soul work, not to phase 3.
+
+## 13 · Succession, phase P4a — the post survives its keeper
+
+Converges with [`NPC_POSTS_AND_REINCARNATION_SPEC`](../NPC_POSTS_AND_REINCARNATION_SPEC.md)
+§1.2–1.3: that spec's post administration and watcher, with the souls
+engine supplying the *successor* the original design had to conjure —
+a LIVING resident who claims the vacant post, carrying their own
+history and an empty book toward the clientele, exactly what the
+generator identity was invented to fake.
+
+**Post records** live on the fixture that IS the post — the counter
+for venues, the room for roomed posts: `db.post_role`,
+`db.post_schedule`, `db.post_wage_rate`, `db.post_policy`
+(`successor` | `none`; `resleave` stays with the reincarnation spec's
+§P3), `db.post_delay` (vacancy grace before succession),
+`db.post_vacant_since`. Registered posts are tagged
+(`post`/souls — the indexed path).
+
+**The vacancy watcher** rides the souls heartbeat (staggered, every
+~10 beats): a registered post whose keeper is dead, deleted, or
+desouled gets stamped vacant. Once `post_delay` elapses under policy
+`successor`, the sweep offers the post to the nearest eligible
+unemployed soul (human/synth profile, no post, not mid-job) by
+handing it a band-2 claim job — travel there for real, then a `claim`
+step that binds post/venue/schedule/wage, re-keeps the counter, and
+emits a `new_job` thought. One succession per sweep, never while
+combat is live at the post (the reincarnation spec's de-confliction
+rule). No candidate? The post stays vacant and visibly closed — the
+vacancy IS the content until someone arrives to want it.
+
+**The unemployed pool** is just souls without posts — residents
+generated into the colony with a cube and thin pockets. Idle and
+social by day, first in line when a counter goes dark. (The fuller
+`obtain_cash` arbitration — beg/work/mug — belongs to P4b.)
+
+**Deliberately deferred to P4b (gated on a combat-hardening pass):**
+the crime/witness chain (Bob's bad night end-to-end), transgressive
+action libraries and disposition gates, mood modulating utility, and
+the blueprint-rebuild policies (`resleave`, generator fallback) from
+the reincarnation spec's own ladder.
