@@ -1,8 +1,18 @@
 # NPC Needs & Goals — the deterministic soul
 
-> **Status:** 🟢 **Phase 1 SHIPPED & LIVE (2026-08-17: #1961 engine +
-> #1963 GLOBAL_SCRIPTS heartbeat + #1965 edible filter + #1967 till
-> invariant; build 067).** `world/souls/` (needs/actions/jobs/economy/
+> **Status:** 🟢 **Phases 1–3 SHIPPED & LIVE.** P1 engine 2026-08-17
+> (#1961 + fixes #1963/#1965/#1967; build 067). P2 named NPCs
+> 2026-08-17/18 (#1973; build 068: Lin ensouled, vendor hours,
+> keeper-bound counters, Kettle third place, Eli + Bruce). Scale
+> hardening P0–P4 (SOULS_SCALE_HARDENING_SPEC; measured live at 104
+> souls, reactor flat). **Spec-P3 (§11–12) 2026-08-18** (#1995 + build
+> 070/071: thoughts/mood/RAG feed, profiles human/synth/robot, secbot
+> #3258 on the charge loop at the lobby fleet cradle; live-soak fixes:
+> patrol yields to soul jobs #1997, thought stack cap #1999,
+> profile-order tie-break + loud travel stalls #2001, cooldown
+> fall-through #2003, jobs remember their planned band #2005 —
+> verified: charge and rest meters recover on the cradle/at home).
+> Remaining ladder: P4 succession, P5 gig emission (backburnered). `world/souls/` (needs/actions/jobs/economy/
 > engine) + `@soul` diagnostic + closed treasury/wages/tithe loop; first
 > generated resident Martha van Schmidt (#8130) living the caretaker
 > loop — Brackett lobby post, Unit 1A via the real kiosk, meals at real
