@@ -43,6 +43,22 @@ def _advertisers(soul, need, radius=30):
     return found
 
 
+def _edible_wares(counter):
+    """[(proto_key, price)] for wares that can actually be EATEN — a
+    counter advertising hunger can still stock drinks (Lin's tea), and
+    the planner must not send a hungry soul home with a cup of tea."""
+    from evennia.prototypes.prototypes import search_prototype
+
+    wares = []
+    for proto_key, price in (counter.db.prototype_inventory or {}).items():
+        hits = search_prototype(proto_key)
+        tags = (hits[0].get("tags") or []) if hits else []
+        if any(len(t) >= 2 and t[0] == "eat" and t[1] == "delivery_method"
+               for t in tags if isinstance(t, (tuple, list))):
+            wares.append((proto_key, price))
+    return wares
+
+
 def plan_for(soul, goal_need):
     """Return a job dict for the winning goal, or None (-> fault).
 
@@ -51,12 +67,11 @@ def plan_for(soul, goal_need):
     stock, home) so jobs fault rarely and legibly.
     """
     if goal_need == "hunger":
-        for score, vendor, room in _advertisers(soul, "hunger"):
-            counter = vendor if hasattr(vendor, "db") else None
-            wares = (counter.db.prototype_inventory or {}) if counter else {}
+        for score, counter, room in _advertisers(soul, "hunger"):
+            wares = _edible_wares(counter)
             if not wares:
                 continue
-            proto, price = min(wares.items(), key=lambda kv: kv[1])
+            proto, price = min(wares, key=lambda kv: kv[1])
             if (soul.tokens or 0) < price:
                 continue                       # broke: try cheaper advertiser
             return {"goal": "hunger", "steps": [
