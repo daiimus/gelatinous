@@ -54,7 +54,8 @@ def travel_to(npc: Any, destination: Any, on_arrive=None, on_fail=None,
         if on_arrive:
             on_arrive(npc)
         return True
-    if find_path_exits(npc.location, destination, traverser=npc) is None:
+    route = find_path_exits(npc.location, destination, traverser=npc)
+    if route is None:
         if on_fail:
             on_fail(npc)
         return False
@@ -64,6 +65,11 @@ def travel_to(npc: Any, destination: Any, on_arrive=None, on_fail=None,
         "on_fail": on_fail,
         "step_delay": step_delay or TRAVEL_STEP_DELAY,
         "steps": 0,
+        # the route is computed ONCE and walked; a step that doesn't
+        # land where the route expects re-pathfinds (A* measured at
+        # ~18ms/path — per-step re-pathing saturates the reactor at
+        # commute scale, souls hardening spec §1.5)
+        "route": list(route),
     }
     _travel_step(npc)
     return True
@@ -91,12 +97,18 @@ def _travel_step(npc: Any) -> None:
     if state["steps"] > TRAVEL_MAX_STEPS:
         _finish(npc, state, "on_fail")
         return
-    exits = find_path_exits(npc.location, destination, traverser=npc)
-    if not exits:
-        _finish(npc, state, "on_fail")
-        return
+    # Walk the cached route; re-pathfind only when reality disagrees
+    # with it (a bounced exit, a lock change, the npc moved by force).
+    route = state.get("route") or []
+    if not (route and route[0].location == npc.location):
+        route = find_path_exits(npc.location, destination, traverser=npc)
+        if not route:
+            _finish(npc, state, "on_fail")
+            return
+        state["route"] = list(route)
+        route = state["route"]
     # Walk through the next exit via its real command (locks, messages, etc.).
-    nxt = exits[0]
+    nxt = route.pop(0)
     try:
         # A closed door on the route: open it first, through the REAL
         # verb (grant checks, reader flashes, room messages all apply).
@@ -109,4 +121,8 @@ def _travel_step(npc: Any) -> None:
     except Exception:  # noqa: BLE001 — an odd exit never stalls travel
         pass
     npc.execute_cmd(nxt.key)
-    delay(state["step_delay"], _travel_step, npc)
+    # a soul nobody can see walks at half cadence — same route, fewer
+    # reactor slices (LOD is set by the souls heartbeat; non-soul NPCs
+    # have no soul_lod and keep full pace)
+    scale = 2.0 if getattr(npc.ndb, "soul_lod", None) == "cold" else 1.0
+    delay(state["step_delay"] * scale, _travel_step, npc)

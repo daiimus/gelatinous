@@ -39,9 +39,23 @@ GOAL_COOLDOWN_SECONDS = 900   # a failed goal rests before it's retried
 WAGE_FLUSH_BEATS = 10         # ndb wage accrual checkpoints to db (5 min)
 
 
+def shift_jitter_hours(soul):
+    """Personal schedule offset, ±15 minutes, derived from identity —
+    zero storage, stable across reloads. Spreads commutes so a shift
+    change is a drift of walkers, not a synchronized column (and not a
+    synchronized pathfinding burst — hardening spec §1.5)."""
+    return (((soul.id * 7919) % 31) - 15) / 60.0
+
+
+def soul_hour(soul, hour_f):
+    """The colony's fractional hour as THIS soul's schedule feels it."""
+    return (hour_f + shift_jitter_hours(soul)) % 24.0
+
+
 def duty_pressure(soul, hour):
     """Duty is a pure function of schedule + location — never stored.
-    0.9 while your shift runs and you are not at your post; else 0."""
+    0.9 while your shift runs and you are not at your post; else 0.
+    `hour` may be fractional and should already be soul-jittered."""
     post = soul.db.soul_post
     if not post:
         return 0.0
@@ -101,16 +115,20 @@ def get_heartbeat():
 # ---------------------------------------------------------------------- LOD
 
 def _player_rooms():
+    """(room_set, coord_list) for every puppeted location — coords are
+    computed ONCE per beat here, never per soul (hardening spec #4)."""
     from evennia.server.sessionhandler import SESSIONS
+    from world.spatial import get_xyz
     rooms = set()
     for sess in SESSIONS.get_sessions():
         puppet = sess.get_puppet() if hasattr(sess, "get_puppet") else None
         if puppet and puppet.location:
             rooms.add(puppet.location)
-    return rooms
+    coords = [pos for pos in (get_xyz(r) for r in rooms) if pos]
+    return rooms, coords
 
 
-def lod_for(soul, player_rooms):
+def lod_for(soul, player_rooms, player_coords):
     room = soul.location
     if room is None:
         return "cold"
@@ -119,10 +137,9 @@ def lod_for(soul, player_rooms):
     from world.spatial import get_xyz
     pos = get_xyz(room)
     if pos:
-        for proom in player_rooms:
-            ppos = get_xyz(proom)
-            if ppos and max(abs(pos[0] - ppos[0]),
-                            abs(pos[1] - ppos[1])) <= WARM_RADIUS \
+        for ppos in player_coords:
+            if max(abs(pos[0] - ppos[0]),
+                   abs(pos[1] - ppos[1])) <= WARM_RADIUS \
                     and pos[2] == ppos[2]:
                 return "warm"
     return "cold"
@@ -230,53 +247,62 @@ class SoulsHeartbeat(DefaultScript):
         beat = int(self.db.beat or 0) + 1
         self.db.beat = beat
         try:
-            hour = colony_hour()
+            from world.gametime import colony_now
+            t = colony_now()
+            hour_f = t.hour + t.minute / 60.0
         except Exception:
-            hour = 12
-        player_rooms = _player_rooms()
+            hour_f = 12.0
+        player_rooms, player_coords = _player_rooms()
         now = time.time()
 
         for soul in get_souls():
             # one bad soul must cost one soul, never the rest of the beat
             try:
-                self._beat_soul(soul, beat, hour, player_rooms, now)
+                self._beat_soul(soul, beat, hour_f, player_rooms,
+                                player_coords, now)
             except Exception as err:
                 try:
                     jobs.fault(soul, f"beat crashed: {err}")
                 except Exception:
                     pass
 
-        if beat % TITHE_EVERY_BEATS == 0:
+        # offset by a prime so the sweep never shares a beat with any
+        # think cadence multiple
+        if beat % TITHE_EVERY_BEATS == 7:
             economy.run_tithe()
 
-    def _beat_soul(self, soul, beat, hour, player_rooms, now):
+    def _beat_soul(self, soul, beat, hour_f, player_rooms, player_coords,
+                   now):
         """One soul's slice of the beat. Needs derive on read (zero
         writes here); the only periodic write is the wage checkpoint,
-        and only for souls actually standing their post."""
+        and only for souls actually standing their post. All cadences
+        are phase-offset by identity — `beat % N` across a population
+        is a thundering herd (hardening spec law #4)."""
         if not soul.pk or soul.location is None:
             return
+        shour = soul_hour(soul, hour_f)
         # wages accrue per BEAT at post, not per think — LOD must not
         # change what a shift pays. Accrual rides ndb and checkpoints
         # to db every WAGE_FLUSH_BEATS (a reload costs at most ~5 min
         # of one soul's accrual — hardening spec law #2).
         sched = SCHEDULES.get(soul.db.soul_schedule or "day",
                               SCHEDULES["day"])
-        on_shift = bool(soul.db.soul_post) and _in_block(hour, sched["work"])
+        on_shift = bool(soul.db.soul_post) and _in_block(shour, sched["work"])
         at_post = on_shift and soul.location == soul.db.soul_post
         job = soul.db.soul_job
         if at_post and job and job.get("goal") == "duty":
             pending = float(soul.ndb.soul_wage_pending or 0.0) + float(
                 soul.db.soul_wage_rate or 0.02)
-            if pending and beat % WAGE_FLUSH_BEATS == 0:
+            if pending and (beat + soul.id) % WAGE_FLUSH_BEATS == 0:
                 soul.db.soul_wage_owed = float(
                     soul.db.soul_wage_owed or 0.0) + pending
                 pending = 0.0
             soul.ndb.soul_wage_pending = pending
 
-        lod = lod_for(soul, player_rooms)
+        lod = lod_for(soul, player_rooms, player_coords)
         soul.ndb.soul_lod = lod
-        if beat % THINK_EVERY[lod] == 0:
+        if (beat + soul.id) % THINK_EVERY[lod] == 0:
             try:
-                think(soul, hour)
+                think(soul, shour)
             except Exception as err:
                 jobs.fault(soul, f"think crashed: {err}")
