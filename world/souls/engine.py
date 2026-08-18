@@ -16,7 +16,6 @@ commands. A running job is only interrupted by a strictly higher band.
 import time
 
 from evennia import DefaultScript
-from evennia.utils.create import create_script
 from evennia.utils.search import search_tag
 
 from world.gametime import colony_hour
@@ -76,11 +75,12 @@ def get_souls():
 
 
 def get_heartbeat():
-    from evennia.scripts.models import ScriptDB
-    existing = ScriptDB.objects.filter(db_key="souls_heartbeat").first()
-    if existing:
-        return existing
-    return create_script(SoulsHeartbeat, key="souls_heartbeat")
+    """The heartbeat lives in settings.GLOBAL_SCRIPTS — the server owns
+    its creation and arms its timer at every boot. A hand-created script
+    row from an external shell never gets its repeat timer armed by the
+    running server (the 2026-07-02 lesson, re-learned by this engine)."""
+    from evennia import GLOBAL_SCRIPTS
+    return getattr(GLOBAL_SCRIPTS, "souls_heartbeat", None)
 
 
 # ---------------------------------------------------------------------- LOD
