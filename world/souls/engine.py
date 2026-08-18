@@ -159,11 +159,13 @@ def _desired_goal(soul, hour):
     # band 0: survive
     if derived.get("safety", 0.0) >= needs_mod.CRITICAL:
         return (0, "safety")
-    # band 1: critical profile needs
-    crit = [(derived[n], n) for n in body
+    # band 1: critical profile needs — ties break by PROFILE ORDER
+    # (hunger before rest before social), never alphabetically: a soul
+    # that is starving, exhausted, and lonely at once eats first
+    crit = [(derived[n], -i, n) for i, n in enumerate(body)
             if derived[n] >= needs_mod.CRITICAL]
     if crit:
-        return (1, max(crit)[1])
+        return (1, max(crit)[2])
     # band 2: schedule
     sched = SCHEDULES[soul.db.soul_schedule or "day"]
     if soul.db.soul_post and _in_block(hour, sched["work"]):
@@ -171,10 +173,11 @@ def _desired_goal(soul, hour):
     if soul.db.soul_home and _in_block(hour, sched["sleep"]) \
             and derived.get("rest", 0.0) >= 0.30:
         return (2, "rest")
-    # band 3: elevated profile needs
-    soft = [(derived[n], n) for n in body if derived[n] >= needs_mod.SOFT]
+    # band 3: elevated profile needs (same profile-order tie-break)
+    soft = [(derived[n], -i, n) for i, n in enumerate(body)
+            if derived[n] >= needs_mod.SOFT]
     if soft:
-        return (3, max(soft)[1])
+        return (3, max(soft)[2])
     return (4, None)
 
 
