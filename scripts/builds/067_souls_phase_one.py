@@ -41,6 +41,7 @@ def _advertise(obj, need, value):
     ads = dict(obj.db.advertises or {})
     ads[need] = value
     obj.db.advertises = ads
+    obj.tags.add("advertiser", category="souls")   # the planner's indexed path
     # closed-loop invariant: an advertised counter MUST have a till —
     # shopkeeper.py only credits sales when db.register is initialized,
     # and an uninitialized register makes soul spending vanish from the

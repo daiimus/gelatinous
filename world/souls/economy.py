@@ -15,13 +15,20 @@ from evennia.utils.create import create_script
 TREASURY_KEY = "colony_treasury"
 TITHE_FRACTION = 0.25          # of each till's register, per tithe pass
 
+_TREASURY = None               # in-process memo; refreshed on a dead ref
+
 
 def get_treasury():
+    global _TREASURY
+    if _TREASURY is not None and _TREASURY.pk:
+        return _TREASURY
     existing = ScriptDB.objects.filter(db_key=TREASURY_KEY).first()
     if existing:
+        _TREASURY = existing
         return existing
     script = create_script(key=TREASURY_KEY, persistent=True, autostart=False)
     script.db.balance = 0
+    _TREASURY = script
     return script
 
 
@@ -68,15 +75,15 @@ def pay_wage(soul):
 
 
 def run_tithe():
-    """Sweep a fraction of every venue register back to the treasury."""
-    from typeclasses.shopkeeper import ShopContainer
-    from evennia.objects.models import ObjectDB
+    """Sweep a fraction of every venue register back to the treasury.
+    Tills are found by tag (indexed) — ShopContainer tags itself at
+    creation and build 069 tagged the pre-existing ones."""
+    from evennia.utils.search import search_tag
 
     treasury = get_treasury()
     swept = 0
-    for obj in ObjectDB.objects.filter(
-            db_typeclass_path__icontains="shopkeeper"):
-        if not isinstance(obj, ShopContainer):
+    for obj in search_tag("till", category="souls"):
+        if not obj or not obj.pk:
             continue
         register = int(obj.db.register or 0)
         cut = int(register * TITHE_FRACTION)

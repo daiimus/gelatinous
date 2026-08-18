@@ -41,6 +41,9 @@ class ShopContainer(DefaultObject):
         self.db.markup_percent = 0
         self.db.shop_name = "Shop"
         self.db.container_type = "shelf"
+        # indexed lookup for the souls economy's tithe sweep (tags are
+        # the fast path; a typeclass-path scan is not)
+        self.tags.add("till", category="souls")
         
         # Purchase messages (support {buyer}, {item}, {price}, {shop} placeholders)
         self.db.purchase_msg_buyer = "You purchase {item} for {price}."
