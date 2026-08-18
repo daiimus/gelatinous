@@ -233,7 +233,8 @@ LOD, and current goal — the colony's dance card.
 3. **Mood & thoughts** — RimWorld-style memory offsets (witnessed a
    corpse, slept rough, ate well) summing to mood; mood modulates
    utility and the LLM voice's register (the voice NARRATES a state it
-   did not decide). Feeds the existing RAG memory.
+   did not decide). Feeds the existing RAG memory. Detailed in §11;
+   ships together with §12 heterogeneous profiles (bots/synths).
 4. **Succession & society** — "claim vacant post" as a goal makes
    posts/reincarnation §P2 emergent; faction duties; crime/witness
    goals unify with the dispatch chain.
@@ -269,3 +270,87 @@ LOD, and current goal — the colony's dance card.
    their homes — findable, robbable, murderable — protected by the
    existing door-grant/latch machinery, so burglary costs effort and
    feeds the crime chain honestly.
+
+## 11 · Thoughts & mood (spec-P3) — the soul notices its own life
+
+A **thought** is a small record the engine emits when something
+happens TO the soul — never on a timer (the zero-write law survives):
+
+    (stamp, key, valence, note)
+    ("ate_well",      +0.15, "a skewer off Lin's cart")
+    ("slept_home",    +0.20, "a night behind my own door")
+    ("payday",        +0.25, "the shift paid in full")
+    ("shift_unpaid",  -0.35, "worked and the till came up short")
+    ("went_hungry",   -0.25, "nothing to eat I could reach or afford")
+    ("fled",          -0.40, "ran from trouble")
+
+Emitters live where the events already are: the eat/sleep/linger job
+steps, payday (full vs partial), plan-failure faults, the flee step.
+The log is capped (~20); each thought's contribution decays with a
+half-life (~6 game-hours), so **mood is DERIVED on read** — the
+clamped sum of decayed valences around a neutral center, banded for
+display (grim / low / level / bright). No mood attribute exists.
+
+**Consumption, phase-3 scope (deliberately narrow):**
+
+1. `@soul` shows mood band + the decayed thought list — the operator
+   sees exactly why a soul feels how it feels.
+2. **The RAG feed:** for `llm_driven` souls, a thought worth
+   remembering (|valence| ≥ 0.2) also becomes an episodic record via
+   the existing embed→`make_record`→`prune` path, written with an
+   EMPTY subject — the memory module already treats empty-subject
+   records as "general" and surfaces them inside any scoped
+   conversation when semantically relevant. Lin grumbles about the
+   short till to a regular because retrieval found the thought, not
+   because anything scripted her to. The two-brain law holds: the
+   thought DECIDED nothing; the voice narrates a state the engine
+   produced.
+3. **No deterministic behavior modulation yet.** Mood gating utility
+   (desperation discounts, snap decisions) belongs to the
+   transgressive-library work (§9.4+) — wiring it now would be tuning
+   a dial nobody can see the consequences of.
+
+## 12 · Heterogeneous profiles — bots and synths in the same fold
+
+The tree, planner, jobs, LOD and economy are need-agnostic; only the
+needs TABLE assumed a human. A **profile** makes that table data:
+
+    profile = { need: (rate_per_min, default, planner_shape) }
+
+Planner **shapes** are the small set of ways a need gets satisfied:
+`buy_consume` (advertiser + till + eat), `dwell_home` (travel home +
+occupy), `dwell_venue` (travel to advertiser + occupy), `post`
+(duty), `flee`. Every existing plan is already one of these; profiles
+just choose which needs use which.
+
+- **human** — the shipped table, unchanged.
+- **synth** (synthetic humanoid species) — same shape as human,
+  different dials: hunger at half rate (durable metabolism), rest
+  lighter, social unchanged. A synth resident is a human resident
+  with slower appetites, not a special case.
+- **robot** (security units et al.) — `charge` (the battery: rises
+  toward critical over ~12h, satisfied by `dwell_venue` at anything
+  advertising `charge` — the dispatch base station console is the
+  first advertiser) and `maintenance` (very slow, same dwell). No
+  hunger, no social, no rest, no schedule blocks — duty belongs to
+  the director (below). Robots hold no wallets in v1; their upkeep is
+  the colony's power bill, not a wage.
+
+Profile resolution: explicit `ensoul(..., profile=)` wins; otherwise
+derived from species (`robot` → robot, synthetic → synth, else
+human).
+
+**The precedence law (one driver at a time):**
+
+    combat  >  director assignment (dispatch/patrol)  >  souls
+
+The souls engine already yields to combat; it now also yields to
+`is_assigned` — exactly as the patrol heartbeat does — so a secbot's
+patrols and dispatch responses remain director-owned, and its soul
+claims the body only when nothing more urgent does (in practice: a
+critical battery walks it to the cradle between assignments). Two
+systems never fight over one body.
+
+**Companions are excluded** from ensoulment for now: Vesper's agentic
+tool loop is its own driver, and the handshake between that loop and
+a soul belongs to the §3.5 soul↔soul work, not to phase 3.
