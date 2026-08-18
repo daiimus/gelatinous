@@ -36,6 +36,19 @@ SCHEDULES = {
 }
 
 GOAL_COOLDOWN_SECONDS = 900   # a failed goal rests before it's retried
+WAGE_FLUSH_BEATS = 10         # ndb wage accrual checkpoints to db (5 min)
+
+
+def duty_pressure(soul, hour):
+    """Duty is a pure function of schedule + location — never stored.
+    0.9 while your shift runs and you are not at your post; else 0."""
+    post = soul.db.soul_post
+    if not post:
+        return 0.0
+    sched = SCHEDULES.get(soul.db.soul_schedule or "day", SCHEDULES["day"])
+    if not _in_block(hour, sched["work"]):
+        return 0.0
+    return 0.0 if soul.location == post else 0.9
 
 
 def _in_block(hour, block):
@@ -58,10 +71,9 @@ def ensoul(npc, role="resident", home=None, post=None, schedule="day",
     npc.db.soul_wage_rate = float(wage_rate)
     npc.db.soul_venue = venue
     npc.db.soul_wage_owed = 0.0
-    npc.db.soul_needs = dict(needs_mod.DEFAULT_NEEDS)
+    needs_mod.seed(npc)
     npc.db.soul_faults = []
     npc.db.soul_job = None
-    npc.db.soul_last_decay = time.time()
     npc.tags.add(SOUL_TAG[0], category=SOUL_TAG[1])
     get_heartbeat()
     return npc
@@ -166,7 +178,6 @@ def think(soul, hour):
         paid = economy.pay_wage(soul)
         if paid and soul.location:
             soul.execute_cmd("pose pockets the shift's pay.")
-        needs_mod.satisfy(soul, "duty", 1.0)
         job = None
 
     band, desired = _desired_goal(soul, hour)
@@ -239,28 +250,28 @@ class SoulsHeartbeat(DefaultScript):
             economy.run_tithe()
 
     def _beat_soul(self, soul, beat, hour, player_rooms, now):
-        """One soul's slice of the beat: decay, duty, wages, maybe think."""
+        """One soul's slice of the beat. Needs derive on read (zero
+        writes here); the only periodic write is the wage checkpoint,
+        and only for souls actually standing their post."""
         if not soul.pk or soul.location is None:
             return
-        # decay by real elapsed time, every beat, every LOD
-        last = float(soul.db.soul_last_decay or now)
-        minutes = max(0.0, (now - last) / 60.0)
-        soul.db.soul_last_decay = now
-        needs = needs_mod.tick_decay(soul, minutes)
-        # duty pressure is pure schedule: on during your block, off after
-        sched = SCHEDULES[soul.db.soul_schedule or "day"]
+        # wages accrue per BEAT at post, not per think — LOD must not
+        # change what a shift pays. Accrual rides ndb and checkpoints
+        # to db every WAGE_FLUSH_BEATS (a reload costs at most ~5 min
+        # of one soul's accrual — hardening spec law #2).
+        sched = SCHEDULES.get(soul.db.soul_schedule or "day",
+                              SCHEDULES["day"])
         on_shift = bool(soul.db.soul_post) and _in_block(hour, sched["work"])
         at_post = on_shift and soul.location == soul.db.soul_post
-        needs["duty"] = 0.9 if (on_shift and not at_post) else (
-            0.0 if not on_shift else needs.get("duty", 0.0))
-        soul.db.soul_needs = needs
-        # wages accrue per BEAT at post, not per think — LOD must not
-        # change what a shift pays
         job = soul.db.soul_job
         if at_post and job and job.get("goal") == "duty":
-            soul.db.soul_wage_owed = float(
-                soul.db.soul_wage_owed or 0.0) + float(
+            pending = float(soul.ndb.soul_wage_pending or 0.0) + float(
                 soul.db.soul_wage_rate or 0.02)
+            if pending and beat % WAGE_FLUSH_BEATS == 0:
+                soul.db.soul_wage_owed = float(
+                    soul.db.soul_wage_owed or 0.0) + pending
+                pending = 0.0
+            soul.ndb.soul_wage_pending = pending
 
         lod = lod_for(soul, player_rooms)
         soul.ndb.soul_lod = lod
