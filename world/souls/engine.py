@@ -230,8 +230,13 @@ def think(soul, hour):
     band, desired = _desired_goal(soul, hour, exclude=cooling)
 
     if job:
-        # interrupt only for a strictly higher band than the running goal
-        if desired and band < _goal_band(job.get("goal")):
+        # interrupt only for a strictly higher band than the one the
+        # running job was PLANNED under — comparing against a static
+        # goal->band map desyncs when a goal legitimately arrives at
+        # band 1 (critical rest interrupted its own rest job forever,
+        # and the sleep step never ran)
+        job_band = job.get("band", _goal_band(job.get("goal")))
+        if desired and band < job_band:
             from world.director.travel import stop_travel
             stop_travel(soul)            # preemption must actually stop feet
             if job.get("goal") == "duty":
@@ -254,6 +259,7 @@ def think(soul, hour):
         cooldowns[desired] = now + GOAL_COOLDOWN_SECONDS
         soul.db.soul_goal_cooldown = cooldowns
         return
+    new_job["band"] = band          # remembered for interrupt comparisons
     soul.db.soul_job = new_job
     jobs.step_job(soul)
 
