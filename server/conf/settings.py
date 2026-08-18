@@ -305,6 +305,12 @@ GLOBAL_SCRIPTS = {
         "persistent": True,
         "desc": "Director heartbeat: patrol beats + complement respawn.",
     },
+    "souls_heartbeat": {
+        "typeclass": "world.souls.engine.SoulsHeartbeat",
+        "interval": 30,
+        "persistent": True,
+        "desc": "Souls engine: need decay + LOD-scaled thinking.",
+    },
 }
 LLM_GM_TEMPERATURE = 0.8   # characterful but coherent
 
