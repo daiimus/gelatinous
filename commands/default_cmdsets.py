@@ -37,6 +37,7 @@ from commands.bar_menu import CmdSpawnIngredient
 from commands.CmdBug import CmdBug
 from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
 from commands.CmdFixCharacterOwnership import CmdFixCharacterOwnership
+from commands.CmdSoul import CmdSoul
 from commands.CmdTrust import CmdDistrust, CmdTrust
 from commands.CmdFollow import (
     CmdEscort, CmdFollow, CmdStopEscorting, CmdStopFollowing,
@@ -331,6 +332,9 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # Add medical administration commands
         self.add(CmdResetMedical())
         self.add(CmdMedicalAudit())
+
+        # Souls engine diagnostic (NPC_NEEDS_AND_GOALS_SPEC §8)
+        self.add(CmdSoul())
         
         # Add medical state testing commands (using real medical system)
         self.add(CmdTestDeath())
