@@ -41,8 +41,15 @@ def _advertise(obj, need, value):
     ads = dict(obj.db.advertises or {})
     ads[need] = value
     obj.db.advertises = ads
+    # closed-loop invariant: an advertised counter MUST have a till —
+    # shopkeeper.py only credits sales when db.register is initialized,
+    # and an uninitialized register makes soul spending vanish from the
+    # economy entirely
+    if isinstance(obj, ShopContainer) and obj.db.register is None:
+        obj.db.register = 0
     where = obj.location.key if obj.location else obj.key
-    ADS.append(f"{obj.key} ({where}): {need}={value}")
+    ADS.append(f"{obj.key} ({where}): {need}={value} "
+               f"till={obj.db.register if isinstance(obj, ShopContainer) else '-'}")
 
 
 counters = [o for o in ShopContainer.objects.all() if o.pk]
