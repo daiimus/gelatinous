@@ -37,7 +37,8 @@ def pay_wage(soul):
     treasury. Partial payment when the source is short — a drought is a
     visible state (`@soul` shows the unpaid balance), not a crash.
     """
-    owed = int(float(soul.db.soul_wage_owed or 0.0))
+    owed_f = float(soul.db.soul_wage_owed or 0.0)
+    owed = int(owed_f)               # whole tokens payable now
     if owed <= 0:
         return 0
     venue = soul.db.soul_venue
@@ -54,7 +55,9 @@ def pay_wage(soul):
             treasury.db.balance = avail - paid
     if paid > 0:
         soul.tokens = (soul.tokens or 0) + paid
-    soul.db.soul_wage_owed = float(owed - paid)
+    # the fractional remainder stays owed — sub-token accrual is never
+    # discarded across paydays
+    soul.db.soul_wage_owed = owed_f - paid
     return paid
 
 
