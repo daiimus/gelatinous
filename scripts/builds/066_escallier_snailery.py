@@ -135,7 +135,8 @@ if nonna is None:
     nonna.aliases.add(["nonna", "escallier"])
 nonna.sex = "female"
 nonna.height = "short"
-nonna.build = "wiry"
+nonna.build = "lean"    # the identity table RENDERS lean as "wiry" —
+                        # "wiry" itself is not a valid stored build
 nonna.db.skintone = "olive"
 nonna.sdesc_keyword = "snail-keeper"
 nonna.db.desc = (
