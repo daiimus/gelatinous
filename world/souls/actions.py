@@ -68,6 +68,12 @@ def plan_for(soul, goal_need):
     """
     if goal_need == "hunger":
         for score, counter, room in _advertisers(soul, "hunger"):
+            # regulars know the hours: a keeper-bound counter whose
+            # keeper is off shift is shuttered — don't walk to it
+            keeper = counter.db.post_keeper
+            if keeper is not None and not (
+                    keeper.pk and keeper.location == counter.location):
+                continue
             wares = _edible_wares(counter)
             if not wares:
                 continue

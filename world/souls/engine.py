@@ -32,7 +32,10 @@ TITHE_EVERY_BEATS = 120              # supply tithe sweep: hourly
 SCHEDULES = {
     "day": {"work": (9, 17), "sleep": (0, 7)},
     "night": {"work": (21, 5), "sleep": (9, 16)},
+    "vendor": {"work": (10, 22), "sleep": (1, 8)},
 }
+
+GOAL_COOLDOWN_SECONDS = 900   # a failed goal rests before it's retried
 
 
 def _in_block(hour, block):
@@ -169,6 +172,8 @@ def think(soul, hour):
     if job:
         # interrupt only for a strictly higher band than the running goal
         if desired and band < _goal_band(job.get("goal")):
+            if job.get("goal") == "duty":
+                economy.pay_wage(soul)   # leaving the post still pays out
             soul.db.soul_job = None
         else:
             jobs.step_job(soul)
@@ -176,9 +181,16 @@ def think(soul, hour):
 
     if desired is None or is_travelling(soul):
         return
+    # a goal that just failed to plan rests before retrying — a hungry
+    # soul at a shuttered cart shouldn't churn faults all night
+    cooldowns = soul.ndb.soul_goal_cooldown or {}
+    if desired != "safety" and cooldowns.get(desired, 0) > time.time():
+        return
     new_job = actions.plan_for(soul, desired)
     if new_job is None:
         jobs.fault(soul, f"no plan satisfies '{desired}'")
+        cooldowns[desired] = time.time() + GOAL_COOLDOWN_SECONDS
+        soul.ndb.soul_goal_cooldown = cooldowns
         return
     soul.db.soul_job = new_job
     jobs.step_job(soul)
