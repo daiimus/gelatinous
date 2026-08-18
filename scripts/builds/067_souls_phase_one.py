@@ -97,7 +97,7 @@ if not existing and kiosk and kiosk.location:
     npc.db.is_npc = True
     npc.sex = sex
     npc.height = choice(("short", "average", "tall"))
-    npc.build = choice(("wiry", "stocky", "lean"))
+    npc.build = choice(("slight", "lean", "average", "stocky"))
     npc.db.skintone = choice(("pale", "tan", "olive", "dark"))
     npc.grit = randint(1, 3)
     npc.resonance = randint(1, 3)
