@@ -235,17 +235,31 @@ LOD, and current goal — the colony's dance card.
    NPC memory. The Butcher/Ripper hand-built gigs become the FLOOR of
    a system that generates its own.
 
-## 10 · Open questions (owner)
+## 10 · Decisions (owner-ruled 2026-08-17)
 
-1. Which named NPC ensouls first after the colonist slice — and do
-   their venues really close overnight (economy/gameplay call)?
-2. NPC cash: real tokens through real tills (fully closed economy), or
-   notional wallets that only *gate* behavior? (Real is braver;
-   notional is safer for v1.)
-3. Population: the living-world vision needs **residents** — a few
-   dozen persistent light souls with names, homes, jobs, and
-   dispositions (so their deaths MATTER and their crimes have faces) —
-   distinct from the ephemeral crowd. How many, and how authored
-   (hand-named vs generated-with-curation)?
-4. Sleep visibility: do souls physically occupy their cubes overnight
-   (findable, robbable — delicious and dangerous)?
+1. **The economy is REAL.** Tokens move through real wallets and real
+   tills; wages pay out of till revenue where a till exists (which
+   incidentally gives venue income — #1515 — its collection path).
+   Small denominations; the closed loop is the point.
+2. **Every NPC is named.** No anonymous predators. Transgressive
+   action libraries follow from purpose / faction / standing — a
+   nuanced, per-role assignment with room to grow, not a blanket
+   residents-vs-named split. (Tone/frequency dials to be tuned in
+   play, per-role.)
+3. **Residents are generated with curation**, extending the current
+   practice: author ROLES (job, home range, faction, disposition
+   envelope), generate named NPCs into them from the namebank, curate,
+   release.
+4. **First named soul: Auntie Lin** (dealer's choice, owner-delegated)
+   — richest persona on the busiest corner; her cart closing at night
+   creates the third-shift hunger gap on purpose.
+5. **The gig system is personified: BLACKBURN, the fixer** (name from
+   the bank, coined by the owner). No gig hall required while building
+   is paused — emitted gigs flow through Blackburn's book: souls
+   externalize goals to Blackburn; players and souls take work from
+   him. His person, post, and manner are design-to-come; the mechanism
+   lands with the gig-emission phase.
+6. **Souls sleep for real, behind real locks.** Overnight they occupy
+   their homes — findable, robbable, murderable — protected by the
+   existing door-grant/latch machinery, so burglary costs effort and
+   feeds the crime chain honestly.
