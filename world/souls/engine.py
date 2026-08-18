@@ -150,12 +150,16 @@ def lod_for(soul, player_rooms, player_coords):
 
 # ------------------------------------------------------------------ thinking
 
-def _desired_goal(soul, hour):
+def _desired_goal(soul, hour, exclude=()):
     """The band tree. Returns (band, need) — lower band wins; None = idle.
     Bands 1 and 3 iterate the soul's PROFILE needs (spec §12), so a
-    robot's critical band is its battery, not a stomach it lacks."""
+    robot's critical band is its battery, not a stomach it lacks.
+    `exclude` drops goals whose plans are cooling down, so a soul
+    blocked on one need falls through to its next-worst instead of
+    idling (broke-and-hungry still goes home to SLEEP)."""
     derived = needs_mod.pressures(soul)
-    body = [n for n in needs_mod.profile_of(soul) if n != "safety"]
+    body = [n for n in needs_mod.profile_of(soul)
+            if n != "safety" and n not in exclude]
     # band 0: survive
     if derived.get("safety", 0.0) >= needs_mod.CRITICAL:
         return (0, "safety")
@@ -168,9 +172,11 @@ def _desired_goal(soul, hour):
         return (1, max(crit)[2])
     # band 2: schedule
     sched = SCHEDULES[soul.db.soul_schedule or "day"]
-    if soul.db.soul_post and _in_block(hour, sched["work"]):
+    if soul.db.soul_post and "duty" not in exclude \
+            and _in_block(hour, sched["work"]):
         return (2, "duty")
-    if soul.db.soul_home and _in_block(hour, sched["sleep"]) \
+    if soul.db.soul_home and "rest" not in exclude \
+            and _in_block(hour, sched["sleep"]) \
             and derived.get("rest", 0.0) >= 0.30:
         return (2, "rest")
     # band 3: elevated profile needs (same profile-order tie-break)
@@ -214,7 +220,14 @@ def think(soul, hour):
                                  "the shift paid in full")
         job = None
 
-    band, desired = _desired_goal(soul, hour)
+    # goals whose plans recently failed are cooling down — EXCLUDE them
+    # from arbitration so the soul falls through to its next-worst need
+    # instead of idling on a blocked one (safety never cools)
+    now = time.time()
+    cooldowns = dict(soul.db.soul_goal_cooldown or {})
+    cooling = {g for g, t in cooldowns.items()
+               if t > now and g != "safety"}
+    band, desired = _desired_goal(soul, hour, exclude=cooling)
 
     if job:
         # interrupt only for a strictly higher band than the running goal
@@ -229,14 +242,6 @@ def think(soul, hour):
             return
 
     if desired is None or is_travelling(soul):
-        return
-    # a goal that just failed to plan rests before retrying — a hungry
-    # soul at a shuttered cart shouldn't churn faults all night. Persisted
-    # (db, not ndb) so a reload doesn't stampede the whole population into
-    # simultaneous re-plans.
-    now = time.time()
-    cooldowns = dict(soul.db.soul_goal_cooldown or {})
-    if desired != "safety" and cooldowns.get(desired, 0) > now:
         return
     new_job = actions.plan_for(soul, desired)
     if new_job is None:
