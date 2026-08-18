@@ -253,12 +253,11 @@ LOD, and current goal — the colony's dance card.
 4. **First named soul: Auntie Lin** (dealer's choice, owner-delegated)
    — richest persona on the busiest corner; her cart closing at night
    creates the third-shift hunger gap on purpose.
-5. **The gig system is personified: BLACKBURN, the fixer** (name from
-   the bank, coined by the owner). No gig hall required while building
-   is paused — emitted gigs flow through Blackburn's book: souls
-   externalize goals to Blackburn; players and souls take work from
-   him. His person, post, and manner are design-to-come; the mechanism
-   lands with the gig-emission phase.
+5. **Gig emission is BACKBURNERED** (owner call — clarified from an
+   earlier misreading). The §3.7 design and ladder phase 5 stand as
+   written, but the gig feed is explicitly deferred: phases 1–4 ship
+   without it, and no gig venue, board, or broker is designed until
+   the owner brings it forward.
 6. **Souls sleep for real, behind real locks.** Overnight they occupy
    their homes — findable, robbable, murderable — protected by the
    existing door-grant/latch machinery, so burglary costs effort and
