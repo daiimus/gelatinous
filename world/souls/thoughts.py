@@ -14,6 +14,9 @@ the voice narrates a state the engine produced.
 import time
 
 THOUGHT_CAP = 20
+STACK_CAP = 3                        # same-key thoughts held at once — a
+                                     # persisting condition refreshes its
+                                     # thought, it doesn't flood the log
 HALFLIFE_SECONDS = 6 * 3600          # a thought fades by half in ~6h
 RAG_THRESHOLD = 0.2                  # |valence| worth remembering aloud
 
@@ -26,9 +29,17 @@ MOOD_BANDS = (                       # (floor, label) — first match wins
 
 
 def add_thought(soul, key, valence, note=""):
-    """Record a thought; feed the RAG memory when it's significant."""
+    """Record a thought; feed the RAG memory when it's significant.
+    Same-key entries are capped at STACK_CAP (newest kept), so a
+    condition that persists — broke and hungry for six hours — reads
+    as ONE sustained misery, not twenty, and can't flood every other
+    memory out of the log."""
     log = list(soul.db.soul_thoughts or [])
     log.append((time.time(), key, float(valence), note))
+    same = [t for t in log if t[1] == key]
+    if len(same) > STACK_CAP:
+        for stale in same[:-STACK_CAP]:
+            log.remove(stale)
     soul.db.soul_thoughts = log[-THOUGHT_CAP:]
     if abs(valence) >= RAG_THRESHOLD and soul.db.llm_driven and note:
         _feed_rag(soul, note)
