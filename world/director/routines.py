@@ -94,12 +94,16 @@ def _is_conversing(npc: Any) -> bool:
 
 def is_patrol_idle(npc: Any) -> bool:
     """Free to take a patrol step: not assigned, not mid-travel, not
-    fighting, not mid-conversation, and actually somewhere."""
+    fighting, not mid-conversation, no active soul job, and actually
+    somewhere. Patrol is the IDLE filler — the full precedence order is
+    combat > dispatch assignment > souls > patrol (souls spec §12), so
+    a unit recharging on its cradle is not yanked back onto the beat."""
     return (npc.location is not None
             and not is_assigned(npc)
             and not is_travelling(npc)
             and not _in_combat(npc)
-            and not _is_conversing(npc))
+            and not _is_conversing(npc)
+            and not getattr(npc.db, "soul_job", None))
 
 
 # --------------------------------------------------------------------------
