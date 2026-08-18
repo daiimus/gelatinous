@@ -80,16 +80,22 @@ def step_job(soul):
 
     if do == "eat":
         from world.consumables import supports_delivery
+        from world.souls import thoughts
         edible = next((o for o in soul.contents
                        if supports_delivery(o, "eat")), None)
         if edible is None:
             if step.get("bites"):
                 needs_mod.satisfy(soul, "hunger", 0.9)   # finished the meal
+                where = soul.location.key if soul.location else "the street"
+                thoughts.add_thought(
+                    soul, "ate_well", 0.15,
+                    f"{step.get('last_food', 'a hot meal')} at {where}")
                 job["at"] = at + 1
                 soul.db.soul_job = job
                 return True
             fault(soul, "nothing edible in hand")
             return False
+        step["last_food"] = edible.key
         bites = step.get("bites", 0) + 1
         if bites > 12:
             fault(soul, f"{edible.key} never finishes (uses_left stuck?)")
@@ -109,8 +115,31 @@ def step_job(soul):
             soul.execute_cmd("pose settles in for the night.")
         needs_mod.satisfy(soul, "rest", 0.12)   # per think while home
         if needs_mod.pressure(soul, "rest") <= 0.15:
+            from world.souls import thoughts
             soul.ndb.soul_sleeping = False
             soul.execute_cmd("pose stirs, stretches, and rises.")
+            thoughts.add_thought(soul, "slept_home", 0.20,
+                                 "a night behind my own door")
+            soul.db.soul_job = None
+            return False
+        return True
+
+    if do == "dwell":
+        # generic occupy-and-recover (charge, maintenance — spec §12)
+        need = step.get("need", "charge")
+        if not soul.ndb.soul_dwelling:
+            soul.ndb.soul_dwelling = True
+            soul.execute_cmd(
+                "pose settles into the charging cradle, indicators "
+                "pulsing amber." if need == "charge" else
+                "pose powers down into a maintenance cycle.")
+        needs_mod.satisfy(soul, need, 0.15)     # per think while dwelling
+        if needs_mod.pressure(soul, need) <= 0.10:
+            soul.ndb.soul_dwelling = False
+            soul.execute_cmd(
+                "pose disengages from the cradle, indicators green."
+                if need == "charge" else
+                "pose spins back up, servos re-seated.")
             soul.db.soul_job = None
             return False
         return True
@@ -127,7 +156,11 @@ def step_job(soul):
     if do == "linger":
         left = step.get("beats", 3) - 1
         if left <= 0:
+            from world.souls import thoughts
             needs_mod.satisfy(soul, "social", 0.7)
+            where = soul.location.key if soul.location else "the street"
+            thoughts.add_thought(soul, "good_company", 0.10,
+                                 f"time among people at {where}")
             job["at"] = at + 1
         else:
             step["beats"] = left
@@ -135,6 +168,7 @@ def step_job(soul):
         return True
 
     if do == "flee":
+        from world.souls import thoughts
         exits = [e for e in (soul.location.exits if soul.location else [])
                  if e.destination and not e.db.is_edge and not e.db.is_gap]
         if not exits:
@@ -142,6 +176,7 @@ def step_job(soul):
             return False
         soul.execute_cmd(exits[0].key)
         needs_mod.satisfy(soul, "safety", 0.5)
+        thoughts.add_thought(soul, "fled", -0.40, "ran from trouble")
         soul.db.soul_job = None
         return False
 

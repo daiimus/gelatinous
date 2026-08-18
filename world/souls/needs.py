@@ -21,17 +21,55 @@ import time
 SOFT = 0.55
 CRITICAL = 0.85
 
-#: need -> pressure gained per real-world minute (dials, not physics).
-#: At these rates: hunger cycles ~3x per real day, rest ~1x, social
-#: drifts slowly — tuned for an observable loop, not realism.
-DECAY_PER_MIN = {
-    "hunger": 1.0 / 480.0,     # 0 -> 1 in 8 hours
-    "rest": 1.0 / 960.0,       # 0 -> 1 in 16 hours
-    "social": 1.0 / 720.0,     # 0 -> 1 in 12 hours
-    "safety": 0.0,             # event-driven only
+#: Profiles make the needs table DATA over one engine (spec §12):
+#: need -> (rate_per_min, default_pressure, planner_shape). Shapes are
+#: the small set of ways a need gets satisfied — the planner dispatches
+#: on them (actions.plan_for).
+PROFILES = {
+    "human": {
+        "hunger": (1.0 / 480.0, 0.25, "buy_consume"),   # 0 -> 1 in 8h
+        "rest": (1.0 / 960.0, 0.25, "dwell_home"),      # 16h
+        "social": (1.0 / 720.0, 0.25, "dwell_venue"),   # 12h
+        "safety": (0.0, 0.25, "flee"),                  # event-driven
+    },
+    "synth": {                       # human shape, durable dials
+        "hunger": (1.0 / 960.0, 0.25, "buy_consume"),   # 16h
+        "rest": (1.0 / 1440.0, 0.25, "dwell_home"),     # 24h
+        "social": (1.0 / 720.0, 0.25, "dwell_venue"),
+        "safety": (0.0, 0.25, "flee"),
+    },
+    "robot": {                       # the battery is the appetite
+        "charge": (1.0 / 720.0, 0.15, "dwell_venue"),   # ~12h to critical
+        "maintenance": (1.0 / 10080.0, 0.05, "dwell_venue"),  # ~1 week
+        "safety": (0.0, 0.0, "flee"),
+    },
 }
 
-DEFAULT_NEEDS = {name: 0.25 for name in DECAY_PER_MIN}
+#: legacy aliases — pre-profile souls stored these; human is the shape
+DECAY_PER_MIN = {name: spec[0] for name, spec in PROFILES["human"].items()}
+DEFAULT_NEEDS = {name: spec[1] for name, spec in PROFILES["human"].items()}
+
+
+def profile_name(soul):
+    """Explicit `soul_profile` wins; else derived from species."""
+    explicit = soul.db.soul_profile
+    if explicit in PROFILES:
+        return explicit
+    species = str(soul.db.species or "").lower()
+    if "robot" in species:
+        return "robot"
+    if "synth" in species:
+        return "synth"
+    return "human"
+
+
+def profile_of(soul):
+    return PROFILES[profile_name(soul)]
+
+
+def shape_of(soul, need):
+    spec = profile_of(soul).get(need)
+    return spec[2] if spec else None
 
 
 def _snapshot(soul, now):
@@ -44,21 +82,20 @@ def _snapshot(soul, now):
 
 
 def pressures(soul, now=None):
-    """Current derived pressure for every need. Pure read — no writes."""
+    """Current derived pressure for every profile need. Pure read."""
     now = now if now is not None else time.time()
     stored, minutes = _snapshot(soul, now)
     return {
-        name: min(1.0, stored.get(name, DEFAULT_NEEDS[name]) + rate * minutes)
-        for name, rate in DECAY_PER_MIN.items()
+        name: min(1.0, stored.get(name, default) + rate * minutes)
+        for name, (rate, default, _shape) in profile_of(soul).items()
     }
 
 
 def pressure(soul, need, now=None):
     now = now if now is not None else time.time()
     stored, minutes = _snapshot(soul, now)
-    rate = DECAY_PER_MIN.get(need, 0.0)
-    return min(1.0, stored.get(need, DEFAULT_NEEDS.get(need, 0.0))
-               + rate * minutes)
+    rate, default, _shape = profile_of(soul).get(need, (0.0, 0.0, None))
+    return min(1.0, stored.get(need, default) + rate * minutes)
 
 
 def satisfy(soul, need, amount=1.0):
@@ -76,7 +113,8 @@ def satisfy(soul, need, amount=1.0):
 
 
 def seed(soul):
-    """Fresh default meters (ensoul-time)."""
-    fresh = dict(DEFAULT_NEEDS)
+    """Fresh default meters for the soul's profile (ensoul-time)."""
+    fresh = {name: default
+             for name, (_rate, default, _shape) in profile_of(soul).items()}
     fresh["_at"] = time.time()
     soul.db.soul_needs = fresh

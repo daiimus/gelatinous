@@ -83,10 +83,14 @@ class CmdSoul(Command):
         home = target.db.soul_home
         post = target.db.soul_post
         venue = target.db.soul_venue
+        from world.souls import thoughts as thoughts_mod
+        mood_val = thoughts_mod.mood(target)
         lines = [
             f"|wSoul: {target.key}|n (#{target.id})  "
-            f"role:{target.db.soul_role or '?'}  schedule:{sched}  "
-            f"lod:{target.ndb.soul_lod or '?'}",
+            f"role:{target.db.soul_role or '?'}  "
+            f"profile:{needs_mod.profile_name(target)}  schedule:{sched}  "
+            f"lod:{target.ndb.soul_lod or '?'}  "
+            f"mood:|y{thoughts_mod.mood_band(mood_val)}|n ({mood_val:+.2f})",
             f"  home: {home.key if home else '-'}   "
             f"post: {post.key if post else '-'}   "
             f"till: {venue.key if venue else 'treasury'}",
@@ -96,11 +100,16 @@ class CmdSoul(Command):
             "|wNeeds|n (soft {:.2f} / critical {:.2f})".format(
                 needs_mod.SOFT, needs_mod.CRITICAL),
         ]
-        for name in needs_mod.DECAY_PER_MIN:
-            val = needs.get(name, 0.0)
+        for name, val in needs.items():
             flag = ("|rCRIT|n" if val >= needs_mod.CRITICAL
                     else "|ysoft|n" if val >= needs_mod.SOFT else "")
-            lines.append(f"  {name:<8}{_bar(val)} {val:.2f} {flag}")
+            lines.append(f"  {name:<12}{_bar(val)} {val:.2f} {flag}")
+        felt = thoughts_mod.decayed(target)
+        if felt:
+            lines.append("|wThoughts|n (decayed)")
+            for weighted, key, note, age in felt[-8:]:
+                lines.append(f"  {weighted:+.2f} {key:<14} "
+                             f"{int(age / 60):>4}m ago  {note}")
         cooldowns = {g: t for g, t in (target.db.soul_goal_cooldown or {}).items()
                      if t > time.time()}
         if cooldowns:

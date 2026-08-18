@@ -75,9 +75,12 @@ def _in_block(hour, block):
 # ---------------------------------------------------------------- lifecycle
 
 def ensoul(npc, role="resident", home=None, post=None, schedule="day",
-           wage_rate=0.02, venue=None):
+           wage_rate=0.02, venue=None, profile=None):
     """Give an NPC a soul. `home`/`post` are rooms; `venue` is the
-    ShopContainer whose till pays this post's wages (None = treasury)."""
+    ShopContainer whose till pays this post's wages (None = treasury);
+    `profile` overrides species-derived needs (spec §12)."""
+    if profile:
+        npc.db.soul_profile = profile
     npc.db.soul_role = role
     npc.db.soul_home = home
     npc.db.soul_post = post
@@ -148,13 +151,17 @@ def lod_for(soul, player_rooms, player_coords):
 # ------------------------------------------------------------------ thinking
 
 def _desired_goal(soul, hour):
-    """The band tree. Returns (band, need) — lower band wins; None = idle."""
-    p = lambda need: needs_mod.pressure(soul, need)
+    """The band tree. Returns (band, need) — lower band wins; None = idle.
+    Bands 1 and 3 iterate the soul's PROFILE needs (spec §12), so a
+    robot's critical band is its battery, not a stomach it lacks."""
+    derived = needs_mod.pressures(soul)
+    body = [n for n in needs_mod.profile_of(soul) if n != "safety"]
     # band 0: survive
-    if p("safety") >= needs_mod.CRITICAL:
+    if derived.get("safety", 0.0) >= needs_mod.CRITICAL:
         return (0, "safety")
-    # band 1: critical body needs
-    crit = [(p(n), n) for n in ("hunger", "rest") if p(n) >= needs_mod.CRITICAL]
+    # band 1: critical profile needs
+    crit = [(derived[n], n) for n in body
+            if derived[n] >= needs_mod.CRITICAL]
     if crit:
         return (1, max(crit)[1])
     # band 2: schedule
@@ -162,11 +169,10 @@ def _desired_goal(soul, hour):
     if soul.db.soul_post and _in_block(hour, sched["work"]):
         return (2, "duty")
     if soul.db.soul_home and _in_block(hour, sched["sleep"]) \
-            and p("rest") >= 0.30:
+            and derived.get("rest", 0.0) >= 0.30:
         return (2, "rest")
-    # band 3: elevated needs
-    soft = [(p(n), n) for n in ("hunger", "rest", "social")
-            if p(n) >= needs_mod.SOFT]
+    # band 3: elevated profile needs
+    soft = [(derived[n], n) for n in body if derived[n] >= needs_mod.SOFT]
     if soft:
         return (3, max(soft)[1])
     return (4, None)
@@ -179,10 +185,11 @@ def _goal_band(goal):
 
 def think(soul, hour):
     """One decision beat: end lapsed shifts, arbitrate, plan, step."""
+    from world.director.assignment import is_assigned
     from world.director.security import _in_combat
     from world.director.travel import is_travelling
-    if _in_combat(soul):
-        return                                       # combat owns the body
+    if _in_combat(soul) or is_assigned(soul):
+        return          # precedence law: combat > assignment > souls
 
     job = soul.db.soul_job
     sched = SCHEDULES[soul.db.soul_schedule or "day"]
@@ -193,8 +200,15 @@ def think(soul, hour):
         stop_travel(soul)                # a commute to a lapsed shift ends too
         soul.db.soul_job = None
         paid = economy.pay_wage(soul)
+        from world.souls import thoughts
         if paid and soul.location:
             soul.execute_cmd("pose pockets the shift's pay.")
+        if float(soul.db.soul_wage_owed or 0.0) >= 1.0:
+            thoughts.add_thought(soul, "shift_unpaid", -0.35,
+                                 "worked and the till came up short")
+        elif paid:
+            thoughts.add_thought(soul, "payday", 0.25,
+                                 "the shift paid in full")
         job = None
 
     band, desired = _desired_goal(soul, hour)
@@ -224,6 +238,10 @@ def think(soul, hour):
     new_job = actions.plan_for(soul, desired)
     if new_job is None:
         jobs.fault(soul, f"no plan satisfies '{desired}'")
+        if desired == "hunger":
+            from world.souls import thoughts
+            thoughts.add_thought(soul, "went_hungry", -0.25,
+                                 "nothing to eat I could reach or afford")
         cooldowns = {g: t for g, t in cooldowns.items() if t > now}
         cooldowns[desired] = now + GOAL_COOLDOWN_SECONDS
         soul.db.soul_goal_cooldown = cooldowns
