@@ -160,6 +160,8 @@ def think(soul, hour):
 
     # shift release: work jobs end when the block does — PAYDAY
     if job and job.get("goal") == "duty" and not _in_block(hour, sched["work"]):
+        from world.director.travel import stop_travel
+        stop_travel(soul)                # a commute to a lapsed shift ends too
         soul.db.soul_job = None
         paid = economy.pay_wage(soul)
         if paid and soul.location:
@@ -172,6 +174,8 @@ def think(soul, hour):
     if job:
         # interrupt only for a strictly higher band than the running goal
         if desired and band < _goal_band(job.get("goal")):
+            from world.director.travel import stop_travel
+            stop_travel(soul)            # preemption must actually stop feet
             if job.get("goal") == "duty":
                 economy.pay_wage(soul)   # leaving the post still pays out
             soul.db.soul_job = None
@@ -182,15 +186,19 @@ def think(soul, hour):
     if desired is None or is_travelling(soul):
         return
     # a goal that just failed to plan rests before retrying — a hungry
-    # soul at a shuttered cart shouldn't churn faults all night
-    cooldowns = soul.ndb.soul_goal_cooldown or {}
-    if desired != "safety" and cooldowns.get(desired, 0) > time.time():
+    # soul at a shuttered cart shouldn't churn faults all night. Persisted
+    # (db, not ndb) so a reload doesn't stampede the whole population into
+    # simultaneous re-plans.
+    now = time.time()
+    cooldowns = dict(soul.db.soul_goal_cooldown or {})
+    if desired != "safety" and cooldowns.get(desired, 0) > now:
         return
     new_job = actions.plan_for(soul, desired)
     if new_job is None:
         jobs.fault(soul, f"no plan satisfies '{desired}'")
-        cooldowns[desired] = time.time() + GOAL_COOLDOWN_SECONDS
-        soul.ndb.soul_goal_cooldown = cooldowns
+        cooldowns = {g: t for g, t in cooldowns.items() if t > now}
+        cooldowns[desired] = now + GOAL_COOLDOWN_SECONDS
+        soul.db.soul_goal_cooldown = cooldowns
         return
     soul.db.soul_job = new_job
     jobs.step_job(soul)
@@ -218,36 +226,46 @@ class SoulsHeartbeat(DefaultScript):
         now = time.time()
 
         for soul in get_souls():
-            if not soul.pk or soul.location is None:
-                continue
-            # decay by real elapsed time, every beat, every LOD
-            last = float(soul.db.soul_last_decay or now)
-            minutes = max(0.0, (now - last) / 60.0)
-            soul.db.soul_last_decay = now
-            needs = needs_mod.tick_decay(soul, minutes)
-            # duty pressure is pure schedule: on during your block, off after
-            sched = SCHEDULES[soul.db.soul_schedule or "day"]
-            on_shift = bool(soul.db.soul_post) and _in_block(
-                hour, sched["work"])
-            at_post = on_shift and soul.location == soul.db.soul_post
-            needs["duty"] = 0.9 if (on_shift and not at_post) else (
-                0.0 if not on_shift else needs.get("duty", 0.0))
-            soul.db.soul_needs = needs
-            # wages accrue per BEAT at post, not per think — LOD must not
-            # change what a shift pays
-            job = soul.db.soul_job
-            if at_post and job and job.get("goal") == "duty":
-                soul.db.soul_wage_owed = float(
-                    soul.db.soul_wage_owed or 0.0) + float(
-                    soul.db.soul_wage_rate or 0.02)
-
-            lod = lod_for(soul, player_rooms)
-            soul.ndb.soul_lod = lod
-            if beat % THINK_EVERY[lod] == 0:
+            # one bad soul must cost one soul, never the rest of the beat
+            try:
+                self._beat_soul(soul, beat, hour, player_rooms, now)
+            except Exception as err:
                 try:
-                    think(soul, hour)
-                except Exception as err:
-                    jobs.fault(soul, f"think crashed: {err}")
+                    jobs.fault(soul, f"beat crashed: {err}")
+                except Exception:
+                    pass
 
         if beat % TITHE_EVERY_BEATS == 0:
             economy.run_tithe()
+
+    def _beat_soul(self, soul, beat, hour, player_rooms, now):
+        """One soul's slice of the beat: decay, duty, wages, maybe think."""
+        if not soul.pk or soul.location is None:
+            return
+        # decay by real elapsed time, every beat, every LOD
+        last = float(soul.db.soul_last_decay or now)
+        minutes = max(0.0, (now - last) / 60.0)
+        soul.db.soul_last_decay = now
+        needs = needs_mod.tick_decay(soul, minutes)
+        # duty pressure is pure schedule: on during your block, off after
+        sched = SCHEDULES[soul.db.soul_schedule or "day"]
+        on_shift = bool(soul.db.soul_post) and _in_block(hour, sched["work"])
+        at_post = on_shift and soul.location == soul.db.soul_post
+        needs["duty"] = 0.9 if (on_shift and not at_post) else (
+            0.0 if not on_shift else needs.get("duty", 0.0))
+        soul.db.soul_needs = needs
+        # wages accrue per BEAT at post, not per think — LOD must not
+        # change what a shift pays
+        job = soul.db.soul_job
+        if at_post and job and job.get("goal") == "duty":
+            soul.db.soul_wage_owed = float(
+                soul.db.soul_wage_owed or 0.0) + float(
+                soul.db.soul_wage_rate or 0.02)
+
+        lod = lod_for(soul, player_rooms)
+        soul.ndb.soul_lod = lod
+        if beat % THINK_EVERY[lod] == 0:
+            try:
+                think(soul, hour)
+            except Exception as err:
+                jobs.fault(soul, f"think crashed: {err}")

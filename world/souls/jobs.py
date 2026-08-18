@@ -9,7 +9,7 @@ re-arbitrates next think. No teleports, no db pokes.
 import time
 
 from evennia.utils.search import search_object
-from world.director.travel import is_travelling, travel_to
+from world.director.travel import is_travelling, stop_travel, travel_to
 from world.souls import needs as needs_mod
 
 FAULT_KEEP = 5
@@ -20,6 +20,7 @@ def fault(soul, msg):
     log.append((time.time(), msg))
     soul.db.soul_faults = log[-FAULT_KEEP:]
     soul.db.soul_job = None
+    stop_travel(soul)       # an aborted job must not keep walking its route
 
 
 def _obj(dbid):

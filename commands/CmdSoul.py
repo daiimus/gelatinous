@@ -92,6 +92,11 @@ class CmdSoul(Command):
             flag = ("|rCRIT|n" if val >= needs_mod.CRITICAL
                     else "|ysoft|n" if val >= needs_mod.SOFT else "")
             lines.append(f"  {name:<8}{_bar(val)} {val:.2f} {flag}")
+        cooldowns = {g: t for g, t in (target.db.soul_goal_cooldown or {}).items()
+                     if t > time.time()}
+        if cooldowns:
+            lines.append("|wCooldowns|n " + "  ".join(
+                f"{g}:{int(t - time.time())}s" for g, t in cooldowns.items()))
         if job:
             steps = job.get("steps") or []
             at = job.get("at", 0)
