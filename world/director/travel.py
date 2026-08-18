@@ -109,6 +109,7 @@ def _travel_step(npc: Any) -> None:
         route = state["route"]
     # Walk through the next exit via its real command (locks, messages, etc.).
     nxt = route.pop(0)
+    came_from = npc.location
     try:
         # A closed door on the route: open it first, through the REAL
         # verb (grant checks, reader flashes, room messages all apply).
@@ -121,6 +122,17 @@ def _travel_step(npc: Any) -> None:
     except Exception:  # noqa: BLE001 — an odd exit never stalls travel
         pass
     npc.execute_cmd(nxt.key)
+    # stall detection: an exit that exists but bounces (an elevator car
+    # on another floor, a lock the pathfinder mispredicted) would loop
+    # silently forever — three consecutive no-progress steps FAIL the
+    # travel loudly instead
+    if npc.location == came_from:
+        state["stall"] = state.get("stall", 0) + 1
+        if state["stall"] >= 3:
+            _finish(npc, state, "on_fail")
+            return
+    else:
+        state["stall"] = 0
     # a soul nobody can see walks at half cadence — same route, fewer
     # reactor slices (LOD is set by the souls heartbeat; non-soul NPCs
     # have no soul_lod and keep full pace)

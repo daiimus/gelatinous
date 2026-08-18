@@ -54,7 +54,10 @@ def step_job(soul):
             soul.db.soul_job = job
             return True
         if not is_travelling(soul):
-            if not travel_to(soul, room):
+            def _stalled(npc, _room=room):
+                fault(npc, f"travel stalled toward {_room.key} "
+                           "(an exit that wouldn't give)")
+            if not travel_to(soul, room, on_fail=_stalled):
                 fault(soul, f"no path to {room.key}")
                 return False
         return True                        # walking; check again next think
