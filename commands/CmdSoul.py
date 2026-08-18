@@ -82,8 +82,8 @@ class CmdSoul(Command):
             f"post: {post.key if post else '-'}   "
             f"till: {venue.key if venue else 'treasury'}",
             f"  tokens: |y{target.tokens or 0}|n   "
-            f"wage owed: {float(target.db.soul_wage_owed or 0):.1f} "
-            f"@ {float(target.db.soul_wage_rate or 0):.1f}/beat",
+            f"wage owed: {float(target.db.soul_wage_owed or 0):.2f} "
+            f"@ {float(target.db.soul_wage_rate or 0):.2f}/beat",
             "|wNeeds|n (soft {:.2f} / critical {:.2f})".format(
                 needs_mod.SOFT, needs_mod.CRITICAL),
         ]

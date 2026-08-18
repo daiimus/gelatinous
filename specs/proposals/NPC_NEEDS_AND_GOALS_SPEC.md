@@ -1,7 +1,14 @@
 # NPC Needs & Goals — the deterministic soul
 
-> **Status:** 📋 **Proposal — design only (2026-08-17, owner-directed:
-> "souls over structures").** ELABORATES
+> **Status:** 🟢 **Phase 1 SHIPPED & LIVE (2026-08-17: #1961 engine +
+> #1963 GLOBAL_SCRIPTS heartbeat + #1965 edible filter + #1967 till
+> invariant; build 067).** `world/souls/` (needs/actions/jobs/economy/
+> engine) + `@soul` diagnostic + closed treasury/wages/tithe loop; first
+> generated resident Martha van Schmidt (#8130) living the caretaker
+> loop — Brackett lobby post, Unit 1A via the real kiosk, meals at real
+> tills. Remaining ladder: P2 named NPCs (Auntie Lin first), P3
+> mood/thoughts, P4 succession, P5 gig emission (backburnered). Design
+> sections below are unchanged. ELABORATES
 > [`NPC_DISPATCH_AND_SIMULATION_SPEC`](NPC_DISPATCH_AND_SIMULATION_SPEC.md)
 > §4 (Roles & routines) — that section imagined fixed schedules; this
 > replaces the clock with **wants**. Shipped substrate it builds on:
