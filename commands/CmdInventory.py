@@ -1001,10 +1001,14 @@ class CmdWrest(Command):
         return False
 
     def _is_target_unconscious_or_dead(self, target):
-        """Check if target is unconscious or dead (instant success condition)."""
-        # TODO: Implement when unconscious/dead states are added to the system
-        # For now, always return False (no instant success)
-        return False
+        """Unconscious or dead targets give no contest (instant success) —
+        the medical layer is the authority (an unconscious mark rolling
+        full Grit was the stub this replaces)."""
+        try:
+            from world.consent import is_conscious
+            return not is_conscious(target)
+        except Exception:  # noqa: BLE001 — unreadable state = contest it
+            return False
 
     def _execute_grit_contest(self, caller, target, target_is_grappled, roll_stat, roll_with_disadvantage):
         """Execute Grit vs Grit contest, with disadvantage for grappled targets."""

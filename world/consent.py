@@ -53,11 +53,14 @@ def is_restrained(target) -> bool:
     device. Devices are furniture with ``db.restraining``; live AutoDocs
     predate that flag, so a medical lie-in pod counts too (the healing pod
     is the spec's canonical restraint device — no live backfill needed)."""
-    # Grapple (world/combat/grappling.py state).
+    # Grapple (world/combat/grappling.py state). Found reload-proof:
+    # the ndb handler ref dies on every reload while the grapple lives
+    # in the handler's DB entries — gating on ndb made a still-grappled
+    # victim read as free the moment the server bounced.
     try:
-        from world.combat.constants import NDB_COMBAT_HANDLER
         from world.combat.grappling import is_grappled
-        handler = getattr(target.ndb, NDB_COMBAT_HANDLER, None)
+        from world.combat.utils import find_character_handler
+        handler = find_character_handler(target)
         if handler and is_grappled(handler, target):
             return True
     except Exception:  # noqa: BLE001 — no combat state = not grappled
