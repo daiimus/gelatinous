@@ -49,8 +49,9 @@ class CmdSoul(Command):
                 goal = job.get("goal", "idle")
                 lod = soul.ndb.soul_lod or "?"
                 where = soul.location.key if soul.location else "nowhere"
-                hunger = needs_mod.pressure(soul, "hunger")
-                rest = needs_mod.pressure(soul, "rest")
+                derived = needs_mod.pressures(soul)
+                hunger = derived["hunger"]
+                rest = derived["rest"]
                 faults = len(soul.db.soul_faults or [])
                 lines.append(
                     f"  {soul.key:<18} {goal:<8} lod:{lod:<5} "
@@ -68,7 +69,13 @@ class CmdSoul(Command):
             caller.msg(f"{target.key} has no soul.")
             return
 
-        needs = target.db.soul_needs or {}
+        needs = needs_mod.pressures(target)      # derived, zero-write read
+        try:
+            from world.gametime import colony_hour
+            from world.souls.engine import duty_pressure
+            needs["duty"] = duty_pressure(target, colony_hour())
+        except Exception:
+            needs["duty"] = 0.0
         job = target.db.soul_job
         sched = target.db.soul_schedule or "day"
         home = target.db.soul_home

@@ -37,9 +37,15 @@ def pay_wage(soul):
     treasury. Partial payment when the source is short — a drought is a
     visible state (`@soul` shows the unpaid balance), not a crash.
     """
-    owed_f = float(soul.db.soul_wage_owed or 0.0)
+    # fold any un-checkpointed ndb accrual in before paying out
+    pending = float(soul.ndb.soul_wage_pending or 0.0)
+    if pending:
+        soul.ndb.soul_wage_pending = 0.0
+    owed_f = float(soul.db.soul_wage_owed or 0.0) + pending
     owed = int(owed_f)               # whole tokens payable now
     if owed <= 0:
+        if pending:
+            soul.db.soul_wage_owed = owed_f   # folded fraction stays owed
         return 0
     venue = soul.db.soul_venue
     if venue is not None:
