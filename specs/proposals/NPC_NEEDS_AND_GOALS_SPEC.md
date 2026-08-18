@@ -12,7 +12,11 @@
 > profile-order tie-break + loud travel stalls #2001, cooldown
 > fall-through #2003, jobs remember their planned band #2005 —
 > verified: charge and rest meters recover on the cradle/at home).
-> Remaining ladder: P4 succession, P5 gig emission (backburnered). `world/souls/` (needs/actions/jobs/economy/
+> **P4a succession LIVE 2026-08-18** (#2009; build 072: five posts
+> registered, vacancy watcher, living-claim — first hire Noel Dudnik
+> claimed the Kettle day shift unprompted). Remaining: P4b
+> crime/witness + rebuild policies (combat-hardening gated), P5 gig
+> emission (backburnered). `world/souls/` (needs/actions/jobs/economy/
 > engine) + `@soul` diagnostic + closed treasury/wages/tithe loop; first
 > generated resident Martha van Schmidt (#8130) living the caretaker
 > loop — Brackett lobby post, Unit 1A via the real kiosk, meals at real
