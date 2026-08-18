@@ -38,6 +38,35 @@
   `IDMAPPER_CACHE_MAXSIZE` (default 400 MB); the "flush called more than
   once in 5.0 min" warning means the working set exceeds the cap, not a bug.
 
+## 1.5 · Measured baselines (live container, 2026-08-18)
+
+Microbenchmarked in the game container (Rosetta, SQLite `synchronous=0`,
+`journal_mode=delete` — pragmas verified identical on the shell connection):
+
+| Operation | Cost |
+|---|---|
+| `db` attribute write | **951 µs** |
+| SaverDict single-key in-place mutation | 718 µs |
+| `.ndb` write / read | **1.3 µs / 1.2 µs** |
+| cached `db` dict read (re-unpickle) | 4.8 µs |
+| `search_tag` (the per-beat `get_souls`) | 5.6 ms |
+| advertiser attribute-join scan | 347 µs (tiny DB today; grows) |
+| `search_object("#id")` vs `objects.get_id` | 262 µs vs **1.3 µs** |
+| **A\* path, Brackett→Pessoa** | **18 ms** |
+| `colony_hour()` | 0.7 µs |
+
+Consequences: (a) the write storm is confirmed — 300 souls × 3 writes/beat
+≈ **855 ms of blocked reactor per 30 s**, and `.ndb` is ~700× cheaper, so
+P1 compute-on-read is the headline fix; (b) **finding 11 is re-ranked
+HIGH** — at 18 ms per path with a re-path every 2 s per walking soul, a
+shift-change commute of a couple hundred souls saturates the reactor on
+pathfinding alone; path caching (re-path only on move failure) plus
+**shift jitter** (each soul carries a personal ±15 min offset on its
+schedule blocks — staggers the commute *and* reads better in the fiction)
+moves to P2; (c) LLM voice calls verified non-blocking (`requests.post`
+inside `run_async`'s thread pool, HTTP only in the thread — the reactor
+never waits on the sidecar).
+
 ## 2 · How Evennia actually schedules
 
 - Script timers are `ExtendedLoopingCall` on the reactor. `at_repeat` runs
