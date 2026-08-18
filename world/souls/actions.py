@@ -92,7 +92,14 @@ def plan_for(soul, goal_need):
         ], "at": 0}
 
     if goal_need == "social":
+        post = soul.db.soul_post
+        workplace = soul.db.soul_venue and soul.db.soul_venue.location
         for score, venue, room in _advertisers(soul, "social"):
+            # work is not recreation: a soul's own post (or its venue's
+            # room) never satisfies social — staff go OUT, so shift
+            # boundaries stay legible and third places get traffic
+            if room is not None and room in (post, workplace):
+                continue
             return {"goal": "social", "steps": [
                 {"do": "travel", "room": room.id},
                 {"do": "linger", "beats": 4},
