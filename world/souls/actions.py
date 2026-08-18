@@ -111,11 +111,16 @@ def plan_for(soul, goal_need):
             ], "at": 0}
         return None                            # nothing affordable: fault
 
-    if goal_need == "rest":
+    shape = None
+    if goal_need not in ("duty", "safety"):
+        from world.souls import needs as needs_mod
+        shape = needs_mod.shape_of(soul, goal_need)
+
+    if shape == "dwell_home" or goal_need == "rest":
         home = soul.db.soul_home
         if not home:
             return None
-        return {"goal": "rest", "steps": [
+        return {"goal": goal_need, "steps": [
             {"do": "travel", "room": home.id},
             {"do": "sleep"},
         ], "at": 0}
@@ -132,6 +137,16 @@ def plan_for(soul, goal_need):
             return {"goal": "social", "steps": [
                 {"do": "travel", "room": room.id},
                 {"do": "linger", "beats": 4},
+            ], "at": 0}
+        return None
+
+    if shape == "dwell_venue":
+        # generic dwell need (charge, maintenance): occupy the best
+        # advertiser until the meter recovers (spec §12)
+        for score, venue, room in _advertisers(soul, goal_need):
+            return {"goal": goal_need, "steps": [
+                {"do": "travel", "room": room.id},
+                {"do": "dwell", "need": goal_need},
             ], "at": 0}
         return None
 
