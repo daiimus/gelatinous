@@ -302,6 +302,13 @@ class SoulsHeartbeat(DefaultScript):
         # think cadence multiple
         if beat % TITHE_EVERY_BEATS == 7:
             economy.run_tithe()
+        # the vacancy watcher (spec §13) — posts notice their keepers
+        from world.souls import posts as posts_mod
+        if beat % posts_mod.SWEEP_EVERY_BEATS == 3:
+            try:
+                posts_mod.sweep(now)
+            except Exception:   # noqa: BLE001 — a bad post can't kill beats
+                pass
 
     def _beat_soul(self, soul, beat, hour_f, player_rooms, player_coords,
                    now):
