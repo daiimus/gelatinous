@@ -71,9 +71,11 @@ class CmdSoul(Command):
 
         needs = needs_mod.pressures(target)      # derived, zero-write read
         try:
-            from world.gametime import colony_hour
-            from world.souls.engine import duty_pressure
-            needs["duty"] = duty_pressure(target, colony_hour())
+            from world.gametime import colony_now
+            from world.souls.engine import duty_pressure, soul_hour
+            t = colony_now()
+            needs["duty"] = duty_pressure(
+                target, soul_hour(target, t.hour + t.minute / 60.0))
         except Exception:
             needs["duty"] = 0.0
         job = target.db.soul_job
