@@ -146,6 +146,35 @@ self-heal on reload; the stagger idiom already exists in
   load; only then consider WAL journal mode via `SQLITE3_PRAGMAS` and the
   native arm64 image (drops the Rosetta tax) in gelatinous-infra.
 
+### P4 results — live load test (2026-08-18, post P0–P3)
+
+Run live (owner-sanctioned, pre-alpha): 20 dummyrunner bots (custom
+no-dig look/wander profile, plain player perms via `DUMMYRUNNER_MIXIN`)
+plus 100 disposable ensouled NPCs seeded to act immediately (70
+social-critical walkers, 30 funded hunger-critical buyers). Metrics:
+webserver latency through the reactor thread, container CPU, heartbeat
+cadence.
+
+| Phase | Reactor latency | CPU |
+|---|---|---|
+| Baseline (4 souls) | 36–56 ms | 0.1–2% |
+| 20 bots | 37–67 ms (one 211 ms account-creation blip) | 5–15% |
+| **104 souls + 20 bots** | **36–64 ms — flat, indistinguishable from baseline** | 5–22% peak during the planning/commute wave, settling 5–12% |
+
+Behavior under load: all 70 walkers crossed the city to the Kettle on
+cached routes; buyers rang Lin's real till (register 6→27 mid-test);
+**zero faults across 100 souls**; the four real residents lived their
+loops undisturbed throughout. Verdict: the hardened engine absorbs the
+~⅓-of-target population plus a full player load with no measurable
+reactor impact — **WAL and the arm64 image are not needed at current
+scale** and stay parked until measurements say otherwise.
+
+Operational notes: SQLite locked once during external-shell mass
+deletion against the live server (per-object retry with backoff
+resolved it — bulk mutations belong in small batches); external-shell
+test pokes need a reload to be visible now that nothing rewrites needs
+on a timer.
+
 ## 5 · Laws for every future always-on system
 
 1. **Never write db attributes on a timer for unobserved entities.**
