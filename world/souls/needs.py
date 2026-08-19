@@ -30,12 +30,14 @@ PROFILES = {
         "hunger": (1.0 / 480.0, 0.25, "buy_consume"),   # 0 -> 1 in 8h
         "rest": (1.0 / 960.0, 0.25, "dwell_home"),      # 16h
         "social": (1.0 / 720.0, 0.25, "dwell_venue"),   # 12h
+        "health": (0.0, 0.0, "clinic"),                 # derived (below)
         "safety": (0.0, 0.25, "flee"),                  # event-driven
     },
     "synth": {                       # human shape, durable dials
         "hunger": (1.0 / 960.0, 0.25, "buy_consume"),   # 16h
         "rest": (1.0 / 1440.0, 0.25, "dwell_home"),     # 24h
         "social": (1.0 / 720.0, 0.25, "dwell_venue"),
+        "health": (0.0, 0.0, "clinic"),
         "safety": (0.0, 0.25, "flee"),
     },
     "robot": {                       # the battery is the appetite
@@ -81,17 +83,38 @@ def _snapshot(soul, now):
     return stored, minutes
 
 
+def health_pressure(soul):
+    """The purest compute-on-read need: derived entirely from the
+    medical state the body already carries — no snapshot, no writes,
+    and treatment lowers it by actually healing (spec §14 layer 1)."""
+    try:
+        ms = soul.db.medical_state or {}
+        conds = ms.get("conditions") or []
+        n = len(conds)
+        bleeding = any("bleed" in str((c.get("type") if isinstance(c, dict)
+                                       else c) or "").lower()
+                       for c in conds)
+        return min(1.0, 0.12 * n + (0.35 if bleeding else 0.0))
+    except Exception:  # noqa: BLE001 — unreadable body reads as well
+        return 0.0
+
+
 def pressures(soul, now=None):
     """Current derived pressure for every profile need. Pure read."""
     now = now if now is not None else time.time()
     stored, minutes = _snapshot(soul, now)
-    return {
+    out = {
         name: min(1.0, stored.get(name, default) + rate * minutes)
         for name, (rate, default, _shape) in profile_of(soul).items()
     }
+    if "health" in out:
+        out["health"] = health_pressure(soul)
+    return out
 
 
 def pressure(soul, need, now=None):
+    if need == "health":
+        return health_pressure(soul)
     now = now if now is not None else time.time()
     stored, minutes = _snapshot(soul, now)
     rate, default, _shape = profile_of(soul).get(need, (0.0, 0.0, None))
