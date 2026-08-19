@@ -1226,7 +1226,7 @@ class CmdFrisk(Command):
         # Get all contents (both worn and carried)
         all_items = target.contents
 
-        if not all_items and not target.db.tokens:
+        if not all_items and not getattr(target, "tokens", 0):
             caller.msg(f"You feel nothing on {target_name}.")
             return
             
@@ -1279,7 +1279,7 @@ class CmdFrisk(Command):
         for item in carried_items:
             result_lines.append(item.get_display_name(caller))
 
-        tokens = target.db.tokens
+        tokens = getattr(target, "tokens", 0)   # the real wallet property
         if tokens:
             result_lines.append(f"{tokens} tokens")
 
