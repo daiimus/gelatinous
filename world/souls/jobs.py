@@ -207,6 +207,10 @@ def step_job(soul):
             # let the combat engine decide who walks away.
             mark = _obj(step.get("mark", 0)) if step.get("mark") else None
             if mark is not None and mark.location == soul.location:
+                from world.combat.utils import find_best_weapon
+                best = find_best_weapon(soul)
+                if best is not None:
+                    soul.execute_cmd(f"wield {best.key}")
                 soul.execute_cmd(f"attack {_target_token(mark)}")
         soul.db.soul_job = None
         return False

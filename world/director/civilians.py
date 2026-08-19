@@ -644,7 +644,15 @@ def react_to_attack(victim: Any, attacker: Any) -> None:
             pass
 
     stage = getattr(victim.ndb, "reaction_stage", None)
-    armed = bool(getattr(victim.db, "carried_weapon", None))
+    # "armed" means a REAL weapon anywhere on them — ranked by reach
+    # and hurt, so the picker draws the box cutter, not the walkie
+    # (and anyone packing a rifle draws the rifle). Legacy roles that
+    # only name a carried_weapon string still count.
+    from world.combat.utils import find_best_weapon
+    best = find_best_weapon(victim)
+    draw_name = best.key if best else getattr(victim.db, "carried_weapon",
+                                              None)
+    armed = bool(draw_name)
     if stage == "resisting":
         return  # already fighting for their life — nothing to escalate
 
@@ -652,7 +660,7 @@ def react_to_attack(victim: Any, attacker: Any) -> None:
         # First violence: the role's posture.
         if reaction == "resist":
             if armed:
-                delay(1.0, _cmd, f"wield {victim.db.carried_weapon}")
+                delay(1.0, _cmd, f"wield {draw_name}")
             victim.ndb.reaction_stage = "resisting"
             _inform_brain(victim, attacker, "drew on them" if armed
                           else "squared up")
@@ -680,7 +688,7 @@ def react_to_attack(victim: Any, attacker: Any) -> None:
         if armed:
             # Cornered rat: no exit worked, violence keeps coming — draw
             # and stand. A picker with a box cutter and no way out.
-            delay(1.0, _cmd, f"wield {victim.db.carried_weapon}")
+            delay(1.0, _cmd, f"wield {draw_name}")
             victim.ndb.reaction_stage = "resisting"
             _inform_brain(victim, attacker, "turned, cornered, and drew")
         else:

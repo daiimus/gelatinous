@@ -102,6 +102,29 @@ from .proximity import clear_all_proximity as clear_character_proximity  # noqa:
 # WEAPON & ITEM HELPERS
 # ===================================================================
 
+def find_best_weapon(character):
+    """The best REAL weapon anywhere on the character — wielded or
+    carried — ranked by reach then hurt (ranged beats melee, damage
+    breaks ties). None when they carry nothing tagged as a weapon: a
+    terrified civilian squares up bare-handed rather than brandishing
+    their walkie, but anyone actually packing draws what they pack
+    (owner ruling 2026-08-19: caught off guard holding a radio is
+    natural; holding a bazooka and swinging the radio is not)."""
+    best = None
+    best_score = -1
+    for item in character.contents:
+        if item.destination or not hasattr(item, "tags"):
+            continue
+        if not item.tags.get("weapon", category="type"):
+            continue
+        db = getattr(item, "db", None)
+        damage = int(getattr(db, "damage", 0) or 0)
+        score = damage + (5 if getattr(db, "is_ranged", False) else 0)
+        if score > best_score:
+            best, best_score = item, score
+    return best
+
+
 def get_wielded_weapon(character):
     """
     Get the weapon the character fights with.
