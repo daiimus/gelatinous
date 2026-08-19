@@ -29,6 +29,31 @@
 > no-trace window ⬜. Population/identity presentation layer
 > still open — see §10.
 
+> **RECONCILIATION (2026-08-20, souls-era annotation — read before planning
+> against this spec):** the souls system
+> ([`NPC_NEEDS_AND_GOALS_SPEC`](NPC_NEEDS_AND_GOALS_SPEC.md), phases 1–4b +
+> resleave live) absorbed and superseded parts of this design. Per section:
+> **§2** LOD shipped as per-object throttled thinking (souls), NOT the
+> virtual-row model — §3's spawn-on-approach/virtualization is ABANDONED;
+> cold souls stay instantiated. **§4** roles-and-routines is SUPERSEDED for
+> souls (wants, not clocks — the tripartite 8h shift system) but still runs
+> as-written for the ambient civilian layer; the population doctrine (thin
+> ambient tier vs absorption into souls) is an OPEN owner decision, as is
+> unifying the two wealth scales (civilians 100–500 vs souls' earned wages).
+> **§5/§5.1** dispatch + crime chain: IMPLEMENTED, shared by both layers;
+> souls route NPC-on-NPC crime through the same witness/BOLO machinery, and
+> a `medical` event type now rides the same bus (the rescue loop). **§5.2**
+> pockets/reactions implemented; the HEAT MAP is OPEN (natural WSIS bridge).
+> **§6** the generalized LLM budget gate is OPEN (only the inherited
+> bartender/dispatch gates exist); souls added the STATE line (mood +
+> where-and-what) to voiced turns. **§7** mining S&R OPEN; shift-change
+> examples superseded by wants. **§9** this ladder froze at phase 3; the
+> souls ladder outran it. **§10** small-worlding: the two cures now coexist
+> — anonymous civilians (this spec) AND named persistent souls (souls spec
+> decision #2); reconciliation fixes #2063 made predators see both layers
+> and partitioned the racing post-watchers. WSIS remains unbuilt and must
+> eventually fuse both population layers or the doctrine must collapse them.
+
 ## 1 · Intent
 
 We want the colony to feel **inhabited and reactive** without a builder
