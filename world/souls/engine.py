@@ -188,8 +188,8 @@ def _desired_goal(soul, hour, exclude=()):
 
 
 def _goal_band(goal):
-    return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "social": 3}.get(
-        goal, 4)
+    return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "claim": 2,
+            "social": 3}.get(goal, 4)
 
 
 def think(soul, hour):
