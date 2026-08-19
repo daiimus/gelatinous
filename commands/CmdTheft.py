@@ -24,10 +24,13 @@ def _resolve_mark(caller, query):
     PERCEIVE ("pickpocket squat vendor"), exactly like combat targeting
     — `caller.search` only matched real keys, which strangers don't
     know. Falls back to a plain search for recognized-name/key input."""
-    from commands._identity_targeting import resolve_character_target
-    target = resolve_character_target(caller, query, allow_self=True)
-    if target is not None:
-        return target
+    try:
+        from commands._identity_targeting import resolve_character_target
+        target = resolve_character_target(caller, query, allow_self=True)
+        if target is not None:
+            return target
+    except Exception:  # noqa: BLE001 — identity pipeline unavailable
+        pass
     return caller.search(query)
 
 
@@ -192,7 +195,10 @@ class CmdPickpocket(Command):
         if not hasattr(target, "get_sdesc"):
             caller.msg("That has no pockets.")
             return
-        tokens = int(getattr(target.db, "tokens", 0) or 0)
+        # the REAL wallet is the Character.tokens property (category
+        # "shop") — db.tokens is an uncategorized ghost ledger this
+        # command alone used; money "stolen" there never existed
+        tokens = int(getattr(target, "tokens", 0) or 0)
         if tokens <= 0:
             caller.msg(f"{target.get_display_name(caller)} is carrying no "
                        f"tokens.")
@@ -219,5 +225,5 @@ class CmdPickpocket(Command):
 
     @staticmethod
     def _transfer(caller, target, amount):
-        target.db.tokens = int(getattr(target.db, "tokens", 0) or 0) - amount
-        caller.db.tokens = int(getattr(caller.db, "tokens", 0) or 0) + amount
+        target.tokens = int(getattr(target, "tokens", 0) or 0) - amount
+        caller.tokens = int(getattr(caller, "tokens", 0) or 0) + amount

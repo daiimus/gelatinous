@@ -51,7 +51,7 @@ def _target(tokens=0, contents=None, worn=None, hands=None):
     t.contents = contents or []
     t.get_worn_items = lambda: (worn or [])
     t.hands = hands or {}
-    t.db.tokens = tokens
+    t.tokens = tokens          # the real wallet surface (Character property)
     return t
 
 
@@ -167,7 +167,7 @@ class TestPickpocket(TestCase):
         from commands.CmdTheft import CmdPickpocket
         cmd = CmdPickpocket()
         cmd.caller = MagicMock()
-        cmd.caller.db.tokens = 0
+        cmd.caller.tokens = 0
         cmd.caller.get_display_name = lambda looker=None, **k: "a thief"
         cmd.caller.search.return_value = target
         cmd.args = "mark"
@@ -181,8 +181,8 @@ class TestPickpocket(TestCase):
                 patch("commands.CmdTheft.contest", return_value=-5), \
                 patch("commands.CmdTheft.randint", return_value=20):
             cmd.func()
-        self.assertEqual(cmd.caller.db.tokens, 20)
-        self.assertEqual(target.db.tokens, 70)
+        self.assertEqual(cmd.caller.tokens, 20)
+        self.assertEqual(target.tokens, 70)
 
     def test_no_tokens_message(self):
         cmd = self._cmd(_target(tokens=0))
@@ -199,7 +199,7 @@ class TestPickpocket(TestCase):
                 patch("commands.CmdTheft.randint", return_value=20), \
                 patch("commands.CmdTheft._caught") as caught:
             cmd.func()
-        self.assertEqual(target.db.tokens, 90)     # nothing taken
+        self.assertEqual(target.tokens, 90)        # nothing taken
         caught.assert_called_once()
 
 
