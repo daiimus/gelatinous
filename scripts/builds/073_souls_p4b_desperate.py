@@ -81,6 +81,13 @@ else:
     }
     npc.tokens = 0                     # the whole point
     npc.db.soul_lawless = True
+    # a drifter this far down carries steel — an unarmed mugger loses
+    # the action economy to any mark who just keeps punching (learned
+    # from the Unit 1D stalemate); the shiv is the handmade anti-brand
+    from evennia.prototypes.spawner import spawn
+    shiv = spawn("shiv")[0]
+    shiv.location = npc
+    npc.wield_item(shiv, "right")
     ok, msg = rental.assign_cube(npc, kiosk)
     home = rental.residence_of(npc)
     ensoul(npc, role="drifter", home=home, post=None, schedule="day",
