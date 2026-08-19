@@ -277,11 +277,13 @@ class LLMNpcMixin:
         present = self._present_others(patron)  # who else is in the room now
         on_fail = on_fail or self._llm_silent
 
+        state = self._soul_state_line()
+
         def _go(memories):
             messages = build_messages(persona, speaker_name, line or "", mode,
                                       perception, history, memories=memories,
                                       relationship=relationship, events=events,
-                                      present=present)
+                                      present=present, state=state)
             self._agentic_round(messages, persona, patron, line or "",
                                 speaker_name, on_fail, rounds=0,
                                 subject=subject, mode=mode)
@@ -491,6 +493,26 @@ class LLMNpcMixin:
             self.db.llm_memories = mem.prune(recs)
 
         request_embedding(text, on_done=_save, on_fail=self._llm_silent)
+
+    def _soul_state_line(self):
+        """One line of self-state for ensouled NPCs: the mood the souls
+        engine produced, for the voice to NARRATE — never to decide with
+        (the two-brain law, souls spec §11). None for unsouled NPCs."""
+        try:
+            if not self.tags.get("soul", category="npc_role"):
+                return None
+            from world.souls import thoughts
+            band = thoughts.mood_band(thoughts.mood(self))
+            feel = {
+                "bright": "You are in good spirits today.",
+                "level": "You are steady today.",
+                "low": "You are worn down and short on patience today.",
+                "grim": "You are at the end of a very bad stretch, and it "
+                        "shows.",
+            }.get(band)
+            return feel
+        except Exception:  # noqa: BLE001 — a feeling must not break a reply
+            return None
 
     def _perceive(self, patron):
         """What this NPC sees when it looks at the patron — grounds the model's
