@@ -88,7 +88,9 @@ class CmdSoul(Command):
         lines = [
             f"|wSoul: {target.key}|n (#{target.id})  "
             f"role:{target.db.soul_role or '?'}  "
-            f"profile:{needs_mod.profile_name(target)}  schedule:{sched}  "
+            f"profile:{needs_mod.profile_name(target)}"
+            f"{' |rlawless|n' if target.db.soul_lawless else ''}  "
+            f"schedule:{sched}  "
             f"lod:{target.ndb.soul_lod or '?'}  "
             f"mood:|y{thoughts_mod.mood_band(mood_val)}|n ({mood_val:+.2f})",
             f"  home: {home.key if home else '-'}   "

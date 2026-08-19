@@ -82,6 +82,36 @@ def _edible_wares(counter):
             if _is_edible_proto(proto_key)]
 
 
+def _find_mark(soul, min_tokens=3, radius=30):
+    """The predator's eye (spec §3.5): the nearest fellow soul visibly
+    worth robbing. NPC-only by owner verdict (players are never marks
+    in the pilot); robots and security carry nothing worth the shock
+    baton."""
+    from world.souls import engine
+    from world.souls import needs as needs_mod
+
+    origin = get_xyz(soul.location) if soul.location else None
+    best = None
+    for mark in engine.get_souls():
+        if mark == soul or not mark.pk or mark.location is None:
+            continue
+        if not mark.db.is_npc:
+            continue
+        if needs_mod.profile_name(mark) == "robot" \
+                or mark.db.soul_role == "secunit":
+            continue
+        if int(getattr(mark, "tokens", 0) or 0) < min_tokens:
+            continue
+        pos = get_xyz(mark.location)
+        dist = (max(abs(origin[0] - pos[0]), abs(origin[1] - pos[1]))
+                if origin and pos else radius)
+        if dist > radius:
+            continue
+        if best is None or dist < best[0]:
+            best = (dist, mark)
+    return best[1] if best else None
+
+
 def plan_for(soul, goal_need):
     """Return a job dict for the winning goal, or None (-> fault).
 
@@ -109,6 +139,19 @@ def plan_for(soul, goal_need):
                  "price": price},
                 {"do": "eat"},
             ], "at": 0}
+        # the desperate fallback (spec §2 disposition gates): a LAWLESS
+        # soul that cannot afford to eat turns predator — grapple, lift
+        # a cut of the mark's tokens, disengage. Lawful souls simply
+        # fault here and stay hungry; that difference IS the gate.
+        if soul.db.soul_lawless:
+            mark = _find_mark(soul)
+            if mark is not None:
+                return {"goal": "hunger", "steps": [
+                    {"do": "travel", "room": mark.location.id},
+                    {"do": "grapple", "mark": mark.id},
+                    {"do": "rob", "mark": mark.id, "lifts": 2},
+                    {"do": "disengage"},
+                ], "at": 0}
         return None                            # nothing affordable: fault
 
     shape = None
