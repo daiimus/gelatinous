@@ -150,7 +150,7 @@ def plan_for(soul, goal_need):
                     {"do": "travel", "room": mark.location.id},
                     {"do": "grapple", "mark": mark.id},
                     {"do": "rob", "mark": mark.id, "lifts": 2},
-                    {"do": "disengage"},
+                    {"do": "disengage", "mark": mark.id},
                 ], "at": 0}
         return None                            # nothing affordable: fault
 
