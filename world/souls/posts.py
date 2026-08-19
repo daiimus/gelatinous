@@ -106,9 +106,12 @@ def sweep(now=None):
 
 
 def _offer(soul, post, room):
-    """Hand the claim job: walk there for real, then take the work."""
+    """Hand the claim job: walk there for real, then take the work.
+    Goal is "claim", NOT "duty" — the shift-release logic clears duty
+    jobs outside work hours, which ate every after-hours job offer
+    (you take the job tonight; you start in the morning)."""
     soul.db.soul_job = {
-        "goal": "duty", "band": 2, "at": 0,
+        "goal": "claim", "band": 2, "at": 0,
         "steps": [
             {"do": "travel", "room": room.id},
             {"do": "claim", "post": post.id},
