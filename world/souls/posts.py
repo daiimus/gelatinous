@@ -72,6 +72,32 @@ def _eligible_candidates(room):
     return [s for _, _, s in out]
 
 
+def snapshot_estate(character) -> bool:
+    """At death, a post-holder's memories become the post's property
+    (reincarnation spec §2): episodic memories, dossiers, and thoughts
+    copied onto the post fixture BEFORE the corpse machinery deletes
+    the body. Taken for EVERY keeper regardless of policy — the estate
+    is kept even if nobody ever pays to restore it (a successor never
+    reads it; a resleave restores it minus the death gap; at worst it
+    is archaeology)."""
+    import time as _time
+
+    from evennia.utils.dbserialize import deserialize
+
+    post = next((p for p in get_posts()
+                 if p.db.post_keeper == character), None)
+    if post is None:
+        return False
+    post.db.post_memory_snapshot = {
+        "name": character.key,
+        "died_at": _time.time(),
+        "memories": deserialize(character.db.llm_memories) or [],
+        "dossiers": deserialize(character.db.llm_dossiers) or {},
+        "thoughts": deserialize(character.db.soul_thoughts) or [],
+    }
+    return True
+
+
 def sweep(now=None):
     """One vacancy pass: stamp newly-vacant posts; run succession on
     posts whose grace has elapsed. One succession per sweep (the
