@@ -16,6 +16,8 @@ from evennia.utils.search import search_tag
 POST_TAG = ("post", "souls")
 SWEEP_EVERY_BEATS = 10
 DEFAULT_DELAY = 6 * 3600          # vacancy grace before succession
+RESLEAVE_PREMIUM = 40             # what the insurer's till pays Maxwell
+RESLEAVE_GAP = 5400               # the last ~90min never made the backup
 
 
 def register_post(fixture, role, schedule="day", wage_rate=0.02,
@@ -72,6 +74,74 @@ def _eligible_candidates(room):
     return [s for _, _, s in out]
 
 
+def _try_resleave(post, room, now) -> bool:
+    """The insurance pays out (spec §P3, owner verdicts 2026-08-19):
+    rebuild the keeper from their blueprint, restore the estate MINUS
+    the death gap (the last ~90 minutes never made the backup — murder
+    stays a mystery), and debit the insurer's till a REAL premium paid
+    to Maxwell. A till that can't afford it keeps earning — a cart can
+    sell noodles toward its own keeper's resurrection."""
+    from evennia.utils.search import search_object
+
+    bp_key = post.db.post_blueprint
+    if not bp_key:
+        return False
+    till = post if post.db.register is not None else post.db.post_insurer
+    if till is None or int(till.db.register or 0) < RESLEAVE_PREMIUM:
+        return False
+    from world.npcs.blueprints import build_npc
+    try:
+        npc = build_npc(bp_key, room)
+    except Exception:  # noqa: BLE001 — a broken blueprint must not loop-spawn
+        return False
+    npc.db.is_npc = True
+    # the premium moves for real: insurer till -> Maxwell's terminal
+    till.db.register = int(till.db.register or 0) - RESLEAVE_PREMIUM
+    provider = next((o for o in search_object("a Thawn-Harrison billing "
+                                              "terminal") if o.pk), None)
+    if provider is not None:
+        provider.db.register = int(provider.db.register or 0) \
+            + RESLEAVE_PREMIUM
+
+    # the estate returns, minus the gap
+    snap = post.db.post_memory_snapshot
+    if snap:
+        died = float(snap.get("died_at") or now)
+        cutoff = died - RESLEAVE_GAP
+        npc.db.llm_memories = [
+            r for r in (snap.get("memories") or [])
+            if float(r.get("created", 0) or 0) < cutoff]
+        npc.db.llm_dossiers = dict(snap.get("dossiers") or {})
+        npc.db.soul_thoughts = [
+            t for t in (snap.get("thoughts") or [])
+            if float(t[0]) < cutoff]
+
+    # a life again: housing through the real kiosk, then the soul
+    try:
+        from world import rental
+        kiosk = next(iter(search_object("#5640")), None)
+        if kiosk is not None:
+            rental.assign_cube(npc, kiosk)
+        home = rental.residence_of(npc)
+    except Exception:  # noqa: BLE001 — homeless but alive beats neither
+        home = None
+    from world.souls import engine
+    engine.ensoul(npc, role=post.db.post_role or "worker", home=home,
+                  post=room, schedule=post.db.post_schedule or "day",
+                  wage_rate=float(post.db.post_wage_rate or 0.02),
+                  venue=post if post.db.register is not None else None)
+    from world.souls import thoughts as thoughts_mod
+    thoughts_mod.add_thought(
+        npc, "resleeved", -0.50,
+        "woke in a new sleeve; the last hours before the dark are "
+        "simply gone")
+    post.db.post_keeper = npc
+    post.db.post_vacant_since = None
+    npc.execute_cmd("emote is back at the post, moving like the week "
+                    "never happened.")
+    return True
+
+
 def snapshot_estate(character) -> bool:
     """At death, a post-holder's memories become the post's property
     (reincarnation spec §2): episodic memories, dossiers, and thoughts
@@ -115,8 +185,6 @@ def sweep(now=None):
         if vacant_since is None:
             post.db.post_vacant_since = now         # newly dark
             continue
-        if post.db.post_policy != "successor":
-            continue
         if now - float(vacant_since) < int(post.db.post_delay
                                            or DEFAULT_DELAY):
             continue
@@ -124,6 +192,13 @@ def sweep(now=None):
         if any(_in_combat(o) for o in room.contents
                if hasattr(o, "ndb")):
             continue                                # never over a fight
+        policy = post.db.post_policy
+        if policy == "resleave":
+            if _try_resleave(post, room, now):
+                return                              # one per sweep
+            continue        # can't afford yet: the till keeps earning
+        if policy != "successor":
+            continue
         candidates = _eligible_candidates(room)
         if not candidates:
             continue                                # vacancy is content
