@@ -514,7 +514,12 @@ class CmdAdvance(Command):
     close the distance or fail to enter the room effectively.
     """
     key = "advance"
-    aliases = ["engage", "close"]
+    # NO "close" alias: any name overlap makes Evennia treat two commands
+    # as the same merge slot, and the doors' `close` (added later in the
+    # character cmdset) silently REPLACED this entire command — key and
+    # all — from the day the door system shipped (#1109). "close a door"
+    # owns the word; combat advances or engages.
+    aliases = ["engage"]
     locks = "cmd:all()"
     help_category = "Combat"
 
