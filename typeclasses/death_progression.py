@@ -480,6 +480,16 @@ class DeathProgressionScript(DefaultScript):
         This separates the dead character object from the corpse object for investigation.
         """
         try:
+            # 0. The estate: a post-holder's memories become the post's
+            # property before the body is deleted (souls resleave §P3 —
+            # snapshot always; whether anyone pays to restore it is the
+            # policy's business, later).
+            try:
+                from world.souls.posts import snapshot_estate
+                snapshot_estate(character)
+            except Exception:  # noqa: BLE001 — the estate never blocks death
+                pass
+
             # 1. Create corpse object with forensic data
             corpse = self._create_corpse_from_character(character)
             
