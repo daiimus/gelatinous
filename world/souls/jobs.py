@@ -284,7 +284,7 @@ def step_job(soul):
                 post.db.post_keeper.location == room:
             fault(soul, "someone already holds this post")
             return False
-        posts_mod.do_claim(soul, post)
+        posts_mod.do_claim(soul, post, step.get("shift", "day"))
         soul.execute_cmd("pose steps in behind the post, taking stock "
                          "of the work left undone.")
         soul.db.soul_job = None

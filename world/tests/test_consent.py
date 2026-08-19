@@ -300,7 +300,7 @@ class TestFriskGate(TestCase):
     def _target(self, **kwargs):
         t = _char(**kwargs)
         t.contents = []
-        t.db.tokens = None
+        t.tokens = None
         t.typeclass_path = "typeclasses.characters.Character"
         t.__class__.__name__ = "MagicMock"
         return t
@@ -362,7 +362,7 @@ class TestFriskManifest(TestCase):
         target.contents = [jacket, shiv, pack]
         target.get_worn_items = lambda: [jacket]
         target.hands = {"left": shiv, "right": None}
-        target.db.tokens = 240
+        target.tokens = 240
         out = self._run(target)
         self.assertIn("a cropped jacket", out)
         self.assertIn("(worn)", out)
@@ -377,7 +377,7 @@ class TestFriskManifest(TestCase):
         target.contents = [crowbar]
         target.get_worn_items = lambda: []
         target.hands = {"left": crowbar, "right": crowbar}
-        target.db.tokens = None
+        target.tokens = None
         out = self._run(target)
         self.assertEqual(out.count("a crowbar"), 1)
 
@@ -386,6 +386,6 @@ class TestFriskManifest(TestCase):
         target.contents = []
         target.get_worn_items = lambda: []
         target.hands = {}
-        target.db.tokens = 120
+        target.tokens = 120
         out = self._run(target)
         self.assertIn("120 tokens", out)

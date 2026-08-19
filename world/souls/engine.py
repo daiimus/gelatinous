@@ -28,12 +28,20 @@ WARM_RADIUS = 5                      # Chebyshev cells to a player = warm
 THINK_EVERY = {"hot": 1, "warm": 2, "cold": 6}
 TITHE_EVERY_BEATS = 120              # supply tithe sweep: hourly
 
-#: shift blocks by colony hour, [start, end) with midnight wraparound.
+#: The colony's tripartite clock (owner rulings 2026-08-20: venues are
+#: 24/7 for a global playerbase; shifts are EIGHT hours — twelve is
+#: excessive). Three shifts tile the day; the people change, the
+#: counter never closes. [start, end) with midnight wraparound.
 SCHEDULES = {
-    "day": {"work": (9, 17), "sleep": (0, 7)},
-    "night": {"work": (21, 5), "sleep": (9, 16)},
-    "vendor": {"work": (10, 22), "sleep": (1, 8)},
+    "day": {"work": (6, 14), "sleep": (21, 5)},
+    "swing": {"work": (14, 22), "sleep": (4, 12)},
+    "night": {"work": (22, 6), "sleep": (13, 21)},
+    # legacy keys — souls migrated by build 078; kept so an unmigrated
+    # soul keeps a sane clock rather than KeyErroring the beat
+    "vendor": {"work": (14, 22), "sleep": (4, 12)},
 }
+
+SHIFTS = ("day", "swing", "night")
 
 GOAL_COOLDOWN_SECONDS = 900   # a failed goal rests before it's retried
 WAGE_FLUSH_BEATS = 10         # ndb wage accrual checkpoints to db (5 min)
