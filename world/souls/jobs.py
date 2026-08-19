@@ -148,15 +148,16 @@ def step_job(soul):
         return True
 
     if do == "grapple":
-        from world.consent import is_restrained
+        from world.consent import can_contest
         from world.director.security import _target_token
         mark = _obj(step["mark"])
         if mark is None or mark.location != soul.location:
             fault(soul, "the mark slipped away")
             return False
-        if not is_restrained(mark):
+        if can_contest(mark):
             soul.execute_cmd(f"grapple {_target_token(mark)}")
-        if is_restrained(mark):
+        if not can_contest(mark):
+            # held OR beaten down — either way the pockets are open
             job["at"] = at + 1
             soul.db.soul_job = job
         # a failed contest means a FIGHT owns the mugger now — the job
@@ -164,14 +165,15 @@ def step_job(soul):
         return True
 
     if do == "rob":
-        from world.consent import is_restrained
+        from world.consent import can_contest
         from world.director.security import _target_token
         from world.souls import thoughts
         mark = _obj(step["mark"])
         if mark is None or mark.location != soul.location:
             fault(soul, "the mark got away mid-rob")
             return False
-        if not is_restrained(mark):
+        if can_contest(mark):
+            # neither held nor down — the free-loot window closed
             fault(soul, "the mark broke free before the take")
             return False
         before = int(soul.tokens or 0)
