@@ -128,11 +128,10 @@ def do_claim(soul, post):
     soul.db.soul_role = post.db.post_role or "worker"
     soul.db.soul_schedule = post.db.post_schedule or "day"
     soul.db.soul_wage_rate = float(post.db.post_wage_rate or 0.02)
-    # only a real counter (a till-bearer) pays wages from itself; any
-    # other fixture is a treasury post — binding a till-less venue
-    # would silently never pay
-    from typeclasses.shopkeeper import ShopContainer
-    soul.db.soul_venue = post if isinstance(post, ShopContainer) else None
+    # any till-bearer pays wages from itself (the check is "has a
+    # register", not "is a shop" — the clinic's billing terminal is a
+    # plain fixture with a till); till-less fixtures are treasury posts
+    soul.db.soul_venue = post if post.db.register is not None else None
     post.db.post_keeper = soul
     post.db.post_vacant_since = None
     thoughts.add_thought(soul, "new_job", 0.30,
