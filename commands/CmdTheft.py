@@ -19,6 +19,18 @@ from world.stealth import (
 )
 
 
+def _resolve_mark(caller, query):
+    """Identity-aware mark resolution: a thief targets what they
+    PERCEIVE ("pickpocket squat vendor"), exactly like combat targeting
+    — `caller.search` only matched real keys, which strangers don't
+    know. Falls back to a plain search for recognized-name/key input."""
+    from commands._identity_targeting import resolve_character_target
+    target = resolve_character_target(caller, query, allow_self=True)
+    if target is not None:
+        return target
+    return caller.search(query)
+
+
 def _stealable_inventory(target):
     """Carried items only — not worn, not held. What a pickpocket's fingers
     can reach without a struggle."""
@@ -97,7 +109,7 @@ class CmdSteal(Command):
         if not self.target_name:
             caller.msg("Steal from whom?")
             return
-        target = caller.search(self.target_name)
+        target = _resolve_mark(caller, self.target_name)
         if not target:
             return
         if target is caller:
@@ -171,7 +183,7 @@ class CmdPickpocket(Command):
         if not self.args:
             caller.msg("Pickpocket whom?")
             return
-        target = caller.search(self.args.strip())
+        target = _resolve_mark(caller, self.args.strip())
         if not target:
             return
         if target is caller:
