@@ -62,7 +62,9 @@ else:
         terminal.db.post_vacant_since = 1.0     # grace served: hire now
     OUT.append("medic post registered (vacant, grace served)")
 
+    from world.souls import needs as needs_mod
     if not any(s.db.soul_post is None and not s.db.soul_lawless
+               and needs_mod.profile_name(s) != "robot"
                for s in engine.get_souls() if s.pk):
         kiosk = next(iter(search_object("#5640")), None)
         lobby = next((r for r in search_object("The Brackett Arms - Lobby")
