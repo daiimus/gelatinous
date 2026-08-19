@@ -34,6 +34,7 @@ ROLE_RESPONDS_TO: dict[str, tuple[str, ...]] = {
     "disturbance": ("security",),
     "crime": ("security",),
     "fire": ("security",),
+    "medical": ("medic",),      # the rescue loop (souls spec §14)
 }
 
 
@@ -118,6 +119,7 @@ _EVENT_PHRASES = {
     "pickpocketing": "a reported theft",
     "vandalism": "vandalism in progress",
     "crime": "a reported incident",
+    "medical": "a colonist down",
 }
 
 
