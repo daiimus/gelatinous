@@ -94,7 +94,14 @@ def _eligible_candidates(room):
     for soul in engine.get_souls():
         if not soul.pk or soul.location is None:
             continue
-        if soul.db.soul_post is not None or soul.db.soul_job:
+        if soul.db.soul_post is not None:
+            continue
+        # leisure never blocks a job offer — a soul out socializing or
+        # idling takes the call (only survival-band work is sacred);
+        # the old any-job exclusion left the unemployed perpetually
+        # "busy" at the bar while twenty shifts went begging
+        goal = (soul.db.soul_job or {}).get("goal")
+        if goal in ("hunger", "safety", "claim", "treat"):
             continue
         if needs_mod.profile_name(soul) == "robot":
             continue
