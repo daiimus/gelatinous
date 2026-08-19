@@ -211,6 +211,59 @@ def step_job(soul):
         soul.db.soul_job = None
         return False
 
+    if do == "treat":
+        # Maxwell's model (spec §14): the doctor treats through real
+        # verbs and bottomless clinic stock; healing is BILLED into the
+        # clinic till, but active bleeding is triaged free — nobody
+        # dies on the doorstep, the broke just limp off unhealed.
+        import time as _time
+
+        from typeclasses.clinic import Doctor
+        from world.souls import needs as needs_mod
+        from world.souls import thoughts
+
+        TREAT_FEE = 8
+        terminal = _obj(step["clinic"])
+        if terminal is None or terminal.location != soul.location:
+            fault(soul, "the clinic desk is gone")
+            return False
+        doctor = next((o for o in soul.location.contents
+                       if isinstance(o, Doctor) and o.pk), None)
+        if doctor is None:
+            fault(soul, "no doctor on the floor")
+            return False
+        bleeding = any(
+            "bleed" in str((c.get("type") if isinstance(c, dict) else c)
+                           or "").lower()
+            for c in ((soul.db.medical_state or {}).get("conditions") or []))
+        paid = False
+        if int(soul.tokens or 0) >= TREAT_FEE:
+            soul.tokens = int(soul.tokens or 0) - TREAT_FEE
+            terminal.db.register = int(terminal.db.register or 0) + TREAT_FEE
+            paid = True
+        elif not bleeding:
+            fault(soul, "couldn't afford the doctor")
+            thoughts.add_thought(soul, "turned_away", -0.30,
+                                 "too broke for the clinic; walked out "
+                                 "still hurting")
+            return False
+        doctor._treat(soul, "bandage")
+        if paid:
+            doctor._treat(soul, "painkiller")
+            thoughts.add_thought(soul, "patched_up", 0.20,
+                                 "paid the clinic and got put back together")
+        else:
+            thoughts.add_thought(soul, "triaged", 0.05,
+                                 "the clinic stopped the bleeding and "
+                                 "showed me the door")
+        # one visit per cooldown window — healing lands over the medical
+        # ticks, and pressure derives from the body, not a meter
+        cooldowns = dict(soul.db.soul_goal_cooldown or {})
+        cooldowns["health"] = _time.time() + 1800
+        soul.db.soul_goal_cooldown = cooldowns
+        soul.db.soul_job = None
+        return False
+
     if do == "claim":
         from world.souls import posts as posts_mod
         post = _obj(step["post"])

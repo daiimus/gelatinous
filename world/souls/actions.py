@@ -183,6 +183,17 @@ def plan_for(soul, goal_need):
             ], "at": 0}
         return None
 
+    if shape == "clinic":
+        # the walking wounded self-deliver (spec §14 layer 1): travel to
+        # a treatment advertiser and see the doctor. Billing happens in
+        # the treat step — triage for the dying is free, healing costs.
+        for score, fixture, room in _advertisers(soul, "treatment"):
+            return {"goal": goal_need, "steps": [
+                {"do": "travel", "room": room.id},
+                {"do": "treat", "clinic": fixture.id},
+            ], "at": 0}
+        return None
+
     if shape == "dwell_venue":
         # generic dwell need (charge, maintenance): occupy the best
         # advertiser until the meter recovers (spec §12)
