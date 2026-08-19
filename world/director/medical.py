@@ -82,11 +82,17 @@ def report_medical(location: Any, casualty: Any = None) -> bool:
 
 
 def notice_casualty(soul: Any, room: Any) -> None:
-    """A soul thinking in a room with a downed body raises the alarm
-    (souls engine calls this per think — debounce keeps it cheap and
-    the thought only lands when a report actually went up)."""
+    """A soul thinking in a room with a downed body acts on it: a MEDIC
+    treats it on the spot — nobody radios dispatch about the body at
+    their own feet — anyone else raises the alarm through the
+    witnessed-radio law (debounced; the thought only lands when a
+    report actually went up)."""
     casualty = find_casualty(room, exclude=soul)
     if casualty is None:
+        return
+    if getattr(soul.db, "soul_role", None) == "medic" \
+            or getattr(soul.db, "role", None) == "medic":
+        treat_casualty(soul, casualty)
         return
     if report_medical(room, casualty):
         try:
@@ -134,21 +140,23 @@ def restock_medic(npc: Any) -> int:
     return drawn
 
 
-def medic_arrival(npc: Any, assignment: Any) -> None:
-    """On-scene behavior for ``role == "medic"``: find the casualty and
-    spend real supplies through the real verbs. Tourniquet stops the
-    bleed, gauze dresses the wounds — whatever's in the pockets."""
-    from world.director.assignment import resolve
+def treat_casualty(npc: Any, casualty: Any) -> int:
+    """Kneel and work: spend real carried supplies through the real
+    apply verb. Tourniquet stops the bleed, gauze dresses the wounds —
+    whatever's in the pockets. Returns supplies used. Debounced per
+    casualty so one patient isn't gauze-bombed every think."""
+    import time as _time
+
     from world.director.security import _target_token
+
+    last = getattr(npc.ndb, "last_treated", None) or {}
+    if _time.time() - last.get(casualty.id, 0) < 300:
+        return 0
+    last[casualty.id] = _time.time()
+    npc.ndb.last_treated = last
 
     npc.execute_cmd("emote drops to a knee beside the casualty, hands "
                     "already moving.")
-    casualty = find_casualty(npc.location, exclude=npc)
-    if casualty is None:
-        npc.execute_cmd("emote scans the scene, finds nobody down, and "
-                        "straightens up slowly.")
-        resolve(npc)
-        return
     token = _target_token(casualty)
     used = 0
     if _is_bleeding(casualty):
@@ -169,6 +177,20 @@ def medic_arrival(npc: Any, assignment: Any) -> None:
                              + ("" if used else " with empty pockets"))
     except Exception:  # noqa: BLE001
         pass
+    return used
+
+
+def medic_arrival(npc: Any, assignment: Any) -> None:
+    """On-scene behavior for ``role == "medic"``: find the casualty and
+    treat them; stand down if nobody's there."""
+    from world.director.assignment import resolve
+
+    casualty = find_casualty(npc.location, exclude=npc)
+    if casualty is None:
+        npc.execute_cmd("emote scans the scene, finds nobody down, and "
+                        "straightens up slowly.")
+    else:
+        treat_casualty(npc, casualty)
     resolve(npc)
 
 
