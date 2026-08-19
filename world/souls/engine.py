@@ -333,6 +333,19 @@ class SoulsHeartbeat(DefaultScript):
                 posts_mod.sweep(now)
             except Exception:   # noqa: BLE001 — a bad post can't kill beats
                 pass
+        # the population keeper (spec §14): the colony breathes people —
+        # arrivals rate-limited inside, disposition scaled by poverty
+        if beat % 120 == 41:
+            try:
+                from world.souls import population
+                arrival = population.sweep(self, now)
+                if arrival is not None:
+                    from evennia.utils import logger
+                    logger.log_info(
+                        f"Population keeper: {arrival.key} arrived "
+                        f"({'desperate' if arrival.db.soul_lawless else 'seeker'}).")
+            except Exception:   # noqa: BLE001 — arrivals can't kill beats
+                pass
 
     def _beat_soul(self, soul, beat, hour_f, player_rooms, player_coords,
                    now):
