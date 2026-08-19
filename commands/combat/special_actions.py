@@ -131,6 +131,21 @@ class CmdGrapple(Command):
             log_combat_action(caller, "grapple_join", target, details="attempting to grapple (adding target to combat)")
             handler.add_combatant(target)
         
+        # Grabbing someone IS assault — same witness/report/dispatch
+        # chain as a swung fist (owner verdict 2026-08-19: public crime
+        # gets caught; unwitnessed rooms stay silent inside report_crime's
+        # own witness roll). Debounced per scene; never breaks combat.
+        try:
+            from world.director.crime import report_crime
+            report_crime("assault", caller.location, perp=caller)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from world.director.civilians import react_to_attack
+            react_to_attack(target, caller)
+        except Exception:  # noqa: BLE001
+            pass
+
         # --- Now retrieve combat entries; they should exist ---
         caller_combat_entry = next((e for e in handler.db.combatants if e["char"] == caller), None)
         target_combat_entry = next((e for e in handler.db.combatants if e["char"] == target), None)
