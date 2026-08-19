@@ -251,7 +251,15 @@ class Doctor(LLMNpcMixin, Character):
 
     def _draw_supply(self, proto_key):
         """Spawn a clinic supply item into the doctor's hands (bottomless stock).
-        Returns the item or ``None`` on any failure."""
+        Returns the item or ``None`` on any failure.
+
+        Anchored = bottomless, field = finite (souls spec §14): the
+        bottomless draw only works AT the clinic — an ensouled doctor
+        met off-post at a bar treats with whatever's actually in their
+        pockets, like anyone else."""
+        post = getattr(self.db, "soul_post", None)
+        if post is not None and self.location != post:
+            return None
         try:
             from evennia.prototypes.spawner import spawn
             from world import prototypes
