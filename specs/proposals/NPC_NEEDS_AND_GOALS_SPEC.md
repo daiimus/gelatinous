@@ -408,3 +408,51 @@ the crime/witness chain (Bob's bad night end-to-end), transgressive
 action libraries and disposition gates, mood modulating utility, and
 the blueprint-rebuild policies (`resleave`, generator fallback) from
 the reincarnation spec's own ladder.
+
+## 14 · The rescue loop & the health economy (P4b counterweights)
+
+Owner-ruled 2026-08-19: lethality is not a dial — it is weapon and
+damage, emergent. What was missing when four souls bled out unopposed
+was the COUNTERWEIGHT: a downed, bleeding body should be a race, not a
+certainty. Three layers, cheapest first, each shippable alone:
+
+**Layer 1 — the health drive (the walking wounded self-deliver).**
+A `health` need on human/synth profiles whose pressure is DERIVED from
+the medical state already stored (bleeding, conditions, organ damage —
+zero writes, the purest compute-on-read need). The Maxwell clinic
+advertises `treatment`; a conscious wounded soul walks in like a
+hungry one walks to a counter.
+
+**The Maxwell model (owner verdict): triage is free, healing is
+billed.** The clinic will always stop fatal bleeding, catch the dying,
+and run the existing resleeve pipeline — nobody dies on the doorstep.
+Restorative treatment costs tokens, paid into Maxwell's own till
+(tagged, tithed, wage-paying — the closed loop's health sector). The
+`treat` job step: doctor present (keeper rule), fee affordable → pay,
+and the DOCTOR treats through the real verbs (bandage/wound care,
+doctor-driven `execute_cmd` — messaging and two-brain law intact);
+broke → free triage only if actively dying, else the soul limps off
+faulted. THE POOR CARRY THEIR BEATINGS — survival is the floor,
+wholeness is a purchase.
+
+**Layer 2 — the field medic (the race).** A generated soul hired into
+a `medic` post at Maxwell through the SUCCESSION machinery (the post
+starts vacant; the watcher staffs it). Response mirrors dispatch: a
+witness of a downed body fires a debounced `medical` report on the
+real 911 band; the medic's assignment (assignment > souls, the
+precedence law) travels them to the scene; stabilization happens
+through the same real verbs, in the field, against the bleed clock.
+Distance and witnesses decide outcomes: a back-alley stabbing dies, a
+market-street one probably lives. Geography is survival odds.
+
+**Layer 3 — transport (the carry).** Dragging is already emergent from
+grapple + movement (owner's standing design), and an unconscious body
+cannot contest the hold. A secbot — or the medic — grapples and walks
+the stabilized casualty to Maxwell, where the stationary doctors and
+the AutoDoc take over. The constabulary is also the ambulance service;
+a stranded colony does not get to specialize.
+
+Alongside (same verdict set): labor AUTO-SEEDS (the colony keeps a
+small unemployed pool, rate-limited, so vacancies re-staff), and
+lawless generation SCALES WITH POVERTY (the broke fraction of the
+population is the crime dial — the economy itself governs predation).
