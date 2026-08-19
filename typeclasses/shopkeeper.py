@@ -144,16 +144,19 @@ class ShopContainer(DefaultObject):
                 - (True, item_obj) on success
                 - (False, error_message) on failure
         """
-        # A counter bound to a post only sells while its keeper is minding
-        # it — a dead or absent shopkeeper closes the shop (the community
-        # feels the vacancy). Counters with no keeper binding vend freely:
-        # that IS the vending-machine tier.
-        keeper = self.db.post_keeper
-        if keeper is not None and not (
-                keeper.pk and keeper.location == self.location):
-            return False, (self.db.post_closed_msg
-                           or "Nobody's minding the counter. No coin changes "
-                              "hands here until somebody's back behind it.")
+        # A counter bound to a post only sells while a keeper is minding
+        # it — 24/7 venues staff shifts (souls posts), so the question is
+        # "is ANYONE'S shift-holder standing here", not "is THE keeper".
+        # An unstaffed slot reads as a tired counter, not a closed shop —
+        # unless every slot is dark. Counters with no binding vend
+        # freely: that IS the vending-machine tier.
+        if self.db.post_slots or self.db.post_keeper is not None:
+            from world.souls.posts import any_keeper_present
+            if not any_keeper_present(self):
+                return False, (self.db.post_closed_msg
+                               or "Nobody's minding the counter. No coin "
+                                  "changes hands here until somebody's "
+                                  "back behind it.")
 
         # Check if item exists in shop
         if prototype_key not in self.db.prototype_inventory:
