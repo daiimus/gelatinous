@@ -147,6 +147,57 @@ def step_job(soul):
             return False
         return True
 
+    if do == "grapple":
+        from world.consent import is_restrained
+        from world.director.security import _target_token
+        mark = _obj(step["mark"])
+        if mark is None or mark.location != soul.location:
+            fault(soul, "the mark slipped away")
+            return False
+        if not is_restrained(mark):
+            soul.execute_cmd(f"grapple {_target_token(mark)}")
+        if is_restrained(mark):
+            job["at"] = at + 1
+            soul.db.soul_job = job
+        # a failed contest means a FIGHT owns the mugger now — the job
+        # holds this step and retries when combat releases the body
+        return True
+
+    if do == "rob":
+        from world.consent import is_restrained
+        from world.director.security import _target_token
+        from world.souls import thoughts
+        mark = _obj(step["mark"])
+        if mark is None or mark.location != soul.location:
+            fault(soul, "the mark got away mid-rob")
+            return False
+        if not is_restrained(mark):
+            fault(soul, "the mark broke free before the take")
+            return False
+        before = int(soul.tokens or 0)
+        soul.execute_cmd(f"pickpocket {_target_token(mark)}")
+        step["took"] = step.get("took", 0) + max(
+            0, int(soul.tokens or 0) - before)
+        step["lifts"] = step.get("lifts", 2) - 1
+        if step["lifts"] <= 0 or step["took"] >= 5 \
+                or int(getattr(mark, "tokens", 0) or 0) <= 0:
+            where = soul.location.key if soul.location else "the street"
+            thoughts.add_thought(
+                soul, "mugged_someone", -0.20,
+                f"took {step['took']} tokens off someone at {where}")
+            thoughts.add_thought(
+                mark, "was_mugged", -0.45,
+                f"held down and robbed at {where}")
+            job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
+    if do == "disengage":
+        soul.execute_cmd("release")
+        soul.execute_cmd("flee")
+        soul.db.soul_job = None
+        return False
+
     if do == "claim":
         from world.souls import posts as posts_mod
         post = _obj(step["post"])

@@ -197,8 +197,23 @@ def think(soul, hour):
     from world.director.assignment import is_assigned
     from world.director.security import _in_combat
     from world.director.travel import is_travelling
-    if _in_combat(soul) or is_assigned(soul):
+    if is_assigned(soul):
         return          # precedence law: combat > assignment > souls
+    if _in_combat(soul):
+        # combat owns the body — EXCEPT the crime steps, which are
+        # designed to run inside it (a grappler auto-yields; the rob
+        # happens while the combat round loop holds the restraint). The
+        # moment the mark breaks free the step faults and the fight
+        # takes over for real.
+        job = soul.db.soul_job
+        step_do = None
+        if job:
+            steps = job.get("steps") or []
+            at = job.get("at", 0)
+            step_do = steps[at].get("do") if at < len(steps) else None
+        if step_do in ("grapple", "rob", "disengage"):
+            jobs.step_job(soul)
+        return
 
     job = soul.db.soul_job
     sched = SCHEDULES[soul.db.soul_schedule or "day"]
