@@ -889,7 +889,8 @@ def few_shot_messages(persona: dict) -> list:
 def build_messages(persona: dict, speaker: str, line: str, mode: str,
                    perception: str = None, history: list = None,
                    memories: list = None, relationship: str = None,
-                   events: list = None, present: list = None) -> list:
+                   events: list = None, present: list = None,
+                   state: str = None) -> list:
     """Build the OpenAI ``messages``: system (charter+tools+persona) + few-shot +
     recent history + the grounded turn. The caller passes ``schema_for(persona)``
     to the backend to constrain the output to this archetype's tools.
@@ -934,6 +935,10 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     # An UPPERCASE label + em-dash gives the same structural boundary without
     # a token pattern the model will reproduce in prose.
     who = f"WHO — {relationship}\n\n" if relationship else ""
+    # STATE (souls §11): the mood the deterministic engine produced, for
+    # the voice to NARRATE — never to decide with (the two-brain law).
+    feel = f"STATE — {state}\n\n" if state else ""
+    who = feel + who
     seen = ""
     if events:
         seen = ("RECENTLY — what you've just seen happen around you (it colours "

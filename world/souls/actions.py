@@ -143,7 +143,14 @@ def plan_for(soul, goal_need):
         # soul that cannot afford to eat turns predator — grapple, lift
         # a cut of the mark's tokens, disengage. Lawful souls simply
         # fault here and stay hungry; that difference IS the gate.
+        # MOOD makes the gate dynamic (P4b): a bright stretch keeps
+        # hands honest one more day — and the resulting went_hungry
+        # thoughts darken the mood that eventually opens the knife.
+        # Misery is the mechanism, not a modifier.
         if soul.db.soul_lawless:
+            from world.souls import thoughts as thoughts_mod
+            if thoughts_mod.mood(soul) >= 0.25:
+                return None        # not today; hunger will change that
             mark = _find_mark(soul)
             if mark is not None:
                 return {"goal": "hunger", "steps": [
