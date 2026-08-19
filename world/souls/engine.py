@@ -215,6 +215,15 @@ def think(soul, hour):
             jobs.step_job(soul)
         return
 
+    # discovery (spec §14): every thinking soul scans its room for a
+    # downed body and raises the alarm through the same witnessed-radio
+    # law as crime — debounced inside, one cheap scan per think
+    try:
+        from world.director.medical import notice_casualty
+        notice_casualty(soul, soul.location)
+    except Exception:  # noqa: BLE001 — mercy must not break the beat
+        pass
+
     job = soul.db.soul_job
     sched = SCHEDULES[soul.db.soul_schedule or "day"]
 

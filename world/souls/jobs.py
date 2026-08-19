@@ -293,6 +293,12 @@ def step_job(soul):
             return False
         # holding the post IS the work; wages accrue per heartbeat in the
         # engine (LOD-independent) and the schedule releases the job
+        if soul.db.soul_role == "medic":
+            try:
+                from world.director.medical import restock_medic
+                restock_medic(soul)   # par-level loose supplies at post
+            except Exception:  # noqa: BLE001 — restock is best-effort
+                pass
         return True
 
     if do == "linger":
