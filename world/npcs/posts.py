@@ -94,6 +94,13 @@ def _sweep_post(blueprint_key, bp, post, now):
     fixture = _resolve(post["fixture"])
     if not fixture or not fixture.location:
         return
+    # Partition (reconciliation 2.3): a fixture registered with the
+    # SOULS post system is owned by its watcher — a living resident
+    # claims it or the resleave policy pays out. Racing this sweep
+    # against that one on a different clock seats a stranger and a
+    # neighbor at the same counter.
+    if fixture.tags.get("post", category="souls"):
+        return
     room = fixture.location
 
     if _keeper_present(fixture):

@@ -83,22 +83,34 @@ def _edible_wares(counter):
 
 
 def _find_mark(soul, min_tokens=3, radius=30):
-    """The predator's eye (spec §3.5): the nearest fellow soul visibly
-    worth robbing. NPC-only by owner verdict (players are never marks
-    in the pilot); robots and security carry nothing worth the shock
-    baton."""
+    """The predator's eye (spec §3.5): the nearest NPC visibly worth
+    robbing — souls AND the director's ambient civilians, whose fat
+    100-500 token pockets were invisible to `get_souls()`-only
+    iteration (reconciliation finding 2.1: predation looped among the
+    destitute while the richest wallets in the game stood unmuggable).
+    NPC-only by owner verdict (players are never marks in the pilot);
+    robots and security carry nothing worth the shock baton."""
+    from evennia.utils.search import search_tag
+
     from world.souls import engine
     from world.souls import needs as needs_mod
 
     origin = get_xyz(soul.location) if soul.location else None
+    candidates = list(engine.get_souls())
+    try:
+        candidates += [c for c in search_tag("civilian", category="director")
+                       if c]
+    except Exception:  # noqa: BLE001 — no ambient layer, souls suffice
+        pass
     best = None
-    for mark in engine.get_souls():
+    for mark in candidates:
         if mark == soul or not mark.pk or mark.location is None:
             continue
         if not mark.db.is_npc:
             continue
         if needs_mod.profile_name(mark) == "robot" \
-                or mark.db.soul_role == "secunit":
+                or mark.db.soul_role == "secunit" \
+                or getattr(mark.db, "role", None) == "security":
             continue
         if int(getattr(mark, "tokens", 0) or 0) < min_tokens:
             continue
