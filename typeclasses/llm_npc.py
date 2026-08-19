@@ -541,7 +541,11 @@ class LLMNpcMixin:
 
     @staticmethod
     def _hist_key(patron):
-        return f"#{patron.id}"
+        # patron is None on ambient/cue turns (the Rook's station-clock
+        # lines have no interlocutor) — those turns key to a shared
+        # "ambient" history rather than crashing memory storage, which
+        # was the mystery NoneType that ticked in the log for weeks
+        return f"#{patron.id}" if patron is not None else "#ambient"
 
     def _recent_history(self, patron):
         """The recent turns with this interlocutor — fed back into the prompt so
