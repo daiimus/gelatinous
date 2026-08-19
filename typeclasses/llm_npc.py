@@ -495,9 +495,12 @@ class LLMNpcMixin:
         request_embedding(text, on_done=_save, on_fail=self._llm_silent)
 
     def _soul_state_line(self):
-        """One line of self-state for ensouled NPCs: the mood the souls
-        engine produced, for the voice to NARRATE — never to decide with
-        (the two-brain law, souls spec §11). None for unsouled NPCs."""
+        """Self-state for ensouled NPCs: WHERE the body is and what it's
+        doing, plus the mood the souls engine produced — for the voice
+        to NARRATE, never to decide with (the two-brain law, §11). The
+        voice follows the body: a vendor met off-shift at the bathhouse
+        must not speak as if she were behind her cart. None for
+        unsouled NPCs."""
         try:
             if not self.tags.get("soul", category="npc_role"):
                 return None
@@ -509,8 +512,25 @@ class LLMNpcMixin:
                 "low": "You are worn down and short on patience today.",
                 "grim": "You are at the end of a very bad stretch, and it "
                         "shows.",
-            }.get(band)
-            return feel
+            }.get(band, "")
+            post = self.db.soul_post
+            home = self.db.soul_home
+            goal = (self.db.soul_job or {}).get("goal")
+            here = self.location
+            if post is not None and here == post:
+                where = "You are at your post, on the job."
+            elif home is not None and here == home:
+                where = "You are at home, off duty."
+            elif goal in ("hunger", "social"):
+                where = (f"You are off duty and away from your post, out "
+                         f"at {here.key}." if here else
+                         "You are off duty, out and about.")
+            elif goal is not None:
+                where = "You are out on an errand, mid-task."
+            else:
+                where = (f"You are off duty, away from your post, at "
+                         f"{here.key}." if here else "You are off duty.")
+            return f"{where} {feel}".strip()
         except Exception:  # noqa: BLE001 — a feeling must not break a reply
             return None
 
