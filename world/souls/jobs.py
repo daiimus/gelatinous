@@ -193,8 +193,19 @@ def step_job(soul):
         return True
 
     if do == "disengage":
+        from world.combat.utils import find_character_handler
+        from world.director.security import _target_token
         soul.execute_cmd("release")
         soul.execute_cmd("flee")
+        handler = find_character_handler(soul)
+        if handler is not None:
+            # the getaway failed — the mark's retaliation keeps the fight
+            # alive and a yielding mugger is just a punching bag. The
+            # lethal verdict applies: stop yielding, fight it out, and
+            # let the combat engine decide who walks away.
+            mark = _obj(step.get("mark", 0)) if step.get("mark") else None
+            if mark is not None and mark.location == soul.location:
+                soul.execute_cmd(f"attack {_target_token(mark)}")
         soul.db.soul_job = None
         return False
 
