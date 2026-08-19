@@ -78,9 +78,17 @@ def request_turn(messages, on_turn, on_fail, schema=None):
     def _at_err(failure):
         # Name the failure mode so we can dial the right knob: a *Timeout means
         # the turn ran past LLM_GM_TIMEOUT; a ConnectionError means the sidecar's
-        # down; anything else is a backend bug.
+        # down; anything else is a backend bug. Non-network exceptions get the
+        # full traceback — a bare "NoneType has no attribute" with no stack
+        # hid a mystery caller for weeks.
         exc = getattr(failure, "value", failure)
         logger.log_err(f"LLM backend call failed [{type(exc).__name__}]: {exc}")
+        tb = getattr(failure, "getTraceback", None)
+        if callable(tb) and not isinstance(exc, (TimeoutError, OSError)):
+            try:
+                logger.log_err(tb())
+            except Exception:  # noqa: BLE001 — diagnostics must not throw
+                pass
         on_fail()
 
     run_async(_thread_fn, at_return=_at_return, at_err=_at_err)
