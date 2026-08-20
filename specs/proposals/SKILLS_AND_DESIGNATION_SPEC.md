@@ -1,7 +1,8 @@
 # Skills & the Pre-Planetfall Designation
 
-> **Status:** 📋 **PROPOSAL — skill board RULED FINAL 2026-08-19**
-> (the thirteen ratings, §5; check model §2). Still awaiting red
+> **Status:** 📋 **PROPOSAL — skill board RULED FINAL 2026-08-19,
+> amended same day to FOURTEEN** (Agrotech for Biosystems, Chemistry
+> added, Provisioning for the cooking lane — §5; check model §2). Still awaiting red
 > pen: vessel names (§4, two proposed), department/rank names (§4),
 > named-NPC designations (§9), and per-skill A–Z word lists (with
 > the display layer). Builds on the
@@ -115,7 +116,7 @@ the first — established canon):
 Chief (uncommon) → Officer (rare) → Commander (named characters
 only; the generator never rolls one).
 
-## 5. The thirteen ratings (OWNER-RULED 2026-08-19)
+## 5. The fourteen ratings (OWNER-RULED 2026-08-19)
 
 Broad but meaningful strokes (owner: Firearms, not pistols/rifles/
 SMGs). Names read like manifest ratings and colony industry — and
@@ -132,8 +133,9 @@ deliberately broad so each rating keeps finding new uses (owner:
 | `systems` | Systems | everything done through a machine's interface: decking, consoles, radio & broadcast procedure, electronic locks (Signals folded in — the department keeps its name; departments ≠ skills) | Intellect |
 | `engineering` | Engineering | repair, fabrication, maintenance | Motorics + Intellect |
 | `piloting` | Piloting | vehicles, shuttle ops, heavy mobile machinery (the crane), navigation & survey | Motorics + Intellect |
-| `biosystems` | Biosystems | the towers, fungary, snailery, husbandry — and the queued biology: cisterns, pump/water systems, waste-recycling, the terraform's leavings | Intellect |
-| `foodworks` | Foodworks | butchery, cooking, mixing — the whole loop from carcass to counter, stills and ration-lines included | Motorics |
+| `agrotech` | Agrotech | the towers, fungary, snailery, husbandry — and the queued biology: cisterns, pump/water systems, waste-recycling, the terraform's leavings. (Named over "Biosystems" to keep clear of future Biotech/Cyberware, which the owner places near Medicine — that name space stays reserved.) | Intellect |
+| `chemistry` | Chemistry | compound production — the substances registry's missing supply side: drug synthesis and refinement, reagents, solvents, explosive fillers. Boundary rules: **Medicine administers what Chemistry produces; Demolitions fuses what Chemistry cooks; if you'd serve it at a counter it's Provisioning, if you'd dose it it's Chemistry.** | Intellect |
+| `provisioning` | Provisioning | feeding people at scale: butchery, cooking, mixing, preservation, rationing, potable brewing — carcass to counter. (Broadened + renamed from the culinary niche; "Foodworks" stands as the alternate if Provisioning's logistics smell grates.) | Motorics |
 | `athletics` | Athletics | climbing, the jump edges, parkour ascents | Motorics + Grit |
 | `stealth` | Stealth | moving unseen | Motorics |
 | `subterfuge` | Subterfuge | lifting, locks, forgery-to-come | Motorics + Intellect |
@@ -152,8 +154,8 @@ off-department rating — nobody is only their job):
 | Command | Piloting + Systems |
 | Flight & Orbital Ops | Piloting + Engineering |
 | Engineering & Fabrication | Engineering + Systems |
-| Life Systems | Biosystems + Foodworks |
-| Medical & Cryogenics | Medicine + Biosystems |
+| Life Systems | Agrotech + Provisioning |
+| Medical & Cryogenics | Medicine + Chemistry |
 | Security & Marshal Service | Firearms + Unarmed |
 | Logistics & Stores | Systems + Athletics |
 | Signals & Survey | Systems + Piloting |
