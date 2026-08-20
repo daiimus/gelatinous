@@ -119,6 +119,45 @@ def step_job(soul):
         soul.db.soul_job = job
         return True
 
+    if do == "consume":
+        # the vice run's mouth (#2076): drink/eat the bought ware via
+        # the real verb. The dose resets the addiction clock inside
+        # apply_substance (record_dose) — no engine-side satisfaction.
+        from world.consumables import supports_delivery
+        from world.souls import thoughts
+        verb = step.get("verb", "drink")
+        item = next((o for o in soul.contents
+                     if supports_delivery(o, verb)), None)
+        if item is None:
+            if step.get("sips"):
+                where = (soul.location.key if soul.location
+                         else "the street")
+                thoughts.add_thought(
+                    soul, "took_the_edge_off", 0.10,
+                    f"{step.get('last_item', 'a drink')} at {where}")
+                eased = (step.get("start_p", 1.0)
+                         - needs_mod.pressure(soul, "craving"))
+                if job.get("goal") == "craving" and eased < 0.05:
+                    fault(soul, f"{step.get('last_item', 'the vice')} "
+                                "didn't scratch the itch (ware missing "
+                                "the substance?)")
+                job["at"] = at + 1
+                soul.db.soul_job = job
+                return True
+            fault(soul, f"nothing to {verb} in hand")
+            return False
+        if not step.get("sips"):
+            step["start_p"] = needs_mod.pressure(soul, "craving")
+        step["last_item"] = item.key
+        sips = step.get("sips", 0) + 1
+        if sips > 12:
+            fault(soul, f"{item.key} never finishes (uses_left stuck?)")
+            return False
+        soul.execute_cmd(f"{verb} {item.key.split()[-1]}")
+        step["sips"] = sips
+        soul.db.soul_job = job
+        return True
+
     if do == "graze":
         # eat from a serving fixture via the REAL eat verb (#2074) —
         # same membrane, same limitations as a player in the room.
