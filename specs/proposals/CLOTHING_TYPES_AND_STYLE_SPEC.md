@@ -1,8 +1,9 @@
 # Clothing Types & Style Motifs
 
-> **Status:** 📋 **PROPOSAL — owner review pending.** The type
-> vocabulary (§2), the layer reconciliation (§3), and the style
-> vocabulary (§4) all want the red pen. Builds on the shipped
+> **Status:** 📋 **PROPOSAL — §4 style vocabulary RULED 2026-08-20**
+> (seven keywords, revealing derived, style-states as a tell, brands
+> carrying style). Still wanting the red pen: the type vocabulary
+> (§2) and the layer reconciliation (§3). Builds on the shipped
 > clothing system (coverage/layer/worn_desc, `is_wearable`), the
 > Wardrobe need (#2104/#2106), blueprint wardrobes, and the identity
 > system. Traits (NPC_TRAITS_SPEC) and designation
@@ -84,45 +85,72 @@ layer 0 is spoken for by armour. Three ways out, owner's call:
 Recommendation: **(a)**, done once, with armour separated from cloth —
 they are different problems that have been sharing a number.
 
-## 4. Style motifs (OWNER RED PEN)
+## 4. Style motifs (OWNER-RULED 2026-08-20)
 
 Style is a small keyword set, carried by garments as
 `db.style = ["salvage", "workwear"]` and by characters the same way.
-Drawn from what the colony actually looks like:
+**A garment may carry several** — clothing is versatile, and a
+Longhaul slicker is honestly `workwear` and `sealed` at once.
 
-| Keyword | Register | Reads as |
+| Keyword | Reads as | Where it lives |
 |---|---|---|
 | `salvage` | scavenged, mended, mismatched | the Boot, the scrapyards, Kaspar |
-| `workwear` | branded industrial kit | Longhaul, the crane, the Heat Works |
+| `workwear` | kit you do a job in | Longhaul, the crane, the Heat Works — **and** Greenhaus canvas, aprons, growing and food work |
 | `clinical` | medical and cryogenic whites | Maxwell, Kaspar UC, Thawn-Harrison |
-| `uniform` | the chart's leftovers, service dress | constabulary, dispatch, old ship kit |
-| `lounge` | going-out clothes, neon and shine | Helix, the Rook's listeners |
+| `uniform` | the dead chart's leftovers, service dress | constabulary, dispatch, old ship kit |
+| `shine` | going-out clothes, made to be seen | the Helix, the bars, the Rook's listeners |
 | `street` | everyday colony wear | Pessoa, the Brackett, most residents |
-| `growers` | canvas, aprons, boots, dirt | Greenhaus, the snailery, Lin's cart |
-| `sealed` | weatherproofed, respirators, slickers | the toe breach, outdoors, tox work |
+| `sealed` | weatherproofed, respirators, slickers | the toe breach, the hull-top, tox work |
 
-Rules:
+Rulings folded in:
 
-- A garment may carry **several** style keywords; a character carries
-  **one or two**.
-- **Brands are style carriers** (the branding law): a Longhaul
-  garment is `workwear` by default, a Greenhaus one `growers`.
-  Authoring a brand once gives every item under it a register.
-- Style never gates *wearing* — anyone can put on anything. It only
-  drives **choice**: what a soul buys, and what it puts on first.
+- **`growers` is gone; growing work is `workwear`.** The difference
+  between a Greenhaus apron and a Longhaul coverall is real, but it
+  is carried by the **brand**, not by a second keyword.
+- **Brands carry style** (the branding law earns its keep): a garment
+  takes its brand's style unless it states otherwise, so every future
+  branded item is pre-sorted at authoring time.
+- **`street` is a real style**, not the absence of one — most
+  residents wear it, and it still sorts against `shine` and `uniform`
+  when a soul chooses what to put on.
+- **Parked, deliberately**: a **money** register (no visible wealthy
+  class yet) and **crew colors** (gang/faction identity — WSIS's
+  business when it arrives). Both are good touch points; neither is
+  ready.
+
+### 4.1 Revealing is DERIVED, never declared
+
+"Revealing" is not a keyword. Coverage is already computed, so how
+much skin an outfit leaves is **measurable** — and that makes it
+relative, which is truer than a label: the same halter is revealing
+on one body and unremarkable under a coat.
+
+A character carries a coverage *preference* alongside their modesty
+floor. A Companion has a low floor **and** a preference for the
+minimum above it; a Flinch-Coded shut-in has a high floor and prefers
+more. Nobody is tagged "revealing"; they simply choose that way.
+
+### 4.2 Style-states are a tell
+
+The clothing system already supports per-garment states (rollup /
+unroll, zip / unzip). A character carries a **preferred state**, so
+two souls in identical clothes read differently: sleeves permanently
+shoved back past the elbow (Lin's entire silhouette), a collar up, a
+jacket that is never once zipped. One attribute, applied when
+dressing, and it gives PCs a habit worth mirroring.
 
 ## 5. Where a character's style comes from
 
 - **Essential Personnel**: authored beside their blueprint wardrobe
-  (Sable is `lounge`, Bellows `street`+`salvage`, Vance/Nikolai
-  `clinical`, Lin `growers`). Their existing hand-written wardrobes
+  (Sable is `shine`, Bellows `street`+`salvage`, Nikolai/Marta
+  `clinical`, Lin `workwear`+`street`). Their existing hand-written wardrobes
   stay exactly as they are — style only governs what they acquire
   *later*, so nobody's signature look is regenerated out from under
   them.
 - **Generated residents**: rolled from **department** (the manifest's
-  register — Life Systems leans `growers`, Security `uniform`) and
+  register — Life Systems leans `workwear`, Security `uniform`) and
   nudged by **traits** (Rivet-Tight prefers `salvage`, Open-Valve
-  `lounge`). Personality and past pick your clothes, which is exactly
+  `shine`). Personality and past pick your clothes, which is exactly
   how it works for people.
 - **Players**: unset by default; a future `style` preference could
   feed shop filtering, but nothing is ever forced.
