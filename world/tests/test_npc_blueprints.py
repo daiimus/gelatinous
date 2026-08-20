@@ -10,6 +10,12 @@ from evennia.utils.test_resources import BaseEvenniaTest
 from world.npcs.blueprints import BLUEPRINTS, build_npc, verify_blueprint
 
 
+def _cast():
+    """The real cast — blueprints flagged `fixture` are machinery for
+    drills and pilots, and carry no persona or post by design."""
+    return {k: bp for k, bp in BLUEPRINTS.items() if not bp.get("fixture")}
+
+
 class TestRegistryIntegrity(TestCase):
     """Every blueprint is internally valid BEFORE any build is attempted."""
 
@@ -27,7 +33,7 @@ class TestRegistryIntegrity(TestCase):
 
     def test_personas_have_real_archetypes(self):
         from world.llm.prompt import ARCHETYPES
-        for key, bp in BLUEPRINTS.items():
+        for key, bp in _cast().items():
             arch = (bp.get("persona") or {}).get("archetype")
             self.assertIn(arch, ARCHETYPES, key)
 
@@ -38,12 +44,13 @@ class TestRegistryIntegrity(TestCase):
                 self.assertTrue(g.get("coverage"), f"{key}: {g['key']}")
 
     def test_post_policies_valid(self):
-        for key, bp in BLUEPRINTS.items():
-            self.assertIn(bp["post"]["policy"],
+        for key, bp in _cast().items():
+            self.assertIn((bp.get("post") or {}).get("policy"),
                           (None, "resleave", "successor"), key)
 
     def test_roster_complete(self):
-        self.assertEqual(len(BLUEPRINTS), 11)
+        # the cast, excluding machinery fixtures like the drill dummy
+        self.assertEqual(len(_cast()), 12)
         for expected in ("butcher_ottilie", "bartender_del", "doctor_marta",
                          "companion_vesper", "dispatch_petra",
                          "tobacconist_bellows"):
@@ -60,7 +67,7 @@ class TestBuildRoundTrip(BaseEvenniaTest):
     inside it); restore the game's prototype module for real spawns."""
 
     def test_build_and_verify_all(self):
-        for key in BLUEPRINTS:
+        for key in _cast():
             npc = build_npc(key, self.room1)
             diffs = verify_blueprint(key, npc)
             self.assertEqual(diffs, [], f"{key}: {diffs}")
