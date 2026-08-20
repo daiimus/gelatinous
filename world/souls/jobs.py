@@ -128,21 +128,29 @@ def step_job(soul):
         return True
 
     if do == "dwell":
-        # generic occupy-and-recover (charge, maintenance — spec §12)
+        # generic occupy-and-recover (charge, maintenance, a recluse's
+        # line and airwaves — spec §12). The FIXTURE authors its own
+        # poses (db.dwell_pose_in/out) so the world writes the flavor;
+        # the cradle defaults cover unauthored fixtures.
         need = step.get("need", "charge")
+        fixture = _obj(step["fixture"]) if step.get("fixture") else None
+        pose_in = (getattr(fixture.db, "dwell_pose_in", None)
+                   if fixture else None) or (
+            "settles into the charging cradle, indicators pulsing amber."
+            if need == "charge" else
+            "powers down into a maintenance cycle.")
+        pose_out = (getattr(fixture.db, "dwell_pose_out", None)
+                    if fixture else None) or (
+            "disengages from the cradle, indicators green."
+            if need == "charge" else
+            "spins back up, servos re-seated.")
         if not soul.ndb.soul_dwelling:
             soul.ndb.soul_dwelling = True
-            soul.execute_cmd(
-                "pose settles into the charging cradle, indicators "
-                "pulsing amber." if need == "charge" else
-                "pose powers down into a maintenance cycle.")
+            soul.execute_cmd(f"pose {pose_in}")
         needs_mod.satisfy(soul, need, 0.15)     # per think while dwelling
         if needs_mod.pressure(soul, need) <= 0.10:
             soul.ndb.soul_dwelling = False
-            soul.execute_cmd(
-                "pose disengages from the cradle, indicators green."
-                if need == "charge" else
-                "pose spins back up, servos re-seated.")
+            soul.execute_cmd(f"pose {pose_out}")
             soul.db.soul_job = None
             return False
         return True

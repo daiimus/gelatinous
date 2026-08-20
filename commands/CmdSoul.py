@@ -20,24 +20,77 @@ def _bar(value, width=10):
 
 class CmdSoul(Command):
     """
-    Inspect the souls engine.
+    Inspect the souls engine — one command, three depths.
 
     Usage:
+        @soul           - the colony dashboard (population, employment,
+                          economy, mood)
+        @soul all       - one-line summary of every soul + treasury
         @soul <npc>     - full diagnostic for one soul
-        @soul/all       - one-line summary of every soul + treasury
 
-    Shows need pressures, the arbitrated goal, the running job and its
-    current step, wage state, LOD tier, and recent faults.
+    The individual view shows need pressures, the arbitrated goal, the
+    running job and its current step, wage state, mood and thoughts,
+    LOD tier, and recent faults.
     """
 
     key = "@soul"
     locks = "cmd:perm(Builder)"
     help_category = "Admin"
 
+    def _colony_dashboard(self, caller):
+        """Bare `@soul`: the colony at a glance — population, employment,
+        economy, mood. One command, three depths (bare / all / <npc>)."""
+        from collections import Counter
+
+        from world.souls import economy, engine
+        from world.souls import population as pop_mod
+        from world.souls import thoughts as thoughts_mod
+        from world.souls.posts import get_posts
+
+        souls = [s for s in engine.get_souls() if s.pk]
+        manned = opened = 0
+        venue_lines = []
+        till_total = 0
+        for post in get_posts():
+            slots = post.db.post_slots or {}
+            m = [sh for sh, sl in slots.items()
+                 if sl.get("keeper") and sl["keeper"].pk]
+            o = [sh for sh in slots if sh not in m]
+            manned += len(m)
+            opened += len(o)
+            if post.db.register is not None:
+                till_total += int(post.db.register or 0)
+            where = (post.location.key if post.location else post.key)
+            venue_lines.append(f"  {where[:34]:<34} "
+                               f"manned:{','.join(sorted(m)) or '-':<16} "
+                               f"open:{','.join(sorted(o)) or '-'}")
+        poverty = pop_mod.poverty_index(souls)
+        moods = Counter(thoughts_mod.mood_band(thoughts_mod.mood(s))
+                        for s in souls)
+        lawless = sum(1 for s in souls if s.db.soul_lawless)
+        lines = [
+            f"|wThe Colony|n — {len(souls)} souls  "
+            f"({lawless} lawless)  |wslots|n {manned} manned / "
+            f"{opened} open",
+            f"|wEconomy|n treasury:|y{economy.balance()}|n  "
+            f"tills:|y{till_total}|n  "
+            f"poverty:{poverty:.0%}"
+            + ("  |r(the shuttle sends knives)|n" if poverty > 0.5
+               else ""),
+            f"|wMood|n " + "  ".join(
+                f"{band}:{moods.get(band, 0)}"
+                for band in ("bright", "level", "low", "grim")),
+            "|wPosts|n",
+        ] + venue_lines
+        caller.msg("\n".join(lines))
+
     def func(self):
         caller = self.caller
         args = (self.args or "").strip().lstrip("/")
-        if not args or args.lower() == "all":
+        if not args:
+            self._colony_dashboard(caller)
+            return
+        if args.lower() == "all":
             souls = engine.get_souls()
             if not souls:
                 caller.msg("No ensouled NPCs.")
