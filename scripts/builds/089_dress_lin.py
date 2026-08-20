@@ -22,10 +22,9 @@ lin = next((s for s in engine.get_souls() if s.pk and s.key == "Auntie Lin"),
 if lin is None:
     print("BUILD 089: Auntie Lin not found among the souls; aborted")
 else:
+    # 1. create any blueprint garment she doesn't already own
     have = {o.key for o in lin.contents}
-    dressed = []
-    for gspec in sorted(BLUEPRINTS["vendor_lin"].get("wardrobe", ()),
-                        key=lambda g: int(g.get("layer", 1) or 1)):
+    for gspec in BLUEPRINTS["vendor_lin"].get("wardrobe", ()):
         if gspec["key"] in have:
             continue
         garment = create_object("typeclasses.items.Item", key=gspec["key"],
@@ -35,11 +34,31 @@ else:
                      "material", "weight", "category"):
             if gspec.get(attr) is not None:
                 garment.attributes.add(attr, gspec[attr])
-        ok, msg = lin.wear_item(garment)
-        dressed.append(f"{gspec['key']}{'' if ok else ' (FAILED: %s)' % msg}")
+
+    # 2. strip: nothing goes on UNDER an already-worn outer layer, which
+    #    is why the apron alone blocked her whole base layer
+    for garment in list(dict.fromkeys(
+            o for items in (lin.worn_items or {}).values() for o in items)):
+        lin.remove_item(garment)
+
+    # 3. dress from the skin out, her own clothes ahead of the paper
+    #    issue she picked up at Cryogenics (kept, not destroyed — it is
+    #    hers now, it just isn't what she wears)
+    def _order(g):
+        issue = "Thawn-Harrison" in g.key
+        return (1 if issue else 0, int(getattr(g, "layer", 1) or 1))
+
+    wearable = [o for o in lin.contents
+                if callable(getattr(o, "is_wearable", None)) and o.is_wearable()]
+    dressed, spare = [], []
+    for garment in sorted(wearable, key=_order):
+        ok, _msg = lin.wear_item(garment)
+        (dressed if ok else spare).append(garment.key)
+
     # she may be mid-errand to the dispenser; that plan is now moot
     if (lin.db.soul_job or {}).get("goal") == "wardrobe":
         lin.db.soul_job = None
     from world.souls import needs
-    print(f"BUILD 089: dressed Lin — {', '.join(dressed) or 'nothing to add'}; "
-          f"wardrobe pressure now {needs.wardrobe_pressure(lin)}")
+    print(f"BUILD 089: Lin wears {', '.join(dressed)}"
+          + (f"; carrying spare: {', '.join(spare)}" if spare else "")
+          + f"; wardrobe pressure now {needs.wardrobe_pressure(lin)}")
