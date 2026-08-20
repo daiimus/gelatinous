@@ -295,3 +295,53 @@ class TestWardrobe(_CravingTestBase):
         plan = actions.plan_for(soul, "wardrobe")
         self.assertEqual([s["do"] for s in plan["steps"]],
                          ["travel", "press", "wear"])
+
+
+class TestWardrobeShopping(_CravingTestBase):
+    """#2106: clothes can also be bought — same keeper, stock, and
+    affordability gates every other counter answers to."""
+
+    def _shop(self, inventory):
+        shop = create_object("typeclasses.items.Item", key="dry goods counter",
+                             location=self.game_room)
+        shop.db.prototype_inventory = dict(inventory)
+        shop.db.advertises = {"wardrobe": 0.8}
+        shop.tags.add("advertiser", category="souls")
+        from world.souls import actions
+        actions._ad_cache["at"] = 0.0
+        actions._wear_memo.clear()
+        return shop
+
+    def test_buys_cheapest_affordable_garment(self):
+        from world.souls import actions
+
+        soul = self._soul_char()
+        soul.tokens = 30
+        self._shop({"COTTON_TSHIRT": 8, "DEV_HOODIE": 20})
+        plan = actions.plan_for(soul, "wardrobe")
+        self.assertEqual([s["do"] for s in plan["steps"]],
+                         ["travel", "buy", "wear"])
+        self.assertEqual(plan["steps"][1]["proto"], "COTTON_TSHIRT")
+
+    def test_broke_soul_falls_through_to_the_free_issue(self):
+        from world.souls import actions
+
+        soul = self._soul_char()
+        soul.tokens = 0
+        self._shop({"COTTON_TSHIRT": 8})
+        disp = create_object("typeclasses.items.Item", key="issue dispenser",
+                             location=self.game_room)
+        disp.db.advertises = {"wardrobe": 0.9}
+        disp.tags.add("advertiser", category="souls")
+        actions._ad_cache["at"] = 0.0
+        plan = actions.plan_for(soul, "wardrobe")
+        self.assertEqual([s["do"] for s in plan["steps"]],
+                         ["travel", "press", "wear"])
+
+    def test_non_clothing_wares_are_ignored(self):
+        from world.souls import actions
+
+        soul = self._soul_char()
+        soul.tokens = 30
+        self._shop({"mystery_skewer": 3})
+        self.assertIsNone(actions.plan_for(soul, "wardrobe"))

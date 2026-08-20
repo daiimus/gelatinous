@@ -151,6 +151,24 @@ def _sub_matches(subs, craved):
         s.startswith("tobacco") for s in subs)
 
 
+_wear_memo = {}                # proto_key -> bool
+
+
+def _is_wearable_proto(proto_key):
+    """Memoized: a ware is clothing when its prototype carries BOTH
+    coverage and a worn_desc — the same pair is_wearable() demands of
+    a real object (#2104)."""
+    if proto_key not in _wear_memo:
+        from evennia.prototypes.prototypes import search_prototype
+        hits = search_prototype(proto_key)
+        attrs = (hits[0].get("attrs") or []) if hits else []
+        got = {a[0]: a[1] for a in attrs
+               if isinstance(a, (tuple, list)) and len(a) >= 2}
+        _wear_memo[proto_key] = bool(got.get("coverage")
+                                     and got.get("worn_desc"))
+    return _wear_memo[proto_key]
+
+
 def _wearable(soul, obj):
     """Carried, wearable by the clothing system's own reckoning, and
     not already on. `is_wearable` wants coverage AND a worn_desc — an
@@ -330,6 +348,31 @@ def plan_for(soul, goal_need):
                 {"do": "wear"},
             ], "at": 0}
         for score, fixture, room in _advertisers(soul, "wardrobe"):
+            inv = fixture.db.prototype_inventory or {}
+            if inv:
+                # a shop: buy the cheapest garment you can actually
+                # afford, under the same keeper-hours and stock gates
+                # every other counter answers to
+                keeper = fixture.db.post_keeper
+                if keeper is not None and not (
+                        keeper.pk and keeper.location == fixture.location):
+                    continue
+                wares = [(price, proto_key)
+                         for proto_key, price in inv.items()
+                         if _is_wearable_proto(proto_key)
+                         and _in_stock(fixture, proto_key)]
+                affordable = [w for w in wares
+                              if w[0] <= int(soul.tokens or 0)]
+                if not affordable:
+                    continue      # broke here: the free issue may serve
+                price, proto = min(affordable)
+                return {"goal": "wardrobe", "steps": [
+                    {"do": "travel", "room": room.id},
+                    {"do": "buy", "counter": fixture.id, "proto": proto,
+                     "price": price},
+                    {"do": "wear"},
+                ], "at": 0}
+            # a dispenser: press it and get dressed
             return {"goal": "wardrobe", "steps": [
                 {"do": "travel", "room": room.id},
                 {"do": "press", "fixture": fixture.id},
