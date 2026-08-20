@@ -1887,7 +1887,7 @@ RAT_TAIL = {
     "attrs": [
         ("drink_taste", "Gelatinous and faintly sweet, all cartilage and "
                         "slow-cooked promise — wasted eaten raw."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 2}),
         ("uses_left", 1),
         ("value", 8),
     ],
@@ -1905,7 +1905,7 @@ RAT_CHOPS = {
     "attrs": [
         ("drink_taste", "Lean and springy with a mineral edge; it wants a "
                         "grill and gets teeth instead."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 2}),
         ("uses_left", 1),
         ("value", 5),
     ],
@@ -1922,7 +1922,7 @@ RAT_HAUNCH = {
     "attrs": [
         ("drink_taste", "Dark, rich, and chewy, closer to game than anything "
                         "the ration lines admit exists."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 2}),
         ("uses_left", 1),
         ("value", 5),
     ],
@@ -1940,7 +1940,7 @@ RAT_OFFAL = {
     "attrs": [
         ("drink_taste", "Iron and velvet; the liver coats the tongue and the "
                         "heart pushes back."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 2}),
         ("uses_left", 1),
         ("value", 5),
     ],
@@ -1957,7 +1957,7 @@ GROUND_MYSTERY_MEAT = {
     "attrs": [
         ("drink_taste", "Salt, fat, and deliberate ambiguity. It is probably "
                         "best not to chew thoughtfully."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 2}),
         ("uses_left", 1),
         ("value", 2),
     ],
@@ -1978,7 +1978,7 @@ RAT_TAIL_STEW = {
     "attrs": [
         ("drink_taste", "Rich, gelatinous, and deeply savoury — the tail gives "
                         "up everything it has, slow and complete."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 3}),
         ("uses_left", 2),
         ("value", 12),
     ],
@@ -1995,7 +1995,7 @@ GRILLED_RAT_CHOPS = {
     "attrs": [
         ("drink_taste", "Char and clean lean meat with a mineral finish — the "
                         "good cut, treated with respect."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 3}),
         ("uses_left", 2),
         ("value", 8),
     ],
@@ -2012,7 +2012,7 @@ ROAST_RAT_HAUNCH = {
     "attrs": [
         ("drink_taste", "Dark and gamey under crackled skin — eats like a "
                         "meal that used to be somebody's whole day of hunting."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 3}),
         ("uses_left", 2),
         ("value", 8),
     ],
@@ -2030,7 +2030,7 @@ BUTCHERS_BREAKFAST = {
     "attrs": [
         ("drink_taste", "Iron and velvet, seared fast — the liver melts, the "
                         "heart argues, the fat forgives everything."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 6}),
         ("uses_left", 1),
         ("value", 8),
     ],
@@ -2048,7 +2048,7 @@ MYSTERY_SKEWER = {
     "attrs": [
         ("drink_taste", "Salt, char, and fat — delicious precisely as long as "
                         "you keep your curiosity holstered."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 3}),
         ("uses_left", 1),
         ("value", 3),
     ],
@@ -4896,7 +4896,7 @@ PESSOA_NOODLES = {
     "attrs": [
         ("drink_taste", "Deep, salty, faintly scorched — the broth of a "
                         "thousand shifts, and it sticks to your ribs like one."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 2}),
         ("uses_left", 3),
         ("value", 6),
     ],
@@ -4914,7 +4914,7 @@ PESSOA_BUN = {
     "attrs": [
         ("drink_taste", "Cloud-soft dough over a hot, savoury-sweet filling — "
                         "a whole meal you can eat one-handed on the walk."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 2}),
         ("uses_left", 2),
         ("value", 4),
     ],
@@ -4932,7 +4932,7 @@ SNAIL_SKEWER = {
     "attrs": [
         ("drink_taste", "Rich, dark, and faintly of the good kind of damp — "
                         "the colony's humblest luxury, six bites long."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 3}),
         ("uses_left", 1),
         ("value", 3),
     ],
@@ -4950,7 +4950,7 @@ SNAIL_JAR = {
     "attrs": [
         ("drink_taste", "Sharp brine, then the meat — dense, cold, and "
                         "somehow honest. Keeps for a shift year."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 1}),
         ("uses_left", 4),
         ("value", 5),
     ],
@@ -4968,7 +4968,7 @@ PESSOA_SKEWER = {
     "attrs": [
         ("drink_taste", "Char, fat, and a spice that builds — gone in four "
                         "bites and worth every one."),
-        ("drink_effects", {}),
+        ("drink_effects", {"nutrition": 3}),
         ("uses_left", 1),
         ("value", 3),
     ],

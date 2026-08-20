@@ -183,3 +183,104 @@ class TestSupportsDelivery(TestCase):
 
         item = _TaggedItem(medical_type="herb")
         self.assertTrue(supports_delivery(item, "smoke"))
+
+
+# ---------------------------------------------------------------------
+# Hunger is pharmacology (#2074): the nutrition substance moves a
+# soul's hunger meter through the SAME consumption path every
+# character object uses — command, delivery gate, substance pipeline.
+# ---------------------------------------------------------------------
+
+import time as _time
+
+from evennia import create_object
+from evennia.utils.test_resources import BaseEvenniaTest
+
+
+class _NutritionTestBase(BaseEvenniaTest):
+    """Chars AND the room must be GAME typeclasses — apply_substance
+    requires a medical body, and the eat command's room broadcast
+    resolves identity handles, which the stock DefaultCharacter/
+    DefaultRoom test fixtures don't carry."""
+
+    def setUp(self):
+        super().setUp()
+        self.game_room = create_object(
+            "typeclasses.rooms.Room", key="mess hall")
+
+    def _game_char(self, key="Eater"):
+        char = create_object(
+            "typeclasses.characters.Character", key=key,
+            location=self.game_room)
+        # the test harness resets CMDSET_CHARACTER to core defaults —
+        # re-add the game cmdset so the REAL eat verb is on the char
+        char.cmdset.add(
+            "commands.default_cmdsets.CharacterCmdSet", persistent=False)
+        return char
+
+    def _soul_char(self, hunger=0.6):
+        char = self._game_char(key="TestSoul")
+        char.tags.add("soul", category="npc_role")
+        char.db.soul_needs = {"hunger": hunger, "_at": _time.time()}
+        return char
+
+
+class TestNutritionSubstance(_NutritionTestBase):
+    """The nourish effect kind and its no-meter no-op."""
+
+    def test_nourish_moves_soul_hunger(self):
+        from world.souls import needs
+        from world.substances import apply_substance
+
+        soul = self._soul_char(hunger=0.6)
+        result = apply_substance(soul, "nutrition")
+        self.assertGreater(result["applied"].get("nourish", 0), 0)
+        self.assertAlmostEqual(
+            needs.pressure(soul, "hunger"), 0.45, delta=0.02)
+
+    def test_nourish_noops_without_meter(self):
+        """A consumer without a soul meter (a player, today) is
+        untouched — no feedback, no phantom needs dict."""
+        from world.substances import apply_substance
+
+        char = self._game_char()
+        result = apply_substance(char, "nutrition")
+        self.assertEqual(result["applied"], {})
+        self.assertIsNone(char.db.soul_needs)
+
+
+class TestEatingFeedsThroughTheCommand(_NutritionTestBase):
+    """End-to-end: the real eat verb is the only feeding path."""
+
+    def test_eat_command_feeds_a_soul(self):
+        from world.souls import needs
+
+        soul = self._soul_char(hunger=0.6)
+        snack = create_object(
+            "typeclasses.items.Item", key="ration wafer",
+            location=soul)
+        snack.tags.add("eat", category="delivery_method")
+        snack.db.drink_effects = {"nutrition": 2}
+        snack.db.uses_left = 1
+        soul.execute_cmd("eat wafer")
+        self.assertAlmostEqual(
+            needs.pressure(soul, "hunger"), 0.30, delta=0.02)
+
+    def test_any_fixture_with_snacks_serves(self):
+        """The serving membrane is no longer bar-only (#2074): a room
+        fixture carrying db.snacks feeds through the real eat verb —
+        the Rook's nutrient line pattern."""
+        from world.souls import needs
+
+        soul = self._soul_char(hunger=0.6)
+        line = create_object(
+            "typeclasses.items.Item", key="a test feed line",
+            location=self.game_room)
+        line.db.snacks = [{
+            "name": "nutrient feed",
+            "order_keywords": ("feed",),
+            "effects": {"nutrition": 4},
+            "taste": "Warm nothing.",
+        }]
+        soul.execute_cmd("eat feed")
+        self.assertLessEqual(needs.pressure(soul, "hunger"), 0.05)
