@@ -214,12 +214,13 @@ def plan_for(soul, goal_need):
         return None
 
     if shape == "dwell_venue":
-        # generic dwell need (charge, maintenance): occupy the best
-        # advertiser until the meter recovers (spec §12)
+        # generic dwell need (charge, maintenance, a recluse's line and
+        # airwaves): occupy the best advertiser until the meter recovers
+        # (spec §12); the FIXTURE authors its own dwell poses
         for score, venue, room in _advertisers(soul, goal_need):
             return {"goal": goal_need, "steps": [
                 {"do": "travel", "room": room.id},
-                {"do": "dwell", "need": goal_need},
+                {"do": "dwell", "need": goal_need, "fixture": venue.id},
             ], "at": 0}
         return None
 

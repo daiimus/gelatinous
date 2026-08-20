@@ -45,6 +45,14 @@ PROFILES = {
         "maintenance": (1.0 / 10080.0, 0.05, "dwell_venue"),  # ~1 week
         "safety": (0.0, 0.0, "flee"),
     },
+    "recluse": {                     # the sealed biome (the Rook): every
+        # need satisfied INSIDE the seal — by infrastructure, which can
+        # break, which is the only door out of a recluse's story
+        "hunger": (1.0 / 960.0, 0.25, "dwell_venue"),   # the nutrient line
+        "rest": (1.0 / 1440.0, 0.25, "dwell_home"),     # the chair is the bed
+        "social": (1.0 / 720.0, 0.25, "dwell_venue"),   # the airwaves
+        "safety": (0.0, 0.0, "flee"),
+    },
 }
 
 #: legacy aliases — pre-profile souls stored these; human is the shape
