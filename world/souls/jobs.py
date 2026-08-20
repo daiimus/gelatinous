@@ -307,7 +307,6 @@ def step_job(soul):
         import time as _time
 
         from typeclasses.clinic import Doctor
-        from world.souls import needs as needs_mod
         from world.souls import thoughts
 
         TREAT_FEE = 8
