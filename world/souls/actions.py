@@ -48,6 +48,12 @@ def _advertisers(soul, need, radius=30):
         if not value:
             continue
         room = obj.location if obj.location is not None else obj
+        if obj.db.advertise_scope == "room" and soul.location != room \
+                and soul.db.soul_home != room:
+            # a sealed biome serves only its resident (#2096): the
+            # Rook's chair must not summon the colony to a room with
+            # no door
+            continue
         pos = get_xyz(room) if room else None
         if origin and pos:
             dist = max(abs(origin[0] - pos[0]), abs(origin[1] - pos[1])) \
