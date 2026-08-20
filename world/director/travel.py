@@ -85,6 +85,53 @@ def _finish(npc: Any, state: dict, key: str) -> None:
             pass
 
 
+#: ticks a walker will wait on a car before giving up and stalling
+LIFT_PATIENCE = 15
+
+
+def _await_lift(npc: Any, state: dict, nxt: Any, route: list,
+                destination: Any) -> bool:
+    """True when this tick was spent working an elevator rather than
+    walking. Presses the real buttons; the ride itself is the wait."""
+    try:
+        from typeclasses.elevator import (
+            ElevatorCarExit, ElevatorDoorExit, car_docked)
+    except Exception:  # noqa: BLE001 — no elevators, no special case
+        return False
+
+    waited = state.get("lift_wait", 0)
+    if waited > LIFT_PATIENCE:
+        return False                      # give up; normal stall path
+
+    if isinstance(nxt, ElevatorDoorExit):
+        # at a landing: the car has to be here before the door gives
+        if car_docked(nxt.destination, npc.location):
+            state["lift_wait"] = 0
+            return False
+        if not waited:
+            npc.execute_cmd("call")
+        state["lift_wait"] = waited + 1
+        return True
+
+    if isinstance(nxt, ElevatorCarExit):
+        # in the car: ride to the landing the route actually wants
+        car = npc.location
+        want = route[1].location if len(route) > 1 else destination
+        if getattr(car, "is_docked_at", None) and car.is_docked_at(want):
+            state["lift_wait"] = 0
+            return False
+        idx = car.floor_index(want) if hasattr(car, "floor_index") else None
+        if idx is None:
+            return False                  # not our shaft; walk it normally
+        if not waited:
+            label = (car.db.floors or [])[idx][1]
+            npc.execute_cmd(f"press {label}")
+        state["lift_wait"] = waited + 1
+        return True
+
+    return False
+
+
 def _travel_step(npc: Any) -> None:
     state = getattr(getattr(npc, "ndb", None), _NDB_KEY, None)
     if not state:
@@ -107,6 +154,17 @@ def _travel_step(npc: Any) -> None:
             return
         state["route"] = list(route)
         route = state["route"]
+    # An elevator is a room that moves: the door only gives while the car
+    # is docked here, so a walker that just tries the exit bounces until
+    # its stall counter fires (souls were stranded for hours inside the
+    # Constabulary and the Brackett). Summon and select through the REAL
+    # verbs — `call` at the landing, `press <floor>` in the car — and
+    # wait on the ride without burning stall strikes.
+    nxt = route[0]
+    if _await_lift(npc, state, nxt, route, destination):
+        delay(state["step_delay"], _travel_step, npc)
+        return
+
     # Walk through the next exit via its real command (locks, messages, etc.).
     nxt = route.pop(0)
     came_from = npc.location

@@ -46,9 +46,13 @@ class TestTravel(TestCase):
     @patch("world.director.travel.delay")
     @patch("world.director.travel.find_path_exits")
     def test_starts_and_walks_first_exit(self, mock_fpe, mock_delay):
-        ex = SimpleNamespace(key="north", destination=_Room("B"))
+        room_a = _Room("A")
+        # the walker checks route[0].location to decide whether to
+        # re-path, so a mock exit needs the room it hangs in
+        ex = SimpleNamespace(key="north", destination=_Room("B"),
+                             location=room_a)
         mock_fpe.return_value = [ex]
-        npc = _npc(_Room("A"))
+        npc = _npc(room_a)
         started = travel_to(npc, _Room("Z"))
         self.assertTrue(started)
         npc.execute_cmd.assert_called_once_with("north")
