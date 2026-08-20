@@ -4992,3 +4992,62 @@ PESSOA_TEA = {
     ],
     "tags": [("drink", "delivery_method"), ("drink", "item_type")],
 }
+
+# ---------------------------------------------------------------------------
+# THAWN-HARRISON DECANT ISSUE — what the dispenser gives a fresh sleeve.
+# Deliberately the cheapest dignity the colony can extend: paper-weight,
+# one size, stamped with the brand that grew you.
+# ---------------------------------------------------------------------------
+
+DECANT_JUMPSUIT = {
+    "prototype_key": "decant_jumpsuit",
+    "key": "Thawn-Harrison decant jumpsuit",
+    "aliases": ["jumpsuit", "decant jumpsuit", "coverall", "suit"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A disposable one-piece in clinical off-white, seams "
+            "heat-welded rather than stitched and the fabric barely "
+            "heavier than paper. THAWN-HARRISON CRYOGENICS is stamped "
+            "across the back in yellow, along with a size (ONE) and a "
+            "line of small print explaining that this garment is "
+            "provided as a courtesy and is not rated for weather.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A papery {color}off-white|n decant jumpsuit, "
+                      "THAWN-HARRISON stamped across the back in yellow "
+                      "— the courtesy garment of somebody who woke up "
+                      "today"),
+        ("coverage", ["chest", "back", "abdomen", "groin", "left_arm",
+                      "right_arm", "left_thigh", "right_thigh",
+                      "left_shin", "right_shin"]),
+        ("layer", 1),
+        ("color", "off-white"),
+        ("material", "paper-weave"),
+        ("weight", 0.3),
+        ("value", 0),
+    ],
+    "tags": [("clothing", "item_type")],
+}
+
+DECANT_SLIPPERS = {
+    "prototype_key": "decant_slippers",
+    "key": "pair of Thawn-Harrison slippers",
+    "aliases": ["slippers", "decant slippers", "shoes"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "Two flat soles of pressed grey fibre with elasticated "
+            "uppers, the kind of footwear that exists to get a person "
+            "from a table to a door. The left one is stamped L, the "
+            "right one is also stamped L.",
+    "attrs": [
+        ("category", "clothing"),
+        ("worn_desc", "A pair of flat {color}grey|n decant slippers, "
+                      "pressed fibre gone soft at the edges"),
+        ("coverage", ["left_foot", "right_foot"]),
+        ("layer", 1),
+        ("color", "grey"),
+        ("material", "pressed fibre"),
+        ("weight", 0.2),
+        ("value", 0),
+    ],
+    "tags": [("clothing", "item_type")],
+}
+
