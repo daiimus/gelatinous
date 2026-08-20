@@ -178,6 +178,13 @@ def _desired_goal(soul, hour, exclude=()):
             if derived[n] >= needs_mod.CRITICAL]
     if crit:
         return (1, max(crit)[2])
+    # you get dressed before you go to work, but not before you stop
+    # bleeding: wardrobe sits under the survival band and over the
+    # schedule (owner ruling 2026-08-20). Checked before duty so it
+    # wins the tie inside band 2.
+    if "wardrobe" in derived and derived["wardrobe"] >= 1.0 \
+            and "wardrobe" not in exclude:
+        return (2, "wardrobe")
     # band 2: schedule
     sched = SCHEDULES[soul.db.soul_schedule or "day"]
     if soul.db.soul_post and "duty" not in exclude \
@@ -197,7 +204,7 @@ def _desired_goal(soul, hour, exclude=()):
 
 def _goal_band(goal):
     return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "claim": 2,
-            "craving": 3, "social": 3}.get(goal, 4)
+            "wardrobe": 2, "craving": 3, "social": 3}.get(goal, 4)
 
 
 def think(soul, hour):

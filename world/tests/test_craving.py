@@ -217,3 +217,81 @@ class TestAdvertiseScope(_CravingTestBase):
         actions._ad_cache["at"] = 0.0
         found = [o.key for _sc, o, _r in actions._advertisers(soul, "social")]
         self.assertIn("sealed chair", found)
+
+
+class TestWardrobe(_CravingTestBase):
+    """#2104: Wardrobe — dressed enough for your own modesty, and
+    exempt at home so sleepwear and Companion work stay possible."""
+
+    def test_naked_in_public_reads_as_pressure(self):
+        from world.souls import needs
+
+        soul = self._soul_char()
+        self.assertEqual(needs.wardrobe_pressure(soul), 1.0)
+
+    def test_home_is_exempt(self):
+        from world.souls import needs
+
+        soul = self._soul_char()
+        soul.db.soul_home = self.game_room
+        self.assertEqual(needs.wardrobe_pressure(soul), 0.0)
+
+    def test_covering_modesty_settles_it(self):
+        from world.souls import needs
+
+        soul = self._soul_char()
+        suit = create_object("typeclasses.items.Item",
+                             key="decant jumpsuit", location=soul)
+        suit.db.coverage = ["chest", "groin", "abdomen"]
+        suit.db.worn_desc = "a papery decant jumpsuit"
+        soul.wear_item(suit)
+        self.assertEqual(needs.wardrobe_pressure(soul), 0.0)
+
+    def test_underwear_is_not_dressed(self):
+        """Owner's line: underwear won't cover much. Groin covered,
+        chest bare — still undressed by default modesty."""
+        from world.souls import needs
+
+        soul = self._soul_char()
+        briefs = create_object("typeclasses.items.Item",
+                               key="briefs", location=soul)
+        briefs.db.coverage = ["groin"]
+        briefs.db.worn_desc = "plain briefs"
+        soul.wear_item(briefs)
+        self.assertEqual(needs.wardrobe_pressure(soul), 1.0)
+
+    def test_modesty_is_individual(self):
+        from world.souls import needs
+
+        soul = self._soul_char()
+        soul.db.modesty = ["groin"]
+        briefs = create_object("typeclasses.items.Item",
+                               key="briefs", location=soul)
+        briefs.db.coverage = ["groin"]
+        briefs.db.worn_desc = "plain briefs"
+        soul.wear_item(briefs)
+        self.assertEqual(needs.wardrobe_pressure(soul), 0.0)
+
+    def test_plan_wears_what_is_carried(self):
+        from world.souls import actions
+
+        soul = self._soul_char()
+        suit = create_object("typeclasses.items.Item",
+                             key="decant jumpsuit", location=soul)
+        suit.db.coverage = ["chest", "groin"]
+        suit.db.worn_desc = "a papery decant jumpsuit"
+        plan = actions.plan_for(soul, "wardrobe")
+        self.assertEqual([s["do"] for s in plan["steps"]], ["wear"])
+
+    def test_plan_walks_to_a_dispenser_when_empty_handed(self):
+        from world.souls import actions
+
+        soul = self._soul_char()
+        disp = create_object("typeclasses.items.Item",
+                             key="issue dispenser", location=self.game_room)
+        disp.db.advertises = {"wardrobe": 0.9}
+        disp.tags.add("advertiser", category="souls")
+        actions._ad_cache["at"] = 0.0
+        plan = actions.plan_for(soul, "wardrobe")
+        self.assertEqual([s["do"] for s in plan["steps"]],
+                         ["travel", "press", "wear"])

@@ -151,6 +151,17 @@ def _sub_matches(subs, craved):
         s.startswith("tobacco") for s in subs)
 
 
+def _wearable(soul, obj):
+    """Carried, wearable by the clothing system's own reckoning, and
+    not already on. `is_wearable` wants coverage AND a worn_desc — an
+    item with coverage alone can never be worn, and a planner that
+    ignored that would loop on it forever."""
+    check = getattr(obj, "is_wearable", None)
+    if not callable(check) or not check():
+        return False
+    return not soul.is_item_worn(obj)
+
+
 def _find_mark(soul, min_tokens=3, radius=30):
     """The predator's eye (spec §3.5): the nearest NPC visibly worth
     robbing — souls AND the director's ambient civilians, whose fat
@@ -305,6 +316,25 @@ def plan_for(soul, goal_need):
                     {"do": "rob", "mark": mark.id, "lifts": 2},
                     {"do": "disengage", "mark": mark.id},
                 ], "at": 0}
+        return None
+
+    if goal_need == "wardrobe":
+        # get dressed (#2104). Cheapest first: wear what you already
+        # carry; failing that, walk to an issue dispenser and press it.
+        # Buying clothes at a shop is the obvious third branch and is
+        # deliberately not here yet — the colony's free issue covers
+        # the case that actually occurs (waking up with nothing).
+        carried = [o for o in soul.contents if _wearable(soul, o)]
+        if carried:
+            return {"goal": "wardrobe", "steps": [
+                {"do": "wear"},
+            ], "at": 0}
+        for score, fixture, room in _advertisers(soul, "wardrobe"):
+            return {"goal": "wardrobe", "steps": [
+                {"do": "travel", "room": room.id},
+                {"do": "press", "fixture": fixture.id},
+                {"do": "wear"},
+            ], "at": 0}
         return None
 
     shape = None

@@ -31,6 +31,7 @@ PROFILES = {
         "rest": (1.0 / 960.0, 0.25, "dwell_home"),      # 16h
         "craving": (0.0, 0.0, "vice"),                  # derived (below):
         # the want beats loneliness, never the stomach (#2076)
+        "wardrobe": (0.0, 0.0, "dress"),                # derived (below)
         "social": (1.0 / 720.0, 0.25, "dwell_venue"),   # 12h
         "health": (0.0, 0.0, "clinic"),                 # derived (below)
         "safety": (0.0, 0.25, "flee"),                  # event-driven
@@ -39,6 +40,7 @@ PROFILES = {
         "hunger": (1.0 / 960.0, 0.25, "buy_consume"),   # 16h
         "rest": (1.0 / 1440.0, 0.25, "dwell_home"),     # 24h
         "craving": (0.0, 0.0, "vice"),
+        "wardrobe": (0.0, 0.0, "dress"),
         "social": (1.0 / 720.0, 0.25, "dwell_venue"),
         "health": (0.0, 0.0, "clinic"),
         "safety": (0.0, 0.25, "flee"),
@@ -162,6 +164,40 @@ def craving_pressure(soul):
     return craving_state(soul)[0]
 
 
+#: What a person needs covered before they will walk out the door.
+#: Deliberately a SET, not a count: modesty is about which parts, and
+#: it differs by person (a trait dial, once traits land). Underwear
+#: alone covers the groin and leaves the chest bare — still undressed
+#: by the colony's default reckoning.
+DEFAULT_MODESTY = ("groin", "chest")
+
+
+def modesty_of(soul):
+    """The parts this individual insists on covering in public."""
+    return set(soul.db.modesty or DEFAULT_MODESTY)
+
+
+def wardrobe_pressure(soul):
+    """1.0 when this soul is dressed below their own modesty somewhere
+    that isn't home; 0.0 otherwise. Derived, zero-write (#2104).
+
+    Home is exempt on purpose: nobody is compelled to dress in their
+    own cube, which keeps the door open for sleepwear and for a
+    Companion's appointments — the need is WARDROBE, not nakedness,
+    and it will eventually push both directions.
+    """
+    home = soul.db.soul_home
+    if home is not None and soul.location == home:
+        return 0.0
+    covered = getattr(soul, "is_location_covered", None)
+    if not callable(covered):
+        return 0.0
+    for part in modesty_of(soul):
+        if not covered(part):
+            return 1.0
+    return 0.0
+
+
 def pressures(soul, now=None):
     """Current derived pressure for every profile need. Pure read."""
     now = now if now is not None else time.time()
@@ -174,6 +210,8 @@ def pressures(soul, now=None):
         out["health"] = health_pressure(soul)
     if "craving" in out:
         out["craving"] = craving_pressure(soul)
+    if "wardrobe" in out:
+        out["wardrobe"] = wardrobe_pressure(soul)
     return out
 
 
@@ -182,6 +220,8 @@ def pressure(soul, need, now=None):
         return health_pressure(soul)
     if need == "craving":
         return craving_pressure(soul)
+    if need == "wardrobe":
+        return wardrobe_pressure(soul)
     now = now if now is not None else time.time()
     stored, minutes = _snapshot(soul, now)
     rate, default, _shape = profile_of(soul).get(need, (0.0, 0.0, None))
