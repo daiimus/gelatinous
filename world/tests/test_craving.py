@@ -184,3 +184,36 @@ class TestStockAwareness(_CravingTestBase):
         plan = actions.plan_for(soul, "hunger")
         self.assertIsNotNone(plan)
         self.assertEqual(plan["steps"][1]["proto"], "mystery_skewer")
+
+
+class TestAdvertiseScope(_CravingTestBase):
+    """#2096: a sealed biome's fixtures serve only their resident —
+    room-scoped advertisers are invisible to souls elsewhere."""
+
+    def test_room_scoped_advertiser_invisible_from_outside(self):
+        from world.souls import actions
+
+        soul = self._soul_char()
+        far_room = create_object("typeclasses.rooms.Room", key="far room")
+        chair = create_object(
+            "typeclasses.items.Item", key="sealed chair", location=far_room)
+        chair.db.advertises = {"social": 0.8}
+        chair.db.advertise_scope = "room"
+        chair.tags.add("advertiser", category="souls")
+        actions._ad_cache["at"] = 0.0
+        found = [o.key for _sc, o, _r in actions._advertisers(soul, "social")]
+        self.assertNotIn("sealed chair", found)
+
+    def test_room_scoped_advertiser_serves_its_resident(self):
+        from world.souls import actions
+
+        soul = self._soul_char()
+        chair = create_object(
+            "typeclasses.items.Item", key="sealed chair",
+            location=self.game_room)
+        chair.db.advertises = {"social": 0.8}
+        chair.db.advertise_scope = "room"
+        chair.tags.add("advertiser", category="souls")
+        actions._ad_cache["at"] = 0.0
+        found = [o.key for _sc, o, _r in actions._advertisers(soul, "social")]
+        self.assertIn("sealed chair", found)
