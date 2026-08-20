@@ -83,13 +83,24 @@ def _is_edible_proto(proto_key):
     return _edible_memo[proto_key]
 
 
+def _in_stock(counter, proto_key):
+    """Limited shops sell only what was actually stocked (the butcher
+    COOKS her inventory; nothing spawns from thin air) — the planner
+    must not walk a hungry soul to an empty shelf (#2090). Infinite
+    shops (the default) always pass."""
+    if getattr(counter.db, "is_infinite", True) is not False:
+        return True
+    return int((counter.db.item_inventory or {}).get(proto_key, 0) or 0) > 0
+
+
 def _edible_wares(counter):
     """[(proto_key, price)] for wares that can actually be EATEN — a
     counter advertising hunger can still stock drinks (Lin's tea), and
-    the planner must not send a hungry soul home with a cup of tea."""
+    the planner must not send a hungry soul home with a cup of tea —
+    and that are actually IN STOCK (#2090)."""
     return [(proto_key, price)
             for proto_key, price in (counter.db.prototype_inventory or {}).items()
-            if _is_edible_proto(proto_key)]
+            if _is_edible_proto(proto_key) and _in_stock(counter, proto_key)]
 
 
 _vice_memo = {}                # proto_key -> (verb or None, substances)
@@ -261,7 +272,8 @@ def plan_for(soul, goal_need):
                      for proto_key, price
                      in (counter.db.prototype_inventory or {}).items()
                      for verb, subs in (_vice_info(proto_key),)
-                     if verb and _sub_matches(subs, craved)]
+                     if verb and _sub_matches(subs, craved)
+                     and _in_stock(counter, proto_key)]
             if not wares:
                 continue
             price, proto, verb = min(wares)
