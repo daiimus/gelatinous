@@ -92,6 +92,48 @@ def _edible_wares(counter):
             if _is_edible_proto(proto_key)]
 
 
+_vice_memo = {}                # proto_key -> (verb or None, substances)
+
+
+def _vice_info(proto_key):
+    """(consume_verb, frozenset of substance ids) for a ware (#2076).
+
+    Memoized like the edible check. Verb preference drink > eat;
+    smoke-only wares return verb None — lighting is a real dependency
+    a v1 addict doesn't manage (same limitations as players: no
+    lighter, no smoke)."""
+    if proto_key not in _vice_memo:
+        from evennia.prototypes.prototypes import search_prototype
+        hits = search_prototype(proto_key)
+        tags = (hits[0].get("tags") or []) if hits else []
+        deliveries = {t[0] for t in tags
+                      if isinstance(t, (tuple, list)) and len(t) >= 2
+                      and t[1] == "delivery_method"}
+        attrs = (hits[0].get("attrs") or []) if hits else []
+        effects = next((a[1] for a in attrs
+                        if isinstance(a, (tuple, list)) and a
+                        and a[0] == "drink_effects"), None) or {}
+        subs = set(effects)
+        single = next((a[1] for a in attrs
+                       if isinstance(a, (tuple, list)) and a
+                       and a[0] == "substance"), None)
+        if single:
+            subs.add(single)
+        verb = ("drink" if "drink" in deliveries
+                else "eat" if "eat" in deliveries else None)
+        _vice_memo[proto_key] = (verb, frozenset(subs))
+    return _vice_memo[proto_key]
+
+
+def _sub_matches(subs, craved):
+    """Exact substance match, widened to the tobacco family — the
+    addiction is to the leaf, not the brand."""
+    if craved in subs:
+        return True
+    return craved.startswith("tobacco") and any(
+        s.startswith("tobacco") for s in subs)
+
+
 def _find_mark(soul, min_tokens=3, radius=30):
     """The predator's eye (spec §3.5): the nearest NPC visibly worth
     robbing — souls AND the director's ambient civilians, whose fat
@@ -201,6 +243,51 @@ def plan_for(soul, goal_need):
                     {"do": "disengage", "mark": mark.id},
                 ], "at": 0}
         return None                            # nothing affordable: fault
+
+    if goal_need == "craving":
+        # the vice run (#2076): buy the cheapest ware carrying the
+        # craved substance and consume it through the real verb. The
+        # dose resets the addiction clock inside apply_substance —
+        # the engine never satisfies craving directly (#2074 law).
+        from world.souls import needs as needs_mod
+        _p, craved = needs_mod.craving_state(soul)
+        craved = craved or "alcohol"   # pre-habit misery reaches for drink
+        for score, counter, room in _advertisers(soul, "vice"):
+            keeper = counter.db.post_keeper
+            if keeper is not None and not (
+                    keeper.pk and keeper.location == counter.location):
+                continue                       # shuttered: cravings wait
+            wares = [(price, proto_key, verb)
+                     for proto_key, price
+                     in (counter.db.prototype_inventory or {}).items()
+                     for verb, subs in (_vice_info(proto_key),)
+                     if verb and _sub_matches(subs, craved)]
+            if not wares:
+                continue
+            price, proto, verb = min(wares)
+            if (soul.tokens or 0) < price:
+                continue
+            return {"goal": "craving", "steps": [
+                {"do": "travel", "room": room.id},
+                {"do": "buy", "counter": counter.id, "proto": proto,
+                 "price": price},
+                {"do": "consume", "verb": verb},
+            ], "at": 0}
+        # a broke addict with lawless hands robs for the fix — the same
+        # knife, mark, and mood gate as hunger (misery is the mechanism)
+        if soul.db.soul_lawless:
+            from world.souls import thoughts as thoughts_mod
+            if thoughts_mod.mood(soul) >= 0.25:
+                return None
+            mark = _find_mark(soul)
+            if mark is not None:
+                return {"goal": "craving", "steps": [
+                    {"do": "travel", "room": mark.location.id},
+                    {"do": "grapple", "mark": mark.id},
+                    {"do": "rob", "mark": mark.id, "lifts": 2},
+                    {"do": "disengage", "mark": mark.id},
+                ], "at": 0}
+        return None
 
     shape = None
     if goal_need not in ("duty", "safety"):

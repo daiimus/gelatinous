@@ -29,6 +29,8 @@ PROFILES = {
     "human": {
         "hunger": (1.0 / 480.0, 0.25, "buy_consume"),   # 0 -> 1 in 8h
         "rest": (1.0 / 960.0, 0.25, "dwell_home"),      # 16h
+        "craving": (0.0, 0.0, "vice"),                  # derived (below):
+        # the want beats loneliness, never the stomach (#2076)
         "social": (1.0 / 720.0, 0.25, "dwell_venue"),   # 12h
         "health": (0.0, 0.0, "clinic"),                 # derived (below)
         "safety": (0.0, 0.25, "flee"),                  # event-driven
@@ -36,6 +38,7 @@ PROFILES = {
     "synth": {                       # human shape, durable dials
         "hunger": (1.0 / 960.0, 0.25, "buy_consume"),   # 16h
         "rest": (1.0 / 1440.0, 0.25, "dwell_home"),     # 24h
+        "craving": (0.0, 0.0, "vice"),
         "social": (1.0 / 720.0, 0.25, "dwell_venue"),
         "health": (0.0, 0.0, "clinic"),
         "safety": (0.0, 0.25, "flee"),
@@ -108,6 +111,57 @@ def health_pressure(soul):
         return 0.0
 
 
+#: pre-habit pull of the bottle: a grim mood registers as a mild
+#: craving even before any addiction exists — misery reaches for a
+#: drink, doses accrue through the real pipeline, and the habit forms
+#: itself at the substance's lifetime threshold (#2076)
+MISERY_PULL = 0.60
+MISERY_MOOD = -0.25
+
+
+def craving_state(soul):
+    """(pressure, substance_id or None) — derived, zero-write (#2076).
+
+    The meter IS the addiction machinery both populations already
+    carry: an overdue AddictionCondition starts at SOFT the moment the
+    ache does (mirroring the PC craving prose) and ramps toward 1.0
+    over another ``craving_after``. With no habit overdue, a grim mood
+    applies the pre-habit MISERY_PULL with no target substance (the
+    planner reads that as "a drink"). Dosing resets it through
+    ``apply_substance`` -> ``record_dose`` — the real pipeline, never
+    an engine-side satisfy (#2074 law).
+    """
+    worst = (0.0, None)
+    now = time.time()
+    try:
+        ms = getattr(soul, "medical_state", None)
+        for cond in (getattr(ms, "conditions", None) or []):
+            if getattr(cond, "condition_type", None) != "addiction":
+                continue
+            after = float(getattr(cond, "craving_after", 7200) or 7200)
+            last = float(getattr(cond, "last_dose_time", 0) or 0)
+            overdue = now - last - after
+            if overdue <= 0:
+                continue
+            p = SOFT + (1.0 - SOFT) * min(1.0, overdue / after)
+            if p > worst[0]:
+                worst = (p, getattr(cond, "substance_id", None))
+    except Exception:  # noqa: BLE001 — unreadable body reads as sober
+        pass
+    if worst[0] <= 0.0:
+        try:
+            from world.souls import thoughts as thoughts_mod
+            if thoughts_mod.mood(soul) <= MISERY_MOOD:
+                return (MISERY_PULL, None)
+        except Exception:  # noqa: BLE001
+            pass
+    return worst
+
+
+def craving_pressure(soul):
+    return craving_state(soul)[0]
+
+
 def pressures(soul, now=None):
     """Current derived pressure for every profile need. Pure read."""
     now = now if now is not None else time.time()
@@ -118,12 +172,16 @@ def pressures(soul, now=None):
     }
     if "health" in out:
         out["health"] = health_pressure(soul)
+    if "craving" in out:
+        out["craving"] = craving_pressure(soul)
     return out
 
 
 def pressure(soul, need, now=None):
     if need == "health":
         return health_pressure(soul)
+    if need == "craving":
+        return craving_pressure(soul)
     now = now if now is not None else time.time()
     stored, minutes = _snapshot(soul, now)
     rate, default, _shape = profile_of(soul).get(need, (0.0, 0.0, None))
