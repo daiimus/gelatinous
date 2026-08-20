@@ -59,6 +59,16 @@ def _post_room(post):
     return post.location if post.location is not None else post
 
 
+#: Where new sleeves wake — the same chamber the player decants into.
+DECANT_ROOM = "#1989"                  # Thawn-Harrison Decantation Chamber
+
+
+def _decant_room():
+    from evennia.utils.search import search_object
+    room = next(iter(search_object(DECANT_ROOM)), None)
+    return room if room is not None and room.pk else None
+
+
 def any_keeper_present(fixture) -> bool:
     """Is ANY shift-holder physically at the fixture? (The 24/7 shop
     gate: whoever's shift it is should be standing there; presence is
@@ -186,8 +196,12 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
     if till is None or int(till.db.register or 0) < RESLEAVE_PREMIUM:
         return False
     from world.npcs.blueprints import build_npc
+    # you do not reappear behind your own counter: a new sleeve is
+    # decanted at Thawn-Harrison like anyone else's, and the walk back
+    # to work is the planner's problem (owner ruling 2026-08-20)
+    decant = _decant_room() or room
     try:
-        npc = build_npc(bp_key, room)
+        npc = build_npc(bp_key, decant)
     except Exception:  # noqa: BLE001 — a broken blueprint must not loop-spawn
         return False
     npc.db.is_npc = True

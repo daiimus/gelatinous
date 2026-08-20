@@ -94,3 +94,71 @@ class RentalTerminal(Item):
                 "The rental terminal chirps its registration jingle.",
                 exclude=[presser])
 
+class SleeveDispenser(Item):
+    """The decant issue machine (Thawn-Harrison Cryogenics).
+
+    ``press dispenser`` (or ``push``) drops one jumpsuit and one pair
+    of slippers into the presser's free hands, or onto the floor if
+    their hands are full. Everyone who wakes here wakes with nothing;
+    this is the cheapest dignity the colony extends, and it extends it
+    to PCs and resleeved NPCs identically — the machine cannot tell
+    them apart, which is the point.
+    """
+
+    ISSUE = ("decant_jumpsuit", "decant_slippers")
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        self.db.pressable = True
+        self.locks.add("get:false()")
+        self.db.get_err_msg = "It is bolted to the wall and humming."
+        for alias in ("dispenser", "machine", "issue"):
+            if alias not in self.aliases.all():
+                self.aliases.add(alias)
+
+    def at_press(self, presser, arg=None):
+        from evennia.prototypes.spawner import spawn
+        from world.identity_utils import msg_room_identity
+
+        issued = []
+        for proto_key in self.ISSUE:
+            try:
+                obj = spawn(proto_key)[0]
+            except Exception:  # noqa: BLE001 — a bad proto never jams the machine
+                continue
+            placed = False
+            hands = dict(getattr(presser, "hands", None) or {})
+            for slot, held in hands.items():
+                if held is None:
+                    obj.move_to(presser, quiet=True, move_hooks=False)
+                    hands[slot] = obj
+                    presser.hands = hands
+                    placed = True
+                    break
+            if not placed:
+                obj.move_to(presser.location, quiet=True, move_hooks=False)
+            issued.append((obj, placed))
+
+        if not issued:
+            presser.msg("The dispenser grinds, thinks better of it, and "
+                        "goes quiet.")
+            return True
+
+        got = [o.key for o, in_hand in issued if in_hand]
+        fell = [o.key for o, in_hand in issued if not in_hand]
+        lines = ["The dispenser clunks twice and pays out."]
+        if got:
+            lines.append("You are holding " + ", ".join(got) + ".")
+        if fell:
+            lines.append(", ".join(fell).capitalize()
+                         + " lands at your feet.")
+        presser.msg(" ".join(lines))
+        msg_room_identity(
+            location=presser.location,
+            template="The dispenser clunks twice and pays {actor} out a "
+                     "jumpsuit and slippers.",
+            char_refs={"actor": presser},
+            exclude=[presser],
+        )
+        return True
+
