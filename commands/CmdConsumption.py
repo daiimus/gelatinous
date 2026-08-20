@@ -828,9 +828,13 @@ class CmdEat(ConsumptionCommand):
     help_category = "Medical"
     
     def _eat_bar_snack(self, args):
-        """Free bar snacks (§10): ``eat <snack> [from <bar>]`` nibbles a no-cost
-        snack off a bar's snack list in the room. Pure ambiance — bottomless,
-        nothing enters inventory. Returns True if a snack was served."""
+        """Serving fixtures (§10 + #2074): ``eat <snack> [from <fixture>]``
+        eats off a fixture's ``db.snacks`` list in the room — bar snacks are
+        the founding case, the Rook's nutrient line the first non-bar.
+        Bottomless, nothing enters inventory; effects (incl. nutrition) ride
+        the real substance pipeline. An entry may author its own serve
+        messaging via ``msg_self``/``msg_room`` (a plumbed feed line reads
+        wrong as "helps themselves to some"). Returns True if served."""
         from world.bar import find_room_bar_snack
         from world.substances import apply_substance
 
@@ -842,13 +846,14 @@ class CmdEat(ConsumptionCommand):
         name = snack["name"]
         # Snack names are mass/plural nouns (brine pods, synth-jerky), so "some"
         # reads right where an indefinite article wouldn't ("a synth-jerky").
-        caller.msg(
+        caller.msg(snack.get("msg_self") or (
             f"You help yourself to some {name} from "
             f"{bar.get_display_name(caller)}."
-        )
+        ))
         msg_room_identity(
             location=caller.location,
-            template=f"{{actor}} helps themselves to some {name} from {bar.key}.",
+            template=snack.get("msg_room")
+            or f"{{actor}} helps themselves to some {name} from {bar.key}.",
             char_refs={"actor": caller},
             exclude=[caller],
         )

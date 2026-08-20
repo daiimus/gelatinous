@@ -747,12 +747,14 @@ def match_snack(text, snacks):
 
 
 def find_room_bar_snack(location, text):
-    """Resolve an ``eat <snack> [from <bar>]`` request against bars in a room.
+    """Resolve an ``eat <snack> [from <fixture>]`` request in a room.
 
-    Strips a trailing ``from <bar>`` disambiguator, then matches the remaining
-    words against each bar's ``db.snacks``. Bars are duck-typed (an object with
-    an ``is_bartender`` method) to avoid importing the typeclass here. Returns
-    ``(bar, snack_dict)`` or ``None``.
+    Strips a trailing ``from <fixture>`` disambiguator, then matches the
+    remaining words against each serving fixture's ``db.snacks``. Bars
+    (duck-typed via ``is_bartender`` to avoid importing the typeclass here)
+    are the founding case; ANY object carrying ``db.snacks`` serves (#2074) —
+    the Rook's nutrient line is the first non-bar. Returns
+    ``(fixture, snack_dict)`` or ``None``.
     """
     if not location or not text:
         return None
@@ -760,7 +762,8 @@ def find_room_bar_snack(location, text):
     if not snack_text:
         return None
     for obj in getattr(location, "contents", ()):
-        if not callable(getattr(obj, "is_bartender", None)):
+        if not callable(getattr(obj, "is_bartender", None)) and not (
+                getattr(obj, "db", None) is not None and obj.db.snacks):
             continue
         snack = match_snack(snack_text, obj.db.snacks or [])
         if snack:

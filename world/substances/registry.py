@@ -23,6 +23,9 @@ system supports today:
   severity.  Rides the existing pain machinery — it decays on the
   medical tick, feeds the consciousness cliff, and shows in
   ``diagnose`` like any wound pain.
+* ``nourish`` — hunger is pharmacology (#2074): eases the eater's
+  soul hunger meter by ``magnitude * 0.05`` per dose.  The slot
+  ``world/food.py`` reserved; no-op for consumers without a meter.
 
 Future vocabulary (tolerance, addiction, stimulation, euphoria,
 organ damage) lands in follow-up PRs per
@@ -224,6 +227,20 @@ SUBSTANCES: dict[str, Substance] = {
             threshold_doses=10, craving_after=5400, prose_key="opium",
         ),
     ),
+    "nutrition": Substance(
+        id="nutrition",
+        display_name="nutrition",
+        effects=(
+            # Hunger is pharmacology (#2074): one dose eases 0.15 of
+            # the eater's hunger pressure (magnitude * 0.05).  Food
+            # prototypes declare doses per bite via ``drink_effects``,
+            # so a rich stew feeds harder than a street skewer.
+            # Consumers without a hunger meter (players, for now)
+            # no-op — same pipeline, same limitations.
+            SubstanceEffect(kind="nourish", magnitude=3),
+        ),
+        flavor_bank_key="nutrition",
+    ),
 }
 
 
@@ -251,6 +268,7 @@ EFFECT_FEEDBACK: dict[str, str] = {
     "pain_relief": "The ache dulls a little.",
     "sedation": "A slow heaviness settles behind your eyes.",
     "pain_inflict": "Fire spreads outward from the injection site.",
+    "nourish": "The hollow behind your ribs eases.",
 }
 
 #: Shown once per application when tolerance zeroed out an effect
@@ -417,6 +435,35 @@ def _apply_pain_inflict(medical_state, magnitude: int) -> int:
     return magnitude
 
 
+def _apply_nourish(consumer, magnitude: int) -> int:
+    """Ease the consumer's hunger pressure by ``magnitude * 0.05``.
+
+    The needs-meter mirror of ``pain_relief`` (#2074): eating feeds
+    you because the FOOD carries a nutrition substance, through the
+    same pipeline for every character object.  Consumers without a
+    soul meter (players, for now) no-op — when players grow hunger
+    meters, their food already works.
+
+    Returns:
+        Magnitude actually landed (0 when the consumer has no meter
+        or no hunger to ease).
+    """
+    tags = getattr(consumer, "tags", None)
+    if tags is None:
+        return 0
+    from world.souls.engine import SOUL_TAG
+
+    if not tags.get(SOUL_TAG[0], category=SOUL_TAG[1]):
+        return 0
+    from world.souls import needs as souls_needs
+
+    before = souls_needs.pressure(consumer, "hunger")
+    if before <= 0.0:
+        return 0
+    souls_needs.satisfy(consumer, "hunger", magnitude * 0.05)
+    return magnitude
+
+
 def _apply_sedation(medical_state, magnitude: int, max_stack: int) -> int:
     """Add or stack sedative consciousness suppression, capped.
 
@@ -522,6 +569,8 @@ def apply_substance(consumer, substance_id: str | None, *, doses: int = 1) -> di
                 )
             elif effect.kind == "pain_inflict":
                 landed = _apply_pain_inflict(medical_state, magnitude)
+            elif effect.kind == "nourish":
+                landed = _apply_nourish(consumer, magnitude)
             else:
                 # Unknown effect kind — declared ahead of its
                 # implementation.  Skip rather than crash so the

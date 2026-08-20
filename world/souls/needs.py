@@ -48,7 +48,8 @@ PROFILES = {
     "recluse": {                     # the sealed biome (the Rook): every
         # need satisfied INSIDE the seal — by infrastructure, which can
         # break, which is the only door out of a recluse's story
-        "hunger": (1.0 / 960.0, 0.25, "dwell_venue"),   # the nutrient line
+        "hunger": (1.0 / 960.0, 0.25, "graze"),         # the nutrient line,
+        # eaten through the REAL eat verb off a serving fixture (#2074)
         "rest": (1.0 / 1440.0, 0.25, "dwell_home"),     # the chair is the bed
         "social": (1.0 / 720.0, 0.25, "dwell_venue"),   # the airwaves
         "safety": (0.0, 0.0, "flee"),

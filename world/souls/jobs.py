@@ -88,16 +88,27 @@ def step_job(soul):
                        if supports_delivery(o, "eat")), None)
         if edible is None:
             if step.get("bites"):
-                needs_mod.satisfy(soul, "hunger", 0.9)   # finished the meal
-                where = soul.location.key if soul.location else "the street"
-                thoughts.add_thought(
-                    soul, "ate_well", 0.15,
-                    f"{step.get('last_food', 'a hot meal')} at {where}")
+                # meal over — the eat COMMAND moved the meter (#2074:
+                # nutrition rides the substance pipeline, per bite);
+                # here we only judge the outcome
+                fed = (step.get("start_p", 1.0)
+                       - needs_mod.pressure(soul, "hunger"))
+                if fed < 0.05:
+                    fault(soul, f"{step.get('last_food', 'the meal')} "
+                                "didn't nourish (proto missing nutrition?)")
+                else:
+                    where = (soul.location.key if soul.location
+                             else "the street")
+                    thoughts.add_thought(
+                        soul, "ate_well", 0.15,
+                        f"{step.get('last_food', 'a hot meal')} at {where}")
                 job["at"] = at + 1
                 soul.db.soul_job = job
                 return True
             fault(soul, "nothing edible in hand")
             return False
+        if not step.get("bites"):
+            step["start_p"] = needs_mod.pressure(soul, "hunger")
         step["last_food"] = edible.key
         bites = step.get("bites", 0) + 1
         if bites > 12:
@@ -106,6 +117,32 @@ def step_job(soul):
         soul.execute_cmd(f"eat {edible.key.split()[-1]}")
         step["bites"] = bites
         soul.db.soul_job = job
+        return True
+
+    if do == "graze":
+        # eat from a serving fixture via the REAL eat verb (#2074) —
+        # same membrane, same limitations as a player in the room.
+        # The command's nutrition dose moves the meter; we loop until
+        # sated (the recluse's plumbed-in meal, spec §12).
+        from world.souls import thoughts
+        fixture = _obj(step["fixture"])
+        if fixture is None or fixture.location != soul.location:
+            fault(soul, "the feed fixture is gone")
+            return False
+        rounds = step.get("rounds", 0) + 1
+        if rounds > 12:
+            fault(soul, f"{fixture.key} serves but the hunger stays "
+                        "(snack entry missing nutrition?)")
+            return False
+        soul.execute_cmd(f"eat {step['word']} from {fixture.key}")
+        step["rounds"] = rounds
+        soul.db.soul_job = job
+        if needs_mod.pressure(soul, "hunger") <= 0.10:
+            where = soul.location.key if soul.location else "somewhere"
+            thoughts.add_thought(soul, "ate_well", 0.10,
+                                 f"the feed at {where}")
+            soul.db.soul_job = None
+            return False
         return True
 
     if do == "sleep":

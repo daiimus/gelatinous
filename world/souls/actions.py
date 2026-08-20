@@ -62,14 +62,24 @@ def _advertisers(soul, need, radius=30):
 
 
 def _is_edible_proto(proto_key):
-    """Memoized: prototypes are static registry entries."""
+    """Memoized: prototypes are static registry entries.
+
+    Edible = the eat verb works AND the food nourishes (#2074: hunger
+    is pharmacology — drink_effects carries a nutrition dose). The tag
+    alone admitted chewing tobacco, which is eatable but not food."""
     if proto_key not in _edible_memo:
         from evennia.prototypes.prototypes import search_prototype
         hits = search_prototype(proto_key)
         tags = (hits[0].get("tags") or []) if hits else []
-        _edible_memo[proto_key] = any(
+        eatable = any(
             len(t) >= 2 and t[0] == "eat" and t[1] == "delivery_method"
             for t in tags if isinstance(t, (tuple, list)))
+        attrs = (hits[0].get("attrs") or []) if hits else []
+        effects = next((a[1] for a in attrs
+                        if isinstance(a, (tuple, list)) and a
+                        and a[0] == "drink_effects"), None)
+        _edible_memo[proto_key] = bool(
+            eatable and (effects or {}).get("nutrition"))
     return _edible_memo[proto_key]
 
 
@@ -132,6 +142,25 @@ def plan_for(soul, goal_need):
     stock, home) so jobs fault rarely and legibly.
     """
     if goal_need == "hunger":
+        from world.souls import needs as needs_mod
+        if needs_mod.shape_of(soul, "hunger") == "graze":
+            # sealed-biome feeding (spec §12 recluse, #2074): a serving
+            # fixture (db.snacks with nutrition) eaten through the REAL
+            # eat verb — the same membrane, gates, and pharmacology a
+            # player standing in the room would hit
+            for score, fixture, room in _advertisers(soul, "hunger"):
+                entry = next(
+                    (s for s in (fixture.db.snacks or [])
+                     if (s.get("effects") or {}).get("nutrition")), None)
+                if entry is None:
+                    continue
+                word = (entry.get("order_keywords")
+                        or (entry.get("name", ""),))[0]
+                return {"goal": "hunger", "steps": [
+                    {"do": "travel", "room": room.id},
+                    {"do": "graze", "fixture": fixture.id, "word": word},
+                ], "at": 0}
+            return None
         for score, counter, room in _advertisers(soul, "hunger"):
             # regulars know the hours: a keeper-bound counter whose
             # keeper is off shift is shuttered — don't walk to it
