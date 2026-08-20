@@ -147,3 +147,40 @@ class TestVicePlan(_CravingTestBase):
         self.assertIsNotNone(plan)
         self.assertEqual(plan["steps"][1]["proto"], "chewing_tobacco_plug")
         self.assertEqual(plan["steps"][2]["verb"], "eat")
+
+
+class TestStockAwareness(_CravingTestBase):
+    """#2090: limited-inventory shops (the butcher's cart) only offer
+    what was actually stocked — the planner never walks a soul to an
+    empty shelf."""
+
+    def _hunger_counter(self, infinite, stock):
+        counter = create_object(
+            "typeclasses.items.Item", key="stock counter",
+            location=self.game_room)
+        counter.db.prototype_inventory = {"mystery_skewer": 3}
+        counter.db.advertises = {"hunger": 0.9}
+        counter.db.is_infinite = infinite
+        counter.db.item_inventory = stock
+        counter.tags.add("advertiser", category="souls")
+        from world.souls import actions
+        actions._ad_cache["at"] = 0.0
+        return counter
+
+    def test_empty_limited_shelf_yields_no_plan(self):
+        from world.souls import actions
+
+        soul = self._soul_char()
+        soul.tokens = 20
+        self._hunger_counter(infinite=False, stock={})
+        self.assertIsNone(actions.plan_for(soul, "hunger"))
+
+    def test_stocked_limited_shelf_sells(self):
+        from world.souls import actions
+
+        soul = self._soul_char()
+        soul.tokens = 20
+        self._hunger_counter(infinite=False, stock={"mystery_skewer": 2})
+        plan = actions.plan_for(soul, "hunger")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["steps"][1]["proto"], "mystery_skewer")
