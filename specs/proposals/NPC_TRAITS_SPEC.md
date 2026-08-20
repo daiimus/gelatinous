@@ -1,11 +1,15 @@
 # NPC Traits — personality as a cost structure
 
-> **Status:** 📋 **PROPOSAL — owner review pending.** Trait names
-> (§6) and named-NPC assignments (§9) are explicitly awaiting the
-> owner's red pen. Mechanics ride shipped systems only (needs #1961,
+> **Status:** 📋 **PROPOSAL — names APPROVED 2026-08-19** ("grow
+> these as systems allot" — vocabulary is additive over time, not
+> frozen). Named-NPC assignments (§9) still await the red pen. The
+> curated exclusion-pair exception was flagged in review as a code
+> issue waiting to happen and is REPLACED by curated-only singleton
+> traits (§6b). Mechanics ride shipped systems only (needs #1961,
 > thoughts/mood #1995, craving #2076, consumption law #2074).
 > Background/history integration deferred by owner ("can come in
-> time") — the seam is noted in §11.
+> time") — the seam is noted in §11; the pre-planetfall designation
+> (SKILLS_AND_DESIGNATION_SPEC) is the first tenant of that seam.
 
 ## 1. The idea
 
@@ -157,11 +161,26 @@ Register: colony slang, rust and garden both. All names are data.
 | `shift_hound` | Shift-Hound | duty_lead early | relishes toil; guilt on missed shift | "The shift is the spine of the day; everything else hangs off it." |
 | `clock_ghost` | Clock-Ghost | duty_lead late | — (no shame in a lapse); mood tax while working | "Work is a tax on being alive; you pay late and tip nothing." |
 
-Exclusion pairs (generator only — see §9 for the curation exception):
+Exclusion pairs (generator-roll logic ONLY — never asserted anywhere
+else in code; a soul's stored trait list is always taken as-is):
 `dry_circuit`×`rustgut`, `dark_adapted`×`sunfollower`,
 `flinch_coded`×`plate_nerved`, `soft_handed`×`hot_solder`,
 `rivet_tight`×`open_valve`, `shift_hound`×`clock_ghost`,
 `faraday_souled`×`antenna_up`.
+
+### 6b. Curated singletons (the review fix)
+
+Bespoke paradoxes are NOT rule-breaks — they are first-class traits
+with `curated_only: True`, which the generator simply never rolls.
+No invariant is ever violated, so no code path can trip over one.
+The founding example, replacing the Rook's forbidden pair:
+
+| Key | Label | Dials | Ethos | Voice |
+|---|---|---|---|---|
+| `wire_loved` | Wire-Loved | social ×1.0 (satisfied only via mediated fixtures — the airwaves advertise to it) | relishes solitude AND revelry-through-the-wire | "You love the whole colony at once and cannot bear it one person at a time." |
+
+The vocabulary grows this way: when a character needs a
+contradiction, author the contradiction as its own trait.
 
 ## 7. Generator integration
 
@@ -198,7 +217,7 @@ Existing generated souls get a one-time backfill roll (build script).
 | Petra | Plate-Nerved + Dark-Adapted | dispatch nights don't rattle her |
 | Marta | Rivet-Tight + Grudge-Etched | pawn counter memory |
 | Ossie | Hot Solder + Shift-Hound | crane radio manners |
-| The Rook | Faraday-Souled + Antenna-Up | **curated exception to the exclusion pair — the whole character**: loves the crowd through the wire, can't stand the room. Exclusions bind the generator, never the author. |
+| The Rook | Wire-Loved (curated singleton, §6b) | loves the crowd through the wire, can't stand the room — the paradox is authored as its own trait, not a rule-break |
 
 ## 10. Phasing
 
