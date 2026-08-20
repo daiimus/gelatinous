@@ -390,3 +390,12 @@ class SoulsHeartbeat(DefaultScript):
                 think(soul, shour)
             except Exception as err:
                 jobs.fault(soul, f"think crashed: {err}")
+                # TEMPORARY instrumentation (#2094, the #2049 pattern):
+                # capture the raising frame; removed once diagnosed
+                try:
+                    import traceback
+                    with open("server/logs/think_crash.log", "a") as fh:
+                        fh.write(f"--- {time.time():.0f} {soul.key}\n"
+                                 f"{traceback.format_exc()}\n")
+                except Exception:  # noqa: BLE001
+                    pass
