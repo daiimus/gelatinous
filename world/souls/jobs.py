@@ -158,6 +158,43 @@ def step_job(soul):
         soul.db.soul_job = job
         return True
 
+    if do == "press":
+        # push the button, like anyone would (#2104)
+        fixture = _obj(step["fixture"])
+        if fixture is None or fixture.location != soul.location:
+            fault(soul, "the machine isn't here")
+            return False
+        soul.execute_cmd(f"press {fixture.key.split()[-1]}")
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
+    if do == "wear":
+        # dress through the real verb, garment by garment, until the
+        # soul meets their own modesty (#2104)
+        from world.souls import thoughts
+        from world.souls.actions import _wearable
+        wearable = [o for o in soul.contents
+                    if _wearable(soul, o)]
+        if not wearable:
+            if needs_mod.wardrobe_pressure(soul) >= 1.0:
+                fault(soul, "nothing here fit to wear")
+                return False
+            thoughts.add_thought(soul, "dressed", 0.10,
+                                 "decent again, at least")
+            job["at"] = at + 1
+            soul.db.soul_job = job
+            soul.db.soul_job = None
+            return False
+        soul.execute_cmd(f"wear {wearable[0].key.split()[-1]}")
+        rounds = step.get("rounds", 0) + 1
+        if rounds > 8:
+            fault(soul, f"{wearable[0].key} won't go on")
+            return False
+        step["rounds"] = rounds
+        soul.db.soul_job = job
+        return True
+
     if do == "graze":
         # eat from a serving fixture via the REAL eat verb (#2074) —
         # same membrane, same limitations as a player in the room.
