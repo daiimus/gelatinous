@@ -2355,6 +2355,45 @@ BLUEPRINTS["vendor_lin"] = {
              "pointer, and eyes that price you, feed you, and forgive you "
              "the difference in about that order."),
     "voice": {"voice_description": "warm, smoke-worn"},
+    # The apron was all build 048 ever gave her, which read to the
+    # wardrobe need as undressed. Underneath it: thirty years of the
+    # same practical clothes, unbranded the way handmade and
+    # hand-me-down things are.
+    "wardrobe": [
+        {"key": "faded indigo work shirt",
+         "aliases": ["shirt", "work shirt"],
+         "desc": ("A collarless work shirt washed to the colour of old "
+                  "sky, the sleeves permanently shoved back past the "
+                  "elbow and gone soft where her forearms have worn "
+                  "them."),
+         "worn_desc": ("A collarless work shirt in faded |cindigo|n, "
+                       "sleeves shoved past the elbow and long since "
+                       "given up on coming back down"),
+         "coverage": ["chest", "back", "abdomen", "left_arm", "right_arm"],
+         "layer": 1, "color": "indigo", "material": "cotton",
+         "weight": 0.5},
+        {"key": "dark cotton trousers",
+         "aliases": ["trousers", "pants"],
+         "desc": ("Loose dark trousers cut for standing in, the knees "
+                  "gone pale and one cuff scorched a hand's width where "
+                  "the burner caught it some year or other."),
+         "worn_desc": ("Loose |xdark|n cotton trousers gone pale at the "
+                       "knee, one cuff scorched a hand's width"),
+         "coverage": ["groin", "left_thigh", "right_thigh",
+                      "left_shin", "right_shin"],
+         "layer": 1, "color": "dark", "material": "cotton",
+         "weight": 0.7},
+        {"key": "flat canvas shoes",
+         "aliases": ["shoes", "canvas shoes"],
+         "desc": ("Thin-soled canvas shoes flattened into the shape of "
+                  "the feet inside them, the heels trodden down from "
+                  "being toed on and off at the cart."),
+         "worn_desc": ("Flat |wcanvas|n shoes trodden down at the heel, "
+                       "shaped by the feet inside them"),
+         "coverage": ["left_foot", "right_foot"],
+         "layer": 3, "color": "grey", "material": "canvas",
+         "weight": 0.4},
+    ],
     "llm_driven": True,
     "persona": {
         "archetype": "colonist",
@@ -2386,6 +2425,9 @@ BLUEPRINTS["vendor_lin"] = {
 # drills etc.) — clearly marked, never given a persona worth mourning.
 BLUEPRINTS["drill_dummy"] = {
     "name": "Drill Dummy",
+    # machinery, not cast: no persona, no post, and the registry
+    # integrity checks skip it on this flag
+    "fixture": True,
     "typeclass": "typeclasses.llm_npc.LLMNpc",
     "identity": {"sex": "ambiguous", "height": "average",
                  "build": "average", "skintone": "pale",
