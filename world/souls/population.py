@@ -106,7 +106,8 @@ OUTFIT_SLOTS = (("torso", "chest"), ("legs", "groin"), ("feet", "left_foot"))
 def outfit_for(npc, stock, budget=None):
     """Assemble an outfit from `stock`, by preference and budget.
 
-    `stock` is [(proto_key, price, coverage, styles)]. Returns the
+    `stock` is [(proto_key, price, coverage, styles, presentation)].
+    Returns the
     proto_keys chosen — one per slot, favouring the wearer's own
     register, spending nothing it doesn't have. Deliberately NOT a
     random draw: a person with taste and a budget picks pieces that go
@@ -116,6 +117,7 @@ def outfit_for(npc, stock, budget=None):
     from world import style as style_mod
 
     wearer = style_mod.style_of_character(npc)
+    leaning = style_mod.presentation_of_character(npc)
     purse = int(budget) if budget is not None else None
     chosen, spent, covered = [], 0, set()
 
@@ -123,8 +125,10 @@ def outfit_for(npc, stock, budget=None):
         if proof in covered:
             continue                     # an earlier piece already covers it
         options = [
-            (style_mod.affinity(styles, wearer), -price, cov, key, price)
-            for key, price, cov, styles in stock
+            (style_mod.affinity(styles, wearer)
+             + style_mod.presentation_affinity(pres, leaning),
+             -price, cov, key, price)
+            for key, price, cov, styles, pres in stock
             if proof in cov
             and (purse is None or price + spent <= purse)
         ]
@@ -168,8 +172,10 @@ def _thrift_stock():
             continue
         styles = attrs.get("style") or style_mod.derive_style(
             proto.get("key", ""), attrs.get("desc", ""))
+        pres = attrs.get("presentation") or style_mod.derive_presentation(
+            proto.get("key", ""))
         stock.append((proto_key, int(price or 0), frozenset(cov),
-                      tuple(styles)))
+                      tuple(styles), tuple(pres)))
     return stock
 
 
@@ -242,6 +248,8 @@ def generate_resident(lawless=False):
     from world import style as style_mod
     npc.db.style = list(style_mod.roll_style(
         role="drifter" if lawless else None))
+    # rolled INDEPENDENTLY of sex, deliberately (world.style rule 3)
+    npc.db.presents = list(style_mod.roll_presentation())
     _dress_arrival(npc)
 
     rental.assign_cube(npc, kiosk)

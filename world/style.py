@@ -138,3 +138,92 @@ def roll_style(role=None, rng=None):
         return tuple(ROLE_STYLES[role])
     return (rng.choices(("street", "salvage", "workwear", "shine"),
                         weights=(5, 3, 3, 1))[0],)
+
+# ---------------------------------------------------------------------
+# PRESENTATION — the second axis (owner-ruled 2026-08-20)
+# ---------------------------------------------------------------------
+#
+# Style says which world a garment comes from; presentation says which
+# line it cuts. They are orthogonal: `shine` + femme is the slit skirt,
+# `shine` unmarked is the Rook's black silk.
+#
+# THREE RULES, and they are the whole point:
+#
+#   1. It describes the GARMENT, never the wearer. There is no table
+#      anywhere of what a body may put on.
+#   2. It never gates. Anyone wears anything; presentation only shapes
+#      what a soul reaches for first.
+#   3. A character's leaning is its OWN attribute, rolled independently
+#      of `sex`. Deriving it from sex would have built exactly the
+#      stereotype machine this design exists to avoid — so a
+#      male-sexed arrival may lean femme, and the game dresses him that
+#      way without comment.
+#
+# In practice the axis is MARKED or UNMARKED. Masc-coded silhouettes
+# are already carried by the style registers — an evening suit reads
+# `shine`, a necktie `uniform`, heavy boots `workwear` — so `masc`
+# stays legal in the vocabulary and empty in the data. Femme is the one
+# reading style does not capture: a slit skirt and cargo trousers are
+# both `street`, and only one of them is marked.
+#
+# And it is a READING, not an essence: this is how the colony sees the
+# garment, which is culture, and culture is allowed to be different
+# somewhere else.
+
+PRESENTATIONS = ("femme", "masc")           # absence == neutral
+
+#: Names that carry a femme reading in this colony.
+FEMME_KEYWORDS = (
+    "skirt", "dress", "gown", "blouse", "halter", "heels", "heeled",
+    "slip", "sheath", "stockings", "tights", "bra", "panties", "camisole",
+    "corset", "bodice", "shawl", "sheer",
+)
+
+
+def presentation_of(obj):
+    """A garment's declared presentation, deriving from its name when
+    unset. Absence of a mark means neutral, which is most clothing."""
+    declared = obj.attributes.get("presentation") if obj.attributes else None
+    if declared:
+        return tuple(declared)
+    return derive_presentation(getattr(obj, "key", ""))
+
+
+def derive_presentation(name):
+    low = (name or "").lower()
+    if any(word in low for word in FEMME_KEYWORDS):
+        return ("femme",)
+    return ()
+
+
+def presentation_of_character(char):
+    """What this person dresses toward. Unset means no leaning, which
+    is not the same as neutral clothing — it means they simply don't
+    weight the axis."""
+    declared = char.db.presents if char and char.db else None
+    return tuple(declared) if declared else ()
+
+
+def presentation_affinity(garment_pres, wearer_pres):
+    """1 when the garment's line matches what this person dresses
+    toward, 0 otherwise. Deliberately smaller than style affinity: what
+    world you dress from matters more than which line you cut."""
+    if not wearer_pres:
+        return 0                      # no leaning: the axis is silent
+    if set(garment_pres or ()) & set(wearer_pres):
+        return 1
+    if not garment_pres and "neutral" in wearer_pres:
+        return 1
+    return 0
+
+
+def roll_presentation(rng=None):
+    """A leaning for somebody nobody authored — rolled INDEPENDENTLY of
+    sex, on purpose (rule 3 above). Most people don't weight the axis
+    much; some dress decidedly one way."""
+    import random as _random
+
+    rng = rng or _random
+    pick = rng.choices(("", "femme", "neutral"), weights=(5, 3, 2))[0]
+    return (pick,) if pick else ()
+
