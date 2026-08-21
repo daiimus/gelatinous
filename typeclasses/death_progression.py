@@ -845,7 +845,18 @@ class DeathProgressionScript(DefaultScript):
         # be deleted. The failure direction is a flagged Limbo ghost, not a
         # lost player character.
         if account is None:
-            if character.db.is_npc is True:
+            # ESSENTIAL PERSONNEL are archived, never deleted (#2128).
+            # Limbo is where dead PCs already wait; the cast waits there
+            # too, so a resleeve restores the person rather than
+            # rebuilding a copy of them from a template. The delete
+            # branch below stays for generated residents, who are what
+            # it was written to stop accumulating.
+            if character.db.is_npc is True and character.db.essential:
+                splattercast = get_splattercast()
+                splattercast.msg(
+                    f"DEATH_NPC_ARCHIVE: {getattr(character, 'key', '?')} is "
+                    f"Essential Personnel — archiving to Limbo")
+            elif character.db.is_npc is True:
                 # §P3 (NPC_POSTS_AND_REINCARNATION): if this NPC kept a
                 # registered post, snapshot their dossiers/memories onto it
                 # BEFORE the object (and everything on it) is deleted — the

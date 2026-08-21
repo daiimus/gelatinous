@@ -2212,6 +2212,10 @@ def build_npc(blueprint_key, location):
     npc = create_object(bp["typeclass"], key=bp["name"], location=location,
                         home=location)
     npc.db.is_npc = True
+    # built from a blueprint means authored, and authored means the
+    # colony should not be able to destroy them by accident (#2128)
+    npc.db.essential = True
+    npc.db.blueprint_key = blueprint_key
 
     species = ident.get("species")
     if species and species != "human":
