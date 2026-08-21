@@ -371,6 +371,16 @@ def with_article(noun_phrase: str, definite: bool = False) -> str:
         The noun phrase with its article (or bare, for indefinite
         pluralia tantum).
     """
+    # Some item keys carry their own article — "a bowl of hand-pulled
+    # noodles", "the free rail" — and prefixing another produced "a a
+    # bowl of...". A phrase that already begins with an article keeps
+    # the one it has.
+    first = noun_phrase.strip().split(" ", 1)[0].lower() if noun_phrase else ""
+    if first in ("a", "an", "the"):
+        if definite and first != "the":
+            rest = noun_phrase.strip().split(" ", 1)[1:]
+            return "the " + (rest[0] if rest else "")
+        return noun_phrase
     if definite:
         return f"the {noun_phrase}"
     if is_pluralia_tantum(noun_phrase):
