@@ -332,6 +332,23 @@ class CmdStats(Command):
         subject_name = target.key
         subject_line = f" Subject: {subject_name[:38]:<38}"
 
+        # The manifest: who the chart said this person was, and what it
+        # rated them for. Blank for anyone it never listed — synthetics
+        # were never on one, which is its own kind of record.
+        from world import manifest as manifest_mod
+        des_text = manifest_mod.designation_line(target)
+        designation_line_out = (f" {des_text[:47]}".ljust(48) if des_text
+                                else " Designation: NONE ON FILE".ljust(48))
+        rating_lines = []
+        for label, value in manifest_mod.rated_skills(target)[:6]:
+            tier = manifest_mod.letter_for(value)
+            body = f"              {label + ':':<15}{tier}"
+            if show_numeric:
+                body += f" ({value})"
+            rating_lines.append(body.ljust(48))
+        if not rating_lines:
+            rating_lines = ["              (no ratings on file)".ljust(48)]
+
         # Dynamic formatting based on display mode
         if show_numeric:
             # Calculate exact padding for numeric mode to maintain 48-char width
@@ -362,10 +379,14 @@ class CmdStats(Command):
             vitals_line = f"              Vitals:     {vitals_color}{vitals_display:<12}{COLOR_SUCCESS}          "
 
         # Fixed format to exactly 48 visible characters per row
+        rating_block = "\n".join(
+            f"{COLOR_SUCCESS}{BOX_VERTICAL}{row}{BOX_VERTICAL}{COLOR_NORMAL}"
+            for row in rating_lines)
         string = f"""{COLOR_SUCCESS}{BOX_TOP_LEFT}{BOX_HORIZONTAL * 48}{BOX_TOP_RIGHT}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL} PSYCHOPHYSICAL EVALUATION REPORT               {BOX_VERTICAL}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}{subject_line}{BOX_VERTICAL}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}{file_ref_padded}{BOX_VERTICAL}{COLOR_NORMAL}
+{COLOR_SUCCESS}{BOX_VERTICAL}{designation_line_out}{BOX_VERTICAL}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_TEE_RIGHT}{BOX_HORIZONTAL * 48}{BOX_TEE_LEFT}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}                                                {BOX_VERTICAL}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}{grit_line}{BOX_VERTICAL}{COLOR_NORMAL}
@@ -375,6 +396,9 @@ class CmdStats(Command):
 {COLOR_SUCCESS}{BOX_VERTICAL}                                                {BOX_VERTICAL}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}{vitals_line}{BOX_VERTICAL}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}                                                {BOX_VERTICAL}{COLOR_NORMAL}
+{COLOR_SUCCESS}{BOX_TEE_RIGHT}{BOX_HORIZONTAL * 48}{BOX_TEE_LEFT}{COLOR_NORMAL}
+{COLOR_SUCCESS}{BOX_VERTICAL} Ratings:                                       {BOX_VERTICAL}{COLOR_NORMAL}
+{rating_block}
 {COLOR_SUCCESS}{BOX_TEE_RIGHT}{BOX_HORIZONTAL * 48}{BOX_TEE_LEFT}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL} Notes:                                         {BOX_VERTICAL}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}                                                {BOX_VERTICAL}{COLOR_NORMAL}

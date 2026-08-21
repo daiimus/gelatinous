@@ -730,6 +730,15 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
         # puppet hook auto-looks at the character's current room, and the
         # player must never see staging (or its archived sleeves). With no
         # session attached yet, the move renders to no one.
+        # The manifest assigned everyone a berth, a department and a
+        # rating before the gateway died. It never stood up, nobody has
+        # used it in sixty-one years, and it is still the truest record
+        # of who this person was — so the envelope prints it.
+        if not char.db.designation:
+            from world import manifest as manifest_mod
+            char.db.designation = manifest_mod.roll_designation()
+            char.db.skills = manifest_mod.seed_skills(char.db.designation)
+
         spawn_location = get_spawn_location()
         if spawn_location and spawn_location != char.location:
             char.move_to(spawn_location, quiet=True)
@@ -1520,6 +1529,7 @@ def first_char_finalize(caller, raw_string, **kwargs):
 
 |y    THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE
     CONTENTS: {char.key.upper()}
+    MANIFEST: {_manifest_stamp(char)}
     DECANTED: {gametime.colony_now().strftime('%d %b %Y').upper()}
     BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n
 
@@ -1554,6 +1564,13 @@ __________________________________________________________________
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
+
+def _manifest_stamp(char):
+    """The manifest line as the envelope prints it: uppercase, and
+    indifferent. A chart that never stood up still knew your berth."""
+    from world import manifest as manifest_mod
+    return (manifest_mod.designation_line(char) or "NO RECORD").upper()
+
 
 def _cleanup_charcreate_ndb(caller):
     """Clean up character creation NDB data."""

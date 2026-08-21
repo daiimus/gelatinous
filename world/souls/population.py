@@ -254,6 +254,11 @@ def generate_resident(lawless=False):
     # interchangeable strangers (NPC_TRAITS_SPEC §7)
     from world.souls import traits as traits_mod
     npc.db.soul_traits = list(traits_mod.roll())
+    # the manifest: who the dead chart said they were, and what it
+    # rated them for. Identity-level, so it survives every resleeve.
+    from world import manifest as manifest_mod
+    npc.db.designation = manifest_mod.roll_designation()
+    npc.db.skills = manifest_mod.seed_skills(npc.db.designation)
     _dress_arrival(npc)
 
     rental.assign_cube(npc, kiosk)
