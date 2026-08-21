@@ -255,3 +255,64 @@ def roll_presentation(rng=None):
                        weights=(5, 3, 2, 2))[0]
     return (pick,) if pick else ()
 
+# ---------------------------------------------------------------------
+# TYPE — the layer ladder, derived from a garment's own name
+# ---------------------------------------------------------------------
+#
+# The convention that makes "name it a coat and it layers like a coat"
+# true at runtime, rather than once in a migration script. Collisions
+# resolve two ways, and the order matters:
+#
+#   1. An EXPLICIT layer always wins. Authors keep control; this only
+#      answers when nobody said.
+#   2. Among keywords, the LONGEST match wins — the most specific
+#      reading of the name. "hooded labcoat" is a labcoat (outer), not
+#      a hood (shell); "boot socks" are socks (skin), not boots.
+#   3. Equal-length matches at different rungs fall to the INNER one,
+#      which is the safer error: a garment worn too far in blocks
+#      nothing, while one worn too far out blocks everything beneath.
+#   4. No match at all reads as base, the rung most clothing occupies.
+
+RUNGS = {
+    0: ("bra", "briefs", "boxers", "panties", "thong", "g-string",
+        "underwear", "undershirt", "sock", "socks", "stocking",
+        "stockings", "tights"),
+    1: ("shirt", "tee", "t-shirt", "tshirt", "blouse", "henley", "tank",
+        "top", "trousers", "pants", "jeans", "skirt", "dress",
+        "jumpsuit", "leggings", "suit", "wig", "bodysuit", "slip"),
+    2: ("vest", "waistcoat", "hoodie", "sweater", "jumper", "cardigan",
+        "glasses", "sunglasses", "shades", "mirrorshades", "mask",
+        "respirator", "rebreather", "balaclava", "carrier", "lenses"),
+    3: ("jacket", "windbreaker", "blazer", "harness", "hood", "slicker",
+        "cut"),
+    4: ("coat", "labcoat", "trench", "overcoat", "topcoat", "greatcoat",
+        "duster", "robe", "apron", "scrubs", "coverall", "parka",
+        "bathrobe", "cloak", "poncho"),
+    5: ("boot", "boots", "shoe", "shoes", "sneaker", "sneakers", "oxford",
+        "oxfords", "wader", "waders", "sandal", "sandals", "loafer",
+        "heel", "heels", "slipper", "slippers", "clog", "clogs", "belt",
+        "tie", "necktie", "scarf", "shawl", "bandana", "bandanna",
+        "armband", "badge", "glove", "gloves", "hat", "cap", "helmet",
+        "choker", "garter", "garters", "watch", "chrono", "wrap",
+        "collar", "earpiece", "goggles"),
+}
+
+#: The rung a garment lands on when its name says nothing.
+DEFAULT_RUNG = 1
+
+
+def derive_rung(name):
+    """Which rung this garment's NAME puts it on, or None when nothing
+    in the name claims it."""
+    import re
+
+    low = (name or "").lower()
+    best = None                       # (length, -rung) -> most specific
+    for rung, words in RUNGS.items():
+        for word in words:
+            if re.search(r"\b" + re.escape(word) + r"\b", low):
+                score = (len(word), -rung)
+                if best is None or score > best[0]:
+                    best = (score, rung)
+    return best[1] if best else None
+
