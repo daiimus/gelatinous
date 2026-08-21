@@ -179,6 +179,23 @@ def sweep(now=None):
             post.db.post_slots = slots
 
 
+def _archived_keeper(bp_key):
+    """The most recently archived Essential body for this blueprint,
+    waiting in Limbo. Returns None when nobody is filed — a first
+    death under the old rules, or a character who predates archiving."""
+    from evennia.objects.models import ObjectDB
+
+    candidates = [
+        obj for obj in ObjectDB.objects.filter(db_location__isnull=False)
+        if obj.db.essential and obj.db.blueprint_key == bp_key
+        and obj.db.is_npc and obj.location
+        and obj.location.id == 2                     # Evennia's Limbo
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda o: o.id)
+
+
 def _try_resleave(post, room, shift, slot, now) -> bool:
     """The insurance pays out (spec §P3): rebuild this SLOT's named
     keeper from their blueprint, restore the estate MINUS the death gap
@@ -195,15 +212,27 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
     till = post if post.db.register is not None else post.db.post_insurer
     if till is None or int(till.db.register or 0) < RESLEAVE_PREMIUM:
         return False
-    from world.npcs.blueprints import build_npc
     # you do not reappear behind your own counter: a new sleeve is
     # decanted at Thawn-Harrison like anyone else's, and the walk back
     # to work is the planner's problem (owner ruling 2026-08-20)
     decant = _decant_room() or room
-    try:
-        npc = build_npc(bp_key, decant)
-    except Exception:  # noqa: BLE001 — a broken blueprint must not loop-spawn
-        return False
+
+    # ARCHIVED FIRST (#2128): Essential Personnel wait in Limbo rather
+    # than being deleted, so the insurance restores the PERSON — every
+    # memory, dossier, thought and habit they had — instead of building
+    # a copy from their blueprint and pasting a snapshot onto it.
+    # Blueprint rebuild remains the fallback for anyone who predates
+    # the archive or whose record is gone.
+    npc = _archived_keeper(bp_key)
+    if npc is not None:
+        npc.move_to(decant, quiet=True, move_hooks=False)
+        npc.db.is_dead = None
+    else:
+        from world.npcs.blueprints import build_npc
+        try:
+            npc = build_npc(bp_key, decant)
+        except Exception:  # noqa: BLE001 — a broken blueprint must not loop-spawn
+            return False
     npc.db.is_npc = True
     # the premium moves for real: insurer till -> Maxwell's terminal
     till.db.register = int(till.db.register or 0) - RESLEAVE_PREMIUM
