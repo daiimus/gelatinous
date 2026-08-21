@@ -213,9 +213,10 @@ Existing generated souls get a one-time backfill roll (build script).
 | Del | Dark-Adapted + Faraday-Souled | night bar, few words |
 | Lin | Shift-Hound + Rivet-Tight | day-only cart, exact change |
 | Ottilie | Ration-Burner + Shift-Hound | the butcher eats her own cooking |
-| Vance | Greenhaus-Handed + Plate-Nerved | steady hands, judges waste |
+| Nikolai | Greenhaus-Handed + Plate-Nerved | steady hands, judges waste (was Vance, since retired) |
 | Petra | Plate-Nerved + Dark-Adapted | dispatch nights don't rattle her |
-| Marta | Rivet-Tight + Grudge-Etched | pawn counter memory |
+| Marta | Greenhaus-Handed + Dark-Adapted | corrected: the urgent-care doctor who takes the quiet shift |
+| Ezra | Rivet-Tight + Grudge-Etched | the pawn counter's memory — remembers every face that tried it on |
 | Ossie | Hot Solder + Shift-Hound | crane radio manners |
 | The Rook | Wire-Loved (curated singleton, §6b) | loves the crowd through the wire, can't stand the room — the paradox is authored as its own trait, not a rule-break |
 

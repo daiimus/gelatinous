@@ -113,8 +113,36 @@ the first — established canon):
 | `signals` | Signals & Survey | comms, sensors, charts — the decking affinity |
 
 **Ranks** (5, weighted): Crewman (common) → Specialist (common) →
-Chief (uncommon) → Officer (rare) → Commander (named characters
-only; the generator never rolls one).
+Chief (uncommon) → Officer (rare) → Commander.
+
+**Ranks are FLAVOUR, not mechanics** (owner-ruled 2026-08-20). They
+exist to lend the theme gravitas — a dead chart still printing titles
+— and nothing should ever check one. No authority, no pay band, no
+gate. If deference to a designation ever becomes real it arrives as
+content, and it arrives asked for.
+
+### 4.1 Command is deliberately empty (owner-ruled 2026-08-20)
+
+Nobody in the colony holds a Command designation, and that absence is
+the point: the officers who mattered died, left, or never woke, and
+what grew instead runs on tills and favours.
+
+If Command ever enters play it does so as **artifacts, not people** —
+ship logs and personal effects rather than a living officer. A locked
+case in the Kaspar salvage yard, a log that still plays, a name on
+the manifest with nobody attached. Lore that arrives as objects
+cannot contradict itself, can be found rather than exposited, and
+lands naturally in systems already built or spec'd: the Halcyon's
+reclaimed hull, the decking layer's "everything is a file", the
+manifest itself. That is the preferred shape if the question is ever
+opened.
+
+### 4.2 Vessel names
+
+Three is enough to start. A fuller registry is wanted eventually —
+the slowboats are a naming project of their own — but the chart works
+with a handful, and every arrival can plausibly have come off one of
+them.
 
 ## 5. The fourteen ratings (OWNER-RULED 2026-08-19)
 
@@ -208,12 +236,13 @@ lean Demolitions; Life Systems' lean Athletics (tower work).
 
 | NPC | Designation | Why |
 |---|---|---|
-| Vance | Officer, Medical & Cryogenics | the doctor; watched the sleepers |
+| Nikolai | Officer, Medical & Cryogenics | the doctor; watched the sleepers (was listed as Vance, who has since been retired from the world) |
 | Petra | Chief, Signals & Survey | dispatch is the old comms watch |
 | The Rook | Officer, Signals & Survey | the voice of the ship, still broadcasting |
 | Ossie | Specialist, Engineering & Fabrication | the crane was almost his rating |
+| Ezra | Chief, Logistics & Stores | the pawn counter IS a cargo hold — he keeps it |
 | Bellows | Specialist, Logistics & Stores | knows what a shelf is worth |
-| Marta | Chief, Logistics & Stores | the pawn counter is a cargo hold |
+| Marta | Chief, Medical & Cryogenics | corrected: she is the Kaspar Urgent Care doctor, not the pawn keeper |
 | Sable | Crewman, Life Systems | stewarding was the closest the chart came to bartending |
 | Sully | Crewman, Engineering & Fabrication | hull-slab bar, hull-rated hands |
 | Lin | Crewman, Life Systems | galley rating; the cart is the galley |
