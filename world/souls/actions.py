@@ -174,6 +174,27 @@ def _is_wearable_proto(proto_key):
     return _proto_coverage(proto_key) is not None
 
 
+_style_memo = {}
+
+
+def _proto_affinity(proto_key, soul):
+    """How much this ware reads as this soul (world.style)."""
+    from world import style as style_mod
+
+    if proto_key not in _style_memo:
+        from evennia.prototypes.prototypes import search_prototype
+        hits = search_prototype(proto_key)
+        proto = hits[0] if hits else {}
+        attrs = {a[0]: a[1] for a in (proto.get("attrs") or ())
+                 if isinstance(a, (tuple, list)) and len(a) >= 2}
+        _style_memo[proto_key] = tuple(
+            attrs.get("style")
+            or style_mod.derive_style(proto.get("key", ""),
+                                      attrs.get("desc", "")))
+    return style_mod.affinity(_style_memo[proto_key],
+                              style_mod.style_of_character(soul))
+
+
 _prov_memo = {}
 
 
@@ -402,11 +423,13 @@ def plan_for(soul, goal_need):
                         continue      # more paper is not an upgrade
                     # replacing the issue: any real garment is progress
                     gain = len(cov & missing) if missing else len(cov)
-                    wares.append((-gain, price, proto_key))
+                    # among equals, dress like yourself (#2122)
+                    fit = _proto_affinity(proto_key, soul)
+                    wares.append((-gain, -fit, price, proto_key))
                 helpful = [w for w in wares if w[0] < 0]
                 if not helpful:
                     continue      # nothing here closes the gap
-                _score, price, proto = min(helpful)
+                _score, _fit, price, proto = min(helpful)
                 return {"goal": "wardrobe", "steps": [
                     {"do": "travel", "room": room.id},
                     {"do": "buy", "counter": fixture.id, "proto": proto,

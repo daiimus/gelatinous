@@ -10,7 +10,7 @@ quiet; let poverty spread and the arrivals get hungry-eyed.
 """
 
 import time
-from random import choice, randint, random
+from random import choice, randint, random, choices
 
 from evennia import create_object
 from evennia.utils.search import search_object
@@ -98,6 +98,96 @@ def unemployed_count(souls) -> int:
                and needs_mod.profile_name(s) != "robot")
 
 
+#: the slots an outfit is assembled from, and the body part that
+#: proves each one is filled
+OUTFIT_SLOTS = (("torso", "chest"), ("legs", "groin"), ("feet", "left_foot"))
+
+
+def outfit_for(npc, stock, budget=None):
+    """Assemble an outfit from `stock`, by preference and budget.
+
+    `stock` is [(proto_key, price, coverage, styles)]. Returns the
+    proto_keys chosen — one per slot, favouring the wearer's own
+    register, spending nothing it doesn't have. Deliberately NOT a
+    random draw: a person with taste and a budget picks pieces that go
+    together, and only falls back to somebody else's register when
+    their own has nothing for that slot (#2122).
+    """
+    from world import style as style_mod
+
+    wearer = style_mod.style_of_character(npc)
+    purse = int(budget) if budget is not None else None
+    chosen, spent, covered = [], 0, set()
+
+    for _slot, proof in OUTFIT_SLOTS:
+        if proof in covered:
+            continue                     # an earlier piece already covers it
+        options = [
+            (style_mod.affinity(styles, wearer), -price, cov, key, price)
+            for key, price, cov, styles in stock
+            if proof in cov
+            and (purse is None or price + spent <= purse)
+        ]
+        if not options:
+            continue
+        best_fit = max(o[0] for o in options)
+        # everything that fits them equally well; the tie is where
+        # variety lives, not the choice itself
+        finalists = [o for o in options if o[0] == best_fit]
+        cheapest = max(o[1] for o in finalists)
+        finalists = [o for o in finalists if o[1] == cheapest]
+        pick = choice(finalists)
+        chosen.append(pick[3])
+        spent += pick[4]
+        covered |= set(pick[2])
+    return chosen
+
+
+def _thrift_stock():
+    """What the Community Thrift's rail is carrying, as outfit stock —
+    the same donated shelf the colony's poor dress from."""
+    from evennia.prototypes.prototypes import search_prototype
+
+    from world import style as style_mod
+
+    rail = next((o for o in search_object("the free rail") if o.pk), None)
+    inventory = (rail.db.prototype_inventory or {}) if rail else {}
+    if not inventory:
+        inventory = {k: 0 for k in ("FLANNEL_SHIRT", "COTTON_TSHIRT",
+                                    "CARGO_TROUSERS", "HIGH_TOPS")}
+    stock = []
+    for proto_key, price in inventory.items():
+        hits = search_prototype(proto_key)
+        if not hits:
+            continue
+        proto = hits[0]
+        attrs = {a[0]: a[1] for a in (proto.get("attrs") or ())
+                 if isinstance(a, (tuple, list)) and len(a) >= 2}
+        cov = attrs.get("coverage")
+        if not cov or not attrs.get("worn_desc") or attrs.get("provisional"):
+            continue
+        styles = attrs.get("style") or style_mod.derive_style(
+            proto.get("key", ""), attrs.get("desc", ""))
+        stock.append((proto_key, int(price or 0), frozenset(cov),
+                      tuple(styles)))
+    return stock
+
+
+def _dress_arrival(npc):
+    """Nobody arrives naked: an outfit off the thrift rail, assembled to
+    the arrival's own taste and what little they have."""
+    from evennia.prototypes.spawner import spawn
+
+    for proto_key in outfit_for(npc, _thrift_stock(),
+                                budget=int(npc.tokens or 0)):
+        try:
+            garment = spawn(proto_key)[0]
+        except Exception:  # noqa: BLE001 — a bad proto never blocks arrival
+            continue
+        garment.move_to(npc, quiet=True, move_hooks=False)
+        npc.wear_item(garment)
+
+
 def generate_resident(lawless=False):
     """One namebank arrival: cube through the real kiosk, ensouled,
     lawless carrying steel when the colony's poverty called for it."""
@@ -146,6 +236,14 @@ def generate_resident(lawless=False):
             npc.wield_item(shiv, "right")
         except Exception:  # noqa: BLE001 — an unarmed desperate still walks
             pass
+    # nobody arrives naked: a style, and an outfit in it. The shuttle
+    # used to deliver identical bare strangers who all walked to
+    # Cryogenics for the same paper suit (#2122).
+    from world import style as style_mod
+    npc.db.style = list(style_mod.roll_style(
+        role="drifter" if lawless else None))
+    _dress_arrival(npc)
+
     rental.assign_cube(npc, kiosk)
     home = rental.residence_of(npc)
     engine.ensoul(npc, role="drifter" if lawless else "resident",
