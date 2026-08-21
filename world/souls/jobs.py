@@ -183,6 +183,29 @@ def step_job(soul):
         wearable = sorted((o for o in soul.contents if _wearable(soul, o)),
                           key=_rung)
         if not wearable:
+            # shed the paper: real clothes REPLACE the issue rather than
+            # layering over it, or the soul stays provisional forever and
+            # keeps shopping (#2118). An inner garment can't come off
+            # through an outer one, so strip fully and re-dress, putting
+            # the issue back only where it's still the only cover.
+            worn_now = list(dict.fromkeys(
+                g for items in (soul.worn_items or {}).values() for g in items))
+            if any(g.attributes.get("provisional") for g in worn_now):
+                for garment in sorted(worn_now, key=lambda g: -_rung(g)):
+                    soul.remove_item(garment)
+                real = [g for g in worn_now if not g.attributes.get("provisional")]
+                paper = [g for g in worn_now if g.attributes.get("provisional")]
+                for garment in sorted(real, key=_rung):
+                    soul.wear_item(garment)
+                for garment in sorted(paper, key=_rung):
+                    if needs_mod.wardrobe_pressure(soul) >= 1.0:
+                        soul.wear_item(garment)   # still the only cover
+                        continue
+                    bin_ = next((o for o in soul.location.contents
+                                 if "donation" in o.key.lower()), None) \
+                        if soul.location else None
+                    if bin_ is not None:          # "leave what you don't"
+                        soul.execute_cmd(f"drop {garment.key.split()[-1]}")
             if needs_mod.wardrobe_pressure(soul) >= 1.0:
                 fault(soul, "nothing here fit to wear")
                 return False

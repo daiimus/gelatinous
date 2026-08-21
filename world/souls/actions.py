@@ -174,6 +174,21 @@ def _is_wearable_proto(proto_key):
     return _proto_coverage(proto_key) is not None
 
 
+_prov_memo = {}
+
+
+def _is_provisional_proto(proto_key):
+    """Issue clothing — the paper a sleeve wakes up in."""
+    if proto_key not in _prov_memo:
+        from evennia.prototypes.prototypes import search_prototype
+        hits = search_prototype(proto_key)
+        attrs = (hits[0].get("attrs") or []) if hits else []
+        got = {a[0]: a[1] for a in attrs
+               if isinstance(a, (tuple, list)) and len(a) >= 2}
+        _prov_memo[proto_key] = bool(got.get("provisional"))
+    return _prov_memo[proto_key]
+
+
 def _uncovered(soul):
     """The modesty parts this soul still needs covered."""
     from world.souls import needs as needs_mod
@@ -356,7 +371,10 @@ def plan_for(soul, goal_need):
         # Buying clothes at a shop is the obvious third branch and is
         # deliberately not here yet — the colony's free issue covers
         # the case that actually occurs (waking up with nothing).
-        carried = [o for o in soul.contents if _wearable(soul, o)]
+        from world.souls import needs as needs_mod
+        upgrading = needs_mod.wardrobe_pressure(soul) < 1.0
+        carried = [o for o in soul.contents if _wearable(soul, o)
+                   and not (upgrading and o.attributes.get("provisional"))]
         if carried:
             return {"goal": "wardrobe", "steps": [
                 {"do": "wear"},
@@ -380,7 +398,11 @@ def plan_for(soul, goal_need):
                         continue
                     if price > int(soul.tokens or 0):
                         continue
-                    wares.append((-len(cov & missing), price, proto_key))
+                    if upgrading and _is_provisional_proto(proto_key):
+                        continue      # more paper is not an upgrade
+                    # replacing the issue: any real garment is progress
+                    gain = len(cov & missing) if missing else len(cov)
+                    wares.append((-gain, price, proto_key))
                 helpful = [w for w in wares if w[0] < 0]
                 if not helpful:
                     continue      # nothing here closes the gap
@@ -391,6 +413,8 @@ def plan_for(soul, goal_need):
                      "price": price},
                     {"do": "wear"},
                 ], "at": 0}
+            if upgrading:
+                continue          # the issue machine has nothing to add
             # a dispenser: press it and get dressed
             return {"goal": "wardrobe", "steps": [
                 {"do": "travel", "room": room.id},
