@@ -174,3 +174,58 @@ class TestRolling(BaseEvenniaTest):
                              key="the Rook", location=self.room1)
         char.db.soul_traits = ["wire_loved"]
         self.assertEqual(traits_mod.labels(char), ["Wire-Loved"])
+
+
+class TestDefects(BaseEvenniaTest):
+    """A machine has no personality; it has wear (#2136)."""
+
+    def _bot(self, *keys):
+        bot = create_object("typeclasses.characters.Character",
+                            key="A Secbot", location=self.room1)
+        bot.tags.add("soul", category="npc_role")
+        bot.db.soul_profile = "robot"
+        bot.db.soul_traits = list(keys)
+        return bot
+
+    def test_a_machine_reads_from_the_defect_book(self):
+        bot = self._bot("ghost_contact")
+        self.assertIs(traits_mod.registry_for(bot), traits_mod.DEFECTS)
+        self.assertEqual(traits_mod.labels(bot), ["Ghost Contact"])
+
+    def test_a_person_reads_from_the_trait_book(self):
+        char = create_object("typeclasses.characters.Character",
+                             key="A Person", location=self.room1)
+        char.db.soul_traits = ["rustgut"]
+        self.assertIs(traits_mod.registry_for(char), traits_mod.TRAITS)
+
+    def test_human_traits_do_not_apply_to_a_machine(self):
+        """The secbot that rolled Dry Circuit was noise: a machine
+        carrying a human trait key simply carries nothing."""
+        bot = self._bot("dry_circuit", "faraday_souled")
+        self.assertEqual(traits_mod.labels(bot), [])
+
+    def test_defects_reprice_the_machine(self):
+        jumpy = self._bot("ghost_contact")
+        self.assertLess(needs_mod.critical_for(jumpy, "safety"),
+                        needs_mod.CRITICAL)
+
+    def test_neglect_earns_one_and_service_removes_it(self):
+        bot = self._bot()
+        got = traits_mod.acquire_defect(bot)
+        self.assertIn(got, traits_mod.DEFECTS)
+        self.assertEqual(list(bot.db.soul_traits), [got])
+        self.assertEqual(traits_mod.clear_defect(bot), got)
+        self.assertEqual(list(bot.db.soul_traits), [])
+
+    def test_a_unit_can_only_get_so_broken(self):
+        bot = self._bot()
+        for _ in range(10):
+            traits_mod.acquire_defect(bot)
+        self.assertLessEqual(len(bot.db.soul_traits),
+                             traits_mod.DEFECT_CAP)
+
+    def test_contradictory_faults_are_never_stacked(self):
+        bot = self._bot("sticky_directive")
+        for _ in range(10):
+            traits_mod.acquire_defect(bot)
+        self.assertNotIn("slack_directive", bot.db.soul_traits)
