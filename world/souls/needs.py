@@ -177,9 +177,16 @@ def modesty_of(soul):
     return set(soul.db.modesty or DEFAULT_MODESTY)
 
 
+#: Wearing the free issue is decent, not dressed. Sits just above SOFT
+#: so it joins the elevated band with socializing — a soul replaces the
+#: paper on their own time, never instead of a shift (#2118).
+PROVISIONAL_PRESSURE = 0.60
+
+
 def wardrobe_pressure(soul):
-    """1.0 when this soul is dressed below their own modesty somewhere
-    that isn't home; 0.0 otherwise. Derived, zero-write (#2104).
+    """1.0 below your own modesty; PROVISIONAL_PRESSURE while covered
+    only by issue clothing; 0.0 when properly dressed. Derived,
+    zero-write (#2104).
 
     Home is exempt on purpose: nobody is compelled to dress in their
     own cube, which keeps the door open for sleepwear and for a
@@ -195,6 +202,9 @@ def wardrobe_pressure(soul):
     for part in modesty_of(soul):
         if not covered(part):
             return 1.0
+    worn = [o for items in (soul.worn_items or {}).values() for o in items]
+    if worn and any(o.attributes.get("provisional") for o in worn):
+        return PROVISIONAL_PRESSURE
     return 0.0
 
 

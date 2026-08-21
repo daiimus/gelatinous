@@ -5024,6 +5024,8 @@ DECANT_JUMPSUIT = {
         ("material", "paper-weave"),
         ("weight", 0.3),
         ("value", 0),
+        # issue clothing: decent, not dressed (#2118)
+        ("provisional", True),
     ],
     "tags": [("clothing", "item_type")],
 }
@@ -5047,6 +5049,8 @@ DECANT_SLIPPERS = {
         ("material", "pressed fibre"),
         ("weight", 0.2),
         ("value", 0),
+        # issue clothing: decent, not dressed (#2118)
+        ("provisional", True),
     ],
     "tags": [("clothing", "item_type")],
 }
