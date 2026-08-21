@@ -68,6 +68,36 @@ def _conscience(soul, job, where=None):
                              f"an honest hour at {place}")
 
 
+def _post_placement(soul):
+    """The on-shift placement line for this soul's post, if it authored
+    one. Looks on the post ROOM's registered fixtures, so a counter can
+    say how its keeper stands at it."""
+    room = soul.db.soul_post
+    if room is None:
+        return None
+    for obj in getattr(room, "contents", ()):
+        line = getattr(obj.db, "post_work_place", None) if obj.db else None
+        if line:
+            return line
+    return getattr(room.db, "post_work_place", None)
+
+
+def _take_the_post(soul):
+    """Stand visibly at work."""
+    line = _post_placement(soul)
+    if line and soul.db.temp_place != line:
+        soul.db.temp_place = line
+        soul.ndb.placed_by_shift = True
+
+
+def _leave_the_post(soul):
+    """Stop standing at work — only clears placement WE set, so a
+    player-authored @temp_place is never trampled."""
+    if getattr(soul.ndb, "placed_by_shift", False):
+        soul.db.temp_place = ""
+        soul.ndb.placed_by_shift = False
+
+
 def step_job(soul):
     """Advance the current job by at most one step. Returns True while
     the job continues, False when finished/faulted."""
@@ -501,6 +531,12 @@ def step_job(soul):
                 restock_medic(soul)   # par-level loose supplies at post
             except Exception:  # noqa: BLE001 — restock is best-effort
                 pass
+        # you can SEE who is working: the post's own placement line goes
+        # on while the shift is held, so a room tells you who is behind
+        # the counter and who is merely standing near it. A person is not
+        # their job — but their job is visible while they're doing it
+        # (#2148).
+        _take_the_post(soul)
         return True
 
     if do == "linger":
