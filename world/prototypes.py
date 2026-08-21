@@ -5068,19 +5068,23 @@ DECANT_SLIPPERS = {
 
 SNAIL_KURO = {
     "prototype_key": "snail_kuro",
-    "key": "a bowl of kuro",
-    "aliases": ["kuro", "broth", "bowl", "stew", "soup"],
+    "key": "a bowl of kuro-nikomi stew",
+    "aliases": ["kuro", "nikomi", "kuro-nikomi", "stew", "broth", "bowl",
+                "soup"],
     "typeclass": "typeclasses.items.Item",
-    "desc": "A chipped bowl of broth so dark it reads black until the light "
+    "desc": "A chipped bowl of stew so dark it reads black until the light "
             "catches the oil on top and turns it bronze. Shell stock, hours "
             "of it, thickened with whatever the beds gave up and cut with "
             "something sharp and fermented. Three or four small snails have "
-            "been let down into it whole. It is thin, it is very hot, and "
-            "it costs nothing.",
+            "been let down into it whole. There are no noodles in it — "
+            "noodles cost money, and Auntie Lin sells those a few minutes "
+            "up the street. It is thin, it is very hot, and it costs "
+            "nothing.",
     "attrs": [
         ("drink_taste", "Deep, dark and mineral, with a sour edge that "
                         "arrives late — the taste of a thing made from what "
-                        "was left over, and made well."),
+                        "was left over, and made well. You finish it still "
+                        "wanting something to chew."),
         ("drink_effects", {"nutrition": 1}),
         ("uses_left", 3),
         ("max_uses", 3),
