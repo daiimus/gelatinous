@@ -130,6 +130,34 @@ floor. A Companion has a low floor **and** a preference for the
 minimum above it; a Flinch-Coded shut-in has a high floor and prefers
 more. Nobody is tagged "revealing"; they simply choose that way.
 
+### 4.3 Presentation — the second axis (RULED 2026-08-20)
+
+Style says which world a garment comes from; **presentation** says
+which line it cuts. Orthogonal, so `shine` + femme is the slit skirt
+and `shine` unmarked is the Rook's black silk.
+
+Three rules, and they are the design:
+
+1. It describes the **garment**, never the wearer. No table anywhere
+   says what a body may put on.
+2. It **never gates**. Anyone wears anything; the axis only shapes
+   what a soul reaches for first.
+3. A character's leaning is its **own attribute, rolled
+   independently of `sex`**. Deriving it from sex would build exactly
+   the stereotype machine this design exists to avoid — so a
+   male-sexed arrival may lean femme, and the game dresses him that
+   way without comment.
+
+In practice the axis is **marked or unmarked**. Masc-coded
+silhouettes are already carried by the style registers (an evening
+suit reads `shine`, a necktie `uniform`, heavy boots `workwear`), so
+`masc` stays legal in the vocabulary and empty in the data. Femme is
+the one reading style cannot capture: a slit skirt and cargo trousers
+are both `street`, and only one of them is marked.
+
+It is a **reading, not an essence** — how this colony sees a garment,
+which is culture, and culture may differ elsewhere.
+
 ### 4.2 Style-states are a tell
 
 The clothing system already supports per-garment states (rollup /
