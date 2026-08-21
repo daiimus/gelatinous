@@ -215,6 +215,39 @@ class Item(ObjectParent, DefaultObject):
     # CLOTHING SYSTEM METHODS
     # ===================================================================
     
+    def _perish(self, holder, verb):
+        """Single-use clothing coming off a body or out of a hand: the
+        Thawn-Harrison issue is paper-thin and heat-welded, made to get
+        somebody from a table to a door once. It does not survive being
+        taken off, which is also why the colony never accumulates a pile
+        of free jumpsuits (#2120)."""
+        if not self.db.single_use:
+            return False
+        from world.identity_utils import msg_room_identity
+
+        name = self.key
+        if holder is not None:
+            holder.msg(f"The {name} tears along its welded seams as it "
+                       f"comes {verb}, and is refuse before it reaches "
+                       f"the floor.")
+            if holder.location:
+                msg_room_identity(
+                    location=holder.location,
+                    template=f"{{actor}}'s {name} tears along its seams "
+                             f"and falls apart.",
+                    char_refs={"actor": holder},
+                    exclude=[holder],
+                )
+        self.delete()
+        return True
+
+    def at_removed(self, wearer):
+        """Called by the clothing system when this garment comes off."""
+        self._perish(wearer, "off")
+
+    def at_drop(self, dropper, **kwargs):
+        self._perish(dropper, "loose")
+
     def is_wearable(self):
         """Check if this item can be worn as clothing"""
         return bool(self.coverage) and bool(self.worn_desc)
