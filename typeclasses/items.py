@@ -62,8 +62,27 @@ class Item(ObjectParent, DefaultObject):
     # Examples: t-shirt=0.2, jeans=1.2, kevlar vest=4.5, steel plate=12.0
     weight = AttributeProperty(0.5, autocreate=True)  # Default 0.5 lbs
     
-    # Layer priority for stacking items (higher = outer layer)
-    layer = AttributeProperty(DEFAULT_CLOTHING_LAYER, autocreate=True)
+    # Layer priority for stacking items (higher = outer layer).
+    # Stored when an author sets one; otherwise DERIVED from the
+    # garment's own name, so clothing authored tomorrow — or tailored
+    # by a player one day — layers correctly without anyone picking a
+    # number (world.style.derive_rung, #2126).
+    @property
+    def layer(self):
+        # An EXPLICIT layer always wins — prototypes and builders keep
+        # control, and every garment already carrying one is untouched.
+        # The convention only answers when nobody said.
+        stored = self.attributes.get("layer") if self.attributes else None
+        if stored is not None:
+            return stored
+        from world.style import DEFAULT_RUNG, derive_rung
+
+        rung = derive_rung(self.key)
+        return DEFAULT_RUNG if rung is None else rung
+
+    @layer.setter
+    def layer(self, value):
+        self.attributes.add("layer", value)
     
     # ===================================================================
     # ARMOR SYSTEM ATTRIBUTES
