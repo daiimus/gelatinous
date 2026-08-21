@@ -5059,3 +5059,33 @@ DECANT_SLIPPERS = {
     "tags": [("clothing", "item_type")],
 }
 
+# ---------------------------------------------------------------------------
+# KURO — the snailery's free pot. Not charity: the shells, the trimmings and
+# the ones too small to sell, boiled down to a black stock that costs the
+# yard nothing to give away. The gate has read ESCARGOT FOR ALL since before
+# anybody working there was decanted; this is the sign taken literally.
+# ---------------------------------------------------------------------------
+
+SNAIL_KURO = {
+    "prototype_key": "snail_kuro",
+    "key": "a bowl of kuro",
+    "aliases": ["kuro", "broth", "bowl", "stew", "soup"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A chipped bowl of broth so dark it reads black until the light "
+            "catches the oil on top and turns it bronze. Shell stock, hours "
+            "of it, thickened with whatever the beds gave up and cut with "
+            "something sharp and fermented. Three or four small snails have "
+            "been let down into it whole. It is thin, it is very hot, and "
+            "it costs nothing.",
+    "attrs": [
+        ("drink_taste", "Deep, dark and mineral, with a sour edge that "
+                        "arrives late — the taste of a thing made from what "
+                        "was left over, and made well."),
+        ("drink_effects", {"nutrition": 1}),
+        ("uses_left", 3),
+        ("max_uses", 3),
+        ("value", 0),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type")],
+}
+

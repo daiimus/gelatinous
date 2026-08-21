@@ -67,6 +67,19 @@ def _advertisers(soul, need, radius=30):
     return found
 
 
+def _counter_open(counter):
+    """Will this counter actually serve? One question, asked the same
+    way the shop itself asks it (souls.posts.any_keeper_present), so
+    the planner and the till can never disagree about whether a place
+    is open."""
+    if not (counter.db.post_slots or counter.db.post_keeper is not None):
+        return True                    # no binding: the vending tier
+    if counter.db.self_serve:
+        return True
+    from world.souls.posts import any_keeper_present
+    return any_keeper_present(counter)
+
+
 def _is_edible_proto(proto_key):
     """Memoized: prototypes are static registry entries.
 
@@ -326,11 +339,13 @@ def plan_for(soul, goal_need):
                 ], "at": 0}
             return None
         for score, counter, room in _advertisers(soul, "hunger"):
-            # regulars know the hours: a keeper-bound counter whose
-            # keeper is off shift is shuttered — don't walk to it
-            keeper = counter.db.post_keeper
-            if keeper is not None and not (
-                    keeper.pk and keeper.location == counter.location):
+            # regulars know the hours: a shuttered counter isn't worth
+            # the walk. Ask the SAME question the shop asks — "is
+            # anyone's shift-holder standing here" — rather than the
+            # legacy single-keeper mirror, which had souls skipping
+            # counters that would have served them and walking to ones
+            # that wouldn't (#2142).
+            if not _counter_open(counter):
                 continue
             wares = _edible_wares(counter)
             if not wares:
@@ -395,9 +410,7 @@ def plan_for(soul, goal_need):
         if not _permits(soul, "craving", ("indulgence",)):
             return None                # they know what it costs
         for score, counter, room in _advertisers(soul, "vice"):
-            keeper = counter.db.post_keeper
-            if keeper is not None and not (
-                    keeper.pk and keeper.location == counter.location):
+            if not _counter_open(counter):
                 continue                       # shuttered: cravings wait
             wares = [(price, proto_key, verb)
                      for proto_key, price
@@ -456,9 +469,7 @@ def plan_for(soul, goal_need):
                 # covers what you still need covered, cheapest among
                 # equals — buying a jacket while bare-legged is how a
                 # soul ends up naked in a coat (#2116)
-                keeper = fixture.db.post_keeper
-                if keeper is not None and not (
-                        keeper.pk and keeper.location == fixture.location):
+                if not _counter_open(fixture):
                     continue
                 missing = _uncovered(soul)
                 wares = []
