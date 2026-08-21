@@ -64,6 +64,39 @@ class CmdSoul(Command):
             venue_lines.append(f"  {where[:34]:<34} "
                                f"manned:{','.join(sorted(m)) or '-':<16} "
                                f"open:{','.join(sorted(o)) or '-'}")
+        # --- the health panel (#2140) -------------------------------
+        # Everything here is a blindness that cost us something. The
+        # medical collapse ran for hours with both doctors soulless and
+        # nothing anywhere saying so; the butcher's shelf has been dry
+        # for weeks in silence. If collapse is legitimate content, the
+        # colony's state has to be legible enough to act on.
+        from world import wsis
+        from world.souls import traits as traits_mod
+
+        deaths = wsis.counts("death", seconds=3600)
+        untreated = sum(1 for s in souls
+                        if needs_mod.health_pressure(s) >= needs_mod.CRITICAL)
+        unsouled_posts, dry_shelves = [], []
+        for post in get_posts():
+            for shift, slot in (post.db.post_slots or {}).items():
+                keeper = slot.get("keeper")
+                if keeper is not None and keeper.pk \
+                        and not keeper.tags.get(engine.SOUL_TAG[0],
+                                                category=engine.SOUL_TAG[1]) \
+                        and not keeper.db.essential:
+                    unsouled_posts.append(f"{post.key}[{shift}]")
+            inv = post.db.prototype_inventory or {}
+            if inv and post.db.is_infinite is False:
+                stock = post.db.item_inventory or {}
+                if not any(int(v or 0) > 0 for v in stock.values()):
+                    dry_shelves.append(post.location.key if post.location
+                                       else post.key)
+        # labels(), not raw storage: a machine carrying leftover human
+        # trait keys carries nothing, and must not read as broken
+        broken_machines = [s.key for s in souls
+                           if traits_mod.registry_for(s) is traits_mod.DEFECTS
+                           and traits_mod.labels(s)]
+
         poverty = pop_mod.poverty_index(souls)
         moods = Counter(thoughts_mod.mood_band(thoughts_mod.mood(s))
                         for s in souls)
@@ -82,6 +115,33 @@ class CmdSoul(Command):
                 for band in ("bright", "level", "low", "grim")),
             "|wPosts|n",
         ] + venue_lines
+
+        alarms = []
+        if deaths:
+            alarms.append(f"|r{deaths} dead this hour|n")
+        if untreated:
+            alarms.append(f"|r{untreated} untreated casualt"
+                          f"{'y' if untreated == 1 else 'ies'}|n")
+        if unsouled_posts:
+            alarms.append("|rposts held by nobody home:|n "
+                          + ", ".join(unsouled_posts[:3]))
+        if dry_shelves:
+            alarms.append("|ydry shelves:|n " + ", ".join(dry_shelves[:3]))
+        if broken_machines:
+            alarms.append("|ymachines wanting service:|n "
+                          + ", ".join(broken_machines[:3]))
+        lines.append("|wHealth|n " + ("  ·  ".join(alarms) if alarms
+                                      else "|gnothing on fire|n"))
+
+        loud = wsis.hot_zones(limit=3)
+        if loud:
+            lines.append("|wLoudest|n " + "  ".join(
+                f"{zone} {score:.1f}" for zone, score in loud))
+        layers = wsis.by_layer()
+        if layers:
+            lines.append("|wSignals|n " + "  ".join(
+                f"{wsis.LAYERS[k]['label'][:4].lower()}:{v:.1f}"
+                for k, v in sorted(layers.items(), key=lambda kv: -kv[1])))
         caller.msg("\n".join(lines))
 
     def func(self):

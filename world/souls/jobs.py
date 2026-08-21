@@ -14,13 +14,22 @@ from world.souls import needs as needs_mod
 FAULT_KEEP = 5
 
 
+def _signal(kind, soul, note=""):
+    """Tell the bus something happened. Observation only (world.wsis)."""
+    try:
+        from world import wsis
+        wsis.emit(kind, soul.location, note=note or soul.key)
+    except Exception:  # noqa: BLE001 — the bus never breaks a job
+        pass
+
+
 def fault(soul, msg):
     log = soul.db.soul_faults or []
     log.append((time.time(), msg))
     soul.db.soul_faults = log[-FAULT_KEEP:]
     soul.db.soul_job = None
     stop_travel(soul)       # an aborted job must not keep walking its route
-
+    _signal("travel_stalled" if "travel" in msg else "plan_faulted", soul, f"{soul.key}: {msg}")
 
 def _obj(dbid):
     """Indexed PK fetch — the full search stack costs 200x as much
@@ -365,6 +374,7 @@ def step_job(soul):
             return False
         before = int(soul.tokens or 0)
         soul.execute_cmd(f"pickpocket {_target_token(mark)}")
+        _signal("robbery", soul, f"{soul.key} robbed {mark.key}")
         _conscience(soul, job, where=mark.location)
         step["took"] = step.get("took", 0) + max(
             0, int(soul.tokens or 0) - before)

@@ -377,6 +377,11 @@ def plan_for(soul, goal_need):
                     {"do": "rob", "mark": mark.id, "lifts": 2},
                     {"do": "disengage", "mark": mark.id},
                 ], "at": 0}
+        try:
+            from world import wsis
+            wsis.emit("went_hungry", soul.location, note=soul.key)
+        except Exception:  # noqa: BLE001
+            pass
         return None                            # nothing affordable: fault
 
     if goal_need == "craving":

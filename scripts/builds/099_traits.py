@@ -33,11 +33,17 @@ authored = rolled = kept = 0
 for soul in engine.get_souls():
     if not soul.pk:
         continue
+    if traits_mod.registry_for(soul) is traits_mod.DEFECTS:
+        # machines EARN theirs (#2136) — and any human keys they were
+        # rolled before that rule existed are cleared, not kept
+        stale = [k for k in (soul.db.soul_traits or [])
+                 if k not in traits_mod.DEFECTS]
+        if stale:
+            soul.db.soul_traits = [k for k in (soul.db.soul_traits or [])
+                                   if k in traits_mod.DEFECTS]
+        continue
     if soul.db.soul_traits:
         kept += 1
-        continue
-    if traits_mod.registry_for(soul) is traits_mod.DEFECTS:
-        soul.db.soul_traits = []      # machines EARN theirs; see #2136
         continue
     if soul.key in CAST:
         soul.db.soul_traits = list(CAST[soul.key])
