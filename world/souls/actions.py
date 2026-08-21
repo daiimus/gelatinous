@@ -151,22 +151,36 @@ def _sub_matches(subs, craved):
         s.startswith("tobacco") for s in subs)
 
 
-_wear_memo = {}                # proto_key -> bool
+_wear_memo = {}                # proto_key -> frozenset coverage or None
 
 
-def _is_wearable_proto(proto_key):
-    """Memoized: a ware is clothing when its prototype carries BOTH
-    coverage and a worn_desc — the same pair is_wearable() demands of
-    a real object (#2104)."""
+def _proto_coverage(proto_key):
+    """What this ware would cover, or None if it isn't clothing.
+    Memoized; a garment needs BOTH coverage and a worn_desc, the same
+    pair is_wearable() demands of a real object (#2104)."""
     if proto_key not in _wear_memo:
         from evennia.prototypes.prototypes import search_prototype
         hits = search_prototype(proto_key)
         attrs = (hits[0].get("attrs") or []) if hits else []
         got = {a[0]: a[1] for a in attrs
                if isinstance(a, (tuple, list)) and len(a) >= 2}
-        _wear_memo[proto_key] = bool(got.get("coverage")
-                                     and got.get("worn_desc"))
+        cov = got.get("coverage")
+        _wear_memo[proto_key] = (frozenset(cov)
+                                 if cov and got.get("worn_desc") else None)
     return _wear_memo[proto_key]
+
+
+def _is_wearable_proto(proto_key):
+    return _proto_coverage(proto_key) is not None
+
+
+def _uncovered(soul):
+    """The modesty parts this soul still needs covered."""
+    from world.souls import needs as needs_mod
+    covered = getattr(soul, "is_location_covered", None)
+    if not callable(covered):
+        return set()
+    return {part for part in needs_mod.modesty_of(soul) if not covered(part)}
 
 
 def _wearable(soul, obj):
@@ -350,22 +364,27 @@ def plan_for(soul, goal_need):
         for score, fixture, room in _advertisers(soul, "wardrobe"):
             inv = fixture.db.prototype_inventory or {}
             if inv:
-                # a shop: buy the cheapest garment you can actually
-                # afford, under the same keeper-hours and stock gates
-                # every other counter answers to
+                # a shop (or a free rail): take the garment that most
+                # covers what you still need covered, cheapest among
+                # equals — buying a jacket while bare-legged is how a
+                # soul ends up naked in a coat (#2116)
                 keeper = fixture.db.post_keeper
                 if keeper is not None and not (
                         keeper.pk and keeper.location == fixture.location):
                     continue
-                wares = [(price, proto_key)
-                         for proto_key, price in inv.items()
-                         if _is_wearable_proto(proto_key)
-                         and _in_stock(fixture, proto_key)]
-                affordable = [w for w in wares
-                              if w[0] <= int(soul.tokens or 0)]
-                if not affordable:
-                    continue      # broke here: the free issue may serve
-                price, proto = min(affordable)
+                missing = _uncovered(soul)
+                wares = []
+                for proto_key, price in inv.items():
+                    cov = _proto_coverage(proto_key)
+                    if cov is None or not _in_stock(fixture, proto_key):
+                        continue
+                    if price > int(soul.tokens or 0):
+                        continue
+                    wares.append((-len(cov & missing), price, proto_key))
+                helpful = [w for w in wares if w[0] < 0]
+                if not helpful:
+                    continue      # nothing here closes the gap
+                _score, price, proto = min(helpful)
                 return {"goal": "wardrobe", "steps": [
                     {"do": "travel", "room": room.id},
                     {"do": "buy", "counter": fixture.id, "proto": proto,
