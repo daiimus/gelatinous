@@ -225,7 +225,11 @@ def generate_resident(lawless=False):
     npc.build = choice(("slight", "lean", "average", "stocky"))
     npc.db.skintone = choice(("pale", "tan", "olive", "dark"))
     npc.grit, npc.resonance, npc.intellect, npc.motorics = kind["stats"]()
-    npc.sdesc_keyword = kind["sdesc_keyword"]
+    # A person is not their job (owner ruling): leaving the keyword unset
+    # lets the identity system fall back to a person-word from their sex,
+    # and build + clothing do the distinguishing. "a rangy man in a
+    # company windbreaker" reads as somebody; "a rangy vendor" reads as a
+    # function (#2148).
     npc.db.desc = kind["desc"]
     npc.db.voice_description = kind["voice"]
     npc.db.llm_driven = True

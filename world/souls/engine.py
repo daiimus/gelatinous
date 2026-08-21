@@ -199,12 +199,23 @@ def _desired_goal(soul, hour, exclude=()):
             if derived[n] >= needs_mod.soft_for(soul, n)]
     if soft:
         return (3, max(soft)[2])
+    # CLOCKING OFF: a soul whose shift has ended and who has nothing
+    # pressing used to simply stand where it ended — a shopkeeper
+    # loitering behind her own counter for the seven hours between the
+    # end of her day and the start of her sleep. Nobody stays at work
+    # for want of a reason to leave.
+    if soul.db.soul_home is not None and soul.db.soul_post is not None \
+            and soul.location == soul.db.soul_post \
+            and not _in_block(hour, sched["work"]) \
+            and "off_duty" not in exclude:
+        return (4, "off_duty")
     return (4, None)
 
 
 def _goal_band(goal):
     return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "claim": 2,
-            "wardrobe": 2, "craving": 3, "social": 3}.get(goal, 4)
+            "wardrobe": 2, "craving": 3, "social": 3,
+            "off_duty": 4}.get(goal, 4)
 
 
 def _wear_and_tear(soul):
@@ -230,6 +241,15 @@ def _wear_and_tear(soul):
         from world.souls import jobs
         jobs.fault(soul, f"service overdue — developed "
                          f"{traits_mod.DEFECTS[got]['label']}")
+
+
+def _release_placement(soul):
+    """Off shift: stop standing behind the counter (souls.jobs)."""
+    try:
+        from world.souls.jobs import _leave_the_post
+        _leave_the_post(soul)
+    except Exception:  # noqa: BLE001 — placement never blocks a beat
+        pass
 
 
 def think(soul, hour):
@@ -272,6 +292,7 @@ def think(soul, hour):
         from world.director.travel import stop_travel
         stop_travel(soul)                # a commute to a lapsed shift ends too
         soul.db.soul_job = None
+        _release_placement(soul)         # step away from the counter
         paid = economy.pay_wage(soul)
         from world.souls import thoughts
         if paid and soul.location:
@@ -305,6 +326,7 @@ def think(soul, hour):
             stop_travel(soul)            # preemption must actually stop feet
             if job.get("goal") == "duty":
                 economy.pay_wage(soul)   # leaving the post still pays out
+                _release_placement(soul)
             soul.db.soul_job = None
         else:
             jobs.step_job(soul)

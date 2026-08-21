@@ -566,6 +566,16 @@ def plan_for(soul, goal_need):
             {"do": "work"},
         ], "at": 0}
 
+    if goal_need == "off_duty":
+        # not a need — an absence of one. The shift is over and there is
+        # no reason to still be standing here, so go home (#2148).
+        home = soul.db.soul_home
+        if home is None or soul.location == home:
+            return None
+        return {"goal": "off_duty", "steps": [
+            {"do": "travel", "room": home.id},
+        ], "at": 0}
+
     if goal_need == "safety":
         # flee: any exit away from the threat room; the real move verb
         return {"goal": "safety", "steps": [{"do": "flee"}], "at": 0}
