@@ -131,6 +131,33 @@ class ShopContainer(DefaultObject):
         quantity = self.db.item_inventory.get(prototype_key, 0)
         return quantity > 0
     
+    def _off_shift_deflection(self):
+        """An off-shift keeper standing at their own counter says so out
+        loud, and names who has the shift. Returns the line the buyer
+        sees, or None when nobody is here to say it."""
+        try:
+            from world.souls.posts import (current_shift,
+                                           off_duty_keepers_present,
+                                           on_duty_keeper)
+            present = off_duty_keepers_present(self)
+            if not present:
+                return None
+            speaker = present[0]
+            holder = on_duty_keeper(self)
+            shift = current_shift()
+            if holder is not None and holder != speaker:
+                line = (f"I'm off. {holder.key} has the {shift} — "
+                        f"they'll be along.")
+            elif holder is not None:
+                line = "I'm on in a bit. Come back and I'll serve you."
+            else:
+                line = (f"I'm off, and nobody's got the {shift}. "
+                        f"Counter's shut till morning.")
+            speaker.execute_cmd(f"say {line}")
+            return f"{speaker.key} isn't working this shift."
+        except Exception:  # noqa: BLE001 — a shut counter must still refuse
+            return None
+
     def purchase_item(self, buyer, prototype_key):
         """
         Process a purchase, spawning the item and handling inventory.
@@ -153,6 +180,13 @@ class ShopContainer(DefaultObject):
         if self.db.post_slots or self.db.post_keeper is not None:
             from world.souls.posts import any_keeper_present
             if not any_keeper_present(self):
+                # If one of this counter's OWN keepers is standing here on
+                # somebody else's shift, they answer for it themselves and
+                # point you at whoever's on — a person saying "I'm off"
+                # beats a piece of furniture saying nothing (#2146).
+                spoken = self._off_shift_deflection()
+                if spoken:
+                    return False, spoken
                 return False, (self.db.post_closed_msg
                                or "Nobody's minding the counter. No coin "
                                   "changes hands here until somebody's "
