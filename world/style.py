@@ -159,24 +159,35 @@ def roll_style(role=None, rng=None):
 #      male-sexed arrival may lean femme, and the game dresses him that
 #      way without comment.
 #
-# In practice the axis is MARKED or UNMARKED. Masc-coded silhouettes
-# are already carried by the style registers — an evening suit reads
-# `shine`, a necktie `uniform`, heavy boots `workwear` — so `masc`
-# stays legal in the vocabulary and empty in the data. Femme is the one
-# reading style does not capture: a slit skirt and cargo trousers are
-# both `street`, and only one of them is marked.
+# All three readings are FIRST-CLASS and derive on their own terms.
+# The data will skew femme/neutral — most masc-coded silhouettes are
+# already carried by the style registers, since an evening suit reads
+# `shine` and heavy boots read `workwear` — but that is an observation
+# about this colony's wardrobe, not a property of the system. A
+# necktie and a pair of boxers read masc exactly as a shawl and a pair
+# of panties read femme, and a character may lean any of the three.
 #
 # And it is a READING, not an essence: this is how the colony sees the
 # garment, which is culture, and culture is allowed to be different
 # somewhere else.
 
-PRESENTATIONS = ("femme", "masc")           # absence == neutral
+PRESENTATIONS = ("femme", "masc", "neutral")   # unmarked reads neutral
 
 #: Names that carry a femme reading in this colony.
 FEMME_KEYWORDS = (
     "skirt", "dress", "gown", "blouse", "halter", "heels", "heeled",
     "slip", "sheath", "stockings", "tights", "bra", "panties", "camisole",
     "corset", "bodice", "shawl", "sheer",
+)
+
+#: And a masc one. Shorter by nature rather than by neglect: this
+#: colony's masc-coded clothing mostly reads through its REGISTER
+#: instead — a suit is `shine`, a slaughter apron is `workwear` — so
+#: only garments whose cut is the marked thing land here.
+MASC_KEYWORDS = (
+    "necktie", "bow tie", "cravat", "cummerbund", "tuxedo",
+    "three-piece", "waistcoat", "boxers", "y-fronts", "boxer briefs",
+    "binder", "flat cap",
 )
 
 
@@ -189,10 +200,26 @@ def presentation_of(obj):
     return derive_presentation(getattr(obj, "key", ""))
 
 
+#: Compounds that borrow a marked word without inheriting its reading.
+#: A dress shirt is not a dress; the third time this codebase has been
+#: bitten by substrings (a "brass-toed boot" once read as a bra).
+NOT_MARKED = ("dress shirt", "dress trousers", "dress boots",
+              "dress uniform", "slip-on", "slipper")
+
+
 def derive_presentation(name):
+    """Which line this garment's cut reads as. Unmarked is neutral,
+    which is most clothing and not a lesser answer."""
+    import re
+
     low = (name or "").lower()
-    if any(word in low for word in FEMME_KEYWORDS):
-        return ("femme",)
+    for phrase in NOT_MARKED:
+        low = low.replace(phrase, " ")
+    for reading, words in (("femme", FEMME_KEYWORDS),
+                           ("masc", MASC_KEYWORDS)):
+        for word in words:
+            if re.search(r"\b" + re.escape(word), low):
+                return (reading,)
     return ()
 
 
@@ -224,6 +251,7 @@ def roll_presentation(rng=None):
     import random as _random
 
     rng = rng or _random
-    pick = rng.choices(("", "femme", "neutral"), weights=(5, 3, 2))[0]
+    pick = rng.choices(("", "femme", "masc", "neutral"),
+                       weights=(5, 3, 2, 2))[0]
     return (pick,) if pick else ()
 

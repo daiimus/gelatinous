@@ -148,12 +148,16 @@ Three rules, and they are the design:
    male-sexed arrival may lean femme, and the game dresses him that
    way without comment.
 
-In practice the axis is **marked or unmarked**. Masc-coded
-silhouettes are already carried by the style registers (an evening
-suit reads `shine`, a necktie `uniform`, heavy boots `workwear`), so
-`masc` stays legal in the vocabulary and empty in the data. Femme is
-the one reading style cannot capture: a slit skirt and cargo trousers
-are both `street`, and only one of them is marked.
+All three readings are **first-class and derive on their own terms**
+— a necktie and a pair of boxers read masc exactly as a shawl and a
+pair of panties read femme, and a character may lean any of the three.
+
+The DATA will skew femme/neutral, because most masc-coded silhouettes
+are already carried by their register (an evening suit reads `shine`,
+heavy boots `workwear`), so only garments whose cut is the marked
+thing land there. That is an observation about this colony's
+wardrobe, not a property of the system. Measured live: 392 neutral,
+18 femme, 3 masc.
 
 It is a **reading, not an essence** — how this colony sees a garment,
 which is culture, and culture may differ elsewhere.
