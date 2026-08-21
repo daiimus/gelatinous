@@ -187,12 +187,17 @@ def _proto_affinity(proto_key, soul):
         proto = hits[0] if hits else {}
         attrs = {a[0]: a[1] for a in (proto.get("attrs") or ())
                  if isinstance(a, (tuple, list)) and len(a) >= 2}
-        _style_memo[proto_key] = tuple(
-            attrs.get("style")
-            or style_mod.derive_style(proto.get("key", ""),
-                                      attrs.get("desc", "")))
-    return style_mod.affinity(_style_memo[proto_key],
-                              style_mod.style_of_character(soul))
+        _style_memo[proto_key] = (
+            tuple(attrs.get("style")
+                  or style_mod.derive_style(proto.get("key", ""),
+                                            attrs.get("desc", ""))),
+            tuple(attrs.get("presentation")
+                  or style_mod.derive_presentation(proto.get("key", ""))),
+        )
+    styles, pres = _style_memo[proto_key]
+    return (style_mod.affinity(styles, style_mod.style_of_character(soul))
+            + style_mod.presentation_affinity(
+                pres, style_mod.presentation_of_character(soul)))
 
 
 _prov_memo = {}
