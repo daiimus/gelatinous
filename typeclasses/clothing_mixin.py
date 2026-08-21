@@ -386,6 +386,15 @@ class ClothingMixin:
             else:
                 _do_remove()
 
+        # the garment gets a say in its own removal — single-use issue
+        # clothing tears rather than folds (#2120)
+        hook = getattr(item, "at_removed", None)
+        if callable(hook):
+            try:
+                hook(self)
+            except Exception:  # noqa: BLE001 — a bad hook never blocks undress
+                pass
+
         return True, f"You remove {with_article(item.key)}."
 
     def is_item_worn(self, item):

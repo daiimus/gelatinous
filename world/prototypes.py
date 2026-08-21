@@ -5024,8 +5024,10 @@ DECANT_JUMPSUIT = {
         ("material", "paper-weave"),
         ("weight", 0.3),
         ("value", 0),
-        # issue clothing: decent, not dressed (#2118)
+        # issue clothing: decent, not dressed (#2118), and paper-thin —
+        # it tears coming off, so free suits never stockpile (#2120)
         ("provisional", True),
+        ("single_use", True),
     ],
     "tags": [("clothing", "item_type")],
 }
@@ -5049,8 +5051,10 @@ DECANT_SLIPPERS = {
         ("material", "pressed fibre"),
         ("weight", 0.2),
         ("value", 0),
-        # issue clothing: decent, not dressed (#2118)
+        # issue clothing: decent, not dressed (#2118), and paper-thin —
+        # it tears coming off, so free suits never stockpile (#2120)
         ("provisional", True),
+        ("single_use", True),
     ],
     "tags": [("clothing", "item_type")],
 }

@@ -184,28 +184,25 @@ def step_job(soul):
                           key=_rung)
         if not wearable:
             # shed the paper: real clothes REPLACE the issue rather than
-            # layering over it, or the soul stays provisional forever and
-            # keeps shopping (#2118). An inner garment can't come off
-            # through an outer one, so strip fully and re-dress, putting
-            # the issue back only where it's still the only cover.
+            # layering over it (#2118). The issue TEARS coming off
+            # (#2120), so decide BEFORE stripping: only shed it when the
+            # real clothes already cover everything modesty asks for.
+            # Otherwise the paper stays on and is worn under.
             worn_now = list(dict.fromkeys(
                 g for items in (soul.worn_items or {}).values() for g in items))
-            if any(g.attributes.get("provisional") for g in worn_now):
-                for garment in sorted(worn_now, key=lambda g: -_rung(g)):
-                    soul.remove_item(garment)
-                real = [g for g in worn_now if not g.attributes.get("provisional")]
-                paper = [g for g in worn_now if g.attributes.get("provisional")]
-                for garment in sorted(real, key=_rung):
-                    soul.wear_item(garment)
-                for garment in sorted(paper, key=_rung):
-                    if needs_mod.wardrobe_pressure(soul) >= 1.0:
-                        soul.wear_item(garment)   # still the only cover
-                        continue
-                    bin_ = next((o for o in soul.location.contents
-                                 if "donation" in o.key.lower()), None) \
-                        if soul.location else None
-                    if bin_ is not None:          # "leave what you don't"
-                        soul.execute_cmd(f"drop {garment.key.split()[-1]}")
+            paper = [g for g in worn_now if g.attributes.get("provisional")]
+            real = [g for g in worn_now if not g.attributes.get("provisional")]
+            if paper and real:
+                covered_by_real = set()
+                for garment in real:
+                    covered_by_real |= set(garment.attributes.get("coverage") or ())
+                if needs_mod.modesty_of(soul) <= covered_by_real:
+                    # safe to lose the paper: strip everything (the issue
+                    # perishes on the way off), then re-dress in what's real
+                    for garment in sorted(worn_now, key=lambda g: -_rung(g)):
+                        soul.remove_item(garment)
+                    for garment in sorted((g for g in real if g.pk), key=_rung):
+                        soul.wear_item(garment)
             if needs_mod.wardrobe_pressure(soul) >= 1.0:
                 fault(soul, "nothing here fit to wear")
                 return False
