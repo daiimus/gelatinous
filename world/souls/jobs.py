@@ -318,6 +318,17 @@ def step_job(soul):
         needs_mod.satisfy(soul, need, 0.15)     # per think while dwelling
         if needs_mod.pressure(soul, need) <= 0.10:
             soul.ndb.soul_dwelling = False
+            if need == "maintenance":
+                # the service cycle is also a repair: the newest fault
+                # comes back out, and the unit is cleared to earn
+                # another one next time it is neglected
+                from world.souls import traits as traits_mod
+                fixed = traits_mod.clear_defect(soul)
+                soul.ndb.wear_charged = None
+                if fixed:
+                    soul.execute_cmd(
+                        f"pose runs a self-test and clears a logged "
+                        f"fault: {traits_mod.DEFECTS[fixed]['label']}.")
             soul.execute_cmd(f"pose {pose_out}")
             soul.db.soul_job = None
             return False

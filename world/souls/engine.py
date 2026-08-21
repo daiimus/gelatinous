@@ -207,6 +207,31 @@ def _goal_band(goal):
             "wardrobe": 2, "craving": 3, "social": 3}.get(goal, 4)
 
 
+def _wear_and_tear(soul):
+    """A machine left too long between services earns a defect.
+
+    Nobody assembles a nervous secbot — the colony makes one by not
+    maintaining it. This is what gives the robot profile's
+    `maintenance` need consequences: neglect stops being a meter
+    quietly filling and becomes a unit visibly going wrong.
+    """
+    from world.souls import traits as traits_mod
+
+    if traits_mod.registry_for(soul) is not traits_mod.DEFECTS:
+        return
+    if needs_mod.pressure(soul, "maintenance") < 1.0:
+        return
+    # one fault per overdue service, not one per think
+    if soul.ndb.wear_charged:
+        return
+    soul.ndb.wear_charged = True
+    got = traits_mod.acquire_defect(soul)
+    if got:
+        from world.souls import jobs
+        jobs.fault(soul, f"service overdue — developed "
+                         f"{traits_mod.DEFECTS[got]['label']}")
+
+
 def think(soul, hour):
     """One decision beat: end lapsed shifts, arbitrate, plan, step."""
     from world.director.assignment import is_assigned
@@ -394,6 +419,7 @@ class SoulsHeartbeat(DefaultScript):
         soul.ndb.soul_lod = lod
         if (beat + soul.id) % THINK_EVERY[lod] == 0:
             try:
+                _wear_and_tear(soul)
                 think(soul, shour)
             except Exception as err:
                 jobs.fault(soul, f"think crashed: {err}")

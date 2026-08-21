@@ -36,6 +36,9 @@ for soul in engine.get_souls():
     if soul.db.soul_traits:
         kept += 1
         continue
+    if traits_mod.registry_for(soul) is traits_mod.DEFECTS:
+        soul.db.soul_traits = []      # machines EARN theirs; see #2136
+        continue
     if soul.key in CAST:
         soul.db.soul_traits = list(CAST[soul.key])
         authored += 1
