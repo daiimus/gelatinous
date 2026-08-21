@@ -84,13 +84,24 @@ def any_keeper_present(fixture) -> bool:
 
 
 def _slot_held(post, shift, slot) -> bool:
-    """Is this slot's keeper alive, souled, and still on this post?"""
+    """Is this slot's keeper alive and still on this post?
+
+    A souled keeper holds it by assignment — their post and shift must
+    still match, so a soul who quits or is reassigned frees the slot.
+    An UNSOULED cast member holds it by presence: Vesper works her
+    chaise without a needs engine, and reading her slot as vacant
+    would have the insurance resleeve a second Vesper while the first
+    was standing there (#2132).
+    """
     keeper = slot.get("keeper")
     if keeper is None or not keeper.pk:
         return False
     room = _post_room(post)
-    return (keeper.db.soul_post == room
-            and (keeper.db.soul_schedule or "day") == shift)
+    from world.souls import engine
+    if keeper.tags.get(engine.SOUL_TAG[0], category=engine.SOUL_TAG[1]):
+        return (keeper.db.soul_post == room
+                and (keeper.db.soul_schedule or "day") == shift)
+    return keeper.location == room
 
 
 def _eligible_candidates(room):
