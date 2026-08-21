@@ -69,15 +69,67 @@ def _decant_room():
     return room if room is not None and room.pk else None
 
 
-def any_keeper_present(fixture) -> bool:
-    """Is ANY shift-holder physically at the fixture? (The 24/7 shop
-    gate: whoever's shift it is should be standing there; presence is
-    what opens the counter, whoever's face it is.)"""
-    room = _post_room(fixture)
-    for slot in (fixture.db.post_slots or {}).values():
+def current_shift(hour=None):
+    """Which shift the colony clock is on right now."""
+    from world.souls.engine import SCHEDULES, _in_block
+
+    if hour is None:
+        from world.gametime import colony_now
+        t = colony_now()
+        hour = t.hour + t.minute / 60.0
+    for shift in ("day", "swing", "night"):
+        if _in_block(hour, SCHEDULES[shift]["work"]):
+            return shift
+    return "day"
+
+
+def on_duty_keeper(post, hour=None):
+    """Whoever holds the shift the clock is currently on, if anyone."""
+    slot = (post.db.post_slots or {}).get(current_shift(hour)) or {}
+    keeper = slot.get("keeper")
+    return keeper if keeper is not None and keeper.pk else None
+
+
+def off_duty_keepers_present(post):
+    """Keepers of this post who are standing here on somebody else's
+    shift — the person who can tell you they're off, and who isn't."""
+    room = _post_room(post)
+    now_shift = current_shift()
+    out = []
+    for shift, slot in (post.db.post_slots or {}).items():
+        if shift == now_shift:
+            continue
         keeper = slot.get("keeper")
         if keeper is not None and keeper.pk and keeper.location == room:
+            out.append(keeper)
+    return out
+
+
+def any_keeper_present(fixture) -> bool:
+    """Is the shift that's actually RUNNING being stood?
+
+    Two conditions, and both matter: somebody must be here, and it must
+    be their shift. Presence alone used to be enough, which meant a
+    proprietor who had finished her day and not yet gone home was still
+    selling at midnight — she was standing there, so the counter
+    answered yes.
+
+    Note this is deliberately NOT the same question `_slot_held` asks.
+    That one means "does this person still hold this job", which the
+    succession sweep needs to be true around the clock, or every
+    off-shift slot would read vacant and get refilled by morning.
+    """
+    room = _post_room(fixture)
+    now_shift = current_shift()
+    slots = fixture.db.post_slots or {}
+    for shift, slot in slots.items():
+        keeper = slot.get("keeper")
+        if shift != now_shift:
+            continue
+        if keeper is not None and keeper.pk and keeper.location == room:
             return True
+    if slots:
+        return False              # a shift-staffed counter answers to the clock
     legacy = fixture.db.post_keeper
     return bool(legacy is not None and legacy.pk
                 and legacy.location == room)
