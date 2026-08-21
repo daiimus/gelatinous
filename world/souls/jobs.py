@@ -30,6 +30,35 @@ def _obj(dbid):
     return obj if obj and obj.pk else None
 
 
+def _conscience(soul, job, where=None):
+    """Charge a soul for acting against their nature, or warm them for
+    living up to it (NPC_TRAITS_SPEC §4).
+
+    No new meter: guilt is a heavy, slow-fading THOUGHT, and thoughts
+    are already mood — which already opens the bottle and the knife.
+    So a gentle soul driven to rob starts a spiral that is entirely
+    emergent, and every link of it is legible in `@soul`.
+    """
+    from world.souls import thoughts, traits as traits_mod
+
+    tags = tuple((job or {}).get("ethos") or ())
+    if not tags:
+        return
+    if getattr(soul.ndb, "conscience_charged", None) == id(job):
+        return                      # once per deed, not once per tick
+    soul.ndb.conscience_charged = id(job)
+    place = (where or soul.location)
+    place = place.key if place else "somewhere"
+    if traits_mod.abhors(soul, tags):
+        thoughts.add_thought(soul, "against_my_nature",
+                             traits_mod.GUILT_WEIGHT,
+                             f"what I did at {place}", wound=True)
+    elif traits_mod.relishes(soul, tags):
+        thoughts.add_thought(soul, "felt_like_myself",
+                             traits_mod.RELISH_WEIGHT,
+                             f"an honest hour at {place}")
+
+
 def step_job(soul):
     """Advance the current job by at most one step. Returns True while
     the job continues, False when finished/faulted."""
@@ -325,6 +354,7 @@ def step_job(soul):
             return False
         before = int(soul.tokens or 0)
         soul.execute_cmd(f"pickpocket {_target_token(mark)}")
+        _conscience(soul, job, where=mark.location)
         step["took"] = step.get("took", 0) + max(
             0, int(soul.tokens or 0) - before)
         step["lifts"] = step.get("lifts", 2) - 1
@@ -400,6 +430,7 @@ def step_job(soul):
         doctor._treat(soul, "bandage")
         if paid:
             doctor._treat(soul, "painkiller")
+            _conscience(soul, job)
             thoughts.add_thought(soul, "patched_up", 0.20,
                                  "paid the clinic and got put back together")
         else:
@@ -457,6 +488,7 @@ def step_job(soul):
             from world.souls import thoughts
             needs_mod.satisfy(soul, "social", 0.7)
             where = soul.location.key if soul.location else "the street"
+            _conscience(soul, job)
             thoughts.add_thought(soul, "good_company", 0.10,
                                  f"time among people at {where}")
             job["at"] = at + 1

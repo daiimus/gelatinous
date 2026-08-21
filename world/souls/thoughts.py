@@ -28,12 +28,23 @@ MOOD_BANDS = (                       # (floor, label) — first match wins
 )
 
 
-def add_thought(soul, key, valence, note=""):
+#: A wound fades in days rather than hours. Acting against your own
+#: nature is meant to follow you around a while (NPC_TRAITS_SPEC §4).
+WOUND_HALFLIFE = 3 * 24 * 3600
+
+#: Keys recorded as wounds. Kept as data so the set can grow (grief,
+#: betrayal) without touching the decay maths.
+WOUND_KEYS = {"against_my_nature"}
+
+
+def add_thought(soul, key, valence, note="", wound=False):
     """Record a thought; feed the RAG memory when it's significant.
     Same-key entries are capped at STACK_CAP (newest kept), so a
     condition that persists — broke and hungry for six hours — reads
     as ONE sustained misery, not twenty, and can't flood every other
     memory out of the log."""
+    if wound:
+        WOUND_KEYS.add(key)
     log = list(soul.db.soul_thoughts or [])
     log.append((time.time(), key, float(valence), note))
     same = [t for t in log if t[1] == key]
@@ -77,7 +88,8 @@ def decayed(soul, now=None):
     now = now if now is not None else time.time()
     out = []
     for stamp, key, valence, note in (soul.db.soul_thoughts or []):
-        weight = 0.5 ** (max(0.0, now - stamp) / HALFLIFE_SECONDS)
+        half = WOUND_HALFLIFE if key in WOUND_KEYS else HALFLIFE_SECONDS
+        weight = 0.5 ** (max(0.0, now - stamp) / half)
         out.append((valence * weight, key, note, now - stamp))
     return out
 

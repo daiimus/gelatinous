@@ -250,6 +250,10 @@ def generate_resident(lawless=False):
         role="drifter" if lawless else None))
     # rolled INDEPENDENTLY of sex, deliberately (world.style rule 3)
     npc.db.presents = list(style_mod.roll_presentation())
+    # two or three traits, exclusion-safe: the shuttle stops delivering
+    # interchangeable strangers (NPC_TRAITS_SPEC §7)
+    from world.souls import traits as traits_mod
+    npc.db.soul_traits = list(traits_mod.roll())
     _dress_arrival(npc)
 
     rental.assign_cube(npc, kiosk)

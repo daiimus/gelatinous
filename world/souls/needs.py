@@ -154,7 +154,9 @@ def craving_state(soul):
         try:
             from world.souls import thoughts as thoughts_mod
             if thoughts_mod.mood(soul) <= MISERY_MOOD:
-                return (MISERY_PULL, None)
+                from world.souls import traits as traits_mod
+                pull = traits_mod.dial(soul, "misery_pull", MISERY_PULL)
+                return ((pull, None) if pull else (0.0, None))
         except Exception:  # noqa: BLE001
             pass
     return worst
@@ -208,12 +210,25 @@ def wardrobe_pressure(soul):
     return 0.0
 
 
+def soft_for(soul, need):
+    """This soul's soft threshold for a need (traits may move it)."""
+    from world.souls import traits as traits_mod
+    return traits_mod.dial(soul, f"soft:{need}", SOFT)
+
+
+def critical_for(soul, need):
+    from world.souls import traits as traits_mod
+    return traits_mod.dial(soul, f"crit:{need}", CRITICAL)
+
+
 def pressures(soul, now=None):
     """Current derived pressure for every profile need. Pure read."""
     now = now if now is not None else time.time()
     stored, minutes = _snapshot(soul, now)
+    from world.souls import traits as traits_mod
     out = {
-        name: min(1.0, stored.get(name, default) + rate * minutes)
+        name: min(1.0, stored.get(name, default)
+                  + traits_mod.dial(soul, f"rate:{name}", rate) * minutes)
         for name, (rate, default, _shape) in profile_of(soul).items()
     }
     if "health" in out:
@@ -235,6 +250,8 @@ def pressure(soul, need, now=None):
     now = now if now is not None else time.time()
     stored, minutes = _snapshot(soul, now)
     rate, default, _shape = profile_of(soul).get(need, (0.0, 0.0, None))
+    from world.souls import traits as traits_mod
+    rate = traits_mod.dial(soul, f"rate:{need}", rate)
     return min(1.0, stored.get(need, default) + rate * minutes)
 
 
