@@ -35,6 +35,9 @@ DONATIONS = [
     "BOMBER_JACKET", "DUST_PONCHO", "HOUSE_ROBE",
     "KNIT_CAP", "LONG_SCARF", "HEAD_WRAP", "WIDE_BRIM_HAT",
     "WORK_GLOVES", "HIGH_TOPS", "PIT_BOOTS", "SHOWER_SANDALS",
+    # somebody's better days, donated: the bottom of the market still
+    # has range, and a soul with taste can find a scrap of it here
+    "DRESS_SHIRT", "PENCIL_SKIRT", "SLIT_SKIRT", "MESH_TOP",
 ]
 
 room = next(iter(search_object(ROOM)), None)
