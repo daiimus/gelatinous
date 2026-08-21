@@ -58,18 +58,33 @@ def _prune_dead_tenancy(cube):
     the moment anyone asks after it. Returns the live resident, or None."""
     db = getattr(cube, "db", None)
     resident = getattr(db, "resident", None)
-    if resident is None:
-        return None
-    alive = (getattr(resident, "pk", None)
-             and getattr(resident, "is_archived", False) is not True)
-    if alive:
-        return resident
+    stamped = getattr(db, "resident_sleeve", None)
+
+    if resident is not None:
+        alive = (getattr(resident, "pk", None)
+                 and getattr(resident, "is_archived", False) is not True)
+        if alive:
+            return resident
+    elif not stamped:
+        return None                  # genuinely vacant, nothing to clear
+    # else: the record points at nobody, but a sleeve is STILL STAMPED
+    # — a DELETED tenant. Evennia resolves a deleted object's reference
+    # to None, so the old early-return bailed before stripping the door
+    # grant, and the cube stayed occupied by a ghost forever. The uid
+    # was stored at assignment precisely because it survives deletion;
+    # this is what it was for.
+    #
+    # A voluntary mover looks the same at a glance — resident None —
+    # but clears the stamp on the way out, so their relocation window
+    # is held by the door's timed grant and is untouched here (#2130).
+
     cube.db.resident = None
-    uid = getattr(db, "resident_sleeve", None) or sleeve_uid_of(resident)
+    uid = stamped or sleeve_uid_of(resident)
     door = cube_door(cube)
     if door is not None and uid:
         grants = [g for g in _live_grants(door) if g.get("sleeve") != uid]
         door._mirror(access_grants=grants)
+    cube.db.resident_sleeve = None
     return None
 
 
@@ -105,6 +120,10 @@ def release_with_window(char, cube):
         if entry.get("sleeve") == uid:
             entry["until"] = deadline
     door._mirror(access_grants=grants)
+    # the stamp is what marks a tenancy nobody walked away from; a
+    # mover walked away, and their timed grant is what holds the cube
+    # until it expires (#2130)
+    cube.db.resident_sleeve = None
     char.db.residence_handover = {"cube": cube, "until": deadline}
 
 
