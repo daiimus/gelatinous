@@ -1,10 +1,10 @@
 """Build 080 — the Rook's sealed biome (recluse profile).
 
-The studio is his whole world, so the studio satisfies his whole
+The studio is her whole world, so the studio satisfies her whole
 profile: a Thawn-Harrison nutrient line for the body (whoever sealed
-him in plumbed him in), the broadcast chair for sleep AND for the
+her in plumbed her in), the broadcast chair for sleep AND for the
 airwaves — the colony's first parasocial soul, whose social need is
-satisfied by being loved on 88.8 by people who will never see his
+satisfied by being loved on 88.8 by people who will never see her
 face. His mood now seasons every broadcast through the STATE line.
 His needs are met by infrastructure, and infrastructure can break:
 that is the only door out of a recluse's story, and it stays shut
@@ -46,7 +46,7 @@ else:
         line.locks.add("get:false()")
     line.db.advertises = {"hunger": 0.9}
     line.db.dwell_pose_in = ("draws the nutrient line down and seats it "
-                             "against the port at his wrist, eyes "
+                             "against the port at her wrist, eyes "
                              "half-lidding as the feed takes.")
     line.db.dwell_pose_out = ("unseats the line and lets it retract "
                               "ceilingward, flexing his hand like a man "

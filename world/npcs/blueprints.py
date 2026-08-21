@@ -1869,6 +1869,47 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
              'temp_place': 'riding the board, murmuring into the mic.',
              'voice': {'voice_description': 'smoky',
                        'voice_ending': 'purr'},
+    "wardrobe": [
+        {"key": "black silk shirt",
+         "aliases": ["silk shirt", "shirt"],
+         "desc": ("A black silk shirt with the cuffs turned back twice, "
+                  "immaculate in a room no one has entered in years. The "
+                  "care is the point; the audience is not."),
+         "worn_desc": ("A |xblack silk|n shirt, cuffs turned back twice — "
+                       "immaculate, and for nobody"),
+         "coverage": ["chest", "back", "abdomen", "left_arm", "right_arm"],
+         "layer": 1, "color": "black", "material": "silk",
+         "weight": 0.3, "style": ["shine"]},
+        {"key": "high-waisted black trousers",
+         "aliases": ["trousers", "black trousers"],
+         "desc": ("Sharp high-waisted trousers in heavy black crepe, the "
+                  "creases kept by someone with time and no visitors."),
+         "worn_desc": ("Sharp |xhigh-waisted black|n trousers, creases "
+                       "kept immaculate"),
+         "coverage": ["groin", "left_thigh", "right_thigh",
+                      "left_shin", "right_shin"],
+         "layer": 1, "color": "black", "material": "crepe",
+         "weight": 0.6, "style": ["shine"]},
+        {"key": "studio headphones",
+         "aliases": ["headphones", "cans"],
+         "desc": ("Heavy padded broadcast cans on a steel band, the "
+                  "leatherette worn glassy where they have sat against "
+                  "the same synthetic jaw for years. One cup is always "
+                  "pushed back off an ear, listening to the room."),
+         "worn_desc": ("Heavy |xpadded broadcast cans|n on a steel band, "
+                       "one cup pushed back off an ear"),
+         "coverage": ["head"],
+         "layer": 5, "color": "black", "material": "steel",
+         "weight": 0.5, "style": ["shine"]},
+        {"key": "soft-soled studio shoes",
+         "aliases": ["shoes", "studio shoes"],
+         "desc": ("Flat black shoes with soles chosen for silence — "
+                  "nothing she wears may ever reach the microphone."),
+         "worn_desc": ("Flat |xblack|n shoes with silent soles"),
+         "coverage": ["left_foot", "right_foot"],
+         "layer": 5, "color": "black", "material": "suede",
+         "weight": 0.4, "style": ["shine"]},
+    ],
              'persona': {'archetype': 'dj',
                          'name': 'the Rook',
                          'description': 'the unseen host of 88.8 — the '
@@ -2437,3 +2478,62 @@ BLUEPRINTS["drill_dummy"] = {
     "llm_driven": False,
     "persona": {},
 }
+
+# Petra predates the wardrobe key like Lin did: twenty years at a console
+# in a uniform nobody inspects, plus the cardigan regulation never
+# mentioned and therefore never took away.
+BLUEPRINTS["dispatch_petra"]["wardrobe"] = [
+        {"key": "constabulary duty shirt",
+         "aliases": ["duty shirt", "shirt"],
+         "desc": ("A charcoal duty shirt with the constabulary flash at "
+                  "the shoulder, pressed by someone who has stopped "
+                  "noticing they press it. The cuffs are worn pale where "
+                  "they ride a console edge eight hours a night."),
+         "worn_desc": ("A charcoal |xconstabulary duty shirt|n, flash at "
+                       "the shoulder, cuffs worn pale where they ride the "
+                       "console"),
+         "coverage": ["chest", "back", "abdomen", "left_arm", "right_arm"],
+         "layer": 1, "color": "charcoal", "material": "twill",
+         "weight": 0.5, "style": ["uniform"]},
+        {"key": "constabulary duty trousers",
+         "aliases": ["duty trousers", "trousers"],
+         "desc": ("Straight charcoal trousers with a hard crease and a "
+                  "flat seat, cut for a chair rather than a foot patrol."),
+         "worn_desc": ("Straight |xcharcoal|n duty trousers, hard-creased "
+                       "and flat at the seat — a chair's trousers"),
+         "coverage": ["groin", "left_thigh", "right_thigh",
+                      "left_shin", "right_shin"],
+         "layer": 1, "color": "charcoal", "material": "twill",
+         "weight": 0.6, "style": ["uniform"]},
+        {"key": "grey dispatch cardigan",
+         "aliases": ["cardigan"],
+         "desc": ("A shapeless grey cardigan kept over the back of the "
+                  "dispatch chair, pilled at the elbows and smelling "
+                  "faintly of coffee. Regulation says nothing about it, "
+                  "which is exactly why it has survived twenty years."),
+         "worn_desc": ("A shapeless |wgrey|n cardigan pilled at the "
+                       "elbows, worn over the uniform in defiance of "
+                       "nothing in particular"),
+         "coverage": ["chest", "back", "left_arm", "right_arm"],
+         "layer": 2, "color": "grey", "material": "wool",
+         "weight": 0.6, "style": ["uniform", "street"]},
+        {"key": "constabulary duty boots",
+         "aliases": ["duty boots", "boots"],
+         "desc": ("Black service boots polished only on the toes — the "
+                  "parts a seated woman can reach without standing up."),
+         "worn_desc": ("Black service boots polished |wonly on the "
+                       "toes|n"),
+         "coverage": ["left_foot", "right_foot"],
+         "layer": 5, "color": "black", "material": "leather",
+         "weight": 1.0, "style": ["uniform"]},
+        {"key": "dispatch headset",
+         "aliases": ["headset"],
+         "desc": ("A single-ear headset with a bent boom mic, the "
+                  "earpiece padding compressed to a permanent dent in "
+                  "the shape of one ear."),
+         "worn_desc": ("A single-ear |xdispatch headset|n, boom mic bent "
+                       "to a shape only she finds comfortable"),
+         "coverage": ["head"],
+         "layer": 5, "color": "black", "material": "plastic",
+         "weight": 0.2, "style": ["uniform"]},
+    ]
