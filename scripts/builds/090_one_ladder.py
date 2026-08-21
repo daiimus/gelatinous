@@ -55,9 +55,20 @@ def rung_for(key):
     low = (key or "").lower()
     for layer in (0, 5, 4, 3, 2, 1):
         for word in RUNGS[layer]:
-            if re.search(r"\b" + re.escape(word), low):
+            # BOTH boundaries: a front-anchored match made "brass-toed
+            # boots" a bra and "collarless shirt" a collar
+            if re.search(r"\b" + re.escape(word) + r"\b", low):
                 return layer
     return None            # unrecognised: leave whatever it has
+
+
+
+def _rung(garment):
+    """A garment's rung, treating 0 as 0. `int(layer or 1)` silently
+    promotes every skin-layer item to base — which is why socks kept
+    trying to go on over jeans."""
+    lay = getattr(garment, "layer", None)
+    return 1 if lay is None else int(lay)
 
 
 moved = 0
@@ -90,11 +101,10 @@ for char in ObjectDB.objects.filter(
     # strip OUTERMOST first — an inner garment cannot come off while
     # something covers it, and a failed removal leaves the item worn to
     # collide with itself on the way back on
-    for garment in sorted(worn, key=lambda g: -int(getattr(g, "layer", 1) or 1)):
+    for garment in sorted(worn, key=lambda g: -_rung(g)):
         char.remove_item(garment)
     still_on = {o for items in (char.worn_items or {}).values() for o in items}
-    for garment in sorted(worn + spare,
-                          key=lambda g: int(getattr(g, "layer", 1) or 1)):
+    for garment in sorted(worn + spare, key=_rung):
         if garment in still_on:
             continue                      # never came off; leave it be
         ok, msg = char.wear_item(garment)

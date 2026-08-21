@@ -174,8 +174,14 @@ def step_job(soul):
         # soul meets their own modesty (#2104)
         from world.souls import thoughts
         from world.souls.actions import _wearable
-        wearable = [o for o in soul.contents
-                    if _wearable(soul, o)]
+        # dress from the skin out; `int(layer or 1)` would promote
+        # every layer-0 garment to base and put socks over trousers
+        def _rung(g):
+            lay = getattr(g, "layer", None)
+            return 1 if lay is None else int(lay)
+
+        wearable = sorted((o for o in soul.contents if _wearable(soul, o)),
+                          key=_rung)
         if not wearable:
             if needs_mod.wardrobe_pressure(soul) >= 1.0:
                 fault(soul, "nothing here fit to wear")
