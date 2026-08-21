@@ -652,7 +652,7 @@ DEV_HOODIE = {
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("worn_desc", "A menacing {color}black|n developer hoodie draped loose and open, the cryptic green 'rm -rf /' text glowing with malevolent promise while embedded LED threads create subtle data-stream patterns across {their} fabric"),
-        ("layer", 2),  # Regular clothing layer
+        ("layer", 3),  # Regular clothing layer
         ("color", "black"),
         ("material", "cotton"),
         ("weight", 1.8),  # Moderate weight
@@ -887,7 +887,7 @@ FACE_BANDANA = {
     "attrs": [
         ("coverage", ["face"]),
         ("worn_desc", "A {color}red|n cotton bandana knotted outlaw-style across the lower half of {their} face"),
-        ("layer", 2),
+        ("layer", 5),
         ("color", "red"),
         ("material", "cotton"),
         ("weight", 0.1),
@@ -945,7 +945,7 @@ BLACK_WIG = {
     "attrs": [
         ("coverage", ["hair", "head"]),
         ("worn_desc", "A glossy fall of {color}black|n shoulder-length hair, cut to a blunt fringe"),
-        ("layer", 2),
+        ("layer", 1),
         ("color", "black"),
         ("material", "synthetic"),
         ("weight", 0.15),
@@ -978,7 +978,7 @@ BLOND_WIG = {
     "attrs": [
         ("coverage", ["hair", "head"]),
         ("worn_desc", "Honey-{color}blond|n chin-length hair, layered full and loose"),
-        ("layer", 2),
+        ("layer", 1),
         ("color", "gold"),
         ("material", "synthetic"),
         ("weight", 0.15),
@@ -1002,7 +1002,7 @@ BROWN_WIG = {
     "attrs": [
         ("coverage", ["hair", "head"]),
         ("worn_desc", "Walnut-{color}brown|n mid-length hair parted off-centre, falling in loose waves"),
-        ("layer", 2),
+        ("layer", 1),
         ("color", "brown"),
         ("material", "synthetic"),
         ("weight", 0.15),
@@ -1125,7 +1125,7 @@ BLUE_JEANS = {
         ("category", "clothing"),
         ("worn_desc", "Battle-tested {color}denim|n jeans that cling to {their} form with urban authority, {their} faded indigo surface scarred by countless encounters with concrete and circumstance"),
         ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
-        ("layer", 2),  # Regular clothing layer
+        ("layer", 1),  # Regular clothing layer
         ("color", "blue"),
         ("material", "denim"),
         ("weight", 1.5),  # Moderate weight
@@ -1218,7 +1218,7 @@ COMBAT_BOOTS = {
         ("category", "clothing"),
         ("worn_desc", "Imposing {color}black leather|n combat boots laced with military precision, {their} steel-reinforced toes and deep-tread soles speaking of {their} owner's serious intent while weathered leather tells stories of urban warfare and late-night foot chases"),
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin"]),
-        ("layer", 3),  # Footwear layer (doesn't conflict with pants)
+        ("layer", 5),  # Footwear layer (doesn't conflict with pants)
         ("color", "black"),
         ("material", "leather"),
         
@@ -1353,7 +1353,7 @@ PLATE_CARRIER = {
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen"]),
         ("worn_desc", "A professional {color}tan|n plate carrier with tactical webbing and modular plate pockets, its adjustable straps and MOLLE system creating a foundation for serious ballistic protection"),
-        ("layer", 4),  # Light armor layer
+        ("layer", 2),  # Light armor layer
         ("color", "tan"),
         ("material", "nylon"),
         ("weight", 2.5),  # Just the carrier itself
@@ -1692,7 +1692,7 @@ ARMORED_LEATHER_JACKET = {
         # Clothing attributes  
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("worn_desc", "A reinforced {color}black leather|n jacket studded with steel reinforcements, its thick hide and metal accents providing street-smart protection without sacrificing the rebellious aesthetic of urban warfare"),
-        ("layer", 2),
+        ("layer", 3),
         ("color", "black"),
         ("material", "leather"),
         ("weight", 3.2),  # Moderate weight
@@ -1739,7 +1739,7 @@ COMBAT_HELMET = {
         # Clothing attributes
         ("coverage", ["head", "left_ear", "right_ear"]),  # Protects skull and ears, but face/eyes/jaw exposed
         ("worn_desc", "A menacing {color}matte black|n tactical helmet with ballistic protection, its angular design and integrated electronics creating an intimidating visage of military precision"),
-        ("layer", 2),
+        ("layer", 5),
         ("color", "black"),
         ("material", "kevlar"),
         ("weight", 1.8),  # Light weight
@@ -3655,7 +3655,7 @@ MINING_HELMET = {
         ("category", "clothing"),
         ("worn_desc", "A {color}yellow|n composite mining helmet, lamp bracket empty, chin strap hanging loose"),
         ("coverage", ["head"]),
-        ("layer", 2),
+        ("layer", 5),
         ("color", "yellow"),
         ("material", "composite"),
         ("weight", 0.7),
@@ -3689,7 +3689,7 @@ PIT_BOOTS = {
         ("category", "clothing"),
         ("worn_desc", "Steel-shanked {color}brown|n pit boots laced to the shin, gum-rubber soled"),
         ("coverage", ["left_foot", "right_foot"]),
-        ("layer", 3),  # footwear layer — worn over trousers, never conflicts
+        ("layer", 5),  # footwear layer — worn over trousers, never conflicts
         ("color", "brown"),
         ("material", "leather"),
         ("weight", 1.6),
@@ -3706,7 +3706,7 @@ WORK_GLOVES = {
         ("category", "clothing"),
         ("worn_desc", "Split-leather {color}tan|n work gloves, palms reinforced, cuffs elastic"),
         ("coverage", ["left_hand", "right_hand"]),
-        ("layer", 2),
+        ("layer", 5),
         ("color", "tan"),
         ("material", "leather"),
         ("weight", 0.3),
@@ -3750,7 +3750,7 @@ HIVIS_VEST = {
         ("category", "clothing"),
         ("worn_desc", "A signal-{color}orange|n hi-vis vest, reflective bands catching the light, company stencil across the back"),
         ("coverage", ["chest", "back"]),
-        ("layer", 4),  # worn OVER the jacket/coat (armor-layer precedent)
+        ("layer", 2),  # worn OVER the jacket/coat (armor-layer precedent)
         ("color", "orange"),
         ("material", "mesh"),
         ("weight", 0.3),
@@ -3821,7 +3821,7 @@ CARGO_TROUSERS = {
         ("category", "clothing"),
         ("worn_desc", "Ripstop {color}khaki|n cargo trousers, thigh pockets bellowed with the day's carrying"),
         ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
-        ("layer", 2),
+        ("layer", 1),
         ("color", "khaki"),
         ("material", "ripstop"),
         ("weight", 0.8),
@@ -3838,7 +3838,7 @@ KNIT_CAP = {
         ("category", "clothing"),
         ("worn_desc", "A ribbed {color}black|n knit cap cuffed low over the ears"),
         ("coverage", ["head"]),
-        ("layer", 2),
+        ("layer", 5),
         ("color", "black"),
         ("material", "wool"),
         ("weight", 0.1),
@@ -3933,7 +3933,7 @@ STOPPED_WATCH = {
         ("category", "clothing"),
         ("worn_desc", "An old {color}steel|n watch on the left wrist, crystal frosted with cracks, its hands standing perfectly still"),
         ("coverage", ["left_hand"]),
-        ("layer", 1),
+        ("layer", 5),
         # 1970-01-02 12:17 UTC -> 04:17 colony local; only {time} renders,
         # so the date it died stays unwritten
         ("clock_stopped", 130620),
@@ -3970,7 +3970,7 @@ HAWKERS_APRON = {
         ("category", "clothing"),
         ("worn_desc", "A many-pocketed {color}brown|n trade apron tied at the waist, pouches lumpy with stock"),
         ("coverage", ["chest", "abdomen"]),
-        ("layer", 3),
+        ("layer", 4),
         ("color", "brown"),
         ("material", "canvas"),
         ("weight", 0.6),
@@ -3987,7 +3987,7 @@ COMPANY_COAT = {
         ("category", "clothing"),
         ("worn_desc", "A pressed {color}charcoal|n company coat falling to the knee, tally-book squared in the breast pocket"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
-        ("layer", 3),
+        ("layer", 4),
         ("color", "charcoal"),
         ("material", "wool"),
         ("weight", 1.2),
@@ -4170,7 +4170,7 @@ HEELED_BOOTS = {
         ("category", "clothing"),
         ("worn_desc", "Knee-high {color}black|n heeled boots, polished to a street-lamp shine, announcing every step"),
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin"]),
-        ("layer", 3),  # footwear layer — worn over trousers, never conflicts
+        ("layer", 5),  # footwear layer — worn over trousers, never conflicts
         ("color", "black"),
         ("material", "synth-leather"),
         ("weight", 1.0),
@@ -4261,7 +4261,7 @@ FLANNEL_SHIRT = {
         ("category", "clothing"),
         ("worn_desc", "A {color}red|n-black check flannel, soft with wear, buttons mismatched down the front"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
-        ("layer", 2),
+        ("layer", 1),
         ("color", "red"),
         ("material", "flannel"),
         ("weight", 0.6),
@@ -4312,7 +4312,7 @@ SLIT_SKIRT = {
         ("category", "clothing"),
         ("worn_desc", "A long matte-{color}black|n skirt slit high up one side, baring a stripe of thigh with each step"),
         ("coverage", ["groin", "right_thigh", "left_shin", "right_shin"]),
-        ("layer", 2),
+        ("layer", 1),
         ("color", "black"),
         ("material", "synthetic"),
         ("weight", 0.4),
@@ -4329,7 +4329,7 @@ LEATHER_TROUSERS = {
         ("category", "clothing"),
         ("worn_desc", "Close-cut matte-{color}black|n synth-leather trousers, catching light along the seams"),
         ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
-        ("layer", 2),
+        ("layer", 1),
         ("color", "black"),
         ("material", "synth-leather"),
         ("weight", 0.9),
@@ -4346,7 +4346,7 @@ HIGH_TOPS = {
         ("category", "clothing"),
         ("worn_desc", "Scuffed {color}white|n canvas high-tops laced with paracord"),
         ("coverage", ["left_foot", "right_foot"]),
-        ("layer", 3),  # footwear layer — worn over trousers, never conflicts
+        ("layer", 5),  # footwear layer — worn over trousers, never conflicts
         ("color", "white"),
         ("material", "canvas"),
         ("weight", 0.6),
@@ -4571,7 +4571,7 @@ DRESS_TROUSERS = {
         ("category", "clothing"),
         ("worn_desc", "Creased {color}grey|n office trousers holding their line against the colony"),
         ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
-        ("layer", 2),
+        ("layer", 1),
         ("color", "grey"),
         ("material", "wool blend"),
         ("weight", 0.5),
@@ -4588,7 +4588,7 @@ PENCIL_SKIRT = {
         ("category", "clothing"),
         ("worn_desc", "A narrow {color}charcoal|n pencil skirt, knee-length and exact"),
         ("coverage", ["groin", "left_thigh", "right_thigh"]),
-        ("layer", 2),
+        ("layer", 1),
         ("color", "charcoal"),
         ("material", "wool blend"),
         ("weight", 0.4),
@@ -4605,7 +4605,7 @@ OXFORD_SHOES = {
         ("category", "clothing"),
         ("worn_desc", "Polished {color}black|n oxfords fighting a losing war with the grating"),
         ("coverage", ["left_foot", "right_foot"]),
-        ("layer", 3),
+        ("layer", 5),
         ("color", "black"),
         ("material", "leather"),
         ("weight", 0.8),
@@ -4622,7 +4622,7 @@ NECKTIE = {
         ("category", "clothing"),
         ("worn_desc", "A striped {color}company-blue|n necktie, knotted tight — allegiance worn at the throat"),
         ("coverage", ["neck"]),
-        ("layer", 2),
+        ("layer", 5),
         ("color", "company-blue"),
         ("material", "synthetic silk"),
         ("weight", 0.1),
@@ -4649,7 +4649,7 @@ MEDICAL_SCRUBS = {
         ("category", "clothing"),
         ("worn_desc", "Autoclave-faded {color}teal|n scrubs, the breast pocket sprung from years of instruments"),
         ("coverage", ["chest", "back", "abdomen", "groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
-        ("layer", 2),
+        ("layer", 4),
         ("color", "teal"),
         ("material", "cotton blend"),
         ("weight", 0.5),
@@ -4666,7 +4666,7 @@ LAB_COAT = {
         ("category", "clothing"),
         ("worn_desc", "A {color}white|n lab coat, honestly stained, pens racked in the breast pocket"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
-        ("layer", 3),
+        ("layer", 4),
         ("color", "white"),
         ("material", "poly-cotton"),
         ("weight", 0.7),
@@ -4693,7 +4693,7 @@ SEALED_SLICKER = {
         ("category", "clothing"),
         ("worn_desc", "A heat-welded {color}amber|n slicker, gasketed at the cuffs, built for rain that shouldn't touch skin"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
-        ("layer", 4),
+        ("layer", 3),
         ("color", "amber"),
         ("material", "welded polymer"),
         ("weight", 1.2),
@@ -4720,7 +4720,7 @@ GROWERS_APRON = {
         ("category", "clothing"),
         ("worn_desc", "A nutrient-stained {color}green-brown|n rubber apron, tools sprouting from the front pocket"),
         ("coverage", ["chest", "abdomen", "groin"]),
-        ("layer", 3),
+        ("layer", 4),
         ("color", "green-brown"),
         ("material", "rubber"),
         ("weight", 1.0),
@@ -4737,7 +4737,7 @@ RUBBER_WADERS = {
         ("category", "clothing"),
         ("worn_desc", "Thigh-high {color}black|n rubber waders, patched, made for standing in what collects"),
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin", "left_thigh", "right_thigh"]),
-        ("layer", 3),
+        ("layer", 5),
         ("color", "black"),
         ("material", "rubber"),
         ("weight", 1.6),
@@ -4754,7 +4754,7 @@ SHOWER_SANDALS = {
         ("category", "clothing"),
         ("worn_desc", "Faded {color}orange|n shower sandals slapping with every step"),
         ("coverage", ["left_foot", "right_foot"]),
-        ("layer", 1),
+        ("layer", 5),
         ("color", "orange"),
         ("material", "molded plastic"),
         ("weight", 0.2),
@@ -4771,7 +4771,7 @@ HOUSE_ROBE = {
         ("category", "clothing"),
         ("worn_desc", "A quilted {color}mauve|n house robe, belt in its permanent knot — off duty from everything"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
-        ("layer", 3),
+        ("layer", 4),
         ("color", "mauve"),
         ("material", "quilted synthetic"),
         ("weight", 0.8),
@@ -4788,7 +4788,7 @@ HEAD_WRAP = {
         ("category", "clothing"),
         ("worn_desc", "A printed {color}ochre|n head wrap tucked with practiced architecture"),
         ("coverage", ["head"]),
-        ("layer", 2),
+        ("layer", 5),
         ("color", "ochre"),
         ("material", "printed cotton"),
         ("weight", 0.1),
@@ -4805,7 +4805,7 @@ EVENING_SUIT = {
         ("category", "clothing"),
         ("worn_desc", "A {color}midnight|n evening suit, close-cut and unbranded, wearing the room's light well"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
-        ("layer", 2),
+        ("layer", 1),
         ("color", "midnight"),
         ("material", "wool-silk"),
         ("weight", 1.1),
@@ -4839,7 +4839,7 @@ LONG_SCARF = {
         ("category", "clothing"),
         ("worn_desc", "A {color}rust|n knit scarf wound twice at the throat and still trailing"),
         ("coverage", ["neck"]),
-        ("layer", 3),
+        ("layer", 5),
         ("color", "rust"),
         ("material", "knit synthetic"),
         ("weight", 0.3),
@@ -4856,7 +4856,7 @@ WIDE_BRIM_HAT = {
         ("category", "clothing"),
         ("worn_desc", "A weather-shaped {color}oiled-tan|n wide-brimmed hat pulled low against the glare"),
         ("coverage", ["head"]),
-        ("layer", 3),
+        ("layer", 5),
         ("color", "oiled-tan"),
         ("material", "oiled canvas"),
         ("weight", 0.4),
@@ -5042,7 +5042,7 @@ DECANT_SLIPPERS = {
         ("worn_desc", "A pair of flat {color}grey|n decant slippers, "
                       "pressed fibre gone soft at the edges"),
         ("coverage", ["left_foot", "right_foot"]),
-        ("layer", 1),
+        ("layer", 5),
         ("color", "grey"),
         ("material", "pressed fibre"),
         ("weight", 0.2),
