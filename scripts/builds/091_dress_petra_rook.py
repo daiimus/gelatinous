@@ -59,8 +59,13 @@ for bp_key, name in (("dispatch_petra", "Petra"), ("dj_rook", "the Rook")):
     still_on = {o for items in (who.worn_items or {}).values() for o in items}
     wearable = [o for o in who.contents
                 if callable(getattr(o, "is_wearable", None)) and o.is_wearable()]
+    # her own clothes outrank whatever she happened to be carrying:
+    # Petra was holding two stray pairs of jeans, and at equal rung the
+    # jeans won on alphabetical order and blocked her uniform trousers
+    own = {g["key"] for g in BLUEPRINTS[bp_key].get("wardrobe", ())}
     dressed = []
-    for garment in sorted(wearable, key=_rung):
+    for garment in sorted(wearable, key=lambda g: (_rung(g),
+                                                   0 if g.key in own else 1)):
         if garment in still_on:
             continue
         ok, _msg = who.wear_item(garment)
