@@ -137,7 +137,10 @@ class CmdSoul(Command):
         post = target.db.soul_post
         venue = target.db.soul_venue
         from world.souls import thoughts as thoughts_mod
+        from world.souls import traits as traits_mod
         mood_val = thoughts_mod.mood(target)
+        trait_labels = traits_mod.labels(target)
+        abhors, relishes = traits_mod.ethos(target)
         lines = [
             f"|wSoul: {target.key}|n (#{target.id})  "
             f"role:{target.db.soul_role or '?'}  "
@@ -146,6 +149,11 @@ class CmdSoul(Command):
             f"schedule:{sched}  "
             f"lod:{target.ndb.soul_lod or '?'}  "
             f"mood:|y{thoughts_mod.mood_band(mood_val)}|n ({mood_val:+.2f})",
+            "  traits: " + (", ".join(f"|c{t}|n" for t in trait_labels)
+                            or "none")
+            + (f"   |rabhors|n {'/'.join(sorted(abhors))}" if abhors else "")
+            + (f"   |grelishes|n {'/'.join(sorted(relishes))}"
+               if relishes else ""),
             f"  home: {home.key if home else '-'}   "
             f"post: {post.key if post else '-'}   "
             f"till: {venue.key if venue else 'treasury'}",

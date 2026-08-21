@@ -277,6 +277,27 @@ def _find_mark(soul, min_tokens=3, radius=30):
     return best[1] if best else None
 
 
+def _under_duress(soul, need):
+    """Is this need desperate enough to override a soul's nature?
+
+    The conscience rule (NPC_TRAITS_SPEC §4): a plan a soul abhors is
+    only reachable at CRITICAL, never at merely soft. A gentle soul
+    who is hungry goes to bed hungry; the same soul starving finally
+    pulls the knife — and the gap between those thresholds IS the
+    personality.
+    """
+    from world.souls import needs as needs_mod
+    return needs_mod.pressure(soul, need) >= needs_mod.critical_for(soul, need)
+
+
+def _permits(soul, need, tags):
+    """May this soul take a plan carrying `tags` right now?"""
+    from world.souls import traits as traits_mod
+    if not traits_mod.abhors(soul, tags):
+        return True
+    return _under_duress(soul, need)
+
+
 def plan_for(soul, goal_need):
     """Return a job dict for the winning goal, or None (-> fault).
 
@@ -315,6 +336,14 @@ def plan_for(soul, goal_need):
             if not wares:
                 continue
             proto, price = min(wares, key=lambda kv: kv[1])
+            from world.souls import traits as traits_mod
+            ceiling = traits_mod.dial(soul, "price_ceiling", 1.0)
+            if ceiling > 1.0:
+                # Open-Valve buys the best they can afford, not the cheapest
+                affordable = [w for w in wares
+                              if w[1] <= int(soul.tokens or 0)]
+                if affordable:
+                    proto, price = max(affordable, key=lambda kv: kv[1])
             if (soul.tokens or 0) < price:
                 continue                       # broke: try cheaper advertiser
             return {"goal": "hunger", "steps": [
@@ -333,11 +362,16 @@ def plan_for(soul, goal_need):
         # Misery is the mechanism, not a modifier.
         if soul.db.soul_lawless:
             from world.souls import thoughts as thoughts_mod
-            if thoughts_mod.mood(soul) >= 0.25:
+            from world.souls import traits as traits_mod
+            gate = traits_mod.dial(soul, "violence_gate", 0.25)
+            if thoughts_mod.mood(soul) >= gate:
                 return None        # not today; hunger will change that
+            if not _permits(soul, "hunger", ("violence", "theft")):
+                return None        # not while there's any other way
             mark = _find_mark(soul)
             if mark is not None:
-                return {"goal": "hunger", "steps": [
+                return {"goal": "hunger", "ethos": ("violence", "theft"),
+                        "steps": [
                     {"do": "travel", "room": mark.location.id},
                     {"do": "grapple", "mark": mark.id},
                     {"do": "rob", "mark": mark.id, "lifts": 2},
@@ -353,6 +387,8 @@ def plan_for(soul, goal_need):
         from world.souls import needs as needs_mod
         _p, craved = needs_mod.craving_state(soul)
         craved = craved or "alcohol"   # pre-habit misery reaches for drink
+        if not _permits(soul, "craving", ("indulgence",)):
+            return None                # they know what it costs
         for score, counter, room in _advertisers(soul, "vice"):
             keeper = counter.db.post_keeper
             if keeper is not None and not (
@@ -381,9 +417,12 @@ def plan_for(soul, goal_need):
             from world.souls import thoughts as thoughts_mod
             if thoughts_mod.mood(soul) >= 0.25:
                 return None
+            if not _permits(soul, "craving", ("violence", "theft")):
+                return None
             mark = _find_mark(soul)
             if mark is not None:
-                return {"goal": "craving", "steps": [
+                return {"goal": "craving", "ethos": ("violence", "theft"),
+                        "steps": [
                     {"do": "travel", "room": mark.location.id},
                     {"do": "grapple", "mark": mark.id},
                     {"do": "rob", "mark": mark.id, "lifts": 2},
@@ -474,7 +513,7 @@ def plan_for(soul, goal_need):
             # boundaries stay legible and third places get traffic
             if room is not None and room in (post, workplace):
                 continue
-            return {"goal": "social", "steps": [
+            return {"goal": "social", "ethos": ("revelry",), "steps": [
                 {"do": "travel", "room": room.id},
                 {"do": "linger", "beats": 4},
             ], "at": 0}
@@ -485,7 +524,7 @@ def plan_for(soul, goal_need):
         # a treatment advertiser and see the doctor. Billing happens in
         # the treat step — triage for the dying is free, healing costs.
         for score, fixture, room in _advertisers(soul, "treatment"):
-            return {"goal": goal_need, "steps": [
+            return {"goal": goal_need, "ethos": ("care",), "steps": [
                 {"do": "travel", "room": room.id},
                 {"do": "treat", "clinic": fixture.id},
             ], "at": 0}
@@ -496,7 +535,7 @@ def plan_for(soul, goal_need):
         # airwaves): occupy the best advertiser until the meter recovers
         # (spec §12); the FIXTURE authors its own dwell poses
         for score, venue, room in _advertisers(soul, goal_need):
-            return {"goal": goal_need, "steps": [
+            return {"goal": goal_need, "ethos": ("solitude",), "steps": [
                 {"do": "travel", "room": room.id},
                 {"do": "dwell", "need": goal_need, "fixture": venue.id},
             ], "at": 0}
@@ -506,7 +545,7 @@ def plan_for(soul, goal_need):
         post = soul.db.soul_post
         if not post:
             return None
-        return {"goal": "duty", "steps": [
+        return {"goal": "duty", "ethos": ("toil",), "steps": [
             {"do": "travel", "room": post.id},
             {"do": "work"},
         ], "at": 0}
