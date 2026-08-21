@@ -149,6 +149,9 @@ class CmdSoul(Command):
             f"schedule:{sched}  "
             f"lod:{target.ndb.soul_lod or '?'}  "
             f"mood:|y{thoughts_mod.mood_band(mood_val)}|n ({mood_val:+.2f})",
+            "  manifest: " + (
+                __import__("world.manifest", fromlist=["x"])
+                .designation_line(target) or "none on file"),
             "  traits: " + (", ".join(f"|c{t}|n" for t in trait_labels)
                             or "none")
             + (f"   |rabhors|n {'/'.join(sorted(abhors))}" if abhors else "")
