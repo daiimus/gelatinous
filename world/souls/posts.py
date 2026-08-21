@@ -158,6 +158,12 @@ def sweep(now=None):
                 continue
             if slot.get("vacant_since") is None:
                 slot["vacant_since"] = now           # newly dark
+                try:
+                    from world import wsis
+                    wsis.emit("post_vacant", _post_room(post),
+                              note=f"{post.key} [{shift}]")
+                except Exception:  # noqa: BLE001
+                    pass
                 if slot.get("keeper") is not None \
                         and not (slot["keeper"] and slot["keeper"].pk):
                     slot["keeper"] = None

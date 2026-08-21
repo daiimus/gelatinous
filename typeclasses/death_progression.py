@@ -490,6 +490,14 @@ class DeathProgressionScript(DefaultScript):
             except Exception:  # noqa: BLE001 — the estate never blocks death
                 pass
 
+            try:
+                from world import wsis
+                wsis.emit("death", character.location,
+                          note=f"{getattr(character, 'key', '?')} "
+                               f"({(character.db.death_cause or 'unknown')})")
+            except Exception:  # noqa: BLE001 — never block a death
+                pass
+
             # 1. Create corpse object with forensic data
             corpse = self._create_corpse_from_character(character)
             
