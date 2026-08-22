@@ -976,7 +976,12 @@ class Room(ObjectParent, DefaultRoom):
                 descriptions.append(
                     f"The {dest_type} continues to the {type_desc}.")
             elif len(type_dirs) == 1:
-                descriptions.append(f"There is a {dest_type} to the {type_dirs[0]}.")
+                # dest_type is data-driven, so the article has to be
+                # agreed rather than hardcoded — "a interior" (#1725).
+                from world.grammar import get_article
+                article = get_article(dest_type)
+                descriptions.append(
+                    f"There is {article} {dest_type} to the {type_dirs[0]}.")
             else:
                 type_desc = self.format_direction_list(type_dirs)
                 plural = TYPE_PLURALS.get(dest_type, f"{dest_type}s")
