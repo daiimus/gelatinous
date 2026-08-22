@@ -490,6 +490,18 @@ class DeathProgressionScript(DefaultScript):
             except Exception:  # noqa: BLE001 — the estate never blocks death
                 pass
 
+            # EVERYONE gets an estate, not just post-holders. A player's
+            # flash clone reads it to carry forward who they knew, on the
+            # same terms and through the same code as an NPC resleeve
+            # (#2188). Stored on the body itself, which is archived
+            # rather than deleted — when backups move to the insurer,
+            # this is a relocation, not a rewrite.
+            try:
+                from world import estate as estate_mod
+                character.db.estate = estate_mod.capture(character)
+            except Exception:  # noqa: BLE001 — the estate never blocks death
+                pass
+
             try:
                 from world import wsis
                 wsis.emit("death", character.location,
