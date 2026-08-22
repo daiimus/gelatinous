@@ -1,7 +1,7 @@
 """Radio-duty stations answer on one standard (#2216).
 
 The competence lives on the FIXTURE; the voice belongs to whoever
-holds the chair. `world/radio.py` already states that as law —
+holds the chair — and with nobody in it, there is no voice at all. `world/radio.py` already states that as law —
 "whoever holds the chair holds the voice" — and `DispatchConsole`
 implemented it. The crane did not: its parsing lived on Ossie's
 typeclass, so the crane answered him and nobody else, forever.
@@ -134,19 +134,21 @@ class TestTheVoiceBelongsToTheChair(EvenniaCommandTest):
             self.station._answer("copy", speaker=self.char2)
         self.assertFalse(tx.called)
 
-    def test_an_operator_downed_mid_reply_does_not_speak(self):
-        """Shot between the copy and the answer: the station speaks in
-        its own voice, not hers."""
+    def test_an_operator_downed_mid_reply_goes_silent(self):
+        """Shot between the copy and the answer: nothing goes out. The
+        station does not finish her sentence for her."""
         with mock.patch.object(type(self.char2), "is_dead",
                                return_value=True), \
              mock.patch("world.radio.is_powered", return_value=True), \
              mock.patch("world.radio.transmit") as tx:
             self.station._answer("copy", speaker=self.char2)
-        self.assertTrue(tx.called)
-        self.assertIs(tx.call_args[0][0], self.station)
+        self.assertFalse(tx.called)
 
-    def test_an_empty_chair_speaks_in_the_station_voice(self):
+    def test_an_empty_chair_says_nothing(self):
+        """No chair, no voice. The colony is operated by its people and
+        an unmanned station going quiet is the setting, not a gap to
+        paper over (owner ruling, 2026-08-22)."""
         with mock.patch("world.radio.is_powered", return_value=True), \
              mock.patch("world.radio.transmit") as tx:
             self.station._answer("copy")          # no speaker, no operator
-        self.assertIs(tx.call_args[0][0], self.station)
+        self.assertFalse(tx.called)

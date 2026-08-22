@@ -186,10 +186,12 @@ def _transmit_ack(line: str) -> None:
         station = get_base_station()
         if station is None:
             return
-        # The ack is the OPERATOR's voice when someone's at the desk —
-        # the same words read differently in a smoky rasp than from the
-        # attendant. Absence is audible.
-        speaker = get_dispatch_operator() or station
+        # The ack is the OPERATOR's voice, or it does not happen. An
+        # unattended desk acknowledges nothing — absence is audible as
+        # silence, not as an attendant.
+        speaker = get_dispatch_operator()
+        if speaker is None:
+            return          # no one at the desk: the ack never goes out
         transmit(speaker, line, station, overt=True)
     except Exception:  # noqa: BLE001
         pass

@@ -195,6 +195,23 @@ class TestDispatcherAck(TestCase):
         self.assertIn("No units available", line)
 
     def test_transmit_rides_the_real_console(self):
+        """With somebody at the desk, the ack goes out through the real
+        console object — hers is the voice, its is the carrier."""
+        from world.director.dispatch import _transmit_ack
+        station, operator = MagicMock(), MagicMock()
+        with patch("world.director.population.get_base_station",
+                   return_value=station), \
+                patch("world.director.population.get_dispatch_operator",
+                      return_value=operator), \
+                patch("world.radio.transmit") as tx:
+            _transmit_ack("Dispatch copies.")
+        tx.assert_called_once_with(operator, "Dispatch copies.", station,
+                                   overt=True)
+
+    def test_an_unattended_desk_acknowledges_nothing(self):
+        """No automation voice. The colony is operated by its people,
+        and an unmanned emergency line is the setting rather than a
+        hole in it (owner ruling, 2026-08-22)."""
         from world.director.dispatch import _transmit_ack
         station = MagicMock()
         with patch("world.director.population.get_base_station",
@@ -203,8 +220,7 @@ class TestDispatcherAck(TestCase):
                       return_value=None), \
                 patch("world.radio.transmit") as tx:
             _transmit_ack("Dispatch copies.")
-        tx.assert_called_once_with(station, "Dispatch copies.", station,
-                                   overt=True)
+        tx.assert_not_called()
 
     def test_ack_is_the_operators_voice_when_present(self):
         # The same words in a smoky rasp: acks attribute to the human at

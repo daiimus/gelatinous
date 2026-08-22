@@ -51,15 +51,16 @@ class TestTheChairDrivesIt(_CraneCase):
 
     def test_an_empty_cab_never_drives_itself(self):
         """The container is a ROOM — an unmanned crane must not move."""
-        answered = self._order("crane, take her to the ninth", operator=None)
+        self._order("crane, take her to the ninth", operator=None)
         self.car.move_to_level.assert_not_called()
-        self.assertTrue(answered.called)
-        self.assertIn("no operator", answered.call_args[0][0].lower())
 
-    def test_an_empty_cab_still_answers(self):
-        """Silence reads as a broken radio; this is a closed shift."""
+    def test_an_empty_cab_says_nothing_at_all(self):
+        """Nobody in the cab, so nobody picks up. The console does not
+        speak for itself — an unmanned station going quiet is the
+        consequence of an NPC-operated world (owner ruling,
+        2026-08-22)."""
         answered = self._order("crane, ninth floor", operator=None)
-        self.assertTrue(answered.called)
+        self.assertFalse(answered.called)
 
     def test_chatter_is_not_an_order(self):
         """A transmission must ADDRESS the crane, or 'heading up to the
