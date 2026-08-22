@@ -213,12 +213,29 @@ class TestRadioTool(TestCase):
         self.assertNotIn("radio", ARCHETYPES["colonist"]["tools"])
 
     def test_tool_routes_to_real_xmit_command(self):
+        """The radio tool keys up through the REAL command, so an NPC
+        with no device stays mute exactly as a player would — the
+        command's own refusal is the gate, not a special case."""
         b = MagicMock()
         _bind(b, "_handle_action_tool")
-        b._handle_action_tool("radio", '"Unit responding, en route."',
-                              MagicMock())
+        _bind(b, "_transmit_words")      # the tool delegates here now
+        with patch("world.radio.active_transmit_radio",
+                   return_value=MagicMock()):
+            b._handle_action_tool("radio", '"Unit responding, en route."',
+                                  MagicMock())
         b.execute_cmd.assert_called_once_with(
             "xmit Unit responding, en route.")
+
+    def test_no_device_means_no_transmission(self):
+        """Dead, absent or radio-less: nothing goes out, and nothing
+        leaks into the room as speech either."""
+        b = MagicMock()
+        _bind(b, "_handle_action_tool")
+        _bind(b, "_transmit_words")
+        with patch("world.radio.active_transmit_radio", return_value=None):
+            b._handle_action_tool("radio", '"Unit responding."',
+                                  MagicMock())
+        b.execute_cmd.assert_not_called()
 
     def test_radio_turn_framing_is_unambiguous(self):
         from world.llm.prompt import build_messages
