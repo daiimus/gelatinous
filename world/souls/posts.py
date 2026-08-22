@@ -238,13 +238,30 @@ def sweep(now=None):
                    if hasattr(o, "ndb")):
                 continue                             # never over a fight
             policy = post.db.post_policy
-            if policy == "resleave" or (
-                    (post.db.post_blueprints or {}).get(shift)):
+            # Does THIS shift have a name on it? A blueprint names a
+            # person, and a person works one shift. So a shift is owned
+            # only if its blueprint's namesake is not already alive and
+            # standing somewhere else — otherwise the resleave branch
+            # spins forever on a person who cannot be rebuilt (#2192).
+            #
+            # This is what left 14 slots permanently dark: a `resleave`
+            # post took the first branch for EVERY shift, `_try_resleave`
+            # bailed for want of a blueprint, and `continue` meant the
+            # successor path below was never reached. Both clinics and
+            # dispatch ran day-only because of it.
+            bp_key = (post.db.post_blueprints or {}).get(shift) \
+                or post.db.post_blueprint
+            owned = bool(bp_key) and _living_body(bp_key) is None
+            if owned:
                 if _try_resleave(post, room, shift, slot, now):
                     post.db.post_slots = slots
                     return                           # one per sweep
                 continue        # can't afford yet: the till keeps earning
-            if policy != "successor":
+            # Nobody's name on this shift — a stranger may claim it,
+            # whatever the post's policy is for the shifts it DOES own.
+            # A post with no policy at all stays dark: that is the
+            # owner's undecided case, not an invitation to hire.
+            if policy not in ("successor", "resleave"):
                 continue
             candidates = _eligible_candidates(room)
             if not candidates:
