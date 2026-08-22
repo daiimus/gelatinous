@@ -567,12 +567,50 @@ class TestSynthFlavor(TestCase):
         line = random_longdesc("chest", "synthetic_humanoid", sex="ambiguous")
         self.assertIn(line, LONGDESCS_SYNTH["chest"]["any"])
 
-    def test_pair_slots_use_braced_nouns(self):
-        from world.mob_flavor.longdescs_synth import LONGDESCS_SYNTH
-        for slot in ("eyes", "ears", "arms", "hands", "thighs", "shins",
-                     "feet"):
-            for line in LONGDESCS_SYNTH[slot]:
-                self.assertIn("{" + slot + "}", line, slot)
+    def test_paired_lines_survive_losing_a_side(self):
+        """A paired slot renders SINGULAR when one side is gone, so a
+        line must not assert there are two of something unless it says
+        so through the braced noun, which flexes.
+
+        This replaces a rule that required the braced noun in EVERY
+        paired line. That enforced a house style rather than a
+        correctness property, applied only to synths, and fought the
+        anchoring work in #2199/#2203 — "The knuckles are broad" reads
+        correctly on a one-handed body. What actually breaks is "one
+        forearm sits a half-shade off the other" on somebody with one
+        arm. Checked across every species now, not just synth.
+        """
+        import re
+
+        from world.mob_flavor import _LONGDESCS_BY_SPECIES
+
+        two_ness = re.compile(
+            r"\bboth\b|\bthe other\b|\beither\b|one .{0,24}\bother\b",
+            re.I)
+        from world.anatomy import get_species_pair_keys
+
+        offenders = []
+        for species, table in _LONGDESCS_BY_SPECIES.items():
+            # only PAIRED slots flex; a singular slot like hair or head
+            # never renders as "one of two", so "one ear works better
+            # than the other" is perfectly safe there
+            paired = set(get_species_pair_keys(species))
+            for slot, entries in table.items():
+                if slot not in paired:
+                    continue
+                if isinstance(entries, dict):
+                    entries = [ln for v in entries.values() for ln in v]
+                braced = "{" + slot + "}"
+                for entry in entries:
+                    line = entry[1] if isinstance(entry, tuple) else entry
+                    if braced in line:
+                        continue          # flexes; safe either way
+                    if two_ness.search(line):
+                        offenders.append(f"{species}/{slot}: {line}")
+        self.assertEqual(
+            offenders, [],
+            "these claim two of something but cannot flex to one:\n"
+            + "\n".join(offenders))
 
     def test_register_is_uncanny_not_mechanical(self):
         # Synths PASS — no robot vocabulary leaks into the prose.
