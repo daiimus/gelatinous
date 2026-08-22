@@ -1,59 +1,31 @@
-"""A pose reads correctly from BOTH ends (#2209).
+"""The two pose commands, and what each one promises (#2211).
 
-Players type verbs already conjugated — `.stands back`, `.tries to
-focus` — because that is how you describe yourself in the third person
-in your head. The observer's view conjugates, so it was fixed when
-`conjugate_third_person` became idempotent (#2165). The ACTOR's view
-renders "You <verb>" and used the typed form verbatim, so it said
-"You stands" and nobody fixed it, because the bug that surfaced was
-the observer's.
+LambdaMOO-style posing: you write in the FIRST person and dot-mark
+each verb —
 
-That is the failure mode this test exists for: the same input, checked
-from both perspectives, in one place.
+    .stand and .brush off my coat.
+
+so the verbs are always base forms, because you are writing "I stand
+and brush off my coat." The renderer conjugates for observers.
+
+There is a SECOND command for third-person authoring — ``emote`` /
+``:`` / ``pose`` — where you write "stands and brushes off his coat"
+and it is prepended with your name, verbatim.
+
+These tests exist because I blurred that line: I fed third-person
+verbs to the first-person command in a probe, treated the output as a
+bug, and normalised it away — which would have made ``.stands`` and
+``.stand`` identical and quietly absorbed the other command's job.
 """
 from evennia.utils.test_resources import EvenniaCommandTest
 
 from world.emote import render_for_observer, tokenize_dot_pose
-from world.grammar import to_base_form
 from world.tests.test_emote import _make_character
 
 
-class TestBaseForm(EvenniaCommandTest):
-    def test_conjugated_forms_normalise(self):
-        self.assertEqual(to_base_form("stands"), "stand")
-        self.assertEqual(to_base_form("tries"), "try")
-        self.assertEqual(to_base_form("watches"), "watch")
-        self.assertEqual(to_base_form("goes"), "go")
+class TestFirstPersonPose(EvenniaCommandTest):
+    """`.` — the player writes base-form verbs, first person."""
 
-    def test_base_forms_are_unchanged(self):
-        for verb in ("lean", "stand", "try", "watch", "pass", "cross"):
-            self.assertEqual(to_base_form(verb), verb)
-
-    def test_irregulars_take_the_you_form(self):
-        self.assertEqual(to_base_form("is"), "are")
-        self.assertEqual(to_base_form("has"), "have")
-        self.assertEqual(to_base_form("does"), "do")
-
-    def test_modals_are_untouched(self):
-        for verb in ("can", "could", "will", "must"):
-            self.assertEqual(to_base_form(verb), verb)
-
-    def test_it_is_idempotent(self):
-        for verb in ("stands", "lean", "is", "can", "tries"):
-            once = to_base_form(verb)
-            self.assertEqual(to_base_form(once), once)
-
-    def test_it_round_trips_with_the_third_person(self):
-        from world.grammar import conjugate_third_person
-        for typed in ("stands", "stand", "tries", "try", "watches",
-                      "goes", "passes", "is", "has"):
-            base = to_base_form(typed)
-            third = conjugate_third_person(typed)
-            self.assertEqual(conjugate_third_person(base), third,
-                             f"{typed!r}: base and typed disagree")
-
-
-class TestBothEndsOfAPose(EvenniaCommandTest):
     def setUp(self):
         super().setUp()
         self.actor = _make_character(key="Jorge Jackson", sex="male")
@@ -65,34 +37,72 @@ class TestBothEndsOfAPose(EvenniaCommandTest):
         return (render_for_observer(tokens, self.actor, self.actor),
                 render_for_observer(tokens, self.actor, self.observer))
 
-    def test_a_conjugated_verb_reads_right_from_both_ends(self):
-        first, third = self._both("stands and .brushes off my coat.")
-        self.assertIn("You stand and brush off your coat", first)
+    def test_the_canonical_pose(self):
+        """`.stand and .brush off my coat.` — the owner's own example."""
+        first, third = self._both("stand and .brush off my coat.")
+        self.assertEqual(first, "You stand and brush off your coat.")
         self.assertIn("stands and brushes off his coat", third)
 
-    def test_base_form_input_still_works(self):
+    def test_a_single_verb(self):
         first, third = self._both("lean back.")
-        self.assertIn("You lean back", first)
+        self.assertEqual(first, "You lean back.")
         self.assertIn("leans back", third)
 
-    def test_modals_are_right_from_both_ends(self):
+    def test_a_modal_is_not_pluralised(self):
+        """`.can barely stand` — "cans" was a real bug (#2163), because
+        a modal IS valid first-person input."""
         first, third = self._both("can barely stand.")
-        self.assertIn("You can barely stand", first)
+        self.assertEqual(first, "You can barely stand.")
         self.assertIn("can barely stand", third)
         self.assertNotIn("cans", third)
 
-    def test_a_second_verb_normalises_too(self):
-        first, _ = self._both("watches the door, then .looks away.")
-        self.assertIn("You watch the door, then look away", first)
+    def test_pronouns_transform_per_perspective(self):
+        first, third = self._both("scratch my jaw.")
+        self.assertIn("your jaw", first)
+        self.assertIn("his jaw", third)
 
-    def test_speech_keeps_its_verb(self):
-        first, third = self._both('say "get down" and .duck.')
-        self.assertIn("You say", first)
-        self.assertIn("says", third)
-
-    def test_participles_pass_through_both_ways(self):
-        """`_should_conjugate` exempts -ing forms; base-forming must
-        respect the same exemption."""
+    def test_participles_pass_through(self):
         first, third = self._both("diving for cover.")
         self.assertIn("diving", first)
         self.assertIn("diving", third)
+
+
+class TestTheTwoCommandsStaySeparate(EvenniaCommandTest):
+    """`emote` is third-person authoring and must stay verbatim.
+
+    Its renderer has no verb branch at all, which is what keeps the two
+    apart. If verb handling ever appears there, an author who
+    deliberately wrote "stands" would find their own emote rewritten.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.actor = _make_character(key="Jorge Jackson", sex="male")
+        self.observer = _make_character(key="Someone", sex="female",
+                                        sleeve_uid="uid-observer")
+
+    def _emote(self, text):
+        from world.emote import render_emote_for_observer, tokenize_emote
+        tokens = tokenize_emote(text, self.actor, [])
+        return (render_emote_for_observer(tokens, self.actor, self.actor),
+                render_emote_for_observer(tokens, self.actor, self.observer))
+
+    def test_third_person_authoring_is_verbatim(self):
+        actor_view, observer_view = self._emote(
+            "stands and brushes off his coat.")
+        for view in (actor_view, observer_view):
+            self.assertIn("stands and brushes off his coat", view)
+            self.assertNotIn("stand and brush", view)
+
+    def test_third_person_authoring_never_says_you(self):
+        actor_view, _ = self._emote("leans against the wall.")
+        self.assertTrue(actor_view.startswith("Jorge Jackson"), actor_view)
+
+    def test_the_emote_renderer_has_no_verb_handling(self):
+        import inspect
+
+        from world import emote
+        src = inspect.getsource(emote.render_emote_for_observer)
+        self.assertNotIn("VerbToken", src)
+        self.assertNotIn("conjugate_third_person", src)
+        self.assertNotIn("to_base_form", src)
