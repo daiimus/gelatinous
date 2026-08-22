@@ -315,6 +315,21 @@ def ensure_dispatch_operator() -> Any | None:
     for obj in base.contents:
         if getattr(getattr(obj, "db", None), "dispatch_operator", None) is True:
             return obj
+    # An operator who exists but is STANDING SOMEWHERE ELSE is not a
+    # vacancy to fill — she is a person who walked off, and hiring a
+    # second body of her is how three Petras happened (#2181). The
+    # empty desk answers in the console's automation voice, which is
+    # what this function's own docstring says absence should sound
+    # like, and her planner can walk her back.
+    from evennia.objects.models import ObjectDB
+    existing = [
+        obj for obj in ObjectDB.objects.filter(
+            db_attributes__db_key="dispatch_operator")
+        if obj.pk and obj.db.dispatch_operator is True
+        and not obj.db.is_dead
+    ]
+    if existing:
+        return None
     try:
         op = spawn_dispatch_operator(base)
         op.execute_cmd("emote settles into the chair at the dispatch "
