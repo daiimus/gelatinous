@@ -47,7 +47,10 @@ SECURITY_BOT_PERSONA: dict = {
 
 
 DISPATCH_OPERATOR_PERSONA: dict = {
-    "archetype": "colonist",
+    # `dispatcher`, not `colonist`: the channel discipline that used to
+    # live in the console's instruction block is hers now, because the
+    # voice on the band is hers (#2223).
+    "archetype": "dispatcher",
     "name": "Petra",
     "description": (
         "A woman somewhere past fifty with the posture of someone who has "

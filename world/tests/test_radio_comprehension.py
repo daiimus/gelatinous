@@ -248,29 +248,64 @@ class TestRadioTool(TestCase):
         self.assertIn("Radio chatter", msgs2[-1]["content"])
 
 
-class TestOperatorObservesNeverReplies(TestCase):
-    """The dispatch operator's own brain never radio-replies (the console
-    is her radio voice) — but the traffic lands in her buffer, so her
-    face-to-face turns know what's been on the band."""
+class TestTheDeskAnswersInHerOwnVoice(TestCase):
+    """The dispatch operator's own brain TAKES the band (#2223).
 
-    def test_operator_named_on_air_observes_only(self):
+    It used to be muted here — the console answered for her, so the one
+    brain with her memory and her mood sat listening. Now the emergency
+    band is her desk: every human transmission on it is her traffic,
+    addressed or not, and she answers through the real `xmit` command.
+    The traffic still lands in her buffer either way, so her
+    face-to-face turns know what has been on the band tonight.
+    """
+
+    def _operator(self, dispatch=True):
         b = MagicMock()
         b.key = "Petra"
         b.sdesc_keyword = None
         b.db.llm_driven = True
-        b.db.dispatch_operator = True
+        b.db.dispatch_operator = True if dispatch else None
         b.ndb.action_buffer = None
         b._is_npc_speaker = lambda s: False
         b._radio_voice_handle = lambda s: "a husky voice"
         b._name_aliases = lambda: []
         b._RADIO_BROADCAST_PHRASES = llmnpc.LLMNpcMixin._RADIO_BROADCAST_PHRASES
-        for m in ("_hear_radio", "_observe_action", "_mentions_self"):
+        for m in ("_hear_radio", "_observe_action", "_mentions_self",
+                  "_on_emergency_band"):
             _bind(b, m)
+        return b
+
+    def _hear(self, b, speech, band="911MHz"):
         with patch.object(llmnpc, "llm_enabled", return_value=True), \
                 patch.object(llmnpc, "delay") as d:
-            b._hear_radio("Petra, you there?", MagicMock(),
-                          {"type": "radio", "radio_frequency": "911MHz",
+            b._hear_radio(speech, MagicMock(),
+                          {"type": "radio", "radio_frequency": band,
                            "radio_elected": True})
-        d.assert_not_called()                    # no second brain on the air
-        self.assertTrue(b.ndb.action_buffer)     # ...but she heard it
+        return d
+
+    def test_she_answers_traffic_that_never_named_her(self):
+        """No address gate on 911 — this is the whole point of a desk."""
+        b = self._operator()
+        d = self._hear(b, "shots fired on Volta Street")
+        d.assert_called_once()
+        self.assertEqual(d.call_args[0][-1], "radio")
+
+    def test_she_still_hears_what_she_answers(self):
+        b = self._operator()
+        self._hear(b, "Petra, you there?")
+        self.assertTrue(b.ndb.action_buffer)
         self.assertIn("Petra, you there?", b.ndb.action_buffer[0])
+
+    def test_off_band_she_is_just_a_person_on_a_radio(self):
+        """Carrying a second radio on the house band does not make her
+        the desk — an un-addressed line there is ambient, not traffic."""
+        b = self._operator()
+        d = self._hear(b, "quiet night out here", band="88.8")
+        if d.called:
+            self.assertEqual(d.call_args[0][-1], "radio_ambient")
+
+    def test_the_branch_belongs_to_the_desk_not_to_npcs(self):
+        b = self._operator(dispatch=False)
+        d = self._hear(b, "shots fired on Volta Street")
+        if d.called:
+            self.assertEqual(d.call_args[0][-1], "radio_ambient")
