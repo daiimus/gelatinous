@@ -314,6 +314,18 @@ def think(soul, hour):
                if t > now and g != "safety"}
     band, desired = _desired_goal(soul, hour, exclude=cooling)
 
+    # NOTE (SOULS_SALIENCE_SPEC §3.3): a stimulus does NOT yet take part
+    # in goal arbitration. Its only power is defeating LOD — it makes
+    # this think happen now, and the work is drained inside the shift.
+    #
+    # Preempting a running job with a stimulus needs `plan_for` to know
+    # how to satisfy the stimulus's goal, and no stimulus has one yet.
+    # A half-wired version had this synthesise "duty" whenever the
+    # inbox outranked an idle tree, which would have marched an
+    # off-shift soul to work at three in the morning because somebody
+    # keyed a mic. Band is carried on every stimulus and ready for the
+    # first consumer that genuinely needs to interrupt.
+
     if job:
         # interrupt only for a strictly higher band than the one the
         # running job was PLANNED under — comparing against a static
@@ -439,7 +451,14 @@ class SoulsHeartbeat(DefaultScript):
 
         lod = lod_for(soul, player_rooms, player_coords)
         soul.ndb.soul_lod = lod
-        if (beat + soul.id) % THINK_EVERY[lod] == 0:
+        # LOD governs how often a soul thinks about ITSELF. It must not
+        # govern how fast the world can reach one: a soul with something
+        # waiting in its inbox thinks this beat whatever its cadence
+        # (SOULS_SALIENCE_SPEC §3.2). `notice()` already scheduled an
+        # immediate think — this is the backstop that caps worst-case
+        # latency at one beat if that was ever dropped.
+        from world.souls import salience
+        if salience.pending(soul) or (beat + soul.id) % THINK_EVERY[lod] == 0:
             try:
                 _wear_and_tear(soul)
                 think(soul, shour)

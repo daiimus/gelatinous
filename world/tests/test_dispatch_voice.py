@@ -19,7 +19,6 @@ from unittest import mock
 
 from evennia.utils.test_resources import EvenniaCommandTest
 
-from typeclasses.items import DispatchConsole
 from typeclasses.llm_npc import LLMNpc
 
 
@@ -31,11 +30,14 @@ class _DeskCase(EvenniaCommandTest):
                                   clean_attributes=False,
                                   run_start_hooks=None)
         self.petra.db.llm_driven = True
-        self.petra.db.dispatch_operator = True
+        self.seated = True
 
     def _hear(self, speech, band="911MHz"):
         """Deliver radio traffic to her device and return the reply mock."""
+        board = mock.MagicMock() if self.seated else None
         with mock.patch.object(LLMNpc, "_try_llm_reply") as replied, \
+             mock.patch.object(LLMNpc, "_dispatch_board",
+                               return_value=board), \
              mock.patch("typeclasses.llm_npc.llm_enabled",
                         return_value=True), \
              mock.patch("typeclasses.llm_npc.delay",
@@ -66,10 +68,10 @@ class TestSheTakesTheBand(_DeskCase):
         if replied.called:
             self.assertNotEqual(replied.call_args[0][2], "radio")
 
-    def test_a_plain_npc_is_unaffected(self):
-        """The branch is the DESK's, not every NPC's: an un-flagged NPC
-        still needs to be named before it answers."""
-        self.petra.db.dispatch_operator = None
+    def test_out_of_the_chair_she_is_not_the_desk(self):
+        """No flag on anybody — the seat is the whole qualification, so
+        a dispatcher who stood up answers like anybody else."""
+        self.seated = False
         replied = self._hear("shots fired on Volta Street")
         if replied.called:
             self.assertEqual(replied.call_args[0][2], "radio_ambient")
@@ -82,50 +84,12 @@ class TestSheTakesTheBand(_DeskCase):
         self.assertFalse(replied.called)
 
 
-class TestTheConsoleGaveUpTheVoice(EvenniaCommandTest):
-    def setUp(self):
-        super().setUp()
-        self.console = self.obj1
-        self.console.swap_typeclass("typeclasses.items.DispatchConsole",
-                                    clean_attributes=False,
-                                    run_start_hooks=None)
-
-    def _traffic(self, speech="shots fired on Volta Street"):
-        with mock.patch.object(DispatchConsole, "_grounded_answer") as spoke, \
-             mock.patch.object(DispatchConsole, "_answer") as answered, \
-             mock.patch.object(DispatchConsole, "_post_board") as stamped, \
-             mock.patch("world.director.radio_report.consider_radio_report",
-                        return_value=False):
-            self.console.at_msg_receive(type="radio", speech=speech,
-                                        from_obj=self.char1)
-        return spoke, answered, stamped
-
-    def test_the_console_does_not_speak(self):
-        spoke, answered, _ = self._traffic()
-        self.assertFalse(spoke.called)
-        self.assertFalse(answered.called)
-
-    def test_the_console_still_stamps_the_board(self):
-        """The desk's half of the deal: she gets told what it just did."""
-        _, _, stamped = self._traffic()
-        self.assertTrue(stamped.called)
-
-    def test_the_report_lane_still_runs(self):
-        with mock.patch("world.director.radio_report.consider_radio_report",
-                        return_value=False) as considered, \
-             mock.patch.object(DispatchConsole, "_post_board"):
-            self.console.at_msg_receive(type="radio",
-                                        speech="fire in the stairwell",
-                                        from_obj=self.char1)
-        self.assertTrue(considered.called)
-
-
 class TestTheBoardGroundsHer(_DeskCase):
     """What the desk did reaches the model as narration, never as a
     decision — the units moved (or didn't) before she opens her mouth."""
 
     def _line(self, verdict, dispatched=0, units=3):
-        self.petra.ndb.dispatch_board = {
+        self.petra.ndb.dispatch_verdict = {
             "units": units, "verdict": verdict, "dispatched": dispatched}
         return self.petra._dispatch_board_line()
 
@@ -149,14 +113,18 @@ class TestTheBoardGroundsHer(_DeskCase):
         self.assertIn("not a report of anything", line)
         self.assertIn("nothing granted or fetched", line)
 
-    def test_a_board_is_read_once(self):
-        """Stale grounding is worse than none: she must not acknowledge
-        the last call's units on the next call."""
+    def test_every_call_overwrites_the_last(self):
+        """Stale grounding is worse than none. It is NOT cleared on read
+        — the reply comes back after the prompt is built, and the desk
+        discipline still needs to know whether the units claim she just
+        wrote was true — so freshness rests on every call overwriting."""
         self._line({"is_incident_report": True, "incident_type": "assault",
                     "location_text": ""}, dispatched=1)
-        self.assertIsNone(self.petra._dispatch_board_line())
+        line = self._line(None)
+        self.assertIn("not a report of anything", line)
 
-    def test_no_board_is_no_line(self):
+    def test_no_verdict_is_no_line(self):
+        self.petra.ndb.dispatch_verdict = None
         self.assertIsNone(self.petra._dispatch_board_line())
 
 

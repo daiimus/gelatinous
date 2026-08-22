@@ -194,220 +194,146 @@ class TestDispatcherAck(TestCase):
         line = mock_delay.call_args.args[2]
         self.assertIn("No units available", line)
 
-    def test_transmit_rides_the_real_console(self):
-        """With somebody at the desk, the ack goes out through the real
-        console object — hers is the voice, its is the carrier."""
+    def test_the_ack_rides_her_own_xmit(self):
+        """The same verb a responding unit uses, and the same one a
+        player would — no privileged path for the desk (#2228)."""
         from world.director.dispatch import _transmit_ack
-        station, operator = MagicMock(), MagicMock()
-        with patch("world.director.population.get_base_station",
-                   return_value=station), \
-                patch("world.director.population.get_dispatch_operator",
-                      return_value=operator), \
-                patch("world.radio.transmit") as tx:
+        operator = MagicMock()
+        operator.is_dead.return_value = False
+        operator.is_unconscious.return_value = False
+        with patch("world.director.population.get_dispatch_operator",
+                   return_value=operator):
             _transmit_ack("Dispatch copies.")
-        tx.assert_called_once_with(operator, "Dispatch copies.", station,
-                                   overt=True)
+        operator.execute_cmd.assert_called_once_with("xmit Dispatch copies.")
 
     def test_an_unattended_desk_acknowledges_nothing(self):
         """No automation voice. The colony is operated by its people,
         and an unmanned emergency line is the setting rather than a
         hole in it (owner ruling, 2026-08-22)."""
         from world.director.dispatch import _transmit_ack
-        station = MagicMock()
-        with patch("world.director.population.get_base_station",
-                   return_value=station), \
-                patch("world.director.population.get_dispatch_operator",
-                      return_value=None), \
-                patch("world.radio.transmit") as tx:
-            _transmit_ack("Dispatch copies.")
-        tx.assert_not_called()
-
-    def test_ack_is_the_operators_voice_when_present(self):
-        # The same words in a smoky rasp: acks attribute to the human at
-        # the desk; her absence is audible (automation voice).
-        from world.director.dispatch import _transmit_ack
-        station, vess = MagicMock(), MagicMock()
-        with patch("world.director.population.get_base_station",
-                   return_value=station), \
-                patch("world.director.population.get_dispatch_operator",
-                      return_value=vess), \
-                patch("world.radio.transmit") as tx:
-            _transmit_ack("Dispatch copies.")
-        tx.assert_called_once_with(vess, "Dispatch copies.", station,
-                                   overt=True)
-
-
-    def test_no_console_no_voice(self):
-        # Sabotage seam: console gone/off = dispatch has no voice.
-        from world.director.dispatch import _transmit_ack
-        with patch("world.director.population.get_base_station",
+        with patch("world.director.population.get_dispatch_operator",
                    return_value=None), \
                 patch("world.radio.transmit") as tx:
             _transmit_ack("Dispatch copies.")
         tx.assert_not_called()
 
+    def test_a_downed_operator_says_nothing(self):
+        """Dragged off the desk between the event and the ack."""
+        from world.director.dispatch import _transmit_ack
+        operator = MagicMock()
+        operator.is_dead.return_value = True
+        with patch("world.director.population.get_dispatch_operator",
+                   return_value=operator):
+            _transmit_ack("Dispatch copies.")
+        operator.execute_cmd.assert_not_called()
 
-class TestTheDeskKeepsTheJobNotTheVoice(TestCase):
-    """The console classifies the call and rolls the steel; it does not
-    speak (#2223).
+    def test_a_wrecked_console_still_silences_her(self):
+        """The sabotage seam survives the move, but it is the COMMAND
+        that enforces it now: no console under her means no transmit
+        device, and `xmit` refuses exactly as it would for a player.
+        One rule instead of a second explicit check."""
+        from world.radio import active_transmit_radio
+        operator = MagicMock()
+        operator.get_worn_items = lambda: []
+        operator.hands = {}
+        operator.contents = []
+        operator.db.furniture = None          # not at any board
+        self.assertIsNone(active_transmit_radio(operator))
 
-    This class used to pin the opposite — the console running its own
-    civic-lane prompt and transmitting with the operator as the nominal
-    speaker. The voice is hers now: she hears the same transmission on
-    her own device and answers through the real `xmit` command, which
-    is why an unstaffed desk is silent with nothing here checking for
-    it. What the console still owes her is GROUNDING: the board, stamped
-    the moment classification finishes, so her acknowledgement matches
-    what actually went out.
+
+class TestTheDeskDiscipline(TestCase):
+    """What a dispatcher cannot say, whatever the model wrote.
+
+    These two are playtest scars, not theory (2026-07-11). They used to
+    live in `DispatchConsole._clean_reply`, back when the furniture did
+    the talking; they belong to the JOB, so they moved with it and now
+    guard whoever holds the chair (#2228).
     """
 
-    def _console(self, operator=None):
-        from typeclasses.items import DispatchConsole
-        from types import SimpleNamespace
-        c = MagicMock(spec=DispatchConsole)
-        c.ndb = SimpleNamespace(last_answer=None)
-        c.db = SimpleNamespace(is_base_station=True, radio_on=True)
-        for m in ("_maybe_answer", "_post_board"):
-            setattr(c, m, getattr(DispatchConsole, m).__get__(
-                c, DispatchConsole))
-        c._units_available = lambda: 2
-        c._operator = lambda: operator
-        return c
+    def test_phantom_units_are_struck(self):
+        from world.director.dispatch import DESK_FALLBACK_LINES, desk_discipline
+        line = desk_discipline("Copy. Units rolling to Recyc.",
+                               units_moved=False)
+        self.assertIn(line, DESK_FALLBACK_LINES)
 
-    def _declined_report_lane(self):
-        """The report lane declining synchronously, so `_stamp` runs
-        inline with an empty verdict — the ungrounded worst case."""
-        return patch("world.director.radio_report.consider_radio_report",
-                     return_value=False)
+    def test_a_true_units_claim_becomes_the_plain_copy(self):
+        """Units DID roll — but announcing them is theirs to do."""
+        from world.director.dispatch import DESK_REPORT_ACK, desk_discipline
+        self.assertEqual(
+            desk_discipline("Copy, two units responding to Volta.",
+                            units_moved=True),
+            DESK_REPORT_ACK)
 
-    def _player(self):
-        p = MagicMock()
-        p.db = SimpleNamespace(is_npc=None, llm_driven=None,
+    def test_promising_to_leave_the_desk_is_struck(self):
+        from world.director.dispatch import DESK_FALLBACK_LINES, desk_discipline
+        for promise in ("I'll be there in a minute.",
+                        "On my way, caller.",
+                        "I'll come by after my shift."):
+            self.assertIn(desk_discipline(promise), DESK_FALLBACK_LINES,
+                          promise)
+
+    def test_an_ordinary_line_is_untouched(self):
+        from world.director.dispatch import desk_discipline
+        good = "Copy, shots fired on Volta. Keep your head down out there."
+        self.assertEqual(desk_discipline(good), good)
+
+    def test_no_units_available_is_not_a_units_claim(self):
+        """Saying she has nobody to send is the honest opposite."""
+        from world.director.dispatch import desk_discipline
+        line = "Copy, docks. No units available."
+        self.assertEqual(desk_discipline(line), line)
+
+    def test_nothing_in_nothing_out(self):
+        from world.director.dispatch import desk_discipline
+        self.assertIsNone(desk_discipline(""))
+        self.assertIsNone(desk_discipline(None))
+
+
+class TestTheReportLaneNeedsAnOperator(TestCase):
+    """No operator, no dispatch (#2228).
+
+    `consider_radio_report` used to hang off the console's
+    `at_msg_receive`, so an unattended desk kept classifying calls and
+    rolling the colony's security force with nobody in the chair —
+    automation quietly doing the job we had just given an employee. The
+    weakness is the setting; it should be structural, not a check.
+    """
+
+    def _speaker(self):
+        s = MagicMock()
+        s.db = SimpleNamespace(is_npc=None, llm_driven=None,
                                is_base_station=None)
-        return p
+        return s
 
-    def _kwargs(self, speech):
-        return {"type": "radio", "speech": speech,
-                "radio_frequency": "911MHz"}
+    def test_no_operator_declines(self):
+        from world.director.radio_report import consider_radio_report
+        with patch("world.director.radio_report.apply_verdict") as applied:
+            took = consider_radio_report(None, self._speaker(),
+                                         "shots fired on Volta Street")
+        self.assertFalse(took)
+        applied.assert_not_called()
 
-    def test_player_traffic_reaches_the_report_lane(self):
-        c = self._console()
-        with patch("world.director.radio_report.consider_radio_report",
-                   return_value=True) as considered:
-            c._maybe_answer(self._player(), self._kwargs(
-                "shots fired on Volta Street"))
-        considered.assert_called_once()
+    def test_an_operator_dispatches(self):
+        from world.director.radio_report import consider_radio_report
+        with patch("world.director.radio_report.apply_verdict",
+                   return_value=[]) as applied:
+            took = consider_radio_report(MagicMock(), self._speaker(),
+                                         "shots fired on Volta Street")
+        self.assertTrue(took)
+        applied.assert_called_once()
 
-    def test_the_console_never_speaks(self):
-        """Even with the civic lane up and an operator in the chair: the
-        model call and the transmission are hers to make."""
-        c = self._console(operator=MagicMock())
-        with patch("world.llm.client.civic_enabled", return_value=True), \
-                patch("world.llm.client.request_civic_line") as req, \
-                self._declined_report_lane():
-            c._maybe_answer(self._player(), self._kwargs(
-                "Dispatch, do you copy?"))
-        req.assert_not_called()
-        c._answer.assert_not_called()
-
-    def test_an_unstaffed_desk_needs_no_special_case(self):
-        c = self._console(operator=None)
-        with self._declined_report_lane():
-            c._maybe_answer(self._player(), self._kwargs("anyone there?"))
-        c._answer.assert_not_called()
-
-    def test_npc_traffic_is_never_processed(self):
-        """Loop guard, unchanged: the witness's own report must not come
-        back round as traffic to classify or answer."""
-        c = self._console()
-        npc = self._player()
+    def test_npc_traffic_still_never_dispatches(self):
+        """The loop guard outranks everything: a witness's own report
+        already carries its dispatch."""
+        from world.director.radio_report import consider_radio_report
+        npc = self._speaker()
         npc.db.is_npc = True
-        with patch("world.director.radio_report.consider_radio_report",
-                   return_value=True) as considered:
-            c._maybe_answer(npc, self._kwargs(
-                "Someone call it in — trouble near dispatch!"))
-        considered.assert_not_called()
-        c._answer.assert_not_called()
+        with patch("world.director.radio_report.apply_verdict") as applied:
+            took = consider_radio_report(MagicMock(), npc,
+                                         "shots fired on Volta Street")
+        self.assertFalse(took)
+        applied.assert_not_called()
 
-    def test_the_board_is_stamped_on_the_operator(self):
-        who = MagicMock()
-        c = self._console(operator=who)
-        verdict = {"is_incident_report": True, "incident_type": "assault",
-                   "location_text": "Volta Street"}
-        c._post_board(verdict, [MagicMock(), MagicMock()])
-        board = who.ndb.dispatch_board
-        self.assertEqual(board["units"], 2)
-        self.assertEqual(board["dispatched"], 2)
-        self.assertIs(board["verdict"], verdict)
-
-    def test_stamping_an_empty_desk_is_harmless(self):
-        c = self._console(operator=None)
-        c._post_board(None, None)          # must not raise
-
-
-class TestConsoleReplySanitation(TestCase):
-    """The civic lane's reply guards (the GM lane's practices, scaled
-    down): scaffolding echoes, stage directions, and caller-parroting all
-    degrade to the template fallback — never onto the air."""
-
-    def _console(self):
-        from typeclasses.items import DispatchConsole
-        return DispatchConsole.__new__(DispatchConsole)
-
-    def test_scaffolding_echo_rejected(self):
-        # The literal 19:15 misfire, on tape in the radio log.
-        c = self._console()
-        bad = ('Units available: 5. Radio traffic from an unfamiliar '
-               'voice: "How\'s your day going?" [Radio traffic is dead.]')
-        self.assertEqual(c._clean_reply(bad, heard="How's your day going?"),
-                         c.FALLBACK_LINE)
-
-    def test_caller_parrot_rejected(self):
-        c = self._console()
-        self.assertEqual(
-            c._clean_reply("Copy, how's your day going?",
-                           heard="How's your day going?"),
-            c.FALLBACK_LINE)
-
-    def test_legitimate_restatement_passes(self):
-        # restating the report is not echo-punished; a units announcement
-        # is stripped even when true (units announce themselves)
-        c = self._console()
-        good = "Copy, shots fired on Volta Street. Stay off the street."
-        self.assertEqual(
-            c._clean_reply(good, heard="Dispatch, shots fired on Volta Street!",
-                           units_moved=True),
-            good)
-
-    def test_true_units_announcement_becomes_clean_copy(self):
-        from typeclasses.items import DispatchConsole
-        c = self._console()
-        line = c._clean_reply(
-            "Copy, shots fired on Volta Street. Units responding.",
-            heard="Dispatch, shots fired on Volta Street!",
-            units_moved=True)
-        self.assertEqual(line, DispatchConsole.REPORT_ACK_LINE)
-
-    def test_units_claim_without_dispatch_is_struck(self):
-        # the no-false-units backstop: "units rolling" for a coffee order
-        c = self._console()
-        self.assertEqual(
-            c._clean_reply("Copy. Coffee. Units rolling.",
-                           heard="I sure could go for some coffee."),
-            c.FALLBACK_LINE)
-
-    def test_stage_directions_and_labels_stripped(self):
-        c = self._console()
-        self.assertEqual(
-            c._clean_reply('Dispatch: "Copy. Go ahead." [static]',
-                           heard="hello dispatch"),
-            "Copy. Go ahead.")
-
-    def test_empty_or_overlong_falls_back(self):
-        c = self._console()
-        self.assertEqual(c._clean_reply("", heard="x"), c.FALLBACK_LINE)
-        self.assertEqual(c._clean_reply("y" * 300, heard="x"),
-                         c.FALLBACK_LINE)
 
 
 class TestHearsEmergencyBand(TestCase):

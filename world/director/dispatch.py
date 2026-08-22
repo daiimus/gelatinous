@@ -52,6 +52,38 @@ def _npcs_with_roles(roles) -> list:
     return out
 
 
+def units_available(console=None) -> int:
+    """How many security units the desk could still send.
+
+    Dispatcher's knowledge, not a property of the furniture — it used to
+    live on `DispatchConsole` back when the console did the talking, and
+    a radio has no business counting who is free (#2228). *console* is
+    the board the order would go out from, for the reachability check.
+    """
+    try:
+        from world.director.assignment import is_assigned
+        from world.director.population import get_security_base
+        from evennia.objects.models import ObjectDB
+
+        if get_security_base() is None:
+            return 0
+        n = 0
+        for obj in ObjectDB.objects.filter(
+                db_attributes__db_key="role").distinct():
+            if (getattr(obj.db, "role", None) == "security"
+                    and not is_assigned(obj)
+                    and hears_emergency_band(obj)
+                    and order_reaches(obj, console=console)):
+                try:
+                    if not obj.is_dead():
+                        n += 1
+                except Exception:  # noqa: BLE001
+                    continue
+        return n
+    except Exception:  # noqa: BLE001 — a board that can't count reads zero
+        return 0
+
+
 def find_responders(event: WorldEvent) -> list:
     """Candidate responders for *event*, **nearest-first by travel distance**.
 
@@ -108,6 +140,56 @@ def dispatch(event: WorldEvent) -> list:
                 dispatched.append(npc)
     _ack_on_air(event, dispatched)
     return dispatched
+
+
+#: What a dispatcher says instead of a line she cannot say. The desk
+#: backstops below strike phantom units and promises to leave the chair;
+#: something still has to go out, and a few doors keep the struck line
+#: from reading as a recording.
+DESK_FALLBACK_LINES = (
+    "Dispatch copies. State your traffic and location.",
+    "Dispatch. Go ahead.",
+    "Copy. Keep this channel clear.",
+)
+#: The confirmed-report copy: units DID roll, so the claim was true, but
+#: announcing them is theirs to do — she just acknowledges.
+DESK_REPORT_ACK = "Dispatch copies."
+
+
+def desk_discipline(line, units_moved=False):
+    """Strike what a dispatcher cannot say, and return what she says
+    instead. ``None`` in, ``None`` out.
+
+    Both guards are playtest scars, not theory (2026-07-11):
+
+    * **phantom units** — "Units on the way to Recyc", twice, with
+      nothing rolling. Units announce THEMSELVES on this band; a true
+      claim collapses to the plain copy, a false one is struck.
+    * **leaving the desk** — "I'll be there in a minute". She is
+      chained to the chair for the length of her shift, so a
+      first-person promise to show up is as false as phantom steel.
+
+    The register instructs against both, and a small model does them
+    anyway. That is why this is code and not a sentence in a prompt.
+    """
+    import re
+    from random import choice
+
+    text = " ".join(str(line or "").split()).strip()
+    if not text:
+        return None
+    low = text.lower()
+    if re.search(r"\bunits?\b[^.!?]*\b(roll(?:ing|s)?|respond(?:ing|s)?|"
+                 r"dispatched|en route|inbound|on the way|coming|headed|"
+                 r"moving)\b", low):
+        return DESK_REPORT_ACK if units_moved else choice(DESK_FALLBACK_LINES)
+    if re.search(r"\b(i'?ll be (?:there|right)|i will be there|"
+                 r"i'?m coming|i am coming|on my way|be right there|"
+                 r"there in a (?:minute|moment|sec)|there shortly|"
+                 r"i'?ll (?:come|head|swing|stop) (?:by|over|down|up)?|"
+                 r"i'?ll (?:meet|join|find) you)\b", low):
+        return choice(DESK_FALLBACK_LINES)
+    return text
 
 
 #: The dispatcher's phrasebook — deterministic templates, no LLM (the
@@ -176,23 +258,24 @@ def _unit_ack(npc, line: str) -> None:
 
 
 def _transmit_ack(line: str) -> None:
-    """Key the base console. Late-bound so the console can die (or be
-    switched off) between the event and the ack — silence, honestly."""
+    """The dispatcher says it, through her own ``xmit`` — the same verb a
+    responding unit uses, and the same one a player would.
+
+    Late-bound: she can stand up, be downed, or be dragged off the desk
+    between the event and the ack, and the command simply refuses
+    without a device. An unattended desk acknowledges nothing, and the
+    absence is audible as silence rather than as an attendant."""
     try:
-        from world.director.population import (
-            get_base_station, get_dispatch_operator,
-        )
-        from world.radio import transmit
-        station = get_base_station()
-        if station is None:
-            return
-        # The ack is the OPERATOR's voice, or it does not happen. An
-        # unattended desk acknowledges nothing — absence is audible as
-        # silence, not as an attendant.
+        from world.director.population import get_dispatch_operator
         speaker = get_dispatch_operator()
         if speaker is None:
             return          # no one at the desk: the ack never goes out
-        transmit(speaker, line, station, overt=True)
+        try:
+            if speaker.is_dead() or speaker.is_unconscious():
+                return
+        except Exception:  # noqa: BLE001
+            pass
+        speaker.execute_cmd(f"xmit {line}")
     except Exception:  # noqa: BLE001
         pass
 

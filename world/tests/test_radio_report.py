@@ -4,6 +4,23 @@ The model half is a fixed contract (constrained decoding, proven at the
 shim); these tests pin everything the game decides: the two-signal gate,
 plain-code location resolution, the scene debounce, the event shape,
 and the NPC no-double-dispatch guard.
+
+The console's reply-sanitation suites lived here too, and went with the
+console (#2228). Where each guard ended up:
+
+* **phantom units** and **promising to leave the desk** were dispatch
+  SEMANTICS, not formatting — they are `world.director.dispatch.
+  desk_discipline` now, pinned in `test_director_dispatch`, and apply
+  to whoever holds the chair.
+* **stutter collapse, label scrubbing, scaffolding echo** were
+  compensating for a RAW COMPLETION. The operator's own lane is
+  schema-constrained: the model returns a `speech` field, not a line
+  of prose that might arrive wearing "Petra:" or a `[CONTEXT]` header.
+  The failure mode they guarded no longer has a path.
+* **the parrot guards** — `is_echo` already runs on every NPC turn
+  (`llm_npc._agentic_round`). The short-noun variant was chatter-lane
+  specific and is not reimplemented; if parroting resurfaces on the
+  band it belongs with the other desk discipline, not here.
 """
 
 from types import SimpleNamespace
@@ -140,89 +157,6 @@ class TestConsiderGuards(TestCase):
         req.assert_not_called()
 
 
-class TestGroundedVoiceLane(TestCase):
-    """The sequenced lanes: verdict grounds the voice; a units-moving
-    claim survives only when units actually moved."""
-
-    def _console(self):
-        from typeclasses.items import DispatchConsole
-        console = MagicMock()
-        console.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
-        console.REPORT_ACK_LINE = DispatchConsole.REPORT_ACK_LINE
-        console.CHATTER_LINES = DispatchConsole.CHATTER_LINES
-        console._clean_reply = DispatchConsole._clean_reply.__get__(
-            console, DispatchConsole)
-        console._verdict_context = DispatchConsole._verdict_context.__get__(
-            console, DispatchConsole)
-        return console
-
-    def test_false_units_claim_is_struck(self):
-        console = self._console()
-        line = console._clean_reply("Copy. Coffee. Units rolling.",
-                                    units_moved=False)
-        self.assertEqual(line, console.FALLBACK_LINE)
-
-    def test_true_units_claim_becomes_the_clean_copy(self):
-        # units announce THEMSELVES — even a true announcement from her
-        # is replaced with the bare ack (the chorus does the confirming)
-        console = self._console()
-        line = console._clean_reply("Copy, Queen of Cups. Units rolling.",
-                                    units_moved=True)
-        self.assertEqual(line, console.REPORT_ACK_LINE)
-
-    def test_stuttered_sentences_collapse(self):
-        console = self._console()
-        line = console._clean_reply(
-            "Copy, Recyc. Units on the way to Recyc. Units on the way "
-            "to Recyc.", units_moved=True)
-        self.assertEqual(line, console.REPORT_ACK_LINE)   # claim struck too
-
-    def test_stutter_scrub_keeps_distinct_sentences(self):
-        console = self._console()
-        line = console._clean_reply(
-            "Dispatch copies. Dispatch copies. Go ahead.")
-        self.assertEqual(line, "Dispatch copies. Go ahead.")
-
-    def test_plain_discipline_line_untouched(self):
-        console = self._console()
-        line = console._clean_reply("Keep this channel clear.",
-                                    units_moved=False)
-        self.assertEqual(line, "Keep this channel clear.")
-
-    def test_no_units_available_statement_untouched(self):
-        # stating the drained pool is not a promise of movement
-        console = self._console()
-        line = console._clean_reply("Copy, docks. No units available.",
-                                    units_moved=False)
-        self.assertIn("No units available", line)
-
-    def test_context_for_chatter(self):
-        console = self._console()
-        ctx = console._verdict_context(
-            {"is_incident_report": False, "incident_type": "none"}, None)
-        self.assertIn("idle chatter", ctx)
-        self.assertIn("No units, no promises", ctx)
-
-    def test_context_for_confirmed_dispatch(self):
-        console = self._console()
-        ctx = console._verdict_context(
-            {"is_incident_report": True, "incident_type": "assault",
-             "location_text": "Rack 0"}, [MagicMock(), MagicMock()])
-        self.assertIn("2 units already dispatched", ctx)
-        self.assertIn("at Rack 0", ctx)
-
-    def test_context_for_held_report(self):
-        console = self._console()
-        ctx = console._verdict_context(
-            {"is_incident_report": True, "incident_type": "fire",
-             "location_text": ""}, None)
-        self.assertIn("NO new units", ctx)
-
-    def test_context_empty_when_classification_failed(self):
-        console = self._console()
-        self.assertEqual(console._verdict_context(None, None), "")
-
-
 class TestConsiderOnResult(TestCase):
     """consider_radio_report reports its finding back for grounding."""
 
@@ -272,99 +206,3 @@ class TestConsiderOnResult(TestCase):
         with patch("world.llm.client.civic_enabled", return_value=False):
             self.assertFalse(rr.consider_radio_report(
                 MagicMock(), self._speaker(), "gunfight!"))
-
-
-class TestParrotGuard(TestCase):
-    """The chatter register: short noun-parrots are struck, wit survives."""
-
-    def _console(self):
-        from typeclasses.items import DispatchConsole
-        console = MagicMock()
-        console.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
-        console.CHATTER_LINES = DispatchConsole.CHATTER_LINES
-        console._clean_reply = DispatchConsole._clean_reply.__get__(
-            console, DispatchConsole)
-        return console
-
-    def test_short_noun_parrot_is_struck(self):
-        console = self._console()
-        line = console._clean_reply(
-            "Coffee, please.",
-            heard="I sure could go for some coffee.", chatter=True)
-        self.assertIn(line, console.CHATTER_LINES)
-
-    def test_short_quip_with_own_words_survives(self):
-        # referencing the noun while adding her own words IS the vibe
-        console = self._console()
-        good = "So could I, caller."
-        line = console._clean_reply(
-            good, heard="I sure could go for some coffee.", chatter=True)
-        self.assertEqual(line, good)
-
-    def test_long_wit_keeps_the_noun(self):
-        console = self._console()
-        good = ("This channel's for blood and fire, not coffee runs. "
-                "Clear it.")
-        line = console._clean_reply(
-            good, heard="I sure could go for some coffee.", chatter=True)
-        self.assertEqual(line, good)
-
-    def test_clean_discipline_line_untouched(self):
-        console = self._console()
-        line = console._clean_reply(
-            "Keep this channel clear.",
-            heard="I sure could go for some coffee.", chatter=True)
-        self.assertEqual(line, "Keep this channel clear.")
-
-    def test_non_chatter_short_replies_unaffected(self):
-        console = self._console()
-        line = console._clean_reply(
-            "Dispatch copies. Go ahead.",
-            heard="Dispatch, do you copy?", chatter=False)
-        self.assertEqual(line, "Dispatch copies. Go ahead.")
-
-    def test_chatter_rejections_use_the_discipline_line(self):
-        console = self._console()
-        line = console._clean_reply(
-            "Copy. Coffee. Units rolling.",
-            heard="I sure could go for some coffee.", chatter=True)
-        self.assertIn(line, console.CHATTER_LINES)
-
-
-class TestPresenceBackstop(TestCase):
-    """She never leaves the desk: first-person promises to show up are
-    struck; wanting to is allowed; her own name label is scrubbed."""
-
-    def _console(self):
-        from typeclasses.items import DispatchConsole
-        console = MagicMock()
-        console.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
-        console.REPORT_ACK_LINE = DispatchConsole.REPORT_ACK_LINE
-        console.CHATTER_LINES = DispatchConsole.CHATTER_LINES
-        console._clean_reply = DispatchConsole._clean_reply.__get__(
-            console, DispatchConsole)
-        return console
-
-    def test_promise_to_show_up_is_struck(self):
-        console = self._console()
-        line = console._clean_reply(
-            "Got it, I'll be there in a minute.",
-            heard="wishing you were here, Petra.", chatter=True)
-        self.assertIn(line, console.CHATTER_LINES)
-
-    def test_on_my_way_is_struck(self):
-        console = self._console()
-        line = console._clean_reply("On my way.", chatter=True)
-        self.assertIn(line, console.CHATTER_LINES)
-
-    def test_wanting_to_is_not_a_promise(self):
-        console = self._console()
-        good = "Copy. You know what? I'd really like to."
-        self.assertEqual(console._clean_reply(good, chatter=True), good)
-
-    def test_own_name_label_scrubbed(self):
-        console = self._console()
-        line = console._clean_reply(
-            'Petra: "Just another day on the line."',
-            speaker_name="Petra")
-        self.assertEqual(line, "Just another day on the line.")
