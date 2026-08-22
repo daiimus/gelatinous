@@ -1004,8 +1004,12 @@ class AppearanceMixin:
             #     its first word carries the agreement.
             head, _, tail = body.partition(" ")
             if tail and head in variables and head.lower() == "they":
+                from world.anatomy.longdesc_tokens import MODALS
                 verb, _, rest = tail.partition(" ")
-                flexed = flex_verb(verb, person_number)
+                # A modal never inflects for person, and inflect does
+                # not know that — it renders "could" as "coulds".
+                flexed = (verb if verb.lower() in MODALS
+                          else flex_verb(verb, person_number))
                 return (f"{variables[head]} {flexed} {rest}".rstrip()
                         if rest else f"{variables[head]} {flexed}")
 
