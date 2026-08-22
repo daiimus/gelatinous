@@ -40,14 +40,14 @@ LONGDESCS_RAT: dict[str, list[str]] = {
         "{Their} snout is pale and freckled with darker spots, weathered along the bridge.",
     ],
     "neck": [
-        "{Their} neck is thin and pliant, the spine working visibly when {they} turn {their} head.",
+        "{Their} neck is thin and pliant, the spine working visibly when {they turn} {their} head.",
         "{Their} neck disappears into the shoulders without much in the way of a clear transition.",
         "{Their} neck carries the dark fur in a slightly thicker band, almost a collar marking.",
     ],
     "head": [
         "{Their} skull is small and bullet-shaped, the bone visible under the fur at the temples.",
         "The crown of {their} head is darker than the rest of the coat, almost black in the shadows.",
-        "{Their} head sits high on the neck when {they} {are} listening, low when {they} {are} feeding.",
+        "{Their} head sits high on the neck when {they are} listening, low when {they are} feeding.",
     ],
     "eyes": [
         "{Their} {eyes} {are} small and black, two bright pinpoints catching the light.",
@@ -65,7 +65,7 @@ LONGDESCS_RAT: dict[str, list[str]] = {
         "{Their} {ears} {are} thin and papery, the veins visible when the light catches them.",
         "{Their} {ears} {are} ragged at the tips, the souvenirs of past fights.",
         "{Their} {ears} {carry} a faint dark fur along the back, almost velvet where it meets the head.",
-        "{Their} {ears} {fold} flat against the skull when {they} {are} surprised and spring back upright otherwise.",
+        "{Their} {ears} {fold} flat against the skull when {they are} surprised and spring back upright otherwise.",
         "{Their} {ears} {are} pale and finely-veined, catching every small sound in the room.",
     ],
 
@@ -94,7 +94,7 @@ LONGDESCS_RAT: dict[str, list[str]] = {
     "forelegs": [
         "{Their} {forelegs} {are} thin and quick, the small bones visible under the short fur.",
         "{Their} {forelegs} {are} dexterous and constantly busy — washing, gripping, picking at things.",
-        "{Their} {forelegs} {are} held close to the body when {they} {are} still, ready to move at the slightest provocation.",
+        "{Their} {forelegs} {are} held close to the body when {they are} still, ready to move at the slightest provocation.",
         "{Their} {forelegs} {are} nimble enough to manipulate small objects with disconcerting precision.",
         "{Their} {forelegs} {carry} the same dark fur as the back, ending in paler digits.",
     ],
@@ -102,14 +102,14 @@ LONGDESCS_RAT: dict[str, list[str]] = {
         "{Their} {forepaws} {are} tiny and pink, the digits ending in small dark claws.",
         "{Their} {forepaws} {grip} things with surprising precision — small fingers in everything but name.",
         "{Their} {forepaws} {are} dexterous and busy, almost never at rest.",
-        "{Their} {forepaws} {leave} small star-shaped prints when {they} {move} through dust.",
+        "{Their} {forepaws} {leave} small star-shaped prints when {they move} through dust.",
         "{Their} {forepaws} {are} pale and freckled with darker spots, the digits long for the body's size.",
     ],
 
     # Hindlimb region
     "hindlegs": [
         "{Their} {hindlegs} {are} bunched with muscle, built for sudden bursts of speed.",
-        "{Their} {hindlegs} {fold} under the body when {they} {are} crouched, then spring open for movement.",
+        "{Their} {hindlegs} {fold} under the body when {they are} crouched, then spring open for movement.",
         "{Their} {hindlegs} {are} longer than the forelegs, giving the body its forward-leaning poise.",
         "{Their} {hindlegs} {carry} the same patchwork fur as the back, scarred at the joints from past scuffles.",
         "{Their} {hindlegs} {are} thicker and stronger than the forelegs, the muscle clearly defined under the fur.",
@@ -129,7 +129,7 @@ LONGDESCS_RAT: dict[str, list[str]] = {
         "{Their} tail is scarred near the base — the legacy of something almost catching it.",
         "{Their} tail is thick and dark, the rings of its hide clearly visible.",
         "{Their} tail is bent slightly halfway down, an old injury that healed off-true.",
-        "{Their} tail is in constant slow motion when {they} {are} thinking, a small back-and-forth balance.",
+        "{Their} tail is in constant slow motion when {they are} thinking, a small back-and-forth balance.",
         "{Their} tail is the length of the body itself, used for balance during every quick turn.",
     ],
 }

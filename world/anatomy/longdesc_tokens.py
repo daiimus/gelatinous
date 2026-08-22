@@ -122,7 +122,7 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse",
     bucket = _GENDER_TO_BUCKET.get(gender, "plural")
     pronouns = _PRONOUN_MAP[bucket]
 
-    processed = text
+    processed = _flex_person_verbs(text, pronouns, bucket)
     for template, replacement in pronouns.items():
         token = f"{{{template}}}"
         if token in processed:
@@ -138,6 +138,37 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse",
     processed = _flex_body_tokens(processed, number, side, species=species)
 
     return processed
+
+
+#: ``{they walk}`` — a subject pronoun and its verb inside one token.
+#: Needed because the ordinary ``{verb}`` token agrees with the BODY
+#: PART's number, which is the wrong subject whenever the sentence's
+#: subject is the person: a paired slot renders "she walk". Here the
+#: verb agrees with the person instead, and the self-view ("you walk")
+#: falls out of the plural form for free.
+_PERSON_VERB_RE = None
+
+
+def _flex_person_verbs(text, pronouns, bucket):
+    global _PERSON_VERB_RE
+    if _PERSON_VERB_RE is None:
+        import re
+        subjects = "|".join(("They", "they"))
+        # Tail may be a short phrase ("have not noticed"); only its
+        # first word carries the agreement.
+        _PERSON_VERB_RE = re.compile(
+            r"\{(" + subjects + r")\s+([A-Za-z]+)([^{}]*)\}")
+    if "{" not in text:
+        return text
+    from world.grammar import flex_verb
+
+    person_number = "plural" if bucket == "plural" else "singular"
+
+    def _resolve(match):
+        pronoun, verb, rest = match.group(1), match.group(2), match.group(3)
+        return f"{pronouns[pronoun]} {flex_verb(verb, person_number)}{rest}"
+
+    return _PERSON_VERB_RE.sub(_resolve, text)
 
 
 def _flex_body_tokens(text, number, side=None, *, species=None):
