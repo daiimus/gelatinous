@@ -263,6 +263,14 @@ def generate_resident(lawless=False):
     from world import manifest as manifest_mod
     npc.db.designation = manifest_mod.roll_designation()
     npc.db.skills = manifest_mod.seed_skills(npc.db.designation)
+    # a body, not just a name: souls were the only population that never
+    # went through the flavor layer, which is why a random crowd body was
+    # better described than the named cast (#2158)
+    try:
+        from world.mob_flavor import fill_missing_longdescs
+        fill_missing_longdescs(npc)
+    except Exception:  # noqa: BLE001 — an undescribed arrival still arrives
+        pass
     _dress_arrival(npc)
 
     rental.assign_cube(npc, kiosk)
