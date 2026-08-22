@@ -150,10 +150,16 @@ class TestSensingTheRadio(_SoulCase):
         self.char2.db.is_npc = True
         self.assertFalse(self._sense())
 
-    def test_an_unsouled_listener_senses_nothing(self):
+    def test_a_player_at_the_desk_holds_the_post(self):
+        """The chair is the whole qualification. A player who takes
+        dispatch long-term IS the dispatcher — same devices, same
+        commands, same job. There is no NPC path and no player path
+        (owner ruling, 2026-08-22)."""
         self._board()
         self.soul.tags.remove("soul", category="npc_role")
-        self.assertFalse(self._sense())
+        self.assertTrue(self._sense())
+        self.assertEqual(salience.pending(self.soul)[0]["kind"],
+                         "radio_traffic")
 
     def test_she_senses_the_words_she_caught(self):
         """Degraded traffic dispatches on the fragments that arrived,
@@ -205,6 +211,33 @@ class TestDoingTheWork(_SoulCase):
         with mock.patch("world.director.radio_report.consider_radio_report",
                         side_effect=RuntimeError("boom")):
             self.assertEqual(salience.work_stimuli(self.soul), 0)
+
+    def test_a_player_does_the_work_without_a_souls_job(self):
+        """A player has no `step_job` to drain the inbox, so the wake
+        must do the work itself — otherwise the desk would only work
+        for NPCs, which is the fork this design refuses."""
+        self.soul.tags.remove("soul", category="npc_role")
+        with mock.patch.object(salience, "delay"):
+            salience.notice(self.soul, "radio_traffic",
+                            payload={"speech": "shots fired",
+                                     "speaker": self.char2, "board": None})
+        with mock.patch("world.director.radio_report.consider_radio_report",
+                        return_value=True) as considered:
+            salience._think_now(self.soul)
+        considered.assert_called_once()
+        self.assertEqual(salience.pending(self.soul), [])
+
+    def test_a_player_wake_does_not_run_the_souls_engine(self):
+        """Goal arbitration is the souls engine's business; a player
+        decides what to do next by deciding."""
+        self.soul.tags.remove("soul", category="npc_role")
+        with mock.patch.object(salience, "delay"):
+            salience.notice(self.soul, "radio_traffic", payload={})
+        with mock.patch("world.souls.engine.think") as thought, \
+             mock.patch("world.director.radio_report.consider_radio_report",
+                        return_value=False):
+            salience._think_now(self.soul)
+        thought.assert_not_called()
 
     def test_other_kinds_are_left_for_their_own_handlers(self):
         with mock.patch.object(salience, "delay"):

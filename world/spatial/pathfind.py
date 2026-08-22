@@ -54,6 +54,17 @@ def _neighbors(room: Any, traverser: Any):
         dest = getattr(ex, "destination", None)
         if dest is None:
             continue
+        # An EDGE or a GAP is not a walk. `Exit.at_traverse` refuses
+        # normal traversal outright — for players too — and hands you
+        # off to the `jump` command, because the thing on the other side
+        # is a storey of air. Routing over them produced ten souls
+        # standing on a clinic roof, re-trying a parapet every three
+        # minutes, because the route said "walk north" and the parapet
+        # said no (#2227). A walking route may not contain a jump; the
+        # souls `flee` step already knew this and the graph did not.
+        db = getattr(ex, "db", None)
+        if getattr(db, "is_edge", None) or getattr(db, "is_gap", None):
+            continue
         if traverser is not None:
             try:
                 if not ex.access(traverser, "traverse"):
