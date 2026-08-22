@@ -689,6 +689,117 @@ class Radio(Item):
 
 
 
+class AnsweringFixture(Radio):
+    """A powered fixture that LISTENS on a band and answers.
+
+    The standard for radio-duty stations (#2216). Extracted from
+    `DispatchConsole`, which invented it, so the second one — the crane
+    console — is not a second bespoke design.
+
+    **The competence lives here; the voice belongs to whoever holds the
+    chair.** That is the whole shape, and `world/radio.py` already
+    states it as law: *"whoever holds the chair holds the voice."* A
+    console with somebody at it speaks in their voice; empty, it speaks
+    in its own, and the difference is audible.
+
+    Subclasses implement :meth:`_handle` — what this particular station
+    DOES with a transmission it recognises. Everything around that is
+    the same for all of them: hearing, refusing to answer machines,
+    not storming the band, and keying up safely.
+
+    Why a fixture rather than the operator: an ability bolted to one
+    NPC's typeclass cannot be inherited by whoever takes the shift
+    next. The crane spent its whole life answering only to Ossie
+    because his `_hear_radio` override *was* the crane.
+    """
+
+    #: Seconds between answered lines — long enough to stop reply-storms.
+    ANSWER_COOLDOWN = 4.0
+
+    def at_msg_receive(self, text=None, from_obj=None, **kwargs):
+        try:
+            self._maybe_answer(from_obj, kwargs)
+        except Exception:  # noqa: BLE001 — never break radio delivery
+            pass
+        return True
+
+    def _maybe_answer(self, speaker, kwargs):
+        if kwargs.get("type") != "radio":
+            return
+        speech = kwargs.get("speech")
+        if not speech or speaker is None or speaker is self:
+            return
+        if self._is_machine(speaker):
+            return
+        if not self._on_our_band(kwargs):
+            return
+        self._handle(speech, speaker, kwargs)
+
+    @staticmethod
+    def _is_machine(speaker):
+        """Loop guard: players talk, stations answer. Unit chatter, NPC
+        reports and our own acks are never answered, or the band fills
+        with machines talking to machines."""
+        db = getattr(speaker, "db", None)
+        return (getattr(db, "is_npc", None) is True
+                or getattr(db, "llm_driven", None) is True
+                or getattr(db, "is_base_station", None) is True)
+
+    def _on_our_band(self, kwargs):
+        """Default: any band this station can hear. Override to pin a
+        station to one working frequency."""
+        return True
+
+    def _handle(self, speech, speaker, kwargs):
+        """What this station does with a transmission. Subclass hook."""
+        raise NotImplementedError
+
+    def _cooled_down(self, now=None):
+        """True if enough quiet has passed to answer again."""
+        import time as _time
+
+        now = _time.time() if now is None else now
+        last = float(self.db.last_answer_at or 0.0)
+        if now - last < self.ANSWER_COOLDOWN:
+            return False
+        self.db.last_answer_at = now
+        return True
+
+    def _operator(self):
+        """The live person at this station, or None (→ its own voice)."""
+        return None
+
+    def _answer(self, line, speaker=None):
+        """Key up through the real transmit path, overt.
+
+        Re-checks everything AT SEND TIME, because the gap between
+        hearing and answering is where the interesting failures live: a
+        console switched off, a roof antenna wrecked (the sabotage
+        seam), an operator downed mid-reply. Each of those is silence,
+        honestly — not a station cheerfully finishing its sentence.
+        """
+        try:
+            from world.radio import is_powered, transmit
+
+            line = " ".join(str(line).split())[:200]
+            if not line or not is_powered(self):
+                return
+            antenna = self.db.antenna
+            if antenna is not None and getattr(
+                    getattr(antenna, "db", None), "intact", None) is not True:
+                return
+            who = speaker if speaker is not None else self._operator()
+            if who is not None:
+                try:
+                    if who.is_dead() or who.is_unconscious():
+                        who = None
+                except Exception:  # noqa: BLE001 — no medical read, assume up
+                    pass
+            transmit(who or self, line, self, overt=True)
+        except Exception:  # noqa: BLE001
+            pass
+
+
 class DispatchConsole(Radio):
     """The security base's dispatch console — the first ANSWERING device.
 
