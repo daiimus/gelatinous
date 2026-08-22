@@ -140,6 +140,108 @@ def _candidate_rooms():
         db_typeclass_path__startswith="typeclasses.rooms"))
 
 
+#: What a caller's words mean, checked MOST SEVERE FIRST so a call that
+#: mentions both a brawl and a knife rolls for the knife. Over-responding
+#: to violence is the right error to make.
+#:
+#: Deliberately WIDE. False positives are expected — it is an open
+#: frequency and people will prank it, which is content: units roll, they
+#: are not available elsewhere, and somebody can be seen doing it. A real
+#: call falling silent is the only unacceptable outcome.
+#:
+#: Word-ANCHORED, never substring: "od" inside "food", "shot" inside
+#: "shoddy". This codebase has been bitten three times by naive `in`
+#: matching ("brass-toed" -> bra, "collarless" -> collar).
+INCIDENT_WORDS = (
+    ("assault", (
+        "shot", "shots", "shooting", "gunfire", "shooter", "stabbed",
+        "stabbing", "knife", "knifed", "blade", "gun", "attacked",
+        "attacking", "jumped", "mugged", "mugging", "beating",
+        "beat up", "killing", "killed", "murder", "murdered",
+    )),
+    ("fire", (
+        "fire", "burning", "smoke", "flames", "blaze", "torched",
+        "alight", "on fire",
+    )),
+    ("medical", (
+        "bleeding", "bled", "hurt", "injured", "wounded", "dying",
+        "unconscious", "out cold", "overdose", "overdosed", "od",
+        "medic", "ambulance", "not breathing", "body", "collapsed",
+    )),
+    ("theft", (
+        "robbed", "robbery", "stolen", "stole", "theft", "thief",
+        "snatched", "jacked", "boosted", "lifted",
+    )),
+    ("disturbance", (
+        "fight", "fighting", "brawl", "screaming", "shouting",
+        "yelling", "smashing", "trouble", "riot",
+    )),
+)
+
+_INCIDENT_PATTERNS = tuple(
+    (kind, re.compile(r"\b(?:%s)\b" % "|".join(
+        re.escape(w) for w in sorted(words, key=len, reverse=True)), re.I))
+    for kind, words in INCIDENT_WORDS
+)
+
+
+def classify_report(speech, rooms=None):
+    """Read a caller's traffic without a model.
+
+    Returns a verdict in EXACTLY the shape the civic classifier emits,
+    so `apply_verdict` consumes it unchanged. ``None`` means "nothing
+    here I recognise" — which is a question for the operator to ask,
+    not a decision that nothing happened.
+
+    The whole reason this exists: the model lane is the GATE today, so
+    a sidecar that is down means a player can shout "shots fired on
+    Volta" and no event is raised and no unit rolls, silently. A
+    dispatcher who mishears asks you to repeat; one who is switched off
+    does not.
+    """
+    if not speech:
+        return None
+    for kind, pattern in _INCIDENT_PATTERNS:
+        if pattern.search(speech):
+            return {
+                "is_incident_report": True,
+                "incident_type": kind,
+                "location_text": _room_named_in(speech, rooms),
+            }
+    return None
+
+
+def _room_named_in(speech, rooms=None):
+    """The name of a room the caller mentioned, or "".
+
+    The inverse of `resolve_location`: that asks how much of the
+    CALLER'S text a room name covers, which cannot work on a whole
+    sentence. This asks how much of a ROOM'S NAME appears in the
+    sentence, then hands the winning name back so `resolve_location`
+    can match it exactly. An unnamed place resolves to the caller's own
+    room downstream — people report what is in front of them.
+    """
+    said = set(_tokens(speech))
+    if not said:
+        return ""
+    best = None
+    for room in (rooms if rooms is not None else _candidate_rooms()):
+        name = _tokens(getattr(room, "key", ""))
+        if not name:
+            continue
+        nameset = set(name)
+        hit = nameset & said
+        # most of the room's name has to be in the sentence, and a
+        # single common word ("street") is never enough on its own
+        share = len(hit) / len(nameset)
+        if share <= 0.5 or len(hit) < 2:
+            continue
+        score = (share, len(hit), -(getattr(room, "id", 0) or 0))
+        if best is None or score > best[0]:
+            best = (score, getattr(room, "key", ""))
+    return best[1] if best else ""
+
+
 def resolve_location(location_text, rooms):
     """The room the caller named, or None — plain token matching, no
     model. Coverage = how much of what the caller said appears in a
@@ -174,9 +276,6 @@ def consider_radio_report(console, speaker, speech, on_result=None):
     in what dispatch actually did. False = this lane declined (NPC
     traffic, lane disabled); the caller proceeds ungrounded."""
     try:
-        from world.llm.client import civic_enabled, request_civic_verdict
-        if not civic_enabled():
-            return False
         if speaker is None or not speech:
             return False
         db = getattr(speaker, "db", None)
@@ -191,6 +290,21 @@ def consider_radio_report(console, speaker, speech, on_result=None):
                     on_result(verdict, dispatched)
                 except Exception:  # noqa: BLE001 — voice never breaks units
                     pass
+
+        # DETERMINISTIC FIRST (owner ruling, 2026-08-22). The model was
+        # the gate, so a sidecar that was down meant "shots fired on
+        # Volta" raised no event and rolled no unit, in silence. Words
+        # the colony understands are read in plain code; the model, when
+        # it is up, only catches what the words missed.
+        plain = classify_report(speech)
+        if plain is not None:
+            dispatched = apply_verdict(plain, speaker, speech)
+            _report(plain, dispatched)
+            return True
+
+        from world.llm.client import civic_enabled, request_civic_verdict
+        if not civic_enabled():
+            return False          # nothing recognised, nothing to ask
 
         def on_verdict(verdict):
             dispatched = apply_verdict(verdict, speaker, speech)
