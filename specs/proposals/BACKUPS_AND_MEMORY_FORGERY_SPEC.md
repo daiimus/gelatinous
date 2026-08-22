@@ -1,6 +1,7 @@
 # Backups, Stale Restores & Memory Forgery
 
 > **Status:** 📋 **DESIGN DRAFT — spec-first, build-later (2026-08-22).**
+> **§4 and §8.1/§8.2 carry owner rulings (2026-08-22).**
 > §1 documents **shipped** behaviour (traced from
 > `world/souls/posts.py`, `typeclasses/death_progression.py`); §2
 > onward is proposal. The interactive half depends on the net layer
@@ -117,31 +118,50 @@ of the whole feature, and it is a dict write.
 
 ---
 
-## 4 · `sleeve_uid` is the crown jewel
+## 4 · The sleeve is a container, not a field
+
+**RULED (owner, 2026-08-22): `sleeve_uid` is read-only. The sleeve
+itself is never editable.**
 
 The record carries the body identity because continuity requires it
 (`IDENTITY_RECOGNITION_SPEC` §Principles 1: *same body = same
-recognition across clones*). That makes it the most dangerous writable
-field in the game.
+recognition across clones*; and `create_flash_clone` already inherits
+it — *"same body means same sleeve_uid"*).
+`apparent_uid = blake2b(sleeve_uid + overrides + essential worn items)`,
+so all recognition resolves through it. Forging that field would be
+identity theft nothing could argue with, and it is therefore closed.
 
-`apparent_uid = blake2b(sleeve_uid + overrides + essential worn items)`
-and **all** recognition resolves against it. Therefore a forged
-`sleeve_uid` in a backup is *permanent, perfect identity theft* — not
-a disguise that can slip, but a body the world agrees is someone else.
-Two restores from one forged record would put one face on two people.
+**But the interesting crime was never forging the field.** A backup
+holds a *body* — a sleeve you can grow. So:
 
-**Ruling required (owner).** Pick one:
+> Steal somebody's backup. Write **your own** persona into it. Grow
+> it. There are now two of you, and the second one wears their face.
 
-1. **Read-only.** The field is signed/checked; forging it is
-   impossible. Safe, and closes the most cyberpunk door in the spec.
-2. **Writable at extreme cost.** Deep-run only, expensive, loud, and
-   **detectable** by §5. The headline crime of the net layer.
-3. **Writable but self-revealing** — a forged sleeve fails some
-   in-world check (medical scan, the Autodoc, a chrome handshake) so
-   it works socially and fails clinically.
+The sleeve is immutable; **the contents are not**. You do not edit
+whose body it is — you take a body that is unambiguously theirs and
+put yourself inside it. Recognition works perfectly, because it is
+genuinely their sleeve. The colony sees them. It is you.
 
-Recommendation: **3**, falling back to **1**. It keeps the crime while
-guaranteeing a way for the fiction to catch up with it.
+### 4.1 · Double-sleeving is a goal, not just a crime
+
+Running two bodies at once is a **desirable player objective**, not
+only an attack. The backup system is one route to it: bodies are
+expensive and rare, and somebody else's backup is a body nobody is
+currently using.
+
+Consequences that make it worth the trouble — and worth catching:
+
+* their face is seen doing things they did not do, and every witness
+  is honestly certain it was them
+* they have an alibi that nothing in the recognition layer supports
+* §5's forensic chain is the **only** system that disagrees — the
+  corpse's stamped signature against a living presentation
+
+**Open (owner):** how one mind runs two bodies. Simultaneous control,
+switching with the idle body dormant, or a copy that diverges into its
+own person the moment it wakes. That last one is a different and much
+larger story engine — see §8.4 — and this spec does not assume an
+answer.
 
 ---
 
@@ -206,29 +226,44 @@ somebody's estate is not a fine, it is being found holding a person.
 
 ---
 
-## 8 · Open questions (owner)
+## 8 · Questions
 
-1. **`sleeve_uid` writability** — §4, ruling required before any of
-   this is built.
-2. **Do PCs get backups?** Today the estate is institutional. Making
-   it personal is a large economic change (and a large fairness one:
-   permadeath is currently softened by the account, not by a backup).
-3. **History depth** — how many past selves does an insurer keep, and
-   does a stale restore cost less than a fresh one?
-4. **Is a copy a person?** If a stolen backup can be *restored* rather
-   than merely read, the colony can contain two of somebody. That is a
-   whole story engine, and possibly a whole other spec.
-5. **Does the world know backups exist?** Whether this is common
-   knowledge or a Thawn-Harrison secret changes every conversation
-   about it.
+**8.1 — `sleeve_uid` writability. ✅ RULED (2026-08-22):** read-only /
+signed. The sleeve is a container, never an editable field. The crime
+is inhabiting a stolen body, not forging one — §4.
+
+**8.2 — Do PCs get backups? ✅ RULED (2026-08-22):** no; the estate
+stays **institutional**. Players already resleeve free via
+`create_flash_clone`, which inherits the sleeve (`same body means same
+sleeve_uid`) and deliberately leaves the brain empty — *"flash clones
+have empty brains and recognise nobody"*. There is no perm-death to
+soften and no premium to charge, so coverage would buy nothing today.
+
+> Worth noting for later: this is **coherent, not inconsistent**. A PC
+> without a backup wakes recognising nobody; an NPC with one wakes
+> knowing what the backup held. **The backup IS the memory.** If PC
+> coverage is ever revisited, that is the value it sells — not
+> survival.
+
+**8.3 — History depth.** How many past selves does an insurer keep,
+and does a stale restore cost less than a fresh one? *(Open.)*
+
+**8.4 — Is a copy a person?** §4.1 makes two bodies reachable. If the
+second wakes and *diverges*, the colony contains two people with one
+past and a growing disagreement. That is a story engine of its own and
+probably its own spec. *(Open.)*
+
+**8.5 — Does the world know backups exist?** Common knowledge or a
+Thawn-Harrison secret. Changes every conversation about it. *(Open.)*
 
 ---
 
 ## 9 · What must not be built yet
 
 * Anything needing the net layer (§7) — gated on phase + verticality.
-* `sleeve_uid` writability — gated on §8.1.
-* Personal backups — gated on §8.2.
+* Double-sleeving (§4.1) — needs the net layer AND an answer to how
+  one mind runs two bodies (§8.4). The largest thing in this spec.
+* Personal backups — **ruled out** for now (§8.2), not merely gated.
 
 **Buildable independently, whenever wanted:** backup *history* (§2
 prerequisite) and the on-demand capture command. Both are small, both
