@@ -26,6 +26,28 @@ import inflect
 _engine = inflect.engine()
 
 # ---------------------------------------------------------------------------
+# Colour markup
+# ---------------------------------------------------------------------------
+#
+# Almost everything this module is handed has already been coloured —
+# item keys, sdescs, longdescs, combat lines. Markup is not text, and
+# any rule that looks at "the first character" or "does it start with a
+# vowel" has to see past it (#2207).
+#
+# Deliberately a local pattern rather than ``evennia.utils.ansi``: this
+# module is documented as having no Evennia dependency in its core
+# functions, and that is worth more than sharing one regex.
+_ANSI_TOKEN = re.compile(
+    r"\|\|"                                   # escaped literal pipe
+    r"|\|\[?(?:=[a-zA-Z]|[0-5]{3}|[a-zA-Z*/\-_^])"
+)
+
+
+def _visible(text: str) -> str:
+    """*text* with colour markup removed — what a reader actually sees."""
+    return _ANSI_TOKEN.sub("", text) if text else text
+
+# ---------------------------------------------------------------------------
 # Verb Conjugation
 # ---------------------------------------------------------------------------
 
@@ -154,6 +176,13 @@ def pluralize_noun(noun: str) -> str:
         The plural form, capitalized to match ``noun``'s first letter.
     """
     if not noun:
+        return noun
+
+    # Already plural? ``singular_noun`` is truthy only for plurals, and
+    # without this "boots" became "bootss" and "glasses" "glassess"
+    # (#2207). The pluralia-tantum list caught trousers and scissors and
+    # nothing else.
+    if _engine.singular_noun(noun):
         return noun
 
     plural = _engine.plural_noun(noun)
@@ -311,7 +340,8 @@ def get_article(noun_phrase: str, definite: bool = False) -> str:
     """
     if definite:
         return "the"
-    return _indefinite_article(noun_phrase)
+    # markup is not a letter: "|555interior" must still take "an"
+    return _indefinite_article(_visible(noun_phrase))
 
 
 @lru_cache(maxsize=4096)
@@ -417,7 +447,8 @@ def with_article(noun_phrase: str, definite: bool = False) -> str:
     # noodles", "the free rail" — and prefixing another produced "a a
     # bowl of...". A phrase that already begins with an article keeps
     # the one it has.
-    first = noun_phrase.strip().split(" ", 1)[0].lower() if noun_phrase else ""
+    visible = _visible(noun_phrase)
+    first = visible.strip().split(" ", 1)[0].lower() if visible else ""
     if first in ("a", "an", "the"):
         if definite and first != "the":
             rest = noun_phrase.strip().split(" ", 1)[1:]
@@ -589,7 +620,17 @@ def capitalize_first(text: str) -> str:
     """
     if not text:
         return text
-    for i, char in enumerate(text):
-        if char.isalpha():
-            return text[:i] + char.upper() + text[i + 1:]
+    i = 0
+    while i < len(text):
+        # Skip colour markup: the "first alphabetic character" of
+        # "|rblood" is the r of the colour code, and uppercasing it
+        # changes red to bright red while leaving the word lowercase
+        # (#2207). 84 callers, most of them handed coloured strings.
+        token = _ANSI_TOKEN.match(text, i)
+        if token:
+            i = token.end()
+            continue
+        if text[i].isalpha():
+            return text[:i] + text[i].upper() + text[i + 1:]
+        i += 1
     return text

@@ -17,6 +17,31 @@ Identity/Recognition, and Clothing specs all delegate grammar concerns here.
 
 ---
 
+## Colour Markup
+
+Almost every string handed to this module has already been coloured —
+item keys, sdescs, longdescs, combat lines carry Evennia markup
+(`|555`, `|=lblack`, `|n`) *inside* the text.
+
+**Markup is not text.** Any rule that inspects "the first character" or
+asks "does this begin with a vowel" must look past it. Three functions
+did not, and all three were wrong in production:
+
+| function | was | now |
+|---|---|---|
+| `capitalize_first` | `\|rblood` → `\|Rblood` — uppercased the colour code, changing red to bright red, and left the word lowercase | capitalises the first *visible* letter, markup untouched |
+| `get_article` / `with_article` | `\|555interior` → `"a interior"` | reads the visible text, so `"an"` |
+| `pluralize_noun` | `boots` → `bootss` | already-plural nouns are returned unchanged |
+
+`_visible()` strips markup for **decisions only** — the original string
+is always what gets returned, so colour survives.
+
+Deliberately a local pattern rather than `evennia.utils.ansi`: this
+module is documented as having no Evennia dependency in its core
+functions, and that contract is worth more than sharing one regex.
+
+---
+
 ## Verb Conjugation
 
 Converts base-form verbs to third-person singular present tense.
