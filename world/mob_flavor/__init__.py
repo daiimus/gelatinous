@@ -86,7 +86,52 @@ def random_look_place(species=None) -> str:
     return choice(table)
 
 
-def random_longdesc(slot: str, species=None, sex=None) -> str | None:
+#: Build tags a longdesc line may be marked with. A line tagged for a
+#: build is only offered to that kind of body; an UNTAGGED line is
+#: universal and always eligible. That asymmetry is deliberate — most
+#: of the catalogue (moles, grit, posture, old scars) is true of any
+#: body, and only the ~20% that assert a shape need constraining.
+BUILD_TAGS = ("slight", "lean", "athletic", "average", "stocky", "heavyset")
+
+#: Builds that read as close enough to swap for one another when a
+#: slot has nothing tagged for the exact build.
+BUILD_NEIGHBOURS = {
+    "slight": ("lean",),
+    "lean": ("slight", "athletic"),
+    "athletic": ("lean", "average"),
+    "average": ("athletic", "stocky"),
+    "stocky": ("average", "heavyset"),
+    "heavyset": ("stocky",),
+}
+
+
+def _eligible(entries, build):
+    """Lines this body could plausibly own.
+
+    Entries may be plain strings (universal) or ``(tag, line)`` pairs.
+    A tagged line is offered only to its build or a neighbouring one;
+    untagged lines are always in the pool. Falls back to the whole
+    pool rather than ever returning empty — a slightly wrong line
+    beats a blank body.
+    """
+    if not entries:
+        return []
+    plain, tagged = [], []
+    for item in entries:
+        if isinstance(item, (tuple, list)) and len(item) == 2:
+            tagged.append((str(item[0]).lower(), item[1]))
+        else:
+            plain.append(item)
+    if not tagged:
+        return plain
+    build = (build or "").lower()
+    near = set(BUILD_NEIGHBOURS.get(build, ())) | ({build} if build else set())
+    fitting = [line for tag, line in tagged if tag in near]
+    pool = plain + fitting
+    return pool or plain or [line for _tag, line in tagged]
+
+
+def random_longdesc(slot: str, species=None, sex=None, build=None) -> str | None:
     """Return a random longdesc template for ``slot``.
 
     ``slot`` is the data-side key — either a singular location (``"hair"``,
@@ -94,6 +139,11 @@ def random_longdesc(slot: str, species=None, sex=None) -> str | None:
     for symmetric pairs. Returns ``None`` when no entries are seeded for
     this species — extended anatomy and any new locations fall into this
     case until flavor data is authored.
+
+    Entries may also be ``(build_tag, line)`` pairs — see ``_eligible``.
+    A heavyset body is never handed "thin enough that the iliac crest is
+    sharply visible", which it was until now, in the same breath as its
+    own sdesc calling it heavyset.
 
     A slot's entries may be a flat list (unisex) or a **sex-keyed dict**
     (``{"male": [...], "female": [...], "any": [...]}``) for anatomy where
@@ -107,6 +157,7 @@ def random_longdesc(slot: str, species=None, sex=None) -> str | None:
         if not pool:
             pool = [line for lines in entries.values() for line in lines]
         entries = pool
+    entries = _eligible(entries, build)
     if not entries:
         return None
     return choice(entries)
@@ -148,7 +199,8 @@ def apply_random_flavor(mob) -> None:
         if not sides_present:
             continue
         entry = random_longdesc(pair_key, species,
-                                sex=getattr(mob, "sex", None))
+                                sex=getattr(mob, "sex", None),
+                                build=getattr(mob, "build", None))
         if entry is None:
             continue
         for side in sides_present:
@@ -159,6 +211,55 @@ def apply_random_flavor(mob) -> None:
     # table by location name.
     for location in available - handled:
         entry = random_longdesc(location, species,
-                                sex=getattr(mob, "sex", None))
+                                sex=getattr(mob, "sex", None),
+                                build=getattr(mob, "build", None))
         if entry is not None:
             mob.set_longdesc(location, entry)
+
+
+def fill_missing_longdescs(character) -> int:
+    """Describe the slots a character has left blank, and only those.
+
+    The counterpart to `apply_random_flavor` for people who are already
+    written: it never overwrites an authored line, never touches the
+    short desc (that is the glance, and it is somebody's prose), and
+    only fills what is empty. Authored cast members typically have head
+    and hands and nothing below the neck — this gives them a body
+    without taking away a face.
+
+    Returns the number of slots filled.
+    """
+    species = getattr(character.db, "species", None) or "human"
+    existing = {k: v for k, v in (character.longdesc or {}).items() if v}
+    get_locations = getattr(character, "get_available_locations", None)
+    if get_locations is None:
+        return 0
+    available = set(get_locations())
+    sex = getattr(character, "sex", None)
+    build = getattr(character, "build", None)
+    filled = 0
+
+    pair_keys = get_species_pair_keys(species)
+    handled: set[str] = set()
+    for pair_key, (left, right) in pair_keys.items():
+        sides = [loc for loc in (left, right) if loc in available]
+        blank = [loc for loc in sides if loc not in existing]
+        handled.update(sides)
+        if not blank:
+            continue
+        entry = random_longdesc(pair_key, species, sex=sex, build=build)
+        if entry is None:
+            continue
+        for side in blank:
+            character.set_longdesc(side, entry)
+            filled += 1
+
+    for location in available - handled:
+        if location in existing:
+            continue
+        entry = random_longdesc(location, species, sex=sex, build=build)
+        if entry is not None:
+            character.set_longdesc(location, entry)
+            filled += 1
+    return filled
+
