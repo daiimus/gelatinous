@@ -151,6 +151,15 @@ def _slot_held(post, shift, slot) -> bool:
     room = _post_room(post)
     from world.souls import engine
     if keeper.tags.get(engine.SOUL_TAG[0], category=engine.SOUL_TAG[1]):
+        if keeper.db.soul_post is None:
+            # A souled keeper with no assignment recorded still holds
+            # the slot by standing in it (#2178). Without this, the
+            # slot is vacant forever — the Rook sat in his own booth
+            # while the sweep read the chair as dark — and `resleave`
+            # mints a fresh copy every time the till can afford one.
+            # This is the same argument #2132 made for unsouled cast,
+            # applied to the branch it missed.
+            return keeper.location == room
         return (keeper.db.soul_post == room
                 and (keeper.db.soul_schedule or "day") == shift)
     return keeper.location == room
@@ -277,6 +286,15 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
     bp_key = (post.db.post_blueprints or {}).get(shift) \
         or post.db.post_blueprint
     if not bp_key:
+        return False
+
+    # Insurance pays out on a DEATH. If this slot's keeper is still
+    # walking around, whatever made the slot read vacant is a bug in
+    # the reading, and building a second body would make it permanent
+    # — the original is alive, so it is never archived, so the next
+    # sweep cannot restore it either and mints another copy (#2178).
+    keeper = slot.get("keeper")
+    if keeper is not None and keeper.pk and not keeper.db.is_dead:
         return False
     till = post if post.db.register is not None else post.db.post_insurer
     if till is None or int(till.db.register or 0) < RESLEAVE_PREMIUM:
