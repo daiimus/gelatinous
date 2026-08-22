@@ -1,23 +1,26 @@
-"""The Boiler Run crane operator — radio control of the container car.
+"""The Boiler Run crane — the console that answers band 27.0.
 
-The operator sits in the cab at the top of the mast with a base-station
-console tuned to the work band. A caller keys up on that band and asks
-for a floor; the operator runs the container there (the P2 seam,
-``CraneContainer.move_to_level``) and keys back a confirmation.
+The competence used to live on the OPERATOR: `CraneOperator` was an
+LLMNpc whose `_hear_radio` override *was* the crane. That meant the
+crane answered Ossie and nobody else, ever — a relief operator taking
+the chair would have sat there mute while the hoist ignored the band,
+and the post could never accept a successor (#2216).
 
-The crane order is DETERMINISTIC — it does not depend on the LLM being
-up, because a hoist answering "take it to twelve" shouldn't hinge on a
-warm model. Anything that ISN'T a crane order falls through to the LLM
-persona (when enabled) for flavour, exactly the ``_handle_directed_speech``
-/ radio split the brain was built around.
+It lives on the console now, like dispatch. The chair grants the job;
+the job does not grant the chair.
+
+The container itself is `typeclasses.rooms.CraneContainer` — one
+MOVING ROOM, which is why an unmanned crane must never drive itself:
+somebody could be standing in it.
 """
+
 import re
 
-from typeclasses.llm_npc import LLMNpc
+from typeclasses.items import AnsweringFixture
 
 
-class CraneOperator(LLMNpc):
-    """An LLM-capable NPC whose radio ear is wired to the crane first."""
+class CraneConsole(AnsweringFixture):
+    """The cab console. Hears the work band, drives the container."""
 
     #: The Boiler Run work band. Callers tune here to reach the cab.
     CRANE_BAND = "27.0"
@@ -53,16 +56,74 @@ class CraneOperator(LLMNpc):
     _ADDRESS = ("operator", "ossie", "trelane", "crane", "container",
                 "hoist", "boiler run", "the box", "the car", "the can")
 
-    def _addresses_crane(self, low):
-        return any(a in low for a in self._ADDRESS)
+    # -- the AnsweringFixture contract -----------------------------------
+
+    def _on_our_band(self, kwargs):
+        from world.radio import same_band
+
+        return same_band(kwargs.get("radio_frequency"), self.CRANE_BAND)
+
+    def _operator(self):
+        """Whoever is on shift here — the console IS the post, so it can
+        ask itself. Present and alive, or nobody."""
+        try:
+            from world.souls.posts import on_duty_keeper
+
+            keeper = on_duty_keeper(self)
+            if keeper is None or not keeper.pk:
+                return None
+            if keeper.location is not self.location:
+                return None
+            if keeper.is_dead() or keeper.is_unconscious():
+                return None
+            return keeper
+        except Exception:  # noqa: BLE001 — an unmanned cab is a real answer
+            return None
+
+    def _handle(self, speech, speaker, kwargs):
+        low = speech.lower()
+        if not any(a in low for a in self._ADDRESS):
+            return                       # band chatter, not an order
+
+        operator = self._operator()
+        if operator is None:
+            # An empty cab does NOT drive itself — the container is a
+            # room and somebody may be standing in it. But it answers,
+            # because silence reads as a broken radio and this is a
+            # closed shift. Absence is audible, and informative.
+            if self._cooled_down():
+                self._answer("Cab's dark — no operator on shift. "
+                             "Try again on the day watch.")
+            return
+
+        car = self._find_car()
+        if car is None:
+            return
+
+        floor = self._parse_floor(low, car)
+        if floor is not None:
+            self._run_crane(floor, car, operator)
+            return
+
+        # addressed, clearly wants the crane moved, but no floor we could
+        # read — answer rather than sit there mute. Fires on a move word
+        # OR anything number-ish, so a bad-enough typo still gets a reply.
+        number_ish = (bool(re.search(r"\d", low))
+                      or self._fuzzy_number(low, 2) is not None)
+        if (number_ish or any(w in low for w in self._INTENT)) \
+                and self._cooled_down():
+            self._answer("Say again — which floor? Anywhere from the "
+                         "2nd to the 17th.", speaker=operator)
 
     # -- finding the car -------------------------------------------------
+
     def _find_car(self):
         from evennia.objects.models import ObjectDB
         return ObjectDB.objects.filter(
             db_typeclass_path="typeclasses.rooms.CraneContainer").first()
 
     # -- typo tolerance --------------------------------------------------
+
     @staticmethod
     def _lev(a, b):
         """Levenshtein distance, capped — we only care about <= 2."""
@@ -101,12 +162,11 @@ class CraneOperator(LLMNpc):
         return None
 
     # -- reading the order -----------------------------------------------
-    def _parse_floor(self, speech, car):
+
+    def _parse_floor(self, low, car):
         """Pull a target floor (2..17) out of a transmission, or None if it
         isn't a crane order at all."""
-        low = speech.lower()
-
-        # named destinations first — these are the ones players will reach for
+        # named destinations first — these are the ones players reach for
         if any(w in low for w in ("dock", "docked", "ground", "street level",
                                   "bottom", "second", "2nd", "boarding")):
             return self.MIN_FLOOR
@@ -147,35 +207,9 @@ class CraneOperator(LLMNpc):
             return cur_floor + sign * step
         return None
 
-    # -- radio ear: crane order first, persona second --------------------
-    def _hear_radio(self, speech, speaker, kwargs):
-        from world.radio import same_band
-
-        if (speech and not self._is_npc_speaker(speaker)
-                and same_band(kwargs.get("radio_frequency"), self.CRANE_BAND)
-                and self._addresses_crane(speech.lower())):
-            car = self._find_car()
-            if car is not None:
-                low = speech.lower()
-                floor = self._parse_floor(speech, car)
-                if floor is not None:
-                    self._run_crane(floor, speaker, car)
-                    return
-                # addressed, clearly wants the crane moved, but no floor we
-                # could read — answer rather than sit there mute. Fires on a
-                # move word OR anything number-ish (a digit, or a token close
-                # to a number word), so a bad-enough typo still gets a reply.
-                number_ish = (bool(re.search(r"\d", low))
-                              or self._fuzzy_number(low, 2) is not None)
-                if number_ish or any(w in low for w in self._INTENT):
-                    self._reply("Say again — which floor? Anywhere from the "
-                                "2nd to the 17th.")
-                    return
-        # not a crane order — let the LLM brain handle it (if enabled)
-        super()._hear_radio(speech, speaker, kwargs)
-
     # -- doing it --------------------------------------------------------
-    def _run_crane(self, floor, caller, car):
+
+    def _run_crane(self, floor, car, operator):
         from evennia.utils import delay
 
         floor = max(self.MIN_FLOOR, min(self.MAX_FLOOR, int(floor)))
@@ -183,28 +217,26 @@ class CraneOperator(LLMNpc):
         old_z = car.db.level or 1
 
         if target_z == old_z:
-            self._reply(f"Copy. She's already sitting at the {floor}th.")
+            if self._cooled_down():
+                self._answer(f"Copy. She's already sitting at the {floor}th.",
+                             speaker=operator)
             return
 
         rising = target_z > old_z
         # a beat of chatter, then the car actually moves
-        self._reply(f"Copy, the {floor}th. Bringing her "
-                    f"{'up' if rising else 'down'} — mind the swing.")
-        delay(2.0, self._drive, car, target_z, floor)
+        self._answer(f"Copy, the {floor}th. Bringing her "
+                     f"{'up' if rising else 'down'} — mind the swing.",
+                     speaker=operator)
+        delay(2.0, self._drive, car, target_z, floor, operator)
 
-    def _drive(self, car, target_z, floor):
+    def _drive(self, car, target_z, floor, operator=None):
         car.move_to_level(target_z)
+        # re-read the chair: an operator who left (or was dropped) between
+        # the copy and the landing does not narrate the landing
+        who = self._operator() or None
         if floor == self.QOC_FLOOR:
-            self._reply(f"The {floor}th — level with the Queen's roof. "
-                        f"Step lively.")
+            self._answer(f"The {floor}th — level with the Queen's roof. "
+                         f"Step lively.", speaker=who)
         else:
-            self._reply(f"Held at the {floor}th. Watch your footing.")
-
-    def _reply(self, message):
-        """Key the cab console and answer on the band."""
-        from world.radio import active_transmit_radio, transmit, transmit_organ
-        device = active_transmit_radio(self)
-        if device is not None:
-            transmit(self, message, device=device)
-        else:
-            transmit_organ(self, message)
+            self._answer(f"Held at the {floor}th. Watch your footing.",
+                         speaker=who)
