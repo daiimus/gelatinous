@@ -20,6 +20,7 @@ Run: docker exec -i gelatinous bash -lc 'cd /usr/src/game && evennia shell' \
 """
 
 import re
+from collections.abc import Mapping
 
 from evennia.objects.models import ObjectDB
 
@@ -73,7 +74,10 @@ for char in ObjectDB.objects.filter(db_typeclass_path__icontains="character"):
     # `longdesc` is an AttributeProperty under the "appearance"
     # category; fetched without it, every character looks undescribed.
     longdescs = char.attributes.get("longdesc", category="appearance")
-    if not isinstance(longdescs, dict) or not longdescs:
+    # Stored dicts come back as _SaverDict, a MutableMapping that is
+    # NOT a dict subclass — an isinstance(..., dict) guard here skips
+    # every character in the game.
+    if not isinstance(longdescs, Mapping) or not longdescs:
         continue
     scanned += 1
     updated = dict(longdescs)
