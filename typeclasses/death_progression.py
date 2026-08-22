@@ -480,26 +480,26 @@ class DeathProgressionScript(DefaultScript):
         This separates the dead character object from the corpse object for investigation.
         """
         try:
-            # 0. The estate: a post-holder's memories become the post's
+            # 0. The imprint: a post-holder's memories become the post's
             # property before the body is deleted (souls resleave §P3 —
             # snapshot always; whether anyone pays to restore it is the
             # policy's business, later).
             try:
-                from world.souls.posts import snapshot_estate
-                snapshot_estate(character)
-            except Exception:  # noqa: BLE001 — the estate never blocks death
+                from world.souls.posts import snapshot_imprint
+                snapshot_imprint(character)
+            except Exception:  # noqa: BLE001 — the imprint never blocks death
                 pass
 
-            # EVERYONE gets an estate, not just post-holders. A player's
+            # EVERYONE gets an imprint, not just post-holders. A player's
             # flash clone reads it to carry forward who they knew, on the
             # same terms and through the same code as an NPC resleeve
             # (#2188). Stored on the body itself, which is archived
             # rather than deleted — when backups move to the insurer,
             # this is a relocation, not a rewrite.
             try:
-                from world import estate as estate_mod
-                character.db.estate = estate_mod.capture(character)
-            except Exception:  # noqa: BLE001 — the estate never blocks death
+                from world import imprint as imprint_mod
+                character.db.imprint = imprint_mod.capture(character)
+            except Exception:  # noqa: BLE001 — the imprint never blocks death
                 pass
 
             try:

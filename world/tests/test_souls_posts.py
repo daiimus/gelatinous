@@ -142,10 +142,10 @@ class TestSlotTenure(BaseEvenniaTest):
 
 
 class TestEstateAcrossDeath(BaseEvenniaTest):
-    """The estate: a resleeve restores what the post kept, minus the
+    """The imprint: a resleeve restores what the post kept, minus the
     hours nobody remembers. Ported from the retired sweep's coverage."""
 
-    def _post_with_estate(self, snap):
+    def _post_with_imprint(self, snap):
         return SimpleNamespace(
             db=SimpleNamespace(
                 post_blueprints={"day": "butcher_ottilie"},
@@ -159,7 +159,7 @@ class TestEstateAcrossDeath(BaseEvenniaTest):
             ),
             location=self.room1, key="the block", id=998, contents=[])
 
-    def test_resleeve_restores_the_estate_minus_the_gap(self):
+    def test_resleeve_restores_the_imprint_minus_the_gap(self):
         died = 100000.0
         snap = {
             "name": "Ottilie Krug",
@@ -168,7 +168,7 @@ class TestEstateAcrossDeath(BaseEvenniaTest):
             "dossiers": {"a regular": "buys offal"},
             "thoughts": [[died - 99999, "old"], [died - 60, "the killing"]],
         }
-        post = self._post_with_estate(snap)
+        post = self._post_with_imprint(snap)
         built = self.char2
         with patch.object(postsmod, "_archived_keeper", return_value=built), \
              patch.object(postsmod, "_install_keeper"), \
@@ -182,7 +182,7 @@ class TestEstateAcrossDeath(BaseEvenniaTest):
         self.assertEqual(len(built.db.soul_thoughts), 1)
 
     def test_a_broke_till_cannot_pay_the_premium(self):
-        post = self._post_with_estate({"died_at": 1.0})
+        post = self._post_with_imprint({"died_at": 1.0})
         post.db.register = 0
         with patch.object(postsmod, "_archived_keeper",
                           return_value=self.char2):
