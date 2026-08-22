@@ -87,6 +87,37 @@ MODALS: frozenset[str] = frozenset((
 _VOWELS = frozenset("aeiou")
 
 
+def to_base_form(verb: str) -> str:
+    """Normalise a verb to its base form — the form "you" takes.
+
+    The mirror of :func:`conjugate_third_person`, and needed for the
+    same reason. Players type verbs already conjugated (``.stands
+    back``, ``.tries to focus``), and the actor's own view renders
+    "You <verb>", so the raw form produced **"You stands"** while the
+    observer's view was correct (#2209).
+
+    Idempotent: a base form is returned unchanged.
+
+    Args:
+        verb: Any form of the verb.
+
+    Returns:
+        The base form ("stands" → "stand", "is" → "are",
+        "lean" → "lean", "can" → "can").
+    """
+    lower = verb.lower()
+
+    if lower in MODALS:
+        return verb
+
+    if lower in _IRREGULAR_VERB_FORMS:
+        _singular, plural = _IRREGULAR_VERB_FORMS[lower]
+        return _match_leading_case(plural, verb)
+
+    base = _engine.plural_verb(lower) or lower
+    return _match_leading_case(base, verb)
+
+
 def conjugate_third_person(verb: str) -> str:
     """Convert a base-form verb to third-person singular present tense.
 
