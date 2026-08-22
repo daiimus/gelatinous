@@ -70,7 +70,9 @@ scanned = fixed_slots = 0
 people = []
 
 for char in ObjectDB.objects.filter(db_typeclass_path__icontains="character"):
-    longdescs = char.attributes.get("longdesc")
+    # `longdesc` is an AttributeProperty under the "appearance"
+    # category; fetched without it, every character looks undescribed.
+    longdescs = char.attributes.get("longdesc", category="appearance")
     if not isinstance(longdescs, dict) or not longdescs:
         continue
     scanned += 1
@@ -82,7 +84,7 @@ for char in ObjectDB.objects.filter(db_typeclass_path__icontains="character"):
             updated[location] = new_text
             touched += 1
     if touched:
-        char.attributes.add("longdesc", updated)
+        char.attributes.add("longdesc", updated, category="appearance")
         fixed_slots += touched
         people.append(f"{char.key} (#{char.id}) — {touched}")
 
