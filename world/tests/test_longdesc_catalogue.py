@@ -88,6 +88,24 @@ class TestTheProseStaysRenderable(EvenniaCommandTest):
         for slot, line in self._lines():
             self.assertTrue(line.strip(), f"{slot}: empty entry")
 
+    #: Garments a longdesc must not claim the body is currently inside.
+    #: A covered location renders the CLOTHING's description instead of
+    #: the longdesc (appearance_mixin), so a line reading "bandaged under
+    #: the trousers" appears exactly when there are no trousers.
+    WORN_NOW = re.compile(
+        r"\b(under|through|over|above|beneath|behind)\s+(the\s+|their\s+|"
+        r"\{their\}\s+|loose\s+)?(trousers|pants|shirt|jacket|coat|"
+        r"waistband|clothing|clothes|sleeve|collar|boot|sock|glove)\b",
+        re.I)
+
+    def test_no_line_claims_a_garment_that_is_not_there(self):
+        offenders = [f"{slot}: {line}" for slot, line in self._lines()
+                     if self.WORN_NOW.search(line)]
+        self.assertEqual(
+            offenders, [],
+            "a longdesc renders only when the location is UNCOVERED:\n"
+            + "\n".join(offenders))
+
     def test_lines_are_unique_within_a_slot(self):
         for slot, entries in longdescs.LONGDESCS.items():
             lines = [e[1] if isinstance(e, tuple) else e for e in entries]
