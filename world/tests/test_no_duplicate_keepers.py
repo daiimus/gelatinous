@@ -70,6 +70,44 @@ class TestASoulInItsChairHoldsIt(EvenniaCommandTest):
 
 
 class TestTheInsuranceRefusesTheLiving(EvenniaCommandTest):
+    def test_a_blueprint_never_gets_a_second_living_body(self):
+        """Petra's post carried her blueprint on all three shifts, so
+        day held her while swing and night each built their own."""
+        twin = self.char2
+        twin.db.blueprint_key = "dispatch_petra"
+        twin.db.is_npc = True
+        twin.db.is_dead = None
+        # NOT room2 — in this fixture room2 is object id 2, which the
+        # code reads as Limbo, i.e. archived rather than walking around.
+        twin.location = self.room1
+        self.assertNotEqual(twin.location.id, 2)
+
+        post = self.obj1
+        post.location = self.room1
+        post.db.post_blueprints = {"night": "dispatch_petra"}
+        post.db.register = 10 ** 9
+        slot = {"keeper": None, "vacant_since": 1.0}   # nobody named
+        self.assertFalse(
+            posts._try_resleave(post, self.room1, "night", slot, 10 ** 6))
+        self.assertIsNotNone(posts._living_body("dispatch_petra"))
+
+    def test_an_archived_body_does_not_block_the_payout(self):
+        """Somebody waiting in Limbo is exactly who resleeve restores."""
+        twin = self.char2
+        twin.db.blueprint_key = "dispatch_petra"
+        twin.db.is_npc = True
+        from evennia.objects.models import ObjectDB
+        twin.location = ObjectDB.objects.get(id=2)     # Limbo
+        self.assertIsNone(posts._living_body("dispatch_petra"))
+
+    def test_a_dead_body_does_not_block_the_payout(self):
+        twin = self.char2
+        twin.db.blueprint_key = "dispatch_petra"
+        twin.db.is_npc = True
+        twin.db.is_dead = True
+        twin.location = self.room1
+        self.assertIsNone(posts._living_body("dispatch_petra"))
+
     def test_a_living_keeper_is_never_resleaved(self):
         post = self.obj1
         post.location = self.room1
