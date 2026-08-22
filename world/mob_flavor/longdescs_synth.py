@@ -72,13 +72,13 @@ LONGDESCS_SYNTH: dict[str, list[str]] = {
     "groin": {
         "female": [
             "{Their} hips flare in a deliberate, generous curve, and what they frame is fully, warmly human in every way that matters — decided, not inherited, and decided well.",
-            "Between the smooth sweep of {their} hips, {they} {are} anatomically complete and companion-fluent — soft where softness persuades, and made to be discovered.",
+            "Between the smooth sweep of {their} hips, {they are} anatomically complete and companion-fluent — soft where softness persuades, and made to be discovered.",
             "{Their} sex is as finished as the rest of the design: correct, inviting, and warm past the point where engineering usually stops.",
             "{Their} lower body moves with a rolling, unhurried promise — hips built for the eye, and everything they carry built for more than that.",
         ],
         "male": [
-            "{Their} hips are lean and level, and {they} {are} generously, unambiguously male — anatomy specified rather than inherited, and specified with confidence.",
-            "{They} {are} complete and companion-fluent below the waist: correct in every particular, substantial by design, warm past where engineering usually stops.",
+            "{Their} hips are lean and level, and {they are} generously, unambiguously male — anatomy specified rather than inherited, and specified with confidence.",
+            "{They are} complete and companion-fluent below the waist: correct in every particular, substantial by design, warm past where engineering usually stops.",
             "The cut of {their} lower body draws the eye downward on purpose — deliberate lines converging on anatomy that was clearly nobody's afterthought.",
             "{Their} sex is as considered as the rest of the build — fully human in form and function, sized to reassure, made to be found.",
         ],

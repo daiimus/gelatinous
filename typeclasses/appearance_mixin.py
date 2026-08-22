@@ -934,7 +934,8 @@ class AppearanceMixin:
             nouns.add(left_loc.split("_", 1)[1])
         return nouns
 
-    def _substitute_longdesc_tokens(self, desc, variables, number, side=None):
+    def _substitute_longdesc_tokens(self, desc, variables, number, side=None,
+                                    person_number="singular"):
         """Resolve brace tokens in a longdesc, one token at a time.
 
         Resolution order per ``{token}``:
@@ -992,6 +993,21 @@ class AppearanceMixin:
             # 1. Pronoun / name tokens.
             if body in variables:
                 return str(variables[body])
+
+            # 1b. ``{they walk}`` — subject pronoun plus its verb. The
+            #     plain ``{verb}`` token below agrees with the body
+            #     part, which is the wrong subject when the person is
+            #     doing the acting: a paired slot renders "she walk".
+            #     Agreeing with the person fixes that, and the self-view
+            #     ("you walk") falls out of the plural form.
+            #     A tail may be a short phrase ("have not noticed"); only
+            #     its first word carries the agreement.
+            head, _, tail = body.partition(" ")
+            if tail and head in variables and head.lower() == "they":
+                verb, _, rest = tail.partition(" ")
+                flexed = flex_verb(verb, person_number)
+                return (f"{variables[head]} {flexed} {rest}".rstrip()
+                        if rest else f"{variables[head]} {flexed}")
 
             # 2. Number-flexible body-part tokens.
             art_match = article_re.match(body)
@@ -1177,8 +1193,12 @@ class AppearanceMixin:
         # resolve from ``variables``; otherwise a token is a number-flexible
         # body-part word (noun if its singular is a known pair noun, verb
         # otherwise). Unresolvable tokens are left literal.
+        # A person-subject verb agrees with the person, not the part.
+        # "You" takes the base form, same as a plural subject does.
         processed_desc = self._substitute_longdesc_tokens(
-            desc, variables, number, side=side
+            desc, variables, number, side=side,
+            person_number=("plural" if is_self or character_gender == "plural"
+                           else "singular"),
         )
 
         # Apply skintone coloring only if requested (for longdescs only)
