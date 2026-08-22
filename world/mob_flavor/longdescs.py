@@ -690,7 +690,7 @@ LONGDESCS: dict[str, list[str]] = {
         "A pale patch marks where the skin was burned and grew back wrong.",
         "The bone has a slight bow to it, visible from the side.",
         "{Their} {shins} {catch} the light along the front, hairless and shiny.",
-        "Dry skin has gone crocodile along the front.",
+        "The knees are darker than the shins, and rougher.",
         "A bruise sits over the bone, the colour of a bad night.",
         "The calf muscle sits low, close to the ankle.",
         "There's a knot of hard tissue where something healed badly under the skin.",
