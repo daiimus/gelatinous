@@ -82,20 +82,53 @@ def _post_placement(soul):
     return getattr(room.db, "post_work_place", None)
 
 
+def _post_seat(soul):
+    """The chair this post's work is done FROM, if it declared one
+    (``post_work_seat`` on the furniture).
+
+    Some desks only work seated. `world.radio.seated_base_station` is
+    the law — whoever holds the chair holds the voice — so a dispatcher
+    who never sits down is a dispatcher who cannot key up at all, and
+    nothing in the souls layer was ever putting anyone in a chair
+    (#2225)."""
+    room = soul.db.soul_post
+    if room is None:
+        return None
+    for obj in getattr(room, "contents", ()) or []:
+        if obj.db and getattr(obj.db, "post_work_seat", None) is True:
+            return obj
+    return None
+
+
 def _take_the_post(soul):
-    """Stand visibly at work."""
+    """Stand — or sit — visibly at work."""
     line = _post_placement(soul)
     if line and soul.db.temp_place != line:
         soul.db.temp_place = line
         soul.ndb.placed_by_shift = True
 
+    seat = _post_seat(soul)
+    if (seat is not None and soul.db.furniture is not seat
+            and getattr(seat, "location", None) is soul.location
+            and not seat.is_full()):
+        # the real command, so occupancy, posture and the room messaging
+        # all hold — and somebody squatting the chair keeps it, which is
+        # a desk that can't broadcast rather than a bug
+        soul.execute_cmd(f"sit on {seat.key}")
+        soul.ndb.seated_by_shift = True
+
 
 def _leave_the_post(soul):
     """Stop standing at work — only clears placement WE set, so a
-    player-authored @temp_place is never trampled."""
+    player-authored @temp_place is never trampled. Same courtesy for the
+    chair: we only stand them up if the shift is what sat them down."""
     if getattr(soul.ndb, "placed_by_shift", False):
         soul.db.temp_place = ""
         soul.ndb.placed_by_shift = False
+    if getattr(soul.ndb, "seated_by_shift", False):
+        if soul.db.furniture is not None:
+            soul.execute_cmd("stand")
+        soul.ndb.seated_by_shift = False
 
 
 def step_job(soul):
