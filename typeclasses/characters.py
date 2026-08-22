@@ -104,7 +104,6 @@ class Character(
     # remember an audible speaker; read by the resolution chain to attribute a
     # known voice you can't see.
     voice_memory = AttributeProperty({}, category="identity", autocreate=True)
-    species = AttributeProperty("human", category="identity")
 
     # Shop System Attributes
     is_merchant = AttributeProperty(False, category="shop", autocreate=True)
@@ -119,6 +118,26 @@ class Character(
     
     # Appearance attributes - stored in db but no auto-creation for optional features
     # skintone is set via @skintone command and stored as db.skintone
+
+    @property
+    def species(self):
+        """The body's species, backed by ``db.species``.
+
+        This was an ``AttributeProperty`` under ``category="identity"``
+        that nothing ever wrote — twenty spawners and every consumer
+        use the uncategorised ``db.species`` instead. So it sat there
+        returning its ``"human"`` default forever, which meant the LLM
+        persona told every model that its synth Companion and its
+        security robots were human (#2205).
+
+        One source of truth now. Reads and writes both land on
+        ``db.species``.
+        """
+        return self.db.species or "human"
+
+    @species.setter
+    def species(self, value):
+        self.db.species = value
 
     @property
     def gender(self):
