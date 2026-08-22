@@ -116,6 +116,24 @@ class TestTheProseStaysRenderable(EvenniaCommandTest):
             "a longdesc renders only when the location is UNCOVERED:\n"
             + "\n".join(offenders))
 
+    def test_no_line_makes_the_person_perform_an_action(self):
+        """A longdesc describes the BODY. What the body is doing is an
+        emote's job — a description that says "she folds her hands"
+        asserts a continuous action that contradicts whatever the
+        character is actually doing (owner ruling, 2026-08-22).
+
+        An action as SUBORDINATE context is fine, because the subject
+        is still the body: "Muscle stands out along the front of the
+        thigh when {they shift} {their} weight" describes the muscle.
+        """
+        opener = re.compile(r"^\{They \w+\}")
+        offenders = [f"{slot}: {line}" for slot, line in self._lines()
+                     if opener.match(line)]
+        self.assertEqual(
+            offenders, [],
+            "the person is the subject doing something — that is an "
+            "emote, not a description:\n" + "\n".join(offenders))
+
     def test_lines_are_unique_within_a_slot(self):
         for slot, entries in longdescs.LONGDESCS.items():
             lines = [e[1] if isinstance(e, tuple) else e for e in entries]
