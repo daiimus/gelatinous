@@ -307,8 +307,10 @@ def ensure_dispatch_operator() -> Any | None:
     """Upkeep (heartbeat at_start): the dispatch room has someone at the
     desk.
     Idempotent; a dead operator is left to the corpse pipeline and a new
-    one is NOT auto-hired here (absence = the console's automation voice —
-    the bleak attendant — until staffing recovers at the next reload)."""
+    one is NOT auto-hired here. Absence is SILENCE: with nobody at the
+    desk the console answers nothing at all, because the colony is
+    operated by its people and an unmanned emergency line is the
+    setting rather than a hole in it (owner ruling, 2026-08-22)."""
     base = get_dispatch_room()
     if base is None:
         return None

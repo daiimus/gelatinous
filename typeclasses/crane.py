@@ -87,13 +87,10 @@ class CraneConsole(AnsweringFixture):
 
         operator = self._operator()
         if operator is None:
-            # An empty cab does NOT drive itself — the container is a
-            # room and somebody may be standing in it. But it answers,
-            # because silence reads as a broken radio and this is a
-            # closed shift. Absence is audible, and informative.
-            if self._cooled_down():
-                self._answer("Cab's dark — no operator on shift. "
-                             "Try again on the day watch.")
+            # Nobody in the cab, so nobody picks up. The console does not
+            # speak for itself — this world is operated by its people,
+            # and an unmanned station going quiet is the consequence of
+            # that, not a gap to paper over (owner ruling, 2026-08-22).
             return
 
         car = self._find_car()

@@ -698,9 +698,12 @@ class AnsweringFixture(Radio):
 
     **The competence lives here; the voice belongs to whoever holds the
     chair.** That is the whole shape, and `world/radio.py` already
-    states it as law: *"whoever holds the chair holds the voice."* A
-    console with somebody at it speaks in their voice; empty, it speaks
-    in its own, and the difference is audible.
+    states it as law: *"whoever holds the chair holds the voice."*
+
+    No chair, no voice. A station with nobody at it does not answer at
+    all — the colony is operated by its people, and an unmanned post
+    going quiet is the consequence of that rather than a gap to paper
+    over (owner ruling, 2026-08-22). Silence is the honest report.
 
     Subclasses implement :meth:`_handle` — what this particular station
     DOES with a transmission it recognises. Everything around that is
@@ -775,8 +778,9 @@ class AnsweringFixture(Radio):
         Re-checks everything AT SEND TIME, because the gap between
         hearing and answering is where the interesting failures live: a
         console switched off, a roof antenna wrecked (the sabotage
-        seam), an operator downed mid-reply. Each of those is silence,
-        honestly — not a station cheerfully finishing its sentence.
+        seam), an operator downed mid-reply, an empty chair. Each of
+        those is silence, honestly — not a station cheerfully finishing
+        its sentence on somebody's behalf.
         """
         try:
             from world.radio import is_powered, transmit
@@ -795,7 +799,9 @@ class AnsweringFixture(Radio):
                         who = None
                 except Exception:  # noqa: BLE001 — no medical read, assume up
                     pass
-            transmit(who or self, line, self, overt=True)
+            if who is None:
+                return          # nobody at the station: nobody answers
+            transmit(who, line, self, overt=True)
         except Exception:  # noqa: BLE001
             pass
 
@@ -814,6 +820,11 @@ class DispatchConsole(Radio):
     Gating mirrors the NPC radio discipline: non-NPC-sourced traffic only
     (the loop guard — this console is itself is_npc-marked so LLM units
     never reply-chain on IT), must name dispatch, cooldown between answers.
+
+    An UNATTENDED desk answers nothing. There is no automation voice:
+    the emergency line is a person, and when nobody is on it the band
+    stays quiet (owner ruling, 2026-08-22). That the colony's dispatch
+    can simply be unmanned is the setting, not a hole in it.
     """
 
     #: Seconds between answered lines — short enough for back-and-forth
@@ -966,10 +977,11 @@ class DispatchConsole(Radio):
             return
         self.ndb.last_answer = now
 
-        # A live operator at the desk answers AS HERSELF (her voice on the
-        # air, her register in the words); an empty/dead/kidnapped desk
-        # falls back to the console's automation voice — a difference
-        # anyone on the band can hear.
+        # A live operator at the desk answers AS HERSELF (her voice on
+        # the air, her register in the words). An empty, dead or
+        # kidnapped desk answers NOTHING — `_answer` refuses without
+        # somebody to speak, and the silence is the difference anyone on
+        # the band can hear.
         operator = self._operator()
         from world.llm.client import civic_enabled, request_civic_line
         if not civic_enabled():
@@ -1156,7 +1168,7 @@ class DispatchConsole(Radio):
         """Key up — through the real transmit path, overt. When a live
         operator is at the desk, SHE is the speaker (her voice on the air,
         recognisable, rememberable, modulator-defeatable like anyone's);
-        otherwise the console's own attendant voice. Re-checks power at
+        with nobody there, nothing goes out at all. Re-checks power at
         send time: switched off between hearing and answering = silence,
         honestly. Re-checks the speaker too: an operator downed mid-reply
         doesn't speak."""
@@ -1178,7 +1190,9 @@ class DispatchConsole(Radio):
                         who = None
                 except Exception:  # noqa: BLE001
                     pass
-            transmit(who or self, line, self, overt=True)
+            if who is None:
+                return          # empty desk: the band stays quiet
+            transmit(who, line, self, overt=True)
         except Exception:  # noqa: BLE001
             pass
 
