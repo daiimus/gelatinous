@@ -148,14 +148,6 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse",
 #: falls out of the plural form for free.
 _PERSON_VERB_RE = None
 
-#: Modals never inflect for person, and the inflect engine does not
-#: know that — it renders "could" as "coulds". They are also exactly
-#: the verbs an author reaches for when the person is the subject.
-MODALS = frozenset((
-    "could", "would", "should", "might", "must", "can", "will",
-    "shall", "may", "ought", "need", "dare",
-))
-
 
 def _flex_person_verbs(text, pronouns, bucket):
     global _PERSON_VERB_RE
@@ -174,8 +166,6 @@ def _flex_person_verbs(text, pronouns, bucket):
 
     def _resolve(match):
         pronoun, verb, rest = match.group(1), match.group(2), match.group(3)
-        if verb.lower() in MODALS:
-            return f"{pronouns[pronoun]} {verb}{rest}"
         return f"{pronouns[pronoun]} {flex_verb(verb, person_number)}{rest}"
 
     return _PERSON_VERB_RE.sub(_resolve, text)

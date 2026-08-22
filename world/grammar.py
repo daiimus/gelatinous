@@ -37,6 +37,15 @@ IRREGULAR_VERBS: dict[str, str] = {
     "have": "has",
 }
 
+#: Modal verbs, which never take an -s. Without this the default rule
+#: below renders "could" as "coulds" and "can" as "cans" — and modals
+#: are exactly what an author reaches for when the subject is a person
+#: rather than a body part, so they arrive here often.
+MODALS: frozenset[str] = frozenset((
+    "could", "would", "should", "might", "must", "can", "will",
+    "shall", "may", "ought", "need", "dare",
+))
+
 #: Vowels used by the consonant-y rule.
 _VOWELS = frozenset("aeiou")
 
@@ -59,6 +68,10 @@ def conjugate_third_person(verb: str) -> str:
         "tries").
     """
     lower = verb.lower()
+
+    # A modal is already correct for every person and number.
+    if lower in MODALS:
+        return verb
 
     # Irregular table takes absolute precedence.
     if lower in IRREGULAR_VERBS:
@@ -234,6 +247,11 @@ def flex_verb(word: str, number: str) -> str:
         The flexed verb, first-letter case matched to *word*.
     """
     lower = word.lower()
+
+    # A modal has one form. Sending it through inflect's plural_verb
+    # and back is at best a no-op and at worst "coulds".
+    if lower in MODALS:
+        return word
 
     if lower in _IRREGULAR_VERB_FORMS:
         singular_form, plural_form = _IRREGULAR_VERB_FORMS[lower]
