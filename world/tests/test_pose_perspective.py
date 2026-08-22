@@ -106,3 +106,57 @@ class TestTheTwoCommandsStaySeparate(EvenniaCommandTest):
         self.assertNotIn("VerbToken", src)
         self.assertNotIn("conjugate_third_person", src)
         self.assertNotIn("to_base_form", src)
+
+
+class TestThirdPersonCharRefs(EvenniaCommandTest):
+    """Coverage the `emote` path was missing.
+
+    Both behaviours below are shared in spirit with the dot-pose
+    command and were only ever tested there. They run through a
+    different tokenizer and a different renderer, so a change to
+    `render_emote_for_observer` could break them in silence.
+
+    Audited rather than assumed: both were verified working first, so
+    these are pinning correct behaviour, not reporting a bug.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.actor = _make_character(key="Sully", sex="male",
+                                     sdesc_keyword="bartender",
+                                     sleeve_uid="uid-actor")
+        self.tall = _make_character(key="Vik", sex="male",
+                                    sdesc_keyword="man", height="tall",
+                                    build="lean", sleeve_uid="uid-tall")
+        self.short = _make_character(key="Rex", sex="male",
+                                     sdesc_keyword="man", height="short",
+                                     build="stocky", sleeve_uid="uid-short")
+
+    def _render(self, text, observer, occupants=None):
+        from world.emote import render_emote_for_observer, tokenize_emote
+        tokens = tokenize_emote(
+            text, self.actor, occupants or [self.tall, self.short])
+        return render_emote_for_observer(tokens, self.actor, observer)
+
+    def test_an_ordinal_ref_resolves(self):
+        """`2nd man` picks the second match, same as in a dot-pose."""
+        # the second match is the short man: he is addressed as "you",
+        # and the tall man — an onlooker here — sees the target's sdesc
+        self.assertIn("you", self._render("nods at 2nd man.", self.short))
+        onlooker = self._render("nods at 2nd man.", self.tall)
+        self.assertIn("squat man", onlooker)
+        self.assertNotIn("you", onlooker)
+
+    def test_the_first_ordinal_resolves(self):
+        self.assertIn("you", self._render("nods at 1st man.", self.tall))
+
+    def test_an_article_before_a_ref_is_not_doubled(self):
+        """The sdesc brings its own article, so the typed one goes."""
+        out = self._render("nods at the squat man.", self.tall)
+        self.assertIn("nods at a squat man", out)
+        self.assertNotIn("the a squat", out)
+
+    def test_an_article_elsewhere_survives(self):
+        """Only the article immediately before the ref is dropped."""
+        out = self._render("hands the bottle to the squat man.", self.tall)
+        self.assertIn("hands the bottle to a squat man", out)
