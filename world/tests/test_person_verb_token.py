@@ -40,6 +40,14 @@ class TestPersonVerbAgreesWithThePerson(EvenniaCommandTest):
         self.assertEqual(self._render(line, "nonbinary"),
                          "a smear they have not noticed.")
 
+    def test_a_modal_is_left_alone(self):
+        """inflect renders "could" as "coulds" if you let it."""
+        line = "only {they could} say what it was."
+        self.assertEqual(self._render(line, "female"),
+                         "only she could say what it was.")
+        self.assertEqual(self._render(line, "nonbinary"),
+                         "only they could say what it was.")
+
     def test_part_subject_verbs_are_untouched(self):
         """The existing template must keep flexing against the part."""
         line = "{Their} {thighs} {are} unremarkable."
