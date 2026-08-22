@@ -247,34 +247,36 @@ class TestDispatcherAck(TestCase):
         tx.assert_not_called()
 
 
-class TestDispatchConsoleAnswers(TestCase):
-    """The console's answering brain: names-dispatch traffic from players
-    gets a civic-LLM line (template fallback structural); NPC traffic and
-    unaddressed squawks never do."""
+class TestTheDeskKeepsTheJobNotTheVoice(TestCase):
+    """The console classifies the call and rolls the steel; it does not
+    speak (#2223).
 
-    def _console(self):
+    This class used to pin the opposite — the console running its own
+    civic-lane prompt and transmitting with the operator as the nominal
+    speaker. The voice is hers now: she hears the same transmission on
+    her own device and answers through the real `xmit` command, which
+    is why an unstaffed desk is silent with nothing here checking for
+    it. What the console still owes her is GROUNDING: the board, stamped
+    the moment classification finishes, so her acknowledgement matches
+    what actually went out.
+    """
+
+    def _console(self, operator=None):
         from typeclasses.items import DispatchConsole
         from types import SimpleNamespace
         c = MagicMock(spec=DispatchConsole)
         c.ndb = SimpleNamespace(last_answer=None)
         c.db = SimpleNamespace(is_base_station=True, radio_on=True)
-        for m in ("_maybe_answer", "_grounded_answer", "_verdict_context"):
+        for m in ("_maybe_answer", "_post_board"):
             setattr(c, m, getattr(DispatchConsole, m).__get__(
                 c, DispatchConsole))
-        c.ANSWER_COOLDOWN = DispatchConsole.ANSWER_COOLDOWN
-        c.INSTRUCTIONS = DispatchConsole.INSTRUCTIONS
-        c.FALLBACK_LINE = DispatchConsole.FALLBACK_LINE
         c._units_available = lambda: 2
-        # sanitizer has its own suite
-        c._clean_reply = (lambda text, heard=None, units_moved=False,
-                          chatter=False, speaker_name=None: text)
-        c._operator = lambda: None                       # automation by default
-        c.OPERATOR_INSTRUCTIONS = DispatchConsole.OPERATOR_INSTRUCTIONS
+        c._operator = lambda: operator
         return c
 
     def _declined_report_lane(self):
-        """The report lane declining synchronously — the voice path then
-        runs ungrounded, inline (grounded paths have their own suite)."""
+        """The report lane declining synchronously, so `_stamp` runs
+        inline with an empty verdict — the ungrounded worst case."""
         return patch("world.director.radio_report.consider_radio_report",
                      return_value=False)
 
@@ -288,90 +290,59 @@ class TestDispatchConsoleAnswers(TestCase):
         return {"type": "radio", "speech": speech,
                 "radio_frequency": "911MHz"}
 
-    def test_addressed_player_traffic_gets_a_civic_line(self):
+    def test_player_traffic_reaches_the_report_lane(self):
         c = self._console()
+        with patch("world.director.radio_report.consider_radio_report",
+                   return_value=True) as considered:
+            c._maybe_answer(self._player(), self._kwargs(
+                "shots fired on Volta Street"))
+        considered.assert_called_once()
+
+    def test_the_console_never_speaks(self):
+        """Even with the civic lane up and an operator in the chair: the
+        model call and the transmission are hers to make."""
+        c = self._console(operator=MagicMock())
         with patch("world.llm.client.civic_enabled", return_value=True), \
                 patch("world.llm.client.request_civic_line") as req, \
-                patch("world.radio.radio_voice_handle",
-                      return_value="a husky voice"), \
                 self._declined_report_lane():
             c._maybe_answer(self._player(), self._kwargs(
                 "Dispatch, do you copy?"))
-        req.assert_called_once()
-        prompt = req.call_args.args[1]
-        self.assertIn("Units available: 2", prompt)
-        self.assertIn("a husky voice", prompt)
-        # the reply callback keys the console
-        req.call_args.kwargs["on_reply"]("Dispatch copies. Go ahead.")
-        c._answer.assert_called_once_with("Dispatch copies. Go ahead.",
-                                          speaker=None)
-
-    def test_civic_disabled_falls_back_to_template(self):
-        c = self._console()
-        with patch("world.llm.client.civic_enabled", return_value=False):
-            c._maybe_answer(self._player(), self._kwargs(
-                "Dispatch, anyone there?"))
-        c._answer.assert_called_once_with(c.FALLBACK_LINE, speaker=None)
-
-    def test_failure_falls_back_to_template(self):
-        c = self._console()
-        with patch("world.llm.client.civic_enabled", return_value=True), \
-                patch("world.llm.client.request_civic_line") as req, \
-                patch("world.radio.radio_voice_handle",
-                      return_value="a voice"), \
-                self._declined_report_lane():
-            c._maybe_answer(self._player(), self._kwargs("Dispatch?"))
-        req.call_args.kwargs["on_fail"]()
-        c._answer.assert_called_once_with(c.FALLBACK_LINE, speaker=None)
-
-    def test_npc_traffic_is_never_answered(self):
-        # Loop guard: the witness's report names no answer; unit chatter
-        # and our own acks likewise.
-        c = self._console()
-        npc = self._player()
-        npc.db.is_npc = True
-        with patch("world.llm.client.civic_enabled", return_value=True), \
-                patch("world.llm.client.request_civic_line") as req:
-            c._maybe_answer(npc, self._kwargs(
-                "Someone call it in — trouble near dispatch!"))
         req.assert_not_called()
         c._answer.assert_not_called()
 
-    def test_all_band_traffic_is_answered_even_chatter(self):
-        # It's the EMERGENCY band: everything on it is dispatch's traffic.
-        # Idle chatter gets channel discipline (register-level), not silence.
-        c = self._console()
-        with patch("world.llm.client.civic_enabled", return_value=True), \
-                patch("world.llm.client.request_civic_line") as req, \
-                patch("world.radio.radio_voice_handle",
-                      return_value="a voice"), \
-                self._declined_report_lane():
-            c._maybe_answer(self._player(), self._kwargs("Hey there."))
-        req.assert_called_once()
-        self.assertIn("Hey there.", req.call_args.args[1])
+    def test_an_unstaffed_desk_needs_no_special_case(self):
+        c = self._console(operator=None)
+        with self._declined_report_lane():
+            c._maybe_answer(self._player(), self._kwargs("anyone there?"))
+        c._answer.assert_not_called()
 
-    def test_operator_present_uses_her_register_and_voice(self):
+    def test_npc_traffic_is_never_processed(self):
+        """Loop guard, unchanged: the witness's own report must not come
+        back round as traffic to classify or answer."""
         c = self._console()
-        vess = MagicMock()
-        c._operator = lambda: vess
-        with patch("world.llm.client.civic_enabled", return_value=True), \
-                patch("world.llm.client.request_civic_line") as req, \
-                patch("world.radio.radio_voice_handle",
-                      return_value="a voice"), \
-                self._declined_report_lane():
-            c._maybe_answer(self._player(), self._kwargs(
-                "Dispatch, do you copy?"))
-        self.assertIs(req.call_args.args[0], c.OPERATOR_INSTRUCTIONS)
-        req.call_args.kwargs["on_reply"]("Dispatch. Go ahead.")
-        c._answer.assert_called_once_with("Dispatch. Go ahead.",
-                                          speaker=vess)
+        npc = self._player()
+        npc.db.is_npc = True
+        with patch("world.director.radio_report.consider_radio_report",
+                   return_value=True) as considered:
+            c._maybe_answer(npc, self._kwargs(
+                "Someone call it in — trouble near dispatch!"))
+        considered.assert_not_called()
+        c._answer.assert_not_called()
 
-    def test_cooldown_gates_repeat_answers(self):
-        c = self._console()
-        with patch("world.llm.client.civic_enabled", return_value=False):
-            c._maybe_answer(self._player(), self._kwargs("Dispatch, copy?"))
-            c._maybe_answer(self._player(), self._kwargs("Dispatch, copy?!"))
-        self.assertEqual(c._answer.call_count, 1)   # second inside cooldown
+    def test_the_board_is_stamped_on_the_operator(self):
+        who = MagicMock()
+        c = self._console(operator=who)
+        verdict = {"is_incident_report": True, "incident_type": "assault",
+                   "location_text": "Volta Street"}
+        c._post_board(verdict, [MagicMock(), MagicMock()])
+        board = who.ndb.dispatch_board
+        self.assertEqual(board["units"], 2)
+        self.assertEqual(board["dispatched"], 2)
+        self.assertIs(board["verdict"], verdict)
+
+    def test_stamping_an_empty_desk_is_harmless(self):
+        c = self._console(operator=None)
+        c._post_board(None, None)          # must not raise
 
 
 class TestConsoleReplySanitation(TestCase):

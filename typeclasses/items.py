@@ -946,22 +946,55 @@ class DispatchConsole(Radio):
                 or getattr(db, "llm_driven", None) is True
                 or getattr(db, "is_base_station", None) is True):
             return
-        # SEQUENCED LANES (user call 2026-07-11: "Units rolling" for a
-        # coffee order): the verdict lane classifies FIRST, then the
-        # voice answers GROUNDED in what dispatch actually did — she
-        # never promises steel the deterministic layer declined to send.
-        # The report lane itself stays un-gated by the answer cooldown.
-        def _voice_reply(verdict, dispatched):
-            self._grounded_answer(speaker, speech, verdict, dispatched)
+        # THE REPORT LANE, and only the report lane (#2223). The console
+        # classifies the traffic and rolls steel — that competence belongs
+        # to the DESK, so whoever takes the chair inherits it — but the
+        # console no longer speaks. The voice is the operator's own: she
+        # hears the same transmission on her own device and answers
+        # through the real `xmit` command, which is why an unstaffed desk
+        # goes quiet without anything here having to check for it.
+        def _stamp(verdict, dispatched):
+            self._post_board(verdict, dispatched)
 
         try:
             from world.director.radio_report import consider_radio_report
             classifying = consider_radio_report(self, speaker, speech,
-                                                on_result=_voice_reply)
-        except Exception:  # noqa: BLE001 — reports never break the voice
+                                                on_result=_stamp)
+        except Exception:  # noqa: BLE001 — reports never break the band
             classifying = False
         if not classifying:
-            _voice_reply(None, None)
+            _stamp(None, None)
+
+    def _post_board(self, verdict, dispatched):
+        """Hand the operator what the desk just did.
+
+        Read by her radio turn (`LLMNpc._soul_state_line`) so she can
+        acknowledge without promising steel the deterministic layer
+        declined to send. Harmless when nobody is at the desk."""
+        who = self._operator()
+        if who is None:
+            return
+        try:
+            who.ndb.dispatch_board = {
+                "units": self._units_available(),
+                "verdict": verdict,
+                "dispatched": len(dispatched or ()),
+            }
+        except Exception:  # noqa: BLE001 — grounding is best-effort
+            pass
+
+    # ------------------------------------------------------------------
+    # THE OLD CIVIC VOICE LANE — unreferenced since #2223.
+    #
+    # `_grounded_answer` and everything it reaches (`_verdict_context`,
+    # `_clean_reply`, `INSTRUCTIONS`, `OPERATOR_INSTRUCTIONS`, the
+    # fallback lines) is the console speaking for itself. Nothing calls
+    # it now: the operator's own brain took the band. Kept rather than
+    # deleted because the choice between "delete it" and "keep it as the
+    # automation register for a desk that is deliberately unstaffed" is
+    # the owner's, not mine — and an unstaffed desk is currently, by
+    # design, silent. `_units_available` IS still live (grounding).
+    # ------------------------------------------------------------------
 
     def _grounded_answer(self, speaker, speech, verdict, dispatched):
         """The voice lane, grounded in the verdict: cooldown-gated,

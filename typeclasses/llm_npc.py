@@ -148,13 +148,17 @@ class LLMNpcMixin:
         if not llm_enabled() or self._is_npc_speaker(speaker):
             self._observe_action(speaker, overheard)
             return
-        # The dispatch operator OBSERVES the band, never radio-replies —
-        # the console speaks for her on the air (civic lane, her voice);
-        # a second brain answering the same call would double-render at
-        # the base. The buffer means the traffic still colours her
-        # face-to-face turns: she KNOWS what's been on the band tonight.
-        if getattr(self.db, "dispatch_operator", None) is True:
+        # The emergency band IS the dispatcher's desk: on it every human
+        # transmission is her traffic, addressed or not (playtest ruling
+        # 2026-07-10). She answers in her own voice through the real
+        # `xmit` command, from whatever radio she's actually holding —
+        # so an empty, dead or kidnapped desk goes quiet with no special
+        # case anywhere. The console used to speak for her; it doesn't
+        # any more (#2223).
+        if (getattr(self.db, "dispatch_operator", None) is True
+                and self._on_emergency_band(freq)):
             self._observe_action(speaker, overheard)
+            delay(1.5, self._try_llm_reply, speech, speaker, "radio")
             return
         low = speech.lower()
         broadcast = any(p in low for p in self._RADIO_BROADCAST_PHRASES)
@@ -171,6 +175,15 @@ class LLMNpcMixin:
             self._observe_action(speaker, overheard)
             mode = "radio_ambient"
         delay(1.5, self._try_llm_reply, speech, speaker, mode)
+
+    def _on_emergency_band(self, freq):
+        """Whether traffic arrived on 911. A dispatcher carrying a second
+        radio off-shift is just a person on a band, not the desk."""
+        try:
+            from world.radio import EMERGENCY_BAND, same_band
+            return bool(same_band(freq, EMERGENCY_BAND))
+        except Exception:  # noqa: BLE001 — a band check never breaks hearing
+            return False
 
     def _radio_voice_handle(self, speaker):
         """How this NPC knows the voice on the air — voice-only attribution
@@ -278,6 +291,9 @@ class LLMNpcMixin:
         on_fail = on_fail or self._llm_silent
 
         state = self._soul_state_line()
+        board = self._dispatch_board_line() if radio else None
+        if board:
+            state = f"{state} {board}".strip() if state else board
 
         def _go(memories):
             messages = build_messages(persona, speaker_name, line or "", mode,
@@ -533,6 +549,42 @@ class LLMNpcMixin:
             return f"{where} {feel}".strip()
         except Exception:  # noqa: BLE001 — a feeling must not break a reply
             return None
+
+    def _dispatch_board_line(self):
+        """What the desk did with the traffic she is about to answer.
+
+        The console classifies and rolls steel synchronously as the
+        transmission is delivered, then stamps the board on whoever is
+        in the chair (`DispatchConsole._post_board`); her turn reaches
+        the model a beat later, so this is always the CURRENT call. It
+        is narration, never a decision — the units are already moving or
+        already declined by the time she reads it (the two-brain law)."""
+        board = self.ndb.dispatch_board
+        if not isinstance(board, dict):
+            return None
+        self.ndb.dispatch_board = None          # one call, one board
+        units = board.get("units")
+        sent = board.get("dispatched") or 0
+        verdict = board.get("verdict")
+        line = f"Your board shows {units} unit(s) available."
+        if not isinstance(verdict, dict) or (
+                verdict.get("is_incident_report") is not True
+                or verdict.get("incident_type") in (None, "none")):
+            return (f"{line} That last transmission was not a report of "
+                    f"anything — no units, no promises, nothing granted "
+                    f"or fetched. You can still spare a regular one dry "
+                    f"sentence before you move them off the channel.")
+        where = str(verdict.get("location_text") or "").strip()
+        place = f" at {where}" if where else ""
+        kind = verdict.get("incident_type")
+        if sent:
+            return (f"{line} You logged a {kind} report{place} and "
+                    f"{sent} unit(s) are already rolling on it — they "
+                    f"announce themselves on this band, so acknowledge "
+                    f"the caller and do NOT announce them yourself.")
+        return (f"{line} You logged a {kind} report{place}, but no new "
+                f"units went out — the scene is covered or there is "
+                f"nobody free. Do not claim anyone is responding.")
 
     def _perceive(self, patron):
         """What this NPC sees when it looks at the patron — grounds the model's
