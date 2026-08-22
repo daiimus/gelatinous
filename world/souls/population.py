@@ -221,9 +221,18 @@ def generate_resident(lawless=False):
     npc.aliases.add([first.lower(), last.lower()])
     npc.db.is_npc = True
     npc.sex = sex
-    npc.height = choice(("short", "average", "tall"))
-    npc.build = choice(("slight", "lean", "average", "stocky"))
-    npc.db.skintone = choice(("pale", "tan", "olive", "dark"))
+    # The canonical vocabularies, not a hand-written subset of them.
+    # Souls used to roll four builds of six and three heights of five,
+    # so nobody who arrived this way was ever athletic or heavyset —
+    # and "dark" is not a skintone the palette knows, so a quarter of
+    # them rendered with no colour at all. Build is load-bearing here:
+    # these NPCs carry no job keyword, so build and clothing are what
+    # tell them apart (#2148).
+    from world.director.civilians import HUMAN_SKINTONES
+    from world.identity import BUILDS, HEIGHTS
+    npc.height = choice(HEIGHTS)
+    npc.build = choice(BUILDS)
+    npc.db.skintone = choice(HUMAN_SKINTONES)
     npc.grit, npc.resonance, npc.intellect, npc.motorics = kind["stats"]()
     # A person is not their job (owner ruling): leaving the keyword unset
     # lets the identity system fall back to a person-word from their sex,
