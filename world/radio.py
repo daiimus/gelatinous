@@ -772,6 +772,16 @@ def _deliver(speaker: Any, message: str, frequency: str,
             if can_hear(listener):
                 payload["speech"] = heard   # the say-rails contract:
                 # an NPC reacts to exactly the fragments it caught
+                # ...and the souls layer SENSES it: a keeper sitting the
+                # board this came in on has work to do, and shouldn't
+                # wait out its LOD cadence to notice (#2228). Only what
+                # was actually caught — a soul dispatches on the words
+                # it heard, not the words that were said.
+                try:
+                    from world.souls.salience import sense_radio
+                    sense_radio(listener, heard, speaker, frequency)
+                except Exception:  # noqa: BLE001 — sensing never breaks the net
+                    pass
             listener.msg(_render_radio_line(
                 speaker, listener, heard, frequency, tagged=tagged,
                 own=own),

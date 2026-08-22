@@ -564,6 +564,18 @@ def step_job(soul):
                 restock_medic(soul)   # par-level loose supplies at post
             except Exception:  # noqa: BLE001 — restock is best-effort
                 pass
+        # Whatever the world handed this soul while it stood here — a
+        # call on the board it is sitting at, and in time anything else
+        # a sensor raises. Answering the radio IS the dispatcher's duty,
+        # not an interruption of it, so the work happens inside the shift
+        # rather than as a goal of its own (SOULS_SALIENCE_SPEC §3.4).
+        # `restock_medic` above is the same shape and should fold in
+        # here; that's a behaviour-neutral refactor of its own.
+        try:
+            from world.souls import salience
+            salience.work_stimuli(soul)
+        except Exception:  # noqa: BLE001 — the shift outlives one bad call
+            pass
         # you can SEE who is working: the post's own placement line goes
         # on while the shift is held, so a room tells you who is behind
         # the counter and who is merely standing near it. A person is not

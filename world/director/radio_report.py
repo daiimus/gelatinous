@@ -264,19 +264,29 @@ def resolve_location(location_text, rooms):
     return best[1] if best else None
 
 
-def consider_radio_report(console, speaker, speech, on_result=None):
-    """Classify player traffic; a confirmed report raises a real event.
-    Not gated by the voice lane's answer cooldown — a second report
-    inside ten seconds still rolls units even when the operator stays
-    silent. Silence on every failure.
+def consider_radio_report(operator, speaker, speech, on_result=None):
+    """*operator* judges player traffic; a confirmed report raises a real
+    event and rolls units.
+
+    The judging is a PERSON'S — the dispatcher hears the call, reads it,
+    and decides. It used to hang off the console's `at_msg_receive`,
+    which meant an unattended desk quietly kept dispatching the colony's
+    security force with nobody in the chair: automation running the job
+    we had just given to an employee (#2228). No operator, no dispatch,
+    and the colony finds out the hard way — that weakness is the
+    setting, not a hole in it.
+
+    Not gated by any answer cooldown — a second report inside ten
+    seconds still rolls units even when she says nothing. Silence on
+    every failure.
 
     Returns True when a classification is IN FLIGHT — ``on_result
     (verdict, dispatched)`` will fire exactly once on the reactor
-    (``(None, None)`` on failure), letting the voice lane speak GROUNDED
-    in what dispatch actually did. False = this lane declined (NPC
-    traffic, lane disabled); the caller proceeds ungrounded."""
+    (``(None, None)`` on failure), so her reply can be GROUNDED in what
+    she actually did. False = declined (no operator, NPC traffic, lane
+    disabled)."""
     try:
-        if speaker is None or not speech:
+        if operator is None or speaker is None or not speech:
             return False
         db = getattr(speaker, "db", None)
         if (getattr(db, "is_npc", None) is True

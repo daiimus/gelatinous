@@ -148,15 +148,12 @@ class LLMNpcMixin:
         if not llm_enabled() or self._is_npc_speaker(speaker):
             self._observe_action(speaker, overheard)
             return
-        # The emergency band IS the dispatcher's desk: on it every human
-        # transmission is her traffic, addressed or not (playtest ruling
-        # 2026-07-10). She answers in her own voice through the real
-        # `xmit` command, from whatever radio she's actually holding —
-        # so an empty, dead or kidnapped desk goes quiet with no special
-        # case anywhere. The console used to speak for her; it doesn't
-        # any more (#2223).
-        if (getattr(self.db, "dispatch_operator", None) is True
-                and self._on_emergency_band(freq)):
+        # The dispatcher answers her own band. The JOB — judging the
+        # call, rolling the units — is not here and never should have
+        # been: it belongs to whoever holds the post, not to whoever
+        # happens to be this typeclass (`world/souls/salience.py`,
+        # #2228). This is only the voice.
+        if self._dispatch_board() is not None and self._on_emergency_band(freq):
             self._observe_action(speaker, overheard)
             delay(1.5, self._try_llm_reply, speech, speaker, "radio")
             return
@@ -184,6 +181,26 @@ class LLMNpcMixin:
             return bool(same_band(freq, EMERGENCY_BAND))
         except Exception:  # noqa: BLE001 — a band check never breaks hearing
             return False
+
+    def _dispatch_board(self):
+        """The emergency board this NPC is SITTING at, or None.
+
+        `seated_base_station` is the law — whoever holds the chair holds
+        the voice — so the chair is what makes someone the dispatcher.
+        No flag on anybody: a relief operator who takes the seat is the
+        dispatcher, and an empty chair isn't a condition anything tests
+        for, it just means nobody is here to do the job."""
+        try:
+            from world.radio import (
+                EMERGENCY_BAND, frequency_of, same_band, seated_base_station,
+            )
+            board = seated_base_station(self)
+            if board is None:
+                return None
+            return (board if same_band(frequency_of(board), EMERGENCY_BAND)
+                    else None)
+        except Exception:  # noqa: BLE001 — no board is a real answer
+            return None
 
     def _radio_voice_handle(self, speaker):
         """How this NPC knows the voice on the air — voice-only attribution
@@ -551,18 +568,20 @@ class LLMNpcMixin:
             return None
 
     def _dispatch_board_line(self):
-        """What the desk did with the traffic she is about to answer.
+        """What she just did with the call she is about to answer.
 
-        The console classifies and rolls steel synchronously as the
-        transmission is delivered, then stamps the board on whoever is
-        in the chair (`DispatchConsole._post_board`); her turn reaches
-        the model a beat later, so this is always the CURRENT call. It
-        is narration, never a decision — the units are already moving or
-        already declined by the time she reads it (the two-brain law)."""
-        board = self.ndb.dispatch_board
+        `_work_the_desk` judges and dispatches the moment the traffic
+        lands; her reply reaches the model a beat later, so this is
+        always the CURRENT call. Narration, never a decision — the units
+        are already moving or already declined by the time she reads it
+        (the two-brain law)."""
+        board = self.ndb.dispatch_verdict
         if not isinstance(board, dict):
             return None
-        self.ndb.dispatch_board = None          # one call, one board
+        # NOT cleared on read: the reply comes back after the prompt is
+        # built, and `filter_for_duty` needs to know whether the units
+        # claim she just wrote was TRUE. Every call overwrites it, so it
+        # can never go stale — one call, one verdict.
         units = board.get("units")
         sent = board.get("dispatched") or 0
         verdict = board.get("verdict")
@@ -854,6 +873,14 @@ class LLMNpcMixin:
         attempted — the command itself refuses without a device (§7.5),
         exactly as it would for a player."""
         words = " ".join(str(words).split()).strip().strip('"').strip()
+        if not words:
+            return False
+        # Whatever this NPC's post forbids saying — a dispatcher can't
+        # announce units that aren't rolling, however the words arrived.
+        # A module call, not a method: the job's discipline belongs to
+        # the souls layer, and the brain shouldn't grow a branch per job.
+        from world.souls.salience import filter_for_duty
+        words = filter_for_duty(self, words)
         if not words:
             return False
         from world.radio import active_transmit_radio

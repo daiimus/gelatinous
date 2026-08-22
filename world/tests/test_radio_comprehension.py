@@ -132,7 +132,8 @@ class TestHearRadio(TestCase):
         b._name_aliases = lambda: []
         # class constant — a bare MagicMock would swallow it into a Mock
         b._RADIO_BROADCAST_PHRASES = llmnpc.LLMNpcMixin._RADIO_BROADCAST_PHRASES
-        for m in ("_hear_radio", "_observe_action", "_mentions_self"):
+        for m in ("_hear_radio", "_observe_action", "_mentions_self",
+                  "_dispatch_board", "_on_emergency_band"):
             _bind(b, m)
         return b
 
@@ -259,12 +260,11 @@ class TestTheDeskAnswersInHerOwnVoice(TestCase):
     face-to-face turns know what has been on the band tonight.
     """
 
-    def _operator(self, dispatch=True):
+    def _operator(self, seated=True):
         b = MagicMock()
         b.key = "Petra"
         b.sdesc_keyword = None
         b.db.llm_driven = True
-        b.db.dispatch_operator = True if dispatch else None
         b.ndb.action_buffer = None
         b._is_npc_speaker = lambda s: False
         b._radio_voice_handle = lambda s: "a husky voice"
@@ -273,6 +273,9 @@ class TestTheDeskAnswersInHerOwnVoice(TestCase):
         for m in ("_hear_radio", "_observe_action", "_mentions_self",
                   "_on_emergency_band"):
             _bind(b, m)
+        # the chair IS the job: sitting the 911 board makes her the
+        # dispatcher, and standing up makes her a woman with a radio
+        b._dispatch_board = (lambda: MagicMock()) if seated else (lambda: None)
         return b
 
     def _hear(self, b, speech, band="911MHz"):
@@ -304,8 +307,10 @@ class TestTheDeskAnswersInHerOwnVoice(TestCase):
         if d.called:
             self.assertEqual(d.call_args[0][-1], "radio_ambient")
 
-    def test_the_branch_belongs_to_the_desk_not_to_npcs(self):
-        b = self._operator(dispatch=False)
+    def test_out_of_the_chair_she_is_not_the_desk(self):
+        """No flag anywhere: the seat is the whole qualification, so a
+        dispatcher who stood up answers like anybody else."""
+        b = self._operator(seated=False)
         d = self._hear(b, "shots fired on Volta Street")
         if d.called:
             self.assertEqual(d.call_args[0][-1], "radio_ambient")
