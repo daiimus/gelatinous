@@ -10,7 +10,7 @@ The counter never closes; the faces change.
 The vacancy watcher rides the souls heartbeat; a dead, deleted, or
 desouled slot-keeper stamps that slot vacant, and once the grace
 elapses the policy fills it: `resleave` rebuilds the slot's named
-keeper from their blueprint (estate restored minus the death gap, a
+keeper from their blueprint (imprint restored minus the death gap, a
 real premium debited), `successor` offers the slot to the nearest
 unemployed soul. No candidate: the slot stays dark and the venue limps
 on its other shifts — a visibly tired counter, not a closed one.
@@ -296,7 +296,7 @@ def _living_body(bp_key):
 
 def _try_resleave(post, room, shift, slot, now) -> bool:
     """The insurance pays out (spec §P3): rebuild this SLOT's named
-    keeper from their blueprint, restore the estate MINUS the death gap
+    keeper from their blueprint, restore the imprint MINUS the death gap
     (the last ~90 minutes never made the backup — murder stays a
     mystery), and debit the insurer's till a REAL premium paid to
     Maxwell. A till that can't afford it keeps earning — a cart can
@@ -358,12 +358,12 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
         provider.db.register = int(provider.db.register or 0) \
             + RESLEAVE_PREMIUM
 
-    # the estate returns, as of the last backup — same code path a
+    # the imprint returns, as of the last backup — same code path a
     # player's flash clone uses, so the two can never drift
-    from world import estate as estate_mod
+    from world import imprint as imprint_mod
     snap = (post.db.post_memory_snapshots or {}).get(shift) \
         or post.db.post_memory_snapshot
-    estate_mod.restore(npc, snap, now)
+    imprint_mod.restore(npc, snap, now)
 
     _install_keeper(npc, post, room, shift)
     from world.souls import thoughts as thoughts_mod
@@ -400,16 +400,16 @@ def _install_keeper(npc, post, room, shift):
     post.db.post_keeper = npc             # legacy mirror (shop gate et al)
 
 
-def _estate_of(character, now):
-    """The estate record — see `world/estate.py`, which players resleeve
+def _imprint_of(character, now):
+    """The imprint record — see `world/imprint.py`, which players resleeve
     through too. Kept as a thin alias so this module's callers read the
     same as they did before the extraction."""
-    from world import estate
+    from world import imprint
 
-    return estate.capture(character, now)
+    return imprint.capture(character, now)
 
 
-def snapshot_estate(character) -> bool:
+def snapshot_imprint(character) -> bool:
     """At death, a slot-keeper's memories become the post's property
     (reincarnation spec §2), keyed by their shift: episodic memories,
     dossiers, thoughts, and the people they knew by face and by voice,
@@ -422,11 +422,11 @@ def snapshot_estate(character) -> bool:
             if slot.get("keeper") != character:
                 continue
             snaps = dict(post.db.post_memory_snapshots or {})
-            snaps[shift] = _estate_of(character, _time.time())
+            snaps[shift] = _imprint_of(character, _time.time())
             post.db.post_memory_snapshots = snaps
             return True
         if post.db.post_keeper == character:     # legacy fallback
-            post.db.post_memory_snapshot = _estate_of(
+            post.db.post_memory_snapshot = _imprint_of(
                 character, _time.time())
             return True
     return False

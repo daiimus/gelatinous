@@ -2,7 +2,7 @@
 
 The sweep this module once tested is retired — there is one post
 registry now (world/souls/posts.py), and its coverage lives in
-test_souls_posts.py. What remains here is the estate snapshot the
+test_souls_posts.py. What remains here is the imprint the
 death path still calls, and successor construction.
 """
 

@@ -1,4 +1,4 @@
-"""The estate — what a person is, as of their last backup.
+"""The imprint — what a person is, as of their last backup.
 
 ONE implementation, used by every resleeve path. NPC post-holders
 (`world/souls/posts.py`) and player flash clones
@@ -42,7 +42,7 @@ GAP = 5400
 
 
 def capture(character, now=None):
-    """The estate of *character*, as of their last backup."""
+    """The imprint of *character*, as of their last backup."""
     from evennia.utils.dbserialize import deserialize
 
     now = time.time() if now is None else float(now)
@@ -51,7 +51,7 @@ def capture(character, now=None):
         """AttributeProperty — categorised, so `.db.x` would miss it."""
         try:
             return deserialize(getattr(character, name, None)) or default
-        except Exception:  # noqa: BLE001 — a partial estate beats none
+        except Exception:  # noqa: BLE001 — a partial imprint beats none
             return default
 
     def _db(name, default):
@@ -113,7 +113,7 @@ def cutoff_of(snap, fallback_now=None):
 
 
 def restore(body, snap, now=None):
-    """Rehydrate *body* from an estate record.
+    """Rehydrate *body* from an imprint record.
 
     Applies only what the record holds, so a player (no episodic brain)
     and a soul (episodic brain, dossiers, interiority) both come

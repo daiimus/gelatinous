@@ -29,8 +29,8 @@ from world.souls.posts import _install_keeper, _post_room, RESLEAVE_GAP
 now = time.time()
 
 
-def _restore_estate(npc, post, shift):
-    """Give back what the estate kept, minus the death gap."""
+def _restore_imprint(npc, post, shift):
+    """Give back what the imprint kept, minus the death gap."""
     snap = (post.db.post_memory_snapshots or {}).get(shift) \
         or post.db.post_memory_snapshot
     if not snap:
@@ -75,7 +75,7 @@ for post_ref, shift, body_ref, bp_key in CAST:
     else:
         origin = "existing body ensouled"
 
-    mems = _restore_estate(npc, post, shift)
+    mems = _restore_imprint(npc, post, shift)
     _install_keeper(npc, post, room, shift)
     print(f"BUILD 085: {npc.key} #{npc.id} — {origin}, {mems} memories "
           f"restored, {shift} shift at {room.key}")

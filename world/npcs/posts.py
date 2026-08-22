@@ -9,7 +9,7 @@ bodies this one rebuilt were never ensouled. Maxwell and Kaspar
 stood staffed by mannequins while the colony bled out (#2132).
 
 There is one registry now: world/souls/posts.py. What remains here
-is the estate snapshot the death path still calls.
+is the imprint snapshot the death path still calls.
 """
 
 
@@ -26,7 +26,7 @@ def _resolve(dbref):
 def snapshot_keeper_memory(npc):
     """§P3, the death-side half: called from the death machinery JUST BEFORE
     a dead NPC object is deleted. If the deceased kept a registered post,
-    their dossiers + episodic memory are copied onto the POST — the estate
+    their dossiers + episodic memory are copied onto the POST — the imprint
     the policy disposes of: ``resleave`` restores it (insurance covers the
     self), ``successor`` never reads it (the empty book is the point; the
     snapshot stays as GM-readable archaeology). Never raises — death must
