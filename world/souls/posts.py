@@ -274,6 +274,26 @@ def _archived_keeper(bp_key):
     return max(candidates, key=lambda o: o.id)
 
 
+def _living_body(bp_key):
+    """A living NPC already built from this blueprint, anywhere.
+
+    A blueprint names a PERSON — `doctor_marta` is Marta Okoye — so
+    there must never be two of them walking around. Petra's post had
+    the same blueprint on all three shifts, and the insurance duly
+    built her a body per shift (#2178).
+    """
+    from evennia.objects.models import ObjectDB
+
+    for obj in ObjectDB.objects.filter(
+            db_attributes__db_key="blueprint_key"):
+        if (obj.pk and obj.db.blueprint_key == bp_key
+                and obj.db.is_npc and not obj.db.is_dead
+                and obj.location is not None
+                and obj.location.id != 2):        # not archived in Limbo
+            return obj
+    return None
+
+
 def _try_resleave(post, room, shift, slot, now) -> bool:
     """The insurance pays out (spec §P3): rebuild this SLOT's named
     keeper from their blueprint, restore the estate MINUS the death gap
@@ -295,6 +315,15 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
     # sweep cannot restore it either and mints another copy (#2178).
     keeper = slot.get("keeper")
     if keeper is not None and keeper.pk and not keeper.db.is_dead:
+        return False
+
+    # And never a second body of somebody who already exists. The slot
+    # may name nobody at all — Petra's post carried her blueprint on
+    # all three shifts, so day held her while swing and night each
+    # built their own Petra. The slot stays dark instead, which is
+    # visible (post_vacant) rather than silent.
+    existing = _living_body(bp_key)
+    if existing is not None:
         return False
     till = post if post.db.register is not None else post.db.post_insurer
     if till is None or int(till.db.register or 0) < RESLEAVE_PREMIUM:
