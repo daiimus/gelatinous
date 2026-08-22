@@ -409,8 +409,22 @@ def create_flash_clone(account, old_character):
         char.hair_style = old_character.hair_style
     if old_character.sdesc_keyword is not None:
         char.sdesc_keyword = old_character.sdesc_keyword
-    # NOTE: recognition_memory is NOT inherited — flash clones have
-    # empty brains and recognise nobody.
+    # INHERIT: who they knew, as of their last backup (#2188).
+    # Restored through `world.estate`, the same function an NPC
+    # resleeve uses, so players and the cast can never drift into
+    # different rules about what survives a death. The gap still
+    # applies: the stranger met in the alley an hour before you died
+    # never made the backup — and may be why you died.
+    #
+    # The estate is stamped onto the body at death. Falling back to a
+    # live capture covers anyone who predates it, so no incarnation
+    # wakes emptier than it should.
+    try:
+        from world import estate as estate_mod
+        snap = old_character.db.estate or estate_mod.capture(old_character)
+        estate_mod.restore(char, snap)
+    except Exception:  # noqa: BLE001 — a blank brain beats a failed decant
+        pass
     
     # Debug: Verify sex was inherited correctly
     from world.combat.debug import get_splattercast
