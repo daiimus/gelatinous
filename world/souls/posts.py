@@ -358,12 +358,27 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
         provider.db.register = int(provider.db.register or 0) \
             + RESLEAVE_PREMIUM
 
-    # the estate returns, minus the gap
+    # the estate returns, as of the last backup
     snap = (post.db.post_memory_snapshots or {}).get(shift) \
         or post.db.post_memory_snapshot
     if snap:
-        died = float(snap.get("died_at") or now)
-        cutoff = died - RESLEAVE_GAP
+        # `taken_at` is when the backup was made. Records written before
+        # it existed derive it the old way. Everything after this line
+        # asks only "what did the backup hold", so an on-demand backup
+        # command changes nothing here.
+        cutoff = snap.get("taken_at")
+        if cutoff is None:
+            cutoff = float(snap.get("died_at") or now) - RESLEAVE_GAP
+        cutoff = float(cutoff)
+
+        # The body comes back as the same sleeve, so the people who
+        # knew that face still know it (IDENTITY_RECOGNITION_SPEC
+        # §Principles 1). A rebuild that mints a fresh uid returns a
+        # stranger wearing its own name — and its restored memories
+        # would greet people who no longer recognise it.
+        if snap.get("sleeve_uid") and npc.sleeve_uid != snap["sleeve_uid"]:
+            npc.sleeve_uid = snap["sleeve_uid"]
+
         npc.db.llm_memories = [
             r for r in (snap.get("memories") or [])
             if float(r.get("created", 0) or 0) < cutoff]
@@ -371,6 +386,12 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
         npc.db.soul_thoughts = [
             t for t in (snap.get("thoughts") or [])
             if float(t[0]) < cutoff]
+        # ...and who they knew, by face and by voice, on the same terms:
+        # anyone met only inside the gap was never backed up.
+        npc.recognition_memory = _remembered_before(
+            snap.get("recognition") or {}, cutoff)
+        npc.voice_memory = _remembered_before(
+            snap.get("voice") or {}, cutoff)
 
     _install_keeper(npc, post, room, shift)
     from world.souls import thoughts as thoughts_mod
@@ -407,38 +428,90 @@ def _install_keeper(npc, post, room, shift):
     post.db.post_keeper = npc             # legacy mirror (shop gate et al)
 
 
+def _remembered_before(entries, cutoff):
+    """Acquaintances that existed as of the backup.
+
+    Recognition and voice entries are keyed by Apparent UID and carry
+    an ISO ``first_seen``. Somebody first met INSIDE the gap was never
+    written to the backup, so they come back a stranger — which is the
+    whole point of the gap, applied to people instead of episodes.
+
+    An entry with no readable ``first_seen`` is kept: dropping a
+    relationship because its timestamp is malformed loses more than it
+    protects.
+    """
+    from datetime import datetime
+
+    out = {}
+    for uid, entry in (entries or {}).items():
+        if not isinstance(entry, dict):
+            continue
+        stamp = entry.get("first_seen")
+        try:
+            met = datetime.fromisoformat(str(stamp)).timestamp()
+        except (TypeError, ValueError):
+            out[uid] = entry
+            continue
+        if met < cutoff:
+            out[uid] = entry
+    return out
+
+
+def _estate_of(character, now):
+    """Everything a person is, as of their last backup.
+
+    ``taken_at`` is the field restore keys on, and the reason this is a
+    record rather than a pile of lists. Today it is derived from a
+    constant — the last ~90 minutes never made the backup. When backups
+    become something you go and DO at a terminal, ``taken_at`` becomes
+    the moment you pressed the button and nothing downstream changes:
+    the gap stops being a constant and starts being how long you left
+    it, which is a fact about the character rather than about the
+    system.
+
+    ``sleeve_uid`` rides along because recognition is a property of the
+    BODY, not the consciousness (IDENTITY_RECOGNITION_SPEC §Principles
+    1: "same body = same recognition across clones"). A rebuild that
+    mints a fresh one comes back a stranger wearing its own face.
+    """
+    from evennia.utils.dbserialize import deserialize
+
+    return {
+        "version": 1,
+        "name": character.key,
+        # the body to come back in — flash clones inherit it
+        "sleeve_uid": character.sleeve_uid,
+        "died_at": now,
+        # everything from here is what the backup HELD
+        "taken_at": now - RESLEAVE_GAP,
+        "memories": deserialize(character.db.llm_memories) or [],
+        "dossiers": deserialize(character.db.llm_dossiers) or {},
+        "thoughts": deserialize(character.db.soul_thoughts) or [],
+        # who they knew: by face, and by voice
+        "recognition": deserialize(character.recognition_memory) or {},
+        "voice": deserialize(character.voice_memory) or {},
+    }
+
+
 def snapshot_estate(character) -> bool:
     """At death, a slot-keeper's memories become the post's property
     (reincarnation spec §2), keyed by their shift: episodic memories,
-    dossiers, and thoughts copied onto the fixture BEFORE the corpse
-    machinery deletes the body — kept whether or not anyone ever pays
-    to restore them."""
+    dossiers, thoughts, and the people they knew by face and by voice,
+    copied onto the fixture BEFORE the corpse machinery deletes the
+    body — kept whether or not anyone ever pays to restore them."""
     import time as _time
-
-    from evennia.utils.dbserialize import deserialize
 
     for post in get_posts():
         for shift, slot in (post.db.post_slots or {}).items():
             if slot.get("keeper") != character:
                 continue
             snaps = dict(post.db.post_memory_snapshots or {})
-            snaps[shift] = {
-                "name": character.key,
-                "died_at": _time.time(),
-                "memories": deserialize(character.db.llm_memories) or [],
-                "dossiers": deserialize(character.db.llm_dossiers) or {},
-                "thoughts": deserialize(character.db.soul_thoughts) or [],
-            }
+            snaps[shift] = _estate_of(character, _time.time())
             post.db.post_memory_snapshots = snaps
             return True
         if post.db.post_keeper == character:     # legacy fallback
-            post.db.post_memory_snapshot = {
-                "name": character.key,
-                "died_at": _time.time(),
-                "memories": deserialize(character.db.llm_memories) or [],
-                "dossiers": deserialize(character.db.llm_dossiers) or {},
-                "thoughts": deserialize(character.db.soul_thoughts) or [],
-            }
+            post.db.post_memory_snapshot = _estate_of(
+                character, _time.time())
             return True
     return False
 
