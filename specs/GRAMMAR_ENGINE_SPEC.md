@@ -35,10 +35,22 @@ def conjugate_third_person(verb: str) -> str:
 
 **Irregular table** (checked first):
 
-| Base Form | Third Person |
+| Form | Third Person |
 |---|---|
-| be | is |
-| have | has |
+| be, is, are | is |
+| was, were | was |
+| have, has | has |
+| do, does | does |
+
+Keyed by *any* recognised form rather than the base alone, so an
+already-conjugated input returns itself instead of falling through to
+Rule 1 as "ises" or "hases". This table is derived from
+`_IRREGULAR_VERB_FORMS`, the same table `flex_verb` reads, so the two
+views cannot drift apart.
+
+**Modals** (`could`, `would`, `should`, `might`, `must`, `can`, `will`,
+`shall`, `may`, `ought`, `need`, `dare`) are returned unchanged — they
+take no -s in any person.
 
 **Regular rules** (applied in order after irregular table check):
 
@@ -49,12 +61,18 @@ def conjugate_third_person(verb: str) -> str:
 | 3 | Consonant + Y | Ends in [consonant] + y | try → tries, carry → carries, fly → flies |
 | 4 | Default | Everything else | lean → leans, run → runs, play → plays, say → says |
 
-The function checks the irregular table first, then applies regular rules
+The function checks modals, then the irregular table, then normalises an
+already-conjugated form back to its base, then applies the regular rules
 in order. Unknown words always receive regular treatment — the system never
 refuses to conjugate.
 
+**Conjugation is idempotent**: `conjugate_third_person("stands")` returns
+`"stands"`, not `"standses"`. The documented input is the base form, but
+the emote renderer passes verbs typed by players and `.stands back` is an
+ordinary thing to type, so a conjugated form must survive the round trip.
+
 The irregular table is intentionally minimal. English third-person singular
-present tense is remarkably regular — only `be` and `have` are truly
+present tense is remarkably regular — only `be`, `have` and `do` are truly
 irregular for this conjugation. The table is easily extensible if edge
 cases emerge.
 
