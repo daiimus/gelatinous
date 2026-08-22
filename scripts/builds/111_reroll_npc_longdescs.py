@@ -105,7 +105,12 @@ for obj_id in sorted(owner_ids):
         continue
 
     bodies += 1
-    species = body.attributes.get("species", category="identity") or "human"
+    # db.species (UNCATEGORISED) is the real one — every consumer reads
+    # it (`apply_random_flavor`, `_get_visible_body_descriptions`). The
+    # categorised `species` AttributeProperty is never written and always
+    # returns its "human" default, which is how synths and robots got
+    # human bodies on the first run (#2196).
+    species = body.db.species or "human"
     sex = getattr(body, "sex", None)
     build = getattr(body, "build", None)
     updated = dict(longdescs)
