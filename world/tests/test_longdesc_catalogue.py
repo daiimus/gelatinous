@@ -15,6 +15,16 @@ from world.mob_flavor import longdescs
 class TestBuildTagsAreHonoured(EvenniaCommandTest):
     LIMBS = ("arms", "hands", "thighs", "shins", "feet")
 
+    def test_the_tag_vocabulary_is_the_games_vocabulary(self):
+        """Spawners roll `world.identity.BUILDS`. If the two lists ever
+        drift, every tagged line silently becomes unreachable — the
+        failure is invisible, because selection just falls back to the
+        untagged pool and still returns prose."""
+        from world.identity import BUILDS
+        self.assertEqual(set(mob_flavor.BUILD_TAGS), set(BUILDS))
+        for build in BUILDS:
+            self.assertIn(build, mob_flavor.BUILD_NEIGHBOURS)
+
     def test_every_tag_is_a_real_build(self):
         for slot, entries in longdescs.LONGDESCS.items():
             for entry in entries:
@@ -111,3 +121,63 @@ class TestTheProseStaysRenderable(EvenniaCommandTest):
             lines = [e[1] if isinstance(e, tuple) else e for e in entries]
             self.assertEqual(len(lines), len(set(lines)),
                              f"{slot} repeats a line verbatim")
+
+
+class TestNothingIsAParaphrase(EvenniaCommandTest):
+    """Verbatim uniqueness is not enough.
+
+    Expanding a slot by rewording a line already in it looks like new
+    content and reads like a stutter. Caught 18 of exactly that in the
+    synth catalogue after a hand-written pass; the verbatim check
+    passed every one of them.
+    """
+
+    #: Jaccard overlap on content words. 0.5 flags a reworded twin
+    #: while leaving lines that merely share a subject alone.
+    THRESHOLD = 0.5
+
+    STOP = set(
+        "a an the of in on at to and or but with without that this it its "
+        "is are was were be been has have had no not never any all as for "
+        "from by into over under their them they there here which who "
+        "somebody someone something".split())
+
+    def _content_words(self, line):
+        stripped = re.sub(r"\{[^{}]*\}", " ", line.lower())
+        return {w for w in re.findall(r"[a-z]+", stripped)
+                if w not in self.STOP and len(w) > 2}
+
+    def _tables(self):
+        from world.mob_flavor import longdescs_rat, longdescs_robot
+        from world.mob_flavor import longdescs_synth
+        return {
+            "human": longdescs.LONGDESCS,
+            "synth": longdescs_synth.LONGDESCS_SYNTH,
+            "robot": longdescs_robot.LONGDESCS_ROBOT,
+            "rat": longdescs_rat.LONGDESCS_RAT,
+        }
+
+    def test_no_slot_contains_a_reworded_twin(self):
+        import itertools
+
+        offenders = []
+        for species, table in self._tables().items():
+            for slot, entries in table.items():
+                if isinstance(entries, dict):
+                    entries = [ln for v in entries.values() for ln in v]
+                lines = [e[1] if isinstance(e, tuple) else e
+                         for e in entries]
+                words = [self._content_words(ln) for ln in lines]
+                for (i, a), (j, b) in itertools.combinations(
+                        enumerate(words), 2):
+                    if not a or not b:
+                        continue
+                    overlap = len(a & b) / len(a | b)
+                    if overlap >= self.THRESHOLD:
+                        offenders.append(
+                            f"{species}/{slot} ({overlap:.2f}):\n"
+                            f"     {lines[i]}\n     {lines[j]}")
+        self.assertEqual(
+            offenders, [],
+            "these read as rewordings of each other:\n"
+            + "\n".join(offenders))
