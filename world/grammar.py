@@ -29,12 +29,27 @@ _engine = inflect.engine()
 # Verb Conjugation
 # ---------------------------------------------------------------------------
 
-#: Irregular verbs for third-person singular present tense.
-#: Checked before regular rules. Intentionally minimal — English 3rd-person
-#: singular is remarkably regular.  Extend this table if edge cases emerge.
+#: Closed table of irregular verb forms keyed by *any* recognised form.
+#: Maps to ``(third_person_singular, plural_or_base)``. Lets a braced verb be
+#: authored in either number and re-rendered to the needed one.
+#:
+#: This is the single source of truth for irregular verbs. ``flex_verb``
+#: reads it directly and ``IRREGULAR_VERBS`` is derived from it, so the
+#: two views cannot drift apart.
+_IRREGULAR_VERB_FORMS: dict[str, tuple[str, str]] = {
+    "is": ("is", "are"), "are": ("is", "are"), "be": ("is", "are"),
+    "was": ("was", "were"), "were": ("was", "were"),
+    "has": ("has", "have"), "have": ("has", "have"),
+    "does": ("does", "do"), "do": ("does", "do"),
+}
+
+#: Irregular verbs for third-person singular present tense, checked before
+#: the regular rules. Keyed by any recognised form rather than the base
+#: alone, so an already-conjugated input ("is", "has") returns itself
+#: instead of falling through to the sibilant rule as "ises" / "hases".
 IRREGULAR_VERBS: dict[str, str] = {
-    "be": "is",
-    "have": "has",
+    form: singular for form, (singular, _plural) in
+    _IRREGULAR_VERB_FORMS.items()
 }
 
 #: Modal verbs, which never take an -s. Without this the default rule
@@ -60,8 +75,14 @@ def conjugate_third_person(verb: str) -> str:
     3. Consonant + y → drop "y", append "ies"
     4. Default → append "s"
 
+    An already-conjugated form is idempotent rather than doubled:
+    "stands" returns "stands", not "standses". The emote renderer feeds
+    this function verbs typed by players, and ``.stands back`` is an
+    ordinary thing to type.
+
     Args:
-        verb: Base form of the verb (e.g. "lean", "catch", "try").
+        verb: Base form of the verb (e.g. "lean", "catch", "try"). An
+            already-conjugated form is accepted and normalised.
 
     Returns:
         Conjugated third-person singular form (e.g. "leans", "catches",
@@ -73,13 +94,23 @@ def conjugate_third_person(verb: str) -> str:
     if lower in MODALS:
         return verb
 
-    # Irregular table takes absolute precedence.
+    # Irregular table takes absolute precedence. Keyed by any form, so
+    # "is" and "has" short-circuit here rather than reaching Rule 1.
     if lower in IRREGULAR_VERBS:
         conjugated = IRREGULAR_VERBS[lower]
         # Preserve original capitalisation pattern.
         if verb[0].isupper():
             return conjugated.capitalize()
         return conjugated
+
+    # Normalise a third-person form back to its base before applying the
+    # rules, so the sibilant rule cannot fire on an -s that is already a
+    # conjugation. inflect leaves true base forms ("pass", "cross")
+    # alone and reduces conjugated ones ("stands" → "stand").
+    base = _engine.plural_verb(lower) or lower
+    if base != lower:
+        verb = _match_leading_case(base, verb)
+        lower = base
 
     # Rule 1: Sibilant endings → +es
     if (
@@ -177,15 +208,8 @@ def singularize_noun(noun: str) -> str:
 # clause verb that agrees with the person-pronoun ("They have ...") is left
 # un-braced — its agreement is a gender/pronoun concern, not a pair concern.
 
-#: Closed table of irregular verb forms keyed by *any* recognised form.
-#: Maps to ``(third_person_singular, plural_or_base)``. Lets a braced verb be
-#: authored in either number and re-rendered to the needed one.
-_IRREGULAR_VERB_FORMS: dict[str, tuple[str, str]] = {
-    "is": ("is", "are"), "are": ("is", "are"), "be": ("is", "are"),
-    "was": ("was", "were"), "were": ("was", "were"),
-    "has": ("has", "have"), "have": ("has", "have"),
-    "does": ("does", "do"), "do": ("does", "do"),
-}
+#: ``_IRREGULAR_VERB_FORMS`` (and the ``IRREGULAR_VERBS`` view derived
+#: from it) live at the top of the module, with the conjugator.
 
 #: Matches an indefinite article immediately leading a noun-token body, e.g.
 #: ``"an eye"`` or ``"A eye"``. The article is dropped on a plural render and
