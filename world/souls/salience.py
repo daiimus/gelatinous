@@ -103,11 +103,28 @@ def drain(soul, kind=None):
         return []
 
 
-def _think_now(soul):
-    """Force one decision beat outside the LOD cadence."""
+def _think_now(occupant):
+    """Attend to what just arrived.
+
+    Two things, and only the second is about souls:
+
+    1. **Do the post's work.** Whoever holds the post does the job —
+       that is the whole point, and it must not depend on what kind of
+       thing is holding it. A player working dispatch long-term is the
+       dispatcher.
+    2. **If this is a soul, also think.** Goal arbitration is the souls
+       engine's business; a player decides what to do next by deciding.
+    """
     try:
-        soul.ndb.soul_wake_pending = None      # the burst is over
-        if not soul.pk or soul.location is None:
+        occupant.ndb.soul_wake_pending = None      # the burst is over
+        if not occupant.pk or occupant.location is None:
+            return
+        work_stimuli(occupant)
+        try:
+            souled = bool(occupant.tags.get("soul", category="npc_role"))
+        except Exception:  # noqa: BLE001
+            souled = False
+        if not souled:
             return
         from world.gametime import colony_now
         from world.souls.engine import soul_hour, think
@@ -116,11 +133,11 @@ def _think_now(soul):
             hour_f = t.hour + t.minute / 60.0
         except Exception:  # noqa: BLE001
             hour_f = 12.0
-        think(soul, soul_hour(soul, hour_f))
+        think(occupant, soul_hour(occupant, hour_f))
     except Exception as err:  # noqa: BLE001
         try:
             from world.souls.jobs import fault
-            fault(soul, f"stimulus think crashed: {err}")
+            fault(occupant, f"stimulus attend crashed: {err}")
         except Exception:  # noqa: BLE001
             pass
 
@@ -130,10 +147,16 @@ def _think_now(soul):
 def sense_radio(listener, speech, speaker, frequency):
     """A transmission landed in earshot of *listener*.
 
-    Only the person SEATED at a base station on that band is working it
-    — `seated_base_station` is the law, whoever holds the chair holds
-    the voice. That is what makes an unmanned desk do nothing: not a
-    check for emptiness, just nobody there to hear it.
+    The person SEATED at a base station on that band is working it, and
+    that is the ONLY qualification. `seated_base_station` is the law —
+    whoever holds the chair holds the voice — and the chair does not
+    care what kind of thing is sitting in it. A player who takes the
+    dispatch desk holds the post and does the job, through the same
+    devices and the same commands as anyone else; there is no NPC path
+    and no player path, because the post is the job either way.
+
+    That is also what makes an unmanned desk do nothing: not a check
+    for emptiness, just nobody there to hear it.
 
     Loop guard: NPC- and device-sourced traffic never raises work.
     Witness reports and unit acks already carry their own dispatch;
@@ -141,8 +164,6 @@ def sense_radio(listener, speech, speaker, frequency):
     """
     try:
         if listener is None or speaker is None or not speech:
-            return False
-        if not listener.tags.get("soul", category="npc_role"):
             return False
         db = getattr(speaker, "db", None)
         if (getattr(db, "is_npc", None) is True
@@ -193,16 +214,20 @@ def filter_for_duty(soul, words):
 
 # ---------------------------------------------------------- work handlers
 
-def work_stimuli(soul):
-    """Do the work waiting in *soul*'s inbox, as part of its shift.
+def work_stimuli(occupant):
+    """Do the work waiting in *occupant*'s inbox.
 
-    Called from the ``work`` step: answering the radio IS a dispatcher's
-    duty, not an interruption of it, so the stimulus doesn't need a goal
-    of its own — it just made her think now instead of in three minutes.
+    Run on the wake for whoever holds the post, and again from the
+    ``work`` step as the beat-path backstop for souls. Answering the
+    radio IS the dispatcher's duty rather than an interruption of it,
+    so the stimulus needs no goal of its own — it only made the work
+    happen now instead of in three minutes.
 
-    Deterministic throughout. The souls layer decides; the model, if
-    there is one, only says (the two-brain law).
+    Deterministic throughout. This layer decides; the model, if the
+    occupant has one, only says (the two-brain law). A player has no
+    model and needs none — the job is the same job.
     """
+    soul = occupant
     handled = 0
     for stim in drain(soul, "radio_traffic"):
         try:
