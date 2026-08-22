@@ -40,10 +40,16 @@ from evennia.typeclasses.attributes import Attribute
 from world import mob_flavor
 from world.anatomy import get_species_pair_keys
 
-#: Where the pre-curation catalogue was staged for comparison. Absent
-#: on a normal run — then only the CURRENT catalogue is recognised,
-#: which is the conservative direction (fewer rewrites, never more).
-LEGACY_DIR = "/tmp/oldcat"
+#: Where historical catalogues are staged for comparison. A line only
+#: counts as "generated" if it appears in one of these or in the
+#: catalogue shipping now — that is what keeps authored prose safe.
+#:
+#: Staged INSIDE the game dir on purpose: `/tmp/oldcat` written by
+#: `docker cp` lands as 0700 owned by the host uid, and the server runs
+#: as another user, so the glob silently returned nothing and 348 limb
+#: slots kept their pre-curation template text while the script
+#: reported success (#2200).
+LEGACY_DIRS = ("/usr/src/game/scripts/_oldcat", "/tmp/oldcat")
 
 
 def _flatten(table):
@@ -61,13 +67,29 @@ def _known_lines():
     known = set()
     for table in mob_flavor._LONGDESCS_BY_SPECIES.values():
         known |= _flatten(table)
-    for path in sorted(glob.glob(os.path.join(LEGACY_DIR, "*.py"))):
+    staged = []
+    for directory in LEGACY_DIRS:
+        try:
+            staged.extend(sorted(glob.glob(os.path.join(directory, "*.py"))))
+        except OSError:
+            continue
+    if not staged:
+        print("BUILD 111: WARNING — no historical catalogue staged. Only "
+              "the CURRENT catalogue is recognised, so anything generated "
+              "by an older one will be treated as authored and LEFT.")
+    for path in staged:
         try:
             tree = ast.parse(open(path).read())
         except Exception:  # noqa: BLE001 — a bad staged file is not fatal
             continue
         for node in tree.body:
-            if not isinstance(node, ast.Assign):
+            # AnnAssign too: the catalogues declare
+            # `LONGDESCS: dict[str, list[str]] = {...}`, which is NOT an
+            # ast.Assign — missing that made legacy loading a silent
+            # no-op independently of the permissions problem (#2200).
+            if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+                continue
+            if node.value is None:
                 continue
             try:
                 value = ast.literal_eval(node.value)
@@ -80,8 +102,14 @@ def _known_lines():
     return known
 
 
+from world import mob_flavor as _mf
+_current = set()
+for _t in _mf._LONGDESCS_BY_SPECIES.values():
+    _current |= _flatten(_t)
 KNOWN = _known_lines()
-print(f"BUILD 111: {len(KNOWN)} catalogue lines recognised as generated")
+print(f"BUILD 111: {len(_current)} current catalogue lines, "
+      f"{len(KNOWN) - len(_current)} historical")
+print(f"BUILD 111: {len(KNOWN)} lines recognised as generated")
 
 owner_ids = set(
     Attribute.objects.filter(
