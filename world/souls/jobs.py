@@ -558,23 +558,20 @@ def step_job(soul):
             return False
         # holding the post IS the work; wages accrue per heartbeat in the
         # engine (LOD-independent) and the schedule releases the job
-        if soul.db.soul_role == "medic":
-            try:
-                from world.director.medical import restock_medic
-                restock_medic(soul)   # par-level loose supplies at post
-            except Exception:  # noqa: BLE001 — restock is best-effort
-                pass
-        # Whatever the world handed this soul while it stood here — a
-        # call on the board it is sitting at, and in time anything else
-        # a sensor raises. Answering the radio IS the dispatcher's duty,
-        # not an interruption of it, so the work happens inside the shift
-        # rather than as a goal of its own (SOULS_SALIENCE_SPEC §3.4).
-        # `restock_medic` above is the same shape and should fold in
-        # here; that's a behaviour-neutral refactor of its own.
+        # Everything the post asks of whoever holds it: the role's
+        # standing upkeep (a medic's par-level restock) and whatever the
+        # world put in the inbox since the last beat (a call on the board
+        # they are sitting at). Both are the job — answering the radio IS
+        # the dispatcher's duty rather than an interruption of it, so it
+        # happens inside the shift (SOULS_SALIENCE_SPEC §3.4).
+        #
+        # The medic restock used to be an `if soul.db.soul_role ==
+        # "medic"` branch right here, the one hard-coded exception in an
+        # otherwise generic loop (#2236).
         try:
             from world.souls import salience
-            salience.work_stimuli(soul)
-        except Exception:  # noqa: BLE001 — the shift outlives one bad call
+            salience.do_post_work(soul)
+        except Exception:  # noqa: BLE001 — the shift outlives one bad beat
             pass
         # you can SEE who is working: the post's own placement line goes
         # on while the shift is held, so a room tells you who is behind
