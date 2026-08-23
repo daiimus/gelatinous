@@ -85,6 +85,34 @@ def retrieve(query_vec, records, k=3, subject=None, now=None):
     return hits
 
 
+def remember(records, text, embedding, subject="", now=None):
+    """Add *text* to *records* — or, if it is already remembered, remember
+    it HARDER.
+
+    The same thing happening twice is one memory recalled twice, not two
+    memories. Appending blindly made an NPC's recollection into a tally:
+    a dispatcher stuck in a travel fault accumulated 29 identical copies
+    of "nothing to eat I could reach or afford", which is `cap_per_subject`
+    minus one — so prune spent almost the whole budget on one sentence and
+    genuinely forgot everything else to keep it (#2242).
+
+    Recall bumps `last_seen`/`uses`, which is exactly what `salience`
+    rewards, so a thing that keeps happening becomes a strong memory
+    rather than a crowd of weak identical ones.
+    """
+    now = time.time() if now is None else now
+    key = " ".join(str(text or "").split())
+    subject = subject or ""
+    for rec in records:
+        if (rec.get("subject", "") == subject
+                and " ".join(str(rec.get("text") or "").split()) == key):
+            rec["last_seen"] = now
+            rec["uses"] = rec.get("uses", 0) + 1
+            return prune(records, now=now)
+    records.append(make_record(text, embedding, subject=subject, now=now))
+    return prune(records, now=now)
+
+
 def prune(records, cap_per_subject=DEFAULT_CAP_PER_SUBJECT, now=None):
     """Forgetting: keep the most-salient ``cap_per_subject`` records per subject."""
     now = time.time() if now is None else now
