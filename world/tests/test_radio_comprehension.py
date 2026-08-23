@@ -286,12 +286,13 @@ class TestTheDeskAnswersInHerOwnVoice(TestCase):
                            "radio_elected": True})
         return d
 
-    def test_she_answers_traffic_that_never_named_her(self):
-        """No address gate on 911 — this is the whole point of a desk."""
+    def test_hearing_the_desk_does_not_schedule_a_reply(self):
+        """No address gate on 911 — everything on it is hers. But the
+        answer is caused by the VERDICT, not by a timer racing it, so
+        nothing is scheduled from hearing alone (#2238)."""
         b = self._operator()
         d = self._hear(b, "shots fired on Volta Street")
-        d.assert_called_once()
-        self.assertEqual(d.call_args[0][-1], "radio")
+        d.assert_not_called()
 
     def test_she_still_hears_what_she_answers(self):
         b = self._operator()

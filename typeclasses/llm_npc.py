@@ -154,8 +154,12 @@ class LLMNpcMixin:
         # happens to be this typeclass (`world/souls/salience.py`,
         # #2228). This is only the voice.
         if self._dispatch_board() is not None and self._on_emergency_band(freq):
+            # Heard, but NOT answered from here. The souls layer judges
+            # the call first and calls `answer_traffic` once it knows
+            # what it did, so she never speaks before she has decided
+            # (#2238). Answering on a timer beside the judging was a
+            # race she lost whenever the words needed the model.
             self._observe_action(speaker, overheard)
-            delay(1.5, self._try_llm_reply, speech, speaker, "radio")
             return
         low = speech.lower()
         broadcast = any(p in low for p in self._RADIO_BROADCAST_PHRASES)
@@ -181,6 +185,15 @@ class LLMNpcMixin:
             return bool(same_band(freq, EMERGENCY_BAND))
         except Exception:  # noqa: BLE001 — a band check never breaks hearing
             return False
+
+    def answer_traffic(self, speech, speaker):
+        """Take a radio turn about traffic the desk has just judged.
+
+        Called by the souls layer from the verdict callback, so the
+        board is already stamped and `_dispatch_board_line` has
+        something true to tell the model. A short beat so the reply
+        doesn't tread on the transmission it answers."""
+        delay(1.0, self._try_llm_reply, speech, speaker, "radio")
 
     def _dispatch_board(self):
         """The emergency board this NPC is SITTING at, or None.

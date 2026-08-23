@@ -48,18 +48,49 @@ class _DeskCase(EvenniaCommandTest):
 
 
 class TestSheTakesTheBand(_DeskCase):
-    def test_ordinary_traffic_is_her_traffic(self):
-        """No address gate on 911: everything said on it is dispatch's.
-        Un-addressed traffic used to fall to the ambient volunteer, which
-        answers rarely and at random — not a dispatcher."""
+    def test_hearing_does_not_answer_on_a_timer(self):
+        """The reply is CAUSED by the verdict, not raced against it.
+
+        It used to be scheduled here on a flat 1.5s beat, which was
+        grounded only when the deterministic classifier happened to
+        match; on the model path the verdict landed at ~4s, after the
+        prompt was built, and she asked "are you reporting an assault?"
+        with two units already rolling (#2238)."""
         replied = self._hear("shots fired on Volta Street")
+        self.assertFalse(replied.called)
+
+    def test_the_traffic_is_still_heard(self):
+        """Observed either way — the band colours her next turn."""
+        self._hear("shots fired on Volta Street")
+        self.assertTrue(self.petra.ndb.action_buffer)
+
+    def test_answering_takes_a_radio_turn(self):
+        """What the souls layer calls once it knows what it did."""
+        with mock.patch.object(LLMNpc, "_try_llm_reply") as replied, \
+             mock.patch("typeclasses.llm_npc.delay",
+                        side_effect=lambda _t, fn, *a, **kw: fn(*a, **kw)):
+            self.petra.answer_traffic("shots fired", self.char1)
         self.assertTrue(replied.called)
         self.assertEqual(replied.call_args[0][2], "radio")
 
-    def test_a_hail_is_her_traffic_too(self):
-        replied = self._hear("anyone there?")
-        self.assertTrue(replied.called)
-        self.assertEqual(replied.call_args[0][2], "radio")
+    def test_she_knows_what_she_did_before_she_speaks(self):
+        """The regression that started this: whatever order the verdict
+        arrives in, the board is stamped before she opens her mouth."""
+        from world.souls import salience
+        seen = {}
+        self.petra.answer_traffic = lambda speech, speaker: seen.update(
+            board=self.petra.ndb.dispatch_verdict)
+        self.petra.ndb.soul_stimuli = [
+            {"kind": "radio_traffic", "band": 2,
+             "payload": {"speech": "shots fired", "speaker": self.char1,
+                         "board": None}}]
+        with mock.patch("world.director.radio_report.consider_radio_report",
+                        return_value=False), \
+             mock.patch("world.director.dispatch.units_available",
+                        return_value=2):
+            salience.work_stimuli(self.petra)
+        self.assertIsNotNone(seen.get("board"))
+        self.assertEqual(seen["board"]["units"], 2)
 
     def test_another_band_is_not_the_desk(self):
         """Off-shift, carrying a radio on the house band, she is just a
@@ -70,7 +101,8 @@ class TestSheTakesTheBand(_DeskCase):
 
     def test_out_of_the_chair_she_is_not_the_desk(self):
         """No flag on anybody — the seat is the whole qualification, so
-        a dispatcher who stood up answers like anybody else."""
+        a dispatcher who stood up falls back to the ordinary NPC rules
+        and answers on a timer like everyone else."""
         self.seated = False
         replied = self._hear("shots fired on Volta Street")
         if replied.called:

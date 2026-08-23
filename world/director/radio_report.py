@@ -178,6 +178,31 @@ INCIDENT_WORDS = (
     )),
 )
 
+#: EVERY category name triggers its own category, always.
+#:
+#: The colloquial lists above are how people shout when they're
+#: frightened. The category name is how they shout when they're being
+#: formal — and the two drifted apart silently: the assault list held
+#: `stabbed`, `mugged` and `shot` but not the word "assault", so
+#: "Being Assaulted on Pessoa Street!" fell straight through the
+#: deterministic layer to the model (#2238).
+#:
+#: Derived rather than hand-maintained, because a hand-maintained copy
+#: of an enum is a copy that drifts. Inflections are curated per kind —
+#: "fire" + "ed" is "fired", which is a different thing entirely.
+_FORMAL_WORDS = {
+    "assault": ("assault", "assaulted", "assaulting"),
+    "fire": ("fire",),
+    "medical": ("medical", "emergency"),
+    "theft": ("theft",),
+    "disturbance": ("disturbance", "disturbing"),
+}
+
+INCIDENT_WORDS = tuple(
+    (kind, tuple(dict.fromkeys(words + _FORMAL_WORDS.get(kind, ()))))
+    for kind, words in INCIDENT_WORDS
+)
+
 _INCIDENT_PATTERNS = tuple(
     (kind, re.compile(r"\b(?:%s)\b" % "|".join(
         re.escape(w) for w in sorted(words, key=len, reverse=True)), re.I))
