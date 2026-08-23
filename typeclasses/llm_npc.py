@@ -608,13 +608,16 @@ class LLMNpcMixin:
                     f"sentence before you move them off the channel.")
         where = str(verdict.get("location_text") or "").strip()
         place = f" at {where}" if where else ""
-        kind = verdict.get("incident_type")
+        # `a assault` went out on the air in a game that ships a grammar
+        # engine (#2240). Articles are decided, not guessed.
+        from world.grammar import with_article
+        kind = with_article(str(verdict.get("incident_type") or "incident"))
         if sent:
-            return (f"{line} You logged a {kind} report{place} and "
+            return (f"{line} You logged {kind} report{place} and "
                     f"{sent} unit(s) are already rolling on it — they "
                     f"announce themselves on this band, so acknowledge "
                     f"the caller and do NOT announce them yourself.")
-        return (f"{line} You logged a {kind} report{place}, but no new "
+        return (f"{line} You logged {kind} report{place}, but no new "
                 f"units went out — the scene is covered or there is "
                 f"nobody free. Do not claim anyone is responding.")
 
@@ -717,7 +720,8 @@ class LLMNpcMixin:
         # auditable — the sidecar log sees the prompt but not this step.
         from world.llm.decision_log import decision_log_enabled, log_decision
         if decision_log_enabled():
-            log_decision(self, speaker_name, line, turn, rendered)
+            log_decision(self, speaker_name, line, turn, rendered,
+                         messages=messages)
         self._handle_action_tool(tool, arg, patron)
         if patron is not None:            # broadcasts have no caller
             self._remember_turn(patron, line, speaker_name, turn["speech"],
