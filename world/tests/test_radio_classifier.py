@@ -130,6 +130,51 @@ class TestWordAnchoring(EvenniaCommandTest):
             self.assertTrue(pattern.pattern.endswith(r"\b"), kind)
 
 
+class TestNamingAPlace(EvenniaCommandTest):
+    """A caller who names somewhere must be believed.
+
+    The matcher demanded TWO tokens of a room's name appear in the
+    sentence, as a guard against "in the street" pinning a street. That
+    counted instead of reading, and swallowed every single-word venue in
+    the colony. Live: "someone's stabbing a man outside the Kettle" put
+    two units on the caller's own street (#2240).
+    """
+
+    def _rooms(self):
+        class _R:
+            def __init__(self, rid, key):
+                self.id, self.key = rid, key
+        return [_R(1, "The Kettle - Entrance"), _R(2, "The Kettle - Bath Hall"),
+                _R(3, "Volta Street"), _R(4, "Pessoa Street"),
+                _R(5, "Ramirez Provisions & Sundries")]
+
+    def _where(self, said):
+        v = classify_report(said, rooms=self._rooms())
+        return v["location_text"] if v else None
+
+    def test_a_one_word_venue_is_a_place(self):
+        self.assertEqual(self._where("someone's stabbing a man outside "
+                                     "the Kettle"), "The Kettle - Entrance")
+
+    def test_a_named_street_is_a_place(self):
+        self.assertEqual(self._where("shots fired on Volta Street"),
+                         "Volta Street")
+
+    def test_a_generic_word_alone_is_not_a_place(self):
+        """People say "street" constantly; it describes, it doesn't name."""
+        self.assertEqual(self._where("shots fired in the street"), "")
+
+    def test_naming_nowhere_stays_empty(self):
+        """Downstream falls back to the caller's own room — people do
+        report what is in front of them."""
+        self.assertEqual(self._where("someone's bleeding"), "")
+
+    def test_the_front_door_wins_over_the_boiler_room(self):
+        """Among rooms sharing a name, the one most fully accounted for."""
+        self.assertEqual(self._where("trouble at the Kettle"),
+                         "The Kettle - Entrance")
+
+
 class TestTheVerdictShape(EvenniaCommandTest):
     """It must be the SAME shape the model emits, so `apply_verdict`
     consumes it unchanged — that is what keeps one downstream."""

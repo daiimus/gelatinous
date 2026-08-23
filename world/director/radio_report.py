@@ -236,15 +236,36 @@ def classify_report(speech, rooms=None):
     return None
 
 
+#: Words that describe a place without identifying one. "Street" is in
+#: every street, "hall" in half the buildings; hearing one tells you
+#: nothing about WHERE. Everything else in a room's name is a name.
+_GENERIC_PLACE_WORDS = frozenset({
+    "street", "avenue", "road", "alley", "lane", "way", "square",
+    "room", "hall", "entrance", "lobby", "corridor", "landing",
+    "deck", "level", "floor", "rooftop", "roof", "yard", "gate",
+    "north", "south", "east", "west", "upper", "lower", "inner",
+    "outer", "main", "old", "new", "the", "and", "of", "at",
+})
+
+
 def _room_named_in(speech, rooms=None):
     """The name of a room the caller mentioned, or "".
 
     The inverse of `resolve_location`: that asks how much of the
     CALLER'S text a room name covers, which cannot work on a whole
-    sentence. This asks how much of a ROOM'S NAME appears in the
-    sentence, then hands the winning name back so `resolve_location`
-    can match it exactly. An unnamed place resolves to the caller's own
-    room downstream — people report what is in front of them.
+    sentence — "stabbing at the Kettle" is half incident and half
+    address, so coverage never clears its bar. This asks the other
+    question: does the sentence contain a word that NAMES somewhere?
+
+    It used to demand two matching tokens, as a guard against "in the
+    street" pinning a street. That guard was counting instead of
+    reading, and it silently swallowed every single-word venue in the
+    colony — the Kettle, the Halcyon, Ramirez. A caller named the
+    Kettle, the verdict carried no location, and two units rolled to
+    the caller's own street instead (#2240).
+
+    The rule is about meaning, not arithmetic: at least one word that
+    IDENTIFIES a place, rather than merely describing one.
     """
     said = set(_tokens(speech))
     if not said:
@@ -256,12 +277,14 @@ def _room_named_in(speech, rooms=None):
             continue
         nameset = set(name)
         hit = nameset & said
-        # most of the room's name has to be in the sentence, and a
-        # single common word ("street") is never enough on its own
+        if not hit - _GENERIC_PLACE_WORDS:
+            continue          # only generic words matched: describes, names nothing
+        # among rooms sharing a name, prefer the one whose name is most
+        # fully accounted for — "the Kettle" is the Kettle's front door,
+        # not its boiler room — then the lowest id, deterministically.
         share = len(hit) / len(nameset)
-        if share <= 0.5 or len(hit) < 2:
-            continue
-        score = (share, len(hit), -(getattr(room, "id", 0) or 0))
+        score = (len(hit - _GENERIC_PLACE_WORDS), share,
+                 -(getattr(room, "id", 0) or 0))
         if best is None or score > best[0]:
             best = (score, getattr(room, "key", ""))
     return best[1] if best else ""

@@ -28,10 +28,30 @@ def _logpath():
     return os.path.join(getattr(settings, "LOG_DIR", "."), "llm_decisions.log")
 
 
-def log_decision(npc, speaker_name, line, raw_turn, rendered):
-    """Append one turn: what the NPC heard, the raw model decision, and the
-    final rendered channels. ``raw_turn`` is the parsed model dict; ``rendered``
-    is ``{"action", "speech", "thought"}`` as they left the render (None where a
+def _grounding_of(messages):
+    """The STATE block the model was handed, if any.
+
+    Without this the log answers "what did it say" but not "what was it
+    told", which is the harder half of every tuning question — a
+    dispatcher asking "are you reporting an assault?" with two units
+    already rolling is either an ungrounded prompt or a model ignoring
+    a grounded one, and the raw output alone cannot tell you which."""
+    try:
+        for msg in reversed(list(messages or ())):
+            content = (msg or {}).get("content") or ""
+            if "STATE —" in content:
+                block = content.split("STATE —", 1)[1]
+                return block.split("\n\n", 1)[0].strip()
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def log_decision(npc, speaker_name, line, raw_turn, rendered, messages=None):
+    """Append one turn: what the NPC heard, what it was TOLD about its own
+    state, the raw model decision, and the final rendered channels.
+    ``raw_turn`` is the parsed model dict; ``rendered`` is
+    ``{"action", "speech", "thought"}`` as they left the render (None where a
     channel was empty or woven into another)."""
     if not decision_log_enabled():
         return
@@ -43,6 +63,7 @@ def log_decision(npc, speaker_name, line, raw_turn, rendered):
             "room": room,
             "heard_from": speaker_name,
             "heard": line,
+            "state": _grounding_of(messages),
             "raw": {k: (raw_turn or {}).get(k) for k in
                     ("speech", "action", "thought", "tool", "tool_argument")},
             "rendered": rendered,
