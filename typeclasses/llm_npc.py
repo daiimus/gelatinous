@@ -534,9 +534,10 @@ class LLMNpcMixin:
         subject = subject or self._memory_subject(patron)
 
         def _save(vec):
-            recs = self._load_memories()
-            recs.append(mem.make_record(text, vec, subject=subject))
-            self.db.llm_memories = mem.prune(recs)
+            # `remember`, not append-and-prune: a repeat strengthens the
+            # memory it already has instead of cloning it (#2242).
+            self.db.llm_memories = mem.remember(
+                self._load_memories(), text, vec, subject=subject)
 
         request_embedding(text, on_done=_save, on_fail=self._llm_silent)
 
