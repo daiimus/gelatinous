@@ -50,11 +50,24 @@ class TestRegistryIntegrity(TestCase):
 
     def test_roster_complete(self):
         # the cast, excluding machinery fixtures like the drill dummy
-        self.assertEqual(len(_cast()), 12)
+        self.assertEqual(len(_cast()), 14)
         for expected in ("butcher_ottilie", "bartender_del", "doctor_marta",
                          "companion_vesper", "dispatch_petra",
-                         "tobacconist_bellows"):
+                         "tobacconist_bellows",
+                         # the emergency board's other two shifts (#2233):
+                         # it answered 8 hours in 24 and was dark for 16
+                         "dispatch_kiro", "dispatch_ines"):
             self.assertIn(expected, BLUEPRINTS)
+
+    def test_every_dispatcher_carries_the_desk_register(self):
+        """All three keepers sit the same chair, so all three inherit the
+        channel discipline — units announce themselves, and nobody
+        promises to leave the desk. Petra's seed said `colonist` after
+        the register moved, so a resleeve would have rebuilt her as a
+        civilian with no radio tool at all."""
+        for key in ("dispatch_petra", "dispatch_kiro", "dispatch_ines"):
+            self.assertEqual(
+                BLUEPRINTS[key]["persona"]["archetype"], "dispatcher", key)
 
 
 @override_settings(PROTOTYPE_MODULES=["world.prototypes"])
