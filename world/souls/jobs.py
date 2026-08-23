@@ -82,6 +82,14 @@ def _post_placement(soul):
     return getattr(room.db, "post_work_place", None)
 
 
+def _uses_left(item):
+    """Bites remaining in a consumable, or None if it doesn't say."""
+    try:
+        return item.db.uses_left
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _post_seat(soul):
     """The chair this post's work is done FROM, if it declared one
     (``post_work_seat`` on the furniture).
@@ -215,7 +223,25 @@ def step_job(soul):
         if bites > 12:
             fault(soul, f"{edible.key} never finishes (uses_left stuck?)")
             return False
-        soul.execute_cmd(f"eat {edible.key.split()[-1]}")
+        # Say WHICH one, the way a player has to. `eat stew` is fine
+        # until you carry a second bowl; then every attempt gets
+        # "Multiple items match 'stew'." and the meal never happens.
+        # Souls bought a bowl per hunger pang and ate none of them,
+        # twenty-three deep — which is also where the memory spam and
+        # the permanent crowd at the counter came from (#2244).
+        #
+        # The command already disambiguates ("first stew", "2nd mug"):
+        # the souls layer simply never used the syntax it offers. No
+        # auto-picking — one of those bowls could be poisoned, and
+        # choosing for the eater is not the parser's business.
+        before = _uses_left(edible)
+        soul.execute_cmd(f"eat first {edible.key.split()[-1]}")
+        # Only count a bite that actually happened. Counting the attempt
+        # made twelve refusals look exactly like twelve mouthfuls, and
+        # sent the fault off accusing the food's nutrition data.
+        if _uses_left(edible) == before and edible.pk:
+            fault(soul, f"could not eat {edible.key}")
+            return False
         step["bites"] = bites
         soul.db.soul_job = job
         return True

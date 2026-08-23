@@ -2244,6 +2244,22 @@ def build_npc(blueprint_key, location):
         merged = dict(npc.longdesc or {})
         merged.update(bp["longdesc"])
         npc.longdesc = merged
+    # Then give them the rest of a body. The random-civilian spawner has
+    # always done this (`world/souls/population.py`); `build_npc` never
+    # did, so the NAMED cast — the people players actually look at —
+    # shipped with only the slots their blueprint happened to author.
+    # Blueprints written as `BLUEPRINTS["x"] = {...}` mostly author none
+    # at all, so Auntie Lin and all three dispatchers had no body below
+    # the neck (#2245).
+    #
+    # Safe to run unconditionally: it fills only what is EMPTY, never
+    # overwrites an authored line, and never touches the short desc —
+    # a face stays a face, and the blueprint's prose always wins.
+    try:
+        from world.mob_flavor import fill_missing_longdescs
+        fill_missing_longdescs(npc)
+    except Exception:  # noqa: BLE001 — a bare body beats a failed build
+        pass
     if bp.get("look_place"):
         npc.look_place = bp["look_place"]
     if bp.get("temp_place"):
