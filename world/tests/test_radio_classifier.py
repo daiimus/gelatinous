@@ -64,6 +64,43 @@ class TestItReadsACallForHelp(EvenniaCommandTest):
         self.assertIsNone(classify_report(None, rooms=[]))
 
 
+class TestTheListNeverDriftsFromTheCategories(EvenniaCommandTest):
+    """A hand-written word list beside an enum is a copy that drifts.
+
+    It did: the assault list held `stabbed`, `mugged` and `shot` but not
+    the word "assault", so a player shouting "Being Assaulted on Pessoa
+    Street!" fell through the deterministic layer to the model — and
+    then answered ungrounded, because the model verdict lands after the
+    reply prompt is built (#2238).
+    """
+
+    def test_every_category_name_triggers_its_own_category(self):
+        from world.director.radio_report import REPORTED_EVENTS
+        for kind in REPORTED_EVENTS:
+            verdict = classify_report(f"{kind} on Volta Street", rooms=[])
+            self.assertIsNotNone(verdict, kind)
+            self.assertEqual(verdict["incident_type"], kind, kind)
+
+    def test_the_phrase_that_started_it(self):
+        for said in ("Being Assaulted on Pessoa Street!",
+                     "I'm being assaulted",
+                     "assault in progress"):
+            verdict = classify_report(said, rooms=[])
+            self.assertIsNotNone(verdict, said)
+            self.assertEqual(verdict["incident_type"], "assault", said)
+
+    def test_the_colloquial_words_still_work(self):
+        """Derived formality must not displace how people actually
+        shout — both lists live side by side."""
+        for said, kind in (("he attacked me", "assault"),
+                           ("I'm being mugged", "assault"),
+                           ("smoke in the stairwell", "fire"),
+                           ("she's bleeding out", "medical"),
+                           ("they jacked my kit", "theft")):
+            verdict = classify_report(said, rooms=[])
+            self.assertEqual(verdict["incident_type"], kind, said)
+
+
 class TestWordAnchoring(EvenniaCommandTest):
     """Substring matching has bitten this codebase three times —
     "brass-toed" -> bra, "collarless" -> collar, "dress shirt" -> dress.

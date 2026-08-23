@@ -140,15 +140,33 @@ class TestConsiderGuards(TestCase):
         req.assert_not_called()
 
     def test_player_traffic_classifies(self):
+        """Traffic the DETERMINISTIC layer can't read goes to the model.
+        (It has to be genuinely unreadable now — "help, assault!" is
+        plain code's business since #2238.)"""
         speaker = MagicMock()
         speaker.db.is_npc = None
         speaker.db.llm_driven = None
         speaker.db.is_base_station = None
         with patch("world.llm.client.civic_enabled", return_value=True), \
              patch("world.llm.client.request_civic_verdict") as req:
-            rr.consider_radio_report(MagicMock(), speaker, "help, assault!")
+            rr.consider_radio_report(
+                MagicMock(), speaker,
+                "there's a fella acting the maggot outside the Shell")
         req.assert_called_once()
         self.assertEqual(req.call_args.args[2], rr.DISPATCH_VERDICT_SCHEMA)
+
+    def test_words_it_knows_never_reach_the_model(self):
+        """Deterministic FIRST: the model is a refiner, not the gate."""
+        speaker = MagicMock()
+        speaker.db.is_npc = None
+        speaker.db.llm_driven = None
+        speaker.db.is_base_station = None
+        with patch("world.llm.client.civic_enabled", return_value=True), \
+             patch("world.llm.client.request_civic_verdict") as req, \
+             patch.object(rr, "apply_verdict", return_value=[]):
+            rr.consider_radio_report(MagicMock(), speaker,
+                                     "Being assaulted on Pessoa Street!")
+        req.assert_not_called()
 
     def test_disabled_lane_is_silence(self):
         with patch("world.llm.client.civic_enabled", return_value=False), \

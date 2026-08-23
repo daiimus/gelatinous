@@ -302,6 +302,24 @@ def _work_radio_traffic(soul, payload):
             "verdict": verdict,
             "dispatched": len(dispatched or ()),
         }
+        # ...and only NOW does she open her mouth. The reply used to be
+        # scheduled on a flat 1.5s timer beside this, which was grounded
+        # only by luck: when the deterministic classifier matched, the
+        # verdict landed first; when it fell through to the model
+        # classifier it landed at ~4s, after her prompt had been built.
+        # She answered a confirmed assault with "are you reporting an
+        # assault?" while two units were already rolling (#2238).
+        #
+        # Causing the reply from the verdict makes deterministic-first
+        # true rather than true-when-the-words-match. Whoever holds the
+        # post answers; a player has no `answer_traffic` and needs none,
+        # because a player decides what to say by saying it.
+        answer = getattr(soul, "answer_traffic", None)
+        if callable(answer):
+            try:
+                answer(speech, speaker)
+            except Exception:  # noqa: BLE001 — a mute desk still dispatched
+                pass
 
     if not consider_radio_report(soul, speaker, speech, on_result=_took):
         _took(None, None)
