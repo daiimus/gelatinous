@@ -320,6 +320,16 @@ def plan_for(soul, goal_need):
     """
     if goal_need == "hunger":
         from world.souls import needs as needs_mod
+        # CHECK YOUR POCKETS FIRST. Somebody who is already carrying
+        # food eats that before walking across the colony to buy more —
+        # the saved chocolate bar, last night's leftovers, the bowl they
+        # didn't finish. Obvious for a person, and it was missing, which
+        # is how souls came to carry thirty-odd bowls of the same stew:
+        # every hunger pang planned a fresh purchase and nothing ever
+        # looked in a pocket (#2244).
+        from world.consumables import supports_delivery
+        if any(supports_delivery(o, "eat") for o in soul.contents):
+            return {"goal": "hunger", "steps": [{"do": "eat"}], "at": 0}
         if needs_mod.shape_of(soul, "hunger") == "graze":
             # sealed-biome feeding (spec §12 recluse, #2074): a serving
             # fixture (db.snacks with nutrition) eaten through the REAL
