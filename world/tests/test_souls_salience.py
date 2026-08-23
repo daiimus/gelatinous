@@ -239,6 +239,42 @@ class TestDoingTheWork(_SoulCase):
             salience._think_now(self.soul)
         thought.assert_not_called()
 
+    def test_the_medic_restock_is_role_work_now(self):
+        """It was the one hard-coded `if role == "medic"` branch in an
+        otherwise generic work step (#2236). Same behaviour, one place."""
+        self.soul.db.soul_role = "medic"
+        with mock.patch("world.director.medical.restock_medic") as stocked:
+            salience.do_post_work(self.soul)
+        stocked.assert_called_once_with(self.soul)
+
+    def test_a_dispatcher_is_not_restocked(self):
+        self.soul.db.soul_role = "dispatcher"
+        with mock.patch("world.director.medical.restock_medic") as stocked:
+            salience.do_post_work(self.soul)
+        stocked.assert_not_called()
+
+    def test_upkeep_and_the_inbox_both_run(self):
+        """Two halves of one shift: standing work AND what arrived."""
+        self.soul.db.soul_role = "medic"
+        with mock.patch.object(salience, "delay"):
+            salience.notice(self.soul, "radio_traffic", payload={})
+        with mock.patch("world.director.medical.restock_medic") as stocked, \
+             mock.patch("world.director.radio_report.consider_radio_report",
+                        return_value=False):
+            handled = salience.do_post_work(self.soul)
+        stocked.assert_called_once()
+        self.assertEqual(handled, 1)
+
+    def test_crashing_upkeep_does_not_eat_the_inbox(self):
+        self.soul.db.soul_role = "medic"
+        with mock.patch.object(salience, "delay"):
+            salience.notice(self.soul, "radio_traffic", payload={})
+        with mock.patch("world.director.medical.restock_medic",
+                        side_effect=RuntimeError("boom")), \
+             mock.patch("world.director.radio_report.consider_radio_report",
+                        return_value=False):
+            self.assertEqual(salience.do_post_work(self.soul), 1)
+
     def test_other_kinds_are_left_for_their_own_handlers(self):
         with mock.patch.object(salience, "delay"):
             salience.notice(self.soul, "casualty")

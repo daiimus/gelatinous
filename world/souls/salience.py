@@ -214,6 +214,46 @@ def filter_for_duty(soul, words):
 
 # ---------------------------------------------------------- work handlers
 
+#: What a keeper DOES on shift, keyed by the post's role. Upkeep, not
+#: reaction: it runs every work beat whether or not anything happened.
+#:
+#: `restock_medic` was bolted straight into `jobs.step_job`'s work step
+#: before any of this existed, as the one hard-coded exception in an
+#: otherwise generic loop (#2236). It is a role's work like any other,
+#: and now it lives with the rest of it — so the next role that needs
+#: something done on shift adds a line here instead of another `if`.
+ROLE_WORK = {}
+
+
+def _work_medic(soul):
+    from world.director.medical import restock_medic
+    restock_medic(soul)          # par-level loose supplies, at post only
+
+
+ROLE_WORK["medic"] = _work_medic
+
+
+def do_post_work(occupant):
+    """Everything holding this post asks of whoever holds it.
+
+    Called once per work beat from `jobs.step_job`. Two halves, both of
+    them the job: the ROLE's standing upkeep, and whatever the world
+    put in the inbox since the last beat.
+    """
+    role = getattr(occupant.db, "soul_role", None)
+    handler = ROLE_WORK.get(role)
+    if handler is not None:
+        try:
+            handler(occupant)
+        except Exception as err:  # noqa: BLE001 — the shift outlives it
+            try:
+                from world.souls.jobs import fault
+                fault(occupant, f"{role} upkeep crashed: {err}")
+            except Exception:  # noqa: BLE001
+                pass
+    return work_stimuli(occupant)
+
+
 def work_stimuli(occupant):
     """Do the work waiting in *occupant*'s inbox.
 
