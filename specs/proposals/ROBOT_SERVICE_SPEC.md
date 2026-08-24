@@ -153,7 +153,62 @@ would never reach for).
 people-shaped; it should take the human kit. This gate keys on species,
 not on "is it a person", and those are different questions.
 
-## 8. Open questions
+## 8. The clinic is the model
+
+Owner, 2026-08-24: *"This should all really work the same as the
+doctors and the clinic but for robots."* Laid against what exists:
+
+| the clinic | the bench |
+|---|---|
+| `health` need, `clinic` shape — the walking wounded self-deliver | **MISSING** |
+| `treatment` advertiser (the billing terminal) | `maintenance` advertiser ✅ staffed (#2261) |
+| an AutoDoc to lie in | the charging rack, or its own cradle |
+| doctors on three shifts | Marisol, Tuck, Halina ✅ (#2261) |
+| `restock_medic` keeps PAR supplies at post | **MISSING** |
+| billing — triage free, healing costs | open |
+
+### 8.1 A damaged unit does not seek repair
+
+The robot profile is `charge`, `maintenance`, `safety`. There is **no
+`health`**, so nothing drives a damaged unit anywhere.
+
+Consequence today: a secbot can take a shotgun blast, keep patrolling
+on a wrecked chassis, and turn up at the bench a week later for a
+routine service. The wear timer is the only thing that ever brings one
+in, and wear is not damage.
+
+The fix is the same shape the humans already use — a `health`-equivalent
+need on the robot profile, shaped `clinic`, pointed at the bench. Then
+a damaged unit self-delivers exactly as the walking wounded do, and the
+mechanic's queue fills for the right reason.
+
+Note the interaction with band: for a human, critical `health` outranks
+duty. A unit that limps back to the bench mid-shift instead of holding
+a scene is probably correct, and is the owner's call when it lands.
+
+### 8.2 Supplies at the post
+
+`restock_medic` keeps a clinic's medic stocked to `PAR` from anchored
+stock. The bench has no equivalent, so a mechanic has hands and no
+parts. Same function, robot `medical_type`s, and it slots into
+`ROLE_WORK["mechanic"]` beside the racking behaviour — the medic's
+restock already lives in that registry (#2236), so this is one more
+entry rather than a new mechanism.
+
+### 8.3 Synthetics get their own tier, later
+
+Owner: *"Synths should also have their own equivalent tbh but that's
+not a priority right now."*
+
+Deliberately deferred, and the reason is worth writing down: a
+synthetic humanoid is organic-presenting and people-shaped, so it takes
+the HUMAN kit today and that is not wrong — merely coarse. Its own
+tier means its own labels, verbs and supplies, in the same three tables
+this spec introduces. Nothing here should make that harder: the tables
+are keyed by species precisely so a third column costs a data entry
+rather than a redesign.
+
+## 9. Open questions
 
 * **Does a mechanic use `operate`, or a re-verbed alias?** Same command
   with species-aware wording is less to maintain; a separate `service`
