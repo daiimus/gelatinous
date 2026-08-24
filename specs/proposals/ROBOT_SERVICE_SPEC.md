@@ -108,7 +108,52 @@ Rename what people READ. Never what the system JOINS on.
   on: recovering a downed unit means nothing until somebody can put it
   back together.
 
-## 7. Open questions
+## 7. Supplies — the other half of repair
+
+Charting a job is only half of it. The other half is what you put in
+your hands, and **nothing today gates a medical item by species.**
+Robots carry human-shaped medical state, so a secbot can be bandaged,
+given a painkiller, and transfused with a blood bag — and all of it
+works.
+
+The existing vocabulary is `medical_type`, already carried on every
+item. Sorting it by whether a machine could possibly benefit:
+
+| type | item | on a machine |
+|---|---|---|
+| `tourniquet` | tourniquet | **works as-is** — clamping a line stops amber fluid as well as blood |
+| `fracture_treatment` | medical splint | translates — a strut brace |
+| `blood_restoration` | blood bag | translates — a hydraulic/coolant charge |
+| `wound_care` | gauze bandages | translates — a sealant patch |
+| `organ_repair` | surgical sealant | translates — conformal coating |
+| `surgical_treatment` | surgical kit | translates — a tool roll |
+| `pain_relief` | painkiller, cigarette | **refuse** — nothing to hurt |
+| `anesthetic` | anesthetic gas | **refuse** — nothing to sedate |
+| `oxygen` | oxygen tank | **refuse** — nothing breathing |
+| `antiseptic` | antiseptic spray | **refuse** — `infection_immune` already makes it pointless |
+| `healing_acceleration` | stimpak | **refuse** — biology, not repair |
+| `vapor`, `herb` | inhaler, herb | **refuse** |
+
+**Refusing is the interesting half.** If a first aid kit fixes a
+secbot, the bench has no reason to exist and neither do its three
+keepers. A unit that can only be put right by somebody with the right
+supplies at the right bench is what makes #2261 a job rather than a
+costume.
+
+**Shape:** items declare who they serve — a `serves` set, or the
+inverse `not_for` — checked in the same apply path that already asks
+`is_medical_item`. Untagged items keep working on everyone, so nothing
+existing breaks; only the refusals are new. Robot-side supplies are
+then ordinary prototypes with the machine `medical_type`s, stocked at
+the bench the way `restock_medic` stocks a clinic (`PAR` is currently
+`GAUZE_BANDAGES`, `TOURNIQUET`, `PAINKILLER` — two of which a mechanic
+would never reach for).
+
+**Watch the synthetic humanoid.** It is organic-presenting and
+people-shaped; it should take the human kit. This gate keys on species,
+not on "is it a person", and those are different questions.
+
+## 8. Open questions
 
 * **Does a mechanic use `operate`, or a re-verbed alias?** Same command
   with species-aware wording is less to maintain; a separate `service`
