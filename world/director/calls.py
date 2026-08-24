@@ -105,9 +105,11 @@ def describe_suspect(speech: str) -> dict:
 
     bolo = None
     if height or build:
-        # the same shape `build_bolo` produces, minus the uid nobody
-        # phoning a radio could possibly have
-        bolo = {"uid": None, "height": height, "build": build}
+        # the same shape `build_bolo` produces, on the channel that can
+        # carry the least: a voice on the radio, which may also be
+        # vague, mistaken, or lying
+        bolo = {"uid": None, "height": height, "build": build,
+                "via": "radio", "by": None}
 
     return {"bolo": bolo, "text": str(speech or "").strip()[:200],
             "anonymous": anonymous and bolo is None}

@@ -57,13 +57,22 @@ def _assignment(npc, bolo):
 @patch("world.director.security.get_apparent_uid", side_effect=_fake_uid)
 class TestBolo(TestCase):
     def test_build_snapshots_uid_and_silhouette(self, _g):
+        """A MACHINE records the presentation; a person describes it.
+        Provenance decides which (#2247)."""
         perp = _Char("perp", uid="abc123", height="tall", build="lean")
-        self.assertEqual(build_bolo(perp),
-                         {"uid": "abc123", "height": "tall", "build": "lean"})
+        self.assertEqual(
+            build_bolo(perp, via="machine"),
+            {"uid": "abc123", "height": "tall", "build": "lean",
+             "via": "machine", "by": None})
         self.assertIsNone(build_bolo(None))
 
+    def test_a_person_carries_no_hash(self, _g):
+        perp = _Char("perp", uid="abc123", height="tall", build="lean")
+        self.assertIsNone(build_bolo(perp, via="witness")["uid"])
+
     def test_precise_match_is_high(self, _g):
-        bolo = {"uid": "abc123", "height": "tall", "build": "lean"}
+        bolo = {"uid": "abc123", "height": "tall", "build": "lean",
+                "via": "machine"}
         self.assertEqual(match_bolo(bolo, _Char("x", uid="abc123")), "high")
 
     def test_changed_presentation_defeats_precise_match(self, _g):
@@ -108,7 +117,8 @@ class TestSecurityArrival(TestCase):
     def test_high_confidence_challenges_and_watches(self, mock_delay, *_m):
         perp = _Char("perp", uid="PERP", height="tall", build="lean")
         bot = self._scene(perp)
-        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        a = _assignment(bot, {"uid": "PERP", "height": "tall",
+                          "build": "lean", "via": "machine"})
         security_arrival(bot, a)
         said = " ".join(str(c) for c in bot.execute_cmd.call_args_list)
         self.assertIn("Hold your position", said)
@@ -119,7 +129,8 @@ class TestSecurityArrival(TestCase):
         lookalike = _Char("bystander", uid="INNOCENT",
                           height="tall", build="lean")
         bot = self._scene(lookalike)
-        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        a = _assignment(bot, {"uid": "PERP", "height": "tall",
+                          "build": "lean", "via": "machine"})
         security_arrival(bot, a)
         said = " ".join(str(c) for c in bot.execute_cmd.call_args_list)
         self.assertIn("fit a description", said)
@@ -128,7 +139,8 @@ class TestSecurityArrival(TestCase):
     def test_no_match_logs_and_resolves(self, mock_delay, *_m):
         bot = self._scene(_Char("passerby", uid="X", height="short",
                                 build="heavy"))
-        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        a = _assignment(bot, {"uid": "PERP", "height": "tall",
+                          "build": "lean", "via": "machine"})
         security_arrival(bot, a)
         said = " ".join(str(c) for c in bot.execute_cmd.call_args_list)
         self.assertIn("nothing that matches", said)
@@ -146,7 +158,9 @@ class TestSecurityArrival(TestCase):
     def test_watch_gives_up_when_suspect_leaves(self, mock_delay, *_m):
         perp = _Char("perp", uid="PERP")
         bot = self._scene(perp)
-        a = _assignment(bot, {"uid": "PERP", "height": None, "build": None})
+        # a machine-recorded ID: holding somebody requires one
+        a = _assignment(bot, {"uid": "PERP", "height": None,
+                              "build": None, "via": "machine"})
         a.payload["watch_rounds"] = 2
         bot.location.contents.remove(perp)  # suspect slipped away
         with patch.object(amod, "resolve") as mock_resolve:
@@ -157,7 +171,9 @@ class TestSecurityArrival(TestCase):
     def test_watch_holds_then_stands_down_after_rounds(self, mock_delay, *_m):
         perp = _Char("perp", uid="PERP")
         bot = self._scene(perp)
-        a = _assignment(bot, {"uid": "PERP", "height": None, "build": None})
+        # a machine-recorded ID: holding somebody requires one
+        a = _assignment(bot, {"uid": "PERP", "height": None,
+                              "build": None, "via": "machine"})
         a.payload["watch_rounds"] = 2
         smod._watch_tick(bot)                      # round 1: still watching
         self.assertIs(mock_delay.call_args.args[1], smod._watch_tick)
@@ -169,7 +185,8 @@ class TestSecurityArrival(TestCase):
     def test_high_match_logs_local_sighting(self, mock_log, *_m):
         perp = _Char("perp", uid="PERP", height="tall", build="lean")
         bot = self._scene(perp)
-        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        a = _assignment(bot, {"uid": "PERP", "height": "tall",
+                          "build": "lean", "via": "machine"})
         security_arrival(bot, a)
         mock_log.assert_called_once_with(bot, "PERP", "assault")
 
@@ -178,7 +195,8 @@ class TestSecurityArrival(TestCase):
         # The innocuous detainment rung: challenge, then hold at aim.
         perp = _Char("perp", uid="PERP", height="tall", build="lean")
         bot = self._scene(perp)
-        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        a = _assignment(bot, {"uid": "PERP", "height": "tall",
+                          "build": "lean", "via": "machine"})
         security_arrival(bot, a)
         cmds = [c.args[0] for c in bot.execute_cmd.call_args_list]
         self.assertIn("aim perp", cmds)
@@ -208,7 +226,8 @@ class TestSecurityArrival(TestCase):
         perp = _Char("perp", uid="PERP", height="tall", build="lean")
         setattr(perp.ndb, NDB_COMBAT_HANDLER, MagicMock())
         bot = self._scene(perp)
-        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        a = _assignment(bot, {"uid": "PERP", "height": "tall",
+                          "build": "lean", "via": "machine"})
         security_arrival(bot, a)
         cmds = [c.args[0] for c in bot.execute_cmd.call_args_list]
         self.assertIn("/shotgun", cmds)
@@ -259,7 +278,8 @@ class TestSecurityArrival(TestCase):
         # No BOLO hit on THIS incident — but a bystander is on file.
         felon = _Char("felon", uid="OLDFACE", height="short", build="heavy")
         bot = self._scene(felon)
-        a = _assignment(bot, {"uid": "PERP", "height": "tall", "build": "lean"})
+        a = _assignment(bot, {"uid": "PERP", "height": "tall",
+                          "build": "lean", "via": "machine"})
         mock_wanted.side_effect = (
             lambda uid: {"count": 2, "last_crime": "robbery"}
             if uid == "OLDFACE" else None)

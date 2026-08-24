@@ -55,6 +55,33 @@ CRIME_SEVERITY: dict[str, int] = {
 _RECENT: dict = {}
 
 
+def _unit_on_scene(location: Any, perp: Any = None) -> Any | None:
+    """A working security unit standing where it happened, or None.
+
+    Present, conscious, and not the perpetrator. Perception-gated like
+    anything else: a unit that cannot see the room cannot record it.
+    """
+    for obj in (getattr(location, "contents", None) or []):
+        db = getattr(obj, "db", None)
+        if getattr(db, "role", None) != "security":
+            continue
+        if obj is perp:
+            continue
+        try:
+            if obj.is_dead() or obj.is_unconscious():
+                continue
+        except Exception:  # noqa: BLE001 — an odd body is not a witness
+            continue
+        try:
+            from world.perception import can_see
+            if not can_see(obj, perp if perp is not None else obj):
+                continue
+        except Exception:  # noqa: BLE001 — no perception layer, still a witness
+            pass
+        return obj
+    return None
+
+
 def report_crime(crime_type: str, location: Any, perp: Any = None,
                  severity: int | None = None) -> bool:
     """An instrumented act calls this at the moment of commission.
@@ -77,6 +104,29 @@ def report_crime(crime_type: str, location: Any, perp: Any = None,
         return False
     _RECENT[key] = now
 
+    # A UNIT ON THE SPOT is the one witness that can positively identify
+    # anybody (#2247). It doesn't describe what it saw — it records the
+    # presentation and puts it on the net, which is the precursor to the
+    # photo/video record that will feed cases and decking. A person in
+    # the same doorway can only tell you what somebody looked like.
+    #
+    # No crowd roll: a machine that is standing there sees it. And no
+    # report window — it does not hesitate, get talked out of it, or
+    # need to find a radio.
+    machine = _unit_on_scene(location, perp)
+    if machine is not None:
+        event = WorldEvent(
+            type=crime_type,
+            location=location,
+            severity=severity if severity is not None
+            else CRIME_SEVERITY.get(crime_type, 1),
+            source=perp,
+            payload={"bolo": build_bolo(perp, via="machine", by=machine)},
+        )
+        from world.director.dispatch import raise_event
+        raise_event(event)
+        return True
+
     # §5.1: no witness, no report — the empty alley is free. (The scene
     # stays debounced either way: the same brawl doesn't re-roll a witness
     # every swing.)
@@ -90,7 +140,12 @@ def report_crime(crime_type: str, location: Any, perp: Any = None,
         severity=severity if severity is not None
         else CRIME_SEVERITY.get(crime_type, 1),
         source=perp,
-        payload={"bolo": build_bolo(perp)},   # crime-time presentation
+        # A PERSON saw this, so a person's account is what travels: an
+        # accurate silhouette, not a presentation hash. Witnesses here
+        # are always civilians (`spawn_witness`), and until now their
+        # glimpse identified people as positively as a camera would.
+        # `source` stays the truth the system checks against.
+        payload={"bolo": build_bolo(perp, via="witness", by=witness)},
     )
     window = WITNESS_REPORT_DELAY
     if getattr(getattr(witness, "db", None), "report_posture",
