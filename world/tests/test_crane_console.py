@@ -94,6 +94,10 @@ class TestFloorParsing(EvenniaCommandTest):
         self.car.db.level = 1
 
     def _floor(self, text):
+        """Just the floor — relative-ness is pinned separately below."""
+        return self.console._parse_floor(text.lower(), self.car)[0]
+
+    def _parse(self, text):
         return self.console._parse_floor(text.lower(), self.car)
 
     def test_named_destinations(self):
@@ -111,22 +115,31 @@ class TestFloorParsing(EvenniaCommandTest):
     def test_a_typo_in_a_teen_still_lands(self):
         self.assertEqual(self._floor("take her to forteen"), 14)
 
-    def test_relative_works_for_the_counts_that_reach_it(self):
-        """Pins ACTUAL behaviour, which is narrower than intended.
+    def test_relative_orders_are_arithmetic_not_floor_numbers(self):
+        """"Down two" used to reach the spelled-out-number branch and
+        mean FLOOR 2 — sending the car to the bottom of the shaft with
+        people standing in it, because the container is a room (#2217).
 
-        The absolute branches run first, so a relative order only
-        survives when its count is not a number word ("one", "a floor",
-        "a level") and not a digit the floor regex claims. "up two"
-        reads as FLOOR 2, not up-by-two — see #2217, raised separately
-        rather than fixed inside a standardisation change.
-        """
+        Relative is read first now: a direction word with a count is
+        arithmetic, whatever the count happens to look like."""
         self.car.db.level = 5                    # floor 6
-        self.assertEqual(self._floor("up one"), 7)
-        self.assertEqual(self._floor("up a floor"), 7)
-        self.assertEqual(self._floor("down 1"), 5)
-        # the documented-but-broken forms, pinned so the fix is visible
-        self.assertEqual(self._floor("up two"), 2)      # intended: 8
-        self.assertEqual(self._floor("down two"), 2)    # intended: 4
+        self.assertEqual(self._parse("up one"), (7, True))
+        self.assertEqual(self._parse("up a floor"), (7, True))
+        self.assertEqual(self._parse("down 1"), (5, True))
+        self.assertEqual(self._parse("up two"), (8, True))     # was 2
+        self.assertEqual(self._parse("down two"), (4, True))   # was 2
+
+    def test_a_floor_called_out_plainly_is_absolute(self):
+        """No direction word, no arithmetic — just take them there."""
+        self.car.db.level = 5
+        self.assertEqual(self._parse("floor 9"), (9, False))
+        self.assertEqual(self._parse("the twelfth"), (12, False))
+        self.assertEqual(self._parse("take her to the top"), (17, False))
+
+    def test_going_up_TO_a_floor_is_still_absolute(self):
+        """"Up to nine" names a floor; "up nine" counts nine of them."""
+        self.car.db.level = 5
+        self.assertEqual(self._parse("bring her up to nine"), (9, False))
 
     def test_bare_direction_words_move_nothing(self):
         self.car.db.level = 5
@@ -134,3 +147,34 @@ class TestFloorParsing(EvenniaCommandTest):
 
     def test_nothing_readable_is_none(self):
         self.assertIsNone(self._floor("how's the family"))
+
+
+class TestArithmeticIsReadBack(_CraneCase):
+    """A floor named plainly is taken at once; a floor WORKED OUT is
+    confirmed first, because the car is a room with people in it
+    (owner ruling, 2026-08-23)."""
+
+    def test_a_relative_order_asks_before_it_moves(self):
+        self.car.db.level = 8                    # floor 9
+        answered = self._order("crane, bring her down two",
+                               operator=self.char2)
+        self.assertTrue(answered.called)
+        self.assertIn("7th", answered.call_args[0][0])
+        self.assertIn("confirm", answered.call_args[0][0].lower())
+        self.car.move_to_level.assert_not_called()
+
+    def test_confirming_moves_it(self):
+        self.car.db.level = 8
+        self._order("crane, bring her down two", operator=self.char2)
+        self._order("crane, confirmed", operator=self.char2)
+        # the copy goes out and the drive is scheduled a beat later
+        self.assertIsNone(self.console.ndb.pending)
+
+    def test_a_plain_floor_is_taken_at_once(self):
+        answered = self._order("crane, ninth floor", operator=self.char2)
+        self.assertTrue(answered.called)
+        self.assertNotIn("confirm", answered.call_args[0][0].lower())
+
+    def test_a_yes_out_of_the_blue_moves_nothing(self):
+        answered = self._order("crane, yes", operator=self.char2)
+        self.assertIsNone(self.console.ndb.pending)

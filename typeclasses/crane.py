@@ -15,6 +15,7 @@ somebody could be standing in it.
 """
 
 import re
+from time import monotonic
 
 from typeclasses.items import AnsweringFixture
 
@@ -97,8 +98,28 @@ class CraneConsole(AnsweringFixture):
         if car is None:
             return
 
-        floor = self._parse_floor(low, car)
+        # A confirmation answers the read-back, not the parser: "yes"
+        # carries no floor of its own, so it has to be resolved against
+        # what was last offered.
+        pending = self._pending_floor()
+        if pending is not None and self._is_confirmation(low):
+            self.ndb.pending = None
+            self._run_crane(pending, car, operator)
+            return
+
+        floor, relative = self._parse_floor(low, car)
         if floor is not None:
+            if relative:
+                # Arithmetic gets read back before the car moves. The
+                # container is a ROOM — somebody is standing in it — and
+                # "down two" is exactly the order a tired operator and a
+                # tired caller can mean differently (#2217).
+                floor = max(self.MIN_FLOOR, min(self.MAX_FLOOR, int(floor)))
+                self.ndb.pending = (floor, monotonic())
+                self._answer(f"That puts her at the {floor}th. Confirm?",
+                             speaker=operator)
+                return
+            self.ndb.pending = None
             self._run_crane(floor, car, operator)
             return
 
@@ -111,6 +132,34 @@ class CraneConsole(AnsweringFixture):
                 and self._cooled_down():
             self._answer("Say again — which floor? Anywhere from the "
                          "2nd to the 17th.", speaker=operator)
+
+    #: How long a read-back stands before it goes stale. Long enough to
+    #: key up and answer, short enough that a "yes" ten minutes later
+    #: about something else does not move a crane.
+    CONFIRM_WINDOW = 45.0
+
+    #: What counts as "go ahead" on a work band. Deliberately narrow:
+    #: anything ambiguous should fall through and be re-read rather than
+    #: guessed at, because guessing moves a room with people in it.
+    _CONFIRM = ("confirm", "confirmed", "affirmative", "yes", "yep", "yeah",
+                "aye", "do it", "go ahead", "that's right", "thats right",
+                "correct", "roger")
+
+    def _pending_floor(self):
+        """The floor last read back, if the caller could still be
+        answering it."""
+        pending = self.ndb.pending
+        if not pending:
+            return None
+        floor, asked_at = pending
+        if monotonic() - asked_at > self.CONFIRM_WINDOW:
+            self.ndb.pending = None
+            return None
+        return floor
+
+    def _is_confirmation(self, low):
+        return any(re.search(rf"\b{re.escape(w)}\b", low)
+                   for w in self._CONFIRM)
 
     # -- finding the car -------------------------------------------------
 
@@ -161,35 +210,22 @@ class CraneConsole(AnsweringFixture):
     # -- reading the order -----------------------------------------------
 
     def _parse_floor(self, low, car):
-        """Pull a target floor (2..17) out of a transmission, or None if it
-        isn't a crane order at all."""
-        # named destinations first — these are the ones players reach for
-        if any(w in low for w in ("dock", "docked", "ground", "street level",
-                                  "bottom", "second", "2nd", "boarding")):
-            return self.MIN_FLOOR
-        if any(w in low for w in ("top", "topmost", "highest", "the top",
-                                  "seventeenth", "seventeen", "17th")):
-            return self.MAX_FLOOR
-        if "queen" in low or "crossing" in low or "the level" in low:
-            return self.QOC_FLOOR
+        """The floor an order asks for, and whether it was RELATIVE.
 
-        # an explicit floor number: digits 2..17, bare or ordinal ("12th")
-        m = re.search(r"\b(1[0-7]|[2-9])(?:st|nd|rd|th)?\b", low)
-        if m:
-            return int(m.group(1))
-        # or a spelled-out number
-        for word, n in self._NUMBER_WORDS.items():
-            if re.search(rf"\b{word}\b", low):
-                return n
-        # or a spelled-out number with a single-letter typo (the teens get
-        # botched constantly: forteen, fourten, thirten, fiften, sixten)
-        fuzzy = self._fuzzy_number(low, 1)
-        if fuzzy is not None:
-            return fuzzy
+        Returns ``(floor, relative)`` or ``(None, False)``.
 
-        # relative nudges — only a direction word with an EXPLICIT count
-        # ("up one", "down two", "up a floor"); a bare "up" is chatter, not
-        # an order, so "nice weather up there" moves nothing.
+        Relative is read FIRST. "Bring her down two" used to land on the
+        spelled-out-number branch and send the car to floor 2 — with
+        people standing in it, because the container is a room (#2217).
+        A direction word with a count is arithmetic, and arithmetic
+        gets read back before anything moves; a floor called out plainly
+        is unambiguous and just gets taken (owner ruling, 2026-08-23).
+        """
+        # RELATIVE FIRST — a direction word with an explicit count is
+        # arithmetic ("up one", "down two", "up a floor"). Checked ahead
+        # of everything else because "down two" otherwise matched the
+        # spelled-out number and drove to floor 2. A bare "up" is still
+        # chatter, so "nice weather up there" moves nothing.
         rel = re.search(
             r"\b(up|raise|lift|higher|down|lower|drop)\b\s+(?:by\s+)?"
             r"(a floor|a level|one|two|three|\d+)", low)
@@ -201,8 +237,32 @@ class CraneConsole(AnsweringFixture):
                 step = int(token)
             cur_floor = (car.db.level or 1) + 1
             sign = 1 if rel.group(1) in ("up", "raise", "lift", "higher") else -1
-            return cur_floor + sign * step
-        return None
+            return cur_floor + sign * step, True
+
+        # named destinations — these are the ones players reach for
+        if any(w in low for w in ("dock", "docked", "ground", "street level",
+                                  "bottom", "second", "2nd", "boarding")):
+            return self.MIN_FLOOR, False
+        if any(w in low for w in ("top", "topmost", "highest", "the top",
+                                  "seventeenth", "seventeen", "17th")):
+            return self.MAX_FLOOR, False
+        if "queen" in low or "crossing" in low or "the level" in low:
+            return self.QOC_FLOOR, False
+
+        # an explicit floor number: digits 2..17, bare or ordinal ("12th")
+        m = re.search(r"\b(1[0-7]|[2-9])(?:st|nd|rd|th)?\b", low)
+        if m:
+            return int(m.group(1)), False
+        # or a spelled-out number
+        for word, n in self._NUMBER_WORDS.items():
+            if re.search(rf"\b{word}\b", low):
+                return n, False
+        # or a spelled-out number with a single-letter typo (the teens get
+        # botched constantly: forteen, fourten, thirten, fiften, sixten)
+        fuzzy = self._fuzzy_number(low, 1)
+        if fuzzy is not None:
+            return fuzzy, False
+        return None, False
 
     # -- doing it --------------------------------------------------------
 
