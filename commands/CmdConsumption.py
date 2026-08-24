@@ -706,7 +706,9 @@ class CmdBandage(ConsumptionCommand):
     # PR-H3 (#307): ``dress`` reclaimed for third-party clothing.
     # CmdBandage keeps ``bandage`` primary + ``wrap`` for the verb
     # space; "dressing a wound" is colloquial but still covered.
-    aliases = ["wrap"]
+    # `patch` is the machine word for the same act -- a mechanic
+    # patches a breach, a medic wraps a wound (#2278).
+    aliases = ["wrap", "patch"]
     help_category = "Medical"
     
     def parse(self):

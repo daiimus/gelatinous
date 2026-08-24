@@ -439,7 +439,7 @@ class CmdSever(Command):
     # procedure-verb name to align with surgical vocabulary, and
     # direct-command users can reach the same severance from
     # either verb.
-    aliases = ("amputate",)
+    aliases = ("amputate", "shear")
     locks = "cmd:all()"
     help_category = "Forensics"
 

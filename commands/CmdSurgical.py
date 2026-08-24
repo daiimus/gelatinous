@@ -57,15 +57,40 @@ def _incision_required(organ_data: dict) -> bool:
 # ---------------------------------------------------------------------
 
 
-def _find_surgical_kit(caller):
-    """Return the first surgical kit in ``caller``'s inventory, or None."""
+def _gerund(verb, target):
+    """The patient's own word for what you are doing to them."""
+    from world.medical.charts import gerund_for
+    return gerund_for(
+        verb, getattr(getattr(target, "db", None), "species", None))
+
+
+def _find_surgical_kit(caller, target=None):
+    """Return instruments in ``caller``'s inventory that suit *target*.
+
+    Instruments are species-specific for the same reason supplies are:
+    a chassis takes a tool roll, a person takes a surgical kit. Passing
+    no target keeps the old species-blind behaviour, so any caller not
+    yet updated is unchanged rather than broken (#2278).
+    """
+    from world.medical.utils import serves_species
     for obj in caller.contents:
         attrs = getattr(obj, "attributes", None)
         if attrs is None:
             continue
-        if attrs.get("medical_type") == "surgical_treatment":
-            return obj
+        if attrs.get("medical_type") != "surgical_treatment":
+            continue
+        if target is not None and not serves_species(obj, target)[0]:
+            continue
+        return obj
     return None
+
+
+def _instruments_wanted(target):
+    """What to tell somebody holding the wrong bag. Naming the article
+    matters: "you need a surgical kit" while they ARE holding a
+    surgical kit is the least useful refusal we could write."""
+    species = getattr(getattr(target, "db", None), "species", None)
+    return "a tool roll" if species == "robot" else "a surgical kit"
 
 
 def _resolve_target(caller, raw_name):
@@ -240,7 +265,7 @@ class CmdIncise(Command):
     """
 
     key = "incise"
-    aliases = ()
+    aliases = ("cut",)
     help_category = "Medical"
 
     def func(self):
@@ -286,9 +311,10 @@ class CmdIncise(Command):
         if _reject_if_busy(caller, target):
             return
 
-        kit = _find_surgical_kit(caller)
+        kit = _find_surgical_kit(caller, target)
         if kit is None:
-            caller.msg("You need a surgical kit to perform an incision.")
+            caller.msg(f"You need {_instruments_wanted(target)} "
+                       f"to perform an incision.")
             return
 
         # Stage the procedure — delay-resolved in
@@ -298,7 +324,8 @@ class CmdIncise(Command):
             location=location,
         )
         caller.msg(
-            f"You begin cutting into {target.get_display_name(caller)}'s "
+            f"You begin {_gerund('incise', target)} "
+            f"{target.get_display_name(caller)}'s "
             f"{location.replace('_', ' ')}..."
         )
 
@@ -332,7 +359,7 @@ class CmdHarvest(Command):
     """
 
     key = "harvest"
-    aliases = ()
+    aliases = ("extract",)
     help_category = "Medical"
 
     def func(self):  # noqa: C901
@@ -466,9 +493,10 @@ class CmdHarvest(Command):
         if _reject_if_busy(caller, target):
             return
 
-        kit = _find_surgical_kit(caller)
+        kit = _find_surgical_kit(caller, target)
         if kit is None:
-            caller.msg("You need a surgical kit to harvest an organ.")
+            caller.msg(f"You need {_instruments_wanted(target)} "
+                       f"to harvest an organ.")
             return
 
         start_procedure(
@@ -507,7 +535,7 @@ class CmdInstall(Command):
     """
 
     key = "install"
-    aliases = ()
+    aliases = ("fit", "graft")
     help_category = "Medical"
 
     def func(self):  # noqa: C901
@@ -610,9 +638,10 @@ class CmdInstall(Command):
         if _reject_if_busy(caller, target):
             return
 
-        kit = _find_surgical_kit(caller)
+        kit = _find_surgical_kit(caller, target)
         if kit is None:
-            caller.msg("You need a surgical kit to install an organ.")
+            caller.msg(f"You need {_instruments_wanted(target)} "
+                       f"to install an organ.")
             return
 
         start_procedure(
@@ -736,9 +765,10 @@ class CmdInstall(Command):
         if _reject_if_busy(caller, target):
             return
 
-        kit = _find_surgical_kit(caller)
+        kit = _find_surgical_kit(caller, target)
         if kit is None:
-            caller.msg("You need a surgical kit to install an augment.")
+            caller.msg(f"You need {_instruments_wanted(target)} "
+                       f"to install an augment.")
             return
 
         start_procedure(
@@ -884,9 +914,10 @@ class CmdInstall(Command):
 
         if _reject_if_busy(caller, target):
             return
-        kit = _find_surgical_kit(caller)
+        kit = _find_surgical_kit(caller, target)
         if kit is None:
-            caller.msg("You need a surgical kit to seat a module.")
+            caller.msg(f"You need {_instruments_wanted(target)} "
+                       f"to seat a module.")
             return
 
         start_procedure(
@@ -973,9 +1004,10 @@ class CmdInstall(Command):
 
         if _reject_if_busy(caller, target):
             return
-        kit = _find_surgical_kit(caller)
+        kit = _find_surgical_kit(caller, target)
         if kit is None:
-            caller.msg("You need a surgical kit to reattach a limb.")
+            caller.msg(f"You need {_instruments_wanted(target)} "
+                       f"to reattach a limb.")
             return
 
         start_procedure(
@@ -1012,7 +1044,7 @@ class CmdSuture(Command):
     """
 
     key = "suture"
-    aliases = ("stitch",)
+    aliases = ("stitch", "seal")
     help_category = "Medical"
 
     def func(self):
@@ -1055,9 +1087,10 @@ class CmdSuture(Command):
         if _reject_if_busy(caller, target):
             return
 
-        kit = _find_surgical_kit(caller)
+        kit = _find_surgical_kit(caller, target)
         if kit is None:
-            caller.msg("You need a surgical kit to suture an incision.")
+            caller.msg(f"You need {_instruments_wanted(target)} "
+                       f"to suture an incision.")
             return
 
         start_procedure(
@@ -1065,6 +1098,6 @@ class CmdSuture(Command):
             location=location,
         )
         caller.msg(
-            f"You begin suturing "
+            f"You begin {_gerund('suture', target)} "
             f"{target.get_display_name(caller)}'s wound..."
         )
