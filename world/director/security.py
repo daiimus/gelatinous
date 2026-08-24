@@ -27,6 +27,7 @@ from typing import Any
 from evennia.utils import delay
 
 from world.director.assignment import (
+    register_death_handler,
     register_arrival_handler,
     register_completion_handler,
     resolve,
@@ -463,4 +464,17 @@ def security_completion(npc: Any, assignment: Any) -> None:
 
 
 register_arrival_handler("security", security_arrival)
+def security_death(npc: Any, assignment: Any) -> None:
+    """A responder destroyed on a call. Settle the call it was holding.
+
+    The unit says nothing -- `unit_lost` has no line in
+    `_CALL_OUTCOME_LINES` on purpose. A destroyed unit does not
+    transmit, and its going silent mid-call IS the signal. The ledger
+    still records how the call ended, so a false report that got a unit
+    killed leaves a trace (#2255).
+    """
+    close_call_for(assignment, "unit_lost", npc)
+
+
 register_completion_handler("security", security_completion)
+register_death_handler("security", security_death)
