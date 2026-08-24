@@ -1,7 +1,14 @@
 # Souls Salience — letting the world interrupt a soul
 
-**Status:** proposed 2026-08-22, building now (#2228)
+**Status:** ✅ SHIPPED 2026-08-22 (#2228). The inbox, the LOD bypass,
+the one-wake-per-burst guard and the dispatch consumer are all live.
+**Arbitration (§3.3) remains deliberately unwired** — see the note there.
 **Depends on:** `world/souls/engine.py` (band tree, LOD), `world/souls/jobs.py`
+**Since shipping:** role work moved into `salience.ROLE_WORK` /
+`do_post_work` (#2236), so the medic's restock is a registry entry
+rather than the one hard-coded `if` in the work step. The dispatch
+consumer now also carries the caller's description to the desk
+(#2249) and opens a call record (#2246).
 
 ---
 

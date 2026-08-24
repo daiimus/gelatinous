@@ -1,5 +1,47 @@
 # NPC Dispatch & World Simulation Specification
 
+> ## ⚠️ SUPERSEDED IN PART — 2026-08-23/24
+>
+> The status banner below is **historical record**. It is accurate about
+> why each decision was made and inaccurate about how the code now
+> works. Read it for the reasoning; read this for the shape.
+>
+> **The console does not speak, and does not dispatch.** It is a radio
+> bolted to a desk. Everything it used to do belongs to the person in
+> the chair (#2223, #2228). So every reference below to `_clean_reply`,
+> `CHATTER_LINES`, `FALLBACK_LINE`, `ANSWER_COOLDOWN`, the "civic voice
+> lane" and `[CONTEXT]` grounding describes deleted code.
+>
+> | then | now |
+> |---|---|
+> | console classifies + speaks | `world/souls/salience.py` senses; whoever holds the chair judges and answers |
+> | `_clean_reply` backstops | `world.director.dispatch.desk_discipline`, applied by `salience.filter_for_duty` |
+> | grounding via `[CONTEXT]` | the operator's `STATE` block, from a real call record |
+> | an unattended desk still dispatched | **no operator, no dispatch** — `seated_base_station` is the whole gate |
+>
+> **A report is now a CALL** (`world/director/calls.py`, #2246): a
+> persistent record on the `ServerConfig` ledger carrying the caller's
+> verbatim words, the place they named, what they said about the
+> person, which units rolled, and a status. It is what responders read,
+> what the dispatcher grounds on, and what gets closed.
+>
+> **The SHELF item below — "false-report consequences" — is half
+> built.** A unit finding nothing now closes its call `unfounded` and
+> says so on the air (#2256). What remains is the strike record against
+> the caller's voice UID.
+>
+> **BOLOs carry provenance** (#2247). A `uid` is a presentation hash and
+> may only travel machine-to-machine, because nobody says a hex digest
+> out loud; an NPC witness gives an accurate silhouette, a radio caller
+> gives whatever they said. Clothing is matched too. And
+> `is_the_right_person()` keeps the game's truth separate from the
+> robot's belief.
+>
+> **Deterministic first** (#2222, #2238): plain-code word matching
+> classifies before the model is asked, and the reply is CAUSED by the
+> verdict rather than raced against it.
+
+
 > **Status:** 🟡 Proposal — **dispatch core SHIPPED & LIVE** (2026-06-27, #853);
 > **RADIO REPORTS ROLL REAL UNITS (2026-07-11):** player traffic on 911MHz is classified by the civic lane's structured-verdict contract (constrained decoding, `world/director/radio_report.py`) and a CONFIRMED report raises a real `WorldEvent` — two-signal gate (report flag AND type enum agree), plain-code location resolution against room names (fallback: the caller's room), 120s scene debounce, severity per the FRUGAL LADDER (#1182, user call: violence and explosions are what call in more units — radio assault 2, all other radio reports 1; witnessed CRIME_SEVERITY now murder 3 / assault-mugging-robbery 2 / all nonviolent incl. sabotage 1; explosions and engaged-unit backup keep 2). Caller UNVERIFIED by design: false reports drain the finite pool (swatting is a mechanic). NPC/witness traffic never re-classifies (no double dispatch). **CLASSIFIER JUDGMENT (#1180, 11/11 live battery):** reasoning-first schema — required leading `event_summary` forces the model to articulate what is physically happening before judging (field order = generation order under constrained decoding); emergency-in-progress bar with per-enum definitions; few-shot exemplars covering the observed failures (gossip/'drinking all the recyc', wordplay/'fire that boils tea', requests). Failure at any layer = silence. **GROUNDED VOICE LANE (2026-07-11, user: 'Copy. Coffee. Units rolling.'): the lanes are SEQUENCED — the verdict classifies first, then the operator's reply gets the finding as [CONTEXT] (chatter→channel discipline / confirmed+dispatched→units announce themselves / held→do-not-claim), and `_clean_reply` carries a deterministic no-false-units backstop: any units-moving claim is struck unless dispatch actually moved units this turn. Exemplars retrained — she never announces units; units announce themselves. **VOICE-LANE BACKSTOPS, all deterministic in `_clean_reply` (#1172–#1184, each from a live transcript):** units-claim strike now UNCONDITIONAL (true claim → bare 'Dispatch copies.'; units own the announcement); PRESENCE backstop ('I'll be there in a minute' struck — she never leaves the desk; 'I'd really like to' survives by test: wanting is flirt, arriving is a lie); PARROT guard (short chatter reply adding no words of her own struck; courtesy filler doesn't count as hers); stutter scrub (consecutive duplicate sentences collapse); operator-name label strip ('Petra: "..."'); chatter rejections/failures draw from rotating CHATTER_LINES (incl. the house-band redirect) never the traffic-inviting FALLBACK_LINE. **BANTER REGISTER (#1174, user: interlopers get to vibe with dispatch):** chatter grounding invites one dry human line before the brush-off; banter exemplar in Petra's register; ANSWER_COOLDOWN 10s→4s for conversational rhythm; desk doctrine in both registers ('chained to this desk — never promise to go anywhere, meet anyone, or bring anything'). **EMERGENT (unscripted, keep):** secbots are LLMNpc — `_hear_radio` band comprehension means units editorialize in persona ('Request oversight on unauthorized use of 911MHz' after a swatting spree). **SHELF:** false-report consequences via voice-UID strike record (voice signatures + 'finds nothing' scene logs + BOLO all exist; modulator = counter-tradecraft).** **The receipt is the UNITS' voices (2026-07-11, user call — the console restating the operator's ack was an echo): each dispatched responder keys up its own staggered 'Unit <id> responding — <where>.' through the real `xmit` verb + comms organ (wrecked organ/downed unit = honest silence); the drained-pool 'No units available' stays dispatch's announcement.** **REACHABILITY GATE (2026-07-11, same arc): dispatch orders ARE radio traffic — `world.radio.hears_emergency_band` (comms organ or powered carried radio on 911MHz) gates BOTH `find_responders` and the console's availability count. A deafened unit (shot ear, snatched walkie) stands at post, never rolls, and drops off Petra's 'units on the line' — ear-sniping neutralizes without destroying. **ORDER-RANGE PHYSICS SHIPPED (2026-07-13, #1208):** `world.radio.order_reaches` — the dispatch ORDER itself is radio traffic: the console transmits at mast-backed reach (wrecked mast = walkie range), repeaters regenerate command one hop, the unit's ears extend the link (reciprocity), and only clear/fuzzy grades move a unit (static/gone don't parse). Gates BOTH `find_responders` and Petra's availability count. Switched-off console fails CLOSED (the spec's physical gate); no authored console or off-grid rooms fail open. Full sabotage chain now honest: wreck the mast → distant witnesses can't report in AND distant units can't be commanded — the colony's law shrinks to walkie radius around the station until someone repairs the steel.**
 > remaining layers below. Designs the **director**: a hardcoded, deterministic

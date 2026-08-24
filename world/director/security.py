@@ -285,6 +285,48 @@ def _scan_wanted(npc: Any):
     return None, None, None
 
 
+def close_call_for(assignment: Any, outcome: str, npc: Any = None) -> None:
+    """Settle the CALL this assignment came from, and say so on the air.
+
+    The half that never existed. A unit finding nothing had nowhere to
+    report it, so a false report cost the colony two units and left no
+    trace — nothing to answer for, nothing to hold against a caller,
+    nothing for a dispatcher to know an hour later.
+
+    Only PHONED-IN incidents carry a call id; a witnessed crime is not
+    a call, and closing one would be inventing a caller who never rang.
+    """
+    event = getattr(assignment, "event", None)
+    call_id = (getattr(event, "payload", None) or {}).get("call_id")
+    if not call_id:
+        return
+    try:
+        from world.director.calls import close_call
+        if close_call(call_id, outcome, by=npc) is None:
+            return
+    except Exception:  # noqa: BLE001 — the ledger never breaks a scene
+        return
+    # The play-by-play: units already announce themselves when they
+    # roll, so they announce the finding too. Deterministic, in the
+    # unit's own voice, through the real verb — the same discipline as
+    # the responding ack.
+    line = _CALL_OUTCOME_LINES.get(outcome)
+    if line and npc is not None:
+        where = getattr(getattr(event, "location", None), "key", "the scene")
+        _cmd(npc, f"xmit Unit {getattr(npc, 'id', 0) or 0} — {where}. "
+                  f"{line}")
+
+
+#: What a unit says when it settles a call. Flat, procedural, and short
+#: enough not to clog a band people are trying to shout for help on.
+_CALL_OUTCOME_LINES = {
+    "unfounded": "Nothing here matching the report. Scene logged, "
+                 "clearing.",
+    "detained": "Subject held. Matches the report.",
+    "checked": "Subject checked, no match. Clearing.",
+}
+
+
 def security_arrival(npc: Any, assignment: Any) -> None:
     """On-scene behavior for ``role == "security"``: scan, match, act.
 
@@ -309,6 +351,7 @@ def security_arrival(npc: Any, assignment: Any) -> None:
                       "You match an active report.")
             _aim_lock(npc, suspect)
         assignment.payload["watch_rounds"] = WATCH_ROUNDS
+        close_call_for(assignment, "detained", npc)
         delay(WATCH_SECONDS, _watch_tick, npc)
         return
     # No hit on this incident — but is anyone here already on file?
@@ -327,10 +370,13 @@ def security_arrival(npc: Any, assignment: Any) -> None:
     elif confidence == "low":
         _cmd(npc, "say You there, Colonist. You fit a description. "
                   "State your business here.")
+        close_call_for(assignment, "checked", npc)
         delay(INVESTIGATE_SECONDS, resolve, npc)
     else:
         _cmd(npc, "emote finds nothing that matches its report and "
                   "logs the scene.")
+        # UNFOUNDED — the first consequence a false report has ever had.
+        close_call_for(assignment, "unfounded", npc)
         delay(INVESTIGATE_SECONDS, resolve, npc)
 
 
