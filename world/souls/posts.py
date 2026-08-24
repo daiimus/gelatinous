@@ -471,7 +471,8 @@ def do_claim(soul, post, shift="day"):
     soul.db.soul_post = room
     soul.db.soul_role = post.db.post_role or "worker"
     soul.db.soul_schedule = shift
-    soul.db.soul_wage_rate = float(post.db.post_wage_rate or 0.02)
+    rate = post.db.post_wage_rate
+    soul.db.soul_wage_rate = 0.02 if rate is None else float(rate)
     # only a real till pays wages from itself; till-less fixtures are
     # treasury posts
     soul.db.soul_venue = post if post.db.register is not None else None

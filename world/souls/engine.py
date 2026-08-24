@@ -36,6 +36,11 @@ SCHEDULES = {
     "day": {"work": (6, 14), "sleep": (21, 5)},
     "swing": {"work": (14, 22), "sleep": (4, 12)},
     "night": {"work": (22, 6), "sleep": (13, 21)},
+    # ALWAYS: a machine does not clock off. `_in_block` reads
+    # `start <= hour < end`, so (0, 24) is every hour and (0, 0) is
+    # none — on duty forever, never asleep. What takes a unit out of
+    # service is a flat battery or a fault, not the end of a shift.
+    "always": {"work": (0, 24), "sleep": (0, 0)},
     # legacy keys — souls migrated by build 078; kept so an unmigrated
     # soul keeps a sane clock rather than KeyErroring the beat
     "vendor": {"work": (14, 22), "sleep": (4, 12)},
@@ -71,6 +76,19 @@ def duty_pressure(soul, hour):
     if not _in_block(hour, sched["work"]):
         return 0.0
     return 0.0 if soul.location == post else 0.9
+
+
+def _wage_rate(soul):
+    """This soul's pay per beat.
+
+    `soul.db.soul_wage_rate or 0.02` reads a rate of ZERO as "unset" and
+    silently pays the default — so an unpaid worker draws wages anyway.
+    Nothing had a zero rate until the security units arrived, which is
+    exactly the kind of latency that makes a falsy-zero bug expensive
+    (#2254). Unset and zero are different statements.
+    """
+    rate = soul.db.soul_wage_rate
+    return 0.02 if rate is None else float(rate)
 
 
 def _in_block(hour, block):
@@ -442,7 +460,7 @@ class SoulsHeartbeat(DefaultScript):
         job = soul.db.soul_job
         if at_post and job and job.get("goal") == "duty":
             pending = float(soul.ndb.soul_wage_pending or 0.0) + float(
-                soul.db.soul_wage_rate or 0.02)
+                _wage_rate(soul))
             if pending and (beat + soul.id) % WAGE_FLUSH_BEATS == 0:
                 soul.db.soul_wage_owed = float(
                     soul.db.soul_wage_owed or 0.0) + pending
