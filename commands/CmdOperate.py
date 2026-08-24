@@ -219,15 +219,25 @@ def _render_patient_lines(caller, target) -> list[str]:
     return lines
 
 
-def _render_chart_lines(chart: dict | None) -> list[str]:
-    """Render the chart's step list (or a placeholder when empty)."""
+def _species_of(target) -> str:
+    """The patient's species, defaulted the way the rest of this
+    command already defaults it."""
+    return (getattr(getattr(target, "db", None), "species", None)
+            or "human")
+
+
+def _render_chart_lines(chart: dict | None, species: str | None = None) -> list[str]:
+    """Render the chart's step list (or a placeholder when empty).
+
+    ``species`` is the PATIENT's, so the chart names components the
+    way the readout beside it does (#2262)."""
     if not chart or not (chart.get("steps") or []):
         return [f"{MUTED}0 documented procedures|n"]
     steps = chart["steps"]
     out = []
     for idx, step in enumerate(steps, start=1):
         roman = _roman(idx).rjust(4)
-        summary = chart_lib.render_step_summary(step)
+        summary = chart_lib.render_step_summary(step, species)
         status = step.get("status", "pending")
         # Color cue per status — pending neutral, done green, failed red.
         if status == chart_lib.DONE:
@@ -275,7 +285,7 @@ def render_top_level(caller, target) -> str:
         "PATIENT", _render_patient_lines(caller, target),
         inline_first=True,
     ))
-    blocks.append(_render_section("CHART", _render_chart_lines(chart)))
+    blocks.append(_render_section("CHART", _render_chart_lines(chart, _species_of(target))))
     blocks.append(_render_section("OPTIONS", _render_options_lines(options)))
 
     # No header — the PATIENT box leads directly.  Flavour text /
@@ -1307,7 +1317,7 @@ def _add_step_to_chart(caller, verb: str, args: dict) -> None:
         caller.msg(f"|r{exc}|n")
         return
     chart_lib.save_chart(target, chart)
-    summary = chart_lib.render_step_summary(step)
+    summary = chart_lib.render_step_summary(step, _species_of(target))
     if before_id is not None:
         caller.msg(f"|wStep inserted:|n {summary}")
         # Clear the insertion point so subsequent adds append.
@@ -1353,7 +1363,7 @@ def _node_edit_chart(caller, raw_string, **kwargs):
     parts = ["\n|wEdit chart|n\n"]
     for idx, step in enumerate(chart["steps"], start=1):
         roman = _roman(idx).rjust(4)
-        summary = chart_lib.render_step_summary(step)
+        summary = chart_lib.render_step_summary(step, _species_of(target))
         status = step.get("status", "pending")
         outcome = step.get("outcome")
         if status == chart_lib.DONE:
@@ -1499,7 +1509,7 @@ def _node_commence(caller, raw_string, **kwargs):
         caller.msg("|wChart complete.|n")
         return "node_top"
 
-    summary = chart_lib.render_step_summary(step)
+    summary = chart_lib.render_step_summary(step, _species_of(target))
     caller.msg(
         f"|wDispatched chart:|n {len(pending)} pending steps, "
         f"running back-to-back."

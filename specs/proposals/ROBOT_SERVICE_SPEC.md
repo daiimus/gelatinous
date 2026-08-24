@@ -1,8 +1,9 @@
 # Robot Service — the same hands, different words
 
-**Status:** partly built. §8.1 + §8.2 shipped (#2266); §7 supplies
-shipped (#2268). §4 labels/verbs and the remaining organ DESCRIPTIONS
-are open on #2262.
+**Status:** ✅ **BUILT.** §8.1 + §8.2 (#2266), §7 supplies (#2268),
+the legacy-stock hole (#2270), a unit's voice about its own damage
+(#2272), and §4 labels + verbs + the last organ description (#2274).
+Only §8.3 (the synthetic tier) remains, deferred by the owner.
 
 **Correction, 2026-08-24:** §4.1 below asked for a per-species organ
 label table. **It already existed** — `robot["organ_display"]` at
@@ -84,9 +85,19 @@ nature. Kidneys, lungs, femurs, humeri and metacarpals were never
 missing. This was the largest error in the spec and it inverted the
 size of the remaining work: roughly one organ, not thirty.
 
-**The verbs.** `incise / harvest / install / suture` are surgical.
-A mechanic *cuts in*, *pulls a module*, *seats* it, and *closes the
-panel*.
+**The verbs.** ✅ **SHIPPED (#2274).** `_SPECIES_VERBS` in
+`charts.py`: on a chassis `incise` reads *cut into*, `harvest` *pull*,
+`install` *seat*, `amputate` *shear off*, `suture` *seal*. A partial
+override, so any verb without an entry keeps its organic word.
+
+Same chart, same keys, same resolvers — only the words move:
+
+    human                        robot
+    incise chest                 cut into chest
+    harvest heart                pull power core
+    harvest left kidney          pull left coolant filter
+    install power core in chest  seat power core in chest
+    suture chest                 seal chest
 
 ## 4. The change
 
@@ -95,14 +106,20 @@ panel*.
    exchanger`, `liver → fluid reclaimer`. Keys never change, so damage,
    hit locations, severed parts, harvesting and every existing test
    keep working untouched.
-2. **One label helper**, used everywhere `replace("_", " ")` is used
-   today — `charts.py`, `CmdOperate`, severed parts, corpse rendering.
-   That single seam is what makes the rest cheap.
+2. ✅ **SHIPPED (#2274).** `render_step_summary` takes an optional
+   `species` and resolves organs through the SAME
+   `get_organ_display_name` that `CmdMedical` and `CmdSurgical`
+   already use — so the chart cannot drift from the readout printed
+   beside it. Locations go through `get_species_location_display`.
+   Item keys deliberately do NOT translate: they are already the words
+   a player sees. The argument is optional, so every existing caller
+   kept working untouched.
 3. **A per-species VERB table** over the same procedure steps. Same
    chart, same flow, same Roman-numeral step list; `suture` reads
    `seal panel` on a chassis.
-4. ~~**Finish the description table** — the remaining thirty organs.~~
-   Withdrawn: one organ (`cervical_spine`), not thirty. See §3.
+4. ✅ **DONE (#2274).** One organ, not thirty: `cervical_spine` now
+   reads as a neck servo column. Every component a live unit carries
+   is described and labelled.
 
 ## 5. Why keys must not change
 

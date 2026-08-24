@@ -36,6 +36,15 @@ def _expand(singles: dict, pairs: dict) -> dict:
 # ROBOT — mechanical. Amber hydraulic fluid; corroded/seized worst-tier.
 # =====================================================================
 _ROBOT_SINGLES = {
+    # The one component the machine pack never got a description for
+    # (#2262). It HAD a machine label -- "neck servo column" -- so the
+    # chart named it correctly while the prose beneath still described
+    # a length of human vertebrae.
+    "cervical_spine": {
+        "pristine": "A neck servo column, seven machined collars stacked on a central bus, each joint turning smooth and silent.",
+        "damaged": "A buckled neck servo column, two collars sprung out of true and the bus sheath split, weeping amber along the stack.",
+        "putrid": "A sheared neck servo column, its collars seized in a locked twist and the bus burnt through, tar-black at the break.",
+    },
     "brain": {
         "pristine": "A sealed processor core, its housing cool and unmarked, status LEDs cycling a steady green.",
         "damaged": "A cracked processor core, one corner scorched black, its indicators stuttering an error-amber.",
