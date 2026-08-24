@@ -63,7 +63,7 @@ class TestBolo(TestCase):
         self.assertEqual(
             build_bolo(perp, via="machine"),
             {"uid": "abc123", "height": "tall", "build": "lean",
-             "via": "machine", "by": None})
+             "worn": set(), "via": "machine", "by": None})
         self.assertIsNone(build_bolo(None))
 
     def test_a_person_carries_no_hash(self, _g):

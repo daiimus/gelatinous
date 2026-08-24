@@ -62,12 +62,52 @@ _HEIGHT_WORDS = {
     "tall": ("tall", "towering", "lofty", "long", "giant"),
 }
 
+#: Garments a caller might name, and the colours they come in. What
+#: people ACTUALLY lead with — "a guy in a black trenchcoat" — and what
+#: a BOLO had nowhere to put, so the most useful sentence anybody says
+#: was discarded on arrival (#2250).
+#:
+#: Matched as (colour, noun) against what the person is really wearing,
+#: coarse on purpose: two black coats read the same across a street.
+_GARMENTS = (
+    "trenchcoat", "coat", "jacket", "windbreaker", "parka", "poncho",
+    "cardigan", "sweater", "hoodie", "shirt", "vest", "suit", "dress",
+    "skirt", "trousers", "pants", "jeans", "boots", "shoes", "hat",
+    "cap", "helmet", "mask", "goggles", "scarf", "gloves", "overalls",
+    "apron", "robe", "uniform",
+)
+_COLOURS = (
+    "black", "white", "grey", "gray", "red", "blue", "green", "yellow",
+    "orange", "purple", "brown", "tan", "charcoal", "navy", "olive",
+    "crimson", "scarlet", "silver", "gold", "pink", "beige", "khaki",
+)
+
 #: Words that mean "I saw a person but can tell you nothing about them".
 #: Distinguishing these from silence matters: "someone" is a report with
 #: no description, and a unit can act on knowing that.
 _ANONYMOUS = ("someone", "somebody", "some guy", "a guy", "a man",
               "a woman", "a person", "people", "they", "a dude",
               "a fella", "a bloke")
+
+
+def _garments_named(low: str) -> set:
+    """Colour+garment pairs the caller mentioned.
+
+    A colour only counts when it is attached to a garment — "black" on
+    its own is a mood, a night, or a joke, and only "black coat" is a
+    description. An unqualified garment still counts with no colour,
+    because "he had a helmet on" is worth something.
+    """
+    found = set()
+    for noun in _GARMENTS:
+        for m in re.finditer(rf"\b{noun}s?\b", low):
+            head = low[max(0, m.start() - 24):m.start()]
+            colour = ""
+            for word in _COLOURS:
+                if re.search(rf"\b{word}\b", head):
+                    colour = "grey" if word == "gray" else word
+            found.add((colour, noun))
+    return found
 
 
 def _match_axis(words, table) -> Optional[str]:
@@ -100,16 +140,17 @@ def describe_suspect(speech: str) -> dict:
 
     build = _match_axis(low, _BUILD_WORDS)
     height = _match_axis(low, _HEIGHT_WORDS)
+    worn = _garments_named(low)
     anonymous = any(re.search(rf"\b{re.escape(w)}\b", low)
                     for w in _ANONYMOUS)
 
     bolo = None
-    if height or build:
+    if height or build or worn:
         # the same shape `build_bolo` produces, on the channel that can
         # carry the least: a voice on the radio, which may also be
         # vague, mistaken, or lying
         bolo = {"uid": None, "height": height, "build": build,
-                "via": "radio", "by": None}
+                "worn": worn, "via": "radio", "by": None}
 
     return {"bolo": bolo, "text": str(speech or "").strip()[:200],
             "anonymous": anonymous and bolo is None}
