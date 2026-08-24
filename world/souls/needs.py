@@ -48,6 +48,13 @@ PROFILES = {
     "robot": {                       # the battery is the appetite
         "charge": (1.0 / 720.0, 0.15, "dwell_venue"),   # ~12h to critical
         "maintenance": (1.0 / 10080.0, 0.05, "dwell_venue"),  # ~1 week
+        # DAMAGE, as distinct from wear. Without this a unit could take
+        # a shotgun blast, keep patrolling on a wrecked chassis, and
+        # turn up at the bench a week later for a routine service —
+        # `maintenance` is a timer, and a timer is not an injury
+        # (#2262). Same derived need the walking wounded use; it reads
+        # the medical state the body already carries.
+        "health": (0.0, 0.0, "clinic"),                 # derived
         "safety": (0.0, 0.0, "flee"),
     },
     "recluse": {                     # the sealed biome (the Rook): every
@@ -95,6 +102,20 @@ def _snapshot(soul, now):
     stamped = stored.get("_at") or float(soul.db.soul_last_decay or now)
     minutes = max(0.0, (now - stamped) / 60.0)
     return stored, minutes
+
+
+#: Who a species goes to when it is hurt. The `clinic` shape sends the
+#: walking wounded to whatever advertises this — people to a doctor,
+#: machines to a bench. Same need, same shape, different door: a
+#: bleeding colonist must not queue at the service rack, and a leaking
+#: unit must not be booked into the operating theatre (#2262).
+CLINIC_SERVICE = {"robot": "repair"}
+DEFAULT_CLINIC_SERVICE = "treatment"
+
+
+def clinic_service(soul):
+    """The advertised service this soul's injuries send it looking for."""
+    return CLINIC_SERVICE.get(profile_name(soul), DEFAULT_CLINIC_SERVICE)
 
 
 def health_pressure(soul):

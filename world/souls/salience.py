@@ -247,6 +247,14 @@ def _work_mechanic(soul):
     post = soul.db.soul_post
     if post is None or soul.location is not post:
         return
+    # Hands AND parts. The clinic has restocked its medic since the
+    # medical slice; the bench had nothing, so a mechanic stood a full
+    # shift with nothing to fit (#2262).
+    try:
+        from world.director.medical import restock_mechanic
+        restock_mechanic(soul)
+    except Exception:  # noqa: BLE001 — a dry bench still racks units
+        pass
     from world.souls import needs as needs_mod
     for obj in (getattr(post, "contents", None) or []):
         if obj is soul or not getattr(obj, "pk", None):

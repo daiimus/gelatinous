@@ -562,7 +562,11 @@ def plan_for(soul, goal_need):
         # the walking wounded self-deliver (spec §14 layer 1): travel to
         # a treatment advertiser and see the doctor. Billing happens in
         # the treat step — triage for the dying is free, healing costs.
-        for score, fixture, room in _advertisers(soul, "treatment"):
+        # people to a doctor, machines to a bench — same need, same
+        # shape, different door (#2262)
+        from world.souls import needs as _needs
+        for score, fixture, room in _advertisers(
+                soul, _needs.clinic_service(soul)):
             return {"goal": goal_need, "ethos": ("care",), "steps": [
                 {"do": "travel", "room": room.id},
                 {"do": "treat", "clinic": fixture.id},
