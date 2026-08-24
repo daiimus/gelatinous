@@ -407,6 +407,17 @@ def apply_verdict(verdict, speaker, speech):
         if last is not None and (now - last) < RADIO_REPORT_DEBOUNCE:
             return None
         _RECENT[key] = now
+        # What the caller told us about the person. A witnessed crime
+        # hands responders `build_bolo(perp)`; a phoned-in report handed
+        # them nothing at all, so a unit arrived, matched against None,
+        # and emoted "finds nothing that matches its report" — honestly,
+        # because it HAD no report, while the caller's words sat unread
+        # in this very payload (#2246).
+        from world.director.calls import describe_suspect, open_call
+        suspect = describe_suspect(speech)
+        call = open_call(said=speech, kind=event_type, room=room,
+                         caller=speaker, suspect=suspect)
+
         from world.director.dispatch import WorldEvent, raise_event
         event = WorldEvent(
             type=event_type,
@@ -414,8 +425,19 @@ def apply_verdict(verdict, speaker, speech):
             severity=severity,
             source=speaker,
             payload={"radio_report": True, "traffic": str(speech)[:200],
-                     "location_text": verdict.get("location_text")},
+                     "location_text": verdict.get("location_text"),
+                     # the silhouette the caller described, in the shape
+                     # `security_arrival` already matches on — hearsay
+                     # reads as "low" confidence, never a positive ID
+                     "bolo": suspect.get("bolo"),
+                     "suspect_text": suspect.get("text"),
+                     "no_description": suspect.get("anonymous"),
+                     "call_id": call.get("id")},
         )
-        return raise_event(event)
+        dispatched = raise_event(event)
+        if call.get("id"):
+            from world.director.calls import record_dispatch
+            record_dispatch(call["id"], dispatched or ())
+        return dispatched
     except Exception:  # noqa: BLE001 — silence
         return None

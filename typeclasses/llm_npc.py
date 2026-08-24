@@ -581,6 +581,27 @@ class LLMNpcMixin:
         except Exception:  # noqa: BLE001 — a feeling must not break a reply
             return None
 
+    @staticmethod
+    def _suspect_line(board):
+        """What the caller said about the person — or that they didn't.
+
+        Never a description she wasn't given. The units carry the same
+        silhouette she does, so if the caller was vague, everyone is
+        vague together and the unit is hoping to catch them at it."""
+        suspect = (board or {}).get("suspect") or {}
+        text = str(suspect.get("text") or "").strip()
+        if suspect.get("anonymous"):
+            return (" The caller described NOBODY — just that a person "
+                    "was involved. You have no description to give and "
+                    "must not invent one; the units are going in blind "
+                    "and hoping to catch it happening.")
+        if text:
+            return (f" The caller's words about the person, verbatim: "
+                    f"\"{text}\" — that is ALL you have. Do not add to "
+                    f"it.")
+        return (" The caller gave no description of anyone. Say so if "
+                "asked; do not supply one.")
+
     def _dispatch_board_line(self):
         """What she just did with the call she is about to answer.
 
@@ -613,6 +634,12 @@ class LLMNpcMixin:
         # engine (#2240). Articles are decided, not guessed.
         from world.grammar import with_article
         kind = with_article(str(verdict.get("incident_type") or "incident"))
+        # WHAT YOU WERE TOLD ABOUT THE PERSON, said plainly — including
+        # when the answer is nothing. A model fills silence, and this
+        # silence is what it filled with "white male inside welfare
+        # gate. Browsing casual clothing." (#2240). State the gap and
+        # there is no gap to fill.
+        line += self._suspect_line(board)
         if sent:
             return (f"{line} You logged {kind} report{place} and "
                     f"{sent} unit(s) are already rolling on it — they "
