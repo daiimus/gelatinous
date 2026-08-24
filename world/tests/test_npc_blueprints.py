@@ -50,13 +50,17 @@ class TestRegistryIntegrity(TestCase):
 
     def test_roster_complete(self):
         # the cast, excluding machinery fixtures like the drill dummy
-        self.assertEqual(len(_cast()), 14)
+        self.assertEqual(len(_cast()), 17)
         for expected in ("butcher_ottilie", "bartender_del", "doctor_marta",
                          "companion_vesper", "dispatch_petra",
                          "tobacconist_bellows",
                          # the emergency board's other two shifts (#2233):
                          # it answered 8 hours in 24 and was dark for 16
-                         "dispatch_kiro", "dispatch_ines"):
+                         "dispatch_kiro", "dispatch_ines",
+                         # the bench (#2261): maintenance advertises only
+                         # where somebody is standing, so these three ARE
+                         # the repair system
+                         "mech_marisol", "mech_tuck", "mech_halina"):
             self.assertIn(expected, BLUEPRINTS)
 
     def test_every_dispatcher_carries_the_desk_register(self):

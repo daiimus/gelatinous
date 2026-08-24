@@ -233,6 +233,41 @@ def _work_medic(soul):
 ROLE_WORK["medic"] = _work_medic
 
 
+def _work_mechanic(soul):
+    """Service the units that came to the bench.
+
+    A machine cannot fix itself: `maintenance` advertises only at a
+    STAFFED bench (`advertise_staffed`), so a unit dwelling here is
+    being worked on by a person. The dwell step does the meter and
+    clears one logged defect; this is the part that makes it somebody's
+    doing rather than a wall fitting's (#2261).
+
+    Nothing to service is a perfectly good shift. Most of them will be.
+    """
+    post = soul.db.soul_post
+    if post is None or soul.location is not post:
+        return
+    from world.souls import needs as needs_mod
+    for obj in (getattr(post, "contents", None) or []):
+        if obj is soul or not getattr(obj, "pk", None):
+            continue
+        if needs_mod.profile_name(obj) != "robot":
+            continue
+        if needs_mod.pressure(obj, "maintenance") < 0.5:
+            continue
+        if soul.ndb.servicing is obj:
+            return                      # already under the hands
+        soul.ndb.servicing = obj
+        soul.execute_cmd(
+            f"pose racks {obj.key} on the bench and opens its "
+            f"service hatch.")
+        return
+    soul.ndb.servicing = None
+
+
+ROLE_WORK["mechanic"] = _work_mechanic
+
+
 def do_post_work(occupant):
     """Everything holding this post asks of whoever holds it.
 

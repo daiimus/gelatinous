@@ -48,6 +48,19 @@ def _advertisers(soul, need, radius=30):
         if not value:
             continue
         room = obj.location if obj.location is not None else obj
+        # A STAFFED advertiser only offers what it offers while somebody
+        # is standing their shift at it (#2261). Some work is a person's
+        # to do: a repair bench that served an empty room would let a
+        # machine fix itself by leaning on it, which deletes the job.
+        # Off shift, the need simply has no plan — and that absence is
+        # what a vacancy is supposed to feel like.
+        if obj.db.advertise_staffed:
+            try:
+                from world.souls.posts import any_keeper_present
+                if not any_keeper_present(obj):
+                    continue
+            except Exception:  # noqa: BLE001 — unreadable post = unstaffed
+                continue
         if obj.db.advertise_scope == "room" and soul.location != room \
                 and soul.db.soul_home != room:
             # a sealed biome serves only its resident (#2096): the
