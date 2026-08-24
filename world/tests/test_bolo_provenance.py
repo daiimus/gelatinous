@@ -184,3 +184,78 @@ class TestAUnitOnTheSpot(EvenniaCommandTest):
         raised, spawned = self._report()
         raised.assert_not_called()
         spawned.assert_called_once()
+
+
+class TestWhatTheyWereWearing(EvenniaCommandTest):
+    """The thing every witness leads with, and the thing a BOLO had
+    nowhere to put (#2250).
+
+    "A svelte lady in a black trenchcoat" gives ONE silhouette axis and
+    a coat. Both axes were required, so the most recognisable fact
+    about somebody counted for nothing and the units went in blind.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.perp = self.char1
+        self.perp.height, self.perp.build = None, "slight"
+
+    def _wearing(self, char, key, colour):
+        from evennia import create_object
+        item = create_object("typeclasses.items.Item", key=key,
+                             location=char)
+        item.color = colour
+        char.get_worn_items = lambda location=None, _i=item: [_i]
+        return item
+
+    def test_a_caller_naming_a_coat_is_heard(self):
+        from world.director.calls import describe_suspect
+        bolo = describe_suspect(
+            "a svelte lady in a black trenchcoat stabbed him")["bolo"]
+        self.assertIn(("black", "trenchcoat"), bolo["worn"])
+        self.assertEqual(bolo["build"], "slight")
+
+    def test_half_a_silhouette_plus_the_coat_matches(self):
+        """The exact case that was worthless before."""
+        from world.director.calls import describe_suspect
+        self._wearing(self.perp, "a battered trenchcoat", "black")
+        bolo = describe_suspect(
+            "a svelte lady in a black trenchcoat stabbed him")["bolo"]
+        self.assertEqual(match_bolo(bolo, self.perp), "low")
+
+    def test_the_wrong_coat_is_not_a_match(self):
+        from world.director.calls import describe_suspect
+        self._wearing(self.perp, "a battered trenchcoat", "red")
+        bolo = describe_suspect(
+            "a svelte lady in a black trenchcoat stabbed him")["bolo"]
+        self.assertIsNone(match_bolo(bolo, self.perp))
+
+    def test_changing_your_coat_defeats_it(self):
+        """Clothes come off — that IS the point. This is the
+        description a change of coat is supposed to beat."""
+        from world.director.calls import describe_suspect
+        bolo = describe_suspect(
+            "a svelte lady in a black trenchcoat stabbed him")["bolo"]
+        self._wearing(self.perp, "a grey cardigan", "grey")
+        self.assertIsNone(match_bolo(bolo, self.perp))
+
+    def test_a_colour_alone_is_not_a_description(self):
+        """"Black" on its own is a mood, a night, or a joke."""
+        from world.director.calls import describe_suspect
+        got = describe_suspect("it's black as hell out here")
+        self.assertFalse(got["bolo"])
+
+    def test_a_bare_garment_still_counts(self):
+        from world.director.calls import describe_suspect
+        bolo = describe_suspect("a tall guy, he had a helmet on")["bolo"]
+        self.assertIn(("", "helmet"), bolo["worn"])
+
+    def test_a_machine_records_the_wardrobe_too(self):
+        self._wearing(self.perp, "a battered trenchcoat", "black")
+        bolo = build_bolo(self.perp, via="machine")
+        self.assertIn(("black", "trenchcoat"), bolo["worn"])
+
+    def test_both_axes_still_win_without_any_clothing(self):
+        self.perp.height = "tall"
+        bolo = build_bolo(self.perp, via="witness")
+        self.assertEqual(match_bolo(bolo, self.perp), "low")

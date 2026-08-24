@@ -75,11 +75,35 @@ def build_bolo(perp: Any, *, via: str = "witness", by: Any = None) -> dict | Non
     height = getattr(perp, "height", None)
     build = getattr(perp, "build", None)
     uid = get_apparent_uid(perp) if via == "machine" else None
-    if uid is None and not (height or build):
+    worn = _worn_signature(perp)
+    if uid is None and not (height or build or worn):
         return None
-    return {"uid": uid, "height": height, "build": build,
+    return {"uid": uid, "height": height, "build": build, "worn": worn,
             "via": via if via in BOLO_CHANNELS else "radio",
             "by": getattr(by, "key", None)}
+
+
+def _worn_signature(perp: Any) -> set:
+    """What the person is visibly WEARING, as colour+garment pairs.
+
+    The thing every witness actually leads with — "a guy in a black
+    trenchcoat" — and the thing a BOLO had nowhere to put, so the most
+    useful sentence anybody says was thrown away (#2250).
+
+    Deliberately coarse: colour and garment noun, not the item. Two
+    different black coats read the same to a stranger across a street,
+    which is exactly the fidelity a description deserves.
+    """
+    out = set()
+    try:
+        for item in (perp.get_worn_items() or []):
+            noun = str(getattr(item, "key", "")).split()[-1].lower()
+            colour = str(getattr(item, "color", "") or "").lower().strip()
+            if noun:
+                out.add((colour, noun))
+    except Exception:  # noqa: BLE001 — an unreadable wardrobe describes nothing
+        pass
+    return out
 
 
 def is_the_right_person(event: Any, candidate: Any) -> bool | None:
@@ -117,9 +141,25 @@ def match_bolo(bolo: dict | None, candidate: Any) -> str | None:
             and get_apparent_uid(candidate) == uid:
         return "high"
     height, build = bolo.get("height"), bolo.get("build")
+    seen_h = getattr(candidate, "height", None)
+    seen_b = getattr(candidate, "build", None)
     if height and build:
-        if (getattr(candidate, "height", None) == height
-                and getattr(candidate, "build", None) == build):
+        if seen_h == height and seen_b == build:
+            return "low"
+        return None
+
+    # HALF a silhouette plus what they were wearing. "A svelte lady in a
+    # black trenchcoat" gives one axis and a coat — useless before,
+    # because both axes were required, so the most recognisable thing
+    # about somebody counted for nothing (#2250).
+    #
+    # Clothes come off, which is the point: this is the description that
+    # a change of coat defeats, and it should be.
+    worn = bolo.get("worn")
+    if worn and (height or build):
+        axis_ok = ((height is None or seen_h == height)
+                   and (build is None or seen_b == build))
+        if axis_ok and (worn & _worn_signature(candidate)):
             return "low"
     return None
 
