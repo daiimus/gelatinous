@@ -68,12 +68,25 @@ class TestTheGate(EvenniaCommandTest):
         self.assertIsNone(tq.attributes.get("serves", None))
         self.assertIsNone(tq.attributes.get("not_for", None))
 
-    def test_an_undeclared_item_works_on_everyone(self):
-        """The safety property. Anything not reviewed keeps its old
-        behaviour, so this change can only ever ADD refusals."""
-        kit = _spawn("SURGICAL_KIT")
-        self.assertTrue(serves_species(kit, self.bot)[0])
-        self.assertTrue(serves_species(kit, self.person)[0])
+    def test_an_undeclared_item_still_works_on_people(self):
+        """The safety property, which the fallback narrows rather than
+        removes: it tightens only the machine side, so organic
+        medicine behaves exactly as it did before the gate."""
+        self.assertTrue(serves_species(_spawn("SURGICAL_KIT"), self.person)[0])
+
+    def test_the_full_approved_translation_table_exists(self):
+        """Every article the owner signed off on, and its counterpart."""
+        for organic, machine in (("BLOOD_BAG", "HYDRAULIC_CHARGE"),
+                                 ("GAUZE_BANDAGES", "SEALANT_PATCH"),
+                                 ("SPLINT", "STRUT_BRACE"),
+                                 ("SURGICAL_SEALANT", "CONFORMAL_COATING"),
+                                 ("SURGICAL_KIT", "TOOL_ROLL")):
+            with self.subTest(pair=(organic, machine)):
+                o, mch = _spawn(organic), _spawn(machine)
+                self.assertEqual(o.attributes.get("medical_type"),
+                                 mch.attributes.get("medical_type"))
+                self.assertFalse(serves_species(o, self.bot)[0])
+                self.assertTrue(serves_species(mch, self.bot)[0])
 
     def test_a_synthetic_takes_the_human_kit(self):
         """Organic-presenting and people-shaped, so the organic kit is
@@ -155,3 +168,59 @@ class TestAtTheSurface(EvenniaCommandTest):
                         f"{self.bot.key}'s chest with patches")
         self.assertNotIn("living tissue", out)
         self.assertNotIn("machine stock", out)
+
+
+class TestTheStockAlreadyInTheWorld(EvenniaCommandTest):
+    """`serves` / `not_for` are PROTOTYPE attributes, so they only reach
+    items spawned after they were authored. Every dressing already
+    lying around the colony declares nothing.
+
+    This shipped once without covering that, and the live world proved
+    it in one line: the mechanics' gauze was refused by nobody.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.bot = self.char1
+        self.bot.db.species = "robot"
+
+    def _legacy(self, proto):
+        """An item as it existed before the gate — declaring nothing."""
+        item = _spawn(proto)
+        item.attributes.remove("serves")
+        item.attributes.remove("not_for")
+        return item
+
+    def test_gauze_from_before_the_gate_is_still_refused(self):
+        ok, why = serves_species(self._legacy("GAUZE_BANDAGES"), self.bot)
+        self.assertFalse(ok, "pre-existing stock grandfathered past the gate")
+        self.assertIn("living tissue", why)
+
+    def test_so_is_every_other_undeclared_organic_supply(self):
+        for proto in ("PAINKILLER", "BLOOD_BAG", "SPLINT",
+                      "SURGICAL_SEALANT", "STIMPAK", "ANTISEPTIC"):
+            with self.subTest(proto=proto):
+                self.assertFalse(serves_species(self._legacy(proto), self.bot)[0])
+
+    def test_the_one_genuinely_shared_article_still_gets_through(self):
+        """The fallback must not lock a mechanic out of the article
+        that really does serve both bodies."""
+        self.assertTrue(serves_species(self._legacy("TOURNIQUET"), self.bot)[0])
+
+    def test_even_the_instruments_are_species_specific(self):
+        """The approved translation table gave the surgical kit its own
+        machine counterpart — a tool roll — so the kit is not a
+        universal after all."""
+        self.assertFalse(serves_species(self._legacy("SURGICAL_KIT"), self.bot)[0])
+        self.assertTrue(serves_species(_spawn("TOOL_ROLL"), self.bot)[0])
+
+    def test_people_are_untouched_by_the_fallback(self):
+        """It tightens only the machine side. Undeclared stock used on
+        a person behaves exactly as it did before the gate existed —
+        that is what keeps this change additive."""
+        person = self.char2
+        person.db.species = "human"
+        for proto in ("GAUZE_BANDAGES", "PAINKILLER", "BLOOD_BAG",
+                      "STIMPAK", "OXYGEN_TANK", "MEDICINAL_HERB"):
+            with self.subTest(proto=proto):
+                self.assertTrue(serves_species(self._legacy(proto), person)[0])

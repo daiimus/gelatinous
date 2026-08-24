@@ -690,10 +690,13 @@ def get_medical_type(item):
     return item.attributes.get("medical_type", "")
 
 
-#: Supplies a machine could conceivably benefit from, when the human
-#: article and the machine article are the same object. Clamping a line
-#: stops amber hydraulic fluid exactly as well as it stops blood, so a
-#: tourniquet declares nothing and works on everyone.
+#: Medical types where the organic article and the machine article are
+#: the same object, so one item genuinely serves both bodies. Clamping
+#: a line stops amber hydraulic fluid exactly as well as it stops
+#: blood. Everything else a machine needs has its own article and must
+#: declare itself -- including the instruments, which are a tool roll
+#: rather than a surgical kit.
+_SERVES_ANY_BODY = frozenset({"tourniquet"})
 
 
 def _species_of(target):
@@ -736,6 +739,19 @@ def serves_species(item, target, looker=None):
         ok = species in set(serves)
     if ok and not_for:
         ok = species not in set(not_for)
+    elif ok and not serves and species == "robot":
+        # Nothing declared. `serves`/`not_for` are PROTOTYPE attributes,
+        # so they only reach items spawned after they were authored --
+        # every dressing already lying around the colony declares
+        # nothing and would sail straight through, which is exactly
+        # what happened the first time this shipped.
+        #
+        # So on a chassis, an undeclared supply is judged by the type
+        # it already carries: only the genuinely shared articles get
+        # through. This tightens ONLY the machine side; an undeclared
+        # item used on a person still works on everyone, which is the
+        # property that lets this change stay additive.
+        ok = get_medical_type(item) in _SERVES_ANY_BODY
     if ok:
         return True, ""
 
