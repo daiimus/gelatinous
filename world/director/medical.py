@@ -34,7 +34,15 @@ PAR = {"GAUZE_BANDAGES": 3, "TOURNIQUET": 2, "PAINKILLER": 2}
 #: Robot-specific consumables are not built yet, so this draws the
 #: subset of the existing kit that a machine can actually use. When the
 #: species-gated supplies land, this becomes their par list.
-MECHANIC_PAR = {"GAUZE_BANDAGES": 2, "TOURNIQUET": 2, "SURGICAL_SEALANT": 2}
+# The bench kit. Not the clinic's: a painkiller is no use to something
+# with no nociception, and since #2262 the organic articles REFUSE a
+# chassis outright, so stocking gauze here would have left the mechanic
+# holding supplies that bounce off every patient she has. The
+# tourniquet is on both lists because it is the one article that
+# genuinely serves both -- clamping a line stops amber hydraulic fluid
+# exactly as well as it stops blood.
+MECHANIC_PAR = {"SEALANT_PATCH": 2, "TOURNIQUET": 2,
+                "CONFORMAL_COATING": 2, "STRUT_BRACE": 1}
 
 
 def restock_mechanic(npc: Any) -> int:

@@ -1854,6 +1854,8 @@ BLOOD_BAG = {
     "tags": [("medical_item", "item_type"), ("inject", "delivery_method")],
     "attrs": [
         ("medical_type", "blood_restoration"),
+        # a machine takes a hydraulic charge (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 1),
         ("max_uses", 1),
         ("stat_requirement", 1),
@@ -2064,6 +2066,8 @@ PAINKILLER = {
     "tags": [("medical_item", "item_type"), ("inject", "delivery_method")],
     "attrs": [
         ("medical_type", "pain_relief"),
+        # nothing in there to hurt (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 3),
         ("max_uses", 3),
         ("stat_requirement", 0),
@@ -2086,6 +2090,8 @@ GAUZE_BANDAGES = {
     "tags": [("medical_item", "item_type"), ("apply", "delivery_method"), ("bandage", "delivery_method")],
     "attrs": [
         ("medical_type", "wound_care"),
+        # a machine takes a sealant patch (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 5),
         ("max_uses", 5),
         ("stat_requirement", 0),
@@ -2108,6 +2114,8 @@ SPLINT = {
     "tags": [("medical_item", "item_type"), ("apply", "delivery_method")],
     "attrs": [
         ("medical_type", "fracture_treatment"),
+        # a machine takes a strut brace (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 1),
         ("max_uses", 1),
         ("stat_requirement", 2),
@@ -2762,6 +2770,8 @@ SURGICAL_SEALANT = {
     "tags": [("medical_item", "item_type"), ("apply", "delivery_method")],
     "attrs": [
         ("medical_type", "organ_repair"),
+        # a machine takes a conformal coating (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 3),
         ("max_uses", 3),
         ("stat_requirement", 3),
@@ -2776,6 +2786,118 @@ SURGICAL_SEALANT = {
     ],
 }
 
+
+# ---------------------------------------------------------------------
+# The machine kit (#2262)
+#
+# A secbot is human-shaped on purpose, so the ACT of repairing one is
+# the act of operating on a person -- same chart, same hit locations,
+# same steps. What differs is what you put in your hands. These are the
+# ordinary counterparts of the organic supplies, carrying the same
+# `medical_type` so every existing code path treats them identically,
+# and `serves: ["robot"]` so they do nothing for a person.
+#
+# Deliberately absent: a machine painkiller, sedative, oxygen or
+# antiseptic. Those have no counterpart because there is nothing to
+# numb, sedate, oxygenate or infect. The tourniquet has no machine
+# version either, for the opposite reason -- clamping a line stops
+# amber hydraulic fluid exactly as well as it stops blood, so the one
+# article serves both and declares nothing.
+# ---------------------------------------------------------------------
+
+# Hydraulic Charge - the transfusion analogue
+HYDRAULIC_CHARGE = {
+    "key": "hydraulic charge",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["charge", "hydraulic", "fluid charge", "boiler run charge"],
+    "desc": "A rigid half-litre canister of amber hydraulic fluid under pressure, the Boiler Run kettle-and-flame stamped into the shoulder. A bayonet fitting on the nose mates to a chassis reservoir port. The sight strip down one side runs from FULL to a red band somebody has worn half away with their thumb.",
+    "tags": [("medical_item", "item_type"), ("inject", "delivery_method")],
+    "attrs": [
+        ("medical_type", "blood_restoration"),
+        ("serves", ["robot"]),
+        ("uses_left", 1),
+        ("max_uses", 1),
+        ("stat_requirement", 1),
+        ("application_time", 1),
+        ("effectiveness", {
+            "bleeding": 9,
+            "blood_loss": 10,
+            "shock": 7,
+            "organ_damage": 3,
+        })
+    ],
+}
+
+# Sealant Patches - the dressing analogue
+SEALANT_PATCH = {
+    "key": "sealant patches",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["patch", "patches", "sealant patch", "sealant patches"],
+    "desc": "A folded strip of self-adhering polymer patching in a Boiler Run wrapper, scored into tear-off squares. Pressed over a split line or a breached panel it goes tacky against the fluid it is stopping, which is the whole trick of it. Five squares left on a fresh strip.",
+    "tags": [("medical_item", "item_type"), ("apply", "delivery_method"), ("bandage", "delivery_method")],
+    "attrs": [
+        ("medical_type", "wound_care"),
+        ("serves", ["robot"]),
+        ("uses_left", 5),
+        ("max_uses", 5),
+        ("stat_requirement", 0),
+        ("application_time", 1),
+        ("effectiveness", {
+            "bleeding": 7,
+            "infection": 8,
+            "wound_healing": 6,
+            "pain": 3,
+        })
+    ],
+}
+
+# Strut Brace - the splint analogue
+STRUT_BRACE = {
+    "key": "strut brace",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["brace", "strut", "splint brace"],
+    "desc": "Two lengths of channel steel and a pair of worm-drive clamps, sized to bridge a bent actuator strut and hold it true enough to walk on. The Boiler Run plate is stamped, not printed, because a printed one would not survive the shop.",
+    "tags": [("medical_item", "item_type"), ("apply", "delivery_method")],
+    "attrs": [
+        ("medical_type", "fracture_treatment"),
+        ("serves", ["robot"]),
+        ("uses_left", 1),
+        ("max_uses", 1),
+        ("stat_requirement", 2),
+        ("application_time", 2),
+        ("effectiveness", {
+            "fracture": 8,
+            "pain": 4,
+            "mobility": 6,
+            "bleeding": 2,
+        })
+    ],
+}
+
+# Conformal Coating - the tissue-sealant analogue
+CONFORMAL_COATING = {
+    "key": "conformal coating",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["coating", "conformal", "potting compound"],
+    "desc": "A single-dose Boiler Run ampule of grey potting compound with a fine cannula on the end. Run into a cracked component housing it wicks along the fault and cures hard in about a minute, sealing the part against fluid and dust. Useless on a closed chassis -- the panel has to be off and the component in front of you.",
+    "tags": [("medical_item", "item_type"), ("apply", "delivery_method")],
+    "attrs": [
+        ("medical_type", "organ_repair"),
+        ("serves", ["robot"]),
+        ("uses_left", 3),
+        ("max_uses", 3),
+        ("stat_requirement", 3),
+        ("application_time", 2),
+        ("effectiveness", {
+            "organ_repair":  8,
+            "infection":     7,
+            "wound_healing": 5,
+            "bleeding":      3,
+            "pain":          1,
+        })
+    ],
+}
+
 # Emergency Stimpak - Rapid healing injection
 STIMPAK = {
     "key": "stimpak",
@@ -2785,6 +2907,8 @@ STIMPAK = {
     "tags": [("medical_item", "item_type")],
     "attrs": [
         ("medical_type", "healing_acceleration"),
+        # biology, not repair (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 1),
         ("max_uses", 1),
         ("stat_requirement", 1),
@@ -2808,6 +2932,8 @@ ANTISEPTIC = {
     "tags": [("medical_item", "item_type"), ("apply", "delivery_method")],
     "attrs": [
         ("medical_type", "antiseptic"),
+        # machines don't culture biological infection (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 8),
         ("max_uses", 8),
         ("stat_requirement", 0),
@@ -2833,6 +2959,8 @@ OXYGEN_TANK = {
     "tags": [("medical_item", "item_type"), ("inhale", "delivery_method")],
     "attrs": [
         ("medical_type", "oxygen"),
+        # nothing in there breathing (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 10),
         ("max_uses", 10),
         ("stat_requirement", 0),
@@ -2853,6 +2981,8 @@ STIMPAK_INHALER = {
     "tags": [("medical_item", "item_type"), ("inhale", "delivery_method")],
     "attrs": [
         ("medical_type", "vapor"),
+        # biology, not repair (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 1),
         ("max_uses", 1),
         ("stat_requirement", 1),
@@ -2873,6 +3003,8 @@ ANESTHETIC_GAS = {
     "tags": [("medical_item", "item_type"), ("inhale", "delivery_method")],
     "attrs": [
         ("medical_type", "anesthetic"),
+        # nothing in there to sedate (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 5),
         ("max_uses", 5),
         ("stat_requirement", 2),
@@ -2892,6 +3024,8 @@ MEDICINAL_HERB = {
     "tags": [("medical_item", "item_type"), ("smoke", "delivery_method")],
     "attrs": [
         ("medical_type", "herb"),
+        # biology, not repair (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 3),
         ("max_uses", 3),
         ("stat_requirement", 0),
@@ -2912,6 +3046,8 @@ PAIN_RELIEF_CIGARETTE = {
     "tags": [("medical_item", "item_type"), ("smoke", "delivery_method")],
     "attrs": [
         ("medical_type", "cigarette"),
+        # nothing in there to hurt (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 1),
         ("max_uses", 1),
         ("stat_requirement", 0),

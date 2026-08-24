@@ -12,7 +12,8 @@ from world.identity_utils import msg_room_identity
 from world.consumables import supports_delivery
 from world.medical.utils import (
     is_medical_item, can_be_used, get_medical_type, get_stat_requirement,
-    calculate_treatment_success, apply_medical_effects, use_item
+    calculate_treatment_success, apply_medical_effects, use_item,
+    serves_species
 )
 
 
@@ -224,6 +225,15 @@ class ConsumptionCommand(Command):
         except AttributeError:
             errors.append(f"{target.get_display_name(user)} cannot receive medical treatment.")
             
+        # Species gate (#2262). A supply meant for meat does nothing
+        # for a chassis, and machine stock does nothing for a person.
+        # Sits with the other refusals rather than inside the roll, so
+        # a mechanic is told what's wrong instead of failing a check.
+        ok, why = serves_species(item, target, user)
+        if not ok:
+            errors.append(why)
+            return errors
+
         # Trust/consent gate (TRUST_AND_CONSENT_SPEC §3, `heal` class):
         # treating someone ELSE who can contest requires their trust.
         if target is not user:
