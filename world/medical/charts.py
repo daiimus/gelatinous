@@ -374,9 +374,45 @@ _SPECIES_VERBS = {
 }
 
 
-def _verb_for(verb: str, species: str | None) -> str:
-    """The species' word for a procedure step."""
+#: The same verbs as PROSE reads them -- "you begin sealing" rather
+#: than "you begin suture". Kept as an explicit table rather than
+#: derived, because "cut into" does not inflect to "cutting into" by
+#: any rule worth writing.
+_SPECIES_GERUNDS = {
+    None: {
+        "incise": "cutting into",
+        "amputate": "amputating",
+        "harvest": "harvesting",
+        "install": "installing",
+        "suture": "suturing",
+    },
+    "robot": {
+        "incise": "cutting into",
+        "amputate": "shearing off",
+        "harvest": "pulling",
+        "install": "seating",
+        "suture": "sealing",
+    },
+}
+
+
+def verb_for(verb: str, species: str | None = None) -> str:
+    """The species' word for a procedure step.
+
+    Public because the STANDALONE commands need the same table the
+    chart uses. Two routes into one act must not describe it
+    differently (#2278)."""
     return (_SPECIES_VERBS.get(species or "") or {}).get(verb, verb)
+
+
+def gerund_for(verb: str, species: str | None = None) -> str:
+    """The species' word for a step, as running prose reads it."""
+    table = _SPECIES_GERUNDS.get(species or "") or _SPECIES_GERUNDS[None]
+    return table.get(verb) or _SPECIES_GERUNDS[None].get(verb, verb)
+
+
+#: Kept for the module's own callers.
+_verb_for = verb_for
 
 
 def render_step_summary(step: dict, species: str | None = None) -> str:
