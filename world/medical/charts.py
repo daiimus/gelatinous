@@ -359,48 +359,96 @@ def is_chart_complete(chart: dict) -> bool:
 # ===================================================================
 
 
-def render_step_summary(step: dict) -> str:
+#: What the same procedure step is CALLED on a chassis. The act is
+#: identical -- same chart, same hit locations, same resolver -- and
+#: only the word changes, because you do not suture a robot (#2262).
+#: Verbs absent from a species table keep their organic word.
+_SPECIES_VERBS = {
+    "robot": {
+        "incise": "cut into",
+        "amputate": "shear off",
+        "harvest": "pull",
+        "install": "seat",
+        "suture": "seal",
+    },
+}
+
+
+def _verb_for(verb: str, species: str | None) -> str:
+    """The species' word for a procedure step."""
+    return (_SPECIES_VERBS.get(species or "") or {}).get(verb, verb)
+
+
+def render_step_summary(step: dict, species: str | None = None) -> str:
     """One-line UI rendering of a step for chart display.
 
+    ``species`` is optional so existing callers keep working, but pass
+    the PATIENT's species and the chart stops describing a machine in
+    meat. Without it a mechanic charts against a list reading *heart*,
+    *liver*, *left kidney* while the prose underneath describes a
+    power core -- the description was already machine, the noun never
+    was (#2262).
+
     Examples:
-        ``incise chest``
-        ``harvest left lung``
-        ``install donor heart in chest``
-        ``apply gauze on chest``
+        ``incise chest``            ``cut into chest``
+        ``harvest left lung``       ``pull left cooling unit``
+        ``suture chest``            ``seal chest``
     """
     verb = step.get("verb", "?")
     args = step.get("args") or {}
+    said = _verb_for(verb, species)
     if verb == "incise":
-        return f"incise {_humanize(args.get('location'))}"
+        return f"{said} {_location(args.get('location'), species)}"
     if verb == "amputate":
-        return f"amputate {_humanize(args.get('location'))}"
+        return f"{said} {_location(args.get('location'), species)}"
     if verb == "harvest":
-        return f"harvest {_humanize(args.get('organ_name'))}"
+        return f"{said} {_organ(args.get('organ_name'), species)}"
     if verb == "install":
         organ = _humanize(args.get("organ_item_key"))
-        loc = _humanize(args.get("location"))
-        return f"install {organ} in {loc}"
+        loc = _location(args.get("location"), species)
+        return f"{said} {organ} in {loc}"
     if verb == "suture":
         loc = args.get("location")
-        return f"suture {_humanize(loc)}" if loc else "suture all"
+        return (f"{said} {_location(loc, species)}" if loc
+                else f"{said} all")
     if verb == "autopsy":
         return "conduct autopsy"
     if verb == "apply":
         item = _humanize(args.get("item_key"))
-        loc = _humanize(args.get("location"))
-        return f"apply {item} on {loc}"
+        loc = _location(args.get("location"), species)
+        return f"{said} {item} on {loc}"
     if verb == "inject":
         item = _humanize(args.get("item_key"))
         loc = args.get("location")
         if loc:
-            return f"inject {item} at {_humanize(loc)}"
-        return f"inject {item}"
-    return verb
+            return f"{said} {item} at {_location(loc, species)}"
+        return f"{said} {item}"
+    return said
+
+
+def _organ(value, species=None) -> str:
+    """An organ's name in this body's own words -- `heart` reads
+    "power core" on a chassis. Resolves through the SAME helper
+    `CmdMedical` and `CmdSurgical` already use, so the chart cannot
+    drift from the readout beside it."""
+    if not isinstance(value, str):
+        return "?"
+    from world.anatomy import get_organ_display_name
+    return get_organ_display_name(value, species)
+
+
+def _location(value, species=None) -> str:
+    """A body location in this body's own words."""
+    if not isinstance(value, str):
+        return "?"
+    from world.anatomy import get_species_location_display
+    return get_species_location_display(species, value)
 
 
 def _humanize(value) -> str:
     """Underscore → space for display.  Falls back to ``"?"`` on
-    None / non-string."""
+    None / non-string.  Used for ITEM keys, which are already the
+    words a player sees and carry no species."""
     if not isinstance(value, str):
         return "?"
     return value.replace("_", " ")
