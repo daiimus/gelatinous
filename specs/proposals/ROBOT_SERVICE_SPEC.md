@@ -46,8 +46,11 @@ system that already works, not an anatomy rewrite.
   wrecked chassis → stripped frame, with part and organ prefixes to
   match ("fried robot {organ}", "salvaged robot {organ}")
 
-`ORGAN_DESCRIPTIONS_ROBOT` already reworks **nine** organs where it
-matters most:
+`ORGAN_DESCRIPTIONS_ROBOT` reworks **27 organs** — every organ a unit
+actually has bar three. (This spec first said "nine", counting the
+`_ROBOT_SINGLES` source entries and missing that `_expand()` turns
+each PAIR into a left and a right. Verified against a live unit:
+30 organs, 27 described.)
 
 | key | what you actually see |
 |---|---|
@@ -71,9 +74,15 @@ the UI humanises it directly — `charts.py` and `CmdOperate` both do
 list that says *heart*, *liver*, *left kidney*, while the prose beneath
 describes a power core. The description is machine; the noun is meat.
 
-**Thirty of thirty-nine organs have no robot description at all** —
-only nine are covered, so kidneys, lungs, femurs, humeri, metacarpals
-and the rest still read as biology in full.
+~~Thirty of thirty-nine organs have no robot description.~~
+**FALSE — withdrawn 2026-08-24.** Verified against a live secbot:
+of its 30 organs, 27 have a machine description AND a machine label.
+The only gaps are `cervical_spine` (labelled "neck servo column" but
+undescribed) and the two augments `comms_module` /
+`integrated_shotgun_module`, which are already machine-named by
+nature. Kidneys, lungs, femurs, humeri and metacarpals were never
+missing. This was the largest error in the spec and it inverted the
+size of the remaining work: roughly one organ, not thirty.
 
 **The verbs.** `incise / harvest / install / suture` are surgical.
 A mechanic *cuts in*, *pulls a module*, *seats* it, and *closes the
@@ -92,7 +101,8 @@ panel*.
 3. **A per-species VERB table** over the same procedure steps. Same
    chart, same flow, same Roman-numeral step list; `suture` reads
    `seal panel` on a chassis.
-4. **Finish the description table** — the remaining thirty organs.
+4. ~~**Finish the description table** — the remaining thirty organs.~~
+   Withdrawn: one organ (`cervical_spine`), not thirty. See §3.
 
 ## 5. Why keys must not change
 
@@ -134,12 +144,12 @@ item. Sorting it by whether a machine could possibly benefit:
 
 | type | item | on a machine |
 |---|---|---|
-| `tourniquet` | tourniquet | **works as-is** — clamping a line stops amber fluid as well as blood |
-| `fracture_treatment` | medical splint | translates — a strut brace |
-| `blood_restoration` | blood bag | translates — a hydraulic/coolant charge |
-| `wound_care` | gauze bandages | translates — a sealant patch |
-| `organ_repair` | surgical sealant | translates — conformal coating |
-| `surgical_treatment` | surgical kit | translates — a tool roll |
+| `tourniquet` | tourniquet | ✅ **works as-is** — clamping a line stops amber fluid as well as blood |
+| `fracture_treatment` | medical splint | translates — a strut brace ✅ built |
+| `blood_restoration` | blood bag | translates — a hydraulic charge ✅ built |
+| `wound_care` | gauze bandages | translates — sealant patches ✅ built |
+| `organ_repair` | surgical sealant | translates — a conformal coating ✅ built |
+| `surgical_treatment` | surgical kit | translates — a tool roll ✅ built |
 | `pain_relief` | painkiller, cigarette | **refuse** — nothing to hurt |
 | `anesthetic` | anesthetic gas | **refuse** — nothing to sedate |
 | `oxygen` | oxygen tank | **refuse** — nothing breathing |
@@ -161,9 +171,16 @@ live on one verb and absent on another. Four machine articles added:
 hydraulic charge, sealant patches, strut brace, conformal coating, all
 Boiler Run. The tourniquet declares nothing and so serves both.
 
-**Left universal deliberately:** the surgical kit. A scalpel is a
-scalpel — it is instruments rather than a consumable, and gating it
-risked blocking robot surgery for no fictional gain.
+**One trap the gate had to grow a second half for.** `serves` /
+`not_for` are PROTOTYPE attributes, so they only reach items spawned
+after they were authored. Every dressing already lying around the
+colony declares nothing and sailed straight through — the live world
+said so in one line, refusing exactly zero of the mechanics' gauze.
+So an UNDECLARED supply used on a chassis now falls back to the
+`medical_type` it already carries, and only genuinely shared articles
+pass. This tightens only the machine side; undeclared stock used on a
+person behaves exactly as it did before, which is what keeps the
+change additive.
 
 **Shape:** items declare who they serve — a `serves` set, or the
 inverse `not_for` — checked in the same apply path that already asks

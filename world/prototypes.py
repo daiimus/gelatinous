@@ -2736,6 +2736,8 @@ SURGICAL_KIT = {
     "tags": [("medical_item", "item_type")],
     "attrs": [
         ("medical_type", "surgical_treatment"),
+        # a machine takes a tool roll (#2262)
+        ("not_for", ["robot"]),
         ("uses_left", 10),
         ("max_uses", 10),
         ("stat_requirement", 3),
@@ -2894,6 +2896,29 @@ CONFORMAL_COATING = {
             "wound_healing": 5,
             "bleeding":      3,
             "pain":          1,
+        })
+    ],
+}
+
+# Tool Roll - the surgical-kit analogue
+TOOL_ROLL = {
+    "key": "tool roll",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["roll", "tools", "tool kit", "wrap"],
+    "desc": "A canvas Boiler Run roll that unties flat into a row of pockets: drivers, picks, a stubby spanner, needle-nose pliers and a magnetised tray that clips to the edge so dropped screws stop being lost screws. Every handle is worn pale at the same spot.",
+    "tags": [("medical_item", "item_type"), ("apply", "delivery_method")],
+    "attrs": [
+        ("medical_type", "surgical_treatment"),
+        ("serves", ["robot"]),
+        ("uses_left", 10),
+        ("max_uses", 10),
+        ("stat_requirement", 3),
+        ("application_time", 3),
+        ("effectiveness", {
+            "surgery": 8,
+            "organ_damage": 7,
+            "fracture": 5,
+            "bleeding": 4,
         })
     ],
 }
