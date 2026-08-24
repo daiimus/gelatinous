@@ -336,6 +336,7 @@ class CmdHarvest(Command):
     help_category = "Medical"
 
     def func(self):  # noqa: C901
+        from world.anatomy import get_organ_display_name
         caller = self.caller
         raw = (self.args or "").strip()
         if not raw:
@@ -345,7 +346,7 @@ class CmdHarvest(Command):
         # Two forms: with " from " (do the harvest), without (list).
         if " from " in raw:
             organ_arg, _, target_phrase = raw.partition(" from ")
-            organ_arg = organ_arg.strip().lower().replace(" ", "_")
+            organ_arg = organ_arg.strip()
         else:
             organ_arg = ""
             target_phrase = raw
@@ -405,7 +406,6 @@ class CmdHarvest(Command):
                     f"{target.get_display_name(caller)}."
                 )
                 return
-            from world.anatomy import get_organ_display_name
             readable = ", ".join(
                 get_organ_display_name(o, species) for o in harvestable)
             caller.msg(
@@ -414,20 +414,40 @@ class CmdHarvest(Command):
             )
             return
 
-        if organ_arg not in organs:
+        # Resolve what was TYPED against what this body calls things.
+        # Match the harvestable set first so a good name is never
+        # refused on a technicality, then fall back to the whole body
+        # to tell the difference between "no such organ" and "that one
+        # can't come out" (#2276).
+        from world.anatomy import resolve_organ, name_the_options, Ambiguous
+        found = resolve_organ(organ_arg, harvestable, species)
+        if isinstance(found, Ambiguous):
             caller.msg(
-                f"There is no {organ_arg.replace('_', ' ')} in "
-                f"{target.get_display_name(caller)}."
+                f"Which did you mean? "
+                f"{name_the_options(found, species)}."
             )
             return
-
-        if organ_arg not in harvestable:
+        if found is None:
+            elsewhere = resolve_organ(organ_arg, list(organs), species)
+            if isinstance(elsewhere, Ambiguous):
+                caller.msg(
+                    f"Which did you mean? "
+                    f"{name_the_options(elsewhere, species)}."
+                )
+                return
+            if elsewhere is None:
+                caller.msg(
+                    f"There is no {organ_arg} in "
+                    f"{target.get_display_name(caller)}."
+                )
+                return
             caller.msg(
-                f"The {organ_arg.replace('_', ' ')} in "
+                f"The {get_organ_display_name(elsewhere, species)} in "
                 f"{target.get_display_name(caller)} cannot be harvested "
                 f"(already removed, destroyed, or not extractable)."
             )
             return
+        organ_arg = found
 
         organ_data = organs[organ_arg]
         container = organ_data.get("container")

@@ -19,6 +19,7 @@ Public surface:
 * :func:`world.anatomy.severed_parts.get_severed_part_description`
 * :data:`world.anatomy.organs.ORGAN_DISPLAY`
 * :func:`world.anatomy.organs.get_organ_display_name`
+* :func:`world.anatomy.organs.resolve_organ` — its input-side mirror
 * :func:`world.anatomy.organs.get_organ_default_description`
 * :func:`world.anatomy.conditions.format_condition_tagline`
 * :func:`world.anatomy.conditions.prepend_condition_to_desc`
@@ -35,6 +36,9 @@ from .organs import (
     ORGAN_DISPLAY,
     get_organ_default_description,
     get_organ_display_name,
+    resolve_organ,
+    name_the_options,
+    Ambiguous,
 )
 from .severed_parts import (
     SEVERED_PART_DESCRIPTIONS,
@@ -74,6 +78,9 @@ __all__ = (
     "format_condition_tagline",
     "get_organ_default_description",
     "get_organ_display_name",
+    "resolve_organ",
+    "name_the_options",
+    "Ambiguous",
     "get_severed_part_description",
     "get_organ_spec",
     "get_species_anatomical_display_order",

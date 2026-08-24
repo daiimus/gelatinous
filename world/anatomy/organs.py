@@ -347,6 +347,75 @@ def get_organ_display_name(organ_name, species=None):
     return (organ_name or "").replace("_", " ")
 
 
+#: What a resolver hands back when the token names more than one
+#: thing. Commands render it as a question; nothing auto-picks.
+class Ambiguous(list):
+    """Several candidates matched. Truthy, and iterable in display
+    order, so a command can render it directly."""
+
+
+def _aliases(key, species):
+    """Every string a player could reasonably type for this organ:
+    the canonical key, that key spoken aloud, and the species' own
+    display name for it."""
+    return {key, key.replace("_", " "),
+            get_organ_display_name(key, species).lower()}
+
+
+def resolve_organ(token, candidates, species=None):
+    """Turn what a player TYPED into a canonical organ key.
+
+    The mirror of :func:`get_organ_display_name`, and the reason it
+    has to exist: display got a resolver when per-species
+    `organ_display` landed, input never did. So `harvest` listed
+    "processor core, left optical sensor" and then accepted only the
+    hidden human keys -- the command printed names it would go on to
+    reject (#2276).
+
+    Matching is deliberately flat: gather everything the token could
+    mean, and if that is more than one thing, ASK. No scoring, no
+    closest-match, no exact-beats-prefix tie-break. On a command that
+    opens a body, guessing between a processor core and a power core
+    is not a mistake anybody can walk back, and the surgeon is the one
+    who should decide (owner ruling 2026-08-24, the same rule that
+    governs eating an unidentified stew).
+
+    Args:
+        token: raw player input, e.g. ``"power core"`` or ``"kidney"``.
+        candidates: the organ keys legal for this action right now --
+            harvestable, present, undestroyed. Filtering belongs to the
+            caller; this only resolves names.
+        species: the PATIENT's species.
+
+    Returns:
+        A canonical organ key, an :class:`Ambiguous` list of keys when
+        the token names several, or ``None`` when it names nothing.
+    """
+    if not isinstance(token, str):
+        return None
+    want = " ".join(token.strip().lower().split())
+    if not want:
+        return None
+    keys = list(candidates or ())
+    hit = [k for k in keys if want in _aliases(k, species)]
+    if not hit:
+        # nothing named outright -- fall back to partials, which is
+        # what makes "kidney" and "core" reach two organs each
+        hit = [k for k in keys
+               if any(want in alias for alias in _aliases(k, species))]
+    if not hit:
+        return None
+    if len(hit) == 1:
+        return hit[0]
+    return Ambiguous(sorted(hit, key=lambda k: get_organ_display_name(k, species)))
+
+
+def name_the_options(keys, species=None):
+    """Render an :class:`Ambiguous` result as player-facing prose, in
+    the words that body uses."""
+    return ", ".join(get_organ_display_name(k, species) for k in keys)
+
+
 def get_organ_default_description(organ_name, condition, species=None):
     """Return the default prose for an organ at a given condition.
 

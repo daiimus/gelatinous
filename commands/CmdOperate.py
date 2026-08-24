@@ -758,31 +758,81 @@ def _render_numbered(items, render_fn):
     )
 
 
-def _parse_pick(raw, items):
-    """Resolve a user pick (numeric index or substring match)
-    against ``items``.
+class _Several(list):
+    """Several entries matched the typed name. The picker asks."""
 
-    Returns the chosen item or ``None`` if no match.  Numeric
-    picks are 1-based.  String picks match case-insensitively
-    against ``str(item)``; for tuples, the *first* element is
-    matched (organ name, container name).
+
+def _pick_aliases(item, species=None):
+    """Every string a player could type for one picker entry.
+
+    Includes the species' DISPLAY name, which is the whole point: the
+    organ picker prints what this body calls a component, so the same
+    words have to come back (#2276)."""
+    from world.anatomy import get_organ_display_name
+    value = item[0] if isinstance(item, tuple) else item
+    if not isinstance(value, str):
+        # donor entries are ``(item_object, organ)``
+        return {str(getattr(value, "key", value)).lower()}
+    return {value.lower(), value.replace("_", " ").lower(),
+            get_organ_display_name(value, species).lower()}
+
+
+def _parse_pick(raw, items, species=None):
+    """Resolve a user pick (numeric index or typed name) against
+    ``items``.
+
+    Numeric picks are 1-based and exact. NAMED picks follow the same
+    rule as :func:`world.anatomy.resolve_organ`: gather everything the
+    token could mean, and if that is more than one thing, ASK.
+
+    This used to return the FIRST substring match, which meant typing
+    ``arm`` at the amputate picker silently took the left one and
+    ``kidney`` silently took a kidney — the wrong-organ case never even
+    surfaced as an error, it just went on the chart (#2276). Owner
+    ruling 2026-08-24: never guess.
+
+    Returns:
+        The chosen item, a :class:`_Several` list of candidates when
+        the name is ambiguous, or ``None`` when nothing matched.
     """
     if not raw or not raw.strip():
         return None
-    raw = raw.strip().lower()
+    raw = " ".join(raw.strip().lower().split())
     # Numeric pick.
     if raw.isdigit():
         idx = int(raw) - 1
         if 0 <= idx < len(items):
             return items[idx]
         return None
-    # String pick — substring match against str() of the first
-    # tuple element (or the whole value).
+    # A complete name wins outright; otherwise every partial match is
+    # a candidate, and two candidates is a question.
+    hit = [i for i in items if raw in _pick_aliases(i, species)]
+    if not hit:
+        hit = [i for i in items
+               if any(raw in alias for alias in _pick_aliases(i, species))]
+    if not hit:
+        return None
+    if len(hit) == 1:
+        return hit[0]
+    return _Several(hit)
+
+
+def _name_picks(items, species=None):
+    """Render ambiguous candidates in this body's own words."""
+    from world.anatomy import get_organ_display_name
+    out = []
     for item in items:
-        haystack = item[0] if isinstance(item, tuple) else item
-        if raw in str(haystack).lower():
-            return item
-    return None
+        value = item[0] if isinstance(item, tuple) else item
+        out.append(get_organ_display_name(value, species)
+                   if isinstance(value, str)
+                   else str(getattr(value, "key", value)))
+    return ", ".join(sorted(out))
+
+
+def _species_of_target(caller):
+    target = getattr(caller.ndb, "_operate_target", None)
+    return (getattr(getattr(target, "db", None), "species", None)
+            or "human")
 
 
 # ===================================================================
@@ -817,7 +867,12 @@ def _process_incise_location(caller, raw_string, **kwargs):
         return "node_top"
     if not raw:
         return None
-    pick = _parse_pick(raw, caller.ndb._operate_pickable or [])
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [],
+                       _species_of_target(caller))
+    if isinstance(pick, _Several):
+        caller.msg(f"|wWhich did you mean?|n "
+                   f"{_name_picks(pick, _species_of_target(caller))}.")
+        return None
     if pick is None:
         caller.msg("|rPick a number from the list, or type the name.|n")
         return None
@@ -883,7 +938,12 @@ def _process_amputate_location(caller, raw_string, **kwargs):
         return "node_top"
     if not raw:
         return None
-    pick = _parse_pick(raw, caller.ndb._operate_pickable or [])
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [],
+                       _species_of_target(caller))
+    if isinstance(pick, _Several):
+        caller.msg(f"|wWhich did you mean?|n "
+                   f"{_name_picks(pick, _species_of_target(caller))}.")
+        return None
     if pick is None:
         caller.msg("|rPick a number from the list, or type the name.|n")
         return None
@@ -903,9 +963,13 @@ def _node_harvest_organ(caller, raw_string, **kwargs):
         caller.msg("|rNo harvestable organs on this target.|n")
         return "node_top"
     caller.ndb._operate_pickable = organs
+    from world.anatomy import get_organ_display_name
+    species = _species_of_target(caller)
     listing = _render_numbered(
         organs,
-        lambda nc: f"{nc[0].replace('_', ' ').ljust(18)}  "
+        # the component's name in this body's own words, so the list
+        # and the thing you type back are the same vocabulary (#2276)
+        lambda nc: f"{get_organ_display_name(nc[0], species).ljust(18)}  "
                    f"{MUTED}({nc[1].replace('_', ' ')})|n",
     )
     text = (
@@ -925,7 +989,12 @@ def _process_harvest_organ(caller, raw_string, **kwargs):
         return "node_top"
     if not raw:
         return None
-    pick = _parse_pick(raw, caller.ndb._operate_pickable or [])
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [],
+                       _species_of_target(caller))
+    if isinstance(pick, _Several):
+        caller.msg(f"|wWhich did you mean?|n "
+                   f"{_name_picks(pick, _species_of_target(caller))}.")
+        return None
     if pick is None:
         caller.msg("|rPick a number from the list, or type the organ name.|n")
         return None
@@ -1176,7 +1245,12 @@ def _process_install_location(caller, raw_string, **kwargs):
         return "node_top"
     if not raw:
         return None
-    pick = _parse_pick(raw, caller.ndb._operate_pickable or [])
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [],
+                       _species_of_target(caller))
+    if isinstance(pick, _Several):
+        caller.msg(f"|wWhich did you mean?|n "
+                   f"{_name_picks(pick, _species_of_target(caller))}.")
+        return None
     if pick is None:
         caller.msg("|rPick a number or location name.|n")
         return None
