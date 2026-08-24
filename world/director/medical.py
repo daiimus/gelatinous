@@ -26,6 +26,26 @@ _RECENT: dict = {}
 #: carried containers, deliberately). proto attr name -> count.
 PAR = {"GAUZE_BANDAGES": 3, "TOURNIQUET": 2, "PAINKILLER": 2}
 
+#: What a MECHANIC keeps on the bench. Same idea, different hands: a
+#: painkiller is no use to something with no nociception, and the
+#: tourniquet is here because clamping a line stops amber hydraulic
+#: fluid exactly as well as it stops blood (#2262).
+#:
+#: Robot-specific consumables are not built yet, so this draws the
+#: subset of the existing kit that a machine can actually use. When the
+#: species-gated supplies land, this becomes their par list.
+MECHANIC_PAR = {"GAUZE_BANDAGES": 2, "TOURNIQUET": 2, "SURGICAL_SEALANT": 2}
+
+
+def restock_mechanic(npc: Any) -> int:
+    """Bring the bench keeper's supplies up to par from anchored stock.
+
+    The clinic has done this for its medic since the medical slice; the
+    bench had nothing, so a mechanic stood a full shift with hands and
+    no parts (#2262). Only works AT the post, same as the medic.
+    """
+    return _restock(npc, MECHANIC_PAR)
+
 
 def _is_character(obj: Any) -> bool:
     return hasattr(obj, "get_sdesc") and hasattr(obj, "medical_state")
@@ -113,6 +133,29 @@ def _carried(npc: Any, proto_attr: str) -> list:
         return []
     return [o for o in npc.contents
             if o.pk and o.key.lower() == want and not o.destination]
+
+
+def _restock(npc: Any, par: dict) -> int:
+    """Draw *par* levels of loose supplies from anchored stock, at post."""
+    from evennia.prototypes.spawner import spawn
+
+    from world import prototypes
+    if npc.location is None or npc.location != npc.db.soul_post:
+        return 0
+    drawn = 0
+    for proto_attr, want in par.items():
+        short = want - len(_carried(npc, proto_attr))
+        proto = getattr(prototypes, proto_attr, None)
+        if not proto or short <= 0:
+            continue
+        for _ in range(short):
+            try:
+                item = spawn(proto)[0]
+                item.move_to(npc, quiet=True, move_hooks=False)
+                drawn += 1
+            except Exception:  # noqa: BLE001 — a failed draw skips
+                break
+    return drawn
 
 
 def restock_medic(npc: Any) -> int:
