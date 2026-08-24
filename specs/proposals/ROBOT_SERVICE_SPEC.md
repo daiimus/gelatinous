@@ -1,6 +1,19 @@
 # Robot Service — the same hands, different words
 
-**Status:** proposed 2026-08-24, NOT built (#2262)
+**Status:** partly built. §8.1 + §8.2 shipped (#2266); §7 supplies
+shipped (#2268). §4 labels/verbs and the remaining organ DESCRIPTIONS
+are open on #2262.
+
+**Correction, 2026-08-24:** §4.1 below asked for a per-species organ
+label table. **It already existed** — `robot["organ_display"]` at
+`world/anatomy/species.py:1315` maps 28 organs (`brain` → processor
+core, `heart` → power core, `left_femur` → left thigh strut), resolved
+by `get_organ_display_name(name, species)` with tests. `CmdMedical` and
+`CmdSurgical` already use it. This spec was written without reading
+that first, and the table was described as missing when it was not.
+The REAL gap is narrower: `world/medical/charts.py` renders operate
+steps through a species-blind `_humanize()`, so the chart is the one
+surface still saying *heart*.
 **Depends on:** `world/anatomy/species.py` (`_derive_robot`),
 `world/anatomy/organ_descriptions.py`, `commands/CmdOperate.py`,
 `world/medical/*`
@@ -140,6 +153,18 @@ keepers. A unit that can only be put right by somebody with the right
 supplies at the right bench is what makes #2261 a job rather than a
 costume.
 
+**SHIPPED (#2268).** `serves_species(item, target)` in
+`world/medical/utils.py`, checked in `check_medical_requirements` —
+the one method all six treatment verbs (inject / apply / bandage /
+eat / drink / inhale) already route through, so the gate cannot be
+live on one verb and absent on another. Four machine articles added:
+hydraulic charge, sealant patches, strut brace, conformal coating, all
+Boiler Run. The tourniquet declares nothing and so serves both.
+
+**Left universal deliberately:** the surgical kit. A scalpel is a
+scalpel — it is instruments rather than a consumable, and gating it
+risked blocking robot surgery for no fictional gain.
+
 **Shape:** items declare who they serve — a `serves` set, or the
 inverse `not_for` — checked in the same apply path that already asks
 `is_medical_item`. Untagged items keep working on everyone, so nothing
@@ -167,9 +192,9 @@ doctors and the clinic but for robots."* Laid against what exists:
 | `restock_medic` keeps PAR supplies at post | **MISSING** |
 | billing — triage free, healing costs | open |
 
-### 8.1 A damaged unit does not seek repair
+### 8.1 A damaged unit does not seek repair — SHIPPED (#2266)
 
-The robot profile is `charge`, `maintenance`, `safety`. There is **no
+The robot profile was `charge`, `maintenance`, `safety`. There is **no
 `health`**, so nothing drives a damaged unit anywhere.
 
 Consequence today: a secbot can take a shotgun blast, keep patrolling
@@ -186,7 +211,13 @@ Note the interaction with band: for a human, critical `health` outranks
 duty. A unit that limps back to the bench mid-shift instead of holding
 a scene is probably correct, and is the owner's call when it lands.
 
-### 8.2 Supplies at the post
+### 8.2 Supplies at the post — SHIPPED (#2266, kit corrected #2268)
+
+Shipped first with the CLINIC's par list, which was wrong twice over:
+a painkiller is no use to something with no nociception, and once §7
+landed the organic articles refuse a chassis outright — so the
+mechanic would have stood her shift holding supplies that bounce off
+every patient she has. `MECHANIC_PAR` is now the machine kit.
 
 `restock_medic` keeps a clinic's medic stocked to `PAR` from anchored
 stock. The bench has no equivalent, so a mechanic has hands and no

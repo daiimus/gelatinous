@@ -690,6 +690,77 @@ def get_medical_type(item):
     return item.attributes.get("medical_type", "")
 
 
+#: Supplies a machine could conceivably benefit from, when the human
+#: article and the machine article are the same object. Clamping a line
+#: stops amber hydraulic fluid exactly as well as it stops blood, so a
+#: tourniquet declares nothing and works on everyone.
+
+
+def _species_of(target):
+    """The species to judge a supply against, defaulting to human."""
+    species = getattr(target, "species", None)
+    if isinstance(species, str) and species:
+        return species
+    species = getattr(getattr(target, "db", None), "species", None)
+    return species if isinstance(species, str) and species else "human"
+
+
+def serves_species(item, target, looker=None):
+    """Whether this supply can do anything for that body.
+
+    Supplies declare who they are FOR (``serves``) or who they are
+    useless on (``not_for``). Declaring NEITHER means it works on
+    everyone — so nothing in the existing kit changes and only the
+    refusals are new (#2262).
+
+    Refusing is the point. A painkiller has nothing to numb on a
+    chassis and a sterile dressing does nothing for a hydraulic leak;
+    if a first aid kit fixes a secbot, the service bench and the three
+    people standing shifts at it have no reason to exist.
+
+    Args:
+        item: the medical item being applied.
+        target: the body it is being applied to.
+        looker: optional viewer, for rendering the target's name.
+
+    Returns:
+        ``(ok, why)`` — ``why`` is player-facing prose, set only on
+        refusal.
+    """
+    species = _species_of(target)
+    serves = item.attributes.get("serves", None)
+    not_for = item.attributes.get("not_for", None)
+
+    ok = True
+    if serves:
+        ok = species in set(serves)
+    if ok and not_for:
+        ok = species not in set(not_for)
+    if ok:
+        return True, ""
+
+    try:
+        name = target.get_display_name(looker)
+    except (AttributeError, TypeError):
+        name = getattr(target, "key", "the patient")
+
+    why = item.attributes.get("refusal", None)
+    if why:
+        return False, str(why).format(item=item.key, target=name)
+
+    # No authored line: say which way round the mismatch runs, because
+    # "that doesn't work" tells a player nothing about what would.
+    if species == "robot":
+        return False, (
+            f"The {item.key} is meant for living tissue. {name} hasn't "
+            f"any — that needs a part, not a treatment."
+        )
+    return False, (
+        f"The {item.key} is machine stock. It has nothing to offer "
+        f"{name}."
+    )
+
+
 def can_be_used(item):
     """Check if this medical item can still be used."""
     if not is_medical_item(item):
