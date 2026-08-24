@@ -289,6 +289,7 @@ def _work_radio_traffic(soul, payload):
     no typeclass involved, so a relief operator, a successor, or a
     resleeved keeper all dispatch the moment they sit down (#2228).
     """
+    from world.director.calls import describe_suspect
     from world.director.dispatch import units_available
     from world.director.radio_report import consider_radio_report
 
@@ -301,6 +302,13 @@ def _work_radio_traffic(soul, payload):
             "units": units_available(board),
             "verdict": verdict,
             "dispatched": len(dispatched or ()),
+            # What the caller said about the person. Computed in
+            # `apply_verdict` and handed to the RESPONDERS through the
+            # event payload — but never to the operator, so a caller who
+            # said "a tall heavyset guy" was relayed by a dispatcher
+            # whose board read "no description of anyone" (#2249). The
+            # units knew; the desk didn't.
+            "suspect": describe_suspect(speech),
         }
         # ...and only NOW does she open her mouth. The reply used to be
         # scheduled on a flat 1.5s timer beside this, which was grounded

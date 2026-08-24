@@ -155,6 +155,35 @@ class TestTheBoardGroundsHer(_DeskCase):
         line = self._line(None)
         self.assertIn("not a report of anything", line)
 
+    def test_a_described_suspect_reaches_the_desk(self):
+        """The caller said "a tall heavyset guy"; the units got the
+        silhouette and the DESK was told "no description of anyone",
+        because the board never carried it (#2249)."""
+        self.petra.ndb.dispatch_verdict = {
+            "units": 3, "dispatched": 2,
+            "verdict": {"is_incident_report": True,
+                        "incident_type": "assault",
+                        "location_text": "The Kettle - Entrance"},
+            "suspect": {"bolo": {"uid": None, "height": "tall",
+                                 "build": "heavyset"},
+                        "text": "a tall heavyset guy is stabbing someone",
+                        "anonymous": False},
+        }
+        line = self.petra._dispatch_board_line()
+        self.assertIn("tall heavyset guy", line)
+        self.assertNotIn("no description", line)
+
+    def test_an_anonymous_report_still_says_so(self):
+        self.petra.ndb.dispatch_verdict = {
+            "units": 3, "dispatched": 2,
+            "verdict": {"is_incident_report": True,
+                        "incident_type": "assault", "location_text": ""},
+            "suspect": {"bolo": None, "text": "someone's stabbing a man",
+                        "anonymous": True},
+        }
+        line = self.petra._dispatch_board_line()
+        self.assertIn("described NOBODY", line)
+
     def test_no_verdict_is_no_line(self):
         self.petra.ndb.dispatch_verdict = None
         self.assertIsNone(self.petra._dispatch_board_line())
