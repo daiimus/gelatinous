@@ -344,10 +344,24 @@ just choose which needs use which.
   with slower appetites, not a special case.
 - **robot** (security units et al.) — `charge` (the battery: rises
   toward critical over ~12h, satisfied by `dwell_venue` at anything
-  advertising `charge` — the dispatch base station console is the
-  first advertiser) and `maintenance` (very slow, same dwell). No
+  advertising `charge`) and `maintenance` (very slow, same dwell). No
   hunger, no social, no rest, no schedule blocks — duty belongs to
   the director (below). Robots hold no wallets in v1; their upkeep is
+
+  **UPDATED 2026-08-24.** The dispatch console was the first `charge`
+  advertiser. It no longer advertises anything: a radio bolted to a
+  desk is not a docking point, and a flat unit walking to the
+  operator's console to plug into it reads as a bug even though it was
+  a decision. Charging is the **Boiler Run fleet cradle** in the
+  Constabulary lobby and a second rack on the secure 2nd floor.
+
+  **`maintenance` now advertises NOWHERE, deliberately** (owner ruling,
+  2026-08-23). The dwell step's maintenance branch also CLEARS a logged
+  defect, so any advertiser lets a unit service itself by leaning on a
+  wall fitting — which deletes the job a person is meant to do. Units
+  will therefore fault weekly with no plan for maintenance. That fault
+  is the vacancy for the three-shift mechanic, not a defect in the
+  engine.
   the colony's power bill, not a wage.
 
 Profile resolution: explicit `ensoul(..., profile=)` wins; otherwise
