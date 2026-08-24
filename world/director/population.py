@@ -184,6 +184,24 @@ def spawn_secbot(location: Any, name: str | None = None) -> Any:
     beat = list(getattr(getattr(post, "db", None), "security_beat", None) or [])
     if beat:
         mob.db.patrol_beat = beat
+
+    # Enlisted at birth, not afterwards. The units already walking were
+    # ensouled by a build script and this path was not — so every unit
+    # lost in the field would have cycled back out of the alcove
+    # soulless, and attrition would have quietly undone the whole thing
+    # one casualty at a time (#2254).
+    #
+    # A fresh chassis starts CLEAN: no inherited defects. Neglect has to
+    # earn its quirks again on the new body, which is what a NEW unit
+    # ought to mean — with the odd consequence that destroying a
+    # paranoid secbot is one way to cure it.
+    try:
+        from world.souls import engine as souls_engine
+        souls_engine.ensoul(mob, role="security", home=None, post=post,
+                            schedule="always", wage_rate=0.0,
+                            profile="robot")
+    except Exception:  # noqa: BLE001 — an unsouled unit still patrols
+        pass
     return mob
 
 
