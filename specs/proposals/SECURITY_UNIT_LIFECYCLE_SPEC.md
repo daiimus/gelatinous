@@ -1,9 +1,12 @@
 # Security Unit Lifecycle — downed, recovered, repaired, junked
 
-**Status:** proposed 2026-08-24, NOT built (#2255)
+**Status:** partly built. The assignment leak is closed (#2280); the
+recovery errand is designed and unbuilt.
 **Depends on:** `world/director/population.py` (the respawn loop),
 `world/souls/*` (Phase 2 — units are souls), the mechanic post
-**Blocks on:** repair mechanics, which do not exist
+**~~Blocks on:~~ UNBLOCKED 2026-08-24** — repair is real: the bench
+advertises `repair`, three mechanics stand shifts with the machine kit,
+and `operate` charts a chassis in its own words (#2262).
 
 ---
 
@@ -82,12 +85,47 @@ of the alcove starts clean (#2254). So repairing a paranoid secbot has
 to actually treat the paranoia — otherwise destroying it remains the
 cheaper cure, which is a funny incentive to leave lying around.
 
-## 6. Open questions
+## 6. Answered (owner, 2026-08-24)
 
-* **Who fetches?** Another unit (the force recovers its own), or the
-  mechanic (a person with a trolley)? A unit is quicker and colder; the
-  mechanic is better content and slower to arrive.
-* **Does a stripped chassis stay in the junkyard as an object?** It is
-  the obvious feedstock for the Ripper's cold room and for parts.
-* **How long is the window?** The race only exists if recovery takes
-  long enough to lose.
+* **Who fetches?** **Another unit — the force recovers its own.** A
+  recovery job on a second unit: `travel → take hold → drag → deliver`.
+  Quicker and colder than sending a mechanic, and it costs the force a
+  patrol while it runs, so a downed unit visibly thins the streets.
+* **Does a stripped chassis persist?** **Yes, in the junkyard.**
+  Feedstock for the Ripper's cold room and for parts, and it lets
+  Kaspar Salvage accumulate a visible history of the force's bad
+  nights.
+* **How long is the window?** **Minutes — genuinely losable.** Long
+  enough that somebody who watched the fight can reach the wreck, take
+  the arm and be gone. Recovery usually wins on quiet streets; a
+  prepared thief usually wins. That is the stakes §3 asks for.
+
+## 7. Closed: the assignment leak (#2280)
+
+Found while comparing damaged-unit scenes. Nothing cleared an
+assignment on death, so a destroyed responder kept its errand — the
+call stayed open in the ledger with no outcome, and because
+`think()` returns early for any assigned soul, **the unit's soul
+stayed permanently asleep**. Even repaired, it would never think
+again.
+
+That would have quietly defeated this entire spec: the recovery loop
+would have dragged a chassis home, the mechanic would have rebuilt it,
+and it would have stood at the bench forever. `release_on_death` now
+settles the call as `unit_lost` and frees the soul. The unit does not
+transmit — a destroyed unit does not key a mic, and its going silent
+mid-call is the signal.
+
+## 8. Known trap for the recovery build
+
+**The existing `grapple` job step cannot take hold of a wreck.** It
+guards on `can_contest(mark)`, which is *conscious and not
+restrained* — false for a downed unit. So the step reads an
+unresisting body as ALREADY HELD, advances without issuing the
+command, and the recovery detail would walk home dragging nothing,
+successfully, with no fault raised.
+
+Recovery therefore needs its own step that establishes a hold on a
+body that cannot resist, rather than reusing the mugger's grapple.
+Worth knowing before building: the failure is silent and would look
+like a pathing bug.

@@ -40,6 +40,9 @@ ARRIVAL_HANDLERS: dict[str, Callable] = {}
 #: (the responder is back at its post). The seam base-intel-sync plugs
 #: into: what a bot learned on scene goes force-wide only *here*.
 COMPLETION_HANDLERS: dict[str, Callable] = {}
+#: role -> handler(npc, assignment) for a responder that dies
+#: still holding one (#2255).
+DEATH_HANDLERS: dict = {}
 
 
 @dataclass
@@ -63,6 +66,43 @@ def register_completion_handler(role: str, handler: Callable) -> None:
     """Register *handler(npc, assignment)* to run when a responder with
     ``db.role == role`` finishes its assignment back at its post."""
     COMPLETION_HANDLERS[role] = handler
+
+
+def register_death_handler(role: str, handler: Callable) -> None:
+    """Register *handler(npc, assignment)* to run when a responder with
+    ``db.role == role`` dies while still holding an assignment."""
+    DEATH_HANDLERS[role] = handler
+
+
+def release_on_death(npc: Any) -> None:
+    """Settle and drop a dead responder's assignment.
+
+    Nothing used to clear an assignment on death, and the consequences
+    compounded (#2255):
+
+    * the call it came from stayed open in the ledger forever, with no
+      outcome and nothing to answer for
+    * the wreck kept its errand, so it read as still working
+    * and because :func:`world.souls.engine.think` returns early for
+      any assigned soul, the unit's soul stayed **permanently asleep**
+      -- even after being repaired, it would never think again
+
+    That last one is the quiet one: the precedence law that correctly
+    stops a live unit walking off a scene also bricks a dead one.
+
+    Fail-soft throughout. Dying must never raise.
+    """
+    assignment = _ACTIVE.get(npc)
+    if assignment is None:
+        return
+    role = getattr(getattr(npc, "db", None), "role", None)
+    handler = DEATH_HANDLERS.get(role)
+    if handler is not None:
+        try:
+            handler(npc, assignment)
+        except Exception:  # noqa: BLE001 — settling must not block release
+            pass
+    clear_assignment(npc)
 
 
 def get_assignment(npc: Any):

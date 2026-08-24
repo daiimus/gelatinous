@@ -701,6 +701,17 @@ class Character(
         # Death breaks stealth — a corpse doesn't hide itself.
         from world.stealth import break_stealth
         break_stealth(self, quiet=True)
+
+        # A dead responder still held its call. Nothing cleared an
+        # assignment on death, so the call stayed open in the ledger
+        # forever and -- because think() returns early for any assigned
+        # soul -- the soul stayed permanently asleep, even after being
+        # repaired (#2255).
+        try:
+            from world.director.assignment import release_on_death
+            release_on_death(self)
+        except Exception:  # noqa: BLE001 -- dying must never raise
+            pass
         
         # Always show death analysis when character dies.
         # debug_death_analysis is fail-soft internally and the audit
