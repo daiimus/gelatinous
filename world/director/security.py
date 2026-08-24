@@ -327,12 +327,49 @@ _CALL_OUTCOME_LINES = {
 }
 
 
+#: What a unit says once when its own chassis goes critical mid-call.
+#: Short: it is shouting over a band people use to call for help, and
+#: it is not asking permission to leave.
+_MAYDAY_LINE = ("Chassis compromised, hydraulic loss. Still on scene.")
+
+
+def _mayday(npc: Any, assignment: Any) -> None:
+    """Transmit ONCE when a responding unit is critically damaged.
+
+    A unit on a call never abandons it -- `think()` returns early for
+    any assigned soul, so the souls layer (and its band tree) is asleep
+    for the whole call, and that is the correct behaviour: you do not
+    walk off a scene because you are hurt.
+
+    But it left the damage mute. This force communicates entirely by
+    voice, and the one thing a unit never transmitted was its own
+    condition, so dispatch knew where every unit went and nothing about
+    what state it was in. Now it calls its own damage in and holds the
+    scene, and the board can roll somebody else (#2272).
+
+    Fires once per assignment, like `_engage`.
+    """
+    if assignment.payload.get("mayday"):
+        return
+    try:
+        from world.souls import needs as _needs
+        if _needs.pressure(npc, "health") < _needs.critical_for(npc, "health"):
+            return
+    except Exception:  # noqa: BLE001 — an unreadable body stays quiet
+        return
+    assignment.payload["mayday"] = True
+    where = getattr(getattr(assignment, "event", None), "location", None)
+    _cmd(npc, f"xmit Unit {getattr(npc, 'id', 0) or 0} — "
+              f"{getattr(where, 'key', 'the scene')}. {_MAYDAY_LINE}")
+
+
 def security_arrival(npc: Any, assignment: Any) -> None:
     """On-scene behavior for ``role == "security"``: scan, match, act.
 
     Priority: the event's BOLO (this incident) beats the wanted record
     (old business) — but a face on file gets challenged even when it has
     nothing to do with *this* call."""
+    _mayday(npc, assignment)
     _cmd(npc, "emote sweeps the scene with a slow sensor pass.")
     event = assignment.event
     bolo = (getattr(event, "payload", None) or {}).get("bolo")
@@ -389,6 +426,7 @@ def _watch_tick(npc: Any) -> None:
     assignment = get_assignment(npc)
     if assignment is None:
         return  # stood down meanwhile
+    _mayday(npc, assignment)
     if _in_combat(npc):
         # The fight owns the unit; keep monitoring without burning rounds.
         delay(WATCH_SECONDS, _watch_tick, npc)
