@@ -1,6 +1,7 @@
 # BOLO Provenance — how a description travels
 
-**Status:** proposed 2026-08-23, NOT built (#2247)
+**Status:** ✅ BUILT 2026-08-23 (#2247) — provenance, enforcement,
+and the machine-witness path. Clothing remains unbuilt (§4.4).
 **Depends on:** `world/director/security.py` (`build_bolo`, `match_bolo`),
 `world/director/crime.py`, `world/director/calls.py`
 
@@ -74,9 +75,10 @@ vague hearsay should not put a stranger under aim.
 3. **`crime.py` declares its channel.** A crime witnessed by a security
    unit is `machine`; one witnessed by a person is `witness` and must
    degrade to words before it reaches anybody else.
-4. **Clothing enters the vocabulary.** "A black trenchcoat" is the most
-   useful thing a caller says and there is nowhere to put it. Matching
-   worn items is a separate piece of work and belongs with this one.
+4. **Clothing enters the vocabulary.** ✅ NOT DONE. "A black trenchcoat"
+   is the most useful thing a caller says and there is still nowhere to
+   put it — the BOLO record has no garment field and `match_bolo`
+   cannot compare worn items. This is the remaining half of the spec.
 
 ## 5. Consequences worth wanting
 

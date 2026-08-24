@@ -47,20 +47,57 @@ INVESTIGATE_SECONDS = 30.0
 # BOLO — build & match
 # --------------------------------------------------------------------------
 
-def build_bolo(perp: Any) -> dict | None:
-    """Snapshot *perp*'s current presentation as a BOLO dict.
+#: How a description reached the people acting on it. A BOLO is a
+#: CLAIM — what somebody said — and what it is worth depends entirely
+#: on how they came to say it (#2247).
+#:
+#: `machine` is the only channel that may carry a `uid`, because a uid
+#: is a 16-character presentation hash and nobody says one out loud. A
+#: security unit that saw something itself is passing DATA to the net;
+#: this is the precursor to the photo/video record that will feed cases
+#: and decking. Everyone else describes.
+BOLO_CHANNELS = ("machine", "witness", "radio")
 
-    ``uid`` is the precise presentation hash; ``height``/``build`` are the
-    coarse silhouette fallback. ``None`` when there is nothing to describe.
+
+def build_bolo(perp: Any, *, via: str = "witness", by: Any = None) -> dict | None:
+    """Snapshot what an observer on channel *via* could honestly pass on.
+
+    ``height``/``build`` are the silhouette anyone can describe. ``uid``
+    is the exact presentation and is included ONLY for ``machine`` —
+    a bystander cannot recite a hash, and until now every crime handed
+    responders one anyway, so a civilian's glimpse identified people as
+    positively as a camera would.
+
+    ``None`` when there is nothing worth passing on.
     """
     if perp is None:
         return None
-    uid = get_apparent_uid(perp)
     height = getattr(perp, "height", None)
     build = getattr(perp, "build", None)
+    uid = get_apparent_uid(perp) if via == "machine" else None
     if uid is None and not (height or build):
         return None
-    return {"uid": uid, "height": height, "build": build}
+    return {"uid": uid, "height": height, "build": build,
+            "via": via if via in BOLO_CHANNELS else "radio",
+            "by": getattr(by, "key", None)}
+
+
+def is_the_right_person(event: Any, candidate: Any) -> bool | None:
+    """Did they actually get the one who did it?
+
+    The GAME's question, never the robot's. A BOLO is what somebody
+    claimed and can be vague, mistaken or a lie; `event.source` is who
+    really did it. Keeping those apart is the whole point — a unit acts
+    on a possibly-false account while the system still knows the truth,
+    so wrong-person outcomes are legible to us and invisible to them.
+
+    ``None`` when the event names no instigator (an anonymous fire, a
+    sourceless disturbance): unknowable rather than wrong.
+    """
+    source = getattr(event, "source", None)
+    if source is None or candidate is None:
+        return None
+    return getattr(source, "id", None) == getattr(candidate, "id", None)
 
 
 def match_bolo(bolo: dict | None, candidate: Any) -> str | None:
@@ -72,7 +109,12 @@ def match_bolo(bolo: dict | None, candidate: Any) -> str | None:
     if not bolo or candidate is None:
         return None
     uid = bolo.get("uid")
-    if uid and get_apparent_uid(candidate) == uid:
+    # A positive identification has to have come from something that
+    # could actually record one. A uid arriving by any other channel is
+    # a bug or a forgery, and forgery is meant to be the attack surface
+    # rather than an accident (#2247).
+    if uid and bolo.get("via") == "machine" \
+            and get_apparent_uid(candidate) == uid:
         return "high"
     height, build = bolo.get("height"), bolo.get("build")
     if height and build:

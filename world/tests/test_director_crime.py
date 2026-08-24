@@ -33,7 +33,8 @@ class TestReportCrime(TestCase):
         cmod._RECENT.clear()
 
     @patch("world.director.crime.build_bolo",
-           side_effect=lambda p: {"uid": getattr(p, "uid", None)})
+           side_effect=lambda p, **kw: {"uid": getattr(p, "uid", None),
+                                        "via": kw.get("via")})
     @patch("world.director.crime.spawn_witness")
     @patch("world.director.crime.delay")
     def test_witnessed_crime_hands_window_to_witness(
@@ -49,7 +50,10 @@ class TestReportCrime(TestCase):
         self.assertEqual(event.type, "assault")
         self.assertEqual(event.severity, CRIME_SEVERITY["assault"])
         # BOLO captured NOW — changing presentation later can't touch it.
-        self.assertEqual(event.payload["bolo"], {"uid": "AT_CRIME_TIME"})
+        # It also records HOW it was learned: a civilian saw this, so a
+        # civilian's account is what travels (#2247).
+        self.assertEqual(event.payload["bolo"],
+                         {"uid": "AT_CRIME_TIME", "via": "witness"})
 
     @patch("world.director.crime.spawn_witness", return_value=None)
     @patch("world.director.crime.delay")
