@@ -7,6 +7,55 @@
 > authoritative summary of present behavior (reconciliation pass
 > #542, 2026-06-13).
 
+## Known gap: an open incision costs nothing (2026-08-24)
+
+**Deferred deliberately. Owner ruling: leave it, tune first.**
+
+The surgical order of operations is `incise → remove → (optionally
+suture)`. The first arrow is genuinely enforced; the second is entirely
+a matter of the surgeon's conscience.
+
+**What IS enforced.** `_resolve_harvest` refuses to reach an organ
+whose `display_location` equals its `container` unless that container
+has an open incision, and marks the running chart step **failed**
+rather than done. This gate lives in the RESOLVER, under both the
+`operate` chart and the standalone `harvest` command — which is why it
+is one of the few surgical rules the two routes cannot disagree about.
+Surface organs (eyes, ears, nose, tongue, jaw; on a chassis the optical
+and audio sensors, vocal modulator and mandible servo) declare a
+distinct `display_location` and are reachable without opening
+anything, by design.
+
+**What is NOT.** Every consumer of incision state in the codebase is a
+GATE — "is it open so I can work through it?" — and none is a
+CONSEQUENCE. Verified across `procedures.py` (×5), `treatments.py`
+(organ_repair needs an active field) and `CmdOperate` (chart display).
+Nothing treats *being open* as harm.
+
+So incising seeds pain once, and after that an open cavity costs the
+patient nothing: no bleeding, no infection risk, no healing penalty. A
+colonist can walk around indefinitely with an open abdomen; a secbot
+can patrol with its chest hanging open. `procedures.py:411` even
+carries the comment *"the incision stays open and bleeds"*, describing
+behaviour that was never implemented.
+
+**Why it is not being fixed yet.** The obvious fixes — a bleeding
+source that persists until sutured, or contamination risk scaled by
+time open — both land on systems that have **never been balanced**.
+Owner, 2026-08-24: *"We haven't really balanced any of our systems yet.
+We've just connected a lot of dots and built a ton of them."*
+
+Adding a new consumer of bleeding or infection before either is tuned
+would bake this gap's cost into whatever those numbers happen to be
+today, and tuning them later would then silently retune surgery too.
+Bleeding and infection get a balance pass first; closing this gap is
+downstream of that, not parallel to it.
+
+Note for whoever does it: robots are `infection_immune`, so an
+infection-only answer costs a chassis nothing and would leave the gap
+open for machines. Bleeding translates (amber hydraulic fluid);
+infection does not.
+
 ## Current Model (authoritative — 2026-06)
 
 ### Condition roster
