@@ -1,7 +1,8 @@
 # Security Unit Lifecycle — downed, recovered, repaired, junked
 
-**Status:** partly built. The assignment leak is closed (#2280); the
-recovery errand is designed and unbuilt.
+**Status:** ✅ **BUILT 2026-08-24.** Assignment leak (#2280), recovery
+errand (#2282), strip-and-junk (#2284), and the harvest door that made
+the §3 race reachable (#2286).
 **Depends on:** `world/director/population.py` (the respawn loop),
 `world/souls/*` (Phase 2 — units are souls), the mechanic post
 **~~Blocks on:~~ UNBLOCKED 2026-08-24** — repair is real: the bench
@@ -57,11 +58,11 @@ still: more units in the field is more units to lose.
 |---|---|
 | replacement from the alcoves | ✅ built |
 | dragging a body | ✅ emergent from grapple + movement (no command, by design) |
-| the junkyard | ✅ exists (Kaspar Salvage / the scrap yards) |
+| the junkyard | ✅ **The Midden — Middle Yard**, tagged by build 128. NOT Kaspar Salvage, which is an indoor shop — "racked behind scuffed polycarb" is somewhere you sell a handset, not somewhere you dump a chassis |
 | the weapon as a removable organ | ✅ built — `operate` already does surgery on parts |
-| recovery detail (who fetches it) | ✗ |
-| repair | ✗ — and it is the mechanic's job |
-| strip-and-junk disposal | ✗ |
+| recovery detail (who fetches it) | ✅ another unit — `hold → travel → deliver` (#2282) |
+| repair | ✅ the bench, three mechanics, the machine kit (#2262) |
+| strip-and-junk disposal | ✅ module off, chassis to the yard (#2284) |
 
 Most of the substrate is already here. What is missing is the *errand*:
 somebody whose job is to go and get it.
