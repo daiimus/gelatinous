@@ -159,7 +159,20 @@ def _neighbors(room: Any, traverser: Any):
         # souls `flee` step already knew this and the graph did not.
         db = getattr(ex, "db", None)
         if getattr(db, "is_edge", None) or getattr(db, "is_gap", None):
-            continue
+            # ...unless the traverser is somebody who JUMPS. `route_taste`
+            # is already the number that means "I take the awkward way";
+            # it now also means "and I will leap". Travel issues the real
+            # `jump across <exit> edge` for these hops rather than typing
+            # the exit name, which is the whole reason routing over them
+            # is safe now and was not in #2227 (#2303).
+            #
+            # Everyone else still cannot SEE a gap, so the parapet-retry
+            # loop cannot come back for ordinary souls.
+            if traverser is None:
+                continue
+            if getattr(getattr(traverser, "db", None), "route_taste",
+                       None) is None:
+                continue
         if traverser is not None:
             try:
                 if not ex.access(traverser, "traverse"):

@@ -424,3 +424,106 @@ class TestWhichLevelSheAsksFor(EvenniaCommandTest):
         travel = src[src.index('if do == "travel":'):src.index('if do == "buy":')]
         self.assertIn("crane_level_wanted", travel)
         self.assertIn("except Exception", travel)
+
+
+class TestSheActuallyJumps(EvenniaCommandTest):
+    """A walking route may not contain a jump — unless the walker jumps
+    (#2303).
+
+    `travel_to` moves a soul with `execute_cmd(exit.key)`, exactly as a
+    player types it. That is why locks, doors and elevators all work for
+    NPCs. But `Exit.at_traverse` REFUSES an edge or gap outright and
+    hands you to the jump command, so typing "north" at a parapet does
+    nothing, forever.
+
+    The pathfinder's answer was to route around every gap. That was
+    right at the time — #2227 put ten souls on a clinic roof re-trying a
+    parapet every three minutes — but it also made the colony's whole
+    parkour layer invisible to every NPC in it.
+    """
+
+    def _gap(self, key="north"):
+        ex = create_object("typeclasses.exits.Exit", key=key,
+                           location=self.room1, destination=self.room2)
+        ex.db.is_gap = True
+        return ex
+
+    def test_an_ordinary_soul_still_cannot_see_a_gap(self):
+        """The #2227 guard. Souls without a taste for the awkward way
+        must not be offered a parapet at all.
+
+        Asserts on the EXIT, not the destination — the test rooms are
+        already joined by ordinary exits, so checking reachability
+        would pass whether the guard worked or not."""
+        from world.spatial.pathfind import _neighbors
+        gap = self._gap()
+        self.char2.attributes.remove("route_taste")
+        offered = [e for _d, e in _neighbors(self.room1, self.char2)]
+        self.assertNotIn(gap, offered)
+
+    def test_nor_can_a_routeless_lookup(self):
+        from world.spatial.pathfind import _neighbors
+        gap = self._gap()
+        offered = [e for _d, e in _neighbors(self.room1, None)]
+        self.assertNotIn(gap, offered)
+
+    def test_a_jumper_is_offered_it(self):
+        from world.spatial.pathfind import _neighbors
+        gap = self._gap()
+        self.char1.db.route_taste = 0.2
+        offered = [e for _d, e in _neighbors(self.room1, self.char1)]
+        self.assertIn(gap, offered)
+
+    def test_travel_uses_the_real_jump_verb(self):
+        """Not the exit name — that is precisely what the parapet
+        refuses."""
+        import inspect
+        from world.director import travel
+        src = inspect.getsource(travel)
+        self.assertIn('jump across {nxt.key} edge', src)
+        self.assertIn("is_gap", src)
+
+    def test_the_ordinary_hop_is_unchanged(self):
+        import inspect
+        from world.director import travel
+        self.assertIn("npc.execute_cmd(nxt.key)",
+                      inspect.getsource(travel))
+
+
+class TestWhatAFallCosts(EvenniaCommandTest):
+    """Falling is not fumbling (owner, 2026-08-24).
+
+    A missed jump hurts her and faults the run. It does NOT knock the
+    parcel out of her hands — nothing in the movement path touches
+    inventory. But she can die of the fall, and then the consignment is
+    on the body along with everything else she owned, which is a
+    perfectly good way for a parcel to go missing.
+    """
+
+    def test_nothing_in_travel_touches_the_parcel(self):
+        import inspect
+        from world.director import travel
+        src = inspect.getsource(travel)
+        self.assertNotIn("courier_package", src)
+
+    def test_nor_does_the_jump_command(self):
+        import inspect
+        from commands.combat import jump
+        self.assertNotIn("courier_package", inspect.getsource(jump))
+
+    def test_she_keeps_it_through_a_hard_landing(self):
+        """The parcel is ordinary inventory and stays that way — no
+        special handling means no special loss."""
+        pkg = create_object("typeclasses.items.Item",
+                            key="a Longhaul bonded parcel",
+                            location=self.char1)
+        pkg.attributes.add("courier_package", True)
+        self.char1.location = self.room2          # she has 'landed'
+        self.assertIs(pkg.location, self.char1)
+
+    def test_a_dead_courier_is_lootable_like_anyone(self):
+        """No special case: whatever happens to a dead soul's carried
+        items happens to a consignment."""
+        import inspect
+        from world.director import courier
+        self.assertNotIn("at_death", inspect.getsource(courier))
