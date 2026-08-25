@@ -415,7 +415,18 @@ class CmdHarvest(Command):
             if not hasattr(data, "get"):
                 continue
             spec = get_organ_spec(name, species) or {}
-            if not spec.get("can_be_harvested"):
+            # An AUGMENT has no species spec entry -- it was fitted at
+            # runtime, not declared on the anatomy -- so this filter
+            # was rejecting chrome by ABSENCE rather than by decision.
+            # `operate` never had the guard, so the same extraction
+            # worked there and was refused here: two routes into one
+            # act disagreeing (#2286).
+            #
+            # Anything installed can be uninstalled. That is what an
+            # augment IS, and it is what the Ripper's chrome appraisal
+            # and the wanted-armament race are both built on.
+            if not spec.get("can_be_harvested") \
+                    and not (data.get("data") or {}).get("module_type"):
                 continue
             if name in removed:
                 continue
