@@ -266,3 +266,54 @@ class TestChainOfCustody(EvenniaCommandTest):
         desc = prototypes.COURIER_PACKAGE["desc"].lower()
         self.assertIn("longhaul", prototypes.COURIER_PACKAGE["key"].lower())
         self.assertIn("consignor's business", desc)
+
+
+class TestWhereSheGoesWhenSheIsDone(EvenniaCommandTest):
+    """Sometimes she hangs out on rooftops (#2299).
+
+    `off_duty` exists because "nobody stays at work for want of a
+    reason to leave" — the shopkeeper loitering behind her own counter
+    for the seven hours between the end of her day and the start of her
+    sleep. For a rabbit, the reason to leave is a roof.
+
+    So the perch fills exactly the gap that goal was built for, and
+    needs no new goal, no timer and no randomness: she's up there
+    between clocking off and getting tired, and the band tree takes
+    her home when rest finally outranks idling.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.rabbit = self.char1
+        self.rabbit.db.soul_home = self.room1
+        self.rabbit.location = self.room2
+
+    def test_an_ordinary_soul_goes_home(self):
+        job = actions.plan_for(self.rabbit, "off_duty")
+        self.assertEqual(job["steps"][0]["room"], self.room1.id)
+
+    def test_a_soul_with_a_perch_goes_up(self):
+        self.rabbit.db.soul_perch = self.room2
+        self.rabbit.location = self.room1
+        job = actions.plan_for(self.rabbit, "off_duty")
+        self.assertEqual(job["steps"][0]["room"], self.room2.id)
+
+    def test_already_there_is_not_a_journey(self):
+        self.rabbit.db.soul_perch = self.room2
+        self.assertIsNone(actions.plan_for(self.rabbit, "off_duty"))
+
+    def test_rest_still_outranks_the_view(self):
+        """The perch is an IDLE preference, not a bed. When rest bites
+        it is a band-2 schedule goal and off_duty is band 4, so she
+        goes home like everybody else."""
+        from world.souls.engine import _goal_band
+        self.assertLess(_goal_band("rest"), _goal_band("off_duty"))
+
+    def test_a_deleted_perch_falls_back_home(self):
+        """A builder can demolish a roof. She should not stand at the
+        depot forever because her perch stopped existing."""
+        roof = create_object("typeclasses.rooms.Room", key="a roof")
+        self.rabbit.db.soul_perch = roof
+        roof.delete()
+        job = actions.plan_for(self.rabbit, "off_duty")
+        self.assertEqual(job["steps"][0]["room"], self.room1.id)
