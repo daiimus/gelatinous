@@ -396,6 +396,20 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
 def _install_keeper(npc, post, room, shift):
     """Bind a keeper into a slot: housing, soul, slot record, legacy
     mirror, venue wages only where a till actually exists."""
+    # REFUSE a non-post. This function writes a complete, valid-looking
+    # slot record onto whatever it is handed, and build 117 handed it
+    # the dispatch CONSOLE -- so the room kept the real slots while the
+    # console grew a rival set with different keepers, and the build
+    # printed success (#2259).
+    #
+    # Two objects claiming to be the same post is not a state anything
+    # downstream can reason about, so it is refused at the seam rather
+    # than papered over at every reader.
+    if not post.tags.get(POST_TAG[0], category=POST_TAG[1]):
+        raise ValueError(
+            f"{post} is not a registered post -- call register_post() "
+            f"first, or pass the object that actually carries the tag"
+        )
     from evennia.utils.search import search_object
 
     try:
