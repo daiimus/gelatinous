@@ -137,3 +137,80 @@ def hand_over(soul: Any, counter: Any, package: Any = None) -> dict:
         except Exception:  # noqa: BLE001 — observation never blocks work
             pass
     return out
+
+
+# ---------------------------------------------------------------------
+# The crane (#2301)
+#
+# The Longhaul container is a moving room: it docks level with the
+# Kaspar Urgent Care roof at level 2 (the boarding point) and reaches
+# the Queen of Cups rack roof at level 12. Both ends are ROOFTOPS, so
+# the only souls it is any use to are the ones who walk roofs -- which
+# in this colony is currently one person.
+#
+# She does not operate it. She ASKS, on band 27.0, and the console
+# answers in Ossie's voice or does not. That is the whole point: an NPC
+# changing the world so that it can path through it, using the same
+# radio a player would key.
+# ---------------------------------------------------------------------
+
+CRANE_BAND = "27.0"
+
+
+def _crane_car(soul):
+    """The crane container, if this soul is somewhere it matters."""
+    from typeclasses.rooms import CraneContainer
+    here = getattr(soul, "location", None)
+    if isinstance(here, CraneContainer):
+        return here, "aboard"
+    # standing at the dock: the car's boarding roof
+    from evennia.objects.models import ObjectDB
+    for room in ObjectDB.objects.all():
+        if not isinstance(room, CraneContainer):
+            continue
+        dock = room._room_at(room.UC_ROOF)
+        if dock is not None and dock is here:
+            return room, "dock"
+        break
+    return None, None
+
+
+def crane_level_wanted(soul):
+    """The level she needs the car at, or None if she needs nothing.
+
+    Deliberately inferred from WHERE SHE IS STANDING rather than from
+    route introspection:
+
+    * on the boarding roof with the car elsewhere — she wants it down;
+      nobody stands on that roof for the view.
+    * aboard, below the Queen's level — she wants it up; the only
+      reason to board is to cross at the top.
+    """
+    car, where = _crane_car(soul)
+    if car is None:
+        return None
+    level = int(getattr(car.db, "level", car.MIN_Z) or car.MIN_Z)
+    if where == "dock":
+        return None if level == car.MIN_Z else car.MIN_Z
+    if where == "aboard":
+        return None if level == car.QOC_Z else car.QOC_Z
+    return None
+
+
+def call_the_crane(soul, level) -> bool:
+    """Key the handset and ask for a level. True if she transmitted.
+
+    Uses the REAL verb on a REAL carried radio, so the console hears it
+    exactly as it hears a player — no back door, and the operator can
+    refuse, be absent, or ask her to confirm.
+    """
+    from world.radio import is_radio
+    handset = next((o for o in soul.contents if is_radio(o)), None)
+    if handset is None:
+        return False
+    if not handset.attributes.get("radio_on"):
+        soul.execute_cmd(f"toggle {handset.key} on")
+    if str(handset.attributes.get("frequency") or "") != CRANE_BAND:
+        soul.execute_cmd(f"tune {handset.key} to {CRANE_BAND}")
+    soul.execute_cmd(f"xmit Ossie, Rabbit. Bring the box to {level}.")
+    return True
