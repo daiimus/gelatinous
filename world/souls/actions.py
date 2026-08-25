@@ -659,12 +659,20 @@ def plan_for(soul, goal_need):
 
     if goal_need == "off_duty":
         # not a need — an absence of one. The shift is over and there is
-        # no reason to still be standing here, so go home (#2148).
-        home = soul.db.soul_home
-        if home is None or soul.location == home:
+        # no reason to still be standing here, so go somewhere (#2148).
+        #
+        # A PERCH, if the soul keeps one, beats home. This is the gap
+        # off_duty was built for — the hours between the end of a shift
+        # and the start of sleep — and for some people that gap is not
+        # spent indoors. A rabbit sits on a roof and watches the
+        # street; when rest finally bites, the band tree outranks this
+        # and sends her home to bed like everyone else (#2299).
+        perch = soul.db.soul_perch
+        where = perch if perch is not None and perch.pk else soul.db.soul_home
+        if where is None or soul.location == where:
             return None
         return {"goal": "off_duty", "steps": [
-            {"do": "travel", "room": home.id},
+            {"do": "travel", "room": where.id},
         ], "at": 0}
 
     if goal_need == "safety":
