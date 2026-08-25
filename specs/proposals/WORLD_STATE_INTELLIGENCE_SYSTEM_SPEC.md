@@ -110,6 +110,44 @@ what a decker reads, and interpretation is what they steal.
 
 ---
 
+## Held for WSIS: ground truth the world already computes (#2260)
+
+**Not a gap. A metric waiting for its reader** (owner ruling
+2026-08-25).
+
+`world.director.security.is_the_right_person(event, candidate)` (from
+#2247) compares a person a unit has detained against `event.source` —
+the truth the system quietly keeps while the robot acts on a claim
+that may be wrong. Vague reports getting the wrong person grabbed is
+deliberate: #2246 made the description fallible on purpose.
+
+**Nothing calls it, and nothing should yet.** The value of that
+function is not a punishment hook; it is that the colony can COUNT how
+often its security force is wrong. That is a WSIS reading, not a
+gameplay rule:
+
+* **wrongful detention rate** — per corridor, per unit, per shift. A
+  security layer that only counts incidents describes a busy district;
+  one that counts wrong arrests describes a *badly policed* one, and
+  those are different facts about a place.
+* **report quality per caller** — the false-report strike record
+  (Phase 3, #2256, already closes calls `unfounded` and says so on the
+  air). Held against the caller's VOICE UID, which exists, and which a
+  modulator already defeats — the counter-tradecraft is built in.
+
+Both fit the provenance model without modification. "The constabulary
+detains the wrong person on Volta about a third of the time" is
+exactly the sort of claim that should be **expensive and sourced**: a
+precinct terminal knows it precisely, the Rook says it with a sneer
+and no number, and a decker takes the raw log.
+
+**Do not wire it to consequences first.** A strike record that docks
+reputation before anybody can SEE the count is a rule the colony
+enforces in secret. Legibility comes before consequence — which is the
+thesis of this whole document.
+
+---
+
 ## Signal layers — what is real, and what is aspirational
 
 The bus declares seven. **Four carry signals today.** The rest are
