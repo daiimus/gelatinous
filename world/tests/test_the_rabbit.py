@@ -638,3 +638,74 @@ class TestFailedConsignments(EvenniaCommandTest):
              mock.patch.object(courier, "runnable_destinations",
                                return_value=[]):
             salience._work_courier(self.rabbit)   # must not raise
+
+
+class TestARunMustBePossible(EvenniaCommandTest):
+    """She only takes runs she can actually complete (#2311).
+
+    Live, she faulted at The Hub and Howl with "no path to Community
+    Thrift" — a shop whose only door is `traverse:false()`, sealed
+    against everyone including players.
+
+    The world was fine. The selector wasn't: it took ANY object
+    carrying a `register` attribute and never asked whether she could
+    reach the room. The Thrift's "free rail" carries `register = None`
+    — a rail of donated clothes, not a till — and the room is not a
+    registered post at all.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.rabbit = self.char1
+        self.rabbit.db.soul_post = self.room1
+
+    def _counter(self, room, register):
+        c = create_object("typeclasses.items.Item", key="a counter",
+                          location=room)
+        c.attributes.add("register", register)
+        return c
+
+    def test_a_register_of_none_is_not_a_till(self):
+        """The free rail. Presence of the attribute is not the same
+        question as being able to take money."""
+        self.assertFalse(courier._is_till(self._counter(self.room2, None)))
+
+    def test_an_empty_till_is_still_a_till(self):
+        """Zero is a till that happens to be broke — and she delivers
+        to those on purpose, so the debt shows up."""
+        self.assertTrue(courier._is_till(self._counter(self.room2, 0)))
+
+    def test_a_funded_till_is_a_till(self):
+        self.assertTrue(courier._is_till(self._counter(self.room2, 25)))
+
+    def test_an_exit_is_never_a_till(self):
+        ex = create_object("typeclasses.exits.Exit", key="south",
+                           location=self.room1, destination=self.room2)
+        ex.attributes.add("register", 5)
+        self.assertFalse(courier._is_till(ex))
+
+    def test_an_unreachable_destination_is_not_offered(self):
+        """Checked before dispatch rather than discovered halfway.
+        Taking the run just faults her in the street holding a parcel
+        nobody will take."""
+        self._counter(self.room2, 10)
+        with mock.patch.object(courier, "_keeper_in", return_value=self.char2), \
+             mock.patch.object(courier, "_reachable", return_value=False):
+            self.assertEqual(courier.runnable_destinations(self.rabbit), [])
+
+    def test_a_reachable_one_is(self):
+        c = self._counter(self.room2, 10)
+        with mock.patch.object(courier, "_keeper_in", return_value=self.char2), \
+             mock.patch.object(courier, "_reachable", return_value=True):
+            got = courier.runnable_destinations(self.rabbit)
+        self.assertEqual([r for r, _c, _k in got], [self.room2])
+
+    def test_reachability_is_asked_as_HER(self):
+        """A door she cannot open, or a gap only a roof-runner would
+        cross, must be answered for the person being sent."""
+        import inspect
+        src = inspect.getsource(courier._reachable)
+        self.assertIn("traverser=soul", src)
+
+    def test_an_unroutable_question_is_a_no(self):
+        self.assertFalse(courier._reachable(self.rabbit, None, self.room2))
