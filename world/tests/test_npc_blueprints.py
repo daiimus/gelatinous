@@ -50,7 +50,7 @@ class TestRegistryIntegrity(TestCase):
 
     def test_roster_complete(self):
         # the cast, excluding machinery fixtures like the drill dummy
-        self.assertEqual(len(_cast()), 18)
+        self.assertEqual(len(_cast()), 20)
         for expected in ("butcher_ottilie", "bartender_del", "doctor_marta",
                          "companion_vesper", "dispatch_petra",
                          "tobacconist_bellows",
@@ -61,6 +61,11 @@ class TestRegistryIntegrity(TestCase):
                          # and set on nobody, so no soul in the colony
                          # ever took the awkward way anywhere
                          "rabbit_wren",
+                         # Kaspar around the clock (#2297): the depot
+                         # cannot consign a parcel with nobody behind
+                         # the counter, so a courier's shift was
+                         # silently gated on the pawnbroker's
+                         "pawn_hollis", "pawn_sunny",
                          # the bench (#2261): maintenance advertises only
                          # where somebody is standing, so these three ARE
                          # the repair system
